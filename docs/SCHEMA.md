@@ -21,7 +21,7 @@ message Holder {
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
   string alias  = 4;
   ...
-  // 8..13, 16.. 은 앱의 자리. 나머지는 payday의 것이고 override되면 안 된다.
+  // 8..12, 16.. 은 앱의 자리. 나머지는 payday의 것이고 override되면 안 된다.
   reserved 3;
 
   option (orm.message)      = {rpc: {crud: true}, indexes: [...]};
@@ -51,7 +51,7 @@ message Holder {
 
 | payday의 것 | 앱의 것 |
 | --- | --- |
-| `holder.proto` 베이스 — 필드 1..7, 14..15, 인덱스, 도메인 번호 | `holder.ext.proto` — 필드 8..13, 16.. |
+| `holder.proto` 베이스 — 필드 1..7, 13..15, 인덱스, 도메인 번호 | `holder.ext.proto` — 필드 8..12, 16.. |
 | 의미 — 테넌트는 벽이다, Holder는 softly erase되고 그 이유, 감사는 행위자의 것이다 | 그 위의 도메인 규칙 |
 | 생성되는 벽 술어·감사 레코더·auth 리졸버 | 정책 |
 | 생성된 Go 타입은 **앱 패키지에** 떨어진다 (`go_app.Holder`) | |
@@ -162,8 +162,15 @@ func (w wall) RobotScope(ctx context.Context) (predicate.Robot, error) {
 - **필드를 더할 수는 있어도 뺄 수는 없다.** `alias`, `tenant`, `date_erased`는 auth와
   벽이 읽으므로 사라지면 안 된다. 위와 같은 검사로 막힌다.
 - **payday가 베이스에 필드를 더하면 앱의 번호와 부딪힐 수 있다.** payday는 자기 범위
-  (1..7, 14..15) 밖으로 나가지 않는다고 약속하는 것으로 갚는다. 범위가 모자라면 그때는
+  (1..7, 13..15) 밖으로 나가지 않는다고 약속하는 것으로 갚는다. 범위가 모자라면 그때는
   minor 버전을 올리며 앱이 옮기는 수밖에 없다.
+
+  범위가 원래 `14..15`였는데 하나 넓혔다. `version: {}` 필드가 들어가야 하기 때문이다 —
+  §10.5에서 로컬 스토어가 늦게 도착한 옛 상태로 새 상태를 덮지 않으려면 필요하고,
+  §7의 4h가 `watch:`를 선언한 엔티티에 그것을 요구한다. 지금 넣는 것은 공짜이고
+  나중에 넣는 것은 모든 앱의 마이그레이션이다. `orm`의 `version`은 서버가 찍는
+  타임스탬프이고 문서가 그것을 assign하는 것을 거부하므로, 쓰기당 스탬프 하나 말고는
+  값이 붙지 않는다.
 
 ### 전제 확인 — 패키지를 넘는 엣지: **된다** (검증 완료)
 
