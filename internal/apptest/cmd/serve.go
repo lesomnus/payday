@@ -66,22 +66,32 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 
 func (s *Server) Close() error { return s.Db.Close() }
 
-// Serve answers on `l` until the context is done.
+// Grpc builds the server every call arrives at.
 //
 // The chain is payday's and the order is this app's to read: what records a
 // call is outside everything, then the recovery, then the deadline a call that
 // named none is given, then how often one caller may ask, then what is closed
 // to callers entirely.
-func (s *Server) Serve(ctx context.Context, c Config, l net.Listener) error {
+//
+// It is separate from [Server.Serve] so that a test can travel exactly this
+// and answer on a listener that is a channel; see pdtest.
+func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) *grpc.Server {
 	chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
 		WithUnary(grpcx.LimitUnary(c.Server.Limiter(), byPeer)).
 		WithUnary(grpcx.ClosedUnary(c.Server.Closed()))
 
-	opts := chain.ServerOptions()
-	opts = append(opts, c.Server.GrpcOptions()...)
+	os := append(opts, chain.ServerOptions()...)
+	os = append(os, c.Server.GrpcOptions()...)
 
-	g := grpc.NewServer(opts...)
+	g := grpc.NewServer(os...)
 	app.RegisterServer(g, s.Walled)
+
+	return g
+}
+
+// Serve answers on `l` until the context is done.
+func (s *Server) Serve(ctx context.Context, c Config, l net.Listener) error {
+	g := s.Grpc(ctx, c)
 
 	go func() {
 		<-ctx.Done()
