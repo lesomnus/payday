@@ -3,6 +3,7 @@ module github.com/lesomnus/payday
 go 1.26.2
 
 require (
+	github.com/bufbuild/protocompile v0.14.1
 	github.com/google/uuid v1.6.0
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29
 	github.com/stretchr/testify v1.11.1
@@ -11,7 +12,6 @@ require (
 )
 
 require (
-	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ettle/strcase v0.2.0 // indirect
 	github.com/go-openapi/inflect v0.21.3 // indirect
@@ -34,10 +34,3 @@ tool (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	google.golang.org/protobuf/cmd/protoc-gen-go
 )
-
-// Worked on side by side with payday for now.
-replace github.com/protobuf-orm/protobuf-orm => /workspaces/github.com/protobuf-orm/protobuf-orm
-
-replace github.com/protobuf-orm/protoc-gen-orm-service => /workspaces/github.com/protobuf-orm/protoc-gen-orm-service
-
-replace github.com/protobuf-orm/protoc-gen-orm-ent => /workspaces/github.com/protobuf-orm/protoc-gen-orm-ent

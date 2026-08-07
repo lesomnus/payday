@@ -8,7 +8,7 @@ go 1.26.2
 require (
 	entgo.io/ent v0.14.6
 	github.com/google/uuid v1.6.0
-	github.com/lesomnus/payday v0.0.0-00010101000000-000000000000
+	github.com/lesomnus/payday v0.0.0-20260807211632-cbd3b97d9f36
 	github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29
@@ -60,10 +60,3 @@ require (
 )
 
 tool entgo.io/ent/cmd/ent
-
-// payday is not published yet; the workspace is what resolves it.
-replace github.com/lesomnus/payday => ../..
-
-replace github.com/protobuf-orm/protobuf-orm => /workspaces/github.com/protobuf-orm/protobuf-orm
-
-replace github.com/protobuf-orm/protoc-gen-orm-ent => /workspaces/github.com/protobuf-orm/protoc-gen-orm-ent

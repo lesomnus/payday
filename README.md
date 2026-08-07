@@ -68,3 +68,14 @@ does not have to try every table. See [`pdid`](pdid).
 $ go test ./... && (cd internal/apptest && go test ./...)
 $ ./scripts/gen-apptest.sh   # what `pd gen` will be
 ```
+
+## The schema
+
+`buf.build/payday/payday`, pushed under the **`dev`** label while the option is
+still moving. Nothing consumes `main` yet, and nothing should until an app other
+than `internal/apptest` depends on it -- a published schema that then changes is
+the one cost this whole design is arranged to avoid paying twice.
+
+```sh
+$ buf push --exclude-unnamed --label dev
+```

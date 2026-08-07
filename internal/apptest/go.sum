@@ -47,6 +47,8 @@ github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
+github.com/lesomnus/payday v0.0.0-20260807211632-cbd3b97d9f36 h1:LSMqp3o0KT2Imb1YwL+1RwNRqZytkq2rdb848bgaiO8=
+github.com/lesomnus/payday v0.0.0-20260807211632-cbd3b97d9f36/go.mod h1:YbgL83nTlj8YykjWTex/1jZY8oY9e9hL0fnm/OTT9Cg=
 github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f h1:hIDTEG7vZCJ5M+j+OhI97pk6Q1mp1t3gXi1k96IB9f0=
 github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f/go.mod h1:0sqL1bt/0v8atiVioyoJ25XQnZcn8zA9GYM1DvC4i5o=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
@@ -77,6 +79,8 @@ github.com/olekukonko/tablewriter v1.1.3 h1:VSHhghXxrP0JHl+0NnKid7WoEmd9/urKRJLy
 github.com/olekukonko/tablewriter v1.1.3/go.mod h1:9VU0knjhmMkXjnMKrZ3+L2JhhtsQ/L38BbL3CRNE8tM=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29 h1:yLrMWcjBT70hljInsE7zssdIZ8pwvotprlUGsLEs4ms=
+github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29/go.mod h1:jMdK+un3aGD6fB5zl3rBg0OMahe7vP5Dpfxe6Sws7mM=
 github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260807205916-3e9c932f5f85 h1:zGVI/qY3RIxvvSikJp9iEyT0f9HBjHrHhazQmhVWJzo=
 github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260807205916-3e9c932f5f85/go.mod h1:cCppipIxbNwsYANoOE45i6FdufSBSNqSBJYhcZ/l+WA=
 github.com/rogpeppe/go-internal v1.16.0 h1:O9DK+vNMDVGLr2BeZqmpLeMjiMNkuXfcqntWbZV6S5g=
