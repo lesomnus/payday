@@ -222,6 +222,21 @@ op에 적어 넣으면 끝이다. 서버는 그것이 배치인지도 알 필요
 | ~~**3**~~ | **완료** — `payday.entity` + `protoc-gen-pd`. 거절 10가지가 테스트로 있다. 테넌시는 2갈래가 아니라 3갈래(`tenant`/`tenanted`/`global`)가 되었다 — "`via`가 비면 자기 자신"은 문서가 싸우는 종류의 암묵이라서 | 1 |
 | ~~**4**~~ | **완료 · 상류에 병합** — `protoc-gen-orm-ent`의 `Minter`. 덤으로 `protoc-gen-orm-service`의 자기 참조 import 버그도 고쳤다: 한 `.proto`에 엔티티가 둘 이상이고 하나가 다른 하나를 참조하면 생성 파일이 자기를 import한다 | 없음 |
 | **5** | Tenant/Holder/Audit 베이스 proto + 오버레이 병합을 `pd gen`에 (번호 범위 검사 포함) | 0 |
+
+CP3 준비 중에 나온 것 하나. **`Audit`은 `via`로 벽을 세울 수 없다.** 그 행은 테넌트를
+엣지가 아니라 `tenant_id` 컬럼으로 들고 있고, 그것이 의도다 — 트레일은 자기가 가리키는
+테넌트보다 오래 살아야 하므로 외래 키를 걸지 않는다. 그러니 `Tenanted`에 두 번째 형태가
+필요하다.
+
+```proto
+message Tenanted {
+  string via   = 1;   // 테넌트에 닿는 엣지 경로. 기본 "tenant"
+  string field = 2;   // 테넌트 식별자를 담은 컬럼. 외래 키 없이 이름만 드는 행
+}
+```
+
+둘 중 하나만 쓸 수 있고, `field`면 술어가 `audit.TenantIDIn(vs...)`가 된다. 지금 옵션에
+없는 것이므로 CP3에서 함께 넣는다.
 | **6** | `frame`/`auth` 런타임 — ID와 `proto.Message`로 | 5 |
 | **7** | `gate`/`audit` — 런타임의 판단 + 레이어와 벽 술어 생성 (§2) | 3,5,6 |
 | **7b** | `List` 생성 — `list:` 옵션, `payday/entlist`, 인덱스·키 검사 (§4.1) | 3,7 |
