@@ -143,7 +143,49 @@ func (m Migrations) Plan(ctx context.Context, dev *sql.DB, name string) ([]migra
 		return nil, fmt.Errorf("read the migration directory: %w", err)
 	}
 
-	return after[len(before):], nil
+	return written(before, after)
+}
+
+// written answers with the files that are in `after` and were not in `before`,
+// and refuses a directory that planning has just made unorderable.
+//
+// It is by name and not `after[len(before):]`, which is what this used to be,
+// because `Files` answers in name order rather than in the order the files were
+// written -- and a name begins with the second it was written in, so a file
+// planned now sorts before one planned in the same second under an earlier
+// description. The count was right for as long as no two files shared a second.
+//
+// That they can share one is the reason for the refusal. Atlas names a
+// migration by the second it was written in and reads the same string back as
+// its version, and a version is what a database records to say it ran the file;
+// two files of one version are applied in whichever order their descriptions
+// happen to sort in, and the revision the second writes lands on the row the
+// first wrote. Nothing here can take the file back -- neither the directory nor
+// atlas offers a delete -- so the answer is to say plainly which file to remove.
+func written(before, after []migrate.File) ([]migrate.File, error) {
+	seen := make(map[string]migrate.File, len(before))
+	for _, f := range before {
+		seen[f.Name()] = f
+	}
+
+	vs := []migrate.File{}
+	for _, f := range after {
+		if _, ok := seen[f.Name()]; ok {
+			continue
+		}
+		for _, g := range before {
+			if g.Version() == f.Version() {
+				return nil, fmt.Errorf(
+					"%s was written for the same second as %s, and two migrations of one version cannot be ordered: delete it and plan again in a moment",
+					f.Name(), g.Name(),
+				)
+			}
+		}
+
+		vs = append(vs, f)
+	}
+
+	return vs, nil
 }
 
 // Pending returns the migration files `db` did not run yet, in the order they
@@ -168,6 +210,12 @@ func (m Migrations) Apply(ctx context.Context, db *sql.DB, dialect string) ([]mi
 	fs, err := pending(ctx, ex)
 	if err != nil {
 		return nil, err
+	}
+	if len(fs) == 0 {
+		// Not merely an optimization: `ExecuteN` with nothing to do is the
+		// error that having nothing to do is reported as, and a deployment that
+		// applies on every start is up to date almost every time.
+		return nil, nil
 	}
 	if err := ex.ExecuteN(ctx, len(fs)); err != nil {
 		return nil, fmt.Errorf("execute: %w", err)

@@ -49,6 +49,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/lesomnus/payday v0.0.0-20260807211632-cbd3b97d9f36 h1:LSMqp3o0KT2Imb1YwL+1RwNRqZytkq2rdb848bgaiO8=
 github.com/lesomnus/payday v0.0.0-20260807211632-cbd3b97d9f36/go.mod h1:YbgL83nTlj8YykjWTex/1jZY8oY9e9hL0fnm/OTT9Cg=
+github.com/lesomnus/payday v0.0.0-20260807212138-872bf707b1f4 h1:J09pYEnzpe5K5/0MjrQVNZQBgJnelAa31eW02yzpHuA=
+github.com/lesomnus/payday v0.0.0-20260807212138-872bf707b1f4/go.mod h1:wa9W+rqPfAwCmLHdAOiq6mnWsoQ9X1pVZGsIjZRBi68=
 github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f h1:hIDTEG7vZCJ5M+j+OhI97pk6Q1mp1t3gXi1k96IB9f0=
 github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f/go.mod h1:0sqL1bt/0v8atiVioyoJ25XQnZcn8zA9GYM1DvC4i5o=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
