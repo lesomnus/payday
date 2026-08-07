@@ -249,7 +249,7 @@ proto 메시지와 이 옵션뿐이다.**
 | `internal/migrate/*` | `payday/migrate` | ~300줄 | atlas plan/apply/pending |
 | `cmd/config/*` | `payday/config` | ~830줄 | 리플렉션 환경변수 바인딩, `mkot.ExpandEnv`, 드라이버 레지스트리, TLS/keepalive/limit |
 | `cmd/version/*` | `payday/version` | ~40줄 | `debug.ReadBuildInfo`로 바꾸면 셸 스크립트가 사라짐 |
-| `server/core/alias.go` + oasys `slug/*` | `payday/pdslug` | ~250줄 | 별칭 문법·정규화 + `@tenant/alias#domain` 파싱·조립 (§3.6) |
+| `server/core/alias.go` + oasys `slug/*` | `payday/slug` | ~250줄 | 별칭 문법·정규화 + `@tenant/alias#domain` 파싱·조립 (§3.6) |
 | `server/frame/*` | `payday/frame` | ~350줄 | **제네릭 없이.** 두 개의 `pdid.Id`와 `proto.Message`로 말한다 (§2) |
 | `server/auth/*` | `payday/auth` | ~700줄 | `Plain`/`MTLS`/`Bearer`/`Seq`/인터셉터. `Resolver`는 앱이 생성된 서버로 구현 |
 | `server/gate/*` | `payday/gate` | ~500줄 | `Policy`, `Call`, `ByTenant`, `Interceptor`, 그리고 Tenant/Holder에 대한 규칙 함수들 (§2) |

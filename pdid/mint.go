@@ -88,3 +88,22 @@ func (e *NobodyError) Error() string {
 func (e *NobodyError) GRPCStatus() *status.Status {
 	return status.New(codes.InvalidArgument, e.Error())
 }
+
+// NoDomain is an entity nothing declared a domain for.
+//
+// It is Internal and not InvalidArgument: the caller asked for something
+// perfectly ordinary and the app cannot say what kind of thing it is, which is
+// the app disagreeing with its own schema.
+func NoDomain(entity string) error { return &NoDomainError{Entity: entity} }
+
+type NoDomainError struct {
+	Entity string
+}
+
+func (e *NoDomainError) Error() string {
+	return fmt.Sprintf("%s: no domain was declared, so nothing can be said about what its identifiers name", e.Entity)
+}
+
+func (e *NoDomainError) GRPCStatus() *status.Status {
+	return status.New(codes.Internal, e.Error())
+}

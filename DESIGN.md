@@ -39,10 +39,11 @@ Go 패키지에 `pd`를 붙일지는 **하나의 기준**으로 정한다.
 | 패키지 | 이름 | 왜 |
 | --- | --- | --- |
 | ID | `pdid` | payday가 정의한 형식이다. 그리고 `id`는 **지역 변수로 상시 가려진다** — `id, err := ...` 한 줄이면 그 스코프에서 패키지가 사라진다 |
-| slug | `pdslug` | 같은 이유. `@tenant/alias#domain`은 우리가 정한 것이지 일반 개념이 아니다 |
+| slug | `slug` | payday가 정한 형식이긴 하지만 `id`처럼 가려지는 이름이 아니고, 부르는 곳도 많지 않다. 접두사가 값을 못 낸다 |
 | 테스트 하네스 | `pdtest` | `httptest`/`iotest`의 관례를 따른다 |
 | `auth`, `frame`, `gate`, `audit`, `config`, `migrate`, `version`, `spin` | 그대로 | 전부 일반 개념이다. 접두사는 정보를 더하지 않고 길이만 더한다 |
 | `grpcx` | 그대로 | `x` 접미사가 이미 관례다 |
+| 생성된 proto 메시지 | `pdpb` | 같은 접두사. `paydaypb`는 길기만 하다 |
 
 **루트 패키지는 두지 않는다.** API는 전부 하위 패키지에 산다 — 그러면
 `github.com/lesomnus/payday/pdid` → `package pdid`처럼 import 경로의 마지막 조각과
@@ -133,7 +134,7 @@ Go 패키지에 `pd`를 붙일지는 **하나의 기준**으로 정한다.
 
 ### CP2 — 런타임 추출이 앱을 실제로 얇게 만드는가
 
-Tier 1 이동(`grpcx`, `config`, `migrate`, `version`, `pdslug`)과 템플릿이 그 위에서
+Tier 1 이동(`grpcx`, `config`, `migrate`, `version`, `slug`)과 템플릿이 그 위에서
 도는 것까지.
 
 > **멈추고 볼 것.** go-app을 payday 위에 다시 얹었을 때 앱에 남은 줄이 정말 줄었나?

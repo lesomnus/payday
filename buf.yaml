@@ -1,0 +1,17 @@
+version: v2
+modules:
+  - path: ./proto
+    name: buf.build/payday/payday
+lint:
+  use:
+    - STANDARD
+  except:
+    # payday is versioned by the module it ships in, not by its package name.
+    - PACKAGE_VERSION_SUFFIX
+    - PACKAGE_DIRECTORY_MATCH
+    # The extension declaration sits beside the package it extends, which is
+    # how `orm` does it too.
+    - PACKAGE_SAME_DIRECTORY
+breaking:
+  use:
+    - FILE

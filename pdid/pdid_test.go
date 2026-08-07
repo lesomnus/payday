@@ -133,9 +133,9 @@ func TestOf(t *testing.T) {
 		x := require.New(t)
 
 		for _, v := range []uuid.UUID{
-			uuid.New(),                 // v4
-			uuid.Must(uuid.NewV7()),    // v7
-			uuid.Nil,                   // nothing
+			uuid.New(),              // v4
+			uuid.Must(uuid.NewV7()), // v7
+			uuid.Nil,                // nothing
 			uuid.MustParse("00000000-0000-8000-0000-000000000000"), // v8, wrong variant
 		} {
 			d, ok := pdid.Of(v)

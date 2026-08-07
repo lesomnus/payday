@@ -1,0 +1,86 @@
+edition = "2023";
+
+package payday;
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// Entity is what payday has to be told about a message that `orm` already
+// says is an entity.
+//
+// Everything here is a thing that cannot be worked out from the schema and that
+// **fails quietly when it is left to be worked out later**: what kind of thing
+// an identifier names, and whether a row is behind the tenant wall. Both are
+// decisions, both are forgettable, and a generator can refuse to generate what
+// does not say them -- which is the earliest and cheapest place either can be
+// caught.
+message Entity {
+  // Domain is the number written into the ninth byte of every identifier of
+  // this entity. See `pdid`.
+  //
+  // It is of the same kind as a field number: chosen once, never changed, and
+  // never given to something else after the entity that had it is gone. An
+  // identifier outlives the row it named -- that is most of the point of
+  // carrying the domain at all -- so reusing a number makes an old identifier
+  // start lying about what it was.
+  //
+  // 1..255. Zero is what an identifier nothing registered reads as, so nothing
+  // may hold it.
+  uint32 domain = 1;
+
+  // Name is what a person writes this domain as, which is the part after `#`
+  // of a slug: `@acme/arm-01#robot`.
+  //
+  // Left out, it is the message name in kebab-case -- `Robot` is `robot`,
+  // `WorkCell` is `work-cell`. Write it out when that is not the word the
+  // domain is known by.
+  string name = 2;
+
+  // Tenancy says whether rows of this entity are behind the tenant wall, and
+  // **one of the two must be said**. There is no default, and that is the whole
+  // reason this field exists.
+  //
+  // The alternative -- assume one -- is wrong whichever one is assumed.
+  // Assuming an entity is walled makes an entity that is not disappear from
+  // every read until somebody notices. Assuming it is not makes an entity that
+  // should be walled readable by everybody, and *nobody notices*: nothing fails,
+  // no test goes red, and the first sign of it is a caller reading another
+  // tenant's rows.
+  //
+  // So it is neither, and generation stops until it is said. Saying it costs a
+  // line; the second mistake costs more than that.
+  oneof tenancy {
+    // This entity is the tenant. A row of it is visible to a caller who may
+    // see that tenant, which from inside one means exactly itself.
+    Tenant tenant = 3;
+
+    // Rows of this entity belong to a tenant, reached by an edge.
+    Tenanted tenanted = 4;
+
+    // Rows of this entity are not behind the wall.
+    Global global = 5;
+  }
+}
+
+// Tenant is the entity a wall is made of. There is one of these in a schema.
+message Tenant {}
+
+// Tenanted is an entity whose rows belong to a tenant, and are read only by
+// callers who may see that tenant.
+message Tenanted {
+  // Via is the edge that reaches the tenant, and it does not have to be a
+  // direct one: `"tenant"` for a row that holds its own, `"holder.tenant"` for
+  // a row that reaches it through whatever holds it.
+  //
+  // Left out, it is `"tenant"`, since that is what the edge is called when
+  // there is one.
+  string via = 1;
+}
+
+// Global is an entity that is not behind the wall -- a table the whole
+// deployment shares.
+//
+// It is written out rather than left unsaid so that it is a decision somebody
+// made, and so that a reader of the schema can tell "this is shared" from
+// "somebody forgot".
+message Global {}

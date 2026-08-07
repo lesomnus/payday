@@ -1,0 +1,14 @@
+edition = "2023";
+
+package payday;
+
+import "google/protobuf/descriptor.proto";
+import "payday/entity.proto";
+
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// The numbers are payday's block. `orm` holds 45001 and 45101..45102, so this
+// starts a block above it with room to grow in either direction.
+extend google.protobuf.MessageOptions {
+  Entity entity = 46001;
+}
