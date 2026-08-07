@@ -214,13 +214,13 @@ op에 적어 넣으면 끝이다. 서버는 그것이 배치인지도 알 필요
 
 | | 무엇 | 의존 |
 | --- | --- | --- |
-| ~~0~~ | ~~패키지를 넘는 엣지 확인~~ | **완료 — 된다.** `strategy: all`과 단일 `go_package`가 조건 (§2) |
-| **1** | `payday/pdid` — v8 레이아웃, `New`/`Parse`/`Of`, 도메인 타입 | 없음 |
-| **1b** | `payday/slug` — 합친 문법 + `@tenant/alias#domain` (§3.6). 도메인 이름 조회는 3이 채운다 | 1 |
+| ~~0~~ | ~~패키지를 넘는 엣지 확인~~ | **완료** — 된다. `strategy: all`과 단일 `go_package`가 조건 (§2) |
+| ~~**1**~~ | **완료** — `payday/pdid`. 순서 보존은 나이브한 구현을 나란히 두고 그쪽이 순서를 잃는 것을 단언하는 테스트로 실증 | 없음 |
+| **1b** | `payday/slug` — 합친 문법 + `@tenant/alias#domain` (§3.6). 진행 중 | 1 |
 | **1c** | `pdid`/`slug`의 **TS 절반을 npm으로** (§10.3 층 0). 문법이 하나라는 것을 두 언어에서 지키는 유일한 방법이고, §12.6의 배치가 이것을 전제한다 | 1,1b |
-| **2** | **Tier 1 이동** — `grpcx`, `migrate`, `config`, `version` | 없음 |
-| **3** | `payday.entity` 옵션 + 플러그인 (도메인 상수·등록·중복 검사·테넌시 검사) | 1 |
-| **4** | `protoc-gen-orm-ent`에 `Minter` 훅 (payday를 모르는 변경) | 없음 |
+| **2** | **Tier 1 이동** — `grpcx` **완료**(`Chain` 추가), `migrate`·`config`·`version` 진행 중 | 없음 |
+| ~~**3**~~ | **완료** — `payday.entity` + `protoc-gen-pd`. 거절 10가지가 테스트로 있다. 테넌시는 2갈래가 아니라 3갈래(`tenant`/`tenanted`/`global`)가 되었다 — "`via`가 비면 자기 자신"은 문서가 싸우는 종류의 암묵이라서 | 1 |
+| ~~**4**~~ | **완료 · 상류에 병합** — `protoc-gen-orm-ent`의 `Minter`. 덤으로 `protoc-gen-orm-service`의 자기 참조 import 버그도 고쳤다: 한 `.proto`에 엔티티가 둘 이상이고 하나가 다른 하나를 참조하면 생성 파일이 자기를 import한다 | 없음 |
 | **5** | Tenant/Holder/Audit 베이스 proto + 오버레이 병합을 `pd gen`에 (번호 범위 검사 포함) | 0 |
 | **6** | `frame`/`auth` 런타임 — ID와 `proto.Message`로 | 5 |
 | **7** | `gate`/`audit` — 런타임의 판단 + 레이어와 벽 술어 생성 (§2) | 3,5,6 |
