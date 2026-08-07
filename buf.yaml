@@ -2,6 +2,13 @@ version: v2
 modules:
   - path: ./proto
     name: buf.build/payday/payday
+  # The app payday is tried against. It is a module of its own so that it can
+  # depend on `orm` the way an app does, and so that what is generated for it
+  # is generated the way an app's is.
+  - path: ./internal/apptest/proto
+deps:
+  - buf.build/orm/orm
+  - buf.build/patch/patch
 lint:
   use:
     - STANDARD

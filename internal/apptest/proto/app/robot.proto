@@ -1,0 +1,105 @@
+edition = "2023";
+
+package app;
+
+import "app/tenant.proto";
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// Robot is an ordinary entity: it belongs to a tenant, and is read only by
+// callers who may see that tenant.
+message Robot {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  string alias = 4;
+
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {
+    immutable: true
+    default: ""
+  }];
+
+  option (orm.message) = {
+    rpc: {crud: true}
+    indexes: [
+      {
+        name: "slug"
+        refs: [
+          {
+            name: "alias"
+            number: 4
+          },
+          {
+            name: "tenant"
+            number: 2
+          }
+        ]
+        unique: true
+      }
+    ]
+  };
+  option (payday.entity) = {
+    domain: 7
+    tenanted: {via: "tenant"}
+  };
+}
+
+// Joint reaches its tenant through the Robot it is part of, which is what a
+// `via` of more than one step is for. Nothing else about it is interesting.
+message Joint {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  Robot robot = 2 [(orm.edge) = {immutable: true}];
+  string alias = 4;
+
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 8
+    tenanted: {via: "robot.tenant"}
+  };
+}
+
+// Fleet is shared by the whole deployment, and says so. A reader of the schema
+// can tell that from "somebody forgot" because there is no way to forget.
+message Fleet {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  string alias = 4 [(orm.field) = {unique: true}];
+
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 9
+    global: {}
+  };
+}
+
+// Cell was added to answer one question: what does adding an entity cost?
+// Nothing below this line is Go, and nothing else in this app was touched.
+message Cell {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  string alias = 4;
+
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 10
+    tenanted: {via: "tenant"}
+  };
+}

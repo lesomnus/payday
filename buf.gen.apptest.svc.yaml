@@ -1,0 +1,7 @@
+version: v2
+inputs:
+  - directory: internal/apptest/proto
+plugins:
+  - local: [go, tool, github.com/protobuf-orm/protoc-gen-orm-service]
+    out: internal/apptest/proto.svc
+    strategy: all
