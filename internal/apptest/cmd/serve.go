@@ -8,8 +8,10 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	"google.golang.org/grpc"
 
+	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
+	"github.com/lesomnus/payday/watch"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/ent"
@@ -22,6 +24,12 @@ import (
 type Server struct {
 	Db  *sql.DB
 	Ent *ent.Client
+
+	// Watch is what a change is published to once the call that made it has
+	// answered. The broker is named rather than defaulted: the one that
+	// publishes in this process is right for one replica and **silently wrong**
+	// for two, since a subscriber on one never hears about a write on another.
+	Watch *watch.Watch
 
 	// Walled is what a caller reaches, and Ungated is what the deployment does
 	// its own work through -- putting the first tenant there, working out who
@@ -58,9 +66,12 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// the servers that do the writing, since every RPC that changes anything
 	// has to report itself from inside the transaction that changes it. The
 	// wall is a predicate and a predicate belongs in the WHERE.
+	w := watch.New(watch.Memory())
+
 	sink, err := pd.NewSink(client,
 		bare.WithMinter(pd.Minter()),
 		bare.WithRecorder(pd.Recorder()),
+		bare.WithRecorder(pd.WatchRecorder(w)),
 	)
 	if err != nil {
 		db.Close()
@@ -70,6 +81,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	walled, err := pd.NewSink(client,
 		bare.WithMinter(pd.Minter()),
 		bare.WithRecorder(pd.Recorder()),
+		bare.WithRecorder(pd.WatchRecorder(w)),
 		bare.WithScope(pd.Wall()),
 	)
 	if err != nil {
@@ -79,7 +91,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 
 	// The stack a caller reaches. `pd.Gate` is outermost, so nothing behind it
 	// asks again.
-	stacked, err := app.Build(walled, pd.AuditBuild(), pd.GateBuild())
+	stacked, err := app.Build(walled.WithWatch(w), pd.AuditBuild(), pd.GateBuild())
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -90,13 +102,13 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// holds: it is an instance somebody was handed, so going around the wall
 	// is a line of wiring a reader can find rather than a rule that opens up
 	// whenever nobody is asking.
-	ungated, err := app.Build(sink, pd.AuditBuild())
+	ungated, err := app.Build(sink.WithWatch(w), pd.AuditBuild())
 	if err != nil {
 		db.Close()
 		return nil, err
 	}
 
-	return &Server{Db: db, Ent: client, Walled: stacked, Ungated: ungated}, nil
+	return &Server{Db: db, Ent: client, Watch: w, Walled: stacked, Ungated: ungated}, nil
 }
 
 func (s *Server) Close() error { return s.Db.Close() }
@@ -111,12 +123,15 @@ func (s *Server) Close() error { return s.Db.Close() }
 // It is separate from [Server.Serve] so that a test can travel exactly this
 // and answer on a listener that is a channel; see pdtest.
 func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) *grpc.Server {
-	// Behind whatever says who is calling, since the key is about them, and in
-	// front of the gate, since consulting a policy is work a caller past their
-	// line should not be able to ask for.
+	// Who is calling comes first, since everything after it reads the frame.
+	// `Plain` believes what the caller writes, which is right for a sandbox
+	// and for tests and is not something to serve where anyone can reach it.
 	chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
+		WithUnary(auth.InterceptorUnary(auth.Plain(), Resolver(s.Ungated), auth.PublicDefault)).
+		WithStream(auth.InterceptorStream(auth.Plain(), Resolver(s.Ungated), auth.PublicDefault)).
 		WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant())).
 		With(gate.Interceptor(nil)).
+		With(s.Watch.Interceptor()).
 		WithUnary(grpcx.ClosedUnary(c.Server.Closed()))
 
 	os := append(opts, chain.ServerOptions()...)

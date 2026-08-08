@@ -82,6 +82,18 @@ func LimitStream(l Limiter, by func(ctx context.Context, method string) string) 
 }
 
 func allow(ctx context.Context, l Limiter, by func(ctx context.Context, method string) string, method string) error {
+	// No limit at all, which is what a deployment that configured none has.
+	//
+	// The guard is here and not only in [Limit] because the bare interceptors
+	// are the shape everything else takes them in -- a chain assembled for a
+	// server that is not gRPC's, a batch applying them per operation -- and
+	// those reach this without going past that constructor. It used to be in
+	// the constructor alone, and calling LimitUnary(nil, ...) directly was a
+	// panic on the first request.
+	if l == nil || by == nil {
+		return nil
+	}
+
 	key := by(ctx, method)
 	if key == "" {
 		return nil

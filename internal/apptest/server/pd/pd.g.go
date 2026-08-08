@@ -26,13 +26,16 @@ import (
 	tenant "github.com/lesomnus/payday/internal/apptest/ent/tenant"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
 	pdid "github.com/lesomnus/payday/pdid"
+	watch "github.com/lesomnus/payday/watch"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	entpage "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpage"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
+	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	proto "google.golang.org/protobuf/proto"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	slices "slices"
 	time "time"
 )
 
@@ -192,6 +195,11 @@ func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 //	sink, err := pd.NewSink(db, bare.WithMinter(pd.Minter()), bare.WithScope(pd.Wall()))
 type Sink struct {
 	bare.Server
+
+	// w is what a Watch listens on, and is nil for a deployment that
+	// serves none. It is here rather than on the generated Store because
+	// that struct is the ORM generator's and knows nothing about payday.
+	w *watch.Watch
 }
 
 func NewSink(db *ent.Client, opts ...bare.Option) (Sink, error) {
@@ -200,7 +208,14 @@ func NewSink(db *ent.Client, opts ...bare.Option) (Sink, error) {
 		return Sink{}, err
 	}
 
-	return Sink{v}, nil
+	return Sink{Server: v}, nil
+}
+
+// WithWatch answers with this server publishing to `w`, which is what a
+// Watch reads from. A server built without one serves no Watch.
+func (s Sink) WithWatch(w *watch.Watch) Sink {
+	s.w = w
+	return s
 }
 
 var _ apptest.Server = Sink{}
@@ -213,16 +228,17 @@ func (s Sink) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 		return nil, err
 	}
 
-	return Sink{v.(bare.Server)}, nil
+	return Sink{Server: v.(bare.Server), w: s.w}, nil
 }
 
 type sinkRobot struct {
 	apptest.RobotServiceServer
 	store bare.Store
+	w     *watch.Watch
 }
 
 func (s Sink) Robot() apptest.RobotServiceServer {
-	return sinkRobot{s.Server.Robot(), s.Server.Store}
+	return sinkRobot{s.Server.Robot(), s.Server.Store, s.w}
 }
 
 // orderRobot is how Robots come back.
@@ -356,6 +372,188 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 	}
 
 	return robot.And(ps...), nil
+}
+
+// RobotService is the prefix of every RPC of that service, which is how a
+// change is known to be about a Robot. A service is named for the entity it
+// is about, so the name carries it.
+var RobotService = watch.ServiceOf(apptest.RobotService_Get_FullMethodName)
+
+// Watch answers with the Robots this caller may see, as they are now and as
+// they change.
+//
+// What is sent is **state and never a delta**, which is what makes a stream
+// that missed something still correct: the next item about a row carries the
+// whole of it, so a client converges rather than replays. It is also what
+// makes the first message safe to duplicate against the ones after it.
+func (s sinkRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStreamingServer[apptest.RobotWatchResponse]) error {
+	ctx := out.Context()
+
+	// A watch with no filters is the whole table, forever. It is the one
+	// shape that has no cap at all, so it is the one shape refused.
+	fs := req.GetFilters()
+	switch {
+	case len(fs) == 0:
+		return status.Error(codes.InvalidArgument,
+			"filters: a watch says which rows it is about; one that says nothing is the whole table, for as long as it is open")
+	case len(fs) > RobotFilterLimit:
+		return status.Errorf(codes.InvalidArgument,
+			"filters: %d of them, and %d is the most one watch carries", len(fs), RobotFilterLimit)
+	}
+
+	// Resolved before anything is subscribed to, so a name that names
+	// nothing is an answer rather than a stream that quietly watches none.
+	watching, err := s.watchRobotKeys(ctx, fs)
+	if err != nil {
+		return err
+	}
+
+	var snapshot func(watch.Seen) error
+	if !req.GetSkipSnapshot() {
+		snapshot = func(sent watch.Seen) error { return s.watchNow(ctx, req, out, sent) }
+	}
+
+	if s.w == nil {
+		return status.Error(codes.Unimplemented,
+			"this deployment publishes no changes; see WithWatch")
+	}
+
+	return watch.Stream(ctx, s.w, RobotService, snapshot,
+		func(ks map[pdid.Id]string, sent watch.Seen) error {
+			items := make([]*apptest.RobotWatchItem, 0, len(ks))
+			for k, action := range ks {
+				u, err := s.watchRead(ctx, watching, k)
+				if err != nil {
+					return err
+				}
+				if u == nil && !sent[k] {
+					// Not theirs, or not what they asked for, and they
+					// have never been told about it. A row that never
+					// matched is not news.
+					continue
+				}
+
+				sent[k] = u != nil
+				items = append(items, apptest.RobotWatchItem_builder{
+					Id:     k.Bytes(),
+					Value:  u,
+					Action: action,
+				}.Build())
+			}
+			if len(items) == 0 {
+				return nil
+			}
+
+			return out.Send(apptest.RobotWatchResponse_builder{Items: items}.Build())
+		})
+}
+
+// watchNow sends what matches right now, through the same List a caller
+// would have called -- so what a stream begins with and what a list answers
+// cannot disagree, and a client does not have to do both and race them.
+func (s sinkRobot) watchNow(
+	ctx context.Context, req *apptest.RobotWatchRequest, out grpc.ServerStreamingServer[apptest.RobotWatchResponse],
+	sent watch.Seen,
+) error {
+	after := ""
+	for {
+		res, err := s.List(ctx, apptest.RobotListRequest_builder{
+			Filters: req.GetFilters(),
+			After:   after,
+		}.Build())
+		if err != nil {
+			return err
+		}
+
+		items := make([]*apptest.RobotWatchItem, 0, len(res.GetItems()))
+		for _, u := range res.GetItems() {
+			k, err := pdid.From(u.GetId())
+			if err != nil {
+				return err
+			}
+
+			sent[k] = true
+			// No action: this is not something anybody asked for, it is
+			// what is already there.
+			items = append(items, apptest.RobotWatchItem_builder{Id: u.GetId(), Value: u}.Build())
+		}
+		if len(items) > 0 {
+			if err := out.Send(apptest.RobotWatchResponse_builder{Items: items}.Build()); err != nil {
+				return err
+			}
+		}
+
+		if after = res.GetNext(); after == "" {
+			return nil
+		}
+	}
+}
+
+// watchRead answers with the row as it is now, or nil when it is no longer
+// one this caller may see -- erased, walled off, or no longer matching what
+// they asked for. The three are deliberately indistinguishable to a caller:
+// a stream that told them apart would be saying which rows stopped being
+// theirs, which is the thing the wall is for.
+//
+// The Get is what keeps the wall out of this file. It goes through the same
+// server every other read does, with the context of the caller who asked, so
+// a row they may not see comes back NotFound and is never sent.
+func (s sinkRobot) watchRead(
+	ctx context.Context, watching []pdid.Id, k pdid.Id,
+) (*apptest.Robot, error) {
+	// Not one of the rows this stream is about. Asked before the read, so a
+	// busy table costs a stream nothing for the rows it does not watch.
+	if !slices.Contains(watching, k) {
+		return nil, nil
+	}
+
+	v, err := s.Get(ctx, apptest.RobotGetRequest_builder{
+		Ref: apptest.RobotRef_builder{Id: k.Bytes()}.Build(),
+	}.Build())
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return v, nil
+}
+
+// watchRobotKeys is the rows a stream is about, resolved once when it opens.
+//
+// A filter names a row and a row is named several ways -- by identifier, or
+// by whatever unique index the schema declared. Resolving them here rather
+// than comparing them per event does three things: the comparison afterwards
+// is an identifier against an identifier, a name that names nothing is
+// refused when the stream opens rather than silently watching nothing, and a
+// row renamed while the stream is open goes on being the row that was asked
+// for -- which is what somebody watching a thing meant.
+func (s sinkRobot) watchRobotKeys(
+	ctx context.Context, fs []*apptest.RobotFilter,
+) ([]pdid.Id, error) {
+	ks := make([]pdid.Id, 0, len(fs))
+	for i, f := range fs {
+		if !f.HasRef() {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"filters[%d]: a watch says which rows it is about by naming them", i)
+		}
+
+		v, err := s.Get(ctx, apptest.RobotGetRequest_builder{Ref: f.GetRef()}.Build())
+		if err != nil {
+			return nil, err
+		}
+
+		k, err := pdid.From(v.GetId())
+		if err != nil {
+			return nil, err
+		}
+
+		ks = append(ks, k)
+	}
+
+	return ks, nil
 }
 
 // Gate is the layer that says what a caller may do with a request.
@@ -581,3 +779,58 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 }
 
 var _ *patchpb.Patch
+
+// WatchRecorder answers with the recorder that remembers a write for `w`.
+//
+// It is the other end of the hook the trail hangs off, and it wants the
+// opposite thing from that moment: a trail row has to hold or fall with the
+// write, so it is written there and then; an event has to be published only
+// if the write survived, so nothing is published here at all.
+//
+//	sink, err := pd.NewSink(db, bare.WithRecorder(pd.WatchRecorder(w)))
+func WatchRecorder(w *watch.Watch) bare.Recorder {
+	return watchRecorder{w}
+}
+
+type watchRecorder struct {
+	w *watch.Watch
+}
+
+var _ bare.Recorder = watchRecorder{}
+
+func (r watchRecorder) Record(ctx context.Context, _ bare.Server, c bare.Change) error {
+	k, err := pdid.From(keyBytes(c.Key))
+	if err != nil {
+		// A key this app does not make. Nothing to publish about it, and
+		// nothing worth failing a write for.
+		return nil
+	}
+
+	var doc []byte
+	if c.Patch != nil {
+		if b, err := proto.Marshal(c.Patch); err == nil {
+			doc = b
+		}
+	}
+
+	r.w.Note(ctx, watch.Change{
+		Method: c.Method,
+		By:     c.By,
+		Key:    k,
+		Patch:  doc,
+	})
+
+	return nil
+}
+
+// keyBytes is a key as the sixteen bytes an identifier is.
+func keyBytes(v any) []byte {
+	switch u := v.(type) {
+	case uuid.UUID:
+		return u[:]
+	case [16]byte:
+		return u[:]
+	}
+
+	return nil
+}

@@ -75,3 +75,28 @@ func TestClosed(t *testing.T) {
 		x.Nil(grpcx.Closed(nil))
 	})
 }
+
+// TestNothingClosedIsNothingClosed is the same hole [TestNoLimitIsNoLimit] is
+// about, one interceptor over.
+//
+// The guard lived in the option constructor, which answers with no options at
+// all when there is nothing to close. Everything that takes the interceptors as
+// functions -- a chain for a server that is not gRPC's, a batch applying them
+// per operation -- reaches them without going past it.
+func TestNothingClosedIsNothingClosed(t *testing.T) {
+	x := require.New(t)
+
+	served := false
+	_, err := grpcx.ClosedUnary(nil)(t.Context(), nil,
+		&grpc.UnaryServerInfo{FullMethod: "/a.B/Apply"},
+		func(context.Context, any) (any, error) { served = true; return nil, nil })
+	x.NoError(err)
+	x.True(served)
+
+	served = false
+	err = grpcx.ClosedStream(nil)(nil, nil,
+		&grpc.StreamServerInfo{FullMethod: "/a.B/Watch"},
+		func(any, grpc.ServerStream) error { served = true; return nil })
+	x.NoError(err)
+	x.True(served)
+}

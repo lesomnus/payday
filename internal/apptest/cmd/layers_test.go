@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/pdid"
@@ -18,6 +19,18 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
+
+// cmd0 is the configuration these tests build with; the database is named per
+// test and everything else is what an app gets by saying nothing.
+//
+// Except the general writes, which are open here and closed everywhere else.
+// They are how the servers write and not how a caller asks -- an app writes the
+// RPC it means and implements it with one -- but this app has no such RPC yet,
+// and a test that could not change a row could not say what a Watch does when
+// one changes.
+var cmd0 = cmd.Config{
+	Server: config.ServerConfig{AllowGeneralWrites: true},
+}
 
 // built is an app on an empty database, with the first tenant and holder there.
 type built struct {
@@ -60,11 +73,20 @@ func build(t *testing.T) (*built, context.Context) {
 	return &built{Server: s, Tenant: tk, Holder: hk}, ctx
 }
 
-// as is a context carrying who a request is from, which is what `auth` will put
-// there once it is wired.
+// as is a context carrying who a request is from, for a call made directly
+// against a server rather than over a connection.
 func (b *built) as(ctx context.Context) context.Context {
 	f := frame.New(b.Holder, b.Tenant, frame.Whole()).WithScope(frame.Only(b.Tenant))
 	return frame.Into(ctx, f)
+}
+
+// travels is [built.as] for a call that goes over a connection, where the frame
+// cannot: it is a credential, and `auth` is what turns one into a frame.
+//
+// `Plain` believes what the caller writes, which is why a test can say who it is
+// in one line -- and why it is not something to serve where anyone can reach it.
+func (b *built) travels(ctx context.Context) context.Context {
+	return auth.PlainProvider("@acme/admin").Provide(ctx)
 }
 
 // TestTenantIsNotPutUpFromInsideOne is the rule the wall cannot state, because

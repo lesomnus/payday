@@ -74,6 +74,7 @@ message Robot {
       size: 50
       max: 100
     }
+    watch: {}
   };
 }
 

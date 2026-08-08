@@ -29,7 +29,10 @@ func Closed(is func(method string) bool) []grpc.ServerOption {
 
 func ClosedUnary(is func(method string) bool) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		if is(info.FullMethod) {
+		// Nothing is closed, which is what a deployment that closed nothing
+		// has. The guard is here as well as in [Closed] because the bare
+		// interceptors are the shape everything else takes them in.
+		if is != nil && is(info.FullMethod) {
 			return nil, errClosed(info.FullMethod)
 		}
 
@@ -39,7 +42,7 @@ func ClosedUnary(is func(method string) bool) grpc.UnaryServerInterceptor {
 
 func ClosedStream(is func(method string) bool) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		if is(info.FullMethod) {
+		if is != nil && is(info.FullMethod) {
 			return errClosed(info.FullMethod)
 		}
 

@@ -185,3 +185,30 @@ func TestMemLimiter(t *testing.T) {
 		x.Panics(func() { grpcx.NewLimiter(-1, 1) })
 	})
 }
+
+// TestNoLimitIsNoLimit is about the shape the interceptors are taken in.
+//
+// [grpcx.Limit] answers with no options at all when there is nothing to limit,
+// and for a while that was the only guard there was -- so the bare interceptor,
+// which is what a chain and a batch reach for, dereferenced a nil limiter on
+// the first request it saw.
+func TestNoLimitIsNoLimit(t *testing.T) {
+	x := require.New(t)
+
+	served := false
+	handler := func(ctx context.Context, req any) (any, error) {
+		served = true
+		return nil, nil
+	}
+
+	for _, at := range []grpc.UnaryServerInterceptor{
+		grpcx.LimitUnary(nil, nil),
+		grpcx.LimitUnary(nil, func(context.Context, string) string { return "who" }),
+		grpcx.LimitUnary(grpcx.NewLimiter(1, 1), nil),
+	} {
+		served = false
+		_, err := at(t.Context(), nil, &grpc.UnaryServerInfo{FullMethod: "/a.B/C"}, handler)
+		x.NoError(err)
+		x.True(served, "a call was refused by a limit nobody configured")
+	}
+}

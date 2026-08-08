@@ -26,6 +26,7 @@ const (
 	RobotService_Apply_FullMethodName = "/app.RobotService/Apply"
 	RobotService_Erase_FullMethodName = "/app.RobotService/Erase"
 	RobotService_List_FullMethodName  = "/app.RobotService/List"
+	RobotService_Watch_FullMethodName = "/app.RobotService/Watch"
 )
 
 // RobotServiceClient is the client API for RobotService service.
@@ -44,6 +45,18 @@ type RobotServiceClient interface {
 	Erase(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// List reads Robots a page at a time.
 	List(ctx context.Context, in *RobotListRequest, opts ...grpc.CallOption) (*RobotListResponse, error)
+	// Watch the Robots this caller may see, as they are now and as they change.
+	//
+	// What arrives is **state and never a delta**, so a client converges rather
+	// than replays: it keeps what it was last told about a row and replaces it.
+	// An event it did not receive is one it does not need, since the next one
+	// about that row carries the whole of it.
+	//
+	// The first message is everything that matches right now, so a client does
+	// not have to List first and race the subscription. A row may arrive twice --
+	// once in that first message and once as a change that happened while it was
+	// being read -- and that is harmless for the same reason.
+	Watch(ctx context.Context, in *RobotWatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[RobotWatchResponse], error)
 }
 
 type robotServiceClient struct {
@@ -114,6 +127,25 @@ func (c *robotServiceClient) List(ctx context.Context, in *RobotListRequest, opt
 	return out, nil
 }
 
+func (c *robotServiceClient) Watch(ctx context.Context, in *RobotWatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[RobotWatchResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &RobotService_ServiceDesc.Streams[0], RobotService_Watch_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[RobotWatchRequest, RobotWatchResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RobotService_WatchClient = grpc.ServerStreamingClient[RobotWatchResponse]
+
 // RobotServiceServer is the server API for RobotService service.
 // All implementations must embed UnimplementedRobotServiceServer
 // for forward compatibility.
@@ -130,6 +162,18 @@ type RobotServiceServer interface {
 	Erase(context.Context, *RobotRef) (*emptypb.Empty, error)
 	// List reads Robots a page at a time.
 	List(context.Context, *RobotListRequest) (*RobotListResponse, error)
+	// Watch the Robots this caller may see, as they are now and as they change.
+	//
+	// What arrives is **state and never a delta**, so a client converges rather
+	// than replays: it keeps what it was last told about a row and replaces it.
+	// An event it did not receive is one it does not need, since the next one
+	// about that row carries the whole of it.
+	//
+	// The first message is everything that matches right now, so a client does
+	// not have to List first and race the subscription. A row may arrive twice --
+	// once in that first message and once as a change that happened while it was
+	// being read -- and that is harmless for the same reason.
+	Watch(*RobotWatchRequest, grpc.ServerStreamingServer[RobotWatchResponse]) error
 	mustEmbedUnimplementedRobotServiceServer()
 }
 
@@ -157,6 +201,9 @@ func (UnimplementedRobotServiceServer) Erase(context.Context, *RobotRef) (*empty
 }
 func (UnimplementedRobotServiceServer) List(context.Context, *RobotListRequest) (*RobotListResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedRobotServiceServer) Watch(*RobotWatchRequest, grpc.ServerStreamingServer[RobotWatchResponse]) error {
+	return status.Error(codes.Unimplemented, "method Watch not implemented")
 }
 func (UnimplementedRobotServiceServer) mustEmbedUnimplementedRobotServiceServer() {}
 func (UnimplementedRobotServiceServer) testEmbeddedByValue()                      {}
@@ -287,6 +334,17 @@ func _RobotService_List_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RobotService_Watch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RobotWatchRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(RobotServiceServer).Watch(m, &grpc.GenericServerStream[RobotWatchRequest, RobotWatchResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RobotService_WatchServer = grpc.ServerStreamingServer[RobotWatchResponse]
+
 // RobotService_ServiceDesc is the grpc.ServiceDesc for RobotService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -319,7 +377,13 @@ var RobotService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RobotService_List_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Watch",
+			Handler:       _RobotService_Watch_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "app/robot_svc.proto",
 }
 

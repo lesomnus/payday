@@ -35,6 +35,7 @@ type Entity struct {
 	xxx_hidden_Name    string                 `protobuf:"bytes,2,opt,name=name"`
 	xxx_hidden_Tenancy isEntity_Tenancy       `protobuf_oneof:"tenancy"`
 	xxx_hidden_List    *Entity_List           `protobuf:"bytes,6,opt,name=list"`
+	xxx_hidden_Watch   *Entity_Watch          `protobuf:"bytes,7,opt,name=watch"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -112,6 +113,13 @@ func (x *Entity) GetList() *Entity_List {
 	return nil
 }
 
+func (x *Entity) GetWatch() *Entity_Watch {
+	if x != nil {
+		return x.xxx_hidden_Watch
+	}
+	return nil
+}
+
 func (x *Entity) SetDomain(v uint32) {
 	x.xxx_hidden_Domain = v
 }
@@ -146,6 +154,10 @@ func (x *Entity) SetGlobal(v *Entity_Global) {
 
 func (x *Entity) SetList(v *Entity_List) {
 	x.xxx_hidden_List = v
+}
+
+func (x *Entity) SetWatch(v *Entity_Watch) {
+	x.xxx_hidden_Watch = v
 }
 
 func (x *Entity) HasTenancy() bool {
@@ -186,6 +198,13 @@ func (x *Entity) HasList() bool {
 	return x.xxx_hidden_List != nil
 }
 
+func (x *Entity) HasWatch() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Watch != nil
+}
+
 func (x *Entity) ClearTenancy() {
 	x.xxx_hidden_Tenancy = nil
 }
@@ -210,6 +229,10 @@ func (x *Entity) ClearGlobal() {
 
 func (x *Entity) ClearList() {
 	x.xxx_hidden_List = nil
+}
+
+func (x *Entity) ClearWatch() {
+	x.xxx_hidden_Watch = nil
 }
 
 const Entity_Tenancy_not_set_case case_Entity_Tenancy = 0
@@ -282,6 +305,14 @@ type Entity_builder struct {
 	// List says this entity answers a List, and how. Nothing said is no List
 	// RPC at all.
 	List *Entity_List
+	// Watch says this entity answers a Watch, which is the List it declared over
+	// and over: the same filters, run again for every write that touches the
+	// entity, for as long as a stream is open.
+	//
+	// It needs a `list`, and generation refuses one without it. There is nothing
+	// for a watch to answer with otherwise -- no order to read in, no filters to
+	// be about, no cap on the first message.
+	Watch *Entity_Watch
 }
 
 func (b0 Entity_builder) Build() *Entity {
@@ -300,6 +331,7 @@ func (b0 Entity_builder) Build() *Entity {
 		x.xxx_hidden_Tenancy = &entity_Global_{b.Global}
 	}
 	x.xxx_hidden_List = b.List
+	x.xxx_hidden_Watch = b.Watch
 	return m0
 }
 
@@ -696,6 +728,57 @@ func (b0 Entity_List_builder) Build() *Entity_List {
 	return m0
 }
 
+// Watch is how this entity is read as it changes.
+//
+// What arrives is **state and never a delta**, and that is the decision the
+// rest follows from. A client keeps what it was last told about a row and
+// replaces it, so a stream that missed something is still correct -- the next
+// item about that row carries the whole of it. It also makes a stream that
+// fell behind *cheaper* rather than more expensive: a row that changed three
+// times is one row to read.
+type Entity_Watch struct {
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Entity_Watch) Reset() {
+	*x = Entity_Watch{}
+	mi := &file_payday_entity_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entity_Watch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entity_Watch) ProtoMessage() {}
+
+func (x *Entity_Watch) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+type Entity_Watch_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 Entity_Watch_builder) Build() *Entity_Watch {
+	m0 := &Entity_Watch{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
+}
+
 // Order is one column of a list's order.
 type Entity_Order struct {
 	state            protoimpl.MessageState `protogen:"opaque.v1"`
@@ -707,7 +790,7 @@ type Entity_Order struct {
 
 func (x *Entity_Order) Reset() {
 	*x = Entity_Order{}
-	mi := &file_payday_entity_proto_msgTypes[5]
+	mi := &file_payday_entity_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -719,7 +802,7 @@ func (x *Entity_Order) String() string {
 func (*Entity_Order) ProtoMessage() {}
 
 func (x *Entity_Order) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[5]
+	mi := &file_payday_entity_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -774,14 +857,15 @@ var File_payday_entity_proto protoreflect.FileDescriptor
 
 const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/entity.proto\x12\x06payday\"\x95\x04\n" +
+	"\x13payday/entity.proto\x12\x06payday\"\xca\x04\n" +
 	"\x06Entity\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domain\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
 	"\x06tenant\x18\x03 \x01(\v2\x15.payday.Entity.TenantH\x00R\x06tenant\x125\n" +
 	"\btenanted\x18\x04 \x01(\v2\x17.payday.Entity.TenantedH\x00R\btenanted\x12/\n" +
 	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06global\x12'\n" +
-	"\x04list\x18\x06 \x01(\v2\x13.payday.Entity.ListR\x04list\x1a\b\n" +
+	"\x04list\x18\x06 \x01(\v2\x13.payday.Entity.ListR\x04list\x12*\n" +
+	"\x05watch\x18\a \x01(\v2\x14.payday.Entity.WatchR\x05watch\x1a\b\n" +
 	"\x06Tenant\x1a2\n" +
 	"\bTenanted\x12\x10\n" +
 	"\x03via\x18\x01 \x01(\tR\x03via\x12\x14\n" +
@@ -793,32 +877,35 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x02by\x18\x03 \x03(\tR\x02by\x12\x12\n" +
 	"\x04size\x18\x04 \x01(\rR\x04size\x12\x10\n" +
 	"\x03max\x18\x05 \x01(\rR\x03max\x12\x18\n" +
-	"\afilters\x18\x06 \x01(\rR\afilters\x1a1\n" +
+	"\afilters\x18\x06 \x01(\rR\afilters\x1a\a\n" +
+	"\x05Watch\x1a1\n" +
 	"\x05Order\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
 	"\atenancyB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_payday_entity_proto_goTypes = []any{
 	(*Entity)(nil),          // 0: payday.Entity
 	(*Entity_Tenant)(nil),   // 1: payday.Entity.Tenant
 	(*Entity_Tenanted)(nil), // 2: payday.Entity.Tenanted
 	(*Entity_Global)(nil),   // 3: payday.Entity.Global
 	(*Entity_List)(nil),     // 4: payday.Entity.List
-	(*Entity_Order)(nil),    // 5: payday.Entity.Order
+	(*Entity_Watch)(nil),    // 5: payday.Entity.Watch
+	(*Entity_Order)(nil),    // 6: payday.Entity.Order
 }
 var file_payday_entity_proto_depIdxs = []int32{
 	1, // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
 	2, // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
 	3, // 2: payday.Entity.global:type_name -> payday.Entity.Global
 	4, // 3: payday.Entity.list:type_name -> payday.Entity.List
-	5, // 4: payday.Entity.List.order:type_name -> payday.Entity.Order
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	5, // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
+	6, // 5: payday.Entity.List.order:type_name -> payday.Entity.Order
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_payday_entity_proto_init() }
@@ -837,7 +924,7 @@ func file_payday_entity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_entity_proto_rawDesc), len(file_payday_entity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

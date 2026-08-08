@@ -66,6 +66,10 @@ type Entity struct {
 	// List is how this entity is read a page at a time, and nil for one that
 	// answers no List.
 	List *List
+
+	// Watch says this entity is read as it changes, which is the List it
+	// declared over and over.
+	Watch bool
 }
 
 // Schema is every entity of one generation, in a stable order.
@@ -192,6 +196,15 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 
 	if err := readList(v, opts.GetList()); err != nil {
 		return nil, err
+	}
+	if opts.HasWatch() {
+		if v.List == nil {
+			return nil, fmt.Errorf(
+				"watch: needs a `list`. A watch is that list over and over, so without one " +
+					"there is no order to read in, nothing for a filter to be about, and no cap " +
+					"on the first message")
+		}
+		v.Watch = true
 	}
 
 	return v, nil

@@ -66,6 +66,15 @@ message Entity {
   // RPC at all.
   List list = 6;
 
+  // Watch says this entity answers a Watch, which is the List it declared over
+  // and over: the same filters, run again for every write that touches the
+  // entity, for as long as a stream is open.
+  //
+  // It needs a `list`, and generation refuses one without it. There is nothing
+  // for a watch to answer with otherwise -- no order to read in, no filters to
+  // be about, no cap on the first message.
+  Watch watch = 7;
+
   // The three are nested because they are what a tenancy is written as and
   // nothing else -- and because `payday.Tenant` is the entity, which is a
   // different thing entirely.
@@ -162,6 +171,16 @@ message Entity {
     // dropping half the filters would answer a question nobody asked.
     uint32 filters = 6;
   }
+
+  // Watch is how this entity is read as it changes.
+  //
+  // What arrives is **state and never a delta**, and that is the decision the
+  // rest follows from. A client keeps what it was last told about a row and
+  // replaces it, so a stream that missed something is still correct -- the next
+  // item about that row carries the whole of it. It also makes a stream that
+  // fell behind *cheaper* rather than more expensive: a row that changed three
+  // times is one row to read.
+  message Watch {}
 
   // Order is one column of a list's order.
   message Order {

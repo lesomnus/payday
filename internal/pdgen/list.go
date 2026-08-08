@@ -51,6 +51,11 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("//	sink, err := pd.NewSink(db, bare.WithMinter(pd.Minter()), bare.WithScope(pd.Wall()))")
 	g.P("type Sink struct {")
 	g.P("	", p.Bare.Ident("Server"))
+	g.P("")
+	g.P("	// w is what a Watch listens on, and is nil for a deployment that")
+	g.P("	// serves none. It is here rather than on the generated Store because")
+	g.P("	// that struct is the ORM generator's and knows nothing about payday.")
+	g.P("	w *", pkgWatch.Ident("Watch"))
 	g.P("}")
 	g.P("")
 	g.P("func NewSink(db *", p.Ent.Ident("Client"), ", opts ...", p.Bare.Ident("Option"), ") (Sink, error) {")
@@ -59,7 +64,14 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("		return Sink{}, err")
 	g.P("	}")
 	g.P("")
-	g.P("	return Sink{v}, nil")
+	g.P("	return Sink{Server: v}, nil")
+	g.P("}")
+	g.P("")
+	g.P("// WithWatch answers with this server publishing to `w`, which is what a")
+	g.P("// Watch reads from. A server built without one serves no Watch.")
+	g.P("func (s Sink) WithWatch(w *", pkgWatch.Ident("Watch"), ") Sink {")
+	g.P("	s.w = w")
+	g.P("	return s")
 	g.P("}")
 	g.P("")
 	g.P("var _ ", root.Ident("Server"), " = Sink{}")
@@ -72,7 +84,7 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("		return nil, err")
 	g.P("	}")
 	g.P("")
-	g.P("	return Sink{v.(", p.Bare.Ident("Server"), ")}, nil")
+	g.P("	return Sink{Server: v.(", p.Bare.Ident("Server"), "), w: s.w}, nil")
 	g.P("}")
 	g.P("")
 
@@ -90,10 +102,11 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	g.P("type sink", e, " struct {")
 	g.P("	", root.Ident(e+"ServiceServer"))
 	g.P("	store ", p.Bare.Ident("Store"))
+	g.P("	w     *", pkgWatch.Ident("Watch"))
 	g.P("}")
 	g.P("")
 	g.P("func (s Sink) ", e, "() ", root.Ident(e+"ServiceServer"), " {")
-	g.P("	return sink", e, "{s.Server.", e, "(), s.Server.Store}")
+	g.P("	return sink", e, "{s.Server.", e, "(), s.Server.Store, s.w}")
 	g.P("}")
 	g.P("")
 
@@ -269,6 +282,9 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 
 	if len(l.By) > 0 {
 		emitFilter(g, v, p, root)
+	}
+	if v.Watch {
+		emitWatch(g, v, p, root)
 	}
 }
 
