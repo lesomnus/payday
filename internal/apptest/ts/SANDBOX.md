@@ -4,23 +4,24 @@
 process runs, compiled to `GOOS=js GOARCH=wasm`, with SQLite in a Worker instead
 of a file and a message port instead of HTTP/2. A reload is a fresh server.
 
-It is **not** in `npm run check`, and the reason is one thing only: it imports
-`@lesomnus/grpc-dgram`, which is not published yet. Once it is, the import
-resolves, the file goes back into the default check, and the cast at the one
-boundary in it goes away -- that cast exists because a directory-linked package
-brings its own `node_modules`, so two copies of `@connectrpc/connect` are two
-nominally different `Transport` types.
+It is in `npm run check` like everything else. It was not, for one reason --
+`@lesomnus/grpc-dgram` was unpublished, so it was a directory link, and a linked
+package brings its own `node_modules`; two copies of `@connectrpc/connect` are
+two nominally different `Transport` types, which cost one `as unknown as` at the
+one boundary in this file. It is published now, so there is one copy, the second
+tsconfig is gone and so is the cast.
 
-To check it against a local checkout:
+What that leaves is the line the whole design is arranged around:
 
-```sh
-npm install --save-dev file:../../../../grpc-dgram/ts
-npm run check:sandbox
+```ts
+const transport = createDrpcTransport(sock.dial())   // sandbox
+const transport = createConnectTransport({ baseUrl }) // a real server
 ```
 
-That was run, and it passes. What has **not** been done is loading the page in a
-browser -- there is none here -- so what is verified is that the pieces fit and
-not that the thing runs.
+Both are a Connect `Transport` and nothing above this file knows which it got.
+
+What has **not** been done is loading the page in a browser -- there is none
+here -- so what is verified is that the pieces fit and not that the thing runs.
 
 To serve it, three things:
 

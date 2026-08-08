@@ -19,8 +19,5 @@
 	"include": [
 		"src",
 		"gen"
-	],
-	"exclude": [
-		"src/sandbox.ts"
 	]
 }

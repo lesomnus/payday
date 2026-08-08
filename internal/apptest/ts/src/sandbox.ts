@@ -39,7 +39,6 @@
 import { createDrpcTransport } from '@lesomnus/grpc-dgram/transport/connect'
 import { open, type WasmSock } from '@lesomnus/grpc-dgram/wasm'
 
-import type { Transport } from '@connectrpc/connect'
 
 import { app, type App } from './client.js'
 
@@ -64,13 +63,15 @@ export interface Sandbox {
 export async function start(url = '/app.wasm'): Promise<Sandbox> {
 	const sock = await open(url)
 
-	// The cast is a **linking** artifact and not a disagreement about types.
-	// `@lesomnus/grpc-dgram` is not published yet, so it is here as a directory
-	// link, and a linked package brings its own `node_modules` -- which means
-	// two copies of `@connectrpc/connect`, whose `Transport` types are
-	// structurally the same and nominally different. Published, with the peer
-	// dependency it declares, there is one copy and this is not needed.
-	const transport = createDrpcTransport(sock.dial()) as unknown as Transport
+	// No cast. `createDrpcTransport` answers a Connect `Transport` and `app`
+	// takes one, which is the whole reason the sandbox and a real server differ
+	// by this line and nothing above it. It used to need `as unknown as`, and
+	// that was a **linking** artifact rather than a disagreement about types:
+	// `@lesomnus/grpc-dgram` was a directory link, a linked package brings its
+	// own `node_modules`, and two copies of `@connectrpc/connect` are two
+	// nominally different `Transport`s. Published, with the peer dependency it
+	// declares, there is one copy.
+	const transport = createDrpcTransport(sock.dial())
 
 	return {
 		app: app(transport),

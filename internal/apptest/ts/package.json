@@ -6,12 +6,12 @@
 	"type": "module",
 	"scripts": {
 		"check": "tsc -p tsconfig.json",
-		"test": "vitest run",
-		"check:sandbox": "tsc -p tsconfig.sandbox.json"
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@bufbuild/protobuf": "^2.12.1",
 		"@connectrpc/connect": "^2.1.2",
+		"@lesomnus/grpc-dgram": "^0.0.1",
 		"@lesomnus/payday": "file:../../../ts"
 	},
 	"devDependencies": {
