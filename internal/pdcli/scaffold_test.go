@@ -40,21 +40,33 @@ func TestAnEntityIsGivenADomainNothingElseHas(t *testing.T) {
 	x.Equal("Fleet", vs[9])
 }
 
-// TestTenancyIsAskedForAndNotGuessed is the second.
+// TestTenancyDefaultsToTheLoudAnswer is the second.
 //
-// Generation refuses an entity that says nothing, which is the point -- so a
-// scaffold that emitted the option without it would be a scaffold whose first
-// output does not build.
-func TestTenancyIsAskedForAndNotGuessed(t *testing.T) {
+// Getting tenancy wrong fails two ways and they are not alike: a wall assumed
+// wrongly hides every row, which is noticed within minutes, and no wall assumed
+// wrongly shows every row to everybody, which is noticed by whoever it happens
+// to. So saying nothing means the first, here and in the schema, and the answer
+// that leaks is the one somebody has to write.
+func TestTenancyDefaultsToTheLoudAnswer(t *testing.T) {
 	x := require.New(t)
 
 	root := app(t, "github.com/acme/thing")
 	l, err := pdcli.Discover(root)
 	x.NoError(err)
 
-	_, err = (pdcli.Entity{Layout: l, Name: "Robot"}).Add()
-	x.ErrorContains(err, "--tenanted")
-	x.ErrorContains(err, "only the first of those is ever noticed")
+	// Saying nothing is behind the wall, which is what saying nothing means in
+	// the schema too -- so the scaffold does not ask.
+	p, err := (pdcli.Entity{Layout: l, Name: "Robot"}).Add()
+	x.NoError(err)
+
+	b, err := os.ReadFile(p)
+	x.NoError(err)
+
+	// No tenancy **declaration** -- the comment above it says the word, which is
+	// the point of the comment, so the assertion is about the declared line.
+	x.NotContains(string(b), "\n    global: {}")
+	x.NotContains(string(b), "\n    tenant: {}")
+	x.NotContains(string(b), "\n    tenanted:")
 
 	// And it is one of the three rather than several.
 	_, err = (pdcli.Entity{Layout: l, Name: "Robot", Tenanted: true, Global: true}).Add()
@@ -84,7 +96,11 @@ func TestWhatIsWrittenIsWhatTheGeneratorWillTake(t *testing.T) {
 
 	x.Contains(src, `date_updated = 13 [(orm.field) = {version: {}}]`, "a watch has nothing to order two answers by")
 	x.Contains(src, `by: ["ref"]`, "a watch has no way to name the rows it is about")
-	x.Contains(src, `tenanted: {via: "tenant"}`)
+	// Nothing about tenancy, which is the declaration -- behind the wall. What
+	// the scaffold writes out instead is why, since a reader who finds no
+	// tenancy line has to be able to tell "assumed" from "forgotten".
+	x.NotContains(src, `tenanted:`)
+	x.Contains(src, "Nothing about tenancy, which is the declaration")
 	x.Contains(src, `name: "page"`, "a list with no index scans the table")
 	x.Contains(src, `option go_package = "github.com/acme/thing"`)
 }

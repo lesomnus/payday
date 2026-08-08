@@ -72,6 +72,11 @@ type Entity struct {
 	// declared over and over.
 	Watch bool
 
+	// assumed says nothing in the schema declared tenancy, so it was taken to
+	// be behind the wall by the edge called `tenant`. It is carried only so
+	// that a refusal can say the path was assumed rather than written.
+	assumed bool
+
 	// Alias says this entity has the string field a person writes it as, so
 	// every write of one goes through [slug.ParseAlias] on the way in.
 	//
@@ -201,13 +206,29 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		}
 
 	default:
-		return nil, fmt.Errorf(
-			"no tenancy: an entity is behind the tenant wall or it is not, and which one " +
-				"cannot be guessed -- guessing wrong in one direction hides every row and in " +
-				"the other shows every row to everybody, and only the first of those is noticed\n\n" +
-				"    tenanted: {via: \"tenant\"}   rows belong to a tenant, reached by that edge\n" +
-				"    tenant: {}                  this entity is the tenant\n" +
-				"    global: {}                  not behind the wall, and said so on purpose")
+		// Nothing said, which means behind the wall by the edge called `tenant`.
+		//
+		// # Why there is a default at all, and why it is this one
+		//
+		// Getting tenancy wrong fails in two directions and they are not alike:
+		// assuming a wall hides every row, and assuming none shows every row to
+		// everybody. The first is noticed within minutes -- the screen is empty
+		// -- and the second is noticed by whoever it happens to.
+		//
+		// So the safe thing to assume is the loud one. And it cannot even be
+		// wrong quietly: an entity with a `tenant` edge to the tenant gets the
+		// right wall, one whose `tenant` edge goes somewhere else is refused by
+		// [Schema.checkVia], and one with no such edge is refused below. The
+		// default either produces the correct predicate or a refusal, never a
+		// wall that narrows to the wrong rows.
+		//
+		// What that buys is the shape a rule should have: **the dangerous case
+		// is the one written down.** An entity that is not behind the wall says
+		// `global: {}` and a reader can find every one of them by searching for
+		// it; the ordinary case says nothing, because saying it on six entities
+		// out of eight is boilerplate rather than a decision.
+		v.Via = []string{"tenant"}
+		v.assumed = true
 	}
 
 	for f := range e.Fields() {
@@ -425,18 +446,27 @@ func (s *Schema) checkAlias() error {
 // checkVia walks the declared path and refuses one that does not arrive at the
 // tenant, which is a wall with a hole in it written as a typo.
 func (s *Schema) checkVia(v *Entity) error {
+	// A refusal about a path nobody wrote reads as nonsense unless it says so.
+	assumed := ""
+	if v.assumed {
+		assumed = "\n\nNothing here declared tenancy, so it was taken to be behind the wall " +
+			"by the edge called \"tenant\" -- which is the assumption that fails loudly rather " +
+			"than the one that leaks. Say `global: {}` if these rows are not behind it, or " +
+			"`tenanted: {via: \"...\"}` if they reach a tenant some other way."
+	}
+
 	at := v.Entity
 	for i, step := range v.Via {
 		e, ok := edge(at, step)
 		if !ok {
-			return fmt.Errorf("%s has no edge %q", at.FullName(), step)
+			return fmt.Errorf("%s has no edge %q%s", at.FullName(), step, assumed)
 		}
 		at = e.Target()
 
 		if i == len(v.Via)-1 && at.FullName() != s.Tenant.FullName() {
 			return fmt.Errorf(
-				"%q arrives at %s, and the tenant is %s",
-				strings.Join(v.Via, "."), at.FullName(), s.Tenant.FullName())
+				"%q arrives at %s, and the tenant is %s%s",
+				strings.Join(v.Via, "."), at.FullName(), s.Tenant.FullName(), assumed)
 		}
 	}
 

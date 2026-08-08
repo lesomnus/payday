@@ -278,19 +278,26 @@ type Entity_builder struct {
 	// `WorkCell` is `work-cell`. Write it out when that is not the word the
 	// domain is known by.
 	Name string
-	// Tenancy says whether rows of this entity are behind the tenant wall, and
-	// **one of the two must be said**. There is no default, and that is the whole
-	// reason this field exists.
+	// Tenancy says whether rows of this entity are behind the tenant wall.
 	//
-	// The alternative -- assume one -- is wrong whichever one is assumed.
-	// Assuming an entity is walled makes an entity that is not disappear from
-	// every read until somebody notices. Assuming it is not makes an entity that
-	// should be walled readable by everybody, and *nobody notices*: nothing fails,
-	// no test goes red, and the first sign of it is a caller reading another
-	// tenant's rows.
+	// **Saying nothing is `tenanted: {via: "tenant"}`** -- behind the wall, by the
+	// edge of that name -- and the two failures are why that is the default rather
+	// than a refusal. Assuming a wall makes an entity that should not have one
+	// disappear from every read, which is noticed within minutes because the
+	// screen is empty. Assuming none makes an entity that should be walled
+	// readable by everybody, and *nobody notices*: nothing fails, no test goes
+	// red, and the first sign of it is a caller reading another tenant's rows.
 	//
-	// So it is neither, and generation stops until it is said. Saying it costs a
-	// line; the second mistake costs more than that.
+	// So the assumption is the loud one, and it cannot even be wrong quietly: an
+	// entity whose `tenant` edge goes somewhere that is not the tenant is refused,
+	// and one with no such edge is refused. The default produces the correct
+	// predicate or a refusal, never a wall that narrows to the wrong rows.
+	//
+	// What that buys is the shape a rule should have: **the dangerous answer is
+	// the one written down.** Every entity outside the wall says `global: {}` and
+	// can be found by searching for it; the ordinary case says nothing, because
+	// writing it on six entities out of eight is boilerplate rather than a
+	// decision.
 
 	// Fields of oneof xxx_hidden_Tenancy:
 	// This entity is the tenant. A row of it is visible to a caller who may

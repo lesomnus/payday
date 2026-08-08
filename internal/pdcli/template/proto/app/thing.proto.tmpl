@@ -81,12 +81,15 @@ message Thing {
   option (payday.entity) = {
     domain: 7
 
-    // Its rows belong to a tenant, reached by that edge. The other two are
-    // `tenant: {}` -- it **is** the tenant -- and `global: {}`, not behind the
-    // wall and said on purpose. There is no default: guessing wrong in one
-    // direction hides every row and in the other shows every row to everybody,
-    // and only the first of those is ever noticed.
-    tenanted: {via: "tenant"}
+    // Nothing about tenancy, which is the declaration: behind the wall, by the
+    // edge called `tenant`. The other two are written out when they are meant --
+    // `tenant: {}` for the entity that **is** the tenant, and `global: {}` for
+    // rows that are not behind it.
+    //
+    // The ordinary case is the silent one because of how the two failures
+    // differ: assuming a wall hides every row, which is noticed within minutes,
+    // and assuming none shows every row to everybody, which is noticed by
+    // whoever it happens to.
 
     list: {
       // The order has to end in the key. A cursor cannot tell apart two rows

@@ -70,7 +70,6 @@ message Robot {
   };
   option (payday.entity) = {
     domain: 7
-    tenanted: {via: "tenant"}
     list: {
       order: [
         {field: "date_created"},
@@ -134,7 +133,6 @@ message Cell {
   option (orm.message) = {rpc: {crud: true}};
   option (payday.entity) = {
     domain: 10
-    tenanted: {via: "tenant"}
   };
 }
 

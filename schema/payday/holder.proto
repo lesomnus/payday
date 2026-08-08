@@ -84,6 +84,11 @@ message Holder {
   };
   option (payday.entity) = {
     domain: 2
-    tenanted: {via: "tenant"}
+
+    // Nothing about tenancy, which **is** the declaration: behind the wall, by
+    // the edge called `tenant`. Getting that wrong hides every row, which is
+    // noticed; getting it wrong the other way shows every row to everybody,
+    // which is not -- so the assumption is the loud one, and the quiet one
+    // (`global: {}`) is the thing that has to be written.
   };
 }

@@ -58,14 +58,12 @@ func (e Entity) Add() (string, error) {
 
 	switch n := count(e.Tenanted, e.Tenant, e.Global); {
 	case n == 0:
-		return "", fmt.Errorf(
-			"say which of the three this is:\n\n" +
-				"    --tenanted   its rows belong to a tenant, and the wall narrows every read\n" +
-				"    --tenant     it **is** the tenant (an app has one, and payday ships it)\n" +
-				"    --global     not behind the wall, and said on purpose\n\n" +
-				"There is no default because guessing wrong in one direction hides every row " +
-				"and in the other shows every row to everybody -- and only the first of those " +
-				"is ever noticed")
+		// Behind the wall, which is what saying nothing means in the schema too.
+		// The two answers that are not the ordinary one are the ones written
+		// down, here and there for the same reason: getting tenancy wrong hides
+		// every row in one direction and shows every row to everybody in the
+		// other, and only the first is ever noticed.
+		e.Tenanted = true
 	case n > 1:
 		return "", fmt.Errorf("an entity is behind the wall or it is not; pick one of --tenanted, --tenant, --global")
 	}
@@ -229,7 +227,12 @@ func (e Entity) message(domain int) string {
 	fmt.Fprintf(b, "  option (payday.entity) = {\n    domain: %d\n", domain)
 	switch {
 	case e.Tenanted:
-		b.WriteString("    tenanted: {via: \"tenant\"}\n")
+		// Nothing, which is the declaration. What is written out is the answer
+		// that leaks when it is wrong.
+		b.WriteString("\n    // Nothing about tenancy, which is the declaration: behind the\n")
+		b.WriteString("    // wall, by the edge called `tenant`. `global: {}` is the other\n")
+		b.WriteString("    // answer and it has to be written, because that is the one that\n")
+		b.WriteString("    // shows every row to everybody when it is wrong.\n")
 	case e.Tenant:
 		b.WriteString("    tenant: {}\n")
 	case e.Global:

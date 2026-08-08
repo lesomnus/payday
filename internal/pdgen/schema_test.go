@@ -200,9 +200,12 @@ message Robot {
 }`,
 		says: "(payday.entity)",
 	}, {
-		what: "an entity that never said whether it is behind the wall",
+		// Saying nothing is behind the wall by the edge called `tenant`, so what
+		// is refused is not the silence -- it is an entity with no such edge.
+		// See TestSayingNothingIsBehindTheWall for the other half.
+		what: "an entity that said nothing and has no tenant to be behind",
 		src:  tenant + entity("Robot", `domain: 7`),
-		says: "no tenancy",
+		says: `has no edge "tenant"`,
 	}, {
 		what: "a domain of zero, which is what an unregistered identifier reads as",
 		src:  tenant + entity("Robot", `domain: 0, global: {}`),
@@ -781,6 +784,74 @@ func TestAnEntityNobodyNamesIsOrdinary(t *testing.T) {
 	for _, v := range s.Entities {
 		if v.GoName() == "Reading" && v.Alias {
 			t.Fatal("an entity with no alias was given naming anyway")
+		}
+	}
+}
+
+// TestSayingNothingIsBehindTheWall is the default, and the reason it is this one
+// rather than the other.
+//
+// Getting tenancy wrong fails in two directions and they are not alike: assuming
+// a wall hides every row, and assuming none shows every row to everybody. The
+// first is noticed within minutes because the screen is empty; the second is
+// noticed by whoever it happens to. So the safe thing to assume is the loud one.
+//
+// And it cannot be wrong quietly. An entity with a `tenant` edge to the tenant
+// gets the right predicate; one whose edge goes elsewhere is refused; one with no
+// such edge is refused. Never a wall that narrows to the wrong rows.
+//
+// What it buys is the shape a rule should have: the **dangerous** case is the one
+// written down. `global: {}` can be searched for; the ordinary case says nothing.
+func TestSayingNothingIsBehindTheWall(t *testing.T) {
+	s, err := read(t, tenant+entity("Robot", `domain: 7`, `Tenant tenant = 2 [(orm.edge) = {}];`))
+	if err != nil {
+		t.Fatalf("an entity with a tenant edge and no declaration was refused: %s", err)
+	}
+
+	for _, v := range s.Entities {
+		if v.GoName() != "Robot" {
+			continue
+		}
+		if v.IsGlobal || v.IsTenant {
+			t.Fatal("saying nothing was read as not being behind the wall")
+		}
+		if len(v.Via) != 1 || v.Via[0] != "tenant" {
+			t.Fatalf("the assumed path is %v and should be [tenant]", v.Via)
+		}
+	}
+}
+
+// TestSayingNothingWithNoTenantEdgeSaysItWasAssumed.
+//
+// A refusal about a path nobody wrote reads as nonsense unless it says the path
+// was assumed, and says which of the two things to write instead.
+func TestSayingNothingWithNoTenantEdgeSaysItWasAssumed(t *testing.T) {
+	_, err := read(t, tenant+entity("Robot", `domain: 7`))
+	if err == nil {
+		t.Fatal("an entity with nothing to be behind the wall of was generated")
+	}
+	for _, want := range []string{
+		"Nothing here declared tenancy",
+		"fails loudly rather than the one that leaks",
+		"global: {}",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("the refusal does not say %q:\n%s", want, err)
+		}
+	}
+}
+
+// TestNotBehindTheWallIsStillSaidOutLoud, which is the half that does not get a
+// default and never will.
+func TestNotBehindTheWallIsStillSaidOutLoud(t *testing.T) {
+	s, err := read(t, tenant+entity("Fleet", `domain: 9, global: {}`))
+	if err != nil {
+		t.Fatalf("a global entity was refused: %s", err)
+	}
+
+	for _, v := range s.Entities {
+		if v.GoName() == "Fleet" && !v.IsGlobal {
+			t.Fatal("global: {} was not read as being outside the wall")
 		}
 	}
 }
