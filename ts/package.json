@@ -2,12 +2,27 @@
 	"name": "@lesomnus/payday",
 	"version": "0.0.1",
 	"description": "The identifier and the slug a payday app names its rows by, for whatever runs outside the server",
+	"license": "Apache-2.0",
+	"author": "lesomnus",
+	"homepage": "https://github.com/lesomnus/payday/tree/main/ts",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/lesomnus/payday.git",
+		"directory": "ts"
+	},
+	"bugs": {
+		"url": "https://github.com/lesomnus/payday/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"type": "module",
 	"sideEffects": false,
 	"files": [
 		"dist",
 		"src",
-		"gen"
+		"gen",
+		"!src/**/*.test.ts"
 	],
 	"exports": {
 		".": {

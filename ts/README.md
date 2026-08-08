@@ -99,3 +99,7 @@ npm run check   # types, including the tests
 npm test        # vitest
 npm run build   # dist, with declarations
 ```
+
+## Licence
+
+[Apache 2.0](https://github.com/lesomnus/payday/blob/main/LICENSE).

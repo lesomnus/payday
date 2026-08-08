@@ -43,6 +43,14 @@ describe("the registry", () => {
 	it("refuses a declaration missing either of the two names", () => {
 		expect(() => register("", 11, "eleven")).toThrow();
 		expect(() => register("test.Eleven", 11, "")).toThrow();
+
+		// Left out entirely, which the signature stops in TypeScript and does
+		// not stop anywhere else -- this package is published, and a JavaScript
+		// caller reaches this function with two arguments. It used to store
+		// `undefined` as the name and say nothing, so the domain registered and
+		// every slug that read it back got `domain(11)` instead of a word.
+		// @ts-expect-error -- the point is the call TypeScript refuses
+		expect(() => register("test.Eleven", 11)).toThrow();
 	});
 
 	it("lists what it has, for a message that wants to say so", () => {

@@ -79,3 +79,7 @@ the one cost this whole design is arranged to avoid paying twice.
 ```sh
 $ buf push --exclude-unnamed --label dev
 ```
+
+## Licence
+
+[Apache 2.0](LICENSE).

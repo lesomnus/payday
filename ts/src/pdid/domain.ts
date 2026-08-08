@@ -53,7 +53,12 @@ export function register(entity: string, d: Domain, name: string): void {
 			`pdid: ${entity}: domain 0 is what an unregistered identifier reads as, so nothing may hold it`,
 		);
 	}
-	if (entity === "" || name === "") {
+	// Falsy rather than `=== ""`, because this package is published and a
+	// JavaScript caller is not stopped by the signature. Left at the empty
+	// check, `register("Asset", 7)` from JS stored `undefined` as the name and
+	// said nothing -- the domain is then registered, and every slug that reads
+	// it back gets `domain(7)` instead of the word the schema chose.
+	if (!entity || !name) {
 		throw new Error(`pdid: domain ${d}: an entity and a name are both required`);
 	}
 
