@@ -178,16 +178,25 @@ func (n New) Setup(ctx context.Context, log io.Writer) error {
 		return nil
 	}
 
-	// The tools first. `go mod tidy` cannot run yet: the app imports its own
-	// generated packages, and a module that is not there resolves as one to
-	// fetch -- which fails, loudly, against a repository nobody has pushed.
-	for _, t := range tools {
+	// The tools first, `pd` among them: the next thing anybody types is
+	// `go tool pd gen`, and a tool directive nothing fetched is a build of
+	// payday's command against a module graph that has never been resolved.
+	for _, t := range append([]string{cli}, tools...) {
 		if err := run("go", "get", "-tool", t); err != nil {
 			return err
 		}
 	}
 
-	if err := run("buf", "dep", "update"); err != nil {
+	// And then the sums for them, leniently. A plain `go mod tidy` cannot run
+	// yet -- the app imports its own generated packages, and a module that is
+	// not there resolves as one to fetch, which fails against a repository
+	// nobody has pushed. `-e` is what says "carry on past that": what is left
+	// is every requirement of the tools, which is what the generation is about
+	// to build.
+	//
+	// `buf dep update` is **not** here. It cannot run before a generation; see
+	// `run.deps`.
+	if err := run("go", "mod", "tidy", "-e"); err != nil {
 		return err
 	}
 
@@ -209,14 +218,18 @@ func (n New) Steps() []string {
 	}
 
 	vs := []string{"cd " + dir}
-	for _, t := range tools {
+	for _, t := range append([]string{cli}, tools...) {
 		vs = append(vs, "go get -tool "+t)
 	}
 
 	return append(vs,
-		"buf dep update",
+		// Leniently, and then not: the first one is for the generators, which
+		// have to build before anything is generated, and the second is for the
+		// app, which cannot resolve until it has been. See [New.Setup].
+		"go mod tidy -e",
 		"go tool pd gen .",
 		"go mod tidy",
+		"go build ./...",
 		"go run ./cmd/"+n.Name+" init",
 		"go run ./cmd/"+n.Name+" serve",
 		"",

@@ -39,6 +39,14 @@ func (f Finding) String() string {
 // the app's to pin. What payday can do is say when one is missing -- which is
 // this -- rather than letting `buf generate` fail with a message about an
 // executable nobody has heard of.
+// cli is payday's own command, which is a tool of the app for the same reason
+// the plugins are: `go tool pd` builds it from this module's graph, so the
+// version an app generates with is the version it pinned.
+//
+// It is kept out of [tools] because nothing shells out to it -- an app that is
+// missing it cannot be running `pd doctor` to be told so.
+const cli = "github.com/lesomnus/payday/cmd/pd"
+
 var tools = []string{
 	"google.golang.org/protobuf/cmd/protoc-gen-go",
 	"google.golang.org/grpc/cmd/protoc-gen-go-grpc",

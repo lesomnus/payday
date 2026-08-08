@@ -75,11 +75,16 @@ jobs:
       - run: go tool pd new github.com/acme/widget "${GITHUB_WORKSPACE}/widget"
         working-directory: payday
 
+      # Exactly what `pd new` prints, and in that order. There is no
+      # `buf dep update` here: it compiles the workspace before writing the
+      # lock, and the workspace does not compile until `pd gen` has copied
+      # payday's entities in -- so `pd gen` owns it.
       - name: as an app would be set up
         working-directory: widget
         run: |
           go mod edit -replace github.com/lesomnus/payday="${GITHUB_WORKSPACE}/payday"
           while read -r t; do go get -tool "$t"; done <<'EOF'
+          github.com/lesomnus/payday/cmd/pd
           google.golang.org/protobuf/cmd/protoc-gen-go
           google.golang.org/grpc/cmd/protoc-gen-go-grpc
           github.com/protobuf-orm/protobuf-merge
@@ -89,7 +94,7 @@ jobs:
           github.com/lesomnus/payday/cmd/protoc-gen-pd
           entgo.io/ent/cmd/ent
           EOF
-          buf dep update
+          go mod tidy -e
 
       - name: and generated
         working-directory: widget
@@ -118,7 +123,6 @@ jobs:
         run: |
           cd payday/ts && npm ci && npm pack --pack-destination "${GITHUB_WORKSPACE}"
           cd "${GITHUB_WORKSPACE}/widget/ts"
-          npm install
           npm install --save "${GITHUB_WORKSPACE}"/lesomnus-payday-*.tgz
           cd .. && go tool pd gen --ts .
           cd ts && npm run build

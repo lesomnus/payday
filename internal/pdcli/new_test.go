@@ -98,22 +98,37 @@ func TestWritingOverSomebodyElsesWorkIsRefused(t *testing.T) {
 
 // TestTheStepsAreInAnOrderThatWorks.
 //
-// It is not guessable and getting it wrong is a confusing failure: `go mod
-// tidy` cannot run until the generated packages exist, and they cannot be
-// generated until the tools are there -- so a tidy first fails trying to fetch
-// this app's own packages from a repository nobody has pushed.
+// None of it is guessable, and every one of these was found by typing the
+// printed steps into an empty directory and watching one of them fail.
+//
+//   - `go tool pd` builds payday's command from **this app's** module graph, so
+//     the tool directive has to have been fetched like any other;
+//   - the generators have to build before anything is generated, and that needs
+//     sums -- but a plain `go mod tidy` cannot run until the generated packages
+//     exist, since a module that is not there resolves as one to fetch. So:
+//     `-e` first, and the real one after;
+//   - and `buf dep update` is not a step at all. It compiles the workspace
+//     before writing the lock, and the workspace does not compile until
+//     `pd gen` has copied payday's entities in -- so as a first step it fails
+//     on every new app. `pd gen` owns it; see `run.deps`.
 func TestTheStepsAreInAnOrderThatWorks(t *testing.T) {
 	x := require.New(t)
 
 	vs := (pdcli.New{Module: "github.com/acme/thing"}).Steps()
 	joined := strings.Join(vs, "\n")
 
-	tools := strings.Index(joined, "go get -tool")
-	deps := strings.Index(joined, "buf dep update")
-	gen := strings.Index(joined, "pd gen")
-	tidy := strings.Index(joined, "go mod tidy")
+	x.Contains(joined, "go get -tool github.com/lesomnus/payday/cmd/pd")
 
-	x.Less(tools, deps)
-	x.Less(deps, gen)
+	tools := strings.LastIndex(joined, "go get -tool")
+	lenient := strings.Index(joined, "go mod tidy -e")
+	gen := strings.Index(joined, "pd gen .")
+	tidy := strings.Index(joined, "\ngo mod tidy\n")
+	build := strings.Index(joined, "go build ./...")
+
+	x.Less(tools, lenient, "the generators cannot build without their sums")
+	x.Less(lenient, gen)
 	x.Less(gen, tidy, "tidy before gen fetches this app's own packages from a repository nobody pushed")
+	x.Less(tidy, build)
+
+	x.NotContains(joined, "buf dep update", "it cannot run before a generation; pd gen does it")
 }

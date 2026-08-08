@@ -63,6 +63,7 @@ func (g Gen) Run(ctx context.Context) error {
 		do   func(context.Context) error
 	}{
 		{"payday's entities, and what this app added to them", r.entities},
+		{"the buf dependencies, if nothing has pinned them yet", r.deps},
 		{"service contracts from the entities", r.contracts},
 		{"merging what payday and the app add to them", r.merge},
 		{"messages, servers, ent schema", r.code},
@@ -477,6 +478,39 @@ func (g Gen) entRuntime(ctx context.Context) error {
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("ent generate: %w\n%s", err, stderr.String())
+	}
+
+	return nil
+}
+
+// deps pins the buf modules the schema imports, the first time.
+//
+// It is here, between payday's entities and the first `buf generate`, because
+// that is the only moment it can be. An app's own schema names `payday.Tenant`,
+// so the workspace does not compile until [run.entities] has copied payday's
+// entities in -- and `buf dep update` compiles the workspace before it writes
+// the lock. Run it before a generation, as the obvious ordering suggests, and
+// it fails on a tree that has never been generated: the first command a new app
+// runs, refusing.
+//
+// So `pd gen` owns it, the way it owns the buf template. Only when nothing is
+// pinned: a lock with entries in it is this app's pin and is not a thing a
+// generation may quietly move, which also means `pd gen --check` in CI never
+// reaches the network -- the lock is committed.
+func (r run) deps(ctx context.Context) error {
+	at := filepath.Join(r.Layout.Work, "buf.lock")
+
+	b, err := os.ReadFile(at)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if bytes.Contains(b, []byte("deps:")) {
+		return nil
+	}
+
+	r.say("  buf dep update")
+	if _, err := r.Gen.run(ctx, "buf", "dep", "update"); err != nil {
+		return err
 	}
 
 	return nil
