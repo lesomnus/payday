@@ -21,6 +21,9 @@ type Holder func(*sql.Selector)
 // Joint is the predicate function for joint builders.
 type Joint func(*sql.Selector)
 
+// Outbox is the predicate function for outbox builders.
+type Outbox func(*sql.Selector)
+
 // Robot is the predicate function for robot builders.
 type Robot func(*sql.Selector)
 

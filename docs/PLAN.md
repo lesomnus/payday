@@ -241,11 +241,11 @@ message Tenanted {
 | ~~**7**~~ | **완료** — 판단은 `payday/gate`·`payday/audit`, 레이어와 벽은 생성 |
 | ~~**7b**~~ | **완료** — `list:` 옵션, proto와 구현 생성, 키·상한 거절과 인덱스 경고 |
 | ~~**7c**~~ | **완료** — `payday/watch`(브로커 이음매 포함)와 `Watch` RPC 생성. `bare.Change`는 상류로 올리는 대신 payday 자신의 모양으로 변환한다 — 생성된 어댑터가 다섯 줄이라 상류를 건드릴 이유가 없었다 |
-| **8** | `pd` CLI — `gen`, `gen --check`, `config env`, `doctor` | 2,3 |
+| ~~**8**~~ | **완료** — `gen`, `gen --check`, `doctor`. buf 템플릿을 payday가 쓴다(앱이 `strategy: all`을 틀릴 자리를 없앤다). `config env`는 여기 올 수 없다 — 앱의 설정 구조체가 필요하다. `config.Loader.EnvNames`가 이미 답하고, 얹을 자리는 템플릿(9)이다 | 2,3 |
 | **9** | 템플릿 — go-app의 배선과 문서를 payday 위에 다시 얹는다 | 5,6,7,8 |
 | **10** | `entity add`/`layer add` | 8,9 |
 | ~~**11**~~ | **완료** — `spin.Spinner`/`Run`/`Every`. 생성된 `Server` 인터페이스의 메서드가 아니라 스택을 걸으며 **찾는다**: 메서드로 두면 모든 레이어가 빈 것을 물려받고, 그것이 "이 레이어에 배경 작업이 있는가"를 숨기는 모양이다 |
-| **12** | outbox — 트랜잭션 안에서 쓰는 레코더 + 비우는 루프 (§4.2 B) | 7c,11 |
+| ~~**12**~~ | **완료** — `payday.Outbox` 엔티티, `pd.OutboxRecorder()`, `pd.Drain()`. 그리고 §4.2가 요구한 **브로커 명시**가 `config.WatchConfig`로 섰다 — 이름을 안 적으면 거절한다 | 7c,11 |
 | **13** | 브라우저 샌드박스 (§9). `RegisterServer`의 시그니처와 CI의 wasm 빌드는 **1·2번과 함께** 해두면 공짜다 | 9 |
 | **14** | TS 층 1~2 — `pd gen --ts`, drpc 클라이언트 (§10.3) | 7b,13 |
 | **15** | TS 층 3 — 로컬 스토어. `protoc-gen-orm-ts`를 §10.5대로 다시 쓴다 | 7c,14 |

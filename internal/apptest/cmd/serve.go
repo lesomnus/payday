@@ -39,6 +39,11 @@ type Server struct {
 	// nobody is asking.
 	Walled  app.Server
 	Ungated app.Server
+
+	// Spin is whatever this deployment has to run besides answering requests.
+	// It is a slice rather than a method because a server with nothing to run
+	// should write nothing at all; see `payday/spin`.
+	Spin []any
 }
 
 // Build opens the database and stacks the servers.
@@ -66,24 +71,38 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// the servers that do the writing, since every RPC that changes anything
 	// has to report itself from inside the transaction that changes it. The
 	// wall is a predicate and a predicate belongs in the WHERE.
-	w := watch.New(watch.Memory())
-
-	sink, err := pd.NewSink(client,
-		bare.WithMinter(pd.Minter()),
-		bare.WithRecorder(pd.Recorder()),
-		bare.WithRecorder(pd.WatchRecorder(w)),
-	)
+	b, err := c.Watch.Build()
 	if err != nil {
 		db.Close()
 		return nil, err
 	}
 
-	walled, err := pd.NewSink(client,
+	w := watch.New(b)
+
+	// The recorders, in the order they are told. The trail is required -- a
+	// write it could not account for is undone -- and the rest say for
+	// themselves whether they are; see `bare.Recorders`.
+	recorders := []bare.Option{
 		bare.WithMinter(pd.Minter()),
 		bare.WithRecorder(pd.Recorder()),
 		bare.WithRecorder(pd.WatchRecorder(w)),
-		bare.WithScope(pd.Wall()),
-	)
+	}
+	if c.Watch.Outbox {
+		// Last, so that a queue this could not be written to undoes a write
+		// which the trail and the in-process publish have already agreed to
+		// rather than the other way round. It makes no difference to what is
+		// committed -- either way nothing is -- and it makes the log read in
+		// the order things were tried.
+		recorders = append(recorders, bare.WithRecorder(pd.OutboxRecorder()))
+	}
+
+	sink, err := pd.NewSink(client, recorders...)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	walled, err := pd.NewSink(client, append(recorders, bare.WithScope(pd.Wall()))...)
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -108,7 +127,16 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		return nil, err
 	}
 
-	return &Server{Db: db, Ent: client, Watch: w, Walled: stacked, Ungated: ungated}, nil
+	s := &Server{Db: db, Ent: client, Watch: w, Walled: stacked, Ungated: ungated}
+	if c.Watch.Outbox && b != nil {
+		// The loop that makes an event durable. It is not a layer and not a
+		// method on any server -- `spin.Run` finds it in whatever is handed
+		// over, which is what keeps a server that has no background work from
+		// carrying an empty method saying so.
+		s.Spin = append(s.Spin, pd.Drain(client, b, c.Watch.Every()))
+	}
+
+	return s, nil
 }
 
 func (s *Server) Close() error { return s.Db.Close() }

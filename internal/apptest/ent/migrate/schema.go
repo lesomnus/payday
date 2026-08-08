@@ -126,6 +126,30 @@ var (
 			},
 		},
 	}
+	// OutboxColumns holds the columns for the "outbox" table.
+	OutboxColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "tenant_id", Type: field.TypeUUID},
+		{Name: "actor_id", Type: field.TypeUUID},
+		{Name: "method", Type: field.TypeString},
+		{Name: "by", Type: field.TypeString},
+		{Name: "object_id", Type: field.TypeUUID},
+		{Name: "patch", Type: field.TypeBytes},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+	}
+	// OutboxTable holds the schema information for the "outbox" table.
+	OutboxTable = &schema.Table{
+		Name:       "outbox",
+		Columns:    OutboxColumns,
+		PrimaryKey: []*schema.Column{OutboxColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "outbox_id",
+				Unique:  false,
+				Columns: []*schema.Column{OutboxColumns[0]},
+			},
+		},
+	}
 	// RobotColumns holds the columns for the "robot" table.
 	RobotColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
@@ -182,6 +206,7 @@ var (
 		FleetTable,
 		HolderTable,
 		JointTable,
+		OutboxTable,
 		RobotTable,
 		TenantTable,
 	}
@@ -205,6 +230,9 @@ func init() {
 	JointTable.ForeignKeys[0].RefTable = RobotTable
 	JointTable.Annotation = &entsql.Annotation{
 		Table: "joint",
+	}
+	OutboxTable.Annotation = &entsql.Annotation{
+		Table: "outbox",
 	}
 	RobotTable.ForeignKeys[0].RefTable = TenantTable
 	RobotTable.Annotation = &entsql.Annotation{

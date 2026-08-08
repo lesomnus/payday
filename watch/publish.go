@@ -25,6 +25,14 @@ type Watch struct {
 
 func New(to Broker) *Watch { return &Watch{to: to} }
 
+// Broker answers with where this publishes, which is what anything else that
+// has events to publish needs -- the outbox drainer is the one that does.
+//
+// It is nil for a deployment that named no broker, and everything here goes on
+// working: [Watch.Note] still remembers and the interceptor still finds nothing
+// to publish to.
+func (w *Watch) Broker() Broker { return w.to }
+
 // Note is what the generated recorder calls, from inside the transaction that
 // makes the write.
 //

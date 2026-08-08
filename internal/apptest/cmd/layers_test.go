@@ -50,6 +50,11 @@ func build(t *testing.T) (*built, context.Context) {
 			Driver: "sqlite3",
 			Dsn:    memdb.TestDB(t, url.Values{"_pragma": {"foreign_keys(1)"}}),
 		},
+		// Named, because payday refuses to pick one. A test is one process, so
+		// the answer here is the easy one -- and having to write it is the
+		// point: the same line in a deployment of two replicas is a line
+		// somebody has to look at.
+		Watch: config.WatchConfig{Broker: config.BrokerMemory},
 	})
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })

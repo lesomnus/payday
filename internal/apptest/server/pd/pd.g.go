@@ -12,6 +12,7 @@ import (
 	context "context"
 	dialect "entgo.io/ent/dialect"
 	uuid "github.com/google/uuid"
+	log "github.com/lesomnus/otx/log"
 	audit1 "github.com/lesomnus/payday/audit"
 	frame "github.com/lesomnus/payday/frame"
 	gate "github.com/lesomnus/payday/gate"
@@ -21,6 +22,7 @@ import (
 	cell "github.com/lesomnus/payday/internal/apptest/ent/cell"
 	holder "github.com/lesomnus/payday/internal/apptest/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/ent/joint"
+	outbox "github.com/lesomnus/payday/internal/apptest/ent/outbox"
 	predicate "github.com/lesomnus/payday/internal/apptest/ent/predicate"
 	robot "github.com/lesomnus/payday/internal/apptest/ent/robot"
 	tenant "github.com/lesomnus/payday/internal/apptest/ent/tenant"
@@ -28,6 +30,7 @@ import (
 	pderr "github.com/lesomnus/payday/pderr"
 	pdid "github.com/lesomnus/payday/pdid"
 	slug "github.com/lesomnus/payday/slug"
+	spin "github.com/lesomnus/payday/spin"
 	watch "github.com/lesomnus/payday/watch"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	entpage "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpage"
@@ -37,6 +40,7 @@ import (
 	status "google.golang.org/grpc/status"
 	proto "google.golang.org/protobuf/proto"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	slog "log/slog"
 	slices "slices"
 	time "time"
 )
@@ -53,6 +57,7 @@ const (
 	RobotDomain  pdid.Domain = 7  // "robot"
 	AuditDomain  pdid.Domain = 3  // "audit"
 	HolderDomain pdid.Domain = 2  // "holder"
+	OutboxDomain pdid.Domain = 4  // "outbox"
 	TenantDomain pdid.Domain = 1  // "tenant"
 )
 
@@ -63,6 +68,7 @@ func init() {
 	pdid.Register("app.Robot", RobotDomain, "robot")
 	pdid.Register("payday.Audit", AuditDomain, "audit")
 	pdid.Register("payday.Holder", HolderDomain, "holder")
+	pdid.Register("payday.Outbox", OutboxDomain, "outbox")
 	pdid.Register("payday.Tenant", TenantDomain, "tenant")
 }
 
@@ -75,6 +81,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Robot":     RobotDomain,
 	"payday.Audit":  AuditDomain,
 	"payday.Holder": HolderDomain,
+	"payday.Outbox": OutboxDomain,
 	"payday.Tenant": TenantDomain,
 }
 
@@ -173,6 +180,11 @@ func (wall) HolderScope(ctx context.Context) (predicate.Holder, error) {
 	}
 
 	return holder.HasTenantWith(tenant.IDIn(vs...)), nil
+}
+
+// OutboxScope: declared `global`, so it is not behind the wall at all.
+func (wall) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
+	return nil, nil
 }
 
 // TenantScope: a tenant is inside itself, which is what a tenant being a wall comes down to.
@@ -1125,4 +1137,186 @@ func keyBytes(v any) []byte {
 	}
 
 	return nil
+}
+
+// OutboxRecorder answers with the recorder that writes each write to the
+// queue, inside the transaction that makes it.
+//
+// It is what makes an event survive a process that stops between the commit
+// and the publish. `WatchRecorder` remembers in memory and an interceptor
+// publishes once the handler has answered; this writes a row, and [Drain]
+// publishes it whenever somebody next gets round to it -- which may be after
+// a restart, and that is the whole of the point.
+//
+// Both, for a deployment that wants both: the first is immediate and lossy,
+// the second is durable and late. A subscriber sees the same row twice and
+// the second time says what the first said, since what is sent is state.
+//
+//	sink, err := pd.NewSink(db, bare.WithRecorder(pd.OutboxRecorder()))
+func OutboxRecorder() bare.Recorder { return outboxRecorder{} }
+
+type outboxRecorder struct{}
+
+var _ bare.Recorder = outboxRecorder{}
+
+// Record writes the row.
+//
+// Unlike the watch recorder it **refuses** when it cannot, which is the
+// difference between the two in one line: this exists so that an event is
+// not lost, and letting a write commit whose event could not be queued would
+// lose exactly the one it was written to keep.
+//
+// It writes through `s.Db`, which is the client this transaction is running
+// on, and not through a server: there are no RPCs on this entity, on
+// purpose -- see the note in payday's outbox.proto.
+func (outboxRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
+	k, err := pdid.From(keyBytes(c.Key))
+	if err != nil {
+		// A key this app does not make, so there is nothing an identifier
+		// could say about it and nobody could act on the event.
+		return nil
+	}
+
+	var doc []byte
+	if c.Patch != nil {
+		b, err := proto.Marshal(c.Patch)
+		if err != nil {
+			return err
+		}
+
+		doc = b
+	}
+
+	var actor, tenant pdid.Id
+	if f, ok := frame.From(ctx); ok {
+		actor = f.Actor
+		tenant = f.Tenant
+	}
+
+	return s.Db.Outbox.Create().
+		SetID(pdid.New(OutboxDomain).Uuid()).
+		SetTenantID(tenant.Uuid()).
+		SetActorID(actor.Uuid()).
+		SetMethod(c.Method).
+		SetBy(c.By).
+		SetObjectID(k.Uuid()).
+		SetPatch(doc).
+		Exec(ctx)
+}
+
+// DrainSize is how many rows one pass takes.
+//
+// Bounded because a queue that has been building since a broker went down is
+// exactly when a pass must not try to hold all of it, and small enough that
+// a pass which fails republishes little.
+const DrainSize = 256
+
+// Drain answers with the loop that publishes what the queue holds and takes
+// it away.
+//
+// It is a [spin.Spinner], so it is handed to `spin.Run` with the stack:
+//
+//	go spin.Run(ctx, slices.Values([]any{pd.Drain(db, broker, time.Second)}))
+//
+// # It publishes before it deletes
+//
+// Which is the order that gives at-least-once, and the other order gives
+// at-most-once. A process that stops between the two publishes those rows
+// again on the next pass, and a subscriber reads the same state twice -- the
+// second saying what the first said. That is only harmless because what
+// travels is state and not a delta, and it is why an outbox is a table and a
+// loop here rather than a project.
+//
+// # Two replicas publish twice
+//
+// Nothing here takes a lock, so two of these drain the same rows and publish
+// them each. By the paragraph above that is not a correctness problem, and
+// it is real work: a deployment that minds runs this on one replica, which
+// is a line of wiring rather than a lease to get wrong. Said out loud here
+// because the alternative is somebody discovering it from a graph.
+func Drain(db *ent.Client, b watch.Broker, every time.Duration) spin.Spinner {
+	return drain{db, b, every}
+}
+
+type drain struct {
+	db    *ent.Client
+	b     watch.Broker
+	every time.Duration
+}
+
+var _ spin.Spinner = drain{}
+var _ spin.Named = drain{}
+
+func (drain) SpinName() string { return "outbox" }
+
+func (d drain) Spin(ctx context.Context) error {
+	return spin.Every(d.every, d.pass)(ctx)
+}
+
+// pass takes one batch, and keeps taking them for as long as it finds a full
+// one -- otherwise a queue of ten thousand drains at one batch per tick and
+// takes an hour to catch up from a minute of trouble.
+//
+// It answers nil for a failure rather than ending the loop, and logs it. A
+// broker that is down or a database that blinked is a thing to try again;
+// giving up would take the process down and stop serving requests that were
+// fine. See the note on failure in `payday/spin` -- the loud direction is the
+// default there, and this is one of the cases that means the other.
+func (d drain) pass(ctx context.Context) error {
+	for {
+		n, err := d.once(ctx)
+		if err != nil {
+			log.From(ctx).ErrorContext(ctx, "outbox", slog.String("error", err.Error()))
+			return nil
+		}
+		if n < DrainSize {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return nil
+		}
+	}
+}
+
+// once publishes one batch and answers with how many rows were in it.
+func (d drain) once(ctx context.Context) (int, error) {
+	// Oldest first, which is the order they were written in: an identifier
+	// carries the millisecond it was minted and a sequence within it, so the
+	// key **is** the order and there is no column to keep in step.
+	vs, err := d.db.Outbox.Query().
+		Order(outbox.ByID()).
+		Limit(DrainSize).
+		All(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if len(vs) == 0 {
+		return 0, nil
+	}
+
+	ks := make([]uuid.UUID, len(vs))
+	for i, v := range vs {
+		ks[i] = v.ID
+		d.b.Publish(ctx, watch.Event{
+			Actor:  pdid.Id(v.ActorID),
+			Tenant: pdid.Id(v.TenantID),
+			Method: v.Method,
+			Changes: []watch.Change{{
+				Method: v.Method,
+				By:     v.By,
+				Key:    pdid.Id(v.ObjectID),
+				Patch:  v.Patch,
+			}},
+		})
+	}
+
+	// And only then. A row deleted before it was published is an event that
+	// nothing will ever say again.
+	if _, err := d.db.Outbox.Delete().
+		Where(outbox.IDIn(ks...)).
+		Exec(ctx); err != nil {
+		return 0, err
+	}
+
+	return len(vs), nil
 }

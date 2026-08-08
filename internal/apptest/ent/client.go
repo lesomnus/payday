@@ -21,6 +21,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/ent/fleet"
 	"github.com/lesomnus/payday/internal/apptest/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/ent/joint"
+	"github.com/lesomnus/payday/internal/apptest/ent/outbox"
 	"github.com/lesomnus/payday/internal/apptest/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/ent/tenant"
 )
@@ -40,6 +41,8 @@ type Client struct {
 	Holder *HolderClient
 	// Joint is the client for interacting with the Joint builders.
 	Joint *JointClient
+	// Outbox is the client for interacting with the Outbox builders.
+	Outbox *OutboxClient
 	// Robot is the client for interacting with the Robot builders.
 	Robot *RobotClient
 	// Tenant is the client for interacting with the Tenant builders.
@@ -60,6 +63,7 @@ func (c *Client) init() {
 	c.Fleet = NewFleetClient(c.config)
 	c.Holder = NewHolderClient(c.config)
 	c.Joint = NewJointClient(c.config)
+	c.Outbox = NewOutboxClient(c.config)
 	c.Robot = NewRobotClient(c.config)
 	c.Tenant = NewTenantClient(c.config)
 }
@@ -159,6 +163,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Fleet:  NewFleetClient(cfg),
 		Holder: NewHolderClient(cfg),
 		Joint:  NewJointClient(cfg),
+		Outbox: NewOutboxClient(cfg),
 		Robot:  NewRobotClient(cfg),
 		Tenant: NewTenantClient(cfg),
 	}, nil
@@ -185,6 +190,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Fleet:  NewFleetClient(cfg),
 		Holder: NewHolderClient(cfg),
 		Joint:  NewJointClient(cfg),
+		Outbox: NewOutboxClient(cfg),
 		Robot:  NewRobotClient(cfg),
 		Tenant: NewTenantClient(cfg),
 	}, nil
@@ -216,7 +222,7 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Robot, c.Tenant,
+		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Robot, c.Tenant,
 	} {
 		n.Use(hooks...)
 	}
@@ -226,7 +232,7 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Robot, c.Tenant,
+		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Robot, c.Tenant,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -245,6 +251,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Holder.mutate(ctx, m)
 	case *JointMutation:
 		return c.Joint.mutate(ctx, m)
+	case *OutboxMutation:
+		return c.Outbox.mutate(ctx, m)
 	case *RobotMutation:
 		return c.Robot.mutate(ctx, m)
 	case *TenantMutation:
@@ -967,6 +975,139 @@ func (c *JointClient) mutate(ctx context.Context, m *JointMutation) (Value, erro
 	}
 }
 
+// OutboxClient is a client for the Outbox schema.
+type OutboxClient struct {
+	config
+}
+
+// NewOutboxClient returns a client for the Outbox from the given config.
+func NewOutboxClient(c config) *OutboxClient {
+	return &OutboxClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `outbox.Hooks(f(g(h())))`.
+func (c *OutboxClient) Use(hooks ...Hook) {
+	c.hooks.Outbox = append(c.hooks.Outbox, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `outbox.Intercept(f(g(h())))`.
+func (c *OutboxClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Outbox = append(c.inters.Outbox, interceptors...)
+}
+
+// Create returns a builder for creating a Outbox entity.
+func (c *OutboxClient) Create() *OutboxCreate {
+	mutation := newOutboxMutation(c.config, OpCreate)
+	return &OutboxCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Outbox entities.
+func (c *OutboxClient) CreateBulk(builders ...*OutboxCreate) *OutboxCreateBulk {
+	return &OutboxCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *OutboxClient) MapCreateBulk(slice any, setFunc func(*OutboxCreate, int)) *OutboxCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &OutboxCreateBulk{err: fmt.Errorf("calling to OutboxClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*OutboxCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &OutboxCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Outbox.
+func (c *OutboxClient) Update() *OutboxUpdate {
+	mutation := newOutboxMutation(c.config, OpUpdate)
+	return &OutboxUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *OutboxClient) UpdateOne(_m *Outbox) *OutboxUpdateOne {
+	mutation := newOutboxMutation(c.config, OpUpdateOne, withOutbox(_m))
+	return &OutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *OutboxClient) UpdateOneID(id uuid.UUID) *OutboxUpdateOne {
+	mutation := newOutboxMutation(c.config, OpUpdateOne, withOutboxID(id))
+	return &OutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Outbox.
+func (c *OutboxClient) Delete() *OutboxDelete {
+	mutation := newOutboxMutation(c.config, OpDelete)
+	return &OutboxDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *OutboxClient) DeleteOne(_m *Outbox) *OutboxDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *OutboxClient) DeleteOneID(id uuid.UUID) *OutboxDeleteOne {
+	builder := c.Delete().Where(outbox.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &OutboxDeleteOne{builder}
+}
+
+// Query returns a query builder for Outbox.
+func (c *OutboxClient) Query() *OutboxQuery {
+	return &OutboxQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeOutbox},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Outbox entity by its id.
+func (c *OutboxClient) Get(ctx context.Context, id uuid.UUID) (*Outbox, error) {
+	return c.Query().Where(outbox.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *OutboxClient) GetX(ctx context.Context, id uuid.UUID) *Outbox {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *OutboxClient) Hooks() []Hook {
+	return c.hooks.Outbox
+}
+
+// Interceptors returns the client interceptors.
+func (c *OutboxClient) Interceptors() []Interceptor {
+	return c.inters.Outbox
+}
+
+func (c *OutboxClient) mutate(ctx context.Context, m *OutboxMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&OutboxCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&OutboxUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&OutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&OutboxDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Outbox mutation op: %q", m.Op())
+	}
+}
+
 // RobotClient is a client for the Robot schema.
 type RobotClient struct {
 	config
@@ -1252,9 +1393,9 @@ func (c *TenantClient) mutate(ctx context.Context, m *TenantMutation) (Value, er
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Audit, Cell, Fleet, Holder, Joint, Robot, Tenant []ent.Hook
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Robot, Tenant []ent.Hook
 	}
 	inters struct {
-		Audit, Cell, Fleet, Holder, Joint, Robot, Tenant []ent.Interceptor
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Robot, Tenant []ent.Interceptor
 	}
 )

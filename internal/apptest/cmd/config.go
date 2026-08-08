@@ -35,4 +35,5 @@ type Config struct {
 	Server config.ServerConfig `yaml:"server"`
 	Db     config.DbConfig     `yaml:"db"`
 	Otel   config.OtelConfig   `yaml:"otel"`
+	Watch  config.WatchConfig  `yaml:"watch"`
 }

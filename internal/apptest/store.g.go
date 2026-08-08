@@ -33,6 +33,7 @@ type Server interface {
 	Cell() CellServiceServer
 	Audit() AuditServiceServer
 	Holder() HolderServiceServer
+	Outbox() OutboxServiceServer
 }
 
 // RegisterServer registers every service of `s` with `g`.
@@ -47,6 +48,7 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterCellServiceServer(g, s.Cell())
 	RegisterAuditServiceServer(g, s.Audit())
 	RegisterHolderServiceServer(g, s.Holder())
+	RegisterOutboxServiceServer(g, s.Outbox())
 }
 
 type UnimplementedServer struct {
@@ -57,6 +59,7 @@ type UnimplementedServer struct {
 	CellServer   CellServiceServer
 	AuditServer  AuditServiceServer
 	HolderServer HolderServiceServer
+	OutboxServer OutboxServiceServer
 }
 
 func (UnimplementedServer) Tenant() TenantServiceServer { return UnimplementedTenantServiceServer{} }
@@ -66,6 +69,7 @@ func (UnimplementedServer) Fleet() FleetServiceServer   { return UnimplementedFl
 func (UnimplementedServer) Cell() CellServiceServer     { return UnimplementedCellServiceServer{} }
 func (UnimplementedServer) Audit() AuditServiceServer   { return UnimplementedAuditServiceServer{} }
 func (UnimplementedServer) Holder() HolderServiceServer { return UnimplementedHolderServiceServer{} }
+func (UnimplementedServer) Outbox() OutboxServiceServer { return UnimplementedOutboxServiceServer{} }
 
 type StaticServer struct {
 	TenantServer TenantServiceServer
@@ -75,6 +79,7 @@ type StaticServer struct {
 	CellServer   CellServiceServer
 	AuditServer  AuditServiceServer
 	HolderServer HolderServiceServer
+	OutboxServer OutboxServiceServer
 }
 
 func (s StaticServer) Tenant() TenantServiceServer { return s.TenantServer }
@@ -84,6 +89,7 @@ func (s StaticServer) Fleet() FleetServiceServer   { return s.FleetServer }
 func (s StaticServer) Cell() CellServiceServer     { return s.CellServer }
 func (s StaticServer) Audit() AuditServiceServer   { return s.AuditServer }
 func (s StaticServer) Holder() HolderServiceServer { return s.HolderServer }
+func (s StaticServer) Outbox() OutboxServiceServer { return s.OutboxServer }
 
 type Client interface {
 	Tenant() TenantServiceClient
@@ -93,6 +99,7 @@ type Client interface {
 	Cell() CellServiceClient
 	Audit() AuditServiceClient
 	Holder() HolderServiceClient
+	Outbox() OutboxServiceClient
 }
 
 func NewClient(c *grpc.ClientConn) Client {
@@ -104,6 +111,7 @@ func NewClient(c *grpc.ClientConn) Client {
 		_Cell:   NewCellServiceClient(c),
 		_Audit:  NewAuditServiceClient(c),
 		_Holder: NewHolderServiceClient(c),
+		_Outbox: NewOutboxServiceClient(c),
 	}
 }
 
@@ -115,6 +123,7 @@ type client struct {
 	_Cell   CellServiceClient
 	_Audit  AuditServiceClient
 	_Holder HolderServiceClient
+	_Outbox OutboxServiceClient
 }
 
 func (c *client) Tenant() TenantServiceClient { return c._Tenant }
@@ -124,6 +133,7 @@ func (c *client) Fleet() FleetServiceClient   { return c._Fleet }
 func (c *client) Cell() CellServiceClient     { return c._Cell }
 func (c *client) Audit() AuditServiceClient   { return c._Audit }
 func (c *client) Holder() HolderServiceClient { return c._Holder }
+func (c *client) Outbox() OutboxServiceClient { return c._Outbox }
 
 // Middleware is a server that delegates to another server.
 type Middleware interface {

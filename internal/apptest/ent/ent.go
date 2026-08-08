@@ -17,6 +17,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/ent/fleet"
 	"github.com/lesomnus/payday/internal/apptest/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/ent/joint"
+	"github.com/lesomnus/payday/internal/apptest/ent/outbox"
 	"github.com/lesomnus/payday/internal/apptest/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/ent/tenant"
 )
@@ -84,6 +85,7 @@ func checkColumn(t, c string) error {
 			fleet.Table:  fleet.ValidColumn,
 			holder.Table: holder.ValidColumn,
 			joint.Table:  joint.ValidColumn,
+			outbox.Table: outbox.ValidColumn,
 			robot.Table:  robot.ValidColumn,
 			tenant.Table: tenant.ValidColumn,
 		})

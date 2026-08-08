@@ -146,6 +146,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitGate(out, s, paths, root)
 	pdgen.EmitAudit(out, s, paths, root)
 	pdgen.EmitWatchRecorder(out, s, paths)
+	pdgen.EmitOutbox(out, s, paths)
 
 	return nil
 }

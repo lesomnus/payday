@@ -252,6 +252,7 @@ type Scope interface {
 	CellScope(ctx context.Context) (predicate.Cell, error)
 	AuditScope(ctx context.Context) (predicate.Audit, error)
 	HolderScope(ctx context.Context) (predicate.Holder, error)
+	OutboxScope(ctx context.Context) (predicate.Outbox, error)
 }
 
 // Unscoped is a [Scope] that narrows nothing. Embed it and write out the
@@ -285,6 +286,9 @@ func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
 	return nil, nil
 }
 func (Unscoped) HolderScope(_ context.Context) (predicate.Holder, error) {
+	return nil, nil
+}
+func (Unscoped) OutboxScope(_ context.Context) (predicate.Outbox, error) {
 	return nil, nil
 }
 
@@ -378,3 +382,4 @@ func (s Server) Fleet() apptest.FleetServiceServer   { return FleetServiceServer
 func (s Server) Cell() apptest.CellServiceServer     { return CellServiceServer{Store: s.Store} }
 func (s Server) Audit() apptest.AuditServiceServer   { return AuditServiceServer{Store: s.Store} }
 func (s Server) Holder() apptest.HolderServiceServer { return HolderServiceServer{Store: s.Store} }
+func (s Server) Outbox() apptest.OutboxServiceServer { return OutboxServiceServer{Store: s.Store} }
