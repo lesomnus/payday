@@ -1,7 +1,17 @@
+# The service contracts, and payday's additions to them.
+#
+# A List is an RPC, so it has to be in the contract before the messages and the
+# servers are generated from it -- which is why protoc-gen-pd runs here as well
+# as in the pass that writes Go.
 version: v2
 inputs:
   - directory: internal/apptest/proto
 plugins:
   - local: [go, tool, github.com/protobuf-orm/protoc-gen-orm-service]
     out: internal/apptest/proto.svc
+    strategy: all
+  - local: [go, tool, github.com/lesomnus/payday/cmd/protoc-gen-pd]
+    out: internal/apptest/proto.pd
+    opt:
+      - stage=proto
     strategy: all

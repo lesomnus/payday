@@ -34,6 +34,7 @@ type Entity struct {
 	xxx_hidden_Domain  uint32                 `protobuf:"varint,1,opt,name=domain"`
 	xxx_hidden_Name    string                 `protobuf:"bytes,2,opt,name=name"`
 	xxx_hidden_Tenancy isEntity_Tenancy       `protobuf_oneof:"tenancy"`
+	xxx_hidden_List    *Entity_List           `protobuf:"bytes,6,opt,name=list"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -104,6 +105,13 @@ func (x *Entity) GetGlobal() *Entity_Global {
 	return nil
 }
 
+func (x *Entity) GetList() *Entity_List {
+	if x != nil {
+		return x.xxx_hidden_List
+	}
+	return nil
+}
+
 func (x *Entity) SetDomain(v uint32) {
 	x.xxx_hidden_Domain = v
 }
@@ -134,6 +142,10 @@ func (x *Entity) SetGlobal(v *Entity_Global) {
 		return
 	}
 	x.xxx_hidden_Tenancy = &entity_Global_{v}
+}
+
+func (x *Entity) SetList(v *Entity_List) {
+	x.xxx_hidden_List = v
 }
 
 func (x *Entity) HasTenancy() bool {
@@ -167,6 +179,13 @@ func (x *Entity) HasGlobal() bool {
 	return ok
 }
 
+func (x *Entity) HasList() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_List != nil
+}
+
 func (x *Entity) ClearTenancy() {
 	x.xxx_hidden_Tenancy = nil
 }
@@ -187,6 +206,10 @@ func (x *Entity) ClearGlobal() {
 	if _, ok := x.xxx_hidden_Tenancy.(*entity_Global_); ok {
 		x.xxx_hidden_Tenancy = nil
 	}
+}
+
+func (x *Entity) ClearList() {
+	x.xxx_hidden_List = nil
 }
 
 const Entity_Tenancy_not_set_case case_Entity_Tenancy = 0
@@ -256,6 +279,9 @@ type Entity_builder struct {
 	// Rows of this entity are not behind the wall.
 	Global *Entity_Global
 	// -- end of xxx_hidden_Tenancy
+	// List says this entity answers a List, and how. Nothing said is no List
+	// RPC at all.
+	List *Entity_List
 }
 
 func (b0 Entity_builder) Build() *Entity {
@@ -273,6 +299,7 @@ func (b0 Entity_builder) Build() *Entity {
 	if b.Global != nil {
 		x.xxx_hidden_Tenancy = &entity_Global_{b.Global}
 	}
+	x.xxx_hidden_List = b.List
 	return m0
 }
 
@@ -499,40 +526,299 @@ func (b0 Entity_Global_builder) Build() *Entity_Global {
 	return m0
 }
 
+// List is how this entity is read a page at a time.
+//
+// The half of a List that is the same for every entity is the half people get
+// wrong -- a cursor rather than an offset, an order that ends in the key, a
+// size that is capped, one row more read than the page so that "is there
+// another" costs no second query. So it is generated.
+//
+// The half that is the domain is the filter, and only what can be *declared*
+// is generated: equality on a field or a reference. Anything else is an RPC
+// somebody writes, which is where a rule with a reason belongs anyway.
+type Entity_List struct {
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Order   *[]*Entity_Order       `protobuf:"bytes,1,rep,name=order"`
+	xxx_hidden_With    []string               `protobuf:"bytes,2,rep,name=with"`
+	xxx_hidden_By      []string               `protobuf:"bytes,3,rep,name=by"`
+	xxx_hidden_Size    uint32                 `protobuf:"varint,4,opt,name=size"`
+	xxx_hidden_Max     uint32                 `protobuf:"varint,5,opt,name=max"`
+	xxx_hidden_Filters uint32                 `protobuf:"varint,6,opt,name=filters"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *Entity_List) Reset() {
+	*x = Entity_List{}
+	mi := &file_payday_entity_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entity_List) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entity_List) ProtoMessage() {}
+
+func (x *Entity_List) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Entity_List) GetOrder() []*Entity_Order {
+	if x != nil {
+		if x.xxx_hidden_Order != nil {
+			return *x.xxx_hidden_Order
+		}
+	}
+	return nil
+}
+
+func (x *Entity_List) GetWith() []string {
+	if x != nil {
+		return x.xxx_hidden_With
+	}
+	return nil
+}
+
+func (x *Entity_List) GetBy() []string {
+	if x != nil {
+		return x.xxx_hidden_By
+	}
+	return nil
+}
+
+func (x *Entity_List) GetSize() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Size
+	}
+	return 0
+}
+
+func (x *Entity_List) GetMax() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Max
+	}
+	return 0
+}
+
+func (x *Entity_List) GetFilters() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Filters
+	}
+	return 0
+}
+
+func (x *Entity_List) SetOrder(v []*Entity_Order) {
+	x.xxx_hidden_Order = &v
+}
+
+func (x *Entity_List) SetWith(v []string) {
+	x.xxx_hidden_With = v
+}
+
+func (x *Entity_List) SetBy(v []string) {
+	x.xxx_hidden_By = v
+}
+
+func (x *Entity_List) SetSize(v uint32) {
+	x.xxx_hidden_Size = v
+}
+
+func (x *Entity_List) SetMax(v uint32) {
+	x.xxx_hidden_Max = v
+}
+
+func (x *Entity_List) SetFilters(v uint32) {
+	x.xxx_hidden_Filters = v
+}
+
+type Entity_List_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Order is the columns rows come back in, outermost first.
+	//
+	// **The last one must be the key.** A cursor cannot tell apart two rows
+	// that are equal in every column of the order, so the page after the first
+	// of them either repeats the second or skips it -- and rows written by one
+	// request are stamped a moment apart at best. Generation refuses an order
+	// that does not end in the key.
+	//
+	// Nothing said is the key alone, which is always correct and is rarely
+	// what somebody wants to read.
+	Order []*Entity_Order
+	// With names edges to read along with each row, since almost everything
+	// that reads a list wants to know whose the rows are.
+	With []string
+	// By names what a filter may be about: a field, compared for equality, or
+	// "ref" for the reference that names a row.
+	//
+	// A filter that cannot be written this way is an RPC somebody writes. That
+	// is not a limitation being apologised for: a rule about what a caller may
+	// ask has a reason, and a reason belongs beside the code that acts on it
+	// rather than in a declaration that can only carry the number.
+	By []string
+	// Size is how many rows a request that did not say gets, and Max is the
+	// most it gets however loudly it asks.
+	//
+	// Max is required. A page with no cap is an answer with no cap, and the
+	// request that finds that out is the one that reads the whole table.
+	Size uint32
+	Max  uint32
+	// Filters is how many filters one request may carry. Each is a predicate
+	// in the same query, so this is what says how much of the database a
+	// request may ask to read.
+	//
+	// Unlike the size it is **refused** rather than clamped: asking for more
+	// rows than there are is a caller being generous with themselves, and
+	// dropping half the filters would answer a question nobody asked.
+	Filters uint32
+}
+
+func (b0 Entity_List_builder) Build() *Entity_List {
+	m0 := &Entity_List{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Order = &b.Order
+	x.xxx_hidden_With = b.With
+	x.xxx_hidden_By = b.By
+	x.xxx_hidden_Size = b.Size
+	x.xxx_hidden_Max = b.Max
+	x.xxx_hidden_Filters = b.Filters
+	return m0
+}
+
+// Order is one column of a list's order.
+type Entity_Order struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Field string                 `protobuf:"bytes,1,opt,name=field"`
+	xxx_hidden_Desc  bool                   `protobuf:"varint,2,opt,name=desc"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *Entity_Order) Reset() {
+	*x = Entity_Order{}
+	mi := &file_payday_entity_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entity_Order) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entity_Order) ProtoMessage() {}
+
+func (x *Entity_Order) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Entity_Order) GetField() string {
+	if x != nil {
+		return x.xxx_hidden_Field
+	}
+	return ""
+}
+
+func (x *Entity_Order) GetDesc() bool {
+	if x != nil {
+		return x.xxx_hidden_Desc
+	}
+	return false
+}
+
+func (x *Entity_Order) SetField(v string) {
+	x.xxx_hidden_Field = v
+}
+
+func (x *Entity_Order) SetDesc(v bool) {
+	x.xxx_hidden_Desc = v
+}
+
+type Entity_Order_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Field string
+	// Desc reads the list backwards, which is what a trail wants: what it is
+	// asked is what happened, and the answer starts with what happened last.
+	Desc bool
+}
+
+func (b0 Entity_Order_builder) Build() *Entity_Order {
+	m0 := &Entity_Order{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Field = b.Field
+	x.xxx_hidden_Desc = b.Desc
+	return m0
+}
+
 var File_payday_entity_proto protoreflect.FileDescriptor
 
 const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/entity.proto\x12\x06payday\"\xa0\x02\n" +
+	"\x13payday/entity.proto\x12\x06payday\"\x95\x04\n" +
 	"\x06Entity\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domain\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
 	"\x06tenant\x18\x03 \x01(\v2\x15.payday.Entity.TenantH\x00R\x06tenant\x125\n" +
 	"\btenanted\x18\x04 \x01(\v2\x17.payday.Entity.TenantedH\x00R\btenanted\x12/\n" +
-	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06global\x1a\b\n" +
+	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06global\x12'\n" +
+	"\x04list\x18\x06 \x01(\v2\x13.payday.Entity.ListR\x04list\x1a\b\n" +
 	"\x06Tenant\x1a2\n" +
 	"\bTenanted\x12\x10\n" +
 	"\x03via\x18\x01 \x01(\tR\x03via\x12\x14\n" +
 	"\x05field\x18\x02 \x01(\tR\x05field\x1a\b\n" +
-	"\x06GlobalB\t\n" +
+	"\x06Global\x1a\x96\x01\n" +
+	"\x04List\x12*\n" +
+	"\x05order\x18\x01 \x03(\v2\x14.payday.Entity.OrderR\x05order\x12\x12\n" +
+	"\x04with\x18\x02 \x03(\tR\x04with\x12\x0e\n" +
+	"\x02by\x18\x03 \x03(\tR\x02by\x12\x12\n" +
+	"\x04size\x18\x04 \x01(\rR\x04size\x12\x10\n" +
+	"\x03max\x18\x05 \x01(\rR\x03max\x12\x18\n" +
+	"\afilters\x18\x06 \x01(\rR\afilters\x1a1\n" +
+	"\x05Order\x12\x14\n" +
+	"\x05field\x18\x01 \x01(\tR\x05field\x12\x12\n" +
+	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
 	"\atenancyB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_payday_entity_proto_goTypes = []any{
 	(*Entity)(nil),          // 0: payday.Entity
 	(*Entity_Tenant)(nil),   // 1: payday.Entity.Tenant
 	(*Entity_Tenanted)(nil), // 2: payday.Entity.Tenanted
 	(*Entity_Global)(nil),   // 3: payday.Entity.Global
+	(*Entity_List)(nil),     // 4: payday.Entity.List
+	(*Entity_Order)(nil),    // 5: payday.Entity.Order
 }
 var file_payday_entity_proto_depIdxs = []int32{
 	1, // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
 	2, // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
 	3, // 2: payday.Entity.global:type_name -> payday.Entity.Global
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 3: payday.Entity.list:type_name -> payday.Entity.List
+	5, // 4: payday.Entity.List.order:type_name -> payday.Entity.Order
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_payday_entity_proto_init() }
@@ -551,7 +837,7 @@ func file_payday_entity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_entity_proto_rawDesc), len(file_payday_entity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

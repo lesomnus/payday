@@ -30,11 +30,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"path"
 	"strings"
 
 	"github.com/protobuf-orm/protobuf-orm/graph"
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
 
@@ -50,6 +52,12 @@ type opts struct {
 	// Out is where this plugin's own file goes.
 	Out  string
 	Name string
+
+	// Stage says which pass this is. A List is an RPC, so it has to be in the
+	// contract before the messages and the servers are generated from it --
+	// which means this plugin runs twice: once beside protoc-gen-orm-service
+	// writing proto, and once with the rest writing Go.
+	Stage string
 }
 
 func main() {
@@ -65,6 +73,7 @@ func main() {
 	fs.StringVar(&o.Bare, "bare", o.Bare, "directory of the generated servers")
 	fs.StringVar(&o.Out, "out", o.Out, "directory this plugin writes into")
 	fs.StringVar(&o.Name, "name", o.Name, "name of the file this plugin writes")
+	fs.StringVar(&o.Stage, "stage", "go", "which pass: `proto` writes the List into the contract, `go` writes everything else")
 
 	protogen.Options{ParamFunc: fs.Set}.Run(func(p *protogen.Plugin) error {
 		return run(context.Background(), p, o)
@@ -100,6 +109,10 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 		return fmt.Errorf("no file to take the module path from")
 	}
 
+	if o.Stage == "proto" {
+		return writeProto(p, s, src, o)
+	}
+
 	root := src.GoImportPath
 	paths := pdgen.Paths{
 		Ent:  root + protogen.GoImportPath("/"+o.Ent),
@@ -125,6 +138,11 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitDomains(out, s)
 	pdgen.EmitMinter(out, s, paths)
 	pdgen.EmitWall(out, s, paths)
+	for _, w := range pdgen.Warnings(s) {
+		fmt.Fprintln(os.Stderr, "protoc-gen-pd: "+w)
+	}
+
+	pdgen.EmitSink(out, s, paths, root)
 	pdgen.EmitGate(out, s, paths, root)
 	pdgen.EmitAudit(out, s, paths, root)
 
@@ -148,6 +166,43 @@ func sourceOf(p *protogen.Plugin, s *pdgen.Schema) *protogen.File {
 				return f
 			}
 		}
+	}
+
+	return nil
+}
+
+// writeProto is the first pass: the List of each entity that declared one, as
+// an overlay onto the contract.
+//
+// One file out per file in, and beside it: that is what the merge step pairs
+// them by, and it is also what keeps an entity's List where a reader of that
+// entity would look for it.
+func writeProto(p *protogen.Plugin, s *pdgen.Schema, _ *protogen.File, o opts) error {
+	at := map[protoreflect.FullName]*pdgen.Entity{}
+	for _, v := range s.Entities {
+		at[v.FullName()] = v
+	}
+
+	for _, f := range p.Files {
+		if !f.Generate {
+			continue
+		}
+
+		vs := []*pdgen.Entity{}
+		for _, m := range f.Messages {
+			if v, ok := at[m.Desc.FullName()]; ok {
+				vs = append(vs, v)
+			}
+		}
+
+		body := pdgen.Proto(vs, string(f.Desc.Package()))
+		if body == "" {
+			continue
+		}
+
+		name := strings.TrimSuffix(path.Base(f.Desc.Path()), ".proto")
+		out := p.NewGeneratedFile(path.Join(path.Dir(f.Desc.Path()), name+"_svc.pd.proto"), "")
+		out.P(body)
 	}
 
 	return nil

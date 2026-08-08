@@ -16,6 +16,7 @@ import (
 	frame "github.com/lesomnus/payday/frame"
 	gate "github.com/lesomnus/payday/gate"
 	apptest "github.com/lesomnus/payday/internal/apptest"
+	ent "github.com/lesomnus/payday/internal/apptest/ent"
 	audit "github.com/lesomnus/payday/internal/apptest/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/ent/cell"
 	holder "github.com/lesomnus/payday/internal/apptest/ent/holder"
@@ -26,11 +27,13 @@ import (
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
 	pdid "github.com/lesomnus/payday/pdid"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	entpage "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpage"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	proto "google.golang.org/protobuf/proto"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	time "time"
 )
 
 // The domain of each entity, as declared by `(payday.entity).domain`.
@@ -175,6 +178,184 @@ func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	}
 
 	return tenant.IDIn(vs...), nil
+}
+
+// Sink is the server the stack is built on: the generated CRUD servers,
+// with a List on every entity that declared one.
+//
+// A list belongs here and not in a layer in front for the reason the wall
+// does: it is the read the generated servers do not make, so nothing else
+// narrows it -- and a list cut short at a limit and filtered afterwards is
+// one that any tenant can push another's rows out of by making enough of
+// its own.
+//
+//	sink, err := pd.NewSink(db, bare.WithMinter(pd.Minter()), bare.WithScope(pd.Wall()))
+type Sink struct {
+	bare.Server
+}
+
+func NewSink(db *ent.Client, opts ...bare.Option) (Sink, error) {
+	v, err := bare.NewServer(db, opts...)
+	if err != nil {
+		return Sink{}, err
+	}
+
+	return Sink{v}, nil
+}
+
+var _ apptest.Server = Sink{}
+var _ enttx.Binder[apptest.Server] = Sink{}
+
+// WithDriver answers with this server running on `drv`; see [Gate.WithDriver].
+func (s Sink) WithDriver(drv dialect.Driver) (apptest.Server, error) {
+	v, err := s.Server.WithDriver(drv)
+	if err != nil {
+		return nil, err
+	}
+
+	return Sink{v.(bare.Server)}, nil
+}
+
+type sinkRobot struct {
+	apptest.RobotServiceServer
+	store bare.Store
+}
+
+func (s Sink) Robot() apptest.RobotServiceServer {
+	return sinkRobot{s.Server.Robot(), s.Server.Store}
+}
+
+// orderRobot is how Robots come back.
+//
+// The last column is the key, and it is not decoration: a cursor cannot
+// tell apart two rows equal in every column of the order, so the page after
+// the first of them either repeats the second or skips it. Rows written by
+// one request are stamped a moment apart at best.
+var orderRobot = []entpage.Order{
+	{Column: robot.FieldDateCreated, Desc: false},
+	{Column: robot.FieldID, Desc: false},
+}
+
+const (
+	// RobotPageSize is what a request that did not say gets, and
+	// RobotPageLimit is the most it gets however loudly it asks.
+	RobotPageSize  = 50
+	RobotPageLimit = 100
+
+	// RobotFilterLimit is how many filters one request may carry. Each is a
+	// predicate in the same query, so it is what says how much of the
+	// database a request may ask to read -- and it is refused rather than
+	// clamped, because dropping half the filters would answer a question
+	// nobody asked.
+	RobotFilterLimit = 32
+)
+
+// List answers with the Robots that match any of the given filters, or with
+// every one there is if the request named none, a page at a time.
+func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*apptest.RobotListResponse, error) {
+	q := s.store.Db.Robot.Query()
+
+	// Through the same narrowing every generated read goes through, and not
+	// by asking the scope alone: what narrows a read is the wall today and
+	// the wall and something else tomorrow, and a list that reached past it
+	// would be the one read that missed the something else.
+	if p, err := bare.RobotNarrow(ctx, s.store.Scope, nil); err != nil {
+		return nil, err
+	} else if p != nil {
+		q.Where(p)
+	}
+
+	if fs := req.GetFilters(); len(fs) > 0 {
+		if len(fs) > RobotFilterLimit {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"filters: %d of them, and %d is the most one list carries", len(fs), RobotFilterLimit)
+		}
+
+		ps := make([]predicate.Robot, 0, len(fs))
+		for i, f := range fs {
+			p, err := filterRobot(f)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "filters[%d]: %s", i, err)
+			}
+
+			ps = append(ps, p)
+		}
+
+		q.Where(robot.Or(ps...))
+	}
+
+	if v := req.GetAfter(); v != "" {
+		var (
+			at0 time.Time
+			at1 uuid.UUID
+		)
+		if err := entpage.Decode(v, &at0, &at1); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
+		}
+
+		p, err := entpage.After(orderRobot, []any{at0, at1})
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
+		}
+
+		q.Where(p)
+	}
+
+	q.WithTenant()
+
+	// One row more than the page, which is how "is there another" is answered
+	// without a second query and without a count. The extra is dropped before
+	// the answer is built; it was only ever asked for to see whether it was
+	// there -- so a full last page answers with no cursor rather than sending
+	// the caller back for an empty one.
+	size := entpage.Size(int(req.GetSize()), RobotPageSize, RobotPageLimit)
+	us, err := q.Order(robot.ByDateCreated(), robot.ByID()).Limit(size + 1).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	more := len(us) > size
+	if more {
+		us = us[:size]
+	}
+
+	items := make([]*apptest.Robot, len(us))
+	for i, u := range us {
+		items[i] = u.Proto()
+	}
+
+	res := apptest.RobotListResponse_builder{Items: items}.Build()
+	if more {
+		last := us[len(us)-1]
+		next, err := entpage.Encode(last.DateCreated, last.ID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "next: %s", err)
+		}
+
+		res.SetNext(next)
+	}
+
+	return res, nil
+}
+
+// filterRobot turns one filter into the predicate that selects what it
+// names. Naming nothing is refused, since the request asked for "these" and
+// did not say which.
+func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
+	ps := make([]predicate.Robot, 0, 1)
+	if f.HasRef() {
+		p, err := bare.RobotPick(f.GetRef())
+		if err != nil {
+			return nil, err
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
+	}
+
+	return robot.And(ps...), nil
 }
 
 // Gate is the layer that says what a caller may do with a request.

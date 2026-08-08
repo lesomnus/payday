@@ -58,7 +58,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// the servers that do the writing, since every RPC that changes anything
 	// has to report itself from inside the transaction that changes it. The
 	// wall is a predicate and a predicate belongs in the WHERE.
-	sink, err := bare.NewServer(client,
+	sink, err := pd.NewSink(client,
 		bare.WithMinter(pd.Minter()),
 		bare.WithRecorder(pd.Recorder()),
 	)
@@ -67,7 +67,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		return nil, err
 	}
 
-	walled, err := bare.NewServer(client,
+	walled, err := pd.NewSink(client,
 		bare.WithMinter(pd.Minter()),
 		bare.WithRecorder(pd.Recorder()),
 		bare.WithScope(pd.Wall()),

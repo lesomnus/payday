@@ -29,6 +29,22 @@ message Robot {
   option (orm.message) = {
     rpc: {crud: true}
     indexes: [
+      // The order a List reads in. Without it a page scans the table and sorts
+      // what it finds, which is a cost on the one table that grows -- and it is
+      // here because the generator asked for it by name.
+      {
+        name: "page"
+        refs: [
+          {
+            name: "date_created"
+            number: 15
+          },
+          {
+            name: "id"
+            number: 1
+          }
+        ]
+      },
       {
         name: "slug"
         refs: [
@@ -48,6 +64,16 @@ message Robot {
   option (payday.entity) = {
     domain: 7
     tenanted: {via: "tenant"}
+    list: {
+      order: [
+        {field: "date_created"},
+        {field: "id"}
+      ]
+      with: ["tenant"]
+      by: ["ref"]
+      size: 50
+      max: 100
+    }
   };
 }
 

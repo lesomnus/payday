@@ -62,6 +62,10 @@ message Entity {
     Global global = 5;
   }
 
+  // List says this entity answers a List, and how. Nothing said is no List
+  // RPC at all.
+  List list = 6;
+
   // The three are nested because they are what a tenancy is written as and
   // nothing else -- and because `payday.Tenant` is the entity, which is a
   // different thing entirely.
@@ -104,4 +108,67 @@ message Entity {
   // made, and so that a reader of the schema can tell "this is shared" from
   // "somebody forgot".
   message Global {}
+
+  // List is how this entity is read a page at a time.
+  //
+  // The half of a List that is the same for every entity is the half people get
+  // wrong -- a cursor rather than an offset, an order that ends in the key, a
+  // size that is capped, one row more read than the page so that "is there
+  // another" costs no second query. So it is generated.
+  //
+  // The half that is the domain is the filter, and only what can be *declared*
+  // is generated: equality on a field or a reference. Anything else is an RPC
+  // somebody writes, which is where a rule with a reason belongs anyway.
+  message List {
+    // Order is the columns rows come back in, outermost first.
+    //
+    // **The last one must be the key.** A cursor cannot tell apart two rows
+    // that are equal in every column of the order, so the page after the first
+    // of them either repeats the second or skips it -- and rows written by one
+    // request are stamped a moment apart at best. Generation refuses an order
+    // that does not end in the key.
+    //
+    // Nothing said is the key alone, which is always correct and is rarely
+    // what somebody wants to read.
+    repeated Order order = 1;
+
+    // With names edges to read along with each row, since almost everything
+    // that reads a list wants to know whose the rows are.
+    repeated string with = 2;
+
+    // By names what a filter may be about: a field, compared for equality, or
+    // "ref" for the reference that names a row.
+    //
+    // A filter that cannot be written this way is an RPC somebody writes. That
+    // is not a limitation being apologised for: a rule about what a caller may
+    // ask has a reason, and a reason belongs beside the code that acts on it
+    // rather than in a declaration that can only carry the number.
+    repeated string by = 3;
+
+    // Size is how many rows a request that did not say gets, and Max is the
+    // most it gets however loudly it asks.
+    //
+    // Max is required. A page with no cap is an answer with no cap, and the
+    // request that finds that out is the one that reads the whole table.
+    uint32 size = 4;
+    uint32 max = 5;
+
+    // Filters is how many filters one request may carry. Each is a predicate
+    // in the same query, so this is what says how much of the database a
+    // request may ask to read.
+    //
+    // Unlike the size it is **refused** rather than clamped: asking for more
+    // rows than there are is a caller being generous with themselves, and
+    // dropping half the filters would answer a question nobody asked.
+    uint32 filters = 6;
+  }
+
+  // Order is one column of a list's order.
+  message Order {
+    string field = 1;
+
+    // Desc reads the list backwards, which is what a trail wants: what it is
+    // asked is what happened, and the answer starts with what happened last.
+    bool desc = 2;
+  }
 }

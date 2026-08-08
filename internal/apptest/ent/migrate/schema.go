@@ -148,6 +148,11 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
+				Name:    "robot_date_created_id",
+				Unique:  false,
+				Columns: []*schema.Column{RobotColumns[2], RobotColumns[0]},
+			},
+			{
 				Name:    "robot_alias_robot_tenant",
 				Unique:  true,
 				Columns: []*schema.Column{RobotColumns[1], RobotColumns[3]},

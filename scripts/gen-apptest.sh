@@ -41,16 +41,31 @@ for f in "${PD_SCHEMA}"/{tenant,holder,audit}.proto; do
 	sed -i "s|^option go_package = .*|option go_package = \"${MODULE}\";|" "${out}"
 done
 
-# 1. Service contracts from the entities.
-rm -rf "${APP}/proto.svc" "${APP}"/proto/app/*_svc.proto
+# 1. Service contracts from the entities, and payday's additions to them.
+rm -rf "${APP}/proto.svc" "${APP}/proto.pd" "${APP}"/proto/app/*_svc.proto "${APP}"/proto/payday/*_svc.proto
 buf generate --template buf.gen.apptest.svc.yaml
 
-# 2. Merge each with its overlay, if it has one. Nothing here has one yet, so
-#    this is a copy with the imports pointed at the merged names.
+# 2. Merge each contract with what payday adds and with whatever the app wrote
+#    by hand, in that order: payday's is generated from the declaration, the
+#    app's is the last word.
 for f in $(find "${APP}/proto.svc" -name '*_svc.g.proto'); do
-	out="${APP}/proto/${f#"${APP}"/proto.svc/}"
-	out="${out%.g.proto}.proto"
-	sed -E 's|(import ")([^"]*)_svc\.g\.proto(";)|\1\2_svc.proto\3|' "$f" >"$out"
+	rel="${f#"${APP}"/proto.svc/}"
+	out="${APP}/proto/${rel%.g.proto}.proto"
+	pd="${APP}/proto.pd/${rel%_svc.g.proto}_svc.pd.proto"
+	ext="${APP}/proto.ext/${rel%_svc.g.proto}_svc.ext.proto"
+
+	tmp="$(mktemp)"
+	cp "$f" "$tmp"
+	for overlay in "$pd" "$ext"; do
+		if [ -f "$overlay" ]; then
+			echo "merge : ${rel}  +  $(basename "$overlay")"
+			go tool protobuf-merge "$tmp" "$overlay" >"${tmp}.next"
+			mv "${tmp}.next" "$tmp"
+		fi
+	done
+
+	sed -E 's|(import ")([^"]*)_svc\.g\.proto(";)|\1\2_svc.proto\3|' "$tmp" >"$out"
+	rm -f "$tmp"
 done
 
 # 3. Messages, stubs, query helpers, ent schema, the servers, and what payday

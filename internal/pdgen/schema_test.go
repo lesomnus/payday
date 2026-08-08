@@ -428,3 +428,122 @@ message Tenant {
   option (payday.entity) = {domain: 1, tenant: {}};
 }`
 }
+
+// TestListIsRefusedWhenItWouldBeWrong is the half of a List worth generating:
+// the parts that are the same for every entity and that people get wrong.
+func TestListIsRefusedWhenItWouldBeWrong(t *testing.T) {
+	robot := func(list string) string {
+		return tenant + `
+message Robot {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  string alias = 4;
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}, list: {` + list + `}};
+}`
+	}
+
+	t.Run("a well-formed list reads", func(t *testing.T) {
+		s, err := read(t, robot(`order: [{field: "date_created"}, {field: "id"}], max: 100, by: ["ref"]`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, v := range s.Entities {
+			if v.GoName() != "Robot" {
+				continue
+			}
+			if v.List == nil || len(v.List.Order) != 2 || v.List.Max != 100 {
+				t.Fatalf("list: %+v", v.List)
+			}
+			if v.List.Size != 50 {
+				t.Errorf("size: %d, and nothing said one", v.List.Size)
+			}
+		}
+	})
+
+	for _, tt := range []struct{ what, list, says string }{{
+		what: "an order that does not end in the key",
+		list: `order: [{field: "date_created"}], max: 100`,
+		says: "has to end in the key",
+	}, {
+		what: "no cap on the page",
+		list: `order: [{field: "id"}]`,
+		says: "`max` is required",
+	}, {
+		what: "a cap below what nothing-said gets",
+		list: `order: [{field: "id"}], size: 100, max: 10`,
+		says: "more than it may have",
+	}, {
+		what: "an order on a column that is not there",
+		list: `order: [{field: "nope"}, {field: "id"}], max: 100`,
+		says: `no field "nope"`,
+	}, {
+		what: "a filter on a column that is not there",
+		list: `order: [{field: "id"}], max: 100, by: ["nope"]`,
+		says: `no field "nope"`,
+	}, {
+		what: "an edge to read along that is not there",
+		list: `order: [{field: "id"}], max: 100, with: ["nope"]`,
+		says: `no edge "nope"`,
+	}} {
+		t.Run(tt.what+" is refused", func(t *testing.T) {
+			_, err := read(t, robot(tt.list))
+			if err == nil {
+				t.Fatal("generated anyway")
+			}
+			if !strings.Contains(err.Error(), tt.says) {
+				t.Fatalf("the refusal does not say %q:\n%s", tt.says, err)
+			}
+			t.Log(err)
+		})
+	}
+
+	t.Run("an order no index covers is a warning and not a refusal", func(t *testing.T) {
+		// A warning because a small table is a real thing: a hundred rows of
+		// configuration do not need an index, and refusing to generate for
+		// them would be insisting on a cost nobody is paying.
+		s, err := read(t, robot(`order: [{field: "date_created"}, {field: "id"}], max: 100`))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		ws := pdgen.Warnings(s)
+		if len(ws) != 1 {
+			t.Fatalf("warnings: %v", ws)
+		}
+		if !strings.Contains(ws[0], "no index begins with (date_created, id)") {
+			t.Errorf("the warning does not say what is missing:\n%s", ws[0])
+		}
+		// And it says what to write, since a warning somebody has to go and
+		// research is a warning somebody ignores.
+		if !strings.Contains(ws[0], "indexes:") {
+			t.Errorf("the warning does not say what to write:\n%s", ws[0])
+		}
+		t.Log(ws[0])
+	})
+
+	t.Run("and is silent once the index is there", func(t *testing.T) {
+		s, err := read(t, tenant+`
+message Robot {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+  option (orm.message) = {
+    rpc: {crud: true}
+    indexes: [{name: "page", refs: [{name: "date_created", number: 15}, {name: "id", number: 1}]}]
+  };
+  option (payday.entity) = {
+    domain: 7
+    tenanted: {via: "tenant"}
+    list: {order: [{field: "date_created"}, {field: "id"}], max: 100}
+  };
+}`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ws := pdgen.Warnings(s); len(ws) != 0 {
+			t.Fatalf("warnings: %v", ws)
+		}
+	})
+}

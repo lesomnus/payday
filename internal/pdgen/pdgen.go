@@ -62,6 +62,10 @@ type Entity struct {
 	// IsGlobal says rows of this entity are not behind the wall, which is a
 	// thing the schema had to say out loud.
 	IsGlobal bool
+
+	// List is how this entity is read a page at a time, and nil for one that
+	// answers no List.
+	List *List
 }
 
 // Schema is every entity of one generation, in a stable order.
@@ -184,6 +188,10 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 				"    tenanted: {via: \"tenant\"}   rows belong to a tenant, reached by that edge\n" +
 				"    tenant: {}                  this entity is the tenant\n" +
 				"    global: {}                  not behind the wall, and said so on purpose")
+	}
+
+	if err := readList(v, opts.GetList()); err != nil {
+		return nil, err
 	}
 
 	return v, nil
@@ -342,3 +350,213 @@ func (e *Entity) GoName() string { return string(e.FullName().Name()) }
 func (e *Entity) EntPkg() string { return strings.ToLower(e.GoName()) }
 
 var _ protoreflect.FullName = protoreflect.FullName("")
+
+// List is what a schema said about reading this entity a page at a time, and
+// is nil for an entity that answers no List.
+type List struct {
+	Order   []Order
+	With    []string
+	By      []By
+	Size    int
+	Max     int
+	Filters int
+}
+
+// Order is one column of a list's order.
+type Order struct {
+	Field string
+	Desc  bool
+}
+
+// By is one thing a filter may be about.
+type By struct {
+	// Ref says this is the reference that names a row, which is what the
+	// generated servers already know how to turn into a predicate.
+	Ref bool
+
+	// Field is the column compared for equality, empty when Ref.
+	Field string
+
+	// Type is what that column holds, so that the generated code knows how to
+	// read it out of the request.
+	Type ormpb.Type
+}
+
+// readList reads the list declaration and refuses what would be wrong.
+//
+// Two of these are the whole reason a List is worth generating rather than
+// copying. An order that does not end in the key is a cursor that cannot tell
+// two rows apart, and the page after them repeats one or skips one -- which
+// shows up as a row a caller never saw, weeks later, under load. A page with no
+// cap is an answer with no cap.
+func readList(e *Entity, opts *pdpb.Entity_List) error {
+	if opts == nil {
+		return nil
+	}
+
+	v := &List{
+		With:    opts.GetWith(),
+		Size:    int(opts.GetSize()),
+		Max:     int(opts.GetMax()),
+		Filters: int(opts.GetFilters()),
+	}
+	if v.Size == 0 {
+		v.Size = 50
+	}
+	if v.Filters == 0 {
+		v.Filters = 32
+	}
+	if v.Max == 0 {
+		return fmt.Errorf("list: `max` is required; a page with no cap is an answer with no cap, " +
+			"and the request that finds that out is the one that reads the whole table")
+	}
+	if v.Max < v.Size {
+		return fmt.Errorf("list: `max` is %d and `size` is %d, so what a request gets by asking for "+
+			"nothing is more than it may have", v.Max, v.Size)
+	}
+
+	key := e.Key().Name()
+	for _, o := range opts.GetOrder() {
+		if _, ok := field(e.Entity, o.GetField()); !ok {
+			return fmt.Errorf("list: order: %s has no field %q", e.FullName(), o.GetField())
+		}
+		v.Order = append(v.Order, Order{Field: o.GetField(), Desc: o.GetDesc()})
+	}
+	switch {
+	case len(v.Order) == 0:
+		// The key alone, which is always correct and rarely what somebody
+		// wanted to read.
+		v.Order = []Order{{Field: key}}
+	case v.Order[len(v.Order)-1].Field != key:
+		return fmt.Errorf(
+			"list: order ends in %q and has to end in the key, %q.\n"+
+				"a cursor cannot tell apart two rows equal in every column of the order, so the page "+
+				"after the first of them repeats the second or skips it -- and rows written by one "+
+				"request are stamped a moment apart at best",
+			v.Order[len(v.Order)-1].Field, key)
+	}
+
+	for _, name := range opts.GetBy() {
+		if name == "ref" {
+			v.By = append(v.By, By{Ref: true})
+			continue
+		}
+
+		f, ok := field(e.Entity, name)
+		if !ok {
+			return fmt.Errorf("list: by: %s has no field %q", e.FullName(), name)
+		}
+		if protoTypeOf(f.Type()) == "" {
+			return fmt.Errorf(
+				"list: by: %q is %s, and a filter compares for equality -- which is not "+
+					"something this generator writes for that. An RPC somebody wrote can",
+				name, f.Type())
+		}
+		v.By = append(v.By, By{Field: name, Type: f.Type()})
+	}
+
+	for _, name := range v.With {
+		if _, ok := edge(e.Entity, name); !ok {
+			return fmt.Errorf("list: with: %s has no edge %q", e.FullName(), name)
+		}
+	}
+
+	e.List = v
+	return nil
+}
+
+func field(e graph.Entity, name string) (graph.Field, bool) {
+	for p := range e.Props() {
+		f, ok := p.(graph.Field)
+		if ok && f.Name() == name {
+			return f, true
+		}
+	}
+
+	return nil, false
+}
+
+// checkListIndex warns about an order no index covers.
+//
+// It is the most valuable check here and the only one that is a warning rather
+// than a refusal. An order the database cannot walk is a full scan and a sort,
+// on the table a List is pointed at -- which is the one that grows. go-app
+// declared the index its trail is read by and wrote the reason in a comment
+// beside it; a comment is not something the next person reads.
+//
+// A warning and not a refusal because a small table is a real thing. A hundred
+// rows of configuration do not need an index and refusing to generate for them
+// would be a framework insisting on a cost nobody is paying.
+//
+// The order is covered when some index begins with it: an index on (a, b, c)
+// serves an order of (a) and (a, b), and not one of (b) or (b, a).
+func checkListIndex(e *Entity) string {
+	if e.List == nil || len(e.List.Order) == 0 {
+		return ""
+	}
+	// The key alone is the primary index, which every table has.
+	if len(e.List.Order) == 1 && e.List.Order[0].Field == e.Key().Name() {
+		return ""
+	}
+
+	want := make([]string, len(e.List.Order))
+	for i, o := range e.List.Order {
+		want[i] = o.Field
+	}
+
+	for idx := range e.Indexes() {
+		var has []string
+		for p := range idx.Props() {
+			has = append(has, p.Name())
+		}
+		if len(has) < len(want) {
+			continue
+		}
+
+		covers := true
+		for i := range want {
+			if has[i] != want[i] {
+				covers = false
+				break
+			}
+		}
+		if covers {
+			return ""
+		}
+	}
+
+	return fmt.Sprintf(
+		"%s: list: no index begins with (%s), so reading a page scans the table and sorts what it finds.\n"+
+			"  that cost is on the table a List is pointed at, which is the one that grows.\n"+
+			"  declare it beside the entity, or say out loud that this table stays small:\n\n"+
+			"    indexes: [{name: %q, refs: [%s]}]",
+		e.FullName(), strings.Join(want, ", "), strings.Join(want, "_"), refsOf(e, want))
+}
+
+// refsOf writes the index the check is asking for, so that the answer to it is
+// something to paste rather than something to look up.
+func refsOf(e *Entity, names []string) string {
+	vs := make([]string, 0, len(names))
+	for _, name := range names {
+		for p := range e.Props() {
+			if p.Name() == name {
+				vs = append(vs, fmt.Sprintf("{name: %q, number: %d}", name, p.Number()))
+				break
+			}
+		}
+	}
+
+	return strings.Join(vs, ", ")
+}
+
+// Warnings is what a schema does not fail for and should still hear about.
+func Warnings(s *Schema) []string {
+	vs := []string{}
+	for _, v := range s.Sorted() {
+		if w := checkListIndex(v); w != "" {
+			vs = append(vs, w)
+		}
+	}
+
+	return vs
+}
