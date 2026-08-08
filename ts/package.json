@@ -26,7 +26,11 @@
 			"types": "./dist/gen/payday/batch_pb.d.ts",
 			"import": "./dist/gen/payday/batch_pb.js"
 		},
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./store": {
+			"types": "./dist/src/store/index.d.ts",
+			"import": "./dist/src/store/index.js"
+		}
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
@@ -40,13 +44,19 @@
 		"@bufbuild/protoc-gen-es": "^2.13.0",
 		"typescript": "~5.9.3",
 		"vitest": "^4.1.10",
-		"@bufbuild/protobuf": "^2.12.1"
+		"@bufbuild/protobuf": "^2.12.1",
+		"dexie": "^4.2.0",
+		"fake-indexeddb": "^6.2.2"
 	},
 	"peerDependencies": {
-		"@bufbuild/protobuf": "^2"
+		"@bufbuild/protobuf": "^2",
+		"dexie": "^4"
 	},
 	"peerDependenciesMeta": {
 		"@bufbuild/protobuf": {
+			"optional": true
+		},
+		"dexie": {
 			"optional": true
 		}
 	}

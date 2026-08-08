@@ -121,6 +121,24 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 		out := p.NewGeneratedFile("domains.ts", "")
 		out.P(pdgen.Ts(s))
 
+		// Where each entity's messages landed, which only the plugin knows:
+		// protoc-gen-es keeps the directory a .proto was in and renames the
+		// file, and the store's declarations import from there.
+		at := map[protoreflect.FullName]string{}
+		for _, f := range p.Files {
+			if !f.Generate {
+				continue
+			}
+			for _, m := range f.Messages {
+				at[m.Desc.FullName()] = f.Desc.Path()
+			}
+		}
+
+		ent := p.NewGeneratedFile("entities.ts", "")
+		ent.P(pdgen.TsEntities(s, func(v *pdgen.Entity) string {
+			return pdgen.TsImport(at[v.FullName()])
+		}))
+
 		return nil
 	}
 
