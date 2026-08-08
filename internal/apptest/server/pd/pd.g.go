@@ -222,6 +222,17 @@ type Sink struct {
 	// `slug.Names`: fold what was given, make one up when nothing was.
 	// See [Sink.WithNamer].
 	namer slug.Namer
+
+	// joined says this server was put on somebody else's transaction, and
+	// is set by [Sink.WithDriver] because that is the only way it happens.
+	//
+	// What it is read for is the retry in Add. A constraint violation ends
+	// the transaction it happened in -- PostgreSQL refuses everything after
+	// one until it is rolled back -- so a second attempt inside a
+	// transaction this server did not open would fail for a reason that has
+	// nothing to do with names, and would take the caller's other writes
+	// with it.
+	joined bool
 }
 
 func NewSink(db *ent.Client, opts ...bare.Option) (Sink, error) {
@@ -271,18 +282,19 @@ func (s Sink) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	// Everything this Sink was told, carried across. A field left out here
 	// is a rule the requests inside a transaction go around, and it fails
 	// only there -- which is the hardest place to notice it.
-	return Sink{Server: v.(bare.Server), w: s.w, namer: s.namer}, nil
+	return Sink{Server: v.(bare.Server), w: s.w, namer: s.namer, joined: true}, nil
 }
 
 type sinkCell struct {
 	apptest.CellServiceServer
-	store bare.Store
-	w     *watch.Watch
-	namer slug.Namer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
 }
 
 func (s Sink) Cell() apptest.CellServiceServer {
-	return sinkCell{s.Server.Cell(), s.Server.Store, s.w, s.namer}
+	return sinkCell{s.Server.Cell(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
 // Add decides the name, and refuses one that was given and cannot be one.
@@ -298,15 +310,38 @@ func (s Sink) Cell() apptest.CellServiceServer {
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
-	v, err := slug.NameWith(ctx, s.namer, "app.Cell", req.GetAlias())
-	if err != nil {
-		return nil, pderr.At("alias", err)
+	// How many names to try. More than one only when the caller named
+	// nothing -- then the name is this server's and a collision is this
+	// server's to resolve. A name the caller gave is theirs, and quietly
+	// choosing a different one would write a row they did not ask for.
+	//
+	// And only when this Add opens its own transaction; see [Sink.joined].
+	tries := 1
+	if req.GetAlias() == "" && !s.joined {
+		tries = slug.Tries
 	}
 
-	req = proto.CloneOf(req)
-	req.SetAlias(v)
+	for try := 0; ; try++ {
+		v, err := slug.NameWith(ctx, s.namer, "app.Cell", req.GetAlias())
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
 
-	return s.CellServiceServer.Add(ctx, req)
+		// The request is copied rather than written to, and copied again on
+		// each try: it belongs to whoever called, and for a call made in this
+		// process that is a message they may still be holding.
+		r := proto.CloneOf(req)
+		r.SetAlias(v)
+
+		res, err := s.CellServiceServer.Add(ctx, r)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			// Whatever it was, said in the words it was said in. Rewriting
+			// it into "no free name" would assert the one thing this cannot
+			// know -- a duplicate key is the same code -- and would say it
+			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
 }
 
 // Patch folds a name it was given, and says nothing about one it was not.
@@ -338,13 +373,14 @@ func (s sinkCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*ap
 
 type sinkFleet struct {
 	apptest.FleetServiceServer
-	store bare.Store
-	w     *watch.Watch
-	namer slug.Namer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
 }
 
 func (s Sink) Fleet() apptest.FleetServiceServer {
-	return sinkFleet{s.Server.Fleet(), s.Server.Store, s.w, s.namer}
+	return sinkFleet{s.Server.Fleet(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
 // Add decides the name, and refuses one that was given and cannot be one.
@@ -360,15 +396,38 @@ func (s Sink) Fleet() apptest.FleetServiceServer {
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
-	v, err := slug.NameWith(ctx, s.namer, "app.Fleet", req.GetAlias())
-	if err != nil {
-		return nil, pderr.At("alias", err)
+	// How many names to try. More than one only when the caller named
+	// nothing -- then the name is this server's and a collision is this
+	// server's to resolve. A name the caller gave is theirs, and quietly
+	// choosing a different one would write a row they did not ask for.
+	//
+	// And only when this Add opens its own transaction; see [Sink.joined].
+	tries := 1
+	if req.GetAlias() == "" && !s.joined {
+		tries = slug.Tries
 	}
 
-	req = proto.CloneOf(req)
-	req.SetAlias(v)
+	for try := 0; ; try++ {
+		v, err := slug.NameWith(ctx, s.namer, "app.Fleet", req.GetAlias())
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
 
-	return s.FleetServiceServer.Add(ctx, req)
+		// The request is copied rather than written to, and copied again on
+		// each try: it belongs to whoever called, and for a call made in this
+		// process that is a message they may still be holding.
+		r := proto.CloneOf(req)
+		r.SetAlias(v)
+
+		res, err := s.FleetServiceServer.Add(ctx, r)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			// Whatever it was, said in the words it was said in. Rewriting
+			// it into "no free name" would assert the one thing this cannot
+			// know -- a duplicate key is the same code -- and would say it
+			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
 }
 
 // Patch folds a name it was given, and says nothing about one it was not.
@@ -400,13 +459,14 @@ func (s sinkFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*
 
 type sinkJoint struct {
 	apptest.JointServiceServer
-	store bare.Store
-	w     *watch.Watch
-	namer slug.Namer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
 }
 
 func (s Sink) Joint() apptest.JointServiceServer {
-	return sinkJoint{s.Server.Joint(), s.Server.Store, s.w, s.namer}
+	return sinkJoint{s.Server.Joint(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
 // Add decides the name, and refuses one that was given and cannot be one.
@@ -422,15 +482,38 @@ func (s Sink) Joint() apptest.JointServiceServer {
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
-	v, err := slug.NameWith(ctx, s.namer, "app.Joint", req.GetAlias())
-	if err != nil {
-		return nil, pderr.At("alias", err)
+	// How many names to try. More than one only when the caller named
+	// nothing -- then the name is this server's and a collision is this
+	// server's to resolve. A name the caller gave is theirs, and quietly
+	// choosing a different one would write a row they did not ask for.
+	//
+	// And only when this Add opens its own transaction; see [Sink.joined].
+	tries := 1
+	if req.GetAlias() == "" && !s.joined {
+		tries = slug.Tries
 	}
 
-	req = proto.CloneOf(req)
-	req.SetAlias(v)
+	for try := 0; ; try++ {
+		v, err := slug.NameWith(ctx, s.namer, "app.Joint", req.GetAlias())
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
 
-	return s.JointServiceServer.Add(ctx, req)
+		// The request is copied rather than written to, and copied again on
+		// each try: it belongs to whoever called, and for a call made in this
+		// process that is a message they may still be holding.
+		r := proto.CloneOf(req)
+		r.SetAlias(v)
+
+		res, err := s.JointServiceServer.Add(ctx, r)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			// Whatever it was, said in the words it was said in. Rewriting
+			// it into "no free name" would assert the one thing this cannot
+			// know -- a duplicate key is the same code -- and would say it
+			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
 }
 
 // Patch folds a name it was given, and says nothing about one it was not.
@@ -462,13 +545,14 @@ func (s sinkJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*
 
 type sinkRobot struct {
 	apptest.RobotServiceServer
-	store bare.Store
-	w     *watch.Watch
-	namer slug.Namer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
 }
 
 func (s Sink) Robot() apptest.RobotServiceServer {
-	return sinkRobot{s.Server.Robot(), s.Server.Store, s.w, s.namer}
+	return sinkRobot{s.Server.Robot(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
 // Add decides the name, and refuses one that was given and cannot be one.
@@ -484,15 +568,38 @@ func (s Sink) Robot() apptest.RobotServiceServer {
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
-	v, err := slug.NameWith(ctx, s.namer, "app.Robot", req.GetAlias())
-	if err != nil {
-		return nil, pderr.At("alias", err)
+	// How many names to try. More than one only when the caller named
+	// nothing -- then the name is this server's and a collision is this
+	// server's to resolve. A name the caller gave is theirs, and quietly
+	// choosing a different one would write a row they did not ask for.
+	//
+	// And only when this Add opens its own transaction; see [Sink.joined].
+	tries := 1
+	if req.GetAlias() == "" && !s.joined {
+		tries = slug.Tries
 	}
 
-	req = proto.CloneOf(req)
-	req.SetAlias(v)
+	for try := 0; ; try++ {
+		v, err := slug.NameWith(ctx, s.namer, "app.Robot", req.GetAlias())
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
 
-	return s.RobotServiceServer.Add(ctx, req)
+		// The request is copied rather than written to, and copied again on
+		// each try: it belongs to whoever called, and for a call made in this
+		// process that is a message they may still be holding.
+		r := proto.CloneOf(req)
+		r.SetAlias(v)
+
+		res, err := s.RobotServiceServer.Add(ctx, r)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			// Whatever it was, said in the words it was said in. Rewriting
+			// it into "no free name" would assert the one thing this cannot
+			// know -- a duplicate key is the same code -- and would say it
+			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
 }
 
 // Patch folds a name it was given, and says nothing about one it was not.
@@ -839,13 +946,14 @@ func (s sinkRobot) watchRobotKeys(
 
 type sinkHolder struct {
 	apptest.HolderServiceServer
-	store bare.Store
-	w     *watch.Watch
-	namer slug.Namer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
 }
 
 func (s Sink) Holder() apptest.HolderServiceServer {
-	return sinkHolder{s.Server.Holder(), s.Server.Store, s.w, s.namer}
+	return sinkHolder{s.Server.Holder(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
 // Add decides the name, and refuses one that was given and cannot be one.
@@ -861,15 +969,38 @@ func (s Sink) Holder() apptest.HolderServiceServer {
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
-	v, err := slug.NameWith(ctx, s.namer, "payday.Holder", req.GetAlias())
-	if err != nil {
-		return nil, pderr.At("alias", err)
+	// How many names to try. More than one only when the caller named
+	// nothing -- then the name is this server's and a collision is this
+	// server's to resolve. A name the caller gave is theirs, and quietly
+	// choosing a different one would write a row they did not ask for.
+	//
+	// And only when this Add opens its own transaction; see [Sink.joined].
+	tries := 1
+	if req.GetAlias() == "" && !s.joined {
+		tries = slug.Tries
 	}
 
-	req = proto.CloneOf(req)
-	req.SetAlias(v)
+	for try := 0; ; try++ {
+		v, err := slug.NameWith(ctx, s.namer, "payday.Holder", req.GetAlias())
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
 
-	return s.HolderServiceServer.Add(ctx, req)
+		// The request is copied rather than written to, and copied again on
+		// each try: it belongs to whoever called, and for a call made in this
+		// process that is a message they may still be holding.
+		r := proto.CloneOf(req)
+		r.SetAlias(v)
+
+		res, err := s.HolderServiceServer.Add(ctx, r)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			// Whatever it was, said in the words it was said in. Rewriting
+			// it into "no free name" would assert the one thing this cannot
+			// know -- a duplicate key is the same code -- and would say it
+			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
 }
 
 // Patch folds a name it was given, and says nothing about one it was not.
@@ -901,13 +1032,14 @@ func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) 
 
 type sinkTenant struct {
 	apptest.TenantServiceServer
-	store bare.Store
-	w     *watch.Watch
-	namer slug.Namer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
 }
 
 func (s Sink) Tenant() apptest.TenantServiceServer {
-	return sinkTenant{s.Server.Tenant(), s.Server.Store, s.w, s.namer}
+	return sinkTenant{s.Server.Tenant(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
 // Add decides the name, and refuses one that was given and cannot be one.
@@ -923,15 +1055,38 @@ func (s Sink) Tenant() apptest.TenantServiceServer {
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
-	v, err := slug.NameWith(ctx, s.namer, "payday.Tenant", req.GetAlias())
-	if err != nil {
-		return nil, pderr.At("alias", err)
+	// How many names to try. More than one only when the caller named
+	// nothing -- then the name is this server's and a collision is this
+	// server's to resolve. A name the caller gave is theirs, and quietly
+	// choosing a different one would write a row they did not ask for.
+	//
+	// And only when this Add opens its own transaction; see [Sink.joined].
+	tries := 1
+	if req.GetAlias() == "" && !s.joined {
+		tries = slug.Tries
 	}
 
-	req = proto.CloneOf(req)
-	req.SetAlias(v)
+	for try := 0; ; try++ {
+		v, err := slug.NameWith(ctx, s.namer, "payday.Tenant", req.GetAlias())
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
 
-	return s.TenantServiceServer.Add(ctx, req)
+		// The request is copied rather than written to, and copied again on
+		// each try: it belongs to whoever called, and for a call made in this
+		// process that is a message they may still be holding.
+		r := proto.CloneOf(req)
+		r.SetAlias(v)
+
+		res, err := s.TenantServiceServer.Add(ctx, r)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			// Whatever it was, said in the words it was said in. Rewriting
+			// it into "no free name" would assert the one thing this cannot
+			// know -- a duplicate key is the same code -- and would say it
+			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
 }
 
 // Patch folds a name it was given, and says nothing about one it was not.

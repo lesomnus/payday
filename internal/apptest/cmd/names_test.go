@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/lesomnus/z"
@@ -305,4 +306,130 @@ func TestANamerIsNotAskedToRenameSomethingThatExists(t *testing.T) {
 		DateUpdated: v.GetDateUpdated(),
 	}.Build())
 	x.Equal(codes.InvalidArgument, status.Code(err), "the row was renamed to something nobody asked for")
+}
+
+// fixed is a namer that answers with the same name every time, which is how a
+// collision is arranged without waiting for one in 3.4 billion.
+func fixed(v string) slug.Namer {
+	return slug.NamerFunc(func(_ context.Context, _ string, given string) (string, error) {
+		if given == "" {
+			return v, nil
+		}
+
+		return slug.ParseAlias(given)
+	})
+}
+
+// TestANameThisServerChoseIsChosenAgainWhenItIsTaken.
+//
+// 23^7 is about 3.4e9 and the index is one tenant's rows of one entity, so a
+// tenant holding a million auto-named rows collides on about one insert in
+// 3,400 -- which arrives as AlreadyExists on a call where the caller never
+// mentioned a name.
+func TestANameThisServerChoseIsChosenAgainWhenItIsTaken(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	// Two names, in order: the first is already taken and the second is not.
+	var n int
+	s := b.sink(t, slug.NamerFunc(func(_ context.Context, _ string, given string) (string, error) {
+		if given != "" {
+			return slug.ParseAlias(given)
+		}
+
+		n++
+		if n == 1 {
+			return "taken", nil
+		}
+
+		return "free", nil
+	}))
+
+	_, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "taken",
+	}.Build())
+	x.NoError(err)
+
+	v, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+	}.Build())
+	x.NoError(err)
+	x.Equal("free", v.GetAlias())
+	x.Equal(2, n, "the second attempt was not made from a fresh name")
+}
+
+// TestItGivesUpAndSaysWhatTheDatabaseSaid.
+//
+// The refusal is passed through rather than rewritten. Saying "no free name
+// after 3 tries" would assert the one thing this cannot know -- a duplicate key
+// is the same gRPC code -- and it would say it loudest exactly when it is
+// wrong.
+func TestItGivesUpAndSaysWhatTheDatabaseSaid(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	s := b.sink(t, fixed("only-one"))
+
+	_, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+	}.Build())
+	x.NoError(err)
+
+	_, err = s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+	}.Build())
+	x.Equal(codes.AlreadyExists, status.Code(err))
+	x.Contains(err.Error(), "alias", "the caller is not told which constraint by this server, only by the one that refused")
+}
+
+// TestARetryCannotLaunderARealConflict is why this does not have to know what
+// collided.
+//
+// A retry changes **only the name**, so it can only ever succeed if the name
+// was what collided. A duplicate key fails all three times and the last refusal
+// is what the caller gets -- which is what makes it safe to retry without
+// reading the driver's own words, and those are the only place the difference
+// is written.
+func TestARetryCannotLaunderARealConflict(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	s := b.sink(t, nil)
+
+	// A key the caller minted, used twice, with no name either time.
+	k := pdid.New(pd.RobotDomain)
+	_, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Id:     k.Bytes(),
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+	}.Build())
+	x.NoError(err)
+
+	_, err = s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Id:     k.Bytes(),
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+	}.Build())
+	x.Equal(codes.AlreadyExists, status.Code(err))
+	x.Contains(err.Error(), "robot.id", "three fresh names turned a duplicate key into something else")
+}
+
+// TestANameTheCallerGaveIsNotSwappedForAnother, which is the whole of why the
+// retry is conditional.
+func TestANameTheCallerGaveIsNotSwappedForAnother(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	s := b.sink(t, nil)
+
+	_, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	_, err = s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.Equal(codes.AlreadyExists, status.Code(err), "the caller asked for a name and got a row under a different one")
 }

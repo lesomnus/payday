@@ -170,3 +170,35 @@ func NameWith(ctx context.Context, n Namer, entity string, given string) (string
 
 	return n.Name(ctx, entity, given)
 }
+
+// Tries is how many names a server makes up before it gives up.
+//
+// # Why there is a retry at all
+//
+// [Alphabet] to the seventh is about 3.4e9, and the index a name is unique in
+// is one tenant's rows of one entity. A tenant holding a million auto-named
+// rows collides on about one insert in 3,400 -- which arrives as
+// `AlreadyExists` on a call where the caller never mentioned a name, and is
+// exactly as confusing as that sounds.
+//
+// Three, because each try is independent: at one in 3,400 the second leaves one
+// in 1e7 and the third one in 4e10. What it does **not** fix is a name space
+// that is actually full -- that is not chance, it is exhaustion, and the answer
+// to it is a longer name rather than more tries.
+//
+// # Why it does not need to know what collided
+//
+// It cannot: a collision on the name and a collision on the key are the same
+// gRPC code, and telling them apart means reading the driver's own words --
+// text on SQLite, a struct field on PostgreSQL. A table of those is a table
+// that is wrong on the next driver.
+//
+// It does not have to. **A retry changes only the name**, so it can only ever
+// succeed if the name was what collided; a duplicate key fails all three times
+// and the last refusal is what the caller gets, unaltered. Nothing real is
+// masked, and the cost of guessing wrong is two wasted attempts.
+//
+// That is also why the refusal is passed through rather than rewritten. Saying
+// "no free name after 3 tries" would be asserting the one thing this cannot
+// know, and it would say it loudest exactly when it is wrong.
+const Tries = 3
