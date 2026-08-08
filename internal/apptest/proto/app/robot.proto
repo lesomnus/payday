@@ -21,6 +21,13 @@ message Robot {
   payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
   string alias = 4;
 
+  // Stamped on every write and refused to a patch document, so it is a version
+  // and not a field. It is here because this entity declares a `watch:`, and
+  // the generator refuses one without it: a watch sends state, so a client
+  // replaces what it holds, and two answers about one row can arrive out of
+  // order.
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {
     immutable: true
     default: ""

@@ -15,6 +15,7 @@ func (e *Robot) Proto() *apptest.Robot {
 		x.SetTenant(v.Proto())
 	}
 	x.SetAlias(e.Alias)
+	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	return x
 }

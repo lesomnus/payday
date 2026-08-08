@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -38,6 +39,20 @@ func (_u *RobotUpdate) SetAlias(v string) *RobotUpdate {
 func (_u *RobotUpdate) SetNillableAlias(v *string) *RobotUpdate {
 	if v != nil {
 		_u.SetAlias(*v)
+	}
+	return _u
+}
+
+// SetDateUpdated sets the "date_updated" field.
+func (_u *RobotUpdate) SetDateUpdated(v time.Time) *RobotUpdate {
+	_u.mutation.SetDateUpdated(v)
+	return _u
+}
+
+// SetNillableDateUpdated sets the "date_updated" field if the given value is not nil.
+func (_u *RobotUpdate) SetNillableDateUpdated(v *time.Time) *RobotUpdate {
+	if v != nil {
+		_u.SetDateUpdated(*v)
 	}
 	return _u
 }
@@ -103,6 +118,9 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(robot.FieldAlias, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.DateUpdated(); ok {
+		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
+	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(robot.FieldDateCreated, field.TypeTime)
 	}
@@ -138,6 +156,20 @@ func (_u *RobotUpdateOne) SetAlias(v string) *RobotUpdateOne {
 func (_u *RobotUpdateOne) SetNillableAlias(v *string) *RobotUpdateOne {
 	if v != nil {
 		_u.SetAlias(*v)
+	}
+	return _u
+}
+
+// SetDateUpdated sets the "date_updated" field.
+func (_u *RobotUpdateOne) SetDateUpdated(v time.Time) *RobotUpdateOne {
+	_u.mutation.SetDateUpdated(v)
+	return _u
+}
+
+// SetNillableDateUpdated sets the "date_updated" field if the given value is not nil.
+func (_u *RobotUpdateOne) SetNillableDateUpdated(v *time.Time) *RobotUpdateOne {
+	if v != nil {
+		_u.SetDateUpdated(*v)
 	}
 	return _u
 }
@@ -232,6 +264,9 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	}
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(robot.FieldAlias, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.DateUpdated(); ok {
+		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(robot.FieldDateCreated, field.TypeTime)

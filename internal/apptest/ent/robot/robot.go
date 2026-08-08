@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
+	// FieldDateUpdated holds the string denoting the date_updated field in the database.
+	FieldDateUpdated = "date_updated"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
 	FieldDateCreated = "date_created"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
@@ -33,6 +35,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldAlias,
+	FieldDateUpdated,
 	FieldDateCreated,
 }
 
@@ -68,6 +71,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByAlias orders the results by the alias field.
 func ByAlias(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAlias, opts...).ToFunc()
+}
+
+// ByDateUpdated orders the results by the date_updated field.
+func ByDateUpdated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateUpdated, opts...).ToFunc()
 }
 
 // ByDateCreated orders the results by the date_created field.

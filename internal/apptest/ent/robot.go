@@ -21,6 +21,8 @@ type Robot struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// Alias holds the value of the "alias" field.
 	Alias string `json:"alias,omitempty"`
+	// DateUpdated holds the value of the "date_updated" field.
+	DateUpdated time.Time `json:"date_updated,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -57,7 +59,7 @@ func (*Robot) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case robot.FieldAlias:
 			values[i] = new(sql.NullString)
-		case robot.FieldDateCreated:
+		case robot.FieldDateUpdated, robot.FieldDateCreated:
 			values[i] = new(sql.NullTime)
 		case robot.FieldID:
 			values[i] = new(uuid.UUID)
@@ -89,6 +91,12 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field alias", values[i])
 			} else if value.Valid {
 				_m.Alias = value.String
+			}
+		case robot.FieldDateUpdated:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field date_updated", values[i])
+			} else if value.Valid {
+				_m.DateUpdated = value.Time
 			}
 		case robot.FieldDateCreated:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -146,6 +154,9 @@ func (_m *Robot) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("alias=")
 	builder.WriteString(_m.Alias)
+	builder.WriteString(", ")
+	builder.WriteString("date_updated=")
+	builder.WriteString(_m.DateUpdated.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("date_created=")
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))

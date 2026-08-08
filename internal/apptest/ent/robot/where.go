@@ -61,6 +61,11 @@ func Alias(v string) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldAlias, v))
 }
 
+// DateUpdated applies equality check predicate on the "date_updated" field. It's identical to DateUpdatedEQ.
+func DateUpdated(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldDateUpdated, v))
+}
+
 // DateCreated applies equality check predicate on the "date_created" field. It's identical to DateCreatedEQ.
 func DateCreated(v time.Time) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldDateCreated, v))
@@ -129,6 +134,46 @@ func AliasEqualFold(v string) predicate.Robot {
 // AliasContainsFold applies the ContainsFold predicate on the "alias" field.
 func AliasContainsFold(v string) predicate.Robot {
 	return predicate.Robot(sql.FieldContainsFold(FieldAlias, v))
+}
+
+// DateUpdatedEQ applies the EQ predicate on the "date_updated" field.
+func DateUpdatedEQ(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldDateUpdated, v))
+}
+
+// DateUpdatedNEQ applies the NEQ predicate on the "date_updated" field.
+func DateUpdatedNEQ(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldDateUpdated, v))
+}
+
+// DateUpdatedIn applies the In predicate on the "date_updated" field.
+func DateUpdatedIn(vs ...time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldDateUpdated, vs...))
+}
+
+// DateUpdatedNotIn applies the NotIn predicate on the "date_updated" field.
+func DateUpdatedNotIn(vs ...time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldDateUpdated, vs...))
+}
+
+// DateUpdatedGT applies the GT predicate on the "date_updated" field.
+func DateUpdatedGT(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldGT(FieldDateUpdated, v))
+}
+
+// DateUpdatedGTE applies the GTE predicate on the "date_updated" field.
+func DateUpdatedGTE(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldGTE(FieldDateUpdated, v))
+}
+
+// DateUpdatedLT applies the LT predicate on the "date_updated" field.
+func DateUpdatedLT(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldLT(FieldDateUpdated, v))
+}
+
+// DateUpdatedLTE applies the LTE predicate on the "date_updated" field.
+func DateUpdatedLTE(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldLTE(FieldDateUpdated, v))
 }
 
 // DateCreatedEQ applies the EQ predicate on the "date_created" field.

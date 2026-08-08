@@ -222,6 +222,28 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 					"there is no order to read in, nothing for a filter to be about, and no cap " +
 					"on the first message")
 		}
+		if !e.HasVersionField() {
+			// The one refusal that is about what happens on the **client**.
+			//
+			// A watch sends state rather than deltas, so a subscriber keeps
+			// what it was last told about a row and replaces it. Two answers
+			// about one row can arrive out of order -- a snapshot racing an
+			// event, a reconnection replaying, an outbox draining late -- and
+			// without something to compare, the replacement is unconditional:
+			// a stale answer overwrites a fresh one and the screen is wrong
+			// with nothing having failed.
+			//
+			// It cannot be worked around by the client either. Nothing outside
+			// the row says which of two copies of it is newer.
+			return nil, fmt.Errorf(
+				"watch: needs a version field, and this entity has none.\n\n"+
+					"    google.protobuf.Timestamp date_updated = %d [(orm.field) = {version: {}}];\n\n"+
+					"A watch sends state, so a client replaces what it holds -- and two answers "+
+					"about one row can arrive out of order. Without something to compare, a "+
+					"stale one overwrites a fresh one and nothing anywhere fails",
+				suggestVersion(e))
+		}
+
 		v.Watch = true
 	}
 
@@ -278,6 +300,25 @@ func (s *Schema) check() error {
 	}
 
 	return nil
+}
+
+// suggestVersion is a field number that is free, for the message that tells an
+// entity to declare a version.
+//
+// It is a suggestion and not a rule: 13 is where payday's own entities put it,
+// which makes an app's schema read like payday's, and anything free will do.
+func suggestVersion(e graph.Entity) int {
+	taken := map[int]bool{}
+	for f := range e.Fields() {
+		taken[int(f.Number())] = true
+	}
+	for n := 13; n < 536870911; n++ {
+		if !taken[n] {
+			return n
+		}
+	}
+
+	return 13
 }
 
 // checkAlias refuses a field called `alias` that is not text.

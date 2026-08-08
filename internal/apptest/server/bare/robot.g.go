@@ -114,6 +114,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		})
 	}
 	q.SetAlias(req.GetAlias())
+	q.SetDateUpdated(time.Now().UTC())
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
@@ -189,6 +190,9 @@ func RobotSelectedFields(m *apptest.RobotSelect) []string {
 	if m.GetAlias() {
 		vs = append(vs, robot.FieldAlias)
 	}
+	if m.GetDateUpdated() {
+		vs = append(vs, robot.FieldDateUpdated)
+	}
 	if m.GetDateCreated() {
 		vs = append(vs, robot.FieldDateCreated)
 	}
@@ -263,7 +267,7 @@ func RobotGetKey(ctx context.Context, db *ent.Client, ref *apptest.RobotRef) (uu
 var robotOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Robot")
 
 var robotPatchColumns = entpatch.Columns{
-	1: robot.FieldID, 2: robot.TenantColumn, 4: robot.FieldAlias, 15: robot.FieldDateCreated}
+	1: robot.FieldID, 2: robot.TenantColumn, 4: robot.FieldAlias, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated}
 
 func (s RobotServiceServer) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
 	if !req.HasPatch() {
@@ -336,6 +340,9 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 			q.Where(predicate.Robot(pred))
 		}
 		q.Modify(mod)
+		if !plan.WritesTo(13) {
+			q.SetDateUpdated(time.Now().UTC())
+		}
 		if n, err := q.Save(ctx); err != nil {
 			return nil, err
 		} else if n == 0 {

@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot.proto.
  */
 export const file_app_robot: GenFile = /*@__PURE__*/
-  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCKdAgoFUm9ib3QSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6hgHK/BVHEgIQARogEgRwYWdlGhAKDGRhdGVfY3JlYXRlZBAPGgYKAmlkEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAGKuxY3CAcyJwoOCgxkYXRlX2NyZWF0ZWQKBAoCaWQSBnRlbmFudBoDcmVmIDIoZDoAIggKBnRlbmFudCJyCgVKb2ludBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIQoFcm9ib3QYAiABKAsyCi5hcHAuUm9ib3RCBvKCFgJAARINCgVhbGlhcxgEIAEoCToeyvwVBBICEAGKuxYSCAgiDgoMcm9ib3QudGVuYW50IkkKBUZsZWV0EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIVCgVhbGlhcxgEIAEoCUIG6oIWAjABOhDK/BUEEgIQAYq7FgQICSoAInAKBENlbGwSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCToYyvwVBBICEAGKuxYMCAoiCAoGdGVuYW50QjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCLYAgoFUm9ib3QSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBADqGAcr8FUcSAhABGiASBHBhZ2UaEAoMZGF0ZV9jcmVhdGVkEA8aBgoCaWQQARofEgRzbHVnGgkKBWFsaWFzEAQaCgoGdGVuYW50EAIwAYq7FjcIBzInCg4KDGRhdGVfY3JlYXRlZAoECgJpZBIGdGVuYW50GgNyZWYgMihkOgAiCAoGdGVuYW50InIKBUpvaW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIhCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEIG8oIWAkABEg0KBWFsaWFzGAQgASgJOh7K/BUEEgIQAYq7FhIICCIOCgxyb2JvdC50ZW5hbnQiSQoFRmxlZXQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhUKBWFsaWFzGAQgASgJQgbqghYCMAE6EMr8FQQSAhABirsWBAgJKgAicAoEQ2VsbBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASJgoGdGVuYW50GAIgASgLMg4ucGF5ZGF5LlRlbmFudEIG8oIWAkABEg0KBWFsaWFzGAQgASgJOhjK/BUEEgIQAYq7FgwICiIICgZ0ZW5hbnRCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Robot is an ordinary entity: it belongs to a tenant, and is read only by
@@ -40,6 +40,17 @@ export type Robot = Message<"app.Robot"> & {
    * @generated from field: string alias = 4;
    */
   alias: string;
+
+  /**
+   * Stamped on every write and refused to a patch document, so it is a version
+   * and not a field. It is here because this entity declares a `watch:`, and
+   * the generator refuses one without it: a watch sends state, so a client
+   * replaces what it holds, and two answers about one row can arrive out of
+   * order.
+   *
+   * @generated from field: google.protobuf.Timestamp date_updated = 13;
+   */
+  dateUpdated?: Timestamp | undefined;
 
   /**
    * @generated from field: google.protobuf.Timestamp date_created = 15;

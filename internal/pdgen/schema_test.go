@@ -547,3 +547,78 @@ message Robot {
 		}
 	})
 }
+
+// TestAWatchWithoutAVersionIsRefused is the one refusal that is about what
+// happens on the **client**.
+//
+// A watch sends state rather than deltas, so a subscriber keeps what it was
+// last told about a row and replaces it. Two answers about one row arrive out
+// of order often enough to be ordinary -- a snapshot racing an event, a
+// reconnection, an outbox draining late -- and without a version the
+// replacement is unconditional: a stale answer overwrites a fresh one, and
+// nothing anywhere fails.
+//
+// It is refused at generation because it cannot be worked around later. Nothing
+// outside the row says which of two copies of it is newer.
+func TestAWatchWithoutAVersionIsRefused(t *testing.T) {
+	_, err := read(t, `
+		message Tenant {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			string alias = 4 [(orm.field) = {unique: true}];
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {domain: 1, tenant: {}};
+		}
+		message Robot {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+			string alias = 4;
+			google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {
+				domain: 7
+				tenanted: {via: "tenant"}
+				list: {order: [{field: "date_created"}, {field: "id"}], size: 20, max: 100}
+				watch: {}
+			};
+		}
+	`)
+	if err == nil {
+		t.Fatal("a watch with nothing to order two answers by was generated")
+	}
+	if !strings.Contains(err.Error(), "watch: needs a version field") {
+		t.Fatalf("the refusal does not say why: %s", err)
+	}
+
+	// And it says what to write, at a number that is free.
+	if !strings.Contains(err.Error(), "date_updated = 13 [(orm.field) = {version: {}}]") {
+		t.Fatalf("the refusal does not say what to write: %s", err)
+	}
+}
+
+// TestAListWithoutAWatchNeedsNoVersion, because a list is answered once: there
+// are no two answers to put in order.
+func TestAListWithoutAWatchNeedsNoVersion(t *testing.T) {
+	_, err := read(t, `
+		message Tenant {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			string alias = 4 [(orm.field) = {unique: true}];
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {domain: 1, tenant: {}};
+		}
+		message Robot {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+			string alias = 4;
+			google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {
+				domain: 7
+				tenanted: {via: "tenant"}
+				list: {order: [{field: "date_created"}, {field: "id"}], size: 20, max: 100}
+			};
+		}
+	`)
+	if err != nil {
+		t.Fatalf("a list needs no version and was refused: %s", err)
+	}
+}

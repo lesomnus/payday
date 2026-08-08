@@ -154,6 +154,7 @@ var (
 	RobotColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString},
+		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "robot_tenant", Type: field.TypeUUID},
 	}
@@ -165,7 +166,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "robot_tenant_tenant",
-				Columns:    []*schema.Column{RobotColumns[3]},
+				Columns:    []*schema.Column{RobotColumns[4]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -174,12 +175,12 @@ var (
 			{
 				Name:    "robot_date_created_id",
 				Unique:  false,
-				Columns: []*schema.Column{RobotColumns[2], RobotColumns[0]},
+				Columns: []*schema.Column{RobotColumns[3], RobotColumns[0]},
 			},
 			{
 				Name:    "robot_alias_robot_tenant",
 				Unique:  true,
-				Columns: []*schema.Column{RobotColumns[1], RobotColumns[3]},
+				Columns: []*schema.Column{RobotColumns[1], RobotColumns[4]},
 			},
 		},
 	}

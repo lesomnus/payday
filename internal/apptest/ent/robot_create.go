@@ -28,6 +28,12 @@ func (_c *RobotCreate) SetAlias(v string) *RobotCreate {
 	return _c
 }
 
+// SetDateUpdated sets the "date_updated" field.
+func (_c *RobotCreate) SetDateUpdated(v time.Time) *RobotCreate {
+	_c.mutation.SetDateUpdated(v)
+	return _c
+}
+
 // SetDateCreated sets the "date_created" field.
 func (_c *RobotCreate) SetDateCreated(v time.Time) *RobotCreate {
 	_c.mutation.SetDateCreated(v)
@@ -96,6 +102,9 @@ func (_c *RobotCreate) check() error {
 	if _, ok := _c.mutation.Alias(); !ok {
 		return &ValidationError{Name: "alias", err: errors.New(`ent: missing required field "Robot.alias"`)}
 	}
+	if _, ok := _c.mutation.DateUpdated(); !ok {
+		return &ValidationError{Name: "date_updated", err: errors.New(`ent: missing required field "Robot.date_updated"`)}
+	}
 	if len(_c.mutation.TenantIDs()) == 0 {
 		return &ValidationError{Name: "tenant", err: errors.New(`ent: missing required edge "Robot.tenant"`)}
 	}
@@ -137,6 +146,10 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(robot.FieldAlias, field.TypeString, value)
 		_node.Alias = value
+	}
+	if value, ok := _c.mutation.DateUpdated(); ok {
+		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
+		_node.DateUpdated = value
 	}
 	if value, ok := _c.mutation.DateCreated(); ok {
 		_spec.SetField(robot.FieldDateCreated, field.TypeTime, value)

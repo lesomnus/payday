@@ -3372,6 +3372,7 @@ type RobotMutation struct {
 	typ           string
 	id            *uuid.UUID
 	alias         *string
+	date_updated  *time.Time
 	date_created  *time.Time
 	clearedFields map[string]struct{}
 	tenant        *uuid.UUID
@@ -3521,6 +3522,42 @@ func (m *RobotMutation) ResetAlias() {
 	m.alias = nil
 }
 
+// SetDateUpdated sets the "date_updated" field.
+func (m *RobotMutation) SetDateUpdated(t time.Time) {
+	m.date_updated = &t
+}
+
+// DateUpdated returns the value of the "date_updated" field in the mutation.
+func (m *RobotMutation) DateUpdated() (r time.Time, exists bool) {
+	v := m.date_updated
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDateUpdated returns the old "date_updated" field's value of the Robot entity.
+// If the Robot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RobotMutation) OldDateUpdated(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDateUpdated is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDateUpdated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateUpdated: %w", err)
+	}
+	return oldValue.DateUpdated, nil
+}
+
+// ResetDateUpdated resets all changes to the "date_updated" field.
+func (m *RobotMutation) ResetDateUpdated() {
+	m.date_updated = nil
+}
+
 // SetDateCreated sets the "date_created" field.
 func (m *RobotMutation) SetDateCreated(t time.Time) {
 	m.date_created = &t
@@ -3643,9 +3680,12 @@ func (m *RobotMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RobotMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 3)
 	if m.alias != nil {
 		fields = append(fields, robot.FieldAlias)
+	}
+	if m.date_updated != nil {
+		fields = append(fields, robot.FieldDateUpdated)
 	}
 	if m.date_created != nil {
 		fields = append(fields, robot.FieldDateCreated)
@@ -3660,6 +3700,8 @@ func (m *RobotMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case robot.FieldAlias:
 		return m.Alias()
+	case robot.FieldDateUpdated:
+		return m.DateUpdated()
 	case robot.FieldDateCreated:
 		return m.DateCreated()
 	}
@@ -3673,6 +3715,8 @@ func (m *RobotMutation) OldField(ctx context.Context, name string) (ent.Value, e
 	switch name {
 	case robot.FieldAlias:
 		return m.OldAlias(ctx)
+	case robot.FieldDateUpdated:
+		return m.OldDateUpdated(ctx)
 	case robot.FieldDateCreated:
 		return m.OldDateCreated(ctx)
 	}
@@ -3690,6 +3734,13 @@ func (m *RobotMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAlias(v)
+		return nil
+	case robot.FieldDateUpdated:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDateUpdated(v)
 		return nil
 	case robot.FieldDateCreated:
 		v, ok := value.(time.Time)
@@ -3758,6 +3809,9 @@ func (m *RobotMutation) ResetField(name string) error {
 	switch name {
 	case robot.FieldAlias:
 		m.ResetAlias()
+		return nil
+	case robot.FieldDateUpdated:
+		m.ResetDateUpdated()
 		return nil
 	case robot.FieldDateCreated:
 		m.ResetDateCreated()

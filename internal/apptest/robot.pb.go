@@ -30,6 +30,7 @@ type Robot struct {
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Tenant      *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
@@ -81,6 +82,13 @@ func (x *Robot) GetAlias() string {
 	return ""
 }
 
+func (x *Robot) GetDateUpdated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateUpdated
+	}
+	return nil
+}
+
 func (x *Robot) GetDateCreated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateCreated
@@ -103,6 +111,10 @@ func (x *Robot) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
 }
 
+func (x *Robot) SetDateUpdated(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateUpdated = v
+}
+
 func (x *Robot) SetDateCreated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateCreated = v
 }
@@ -112,6 +124,13 @@ func (x *Robot) HasTenant() bool {
 		return false
 	}
 	return x.xxx_hidden_Tenant != nil
+}
+
+func (x *Robot) HasDateUpdated() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateUpdated != nil
 }
 
 func (x *Robot) HasDateCreated() bool {
@@ -125,6 +144,10 @@ func (x *Robot) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
 
+func (x *Robot) ClearDateUpdated() {
+	x.xxx_hidden_DateUpdated = nil
+}
+
 func (x *Robot) ClearDateCreated() {
 	x.xxx_hidden_DateCreated = nil
 }
@@ -132,9 +155,15 @@ func (x *Robot) ClearDateCreated() {
 type Robot_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id          []byte
-	Tenant      *Tenant
-	Alias       string
+	Id     []byte
+	Tenant *Tenant
+	Alias  string
+	// Stamped on every write and refused to a patch document, so it is a version
+	// and not a field. It is here because this entity declares a `watch:`, and
+	// the generator refuses one without it: a watch sends state, so a client
+	// replaces what it holds, and two answers about one row can arrive out of
+	// order.
+	DateUpdated *timestamppb.Timestamp
 	DateCreated *timestamppb.Timestamp
 }
 
@@ -145,6 +174,7 @@ func (b0 Robot_builder) Build() *Robot {
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
 }
@@ -431,11 +461,12 @@ var File_app_robot_proto protoreflect.FileDescriptor
 
 const file_app_robot_proto_rawDesc = "" +
 	"\n" +
-	"\x0fapp/robot.proto\x12\x03app\x1a\x13payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xbd\x02\n" +
+	"\x0fapp/robot.proto\x12\x03app\x1a\x13payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x85\x03\n" +
 	"\x05Robot\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12.\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12H\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12F\n" +
+	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x86\x01\xca\xfc\x15G\x12\x02\x10\x01\x1a \x12\x04page\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a\x06\n" +
 	"\x02id\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
@@ -474,14 +505,15 @@ var file_app_robot_proto_goTypes = []any{
 }
 var file_app_robot_proto_depIdxs = []int32{
 	4, // 0: app.Robot.tenant:type_name -> payday.Tenant
-	5, // 1: app.Robot.date_created:type_name -> google.protobuf.Timestamp
-	0, // 2: app.Joint.robot:type_name -> app.Robot
-	4, // 3: app.Cell.tenant:type_name -> payday.Tenant
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 1: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
+	5, // 2: app.Robot.date_created:type_name -> google.protobuf.Timestamp
+	0, // 3: app.Joint.robot:type_name -> app.Robot
+	4, // 4: app.Cell.tenant:type_name -> payday.Tenant
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_proto_init() }
