@@ -33,6 +33,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"ariga.io/atlas/sql/migrate"
 	atpostgres "ariga.io/atlas/sql/postgres"
@@ -275,4 +276,50 @@ func driver(db *sql.DB, d string) (migrate.Driver, error) {
 	default:
 		return nil, fmt.Errorf("nothing migrates a %q database yet: see payday/migrate", d)
 	}
+}
+
+// ErrBehind is a database that has not run every migration the code ships
+// with.
+var ErrBehind = errors.New("the database is behind the migrations this binary carries")
+
+// Current refuses a database the code has moved on from.
+//
+// It is the one thing an app has to do that a framework cannot do for it, and
+// the one thing it is easiest not to do. payday owns some of an app's schema:
+// a field added to a holder here arrives in that app's ent schema the next time
+// it generates, and **nothing about that is loud**. It compiles, the tests pass
+// against a database the tests just created, and the first sign of trouble is a
+// column that is not there in the one place it matters.
+//
+// So the sequence for an upgrade is two steps and this is what makes the second
+// one impossible to skip:
+//
+//	pd gen                      # the schema moved
+//	<app> migrate plan <name>   # write what that means as SQL, and read it
+//	<app> migrate apply         # run it
+//
+// Called before serving, a deployment that ran the first and forgot the rest
+// does not start. That is worth more than it costs: a server that answers on a
+// database it disagrees with is one that fails per request, unevenly, in
+// whichever handler happens to touch the column that moved.
+//
+// It is not the same question as "does the database match the ent schema".
+// This asks whether every file has run, which is what a deployment controls;
+// the other would need a dev database to diff against and would refuse a
+// database somebody had legitimately hand-patched.
+func (m Migrations) Current(ctx context.Context, db *sql.DB, dialect string) error {
+	fs, err := m.Pending(ctx, db, dialect)
+	if err != nil {
+		return err
+	}
+	if len(fs) == 0 {
+		return nil
+	}
+
+	names := make([]string, len(fs))
+	for i, f := range fs {
+		names[i] = f.Name()
+	}
+
+	return fmt.Errorf("%w: %s", ErrBehind, strings.Join(names, ", "))
 }

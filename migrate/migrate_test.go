@@ -293,3 +293,57 @@ func TestOpenDir(t *testing.T) {
 		x.ErrorContains(err, "atlas.sum")
 	})
 }
+
+// TestCurrent is the guard on the step an upgrade is most likely to skip.
+//
+// payday owns some of an app's schema, so a field added upstream arrives in the
+// app's ent schema the next time it generates -- and nothing about that is
+// loud. It compiles, and the tests pass against a database the tests created a
+// moment ago. The one place it shows is the database somebody already had.
+func TestCurrent(t *testing.T) {
+	ctx := t.Context()
+
+	dir, err := migrate.OpenDir(t.TempDir())
+	require.NoError(t, err)
+
+	m := migrate.Migrations{
+		Dir:     dir,
+		Dialect: dialect.SQLite,
+		Tables:  schema(),
+	}
+
+	db := open(t)
+
+	t.Run("a database that has run nothing is behind", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := m.Plan(ctx, open(t), "init")
+		x.NoError(err)
+
+		err = m.Current(ctx, db, dialect.SQLite)
+		x.ErrorIs(err, migrate.ErrBehind)
+
+		// It says which files, since "behind" without them is a deployment
+		// that has to go and look.
+		x.Contains(err.Error(), "_init.sql")
+	})
+
+	t.Run("and is current once it has run them", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := m.Apply(ctx, db, dialect.SQLite)
+		x.NoError(err)
+
+		x.NoError(m.Current(ctx, db, dialect.SQLite))
+	})
+
+	t.Run("a database that speaks something else is refused before that", func(t *testing.T) {
+		x := require.New(t)
+
+		// Which refusal comes first matters: told "behind" about a database
+		// that could not run the files anyway, a deployment would go and apply
+		// them and find out the hard way.
+		err := m.Current(ctx, db, dialect.Postgres)
+		x.ErrorIs(err, migrate.ErrDialect)
+	})
+}
