@@ -3,6 +3,7 @@ package pdcli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -282,14 +283,14 @@ func (g Gen) entRuntime(ctx context.Context) error {
 // once per directory, and an entity whose tenant is declared in another one is
 // then not a generation target when its own file is read. An app maintaining
 // its own template gets that wrong once and generates a wall with a hole in it.
-func (g Gen) buf(ctx context.Context, template string) error {
+func (g Gen) buf(ctx context.Context, template string, args ...string) error {
 	p, err := writeTemp([]byte(template), "*.yaml")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(p)
 
-	cmd := exec.CommandContext(ctx, "buf", "generate", "--template", p)
+	cmd := exec.CommandContext(ctx, "buf", append([]string{"generate", "--template", p}, args...)...)
 	cmd.Dir = g.Layout.Work
 
 	var stderr bytes.Buffer
@@ -367,4 +368,68 @@ func goList(args ...string) (string, error) {
 	}
 
 	return string(out), nil
+}
+
+// Ts writes the TypeScript half: the messages and the service descriptors, as
+// protobuf-es emits them.
+//
+// It is a step of its own and not part of [Gen.Run], because the two have
+// different audiences. A backend-only app runs `pd gen`, has no node_modules,
+// and must not have its generation fail over a plugin it was never going to
+// use; an app with a page in front of it asks for this as well.
+//
+// What it does **not** generate is a client. protobuf-es v2 emits the service
+// descriptors, and `@connectrpc/connect`'s `createClient` takes those directly
+// -- so the client is a runtime function of a descriptor rather than a file per
+// service, and there is nothing to keep in step. That is the same discipline
+// §10.5 asks of the local store: generate the declaration, implement it once.
+func (g Gen) Ts(ctx context.Context) error {
+	if g.Out == "" {
+		g.Out = g.Layout.Root
+	}
+
+	plugin, err := TsPlugin(g.Layout)
+	if err != nil {
+		return err
+	}
+
+	g.say("pd: typescript, with %s", plugin)
+
+	// Removed rather than written over: a message taken out of the schema
+	// leaves a file behind, and TypeScript that still imports it compiles until
+	// somebody calls it.
+	if err := os.RemoveAll(filepath.Join(g.Out, DirTsGen)); err != nil {
+		return err
+	}
+
+	// `--include-imports`, which the Go passes do not need and this one cannot
+	// do without. A Go plugin resolves `orm.proto` to a package the app already
+	// depends on; TypeScript has no such thing, so a file the schema imports and
+	// this does not generate is an import of a module that is not there. The
+	// well-known types are the exception and protobuf-es skips them itself --
+	// it ships them.
+	return g.buf(ctx, tmplTs(g.Layout, g.Out, plugin), "--include-imports")
+}
+
+// ErrNoTsPlugin is a working copy with no protobuf-es to generate with.
+var ErrNoTsPlugin = errors.New("protoc-gen-es is not installed")
+
+// TsPlugin finds the protobuf-es plugin.
+//
+// It looks in the app's own TypeScript package first and then in the
+// workspace's, which is the order an npm workspace resolves in, and refuses
+// rather than falling back to `npx`: `npx` with nothing installed downloads
+// whatever is newest, so a generation would silently use a different version of
+// the plugin from the one the app's lockfile pins -- and the way that is found
+// out is generated code that changed for no reason in somebody else's checkout.
+func TsPlugin(l Layout) (string, error) {
+	for _, d := range []string{l.Path(DirTs), l.Work, filepath.Join(l.Work, DirTs)} {
+		p := filepath.Join(d, "node_modules", ".bin", "protoc-gen-es")
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
+
+	return "", fmt.Errorf("%w: npm install --save-dev @bufbuild/protoc-gen-es, in %s",
+		ErrNoTsPlugin, l.Rel(DirTs))
 }

@@ -1,0 +1,23 @@
+{
+	"name": "@lesomnus/payday-apptest",
+	"private": true,
+	"version": "0.0.0",
+	"description": "The TypeScript half of the app payday is tried against",
+	"type": "module",
+	"scripts": {
+		"check": "tsc -p tsconfig.json",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@bufbuild/protobuf": "^2.12.1",
+		"@connectrpc/connect": "^2.1.2",
+		"@lesomnus/payday": "file:../../../ts"
+	},
+	"devDependencies": {
+		"@bufbuild/protoc-gen-es": "^2.12.1",
+		"@connectrpc/connect-node": "^2.1.2",
+		"@types/node": "^26.2.0",
+		"typescript": "~5.9.3",
+		"vitest": "^4.1.10"
+	}
+}

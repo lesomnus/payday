@@ -1,0 +1,21 @@
+# payday's own protobuf, as TypeScript.
+#
+# It is a template in the repository rather than something `pd gen` writes,
+# because this is payday generating for itself: an app's TypeScript is written
+# by `pd gen --ts` and never by a file the app maintains, and payday is not an
+# app.
+#
+# What comes out is the batch service and the entity option, which is the whole
+# of payday's own wire surface. It lands in `ts/gen` and is exported from
+# `@lesomnus/payday/pdpb` -- a subpath, so that importing `pdid` or `slug` still
+# pulls in nothing at all.
+version: v2
+inputs:
+  - directory: proto
+plugins:
+  - local: [ts/node_modules/.bin/protoc-gen-es]
+    out: ts/gen
+    opt:
+      - target=ts
+      - import_extension=js
+    strategy: all

@@ -121,3 +121,37 @@ func rel(base string, p string) string {
 // yamlPath quotes a path so that one holding a character YAML reads as syntax
 // is still a path.
 func yamlPath(p string) string { return fmt.Sprintf("%q", filepath.ToSlash(p)) }
+
+// tmplTs is the pass that writes TypeScript.
+//
+// One plugin, which is worth saying because it looks like it should be two:
+// protobuf-es v2 emits the service descriptors as well as the messages, and
+// Connect's `createClient` takes those descriptors directly. There is no
+// separate client generator to keep in step.
+//
+// It is a pass of its own rather than another plugin on the Go one because the
+// two have different audiences: a backend-only app runs `pd gen` and never
+// installs npm, and a plugin it has no binary for would fail the whole
+// generation rather than the half it is about.
+func tmplTs(l Layout, out string, plugin string) string {
+	return fmt.Sprintf(`version: v2
+inputs:
+  - directory: %[1]s
+plugins:
+  - local: [%[2]s]
+    out: %[3]s
+    opt:
+      - target=ts
+      - import_extension=js
+    strategy: all
+  - local: [go, tool, github.com/lesomnus/payday/cmd/protoc-gen-pd]
+    out: %[3]s
+    opt:
+      - stage=ts
+    strategy: all
+`,
+		yamlPath(l.Rel(DirProto)),
+		yamlPath(plugin),
+		yamlPath(rel(l.Work, filepath.Join(out, DirTsGen))),
+	)
+}

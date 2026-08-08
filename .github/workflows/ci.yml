@@ -29,25 +29,49 @@ jobs:
 
       # The app payday is tried against, regenerated from its schema. Anything
       # that moves is something a commit did not carry.
-      - run: go tool pd gen --check internal/apptest
+      #
+      # `--ts` as well, so the TypeScript is held to the same rule. It needs the
+      # plugin, which is why the install comes first.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix ts
+      - run: npm ci --prefix internal/apptest/ts
+      - run: go tool pd gen --check --ts internal/apptest
 
       # And that payday still builds for the browser, which is a promise about
       # the runtime -- no file system, no listener, no network assumed -- that
       # is only kept by being checked.
       - run: GOOS=js GOARCH=wasm go build ./...
 
+  # The TypeScript, twice: payday's own half, and the app's -- which is where
+  # the two halves are checked against each other. That job starts the real
+  # server and sends it bytes, so it needs Go as well; a mock would agree with
+  # whatever the TypeScript believes, which is the one thing not worth checking.
   ts:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ts
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: ts/package-lock.json
+
       - run: npm ci
+        working-directory: ts
       - run: npm run check
+        working-directory: ts
       - run: npm test
+        working-directory: ts
+      - run: npm run build
+        working-directory: ts
+
+      - run: npm ci
+        working-directory: internal/apptest/ts
+      - run: npm run check
+        working-directory: internal/apptest/ts
+      - run: npm test
+        working-directory: internal/apptest/ts

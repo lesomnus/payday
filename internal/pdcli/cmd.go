@@ -39,6 +39,10 @@ func NewCmdGen() *xli.Command {
 				Name:  "check",
 				Brief: "answer with what was not already in step, and fail if anything was",
 			},
+			&flg.Switch{
+				Name:  "ts",
+				Brief: "also write the TypeScript half: messages and service descriptors",
+			},
 		},
 		Args: arg.Args{
 			&arg.String{
@@ -53,9 +57,18 @@ func NewCmdGen() *xli.Command {
 				return err
 			}
 
+			ts, _ := flg.Find[bool](cmd, "ts")
+
 			g := Gen{Layout: l, Log: cmd}
 			if v, ok := flg.Find[bool](cmd, "check"); !ok || !v {
-				return g.Run(ctx)
+				if err := g.Run(ctx); err != nil {
+					return err
+				}
+				if ts {
+					return g.Ts(ctx)
+				}
+
+				return nil
 			}
 
 			// Quiet, since the steps are not the answer here.
@@ -64,6 +77,18 @@ func NewCmdGen() *xli.Command {
 			vs, err := g.Check(ctx)
 			if err != nil {
 				return err
+			}
+			if ts {
+				// The TypeScript is checked the same way and by the same run:
+				// generated, then compared. It is folded into one answer rather
+				// than reported apart, because what a caller wants to know is
+				// whether the tree is in step, not which half of it was not.
+				more, err := g.CheckTs(ctx)
+				if err != nil {
+					return err
+				}
+
+				vs = append(vs, more...)
 			}
 			if len(vs) == 0 {
 				cmd.Println("pd: the generated code is what the schema says")

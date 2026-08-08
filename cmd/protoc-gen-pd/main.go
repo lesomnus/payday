@@ -73,7 +73,7 @@ func main() {
 	fs.StringVar(&o.Bare, "bare", o.Bare, "directory of the generated servers")
 	fs.StringVar(&o.Out, "out", o.Out, "directory this plugin writes into")
 	fs.StringVar(&o.Name, "name", o.Name, "name of the file this plugin writes")
-	fs.StringVar(&o.Stage, "stage", "go", "which pass: `proto` writes the List into the contract, `go` writes everything else")
+	fs.StringVar(&o.Stage, "stage", "go", "which pass: `proto` writes the List into the contract, `ts` the domain table, `go` everything else")
 
 	protogen.Options{ParamFunc: fs.Set}.Run(func(p *protogen.Plugin) error {
 		return run(context.Background(), p, o)
@@ -109,8 +109,19 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 		return fmt.Errorf("no file to take the module path from")
 	}
 
-	if o.Stage == "proto" {
+	switch o.Stage {
+	case "proto":
 		return writeProto(p, s, src, o)
+
+	case "ts":
+		// One file for the whole schema rather than one per source, because
+		// what it holds is a table: an app registers every domain there is or
+		// registers none, and splitting it would make importing half of it a
+		// thing that compiles.
+		out := p.NewGeneratedFile("domains.ts", "")
+		out.P(pdgen.Ts(s))
+
+		return nil
 	}
 
 	root := src.GoImportPath

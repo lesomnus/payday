@@ -48,6 +48,16 @@ const (
 	DirEnt   = "ent"
 	DirBare  = "server/bare"
 	DirPd_   = "server/pd"
+
+	// DirTs is the app's TypeScript package, and DirTsGen is the part of it
+	// `pd gen --ts` writes.
+	//
+	// Generated TypeScript lives inside the package rather than beside it
+	// because it is imported by hand-written TypeScript in the same package,
+	// and a `..` import across a package boundary is a thing every bundler has
+	// its own opinion about.
+	DirTs    = "ts"
+	DirTsGen = "ts/gen"
 )
 
 // ErrNoApp is a directory that is not one payday generates for.

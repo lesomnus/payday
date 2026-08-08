@@ -6,20 +6,25 @@
 	"sideEffects": false,
 	"files": [
 		"dist",
-		"src"
+		"src",
+		"gen"
 	],
 	"exports": {
 		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
+			"types": "./dist/src/index.d.ts",
+			"import": "./dist/src/index.js"
 		},
 		"./pdid": {
-			"types": "./dist/pdid/index.d.ts",
-			"import": "./dist/pdid/index.js"
+			"types": "./dist/src/pdid/index.d.ts",
+			"import": "./dist/src/pdid/index.js"
 		},
 		"./slug": {
-			"types": "./dist/slug/index.d.ts",
-			"import": "./dist/slug/index.js"
+			"types": "./dist/src/slug/index.d.ts",
+			"import": "./dist/src/slug/index.js"
+		},
+		"./pdpb": {
+			"types": "./dist/gen/payday/batch_pb.d.ts",
+			"import": "./dist/gen/payday/batch_pb.js"
 		},
 		"./package.json": "./package.json"
 	},
@@ -28,10 +33,21 @@
 		"check": "tsc -p tsconfig.json",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"prepack": "npm run check && npm run test && npm run build"
+		"prepack": "npm run check && npm run test && npm run build",
+		"gen": "cd .. && buf generate --template buf.gen.ts.yaml"
 	},
 	"devDependencies": {
+		"@bufbuild/protoc-gen-es": "^2.13.0",
 		"typescript": "~5.9.3",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.10",
+		"@bufbuild/protobuf": "^2.12.1"
+	},
+	"peerDependencies": {
+		"@bufbuild/protobuf": "^2"
+	},
+	"peerDependenciesMeta": {
+		"@bufbuild/protobuf": {
+			"optional": true
+		}
 	}
 }

@@ -167,3 +167,86 @@ func hash(b []byte) string {
 
 	return sb.String()
 }
+
+// CheckTs is [Gen.Check] for the TypeScript half.
+func (g Gen) CheckTs(ctx context.Context) ([]Changed, error) {
+	if g.Out == "" {
+		g.Out = g.Layout.Root
+	}
+
+	before, err := g.hashesIn(DirTsGen)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := g.Ts(ctx); err != nil {
+		return nil, err
+	}
+
+	after, err := g.hashesIn(DirTsGen)
+	if err != nil {
+		return nil, err
+	}
+
+	return diff(before, after), nil
+}
+
+// diff is what moved between two readings of the same tree.
+func diff(before, after map[string]string) []Changed {
+	var vs []Changed
+	for p, h := range after {
+		switch was, ok := before[p]; {
+		case !ok:
+			vs = append(vs, Changed{Path: p, How: Added})
+		case was != h:
+			vs = append(vs, Changed{Path: p, How: Stale})
+		}
+	}
+	for p := range before {
+		if _, ok := after[p]; !ok {
+			vs = append(vs, Changed{Path: p, How: Orphan})
+		}
+	}
+
+	sort.Slice(vs, func(i, j int) bool { return vs[i].Path < vs[j].Path })
+
+	return vs
+}
+
+// hashesIn is the content of one directory, by path.
+func (g Gen) hashesIn(dir string) (map[string]string, error) {
+	vs := map[string]string{}
+
+	root := filepath.Join(g.Out, dir)
+	err := filepath.WalkDir(root, func(p string, e fs.DirEntry, err error) error {
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+
+			return err
+		}
+		if e.IsDir() {
+			return nil
+		}
+
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(g.Out, p)
+		if err != nil {
+			return err
+		}
+
+		vs[filepath.ToSlash(rel)] = hash(b)
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return vs, nil
+}
