@@ -70,6 +70,15 @@ type Entity struct {
 	// Watch says this entity is read as it changes, which is the List it
 	// declared over and over.
 	Watch bool
+
+	// Alias says this entity has the string field a person writes it as, so
+	// every write of one goes through [slug.ParseAlias] on the way in.
+	//
+	// It is found rather than declared. A field called `alias` is what a slug
+	// resolves against and what `@acme/arm-01` is made of -- there is no second
+	// meaning for the name in a payday schema, so asking the schema to say
+	// again what it already said would be a thing to forget.
+	Alias bool
 }
 
 // Schema is every entity of one generation, in a stable order.
@@ -123,6 +132,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return nil, err
 	}
 	if err := CheckOverlay(s); err != nil {
+		return nil, err
+	}
+	if err := s.checkAlias(); err != nil {
 		return nil, err
 	}
 
@@ -194,6 +206,12 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 				"    global: {}                  not behind the wall, and said so on purpose")
 	}
 
+	for f := range e.Fields() {
+		if f.Name() == "alias" && f.Type() == ormpb.Type_TYPE_STRING {
+			v.Alias = true
+		}
+	}
+
 	if err := readList(v, opts.GetList()); err != nil {
 		return nil, err
 	}
@@ -256,6 +274,32 @@ func (s *Schema) check() error {
 		}
 		if err := s.checkVia(v); err != nil {
 			return fmt.Errorf("%s: via: %w", v.FullName(), err)
+		}
+	}
+
+	return nil
+}
+
+// checkAlias refuses a field called `alias` that is not text.
+//
+// It is refused rather than skipped, and that is the only reason this is a
+// check at all: a non-string `alias` gets no folding and no rule, and the way
+// that is found out is `@acme/arm-01` naming nothing months later. There is no
+// second meaning for the name in a payday schema, so a field that holds
+// something else under it is a mistake and not a choice.
+//
+// It runs after the overlay guard so that an app that redeclared payday's own
+// `alias` is told which rule it broke -- that the number is payday's -- rather
+// than the consequence of having broken it.
+func (s *Schema) checkAlias() error {
+	for _, v := range s.Entities {
+		for f := range v.Fields() {
+			if f.Name() != "alias" || f.Type() == ormpb.Type_TYPE_STRING {
+				continue
+			}
+
+			return fmt.Errorf("%s: alias: is a %s, and an alias is the text a person writes a row as",
+				v.FullName(), f.Type())
 		}
 	}
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/frame"
+	"github.com/lesomnus/payday/pderr"
 	"github.com/lesomnus/payday/pdid"
 )
 
@@ -154,6 +155,14 @@ func TestInterceptor(t *testing.T) {
 		for _, v := range []string{"Plain @acme/", "Plain @Acme Corporation", "Plain not-a-name"} {
 			_, err := serve(auth.Plain(), known(), nil, incoming(v), getMethod)
 			x.Equal(codes.Unauthenticated, status.Code(err), "%q", v)
+
+			// And the field path a slug carries does not come with it. A
+			// violation is an instruction to a page to put a line under a box,
+			// and there is no box: what was wrong is a header. This is the half
+			// that would break silently -- an `errors.New(err.Error())` in
+			// `parseSlug` turned into a `%w` reads like an improvement and takes
+			// the code with it.
+			x.Empty(pderr.Violations(err), "%q", v)
 		}
 	})
 

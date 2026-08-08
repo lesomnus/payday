@@ -7,8 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/lesomnus/payday/pderr"
 )
 
 // AliasMaxLen is the longest an alias can be.
@@ -196,6 +197,18 @@ func parseAlias(part string, v string) (string, error) {
 // It answers InvalidArgument, since an alias arrives from a request far more
 // often than from the code, and it does not echo what it was given back: the
 // rule and an example of a name that keeps it are what a caller can act on.
+//
+// It carries the rule as a [pderr.Violation] as well as in the message, which
+// is what lets a page put the line under the box rather than a sentence at the
+// top of the form.
+//
+// The violation names **no field**, and that is not an omission. Nothing here
+// has seen a request: a slug is a string, and which field of which message that
+// string arrived in is known only to whoever had the message. [Part] says which
+// half of the slug was wrong and goes in the words; where the slug itself was
+// is said by that caller, with [pderr.At]. Guessing here would put the line
+// under a box called "alias" every time a name went wrong, including the times
+// the box was called something else.
 type AliasError struct {
 	// Part is which half of a slug this was -- see [Slug].
 	Part string
@@ -208,5 +221,6 @@ func (e *AliasError) Error() string { return fmt.Sprintf("%s: %s", e.Part, e.Why
 func (e *AliasError) Is(target error) bool { return target == ErrAlias }
 
 func (e *AliasError) GRPCStatus() *status.Status {
-	return status.New(codes.InvalidArgument, e.Error())
+	s, _ := status.FromError(pderr.Invalid(pderr.Violation{Why: e.Error()}))
+	return s
 }

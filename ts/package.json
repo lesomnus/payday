@@ -2,11 +2,11 @@
 	"name": "@lesomnus/payday",
 	"version": "0.0.1",
 	"description": "The identifier and the slug a payday app names its rows by, for whatever runs outside the server",
-	"license": "MIT",
 	"type": "module",
 	"sideEffects": false,
 	"files": [
-		"dist"
+		"dist",
+		"src"
 	],
 	"exports": {
 		".": {

@@ -22,6 +22,8 @@ type Paths struct {
 const (
 	pkgPdid   = protogen.GoImportPath("github.com/lesomnus/payday/pdid")
 	pkgFrame  = protogen.GoImportPath("github.com/lesomnus/payday/frame")
+	pkgSlug   = protogen.GoImportPath("github.com/lesomnus/payday/slug")
+	pkgPderr  = protogen.GoImportPath("github.com/lesomnus/payday/pderr")
 	pkgCtx    = protogen.GoImportPath("context")
 	pkgStatus = protogen.GoImportPath("google.golang.org/grpc/status")
 	pkgCodes  = protogen.GoImportPath("google.golang.org/grpc/codes")

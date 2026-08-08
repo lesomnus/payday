@@ -29,13 +29,17 @@ const (
 // method on the service interface, and the generated CRUD server does not have
 // one.
 func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
-	lists := []*Entity{}
+	// Every entity the Sink has something to say about: a list to answer, a
+	// name to fold, or both. They share one wrapper per entity because two
+	// wrappers over one service would each have to know about the other to
+	// pass the methods it did not override.
+	wraps := []*Entity{}
 	for _, v := range s.Sorted() {
-		if v.List != nil {
-			lists = append(lists, v)
+		if v.List != nil || v.Alias {
+			wraps = append(wraps, v)
 		}
 	}
-	if len(lists) == 0 {
+	if len(wraps) == 0 {
 		return
 	}
 
@@ -88,9 +92,90 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("}")
 	g.P("")
 
-	for _, v := range lists {
-		emitList(g, v, s, p, root)
+	for _, v := range wraps {
+		e := v.GoName()
+
+		g.P("type sink", e, " struct {")
+		g.P("	", root.Ident(e+"ServiceServer"))
+		g.P("	store ", p.Bare.Ident("Store"))
+		g.P("	w     *", pkgWatch.Ident("Watch"))
+		g.P("}")
+		g.P("")
+		g.P("func (s Sink) ", e, "() ", root.Ident(e+"ServiceServer"), " {")
+		g.P("	return sink", e, "{s.Server.", e, "(), s.Server.Store, s.w}")
+		g.P("}")
+		g.P("")
+
+		if v.Alias {
+			emitAlias(g, v, root)
+		}
+		if v.List != nil {
+			emitList(g, v, s, p, root)
+		}
 	}
+}
+
+// emitAlias writes the two overrides that put a name through the rules before
+// it reaches a column.
+//
+// It is on the Sink rather than in a layer in front, and that is the whole
+// point of where it sits: the Sink is what *both* stacks are built on, so the
+// path a deployment does its own work through -- the one with no wall and no
+// gate -- cannot write a name the served path would have refused. A layer would
+// have left exactly that hole, and a hole that only opens on the admin path is
+// one nothing notices until a row written by hand cannot be found by name.
+//
+// What it does is fold and refuse, in that order. Folding is why: "  Acme " and
+// "acme" are one tenant to a person and two rows to a unique index, and the
+// only place the difference can be closed once is on the way in. Refusing is
+// what keeps `@acme/arm-01` able to name anything at all -- a row called
+// "Not An Alias!!" is reachable by identifier and by nothing a person writes.
+func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
+	e := v.GoName()
+
+	g.P("// Add folds the name and refuses one that is not a name.")
+	g.P("//")
+	g.P("// The request is copied rather than written to. It belongs to whoever")
+	g.P("// called, and for a call made in this process that is a message they may")
+	g.P("// still be holding -- a server that folded a caller's own field would be")
+	g.P("// changing a value they can read back.")
+	g.P("func (s sink", e, ") Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"AddRequest"),
+		") (*", root.Ident(e), ", error) {")
+	g.P("	v, err := ", pkgSlug.Ident("ParseAlias"), "(req.GetAlias())")
+	g.P("	if err != nil {")
+	g.P("		return nil, ", pkgPderr.Ident("At"), "(\"alias\", err)")
+	g.P("	}")
+	g.P("")
+	g.P("	req = ", pkgProto.Ident("CloneOf"), "(req)")
+	g.P("	req.SetAlias(v)")
+	g.P("")
+	g.P("	return s.", e, "ServiceServer.Add(ctx, req)")
+	g.P("}")
+	g.P("")
+
+	g.P("// Patch folds a name it was given, and says nothing about one it was not.")
+	g.P("//")
+	g.P("// The presence is the whole of the difference from [sink", e, ".Add]: a patch")
+	g.P("// that does not mention the alias is not a patch setting it to the empty")
+	g.P("// string, and refusing one would make every patch of any other field carry")
+	g.P("// the name along.")
+	g.P("func (s sink", e, ") Patch(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"PatchRequest"),
+		") (*", root.Ident(e), ", error) {")
+	g.P("	if !req.HasAlias() {")
+	g.P("		return s.", e, "ServiceServer.Patch(ctx, req)")
+	g.P("	}")
+	g.P("")
+	g.P("	v, err := ", pkgSlug.Ident("ParseAlias"), "(req.GetAlias())")
+	g.P("	if err != nil {")
+	g.P("		return nil, ", pkgPderr.Ident("At"), "(\"alias\", err)")
+	g.P("	}")
+	g.P("")
+	g.P("	req = ", pkgProto.Ident("CloneOf"), "(req)")
+	g.P("	req.SetAlias(v)")
+	g.P("")
+	g.P("	return s.", e, "ServiceServer.Patch(ctx, req)")
+	g.P("}")
+	g.P("")
 }
 
 func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root protogen.GoImportPath) {
@@ -98,17 +183,6 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	low := v.EntPkg()
 	entPkg := p.Ent + "/" + protogen.GoImportPath(low)
 	l := v.List
-
-	g.P("type sink", e, " struct {")
-	g.P("	", root.Ident(e+"ServiceServer"))
-	g.P("	store ", p.Bare.Ident("Store"))
-	g.P("	w     *", pkgWatch.Ident("Watch"))
-	g.P("}")
-	g.P("")
-	g.P("func (s Sink) ", e, "() ", root.Ident(e+"ServiceServer"), " {")
-	g.P("	return sink", e, "{s.Server.", e, "(), s.Server.Store, s.w}")
-	g.P("}")
-	g.P("")
 
 	// The order, as entpage reads it and as ent orders by. Written out once so
 	// the two cannot disagree -- which is a bug that shows as a page repeating

@@ -1,5 +1,5 @@
 import { random } from "../random.js";
-import { type Domain, NotAnIdError, Unknown, assertDomain } from "./domain.js";
+import { type Domain, DomainError, NotAnIdError, Unknown, assertDomain } from "./domain.js";
 import { stamp } from "./stamp.js";
 
 /** An identifier is a UUID, and a UUID is sixteen bytes. */
@@ -72,6 +72,28 @@ export class Id {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Answers with this identifier read where a `d` was expected, and refuses it
+	 * if it names something else.
+	 *
+	 * This is the half of the Go `Mint` that belongs on this side. The other
+	 * half -- deciding what key a row is written under -- is the server's, and
+	 * the server checks again: what a client asserts about an identifier it
+	 * hands over is the client's word. What this buys is the same mistake caught
+	 * before the round trip, in a message that says which kind it actually was
+	 * rather than a NotFound that says nothing.
+	 */
+	expect(d: Domain): Id {
+		assertDomain(d);
+
+		const got = this.domain;
+		if (got !== d) {
+			throw new DomainError(d, got);
+		}
+
+		return this;
 	}
 }
 
@@ -189,10 +211,7 @@ export function withDomain(v: Id, d: Domain): Id {
 	return new Id(b);
 }
 
-const hex: string[] = [];
-for (let i = 0; i < 256; i++) {
-	hex.push(i.toString(16).padStart(2, "0"));
-}
+const hex = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
 
 function format(b: Uint8Array): string {
 	let s = "";

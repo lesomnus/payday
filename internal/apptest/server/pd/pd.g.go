@@ -25,7 +25,9 @@ import (
 	robot "github.com/lesomnus/payday/internal/apptest/ent/robot"
 	tenant "github.com/lesomnus/payday/internal/apptest/ent/tenant"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
+	pderr "github.com/lesomnus/payday/pderr"
 	pdid "github.com/lesomnus/payday/pdid"
+	slug "github.com/lesomnus/payday/slug"
 	watch "github.com/lesomnus/payday/watch"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	entpage "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpage"
@@ -231,6 +233,156 @@ func (s Sink) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	return Sink{Server: v.(bare.Server), w: s.w}, nil
 }
 
+type sinkCell struct {
+	apptest.CellServiceServer
+	store bare.Store
+	w     *watch.Watch
+}
+
+func (s Sink) Cell() apptest.CellServiceServer {
+	return sinkCell{s.Server.Cell(), s.Server.Store, s.w}
+}
+
+// Add folds the name and refuses one that is not a name.
+//
+// The request is copied rather than written to. It belongs to whoever
+// called, and for a call made in this process that is a message they may
+// still be holding -- a server that folded a caller's own field would be
+// changing a value they can read back.
+func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.CellServiceServer.Add(ctx, req)
+}
+
+// Patch folds a name it was given, and says nothing about one it was not.
+//
+// The presence is the whole of the difference from [sinkCell.Add]: a patch
+// that does not mention the alias is not a patch setting it to the empty
+// string, and refusing one would make every patch of any other field carry
+// the name along.
+func (s sinkCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
+	if !req.HasAlias() {
+		return s.CellServiceServer.Patch(ctx, req)
+	}
+
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.CellServiceServer.Patch(ctx, req)
+}
+
+type sinkFleet struct {
+	apptest.FleetServiceServer
+	store bare.Store
+	w     *watch.Watch
+}
+
+func (s Sink) Fleet() apptest.FleetServiceServer {
+	return sinkFleet{s.Server.Fleet(), s.Server.Store, s.w}
+}
+
+// Add folds the name and refuses one that is not a name.
+//
+// The request is copied rather than written to. It belongs to whoever
+// called, and for a call made in this process that is a message they may
+// still be holding -- a server that folded a caller's own field would be
+// changing a value they can read back.
+func (s sinkFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.FleetServiceServer.Add(ctx, req)
+}
+
+// Patch folds a name it was given, and says nothing about one it was not.
+//
+// The presence is the whole of the difference from [sinkFleet.Add]: a patch
+// that does not mention the alias is not a patch setting it to the empty
+// string, and refusing one would make every patch of any other field carry
+// the name along.
+func (s sinkFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
+	if !req.HasAlias() {
+		return s.FleetServiceServer.Patch(ctx, req)
+	}
+
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.FleetServiceServer.Patch(ctx, req)
+}
+
+type sinkJoint struct {
+	apptest.JointServiceServer
+	store bare.Store
+	w     *watch.Watch
+}
+
+func (s Sink) Joint() apptest.JointServiceServer {
+	return sinkJoint{s.Server.Joint(), s.Server.Store, s.w}
+}
+
+// Add folds the name and refuses one that is not a name.
+//
+// The request is copied rather than written to. It belongs to whoever
+// called, and for a call made in this process that is a message they may
+// still be holding -- a server that folded a caller's own field would be
+// changing a value they can read back.
+func (s sinkJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.JointServiceServer.Add(ctx, req)
+}
+
+// Patch folds a name it was given, and says nothing about one it was not.
+//
+// The presence is the whole of the difference from [sinkJoint.Add]: a patch
+// that does not mention the alias is not a patch setting it to the empty
+// string, and refusing one would make every patch of any other field carry
+// the name along.
+func (s sinkJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
+	if !req.HasAlias() {
+		return s.JointServiceServer.Patch(ctx, req)
+	}
+
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.JointServiceServer.Patch(ctx, req)
+}
+
 type sinkRobot struct {
 	apptest.RobotServiceServer
 	store bare.Store
@@ -239,6 +391,46 @@ type sinkRobot struct {
 
 func (s Sink) Robot() apptest.RobotServiceServer {
 	return sinkRobot{s.Server.Robot(), s.Server.Store, s.w}
+}
+
+// Add folds the name and refuses one that is not a name.
+//
+// The request is copied rather than written to. It belongs to whoever
+// called, and for a call made in this process that is a message they may
+// still be holding -- a server that folded a caller's own field would be
+// changing a value they can read back.
+func (s sinkRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.RobotServiceServer.Add(ctx, req)
+}
+
+// Patch folds a name it was given, and says nothing about one it was not.
+//
+// The presence is the whole of the difference from [sinkRobot.Add]: a patch
+// that does not mention the alias is not a patch setting it to the empty
+// string, and refusing one would make every patch of any other field carry
+// the name along.
+func (s sinkRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
+	if !req.HasAlias() {
+		return s.RobotServiceServer.Patch(ctx, req)
+	}
+
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.RobotServiceServer.Patch(ctx, req)
 }
 
 // orderRobot is how Robots come back.
@@ -554,6 +746,106 @@ func (s sinkRobot) watchRobotKeys(
 	}
 
 	return ks, nil
+}
+
+type sinkHolder struct {
+	apptest.HolderServiceServer
+	store bare.Store
+	w     *watch.Watch
+}
+
+func (s Sink) Holder() apptest.HolderServiceServer {
+	return sinkHolder{s.Server.Holder(), s.Server.Store, s.w}
+}
+
+// Add folds the name and refuses one that is not a name.
+//
+// The request is copied rather than written to. It belongs to whoever
+// called, and for a call made in this process that is a message they may
+// still be holding -- a server that folded a caller's own field would be
+// changing a value they can read back.
+func (s sinkHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.HolderServiceServer.Add(ctx, req)
+}
+
+// Patch folds a name it was given, and says nothing about one it was not.
+//
+// The presence is the whole of the difference from [sinkHolder.Add]: a patch
+// that does not mention the alias is not a patch setting it to the empty
+// string, and refusing one would make every patch of any other field carry
+// the name along.
+func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
+	if !req.HasAlias() {
+		return s.HolderServiceServer.Patch(ctx, req)
+	}
+
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.HolderServiceServer.Patch(ctx, req)
+}
+
+type sinkTenant struct {
+	apptest.TenantServiceServer
+	store bare.Store
+	w     *watch.Watch
+}
+
+func (s Sink) Tenant() apptest.TenantServiceServer {
+	return sinkTenant{s.Server.Tenant(), s.Server.Store, s.w}
+}
+
+// Add folds the name and refuses one that is not a name.
+//
+// The request is copied rather than written to. It belongs to whoever
+// called, and for a call made in this process that is a message they may
+// still be holding -- a server that folded a caller's own field would be
+// changing a value they can read back.
+func (s sinkTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.TenantServiceServer.Add(ctx, req)
+}
+
+// Patch folds a name it was given, and says nothing about one it was not.
+//
+// The presence is the whole of the difference from [sinkTenant.Add]: a patch
+// that does not mention the alias is not a patch setting it to the empty
+// string, and refusing one would make every patch of any other field carry
+// the name along.
+func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) (*apptest.Tenant, error) {
+	if !req.HasAlias() {
+		return s.TenantServiceServer.Patch(ctx, req)
+	}
+
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.TenantServiceServer.Patch(ctx, req)
 }
 
 // Gate is the layer that says what a caller may do with a request.
