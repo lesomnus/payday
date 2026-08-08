@@ -1,6 +1,8 @@
 package cmd_test
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
@@ -144,6 +147,78 @@ func TestAPageIsBehindTheSameWall(t *testing.T) {
 	code, body = call(t, srv, "/app.RobotService/List", filter, "@acme/admin")
 	x.Equal(http.StatusOK, code, body)
 	x.Contains(body, "arm-01")
+}
+
+// TestBothWiresABrowserCanSpeak.
+//
+// Connect is the one worth reaching for -- a POST with a JSON body, which a
+// `curl` reproduces exactly -- and gRPC-Web is served as well, because it is
+// what infrastructure that only understands gRPC framing wants and because
+// somebody's client library will speak it.
+//
+// The frame is written out here rather than left to a library: one byte of
+// flags, four of length, then the message. That is the whole of what makes it a
+// different wire from Connect, and it is worth having in the repository once so
+// that "both are served" is a thing this test says rather than a thing a
+// dependency says on its behalf.
+func TestBothWiresABrowserCanSpeak(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant[:]}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	srv := b.serving(t)
+
+	// Connect, in JSON, which is what the pages in front of a payday app use.
+	code, body := call(t, srv, "/app.RobotService/List",
+		`{"filters":[{"ref":{"slug":{"alias":"arm-01","tenant":{"alias":"acme"}}}}]}`, "@acme/admin")
+	x.Equal(http.StatusOK, code, body)
+	x.Contains(body, "arm-01")
+
+	// And gRPC-Web, in protobuf.
+	msg, err := proto.Marshal(app.RobotListRequest_builder{
+		Filters: []*app.RobotFilter{
+			app.RobotFilter_builder{
+				Ref: app.RobotRef_builder{
+					Slug: app.RobotRefBySlug_builder{
+						Alias:  proto.String("arm-01"),
+						Tenant: app.TenantRef_builder{Alias: proto.String("acme")}.Build(),
+					}.Build(),
+				}.Build(),
+			}.Build(),
+		},
+	}.Build())
+	x.NoError(err)
+
+	frame := make([]byte, 5, 5+len(msg))
+	frame[0] = 0 // data, as against the 0x80 that marks the trailers
+	binary.BigEndian.PutUint32(frame[1:], uint32(len(msg)))
+	frame = append(frame, msg...)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost,
+		srv.URL+"/app.RobotService/List", bytes.NewReader(frame))
+	x.NoError(err)
+	req.Header.Set("Content-Type", "application/grpc-web+proto")
+	req.Header.Set(auth.Header, auth.PlainScheme+" @acme/admin")
+
+	res, err := http.DefaultClient.Do(req)
+	x.NoError(err)
+	defer res.Body.Close()
+
+	out, err := io.ReadAll(res.Body)
+	x.NoError(err)
+
+	x.Equal(http.StatusOK, res.StatusCode, string(out))
+	x.Contains(res.Header.Get("Content-Type"), "grpc-web")
+
+	// The alias is in there as protobuf rather than as JSON, which is the whole
+	// point of asking for this wire.
+	x.Contains(string(out), "arm-01")
+	x.NotContains(string(out), `"alias"`)
 }
 
 // TestAPageIsToldWhatIsWrongInItsOwnTerms.

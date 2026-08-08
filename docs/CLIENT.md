@@ -120,30 +120,60 @@ CI에서 `GOOS=js GOARCH=wasm go build ./...` 한 줄이면 지켜진다. 누군
 `grpc-dgram`은 프로그래밍 모델은 gRPC이되 **와이어는 아니다.** 그러니 브라우저 클라이언트는
 grpc-web이 아니라 `grpc-dgram`의 TS 포트가 된다. 두 갈래가 있다.
 
-- **샌드박스만 drpc.** UI가 트랜스포트 두 개를 안다. 클라이언트 코드가 갈린다.
+- **샌드박스만 drpc.** 운영은 브라우저 표준 와이어를 쓴다.
 - **UI는 언제나 drpc.** 운영에서는 `transport/gorilla`(WebSocket, reliable) — jsport와
-  **바이트가 같은 와이어**다. 그러면 UI 코드가 하나이고, 샌드박스는 트랜스포트만 바뀐다.
+  **바이트가 같은 와이어**다.
 
-두 번째가 go-app `todo.md` #12(grpc-web)에 대한 답이 될 수 있다. 대가는 그 경로에
-표준 도구가 없다는 것 — grpcurl도, Envoy도, 남의 gRPC 클라이언트도. 그래서 결론은
-**둘 다 서빙**이다: 기계에게는 소켓 위의 진짜 gRPC, 브라우저에게는 WebSocket 위의 drpc.
-`RegisterServer`가 `ServiceRegistrar`를 받으면(위 1번) 같은 스택을 두 곳에 등록하는 것이
-말 그대로 두 줄이다.
+> **결정: 첫 번째다** (2026-08, [PLAN.md](PLAN.md) 19번).
+>
+> 이 문서는 원래 두 번째를 골랐고, 근거는 "운영이 grpc-web이면 샌드박스와 운영이 서로
+> 다른 클라이언트 라이브러리가 된다"였다. **그 전제가 틀렸다.** `grpc-dgram`의 TS 포트는
+> `transport/connect` — **Connect 트랜스포트**다. `sandbox.ts`도 그것을 그대로
+> `@connectrpc/connect`의 `Transport`로 넘긴다. 두 갈래 모두 클라이언트 라이브러리는
+> Connect-ES 하나이고 바뀌는 것은 트랜스포트뿐이다. 아래 §"트랜스포트 교체뿐인가"가
+> 지키려던 성질은 어느 쪽에서도 지켜진다.
+>
+> 전제가 무너지고 나면 남는 저울은 셋이다.
+>
+> | | drpc over WebSocket | Connect / gRPC-Web |
+> | --- | --- | --- |
+> | 샌드박스와 운영 | 바이트가 같은 와이어 | 와이어가 다르다 |
+> | 자격증명 | **연결마다** (핸드셰이크 쿠키) | **호출마다** |
+> | 브라우저 앞의 인프라 | 아는 것이 없다 | 그냥 POST다 |
+>
+> 두 번째가 결정적이다. §12.3이 WebSocket의 비용으로 적어 둔 바로 그것 — 토큰이 중간에
+> 만료돼도 "아무 일도 일어나지 않는다", 그래서 연결에 만료를 걸어 끊는 장치를 따로 지어야
+> 한다. 호출마다 실리면 그 문제가 **없다.**
+>
+> 세 번째도 실질적이다. 브라우저 앞에 실제로 있는 것은 CDN·WAF·리버스 프록시이고 그것들은
+> gRPC 프레이밍이 아니라 HTTP를 안다. Connect는 `Content-Type: application/json`인 POST
+> 하나라서 devtools도, HAR도, `curl`도 그대로 읽는다 — **페이지가 보낸 요청을 셸에서
+> 똑같이 재현할 수 있다**는 것이 디버깅에서 가장 크다.
+>
+> 잃는 것은 첫 줄이다. 샌드박스는 이제 운영과 같은 와이어가 아니다. 그 위층은 전부 같으므로
+> 잡히지 않는 것은 와이어 자체의 결함뿐이고, 그것은 어차피 아래 "안 잡히는 것" 목록과 같은
+> 성질이다.
+
+그래서 **둘 다 서빙**이다: 기계에게는 소켓 위의 진짜 gRPC, 브라우저에게는 Connect와
+gRPC-Web. `payday/web`이 그것이고, 하나의 `grpc.Server`를 트랜스코딩할 뿐이라 두 번째
+스택이 아니다 — 같은 인터셉터, 같은 자격증명, 같은 벽. go-app `todo.md` #12(grpc-web)에
+대한 답이 이것이다.
+
+UI가 무엇을 고르든 서버는 둘 다 받는다(`internal/apptest/cmd/web_test.go`가 프레임을 손으로
+써서 확인한다). custody는 Connect를 고르는데, 이유는 위 표의 셋째 줄뿐이다.
 
 ### JS 쪽에서 전환은 트랜스포트 교체뿐인가
 
-**"UI는 언제나 drpc" 갈래를 택하면 그렇다.** jsport와 gorilla는 바이트가 같은 와이어이고,
-둘 다 reliable 모드이므로 동작 차이도 없다. 스텁도, 코덱도, 인터셉터도, 상태 코드도
-같은 것을 쓴다.
+**그렇다.** `grpc-dgram`의 `transport/connect`와 `@connectrpc/connect-web`의
+`createConnectTransport`는 둘 다 Connect의 `Transport`이고, `app(transport)` 위층은
+어느 것을 받았는지 모른다.
 
-```js
-const transport = DEV ? await open('/app.wasm') : new WebSocketTransport(url)
-const conn = drpc.connect(transport, connOptions)   // 이 아래는 전부 같다
+```ts
+const transport = DEV
+	? createDrpcTransport((await open('/app.wasm')).dial())
+	: createConnectTransport({ baseUrl })
+const client = app(transport)   // 이 아래는 전부 같다
 ```
-
-**그래서 이것이 그 갈래를 택할 가장 큰 이유다.** 운영이 grpc-web이면 샌드박스와 운영이
-서로 다른 클라이언트 라이브러리가 되고, 그 순간 샌드박스는 "비슷한 것"이 되지 개발
-대상이 되지 못한다.
 
 다만 **트랜스포트만은 아닌 것이 하나 있고, 안 잡히는 것이 셋 있다.**
 
@@ -154,8 +184,10 @@ mTLS다. 클라이언트가 붙이는 메타데이터가 달라지므로 **트�
 
 그리고 샌드박스가 **구조적으로 잡아줄 수 없는 것**들:
 
-- **재연결.** jsport는 워커가 죽으면 끝이고, WebSocket은 끊기고 다시 붙는다. 운영에만
-  있는 코드 경로이므로 샌드박스는 그 버그를 한 번도 실행하지 않는다.
+- **재연결.** jsport는 워커가 죽으면 끝이다. 운영에서 끊기는 것은 `Watch` 스트림이고,
+  클라이언트가 다시 붙어 지금 상태를 받는 경로는 운영에만 있으므로 샌드박스는 그 버그를
+  한 번도 실행하지 않는다. (단발 호출에는 재연결이랄 것이 없다 — 그것이 위 결정에서
+  WebSocket을 버리고 얻은 것 중 하나다.)
 - **지연과 경쟁.** 페이지 안은 지연이 사실상 0이라 낙관적 업데이트나 응답 순서에 얽힌
   결함이 드러나지 않는다. `grpc-dgram`은 자기 테스트를 위해 손실·지연을 흉내내는
   장치를 갖고 있으니, **샌드박스에 지연 손잡이를 다는 것**은 값이 있고 싸다.
