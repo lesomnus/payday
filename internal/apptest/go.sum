@@ -68,6 +68,8 @@ github.com/lesomnus/payday v0.0.0-20260807214448-524883ce3ebf h1:F5yEbW2+dN9roqk
 github.com/lesomnus/payday v0.0.0-20260807214448-524883ce3ebf/go.mod h1:1jNRkZ4Ax3vPv0Tx8DhuMtyFQOaiFdCQMAVbimsmmQE=
 github.com/lesomnus/payday v0.0.0-20260808061828-f73f6888c37b h1:f1ABaR39ajSAymepCx+oZk7+/mtoB2hFICI3Rf/8YDg=
 github.com/lesomnus/payday v0.0.0-20260808061828-f73f6888c37b/go.mod h1:s/7mnZDk13wQbU3droNfAFJvwsJecL2ZAdyGqH8W2hQ=
+github.com/lesomnus/payday v0.0.0-20260808062503-7d8351263d45 h1:0sCPCD+mYCEMfH5Cqipa8LswxVkh/XINNEQgPC1z53s=
+github.com/lesomnus/payday v0.0.0-20260808062503-7d8351263d45/go.mod h1:d/Q6znrIBRzn/syEnaZS0jIuZM8CS1XVY64k8oJLayw=
 github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f h1:hIDTEG7vZCJ5M+j+OhI97pk6Q1mp1t3gXi1k96IB9f0=
 github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f/go.mod h1:0sqL1bt/0v8atiVioyoJ25XQnZcn8zA9GYM1DvC4i5o=
 github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278 h1:dBLfXrOR8qLwZculDy8uJfNN+Q5xlyvM9CF4yylPB/0=
@@ -102,6 +104,8 @@ github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29 h1:yLrMW
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29/go.mod h1:jMdK+un3aGD6fB5zl3rBg0OMahe7vP5Dpfxe6Sws7mM=
 github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260807205916-3e9c932f5f85 h1:zGVI/qY3RIxvvSikJp9iEyT0f9HBjHrHhazQmhVWJzo=
 github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260807205916-3e9c932f5f85/go.mod h1:cCppipIxbNwsYANoOE45i6FdufSBSNqSBJYhcZ/l+WA=
+github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260808062124-7336db3ccda7 h1:xj+WO4fsr0arc9NVh9ZAMOVk/u9gfGLEWOCipgqlR/s=
+github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260808062124-7336db3ccda7/go.mod h1:EUiEHkmQI53u+32lC+9OiiECSY2xJ1hrgHk7Km9yn20=
 github.com/rogpeppe/go-internal v1.16.0 h1:O9DK+vNMDVGLr2BeZqmpLeMjiMNkuXfcqntWbZV6S5g=
 github.com/rogpeppe/go-internal v1.16.0/go.mod h1:DrUVZyrJU+txYW5/1kwtXQSMFio52ZOxX7yM1VHvnxs=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=

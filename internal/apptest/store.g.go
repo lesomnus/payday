@@ -35,7 +35,11 @@ type Server interface {
 	Holder() HolderServiceServer
 }
 
-func RegisterServer(g *grpc.Server, s Server) {
+// RegisterServer registers every service of `s` with `g`.
+//
+// It takes a [grpc.ServiceRegistrar] rather than a *grpc.Server so that a
+// server which is not gRPC's own can be handed the same set of services.
+func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterTenantServiceServer(g, s.Tenant())
 	RegisterRobotServiceServer(g, s.Robot())
 	RegisterJointServiceServer(g, s.Joint())

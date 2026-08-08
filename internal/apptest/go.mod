@@ -8,7 +8,7 @@ go 1.26.4
 require (
 	entgo.io/ent v0.14.6
 	github.com/google/uuid v1.6.0
-	github.com/lesomnus/payday v0.0.0-20260808061828-f73f6888c37b
+	github.com/lesomnus/payday v0.0.0-20260808062503-7d8351263d45
 	github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29
@@ -54,6 +54,7 @@ require (
 	github.com/olekukonko/ll v0.1.4-0.20260115111900-9e59c2286df0 // indirect
 	github.com/olekukonko/tablewriter v1.1.3 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260808062124-7336db3ccda7 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/spf13/cobra v1.7.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -81,7 +82,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-tool entgo.io/ent/cmd/ent
+tool (
+	entgo.io/ent/cmd/ent
+	github.com/protobuf-orm/protoc-gen-orm-go
+)
 
 // transport/jsport is in grpc-dgram's tree and not in any version the proxy
 // has yet. It is somebody else's unpushed work, so this points at the checkout

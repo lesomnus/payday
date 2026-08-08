@@ -93,13 +93,20 @@ func TestInterceptor(t *testing.T) {
 		s := auth.NewMemTokenStore()
 		s.Add("read-only", v, time.Time{})
 
-		ctx, err := serve(auth.Bearer(s), known(), nil, incoming("Bearer read-only"), getMethod)
+		said := frame.New(adminId, acme, frame.Whole())
+		r := resolverOf(map[string]*frame.Frame{"@acme/admin": said})
+
+		ctx, err := serve(auth.Bearer(s), r, nil, incoming("Bearer read-only"), getMethod)
 		x.NoError(err)
 
 		f, ok := frame.From(ctx)
 		x.True(ok)
 		x.False(f.Grant.IsWhole())
 		x.False(f.Grant.Allows("/app.RobotService/Erase"))
+
+		// And what the resolver handed over is left as it was, since a
+		// resolver may well be answering out of something it keeps.
+		x.True(said.Grant.IsWhole())
 	})
 
 	// Not a rule about the caller -- the wall holds those -- but the

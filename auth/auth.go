@@ -112,9 +112,9 @@ type Identity struct {
 
 	// Id is the identifier the credential named, when it named one directly,
 	// written the way [pdid.Id.String] writes one -- and empty when the
-	// credential gave an alias instead. [ParseName] has already read it as a
-	// [pdid.Id], so a [Resolver] that reads it back cannot be handed anything
-	// that is not one.
+	// credential gave an alias instead. Whatever fills it owes a [Resolver] a
+	// string [pdid.Parse] can read: [ParseName] parses before it writes, and a
+	// [TokenStore] that hands out identifiers owes the same.
 	//
 	// Text like the rest, and this is the one field where that costs
 	// something: it was parsed here and whatever resolves it parses it again.
