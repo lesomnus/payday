@@ -34,6 +34,7 @@ Two rules, and between them they say whether a file is yours.
 | `proto/payday/` | generated in whole; payday's own entities, copied in |
 | `internal/ent/`, `server/bare/`, `server/pd/` | generated |
 | `*.g.go`, `*.pb.go` | generated, wherever `go_package` puts them |
+| `ts/gen/` | generated in whole |
 | everything else | yours |
 
 So: **`.g` means a generator wrote it**, and `proto/payday/` is the one
@@ -79,10 +80,18 @@ things that are cheap to get wrong here and expensive to find later.
 ## Running
 
 ```sh
+go run ./cmd/{{.Name}} init          # the first tenant, and somebody in it
 go run ./cmd/{{.Name}} config        # what this deployment is configured with
 go run ./cmd/{{.Name}} config env    # every variable it can be told through
 go run ./cmd/{{.Name}} serve
 ```
+
+`init` is there because there is nowhere else it could be. A tenant is not put
+up from inside one, so the first row of a deployment cannot arrive over the API
+— what puts it there is `Server.Ungated`, which is not a privilege anybody
+holds but a server instance this process was handed. Running it twice is an
+error rather than a no-op, because an `init` that quietly did nothing is one
+somebody runs against the wrong deployment and believes.
 
 The configuration is a file, then the environment over the top of it. It is read
 on the **root** command, so it has happened whichever subcommand runs, and
@@ -91,11 +100,41 @@ runs as two deployments. What an app can be told is what `cmd/config.go`
 declares; nothing is documented separately, because a documented list goes out
 of date on the commit that adds a field.
 
+## The page
+
+```sh
+go tool pd gen --ts .
+cd ts && npm install && npm run dev
+```
+
+`ts/` is a React app, and it is small enough to read in one sitting. What is
+worth reading is what is **not** in it: nothing declares which query a write
+invalidates, nothing pushes a new row into a list, and nothing tells the tenant
+shown next to a row that it is the same tenant shown at the top of the page.
+
+That falls out of the reads going through the framework. `useQuery` makes the
+call, so the store knows which rows were drawn; when one of them changes —
+from a write here, from another query, from a `Watch` the server is streaming —
+everything drawing it re-renders, at once, with nothing joining them up.
+`useCall` is the same trick backwards: the row a write answered with goes into
+the store, and the lists over that entity are read again, because a create can
+change what belongs in one and only the server knows which.
+
+The store is opened for a **credential** and mirrored to IndexedDB under it, so
+a reload draws the page it had rather than a spinner for it, and signing out
+takes the copy with it. `ts/src/store.ts` is the whole of that, and deleting two
+lines of it turns the mirror off.
+
+React is a **peer** dependency of payday and an optional one. `payday/store` and
+`payday/query` know nothing about it; `payday/react` is thirty lines of
+`useSyncExternalStore` over them, and the same file for Vue or Svelte is the
+same length.
+
 ## A browser
 
 gRPC is not a protocol a page can speak — not a library that is missing, frames
 the platform does not let anything write — so `{{.Name}}.yaml` has a second
-listener in it, commented out:
+listener in it:
 
 ```yaml
 server:
@@ -125,15 +164,18 @@ h, err := web.New(c.Server.Http, g)
 h.Handle("/login", login(s.Ungated))
 ```
 
-That is where a login endpoint lands. `auth` reads a credential and does not
-issue one — issuing is HTTP, and this is the HTTP. The cross-origin answer is
-over the whole mux, so a route added here is reachable from the same page the
-RPCs are.
+That is where a login endpoint lands, and the page needs one: `auth.Plain` takes
+the caller's word for who they are, which is right for a sandbox and for tests
+and is not something to serve where anyone can reach it. `auth` reads a
+credential and does not issue one — issuing is HTTP, and this is the HTTP. The
+cross-origin answer is over the whole mux, so a route added here is reachable
+from the same page the RPCs are.
 
-`ts/` is the TypeScript half. `go tool pd gen --ts .` writes the messages and
-service descriptors into `ts/gen`, and `ts/src/client.ts` turns a descriptor into
-a client — one line per service, with nothing generated per service to keep in
-step.
+`go tool pd gen --ts .` writes the messages and service descriptors into
+`ts/gen`, along with `entities.ts` — one declaration per entity, which is what
+the local store is built from. Nothing there is behaviour, and nothing is
+generated per service: `ts/src/client.ts` turns a descriptor into a client in one
+line, for whatever does not want to go through the store.
 
 ## What is enforced, and why
 

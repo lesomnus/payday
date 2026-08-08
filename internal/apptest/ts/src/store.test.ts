@@ -207,17 +207,17 @@ describe('a store belongs to whoever it was opened for', () => {
 	})
 })
 
-describe('the index comes from the schema', () => {
-	it('is the one the server has, so a page cannot be fast on what the server is slow on', () => {
-		// `[alias+tenantId]` is the unique index the database is built from,
-		// written the way Dexie writes a compound one -- and `tenant` became
-		// `tenantId` because an edge is a nested message there and a key here.
-		expect(Robot.index).toBe('&id,[dateCreated+id],[alias+tenantId]')
+describe('what a declaration says, and what it deliberately does not', () => {
+	it('carries no index, because nothing on this side could use one', () => {
+		// The server's `indexes:` used to be here, written the way Dexie takes
+		// them. Nothing ever read it: rows are reached by identifier, and order
+		// and membership are the server's answers. An index here would only
+		// serve a query over whatever this store happens to hold, which would
+		// answer a different question confidently.
+		expect(Robot).not.toHaveProperty('index')
 
-		// Nothing reads it yet -- the store is in memory and a `Map` needs no
-		// index. It is here because it is the **server's** index, said in the
-		// terms a browser database takes one in, so that persistence can be
-		// added without asking the schema a second time.
+		// What is left is what protobuf does not say and the runtime does read.
+		expect(Object.keys(Robot).sort()).toEqual(['domain', 'refs', 'schema', 'typeName', 'version'])
 	})
 })
 

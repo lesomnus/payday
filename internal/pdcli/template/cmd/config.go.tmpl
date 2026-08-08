@@ -69,6 +69,7 @@ func Cmd(c *Config) *xli.Command {
 		Commands: []*xli.Command{
 			pdcmd.NewCmdVersion(),
 			pdcmd.NewCmdConfig(Loader, c),
+			NewCmdInit(c),
 			NewCmdServe(c),
 		},
 

@@ -28,15 +28,19 @@ export interface RefDesc {
 /**
  * EntityDesc is one entity, as `pd gen --ts` declares it.
  *
- * Four things, and each is something protobuf does not say:
+ * Three things, and each is something protobuf does not say:
  *
  *   - `domain`, which is the byte an identifier of this entity carries;
  *   - `version`, the field two answers about one row are ordered by;
- *   - `index`, which columns the database has an index on -- taken from the
- *     same `indexes:` the server's database is built from, so that a page
- *     cannot filter fast on something the server filters slowly on;
  *   - `refs`, which fields name other entities, so that a row that arrived with
  *     its neighbours nested can be taken apart.
+ *
+ * The server's `indexes:` are **not** here, and used to be. Nothing on this
+ * side has a question to answer with one: rows are reached by identifier, and
+ * order and membership are what the server answered with. A local index would
+ * serve only a local query, and a local query runs over whatever this store
+ * happens to hold -- so it would answer a different question confidently. See
+ * [Store.all].
  */
 export interface EntityDesc {
 	readonly typeName: string
@@ -53,16 +57,6 @@ export interface EntityDesc {
 	 * that is wrong with nothing having failed.
 	 */
 	readonly version?: string
-
-	/**
-	 * The index the server has, written the way a browser database takes one.
-	 *
-	 * Nothing reads it while the store is in memory -- a `Map` needs no index.
-	 * It is declared because it is the **server's** index, said in the terms
-	 * persistence would take it in, so that persistence can be added without
-	 * asking the schema a second time.
-	 */
-	readonly index: string
 
 	readonly refs?: readonly RefDesc[]
 }

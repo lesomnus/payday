@@ -301,8 +301,6 @@ import type { EntityDesc } from '@lesomnus/payday/store'
 			fmt.Fprintf(b, "\tversion: %q,\n", lowerCamel(string(v.GetVersionField().Name())))
 		}
 
-		fmt.Fprintf(b, "\tindex: %q,\n", dexieIndex(v))
-
 		// The edges, which are what makes this a normalized store rather than a
 		// pile of documents: a row arrives with its neighbours nested, and the
 		// store takes them apart and keeps one copy of each.
@@ -333,59 +331,6 @@ import type { EntityDesc } from '@lesomnus/payday/store'
 	b.WriteString("] as const\n")
 
 	return b.String()
-}
-
-// dexieIndex is the index declaration for one entity's table.
-//
-// It comes from the same `indexes:` the database is built from, which is the
-// point: a page that filters by something the server has no index for is a page
-// that is fast in a demo and slow with real data, and the two ends disagreeing
-// about what is indexed is how that happens.
-//
-// The key is first and marked unique with "&". After it, one entry per declared
-// index -- a compound one written as Dexie writes them, "[a+b]".
-func dexieIndex(v *Entity) string {
-	// An edge is a nested message in the schema and a foreign key in the store,
-	// so an index over one is an index over that key. Getting this wrong is an
-	// index on a column that does not exist, which Dexie does not complain
-	// about -- it just never uses it.
-	edges := map[string]bool{}
-	for e := range v.Edges() {
-		edges[string(e.Name())] = true
-	}
-
-	vs := []string{"&" + lowerCamel(string(v.Key().Name()))}
-
-	for i := range v.Indexes() {
-		if i.IsHidden() {
-			continue
-		}
-
-		ps := []string{}
-		for p := range i.Props() {
-			n := lowerCamel(string(p.Name()))
-			if edges[string(p.Name())] {
-				n += "Id"
-			}
-
-			ps = append(ps, n)
-		}
-		switch len(ps) {
-		case 0:
-			continue
-		case 1:
-			if ps[0] == lowerCamel(string(v.Key().Name())) {
-				// Already there, as the primary key.
-				continue
-			}
-
-			vs = append(vs, ps[0])
-		default:
-			vs = append(vs, "["+strings.Join(ps, "+")+"]")
-		}
-	}
-
-	return strings.Join(vs, ",")
 }
 
 // lowerCamel is a proto field name as protobuf-es writes it in TypeScript.

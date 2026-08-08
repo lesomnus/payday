@@ -104,17 +104,28 @@ async function until(f: () => boolean, ms = 10_000): Promise<void> {
 	}
 }
 
-async function add(alias: string): Promise<RobotMsg> {
-	const c = createClient(RobotService, transport)
+async function tenantId(): Promise<Uint8Array> {
 	const t = createClient(TenantService, transport)
 	const tenant = await t.get({ ref: { key: { case: 'alias', value: 'acme' } } })
 
-	return c.add({ tenant: { key: { case: 'id', value: tenant.id } }, alias })
+	return tenant.id
+}
+
+/** add writes past the query layer, which is how "somebody else did it" looks. */
+async function add(alias: string): Promise<RobotMsg> {
+	const c = createClient(RobotService, transport)
+
+	return c.add({ tenant: { key: { case: 'id', value: await tenantId() } }, alias })
+}
+
+/** named is an alias short enough for the column and unique enough for a test. */
+function named(prefix: string): string {
+	return `${prefix}-${pdid.newId(RobotDomain)}`.slice(0, 24)
 }
 
 describe('a query names the rows it drew', () => {
 	it('answers, and puts what it carried in the store', async () => {
-		const made = await add(`q-${pdid.newId(RobotDomain)}`.slice(0, 24))
+		const made = await add(named('q'))
 
 		const e = queries.get(RobotService.method.list, {
 			filters: [{ ref: { key: { case: 'id', value: made.id } } }],
@@ -144,7 +155,7 @@ describe('a query names the rows it drew', () => {
 	})
 
 	it('asks once for the same question twice', async () => {
-		const made = await add(`q2-${pdid.newId(RobotDomain)}`.slice(0, 24))
+		const made = await add(named('q2'))
 		const req = { filters: [{ ref: { key: { case: 'id' as const, value: made.id } } }] }
 
 		const a = queries.get(RobotService.method.list, req)
@@ -161,7 +172,7 @@ describe('a query names the rows it drew', () => {
 
 describe('a row changing re-renders everything drawing it', () => {
 	it('tells two queries about one row', { timeout: 30_000 }, async () => {
-		const made = await add(`q3-${pdid.newId(RobotDomain)}`.slice(0, 24))
+		const made = await add(named('q3'))
 
 		// Two different questions whose answers both carry this row: the list it
 		// is in, and the row itself. On a page these are two components.
@@ -211,5 +222,109 @@ describe('a row changing re-renders everything drawing it', () => {
 			filters: [{ ref: { key: { case: 'id', value: made.id } } }],
 		})
 		expect(now2.data?.items[0]?.alias).toBe(renamed)
+	})
+})
+
+describe('a write lands where everything is reading', () => {
+	it('stores what it answered with, without a watch bringing it back', async () => {
+		const alias = named('w')
+		const made = await queries.call(RobotService.method.add, {
+			tenant: { key: { case: 'id', value: await tenantId() } },
+			alias,
+		})
+
+		// No round trip and no stream: the write's own answer is the row, and
+		// it went in on the way past.
+		expect(store.get<RobotMsg>(Robot.typeName, made.id)?.alias).toBe(alias)
+	})
+
+	it('grows a list somebody is drawing', { timeout: 30_000 }, async () => {
+		// **No watch.** Which is the point of the test: what puts the new row in
+		// this list is the write, not a stream telling it afterwards.
+		const req = { filters: [], size: 100 }
+		const list = queries.get(RobotService.method.list, req, { watch: false })
+		await settled(list.key)
+
+		let told = 0
+		queries.subscribe(list.key, () => told++)
+
+		const before = queries.get(RobotService.method.list, req, { watch: false }).data?.items.length ?? 0
+
+		const alias = named('w2')
+		await queries.call(RobotService.method.add, {
+			tenant: { key: { case: 'id', value: await tenantId() } },
+			alias,
+		})
+
+		// The list is read again because the write touched an entity it answers
+		// with a set of -- nothing here declared that, and the request the list
+		// was made with could not have contained it.
+		await until(() => {
+			const items = queries.get(RobotService.method.list, req, { watch: false }).data?.items
+			return items !== undefined && items.some((v) => v.alias === alias)
+		})
+
+		expect(told).toBeGreaterThan(0)
+		expect(queries.get(RobotService.method.list, req, { watch: false }).data?.items.length).toBe(before + 1)
+	})
+
+	it('does not read again for a write told not to', { timeout: 30_000 }, async () => {
+		const req = { filters: [], size: 100 }
+		const list = queries.get(RobotService.method.list, req, { watch: false })
+		await settled(list.key)
+
+		const before = queries.get(RobotService.method.list, req, { watch: false }).data?.items.length ?? 0
+
+		const alias = named('w3')
+		const made = await queries.call(
+			RobotService.method.add,
+			{ tenant: { key: { case: 'id', value: await tenantId() } }, alias },
+			{ revalidate: false },
+		)
+
+		// The row is still stored -- absorbing the answer is not the part that
+		// was turned off, and a caller writing in a loop still wants it.
+		expect(store.row(Robot.typeName, made.id)).toBeDefined()
+
+		// But the list was not asked again, so it answers with what it had.
+		expect(queries.get(RobotService.method.list, req, { watch: false }).data?.items.length).toBe(before)
+	})
+
+	it('takes an erased row off the screen at once', { timeout: 30_000 }, async () => {
+		const made = await add(named('w4'))
+
+		const req = { filters: [{ ref: { key: { case: 'id' as const, value: made.id } } }] }
+		const list = queries.get(RobotService.method.list, req, { watch: false })
+		await settled(list.key)
+		expect(queries.get(RobotService.method.list, req, { watch: false }).data?.items).toHaveLength(1)
+
+		await queries.call(RobotService.method.erase, { key: { case: 'id', value: made.id } })
+
+		// The answer to an `Erase` is empty, so what says which row is gone is
+		// the request -- and it says it now rather than a round trip from now.
+		expect(store.row(Robot.typeName, made.id)).toBeUndefined()
+		expect(queries.get(RobotService.method.list, req, { watch: false }).data?.items).toHaveLength(0)
+	})
+})
+
+describe('forget is how somebody says the world moved', () => {
+	it('reads again, for a change nothing here could have known about', { timeout: 30_000 }, async () => {
+		const req = { filters: [], size: 100 }
+		const list = queries.get(RobotService.method.list, req, { watch: false })
+		await settled(list.key)
+
+		// Written past the query layer and with no watch open, which is the one
+		// case the layer genuinely cannot see: another tab, another person, a
+		// job on the server.
+		const alias = named('f')
+		await add(alias)
+
+		const has = (): boolean =>
+			queries.get(RobotService.method.list, req, { watch: false }).data?.items.some((v) => v.alias === alias) ??
+			false
+		expect(has()).toBe(false)
+
+		queries.forget()
+		await until(has)
 	})
 })

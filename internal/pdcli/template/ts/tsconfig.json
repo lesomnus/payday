@@ -1,15 +1,20 @@
 {
 	"compilerOptions": {
 		"target": "ES2022",
-		"module": "NodeNext",
-		"moduleResolution": "NodeNext",
-		"lib": ["ES2022", "DOM"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"jsx": "react-jsx",
 		"strict": true,
 		"noUncheckedIndexedAccess": true,
 		"exactOptionalPropertyTypes": true,
 		"noEmit": true,
 		"skipLibCheck": true,
-		"verbatimModuleSyntax": true
+		"verbatimModuleSyntax": true,
+		// Narrowly: what Vite puts in a page -- `import.meta.env`, and importing
+		// a stylesheet. Not `node`, which would make a file that reads the
+		// filesystem compile in a bundle that cannot.
+		"types": ["vite/client"]
 	},
 	"include": ["src", "gen"]
 }

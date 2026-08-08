@@ -4,6 +4,8 @@
  * @module
  */
 
+import { digest } from './digest.js'
+
 /**
  * identityOf is a credential as a store name: a digest of it, and never it.
  *
@@ -41,26 +43,5 @@
  * costs a refill of something the server has anyway.
  */
 export async function identityOf(credential: string): Promise<string> {
-	// Declared here rather than by putting `DOM` in `lib`, which would make
-	// every browser global compile in a package that runs in a worker, in Node
-	// and in a page. These two are in all three, and they are the whole of what
-	// this module needs from outside the language.
 	return digest(credential)
-}
-
-declare const crypto: {
-	readonly subtle: { digest(algorithm: string, data: Uint8Array): Promise<ArrayBuffer> }
-}
-
-declare const TextEncoder: { new (): { encode(v: string): Uint8Array } }
-
-async function digest(credential: string): Promise<string> {
-	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(credential))
-
-	let out = ''
-	for (const b of new Uint8Array(digest).slice(0, 8)) {
-		out += b.toString(16).padStart(2, '0')
-	}
-
-	return out
 }

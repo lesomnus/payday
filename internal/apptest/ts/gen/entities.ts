@@ -24,7 +24,6 @@ export const Cell = {
 	typeName: "app.Cell",
 	schema: CellSchema,
 	domain: 10,
-	index: "&id",
 	refs: [{ field: "tenant", to: "payday.Tenant" }],
 } as const satisfies EntityDesc
 
@@ -33,7 +32,6 @@ export const Fleet = {
 	typeName: "app.Fleet",
 	schema: FleetSchema,
 	domain: 9,
-	index: "&id",
 } as const satisfies EntityDesc
 
 /** app.Joint, as the store holds it. */
@@ -41,7 +39,6 @@ export const Joint = {
 	typeName: "app.Joint",
 	schema: JointSchema,
 	domain: 8,
-	index: "&id",
 	refs: [{ field: "robot", to: "app.Robot" }],
 } as const satisfies EntityDesc
 
@@ -50,7 +47,6 @@ export const Reading = {
 	typeName: "app.Reading",
 	schema: ReadingSchema,
 	domain: 11,
-	index: "&id",
 	refs: [{ field: "robot", to: "app.Robot" }],
 } as const satisfies EntityDesc
 
@@ -60,7 +56,6 @@ export const Robot = {
 	schema: RobotSchema,
 	domain: 7,
 	version: "dateUpdated",
-	index: "&id,[dateCreated+id],[alias+tenantId]",
 	refs: [{ field: "tenant", to: "payday.Tenant" }],
 } as const satisfies EntityDesc
 
@@ -69,7 +64,6 @@ export const Audit = {
 	typeName: "payday.Audit",
 	schema: AuditSchema,
 	domain: 3,
-	index: "&id,objectId,[tenantId+dateCreated]",
 } as const satisfies EntityDesc
 
 /** payday.Holder, as the store holds it. */
@@ -78,7 +72,6 @@ export const Holder = {
 	schema: HolderSchema,
 	domain: 2,
 	version: "dateUpdated",
-	index: "&id,[alias+tenantId]",
 	refs: [{ field: "tenant", to: "payday.Tenant" }],
 } as const satisfies EntityDesc
 
@@ -87,7 +80,6 @@ export const Outbox = {
 	typeName: "payday.Outbox",
 	schema: OutboxSchema,
 	domain: 4,
-	index: "&id",
 } as const satisfies EntityDesc
 
 /** payday.Tenant, as the store holds it. */
@@ -96,7 +88,6 @@ export const Tenant = {
 	schema: TenantSchema,
 	domain: 1,
 	version: "dateUpdated",
-	index: "&id",
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */

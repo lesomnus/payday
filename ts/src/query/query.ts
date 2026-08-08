@@ -30,6 +30,8 @@
 
 import {
 	create,
+	fromBinary,
+	toBinary,
 	type DescField,
 	type DescMessage,
 	type DescMethod,
@@ -77,6 +79,9 @@ interface Live<O extends Message = Message> {
 	input: Message
 	entry: Entry<O>
 
+	/** What this query was asked with, kept so a re-read is the same query. */
+	opts: QueryOpts
+
 	/** The rows this answer named, in the order they were found. */
 	refs: { typeName: string; id: string }[]
 
@@ -91,8 +96,23 @@ interface Live<O extends Message = Message> {
 	/** Its watch has been reopened once already; see [Queries.watch]. */
 	retried: boolean
 
+	/** Which read is the current one; see [Queries.run]. */
+	gen: number
+
 	stop: Aborter | undefined
 	cache: { rev: number; data: Message | undefined } | undefined
+}
+
+/** CallOpts is what a write may be told beyond its request. */
+export interface CallOpts {
+	/**
+	 * Re-read the lists whose membership this write may have changed.
+	 *
+	 * On by default. Off for a caller making a run of writes who reads once
+	 * when they are done -- and who then owns that read, since nothing else
+	 * will make it.
+	 */
+	readonly revalidate?: boolean
 }
 
 /** Opts is what a query may be told beyond its request. */
@@ -114,6 +134,9 @@ export class Queries {
 	private readonly transport: Transport
 	private readonly live = new Map<string, Live>()
 	private readonly clients = new Map<DescService, Record<string, unknown>>()
+
+	/** Which entities each method answers with a set of; see [Queries.setsOf]. */
+	private readonly sets = new Map<DescMethod, ReadonlySet<string>>()
 
 	/** Which message types are entities, by full name. */
 	private readonly entities: Map<string, EntityDesc>
@@ -147,20 +170,80 @@ export class Queries {
 				method: method as DescMethod,
 				input: req,
 				entry: { key: k, state: 'pending', data: undefined, error: undefined, rev: 0 },
+				opts,
 				refs: [],
 				res: undefined,
 				listeners: new Set(),
 				off: undefined,
 				idle: false,
 				retried: false,
+				gen: 0,
 				stop: undefined,
 				cache: undefined,
 			}
 			this.live.set(k, v)
-			void this.run(v, opts)
+
+			// What this query answered last time the page was open, if the
+			// store was given a mirror and has been hydrated. It is settled
+			// **before** the read behind it starts, so a component that just
+			// mounted draws its list on its first frame rather than a spinner
+			// for something the tab had a second ago.
+			this.restore(v)
+			void this.run(v)
 		}
 
 		return v.entry as Entry<MessageShape<O>>
+	}
+
+	/**
+	 * call makes a write and puts what it answered with into the store.
+	 *
+	 * This is the read path run backwards, and for the same reason. A write
+	 * answers with the row it wrote, so absorbing it means **every place
+	 * showing that row is right immediately** -- the form that submitted it,
+	 * the list it is in, the header counting them -- without any of them being
+	 * told, and without waiting for a `Watch` to come back around.
+	 *
+	 * What the answer cannot say is that a set changed. A row that was just
+	 * created belongs in lists whose answers were settled before it existed,
+	 * and no amount of reading the response reveals which. So after a write the
+	 * lists over the entities it touched are read again -- only the ones
+	 * somebody is drawing, since a query at rest re-reads when it is drawn
+	 * again anyway.
+	 *
+	 * Deciding that locally instead -- inserting the row into the list it looks
+	 * like it belongs in -- would mean evaluating the server's filter and the
+	 * server's order against a partial copy, and being confidently wrong about
+	 * a page boundary. The re-read is a round trip and it is the true answer.
+	 *
+	 * A removal is the one write whose answer carries nothing, so it is read
+	 * from the request: `Erase` names a row, and a row erased is gone here at
+	 * once. Anything else that removes -- an app's own `Deactivate` -- says so
+	 * with `store.apply`.
+	 */
+	async call<I extends DescMessage, O extends DescMessage>(
+		method: DescMethodUnary<I, O>,
+		input: MessageInitShape<I>,
+		opts: CallOpts = {},
+	): Promise<MessageShape<O>> {
+		const req = create(method.input, input) as Message
+		const res = (await this.invoke(method as DescMethod, req)) as Message
+
+		const touched = new Set<string>()
+		for (const r of this.absorb(method.output, res)) touched.add(r.typeName)
+
+		const gone = this.erased(method as DescMethod, req)
+		if (gone !== undefined) {
+			// The identifier is there only when the row was named by one. A ref
+			// by slug says which row to the server and not to this, and the
+			// re-read below is what takes it off the screen.
+			if (gone.id !== undefined) this.store.apply(gone.typeName, [{ id: gone.id }])
+			touched.add(gone.typeName)
+		}
+
+		if (opts.revalidate !== false) this.revalidate(touched)
+
+		return res as MessageShape<O>
 	}
 
 	/**
@@ -194,14 +277,26 @@ export class Queries {
 			if (input !== undefined && method !== undefined && w.key !== keyOf(method, input)) continue
 
 			w.cache = undefined
-			void this.run(w, {})
+			this.store.setBlob(w.key, undefined)
+			void this.run(w)
 		}
 	}
 
-	/** run makes the call and writes what comes back. */
-	private async run(v: Live, opts: QueryOpts): Promise<void> {
+	/**
+	 * run makes the call and writes what comes back.
+	 *
+	 * Numbered, because a query is read again for reasons that overlap -- a
+	 * write landed, a stream reopened, a rested page came back -- and two reads
+	 * in flight answer in whatever order the network chose. The rows are safe
+	 * either way, since the store orders them by version; the **membership** is
+	 * not, so the older read stands down rather than settling an answer that
+	 * has already been superseded.
+	 */
+	private async run(v: Live): Promise<void> {
+		const gen = ++v.gen
 		try {
-			const res = (await this.call(v.method, v.input)) as Message
+			const res = (await this.invoke(v.method, v.input)) as Message
+			if (gen !== v.gen) return
 
 			// Into the store first, so the rows exist before anything reads
 			// them, and the entry names them afterwards.
@@ -209,13 +304,15 @@ export class Queries {
 			v.res = res
 
 			this.settle(v, 'ok', undefined)
-			this.watch(v, opts)
+			this.watch(v)
 		} catch (err) {
+			if (gen !== v.gen) return
+
 			this.settle(v, 'error', err)
 		}
 	}
 
-	private async call(method: DescMethod, input: Message): Promise<unknown> {
+	private async invoke(method: DescMethod, input: Message): Promise<unknown> {
 		let client = this.clients.get(method.parent)
 		if (client === undefined) {
 			client = createClient(method.parent, this.transport) as unknown as Record<string, unknown>
@@ -321,9 +418,51 @@ export class Queries {
 		return data
 	}
 
+	/**
+	 * restore is what this query answered the last time the page was open.
+	 *
+	 * The answer is kept as the bytes of the response it was, beside the rows
+	 * and under the same credential -- see [Store.blob]. Which is the whole
+	 * trick: the rows came back with [Store.hydrate], so restoring the
+	 * **order and the membership** is what is left, and that is exactly a
+	 * response.
+	 *
+	 * It is as old as the tab that wrote it, and it is drawn as though it were
+	 * true, because [Queries.run] is already on its way behind it. A row it
+	 * names that has since been erased is on screen for one round trip; that is
+	 * what "cached" costs, and it is the same bargain [Queries.rest] makes.
+	 */
+	private restore(v: Live): void {
+		const held = this.store.blob(v.key)
+		if (held === undefined) return
+
+		try {
+			const res = fromBinary(v.method.output, held) as Message
+			v.refs = this.absorb(v.method.output, res)
+			v.res = res
+		} catch {
+			// Bytes that no longer decode, which is a response message whose
+			// shape moved under a mirror the entity stamp did not cover. Drop
+			// it and wait for the read, which is where this would have ended up
+			// anyway.
+			this.store.setBlob(v.key, undefined)
+
+			return
+		}
+
+		this.settle(v, 'ok', undefined)
+	}
+
 	/** settle moves an entry on and tells whoever is drawing it. */
 	private settle(v: Live, state: State, error: unknown): void {
 		this.resubscribe(v)
+
+		// Kept for the next time this page is opened, and kept only when there
+		// is something to keep: an error is not an answer, and a query that
+		// failed should ask again rather than draw what it managed last week.
+		if (state === 'ok' && v.res !== undefined) {
+			this.store.setBlob(v.key, toBinary(v.method.output, v.res))
+		}
 
 		v.entry = {
 			key: v.key,
@@ -369,15 +508,15 @@ export class Queries {
 	 * the query's own. That is a payday shape rather than a general one, and
 	 * this is payday's package.
 	 */
-	private watch(v: Live, opts: QueryOpts): void {
+	private watch(v: Live): void {
 		if (v.stop !== undefined) return
 
 		const m = siblingWatch(v.method)
 		if (m === undefined) return
-		if (opts.watch === false) return
+		if (v.opts.watch === false) return
 
 		const filters = (v.input as unknown as Record<string, unknown>)['filters']
-		if (filters === undefined && opts.watch !== true) return
+		if (filters === undefined && v.opts.watch !== true) return
 
 		const stop = new AbortController()
 		v.stop = stop
@@ -429,8 +568,118 @@ export class Queries {
 
 			v.retried = true
 			v.stop = undefined
-			void this.run(v, opts)
+			void this.run(v)
 		})()
+	}
+
+	/**
+	 * revalidate reads again every drawn query whose set the write may have
+	 * changed.
+	 *
+	 * "May have" is the whole of it, and it is deliberately coarse: a row
+	 * created belongs to some lists over its entity, a row erased leaves some,
+	 * and a row edited can cross a filter it was inside -- and the only thing
+	 * that knows which is the server. So the test is on the **entity**, and it
+	 * is answered from the method's output type rather than from the rows an
+	 * answer happened to name, because a list that came back empty named none
+	 * and is exactly the one a create should fill.
+	 *
+	 * Only lists. A `Get` over a ref has no membership to change: if its row
+	 * moved, the store already told everything drawing it, and reading again
+	 * would be a call whose answer is the row that is already on screen.
+	 */
+	private revalidate(touched: ReadonlySet<string>): void {
+		if (touched.size === 0) return
+
+		for (const v of [...this.live.values()]) {
+			// A query at rest re-reads when somebody draws it again; see
+			// [Queries.wake]. Reading it now is a call for a screen that is not
+			// there, and a page that has been open a while has more of those
+			// than it has visible ones.
+			if (v.idle) continue
+
+			let hit = false
+			for (const t of this.setsOf(v.method)) {
+				if (!touched.has(t)) continue
+
+				hit = true
+				break
+			}
+			if (!hit) continue
+
+			void this.run(v)
+		}
+	}
+
+	/**
+	 * setsOf is the entities a method answers with a **set** of.
+	 *
+	 * Read off the output descriptor, so it is a property of the method and is
+	 * worked out once: `RobotListResponse` carries `repeated Robot items`, and
+	 * a `Get` answering with one `Robot` carries no set at all.
+	 */
+	private setsOf(method: DescMethod): ReadonlySet<string> {
+		let got = this.sets.get(method)
+		if (got !== undefined) return got
+
+		const out = new Set<string>()
+		const seen = new Set<string>()
+
+		const walk = (d: DescMessage, inList: boolean): void => {
+			const at = `${d.typeName}:${inList}`
+			if (seen.has(at)) return
+			seen.add(at)
+
+			if (this.entities.has(d.typeName)) {
+				if (inList) out.add(d.typeName)
+
+				return
+			}
+
+			for (const f of d.fields) {
+				const to = messageOf(f)
+				if (to === undefined) continue
+
+				walk(to, inList || f.fieldKind === 'list')
+			}
+		}
+
+		walk(method.output, false)
+		this.sets.set(method, out)
+		got = out
+
+		return got
+	}
+
+	/**
+	 * erased is the row a removal names, and what entity it is of.
+	 *
+	 * By name, the way `Watch` is found: payday generates `Erase` on every
+	 * entity service, taking that entity's ref and answering with nothing. This
+	 * is payday's package and that is payday's shape.
+	 *
+	 * The entity is read from a sibling -- `Add` and `Get` answer with it -- so
+	 * that a removal whose ref this cannot resolve still says *which* lists
+	 * moved.
+	 */
+	private erased(method: DescMethod, input: Message): { typeName: string; id?: Uint8Array } | undefined {
+		if (method.name !== 'Erase') return undefined
+
+		let typeName: string | undefined
+		for (const m of method.parent.methods) {
+			if (!this.entities.has(m.output.typeName)) continue
+
+			typeName = m.output.typeName
+			break
+		}
+		if (typeName === undefined) return undefined
+
+		// `oneof key { bytes id = 1; ... }` -- by identifier or by slug, and
+		// only the first names a row this store holds.
+		const ref = input as unknown as { key?: { case?: string; value?: unknown } }
+		const id = ref.key?.case === 'id' ? ref.key.value : undefined
+
+		return id instanceof Uint8Array ? { typeName, id } : { typeName }
 	}
 
 	/**
@@ -464,7 +713,7 @@ export class Queries {
 
 		v.idle = false
 		this.resubscribe(v)
-		void this.run(v, {})
+		void this.run(v)
 	}
 }
 

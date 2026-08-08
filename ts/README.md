@@ -78,6 +78,59 @@ make a slug carrying the wrong word name a different kind of row, silently;
 checking it (`Slug.expect`) turns the same typo into the disagreement that
 catches it.
 
+## The local store, and the reads that follow it
+
+The rest of the package is the client side of a payday app: a replica of what
+one caller may see, and a read layer over it.
+
+```ts
+import { Queries } from "@lesomnus/payday/query";
+import { Store, identityOf } from "@lesomnus/payday/store";
+import { openDisk } from "@lesomnus/payday/store/idb";
+import { Provider, useQuery, useCall, useRow } from "@lesomnus/payday/react";
+
+import { entities } from "./gen/entities.js"; // generated: one declaration per entity
+
+const at = { name: "acme", identity: await identityOf(credential) };
+const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) });
+await store.hydrate();
+
+const app = { store, queries: new Queries(store, transport, entities) };
+```
+
+```tsx
+function Robots() {
+  const { data } = useQuery(RobotService.method.list, { filters: [] });
+  const add = useCall(RobotService.method.add);
+  ...
+}
+```
+
+**Nothing declares a dependency, because calling it is the declaration.** The
+read goes through the framework, so the framework knows which rows were drawn;
+when one of them changes — from another query, from a write, from the `Watch`
+the server is streaming — every place drawing it re-renders, at once. A write
+lands the same way: the row it answered with goes into the store, and the lists
+over that entity are read again, because a create can change what belongs in one
+and only the server knows which.
+
+A few things it is worth knowing before reaching for it:
+
+- **A store is opened for a credential, not for a person.** What a caller may
+  see is the actor *and* the scope, so a narrowed credential is a different
+  store. `identityOf` is a digest, so the token itself never reaches a database
+  name.
+- **It is in memory, and that is not a shortcut.** Reading has to answer *now* —
+  `useSyncExternalStore` takes a function, not a promise. `store/idb` is a
+  mirror behind that: memory is the truth and the disk is a copy, so a reload
+  draws what it had instead of a spinner for it.
+- **Order and membership are the server's answers.** The store holds rows by
+  identifier and never sorts or filters a partial copy, which would answer a
+  different question confidently.
+- **React is an optional peer dependency.** `store` and `query` know nothing
+  about it; `react` is thirty lines of `useSyncExternalStore` over them, and the
+  same file for Vue or Svelte is the same length.
+
 ## Agreeing with the server
 
 Everything here is written against the Go half and refuses what it refuses. Two

@@ -217,6 +217,11 @@ func (n New) Steps() []string {
 		"buf dep update",
 		"go tool pd gen .",
 		"go mod tidy",
+		"go run ./cmd/"+n.Name+" init",
 		"go run ./cmd/"+n.Name+" serve",
+		"",
+		"# and the page, in another shell",
+		"go tool pd gen --ts .",
+		"cd ts && npm install && npm run dev",
 	)
 }

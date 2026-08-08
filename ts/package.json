@@ -1,7 +1,7 @@
 {
 	"name": "@lesomnus/payday",
-	"version": "0.0.2",
-	"description": "The identifier and the slug a payday app names its rows by, for whatever runs outside the server",
+	"version": "0.0.3",
+	"description": "The client half of a payday app: the identifier and the slug a row is named by, a local store of what one caller may see, and reads that keep themselves up to date",
 	"license": "Apache-2.0",
 	"author": "lesomnus",
 	"homepage": "https://github.com/lesomnus/payday/tree/main/ts",
@@ -45,6 +45,10 @@
 		"./store": {
 			"types": "./dist/src/store/index.d.ts",
 			"import": "./dist/src/store/index.js"
+		},
+		"./store/idb": {
+			"types": "./dist/src/store/idb.d.ts",
+			"import": "./dist/src/store/idb.js"
 		},
 		"./query": {
 			"types": "./dist/src/query/index.d.ts",

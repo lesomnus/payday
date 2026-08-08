@@ -11,4 +11,4 @@
  */
 
 export { Queries, keyOf } from './query.js'
-export type { Entry, QueryOpts, State } from './query.js'
+export type { CallOpts, Entry, QueryOpts, State } from './query.js'

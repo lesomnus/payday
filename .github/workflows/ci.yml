@@ -104,6 +104,25 @@ jobs:
       - run: go tool pd gen --check .
         working-directory: widget
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The page the template ships, built the way somebody who ran `pd new`
+      # would build it -- and against **this** checkout rather than the last
+      # published package, which is the same reason the Go half is replaced
+      # above. Packed rather than linked: a linked package resolves its own
+      # imports from its own directory, so `react` -- an optional peer -- looks
+      # absent and the bundler stubs it out. An install is what an app has.
+      - name: and the page it ships
+        run: |
+          cd payday/ts && npm ci && npm pack --pack-destination "${GITHUB_WORKSPACE}"
+          cd "${GITHUB_WORKSPACE}/widget/ts"
+          npm install
+          npm install --save "${GITHUB_WORKSPACE}"/lesomnus-payday-*.tgz
+          cd .. && go tool pd gen --ts .
+          cd ts && npm run build
+
   # The TypeScript, twice: payday's own half, and the app's -- which is where
   # the two halves are checked against each other. That job starts the real
   # server and sends it bytes, so it needs Go as well; a mock would agree with

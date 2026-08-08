@@ -17,11 +17,22 @@
  * @module
  */
 
-import { createContext, createElement, useContext, useMemo, useSyncExternalStore, type ReactNode } from 'react'
+import {
+	createContext,
+	createElement,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+	type ReactNode,
+} from 'react'
 
 import type { DescMessage, DescMethodUnary, Message, MessageInitShape, MessageShape } from '@bufbuild/protobuf'
 
-import type { Entry, Queries, QueryOpts } from '../query/index.js'
+import type { CallOpts, Entry, Queries, QueryOpts } from '../query/index.js'
 import type { Store } from '../store/index.js'
 
 /** App is what a page reads through. */
@@ -83,6 +94,85 @@ export function useQuery<I extends DescMessage, O extends DescMessage>(
 	)
 
 	return useSyncExternalStore(subscribe, snapshot, snapshot)
+}
+
+/** Call is a write, and where it has got to. */
+export interface Call<I extends DescMessage, O extends DescMessage> {
+	/**
+	 * Make the write.
+	 *
+	 * Answers with what the server answered, and **throws what it threw** --
+	 * so an ordinary `try`/`catch` around an await works, and a caller who
+	 * would rather render the failure reads `error` instead. A caller who does
+	 * neither leaves a rejected promise, which is a caller ignoring a failed
+	 * write.
+	 */
+	readonly call: (input: MessageInitShape<I>, opts?: CallOpts) => Promise<MessageShape<O>>
+
+	readonly state: 'idle' | 'pending' | 'ok' | 'error'
+	readonly data: MessageShape<O> | undefined
+	readonly error: unknown
+}
+
+/**
+ * useCall is a write that puts what it answered with where everything reading
+ * will see it.
+ *
+ *   const add = useCall(RobotService.method.add)
+ *   await add.call({ alias, tenant })
+ *
+ * There is no invalidation to declare and no list to update. The row the write
+ * answered with goes into the store, so every place already showing it is
+ * right at once; the lists it may now belong to are read again. See
+ * [Queries.call] for why the second one is a round trip and not a local
+ * insertion.
+ *
+ * Unlike [useQuery] this is **not** shared: two components calling the same
+ * write are two writes, which is what a person clicking two buttons means.
+ * What they share is where the answers land.
+ */
+export function useCall<I extends DescMessage, O extends DescMessage>(method: DescMethodUnary<I, O>): Call<I, O> {
+	const { queries } = useApp()
+
+	const [at, setAt] = useState<{
+		state: 'idle' | 'pending' | 'ok' | 'error'
+		data: MessageShape<O> | undefined
+		error: unknown
+	}>({ state: 'idle', data: undefined, error: undefined })
+
+	// Which write is the current one, so that two in flight settle in the order
+	// they were made rather than the order they answered -- and so that a
+	// component gone from the screen is not told about either.
+	const gen = useRef(0)
+	const live = useRef(true)
+	useEffect(() => {
+		live.current = true
+
+		return () => {
+			live.current = false
+		}
+	}, [])
+
+	const call = useCallback(
+		async (input: MessageInitShape<I>, opts?: CallOpts): Promise<MessageShape<O>> => {
+			const n = ++gen.current
+			setAt({ state: 'pending', data: undefined, error: undefined })
+
+			try {
+				const data = await queries.call(method, input, opts)
+				if (live.current && n === gen.current) setAt({ state: 'ok', data, error: undefined })
+
+				return data
+			} catch (error) {
+				if (live.current && n === gen.current) setAt({ state: 'error', data: undefined, error })
+
+				throw error
+			}
+		},
+		[queries, method],
+	)
+
+	return { call, state: at.state, data: at.data, error: at.error }
 }
 
 /**

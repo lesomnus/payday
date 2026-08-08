@@ -27,9 +27,10 @@
  * store on IndexedDB needs a copy in memory anyway, and once that copy exists
  * it is the store and the database is persistence.
  *
- * Which is a separate concern, and not this one. What persistence buys is
- * surviving a reload and working offline; what it costs is a schema for a copy
- * of something the server has. It goes behind a seam when it is wanted.
+ * Which is a separate concern, and it is behind a seam: hand [Opts.disk] a
+ * mirror and the rows are written out behind the reads, so a reload draws what
+ * it had and finds out what changed behind that. See `disk.ts` for why memory
+ * stays the truth, and `idb.ts` for the one implementation there is.
  *
  * # It is tied to what this caller can see
  *
@@ -51,7 +52,13 @@
 import { create, fromBinary, toBinary, type Message } from '@bufbuild/protobuf'
 
 import { bytes, key, type EntityDesc, type Row } from './desc.js'
+import type { Disk } from './disk.js'
 import { flatten, newer } from './flat.js'
+
+// In a page, in a worker and in Node, and the only thing outside the language
+// this module needs. Declared rather than putting `DOM` in `lib`; see
+// `digest.ts`.
+declare const queueMicrotask: (f: () => void) => void
 
 /** Opts is what a store is opened with. */
 export interface Opts {
@@ -65,6 +72,15 @@ export interface Opts {
 
 	/** The name of the app, which is the rest of the store's name. */
 	readonly name: string
+
+	/**
+	 * Where to mirror the rows, if anywhere.
+	 *
+	 * Absent is a store that lives as long as the page does, which is the right
+	 * answer for plenty of apps. See `@lesomnus/payday/store/idb`, and note
+	 * that a store opened with one still has to be told to [Store.hydrate].
+	 */
+	readonly disk?: Disk
 }
 
 /**
@@ -87,9 +103,22 @@ export class Store {
 	/** Keys written during the current batch, notified when it ends. */
 	private pending: Set<Key> | undefined
 
-	private constructor(name: string, by: Map<string, EntityDesc>) {
+	private readonly disk: Disk | undefined
+
+	/** What a layer above kept beside the rows; see [Store.blob]. */
+	private readonly blobs = new Map<string, Uint8Array>()
+
+	/** What the mirror has not been told about yet; see [Store.mirror]. */
+	private queued = new Set<Key>()
+	private queuedBlobs = new Set<string>()
+	private scheduled = false
+	private flushing: Promise<void> = Promise.resolve()
+	private failed: unknown
+
+	private constructor(name: string, by: Map<string, EntityDesc>, disk: Disk | undefined) {
 		this.name = name
 		this.by = by
+		this.disk = disk
 		for (const typeName of by.keys()) this.rows.set(typeName, new Map())
 	}
 
@@ -98,7 +127,100 @@ export class Store {
 		const by = new Map<string, EntityDesc>()
 		for (const v of entities) by.set(v.typeName, v)
 
-		return new Store(`${opts.name}:${opts.identity}`, by)
+		return new Store(`${opts.name}:${opts.identity}`, by, opts.disk)
+	}
+
+	/**
+	 * hydrate fills this store from its mirror, once.
+	 *
+	 * Await it before the first render and the page draws what it had; call it
+	 * later and it is still safe, because a row from disk only lands where it
+	 * is not older than what is already held -- the same rule two answers from
+	 * the server are ordered by. So a mirror that is behind cannot undo a read
+	 * that already came back.
+	 *
+	 * What it does **not** do is make anything current. The rows are as old as
+	 * the tab that wrote them, and what makes them true again is the reads a
+	 * page makes anyway -- drawn over what was already there instead of over a
+	 * spinner. A `Watch` closes the rest.
+	 */
+	async hydrate(): Promise<void> {
+		if (this.disk === undefined) return
+
+		const held = await this.disk.load()
+		for (const [k, v] of held.blobs) this.blobs.set(k, v)
+
+		this.batch(() => {
+			for (const [k, row] of held.rows) {
+				const at = k.indexOf('/')
+				if (at < 0) continue
+
+				const typeName = k.slice(0, at)
+				const rows = this.rows.get(typeName)
+
+				// An entity this app no longer has. The stamp catches a schema
+				// that moved, so this is the narrow case of a mirror written by
+				// something that shared the name -- and dropping it is right.
+				if (rows === undefined) continue
+
+				const id = k.slice(at + 1)
+				const was = rows.get(id)
+				if (!newer(this.desc(typeName), row, was)) continue
+
+				rows.set(id, { ...was, ...row })
+				this.dirty(k)
+			}
+		})
+	}
+
+	/**
+	 * flushed answers when everything written so far has reached the mirror,
+	 * and throws if the last attempt to reach it did not.
+	 *
+	 * Nothing has to await this. Writing out is behind the reads on purpose --
+	 * a render must never wait on a disk -- so a mirror that fails costs the
+	 * mirror and nothing else, and the store goes on being right. This is for a
+	 * test, and for an app that would like to say something when the copy it
+	 * thought it had is not there.
+	 */
+	async flushed(): Promise<void> {
+		// A write made this turn is still only scheduled, so waiting on the
+		// chain now would be waiting on the one before it. Yield until the
+		// scheduled turn has run and its work is on the chain.
+		while (this.scheduled) await Promise.resolve()
+
+		await this.flushing
+		if (this.failed !== undefined) throw this.failed
+	}
+
+	/** close lets go of the mirror. */
+	close(): void {
+		this.disk?.close()
+	}
+
+	/**
+	 * blob is what a layer above this one left beside the rows, **now**.
+	 *
+	 * Rows are not the whole of what a page draws: a list is an order and a
+	 * membership, and neither of those is in any row. So the query layer keeps
+	 * the answers it gave here, and a reloaded page draws the list it had on
+	 * its first frame instead of a spinner. See `disk.ts`.
+	 *
+	 * It is here rather than beside the query layer for one reason and it is
+	 * not convenience: this is what knows the credential, holds the mirror, and
+	 * is told to [Store.forget]. Answers kept anywhere else would be answers
+	 * that outlive the logout that dropped the rows they name.
+	 */
+	blob(key: string): Uint8Array | undefined {
+		return this.blobs.get(key)
+	}
+
+	/** setBlob keeps one, or drops it when given nothing. */
+	setBlob(key: string, v: Uint8Array | undefined): void {
+		if (v === undefined) this.blobs.delete(key)
+		else this.blobs.set(key, v)
+
+		this.mirrorBlob(key)
 	}
 
 	/** desc is the declaration for one entity. */
@@ -252,6 +374,7 @@ export class Store {
 					// and nothing needs to.
 					this.rows.get(typeName)?.delete(key(item.id))
 					this.dirty(this.rowKey(typeName, item.id))
+					this.mirror(this.rowKey(typeName, item.id))
 					continue
 				}
 
@@ -280,6 +403,20 @@ export class Store {
 
 			for (const k of this.listeners.keys()) this.dirty(k)
 		})
+
+		// The answers go too, and they matter more than the rows do: an answer
+		// is a list of identifiers this caller was allowed to see, and one left
+		// behind would be drawn on the next page before anything asked.
+		this.blobs.clear()
+
+		// The mirror goes as a whole rather than a key at a time -- what is
+		// being said here is "this caller is done", and half a mirror left
+		// behind by a failed key-by-key delete is the outcome worth ruling out.
+		this.queued.clear()
+		this.queuedBlobs.clear()
+
+		const disk = this.disk
+		if (disk !== undefined) this.chain(() => disk.clear())
 	}
 
 	/**
@@ -308,6 +445,7 @@ export class Store {
 			// is how a page loses a name it was showing a moment ago.
 			rows.set(row.id, { ...was, ...row })
 			this.dirty(`${typeName}/${row.id}`)
+			this.mirror(`${typeName}/${row.id}`)
 		}
 
 		for (const n of nested) this.write(n.to, n.value)
@@ -339,6 +477,89 @@ export class Store {
 
 	private dirty(k: Key): void {
 		this.pending?.add(k)
+	}
+
+	/**
+	 * mirror says a row wants writing out.
+	 *
+	 * Keys and not rows, so that a row written three times in one turn is one
+	 * write of what it finally is. And on a microtask rather than at once,
+	 * because a response carrying twenty rows should be one transaction --
+	 * which is the same reason [Store.batch] exists, one layer down.
+	 *
+	 * Separate from [Store.dirty] and not derived from it: `touch` puts keys
+	 * on that bus which are not rows at all, and a mirror asked to write one of
+	 * those would be writing a query's identity to disk.
+	 */
+	private mirror(k: Key): void {
+		if (this.disk === undefined) return
+
+		this.queued.add(k)
+		this.schedule()
+	}
+
+	private mirrorBlob(k: string): void {
+		if (this.disk === undefined) return
+
+		this.queuedBlobs.add(k)
+		this.schedule()
+	}
+
+	private schedule(): void {
+		if (this.scheduled) return
+
+		this.scheduled = true
+		queueMicrotask(() => {
+			this.scheduled = false
+
+			const keys = this.queued
+			const blobs = this.queuedBlobs
+			if (keys.size === 0 && blobs.size === 0) return
+
+			this.queued = new Set()
+			this.queuedBlobs = new Set()
+
+			const disk = this.disk
+			if (disk === undefined) return
+
+			// Read now rather than when the write lands: what belongs on disk
+			// is what the row is, and by the time this runs it is whatever the
+			// last writer left.
+			const rows: [Key, Row | undefined][] = []
+			for (const at of keys) {
+				const i = at.indexOf('/')
+				rows.push([at, this.rows.get(at.slice(0, i))?.get(at.slice(i + 1))])
+			}
+
+			const kept: [string, Uint8Array | undefined][] = []
+			for (const at of blobs) kept.push([at, this.blobs.get(at)])
+
+			this.chain(() => disk.save({ rows, blobs: kept }))
+		})
+	}
+
+	/**
+	 * chain runs one mirror write after the last one has finished.
+	 *
+	 * A thunk and not a promise, so the transaction is **opened** in turn as
+	 * well: two overlapping ones commit in whatever order the database chose,
+	 * and the later write is not always the later commit -- which would leave
+	 * the mirror holding a row the store had already moved past.
+	 */
+	private chain(work: () => Promise<void>): void {
+		this.flushing = this.flushing.then(() =>
+			work().then(
+				() => {
+					this.failed = undefined
+				},
+				(err: unknown) => {
+					// Swallowed here and remembered for [Store.flushed]. A
+					// mirror that failed is a mirror, and the store above it is
+					// still the truth.
+					this.failed = err
+				},
+			),
+		)
 	}
 
 	private fire(k: Key): void {

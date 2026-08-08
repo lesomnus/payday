@@ -18,15 +18,11 @@
 import type { Transport } from '@connectrpc/connect'
 
 import { Queries } from '@lesomnus/payday/query'
+import type { App } from '@lesomnus/payday/react'
 import { Store, identityOf } from '@lesomnus/payday/store'
+import { openDisk } from '@lesomnus/payday/store/idb'
 
 import { entities } from '../gen/entities.js'
-
-/** App is what a page reads through. */
-export interface App {
-	readonly store: Store
-	readonly queries: Queries
-}
 
 /**
  * open answers with this app's store and queries, for one caller.
@@ -36,9 +32,16 @@ export interface App {
  * together, so the same person holding a narrowed credential is a different
  * store; keyed on the person, the narrowed session would draw the wide
  * session's rows. Nothing leaks either way, and the screen is wrong.
+ *
+ * The mirror is what makes a reload draw the page it had rather than a spinner
+ * for it. Delete these two lines and everything still works -- the store is a
+ * store either way, and it lives as long as the tab does.
  */
 export async function open(transport: Transport, credential: string): Promise<App> {
-	const store = Store.open(entities, { name: '{{.Name}}', identity: await identityOf(credential) })
+	const at = { name: '{{.Name}}', identity: await identityOf(credential) }
+
+	const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) })
+	await store.hydrate()
 
 	return { store, queries: new Queries(store, transport, entities) }
 }
