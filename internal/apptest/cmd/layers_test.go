@@ -242,3 +242,80 @@ func must[T any](v T, err error) T {
 
 	return v
 }
+
+// TestTheWallReadsTheKeyRatherThanWalkingToIt is the wall's shape, and it is
+// tested by what it hides rather than by what it renders.
+//
+// `HasTenantWith(tenant.IDIn(vs))` and `<foreign key> IN vs` answer the same
+// question, and they answer it the same way **because the key is a foreign
+// key**: a row cannot hold the identifier of a tenant that is not there. The
+// integrity constraint is not the cost of the join, it is what makes the join
+// skippable -- measured on SQLite, the walked form plans as a correlated
+// subquery probing the tenant table once per row and this plans as a filter on
+// the row's own column.
+//
+// Every hop but the last is still a walk. Two hops go from four plan steps with
+// a CORRELATED SCALAR SUBQUERY to two without one.
+func TestTheWallReadsTheKeyRatherThanWalkingToIt(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	other, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "other"}.Build())
+	x.NoError(err)
+
+	// One of each, in each tenant, at every depth the schema has.
+	mine, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "mine",
+	}.Build())
+	x.NoError(err)
+
+	theirs, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: other.GetId()}.Build(),
+		Alias:  "theirs",
+	}.Build())
+	x.NoError(err)
+
+	myJoint, err := b.Ungated.Joint().Add(ctx, app.JointAddRequest_builder{
+		Robot: app.RobotRef_builder{Id: mine.GetId()}.Build(),
+		Alias: "my-elbow",
+	}.Build())
+	x.NoError(err)
+
+	theirJoint, err := b.Ungated.Joint().Add(ctx, app.JointAddRequest_builder{
+		Robot: app.RobotRef_builder{Id: theirs.GetId()}.Build(),
+		Alias: "their-elbow",
+	}.Build())
+	x.NoError(err)
+
+	// One hop, collapsed onto the key.
+	got, err := b.Walled.Robot().Get(b.as(ctx), app.RobotGetRequest_builder{
+		Ref: app.RobotRef_builder{Id: mine.GetId()}.Build(),
+	}.Build())
+	x.NoError(err)
+	x.Equal("mine", got.GetAlias())
+
+	_, err = b.Walled.Robot().Get(b.as(ctx), app.RobotGetRequest_builder{
+		Ref: app.RobotRef_builder{Id: theirs.GetId()}.Build(),
+	}.Build())
+	x.Equal(codes.NotFound, status.Code(err), "the wall stopped narrowing when the walk was collapsed")
+
+	// Two hops: the outer one is still a walk and the inner one is the key.
+	gotJoint, err := b.Walled.Joint().Get(b.as(ctx), app.JointGetRequest_builder{
+		Ref: app.JointRef_builder{Id: myJoint.GetId()}.Build(),
+	}.Build())
+	x.NoError(err)
+	x.Equal("my-elbow", gotJoint.GetAlias())
+
+	_, err = b.Walled.Joint().Get(b.as(ctx), app.JointGetRequest_builder{
+		Ref: app.JointRef_builder{Id: theirJoint.GetId()}.Build(),
+	}.Build())
+	x.Equal(codes.NotFound, status.Code(err), "two hops stopped narrowing")
+
+	// And a list, which is the read the collapse was for: it runs the predicate
+	// against every row rather than one.
+	page, err := b.Walled.Robot().List(b.as(ctx), app.RobotListRequest_builder{}.Build())
+	x.NoError(err)
+	x.Len(page.GetItems(), 1)
+	x.Equal("mine", page.GetItems()[0].GetAlias())
+}
