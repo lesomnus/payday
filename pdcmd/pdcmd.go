@@ -29,16 +29,71 @@ package pdcmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sort"
 
 	"github.com/goccy/go-yaml"
 	"github.com/lesomnus/xli"
 	"github.com/lesomnus/xli/flg"
+	"github.com/lesomnus/xli/mode"
 
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/version"
 )
+
+// Load reads the configuration, and belongs on the **root** command so that it
+// has happened before any subcommand runs.
+//
+//	Handler: xli.Chain(pdcmd.Load(Loader, c), xli.RequireSubcommand()),
+//
+// It is a handler rather than something `serve` does, because every command
+// that touches a deployment needs it: `config` prints what was read, `migrate`
+// opens the database it names, and a command that loaded it for itself would be
+// one more place for the order to be wrong.
+//
+// It runs when the root is passed **through** as well as when it is the command
+// -- `mode.Run|mode.Pass` -- which is the whole of why this is a function
+// rather than a line in each app: an `OnRun` here fires only for `<app>` with
+// no subcommand, so the file is read when nothing needs it and not read when
+// everything does.
+//
+// `--config` names a file; nothing named is [config.Loader.Paths] in order.
+// Reading none is not a failure -- a deployment may say everything in the
+// environment -- so what says the file was there is [config.Loaded.Path].
+//
+// A variable that starts with the app's prefix and that no field answers to is
+// **reported**, because that is what a typo looks like and the alternative is a
+// deployment that set something and was not served by it.
+func Load[T any](l config.Loader, v *T) xli.Handler {
+	return xli.On(mode.Run, func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		// Read off the command rather than from a variable the flag was told
+		// to write, because when that variable is written is the flag
+		// machinery's business and this has to happen after it.
+		p, _ := flg.Find[string](cmd, ConfigName)
+
+		from, err := l.Load(v, p, os.Environ())
+		if err != nil {
+			return err
+		}
+		for _, name := range from.Unknown {
+			fmt.Fprintf(cmd.ErrWriter, "%s: %s is set and nothing reads it\n", l.Name(), name)
+		}
+
+		return next(ctx)
+	})
+}
+
+// ConfigName is the flag [Load] reads the path from.
+const ConfigName = "config"
+
+// ConfigFlag is `--config`, for the root command [Load] is on.
+func ConfigFlag() *flg.String {
+	return &flg.String{
+		Name:  ConfigName,
+		Brief: "the configuration file to read; the app's own by default",
+	}
+}
 
 // NewCmdConfig is `<app> config`: what this deployment is configured with, as
 // it was read.

@@ -11,6 +11,7 @@ package cmd
 
 import (
 	"github.com/lesomnus/xli"
+	"github.com/lesomnus/xli/flg"
 
 	"github.com/lesomnus/payday/pdcmd"
 
@@ -59,11 +60,14 @@ func Cmd(c *Config) *xli.Command {
 		Name:  Name,
 		Brief: "the app payday is tried against",
 
+		Flags: flg.Flags{pdcmd.ConfigFlag()},
+
 		Commands: []*xli.Command{
 			pdcmd.NewCmdVersion(),
 			pdcmd.NewCmdConfig(Loader, c),
+			NewCmdServe(c),
 		},
 
-		Handler: xli.RequireSubcommand(),
+		Handler: xli.Chain(pdcmd.Load(Loader, c), xli.RequireSubcommand()),
 	}
 }

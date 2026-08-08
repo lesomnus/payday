@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"github.com/lesomnus/xli"
+	"github.com/lesomnus/xli/flg"
 
 	"github.com/lesomnus/payday/pdcmd"
 
@@ -53,16 +54,24 @@ type Config struct {
 // `serve` is not among them and will not be. It is the one command whose body
 // is the stack -- which layers, in which order, with the wall on which server
 // -- and that is the most important thing a reader of an app can see.
+//
+// The configuration is read on the **root**, so it has happened whichever
+// subcommand runs -- `config` prints what came out, `serve` listens on what it
+// says. A command that loaded it for itself would be one more place for the
+// order to be wrong.
 func Cmd(c *Config) *xli.Command {
 	return &xli.Command{
 		Name:  Name,
 		Brief: "{{.Name}}",
 
+		Flags: flg.Flags{pdcmd.ConfigFlag()},
+
 		Commands: []*xli.Command{
 			pdcmd.NewCmdVersion(),
 			pdcmd.NewCmdConfig(Loader, c),
+			NewCmdServe(c),
 		},
 
-		Handler: xli.RequireSubcommand(),
+		Handler: xli.Chain(pdcmd.Load(Loader, c), xli.RequireSubcommand()),
 	}
 }

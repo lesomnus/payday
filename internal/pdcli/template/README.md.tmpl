@@ -79,14 +79,45 @@ things that are cheap to get wrong here and expensive to find later.
 ## Running
 
 ```sh
-go run ./cmd/{{.Name}} config env    # every variable this deployment can set
+go run ./cmd/{{.Name}} config        # what this deployment is configured with
+go run ./cmd/{{.Name}} config env    # every variable it can be told through
 go run ./cmd/{{.Name}} serve
 ```
 
-The configuration is a file, then the environment over the top of it. What an
-app can be told is what `cmd/config.go` declares; nothing is documented
-separately, because a documented list goes out of date on the commit that adds a
-field.
+The configuration is a file, then the environment over the top of it. It is read
+on the **root** command, so it has happened whichever subcommand runs, and
+`--config` names a file when the default is not wanted — which is how one app
+runs as two deployments. What an app can be told is what `cmd/config.go`
+declares; nothing is documented separately, because a documented list goes out
+of date on the commit that adds a field.
+
+## A browser
+
+gRPC is not a protocol a page can speak — not a library that is missing, frames
+the platform does not let anything write — so `{{.Name}}.yaml` has a second
+listener in it, commented out:
+
+```yaml
+server:
+  http:
+    addr: ":8080"
+    allow_web: true
+    origins: ["http://localhost:5173"]
+```
+
+What answers there is the **same** server: the same interceptors, the same
+credential, the same wall, speaking Connect and gRPC-Web instead. A Connect call
+is a POST with a JSON body, so it is also what to reach for from a shell:
+
+```sh
+curl -sX POST http://localhost:8080/app.ThingService/List \
+  -H 'Content-Type: application/json' -H 'Connect-Protocol-Version: 1' -d '{}'
+```
+
+`ts/` is the TypeScript half. `go tool pd gen --ts .` writes the messages and
+service descriptors into `ts/gen`, and `ts/src/client.ts` turns a descriptor into
+a client — one line per service, with nothing generated per service to keep in
+step.
 
 ## What is enforced, and why
 
