@@ -6,6 +6,7 @@ import (
 
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -311,7 +312,7 @@ func TestANamerIsNotAskedToRenameSomethingThatExists(t *testing.T) {
 // fixed is a namer that answers with the same name every time, which is how a
 // collision is arranged without waiting for one in 3.4 billion.
 func fixed(v string) slug.Namer {
-	return slug.NamerFunc(func(_ context.Context, _ string, given string) (string, error) {
+	return slug.NamerFunc(func(_ context.Context, _ string, given string, _ proto.Message) (string, error) {
 		if given == "" {
 			return v, nil
 		}
@@ -332,7 +333,7 @@ func TestANameThisServerChoseIsChosenAgainWhenItIsTaken(t *testing.T) {
 
 	// Two names, in order: the first is already taken and the second is not.
 	var n int
-	s := b.sink(t, slug.NamerFunc(func(_ context.Context, _ string, given string) (string, error) {
+	s := b.sink(t, slug.NamerFunc(func(_ context.Context, _ string, given string, _ proto.Message) (string, error) {
 		if given != "" {
 			return slug.ParseAlias(given)
 		}

@@ -24,8 +24,11 @@ jobs:
         with:
           setup_only: true
 
-      - run: go build ./...
-      - run: go test ./...
+      # Both modules. `internal/apptest` is one of its own -- it owns the ent
+      # dependency payday does not -- so `go test ./...` at the root does not
+      # reach it, and it is where nearly every claim payday makes is actually
+      # demonstrated.
+      - run: ./scripts/test.sh
 
       # The app payday is tried against, regenerated from its schema. Anything
       # that moves is something a commit did not carry.
