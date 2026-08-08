@@ -125,6 +125,8 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitDomains(out, s)
 	pdgen.EmitMinter(out, s, paths)
 	pdgen.EmitWall(out, s, paths)
+	pdgen.EmitGate(out, s, paths, root)
+	pdgen.EmitAudit(out, s, paths, root)
 
 	return nil
 }

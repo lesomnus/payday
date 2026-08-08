@@ -8,6 +8,7 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	"google.golang.org/grpc"
 
+	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
 
 	app "github.com/lesomnus/payday/internal/apptest"
@@ -49,19 +50,53 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// into this app from this app's schema, and payday has no name for it.
 	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect, db)))
 
-	walled, err := bare.NewServer(client, bare.WithMinter(pd.Minter()), bare.WithScope(pd.Wall()))
+	// The server that talks to the database, twice: once as it is, and once
+	// with the wall on it.
+	//
+	// Two things are said to it rather than to the stack, and for the same
+	// reason -- both are about the statement that runs. The trail is kept by
+	// the servers that do the writing, since every RPC that changes anything
+	// has to report itself from inside the transaction that changes it. The
+	// wall is a predicate and a predicate belongs in the WHERE.
+	sink, err := bare.NewServer(client,
+		bare.WithMinter(pd.Minter()),
+		bare.WithRecorder(pd.Recorder()),
+	)
 	if err != nil {
 		db.Close()
 		return nil, err
 	}
 
-	ungated, err := bare.NewServer(client, bare.WithMinter(pd.Minter()))
+	walled, err := bare.NewServer(client,
+		bare.WithMinter(pd.Minter()),
+		bare.WithRecorder(pd.Recorder()),
+		bare.WithScope(pd.Wall()),
+	)
 	if err != nil {
 		db.Close()
 		return nil, err
 	}
 
-	return &Server{Db: db, Ent: client, Walled: walled, Ungated: ungated}, nil
+	// The stack a caller reaches. `pd.Gate` is outermost, so nothing behind it
+	// asks again.
+	stacked, err := app.Build(walled, pd.AuditBuild(), pd.GateBuild())
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	// And the same servers with no wall and no gate, which is what the
+	// deployment does its own work through. It is not a privilege anybody
+	// holds: it is an instance somebody was handed, so going around the wall
+	// is a line of wiring a reader can find rather than a rule that opens up
+	// whenever nobody is asking.
+	ungated, err := app.Build(sink, pd.AuditBuild())
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	return &Server{Db: db, Ent: client, Walled: stacked, Ungated: ungated}, nil
 }
 
 func (s *Server) Close() error { return s.Db.Close() }
@@ -76,8 +111,12 @@ func (s *Server) Close() error { return s.Db.Close() }
 // It is separate from [Server.Serve] so that a test can travel exactly this
 // and answer on a listener that is a channel; see pdtest.
 func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) *grpc.Server {
+	// Behind whatever says who is calling, since the key is about them, and in
+	// front of the gate, since consulting a policy is work a caller past their
+	// line should not be able to ask for.
 	chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
-		WithUnary(grpcx.LimitUnary(c.Server.Limiter(), byPeer)).
+		WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant())).
+		With(gate.Interceptor(nil)).
 		WithUnary(grpcx.ClosedUnary(c.Server.Closed()))
 
 	os := append(opts, chain.ServerOptions()...)
@@ -100,7 +139,3 @@ func (s *Server) Serve(ctx context.Context, c Config, l net.Listener) error {
 
 	return g.Serve(l)
 }
-
-// byPeer is what a call is counted against until this app has somebody to count
-// against instead. Who a caller is arrives in CP3.
-func byPeer(context.Context, string) string { return "" }

@@ -10,8 +10,12 @@ package pd
 
 import (
 	context "context"
+	dialect "entgo.io/ent/dialect"
 	uuid "github.com/google/uuid"
+	audit1 "github.com/lesomnus/payday/audit"
 	frame "github.com/lesomnus/payday/frame"
+	gate "github.com/lesomnus/payday/gate"
+	apptest "github.com/lesomnus/payday/internal/apptest"
 	audit "github.com/lesomnus/payday/internal/apptest/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/ent/cell"
 	holder "github.com/lesomnus/payday/internal/apptest/ent/holder"
@@ -21,6 +25,12 @@ import (
 	tenant "github.com/lesomnus/payday/internal/apptest/ent/tenant"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
 	pdid "github.com/lesomnus/payday/pdid"
+	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	proto "google.golang.org/protobuf/proto"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // The domain of each entity, as declared by `(payday.entity).domain`.
@@ -166,3 +176,227 @@ func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 
 	return tenant.IDIn(vs...), nil
 }
+
+// Gate is the layer that says what a caller may do with a request.
+//
+// It goes outermost, so nothing behind it has to ask again -- though most
+// of what it stands for is not enforced here at all: the wall is a
+// predicate and predicates belong in the query, so [Wall] is installed on
+// the innermost server. What is left is the two rules that are about a
+// row which does not exist yet.
+//
+//	s, err := app.Build(walled, core.Build(), pd.AuditBuild(), pd.GateBuild())
+type Gate struct {
+	apptest.Overlay
+}
+
+func NewGate(next apptest.Server) Gate {
+	return Gate{apptest.NewOverlay(next)}
+}
+
+var _ apptest.Server = Gate{}
+
+var _ enttx.Binder[apptest.Server] = Gate{}
+
+// WithDriver answers with this stack running on `drv`, which is how several
+// servers are put on one transaction.
+//
+// Every layer writes this and none can inherit it: an overlay holds what is
+// behind it and has no way to make itself again, so a layer that did not
+// write it would be missing from the rebuilt stack and the requests inside
+// the transaction would go around it.
+func (s Gate) WithDriver(drv dialect.Driver) (apptest.Server, error) {
+	next, err := enttx.Rebind(s.Next(), drv)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewGate(next), nil
+}
+
+// GateBuild makes a builder of this layer so that it can be stacked.
+func GateBuild() apptest.Builder { return gateBuilder{} }
+
+type gateBuilder struct{}
+
+func (gateBuilder) Build(next apptest.Server) (apptest.Server, error) {
+	return NewGate(next), nil
+}
+
+type gateTenant struct {
+	Gate
+	apptest.TenantServiceServer
+}
+
+func (s Gate) Tenant() apptest.TenantServiceServer {
+	return gateTenant{s, s.Next().Tenant()}
+}
+
+// Add is not served. A tenant is put up by whoever runs the deployment,
+// through a server this layer is not in front of.
+func (s gateTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
+	return nil, gate.ErrDeployment("put up")
+}
+
+// Erase is not served either, and it would take everything in the tenant
+// with it.
+func (s gateTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*emptypb.Empty, error) {
+	return nil, gate.ErrDeployment("taken down")
+}
+
+type gateHolder struct {
+	Gate
+	apptest.HolderServiceServer
+}
+
+func (s Gate) Holder() apptest.HolderServiceServer {
+	return gateHolder{s, s.Next().Holder()}
+}
+
+// Add is the one thing about a holder this layer still says, and it is here
+// because it is the one that is not a predicate: the row does not exist yet,
+// so there is nothing to narrow. Reading one, changing one and erasing one
+// are all the wall.
+//
+// The check is a read of the tenant **through the wall** rather than a
+// comparison against the scope, which costs a query and is worth it. A
+// reference names a tenant by identifier or by alias, and answering "is this
+// one of mine" without a query means holding every tenant in scope in full --
+// fine while that is the caller's own and wrong as soon as it is a list a
+// credential or a policy narrowed to.
+//
+// NotFound and not a refusal, which is the same answer every other read of a
+// tenant gives: that one exists is itself something a caller who may not see
+// it should not be told. It also gets a tenant that simply is not there
+// right, which comparing against a scope did not.
+func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
+	if _, err := gate.Actor(ctx); err != nil {
+		return nil, err
+	}
+
+	if _, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+		Ref: req.GetTenant(),
+	}.Build()); err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, gate.ErrNotFound("Tenant")
+		}
+
+		return nil, err
+	}
+
+	return s.HolderServiceServer.Add(ctx, req)
+}
+
+// Audit is the layer that refuses a trail row written by hand.
+//
+// The RPCs exist because the trail is an entity like any other and a test is
+// far plainer for having them. A deployment serves none of the ones that
+// write: a trail somebody can edit is evidence of nothing.
+type Audit struct {
+	apptest.Overlay
+}
+
+func NewAudit(next apptest.Server) Audit {
+	return Audit{apptest.NewOverlay(next)}
+}
+
+var _ apptest.Server = Audit{}
+var _ enttx.Binder[apptest.Server] = Audit{}
+
+// WithDriver answers with this stack running on `drv`; see [Gate.WithDriver].
+func (s Audit) WithDriver(drv dialect.Driver) (apptest.Server, error) {
+	next, err := enttx.Rebind(s.Next(), drv)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewAudit(next), nil
+}
+
+// AuditBuild makes a builder of this layer so that it can be stacked.
+func AuditBuild() apptest.Builder { return auditBuilder{} }
+
+type auditBuilder struct{}
+
+func (auditBuilder) Build(next apptest.Server) (apptest.Server, error) {
+	return NewAudit(next), nil
+}
+
+type auditService struct {
+	Audit
+	apptest.AuditServiceServer
+}
+
+func (s Audit) Audit() apptest.AuditServiceServer {
+	return auditService{s, s.Next().Audit()}
+}
+
+func (s auditService) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
+	return nil, errTrail()
+}
+
+func (s auditService) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
+	return nil, errTrail()
+}
+
+func (s auditService) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
+	return nil, errTrail()
+}
+
+func (s auditService) Erase(ctx context.Context, req *apptest.AuditRef) (*emptypb.Empty, error) {
+	return nil, errTrail()
+}
+
+// errTrail is Unimplemented and not PermissionDenied, and to everybody: it
+// is not about who is asking, and no credential changes it.
+func errTrail() error {
+	return status.Error(codes.Unimplemented,
+		"the trail is written by what happened, not by anybody asking")
+}
+
+// Recorder writes one row of the trail for every write the generated
+// servers make.
+//
+// It is not a layer and it does not override an RPC. The servers call it
+// from inside the transaction that makes the write, so the row and the
+// record of it hold or fall together -- and so every RPC that changes
+// anything is on the trail without anybody having listed them.
+//
+//	sink, err := bare.NewServer(db, bare.WithRecorder(pd.Recorder()))
+func Recorder() bare.Recorder { return recorder{} }
+
+type recorder struct{}
+
+var _ bare.Recorder = recorder{}
+
+// Record writes what happened. It runs inside the write's transaction, so an
+// error here takes the write with it -- which is the answer wanted: a write
+// that could not be accounted for did not happen.
+//
+// It writes through the server it was handed, which runs on that transaction
+// and does not record; a recorder that recorded its own writes would not
+// stop.
+func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
+	var patch proto.Message
+	if c.Patch != nil {
+		patch = c.Patch
+	}
+
+	v, err := audit1.Of(ctx, c.Method, c.Key, patch)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.Audit().Add(ctx, apptest.AuditAddRequest_builder{
+		TenantId: v.Tenant.Bytes(),
+		ActorId:  v.Actor.Bytes(),
+		TraceId:  v.Trace,
+		Action:   v.Action,
+		ObjectId: v.Object.Bytes(),
+		Patch:    v.Patch,
+	}.Build())
+
+	return err
+}
+
+var _ *patchpb.Patch

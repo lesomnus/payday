@@ -20,10 +20,12 @@ type Paths struct {
 }
 
 const (
-	pkgPdid  = protogen.GoImportPath("github.com/lesomnus/payday/pdid")
-	pkgFrame = protogen.GoImportPath("github.com/lesomnus/payday/frame")
-	pkgCtx   = protogen.GoImportPath("context")
-	pkgUuid  = protogen.GoImportPath("github.com/google/uuid")
+	pkgPdid   = protogen.GoImportPath("github.com/lesomnus/payday/pdid")
+	pkgFrame  = protogen.GoImportPath("github.com/lesomnus/payday/frame")
+	pkgCtx    = protogen.GoImportPath("context")
+	pkgStatus = protogen.GoImportPath("google.golang.org/grpc/status")
+	pkgCodes  = protogen.GoImportPath("google.golang.org/grpc/codes")
+	pkgUuid   = protogen.GoImportPath("github.com/google/uuid")
 )
 
 // EmitDomains writes the domain of each entity, twice: as a constant for code
