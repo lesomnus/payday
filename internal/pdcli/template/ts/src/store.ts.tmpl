@@ -36,6 +36,10 @@ import { entities } from '../gen/entities.js'
  * The mirror is what makes a reload draw the page it had rather than a spinner
  * for it. Delete these two lines and everything still works -- the store is a
  * store either way, and it lives as long as the tab does.
+ *
+ * It expires after a week; `openDisk(entities, at, { keep })` is the knob, and
+ * `Infinity` turns it off. What it bounds is both how large a mirror gets and
+ * how old the answer a reload draws may be.
  */
 export async function open(transport: Transport, credential: string): Promise<App> {
 	const at = { name: '{{.Name}}', identity: await identityOf(credential) }

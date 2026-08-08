@@ -89,6 +89,33 @@ export interface At {
 	readonly identity: string
 }
 
+/** DiskOpts is what a mirror may be told beyond which store it is for. */
+export interface DiskOpts {
+	/**
+	 * How long something is kept after it was last written, in milliseconds.
+	 *
+	 * A week by default, and it is on by default because the alternative is a
+	 * mirror that grows for as long as the app is ever used -- every question a
+	 * page asked, kept forever, on somebody's disk.
+	 *
+	 * It also bounds how wrong a reload can be. A restored answer is drawn as
+	 * though it were true for the one round trip it takes to replace it, and
+	 * "true a week ago" is a different proposition from "true in 2023".
+	 *
+	 * Measured from **when this last wrote it**, not from anything the server
+	 * stamped: a row fetched today that has not changed since 2020 is current,
+	 * and expiring it by `dateUpdated` would throw away exactly the rows that
+	 * never change.
+	 *
+	 * `Infinity` keeps everything, which is a choice an app can make and should
+	 * make deliberately.
+	 */
+	readonly keep?: number
+}
+
+/** A week. Long enough that a daily user keeps their instant reload. */
+const KEEP = 7 * 24 * 60 * 60 * 1000
+
 /**
  * openDisk answers with the mirror for one caller's store, ready to read.
  *
@@ -98,7 +125,7 @@ export interface At {
  * anywhere else, because this name is the one thing about a store that a person
  * can see in devtools.
  */
-export async function openDisk(entities: readonly EntityDesc[], at: At): Promise<Disk> {
+export async function openDisk(entities: readonly EntityDesc[], at: At, opts: DiskOpts = {}): Promise<Disk> {
 	const stamp = await stampOf(entities)
 	const name = `payday/${at.name}:${at.identity}`
 
@@ -125,7 +152,7 @@ export async function openDisk(entities: readonly EntityDesc[], at: At): Promise
 		await settled(tx)
 	}
 
-	return new Mirror(db)
+	return new Mirror(db, opts.keep ?? KEEP)
 }
 
 /** deleteDisk removes one caller's mirror entirely, for a test or a wipe. */
@@ -133,13 +160,31 @@ export async function deleteDisk(at: At): Promise<void> {
 	await done(indexedDB.deleteDatabase(`payday/${at.name}:${at.identity}`))
 }
 
+/** Kept is one entry: the key, what it holds, and when this last wrote it. */
+interface Kept<T> {
+	k: string
+	v: T
+	at: number
+}
+
 class Mirror implements Disk {
 	private readonly db: Db
+	private readonly keep: number
 
-	constructor(db: Db) {
+	constructor(db: Db, keep: number) {
 		this.db = db
+		this.keep = keep
 	}
 
+	/**
+	 * load is everything still worth keeping, and it drops what is not.
+	 *
+	 * The sweep is here rather than on a timer because this is the one moment
+	 * the whole mirror is already being read -- so expiring costs a comparison
+	 * per entry and nothing else. Which does mean a store that is opened and
+	 * never hydrated is never swept; hydrating is the call every app makes, and
+	 * a mirror nobody reads is one nobody is growing either.
+	 */
 	async load(): Promise<Held> {
 		// One transaction over both, so what comes back is one moment rather
 		// than two -- an answer restored beside rows it does not match would be
@@ -149,10 +194,38 @@ class Mirror implements Disk {
 		const blobs = tx.objectStore(BLOBS).getAll()
 		await settled(tx)
 
-		return {
-			rows: (rows.result as { k: Key; v: Row }[]).map((r) => [r.k, r.v] as const),
-			blobs: (blobs.result as { k: string; v: Uint8Array }[]).map((r) => [r.k, r.v] as const),
+		const old = Date.now() - this.keep
+		const gone: [string, string][] = []
+
+		const live = <T>(at: string, vs: unknown[]): Kept<T>[] => {
+			const out: Kept<T>[] = []
+			for (const r of vs as Kept<T>[]) {
+				if (r.at > old) {
+					out.push(r)
+					continue
+				}
+
+				gone.push([at, r.k])
+			}
+
+			return out
 		}
+
+		const held = {
+			rows: live<Row>(ROWS, rows.result).map((r) => [r.k as Key, r.v] as const),
+			blobs: live<Uint8Array>(BLOBS, blobs.result).map((r) => [r.k, r.v] as const),
+		}
+
+		if (gone.length > 0) await this.drop(gone)
+
+		return held
+	}
+
+	private async drop(vs: readonly (readonly [string, string])[]): Promise<void> {
+		const tx = this.db.transaction(TABLES, 'readwrite')
+		for (const [at, k] of vs) tx.objectStore(at).delete(k)
+
+		await settled(tx)
 	}
 
 	async save(changes: Changes): Promise<void> {
@@ -161,6 +234,10 @@ class Mirror implements Disk {
 		// Every request is made before anything is awaited, so the whole batch
 		// is one transaction and one commit -- which is also why a response
 		// carrying twenty rows costs one write and not twenty.
+		// One clock reading for the batch, so everything a response carried
+		// expires together rather than a millisecond apart.
+		const now = Date.now()
+
 		for (const [at, of] of [
 			[ROWS, changes.rows],
 			[BLOBS, changes.blobs],
@@ -168,7 +245,7 @@ class Mirror implements Disk {
 			const t = tx.objectStore(at)
 			for (const [k, v] of of) {
 				if (v === undefined) t.delete(k)
-				else t.put({ k, v })
+				else t.put({ k, v, at: now })
 			}
 		}
 
@@ -200,7 +277,11 @@ class Mirror implements Disk {
  * schema changed this, and a deploy that did not, did not.
  */
 async function stampOf(entities: readonly EntityDesc[]): Promise<string> {
-	const parts: string[] = []
+	// The shape of a record here, not only the shape of an entity. An entry
+	// written before this carried a timestamp would read back with none, and
+	// "no timestamp" is indistinguishable from "written at zero" -- so the
+	// mirror is thrown away once instead, which is what it is for.
+	const parts: string[] = ['payday/idb@2']
 
 	for (const e of [...entities].sort((a, b) => (a.typeName < b.typeName ? -1 : a.typeName > b.typeName ? 1 : 0))) {
 		const fields = e.schema.fields.map((f) => `${f.number}:${f.localName}:${f.fieldKind}`).join(',')

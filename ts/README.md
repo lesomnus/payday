@@ -123,7 +123,9 @@ A few things it is worth knowing before reaching for it:
 - **It is in memory, and that is not a shortcut.** Reading has to answer *now* —
   `useSyncExternalStore` takes a function, not a promise. `store/idb` is a
   mirror behind that: memory is the truth and the disk is a copy, so a reload
-  draws what it had instead of a spinner for it.
+  draws what it had instead of a spinner for it. It expires after a week by
+  default (`openDisk(entities, at, { keep })`), which bounds both how large it
+  gets and how old a restored answer may be.
 - **Order and membership are the server's answers.** The store holds rows by
   identifier and never sorts or filters a partial copy, which would answer a
   different question confidently.

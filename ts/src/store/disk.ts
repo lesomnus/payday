@@ -17,6 +17,11 @@
  * that implies: it is **that caller's** copy, keyed on their credential, and it
  * goes when they log out. See [Store.forget].
  *
+ * It also expires. A mirror with nothing to bound it holds every question the
+ * app ever asked, forever; and a restored answer is drawn as though it were
+ * true for the one round trip it takes to replace it, so how old it may be is
+ * worth having an answer to. See `DiskOpts.keep`.
+ *
  * # There are no indexes here
  *
  * The mirror is a key and a blob, and there is nothing to query by. A local

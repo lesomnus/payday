@@ -18,7 +18,7 @@
 import { create } from '@bufbuild/protobuf'
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import type { Transport } from '@connectrpc/connect'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import 'fake-indexeddb/auto'
 
@@ -331,6 +331,91 @@ describe('a reloaded page draws its list on the first frame', () => {
 		const b = await opened()
 		const qb = new Queries(b, answering([], () => new Promise<never>(() => {})), entities)
 		expect(qb.get(RobotService.method.list, req, { watch: false }).state).toBe('pending')
+		b.close()
+	})
+})
+
+describe('the mirror does not grow forever', () => {
+	const day = 24 * 60 * 60 * 1000
+
+	beforeEach(() => {
+		// Only the clock. Faking timers as well would stop `fake-indexeddb`,
+		// which is asynchronous by the same mechanism a real one is.
+		vi.useFakeTimers({ toFake: ['Date'] })
+		vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+	})
+
+	afterEach(() => {
+		vi.useRealTimers()
+	})
+
+	/** kept is how many entries the mirror is holding, read past the store. */
+	async function kept(o: typeof at): Promise<number> {
+		const disk = await openDisk(entities, o, { keep: Infinity })
+		const held = await disk.load()
+		const n = [...held.rows].length + [...held.blobs].length
+		disk.close()
+
+		return n
+	}
+
+	it('drops what has not been written for a while, and keeps what has', async () => {
+		const a = Store.open(entities, { ...at, disk: await openDisk(entities, at, { keep: 7 * day }) })
+		a.put(Robot.typeName, robot('old', new Date('2026-01-01T00:00:00Z')))
+		await a.flushed()
+		a.close()
+
+		vi.setSystemTime(new Date('2026-01-06T00:00:00Z'))
+
+		const b = Store.open(entities, { ...at, disk: await openDisk(entities, at, { keep: 7 * day }) })
+		b.put(Robot.typeName, robot('new', new Date('2026-01-06T00:00:00Z')))
+		await b.flushed()
+		b.close()
+
+		// Nine days after the first was written and four after the second.
+		vi.setSystemTime(new Date('2026-01-10T00:00:00Z'))
+
+		const c = Store.open(entities, { ...at, disk: await openDisk(entities, at, { keep: 7 * day }) })
+		await c.hydrate()
+
+		const aliases = c.all(Robot.typeName).map((v) => v['alias'])
+		expect(aliases).toEqual(['new'])
+		c.close()
+
+		// And it is gone from the disk, not merely skipped on the way in --
+		// otherwise the mirror still grows and only the reading is bounded.
+		// One robot and the tenant it carried.
+		expect(await kept(at)).toBe(2)
+	})
+
+	it('counts from when this last wrote it, not from what the server stamped', async () => {
+		// A row the server has not changed since 2020 and this fetched today is
+		// current. Expiring by `dateUpdated` would throw away exactly the rows
+		// that never change.
+		const a = Store.open(entities, { ...at, disk: await openDisk(entities, at, { keep: 7 * day }) })
+		a.put(Robot.typeName, robot('ancient', new Date('2020-01-01T00:00:00Z')))
+		await a.flushed()
+		a.close()
+
+		vi.setSystemTime(new Date('2026-01-03T00:00:00Z'))
+
+		const b = Store.open(entities, { ...at, disk: await openDisk(entities, at, { keep: 7 * day }) })
+		await b.hydrate()
+		expect(b.all(Robot.typeName)).toHaveLength(1)
+		b.close()
+	})
+
+	it('keeps everything when told to', async () => {
+		const a = Store.open(entities, { ...at, disk: await openDisk(entities, at, { keep: Infinity }) })
+		a.put(Robot.typeName, robot('forever', new Date('2026-01-01T00:00:00Z')))
+		await a.flushed()
+		a.close()
+
+		vi.setSystemTime(new Date('2030-01-01T00:00:00Z'))
+
+		const b = Store.open(entities, { ...at, disk: await openDisk(entities, at, { keep: Infinity }) })
+		await b.hydrate()
+		expect(b.all(Robot.typeName)).toHaveLength(1)
 		b.close()
 	})
 })
