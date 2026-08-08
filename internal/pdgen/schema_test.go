@@ -577,7 +577,7 @@ func TestAWatchWithoutAVersionIsRefused(t *testing.T) {
 			option (payday.entity) = {
 				domain: 7
 				tenanted: {via: "tenant"}
-				list: {order: [{field: "date_created"}, {field: "id"}], size: 20, max: 100}
+				list: {order: [{field: "date_created"}, {field: "id"}], by: ["ref"], size: 20, max: 100}
 				watch: {}
 			};
 		}
@@ -620,5 +620,54 @@ func TestAListWithoutAWatchNeedsNoVersion(t *testing.T) {
 	`)
 	if err != nil {
 		t.Fatalf("a list needs no version and was refused: %s", err)
+	}
+}
+
+// TestAWatchWithNothingToNameARowByIsRefused is the other half of what a watch
+// needs, and it was found by scaffolding one.
+//
+// `pd entity add --watch` wrote an entity whose list declared no filters, and
+// what came out was a generated stream referring to a field the filter message
+// does not have -- a compile error in the app, in generated code somebody then
+// has to read. A watch says which rows it is about, so a filter that cannot
+// name one by reference gives it nothing to say.
+//
+// It is refused rather than added silently: `by:` is the list of things a
+// caller may filter on, and quietly putting one more in it is the generator
+// deciding what an API offers.
+func TestAWatchWithNothingToNameARowByIsRefused(t *testing.T) {
+	_, err := read(t, `
+		message Tenant {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			string alias = 4 [(orm.field) = {unique: true}];
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {domain: 1, tenant: {}};
+		}
+		message Robot {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+			string alias = 4;
+			google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+			google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {
+				domain: 7
+				tenanted: {via: "tenant"}
+				list: {order: [{field: "date_created"}, {field: "id"}], by: ["alias"], size: 20, max: 100}
+				watch: {}
+			};
+		}
+	`)
+	if err == nil {
+		t.Fatal("a watch with no way to name a row was generated")
+	}
+	if !strings.Contains(err.Error(), "needs `ref` among the list's `by:`") {
+		t.Fatalf("the refusal does not say why: %s", err)
+	}
+
+	// And the suggestion keeps what the schema already had rather than
+	// replacing it.
+	if !strings.Contains(err.Error(), `list: {by: ["ref", "alias"]}`) {
+		t.Fatalf("the refusal throws away the filters that were declared: %s", err)
 	}
 }

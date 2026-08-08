@@ -107,25 +107,30 @@ func TestAPatchSaysNothingAboutANameItDidNotMention(t *testing.T) {
 	}.Build())
 	x.NoError(err)
 
-	// Nothing said about the name.
+	// Nothing said about the name. The version comes along because this entity
+	// declares one -- a patch of a versioned row is a compare-and-set, and what
+	// a client compares with is the copy it is holding.
 	got, err := b.Walled.Robot().Patch(b.as(ctx), app.RobotPatchRequest_builder{
-		Ref: app.RobotRef_builder{Id: v.GetId()}.Build(),
+		Ref:         app.RobotRef_builder{Id: v.GetId()}.Build(),
+		DateUpdated: v.GetDateUpdated(),
 	}.Build())
 	x.NoError(err)
 	x.Equal("arm-01", got.GetAlias())
 
 	// Said, and folded.
 	got, err = b.Walled.Robot().Patch(b.as(ctx), app.RobotPatchRequest_builder{
-		Ref:   app.RobotRef_builder{Id: v.GetId()}.Build(),
-		Alias: z.Ptr(" Arm-02 "),
+		Ref:         app.RobotRef_builder{Id: v.GetId()}.Build(),
+		Alias:       z.Ptr(" Arm-02 "),
+		DateUpdated: got.GetDateUpdated(),
 	}.Build())
 	x.NoError(err)
 	x.Equal("arm-02", got.GetAlias())
 
 	// Said, and not a name.
 	_, err = b.Walled.Robot().Patch(b.as(ctx), app.RobotPatchRequest_builder{
-		Ref:   app.RobotRef_builder{Id: v.GetId()}.Build(),
-		Alias: z.Ptr("Arm 03"),
+		Ref:         app.RobotRef_builder{Id: v.GetId()}.Build(),
+		Alias:       z.Ptr("Arm 03"),
+		DateUpdated: got.GetDateUpdated(),
 	}.Build())
 	x.Equal(codes.InvalidArgument, status.Code(err))
 	x.Equal("alias", pderr.Violations(err)[0].Field)

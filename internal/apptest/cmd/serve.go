@@ -12,9 +12,9 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/lesomnus/payday/auth"
-	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
+	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/watch"
 
 	app "github.com/lesomnus/payday/internal/apptest"

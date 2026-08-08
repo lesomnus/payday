@@ -32,6 +32,10 @@ func TestTheAppIsWhatTheAppWrote(t *testing.T) {
 			Driver: "sqlite3",
 			Dsn:    memdb.TestDB(t, url.Values{"_pragma": {"foreign_keys(1)"}}),
 		},
+		// Named rather than defaulted, which is the one thing this app's
+		// configuration is refused for saying nothing about; see
+		// `config.WatchConfig`.
+		Watch: config.WatchConfig{Broker: config.BrokerMemory},
 	}
 
 	s, err := cmd.Build(ctx, c)
@@ -62,6 +66,10 @@ func TestServes(t *testing.T) {
 			Driver: "sqlite3",
 			Dsn:    memdb.TestDB(t, url.Values{"_pragma": {"foreign_keys(1)"}}),
 		},
+		// Named rather than defaulted, which is the one thing this app's
+		// configuration is refused for saying nothing about; see
+		// `config.WatchConfig`.
+		Watch: config.WatchConfig{Broker: config.BrokerMemory},
 	}
 
 	s, err := cmd.Build(ctx, c)

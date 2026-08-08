@@ -10,6 +10,10 @@
 package cmd
 
 import (
+	"github.com/lesomnus/xli"
+
+	"github.com/lesomnus/payday/pdcmd"
+
 	"github.com/lesomnus/payday/config"
 
 	// The one driver this app runs on. It is blank-imported here rather than
@@ -36,4 +40,30 @@ type Config struct {
 	Db     config.DbConfig     `yaml:"db"`
 	Otel   config.OtelConfig   `yaml:"otel"`
 	Watch  config.WatchConfig  `yaml:"watch"`
+}
+
+// Cmd is this app's own command line: what payday supplies, plus whatever the
+// app has of its own.
+//
+// `config`, `config env` and `version` are payday's -- they are the commands
+// that run against a **deployment** rather than against a checkout, and every
+// one of them needs something only the app can hand over. `config env` is the
+// clearest: listing the variables a deployment can set means walking this
+// struct, and the struct is the app's.
+//
+// `serve` is not among them and will not be. It is the one command whose body
+// is the stack -- which layers, in which order, with the wall on which server
+// -- and that is the most important thing a reader of an app can see.
+func Cmd(c *Config) *xli.Command {
+	return &xli.Command{
+		Name:  Name,
+		Brief: "the app payday is tried against",
+
+		Commands: []*xli.Command{
+			pdcmd.NewCmdVersion(),
+			pdcmd.NewCmdConfig(Loader, c),
+		},
+
+		Handler: xli.RequireSubcommand(),
+	}
 }

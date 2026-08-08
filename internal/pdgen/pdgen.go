@@ -21,6 +21,7 @@ package pdgen
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/protobuf-orm/protobuf-orm/graph"
@@ -222,6 +223,24 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 					"there is no order to read in, nothing for a filter to be about, and no cap " +
 					"on the first message")
 		}
+		if !hasRef(v.List) {
+			// A watch names the rows it is about, and a filter that cannot name
+			// one by reference gives it nothing to name them with. Without this
+			// the generated stream refers to a field the filter message does
+			// not have, which is a **compile** error in the app -- late, and in
+			// generated code somebody then has to read.
+			//
+			// It is refused rather than added silently, because `by:` is the
+			// list of things a caller may filter on and quietly putting one
+			// more in it is the generator deciding what an API offers.
+			return nil, fmt.Errorf(
+				"watch: needs `ref` among the list's `by:`, and this one has %s.\n\n"+
+					"    list: {by: [\"ref\"%s]}\n\n"+
+					"A watch says which rows it is about, and a reference is how one is named. "+
+					"A list can be filtered by other things and a watch cannot be filtered by "+
+					"nothing",
+				byNames(v.List), moreBy(v.List))
+		}
 		if !e.HasVersionField() {
 			// The one refusal that is about what happens on the **client**.
 			//
@@ -300,6 +319,59 @@ func (s *Schema) check() error {
 	}
 
 	return nil
+}
+
+// hasRef reports whether a list can be filtered by a reference.
+func hasRef(l *List) bool {
+	if l == nil {
+		return false
+	}
+	for _, v := range l.By {
+		if v.Ref {
+			return true
+		}
+	}
+
+	return false
+}
+
+// byNames is what a list can be filtered by, for the message that says it is
+// not enough.
+func byNames(l *List) string {
+	if l == nil || len(l.By) == 0 {
+		return "none"
+	}
+
+	vs := make([]string, len(l.By))
+	for i, v := range l.By {
+		if v.Ref {
+			vs[i] = "ref"
+			continue
+		}
+
+		vs[i] = strconv.Quote(v.Field)
+	}
+
+	return strings.Join(vs, ", ")
+}
+
+// moreBy is the rest of the `by:` a schema already had, so that the suggestion
+// is the whole line rather than a line that throws the others away.
+func moreBy(l *List) string {
+	if l == nil || len(l.By) == 0 {
+		return ""
+	}
+
+	b := &strings.Builder{}
+	for _, v := range l.By {
+		if v.Ref {
+			continue
+		}
+
+		fmt.Fprintf(b, ", %q", v.Field)
+	}
+
+	return b.String()
 }
 
 // suggestVersion is a field number that is free, for the message that tells an

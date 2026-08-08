@@ -107,8 +107,9 @@ func TestWatchSendsStateAndNotADelta(t *testing.T) {
 	next(t, c) // the snapshot
 
 	_, err := c0.Robot().Patch(b.travels(ctx), app.RobotPatchRequest_builder{
-		Ref:   app.RobotRef_builder{Id: vs[0].GetId()}.Build(),
-		Alias: z.Ptr("renamed"),
+		Ref:         app.RobotRef_builder{Id: vs[0].GetId()}.Build(),
+		Alias:       z.Ptr("renamed"),
+		DateUpdated: vs[0].GetDateUpdated(),
 	}.Build())
 	x.NoError(err)
 

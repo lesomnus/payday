@@ -243,7 +243,7 @@ message Tenanted {
 | ~~**7c**~~ | **완료** — `payday/watch`(브로커 이음매 포함)와 `Watch` RPC 생성. `bare.Change`는 상류로 올리는 대신 payday 자신의 모양으로 변환한다 — 생성된 어댑터가 다섯 줄이라 상류를 건드릴 이유가 없었다 |
 | ~~**8**~~ | **완료** — `gen`, `gen --check`, `doctor`. buf 템플릿을 payday가 쓴다(앱이 `strategy: all`을 틀릴 자리를 없앤다). `config env`는 여기 올 수 없다 — 앱의 설정 구조체가 필요하다. `config.Loader.EnvNames`가 이미 답하고, 얹을 자리는 템플릿(9)이다 | 2,3 |
 | **9** | 템플릿 — go-app의 배선과 문서를 payday 위에 다시 얹는다 | 5,6,7,8 |
-| **10** | `entity add`/`layer add` | 8,9 |
+| ~~**10**~~ | **완료(entity)** — `pd entity add`/`list`. 타자를 줄이려는 것이 아니라 **네 번째 엔티티에서 틀리는 둘**(비어 있는 도메인, 테넌시)을 기계가 하는 것이다. 실제로 이걸로 하나 찍어 `pd gen`을 돌렸더니 생성기 버그 하나가 나왔다 — `watch:`인데 `by:`에 `ref`가 없으면 앱에서 컴파일 에러가 난다. 이제 거절한다. `layer add`는 아직 |
 | ~~**11**~~ | **완료** — `spin.Spinner`/`Run`/`Every`. 생성된 `Server` 인터페이스의 메서드가 아니라 스택을 걸으며 **찾는다**: 메서드로 두면 모든 레이어가 빈 것을 물려받고, 그것이 "이 레이어에 배경 작업이 있는가"를 숨기는 모양이다 |
 | ~~**12**~~ | **완료** — `payday.Outbox` 엔티티, `pd.OutboxRecorder()`, `pd.Drain()`. 그리고 §4.2가 요구한 **브로커 명시**가 `config.WatchConfig`로 섰다 — 이름을 안 적으면 거절한다 | 7c,11 |
 | **13** | 브라우저 샌드박스 (§9). `RegisterServer`의 시그니처와 CI의 wasm 빌드는 **1·2번과 함께** 해두면 공짜다 | 9 |

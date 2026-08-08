@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/lesomnus/xli"
 	"github.com/lesomnus/xli/arg"
@@ -21,6 +22,7 @@ func NewCmdRoot() *xli.Command {
 		Commands: []*xli.Command{
 			NewCmdGen(),
 			NewCmdDoctor(),
+			NewCmdEntity(),
 		},
 
 		Handler: xli.RequireSubcommand(),
@@ -145,6 +147,110 @@ func NewCmdDoctor() *xli.Command {
 			}
 
 			return fmt.Errorf("%d of %d would stop a generation", fatal, len(vs))
+		}),
+	}
+}
+
+// NewCmdEntity is `pd entity`.
+func NewCmdEntity() *xli.Command {
+	return &xli.Command{
+		Name:  "entity",
+		Brief: "add an entity to the schema, or say what is there",
+		Synop: "pd entity <command>",
+
+		Commands: []*xli.Command{NewCmdEntityAdd(), NewCmdEntityList()},
+
+		Handler: xli.RequireSubcommand(),
+	}
+}
+
+// NewCmdEntityAdd is `pd entity add`.
+//
+// It saves almost no typing, and that is not what it is for. What it does is
+// the two things a person adding the fourth entity gets wrong -- picking a
+// domain nothing else has, and saying which side of the wall it is on -- and
+// both of those fail in ways that are cheap here and expensive later.
+func NewCmdEntityAdd() *xli.Command {
+	return &xli.Command{
+		Name:  "add",
+		Brief: "write a new entity into the schema",
+		Synop: "pd entity add NAME (--tenanted|--tenant|--global) [--watch] [DIR]",
+
+		Flags: flg.Flags{
+			&flg.Switch{Name: "tenanted", Brief: "its rows belong to a tenant, and the wall narrows every read"},
+			&flg.Switch{Name: "tenant", Brief: "it is the tenant itself"},
+			&flg.Switch{Name: "global", Brief: "not behind the wall, and said on purpose"},
+			&flg.Switch{Name: "watch", Brief: "also a List and a Watch, with the version field a Watch needs"},
+			&flg.String{Name: "file", Brief: "the .proto to write into; one named after the entity by default"},
+		},
+		Args: arg.Args{
+			&arg.String{Name: "NAME", Brief: "the message, e.g. Robot"},
+			&arg.String{Name: "DIR", Brief: "the app; the working directory by default"},
+		},
+
+		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			l, err := discover(cmd)
+			if err != nil {
+				return err
+			}
+
+			name, _ := arg.Get[string](cmd, "NAME")
+			if name == "" {
+				return fmt.Errorf("say what to call it")
+			}
+
+			e := Entity{Layout: l, Name: name}
+			e.Tenanted, _ = flg.Find[bool](cmd, "tenanted")
+			e.Tenant, _ = flg.Find[bool](cmd, "tenant")
+			e.Global, _ = flg.Find[bool](cmd, "global")
+			e.Watch, _ = flg.Find[bool](cmd, "watch")
+			e.File, _ = flg.Find[string](cmd, "file")
+
+			p, err := e.Add()
+			if err != nil {
+				return err
+			}
+
+			cmd.Printf("pd: %s is in %s\n", name, l.Rel(DirProto, "app", filepath.Base(p)))
+			cmd.Println("    write its fields, then `pd gen`")
+
+			return nil
+		}),
+	}
+}
+
+// NewCmdEntityList is `pd entity list`: what this schema has, by domain.
+//
+// It is the reading half of the same problem. A domain is one byte inside every
+// identifier this app hands out, and it is not written anywhere a person
+// browses -- so "what is domain 9" is a question with no easy answer and a bad
+// one is an identifier that names the wrong kind of thing.
+func NewCmdEntityList() *xli.Command {
+	return &xli.Command{
+		Name:  "list",
+		Brief: "say which entity holds which domain",
+		Synop: "pd entity list [DIR]",
+
+		Args: arg.Args{
+			&arg.String{Name: "DIR", Brief: "the app; the working directory by default"},
+		},
+
+		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			l, err := discover(cmd)
+			if err != nil {
+				return err
+			}
+
+			vs, err := Domains(l)
+			if err != nil {
+				return err
+			}
+
+			for _, n := range SortedDomains(vs) {
+				cmd.Printf("%3d  %s\n", n, vs[n])
+			}
+
+			return nil
 		}),
 	}
 }

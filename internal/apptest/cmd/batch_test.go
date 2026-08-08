@@ -120,8 +120,9 @@ func TestWhatIsClosedIsClosedInsideABatch(t *testing.T) {
 	_, err = b.batched(t, closedGuard).Do(b.as(ctx), pdpb.BatchRequest_builder{
 		Ops: []*pdpb.Op{
 			op(t, app.RobotService_Patch_FullMethodName, app.RobotPatchRequest_builder{
-				Ref:   app.RobotRef_builder{Id: v.GetId()}.Build(),
-				Alias: z.Ptr("smuggled"),
+				Ref:         app.RobotRef_builder{Id: v.GetId()}.Build(),
+				Alias:       z.Ptr("smuggled"),
+				DateUpdated: v.GetDateUpdated(),
 			}.Build()),
 		},
 	}.Build())
