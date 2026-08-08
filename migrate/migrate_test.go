@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	entschema "entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 	"github.com/ncruces/go-sqlite3/driver"
@@ -345,5 +346,89 @@ func TestCurrent(t *testing.T) {
 		// them and find out the hard way.
 		err := m.Current(ctx, db, dialect.Postgres)
 		x.ErrorIs(err, migrate.ErrDialect)
+	})
+}
+
+// TestCheck.
+//
+// Five cases, and the second is the one that decides whether this is usable at
+// all: every database any app has ever created with `Schema.Create` has to
+// pass, or the guard cannot be turned on without baselining every deployment
+// first.
+func TestCheck(t *testing.T) {
+	ctx := t.Context()
+
+	// A database the ent schema built, which is what `<app> init` leaves and
+	// what every test in every app runs against.
+	create := func(t *testing.T, vs []*entschema.Table) *sql.DB {
+		t.Helper()
+
+		db := open(t)
+		m, err := entschema.NewMigrate(entsql.OpenDB(dialect.SQLite, db))
+		require.NoError(t, err)
+		require.NoError(t, m.Create(ctx, vs...))
+
+		return db
+	}
+
+	t.Run("an empty database is not one to serve on", func(t *testing.T) {
+		x := require.New(t)
+
+		err := migrate.Check(ctx, open(t), dialect.SQLite, schema())
+		x.ErrorIs(err, migrate.ErrDrift)
+
+		// And it says what is missing rather than that something is. Nothing
+		// has been created here, and the message reads as that.
+		x.Contains(err.Error(), "CREATE TABLE")
+		x.Contains(err.Error(), "tenant")
+	})
+
+	t.Run("a database the schema built is in step", func(t *testing.T) {
+		x := require.New(t)
+
+		x.NoError(migrate.Check(ctx, create(t, schema()), dialect.SQLite, schema()))
+	})
+
+	t.Run("a column the code has and the database does not is refused", func(t *testing.T) {
+		x := require.New(t)
+
+		// The upgrade that was generated and not migrated: the ent schema grew
+		// a column, the database is the one from before.
+		err := migrate.Check(ctx, create(t, schema()), dialect.SQLite, moved())
+		x.ErrorIs(err, migrate.ErrDrift)
+		x.Contains(err.Error(), "email")
+	})
+
+	t.Run("a column the database has and the code does not is left alone", func(t *testing.T) {
+		x := require.New(t)
+
+		// The other way round, which is not the same thing. An operator's extra
+		// column, or one left behind by a migration that dropped a field, is
+		// not a reason to refuse to serve -- and a guard that refused it would
+		// be one nobody could turn on.
+		x.NoError(migrate.Check(ctx, create(t, moved()), dialect.SQLite, schema()))
+	})
+
+	t.Run("a table that is gone is refused", func(t *testing.T) {
+		x := require.New(t)
+
+		db := create(t, schema())
+		_, err := db.ExecContext(ctx, `DROP TABLE holder`)
+		x.NoError(err)
+
+		err = migrate.Check(ctx, db, dialect.SQLite, schema())
+		x.ErrorIs(err, migrate.ErrDrift)
+		x.Contains(err.Error(), "holder")
+	})
+
+	t.Run("it writes nothing, including no revision table", func(t *testing.T) {
+		x := require.New(t)
+
+		// It runs on every start, so a check that left a table behind would be
+		// a check that changed the thing it was asked to look at. In particular
+		// it must not create what `NewRevisions` does.
+		db := open(t)
+		x.Error(migrate.Check(ctx, db, dialect.SQLite, schema()))
+		x.Empty(tableNames(ctx, t, db))
 	})
 }

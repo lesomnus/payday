@@ -21,17 +21,50 @@ type Paths struct {
 }
 
 const (
-	pkgPdid   = protogen.GoImportPath("github.com/lesomnus/payday/pdid")
-	pkgFrame  = protogen.GoImportPath("github.com/lesomnus/payday/frame")
-	pkgSlug   = protogen.GoImportPath("github.com/lesomnus/payday/slug")
-	pkgPderr  = protogen.GoImportPath("github.com/lesomnus/payday/pderr")
-	pkgCtx    = protogen.GoImportPath("context")
-	pkgStatus = protogen.GoImportPath("google.golang.org/grpc/status")
-	pkgCodes  = protogen.GoImportPath("google.golang.org/grpc/codes")
-	pkgUuid   = protogen.GoImportPath("github.com/google/uuid")
-	pkgFmt    = protogen.GoImportPath("fmt")
-	pkgDriver = protogen.GoImportPath("database/sql/driver")
+	pkgPdid    = protogen.GoImportPath("github.com/lesomnus/payday/pdid")
+	pkgFrame   = protogen.GoImportPath("github.com/lesomnus/payday/frame")
+	pkgSlug    = protogen.GoImportPath("github.com/lesomnus/payday/slug")
+	pkgPderr   = protogen.GoImportPath("github.com/lesomnus/payday/pderr")
+	pkgCtx     = protogen.GoImportPath("context")
+	pkgStatus  = protogen.GoImportPath("google.golang.org/grpc/status")
+	pkgCodes   = protogen.GoImportPath("google.golang.org/grpc/codes")
+	pkgUuid    = protogen.GoImportPath("github.com/google/uuid")
+	pkgFmt     = protogen.GoImportPath("fmt")
+	pkgDriver  = protogen.GoImportPath("database/sql/driver")
+	pkgVersion = protogen.GoImportPath("github.com/lesomnus/payday/version")
 )
+
+// EmitPayday writes which payday this file came out of, and the check that
+// refuses a binary linking a different one.
+//
+// It is the only artefact of a generation payday writes the bytes of and the
+// runtime can read: everything else here is protoc-gen-go's, protobuf-orm's or
+// ent's. So this one file carries the stamp for the whole app.
+//
+// The failure it closes has no other symptom. An app that upgraded its payday
+// dependency and did not regenerate **compiles, links and serves** -- on the
+// domain table, the minter and the wall that the older payday wrote, read by a
+// runtime that believes they are its own.
+func EmitPayday(g *protogen.GeneratedFile, v string) {
+	g.P("// Payday is the payday `pd gen` was run from.")
+	g.P("//")
+	g.P("// It is \"(devel)\" for a generation from a checkout or a workspace, where")
+	g.P("// there is no version to name -- see [Check], which reads that as silence")
+	g.P("// rather than as a mismatch.")
+	g.P("const Payday = ", strconv.Quote(v))
+	g.P("")
+
+	g.P("// Check refuses a binary whose payday is not the one this file came out of.")
+	g.P("//")
+	g.P("// [NewSink] calls it, so an app that builds its stack the ordinary way has")
+	g.P("// nothing to do. An app that assembles a Sink by hand calls it itself.")
+	g.P("//")
+	g.P("// It says nothing when either side cannot be named: a development build, a")
+	g.P("// `replace`, a workspace. Refusing those would be refusing every `go test`")
+	g.P("// in every app that develops against a checkout of payday.")
+	g.P("func Check() error { return ", pkgVersion.Ident("Same"), "(Payday) }")
+	g.P("")
+}
 
 // EmitDomains writes the domain of each entity, twice: as a constant for code
 // that names one, and as a registration so that `pdid` can answer what an

@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"golang.org/x/mod/modfile"
+
+	"github.com/lesomnus/payday/version"
 )
 
 // Layout is where an app's parts are.
@@ -344,6 +347,39 @@ func findUp(dir string, name string) (string, string, error) {
 // app generating against payday v2 copies v2's entities without anybody having
 // edited a script. An app inside payday's own module is the one case where the
 // answer is here.
+// PaydayVersion is the payday an app generates with, as a version string.
+//
+// It is what gets stamped into the one generated Go file payday writes, so that
+// a runtime linking a different payday can refuse; see `payday/version.Same`.
+//
+// "(devel)" is the honest answer more often than it looks: payday's own
+// repository under a `go.work`, an app with a `replace` to a checkout, and
+// payday building itself all report nothing usable. Every one of those is a
+// build somebody is working in, and the comparison is written to say nothing
+// about them rather than to refuse them.
+func PaydayVersion(l Layout) string {
+	// In the app rather than wherever `pd` was launched from. The module graph
+	// this is asking about is the app's, and `pd` is often not in it.
+	cmd := exec.Command("go", "list", "-m", "-f", "{{.Version}}", version.Module)
+	cmd.Dir = l.Work
+
+	out, err := cmd.Output()
+	if err != nil {
+		return devel
+	}
+
+	v := strings.TrimSpace(string(out))
+	if v == "" {
+		return devel
+	}
+
+	return v
+}
+
+// devel is what a version nothing can name is written as. It is the toolchain's
+// own word for it, and `version.Same` reads it as "say nothing".
+const devel = "(devel)"
+
 func SchemaDir() (string, error) {
 	if d, err := goList("-m", "-f", "{{.Dir}}", "github.com/lesomnus/payday"); err == nil {
 		return filepath.Join(strings.TrimSpace(d), "schema", "payday"), nil

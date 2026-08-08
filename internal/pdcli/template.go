@@ -108,12 +108,14 @@ plugins:
       - ent=%[4]s
       - bare=%[5]s
       - out=%[6]s
+      - version=%[7]s
     strategy: all
 `,
 		yamlPath(l.Rel(DirProto)),
 		yamlPath(out),
 		l.Module,
 		l.Up()+DirEnt, l.Up()+DirBare, l.Up()+DirPd_,
+		PaydayVersion(l),
 	)
 }
 

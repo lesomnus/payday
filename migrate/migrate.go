@@ -303,10 +303,13 @@ var ErrBehind = errors.New("the database is behind the migrations this binary ca
 // database it disagrees with is one that fails per request, unevenly, in
 // whichever handler happens to touch the column that moved.
 //
-// It is not the same question as "does the database match the ent schema".
-// This asks whether every file has run, which is what a deployment controls;
-// the other would need a dev database to diff against and would refuse a
-// database somebody had legitimately hand-patched.
+// It is not the same question as "does the database hold what the ent schema
+// says". This asks whether every file has run, which is what a deployment
+// controls, and it is the right question for an app that keeps migration files
+// -- a database somebody hand-patched into the right shape has still skipped a
+// file, and the next one will be applied on top of a state nobody recorded.
+//
+// [Check] asks the other one, for the app that keeps no files.
 func (m Migrations) Current(ctx context.Context, db *sql.DB, dialect string) error {
 	fs, err := m.Pending(ctx, db, dialect)
 	if err != nil {
@@ -322,4 +325,99 @@ func (m Migrations) Current(ctx context.Context, db *sql.DB, dialect string) err
 	}
 
 	return fmt.Errorf("%w: %s", ErrBehind, strings.Join(names, ", "))
+}
+
+// ErrDrift is a database that does not hold what the ent schema describes.
+var ErrDrift = errors.New("the database is not the shape this binary's schema describes")
+
+// Check refuses a database the code has moved on from, by looking at it.
+//
+// It is [Migrations.Current]'s question asked the other way round, and it is
+// the one an app that keeps no migration files has to ask. What it compares is
+// the ent schema this binary was generated from against the database as it
+// actually is -- so a deployment that ran `pd gen` after upgrading payday and
+// stopped there does not start.
+//
+// That matters because nothing else about it is loud. A field added to a holder
+// here arrives in the app's ent schema the next time it generates; it compiles,
+// the tests pass against a database the tests just created, and the first sign
+// of trouble is a column that is not there in the one place it matters.
+//
+// # What it is not
+//
+// Not "the database equals the schema". A column, an index or a table the app
+// does not know about is left alone -- the diff is filtered to what would have
+// to be **added** or widened. Which is the right policy for a guard that runs
+// on every start: an operator's extra index is not a reason to refuse to serve,
+// and a missing column is.
+//
+// # What it does not do
+//
+// Write. It inspects the database rather than replaying migrations, so it needs
+// no dev database, no directory and no permission to change anything -- and in
+// particular it does not create the revision table [NewRevisions] would.
+//
+// A database that [entschema.Schema.Create] built passes, which is the whole
+// reason this is worth having: every app that has ever run `<app> init` is
+// already in step, and none of them has to be baselined first.
+//
+// An empty database does not pass, and the message is a `CREATE TABLE` for
+// every table there should be. That reads as what it is -- nothing has been
+// created here.
+func Check(ctx context.Context, db *sql.DB, dialect string, tables []*entschema.Table) error {
+	// In memory, because nothing is meant to survive this: the plan is read for
+	// its text and thrown away. A `LocalDir` here would leave a migration file
+	// on disk every time a server started on a database it disagreed with.
+	dir := &migrate.MemDir{}
+
+	v, err := entschema.NewMigrate(entsql.OpenDB(dialect, db),
+		entschema.WithDir(dir),
+		// One statement per version and no down file, which is what makes the
+		// text below readable. Without it the directory gets the up and the
+		// down, and every difference reads as two.
+		entschema.WithFormatter(migrate.DefaultFormatter),
+		// Nothing to do is an error rather than an empty plan, which is the
+		// only way to tell it apart from a plan that is empty for another
+		// reason.
+		entschema.WithErrNoPlan(true),
+		// Deliberately not `WithDropColumn` or `WithDropIndex`; see above.
+	)
+	if err != nil {
+		return fmt.Errorf("new migrate: %w", err)
+	}
+
+	switch err := v.NamedDiff(ctx, "drift", tables...); {
+	case errors.Is(err, migrate.ErrNoPlan):
+		return nil
+	case err != nil:
+		return fmt.Errorf("read the database: %w", err)
+	}
+
+	fs, err := dir.Files()
+	if err != nil {
+		return fmt.Errorf("read what is missing: %w", err)
+	}
+
+	return fmt.Errorf("%w:\n\n  %s", ErrDrift, strings.Join(statements(fs), "\n  "))
+}
+
+// statements is the SQL of a plan, without the comments atlas writes around it.
+//
+// The message is what somebody reads at three in the morning, and what they
+// need from it is which change was not applied -- not a header saying which
+// second the plan was made in.
+func statements(fs []migrate.File) []string {
+	vs := []string{}
+	for _, f := range fs {
+		for _, line := range strings.Split(string(f.Bytes()), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "--") {
+				continue
+			}
+
+			vs = append(vs, line)
+		}
+	}
+
+	return vs
 }

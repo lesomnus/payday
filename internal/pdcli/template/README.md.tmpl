@@ -75,6 +75,39 @@ fails on a tree nothing has generated yet, and there is exactly one moment it
 can run: inside `pd gen`, between those two things. Once `buf.lock` has entries
 in it they are yours, and nothing here moves them.
 
+## Upgrading payday
+
+```sh
+go get -u github.com/lesomnus/payday
+go tool pd gen .
+```
+
+payday owns some of this app's schema — `Tenant`, `Holder`, `Audit`, `Outbox` —
+so a field added to one of them there arrives in `internal/ent` here the next
+time you generate. **Nothing about that is loud on its own.** It compiles, the
+tests pass against a database the tests just created, and the first sign of
+trouble is a column that is not there in the one handler that reads it.
+
+So two things refuse rather than trusting anyone to remember:
+
+- **`pd gen` that did not happen.** The generated `server/pd/pd.g.go` carries
+  the payday it came out of, and `pd.NewSink` refuses a binary linking a
+  different one. `pd gen --check` fails on it too, which is what turns "we
+  upgraded and forgot" into a red build rather than a strange afternoon.
+- **the migration that did not happen.** `serve` looks at the database before it
+  answers anything and refuses one that is not the shape `internal/ent`
+  describes, printing the SQL that is missing. Writing that migration is yours —
+  payday's entities and yours are in one database and one ent client, so payday
+  cannot own it.
+
+Neither says anything when it cannot: a `replace` to a checkout, a workspace, a
+build with no version — all of those are somebody developing, and a guard that
+refused them would be a guard nobody could work under.
+
+While developing, `db.migrate: true` swaps the second refusal for
+`ent.Schema.Create`. That is a decision about who may alter tables and it should
+be made on purpose, not left on.
+
 ## Adding an entity
 
 ```sh

@@ -56,6 +56,17 @@ type DbConfig struct {
 	// than a migration run against the database before it. It is convenient
 	// while developing and it is not what production wants: the process that
 	// serves requests is not the one that should be deciding to alter a table.
+	//
+	// It is a switch between two behaviours and not between one and nothing.
+	// Off -- the default -- the app looks at the database before it serves and
+	// refuses one that is not the shape its schema describes; see
+	// [payday/migrate.Check]. So the answer to leaving this alone is a server
+	// that does not start, rather than one that starts and fails per request in
+	// whichever handler first touches the column that moved.
+	//
+	// Which means turning it on is a decision about who may alter tables, and
+	// the check does not run behind it: an operator who said the serving
+	// process may do that is not then argued with.
 	Migrate bool `yaml:"migrate"`
 }
 

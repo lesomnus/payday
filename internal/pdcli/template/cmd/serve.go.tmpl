@@ -18,6 +18,7 @@ import (
 
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/gate"
+	"github.com/lesomnus/payday/migrate"
 	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/spin"
@@ -26,6 +27,7 @@ import (
 
 	app "{{.Module}}"
 	"{{.Module}}/internal/ent"
+	entmigrate "{{.Module}}/internal/ent/migrate"
 	"{{.Module}}/server/bare"
 	"{{.Module}}/server/pd"
 )
@@ -40,6 +42,12 @@ type Server struct {
 	// on a driver and a `*ent.Client` does not hand out the one it holds. It is
 	// what `pd.Batch` puts a whole stack onto.
 	Drv dialect.Driver
+
+	// Dialect is what that driver speaks, which `Open` worked out and nothing
+	// else can. It is kept because the guard below needs it, and re-deriving it
+	// from the configuration would be a second answer to a question already
+	// answered.
+	Dialect string
 
 	// Watch is what a change is published to once the call that made it has
 	// answered. The broker is named rather than defaulted: the one that
@@ -147,7 +155,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		return nil, err
 	}
 
-	s := &Server{Db: db, Ent: client, Drv: drv, Watch: w, Walled: stacked, Ungated: ungated}
+	s := &Server{Db: db, Ent: client, Drv: drv, Dialect: dialect, Watch: w, Walled: stacked, Ungated: ungated}
 	if c.Watch.Outbox && b != nil {
 		// The loop that makes an event durable. It is not a layer and not a
 		// method on any server -- `spin.Run` finds it in whatever is handed
@@ -283,6 +291,28 @@ func NewCmdServe(c *Config) *xli.Command {
 				return err
 			}
 			defer s.Close()
+
+			// The database, before anything is served on it.
+			//
+			// payday owns some of this app's schema, so a field added to a
+			// holder there arrives in `internal/ent` the next time this app
+			// generates -- and nothing about that is loud. It compiles, the
+			// tests pass against a database the tests just created, and the
+			// first sign of trouble is a column that is not there in the one
+			// handler that reads it.
+			//
+			// So one of the two happens here, and which one is the operator's
+			// to say. `db.migrate: true` hands the serving process the right to
+			// alter tables, which is right for development and is a thing to
+			// decide on purpose; anything else and the shapes have to agree
+			// already.
+			if c.Db.Migrate {
+				if err := s.Ent.Schema.Create(ctx); err != nil {
+					return err
+				}
+			} else if err := migrate.Check(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+				return err
+			}
 
 			l, err := net.Listen("tcp", c.Server.ListenAddr())
 			if err != nil {
