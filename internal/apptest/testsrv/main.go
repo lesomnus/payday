@@ -41,6 +41,14 @@ func run() error {
 	memdb.Create("ts", nil)
 
 	c := cmd.Config{
+		// The general writes, open here and closed everywhere else. They are
+		// how the servers write and not how a caller asks -- an app writes the
+		// RPC it means and implements it with one -- but this app has no such
+		// RPC, and a test that could not change a row could not say what a
+		// `Watch` does when one changes, nor what a store does when a row it is
+		// drawing moves under it. The Go tests open them for the same reason.
+		Server: config.ServerConfig{AllowGeneralWrites: true},
+
 		Db: config.DbConfig{
 			Driver: "sqlite3",
 			Dsn:    "file:/ts.db?vfs=memdb&" + url.Values{"_pragma": {"foreign_keys(1)"}}.Encode(),

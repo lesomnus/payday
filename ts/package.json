@@ -46,6 +46,14 @@
 			"types": "./dist/src/store/index.d.ts",
 			"import": "./dist/src/store/index.js"
 		},
+		"./query": {
+			"types": "./dist/src/query/index.d.ts",
+			"import": "./dist/src/query/index.js"
+		},
+		"./react": {
+			"types": "./dist/src/react/index.d.ts",
+			"import": "./dist/src/react/index.js"
+		},
 		"./pderr": {
 			"types": "./dist/src/pderr/index.d.ts",
 			"import": "./dist/src/pderr/index.js"
@@ -60,21 +68,27 @@
 		"gen": "cd .. && buf generate --template buf.gen.ts.yaml && buf generate --template buf.gen.ts.rpc.yaml buf.build/googleapis/googleapis --path google/rpc/error_details.proto"
 	},
 	"devDependencies": {
-		"@bufbuild/protoc-gen-es": "^2.13.0",
-		"typescript": "~5.9.3",
-		"vitest": "^4.1.10",
 		"@bufbuild/protobuf": "^2.12.1",
-		"@connectrpc/connect": "^2.1.2"
+		"@bufbuild/protoc-gen-es": "^2.13.0",
+		"@connectrpc/connect": "^2.1.2",
+		"@types/react": "^19.2.2",
+		"react": "^19.2.0",
+		"typescript": "~5.9.3",
+		"vitest": "^4.1.10"
 	},
 	"peerDependencies": {
 		"@bufbuild/protobuf": "^2",
-		"@connectrpc/connect": "^2"
+		"@connectrpc/connect": "^2",
+		"react": "^18 || ^19"
 	},
 	"peerDependenciesMeta": {
 		"@bufbuild/protobuf": {
 			"optional": true
 		},
 		"@connectrpc/connect": {
+			"optional": true
+		},
+		"react": {
 			"optional": true
 		}
 	}
