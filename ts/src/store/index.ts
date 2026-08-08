@@ -9,14 +9,15 @@
  *   import { Store } from '@lesomnus/payday/store'
  *   import { entities, Robot } from './gen/entities.js'
  *
- *   const store = Store.open(entities, { name: 'acme', identity: me })
- *   await store.put(Robot.typeName, await client.robot.get({ ref }))
+ *   const store = Store.open(entities, { name: 'acme', identity: await identityOf(token) })
+ *   store.put(Robot.typeName, await client.robot.get({ ref }))
  *
  * @module
  */
 
-export { Store } from './store.js'
-export type { Opts } from './store.js'
+export { Store, roundtrip } from './store.js'
+export type { Key, Opts } from './store.js'
+export { identityOf } from './identity.js'
 export { key, bytes } from './desc.js'
 export type { EntityDesc, RefDesc, Row } from './desc.js'
 export { flatten, newer } from './flat.js'

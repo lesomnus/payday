@@ -7,8 +7,6 @@
  * runtime against a fixture somebody chose to suit it.
  */
 
-import 'fake-indexeddb/auto'
-
 import { create } from '@bufbuild/protobuf'
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -24,9 +22,8 @@ import { RobotDomain, TenantDomain } from '../gen/domains.js'
 let store: Store
 let n = 0
 
-beforeEach(async () => {
+beforeEach(() => {
 	store = Store.open(entities, { name: 'apptest', identity: `t${n++}` })
-	await store.db.open()
 })
 
 /** a robot, with a tenant nested the way the server sends one. */
@@ -42,12 +39,12 @@ function robot(alias: string, at: Date, tenant?: { id: Uint8Array; alias: string
 }
 
 describe('a store holds rows and not replies', () => {
-	it('takes a nested response apart', async () => {
+	it('takes a nested response apart', () => {
 		const v = robot('arm-01', new Date())
-		await store.put(Robot.typeName, v)
+		store.put(Robot.typeName, v)
 
 		// The robot is a row with a key where its tenant was.
-		const row = await store.table(Robot.typeName).get(pdid.from(v.id).toString().replaceAll('-', ''))
+		const row = store.row(Robot.typeName, v.id)
 		expect(row).toBeDefined()
 		expect(row?.alias).toBe('arm-01')
 		expect(row?.['tenant']).toBeUndefined()
@@ -55,16 +52,16 @@ describe('a store holds rows and not replies', () => {
 
 		// And the tenant is a row of its own, once, in its own table -- which is
 		// what makes a rename land everywhere rather than in one of six copies.
-		const tenants = await store.table(Tenant.typeName).toArray()
+		const tenants = store.all(Tenant.typeName)
 		expect(tenants).toHaveLength(1)
 		expect(tenants[0]?.alias).toBe('acme')
 	})
 
-	it('reads a row back as the message it came from', async () => {
+	it('reads a row back as the message it came from', () => {
 		const v = robot('arm-01', new Date())
-		await store.put(Robot.typeName, v)
+		store.put(Robot.typeName, v)
 
-		const got = await store.get<RobotMsg>(Robot.typeName, v.id)
+		const got = store.get<RobotMsg>(Robot.typeName, v.id)
 		expect(got?.alias).toBe('arm-01')
 		expect(pdid.from(got!.id).toString()).toBe(pdid.from(v.id).toString())
 
@@ -74,17 +71,17 @@ describe('a store holds rows and not replies', () => {
 		expect(got?.tenant?.alias).toBe('')
 	})
 
-	it('keeps one copy of a row two responses carried', async () => {
+	it('keeps one copy of a row two responses carried', () => {
 		const t = { id: pdid.newId(TenantDomain).bytes, alias: 'acme' }
-		await store.put(Robot.typeName, robot('arm-01', new Date(), t), robot('arm-02', new Date(), t))
+		store.put(Robot.typeName, robot('arm-01', new Date(), t), robot('arm-02', new Date(), t))
 
-		expect(await store.table(Tenant.typeName).count()).toBe(1)
-		expect(await store.table(Robot.typeName).count()).toBe(2)
+		expect(store.all(Tenant.typeName).length).toBe(1)
+		expect(store.all(Robot.typeName).length).toBe(2)
 	})
 })
 
 describe('two answers about one row are put in order', () => {
-	it('a stale answer does not overwrite a fresh one', async () => {
+	it('a stale answer does not overwrite a fresh one', () => {
 		const early = robot('arm-01', new Date('2026-01-01T00:00:00Z'))
 
 		const late = create(RobotSchema, {
@@ -96,14 +93,14 @@ describe('two answers about one row are put in order', () => {
 		// The late one first, and the early one after it -- which is what a
 		// snapshot racing an event looks like, and what an outbox draining after
 		// a restart looks like.
-		await store.put(Robot.typeName, late)
-		await store.put(Robot.typeName, early)
+		store.put(Robot.typeName, late)
+		store.put(Robot.typeName, early)
 
-		const got = await store.get<RobotMsg>(Robot.typeName, early.id)
+		const got = store.get<RobotMsg>(Robot.typeName, early.id)
 		expect(got?.alias).toBe('renamed')
 	})
 
-	it('a fresh answer does overwrite a stale one', async () => {
+	it('a fresh answer does overwrite a stale one', () => {
 		const early = robot('arm-01', new Date('2026-01-01T00:00:00Z'))
 		const late = create(RobotSchema, {
 			...early,
@@ -111,16 +108,16 @@ describe('two answers about one row are put in order', () => {
 			dateUpdated: timestampFromDate(new Date('2026-01-02T00:00:00Z')),
 		})
 
-		await store.put(Robot.typeName, early)
-		await store.put(Robot.typeName, late)
+		store.put(Robot.typeName, early)
+		store.put(Robot.typeName, late)
 
-		const got = await store.get<RobotMsg>(Robot.typeName, early.id)
+		const got = store.get<RobotMsg>(Robot.typeName, early.id)
 		expect(got?.alias).toBe('renamed')
 	})
 
-	it('a partial answer does not erase what it did not carry', async () => {
+	it('a partial answer does not erase what it did not carry', () => {
 		const v = robot('arm-01', new Date('2026-01-01T00:00:00Z'))
-		await store.put(Robot.typeName, v)
+		store.put(Robot.typeName, v)
 
 		// What a request that selected only the name looks like coming back.
 		const thin = create(RobotSchema, {
@@ -128,17 +125,17 @@ describe('two answers about one row are put in order', () => {
 			alias: 'renamed',
 			dateUpdated: timestampFromDate(new Date('2026-01-02T00:00:00Z')),
 		})
-		await store.put(Robot.typeName, thin)
+		store.put(Robot.typeName, thin)
 
-		const row = await store.table(Robot.typeName).get(pdid.from(v.id).toString().replaceAll('-', ''))
+		const row = store.row(Robot.typeName, v.id)
 		expect(row?.alias).toBe('renamed')
 		expect(row?.['tenantId']).toBeTypeOf('string')
 		expect(row?.['tenantId']).not.toBe('')
 	})
 
-	it('a reference-only neighbour does not replace the whole one', async () => {
+	it('a reference-only neighbour does not replace the whole one', () => {
 		const t = { id: pdid.newId(TenantDomain).bytes, alias: 'acme' }
-		await store.put(Robot.typeName, robot('arm-01', new Date(), t))
+		store.put(Robot.typeName, robot('arm-01', new Date(), t))
 
 		// A second robot whose tenant came back as nothing but its identifier,
 		// which is what a request that did not select it looks like. Storing
@@ -149,59 +146,64 @@ describe('two answers about one row are put in order', () => {
 			dateUpdated: timestampFromDate(new Date()),
 			tenant: create(TenantSchema, { id: t.id }),
 		})
-		await store.put(Robot.typeName, bare)
+		store.put(Robot.typeName, bare)
 
-		const tenants = await store.table(Tenant.typeName).toArray()
+		const tenants = store.all(Tenant.typeName)
 		expect(tenants).toHaveLength(1)
 		expect(tenants[0]?.alias).toBe('acme')
 	})
 })
 
 describe('a watch keeps it up to date', () => {
-	it('writes what an item carries', async () => {
+	it('writes what an item carries', () => {
 		const v = robot('arm-01', new Date())
-		await store.apply(Robot.typeName, [{ id: v.id, value: v }])
+		store.apply(Robot.typeName, [{ id: v.id, value: v }])
 
-		expect((await store.get<RobotMsg>(Robot.typeName, v.id))?.alias).toBe('arm-01')
+		expect((store.get<RobotMsg>(Robot.typeName, v.id))?.alias).toBe('arm-01')
 	})
 
-	it('takes a row away when the value is absent', async () => {
+	it('takes a row away when the value is absent', () => {
 		const v = robot('arm-01', new Date())
-		await store.put(Robot.typeName, v)
+		store.put(Robot.typeName, v)
 
 		// Which is the whole of how a removal is said: the row is named, the
 		// value is not there, and the RPC that did it says what happened. There
 		// is no tombstone to recognise.
-		await store.apply(Robot.typeName, [{ id: v.id }])
+		store.apply(Robot.typeName, [{ id: v.id }])
 
-		expect(await store.get(Robot.typeName, v.id)).toBeUndefined()
+		expect(store.get(Robot.typeName, v.id)).toBeUndefined()
 	})
 })
 
 describe('a store belongs to whoever it was opened for', () => {
-	it('another identity is another database', async () => {
+	it('another credential is another store', () => {
 		const v = robot('arm-01', new Date())
-		await store.put(Robot.typeName, v)
+		store.put(Robot.typeName, v)
 
 		const other = Store.open(entities, { name: 'apptest', identity: 'somebody-else' })
-		await other.db.open()
 
 		// Nothing leaked -- the server never sent this to them. What is wrong
 		// without this is the screen: rows a narrowed credential can no longer
 		// read, still drawn.
-		expect(await other.get(Robot.typeName, v.id)).toBeUndefined()
+		expect(other.get(Robot.typeName, v.id)).toBeUndefined()
 
-		await other.forget()
+		other.forget()
 	})
 
-	it('forgetting throws the copy away', async () => {
+	it('forgetting throws the copy away', () => {
 		const v = robot('arm-01', new Date())
-		await store.put(Robot.typeName, v)
-		await store.forget()
+		store.put(Robot.typeName, v)
 
-		const again = Store.open(entities, { name: 'apptest', identity: store.db.name.split(':')[1]! })
-		await again.db.open()
-		expect(await again.get(Robot.typeName, v.id)).toBeUndefined()
+		let told = 0
+		store.subscribe([store.rowKey(Robot.typeName, v.id)], () => told++)
+
+		store.forget()
+
+		expect(store.get(Robot.typeName, v.id)).toBeUndefined()
+
+		// And everything drawn from those rows hears about it, because a screen
+		// drawn from rows that are gone is a screen showing what is not there.
+		expect(told).toBe(1)
 	})
 })
 
@@ -212,8 +214,96 @@ describe('the index comes from the schema', () => {
 		// `tenantId` because an edge is a nested message there and a key here.
 		expect(Robot.index).toBe('&id,[dateCreated+id],[alias+tenantId]')
 
-		// And the store can actually use it, which is the half a string
-		// comparison does not prove.
-		expect(store.table(Robot.typeName).schema.indexes.map((i: { name: string }) => i.name)).toContain('[alias+tenantId]')
+		// Nothing reads it yet -- the store is in memory and a `Map` needs no
+		// index. It is here because it is the **server's** index, said in the
+		// terms a browser database takes one in, so that persistence can be
+		// added without asking the schema a second time.
+	})
+})
+
+describe('a change tells whoever is drawing it', () => {
+	it('says so when a row is written', () => {
+		const v = robot('arm-01', new Date('2026-01-01T00:00:00Z'))
+		store.put(Robot.typeName, v)
+
+		let told = 0
+		store.subscribe([store.rowKey(Robot.typeName, v.id)], () => told++)
+
+		store.put(
+			Robot.typeName,
+			create(RobotSchema, {
+				...v,
+				alias: 'renamed',
+				dateUpdated: timestampFromDate(new Date('2026-01-02T00:00:00Z')),
+			}),
+		)
+
+		expect(told).toBe(1)
+		expect(store.get<RobotMsg>(Robot.typeName, v.id)?.alias).toBe('renamed')
+	})
+
+	it('says nothing when the answer was stale', () => {
+		const late = robot('arm-01', new Date('2026-01-02T00:00:00Z'))
+		store.put(Robot.typeName, late)
+
+		let told = 0
+		store.subscribe([store.rowKey(Robot.typeName, late.id)], () => told++)
+
+		// The one that lost the ordering. Nothing changed, so nothing rendered:
+		// a store that told its subscribers about every arrival would redraw the
+		// page for answers it decided to ignore.
+		store.put(
+			Robot.typeName,
+			create(RobotSchema, {
+				...late,
+				alias: 'older',
+				dateUpdated: timestampFromDate(new Date('2026-01-01T00:00:00Z')),
+			}),
+		)
+
+		expect(told).toBe(0)
+	})
+
+	it('says it once for a response carrying many rows', () => {
+		const t = { id: pdid.newId(TenantDomain).bytes, alias: 'acme' }
+		store.put(Robot.typeName, robot('arm-01', new Date(), t))
+
+		let told = 0
+		store.subscribe([store.rowKey(Tenant.typeName, t.id)], () => told++)
+
+		// Twenty rows all naming the same tenant is one change to a screen. A
+		// subscriber told twenty times renders nineteen frames nobody asked for.
+		store.put(
+			Robot.typeName,
+			...Array.from({ length: 20 }, (_, i) => robot(`arm-${i}`, new Date(), { ...t, alias: 'renamed' })),
+		)
+
+		expect(told).toBe(1)
+	})
+
+	it('says so when a watch takes a row away', () => {
+		const v = robot('arm-01', new Date())
+		store.put(Robot.typeName, v)
+
+		let told = 0
+		store.subscribe([store.rowKey(Robot.typeName, v.id)], () => told++)
+
+		store.apply(Robot.typeName, [{ id: v.id }])
+
+		expect(told).toBe(1)
+		expect(store.get(Robot.typeName, v.id)).toBeUndefined()
+	})
+
+	it('stops when the subscription does', () => {
+		const v = robot('arm-01', new Date('2026-01-01T00:00:00Z'))
+		store.put(Robot.typeName, v)
+
+		let told = 0
+		const off = store.subscribe([store.rowKey(Robot.typeName, v.id)], () => told++)
+		off()
+
+		store.apply(Robot.typeName, [{ id: v.id }])
+
+		expect(told).toBe(0)
 	})
 })

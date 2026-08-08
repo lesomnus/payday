@@ -54,7 +54,14 @@ export interface EntityDesc {
 	 */
 	readonly version?: string
 
-	/** The Dexie index declaration for this entity's table. */
+	/**
+	 * The index the server has, written the way a browser database takes one.
+	 *
+	 * Nothing reads it while the store is in memory -- a `Map` needs no index.
+	 * It is declared because it is the **server's** index, said in the terms
+	 * persistence would take it in, so that persistence can be added without
+	 * asking the schema a second time.
+	 */
 	readonly index: string
 
 	readonly refs?: readonly RefDesc[]

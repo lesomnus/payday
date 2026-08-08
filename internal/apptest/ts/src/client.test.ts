@@ -7,8 +7,6 @@
  * and the only way to find that out is to send bytes.
  */
 
-import 'fake-indexeddb/auto'
-
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
@@ -251,17 +249,15 @@ describe('what the server actually sends', () => {
 		const got = await c.robot.get({ ref: { key: { case: 'id', value: made.id } } })
 
 		const store = Store.open(entities, { name: 'wire', identity: 'x' })
-		await store.db.open()
-		try {
-			await store.put(Robot.typeName, got)
+		store.put(Robot.typeName, got)
 
-			// The tenant it named was never a whole row here, so nothing about
-			// it should have been written -- a nameless Tenant is worse than no
-			// Tenant, because a page draws it.
-			const tenants = await store.table(Tenant.typeName).toArray()
-			expect(tenants).toEqual([])
-		} finally {
-			await store.forget()
-		}
+		// The tenant it named was never a whole row here, so nothing about it
+		// should have been written -- a nameless Tenant is worse than no
+		// Tenant, because a page draws it.
+		expect(store.all(Tenant.typeName)).toEqual([])
+
+		// And the reference is kept, which is the other half: the row knows
+		// which tenant it is in without holding a copy of it.
+		expect(store.row(Robot.typeName, made.id)?.['tenantId']).toBeTypeOf('string')
 	})
 })

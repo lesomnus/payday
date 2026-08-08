@@ -64,20 +64,14 @@
 		"typescript": "~5.9.3",
 		"vitest": "^4.1.10",
 		"@bufbuild/protobuf": "^2.12.1",
-		"dexie": "^4.2.0",
-		"fake-indexeddb": "^6.2.2",
 		"@connectrpc/connect": "^2.1.2"
 	},
 	"peerDependencies": {
 		"@bufbuild/protobuf": "^2",
-		"dexie": "^4",
 		"@connectrpc/connect": "^2"
 	},
 	"peerDependenciesMeta": {
 		"@bufbuild/protobuf": {
-			"optional": true
-		},
-		"dexie": {
 			"optional": true
 		},
 		"@connectrpc/connect": {
