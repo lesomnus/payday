@@ -88,6 +88,14 @@ function isWhole(d: DescMessage, v: Message): boolean {
 	for (const f of d.fields) {
 		if (f.localName === 'id') continue
 
+		// The timestamps are never evidence. A caller does not write them --
+		// the server stamps them -- so their presence says nothing about
+		// whether this message is a row or a reference to one. It is not a
+		// nicety: a Go server sends an unselected `date_updated` as Go's zero
+		// time, which is the year 1, which is a value. Reading that as data is
+		// how a reference-only tenant gets stored as a nameless tenant.
+		if (f.fieldKind === 'message' && f.message?.typeName === 'google.protobuf.Timestamp') continue
+
 		const w = got[f.localName]
 		if (w === undefined || w === null) continue
 

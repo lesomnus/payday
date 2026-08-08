@@ -7,6 +7,8 @@
  * and the only way to find that out is to send bytes.
  */
 
+import 'fake-indexeddb/auto'
+
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
@@ -18,7 +20,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { pdid, slug } from '@lesomnus/payday'
 import * as pderr from '@lesomnus/payday/pderr'
 
+import { Store } from '@lesomnus/payday/store'
+
 import { app, type App } from './client.js'
+import { entities, Robot, Tenant } from '../gen/entities.js'
 import { RobotDomain, TenantDomain } from '../gen/domains.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -227,6 +232,36 @@ describe('a refusal says which box', () => {
 		} catch (e) {
 			expect(pderr.isInvalid(e)).toBe(false)
 			expect(pderr.violations(e)).toEqual([])
+		}
+	})
+})
+
+describe('what the server actually sends', () => {
+	it('does not write an empty neighbour into the store', async () => {
+		const tenant = await c.tenant.get({ ref: { key: { case: 'alias', value: 'acme' } } })
+
+		const made = await c.robot.add({
+			tenant: { key: { case: 'id', value: tenant.id } },
+			alias: 'arm-store',
+		})
+
+		// What a Get with no Select carries: the tenant as a reference. This is
+		// the shape the store has to recognise, and building it by hand in a
+		// test is not the same thing -- the server fills the timestamps in.
+		const got = await c.robot.get({ ref: { key: { case: 'id', value: made.id } } })
+
+		const store = Store.open(entities, { name: 'wire', identity: 'x' })
+		await store.db.open()
+		try {
+			await store.put(Robot.typeName, got)
+
+			// The tenant it named was never a whole row here, so nothing about
+			// it should have been written -- a nameless Tenant is worse than no
+			// Tenant, because a page draws it.
+			const tenants = await store.table(Tenant.typeName).toArray()
+			expect(tenants).toEqual([])
+		} finally {
+			await store.forget()
 		}
 	})
 })
