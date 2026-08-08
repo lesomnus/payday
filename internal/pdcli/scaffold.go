@@ -190,9 +190,18 @@ func (e Entity) message(domain int) string {
 	}
 
 	b.WriteString("\n  // The name a person writes this as. Every write of it is folded and\n")
-	b.WriteString("  // checked on the way in, so \"  Arm-01 \" and \"arm-01\" are one row.\n")
+	b.WriteString("  // checked on the way in, so \"  Arm-01 \" and \"arm-01\" are one row,\n")
+	b.WriteString("  // and one that was not given is made up.\n")
+	b.WriteString("  //\n")
+	b.WriteString("  // Delete it if nothing here is named by a person -- a measurement, a\n")
+	b.WriteString("  // sample, a row of a log. There is no switch to turn off: `alias` is\n")
+	b.WriteString("  // found by name, so an entity without one gets no naming and no slug.\n")
 	b.WriteString("  string alias = 4;\n")
-	b.WriteString("\n  // TODO: this entity's own fields, in 5..12 and from 16.\n")
+	b.WriteString("\n  // 5 is `name`, 6 is `desc`, 7 is `map<string, string> labels`, and 3 is\n")
+	b.WriteString("  // held for a set smaller than a tenant. They are the header: what\n")
+	b.WriteString("  // anything can read off a row it has no type for. Declare the ones this\n")
+	b.WriteString("  // entity wants, at those numbers, and leave the rest empty.\n")
+	b.WriteString("\n  // TODO: this entity's own fields, in 8..12 and from 16.\n")
 
 	if e.Watch {
 		b.WriteString("\n  // Stamped on every write and refused to a patch document, so it is a\n")

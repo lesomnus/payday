@@ -457,6 +457,137 @@ func (b0 Cell_builder) Build() *Cell {
 	return m0
 }
 
+// Reading is an entity nobody names.
+//
+// It is here as evidence rather than as a feature: a resource that has no name
+// a person writes is an ordinary thing to have -- a measurement, a sample, a
+// row of a log -- and payday's answer is that it simply does not declare the
+// field. There is no switch to set and nothing to turn off; `alias` is found by
+// name, so an entity without one gets no naming, no folding and no slug.
+type Reading struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Robot       *Robot                 `protobuf:"bytes,2,opt,name=robot"`
+	xxx_hidden_Celsius     float64                `protobuf:"fixed64,8,opt,name=celsius"`
+	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *Reading) Reset() {
+	*x = Reading{}
+	mi := &file_app_robot_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Reading) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Reading) ProtoMessage() {}
+
+func (x *Reading) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Reading) GetId() []byte {
+	if x != nil {
+		return x.xxx_hidden_Id
+	}
+	return nil
+}
+
+func (x *Reading) GetRobot() *Robot {
+	if x != nil {
+		return x.xxx_hidden_Robot
+	}
+	return nil
+}
+
+func (x *Reading) GetCelsius() float64 {
+	if x != nil {
+		return x.xxx_hidden_Celsius
+	}
+	return 0
+}
+
+func (x *Reading) GetDateCreated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateCreated
+	}
+	return nil
+}
+
+func (x *Reading) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Id = v
+}
+
+func (x *Reading) SetRobot(v *Robot) {
+	x.xxx_hidden_Robot = v
+}
+
+func (x *Reading) SetCelsius(v float64) {
+	x.xxx_hidden_Celsius = v
+}
+
+func (x *Reading) SetDateCreated(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateCreated = v
+}
+
+func (x *Reading) HasRobot() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Robot != nil
+}
+
+func (x *Reading) HasDateCreated() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateCreated != nil
+}
+
+func (x *Reading) ClearRobot() {
+	x.xxx_hidden_Robot = nil
+}
+
+func (x *Reading) ClearDateCreated() {
+	x.xxx_hidden_DateCreated = nil
+}
+
+type Reading_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id          []byte
+	Robot       *Robot
+	Celsius     float64
+	DateCreated *timestamppb.Timestamp
+}
+
+func (b0 Reading_builder) Build() *Reading {
+	m0 := &Reading{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Id = b.Id
+	x.xxx_hidden_Robot = b.Robot
+	x.xxx_hidden_Celsius = b.Celsius
+	x.xxx_hidden_DateCreated = b.DateCreated
+	return m0
+}
+
 var File_app_robot_proto protoreflect.FileDescriptor
 
 const file_app_robot_proto_rawDesc = "" +
@@ -492,28 +623,38 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias:\x18\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\f\b\n" +
 	"\"\b\n" +
-	"\x06tenantB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x06tenant\"\xd4\x01\n" +
+	"\aReading\x12\x1b\n" +
+	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12(\n" +
+	"\x05robot\x18\x02 \x01(\v2\n" +
+	".app.RobotB\x06\xf2\x82\x16\x02@\x01R\x05robot\x12\x18\n" +
+	"\acelsius\x18\b \x01(\x01R\acelsius\x12H\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x1e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x12\b\v\"\x0e\n" +
+	"\frobot.tenantB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_app_robot_proto_goTypes = []any{
 	(*Robot)(nil),                 // 0: app.Robot
 	(*Joint)(nil),                 // 1: app.Joint
 	(*Fleet)(nil),                 // 2: app.Fleet
 	(*Cell)(nil),                  // 3: app.Cell
-	(*Tenant)(nil),                // 4: payday.Tenant
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*Reading)(nil),               // 4: app.Reading
+	(*Tenant)(nil),                // 5: payday.Tenant
+	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
 }
 var file_app_robot_proto_depIdxs = []int32{
-	4, // 0: app.Robot.tenant:type_name -> payday.Tenant
-	5, // 1: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
-	5, // 2: app.Robot.date_created:type_name -> google.protobuf.Timestamp
+	5, // 0: app.Robot.tenant:type_name -> payday.Tenant
+	6, // 1: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
+	6, // 2: app.Robot.date_created:type_name -> google.protobuf.Timestamp
 	0, // 3: app.Joint.robot:type_name -> app.Robot
-	4, // 4: app.Cell.tenant:type_name -> payday.Tenant
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	5, // 4: app.Cell.tenant:type_name -> payday.Tenant
+	0, // 5: app.Reading.robot:type_name -> app.Robot
+	6, // 6: app.Reading.date_created:type_name -> google.protobuf.Timestamp
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_proto_init() }
@@ -528,7 +669,7 @@ func file_app_robot_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_robot_proto_rawDesc), len(file_app_robot_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

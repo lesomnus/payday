@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { CellSchema, FleetSchema, JointSchema, Robot, RobotSchema } from "./robot_pb.js";
+import type { CellSchema, FleetSchema, JointSchema, ReadingSchema, Robot, RobotSchema } from "./robot_pb.js";
 import { file_app_robot } from "./robot_pb.js";
 import type { EmptySchema, Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_empty, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot_svc.proto.
  */
 export const file_app_robot_svc: GenFile = /*@__PURE__*/
-  fileDesc("ChNhcHAvcm9ib3Rfc3ZjLnByb3RvEgNhcHAiiAEKD1JvYm90QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIhCgZ0ZW5hbnQYAiABKAsyES5wYXlkYXkuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIk8KD1JvYm90R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0IkQKCFJvYm90UmVmEgwKAmlkGAEgASgMSAASIwoEc2x1ZxgEIAEoCzITLmFwcC5Sb2JvdFJlZkJ5U2x1Z0gAQgUKA2tleSJCCg5Sb2JvdFJlZkJ5U2x1ZxINCgVhbGlhcxgEIAEoCRIhCgZ0ZW5hbnQYAiABKAsyES5wYXlkYXkuVGVuYW50UmVmInsKC1JvYm90U2VsZWN0EgsKA2FsbBgBIAEoCBIkCgZ0ZW5hbnQYAiABKAsyFC5wYXlkYXkuVGVuYW50U2VsZWN0Eg0KBWFsaWFzGAQgASgIEhQKDGRhdGVfdXBkYXRlZBgNIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgijAEKEVJvYm90UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhINCgVhbGlhcxgIIAEoCRIwCgxkYXRlX3VwZGF0ZWQYGiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRhdGVfdXBkYXRlZF9mb3JjZRgbIAEoCCJMChFSb2JvdEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJgChBSb2JvdExpc3RSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuUm9ib3RGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCIkMKEVJvYm90TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90EhMKBG5leHQYAiABKAlCBaoBAggCIikKC1JvYm90RmlsdGVyEhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZiJUChFSb2JvdFdhdGNoUmVxdWVzdBIhCgdmaWx0ZXJzGAEgAygLMhAuYXBwLlJvYm90RmlsdGVyEhwKDXNraXBfc25hcHNob3QYAiABKAhCBaoBAggCIjgKElJvYm90V2F0Y2hSZXNwb25zZRIiCgVpdGVtcxgBIAMoCzITLmFwcC5Sb2JvdFdhdGNoSXRlbSJOCg5Sb2JvdFdhdGNoSXRlbRIKCgJpZBgBIAEoDBIZCgV2YWx1ZRgCIAEoCzIKLmFwcC5Sb2JvdBIVCgZhY3Rpb24YAyABKAlCBaoBAggCIlEKD0pvaW50QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPSm9pbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuSm9pbnRTZWxlY3QiHwoISm9pbnRSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiSgoLSm9pbnRTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0Eg0KBWFsaWFzGAQgASgIIj4KEUpvaW50UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhINCgVhbGlhcxgIIAEoCSJMChFKb2ludEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuSm9pbnRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIzCg9GbGVldEFkZFJlcXVlc3QSCgoCaWQYASABKAwSFAoFYWxpYXMYBCABKAlCBaoBAggCIk8KD0ZsZWV0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkZsZWV0U2VsZWN0IjAKCEZsZWV0UmVmEgwKAmlkGAEgASgMSAASDwoFYWxpYXMYBCABKAlIAEIFCgNrZXkiKQoLRmxlZXRTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIIj4KEUZsZWV0UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhINCgVhbGlhcxgIIAEoCSJMChFGbGVldEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJVCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIhCgZ0ZW5hbnQYAiABKAsyES5wYXlkYXkuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5Ik4KCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiQKBnRlbmFudBgCIAEoCzIULnBheWRheS5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gy3QIKDFJvYm90U2VydmljZRInCgNBZGQSFC5hcHAuUm9ib3RBZGRSZXF1ZXN0GgouYXBwLlJvYm90EicKA0dldBIULmFwcC5Sb2JvdEdldFJlcXVlc3QaCi5hcHAuUm9ib3QSKwoFUGF0Y2gSFi5hcHAuUm9ib3RQYXRjaFJlcXVlc3QaCi5hcHAuUm9ib3QSKwoFQXBwbHkSFi5hcHAuUm9ib3RBcHBseVJlcXVlc3QaCi5hcHAuUm9ib3QSLgoFRXJhc2USDS5hcHAuUm9ib3RSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSNQoETGlzdBIVLmFwcC5Sb2JvdExpc3RSZXF1ZXN0GhYuYXBwLlJvYm90TGlzdFJlc3BvbnNlEjoKBVdhdGNoEhYuYXBwLlJvYm90V2F0Y2hSZXF1ZXN0GhcuYXBwLlJvYm90V2F0Y2hSZXNwb25zZTABMuoBCgxKb2ludFNlcnZpY2USJwoDQWRkEhQuYXBwLkpvaW50QWRkUmVxdWVzdBoKLmFwcC5Kb2ludBInCgNHZXQSFC5hcHAuSm9pbnRHZXRSZXF1ZXN0GgouYXBwLkpvaW50EisKBVBhdGNoEhYuYXBwLkpvaW50UGF0Y2hSZXF1ZXN0GgouYXBwLkpvaW50EisKBUFwcGx5EhYuYXBwLkpvaW50QXBwbHlSZXF1ZXN0GgouYXBwLkpvaW50Ei4KBUVyYXNlEg0uYXBwLkpvaW50UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5MuoBCgxGbGVldFNlcnZpY2USJwoDQWRkEhQuYXBwLkZsZWV0QWRkUmVxdWVzdBoKLmFwcC5GbGVldBInCgNHZXQSFC5hcHAuRmxlZXRHZXRSZXF1ZXN0GgouYXBwLkZsZWV0EisKBVBhdGNoEhYuYXBwLkZsZWV0UGF0Y2hSZXF1ZXN0GgouYXBwLkZsZWV0EisKBUFwcGx5EhYuYXBwLkZsZWV0QXBwbHlSZXF1ZXN0GgouYXBwLkZsZWV0Ei4KBUVyYXNlEg0uYXBwLkZsZWV0UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5MuABCgtDZWxsU2VydmljZRIlCgNBZGQSEy5hcHAuQ2VsbEFkZFJlcXVlc3QaCS5hcHAuQ2VsbBIlCgNHZXQSEy5hcHAuQ2VsbEdldFJlcXVlc3QaCS5hcHAuQ2VsbBIpCgVQYXRjaBIVLmFwcC5DZWxsUGF0Y2hSZXF1ZXN0GgkuYXBwLkNlbGwSKQoFQXBwbHkSFS5hcHAuQ2VsbEFwcGx5UmVxdWVzdBoJLmFwcC5DZWxsEi0KBUVyYXNlEgwuYXBwLkNlbGxSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHlCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_robot, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch, file_payday_tenant_svc]);
+  fileDesc("ChNhcHAvcm9ib3Rfc3ZjLnByb3RvEgNhcHAiiAEKD1JvYm90QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIhCgZ0ZW5hbnQYAiABKAsyES5wYXlkYXkuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIk8KD1JvYm90R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0IkQKCFJvYm90UmVmEgwKAmlkGAEgASgMSAASIwoEc2x1ZxgEIAEoCzITLmFwcC5Sb2JvdFJlZkJ5U2x1Z0gAQgUKA2tleSJCCg5Sb2JvdFJlZkJ5U2x1ZxINCgVhbGlhcxgEIAEoCRIhCgZ0ZW5hbnQYAiABKAsyES5wYXlkYXkuVGVuYW50UmVmInsKC1JvYm90U2VsZWN0EgsKA2FsbBgBIAEoCBIkCgZ0ZW5hbnQYAiABKAsyFC5wYXlkYXkuVGVuYW50U2VsZWN0Eg0KBWFsaWFzGAQgASgIEhQKDGRhdGVfdXBkYXRlZBgNIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgijAEKEVJvYm90UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhINCgVhbGlhcxgIIAEoCRIwCgxkYXRlX3VwZGF0ZWQYGiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRhdGVfdXBkYXRlZF9mb3JjZRgbIAEoCCJMChFSb2JvdEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJgChBSb2JvdExpc3RSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuUm9ib3RGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCIkMKEVJvYm90TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90EhMKBG5leHQYAiABKAlCBaoBAggCIikKC1JvYm90RmlsdGVyEhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZiJUChFSb2JvdFdhdGNoUmVxdWVzdBIhCgdmaWx0ZXJzGAEgAygLMhAuYXBwLlJvYm90RmlsdGVyEhwKDXNraXBfc25hcHNob3QYAiABKAhCBaoBAggCIjgKElJvYm90V2F0Y2hSZXNwb25zZRIiCgVpdGVtcxgBIAMoCzITLmFwcC5Sb2JvdFdhdGNoSXRlbSJOCg5Sb2JvdFdhdGNoSXRlbRIKCgJpZBgBIAEoDBIZCgV2YWx1ZRgCIAEoCzIKLmFwcC5Sb2JvdBIVCgZhY3Rpb24YAyABKAlCBaoBAggCIlEKD0pvaW50QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPSm9pbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuSm9pbnRTZWxlY3QiHwoISm9pbnRSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiSgoLSm9pbnRTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0Eg0KBWFsaWFzGAQgASgIIj4KEUpvaW50UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhINCgVhbGlhcxgIIAEoCSJMChFKb2ludEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuSm9pbnRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIzCg9GbGVldEFkZFJlcXVlc3QSCgoCaWQYASABKAwSFAoFYWxpYXMYBCABKAlCBaoBAggCIk8KD0ZsZWV0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkZsZWV0U2VsZWN0IjAKCEZsZWV0UmVmEgwKAmlkGAEgASgMSAASDwoFYWxpYXMYBCABKAlIAEIFCgNrZXkiKQoLRmxlZXRTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIIj4KEUZsZWV0UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhINCgVhbGlhcxgIIAEoCSJMChFGbGVldEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJVCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIhCgZ0ZW5hbnQYAiABKAsyES5wYXlkYXkuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5Ik4KCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiQKBnRlbmFudBgCIAEoCzIULnBheWRheS5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gihwEKEVJlYWRpbmdBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhwKBXJvYm90GAIgASgLMg0uYXBwLlJvYm90UmVmEhYKB2NlbHNpdXMYCCABKAFCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoRUmVhZGluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlJlYWRpbmdTZWxlY3QiIQoKUmVhZGluZ1JlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJkCg1SZWFkaW5nU2VsZWN0EgsKA2FsbBgBIAEoCBIfCgVyb2JvdBgCIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdBIPCgdjZWxzaXVzGAggASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJEChNSZWFkaW5nUGF0Y2hSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEg8KB2NlbHNpdXMYECABKAEiUAoTUmVhZGluZ0FwcGx5UmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUmVhZGluZ1JlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoMt0CCgxSb2JvdFNlcnZpY2USJwoDQWRkEhQuYXBwLlJvYm90QWRkUmVxdWVzdBoKLmFwcC5Sb2JvdBInCgNHZXQSFC5hcHAuUm9ib3RHZXRSZXF1ZXN0GgouYXBwLlJvYm90EisKBVBhdGNoEhYuYXBwLlJvYm90UGF0Y2hSZXF1ZXN0GgouYXBwLlJvYm90EisKBUFwcGx5EhYuYXBwLlJvYm90QXBwbHlSZXF1ZXN0GgouYXBwLlJvYm90Ei4KBUVyYXNlEg0uYXBwLlJvYm90UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5EjUKBExpc3QSFS5hcHAuUm9ib3RMaXN0UmVxdWVzdBoWLmFwcC5Sb2JvdExpc3RSZXNwb25zZRI6CgVXYXRjaBIWLmFwcC5Sb2JvdFdhdGNoUmVxdWVzdBoXLmFwcC5Sb2JvdFdhdGNoUmVzcG9uc2UwATLqAQoMSm9pbnRTZXJ2aWNlEicKA0FkZBIULmFwcC5Kb2ludEFkZFJlcXVlc3QaCi5hcHAuSm9pbnQSJwoDR2V0EhQuYXBwLkpvaW50R2V0UmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVQYXRjaBIWLmFwcC5Kb2ludFBhdGNoUmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVBcHBseRIWLmFwcC5Kb2ludEFwcGx5UmVxdWVzdBoKLmFwcC5Kb2ludBIuCgVFcmFzZRINLmFwcC5Kb2ludFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eTLqAQoMRmxlZXRTZXJ2aWNlEicKA0FkZBIULmFwcC5GbGVldEFkZFJlcXVlc3QaCi5hcHAuRmxlZXQSJwoDR2V0EhQuYXBwLkZsZWV0R2V0UmVxdWVzdBoKLmFwcC5GbGVldBIrCgVQYXRjaBIWLmFwcC5GbGVldFBhdGNoUmVxdWVzdBoKLmFwcC5GbGVldBIrCgVBcHBseRIWLmFwcC5GbGVldEFwcGx5UmVxdWVzdBoKLmFwcC5GbGVldBIuCgVFcmFzZRINLmFwcC5GbGVldFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eTLgAQoLQ2VsbFNlcnZpY2USJQoDQWRkEhMuYXBwLkNlbGxBZGRSZXF1ZXN0GgkuYXBwLkNlbGwSJQoDR2V0EhMuYXBwLkNlbGxHZXRSZXF1ZXN0GgkuYXBwLkNlbGwSKQoFUGF0Y2gSFS5hcHAuQ2VsbFBhdGNoUmVxdWVzdBoJLmFwcC5DZWxsEikKBUFwcGx5EhUuYXBwLkNlbGxBcHBseVJlcXVlc3QaCS5hcHAuQ2VsbBItCgVFcmFzZRIMLmFwcC5DZWxsUmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Mv4BCg5SZWFkaW5nU2VydmljZRIrCgNBZGQSFi5hcHAuUmVhZGluZ0FkZFJlcXVlc3QaDC5hcHAuUmVhZGluZxIrCgNHZXQSFi5hcHAuUmVhZGluZ0dldFJlcXVlc3QaDC5hcHAuUmVhZGluZxIvCgVQYXRjaBIYLmFwcC5SZWFkaW5nUGF0Y2hSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSLwoFQXBwbHkSGC5hcHAuUmVhZGluZ0FwcGx5UmVxdWVzdBoMLmFwcC5SZWFkaW5nEjAKBUVyYXNlEg8uYXBwLlJlYWRpbmdSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHlCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_robot, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch, file_payday_tenant_svc]);
 
 /**
  * @generated from message app.RobotAddRequest
@@ -844,6 +844,159 @@ export const CellApplyRequestSchema: GenMessage<CellApplyRequest> = /*@__PURE__*
   messageDesc(file_app_robot_svc, 30);
 
 /**
+ * @generated from message app.ReadingAddRequest
+ */
+export type ReadingAddRequest = Message<"app.ReadingAddRequest"> & {
+  /**
+   * @generated from field: bytes id = 1;
+   */
+  id: Uint8Array;
+
+  /**
+   * @generated from field: app.RobotRef robot = 2;
+   */
+  robot?: RobotRef | undefined;
+
+  /**
+   * @generated from field: double celsius = 8 [features.field_presence = IMPLICIT];
+   */
+  celsius: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp date_created = 15;
+   */
+  dateCreated?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message app.ReadingAddRequest.
+ * Use `create(ReadingAddRequestSchema)` to create a new message.
+ */
+export const ReadingAddRequestSchema: GenMessage<ReadingAddRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc, 31);
+
+/**
+ * @generated from message app.ReadingGetRequest
+ */
+export type ReadingGetRequest = Message<"app.ReadingGetRequest"> & {
+  /**
+   * @generated from field: app.ReadingRef ref = 1;
+   */
+  ref?: ReadingRef | undefined;
+
+  /**
+   * @generated from field: app.ReadingSelect select = 2;
+   */
+  select?: ReadingSelect | undefined;
+};
+
+/**
+ * Describes the message app.ReadingGetRequest.
+ * Use `create(ReadingGetRequestSchema)` to create a new message.
+ */
+export const ReadingGetRequestSchema: GenMessage<ReadingGetRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc, 32);
+
+/**
+ * @generated from message app.ReadingRef
+ */
+export type ReadingRef = Message<"app.ReadingRef"> & {
+  /**
+   * @generated from oneof app.ReadingRef.key
+   */
+  key: {
+    /**
+     * @generated from field: bytes id = 1;
+     */
+    value: Uint8Array;
+    case: "id";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message app.ReadingRef.
+ * Use `create(ReadingRefSchema)` to create a new message.
+ */
+export const ReadingRefSchema: GenMessage<ReadingRef> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc, 33);
+
+/**
+ * @generated from message app.ReadingSelect
+ */
+export type ReadingSelect = Message<"app.ReadingSelect"> & {
+  /**
+   * @generated from field: bool all = 1;
+   */
+  all: boolean;
+
+  /**
+   * @generated from field: app.RobotSelect robot = 2;
+   */
+  robot?: RobotSelect | undefined;
+
+  /**
+   * @generated from field: bool celsius = 8;
+   */
+  celsius: boolean;
+
+  /**
+   * @generated from field: bool date_created = 15;
+   */
+  dateCreated: boolean;
+};
+
+/**
+ * Describes the message app.ReadingSelect.
+ * Use `create(ReadingSelectSchema)` to create a new message.
+ */
+export const ReadingSelectSchema: GenMessage<ReadingSelect> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc, 34);
+
+/**
+ * @generated from message app.ReadingPatchRequest
+ */
+export type ReadingPatchRequest = Message<"app.ReadingPatchRequest"> & {
+  /**
+   * @generated from field: app.ReadingRef ref = 1;
+   */
+  ref?: ReadingRef | undefined;
+
+  /**
+   * @generated from field: double celsius = 16;
+   */
+  celsius: number;
+};
+
+/**
+ * Describes the message app.ReadingPatchRequest.
+ * Use `create(ReadingPatchRequestSchema)` to create a new message.
+ */
+export const ReadingPatchRequestSchema: GenMessage<ReadingPatchRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc, 35);
+
+/**
+ * @generated from message app.ReadingApplyRequest
+ */
+export type ReadingApplyRequest = Message<"app.ReadingApplyRequest"> & {
+  /**
+   * @generated from field: app.ReadingRef ref = 1;
+   */
+  ref?: ReadingRef | undefined;
+
+  /**
+   * @generated from field: patch.Patch patch = 2;
+   */
+  patch?: Patch | undefined;
+};
+
+/**
+ * Describes the message app.ReadingApplyRequest.
+ * Use `create(ReadingApplyRequestSchema)` to create a new message.
+ */
+export const ReadingApplyRequestSchema: GenMessage<ReadingApplyRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc, 36);
+
+/**
  * @generated from service app.RobotService
  */
 export const RobotService: GenService<{
@@ -1100,4 +1253,61 @@ export const CellService: GenService<{
   },
 }> = /*@__PURE__*/
   serviceDesc(file_app_robot_svc, 3);
+
+/**
+ * @generated from service app.ReadingService
+ */
+export const ReadingService: GenService<{
+  /**
+   * Add creates a new Reading
+   *
+   * @generated from rpc app.ReadingService.Add
+   */
+  add: {
+    methodKind: "unary";
+    input: typeof ReadingAddRequestSchema;
+    output: typeof ReadingSchema;
+  },
+  /**
+   * Get retrieves a Reading
+   *
+   * @generated from rpc app.ReadingService.Get
+   */
+  get: {
+    methodKind: "unary";
+    input: typeof ReadingGetRequestSchema;
+    output: typeof ReadingSchema;
+  },
+  /**
+   * Patch updates an existing Reading
+   *
+   * @generated from rpc app.ReadingService.Patch
+   */
+  patch: {
+    methodKind: "unary";
+    input: typeof ReadingPatchRequestSchema;
+    output: typeof ReadingSchema;
+  },
+  /**
+   * Apply applies a patch document to an existing Reading
+   *
+   * @generated from rpc app.ReadingService.Apply
+   */
+  apply: {
+    methodKind: "unary";
+    input: typeof ReadingApplyRequestSchema;
+    output: typeof ReadingSchema;
+  },
+  /**
+   * Erase deletes a Reading
+   *
+   * @generated from rpc app.ReadingService.Erase
+   */
+  erase: {
+    methodKind: "unary";
+    input: typeof ReadingRefSchema;
+    output: typeof EmptySchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_app_robot_svc, 4);
 

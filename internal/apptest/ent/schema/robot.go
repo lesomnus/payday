@@ -129,3 +129,34 @@ func (Cell) Annotations() []schema.Annotation {
 		entsql.Annotation{Table: "cell"},
 	}
 }
+
+type Reading struct {
+	ent.Schema
+}
+
+func (Reading) Fields() []ent.Field {
+	return []ent.Field{
+		field.UUID("id", uuid.UUID{}).
+			Unique().
+			Immutable(),
+		field.Float("celsius"),
+		field.Time("date_created").
+			Immutable().
+			Optional(),
+	}
+}
+
+func (Reading) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("robot", Robot.Type).
+			Unique().
+			Required().
+			Immutable(),
+	}
+}
+
+func (Reading) Annotations() []schema.Annotation {
+	return []schema.Annotation{
+		entsql.Annotation{Table: "reading"},
+	}
+}

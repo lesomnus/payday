@@ -21,6 +21,9 @@ export const FleetDomain = 9
 /** The domain identifiers of app.Joint carry. */
 export const JointDomain = 8
 
+/** The domain identifiers of app.Reading carry. */
+export const ReadingDomain = 11
+
 /** The domain identifiers of app.Robot carry. */
 export const RobotDomain = 7
 
@@ -41,6 +44,7 @@ export const TenantDomain = 1
 pdid.register("app.Cell", CellDomain, "cell")
 pdid.register("app.Fleet", FleetDomain, "fleet")
 pdid.register("app.Joint", JointDomain, "joint")
+pdid.register("app.Reading", ReadingDomain, "reading")
 pdid.register("app.Robot", RobotDomain, "robot")
 pdid.register("payday.Audit", AuditDomain, "audit")
 pdid.register("payday.Holder", HolderDomain, "holder")

@@ -1178,3 +1178,267 @@ var CellService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "app/robot_svc.proto",
 }
+
+const (
+	ReadingService_Add_FullMethodName   = "/app.ReadingService/Add"
+	ReadingService_Get_FullMethodName   = "/app.ReadingService/Get"
+	ReadingService_Patch_FullMethodName = "/app.ReadingService/Patch"
+	ReadingService_Apply_FullMethodName = "/app.ReadingService/Apply"
+	ReadingService_Erase_FullMethodName = "/app.ReadingService/Erase"
+)
+
+// ReadingServiceClient is the client API for ReadingService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type ReadingServiceClient interface {
+	// Add creates a new Reading
+	Add(ctx context.Context, in *ReadingAddRequest, opts ...grpc.CallOption) (*Reading, error)
+	// Get retrieves a Reading
+	Get(ctx context.Context, in *ReadingGetRequest, opts ...grpc.CallOption) (*Reading, error)
+	// Patch updates an existing Reading
+	Patch(ctx context.Context, in *ReadingPatchRequest, opts ...grpc.CallOption) (*Reading, error)
+	// Apply applies a patch document to an existing Reading
+	Apply(ctx context.Context, in *ReadingApplyRequest, opts ...grpc.CallOption) (*Reading, error)
+	// Erase deletes a Reading
+	Erase(ctx context.Context, in *ReadingRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+}
+
+type readingServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewReadingServiceClient(cc grpc.ClientConnInterface) ReadingServiceClient {
+	return &readingServiceClient{cc}
+}
+
+func (c *readingServiceClient) Add(ctx context.Context, in *ReadingAddRequest, opts ...grpc.CallOption) (*Reading, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Reading)
+	err := c.cc.Invoke(ctx, ReadingService_Add_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *readingServiceClient) Get(ctx context.Context, in *ReadingGetRequest, opts ...grpc.CallOption) (*Reading, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Reading)
+	err := c.cc.Invoke(ctx, ReadingService_Get_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *readingServiceClient) Patch(ctx context.Context, in *ReadingPatchRequest, opts ...grpc.CallOption) (*Reading, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Reading)
+	err := c.cc.Invoke(ctx, ReadingService_Patch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *readingServiceClient) Apply(ctx context.Context, in *ReadingApplyRequest, opts ...grpc.CallOption) (*Reading, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Reading)
+	err := c.cc.Invoke(ctx, ReadingService_Apply_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *readingServiceClient) Erase(ctx context.Context, in *ReadingRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ReadingService_Erase_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ReadingServiceServer is the server API for ReadingService service.
+// All implementations must embed UnimplementedReadingServiceServer
+// for forward compatibility.
+type ReadingServiceServer interface {
+	// Add creates a new Reading
+	Add(context.Context, *ReadingAddRequest) (*Reading, error)
+	// Get retrieves a Reading
+	Get(context.Context, *ReadingGetRequest) (*Reading, error)
+	// Patch updates an existing Reading
+	Patch(context.Context, *ReadingPatchRequest) (*Reading, error)
+	// Apply applies a patch document to an existing Reading
+	Apply(context.Context, *ReadingApplyRequest) (*Reading, error)
+	// Erase deletes a Reading
+	Erase(context.Context, *ReadingRef) (*emptypb.Empty, error)
+	mustEmbedUnimplementedReadingServiceServer()
+}
+
+// UnimplementedReadingServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedReadingServiceServer struct{}
+
+func (UnimplementedReadingServiceServer) Add(context.Context, *ReadingAddRequest) (*Reading, error) {
+	return nil, status.Error(codes.Unimplemented, "method Add not implemented")
+}
+func (UnimplementedReadingServiceServer) Get(context.Context, *ReadingGetRequest) (*Reading, error) {
+	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedReadingServiceServer) Patch(context.Context, *ReadingPatchRequest) (*Reading, error) {
+	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
+}
+func (UnimplementedReadingServiceServer) Apply(context.Context, *ReadingApplyRequest) (*Reading, error) {
+	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
+}
+func (UnimplementedReadingServiceServer) Erase(context.Context, *ReadingRef) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
+}
+func (UnimplementedReadingServiceServer) mustEmbedUnimplementedReadingServiceServer() {}
+func (UnimplementedReadingServiceServer) testEmbeddedByValue()                        {}
+
+// UnsafeReadingServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ReadingServiceServer will
+// result in compilation errors.
+type UnsafeReadingServiceServer interface {
+	mustEmbedUnimplementedReadingServiceServer()
+}
+
+func RegisterReadingServiceServer(s grpc.ServiceRegistrar, srv ReadingServiceServer) {
+	// If the following call panics, it indicates UnimplementedReadingServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&ReadingService_ServiceDesc, srv)
+}
+
+func _ReadingService_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadingAddRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReadingServiceServer).Add(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReadingService_Add_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReadingServiceServer).Add(ctx, req.(*ReadingAddRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ReadingService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadingGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReadingServiceServer).Get(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReadingService_Get_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReadingServiceServer).Get(ctx, req.(*ReadingGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ReadingService_Patch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadingPatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReadingServiceServer).Patch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReadingService_Patch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReadingServiceServer).Patch(ctx, req.(*ReadingPatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ReadingService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadingApplyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReadingServiceServer).Apply(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReadingService_Apply_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReadingServiceServer).Apply(ctx, req.(*ReadingApplyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ReadingService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadingRef)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReadingServiceServer).Erase(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReadingService_Erase_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReadingServiceServer).Erase(ctx, req.(*ReadingRef))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// ReadingService_ServiceDesc is the grpc.ServiceDesc for ReadingService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var ReadingService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "app.ReadingService",
+	HandlerType: (*ReadingServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Add",
+			Handler:    _ReadingService_Add_Handler,
+		},
+		{
+			MethodName: "Get",
+			Handler:    _ReadingService_Get_Handler,
+		},
+		{
+			MethodName: "Patch",
+			Handler:    _ReadingService_Patch_Handler,
+		},
+		{
+			MethodName: "Apply",
+			Handler:    _ReadingService_Apply_Handler,
+		},
+		{
+			MethodName: "Erase",
+			Handler:    _ReadingService_Erase_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "app/robot_svc.proto",
+}

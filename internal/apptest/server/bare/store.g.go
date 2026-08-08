@@ -250,6 +250,7 @@ type Scope interface {
 	JointScope(ctx context.Context) (predicate.Joint, error)
 	FleetScope(ctx context.Context) (predicate.Fleet, error)
 	CellScope(ctx context.Context) (predicate.Cell, error)
+	ReadingScope(ctx context.Context) (predicate.Reading, error)
 	AuditScope(ctx context.Context) (predicate.Audit, error)
 	HolderScope(ctx context.Context) (predicate.Holder, error)
 	OutboxScope(ctx context.Context) (predicate.Outbox, error)
@@ -280,6 +281,9 @@ func (Unscoped) FleetScope(_ context.Context) (predicate.Fleet, error) {
 	return nil, nil
 }
 func (Unscoped) CellScope(_ context.Context) (predicate.Cell, error) {
+	return nil, nil
+}
+func (Unscoped) ReadingScope(_ context.Context) (predicate.Reading, error) {
 	return nil, nil
 }
 func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
@@ -375,11 +379,12 @@ func (s Server) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	return s, nil
 }
 
-func (s Server) Tenant() apptest.TenantServiceServer { return TenantServiceServer{Store: s.Store} }
-func (s Server) Robot() apptest.RobotServiceServer   { return RobotServiceServer{Store: s.Store} }
-func (s Server) Joint() apptest.JointServiceServer   { return JointServiceServer{Store: s.Store} }
-func (s Server) Fleet() apptest.FleetServiceServer   { return FleetServiceServer{Store: s.Store} }
-func (s Server) Cell() apptest.CellServiceServer     { return CellServiceServer{Store: s.Store} }
-func (s Server) Audit() apptest.AuditServiceServer   { return AuditServiceServer{Store: s.Store} }
-func (s Server) Holder() apptest.HolderServiceServer { return HolderServiceServer{Store: s.Store} }
-func (s Server) Outbox() apptest.OutboxServiceServer { return OutboxServiceServer{Store: s.Store} }
+func (s Server) Tenant() apptest.TenantServiceServer   { return TenantServiceServer{Store: s.Store} }
+func (s Server) Robot() apptest.RobotServiceServer     { return RobotServiceServer{Store: s.Store} }
+func (s Server) Joint() apptest.JointServiceServer     { return JointServiceServer{Store: s.Store} }
+func (s Server) Fleet() apptest.FleetServiceServer     { return FleetServiceServer{Store: s.Store} }
+func (s Server) Cell() apptest.CellServiceServer       { return CellServiceServer{Store: s.Store} }
+func (s Server) Reading() apptest.ReadingServiceServer { return ReadingServiceServer{Store: s.Store} }
+func (s Server) Audit() apptest.AuditServiceServer     { return AuditServiceServer{Store: s.Store} }
+func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceServer{Store: s.Store} }
+func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }

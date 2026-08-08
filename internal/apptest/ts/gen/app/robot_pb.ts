@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot.proto.
  */
 export const file_app_robot: GenFile = /*@__PURE__*/
-  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCLYAgoFUm9ib3QSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBADqGAcr8FUcSAhABGiASBHBhZ2UaEAoMZGF0ZV9jcmVhdGVkEA8aBgoCaWQQARofEgRzbHVnGgkKBWFsaWFzEAQaCgoGdGVuYW50EAIwAYq7FjcIBzInCg4KDGRhdGVfY3JlYXRlZAoECgJpZBIGdGVuYW50GgNyZWYgMihkOgAiCAoGdGVuYW50InIKBUpvaW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIhCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEIG8oIWAkABEg0KBWFsaWFzGAQgASgJOh7K/BUEEgIQAYq7FhIICCIOCgxyb2JvdC50ZW5hbnQiSQoFRmxlZXQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhUKBWFsaWFzGAQgASgJQgbqghYCMAE6EMr8FQQSAhABirsWBAgJKgAicAoEQ2VsbBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASJgoGdGVuYW50GAIgASgLMg4ucGF5ZGF5LlRlbmFudEIG8oIWAkABEg0KBWFsaWFzGAQgASgJOhjK/BUEEgIQAYq7FgwICiIICgZ0ZW5hbnRCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCLYAgoFUm9ib3QSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBADqGAcr8FUcSAhABGiASBHBhZ2UaEAoMZGF0ZV9jcmVhdGVkEA8aBgoCaWQQARofEgRzbHVnGgkKBWFsaWFzEAQaCgoGdGVuYW50EAIwAYq7FjcIBzInCg4KDGRhdGVfY3JlYXRlZAoECgJpZBIGdGVuYW50GgNyZWYgMihkOgAiCAoGdGVuYW50InIKBUpvaW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIhCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEIG8oIWAkABEg0KBWFsaWFzGAQgASgJOh7K/BUEEgIQAYq7FhIICCIOCgxyb2JvdC50ZW5hbnQiSQoFRmxlZXQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhUKBWFsaWFzGAQgASgJQgbqghYCMAE6EMr8FQQSAhABirsWBAgJKgAicAoEQ2VsbBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASJgoGdGVuYW50GAIgASgLMg4ucGF5ZGF5LlRlbmFudEIG8oIWAkABEg0KBWFsaWFzGAQgASgJOhjK/BUEEgIQAYq7FgwICiIICgZ0ZW5hbnQiswEKB1JlYWRpbmcSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiEKBXJvYm90GAIgASgLMgouYXBwLlJvYm90QgbyghYCQAESDwoHY2Vsc2l1cxgIIAEoARI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6Hsr8FQQSAhABirsWEggLIg4KDHJvYm90LnRlbmFudEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Robot is an ordinary entity: it belongs to a tenant, and is read only by
@@ -149,4 +149,44 @@ export type Cell = Message<"app.Cell"> & {
  */
 export const CellSchema: GenMessage<Cell> = /*@__PURE__*/
   messageDesc(file_app_robot, 3);
+
+/**
+ * Reading is an entity nobody names.
+ *
+ * It is here as evidence rather than as a feature: a resource that has no name
+ * a person writes is an ordinary thing to have -- a measurement, a sample, a
+ * row of a log -- and payday's answer is that it simply does not declare the
+ * field. There is no switch to set and nothing to turn off; `alias` is found by
+ * name, so an entity without one gets no naming, no folding and no slug.
+ *
+ * @generated from message app.Reading
+ */
+export type Reading = Message<"app.Reading"> & {
+  /**
+   * @generated from field: bytes id = 1;
+   */
+  id: Uint8Array;
+
+  /**
+   * @generated from field: app.Robot robot = 2;
+   */
+  robot?: Robot | undefined;
+
+  /**
+   * @generated from field: double celsius = 8;
+   */
+  celsius: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp date_created = 15;
+   */
+  dateCreated?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message app.Reading.
+ * Use `create(ReadingSchema)` to create a new message.
+ */
+export const ReadingSchema: GenMessage<Reading> = /*@__PURE__*/
+  messageDesc(file_app_robot, 4);
 

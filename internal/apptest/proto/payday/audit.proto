@@ -17,9 +17,21 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // arrange a trail and read it back, and a deployment refuses the ones that
 // write -- a trail somebody can edit is evidence of nothing.
 //
-// **Fields 1..7 and 13..15 are payday's.** There is less reason than usual for
-// an app to add any: a column here is a column on the one table that never
-// stops growing.
+// # Where its fields are
+//
+// 1..7 and 13..15 are payday's on every entity it ships, and this one leaves
+// almost all of them **empty**: 3 is held for a set smaller than a tenant, and
+// 4..7 are the header -- the alias, the name, the description and the labels
+// that anything can read off a row it has no type for. A trail row has none of
+// those and never will, so the numbers stay reserved rather than being spent on
+// something else.
+//
+// Its own fields are in 8..12, which is where an app's would be. That is not a
+// special rule: `CheckOverlay` derives what payday owns from what payday
+// declared, so an `audit.ext.proto` is refused at whichever numbers this file
+// actually uses. What is left for an app here is 16 and up -- and there is less
+// reason than usual to want any, since a column here is a column on the one
+// table that never stops growing.
 message Audit {
   bytes id = 1 [(orm.field) = {
     type: TYPE_UUID
@@ -47,12 +59,12 @@ message Audit {
   // The holder that made the request, and the zero identifier for a write
   // nobody asked for -- what a deployment does to itself before it serves
   // anything.
-  bytes actor_id = 3 [(orm.field) = {type: TYPE_UUID}];
+  bytes actor_id = 8 [(orm.field) = {type: TYPE_UUID}];
 
   // The trace the request belonged to, empty if it was not traced. Sixteen
   // bytes as OpenTelemetry spells one, which is not a UUID however alike they
   // look, so it is stored as what it is.
-  bytes trace_id = 4;
+  bytes trace_id = 9;
 
   // The RPC that did it, by the name gRPC knows it by, such as
   // "/app.RobotService/Rename".
@@ -61,7 +73,7 @@ message Audit {
   // call writes through several servers, and an RPC written by hand ends in an
   // Apply nobody called by that name. "Who renamed this" has to answer with
   // Rename.
-  string action = 5;
+  string action = 10;
 
   // What changed, by its identifier. That is the whole of what "the history of
   // this thing" is asked with.
@@ -70,7 +82,7 @@ message Audit {
   // need to be: an identifier carries its domain, so a row erased later still
   // says what it used to be. That was the standing cost of naming a row by an
   // identifier alone, and it is what `pdid` was for.
-  bytes object_id = 6 [(orm.field) = {type: TYPE_UUID}];
+  bytes object_id = 11 [(orm.field) = {type: TYPE_UUID}];
 
   // The patch document the write was compiled from, as it was marshaled, and
   // empty for a write that was not one -- an Add or an Erase says everything it
@@ -79,7 +91,7 @@ message Audit {
   // Stored as bytes rather than read back as a document, because that is what a
   // trail is for: written once, read by somebody asking what happened, and
   // whoever asks can unmarshal it.
-  bytes patch = 7;
+  bytes patch = 12;
 
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {
     immutable: true
@@ -94,7 +106,7 @@ message Audit {
         refs: [
           {
             name: "object_id"
-            number: 6
+            number: 11
           }
         ]
       },

@@ -13,7 +13,7 @@
 
 import type { EntityDesc } from '@lesomnus/payday/store'
 
-import { CellSchema, FleetSchema, JointSchema, RobotSchema } from './app/robot_pb.js'
+import { CellSchema, FleetSchema, JointSchema, ReadingSchema, RobotSchema } from './app/robot_pb.js'
 import { AuditSchema } from './payday/audit_pb.js'
 import { HolderSchema } from './payday/holder_pb.js'
 import { OutboxSchema } from './payday/outbox_pb.js'
@@ -41,6 +41,15 @@ export const Joint = {
 	typeName: "app.Joint",
 	schema: JointSchema,
 	domain: 8,
+	index: "&id",
+	refs: [{ field: "robot", to: "app.Robot" }],
+} as const satisfies EntityDesc
+
+/** app.Reading, as the store holds it. */
+export const Reading = {
+	typeName: "app.Reading",
+	schema: ReadingSchema,
+	domain: 11,
 	index: "&id",
 	refs: [{ field: "robot", to: "app.Robot" }],
 } as const satisfies EntityDesc
@@ -91,5 +100,5 @@ export const Tenant = {
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Cell, Fleet, Joint, Robot, Audit, Holder, Outbox, Tenant] as const
+export const entities = [Cell, Fleet, Joint, Reading, Robot, Audit, Holder, Outbox, Tenant] as const
 

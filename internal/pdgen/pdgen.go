@@ -731,7 +731,7 @@ func Warnings(s *Schema) []string {
 		}
 	}
 
-	return append(vs, warnHeader(s)...)
+	return vs
 }
 
 // header is the shape a reflective reader expects of the fields every entity
@@ -779,43 +779,35 @@ func (s *Schema) checkHeader() error {
 	for _, v := range s.Entities {
 		for f := range v.Fields() {
 			for _, want := range header {
-				if string(f.Name()) != want.Name || f.Type() == want.Type {
+				if string(f.Name()) != want.Name {
 					continue
 				}
-
-				return fmt.Errorf(
-					"%s: %s: is a %s, and everything that reads a row it has no type for "+
-						"expects a %s.\n\n"+
-						"    %s %s = %d;\n\n"+
-						"It is refused rather than ignored because ignoring it is invisible: "+
-						"a page looking for a name would find none and fall back, and nothing "+
-						"would say why. Call it something else if it is not that",
-					v.FullName(), want.Name, f.Type(), want.Type,
-					protoTypeOf(want.Type), want.Name, want.At)
+				if f.Type() != want.Type {
+					return fmt.Errorf(
+						"%s: %s: is a %s, and everything that reads a row it has no type for "+
+							"expects a %s.\n\n"+
+							"    %s %s = %d;\n\n"+
+							"It is refused rather than ignored because ignoring it is invisible: "+
+							"a page looking for a name would find none and fall back, and nothing "+
+							"would say why. Call it something else if it is not that",
+						v.FullName(), want.Name, f.Type(), want.Type,
+						protoTypeOf(want.Type), want.Name, want.At)
+				}
+				if int(f.Number()) != want.At {
+					return fmt.Errorf(
+						"%s: %s: is %d, and the header is at %d in every entity payday ships.\n\n"+
+							"    %s %s = %d;\n\n"+
+							"The numbers are the rule rather than the convention: 1 is the key, 2 is "+
+							"the tenant, 4..7 are the alias, the name, the description and the labels. "+
+							"An entity that does not want one of them leaves the number empty, which "+
+							"is what keeps payday able to add a header field later without every app "+
+							"having spent it on something else",
+						v.FullName(), want.Name, f.Number(), want.At,
+						protoTypeOf(want.Type), want.Name, want.At)
+				}
 			}
 		}
 	}
 
 	return nil
-}
-
-// warnHeader mentions a header field that is not where payday's own put it.
-func warnHeader(s *Schema) []string {
-	var vs []string
-	for _, v := range s.Entities {
-		for f := range v.Fields() {
-			for _, want := range header {
-				if string(f.Name()) != want.Name || int(f.Number()) == want.At {
-					continue
-				}
-
-				vs = append(vs, fmt.Sprintf(
-					"%s: %s is %d and payday's own entities put it at %d. Nothing reads it by "+
-						"number, so this only costs a reader who expected the usual shape",
-					v.FullName(), want.Name, f.Number(), want.At))
-			}
-		}
-	}
-
-	return vs
 }

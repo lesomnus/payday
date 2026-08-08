@@ -22,6 +22,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/ent/outbox"
+	"github.com/lesomnus/payday/internal/apptest/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/ent/tenant"
 )
@@ -43,6 +44,8 @@ type Client struct {
 	Joint *JointClient
 	// Outbox is the client for interacting with the Outbox builders.
 	Outbox *OutboxClient
+	// Reading is the client for interacting with the Reading builders.
+	Reading *ReadingClient
 	// Robot is the client for interacting with the Robot builders.
 	Robot *RobotClient
 	// Tenant is the client for interacting with the Tenant builders.
@@ -64,6 +67,7 @@ func (c *Client) init() {
 	c.Holder = NewHolderClient(c.config)
 	c.Joint = NewJointClient(c.config)
 	c.Outbox = NewOutboxClient(c.config)
+	c.Reading = NewReadingClient(c.config)
 	c.Robot = NewRobotClient(c.config)
 	c.Tenant = NewTenantClient(c.config)
 }
@@ -156,16 +160,17 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Audit:  NewAuditClient(cfg),
-		Cell:   NewCellClient(cfg),
-		Fleet:  NewFleetClient(cfg),
-		Holder: NewHolderClient(cfg),
-		Joint:  NewJointClient(cfg),
-		Outbox: NewOutboxClient(cfg),
-		Robot:  NewRobotClient(cfg),
-		Tenant: NewTenantClient(cfg),
+		ctx:     ctx,
+		config:  cfg,
+		Audit:   NewAuditClient(cfg),
+		Cell:    NewCellClient(cfg),
+		Fleet:   NewFleetClient(cfg),
+		Holder:  NewHolderClient(cfg),
+		Joint:   NewJointClient(cfg),
+		Outbox:  NewOutboxClient(cfg),
+		Reading: NewReadingClient(cfg),
+		Robot:   NewRobotClient(cfg),
+		Tenant:  NewTenantClient(cfg),
 	}, nil
 }
 
@@ -183,16 +188,17 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Audit:  NewAuditClient(cfg),
-		Cell:   NewCellClient(cfg),
-		Fleet:  NewFleetClient(cfg),
-		Holder: NewHolderClient(cfg),
-		Joint:  NewJointClient(cfg),
-		Outbox: NewOutboxClient(cfg),
-		Robot:  NewRobotClient(cfg),
-		Tenant: NewTenantClient(cfg),
+		ctx:     ctx,
+		config:  cfg,
+		Audit:   NewAuditClient(cfg),
+		Cell:    NewCellClient(cfg),
+		Fleet:   NewFleetClient(cfg),
+		Holder:  NewHolderClient(cfg),
+		Joint:   NewJointClient(cfg),
+		Outbox:  NewOutboxClient(cfg),
+		Reading: NewReadingClient(cfg),
+		Robot:   NewRobotClient(cfg),
+		Tenant:  NewTenantClient(cfg),
 	}, nil
 }
 
@@ -222,7 +228,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Robot, c.Tenant,
+		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Reading, c.Robot,
+		c.Tenant,
 	} {
 		n.Use(hooks...)
 	}
@@ -232,7 +239,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Robot, c.Tenant,
+		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Reading, c.Robot,
+		c.Tenant,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -253,6 +261,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Joint.mutate(ctx, m)
 	case *OutboxMutation:
 		return c.Outbox.mutate(ctx, m)
+	case *ReadingMutation:
+		return c.Reading.mutate(ctx, m)
 	case *RobotMutation:
 		return c.Robot.mutate(ctx, m)
 	case *TenantMutation:
@@ -1108,6 +1118,155 @@ func (c *OutboxClient) mutate(ctx context.Context, m *OutboxMutation) (Value, er
 	}
 }
 
+// ReadingClient is a client for the Reading schema.
+type ReadingClient struct {
+	config
+}
+
+// NewReadingClient returns a client for the Reading from the given config.
+func NewReadingClient(c config) *ReadingClient {
+	return &ReadingClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `reading.Hooks(f(g(h())))`.
+func (c *ReadingClient) Use(hooks ...Hook) {
+	c.hooks.Reading = append(c.hooks.Reading, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `reading.Intercept(f(g(h())))`.
+func (c *ReadingClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Reading = append(c.inters.Reading, interceptors...)
+}
+
+// Create returns a builder for creating a Reading entity.
+func (c *ReadingClient) Create() *ReadingCreate {
+	mutation := newReadingMutation(c.config, OpCreate)
+	return &ReadingCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Reading entities.
+func (c *ReadingClient) CreateBulk(builders ...*ReadingCreate) *ReadingCreateBulk {
+	return &ReadingCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ReadingClient) MapCreateBulk(slice any, setFunc func(*ReadingCreate, int)) *ReadingCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ReadingCreateBulk{err: fmt.Errorf("calling to ReadingClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ReadingCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ReadingCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Reading.
+func (c *ReadingClient) Update() *ReadingUpdate {
+	mutation := newReadingMutation(c.config, OpUpdate)
+	return &ReadingUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ReadingClient) UpdateOne(_m *Reading) *ReadingUpdateOne {
+	mutation := newReadingMutation(c.config, OpUpdateOne, withReading(_m))
+	return &ReadingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ReadingClient) UpdateOneID(id uuid.UUID) *ReadingUpdateOne {
+	mutation := newReadingMutation(c.config, OpUpdateOne, withReadingID(id))
+	return &ReadingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Reading.
+func (c *ReadingClient) Delete() *ReadingDelete {
+	mutation := newReadingMutation(c.config, OpDelete)
+	return &ReadingDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ReadingClient) DeleteOne(_m *Reading) *ReadingDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ReadingClient) DeleteOneID(id uuid.UUID) *ReadingDeleteOne {
+	builder := c.Delete().Where(reading.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ReadingDeleteOne{builder}
+}
+
+// Query returns a query builder for Reading.
+func (c *ReadingClient) Query() *ReadingQuery {
+	return &ReadingQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeReading},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Reading entity by its id.
+func (c *ReadingClient) Get(ctx context.Context, id uuid.UUID) (*Reading, error) {
+	return c.Query().Where(reading.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ReadingClient) GetX(ctx context.Context, id uuid.UUID) *Reading {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRobot queries the robot edge of a Reading.
+func (c *ReadingClient) QueryRobot(_m *Reading) *RobotQuery {
+	query := (&RobotClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(reading.Table, reading.FieldID, id),
+			sqlgraph.To(robot.Table, robot.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, reading.RobotTable, reading.RobotColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ReadingClient) Hooks() []Hook {
+	return c.hooks.Reading
+}
+
+// Interceptors returns the client interceptors.
+func (c *ReadingClient) Interceptors() []Interceptor {
+	return c.inters.Reading
+}
+
+func (c *ReadingClient) mutate(ctx context.Context, m *ReadingMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ReadingCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ReadingUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ReadingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ReadingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Reading mutation op: %q", m.Op())
+	}
+}
+
 // RobotClient is a client for the Robot schema.
 type RobotClient struct {
 	config
@@ -1393,9 +1552,10 @@ func (c *TenantClient) mutate(ctx context.Context, m *TenantMutation) (Value, er
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Audit, Cell, Fleet, Holder, Joint, Outbox, Robot, Tenant []ent.Hook
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Reading, Robot, Tenant []ent.Hook
 	}
 	inters struct {
-		Audit, Cell, Fleet, Holder, Joint, Outbox, Robot, Tenant []ent.Interceptor
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Reading, Robot,
+		Tenant []ent.Interceptor
 	}
 )

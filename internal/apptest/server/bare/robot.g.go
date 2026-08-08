@@ -14,6 +14,7 @@ import (
 	fleet "github.com/lesomnus/payday/internal/apptest/ent/fleet"
 	joint "github.com/lesomnus/payday/internal/apptest/ent/joint"
 	predicate "github.com/lesomnus/payday/internal/apptest/ent/predicate"
+	reading "github.com/lesomnus/payday/internal/apptest/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/ent/robot"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
@@ -1640,6 +1641,417 @@ func CellPick(req *apptest.CellRef) (predicate.Cell, error) {
 		}
 	case apptest.CellRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Cell")
+	default:
+		return nil, status.Errorf(codes.Unimplemented, "unknown type of key: %s", req.WhichKey())
+	}
+}
+
+type ReadingServiceServer struct {
+	Store
+
+	apptest.UnimplementedReadingServiceServer
+}
+
+// NewReadingServiceServer answers with a server that runs its queries with `db`.
+//
+// It takes the options of [Server] so that what is built here can be told
+// where to report its writes and what it may see. Built without them, it
+// reports nowhere and sees everything.
+func NewReadingServiceServer(db *ent.Client, opts ...Option) apptest.ReadingServiceServer {
+	s := Server{Store: Store{Db: db}}
+	for _, opt := range opts {
+		opt(&s)
+	}
+	return ReadingServiceServer{Store: s.Store}
+}
+
+// ReadingNarrow answers with `p` and everything else that narrows a
+// read of a Reading, which is whatever `scope` says.
+//
+// Every read this package makes goes through it, and a read written by
+// hand should too -- a List is the one read nothing generates, and so the
+// one that would otherwise answer with rows nobody should be given.
+func ReadingNarrow(ctx context.Context, scope Scope, p predicate.Reading) (predicate.Reading, error) {
+	ps := make([]predicate.Reading, 0, 2)
+	if p != nil {
+		ps = append(ps, p)
+	}
+	if scope != nil {
+		q, err := scope.ReadingScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if q != nil {
+			ps = append(ps, q)
+		}
+	}
+
+	switch len(ps) {
+	case 0:
+		return nil, nil
+	case 1:
+		return ps[0], nil
+	default:
+		return reading.And(ps...), nil
+	}
+}
+
+// narrow is [ReadingNarrow] with this server's own scope.
+func (s ReadingServiceServer) narrow(ctx context.Context, p predicate.Reading) (predicate.Reading, error) {
+	return ReadingNarrow(ctx, s.Scope, p)
+}
+
+func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
+	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	ds := make([]func(v *apptest.Reading), 0, 1)
+	q := st.Db.Reading.Create()
+	var k uuid.UUID
+	if req.HasId() {
+		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			k = v
+		}
+	}
+	if v, err := mint(ctx, s.Mint, "app.Reading", k, req.HasId()); err != nil {
+		return nil, err
+	} else {
+		q.SetID(v)
+	}
+	if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
+		return nil, err
+	} else {
+		q.SetRobotID(k)
+		ds = append(ds, func(v *apptest.Reading) {
+			v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
+		})
+	}
+	q.SetCelsius(req.GetCelsius())
+	if req.HasDateCreated() {
+		q.SetDateCreated(req.GetDateCreated().AsTime())
+	} else {
+		q.SetDateCreated(time.Now().UTC())
+	}
+
+	u, err := q.Save(ctx)
+	if err != nil {
+		if err, ok := err.(*ent.ConstraintError); ok {
+			if sqlgraph.IsUniqueConstraintError(err) {
+				return nil, status.Errorf(codes.AlreadyExists, "Reading already exists: %s", err.Unwrap())
+			}
+			if sqlgraph.IsForeignKeyConstraintError(err) {
+				return nil, status.Errorf(codes.NotFound, "Reading: referenced entity not found: %s", err.Unwrap())
+			}
+		}
+		return nil, err
+	}
+
+	if err := record(ctx, s.Rec, st.Db, Change{
+		By:  apptest.ReadingService_Add_FullMethodName,
+		Key: u.ID,
+	}); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
+	return v, nil
+}
+
+func (s ReadingServiceServer) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
+	p, err := ReadingPick(req.GetRef())
+	if err != nil {
+		return nil, err
+	}
+	p, err = s.narrow(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	q := s.Db.Reading.Query().Where(p)
+	ReadingSelectInit(q, req.GetSelect())
+
+	v, err := q.Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "Reading not found")
+		}
+		return nil, err
+	}
+	return v.Proto(), nil
+}
+
+func selectReadingKey(q *ent.ReadingQuery) {
+	q.Select(reading.FieldID)
+}
+
+func ReadingSelectedFields(m *apptest.ReadingSelect) []string {
+	if m.GetAll() {
+		return reading.Columns
+	}
+
+	vs := make([]string, 0, len(reading.Columns))
+	{
+		vs = append(vs, reading.FieldID)
+	}
+	if m.GetCelsius() {
+		vs = append(vs, reading.FieldCelsius)
+	}
+	if m.GetDateCreated() {
+		vs = append(vs, reading.FieldDateCreated)
+	}
+
+	return vs
+}
+
+func ReadingSelect(q *ent.ReadingQuery, m *apptest.ReadingSelect) {
+	if !m.GetAll() {
+		fields := ReadingSelectedFields(m)
+		q.Select(fields...)
+	}
+	if m.HasRobot() {
+		q.WithRobot(func(q *ent.RobotQuery) {
+			RobotSelect(q, m.GetRobot())
+		})
+	}
+}
+
+func ReadingSelectInit(q *ent.ReadingQuery, m *apptest.ReadingSelect) {
+	if m != nil {
+		ReadingSelect(q, m)
+	} else {
+		q.WithRobot(selectRobotKey)
+	}
+}
+
+func (s ReadingServiceServer) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
+	doc, err := ormpatch.FromPatchRequest(readingOrmEntity, req.ProtoReflect(), nil)
+	if err != nil {
+		if _, ok := status.FromError(err); ok {
+			return nil, err
+		}
+		if errors.Is(err, ormpatch.ErrRequestLayout) {
+			return nil, status.Errorf(codes.Internal, "%s", err)
+		}
+		if errors.Is(err, ormpatch.ErrUnsupported) {
+			return nil, status.Errorf(codes.Unimplemented, "%s", err)
+		}
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	return s.apply(ctx, req.GetRef(), doc, apptest.ReadingService_Patch_FullMethodName)
+}
+
+func ReadingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ReadingRef) (uuid.UUID, error) {
+	var z uuid.UUID
+	if ref.HasId() {
+		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			return v, nil
+		}
+	}
+
+	p, err := ReadingPick(ref)
+	if err != nil {
+		return z, err
+	}
+
+	v, err := db.Reading.Query().Where(p).OnlyID(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return z, status.Error(codes.NotFound, "Reading not found")
+		}
+		return z, err
+	}
+
+	return v, nil
+}
+
+var readingOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Reading")
+
+var readingPatchColumns = entpatch.Columns{
+	1: reading.FieldID, 2: reading.RobotColumn, 8: reading.FieldCelsius, 15: reading.FieldDateCreated}
+
+func (s ReadingServiceServer) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
+	if !req.HasPatch() {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
+	}
+	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.ReadingService_Apply_FullMethodName)
+}
+
+func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef, doc *patchpb.Patch, by string) (*apptest.Reading, error) {
+	plan := &ormpatch.Plan{Entity: readingOrmEntity}
+	if doc != nil {
+		v, err := ormpatch.Compile(readingOrmEntity, doc)
+		if err != nil {
+			if errors.Is(err, ormpatch.ErrUnsupported) {
+				return nil, status.Errorf(codes.Unimplemented, "%s", err)
+			}
+			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+		}
+		plan = v
+	}
+
+	pred, mod, err := entpatch.Build(plan, readingPatchColumns, s.Db.Dialect())
+	if err != nil {
+		if errors.Is(err, entpatch.ErrValue) {
+			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+		}
+		return nil, status.Errorf(codes.Internal, "%s", err)
+	}
+
+	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	k, err := ReadingGetKey(ctx, st.Db, ref)
+	if err != nil {
+		return nil, err
+	}
+	at := &apptest.ReadingRef{}
+	at.SetId(k[:])
+	p, err := s.narrow(ctx, reading.IDEQ(k))
+	if err != nil {
+		return nil, err
+	}
+
+	if mod == nil {
+		q := st.Db.Reading.Query().Where(p)
+		if pred != nil {
+			q.Where(predicate.Reading(pred))
+		}
+		if ok, err := q.Exist(ctx); err != nil {
+			return nil, err
+		} else if !ok {
+			return nil, func() error {
+				if ok, err := st.Db.Reading.Query().Where(p).Exist(ctx); err != nil {
+					return err
+				} else if !ok {
+					return status.Error(codes.NotFound, "Reading not found")
+				}
+				return status.Error(codes.FailedPrecondition, "a test in the patch did not hold")
+			}()
+		}
+	} else {
+		q := st.Db.Reading.Update().Where(p)
+		if pred != nil {
+			q.Where(predicate.Reading(pred))
+		}
+		q.Modify(mod)
+		if n, err := q.Save(ctx); err != nil {
+			return nil, err
+		} else if n == 0 {
+			return nil, func() error {
+				if ok, err := st.Db.Reading.Query().Where(p).Exist(ctx); err != nil {
+					return err
+				} else if !ok {
+					return status.Error(codes.NotFound, "Reading not found")
+				}
+				return status.Error(codes.FailedPrecondition, "a test in the patch did not hold")
+			}()
+		}
+	}
+
+	if mod != nil {
+		if err := record(ctx, s.Rec, st.Db, Change{
+			By:    by,
+			Key:   k,
+			Patch: doc,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef) (*emptypb.Empty, error) {
+	p, err := ReadingPick(req)
+	if err != nil {
+		return nil, err
+	}
+	p, err = s.narrow(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	var k any
+	if s.Rec != nil {
+		v, err := st.Db.Reading.Query().Where(p).OnlyID(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return &emptypb.Empty{}, nil
+			}
+			return nil, err
+		}
+
+		k = v
+		p = reading.IDEQ(v)
+	}
+
+	n, err := st.Db.Reading.Delete().Where(p).Exec(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if n > 0 {
+		if err := record(ctx, s.Rec, st.Db, Change{
+			By:  apptest.ReadingService_Erase_FullMethodName,
+			Key: k,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func ReadingPick(req *apptest.ReadingRef) (predicate.Reading, error) {
+	switch req.WhichKey() {
+	case apptest.ReadingRef_Id_case:
+		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			return reading.IDEQ(v), nil
+		}
+	case apptest.ReadingRef_Key_not_set_case:
+		return nil, status.Errorf(codes.InvalidArgument, "key not set: Reading")
 	default:
 		return nil, status.Errorf(codes.Unimplemented, "unknown type of key: %s", req.WhichKey())
 	}

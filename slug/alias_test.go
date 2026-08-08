@@ -121,17 +121,31 @@ func TestRandomAlias(t *testing.T) {
 		}
 	})
 
-	t.Run("is not the same one twice", func(t *testing.T) {
+	// The birthday bound is the point rather than a nuisance, and demanding
+	// none was this test being wrong about its own subject.
+	//
+	// Ten thousand draws from 23^7 collide about 1.5% of the time -- n^2/2N, or
+	// 1e8 over 6.8e9 -- so a test that asserted uniqueness failed about one run
+	// in seventy, and it did. What is worth asserting is that the draws are
+	// wide and independent; uniqueness is the database's to enforce, and
+	// [slug.Tries] is what answers when it says no.
+	t.Run("collides about as often as the arithmetic says", func(t *testing.T) {
 		x := require.New(t)
 
 		const n = 10000
 		seen := make(map[string]struct{}, n)
+		dups := 0
 		for range n {
 			v := slug.RandomAlias()
-			_, dup := seen[v]
-			x.False(dup, "made the same name twice")
+			if _, dup := seen[v]; dup {
+				dups++
+			}
 			seen[v] = struct{}{}
 		}
+
+		// One is expected about one run in seventy; three would mean the draws
+		// are not what they claim to be, and that is what this catches.
+		x.Less(dups, 3, "the names are narrower than %d^%d", len(slug.Alphabet), 7)
 	})
 
 	t.Run("holds nothing that can be misread", func(t *testing.T) {

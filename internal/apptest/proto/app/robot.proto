@@ -137,3 +137,33 @@ message Cell {
     tenanted: {via: "tenant"}
   };
 }
+
+// Reading is an entity nobody names.
+//
+// It is here as evidence rather than as a feature: a resource that has no name
+// a person writes is an ordinary thing to have -- a measurement, a sample, a
+// row of a log -- and payday's answer is that it simply does not declare the
+// field. There is no switch to set and nothing to turn off; `alias` is found by
+// name, so an entity without one gets no naming, no folding and no slug.
+message Reading {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+
+  Robot robot = 2 [(orm.edge) = {immutable: true}];
+
+  double celsius = 8;
+
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {
+    immutable: true
+    default: ""
+  }];
+
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 11
+    tenanted: {via: "robot.tenant"}
+  };
+}

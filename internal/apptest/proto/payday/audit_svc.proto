@@ -30,19 +30,19 @@ message AuditAddRequest {
 	bytes tenant_id = 2 [
 		features.field_presence = IMPLICIT
 	];
-	bytes actor_id = 3 [
+	bytes actor_id = 8 [
 		features.field_presence = IMPLICIT
 	];
-	bytes trace_id = 4 [
+	bytes trace_id = 9 [
 		features.field_presence = IMPLICIT
 	];
-	string action = 5 [
+	string action = 10 [
 		features.field_presence = IMPLICIT
 	];
-	bytes object_id = 6 [
+	bytes object_id = 11 [
 		features.field_presence = IMPLICIT
 	];
-	bytes patch = 7 [
+	bytes patch = 12 [
 		features.field_presence = IMPLICIT
 	];
 	google.protobuf.Timestamp date_created = 15;
@@ -57,11 +57,11 @@ message AuditRef {
 message AuditSelect {
 	bool all = 1;
 	bool tenant_id = 2;
-	bool actor_id = 3;
-	bool trace_id = 4;
-	bool action = 5;
-	bool object_id = 6;
-	bool patch = 7;
+	bool actor_id = 8;
+	bool trace_id = 9;
+	bool action = 10;
+	bool object_id = 11;
+	bool patch = 12;
 	bool date_created = 15;
 }
 
@@ -73,11 +73,11 @@ message AuditGetRequest {
 message AuditPatchRequest {
 	AuditRef ref = 1;
 	bytes tenant_id = 4;
-	bytes actor_id = 6;
-	bytes trace_id = 8;
-	string action = 10;
-	bytes object_id = 12;
-	bytes patch = 14;
+	bytes actor_id = 16;
+	bytes trace_id = 18;
+	string action = 20;
+	bytes object_id = 22;
+	bytes patch = 24;
 }
 
 message AuditApplyRequest {

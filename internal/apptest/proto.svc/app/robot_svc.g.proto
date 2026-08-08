@@ -226,3 +226,53 @@ message CellApplyRequest {
 	CellRef ref = 1;
 	patch.Patch patch = 2;
 }
+
+service ReadingService {
+	// Add creates a new Reading
+	rpc Add(ReadingAddRequest) returns (Reading);
+	// Get retrieves a Reading
+	rpc Get(ReadingGetRequest) returns (Reading);
+	// Patch updates an existing Reading
+	rpc Patch(ReadingPatchRequest) returns (Reading);
+	// Apply applies a patch document to an existing Reading
+	rpc Apply(ReadingApplyRequest) returns (Reading);
+	// Erase deletes a Reading
+	rpc Erase(ReadingRef) returns (google.protobuf.Empty);
+}
+
+message ReadingAddRequest {
+	bytes id = 1;
+	RobotRef robot = 2;
+	double celsius = 8 [
+		features.field_presence = IMPLICIT
+	];
+	google.protobuf.Timestamp date_created = 15;
+}
+
+message ReadingRef {
+	oneof key {
+		bytes id = 1;
+	}
+}
+
+message ReadingSelect {
+	bool all = 1;
+	RobotSelect robot = 2;
+	bool celsius = 8;
+	bool date_created = 15;
+}
+
+message ReadingGetRequest {
+	ReadingRef ref = 1;
+	ReadingSelect select = 2;
+}
+
+message ReadingPatchRequest {
+	ReadingRef ref = 1;
+	double celsius = 16;
+}
+
+message ReadingApplyRequest {
+	ReadingRef ref = 1;
+	patch.Patch patch = 2;
+}

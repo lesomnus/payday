@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/outbox.proto.
  */
 export const file_payday_outbox: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvb3V0Ym94LnByb3RvEgZwYXlkYXki+AEKBk91dGJveBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASGQoJdGVuYW50X2lkGAIgASgMQgbqghYCEEASGAoIYWN0b3JfaWQYAyABKAxCBuqCFgIQQBIOCgZtZXRob2QYBCABKAkSCgoCYnkYBSABKAkSGQoJb2JqZWN0X2lkGAYgASgMQgbqghYCEEASDQoFcGF0Y2gYByABKAwSOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOh3K/BURGg8SBXF1ZXVlGgYKAmlkEAGKuxYECAQqAEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("ChNwYXlkYXkvb3V0Ym94LnByb3RvEgZwYXlkYXki+AEKBk91dGJveBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASGQoJdGVuYW50X2lkGAIgASgMQgbqghYCEEASGAoIYWN0b3JfaWQYCCABKAxCBuqCFgIQQBIOCgZtZXRob2QYCSABKAkSCgoCYnkYCiABKAkSGQoJb2JqZWN0X2lkGAsgASgMQgbqghYCEEASDQoFcGF0Y2gYDCABKAwSOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOh3K/BURGg8SBXF1ZXVlGgYKAmlkEAGKuxYECAQqAEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Outbox is a write that has to be published even if this process does not
@@ -88,7 +88,7 @@ export type Outbox = Message<"payday.Outbox"> & {
   tenantId: Uint8Array;
 
   /**
-   * @generated from field: bytes actor_id = 3;
+   * @generated from field: bytes actor_id = 8;
    */
   actorId: Uint8Array;
 
@@ -98,12 +98,12 @@ export type Outbox = Message<"payday.Outbox"> & {
    * both: `method` is what to show somebody, and `by` says which entity and
    * which kind of write, which is what anything acting on the row needs.
    *
-   * @generated from field: string method = 4;
+   * @generated from field: string method = 9;
    */
   method: string;
 
   /**
-   * @generated from field: string by = 5;
+   * @generated from field: string by = 10;
    */
   by: string;
 
@@ -111,12 +111,12 @@ export type Outbox = Message<"payday.Outbox"> & {
    * The row that changed, and the patch document the write was compiled from --
    * empty for a write that was not one.
    *
-   * @generated from field: bytes object_id = 6;
+   * @generated from field: bytes object_id = 11;
    */
   objectId: Uint8Array;
 
   /**
-   * @generated from field: bytes patch = 7;
+   * @generated from field: bytes patch = 12;
    */
   patch: Uint8Array;
 

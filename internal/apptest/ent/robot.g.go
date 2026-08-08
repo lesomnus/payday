@@ -43,3 +43,13 @@ func (e *Cell) Proto() *apptest.Cell {
 	x.SetAlias(e.Alias)
 	return x
 }
+func (e *Reading) Proto() *apptest.Reading {
+	x := &apptest.Reading{}
+	x.SetId(e.ID[:])
+	if v := e.Edges.Robot; v != nil {
+		x.SetRobot(v.Proto())
+	}
+	x.SetCelsius(e.Celsius)
+	x.SetDateCreated(timestamppb.New(e.DateCreated))
+	return x
+}

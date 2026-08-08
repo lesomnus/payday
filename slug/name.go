@@ -2,6 +2,8 @@ package slug
 
 import (
 	"context"
+
+	"google.golang.org/protobuf/proto"
 )
 
 // Namer decides the alias of a row that is being created.
@@ -43,26 +45,36 @@ type Namer interface {
 	// a per-entity policy something a caller writes rather than something this
 	// interface has to have a shape for.
 	//
+	// `req` is the whole Add request, so that a name can be derived from the
+	// row rather than invented beside it. Without it the only policies
+	// expressible are "refuse" and "make one up at random": an app that wants
+	// `Acme Corporation` to become `acme-corporation` has to see the name, and
+	// `header.Of(req)` is how -- an Add request carries the same header fields
+	// its entity does. It may be nil where there is no request.
+	//
 	// Whatever it answers with is **not** checked again. A namer that folds
 	// differently or allows something [Validate] does not is a namer that
 	// meant to, and a second pass would only make it impossible.
-	Name(ctx context.Context, entity string, given string) (string, error)
+	Name(ctx context.Context, entity string, given string, req proto.Message) (string, error)
 }
 
 // NamerFunc is a [Namer] written as a function, which is what a policy that is
 // neither [Names] nor [Required] looks like:
 //
-//	slug.NamerFunc(func(ctx context.Context, entity string, given string) (string, error) {
-//		if entity == "app.Project" && given == "" {
-//			return "", errors.New("a project has to be named")
+//	slug.NamerFunc(func(ctx context.Context, entity string, given string, req proto.Message) (string, error) {
+//		if given == "" {
+//			// A name from the row rather than beside it.
+//			if v := header.Of(req).Name; v != "" {
+//				return slug.Slugify(v), nil
+//			}
 //		}
 //
-//		return slug.Names().Name(ctx, entity, given)
+//		return slug.Names().Name(ctx, entity, given, req)
 //	})
-type NamerFunc func(ctx context.Context, entity string, given string) (string, error)
+type NamerFunc func(ctx context.Context, entity string, given string, req proto.Message) (string, error)
 
-func (f NamerFunc) Name(ctx context.Context, entity string, given string) (string, error) {
-	return f(ctx, entity, given)
+func (f NamerFunc) Name(ctx context.Context, entity string, given string, req proto.Message) (string, error) {
+	return f(ctx, entity, given, req)
 }
 
 // Names is what a server with no namer does: fold the name, and make one up
@@ -99,7 +111,7 @@ func Names() Namer { return names{} }
 
 type names struct{}
 
-func (names) Name(_ context.Context, _ string, given string) (string, error) {
+func (names) Name(_ context.Context, _ string, given string, _ proto.Message) (string, error) {
 	if given == "" {
 		return RandomAlias(), nil
 	}
@@ -125,7 +137,7 @@ func Required() Namer { return required{} }
 
 type required struct{}
 
-func (required) Name(_ context.Context, _ string, given string) (string, error) {
+func (required) Name(_ context.Context, _ string, given string, _ proto.Message) (string, error) {
 	return ParseAlias(given)
 }
 
@@ -152,23 +164,23 @@ func RequiredFor(next Namer, entities ...string) Namer {
 
 	req := Required()
 
-	return NamerFunc(func(ctx context.Context, entity string, given string) (string, error) {
+	return NamerFunc(func(ctx context.Context, entity string, given string, m proto.Message) (string, error) {
 		if must[entity] {
-			return req.Name(ctx, entity, given)
+			return req.Name(ctx, entity, given, m)
 		}
 
-		return next.Name(ctx, entity, given)
+		return next.Name(ctx, entity, given, m)
 	})
 }
 
 // NameWith is what the generated servers call, so that the answer to a nil
 // [Namer] is written once rather than at every site.
-func NameWith(ctx context.Context, n Namer, entity string, given string) (string, error) {
+func NameWith(ctx context.Context, n Namer, entity string, given string, req proto.Message) (string, error) {
 	if n == nil {
 		n = Names()
 	}
 
-	return n.Name(ctx, entity, given)
+	return n.Name(ctx, entity, given, req)
 }
 
 // Tries is how many names a server makes up before it gives up.

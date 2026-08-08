@@ -150,6 +150,27 @@ var (
 			},
 		},
 	}
+	// ReadingColumns holds the columns for the "reading" table.
+	ReadingColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "celsius", Type: field.TypeFloat64},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "reading_robot", Type: field.TypeUUID},
+	}
+	// ReadingTable holds the schema information for the "reading" table.
+	ReadingTable = &schema.Table{
+		Name:       "reading",
+		Columns:    ReadingColumns,
+		PrimaryKey: []*schema.Column{ReadingColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "reading_robot_robot",
+				Columns:    []*schema.Column{ReadingColumns[3]},
+				RefColumns: []*schema.Column{RobotColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// RobotColumns holds the columns for the "robot" table.
 	RobotColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
@@ -208,6 +229,7 @@ var (
 		HolderTable,
 		JointTable,
 		OutboxTable,
+		ReadingTable,
 		RobotTable,
 		TenantTable,
 	}
@@ -234,6 +256,10 @@ func init() {
 	}
 	OutboxTable.Annotation = &entsql.Annotation{
 		Table: "outbox",
+	}
+	ReadingTable.ForeignKeys[0].RefTable = RobotTable
+	ReadingTable.Annotation = &entsql.Annotation{
+		Table: "reading",
 	}
 	RobotTable.ForeignKeys[0].RefTable = TenantTable
 	RobotTable.Annotation = &entsql.Annotation{

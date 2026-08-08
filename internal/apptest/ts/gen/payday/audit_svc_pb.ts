@@ -19,7 +19,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/audit_svc.proto.
  */
 export const file_payday_audit_svc: GenFile = /*@__PURE__*/
-  fileDesc("ChZwYXlkYXkvYXVkaXRfc3ZjLnByb3RvEgZwYXlkYXki4gEKD0F1ZGl0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIYCgl0ZW5hbnRfaWQYAiABKAxCBaoBAggCEhcKCGFjdG9yX2lkGAMgASgMQgWqAQIIAhIXCgh0cmFjZV9pZBgEIAEoDEIFqgECCAISFQoGYWN0aW9uGAUgASgJQgWqAQIIAhIYCglvYmplY3RfaWQYBiABKAxCBaoBAggCEhQKBXBhdGNoGAcgASgMQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIh8KCEF1ZGl0UmVmEgwKAmlkGAEgASgMSABCBQoDa2V5IpkBCgtBdWRpdFNlbGVjdBILCgNhbGwYASABKAgSEQoJdGVuYW50X2lkGAIgASgIEhAKCGFjdG9yX2lkGAMgASgIEhAKCHRyYWNlX2lkGAQgASgIEg4KBmFjdGlvbhgFIAEoCBIRCglvYmplY3RfaWQYBiABKAgSDQoFcGF0Y2gYByABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIlUKD0F1ZGl0R2V0UmVxdWVzdBIdCgNyZWYYASABKAsyEC5wYXlkYXkuQXVkaXRSZWYSIwoGc2VsZWN0GAIgASgLMhMucGF5ZGF5LkF1ZGl0U2VsZWN0IpsBChFBdWRpdFBhdGNoUmVxdWVzdBIdCgNyZWYYASABKAsyEC5wYXlkYXkuQXVkaXRSZWYSEQoJdGVuYW50X2lkGAQgASgMEhAKCGFjdG9yX2lkGAYgASgMEhAKCHRyYWNlX2lkGAggASgMEg4KBmFjdGlvbhgKIAEoCRIRCglvYmplY3RfaWQYDCABKAwSDQoFcGF0Y2gYDiABKAwiTwoRQXVkaXRBcHBseVJlcXVlc3QSHQoDcmVmGAEgASgLMhAucGF5ZGF5LkF1ZGl0UmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gyhQIKDEF1ZGl0U2VydmljZRItCgNBZGQSFy5wYXlkYXkuQXVkaXRBZGRSZXF1ZXN0Gg0ucGF5ZGF5LkF1ZGl0Ei0KA0dldBIXLnBheWRheS5BdWRpdEdldFJlcXVlc3QaDS5wYXlkYXkuQXVkaXQSMQoFUGF0Y2gSGS5wYXlkYXkuQXVkaXRQYXRjaFJlcXVlc3QaDS5wYXlkYXkuQXVkaXQSMQoFQXBwbHkSGS5wYXlkYXkuQXVkaXRBcHBseVJlcXVlc3QaDS5wYXlkYXkuQXVkaXQSMQoFRXJhc2USEC5wYXlkYXkuQXVkaXRSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHlCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch, file_payday_audit]);
+  fileDesc("ChZwYXlkYXkvYXVkaXRfc3ZjLnByb3RvEgZwYXlkYXki4gEKD0F1ZGl0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIYCgl0ZW5hbnRfaWQYAiABKAxCBaoBAggCEhcKCGFjdG9yX2lkGAggASgMQgWqAQIIAhIXCgh0cmFjZV9pZBgJIAEoDEIFqgECCAISFQoGYWN0aW9uGAogASgJQgWqAQIIAhIYCglvYmplY3RfaWQYCyABKAxCBaoBAggCEhQKBXBhdGNoGAwgASgMQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIh8KCEF1ZGl0UmVmEgwKAmlkGAEgASgMSABCBQoDa2V5IpkBCgtBdWRpdFNlbGVjdBILCgNhbGwYASABKAgSEQoJdGVuYW50X2lkGAIgASgIEhAKCGFjdG9yX2lkGAggASgIEhAKCHRyYWNlX2lkGAkgASgIEg4KBmFjdGlvbhgKIAEoCBIRCglvYmplY3RfaWQYCyABKAgSDQoFcGF0Y2gYDCABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIlUKD0F1ZGl0R2V0UmVxdWVzdBIdCgNyZWYYASABKAsyEC5wYXlkYXkuQXVkaXRSZWYSIwoGc2VsZWN0GAIgASgLMhMucGF5ZGF5LkF1ZGl0U2VsZWN0IpsBChFBdWRpdFBhdGNoUmVxdWVzdBIdCgNyZWYYASABKAsyEC5wYXlkYXkuQXVkaXRSZWYSEQoJdGVuYW50X2lkGAQgASgMEhAKCGFjdG9yX2lkGBAgASgMEhAKCHRyYWNlX2lkGBIgASgMEg4KBmFjdGlvbhgUIAEoCRIRCglvYmplY3RfaWQYFiABKAwSDQoFcGF0Y2gYGCABKAwiTwoRQXVkaXRBcHBseVJlcXVlc3QSHQoDcmVmGAEgASgLMhAucGF5ZGF5LkF1ZGl0UmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gyhQIKDEF1ZGl0U2VydmljZRItCgNBZGQSFy5wYXlkYXkuQXVkaXRBZGRSZXF1ZXN0Gg0ucGF5ZGF5LkF1ZGl0Ei0KA0dldBIXLnBheWRheS5BdWRpdEdldFJlcXVlc3QaDS5wYXlkYXkuQXVkaXQSMQoFUGF0Y2gSGS5wYXlkYXkuQXVkaXRQYXRjaFJlcXVlc3QaDS5wYXlkYXkuQXVkaXQSMQoFQXBwbHkSGS5wYXlkYXkuQXVkaXRBcHBseVJlcXVlc3QaDS5wYXlkYXkuQXVkaXQSMQoFRXJhc2USEC5wYXlkYXkuQXVkaXRSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHlCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch, file_payday_audit]);
 
 /**
  * @generated from message payday.AuditAddRequest
@@ -36,27 +36,27 @@ export type AuditAddRequest = Message<"payday.AuditAddRequest"> & {
   tenantId: Uint8Array;
 
   /**
-   * @generated from field: bytes actor_id = 3 [features.field_presence = IMPLICIT];
+   * @generated from field: bytes actor_id = 8 [features.field_presence = IMPLICIT];
    */
   actorId: Uint8Array;
 
   /**
-   * @generated from field: bytes trace_id = 4 [features.field_presence = IMPLICIT];
+   * @generated from field: bytes trace_id = 9 [features.field_presence = IMPLICIT];
    */
   traceId: Uint8Array;
 
   /**
-   * @generated from field: string action = 5 [features.field_presence = IMPLICIT];
+   * @generated from field: string action = 10 [features.field_presence = IMPLICIT];
    */
   action: string;
 
   /**
-   * @generated from field: bytes object_id = 6 [features.field_presence = IMPLICIT];
+   * @generated from field: bytes object_id = 11 [features.field_presence = IMPLICIT];
    */
   objectId: Uint8Array;
 
   /**
-   * @generated from field: bytes patch = 7 [features.field_presence = IMPLICIT];
+   * @generated from field: bytes patch = 12 [features.field_presence = IMPLICIT];
    */
   patch: Uint8Array;
 
@@ -111,27 +111,27 @@ export type AuditSelect = Message<"payday.AuditSelect"> & {
   tenantId: boolean;
 
   /**
-   * @generated from field: bool actor_id = 3;
+   * @generated from field: bool actor_id = 8;
    */
   actorId: boolean;
 
   /**
-   * @generated from field: bool trace_id = 4;
+   * @generated from field: bool trace_id = 9;
    */
   traceId: boolean;
 
   /**
-   * @generated from field: bool action = 5;
+   * @generated from field: bool action = 10;
    */
   action: boolean;
 
   /**
-   * @generated from field: bool object_id = 6;
+   * @generated from field: bool object_id = 11;
    */
   objectId: boolean;
 
   /**
-   * @generated from field: bool patch = 7;
+   * @generated from field: bool patch = 12;
    */
   patch: boolean;
 
@@ -185,27 +185,27 @@ export type AuditPatchRequest = Message<"payday.AuditPatchRequest"> & {
   tenantId: Uint8Array;
 
   /**
-   * @generated from field: bytes actor_id = 6;
+   * @generated from field: bytes actor_id = 16;
    */
   actorId: Uint8Array;
 
   /**
-   * @generated from field: bytes trace_id = 8;
+   * @generated from field: bytes trace_id = 18;
    */
   traceId: Uint8Array;
 
   /**
-   * @generated from field: string action = 10;
+   * @generated from field: string action = 20;
    */
   action: string;
 
   /**
-   * @generated from field: bytes object_id = 12;
+   * @generated from field: bytes object_id = 22;
    */
   objectId: Uint8Array;
 
   /**
-   * @generated from field: bytes patch = 14;
+   * @generated from field: bytes patch = 24;
    */
   patch: Uint8Array;
 };

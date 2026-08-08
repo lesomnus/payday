@@ -273,7 +273,7 @@ func AuditGetKey(ctx context.Context, db *ent.Client, ref *apptest.AuditRef) (uu
 var auditOrmEntity = ormpatch.MustEntityOf(apptest.File_payday_audit_proto, "Audit")
 
 var auditPatchColumns = entpatch.Columns{
-	1: audit.FieldID, 2: audit.FieldTenantID, 3: audit.FieldActorID, 4: audit.FieldTraceID, 5: audit.FieldAction, 6: audit.FieldObjectID, 7: audit.FieldPatch, 15: audit.FieldDateCreated}
+	1: audit.FieldID, 2: audit.FieldTenantID, 8: audit.FieldActorID, 9: audit.FieldTraceID, 10: audit.FieldAction, 11: audit.FieldObjectID, 12: audit.FieldPatch, 15: audit.FieldDateCreated}
 
 func (s AuditServiceServer) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
 	if !req.HasPatch() {

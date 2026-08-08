@@ -228,3 +228,49 @@ func (e *AliasError) GRPCStatus() *status.Status {
 	s, _ := status.FromError(pderr.Invalid(pderr.Violation{Why: e.Error()}))
 	return s
 }
+
+// Slugify folds text a person wrote into something that can be an alias:
+// "Acme Corporation" becomes "acme-corporation".
+//
+// It is here so that a [Namer] deriving a name from a row does not have to
+// write it, and so that two apps doing the same thing do it the same way.
+//
+// It is **lossy and not reversible**, and it can answer with the empty string
+// -- text with no letters or digits in it has no alias in it either, and
+// pretending otherwise would mean inventing one. A caller that has to have a
+// name checks for that and falls back to [RandomAlias].
+func Slugify(v string) string {
+	b := &strings.Builder{}
+	dash := false
+
+	for _, c := range strings.ToLower(v) {
+		switch {
+		case (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'):
+			if dash && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+
+			dash = false
+			b.WriteRune(c)
+
+		default:
+			// Everything else is a break, and several in a row are one. A
+			// leading run writes nothing, which is what keeps the first
+			// character a letter or a digit.
+			dash = true
+		}
+	}
+
+	// An alias begins with a letter, so a name that began with a digit is not
+	// one. Answering with the empty string is honest: there was no alias in
+	// what was given.
+	out := b.String()
+	if out == "" || out[0] < 'a' || out[0] > 'z' {
+		return ""
+	}
+	if len(out) > AliasMaxLen {
+		out = strings.TrimRight(out[:AliasMaxLen], "-")
+	}
+
+	return out
+}

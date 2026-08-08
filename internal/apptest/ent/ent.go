@@ -18,6 +18,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/ent/outbox"
+	"github.com/lesomnus/payday/internal/apptest/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/ent/tenant"
 )
@@ -80,14 +81,15 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			audit.Table:  audit.ValidColumn,
-			cell.Table:   cell.ValidColumn,
-			fleet.Table:  fleet.ValidColumn,
-			holder.Table: holder.ValidColumn,
-			joint.Table:  joint.ValidColumn,
-			outbox.Table: outbox.ValidColumn,
-			robot.Table:  robot.ValidColumn,
-			tenant.Table: tenant.ValidColumn,
+			audit.Table:   audit.ValidColumn,
+			cell.Table:    cell.ValidColumn,
+			fleet.Table:   fleet.ValidColumn,
+			holder.Table:  holder.ValidColumn,
+			joint.Table:   joint.ValidColumn,
+			outbox.Table:  outbox.ValidColumn,
+			reading.Table: reading.ValidColumn,
+			robot.Table:   robot.ValidColumn,
+			tenant.Table:  tenant.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

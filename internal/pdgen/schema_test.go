@@ -728,12 +728,14 @@ func TestAnEntityWithNoHeaderIsFine(t *testing.T) {
 	}
 }
 
-// TestAHeaderFieldSomewhereElseIsOnlyMentioned.
+// TestAHeaderFieldSomewhereElseIsRefused, because the numbers **are** the rule.
 //
-// Nothing reads it by number -- the read matches on the name -- so there is
-// nothing to go wrong, and refusing would be refusing over a convention.
-func TestAHeaderFieldSomewhereElseIsOnlyMentioned(t *testing.T) {
-	s, err := read(t, `
+// 1 is the key, 2 is the tenant, 4..7 are the alias, the name, the description
+// and the labels. An entity that does not want one of them leaves the number
+// empty -- which is what keeps payday able to add a header field later without
+// every app having spent that number on something else.
+func TestAHeaderFieldSomewhereElseIsRefused(t *testing.T) {
+	_, err := read(t, `
 		message Tenant {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
@@ -742,15 +744,43 @@ func TestAHeaderFieldSomewhereElseIsOnlyMentioned(t *testing.T) {
 			option (payday.entity) = {domain: 1, tenant: {}};
 		}
 	`)
+	if err == nil {
+		t.Fatal("a header field somewhere else was generated")
+	}
+	if !strings.Contains(err.Error(), "the header is at 5 in every entity payday ships") {
+		t.Fatalf("the refusal does not say the rule: %s", err)
+	}
+}
+
+// TestAnEntityNobodyNamesIsOrdinary.
+//
+// A resource with no name a person writes -- a measurement, a sample, a row of
+// a log -- simply does not declare the field. There is no switch to turn off:
+// `alias` is found by name, so an entity without one gets no naming, no folding
+// and no slug, and still gets the wall.
+func TestAnEntityNobodyNamesIsOrdinary(t *testing.T) {
+	s, err := read(t, `
+		message Tenant {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			string alias = 4 [(orm.field) = {unique: true}];
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {domain: 1, tenant: {}};
+		}
+		message Reading {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+			double celsius = 8;
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}};
+		}
+	`)
 	if err != nil {
-		t.Fatalf("a name at another number was refused: %s", err)
+		t.Fatalf("an entity with no alias was refused: %s", err)
 	}
 
-	var said string
-	for _, w := range pdgen.Warnings(s) {
-		said += w + "\n"
-	}
-	if !strings.Contains(said, "name is 9 and payday's own entities put it at 5") {
-		t.Fatalf("nothing was said about it: %s", said)
+	for _, v := range s.Entities {
+		if v.GoName() == "Reading" && v.Alias {
+			t.Fatal("an entity with no alias was given naming anyway")
+		}
 	}
 }

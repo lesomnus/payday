@@ -30,11 +30,11 @@ type AuditAddRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_TenantId    []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorId     []byte                 `protobuf:"bytes,3,opt,name=actor_id,json=actorId"`
-	xxx_hidden_TraceId     []byte                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId"`
-	xxx_hidden_Action      string                 `protobuf:"bytes,5,opt,name=action"`
-	xxx_hidden_ObjectId    []byte                 `protobuf:"bytes,6,opt,name=object_id,json=objectId"`
-	xxx_hidden_Patch       []byte                 `protobuf:"bytes,7,opt,name=patch"`
+	xxx_hidden_ActorId     []byte                 `protobuf:"bytes,8,opt,name=actor_id,json=actorId"`
+	xxx_hidden_TraceId     []byte                 `protobuf:"bytes,9,opt,name=trace_id,json=traceId"`
+	xxx_hidden_Action      string                 `protobuf:"bytes,10,opt,name=action"`
+	xxx_hidden_ObjectId    []byte                 `protobuf:"bytes,11,opt,name=object_id,json=objectId"`
+	xxx_hidden_Patch       []byte                 `protobuf:"bytes,12,opt,name=patch"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
@@ -358,11 +358,11 @@ type AuditSelect struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
 	xxx_hidden_TenantId    bool                   `protobuf:"varint,2,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorId     bool                   `protobuf:"varint,3,opt,name=actor_id,json=actorId"`
-	xxx_hidden_TraceId     bool                   `protobuf:"varint,4,opt,name=trace_id,json=traceId"`
-	xxx_hidden_Action      bool                   `protobuf:"varint,5,opt,name=action"`
-	xxx_hidden_ObjectId    bool                   `protobuf:"varint,6,opt,name=object_id,json=objectId"`
-	xxx_hidden_Patch       bool                   `protobuf:"varint,7,opt,name=patch"`
+	xxx_hidden_ActorId     bool                   `protobuf:"varint,8,opt,name=actor_id,json=actorId"`
+	xxx_hidden_TraceId     bool                   `protobuf:"varint,9,opt,name=trace_id,json=traceId"`
+	xxx_hidden_Action      bool                   `protobuf:"varint,10,opt,name=action"`
+	xxx_hidden_ObjectId    bool                   `protobuf:"varint,11,opt,name=object_id,json=objectId"`
+	xxx_hidden_Patch       bool                   `protobuf:"varint,12,opt,name=patch"`
 	xxx_hidden_DateCreated bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
@@ -736,11 +736,11 @@ type AuditPatchRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Ref         *AuditRef              `protobuf:"bytes,1,opt,name=ref"`
 	xxx_hidden_TenantId    []byte                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorId     []byte                 `protobuf:"bytes,6,opt,name=actor_id,json=actorId"`
-	xxx_hidden_TraceId     []byte                 `protobuf:"bytes,8,opt,name=trace_id,json=traceId"`
-	xxx_hidden_Action      *string                `protobuf:"bytes,10,opt,name=action"`
-	xxx_hidden_ObjectId    []byte                 `protobuf:"bytes,12,opt,name=object_id,json=objectId"`
-	xxx_hidden_Patch       []byte                 `protobuf:"bytes,14,opt,name=patch"`
+	xxx_hidden_ActorId     []byte                 `protobuf:"bytes,16,opt,name=actor_id,json=actorId"`
+	xxx_hidden_TraceId     []byte                 `protobuf:"bytes,18,opt,name=trace_id,json=traceId"`
+	xxx_hidden_Action      *string                `protobuf:"bytes,20,opt,name=action"`
+	xxx_hidden_ObjectId    []byte                 `protobuf:"bytes,22,opt,name=object_id,json=objectId"`
+	xxx_hidden_Patch       []byte                 `protobuf:"bytes,24,opt,name=patch"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -1101,11 +1101,12 @@ const file_payday_audit_svc_proto_rawDesc = "" +
 	"\x0fAuditAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\"\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x05\xaa\x01\x02\b\x02R\btenantId\x12 \n" +
-	"\bactor_id\x18\x03 \x01(\fB\x05\xaa\x01\x02\b\x02R\aactorId\x12 \n" +
-	"\btrace_id\x18\x04 \x01(\fB\x05\xaa\x01\x02\b\x02R\atraceId\x12\x1d\n" +
-	"\x06action\x18\x05 \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action\x12\"\n" +
-	"\tobject_id\x18\x06 \x01(\fB\x05\xaa\x01\x02\b\x02R\bobjectId\x12\x1b\n" +
-	"\x05patch\x18\a \x01(\fB\x05\xaa\x01\x02\b\x02R\x05patch\x12=\n" +
+	"\bactor_id\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\aactorId\x12 \n" +
+	"\btrace_id\x18\t \x01(\fB\x05\xaa\x01\x02\b\x02R\atraceId\x12\x1d\n" +
+	"\x06action\x18\n" +
+	" \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action\x12\"\n" +
+	"\tobject_id\x18\v \x01(\fB\x05\xaa\x01\x02\b\x02R\bobjectId\x12\x1b\n" +
+	"\x05patch\x18\f \x01(\fB\x05\xaa\x01\x02\b\x02R\x05patch\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"#\n" +
 	"\bAuditRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
@@ -1113,11 +1114,12 @@ const file_payday_audit_svc_proto_rawDesc = "" +
 	"\vAuditSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\bR\btenantId\x12\x19\n" +
-	"\bactor_id\x18\x03 \x01(\bR\aactorId\x12\x19\n" +
-	"\btrace_id\x18\x04 \x01(\bR\atraceId\x12\x16\n" +
-	"\x06action\x18\x05 \x01(\bR\x06action\x12\x1b\n" +
-	"\tobject_id\x18\x06 \x01(\bR\bobjectId\x12\x14\n" +
-	"\x05patch\x18\a \x01(\bR\x05patch\x12!\n" +
+	"\bactor_id\x18\b \x01(\bR\aactorId\x12\x19\n" +
+	"\btrace_id\x18\t \x01(\bR\atraceId\x12\x16\n" +
+	"\x06action\x18\n" +
+	" \x01(\bR\x06action\x12\x1b\n" +
+	"\tobject_id\x18\v \x01(\bR\bobjectId\x12\x14\n" +
+	"\x05patch\x18\f \x01(\bR\x05patch\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"b\n" +
 	"\x0fAuditGetRequest\x12\"\n" +
 	"\x03ref\x18\x01 \x01(\v2\x10.payday.AuditRefR\x03ref\x12+\n" +
@@ -1125,12 +1127,11 @@ const file_payday_audit_svc_proto_rawDesc = "" +
 	"\x11AuditPatchRequest\x12\"\n" +
 	"\x03ref\x18\x01 \x01(\v2\x10.payday.AuditRefR\x03ref\x12\x1b\n" +
 	"\ttenant_id\x18\x04 \x01(\fR\btenantId\x12\x19\n" +
-	"\bactor_id\x18\x06 \x01(\fR\aactorId\x12\x19\n" +
-	"\btrace_id\x18\b \x01(\fR\atraceId\x12\x16\n" +
-	"\x06action\x18\n" +
-	" \x01(\tR\x06action\x12\x1b\n" +
-	"\tobject_id\x18\f \x01(\fR\bobjectId\x12\x14\n" +
-	"\x05patch\x18\x0e \x01(\fR\x05patch\"[\n" +
+	"\bactor_id\x18\x10 \x01(\fR\aactorId\x12\x19\n" +
+	"\btrace_id\x18\x12 \x01(\fR\atraceId\x12\x16\n" +
+	"\x06action\x18\x14 \x01(\tR\x06action\x12\x1b\n" +
+	"\tobject_id\x18\x16 \x01(\fR\bobjectId\x12\x14\n" +
+	"\x05patch\x18\x18 \x01(\fR\x05patch\"[\n" +
 	"\x11AuditApplyRequest\x12\"\n" +
 	"\x03ref\x18\x01 \x01(\v2\x10.payday.AuditRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch2\x85\x02\n" +

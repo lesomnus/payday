@@ -71,19 +71,19 @@ message Outbox {
   // survive whatever it points at, and a foreign key to a tenant would make
   // erasing one either impossible or destructive of the record.
   bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
-  bytes actor_id = 3 [(orm.field) = {type: TYPE_UUID}];
+  bytes actor_id = 8 [(orm.field) = {type: TYPE_UUID}];
 
   // The RPC the caller asked for, and the RPC of the generated server that
   // actually wrote. They answer different questions and a subscriber needs
   // both: `method` is what to show somebody, and `by` says which entity and
   // which kind of write, which is what anything acting on the row needs.
-  string method = 4;
-  string by = 5;
+  string method = 9;
+  string by = 10;
 
   // The row that changed, and the patch document the write was compiled from --
   // empty for a write that was not one.
-  bytes object_id = 6 [(orm.field) = {type: TYPE_UUID}];
-  bytes patch = 7;
+  bytes object_id = 11 [(orm.field) = {type: TYPE_UUID}];
+  bytes patch = 12;
 
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {
     immutable: true

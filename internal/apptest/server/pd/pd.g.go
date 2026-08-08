@@ -25,6 +25,7 @@ import (
 	joint "github.com/lesomnus/payday/internal/apptest/ent/joint"
 	outbox "github.com/lesomnus/payday/internal/apptest/ent/outbox"
 	predicate "github.com/lesomnus/payday/internal/apptest/ent/predicate"
+	reading "github.com/lesomnus/payday/internal/apptest/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/ent/robot"
 	tenant "github.com/lesomnus/payday/internal/apptest/ent/tenant"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
@@ -54,20 +55,22 @@ import (
 // trail says what kind of thing it was long after the row is gone. So a
 // number is chosen once and never given to something else.
 const (
-	CellDomain   pdid.Domain = 10 // "cell"
-	FleetDomain  pdid.Domain = 9  // "fleet"
-	JointDomain  pdid.Domain = 8  // "joint"
-	RobotDomain  pdid.Domain = 7  // "robot"
-	AuditDomain  pdid.Domain = 3  // "audit"
-	HolderDomain pdid.Domain = 2  // "holder"
-	OutboxDomain pdid.Domain = 4  // "outbox"
-	TenantDomain pdid.Domain = 1  // "tenant"
+	CellDomain    pdid.Domain = 10 // "cell"
+	FleetDomain   pdid.Domain = 9  // "fleet"
+	JointDomain   pdid.Domain = 8  // "joint"
+	ReadingDomain pdid.Domain = 11 // "reading"
+	RobotDomain   pdid.Domain = 7  // "robot"
+	AuditDomain   pdid.Domain = 3  // "audit"
+	HolderDomain  pdid.Domain = 2  // "holder"
+	OutboxDomain  pdid.Domain = 4  // "outbox"
+	TenantDomain  pdid.Domain = 1  // "tenant"
 )
 
 func init() {
 	pdid.Register("app.Cell", CellDomain, "cell")
 	pdid.Register("app.Fleet", FleetDomain, "fleet")
 	pdid.Register("app.Joint", JointDomain, "joint")
+	pdid.Register("app.Reading", ReadingDomain, "reading")
 	pdid.Register("app.Robot", RobotDomain, "robot")
 	pdid.Register("payday.Audit", AuditDomain, "audit")
 	pdid.Register("payday.Holder", HolderDomain, "holder")
@@ -81,6 +84,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Cell":      CellDomain,
 	"app.Fleet":     FleetDomain,
 	"app.Joint":     JointDomain,
+	"app.Reading":   ReadingDomain,
 	"app.Robot":     RobotDomain,
 	"payday.Audit":  AuditDomain,
 	"payday.Holder": HolderDomain,
@@ -153,6 +157,16 @@ func (wall) JointScope(ctx context.Context) (predicate.Joint, error) {
 	}
 
 	return joint.HasRobotWith(robot.HasTenantWith(tenant.IDIn(vs...))), nil
+}
+
+// ReadingScope: a row belongs to the tenant its "robot.tenant" reaches.
+func (wall) ReadingScope(ctx context.Context) (predicate.Reading, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return reading.HasRobotWith(robot.HasTenantWith(tenant.IDIn(vs...))), nil
 }
 
 // RobotScope: a row belongs to the tenant its "tenant" reaches.
@@ -322,7 +336,7 @@ func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptes
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Cell", req.GetAlias())
+		v, err := slug.NameWith(ctx, s.namer, "app.Cell", req.GetAlias(), req)
 		if err != nil {
 			return nil, pderr.At("alias", err)
 		}
@@ -408,7 +422,7 @@ func (s sinkFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*appt
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Fleet", req.GetAlias())
+		v, err := slug.NameWith(ctx, s.namer, "app.Fleet", req.GetAlias(), req)
 		if err != nil {
 			return nil, pderr.At("alias", err)
 		}
@@ -494,7 +508,7 @@ func (s sinkJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*appt
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Joint", req.GetAlias())
+		v, err := slug.NameWith(ctx, s.namer, "app.Joint", req.GetAlias(), req)
 		if err != nil {
 			return nil, pderr.At("alias", err)
 		}
@@ -580,7 +594,7 @@ func (s sinkRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Robot", req.GetAlias())
+		v, err := slug.NameWith(ctx, s.namer, "app.Robot", req.GetAlias(), req)
 		if err != nil {
 			return nil, pderr.At("alias", err)
 		}
@@ -981,7 +995,7 @@ func (s sinkHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "payday.Holder", req.GetAlias())
+		v, err := slug.NameWith(ctx, s.namer, "payday.Holder", req.GetAlias(), req)
 		if err != nil {
 			return nil, pderr.At("alias", err)
 		}
@@ -1067,7 +1081,7 @@ func (s sinkTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*ap
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "payday.Tenant", req.GetAlias())
+		v, err := slug.NameWith(ctx, s.namer, "payday.Tenant", req.GetAlias(), req)
 		if err != nil {
 			return nil, pderr.At("alias", err)
 		}
@@ -2023,6 +2037,71 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Cell().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ReadingService_Add_FullMethodName:
+		v := &apptest.ReadingAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Reading().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ReadingService_Get_FullMethodName:
+		v := &apptest.ReadingGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Reading().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ReadingService_Patch_FullMethodName:
+		v := &apptest.ReadingPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Reading().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ReadingService_Apply_FullMethodName:
+		v := &apptest.ReadingApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Reading().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ReadingService_Erase_FullMethodName:
+		v := &apptest.ReadingRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Reading().Erase(ctx, v)
 		if err != nil {
 			return nil, err
 		}

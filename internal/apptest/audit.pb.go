@@ -31,18 +31,30 @@ const (
 // arrange a trail and read it back, and a deployment refuses the ones that
 // write -- a trail somebody can edit is evidence of nothing.
 //
-// **Fields 1..7 and 13..15 are payday's.** There is less reason than usual for
-// an app to add any: a column here is a column on the one table that never
-// stops growing.
+// # Where its fields are
+//
+// 1..7 and 13..15 are payday's on every entity it ships, and this one leaves
+// almost all of them **empty**: 3 is held for a set smaller than a tenant, and
+// 4..7 are the header -- the alias, the name, the description and the labels
+// that anything can read off a row it has no type for. A trail row has none of
+// those and never will, so the numbers stay reserved rather than being spent on
+// something else.
+//
+// Its own fields are in 8..12, which is where an app's would be. That is not a
+// special rule: `CheckOverlay` derives what payday owns from what payday
+// declared, so an `audit.ext.proto` is refused at whichever numbers this file
+// actually uses. What is left for an app here is 16 and up -- and there is less
+// reason than usual to want any, since a column here is a column on the one
+// table that never stops growing.
 type Audit struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_TenantId    []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorId     []byte                 `protobuf:"bytes,3,opt,name=actor_id,json=actorId"`
-	xxx_hidden_TraceId     []byte                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId"`
-	xxx_hidden_Action      string                 `protobuf:"bytes,5,opt,name=action"`
-	xxx_hidden_ObjectId    []byte                 `protobuf:"bytes,6,opt,name=object_id,json=objectId"`
-	xxx_hidden_Patch       []byte                 `protobuf:"bytes,7,opt,name=patch"`
+	xxx_hidden_ActorId     []byte                 `protobuf:"bytes,8,opt,name=actor_id,json=actorId"`
+	xxx_hidden_TraceId     []byte                 `protobuf:"bytes,9,opt,name=trace_id,json=traceId"`
+	xxx_hidden_Action      string                 `protobuf:"bytes,10,opt,name=action"`
+	xxx_hidden_ObjectId    []byte                 `protobuf:"bytes,11,opt,name=object_id,json=objectId"`
+	xxx_hidden_Patch       []byte                 `protobuf:"bytes,12,opt,name=patch"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
@@ -268,13 +280,14 @@ const file_payday_audit_proto_rawDesc = "" +
 	"\x05Audit\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
-	"\bactor_id\x18\x03 \x01(\fB\x06\xea\x82\x16\x02\x10@R\aactorId\x12\x19\n" +
-	"\btrace_id\x18\x04 \x01(\fR\atraceId\x12\x16\n" +
-	"\x06action\x18\x05 \x01(\tR\x06action\x12#\n" +
-	"\tobject_id\x18\x06 \x01(\fB\x06\xea\x82\x16\x02\x10@R\bobjectId\x12\x14\n" +
-	"\x05patch\x18\a \x01(\fR\x05patch\x12H\n" +
+	"\bactor_id\x18\b \x01(\fB\x06\xea\x82\x16\x02\x10@R\aactorId\x12\x19\n" +
+	"\btrace_id\x18\t \x01(\fR\atraceId\x12\x16\n" +
+	"\x06action\x18\n" +
+	" \x01(\tR\x06action\x12#\n" +
+	"\tobject_id\x18\v \x01(\fB\x06\xea\x82\x16\x02\x10@R\bobjectId\x12\x14\n" +
+	"\x05patch\x18\f \x01(\fR\x05patch\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:^\xca\xfc\x15G\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
-	"\tobject_id\x10\x06\x1a(\x12\x05trail\x1a\r\n" +
+	"\tobject_id\x10\v\x1a(\x12\x05trail\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x8a\xbb\x16\x0f\b\x03\"\v\x12\ttenant_idB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 

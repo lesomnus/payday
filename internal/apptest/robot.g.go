@@ -227,3 +227,49 @@ func CellById(v []byte) *CellRef {
 func CellGetById(v []byte) *CellGetRequest {
 	return CellGetRequest_builder{Ref: CellById(v)}.Build()
 }
+
+func (x *ReadingRef) Pick() *ReadingGetRequest {
+	return ReadingGetRequest_builder{Ref: x}.Build()
+}
+
+func (x *Reading) Ref() *ReadingRef {
+	if v := x.GetId(); len(v) > 0 {
+		return ReadingById(v)
+	}
+
+	return nil
+}
+
+func (x *Reading) Pick() *ReadingGetRequest {
+	return x.Ref().Pick()
+}
+
+func (x *ReadingRef) Picks(v *Reading) bool {
+	switch x.WhichKey() {
+	case ReadingRef_Id_case:
+		return bytes.Equal(x.GetId(), v.GetId())
+	default:
+		return false
+	}
+}
+
+func (x *ReadingGetRequest) WithSelect(f func(s *ReadingSelect)) *ReadingGetRequest {
+	if !x.HasSelect() {
+		x.SetSelect(&ReadingSelect{})
+	}
+	f(x.GetSelect())
+	return x
+}
+
+func (x *Reading) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
+func (x *Reading) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
+
+func ReadingById(v []byte) *ReadingRef {
+	x := &ReadingRef{}
+	x.SetId(v)
+	return x
+}
+
+func ReadingGetById(v []byte) *ReadingGetRequest {
+	return ReadingGetRequest_builder{Ref: ReadingById(v)}.Build()
+}

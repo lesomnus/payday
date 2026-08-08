@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/audit.proto.
  */
 export const file_payday_audit: GenFile = /*@__PURE__*/
-  fileDesc("ChJwYXlkYXkvYXVkaXQucHJvdG8SBnBheWRheSK+AgoFQXVkaXQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhkKCXRlbmFudF9pZBgCIAEoDEIG6oIWAhBAEhgKCGFjdG9yX2lkGAMgASgMQgbqghYCEEASEAoIdHJhY2VfaWQYBCABKAwSDgoGYWN0aW9uGAUgASgJEhkKCW9iamVjdF9pZBgGIAEoDEIG6oIWAhBAEg0KBXBhdGNoGAcgASgMEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBADpeyvwVRxICEAEaFxIGb2JqZWN0Gg0KCW9iamVjdF9pZBAGGigSBXRyYWlsGg0KCXRlbmFudF9pZBACGhAKDGRhdGVfY3JlYXRlZBAPirsWDwgDIgsSCXRlbmFudF9pZEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("ChJwYXlkYXkvYXVkaXQucHJvdG8SBnBheWRheSK+AgoFQXVkaXQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhkKCXRlbmFudF9pZBgCIAEoDEIG6oIWAhBAEhgKCGFjdG9yX2lkGAggASgMQgbqghYCEEASEAoIdHJhY2VfaWQYCSABKAwSDgoGYWN0aW9uGAogASgJEhkKCW9iamVjdF9pZBgLIAEoDEIG6oIWAhBAEg0KBXBhdGNoGAwgASgMEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBADpeyvwVRxICEAEaFxIGb2JqZWN0Gg0KCW9iamVjdF9pZBALGigSBXRyYWlsGg0KCXRlbmFudF9pZBACGhAKDGRhdGVfY3JlYXRlZBAPirsWDwgDIgsSCXRlbmFudF9pZEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Audit is one write that happened, and who made it.
@@ -26,9 +26,21 @@ export const file_payday_audit: GenFile = /*@__PURE__*/
  * arrange a trail and read it back, and a deployment refuses the ones that
  * write -- a trail somebody can edit is evidence of nothing.
  *
- * **Fields 1..7 and 13..15 are payday's.** There is less reason than usual for
- * an app to add any: a column here is a column on the one table that never
- * stops growing.
+ * # Where its fields are
+ *
+ * 1..7 and 13..15 are payday's on every entity it ships, and this one leaves
+ * almost all of them **empty**: 3 is held for a set smaller than a tenant, and
+ * 4..7 are the header -- the alias, the name, the description and the labels
+ * that anything can read off a row it has no type for. A trail row has none of
+ * those and never will, so the numbers stay reserved rather than being spent on
+ * something else.
+ *
+ * Its own fields are in 8..12, which is where an app's would be. That is not a
+ * special rule: `CheckOverlay` derives what payday owns from what payday
+ * declared, so an `audit.ext.proto` is refused at whichever numbers this file
+ * actually uses. What is left for an app here is 16 and up -- and there is less
+ * reason than usual to want any, since a column here is a column on the one
+ * table that never stops growing.
  *
  * @generated from message payday.Audit
  */
@@ -64,7 +76,7 @@ export type Audit = Message<"payday.Audit"> & {
    * nobody asked for -- what a deployment does to itself before it serves
    * anything.
    *
-   * @generated from field: bytes actor_id = 3;
+   * @generated from field: bytes actor_id = 8;
    */
   actorId: Uint8Array;
 
@@ -73,7 +85,7 @@ export type Audit = Message<"payday.Audit"> & {
    * bytes as OpenTelemetry spells one, which is not a UUID however alike they
    * look, so it is stored as what it is.
    *
-   * @generated from field: bytes trace_id = 4;
+   * @generated from field: bytes trace_id = 9;
    */
   traceId: Uint8Array;
 
@@ -86,7 +98,7 @@ export type Audit = Message<"payday.Audit"> & {
    * Apply nobody called by that name. "Who renamed this" has to answer with
    * Rename.
    *
-   * @generated from field: string action = 5;
+   * @generated from field: string action = 10;
    */
   action: string;
 
@@ -99,7 +111,7 @@ export type Audit = Message<"payday.Audit"> & {
    * says what it used to be. That was the standing cost of naming a row by an
    * identifier alone, and it is what `pdid` was for.
    *
-   * @generated from field: bytes object_id = 6;
+   * @generated from field: bytes object_id = 11;
    */
   objectId: Uint8Array;
 
@@ -112,7 +124,7 @@ export type Audit = Message<"payday.Audit"> & {
    * trail is for: written once, read by somebody asking what happened, and
    * whoever asks can unmarshal it.
    *
-   * @generated from field: bytes patch = 7;
+   * @generated from field: bytes patch = 12;
    */
   patch: Uint8Array;
 

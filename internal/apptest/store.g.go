@@ -31,6 +31,7 @@ type Server interface {
 	Joint() JointServiceServer
 	Fleet() FleetServiceServer
 	Cell() CellServiceServer
+	Reading() ReadingServiceServer
 	Audit() AuditServiceServer
 	Holder() HolderServiceServer
 	Outbox() OutboxServiceServer
@@ -46,50 +47,55 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterJointServiceServer(g, s.Joint())
 	RegisterFleetServiceServer(g, s.Fleet())
 	RegisterCellServiceServer(g, s.Cell())
+	RegisterReadingServiceServer(g, s.Reading())
 	RegisterAuditServiceServer(g, s.Audit())
 	RegisterHolderServiceServer(g, s.Holder())
 	RegisterOutboxServiceServer(g, s.Outbox())
 }
 
 type UnimplementedServer struct {
-	TenantServer TenantServiceServer
-	RobotServer  RobotServiceServer
-	JointServer  JointServiceServer
-	FleetServer  FleetServiceServer
-	CellServer   CellServiceServer
-	AuditServer  AuditServiceServer
-	HolderServer HolderServiceServer
-	OutboxServer OutboxServiceServer
+	TenantServer  TenantServiceServer
+	RobotServer   RobotServiceServer
+	JointServer   JointServiceServer
+	FleetServer   FleetServiceServer
+	CellServer    CellServiceServer
+	ReadingServer ReadingServiceServer
+	AuditServer   AuditServiceServer
+	HolderServer  HolderServiceServer
+	OutboxServer  OutboxServiceServer
 }
 
-func (UnimplementedServer) Tenant() TenantServiceServer { return UnimplementedTenantServiceServer{} }
-func (UnimplementedServer) Robot() RobotServiceServer   { return UnimplementedRobotServiceServer{} }
-func (UnimplementedServer) Joint() JointServiceServer   { return UnimplementedJointServiceServer{} }
-func (UnimplementedServer) Fleet() FleetServiceServer   { return UnimplementedFleetServiceServer{} }
-func (UnimplementedServer) Cell() CellServiceServer     { return UnimplementedCellServiceServer{} }
-func (UnimplementedServer) Audit() AuditServiceServer   { return UnimplementedAuditServiceServer{} }
-func (UnimplementedServer) Holder() HolderServiceServer { return UnimplementedHolderServiceServer{} }
-func (UnimplementedServer) Outbox() OutboxServiceServer { return UnimplementedOutboxServiceServer{} }
+func (UnimplementedServer) Tenant() TenantServiceServer   { return UnimplementedTenantServiceServer{} }
+func (UnimplementedServer) Robot() RobotServiceServer     { return UnimplementedRobotServiceServer{} }
+func (UnimplementedServer) Joint() JointServiceServer     { return UnimplementedJointServiceServer{} }
+func (UnimplementedServer) Fleet() FleetServiceServer     { return UnimplementedFleetServiceServer{} }
+func (UnimplementedServer) Cell() CellServiceServer       { return UnimplementedCellServiceServer{} }
+func (UnimplementedServer) Reading() ReadingServiceServer { return UnimplementedReadingServiceServer{} }
+func (UnimplementedServer) Audit() AuditServiceServer     { return UnimplementedAuditServiceServer{} }
+func (UnimplementedServer) Holder() HolderServiceServer   { return UnimplementedHolderServiceServer{} }
+func (UnimplementedServer) Outbox() OutboxServiceServer   { return UnimplementedOutboxServiceServer{} }
 
 type StaticServer struct {
-	TenantServer TenantServiceServer
-	RobotServer  RobotServiceServer
-	JointServer  JointServiceServer
-	FleetServer  FleetServiceServer
-	CellServer   CellServiceServer
-	AuditServer  AuditServiceServer
-	HolderServer HolderServiceServer
-	OutboxServer OutboxServiceServer
+	TenantServer  TenantServiceServer
+	RobotServer   RobotServiceServer
+	JointServer   JointServiceServer
+	FleetServer   FleetServiceServer
+	CellServer    CellServiceServer
+	ReadingServer ReadingServiceServer
+	AuditServer   AuditServiceServer
+	HolderServer  HolderServiceServer
+	OutboxServer  OutboxServiceServer
 }
 
-func (s StaticServer) Tenant() TenantServiceServer { return s.TenantServer }
-func (s StaticServer) Robot() RobotServiceServer   { return s.RobotServer }
-func (s StaticServer) Joint() JointServiceServer   { return s.JointServer }
-func (s StaticServer) Fleet() FleetServiceServer   { return s.FleetServer }
-func (s StaticServer) Cell() CellServiceServer     { return s.CellServer }
-func (s StaticServer) Audit() AuditServiceServer   { return s.AuditServer }
-func (s StaticServer) Holder() HolderServiceServer { return s.HolderServer }
-func (s StaticServer) Outbox() OutboxServiceServer { return s.OutboxServer }
+func (s StaticServer) Tenant() TenantServiceServer   { return s.TenantServer }
+func (s StaticServer) Robot() RobotServiceServer     { return s.RobotServer }
+func (s StaticServer) Joint() JointServiceServer     { return s.JointServer }
+func (s StaticServer) Fleet() FleetServiceServer     { return s.FleetServer }
+func (s StaticServer) Cell() CellServiceServer       { return s.CellServer }
+func (s StaticServer) Reading() ReadingServiceServer { return s.ReadingServer }
+func (s StaticServer) Audit() AuditServiceServer     { return s.AuditServer }
+func (s StaticServer) Holder() HolderServiceServer   { return s.HolderServer }
+func (s StaticServer) Outbox() OutboxServiceServer   { return s.OutboxServer }
 
 type Client interface {
 	Tenant() TenantServiceClient
@@ -97,6 +103,7 @@ type Client interface {
 	Joint() JointServiceClient
 	Fleet() FleetServiceClient
 	Cell() CellServiceClient
+	Reading() ReadingServiceClient
 	Audit() AuditServiceClient
 	Holder() HolderServiceClient
 	Outbox() OutboxServiceClient
@@ -104,36 +111,39 @@ type Client interface {
 
 func NewClient(c *grpc.ClientConn) Client {
 	return &client{
-		_Tenant: NewTenantServiceClient(c),
-		_Robot:  NewRobotServiceClient(c),
-		_Joint:  NewJointServiceClient(c),
-		_Fleet:  NewFleetServiceClient(c),
-		_Cell:   NewCellServiceClient(c),
-		_Audit:  NewAuditServiceClient(c),
-		_Holder: NewHolderServiceClient(c),
-		_Outbox: NewOutboxServiceClient(c),
+		_Tenant:  NewTenantServiceClient(c),
+		_Robot:   NewRobotServiceClient(c),
+		_Joint:   NewJointServiceClient(c),
+		_Fleet:   NewFleetServiceClient(c),
+		_Cell:    NewCellServiceClient(c),
+		_Reading: NewReadingServiceClient(c),
+		_Audit:   NewAuditServiceClient(c),
+		_Holder:  NewHolderServiceClient(c),
+		_Outbox:  NewOutboxServiceClient(c),
 	}
 }
 
 type client struct {
-	_Tenant TenantServiceClient
-	_Robot  RobotServiceClient
-	_Joint  JointServiceClient
-	_Fleet  FleetServiceClient
-	_Cell   CellServiceClient
-	_Audit  AuditServiceClient
-	_Holder HolderServiceClient
-	_Outbox OutboxServiceClient
+	_Tenant  TenantServiceClient
+	_Robot   RobotServiceClient
+	_Joint   JointServiceClient
+	_Fleet   FleetServiceClient
+	_Cell    CellServiceClient
+	_Reading ReadingServiceClient
+	_Audit   AuditServiceClient
+	_Holder  HolderServiceClient
+	_Outbox  OutboxServiceClient
 }
 
-func (c *client) Tenant() TenantServiceClient { return c._Tenant }
-func (c *client) Robot() RobotServiceClient   { return c._Robot }
-func (c *client) Joint() JointServiceClient   { return c._Joint }
-func (c *client) Fleet() FleetServiceClient   { return c._Fleet }
-func (c *client) Cell() CellServiceClient     { return c._Cell }
-func (c *client) Audit() AuditServiceClient   { return c._Audit }
-func (c *client) Holder() HolderServiceClient { return c._Holder }
-func (c *client) Outbox() OutboxServiceClient { return c._Outbox }
+func (c *client) Tenant() TenantServiceClient   { return c._Tenant }
+func (c *client) Robot() RobotServiceClient     { return c._Robot }
+func (c *client) Joint() JointServiceClient     { return c._Joint }
+func (c *client) Fleet() FleetServiceClient     { return c._Fleet }
+func (c *client) Cell() CellServiceClient       { return c._Cell }
+func (c *client) Reading() ReadingServiceClient { return c._Reading }
+func (c *client) Audit() AuditServiceClient     { return c._Audit }
+func (c *client) Holder() HolderServiceClient   { return c._Holder }
+func (c *client) Outbox() OutboxServiceClient   { return c._Outbox }
 
 // Middleware is a server that delegates to another server.
 type Middleware interface {

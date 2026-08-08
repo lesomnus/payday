@@ -75,11 +75,11 @@ type Outbox struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_TenantId    []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorId     []byte                 `protobuf:"bytes,3,opt,name=actor_id,json=actorId"`
-	xxx_hidden_Method      string                 `protobuf:"bytes,4,opt,name=method"`
-	xxx_hidden_By          string                 `protobuf:"bytes,5,opt,name=by"`
-	xxx_hidden_ObjectId    []byte                 `protobuf:"bytes,6,opt,name=object_id,json=objectId"`
-	xxx_hidden_Patch       []byte                 `protobuf:"bytes,7,opt,name=patch"`
+	xxx_hidden_ActorId     []byte                 `protobuf:"bytes,8,opt,name=actor_id,json=actorId"`
+	xxx_hidden_Method      string                 `protobuf:"bytes,9,opt,name=method"`
+	xxx_hidden_By          string                 `protobuf:"bytes,10,opt,name=by"`
+	xxx_hidden_ObjectId    []byte                 `protobuf:"bytes,11,opt,name=object_id,json=objectId"`
+	xxx_hidden_Patch       []byte                 `protobuf:"bytes,12,opt,name=patch"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
@@ -272,11 +272,12 @@ const file_payday_outbox_proto_rawDesc = "" +
 	"\x06Outbox\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
-	"\bactor_id\x18\x03 \x01(\fB\x06\xea\x82\x16\x02\x10@R\aactorId\x12\x16\n" +
-	"\x06method\x18\x04 \x01(\tR\x06method\x12\x0e\n" +
-	"\x02by\x18\x05 \x01(\tR\x02by\x12#\n" +
-	"\tobject_id\x18\x06 \x01(\fB\x06\xea\x82\x16\x02\x10@R\bobjectId\x12\x14\n" +
-	"\x05patch\x18\a \x01(\fR\x05patch\x12H\n" +
+	"\bactor_id\x18\b \x01(\fB\x06\xea\x82\x16\x02\x10@R\aactorId\x12\x16\n" +
+	"\x06method\x18\t \x01(\tR\x06method\x12\x0e\n" +
+	"\x02by\x18\n" +
+	" \x01(\tR\x02by\x12#\n" +
+	"\tobject_id\x18\v \x01(\fB\x06\xea\x82\x16\x02\x10@R\bobjectId\x12\x14\n" +
+	"\x05patch\x18\f \x01(\fR\x05patch\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x1d\xca\xfc\x15\x11\x1a\x0f\x12\x05queue\x1a\x06\n" +
 	"\x02id\x10\x01\x8a\xbb\x16\x04\b\x04*\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 

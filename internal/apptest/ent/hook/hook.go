@@ -81,6 +81,18 @@ func (f OutboxFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OutboxMutation", m)
 }
 
+// The ReadingFunc type is an adapter to allow the use of ordinary
+// function as Reading mutator.
+type ReadingFunc func(context.Context, *ent.ReadingMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ReadingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ReadingMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ReadingMutation", m)
+}
+
 // The RobotFunc type is an adapter to allow the use of ordinary
 // function as Robot mutator.
 type RobotFunc func(context.Context, *ent.RobotMutation) (ent.Value, error)
