@@ -80,6 +80,32 @@ func TestTheModuleRootIsTheDefault(t *testing.T) {
 	x.Equal("", l.Up())
 }
 
+// TestTheDirectoryAndTheNameMayDiffer, which is the `path;name` form.
+//
+// It is the only way to say "files in `api/`, written `thingpb.Thing`", and
+// kept whole it would be a directory called `api;thingpb`. Nothing would look
+// in it: protoc reads the option itself so the generation still works, and the
+// one thing that would stop is `pd gen --check` watching the messages -- which
+// is the failure that does not announce itself.
+func TestTheDirectoryAndTheNameMayDiffer(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	entity(t, root, "thing.proto", "github.com/acme/thing/api;thingpb")
+
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+	x.Equal("github.com/acme/thing/api", l.Pkg)
+	x.Equal("thingpb", l.PkgName)
+	x.Equal("api", l.PkgDir())
+	x.Equal("../", l.Up())
+
+	// And the copied entities say the whole of it, since two files in one
+	// directory declaring two Go packages is a build failure and the copies are
+	// the ones that would be wrong.
+	x.Equal("github.com/acme/thing/api;thingpb", l.GoPackage())
+}
+
 // TestTwoPackagesAreRefused, which is the one that would otherwise be found as
 // a wall that is not there.
 //

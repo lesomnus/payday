@@ -56,6 +56,14 @@ type Layout struct {
 	// writes and what nearly every app will keep.
 	Pkg string
 
+	// PkgName is what the messages' Go package is called, when the schema said
+	// so rather than leaving it to be the last segment of [Layout.Pkg].
+	//
+	// `option go_package = "<module>/api;thingpb"` is the form, and it is the
+	// one way the directory and the name are different things -- files in
+	// `api/`, written `thingpb.Thing`. Empty when nothing said.
+	PkgName string
+
 	// Work is the directory holding `buf.yaml`, which is where buf is run from
 	// and what every path in a template is relative to. It is [Layout.Root] for
 	// an app that is one module, and above it for a workspace of several.
@@ -154,11 +162,25 @@ func Discover(dir string) (Layout, error) {
 	}
 
 	l := Layout{Root: root, Module: path, Work: work}
-	if l.Pkg, err = readPkg(l); err != nil {
+	if l.Pkg, l.PkgName, err = readPkg(l); err != nil {
 		return Layout{}, err
 	}
 
 	return l, nil
+}
+
+// GoPackage is what the copied entities are made to declare: [Layout.Pkg], with
+// the name after it when the app's own schema said one.
+//
+// They have to say exactly what the app's entities say. Two files in one
+// directory declaring two different Go packages is a build failure, and the
+// copies are the ones that would be wrong.
+func (l Layout) GoPackage() string {
+	if l.PkgName == "" {
+		return l.Pkg
+	}
+
+	return l.Pkg + ";" + l.PkgName
 }
 
 // PkgDir is where the messages land under the app, and "." when that is the app
@@ -189,12 +211,20 @@ func (l Layout) Up() string {
 // goPkgAt is `option go_package = "..."` in a .proto.
 var goPkgAt = regexp.MustCompile(`(?m)^option go_package\s*=\s*"([^"]*)"`)
 
-// readPkg is the one `go_package` the app's own entities declare.
+// readPkg is the one `go_package` the app's own entities declare, taken apart
+// into the import path and the package name after it.
 //
 // Only the app's: `proto/payday/` is written by the generation and says
 // whatever it was last told, and `proto/ext/` is a fragment that may say
 // nothing at all.
-func readPkg(l Layout) (string, error) {
+//
+// The `path;name` form is split rather than refused, because it is the only way
+// to say a directory and a package name that differ -- files in `api/`, written
+// `thingpb.Thing`. Kept whole it would be a directory called `api;thingpb`,
+// which nothing would look in: the generation would still work, since protoc
+// reads the option itself, and `pd gen --check` would quietly stop watching the
+// messages.
+func readPkg(l Layout) (string, string, error) {
 	var (
 		pkg string
 		at  string
@@ -239,21 +269,23 @@ func readPkg(l Layout) (string, error) {
 		return nil
 	})
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return "", err
+		return "", "", err
 	}
 	if pkg == "" {
 		// Nothing declared one, which is a schema with no entities of its own
 		// yet. The module root is what `pd new` writes.
-		return l.Module, nil
+		return l.Module, "", nil
 	}
-	if pkg != l.Module && !strings.HasPrefix(pkg, l.Module+"/") {
-		return "", fmt.Errorf("%s declares go_package %q, which is not in this module (%s).\n\n"+
+
+	path, name, _ := strings.Cut(pkg, ";")
+	if path != l.Module && !strings.HasPrefix(path, l.Module+"/") {
+		return "", "", fmt.Errorf("%s declares go_package %q, which is not in this module (%s).\n\n"+
 			"Everything generated lands where `go_package` says, and `pd gen` lays that over "+
 			"the app -- so a path outside the module is a tree written somewhere nobody imports",
 			l.rel(at), pkg, l.Module)
 	}
 
-	return pkg, nil
+	return path, name, nil
 }
 
 // rel is a path under the app as a person would type it, for a message.

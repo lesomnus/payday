@@ -108,7 +108,7 @@ var goPackage = regexp.MustCompile(`(?m)^option go_package = .*$`)
 // They keep their names -- `payday/tenant.proto` and not `.g.proto` -- because
 // an app's own entity imports one by name, and a file a person writes should
 // not have to spell a generated suffix. What says they are generated is the
-// first line of each of them, and the directory they are in.
+// directory they are in, and the README written beside them.
 func (g Gen) entities(ctx context.Context) error {
 	src, err := SchemaDir()
 	if err != nil {
@@ -146,7 +146,7 @@ func (g Gen) entities(ctx context.Context) error {
 			}
 		}
 
-		b = goPackage.ReplaceAll(b, []byte(fmt.Sprintf("option go_package = %q;", g.Layout.Pkg)))
+		b = goPackage.ReplaceAll(b, []byte(fmt.Sprintf("option go_package = %q;", g.Layout.GoPackage())))
 		if err := os.WriteFile(filepath.Join(dst, name), b, 0o644); err != nil {
 			return err
 		}
@@ -206,6 +206,7 @@ func (r run) contracts(ctx context.Context) error {
 // typed. An overlay that redeclares a number payday owns is refused before any
 // of this, in `pd gen`'s reading of the schema -- protobuf-merge takes the
 // overlay's word, so `alias` would quietly become whatever it said.
+//
 // The contract keeps the name it was generated under -- `_svc.g.proto` all the
 // way through -- and that is not only cosmetic. It used to be renamed to
 // `_svc.proto` on the way out, which meant a contract and an overlay referred
@@ -259,6 +260,17 @@ func (r run) merge(ctx context.Context) error {
 				return err
 			}
 		}
+
+		// The one `go_package` this app has, stamped rather than trusted. The
+		// service generator carries the option over from the entity and drops
+		// the `;name` off it, so a contract said `.../pb` where the entity said
+		// `.../pb;widgetpb` -- two names for one Go package, which protoc
+		// refuses in a heap of messages naming files nobody wrote.
+		//
+		// It is the app's entities that say it and everything generated that
+		// follows, which is the same rule the copies in `proto/payday/` are
+		// held to.
+		b = goPackage.ReplaceAll(b, []byte(fmt.Sprintf("option go_package = %q;", r.Layout.GoPackage())))
 
 		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 			return err
@@ -382,7 +394,9 @@ func sweep(root string, wrote map[string]bool) error {
 		filepath.Join(root, DirPd_):   true,
 	}
 
-	return filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+	var empty []string
+
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		switch {
 		case err != nil:
 			return err
@@ -412,8 +426,24 @@ func sweep(root string, wrote map[string]bool) error {
 			return nil
 		}
 
+		empty = append(empty, filepath.Dir(p))
+
 		return os.Remove(p)
 	})
+	if err != nil {
+		return err
+	}
+
+	// And the directory it was, when it held nothing else. An empty `api/` is
+	// harmless and is still somebody opening it to find out why it is there.
+	// [os.Remove] on a directory with anything in it fails, which is the check.
+	for _, d := range empty {
+		if d != root {
+			os.Remove(d)
+		}
+	}
+
+	return nil
 }
 
 // unsuffix takes the `.g` back off, and it is the whole of what keeps that
