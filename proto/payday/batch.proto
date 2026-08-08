@@ -1,0 +1,56 @@
+edition = "2023";
+
+package payday;
+
+import "google/protobuf/any.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// BatchService runs several writes as one transaction.
+//
+// It is payday's own and not generated per app, which is the one thing about it
+// that needed a decision: every other service is named for an entity and takes
+// that entity's types, and this one takes `Any` and takes no position on what
+// is in it. So there is nothing per app to generate except the dispatcher, and
+// that lives in the app's Go and not in its schema.
+//
+// A caller finds out what may go in an `Op` from the rest of this server's
+// reflection listing. What it may **not** hold is anything the server closed,
+// anything the credential is not for, and anything the policy refuses -- all of
+// which are checked per operation rather than against this RPC; see
+// `payday/batch`.
+service BatchService {
+  rpc Do(BatchRequest) returns (BatchResponse);
+}
+
+message BatchRequest {
+  // The operations, run in the order they are written, in one transaction.
+  //
+  // The order is the caller's to get right and the server does not sort it: an
+  // operation that refers to a row an earlier one wrote has to come after it,
+  // and nothing here can work out which those are.
+  repeated Op ops = 1;
+}
+
+message Op {
+  // The RPC, by the name gRPC knows it by: "/app.RobotService/Add".
+  string method = 1;
+
+  // The request, packed. Its type has to be what `method` takes -- an `Any`
+  // carrying anything else is refused rather than coerced, since a request that
+  // decoded into a different message would be a write the caller did not ask
+  // for.
+  google.protobuf.Any request = 2;
+}
+
+message BatchResponse {
+  // One answer per operation, in the same order.
+  //
+  // There is no per-operation error here and that is not an omission: the whole
+  // batch is one transaction, so an operation that refused means none of them
+  // happened, and there is nothing to report per operation because there is
+  // nothing to report. The refusal is the RPC's error, and it says which
+  // operation it was about.
+  repeated google.protobuf.Any results = 1;
+}

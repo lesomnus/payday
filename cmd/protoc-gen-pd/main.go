@@ -147,6 +147,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitAudit(out, s, paths, root)
 	pdgen.EmitWatchRecorder(out, s, paths)
 	pdgen.EmitOutbox(out, s, paths)
+	pdgen.EmitBatch(out, s, paths, root, p.Files)
 
 	return nil
 }

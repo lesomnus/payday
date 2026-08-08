@@ -63,7 +63,7 @@ func Limit(l Limiter, by func(ctx context.Context, method string) string) []grpc
 
 func LimitUnary(l Limiter, by func(ctx context.Context, method string) string) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		if err := allow(ctx, l, by, info.FullMethod); err != nil {
+		if err := Allow(ctx, l, by, info.FullMethod); err != nil {
 			return nil, err
 		}
 
@@ -73,7 +73,7 @@ func LimitUnary(l Limiter, by func(ctx context.Context, method string) string) g
 
 func LimitStream(l Limiter, by func(ctx context.Context, method string) string) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		if err := allow(ss.Context(), l, by, info.FullMethod); err != nil {
+		if err := Allow(ss.Context(), l, by, info.FullMethod); err != nil {
 			return err
 		}
 
@@ -81,7 +81,13 @@ func LimitStream(l Limiter, by func(ctx context.Context, method string) string) 
 	}
 }
 
-func allow(ctx context.Context, l Limiter, by func(ctx context.Context, method string) string, method string) error {
+// Allow is the check the two interceptors are made of, as a function.
+//
+// It is exported because a batch of calls inside one call has to count each of
+// them: a batch is one method to gRPC, so an interceptor charges a caller once
+// for a thousand operations. What a batch does with this is call it per
+// operation, which is what makes the limit mean the same thing on both roads.
+func Allow(ctx context.Context, l Limiter, by func(ctx context.Context, method string) string, method string) error {
 	// No limit at all, which is what a deployment that configured none has.
 	//
 	// The guard is here and not only in [Limit] because the bare interceptors

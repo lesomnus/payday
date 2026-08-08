@@ -14,6 +14,7 @@ import (
 	uuid "github.com/google/uuid"
 	log "github.com/lesomnus/otx/log"
 	audit1 "github.com/lesomnus/payday/audit"
+	batch "github.com/lesomnus/payday/batch"
 	frame "github.com/lesomnus/payday/frame"
 	gate "github.com/lesomnus/payday/gate"
 	apptest "github.com/lesomnus/payday/internal/apptest"
@@ -29,6 +30,7 @@ import (
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
 	pderr "github.com/lesomnus/payday/pderr"
 	pdid "github.com/lesomnus/payday/pdid"
+	pdpb "github.com/lesomnus/payday/pdpb"
 	slug "github.com/lesomnus/payday/slug"
 	spin "github.com/lesomnus/payday/spin"
 	watch "github.com/lesomnus/payday/watch"
@@ -39,6 +41,7 @@ import (
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	proto "google.golang.org/protobuf/proto"
+	anypb "google.golang.org/protobuf/types/known/anypb"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	slog "log/slog"
 	slices "slices"
@@ -1319,4 +1322,594 @@ func (d drain) once(ctx context.Context) (int, error) {
 	}
 
 	return len(vs), nil
+}
+
+// Batch answers with the server that runs several writes as one
+// transaction.
+//
+// The guard is required and there is no default for it. Everything payday
+// enforces by method name is enforced against `BatchService/Do` and not
+// against what it carries, so a batch built without one is a way past all
+// of it -- a caller whose credential allows one method wraps whatever they
+// like in a batch, and the trail records that it was allowed.
+//
+//	b, err := pd.Batch(s.Walled, s.Drv, c.Server.Guard(policy))
+//
+// The guard comes from the configuration rather than being written out,
+// which is what keeps it saying the same thing the interceptors say. Two
+// places deciding what is closed will disagree, and the direction they
+// disagree in is the one where the batch allows more.
+//
+// The driver is passed rather than taken from the server, because the
+// transaction is begun on it and a `*ent.Client` does not hand out the
+// driver it was built with. The app has one: it is what it built the client
+// from.
+func Batch(s apptest.Server, drv dialect.Driver, guard batch.Guard) (pdpb.BatchServiceServer, error) {
+	if guard.IsZero() {
+		// Nobody filled it in. It is the zero value and not a judgement about
+		// how open the deployment is: `config.ServerConfig.Guard` always sets
+		// how a caller is counted, so a deployment that closes nothing and
+		// limits nothing still comes through here with something in it.
+		//
+		// Refused rather than served open, because served open is a privilege
+		// escalation and the way it would be found is somebody reading the
+		// wiring and noticing what is not there.
+		return nil, batch.ErrNoGuard
+	}
+
+	return batchServer{s: s, drv: drv, guard: guard}, nil
+}
+
+type batchServer struct {
+	pdpb.UnimplementedBatchServiceServer
+
+	s     apptest.Server
+	drv   dialect.Driver
+	guard batch.Guard
+}
+
+// Do runs every operation in one transaction.
+//
+// The transaction is opened here and the whole stack is put on it, so the
+// layers each operation goes through are the same objects with the same
+// rules -- the wall still narrows, the trail is still written, the outbox
+// still gets its row. What changes is only which driver they are talking
+// to.
+//
+// Nothing is published until it commits. The watch recorder remembers into
+// the context and the interceptor publishes once this handler has answered,
+// which is after the commit -- so a batch arrives at a subscriber as one
+// event holding every change, which is what it was.
+func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.BatchResponse, error) {
+	ops := req.GetOps()
+	if err := b.guard.Check(len(ops)); err != nil {
+		return nil, err
+	}
+
+	// Every rule for every operation, before anything is written. The
+	// transaction would undo the work of a batch refused halfway, but the
+	// work and the locks it took are real -- and a rate limiter that had
+	// already counted the first seven would charge for a batch that never
+	// happened.
+	cs := make([]context.Context, len(ops))
+	for i, op := range ops {
+		c, err := b.guard.Allow(ctx, op.GetMethod())
+		if err != nil {
+			return nil, batch.Failed(i, op.GetMethod(), err)
+		}
+
+		cs[i] = c
+	}
+
+	drv, tx, err := enttx.Begin(ctx, b.drv)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := enttx.Rebind(b.s, drv)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	vs := make([]*anypb.Any, len(ops))
+	for i, op := range ops {
+		v, err := dispatch(cs[i], s, op)
+		if err != nil {
+			tx.Rollback()
+			return nil, batch.Failed(i, op.GetMethod(), err)
+		}
+
+		vs[i] = v
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return pdpb.BatchResponse_builder{Results: vs}.Build(), nil
+}
+
+// dispatch runs one operation against the stack the transaction is on.
+//
+// The request is unpacked into exactly the message the method takes, and an
+// `Any` carrying anything else is refused rather than coerced -- a request
+// that decoded into a different message would be a write the caller did not
+// ask for, and `Any` is checked by type URL so there is a right answer.
+func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, error) {
+	switch m := op.GetMethod(); m {
+	case apptest.TenantService_Add_FullMethodName:
+		v := &apptest.TenantAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Tenant().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.TenantService_Get_FullMethodName:
+		v := &apptest.TenantGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Tenant().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.TenantService_Patch_FullMethodName:
+		v := &apptest.TenantPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Tenant().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.TenantService_Apply_FullMethodName:
+		v := &apptest.TenantApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Tenant().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.TenantService_Erase_FullMethodName:
+		v := &apptest.TenantRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Tenant().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.RobotService_Add_FullMethodName:
+		v := &apptest.RobotAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Robot().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.RobotService_Get_FullMethodName:
+		v := &apptest.RobotGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Robot().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.RobotService_Patch_FullMethodName:
+		v := &apptest.RobotPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Robot().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.RobotService_Apply_FullMethodName:
+		v := &apptest.RobotApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Robot().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.RobotService_Erase_FullMethodName:
+		v := &apptest.RobotRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Robot().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.RobotService_List_FullMethodName:
+		v := &apptest.RobotListRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Robot().List(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.JointService_Add_FullMethodName:
+		v := &apptest.JointAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Joint().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.JointService_Get_FullMethodName:
+		v := &apptest.JointGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Joint().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.JointService_Patch_FullMethodName:
+		v := &apptest.JointPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Joint().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.JointService_Apply_FullMethodName:
+		v := &apptest.JointApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Joint().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.JointService_Erase_FullMethodName:
+		v := &apptest.JointRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Joint().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.FleetService_Add_FullMethodName:
+		v := &apptest.FleetAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Fleet().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.FleetService_Get_FullMethodName:
+		v := &apptest.FleetGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Fleet().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.FleetService_Patch_FullMethodName:
+		v := &apptest.FleetPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Fleet().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.FleetService_Apply_FullMethodName:
+		v := &apptest.FleetApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Fleet().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.FleetService_Erase_FullMethodName:
+		v := &apptest.FleetRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Fleet().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.CellService_Add_FullMethodName:
+		v := &apptest.CellAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.CellService_Get_FullMethodName:
+		v := &apptest.CellGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.CellService_Patch_FullMethodName:
+		v := &apptest.CellPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.CellService_Apply_FullMethodName:
+		v := &apptest.CellApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.CellService_Erase_FullMethodName:
+		v := &apptest.CellRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_Add_FullMethodName:
+		v := &apptest.AuditAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_Get_FullMethodName:
+		v := &apptest.AuditGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_Patch_FullMethodName:
+		v := &apptest.AuditPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_Apply_FullMethodName:
+		v := &apptest.AuditApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_Erase_FullMethodName:
+		v := &apptest.AuditRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Add_FullMethodName:
+		v := &apptest.HolderAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Get_FullMethodName:
+		v := &apptest.HolderGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Patch_FullMethodName:
+		v := &apptest.HolderPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Apply_FullMethodName:
+		v := &apptest.HolderApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Erase_FullMethodName:
+		v := &apptest.HolderRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	default:
+		// Including every RPC written by hand: those live on a service of
+		// their own and `Server` has no accessor for one, so there is nothing
+		// here to call. Unimplemented says exactly that.
+		return nil, batch.ErrNoMethod(m)
+	}
 }

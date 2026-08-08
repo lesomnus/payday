@@ -8,6 +8,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 
+	"github.com/lesomnus/payday/batch"
+	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
 )
 
@@ -55,6 +57,11 @@ type ServerConfig struct {
 	// a deployment that trimmed its file down to what it meant does not serve
 	// it by having forgotten to say no.
 	AllowReflection bool `yaml:"allow_reflection"`
+
+	// MaxBatchOps is how many operations one batch may carry; zero is
+	// [batch.MaxOps]. A batch is a transaction, and one held open long enough
+	// is a lock held against every other writer.
+	MaxBatchOps int `yaml:"max_batch_ops"`
 
 	// AllowGeneralWrites serves `Patch` and `Apply`, the two RPCs every
 	// generated service has that can write anything the schema holds. It is
@@ -273,4 +280,24 @@ func (c ServerConfig) GrpcOptions() []grpc.ServerOption {
 	}
 
 	return opts
+}
+
+// Guard is what a batch enforces per operation, read off the same fields the
+// interceptors are built from.
+//
+// It exists so that there is **one** place. A batch checks by hand what the
+// transport checks by interceptor, and the two are only ever in step if they
+// come from the same source -- written out twice they will disagree, and the
+// direction they disagree in is the one where the batch allows more.
+//
+// The policy is a parameter because it is not configuration: it is a thing an
+// app builds, and the interceptor takes it the same way.
+func (c ServerConfig) Guard(p gate.Policy) batch.Guard {
+	return batch.Guard{
+		Closed:  c.Closed(),
+		Limiter: c.Limiter(),
+		By:      gate.ByTenant(),
+		Policy:  p,
+		Max:     c.MaxBatchOps,
+	}
 }

@@ -3,12 +3,16 @@ package cmd
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"net"
 
+	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/lesomnus/otx/log"
 	"google.golang.org/grpc"
 
 	"github.com/lesomnus/payday/auth"
+	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/watch"
@@ -24,6 +28,11 @@ import (
 type Server struct {
 	Db  *sql.DB
 	Ent *ent.Client
+
+	// Drv is what the client was built on, kept because a transaction is begun
+	// on a driver and a `*ent.Client` does not hand out the one it holds. It is
+	// what `pd.Batch` puts a whole stack onto.
+	Drv dialect.Driver
 
 	// Watch is what a change is published to once the call that made it has
 	// answered. The broker is named rather than defaulted: the one that
@@ -61,7 +70,8 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// The ent client is the app's to build, which is why config hands back a
 	// *sql.DB and the dialect rather than a client: the client is generated
 	// into this app from this app's schema, and payday has no name for it.
-	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect, db)))
+	drv := entsql.OpenDB(dialect, db)
+	client := ent.NewClient(ent.Driver(drv))
 
 	// The server that talks to the database, twice: once as it is, and once
 	// with the wall on it.
@@ -127,7 +137,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		return nil, err
 	}
 
-	s := &Server{Db: db, Ent: client, Watch: w, Walled: stacked, Ungated: ungated}
+	s := &Server{Db: db, Ent: client, Drv: drv, Watch: w, Walled: stacked, Ungated: ungated}
 	if c.Watch.Outbox && b != nil {
 		// The loop that makes an event durable. It is not a layer and not a
 		// method on any server -- `spin.Run` finds it in whatever is handed
@@ -167,6 +177,19 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 
 	g := grpc.NewServer(os...)
 	app.RegisterServer(g, s.Walled)
+
+	// The batch, with the same rules the chain above enforces -- read off the
+	// same configuration rather than written out again, which is the only way
+	// the two stay in step. What they enforce by looking at the method gRPC
+	// dispatched, this enforces per operation.
+	if b, err := pd.Batch(s.Walled, s.Drv, c.Server.Guard(nil)); err == nil {
+		pdpb.RegisterBatchServiceServer(g, b)
+	} else {
+		// A deployment that closed nothing, limits nothing and has no policy.
+		// It is a real thing to be and it is also what a guard nobody filled in
+		// looks like, so the batch is not served rather than served open.
+		log.From(ctx).WarnContext(ctx, "no batch", slog.String("why", err.Error()))
+	}
 
 	return g
 }

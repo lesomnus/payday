@@ -33,7 +33,7 @@ func ClosedUnary(is func(method string) bool) grpc.UnaryServerInterceptor {
 		// has. The guard is here as well as in [Closed] because the bare
 		// interceptors are the shape everything else takes them in.
 		if is != nil && is(info.FullMethod) {
-			return nil, errClosed(info.FullMethod)
+			return nil, ErrClosed(info.FullMethod)
 		}
 
 		return handler(ctx, req)
@@ -43,18 +43,22 @@ func ClosedUnary(is func(method string) bool) grpc.UnaryServerInterceptor {
 func ClosedStream(is func(method string) bool) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		if is != nil && is(info.FullMethod) {
-			return errClosed(info.FullMethod)
+			return ErrClosed(info.FullMethod)
 		}
 
 		return handler(srv, ss)
 	}
 }
 
-// errClosed is Unimplemented rather than PermissionDenied because this is not
+// ErrClosed is Unimplemented rather than PermissionDenied because this is not
 // about who is asking. Nobody may, and no credential changes it -- which is
 // also what a caller reading the reflection listing should take from finding
 // the method there.
-func errClosed(method string) error {
+//
+// It is exported for the same reason the bare interceptors are: a batch of
+// calls inside one call applies these rules per operation, and it has to refuse
+// in the same words the transport would have.
+func ErrClosed(method string) error {
 	return status.Errorf(codes.Unimplemented, "%s is not served; it is how the servers write, not how a caller asks", method)
 }
 

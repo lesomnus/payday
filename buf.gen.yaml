@@ -8,3 +8,8 @@ plugins:
       - module=github.com/lesomnus/payday
       - default_api_level=API_OPAQUE
     strategy: all
+  - local: [go, tool, google.golang.org/grpc/cmd/protoc-gen-go-grpc]
+    out: .
+    opt:
+      - module=github.com/lesomnus/payday
+    strategy: all
