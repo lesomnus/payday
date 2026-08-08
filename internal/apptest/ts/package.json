@@ -6,7 +6,8 @@
 	"type": "module",
 	"scripts": {
 		"check": "tsc -p tsconfig.json",
-		"test": "vitest run"
+		"test": "vitest run",
+		"check:sandbox": "tsc -p tsconfig.sandbox.json"
 	},
 	"dependencies": {
 		"@bufbuild/protobuf": "^2.12.1",

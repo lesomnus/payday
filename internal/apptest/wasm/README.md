@@ -16,14 +16,18 @@ The database is held in memory, so **a reload is a fresh server**. That is the
 point rather than a limitation: a sandbox that remembered is one somebody has to
 clear.
 
-## What is not here yet
+## The page
 
-The page. Starting this needs two things from npm — `sqlite3-wasm-go`, whose
-worker hosts the Go program, and the TypeScript half of `grpc-dgram`, which
-speaks the same wire from the other side. Both exist; wiring them is a front-end
-job and not a Go one, so it is left for whoever writes the first UI.
+`../ts/src/sandbox.ts`, and it is two lines: open the module, dial it, hand the
+transport to `app()`. It is that short because everything above the transport is
+blind to which one it got -- the sandbox and the real server are the same code
+with a different argument, which is the whole reason a sandbox is worth having.
+Code that only ever ran against a fake has never run.
 
-Two requirements will bite whoever does, and neither is this file's to fix:
+It type-checks against `@lesomnus/grpc-dgram`. It has **not** been loaded in a
+browser; see `../ts/SANDBOX.md` for what is verified and what is not.
+
+Two requirements will bite whoever serves it, and neither is this file's to fix:
 
 - **`Cross-Origin-Opener-Policy: same-origin` and
   `Cross-Origin-Embedder-Policy: require-corp`.** `sqlite3-wasm` cancels work
