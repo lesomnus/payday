@@ -239,8 +239,8 @@ message Tenanted {
 없는 것이므로 CP3에서 함께 넣는다.
 | ~~**6**~~ | **완료** — `frame`은 ID 둘과 `proto.Message`, `auth`는 클레임을 문자열로. `Resolver`만 앱의 것 |
 | ~~**7**~~ | **완료** — 판단은 `payday/gate`·`payday/audit`, 레이어와 벽은 생성 |
-| **7b** | `List` 생성 — `list:` 옵션, `payday/entlist`, 인덱스·키 검사 (§4.1) | 3,7 |
-| **7c** | `Watch` — `bare.Change`를 상류 런타임으로, `payday/watch`, 그다음 `Watch` RPC 생성 (§4.2) | 7b |
+| ~~**7b**~~ | **완료** — `list:` 옵션, proto와 구현 생성, 키·상한 거절과 인덱스 경고 |
+| ~~**7c**~~ | **완료** — `payday/watch`(브로커 이음매 포함)와 `Watch` RPC 생성. `bare.Change`는 상류로 올리는 대신 payday 자신의 모양으로 변환한다 — 생성된 어댑터가 다섯 줄이라 상류를 건드릴 이유가 없었다 |
 | **8** | `pd` CLI — `gen`, `gen --check`, `config env`, `doctor` | 2,3 |
 | **9** | 템플릿 — go-app의 배선과 문서를 payday 위에 다시 얹는다 | 5,6,7,8 |
 | **10** | `entity add`/`layer add` | 8,9 |

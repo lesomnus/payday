@@ -162,17 +162,50 @@ export function randomAliasN(n: number): string {
 }
 
 /**
- * What Go's `strings.TrimSpace` trims, which is not what JavaScript's `trim`
- * trims.
+ * What Go's `strings.TrimSpace` takes off, which is not quite what JavaScript's
+ * `trim` takes off: JavaScript also takes the byte order mark, and does not
+ * take the next-line character.
  *
- * JavaScript also takes U+FEFF and does not take U+0085, so a name that arrived
- * with either would be one string on this side and another on the server: a row
- * written from the browser and never found from the CLI. The set is written out
- * so that both halves fold the same names together.
+ * A name that arrived with either would be one string on this side and another
+ * on the server -- a row written from a page and never found from the CLI -- so
+ * the set is written out by code point rather than left to whichever runtime is
+ * reading. Writing it out is also the only honest way to say it: the two sets
+ * are nearly the same, and "nearly" is what makes a disagreement like this one
+ * hard to find later.
  */
-const spaces = String.raw`\t\n\v\f\r    -     　`;
-const trimmable = new RegExp(`^[${spaces}]+|[${spaces}]+$`, "g");
+function isSpace(c: number): boolean {
+	switch (c) {
+		case 0x09: // tab
+		case 0x0a: // line feed
+		case 0x0b: // vertical tab
+		case 0x0c: // form feed
+		case 0x0d: // carriage return
+		case 0x20: // space
+		case 0x85: // next line
+		case 0xa0: // no-break space
+		case 0x1680: // ogham space mark
+		case 0x2028: // line separator
+		case 0x2029: // paragraph separator
+		case 0x202f: // narrow no-break space
+		case 0x205f: // medium mathematical space
+		case 0x3000: // ideographic space
+			return true;
+
+		default:
+			// En quad through hair space.
+			return c >= 0x2000 && c <= 0x200a;
+	}
+}
 
 export function trim(v: string): string {
-	return v.replace(trimmable, "");
+	let i = 0;
+	let j = v.length;
+	while (i < j && isSpace(v.charCodeAt(i))) {
+		i++;
+	}
+	while (j > i && isSpace(v.charCodeAt(j - 1))) {
+		j--;
+	}
+
+	return v.slice(i, j);
 }
