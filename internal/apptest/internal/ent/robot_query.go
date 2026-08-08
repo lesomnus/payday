@@ -25,7 +25,6 @@ type RobotQuery struct {
 	inters     []Interceptor
 	predicates []predicate.Robot
 	withTenant *TenantQuery
-	withFKs    bool
 	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -373,18 +372,11 @@ func (_q *RobotQuery) prepareQuery(ctx context.Context) error {
 func (_q *RobotQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Robot, error) {
 	var (
 		nodes       = []*Robot{}
-		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
 		loadedTypes = [1]bool{
 			_q.withTenant != nil,
 		}
 	)
-	if _q.withTenant != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, robot.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Robot).scanValues(nil, columns)
 	}
@@ -419,10 +411,7 @@ func (_q *RobotQuery) loadTenant(ctx context.Context, query *TenantQuery, nodes 
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Robot)
 	for i := range nodes {
-		if nodes[i].robot_tenant == nil {
-			continue
-		}
-		fk := *nodes[i].robot_tenant
+		fk := nodes[i].TenantID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -439,7 +428,7 @@ func (_q *RobotQuery) loadTenant(ctx context.Context, query *TenantQuery, nodes 
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "robot_tenant" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "tenant_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -475,6 +464,9 @@ func (_q *RobotQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != robot.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withTenant != nil {
+			_spec.Node.AddColumnOnce(robot.FieldTenantID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

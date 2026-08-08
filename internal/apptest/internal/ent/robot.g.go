@@ -4,6 +4,7 @@
 package ent
 
 import (
+	uuid "github.com/google/uuid"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -13,6 +14,10 @@ func (e *Robot) Proto() *apptest.Robot {
 	x.SetId(e.ID[:])
 	if v := e.Edges.Tenant; v != nil {
 		x.SetTenant(v.Proto())
+	} else if v := e.TenantID; v != *new(uuid.UUID) {
+		r := &apptest.Tenant{}
+		r.SetId(v[:])
+		x.SetTenant(r)
 	}
 	x.SetAlias(e.Alias)
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
@@ -24,6 +29,10 @@ func (e *Joint) Proto() *apptest.Joint {
 	x.SetId(e.ID[:])
 	if v := e.Edges.Robot; v != nil {
 		x.SetRobot(v.Proto())
+	} else if v := e.RobotID; v != *new(uuid.UUID) {
+		r := &apptest.Robot{}
+		r.SetId(v[:])
+		x.SetRobot(r)
 	}
 	x.SetAlias(e.Alias)
 	return x
@@ -39,6 +48,10 @@ func (e *Cell) Proto() *apptest.Cell {
 	x.SetId(e.ID[:])
 	if v := e.Edges.Tenant; v != nil {
 		x.SetTenant(v.Proto())
+	} else if v := e.TenantID; v != *new(uuid.UUID) {
+		r := &apptest.Tenant{}
+		r.SetId(v[:])
+		x.SetTenant(r)
 	}
 	x.SetAlias(e.Alias)
 	return x
@@ -48,6 +61,10 @@ func (e *Reading) Proto() *apptest.Reading {
 	x.SetId(e.ID[:])
 	if v := e.Edges.Robot; v != nil {
 		x.SetRobot(v.Proto())
+	} else if v := e.RobotID; v != *new(uuid.UUID) {
+		r := &apptest.Robot{}
+		r.SetId(v[:])
+		x.SetRobot(r)
 	}
 	x.SetCelsius(e.Celsius)
 	x.SetDateCreated(timestamppb.New(e.DateCreated))

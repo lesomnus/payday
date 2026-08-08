@@ -23,11 +23,12 @@ type Reading struct {
 	Celsius float64 `json:"celsius,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
+	// RobotID holds the value of the "robot_id" field.
+	RobotID uuid.UUID `json:"robot_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ReadingQuery when eager-loading is set.
-	Edges         ReadingEdges `json:"edges"`
-	reading_robot *uuid.UUID
-	selectValues  sql.SelectValues
+	Edges        ReadingEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // ReadingEdges holds the relations/edges for other nodes in the graph.
@@ -59,10 +60,8 @@ func (*Reading) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case reading.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case reading.FieldID:
+		case reading.FieldID, reading.FieldRobotID:
 			values[i] = new(uuid.UUID)
-		case reading.ForeignKeys[0]: // reading_robot
-			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -96,12 +95,11 @@ func (_m *Reading) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DateCreated = value.Time
 			}
-		case reading.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullScanner); !ok {
-				return fmt.Errorf("unexpected type %T for field reading_robot", values[i])
-			} else if value.Valid {
-				_m.reading_robot = new(uuid.UUID)
-				*_m.reading_robot = *value.S.(*uuid.UUID)
+		case reading.FieldRobotID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field robot_id", values[i])
+			} else if value != nil {
+				_m.RobotID = *value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -149,6 +147,9 @@ func (_m *Reading) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("date_created=")
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("robot_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RobotID))
 	builder.WriteByte(')')
 	return builder.String()
 }

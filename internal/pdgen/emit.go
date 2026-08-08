@@ -139,8 +139,6 @@ func EmitWall(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("var _ ", p.Bare.Ident("Scope"), " = wall{}")
 	g.P("")
 
-	emitFkGuard(g, s, p)
-
 	for _, v := range s.Sorted() {
 		g.P("// ", v.GoName(), "Scope: ", why(v, s))
 		g.P("func (wall) ", v.GoName(), "Scope(ctx ", pkgCtx.Ident("Context"),
@@ -162,86 +160,6 @@ func EmitWall(g *protogen.GeneratedFile, s *Schema, p Paths) {
 		g.P("}")
 		g.P("")
 	}
-}
-
-// emitFkGuard writes the two things the collapsed wall stands on: the argument
-// conversion, and the check that the foreign key really is on the table the
-// predicate reads it from.
-//
-// The check is at startup and it **panics**, which is the same trade
-// `slug.RandomAliasN` makes and for the same reason: what it is about is written
-// in the schema rather than carried in a request, so there is nobody to hand an
-// error to and nothing a caller could do with one. What it would otherwise be is
-// a wall that narrows to the wrong rows -- and that is the one failure this
-// whole package exists to make impossible.
-func emitFkGuard(g *protogen.GeneratedFile, s *Schema, p Paths) {
-	// Only the entities whose wall is a walk read a foreign key column.
-	type at struct{ entity, pkg, edge string }
-	var vs []at
-	for _, v := range s.Sorted() {
-		if v.IsTenant || v.IsGlobal || v.Field != "" || len(v.Via) == 0 {
-			continue
-		}
-
-		// The last hop is the collapsed one; the table it reads from is the
-		// entity that hop starts at.
-		e := v.Entity
-		for _, name := range v.Via[:len(v.Via)-1] {
-			w, _ := edge(e, name)
-			e = w.Target()
-		}
-
-		vs = append(vs, at{
-			entity: string(v.FullName()),
-			pkg:    strings.ToLower(string(e.FullName().Name())),
-			edge:   pascal(v.Via[len(v.Via)-1]),
-		})
-	}
-	if len(vs) == 0 {
-		return
-	}
-
-	g.P("// args is what a slice of keys looks like to a raw predicate, which takes")
-	g.P("// them one by one.")
-	g.P("func args(vs []", pkgUuid.Ident("UUID"), ") []", pkgDriver.Ident("Value"), " {")
-	g.P("	ws := make([]", pkgDriver.Ident("Value"), ", len(vs))")
-	g.P("	for i, v := range vs {")
-	g.P("		ws[i] = v")
-	g.P("	}")
-	g.P("")
-	g.P("	return ws")
-	g.P("}")
-	g.P("")
-
-	g.P("// The wall reads the tenant straight off a foreign key column, which is the")
-	g.P("// tenant's identifier only when the key is on the table it reads from. That")
-	g.P("// is true of every edge a schema can reach a tenant through today -- one row")
-	g.P("// holds one tenant, so the key is on the row -- and it is checked rather")
-	g.P("// than assumed, because the alternative to checking is a wall that narrows")
-	g.P("// to the wrong rows and says nothing.")
-	g.P("//")
-	g.P("// It stops the process, which is the same trade `slug.RandomAliasN` makes:")
-	g.P("// the schema is written in the code rather than carried in a request, so")
-	g.P("// there is nobody to hand an error to.")
-	g.P("func init() {")
-	g.P("	for _, v := range []struct{ entity, own, holds string }{")
-	for _, v := range vs {
-		pkg := p.Ent + "/" + protogen.GoImportPath(v.pkg)
-		g.P("		{", strconv.Quote(v.entity), ", ", g.QualifiedGoIdent(pkg.Ident("Table")),
-			", ", g.QualifiedGoIdent(pkg.Ident(v.edge+"Table")), "},")
-	}
-	g.P("	} {")
-	g.P("		if v.own == v.holds {")
-	g.P("			continue")
-	g.P("		}")
-	g.P("")
-	g.P("		panic(", pkgFmt.Ident("Sprintf"), "(")
-	g.P("			`pd: %s: the wall reads the tenant off %q and the key is on %q; `+")
-	g.P("				`narrowing would answer with the wrong rows`,")
-	g.P("			v.entity, v.own, v.holds))")
-	g.P("	}")
-	g.P("}")
-	g.P("")
 }
 
 // predicateOf renders the wall of one entity: the tenant's own identity, or a
@@ -293,28 +211,28 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 // collapse is the last hop of a `via`, read off the foreign key rather than
 // walked.
 //
-// `HasTenantWith(tenant.IDIn(vs...))` and `<fk column> IN vs` answer the same
+// `HasTenantWith(tenant.IDIn(vs...))` and `tenant_id IN vs` answer the same
 // question, and they answer it the same way **because the key is a foreign
-// key**: a row cannot hold the identifier of a tenant that is not there. Without
-// that guarantee the two differ, which is worth saying out loud -- the integrity
-// constraint is not a cost paid for the join, it is what makes the join
-// skippable.
+// key**: a row cannot hold the identifier of a tenant that is not there.
+// Without that guarantee the two differ, which is worth saying out loud -- the
+// integrity constraint is not a cost paid for the join, it is what makes the
+// join skippable.
 //
 // What it is worth is measurable rather than theoretical. On SQLite the walked
 // form plans as a correlated subquery probing the tenant table once per row;
 // this plans as a filter on the row's own column. Two hops go from four steps
 // with a CORRELATED SCALAR SUBQUERY to two without one.
+//
+// It used to be written out by hand -- a `predicate.X` closure comparing
+// `s.C(<Edge>Column)` -- with a startup check that the column really was on the
+// table being read from, because a wall that narrows to the wrong rows says
+// nothing. ent generates the predicate now: the edge is bound to a field, so
+// `<Edge>IDIn` exists exactly when the key is on that table, and there is no
+// assumption left to check.
 func collapse(g *protogen.GeneratedFile, at graph.Entity, name string, p Paths) string {
 	pkg := p.Ent + "/" + protogen.GoImportPath(strings.ToLower(string(at.FullName().Name())))
 
-	return fmt.Sprintf(`%s(func(s *%s) {
-		s.Where(%s(s.C(%s), args(vs)...))
-	})`,
-		g.QualifiedGoIdent((p.Ent + "/predicate").Ident(pascal(string(at.FullName().Name())))),
-		g.QualifiedGoIdent(pkgEntsql.Ident("Selector")),
-		g.QualifiedGoIdent(pkgEntsql.Ident("InValues")),
-		g.QualifiedGoIdent(pkg.Ident(pascal(name)+"Column")),
-	)
+	return fmt.Sprintf("%s(vs...)", g.QualifiedGoIdent(pkg.Ident(pascal(name)+"IDIn")))
 }
 
 // why is the one-line reason a reader of the generated file gets, so that it

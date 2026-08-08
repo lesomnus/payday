@@ -86,15 +86,15 @@ func (_c *HolderCreate) SetIdpSubject(v string) *HolderCreate {
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *HolderCreate) SetID(v uuid.UUID) *HolderCreate {
-	_c.mutation.SetID(v)
+// SetTenantID sets the "tenant_id" field.
+func (_c *HolderCreate) SetTenantID(v uuid.UUID) *HolderCreate {
+	_c.mutation.SetTenantID(v)
 	return _c
 }
 
-// SetTenantID sets the "tenant" edge to the Tenant entity by ID.
-func (_c *HolderCreate) SetTenantID(id uuid.UUID) *HolderCreate {
-	_c.mutation.SetTenantID(id)
+// SetID sets the "id" field.
+func (_c *HolderCreate) SetID(v uuid.UUID) *HolderCreate {
+	_c.mutation.SetID(v)
 	return _c
 }
 
@@ -151,6 +151,9 @@ func (_c *HolderCreate) check() error {
 	}
 	if _, ok := _c.mutation.IdpSubject(); !ok {
 		return &ValidationError{Name: "idp_subject", err: errors.New(`ent: missing required field "Holder.idp_subject"`)}
+	}
+	if _, ok := _c.mutation.TenantID(); !ok {
+		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Holder.tenant_id"`)}
 	}
 	if len(_c.mutation.TenantIDs()) == 0 {
 		return &ValidationError{Name: "tenant", err: errors.New(`ent: missing required edge "Holder.tenant"`)}
@@ -236,7 +239,7 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.holder_tenant = &nodes[0]
+		_node.TenantID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

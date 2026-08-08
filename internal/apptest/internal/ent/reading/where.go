@@ -66,6 +66,11 @@ func DateCreated(v time.Time) predicate.Reading {
 	return predicate.Reading(sql.FieldEQ(FieldDateCreated, v))
 }
 
+// RobotID applies equality check predicate on the "robot_id" field. It's identical to RobotIDEQ.
+func RobotID(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldRobotID, v))
+}
+
 // CelsiusEQ applies the EQ predicate on the "celsius" field.
 func CelsiusEQ(v float64) predicate.Reading {
 	return predicate.Reading(sql.FieldEQ(FieldCelsius, v))
@@ -154,6 +159,26 @@ func DateCreatedIsNil() predicate.Reading {
 // DateCreatedNotNil applies the NotNil predicate on the "date_created" field.
 func DateCreatedNotNil() predicate.Reading {
 	return predicate.Reading(sql.FieldNotNull(FieldDateCreated))
+}
+
+// RobotIDEQ applies the EQ predicate on the "robot_id" field.
+func RobotIDEQ(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldRobotID, v))
+}
+
+// RobotIDNEQ applies the NEQ predicate on the "robot_id" field.
+func RobotIDNEQ(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNEQ(FieldRobotID, v))
+}
+
+// RobotIDIn applies the In predicate on the "robot_id" field.
+func RobotIDIn(vs ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldIn(FieldRobotID, vs...))
+}
+
+// RobotIDNotIn applies the NotIn predicate on the "robot_id" field.
+func RobotIDNotIn(vs ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNotIn(FieldRobotID, vs...))
 }
 
 // HasRobot applies the HasEdge predicate on the "robot" edge.

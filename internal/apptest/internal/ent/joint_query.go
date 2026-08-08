@@ -25,7 +25,6 @@ type JointQuery struct {
 	inters     []Interceptor
 	predicates []predicate.Joint
 	withRobot  *RobotQuery
-	withFKs    bool
 	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -373,18 +372,11 @@ func (_q *JointQuery) prepareQuery(ctx context.Context) error {
 func (_q *JointQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Joint, error) {
 	var (
 		nodes       = []*Joint{}
-		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
 		loadedTypes = [1]bool{
 			_q.withRobot != nil,
 		}
 	)
-	if _q.withRobot != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, joint.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Joint).scanValues(nil, columns)
 	}
@@ -419,10 +411,7 @@ func (_q *JointQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes []
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Joint)
 	for i := range nodes {
-		if nodes[i].joint_robot == nil {
-			continue
-		}
-		fk := *nodes[i].joint_robot
+		fk := nodes[i].RobotID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -439,7 +428,7 @@ func (_q *JointQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes []
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "joint_robot" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "robot_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -475,6 +464,9 @@ func (_q *JointQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != joint.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withRobot != nil {
+			_spec.Node.AddColumnOnce(joint.FieldRobotID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

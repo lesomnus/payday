@@ -27,6 +27,8 @@ func (Robot) Fields() []ent.Field {
 		field.Time("date_created").
 			Immutable().
 			Optional(),
+		field.UUID("tenant_id", uuid.UUID{}).
+			Immutable(),
 	}
 }
 
@@ -34,6 +36,7 @@ func (Robot) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("tenant", Tenant.Type).
 			Unique().
+			Field("tenant_id").
 			Required().
 			Immutable(),
 	}
@@ -64,6 +67,8 @@ func (Joint) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 		field.String("alias"),
+		field.UUID("robot_id", uuid.UUID{}).
+			Immutable(),
 	}
 }
 
@@ -71,6 +76,7 @@ func (Joint) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("robot", Robot.Type).
 			Unique().
+			Field("robot_id").
 			Required().
 			Immutable(),
 	}
@@ -112,6 +118,8 @@ func (Cell) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 		field.String("alias"),
+		field.UUID("tenant_id", uuid.UUID{}).
+			Immutable(),
 	}
 }
 
@@ -119,6 +127,7 @@ func (Cell) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("tenant", Tenant.Type).
 			Unique().
+			Field("tenant_id").
 			Required().
 			Immutable(),
 	}
@@ -143,6 +152,8 @@ func (Reading) Fields() []ent.Field {
 		field.Time("date_created").
 			Immutable().
 			Optional(),
+		field.UUID("robot_id", uuid.UUID{}).
+			Immutable(),
 	}
 }
 
@@ -150,6 +161,7 @@ func (Reading) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("robot", Robot.Type).
 			Unique().
+			Field("robot_id").
 			Required().
 			Immutable(),
 	}

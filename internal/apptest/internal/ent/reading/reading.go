@@ -16,6 +16,8 @@ const (
 	FieldCelsius = "celsius"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
 	FieldDateCreated = "date_created"
+	// FieldRobotID holds the string denoting the robot_id field in the database.
+	FieldRobotID = "robot_id"
 	// EdgeRobot holds the string denoting the robot edge name in mutations.
 	EdgeRobot = "robot"
 	// Table holds the table name of the reading in the database.
@@ -26,7 +28,7 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "robot" package.
 	RobotInverseTable = "robot"
 	// RobotColumn is the table column denoting the robot relation/edge.
-	RobotColumn = "reading_robot"
+	RobotColumn = "robot_id"
 )
 
 // Columns holds all SQL columns for reading fields.
@@ -34,23 +36,13 @@ var Columns = []string{
 	FieldID,
 	FieldCelsius,
 	FieldDateCreated,
-}
-
-// ForeignKeys holds the SQL foreign-keys that are owned by the "reading"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"reading_robot",
+	FieldRobotID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -73,6 +65,11 @@ func ByCelsius(opts ...sql.OrderTermOption) OrderOption {
 // ByDateCreated orders the results by the date_created field.
 func ByDateCreated(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateCreated, opts...).ToFunc()
+}
+
+// ByRobotID orders the results by the robot_id field.
+func ByRobotID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRobotID, opts...).ToFunc()
 }
 
 // ByRobotField orders the results by robot field.

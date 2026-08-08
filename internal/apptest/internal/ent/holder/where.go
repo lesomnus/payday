@@ -91,6 +91,11 @@ func IdpSubject(v string) predicate.Holder {
 	return predicate.Holder(sql.FieldEQ(FieldIdpSubject, v))
 }
 
+// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
+func TenantID(v uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldEQ(FieldTenantID, v))
+}
+
 // AliasEQ applies the EQ predicate on the "alias" field.
 func AliasEQ(v string) predicate.Holder {
 	return predicate.Holder(sql.FieldEQ(FieldAlias, v))
@@ -499,6 +504,26 @@ func IdpSubjectEqualFold(v string) predicate.Holder {
 // IdpSubjectContainsFold applies the ContainsFold predicate on the "idp_subject" field.
 func IdpSubjectContainsFold(v string) predicate.Holder {
 	return predicate.Holder(sql.FieldContainsFold(FieldIdpSubject, v))
+}
+
+// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIDEQ(v uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldEQ(FieldTenantID, v))
+}
+
+// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIDNEQ(v uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldNEQ(FieldTenantID, v))
+}
+
+// TenantIDIn applies the In predicate on the "tenant_id" field.
+func TenantIDIn(vs ...uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldIn(FieldTenantID, vs...))
+}
+
+// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIDNotIn(vs ...uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldNotIn(FieldTenantID, vs...))
 }
 
 // HasTenant applies the HasEdge predicate on the "tenant" edge.

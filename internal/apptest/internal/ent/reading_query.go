@@ -25,7 +25,6 @@ type ReadingQuery struct {
 	inters     []Interceptor
 	predicates []predicate.Reading
 	withRobot  *RobotQuery
-	withFKs    bool
 	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -373,18 +372,11 @@ func (_q *ReadingQuery) prepareQuery(ctx context.Context) error {
 func (_q *ReadingQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Reading, error) {
 	var (
 		nodes       = []*Reading{}
-		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
 		loadedTypes = [1]bool{
 			_q.withRobot != nil,
 		}
 	)
-	if _q.withRobot != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, reading.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Reading).scanValues(nil, columns)
 	}
@@ -419,10 +411,7 @@ func (_q *ReadingQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes 
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Reading)
 	for i := range nodes {
-		if nodes[i].reading_robot == nil {
-			continue
-		}
-		fk := *nodes[i].reading_robot
+		fk := nodes[i].RobotID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -439,7 +428,7 @@ func (_q *ReadingQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes 
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "reading_robot" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "robot_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -475,6 +464,9 @@ func (_q *ReadingQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != reading.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withRobot != nil {
+			_spec.Node.AddColumnOnce(reading.FieldRobotID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

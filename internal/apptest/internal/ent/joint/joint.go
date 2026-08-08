@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
+	// FieldRobotID holds the string denoting the robot_id field in the database.
+	FieldRobotID = "robot_id"
 	// EdgeRobot holds the string denoting the robot edge name in mutations.
 	EdgeRobot = "robot"
 	// Table holds the table name of the joint in the database.
@@ -24,30 +26,20 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "robot" package.
 	RobotInverseTable = "robot"
 	// RobotColumn is the table column denoting the robot relation/edge.
-	RobotColumn = "joint_robot"
+	RobotColumn = "robot_id"
 )
 
 // Columns holds all SQL columns for joint fields.
 var Columns = []string{
 	FieldID,
 	FieldAlias,
-}
-
-// ForeignKeys holds the SQL foreign-keys that are owned by the "joint"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"joint_robot",
+	FieldRobotID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -65,6 +57,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByAlias orders the results by the alias field.
 func ByAlias(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAlias, opts...).ToFunc()
+}
+
+// ByRobotID orders the results by the robot_id field.
+func ByRobotID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRobotID, opts...).ToFunc()
 }
 
 // ByRobotField orders the results by robot field.

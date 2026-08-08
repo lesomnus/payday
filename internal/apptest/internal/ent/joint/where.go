@@ -59,6 +59,11 @@ func Alias(v string) predicate.Joint {
 	return predicate.Joint(sql.FieldEQ(FieldAlias, v))
 }
 
+// RobotID applies equality check predicate on the "robot_id" field. It's identical to RobotIDEQ.
+func RobotID(v uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldEQ(FieldRobotID, v))
+}
+
 // AliasEQ applies the EQ predicate on the "alias" field.
 func AliasEQ(v string) predicate.Joint {
 	return predicate.Joint(sql.FieldEQ(FieldAlias, v))
@@ -122,6 +127,26 @@ func AliasEqualFold(v string) predicate.Joint {
 // AliasContainsFold applies the ContainsFold predicate on the "alias" field.
 func AliasContainsFold(v string) predicate.Joint {
 	return predicate.Joint(sql.FieldContainsFold(FieldAlias, v))
+}
+
+// RobotIDEQ applies the EQ predicate on the "robot_id" field.
+func RobotIDEQ(v uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldEQ(FieldRobotID, v))
+}
+
+// RobotIDNEQ applies the NEQ predicate on the "robot_id" field.
+func RobotIDNEQ(v uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldNEQ(FieldRobotID, v))
+}
+
+// RobotIDIn applies the In predicate on the "robot_id" field.
+func RobotIDIn(vs ...uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldIn(FieldRobotID, vs...))
+}
+
+// RobotIDNotIn applies the NotIn predicate on the "robot_id" field.
+func RobotIDNotIn(vs ...uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldNotIn(FieldRobotID, vs...))
 }
 
 // HasRobot applies the HasEdge predicate on the "robot" edge.

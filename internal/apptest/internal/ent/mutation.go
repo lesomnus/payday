@@ -877,27 +877,51 @@ func (m *CellMutation) ResetAlias() {
 	m.alias = nil
 }
 
-// SetTenantID sets the "tenant" edge to the Tenant entity by id.
-func (m *CellMutation) SetTenantID(id uuid.UUID) {
-	m.tenant = &id
+// SetTenantID sets the "tenant_id" field.
+func (m *CellMutation) SetTenantID(u uuid.UUID) {
+	m.tenant = &u
+}
+
+// TenantID returns the value of the "tenant_id" field in the mutation.
+func (m *CellMutation) TenantID() (r uuid.UUID, exists bool) {
+	v := m.tenant
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTenantID returns the old "tenant_id" field's value of the Cell entity.
+// If the Cell object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CellMutation) OldTenantID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTenantID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTenantID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTenantID: %w", err)
+	}
+	return oldValue.TenantID, nil
+}
+
+// ResetTenantID resets all changes to the "tenant_id" field.
+func (m *CellMutation) ResetTenantID() {
+	m.tenant = nil
 }
 
 // ClearTenant clears the "tenant" edge to the Tenant entity.
 func (m *CellMutation) ClearTenant() {
 	m.clearedtenant = true
+	m.clearedFields[cell.FieldTenantID] = struct{}{}
 }
 
 // TenantCleared reports if the "tenant" edge to the Tenant entity was cleared.
 func (m *CellMutation) TenantCleared() bool {
 	return m.clearedtenant
-}
-
-// TenantID returns the "tenant" edge ID in the mutation.
-func (m *CellMutation) TenantID() (id uuid.UUID, exists bool) {
-	if m.tenant != nil {
-		return *m.tenant, true
-	}
-	return
 }
 
 // TenantIDs returns the "tenant" edge IDs in the mutation.
@@ -950,9 +974,12 @@ func (m *CellMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CellMutation) Fields() []string {
-	fields := make([]string, 0, 1)
+	fields := make([]string, 0, 2)
 	if m.alias != nil {
 		fields = append(fields, cell.FieldAlias)
+	}
+	if m.tenant != nil {
+		fields = append(fields, cell.FieldTenantID)
 	}
 	return fields
 }
@@ -964,6 +991,8 @@ func (m *CellMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case cell.FieldAlias:
 		return m.Alias()
+	case cell.FieldTenantID:
+		return m.TenantID()
 	}
 	return nil, false
 }
@@ -975,6 +1004,8 @@ func (m *CellMutation) OldField(ctx context.Context, name string) (ent.Value, er
 	switch name {
 	case cell.FieldAlias:
 		return m.OldAlias(ctx)
+	case cell.FieldTenantID:
+		return m.OldTenantID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Cell field %s", name)
 }
@@ -990,6 +1021,13 @@ func (m *CellMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAlias(v)
+		return nil
+	case cell.FieldTenantID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTenantID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Cell field %s", name)
@@ -1042,6 +1080,9 @@ func (m *CellMutation) ResetField(name string) error {
 	switch name {
 	case cell.FieldAlias:
 		m.ResetAlias()
+		return nil
+	case cell.FieldTenantID:
+		m.ResetTenantID()
 		return nil
 	}
 	return fmt.Errorf("unknown Cell field %s", name)
@@ -1906,27 +1947,51 @@ func (m *HolderMutation) ResetIdpSubject() {
 	m.idp_subject = nil
 }
 
-// SetTenantID sets the "tenant" edge to the Tenant entity by id.
-func (m *HolderMutation) SetTenantID(id uuid.UUID) {
-	m.tenant = &id
+// SetTenantID sets the "tenant_id" field.
+func (m *HolderMutation) SetTenantID(u uuid.UUID) {
+	m.tenant = &u
+}
+
+// TenantID returns the value of the "tenant_id" field in the mutation.
+func (m *HolderMutation) TenantID() (r uuid.UUID, exists bool) {
+	v := m.tenant
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTenantID returns the old "tenant_id" field's value of the Holder entity.
+// If the Holder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HolderMutation) OldTenantID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTenantID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTenantID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTenantID: %w", err)
+	}
+	return oldValue.TenantID, nil
+}
+
+// ResetTenantID resets all changes to the "tenant_id" field.
+func (m *HolderMutation) ResetTenantID() {
+	m.tenant = nil
 }
 
 // ClearTenant clears the "tenant" edge to the Tenant entity.
 func (m *HolderMutation) ClearTenant() {
 	m.clearedtenant = true
+	m.clearedFields[holder.FieldTenantID] = struct{}{}
 }
 
 // TenantCleared reports if the "tenant" edge to the Tenant entity was cleared.
 func (m *HolderMutation) TenantCleared() bool {
 	return m.clearedtenant
-}
-
-// TenantID returns the "tenant" edge ID in the mutation.
-func (m *HolderMutation) TenantID() (id uuid.UUID, exists bool) {
-	if m.tenant != nil {
-		return *m.tenant, true
-	}
-	return
 }
 
 // TenantIDs returns the "tenant" edge IDs in the mutation.
@@ -1979,7 +2044,7 @@ func (m *HolderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *HolderMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.alias != nil {
 		fields = append(fields, holder.FieldAlias)
 	}
@@ -2003,6 +2068,9 @@ func (m *HolderMutation) Fields() []string {
 	}
 	if m.idp_subject != nil {
 		fields = append(fields, holder.FieldIdpSubject)
+	}
+	if m.tenant != nil {
+		fields = append(fields, holder.FieldTenantID)
 	}
 	return fields
 }
@@ -2028,6 +2096,8 @@ func (m *HolderMutation) Field(name string) (ent.Value, bool) {
 		return m.DateCreated()
 	case holder.FieldIdpSubject:
 		return m.IdpSubject()
+	case holder.FieldTenantID:
+		return m.TenantID()
 	}
 	return nil, false
 }
@@ -2053,6 +2123,8 @@ func (m *HolderMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldDateCreated(ctx)
 	case holder.FieldIdpSubject:
 		return m.OldIdpSubject(ctx)
+	case holder.FieldTenantID:
+		return m.OldTenantID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Holder field %s", name)
 }
@@ -2117,6 +2189,13 @@ func (m *HolderMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetIdpSubject(v)
+		return nil
+	case holder.FieldTenantID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTenantID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Holder field %s", name)
@@ -2211,6 +2290,9 @@ func (m *HolderMutation) ResetField(name string) error {
 		return nil
 	case holder.FieldIdpSubject:
 		m.ResetIdpSubject()
+		return nil
+	case holder.FieldTenantID:
+		m.ResetTenantID()
 		return nil
 	}
 	return fmt.Errorf("unknown Holder field %s", name)
@@ -2445,27 +2527,51 @@ func (m *JointMutation) ResetAlias() {
 	m.alias = nil
 }
 
-// SetRobotID sets the "robot" edge to the Robot entity by id.
-func (m *JointMutation) SetRobotID(id uuid.UUID) {
-	m.robot = &id
+// SetRobotID sets the "robot_id" field.
+func (m *JointMutation) SetRobotID(u uuid.UUID) {
+	m.robot = &u
+}
+
+// RobotID returns the value of the "robot_id" field in the mutation.
+func (m *JointMutation) RobotID() (r uuid.UUID, exists bool) {
+	v := m.robot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRobotID returns the old "robot_id" field's value of the Joint entity.
+// If the Joint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JointMutation) OldRobotID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRobotID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRobotID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRobotID: %w", err)
+	}
+	return oldValue.RobotID, nil
+}
+
+// ResetRobotID resets all changes to the "robot_id" field.
+func (m *JointMutation) ResetRobotID() {
+	m.robot = nil
 }
 
 // ClearRobot clears the "robot" edge to the Robot entity.
 func (m *JointMutation) ClearRobot() {
 	m.clearedrobot = true
+	m.clearedFields[joint.FieldRobotID] = struct{}{}
 }
 
 // RobotCleared reports if the "robot" edge to the Robot entity was cleared.
 func (m *JointMutation) RobotCleared() bool {
 	return m.clearedrobot
-}
-
-// RobotID returns the "robot" edge ID in the mutation.
-func (m *JointMutation) RobotID() (id uuid.UUID, exists bool) {
-	if m.robot != nil {
-		return *m.robot, true
-	}
-	return
 }
 
 // RobotIDs returns the "robot" edge IDs in the mutation.
@@ -2518,9 +2624,12 @@ func (m *JointMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *JointMutation) Fields() []string {
-	fields := make([]string, 0, 1)
+	fields := make([]string, 0, 2)
 	if m.alias != nil {
 		fields = append(fields, joint.FieldAlias)
+	}
+	if m.robot != nil {
+		fields = append(fields, joint.FieldRobotID)
 	}
 	return fields
 }
@@ -2532,6 +2641,8 @@ func (m *JointMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case joint.FieldAlias:
 		return m.Alias()
+	case joint.FieldRobotID:
+		return m.RobotID()
 	}
 	return nil, false
 }
@@ -2543,6 +2654,8 @@ func (m *JointMutation) OldField(ctx context.Context, name string) (ent.Value, e
 	switch name {
 	case joint.FieldAlias:
 		return m.OldAlias(ctx)
+	case joint.FieldRobotID:
+		return m.OldRobotID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Joint field %s", name)
 }
@@ -2558,6 +2671,13 @@ func (m *JointMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAlias(v)
+		return nil
+	case joint.FieldRobotID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRobotID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Joint field %s", name)
@@ -2610,6 +2730,9 @@ func (m *JointMutation) ResetField(name string) error {
 	switch name {
 	case joint.FieldAlias:
 		m.ResetAlias()
+		return nil
+	case joint.FieldRobotID:
+		m.ResetRobotID()
 		return nil
 	}
 	return fmt.Errorf("unknown Joint field %s", name)
@@ -3593,27 +3716,51 @@ func (m *ReadingMutation) ResetDateCreated() {
 	delete(m.clearedFields, reading.FieldDateCreated)
 }
 
-// SetRobotID sets the "robot" edge to the Robot entity by id.
-func (m *ReadingMutation) SetRobotID(id uuid.UUID) {
-	m.robot = &id
+// SetRobotID sets the "robot_id" field.
+func (m *ReadingMutation) SetRobotID(u uuid.UUID) {
+	m.robot = &u
+}
+
+// RobotID returns the value of the "robot_id" field in the mutation.
+func (m *ReadingMutation) RobotID() (r uuid.UUID, exists bool) {
+	v := m.robot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRobotID returns the old "robot_id" field's value of the Reading entity.
+// If the Reading object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ReadingMutation) OldRobotID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRobotID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRobotID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRobotID: %w", err)
+	}
+	return oldValue.RobotID, nil
+}
+
+// ResetRobotID resets all changes to the "robot_id" field.
+func (m *ReadingMutation) ResetRobotID() {
+	m.robot = nil
 }
 
 // ClearRobot clears the "robot" edge to the Robot entity.
 func (m *ReadingMutation) ClearRobot() {
 	m.clearedrobot = true
+	m.clearedFields[reading.FieldRobotID] = struct{}{}
 }
 
 // RobotCleared reports if the "robot" edge to the Robot entity was cleared.
 func (m *ReadingMutation) RobotCleared() bool {
 	return m.clearedrobot
-}
-
-// RobotID returns the "robot" edge ID in the mutation.
-func (m *ReadingMutation) RobotID() (id uuid.UUID, exists bool) {
-	if m.robot != nil {
-		return *m.robot, true
-	}
-	return
 }
 
 // RobotIDs returns the "robot" edge IDs in the mutation.
@@ -3666,12 +3813,15 @@ func (m *ReadingMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ReadingMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 3)
 	if m.celsius != nil {
 		fields = append(fields, reading.FieldCelsius)
 	}
 	if m.date_created != nil {
 		fields = append(fields, reading.FieldDateCreated)
+	}
+	if m.robot != nil {
+		fields = append(fields, reading.FieldRobotID)
 	}
 	return fields
 }
@@ -3685,6 +3835,8 @@ func (m *ReadingMutation) Field(name string) (ent.Value, bool) {
 		return m.Celsius()
 	case reading.FieldDateCreated:
 		return m.DateCreated()
+	case reading.FieldRobotID:
+		return m.RobotID()
 	}
 	return nil, false
 }
@@ -3698,6 +3850,8 @@ func (m *ReadingMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldCelsius(ctx)
 	case reading.FieldDateCreated:
 		return m.OldDateCreated(ctx)
+	case reading.FieldRobotID:
+		return m.OldRobotID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Reading field %s", name)
 }
@@ -3720,6 +3874,13 @@ func (m *ReadingMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDateCreated(v)
+		return nil
+	case reading.FieldRobotID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRobotID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Reading field %s", name)
@@ -3799,6 +3960,9 @@ func (m *ReadingMutation) ResetField(name string) error {
 		return nil
 	case reading.FieldDateCreated:
 		m.ResetDateCreated()
+		return nil
+	case reading.FieldRobotID:
+		m.ResetRobotID()
 		return nil
 	}
 	return fmt.Errorf("unknown Reading field %s", name)
@@ -4120,27 +4284,51 @@ func (m *RobotMutation) ResetDateCreated() {
 	delete(m.clearedFields, robot.FieldDateCreated)
 }
 
-// SetTenantID sets the "tenant" edge to the Tenant entity by id.
-func (m *RobotMutation) SetTenantID(id uuid.UUID) {
-	m.tenant = &id
+// SetTenantID sets the "tenant_id" field.
+func (m *RobotMutation) SetTenantID(u uuid.UUID) {
+	m.tenant = &u
+}
+
+// TenantID returns the value of the "tenant_id" field in the mutation.
+func (m *RobotMutation) TenantID() (r uuid.UUID, exists bool) {
+	v := m.tenant
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTenantID returns the old "tenant_id" field's value of the Robot entity.
+// If the Robot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RobotMutation) OldTenantID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTenantID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTenantID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTenantID: %w", err)
+	}
+	return oldValue.TenantID, nil
+}
+
+// ResetTenantID resets all changes to the "tenant_id" field.
+func (m *RobotMutation) ResetTenantID() {
+	m.tenant = nil
 }
 
 // ClearTenant clears the "tenant" edge to the Tenant entity.
 func (m *RobotMutation) ClearTenant() {
 	m.clearedtenant = true
+	m.clearedFields[robot.FieldTenantID] = struct{}{}
 }
 
 // TenantCleared reports if the "tenant" edge to the Tenant entity was cleared.
 func (m *RobotMutation) TenantCleared() bool {
 	return m.clearedtenant
-}
-
-// TenantID returns the "tenant" edge ID in the mutation.
-func (m *RobotMutation) TenantID() (id uuid.UUID, exists bool) {
-	if m.tenant != nil {
-		return *m.tenant, true
-	}
-	return
 }
 
 // TenantIDs returns the "tenant" edge IDs in the mutation.
@@ -4193,7 +4381,7 @@ func (m *RobotMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RobotMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
 	if m.alias != nil {
 		fields = append(fields, robot.FieldAlias)
 	}
@@ -4202,6 +4390,9 @@ func (m *RobotMutation) Fields() []string {
 	}
 	if m.date_created != nil {
 		fields = append(fields, robot.FieldDateCreated)
+	}
+	if m.tenant != nil {
+		fields = append(fields, robot.FieldTenantID)
 	}
 	return fields
 }
@@ -4217,6 +4408,8 @@ func (m *RobotMutation) Field(name string) (ent.Value, bool) {
 		return m.DateUpdated()
 	case robot.FieldDateCreated:
 		return m.DateCreated()
+	case robot.FieldTenantID:
+		return m.TenantID()
 	}
 	return nil, false
 }
@@ -4232,6 +4425,8 @@ func (m *RobotMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDateUpdated(ctx)
 	case robot.FieldDateCreated:
 		return m.OldDateCreated(ctx)
+	case robot.FieldTenantID:
+		return m.OldTenantID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Robot field %s", name)
 }
@@ -4261,6 +4456,13 @@ func (m *RobotMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDateCreated(v)
+		return nil
+	case robot.FieldTenantID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTenantID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Robot field %s", name)
@@ -4328,6 +4530,9 @@ func (m *RobotMutation) ResetField(name string) error {
 		return nil
 	case robot.FieldDateCreated:
 		m.ResetDateCreated()
+		return nil
+	case robot.FieldTenantID:
+		m.ResetTenantID()
 		return nil
 	}
 	return fmt.Errorf("unknown Robot field %s", name)

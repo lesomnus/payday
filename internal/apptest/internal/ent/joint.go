@@ -20,10 +20,11 @@ type Joint struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// Alias holds the value of the "alias" field.
 	Alias string `json:"alias,omitempty"`
+	// RobotID holds the value of the "robot_id" field.
+	RobotID uuid.UUID `json:"robot_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the JointQuery when eager-loading is set.
 	Edges        JointEdges `json:"edges"`
-	joint_robot  *uuid.UUID
 	selectValues sql.SelectValues
 }
 
@@ -54,10 +55,8 @@ func (*Joint) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case joint.FieldAlias:
 			values[i] = new(sql.NullString)
-		case joint.FieldID:
+		case joint.FieldID, joint.FieldRobotID:
 			values[i] = new(uuid.UUID)
-		case joint.ForeignKeys[0]: // joint_robot
-			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -85,12 +84,11 @@ func (_m *Joint) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Alias = value.String
 			}
-		case joint.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullScanner); !ok {
-				return fmt.Errorf("unexpected type %T for field joint_robot", values[i])
-			} else if value.Valid {
-				_m.joint_robot = new(uuid.UUID)
-				*_m.joint_robot = *value.S.(*uuid.UUID)
+		case joint.FieldRobotID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field robot_id", values[i])
+			} else if value != nil {
+				_m.RobotID = *value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -135,6 +133,9 @@ func (_m *Joint) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("alias=")
 	builder.WriteString(_m.Alias)
+	builder.WriteString(", ")
+	builder.WriteString("robot_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RobotID))
 	builder.WriteByte(')')
 	return builder.String()
 }

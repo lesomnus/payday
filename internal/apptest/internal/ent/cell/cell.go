@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
+	// FieldTenantID holds the string denoting the tenant_id field in the database.
+	FieldTenantID = "tenant_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
 	EdgeTenant = "tenant"
 	// Table holds the table name of the cell in the database.
@@ -24,30 +26,20 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "tenant" package.
 	TenantInverseTable = "tenant"
 	// TenantColumn is the table column denoting the tenant relation/edge.
-	TenantColumn = "cell_tenant"
+	TenantColumn = "tenant_id"
 )
 
 // Columns holds all SQL columns for cell fields.
 var Columns = []string{
 	FieldID,
 	FieldAlias,
-}
-
-// ForeignKeys holds the SQL foreign-keys that are owned by the "cell"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"cell_tenant",
+	FieldTenantID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -65,6 +57,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByAlias orders the results by the alias field.
 func ByAlias(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAlias, opts...).ToFunc()
+}
+
+// ByTenantID orders the results by the tenant_id field.
+func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
 }
 
 // ByTenantField orders the results by tenant field.

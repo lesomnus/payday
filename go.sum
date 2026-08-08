@@ -109,6 +109,8 @@ github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260808123324-e497f4cbdc13 h1
 github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260808123324-e497f4cbdc13/go.mod h1:+uUCkm5OnsgZXe/965TKRyjg9twj7lc0pf20ir/gxf0=
 github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260808140633-5074fbc636e0 h1:HjC7MVEKg5sjPZtPx/2QCJAD1ln+LildfYOjWQsvjNQ=
 github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260808140633-5074fbc636e0/go.mod h1:+uUCkm5OnsgZXe/965TKRyjg9twj7lc0pf20ir/gxf0=
+github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260808180613-81a9182b2af7 h1:4TzveCwxhvqktu0GNaYAiukY+2DNHkKAWeUvYGzGUtA=
+github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260808180613-81a9182b2af7/go.mod h1:+uUCkm5OnsgZXe/965TKRyjg9twj7lc0pf20ir/gxf0=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260804121030-6619a23a2859 h1:BULYpvkrHXhgPoZ6O4Ybf/Hg6x5zVAq/45OvvbFUU9Q=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260804121030-6619a23a2859/go.mod h1:EUiEHkmQI53u+32lC+9OiiECSY2xJ1hrgHk7Km9yn20=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260808062124-7336db3ccda7 h1:xj+WO4fsr0arc9NVh9ZAMOVk/u9gfGLEWOCipgqlR/s=

@@ -42,7 +42,7 @@ var (
 	CellColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString},
-		{Name: "cell_tenant", Type: field.TypeUUID},
+		{Name: "tenant_id", Type: field.TypeUUID},
 	}
 	// CellTable holds the schema information for the "cell" table.
 	CellTable = &schema.Table{
@@ -80,7 +80,7 @@ var (
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "idp_subject", Type: field.TypeString},
-		{Name: "holder_tenant", Type: field.TypeUUID},
+		{Name: "tenant_id", Type: field.TypeUUID},
 	}
 	// HolderTable holds the schema information for the "holder" table.
 	HolderTable = &schema.Table{
@@ -97,7 +97,7 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "holder_alias_holder_tenant",
+				Name:    "holder_alias_tenant_id",
 				Unique:  true,
 				Columns: []*schema.Column{HolderColumns[1], HolderColumns[9]},
 				Annotation: &entsql.IndexAnnotation{
@@ -110,7 +110,7 @@ var (
 	JointColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString},
-		{Name: "joint_robot", Type: field.TypeUUID},
+		{Name: "robot_id", Type: field.TypeUUID},
 	}
 	// JointTable holds the schema information for the "joint" table.
 	JointTable = &schema.Table{
@@ -155,7 +155,7 @@ var (
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "celsius", Type: field.TypeFloat64},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
-		{Name: "reading_robot", Type: field.TypeUUID},
+		{Name: "robot_id", Type: field.TypeUUID},
 	}
 	// ReadingTable holds the schema information for the "reading" table.
 	ReadingTable = &schema.Table{
@@ -177,7 +177,7 @@ var (
 		{Name: "alias", Type: field.TypeString},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
-		{Name: "robot_tenant", Type: field.TypeUUID},
+		{Name: "tenant_id", Type: field.TypeUUID},
 	}
 	// RobotTable holds the schema information for the "robot" table.
 	RobotTable = &schema.Table{
@@ -199,7 +199,7 @@ var (
 				Columns: []*schema.Column{RobotColumns[3], RobotColumns[0]},
 			},
 			{
-				Name:    "robot_alias_robot_tenant",
+				Name:    "robot_alias_tenant_id",
 				Unique:  true,
 				Columns: []*schema.Column{RobotColumns[1], RobotColumns[4]},
 			},

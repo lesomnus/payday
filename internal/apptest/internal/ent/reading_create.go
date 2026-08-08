@@ -42,15 +42,15 @@ func (_c *ReadingCreate) SetNillableDateCreated(v *time.Time) *ReadingCreate {
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *ReadingCreate) SetID(v uuid.UUID) *ReadingCreate {
-	_c.mutation.SetID(v)
+// SetRobotID sets the "robot_id" field.
+func (_c *ReadingCreate) SetRobotID(v uuid.UUID) *ReadingCreate {
+	_c.mutation.SetRobotID(v)
 	return _c
 }
 
-// SetRobotID sets the "robot" edge to the Robot entity by ID.
-func (_c *ReadingCreate) SetRobotID(id uuid.UUID) *ReadingCreate {
-	_c.mutation.SetRobotID(id)
+// SetID sets the "id" field.
+func (_c *ReadingCreate) SetID(v uuid.UUID) *ReadingCreate {
+	_c.mutation.SetID(v)
 	return _c
 }
 
@@ -95,6 +95,9 @@ func (_c *ReadingCreate) ExecX(ctx context.Context) {
 func (_c *ReadingCreate) check() error {
 	if _, ok := _c.mutation.Celsius(); !ok {
 		return &ValidationError{Name: "celsius", err: errors.New(`ent: missing required field "Reading.celsius"`)}
+	}
+	if _, ok := _c.mutation.RobotID(); !ok {
+		return &ValidationError{Name: "robot_id", err: errors.New(`ent: missing required field "Reading.robot_id"`)}
 	}
 	if len(_c.mutation.RobotIDs()) == 0 {
 		return &ValidationError{Name: "robot", err: errors.New(`ent: missing required edge "Reading.robot"`)}
@@ -156,7 +159,7 @@ func (_c *ReadingCreate) createSpec() (*Reading, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.reading_robot = &nodes[0]
+		_node.RobotID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

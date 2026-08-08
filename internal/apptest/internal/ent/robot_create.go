@@ -48,15 +48,15 @@ func (_c *RobotCreate) SetNillableDateCreated(v *time.Time) *RobotCreate {
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *RobotCreate) SetID(v uuid.UUID) *RobotCreate {
-	_c.mutation.SetID(v)
+// SetTenantID sets the "tenant_id" field.
+func (_c *RobotCreate) SetTenantID(v uuid.UUID) *RobotCreate {
+	_c.mutation.SetTenantID(v)
 	return _c
 }
 
-// SetTenantID sets the "tenant" edge to the Tenant entity by ID.
-func (_c *RobotCreate) SetTenantID(id uuid.UUID) *RobotCreate {
-	_c.mutation.SetTenantID(id)
+// SetID sets the "id" field.
+func (_c *RobotCreate) SetID(v uuid.UUID) *RobotCreate {
+	_c.mutation.SetID(v)
 	return _c
 }
 
@@ -104,6 +104,9 @@ func (_c *RobotCreate) check() error {
 	}
 	if _, ok := _c.mutation.DateUpdated(); !ok {
 		return &ValidationError{Name: "date_updated", err: errors.New(`ent: missing required field "Robot.date_updated"`)}
+	}
+	if _, ok := _c.mutation.TenantID(); !ok {
+		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Robot.tenant_id"`)}
 	}
 	if len(_c.mutation.TenantIDs()) == 0 {
 		return &ValidationError{Name: "tenant", err: errors.New(`ent: missing required edge "Robot.tenant"`)}
@@ -169,7 +172,7 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.robot_tenant = &nodes[0]
+		_node.TenantID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

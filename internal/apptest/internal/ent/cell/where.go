@@ -59,6 +59,11 @@ func Alias(v string) predicate.Cell {
 	return predicate.Cell(sql.FieldEQ(FieldAlias, v))
 }
 
+// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
+func TenantID(v uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldEQ(FieldTenantID, v))
+}
+
 // AliasEQ applies the EQ predicate on the "alias" field.
 func AliasEQ(v string) predicate.Cell {
 	return predicate.Cell(sql.FieldEQ(FieldAlias, v))
@@ -122,6 +127,26 @@ func AliasEqualFold(v string) predicate.Cell {
 // AliasContainsFold applies the ContainsFold predicate on the "alias" field.
 func AliasContainsFold(v string) predicate.Cell {
 	return predicate.Cell(sql.FieldContainsFold(FieldAlias, v))
+}
+
+// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIDEQ(v uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldEQ(FieldTenantID, v))
+}
+
+// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIDNEQ(v uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldNEQ(FieldTenantID, v))
+}
+
+// TenantIDIn applies the In predicate on the "tenant_id" field.
+func TenantIDIn(vs ...uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldIn(FieldTenantID, vs...))
+}
+
+// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIDNotIn(vs ...uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldNotIn(FieldTenantID, vs...))
 }
 
 // HasTenant applies the HasEdge predicate on the "tenant" edge.

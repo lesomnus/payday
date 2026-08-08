@@ -71,6 +71,11 @@ func DateCreated(v time.Time) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldDateCreated, v))
 }
 
+// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
+func TenantID(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldTenantID, v))
+}
+
 // AliasEQ applies the EQ predicate on the "alias" field.
 func AliasEQ(v string) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldAlias, v))
@@ -224,6 +229,26 @@ func DateCreatedIsNil() predicate.Robot {
 // DateCreatedNotNil applies the NotNil predicate on the "date_created" field.
 func DateCreatedNotNil() predicate.Robot {
 	return predicate.Robot(sql.FieldNotNull(FieldDateCreated))
+}
+
+// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIDEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldTenantID, v))
+}
+
+// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIDNEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldTenantID, v))
+}
+
+// TenantIDIn applies the In predicate on the "tenant_id" field.
+func TenantIDIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldTenantID, vs...))
+}
+
+// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIDNotIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldTenantID, vs...))
 }
 
 // HasTenant applies the HasEdge predicate on the "tenant" edge.

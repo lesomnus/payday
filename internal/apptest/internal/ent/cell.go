@@ -20,10 +20,11 @@ type Cell struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// Alias holds the value of the "alias" field.
 	Alias string `json:"alias,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID uuid.UUID `json:"tenant_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the CellQuery when eager-loading is set.
 	Edges        CellEdges `json:"edges"`
-	cell_tenant  *uuid.UUID
 	selectValues sql.SelectValues
 }
 
@@ -54,10 +55,8 @@ func (*Cell) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case cell.FieldAlias:
 			values[i] = new(sql.NullString)
-		case cell.FieldID:
+		case cell.FieldID, cell.FieldTenantID:
 			values[i] = new(uuid.UUID)
-		case cell.ForeignKeys[0]: // cell_tenant
-			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -85,12 +84,11 @@ func (_m *Cell) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Alias = value.String
 			}
-		case cell.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullScanner); !ok {
-				return fmt.Errorf("unexpected type %T for field cell_tenant", values[i])
-			} else if value.Valid {
-				_m.cell_tenant = new(uuid.UUID)
-				*_m.cell_tenant = *value.S.(*uuid.UUID)
+		case cell.FieldTenantID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value != nil {
+				_m.TenantID = *value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -135,6 +133,9 @@ func (_m *Cell) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("alias=")
 	builder.WriteString(_m.Alias)
+	builder.WriteString(", ")
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))
 	builder.WriteByte(')')
 	return builder.String()
 }

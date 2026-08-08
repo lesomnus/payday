@@ -36,11 +36,12 @@ type Holder struct {
 	DateCreated time.Time `json:"date_created,omitempty"`
 	// IdpSubject holds the value of the "idp_subject" field.
 	IdpSubject string `json:"idp_subject,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID uuid.UUID `json:"tenant_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the HolderQuery when eager-loading is set.
-	Edges         HolderEdges `json:"edges"`
-	holder_tenant *uuid.UUID
-	selectValues  sql.SelectValues
+	Edges        HolderEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // HolderEdges holds the relations/edges for other nodes in the graph.
@@ -74,10 +75,8 @@ func (*Holder) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case holder.FieldDateUpdated, holder.FieldDateErased, holder.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case holder.FieldID:
+		case holder.FieldID, holder.FieldTenantID:
 			values[i] = new(uuid.UUID)
-		case holder.ForeignKeys[0]: // holder_tenant
-			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -150,12 +149,11 @@ func (_m *Holder) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.IdpSubject = value.String
 			}
-		case holder.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullScanner); !ok {
-				return fmt.Errorf("unexpected type %T for field holder_tenant", values[i])
-			} else if value.Valid {
-				_m.holder_tenant = new(uuid.UUID)
-				*_m.holder_tenant = *value.S.(*uuid.UUID)
+		case holder.FieldTenantID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value != nil {
+				_m.TenantID = *value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -223,6 +221,9 @@ func (_m *Holder) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("idp_subject=")
 	builder.WriteString(_m.IdpSubject)
+	builder.WriteString(", ")
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))
 	builder.WriteByte(')')
 	return builder.String()
 }

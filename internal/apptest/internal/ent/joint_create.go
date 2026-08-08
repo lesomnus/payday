@@ -27,15 +27,15 @@ func (_c *JointCreate) SetAlias(v string) *JointCreate {
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *JointCreate) SetID(v uuid.UUID) *JointCreate {
-	_c.mutation.SetID(v)
+// SetRobotID sets the "robot_id" field.
+func (_c *JointCreate) SetRobotID(v uuid.UUID) *JointCreate {
+	_c.mutation.SetRobotID(v)
 	return _c
 }
 
-// SetRobotID sets the "robot" edge to the Robot entity by ID.
-func (_c *JointCreate) SetRobotID(id uuid.UUID) *JointCreate {
-	_c.mutation.SetRobotID(id)
+// SetID sets the "id" field.
+func (_c *JointCreate) SetID(v uuid.UUID) *JointCreate {
+	_c.mutation.SetID(v)
 	return _c
 }
 
@@ -80,6 +80,9 @@ func (_c *JointCreate) ExecX(ctx context.Context) {
 func (_c *JointCreate) check() error {
 	if _, ok := _c.mutation.Alias(); !ok {
 		return &ValidationError{Name: "alias", err: errors.New(`ent: missing required field "Joint.alias"`)}
+	}
+	if _, ok := _c.mutation.RobotID(); !ok {
+		return &ValidationError{Name: "robot_id", err: errors.New(`ent: missing required field "Joint.robot_id"`)}
 	}
 	if len(_c.mutation.RobotIDs()) == 0 {
 		return &ValidationError{Name: "robot", err: errors.New(`ent: missing required edge "Joint.robot"`)}
@@ -137,7 +140,7 @@ func (_c *JointCreate) createSpec() (*Joint, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.joint_robot = &nodes[0]
+		_node.RobotID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

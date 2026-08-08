@@ -25,10 +25,11 @@ type Robot struct {
 	DateUpdated time.Time `json:"date_updated,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID uuid.UUID `json:"tenant_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RobotQuery when eager-loading is set.
 	Edges        RobotEdges `json:"edges"`
-	robot_tenant *uuid.UUID
 	selectValues sql.SelectValues
 }
 
@@ -61,10 +62,8 @@ func (*Robot) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case robot.FieldDateUpdated, robot.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case robot.FieldID:
+		case robot.FieldID, robot.FieldTenantID:
 			values[i] = new(uuid.UUID)
-		case robot.ForeignKeys[0]: // robot_tenant
-			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -104,12 +103,11 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DateCreated = value.Time
 			}
-		case robot.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullScanner); !ok {
-				return fmt.Errorf("unexpected type %T for field robot_tenant", values[i])
-			} else if value.Valid {
-				_m.robot_tenant = new(uuid.UUID)
-				*_m.robot_tenant = *value.S.(*uuid.UUID)
+		case robot.FieldTenantID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value != nil {
+				_m.TenantID = *value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -160,6 +158,9 @@ func (_m *Robot) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("date_created=")
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))
 	builder.WriteByte(')')
 	return builder.String()
 }
