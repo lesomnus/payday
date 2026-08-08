@@ -108,11 +108,12 @@ func TestHttpConfig(t *testing.T) {
 		x.False(config.HttpConfig{}.Serves())
 		x.True(config.HttpConfig{Addr: ":8080"}.Serves())
 	})
-	t.Run("a page nobody named is refused rather than served", func(t *testing.T) {
+	t.Run("a page nobody named is not answered for", func(t *testing.T) {
 		x := require.New(t)
 
 		// Nothing rather than a rule that says no, since that is what tells
-		// the wiring there is no cross-origin story here at all.
+		// the wiring there is no cross-origin story here at all -- which is
+		// not "nothing works": a page on this same origin needs no answer.
 		x.Nil(config.HttpConfig{}.Origin())
 
 		is := config.HttpConfig{Origins: []string{"http://localhost:5173"}}.Origin()

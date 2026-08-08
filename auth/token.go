@@ -12,6 +12,13 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+// Header is the metadata a credential arrives in, for every scheme there is.
+//
+// Named because it leaves the process: a browser is told which headers it may
+// send, and a list of those written somewhere else is one that is right until
+// this changes.
+const Header = "authorization"
+
 // MethodBearer is what [Bearer] calls itself.
 const MethodBearer = "bearer"
 
@@ -67,7 +74,7 @@ func Bearer(store TokenStore) Handler {
 			return Identity{}, ErrNoCredential
 		}
 
-		for _, v := range md.Get("authorization") {
+		for _, v := range md.Get(Header) {
 			rest, ok := strings.CutPrefix(v, BearerScheme+" ")
 			if !ok {
 				continue
@@ -124,7 +131,7 @@ func BearerProvider(token string) Provider {
 			md = md.Copy()
 		}
 
-		md.Set("authorization", BearerScheme+" "+token)
+		md.Set(Header, BearerScheme+" "+token)
 		return metadata.NewOutgoingContext(ctx, md)
 	})
 }

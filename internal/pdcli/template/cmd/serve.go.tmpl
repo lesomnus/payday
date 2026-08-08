@@ -3,8 +3,11 @@ package cmd
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -16,6 +19,7 @@ import (
 	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/watch"
+	"github.com/lesomnus/payday/web"
 
 	app "{{.Module}}"
 	"{{.Module}}/internal/ent"
@@ -201,10 +205,56 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 func (s *Server) Serve(ctx context.Context, c Config, l net.Listener) error {
 	g := s.Grpc(ctx, c)
 
+	stop, err := s.serveHttp(ctx, c, g)
+	if err != nil {
+		return err
+	}
+	defer stop()
+
 	go func() {
 		<-ctx.Done()
 		g.GracefulStop()
 	}()
 
 	return g.Serve(l)
+}
+
+// serveHttp is the second listener, for whatever cannot speak gRPC -- which is
+// every browser. Nothing is opened unless the configuration named an address.
+//
+// It is the **same** `g`: a page reaches the handlers a gRPC client reaches,
+// through the interceptors a gRPC client goes through, behind the same wall.
+// There is no second stack here for a rule to be missing from.
+func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(), error) {
+	if !c.Server.Http.Serves() {
+		return func() {}, nil
+	}
+
+	h, err := web.Handler(c.Server.Http, g)
+	if err != nil {
+		return nil, err
+	}
+	if h == nil {
+		// An address, and nothing turned on to serve at it. That is a
+		// configuration to be told about rather than a port that accepts a
+		// connection and answers 404.
+		return nil, fmt.Errorf("server.http.addr is %s and nothing is served there: "+
+			"set allow_web for a browser, or allow_pprof, or take the address out", c.Server.Http.Addr)
+	}
+
+	l, err := net.Listen("tcp", c.Server.Http.Addr)
+	if err != nil {
+		return nil, err
+	}
+
+	srv := &http.Server{Handler: h}
+	go func() {
+		if err := srv.Serve(l); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.From(ctx).ErrorContext(ctx, "http", slog.String("err", err.Error()))
+		}
+	}()
+
+	log.From(ctx).InfoContext(ctx, "http", slog.String("addr", l.Addr().String()))
+
+	return func() { srv.Close() }, nil
 }

@@ -34,7 +34,7 @@ func Plain() Handler {
 			return Identity{}, ErrNoCredential
 		}
 
-		for _, v := range md.Get("authorization") {
+		for _, v := range md.Get(Header) {
 			rest, ok := strings.CutPrefix(v, PlainScheme+" ")
 			if !ok {
 				continue
@@ -77,7 +77,7 @@ func PlainProvider(v string) Provider {
 			md = md.Copy()
 		}
 
-		md.Set("authorization", PlainScheme+" "+v)
+		md.Set(Header, PlainScheme+" "+v)
 		return metadata.NewOutgoingContext(ctx, md)
 	})
 }

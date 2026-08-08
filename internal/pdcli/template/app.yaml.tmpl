@@ -11,6 +11,21 @@ db:
 server:
   addr: ":50051"
 
+  # The second listener, for whatever cannot speak gRPC -- which is every
+  # browser. Nothing is opened unless an address is written here, so an app with
+  # no page in front of it opens no port.
+  #
+  # It is the same server: a call arrives as JSON over POST, is re-encoded and
+  # handed to the handler a gRPC client would have reached, so it goes through
+  # the same interceptors and behind the same wall.
+  #
+  # http:
+  #   addr: ":8080"
+  #   allow_web: true
+  #   # Which page may call. Nothing here is same-origin only, which is right
+  #   # for a UI this server also serves and wrong for `npm run dev`.
+  #   origins: ["http://localhost:5173"]
+
 watch:
   # Named rather than defaulted, and it is the one field this app is refused for
   # leaving out. `memory` publishes inside this process, which is right for one

@@ -96,17 +96,27 @@ type HttpConfig struct {
 	// to do, so an unwritten field has an answer already.
 	Addr string `yaml:"addr"`
 
-	// AllowGrpcWeb translates grpc-web into the gRPC server, so a browser
-	// reaches the same handlers, the same interceptors and the same wall as
-	// anything else.
-	AllowGrpcWeb bool `yaml:"allow_grpc_web"`
-
-	// Origins are the origins a browser may make a grpc-web call from. Nothing
-	// written down is none, so a page nobody named is refused rather than
-	// served -- and `["*"]` is every page on the internet, which is a thing to
-	// mean rather than to reach for.
+	// AllowWeb translates the protocols a browser can speak -- Connect and
+	// gRPC-Web -- into the gRPC server, so a page reaches the same handlers,
+	// the same interceptors and the same wall as anything else. See `web`.
 	//
-	// It is not the wall and it is not authentication.
+	// It is what a UI needs and it is not only for one: a Connect call is a
+	// POST with a JSON body, so it is also the endpoint anything that has an
+	// HTTP client and no protobuf can reach.
+	AllowWeb bool `yaml:"allow_web"`
+
+	// Origins are the origins a browser may call from. Nothing written down is
+	// none, which is not "nothing works": a page served from this same origin
+	// makes no cross-origin request and needs no answer from here. What it
+	// means is that a UI somewhere else -- which is every `npm run dev` -- has
+	// to be named.
+	//
+	// `["*"]` is every page on the internet, which is a thing to mean rather
+	// than to reach for.
+	//
+	// It is not the wall and it is not authentication. It says which page may
+	// make the call; who is calling and what they may see is decided where it
+	// is decided for everything else.
 	Origins []string `yaml:"origins"`
 
 	// AllowPprof serves the profiles under `/debug/pprof/`. It should stay off
