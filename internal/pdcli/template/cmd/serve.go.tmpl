@@ -1,0 +1,207 @@
+package cmd
+
+import (
+	"context"
+	"database/sql"
+	"log/slog"
+	"net"
+
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	"github.com/lesomnus/otx/log"
+	"google.golang.org/grpc"
+
+	"github.com/lesomnus/payday/auth"
+	"github.com/lesomnus/payday/gate"
+	"github.com/lesomnus/payday/grpcx"
+	"github.com/lesomnus/payday/pdpb"
+	"github.com/lesomnus/payday/watch"
+
+	app "{{.Module}}"
+	"{{.Module}}/ent"
+	"{{.Module}}/server/bare"
+	"{{.Module}}/server/pd"
+)
+
+// Server is a built app: the database it runs on and the two stacks it answers
+// through.
+type Server struct {
+	Db  *sql.DB
+	Ent *ent.Client
+
+	// Drv is what the client was built on, kept because a transaction is begun
+	// on a driver and a `*ent.Client` does not hand out the one it holds. It is
+	// what `pd.Batch` puts a whole stack onto.
+	Drv dialect.Driver
+
+	// Watch is what a change is published to once the call that made it has
+	// answered. The broker is named rather than defaulted: the one that
+	// publishes in this process is right for one replica and **silently wrong**
+	// for two, since a subscriber on one never hears about a write on another.
+	Watch *watch.Watch
+
+	// Walled is what a caller reaches, and Ungated is what the deployment does
+	// its own work through -- putting the first tenant there, working out who
+	// is calling. Neither is a privilege anybody holds: the second is a server
+	// instance somebody was handed, so going around the wall is a line of
+	// wiring a reader can find rather than a rule that opens up whenever
+	// nobody is asking.
+	Walled  app.Server
+	Ungated app.Server
+
+	// Spin is whatever this deployment has to run besides answering requests.
+	// It is a slice rather than a method because a server with nothing to run
+	// should write nothing at all; see `payday/spin`.
+	Spin []any
+}
+
+// Build opens the database and stacks the servers.
+//
+// The two hooks are the whole of what payday puts in the write and read paths,
+// and both come out of what the schema declared: [pd.Minter] stamps a new row
+// with the domain of its entity and refuses one of another, [pd.Wall] narrows
+// every read to the tenants the caller may see.
+func Build(ctx context.Context, c Config) (*Server, error) {
+	db, dialect, err := c.Db.Open(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// The ent client is the app's to build, which is why config hands back a
+	// *sql.DB and the dialect rather than a client: the client is generated
+	// into this app from this app's schema, and payday has no name for it.
+	drv := entsql.OpenDB(dialect, db)
+	client := ent.NewClient(ent.Driver(drv))
+
+	// The server that talks to the database, twice: once as it is, and once
+	// with the wall on it.
+	//
+	// Two things are said to it rather than to the stack, and for the same
+	// reason -- both are about the statement that runs. The trail is kept by
+	// the servers that do the writing, since every RPC that changes anything
+	// has to report itself from inside the transaction that changes it. The
+	// wall is a predicate and a predicate belongs in the WHERE.
+	b, err := c.Watch.Build()
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	w := watch.New(b)
+
+	// The recorders, in the order they are told. The trail is required -- a
+	// write it could not account for is undone -- and the rest say for
+	// themselves whether they are; see `bare.Recorders`.
+	recorders := []bare.Option{
+		bare.WithMinter(pd.Minter()),
+		bare.WithRecorder(pd.Recorder()),
+		bare.WithRecorder(pd.WatchRecorder(w)),
+	}
+	if c.Watch.Outbox {
+		// Last, so that a queue this could not be written to undoes a write
+		// which the trail and the in-process publish have already agreed to
+		// rather than the other way round. It makes no difference to what is
+		// committed -- either way nothing is -- and it makes the log read in
+		// the order things were tried.
+		recorders = append(recorders, bare.WithRecorder(pd.OutboxRecorder()))
+	}
+
+	sink, err := pd.NewSink(client, recorders...)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	walled, err := pd.NewSink(client, append(recorders, bare.WithScope(pd.Wall()))...)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	// The stack a caller reaches. `pd.Gate` is outermost, so nothing behind it
+	// asks again.
+	stacked, err := app.Build(walled.WithWatch(w), pd.AuditBuild(), pd.GateBuild())
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	// And the same servers with no wall and no gate, which is what the
+	// deployment does its own work through. It is not a privilege anybody
+	// holds: it is an instance somebody was handed, so going around the wall
+	// is a line of wiring a reader can find rather than a rule that opens up
+	// whenever nobody is asking.
+	ungated, err := app.Build(sink.WithWatch(w), pd.AuditBuild())
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	s := &Server{Db: db, Ent: client, Drv: drv, Watch: w, Walled: stacked, Ungated: ungated}
+	if c.Watch.Outbox && b != nil {
+		// The loop that makes an event durable. It is not a layer and not a
+		// method on any server -- `spin.Run` finds it in whatever is handed
+		// over, which is what keeps a server that has no background work from
+		// carrying an empty method saying so.
+		s.Spin = append(s.Spin, pd.Drain(client, b, c.Watch.Every()))
+	}
+
+	return s, nil
+}
+
+func (s *Server) Close() error { return s.Db.Close() }
+
+// Grpc builds the server every call arrives at.
+//
+// The chain is payday's and the order is this app's to read: what records a
+// call is outside everything, then the recovery, then the deadline a call that
+// named none is given, then how often one caller may ask, then what is closed
+// to callers entirely.
+//
+// It is separate from [Server.Serve] so that a test can travel exactly this
+// and answer on a listener that is a channel; see pdtest.
+func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) *grpc.Server {
+	// Who is calling comes first, since everything after it reads the frame.
+	// `Plain` believes what the caller writes, which is right for a sandbox
+	// and for tests and is not something to serve where anyone can reach it.
+	chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
+		WithUnary(auth.InterceptorUnary(auth.Plain(), Resolver(s.Ungated), auth.PublicDefault)).
+		WithStream(auth.InterceptorStream(auth.Plain(), Resolver(s.Ungated), auth.PublicDefault)).
+		WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant())).
+		With(gate.Interceptor(nil)).
+		With(s.Watch.Interceptor()).
+		WithUnary(grpcx.ClosedUnary(c.Server.Closed()))
+
+	os := append(opts, chain.ServerOptions()...)
+	os = append(os, c.Server.GrpcOptions()...)
+
+	g := grpc.NewServer(os...)
+	app.RegisterServer(g, s.Walled)
+
+	// The batch, with the same rules the chain above enforces -- read off the
+	// same configuration rather than written out again, which is the only way
+	// the two stay in step. What they enforce by looking at the method gRPC
+	// dispatched, this enforces per operation.
+	if b, err := pd.Batch(s.Walled, s.Drv, c.Server.Guard(nil)); err == nil {
+		pdpb.RegisterBatchServiceServer(g, b)
+	} else {
+		// A deployment that closed nothing, limits nothing and has no policy.
+		// It is a real thing to be and it is also what a guard nobody filled in
+		// looks like, so the batch is not served rather than served open.
+		log.From(ctx).WarnContext(ctx, "no batch", slog.String("why", err.Error()))
+	}
+
+	return g
+}
+
+// Serve answers on `l` until the context is done.
+func (s *Server) Serve(ctx context.Context, c Config, l net.Listener) error {
+	g := s.Grpc(ctx, c)
+
+	go func() {
+		<-ctx.Done()
+		g.GracefulStop()
+	}()
+
+	return g.Serve(l)
+}

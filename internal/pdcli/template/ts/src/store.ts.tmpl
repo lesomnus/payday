@@ -1,0 +1,25 @@
+/**
+ * The local store: a replica of what this caller may see.
+ *
+ * `entities` is generated -- one declaration per entity, and no behaviour. The
+ * store reads those together with the protobuf descriptors and implements
+ * normalizing, reconciling and applying a `Watch` once, for every entity there
+ * is.
+ *
+ * @module
+ */
+
+import { Store } from '@lesomnus/payday/store'
+
+import { entities } from '../gen/entities.js'
+
+/**
+ * open answers with this app's store for one caller.
+ *
+ * The identity is not optional. A store shared between two callers shows the
+ * first one's rows to the second -- nothing leaked, since the server never sent
+ * anything they could not see, but the screen is wrong.
+ */
+export function open(identity: string): Store {
+	return Store.open(entities, { name: '{{.Name}}', identity })
+}

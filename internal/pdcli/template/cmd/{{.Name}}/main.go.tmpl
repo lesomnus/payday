@@ -1,0 +1,26 @@
+// Command {{.Name}} is a payday app.
+//
+// What to read first is `cmd/serve.go`: it is the stack, written out, and it is
+// the whole of what this app says to stand up a served, migrated, walled
+// server.
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+
+	"{{.Module}}/cmd"
+)
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	var c cmd.Config
+	if err := cmd.Cmd(&c).Run(ctx, os.Args[1:]); err != nil {
+		fmt.Fprintln(os.Stderr, "{{.Name}}:", err)
+		os.Exit(1)
+	}
+}

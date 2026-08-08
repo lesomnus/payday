@@ -22,7 +22,7 @@ func app(t *testing.T, module string) string {
 	x.NoError(os.WriteFile(filepath.Join(root, "go.mod"),
 		[]byte("module "+module+"\n\ngo 1.25\n"), 0o644))
 	x.NoError(os.WriteFile(filepath.Join(root, "buf.yaml"),
-		[]byte("version: v2\nmodules:\n  - path: ./proto\ndeps:\n  - buf.build/orm/orm\n  - buf.build/patch/patch\n"), 0o644))
+		[]byte("version: v2\nmodules:\n  - path: ./proto\ndeps:\n  - buf.build/payday/payday:dev\n  - buf.build/orm/orm\n  - buf.build/patch/patch\n"), 0o644))
 
 	return root
 }
@@ -162,7 +162,7 @@ func TestDoctorSaysWhatIsMissingBeforeBufDoes(t *testing.T) {
 	}
 
 	// The dependency every payday schema imports, missing.
-	x.Contains(said, "buf.build/orm/orm")
+	x.Contains(said, "buf.build/payday/payday")
 
 	// And the generators, which this temporary module has none of. The fix is
 	// what to type rather than a description of the problem.

@@ -1,0 +1,19 @@
+# What this deployment is configured with.
+#
+# A file, then the environment over the top of it: `{{.Env}}_DB_DSN` beats what
+# is written here. `{{.Name}} config` prints what came out, and
+# `{{.Name}} config env` lists every variable there is.
+
+db:
+  driver: sqlite3
+  dsn: "file:{{.Name}}.db?_pragma=foreign_keys(1)"
+
+server:
+  addr: ":50051"
+
+watch:
+  # Named rather than defaulted, and it is the one field this app is refused for
+  # leaving out. `memory` publishes inside this process, which is right for one
+  # replica and silently wrong for two -- a client watching against one never
+  # hears about a write that landed on another, and nothing reports it.
+  broker: memory

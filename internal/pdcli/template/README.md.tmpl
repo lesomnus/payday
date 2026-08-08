@@ -1,0 +1,69 @@
+# {{.Name}}
+
+A [payday](https://github.com/lesomnus/payday) app.
+
+The generated messages live at the module root, which is why the binary is in
+`cmd/{{.Name}}/` rather than beside them: an app is **one** Go package for
+everything generated -- the ent schemas of two packages cannot have an edge
+between them, and the tenant wall is an edge.
+
+## What to read first
+
+`cmd/serve.go`. It is the stack written out -- which layers, in which order, and
+which server the wall is on -- and it is deliberately not hidden behind a
+`payday.Serve(cfg)`. Everything else in `cmd/` is small.
+
+`proto/app/thing.proto` is the other half. The `(payday.entity)` option at the
+bottom of it is where the domain byte, the tenant wall, the `List` and the
+`Watch` all come from.
+
+## Generating
+
+```sh
+go tool pd gen .          # messages, servers, ent schema, layers
+go tool pd gen --ts .     # and the TypeScript half
+go tool pd doctor .       # what would go wrong before it does
+```
+
+`pd gen --check` regenerates and fails if anything moved, which is what CI runs:
+a generated file that was not regenerated compiles perfectly and is wrong.
+
+## Adding an entity
+
+```sh
+go tool pd entity add --tenanted --watch Widget .
+go tool pd entity list .
+```
+
+It picks a domain nothing else has and writes the tenancy out, which are the two
+things that are cheap to get wrong here and expensive to find later.
+
+## Running
+
+```sh
+go run ./cmd/{{.Name}} config env    # every variable this deployment can set
+go run ./cmd/{{.Name}} serve
+```
+
+The configuration is a file, then the environment over the top of it. What an
+app can be told is what `cmd/config.go` declares; nothing is documented
+separately, because a documented list goes out of date on the commit that adds a
+field.
+
+## What is enforced, and why
+
+Every one of these is refused at generation, and every one of them is something
+that fails **quietly** when it is left out:
+
+| | what it costs to forget |
+| --- | --- |
+| `domain:` | identifiers that say nothing about what they name |
+| a domain twice | an identifier that lies about what it names |
+| tenancy unsaid | every row outside the wall, with nothing failing |
+| `watch:` with no version | a stale answer overwriting a fresh one, on the client |
+| `watch:` with no `ref` filter | a stream that cannot say which rows it is about |
+| an overlay on payday's own field number | `alias` quietly becoming whatever the overlay said |
+| a list order not ending in the key | a page that repeats a row or skips one |
+
+And two that are warnings rather than refusals, because a small table is a real
+thing: a list order no index covers, and an alias that is not a name.

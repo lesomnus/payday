@@ -52,8 +52,8 @@ var tools = []string{
 
 // deps are the buf modules an app's schema imports.
 var deps = []string{
+	"buf.build/payday/payday",
 	"buf.build/orm/orm",
-	"buf.build/patch/patch",
 }
 
 // Doctor looks at a working copy and says what would go wrong.

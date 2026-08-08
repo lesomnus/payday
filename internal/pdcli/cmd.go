@@ -23,6 +23,7 @@ func NewCmdRoot() *xli.Command {
 			NewCmdGen(),
 			NewCmdDoctor(),
 			NewCmdEntity(),
+			NewCmdNew(),
 		},
 
 		Handler: xli.RequireSubcommand(),
@@ -147,6 +148,77 @@ func NewCmdDoctor() *xli.Command {
 			}
 
 			return fmt.Errorf("%d of %d would stop a generation", fatal, len(vs))
+		}),
+	}
+}
+
+// NewCmdNew is `pd new`: an app to start from.
+//
+// What it writes is what a person writes, and nothing generated -- `pd gen`
+// fills the rest in. That is not laziness: a template with generated code in it
+// is a template carrying the output of one version of the generators, and the
+// first thing anybody does with it is regenerate.
+func NewCmdNew() *xli.Command {
+	return &xli.Command{
+		Name:  "new",
+		Brief: "write an app to start from",
+		Synop: "pd new MODULE [DIR]",
+
+		Flags: flg.Flags{
+			&flg.String{
+				Name:  "name",
+				Brief: "what the app is called; the last segment of the module by default",
+			},
+			&flg.Switch{
+				Name:  "setup",
+				Brief: "also fetch the generators and buf's dependencies, which needs the network",
+			},
+		},
+		Args: arg.Args{
+			&arg.String{Name: "MODULE", Brief: "the Go module path, e.g. github.com/acme/thing"},
+			&arg.String{Name: "DIR", Brief: "where to write it; named after the app by default"},
+		},
+
+		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			module, _ := arg.Get[string](cmd, "MODULE")
+			dir, _ := arg.Get[string](cmd, "DIR")
+			name, _ := flg.Find[string](cmd, "name")
+
+			n := New{Dir: dir, Module: module, Name: name}
+			if err := n.Write(); err != nil {
+				return err
+			}
+
+			where := n.Dir
+			if where == "" {
+				where = n.Name
+			}
+
+			cmd.Printf("pd: %s is in %s\n\n", module, where)
+
+			if setup, _ := flg.Find[bool](cmd, "setup"); setup {
+				if err := n.Setup(ctx, cmd); err != nil {
+					return err
+				}
+
+				cmd.Printf("\n    cd %s\n", where)
+				cmd.Println("    go tool pd gen .")
+				cmd.Println("    go mod tidy")
+				cmd.Printf("    go run ./cmd/%s serve\n", n.Name)
+
+				return nil
+			}
+
+			// The order is not guessable and getting it wrong is a confusing
+			// failure: `go mod tidy` cannot run until the generated packages
+			// exist, and they cannot be generated until the tools are there --
+			// so a tidy first fails trying to fetch this app's own packages
+			// from a repository nobody has pushed.
+			for _, v := range n.Steps() {
+				cmd.Printf("    %s\n", v)
+			}
+
+			return nil
 		}),
 	}
 }
