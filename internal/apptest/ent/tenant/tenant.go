@@ -13,6 +13,14 @@ const (
 	FieldID = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
+	// FieldName holds the string denoting the name field in the database.
+	FieldName = "name"
+	// FieldDesc holds the string denoting the desc field in the database.
+	FieldDesc = "desc"
+	// FieldLabels holds the string denoting the labels field in the database.
+	FieldLabels = "labels"
+	// FieldDateUpdated holds the string denoting the date_updated field in the database.
+	FieldDateUpdated = "date_updated"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
 	FieldDateCreated = "date_created"
 	// Table holds the table name of the tenant in the database.
@@ -23,6 +31,10 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldAlias,
+	FieldName,
+	FieldDesc,
+	FieldLabels,
+	FieldDateUpdated,
 	FieldDateCreated,
 }
 
@@ -47,6 +59,21 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByAlias orders the results by the alias field.
 func ByAlias(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAlias, opts...).ToFunc()
+}
+
+// ByName orders the results by the name field.
+func ByName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByDesc orders the results by the desc field.
+func ByDesc(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDesc, opts...).ToFunc()
+}
+
+// ByDateUpdated orders the results by the date_updated field.
+func ByDateUpdated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateUpdated, opts...).ToFunc()
 }
 
 // ByDateCreated orders the results by the date_created field.

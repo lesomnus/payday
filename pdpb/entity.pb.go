@@ -77,27 +77,27 @@ func (x *Entity) GetName() string {
 	return ""
 }
 
-func (x *Entity) GetTenant() *Tenant {
+func (x *Entity) GetTenant() *Entity_Tenant {
 	if x != nil {
-		if x, ok := x.xxx_hidden_Tenancy.(*entity_Tenant); ok {
+		if x, ok := x.xxx_hidden_Tenancy.(*entity_Tenant_); ok {
 			return x.Tenant
 		}
 	}
 	return nil
 }
 
-func (x *Entity) GetTenanted() *Tenanted {
+func (x *Entity) GetTenanted() *Entity_Tenanted {
 	if x != nil {
-		if x, ok := x.xxx_hidden_Tenancy.(*entity_Tenanted); ok {
+		if x, ok := x.xxx_hidden_Tenancy.(*entity_Tenanted_); ok {
 			return x.Tenanted
 		}
 	}
 	return nil
 }
 
-func (x *Entity) GetGlobal() *Global {
+func (x *Entity) GetGlobal() *Entity_Global {
 	if x != nil {
-		if x, ok := x.xxx_hidden_Tenancy.(*entity_Global); ok {
+		if x, ok := x.xxx_hidden_Tenancy.(*entity_Global_); ok {
 			return x.Global
 		}
 	}
@@ -112,28 +112,28 @@ func (x *Entity) SetName(v string) {
 	x.xxx_hidden_Name = v
 }
 
-func (x *Entity) SetTenant(v *Tenant) {
+func (x *Entity) SetTenant(v *Entity_Tenant) {
 	if v == nil {
 		x.xxx_hidden_Tenancy = nil
 		return
 	}
-	x.xxx_hidden_Tenancy = &entity_Tenant{v}
+	x.xxx_hidden_Tenancy = &entity_Tenant_{v}
 }
 
-func (x *Entity) SetTenanted(v *Tenanted) {
+func (x *Entity) SetTenanted(v *Entity_Tenanted) {
 	if v == nil {
 		x.xxx_hidden_Tenancy = nil
 		return
 	}
-	x.xxx_hidden_Tenancy = &entity_Tenanted{v}
+	x.xxx_hidden_Tenancy = &entity_Tenanted_{v}
 }
 
-func (x *Entity) SetGlobal(v *Global) {
+func (x *Entity) SetGlobal(v *Entity_Global) {
 	if v == nil {
 		x.xxx_hidden_Tenancy = nil
 		return
 	}
-	x.xxx_hidden_Tenancy = &entity_Global{v}
+	x.xxx_hidden_Tenancy = &entity_Global_{v}
 }
 
 func (x *Entity) HasTenancy() bool {
@@ -147,7 +147,7 @@ func (x *Entity) HasTenant() bool {
 	if x == nil {
 		return false
 	}
-	_, ok := x.xxx_hidden_Tenancy.(*entity_Tenant)
+	_, ok := x.xxx_hidden_Tenancy.(*entity_Tenant_)
 	return ok
 }
 
@@ -155,7 +155,7 @@ func (x *Entity) HasTenanted() bool {
 	if x == nil {
 		return false
 	}
-	_, ok := x.xxx_hidden_Tenancy.(*entity_Tenanted)
+	_, ok := x.xxx_hidden_Tenancy.(*entity_Tenanted_)
 	return ok
 }
 
@@ -163,7 +163,7 @@ func (x *Entity) HasGlobal() bool {
 	if x == nil {
 		return false
 	}
-	_, ok := x.xxx_hidden_Tenancy.(*entity_Global)
+	_, ok := x.xxx_hidden_Tenancy.(*entity_Global_)
 	return ok
 }
 
@@ -172,19 +172,19 @@ func (x *Entity) ClearTenancy() {
 }
 
 func (x *Entity) ClearTenant() {
-	if _, ok := x.xxx_hidden_Tenancy.(*entity_Tenant); ok {
+	if _, ok := x.xxx_hidden_Tenancy.(*entity_Tenant_); ok {
 		x.xxx_hidden_Tenancy = nil
 	}
 }
 
 func (x *Entity) ClearTenanted() {
-	if _, ok := x.xxx_hidden_Tenancy.(*entity_Tenanted); ok {
+	if _, ok := x.xxx_hidden_Tenancy.(*entity_Tenanted_); ok {
 		x.xxx_hidden_Tenancy = nil
 	}
 }
 
 func (x *Entity) ClearGlobal() {
-	if _, ok := x.xxx_hidden_Tenancy.(*entity_Global); ok {
+	if _, ok := x.xxx_hidden_Tenancy.(*entity_Global_); ok {
 		x.xxx_hidden_Tenancy = nil
 	}
 }
@@ -199,11 +199,11 @@ func (x *Entity) WhichTenancy() case_Entity_Tenancy {
 		return Entity_Tenancy_not_set_case
 	}
 	switch x.xxx_hidden_Tenancy.(type) {
-	case *entity_Tenant:
+	case *entity_Tenant_:
 		return Entity_Tenant_case
-	case *entity_Tenanted:
+	case *entity_Tenanted_:
 		return Entity_Tenanted_case
-	case *entity_Global:
+	case *entity_Global_:
 		return Entity_Global_case
 	default:
 		return Entity_Tenancy_not_set_case
@@ -249,11 +249,12 @@ type Entity_builder struct {
 	// Fields of oneof xxx_hidden_Tenancy:
 	// This entity is the tenant. A row of it is visible to a caller who may
 	// see that tenant, which from inside one means exactly itself.
-	Tenant *Tenant
-	// Rows of this entity belong to a tenant, reached by an edge.
-	Tenanted *Tenanted
+	Tenant *Entity_Tenant
+	// Rows of this entity belong to a tenant, reached by an edge or named by a
+	// column.
+	Tenanted *Entity_Tenanted
 	// Rows of this entity are not behind the wall.
-	Global *Global
+	Global *Entity_Global
 	// -- end of xxx_hidden_Tenancy
 }
 
@@ -264,13 +265,13 @@ func (b0 Entity_builder) Build() *Entity {
 	x.xxx_hidden_Domain = b.Domain
 	x.xxx_hidden_Name = b.Name
 	if b.Tenant != nil {
-		x.xxx_hidden_Tenancy = &entity_Tenant{b.Tenant}
+		x.xxx_hidden_Tenancy = &entity_Tenant_{b.Tenant}
 	}
 	if b.Tenanted != nil {
-		x.xxx_hidden_Tenancy = &entity_Tenanted{b.Tenanted}
+		x.xxx_hidden_Tenancy = &entity_Tenanted_{b.Tenanted}
 	}
 	if b.Global != nil {
-		x.xxx_hidden_Tenancy = &entity_Global{b.Global}
+		x.xxx_hidden_Tenancy = &entity_Global_{b.Global}
 	}
 	return m0
 }
@@ -289,49 +290,50 @@ type isEntity_Tenancy interface {
 	isEntity_Tenancy()
 }
 
-type entity_Tenant struct {
+type entity_Tenant_ struct {
 	// This entity is the tenant. A row of it is visible to a caller who may
 	// see that tenant, which from inside one means exactly itself.
-	Tenant *Tenant `protobuf:"bytes,3,opt,name=tenant,oneof"`
+	Tenant *Entity_Tenant `protobuf:"bytes,3,opt,name=tenant,oneof"`
 }
 
-type entity_Tenanted struct {
-	// Rows of this entity belong to a tenant, reached by an edge.
-	Tenanted *Tenanted `protobuf:"bytes,4,opt,name=tenanted,oneof"`
+type entity_Tenanted_ struct {
+	// Rows of this entity belong to a tenant, reached by an edge or named by a
+	// column.
+	Tenanted *Entity_Tenanted `protobuf:"bytes,4,opt,name=tenanted,oneof"`
 }
 
-type entity_Global struct {
+type entity_Global_ struct {
 	// Rows of this entity are not behind the wall.
-	Global *Global `protobuf:"bytes,5,opt,name=global,oneof"`
+	Global *Entity_Global `protobuf:"bytes,5,opt,name=global,oneof"`
 }
 
-func (*entity_Tenant) isEntity_Tenancy() {}
+func (*entity_Tenant_) isEntity_Tenancy() {}
 
-func (*entity_Tenanted) isEntity_Tenancy() {}
+func (*entity_Tenanted_) isEntity_Tenancy() {}
 
-func (*entity_Global) isEntity_Tenancy() {}
+func (*entity_Global_) isEntity_Tenancy() {}
 
 // Tenant is the entity a wall is made of. There is one of these in a schema.
-type Tenant struct {
+type Entity_Tenant struct {
 	state         protoimpl.MessageState `protogen:"opaque.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Tenant) Reset() {
-	*x = Tenant{}
+func (x *Entity_Tenant) Reset() {
+	*x = Entity_Tenant{}
 	mi := &file_payday_entity_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Tenant) String() string {
+func (x *Entity_Tenant) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Tenant) ProtoMessage() {}
+func (*Entity_Tenant) ProtoMessage() {}
 
-func (x *Tenant) ProtoReflect() protoreflect.Message {
+func (x *Entity_Tenant) ProtoReflect() protoreflect.Message {
 	mi := &file_payday_entity_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -343,13 +345,13 @@ func (x *Tenant) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-type Tenant_builder struct {
+type Entity_Tenant_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 }
 
-func (b0 Tenant_builder) Build() *Tenant {
-	m0 := &Tenant{}
+func (b0 Entity_Tenant_builder) Build() *Entity_Tenant {
+	m0 := &Entity_Tenant{}
 	b, x := &b0, m0
 	_, _ = b, x
 	return m0
@@ -357,27 +359,33 @@ func (b0 Tenant_builder) Build() *Tenant {
 
 // Tenanted is an entity whose rows belong to a tenant, and are read only by
 // callers who may see that tenant.
-type Tenanted struct {
-	state          protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Via string                 `protobuf:"bytes,1,opt,name=via"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+//
+// A row reaches its tenant one of two ways, and both are here because both
+// happen. Most rows hold an edge to one. Some name one without holding an
+// edge -- an audit trail is the reason: it has to outlive the tenant it
+// points at, so there is no foreign key to walk along.
+type Entity_Tenanted struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Via   string                 `protobuf:"bytes,1,opt,name=via"`
+	xxx_hidden_Field string                 `protobuf:"bytes,2,opt,name=field"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
-func (x *Tenanted) Reset() {
-	*x = Tenanted{}
+func (x *Entity_Tenanted) Reset() {
+	*x = Entity_Tenanted{}
 	mi := &file_payday_entity_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Tenanted) String() string {
+func (x *Entity_Tenanted) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Tenanted) ProtoMessage() {}
+func (*Entity_Tenanted) ProtoMessage() {}
 
-func (x *Tenanted) ProtoReflect() protoreflect.Message {
+func (x *Entity_Tenanted) ProtoReflect() protoreflect.Message {
 	mi := &file_payday_entity_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -389,34 +397,56 @@ func (x *Tenanted) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *Tenanted) GetVia() string {
+func (x *Entity_Tenanted) GetVia() string {
 	if x != nil {
 		return x.xxx_hidden_Via
 	}
 	return ""
 }
 
-func (x *Tenanted) SetVia(v string) {
+func (x *Entity_Tenanted) GetField() string {
+	if x != nil {
+		return x.xxx_hidden_Field
+	}
+	return ""
+}
+
+func (x *Entity_Tenanted) SetVia(v string) {
 	x.xxx_hidden_Via = v
 }
 
-type Tenanted_builder struct {
+func (x *Entity_Tenanted) SetField(v string) {
+	x.xxx_hidden_Field = v
+}
+
+type Entity_Tenanted_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// Via is the edge that reaches the tenant, and it does not have to be a
-	// direct one: `"tenant"` for a row that holds its own, `"holder.tenant"` for
-	// a row that reaches it through whatever holds it.
+	// direct one: `"tenant"` for a row that holds its own, `"holder.tenant"`
+	// for a row that reaches it through whatever holds it.
 	//
-	// Left out, it is `"tenant"`, since that is what the edge is called when
-	// there is one.
+	// Left out with no `field` either, it is `"tenant"`, since that is what the
+	// edge is called when there is one.
 	Via string
+	// Field is the column holding the tenant's identifier, for a row that names
+	// one without a foreign key to it.
+	//
+	// It is not the same thing as `via` written shorter. An edge says the
+	// tenant is still there; a column says only what its identifier was. A
+	// trail row wants exactly the second: what it records happened, and it goes
+	// on being true after the tenant it happened in is gone.
+	//
+	// Say one or the other, never both.
+	Field string
 }
 
-func (b0 Tenanted_builder) Build() *Tenanted {
-	m0 := &Tenanted{}
+func (b0 Entity_Tenanted_builder) Build() *Entity_Tenanted {
+	m0 := &Entity_Tenanted{}
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Via = b.Via
+	x.xxx_hidden_Field = b.Field
 	return m0
 }
 
@@ -426,26 +456,26 @@ func (b0 Tenanted_builder) Build() *Tenanted {
 // It is written out rather than left unsaid so that it is a decision somebody
 // made, and so that a reader of the schema can tell "this is shared" from
 // "somebody forgot".
-type Global struct {
+type Entity_Global struct {
 	state         protoimpl.MessageState `protogen:"opaque.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Global) Reset() {
-	*x = Global{}
+func (x *Entity_Global) Reset() {
+	*x = Entity_Global{}
 	mi := &file_payday_entity_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Global) String() string {
+func (x *Entity_Global) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Global) ProtoMessage() {}
+func (*Entity_Global) ProtoMessage() {}
 
-func (x *Global) ProtoReflect() protoreflect.Message {
+func (x *Entity_Global) ProtoReflect() protoreflect.Message {
 	mi := &file_payday_entity_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -457,13 +487,13 @@ func (x *Global) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-type Global_builder struct {
+type Entity_Global_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 }
 
-func (b0 Global_builder) Build() *Global {
-	m0 := &Global{}
+func (b0 Entity_Global_builder) Build() *Entity_Global {
+	m0 := &Entity_Global{}
 	b, x := &b0, m0
 	_, _ = b, x
 	return m0
@@ -473,30 +503,31 @@ var File_payday_entity_proto protoreflect.FileDescriptor
 
 const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/entity.proto\x12\x06payday\"\xc3\x01\n" +
+	"\x13payday/entity.proto\x12\x06payday\"\xa0\x02\n" +
 	"\x06Entity\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domain\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12(\n" +
-	"\x06tenant\x18\x03 \x01(\v2\x0e.payday.TenantH\x00R\x06tenant\x12.\n" +
-	"\btenanted\x18\x04 \x01(\v2\x10.payday.TenantedH\x00R\btenanted\x12(\n" +
-	"\x06global\x18\x05 \x01(\v2\x0e.payday.GlobalH\x00R\x06globalB\t\n" +
-	"\atenancy\"\b\n" +
-	"\x06Tenant\"\x1c\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
+	"\x06tenant\x18\x03 \x01(\v2\x15.payday.Entity.TenantH\x00R\x06tenant\x125\n" +
+	"\btenanted\x18\x04 \x01(\v2\x17.payday.Entity.TenantedH\x00R\btenanted\x12/\n" +
+	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06global\x1a\b\n" +
+	"\x06Tenant\x1a2\n" +
 	"\bTenanted\x12\x10\n" +
-	"\x03via\x18\x01 \x01(\tR\x03via\"\b\n" +
-	"\x06GlobalB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x03via\x18\x01 \x01(\tR\x03via\x12\x14\n" +
+	"\x05field\x18\x02 \x01(\tR\x05field\x1a\b\n" +
+	"\x06GlobalB\t\n" +
+	"\atenancyB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_payday_entity_proto_goTypes = []any{
-	(*Entity)(nil),   // 0: payday.Entity
-	(*Tenant)(nil),   // 1: payday.Tenant
-	(*Tenanted)(nil), // 2: payday.Tenanted
-	(*Global)(nil),   // 3: payday.Global
+	(*Entity)(nil),          // 0: payday.Entity
+	(*Entity_Tenant)(nil),   // 1: payday.Entity.Tenant
+	(*Entity_Tenanted)(nil), // 2: payday.Entity.Tenanted
+	(*Entity_Global)(nil),   // 3: payday.Entity.Global
 }
 var file_payday_entity_proto_depIdxs = []int32{
-	1, // 0: payday.Entity.tenant:type_name -> payday.Tenant
-	2, // 1: payday.Entity.tenanted:type_name -> payday.Tenanted
-	3, // 2: payday.Entity.global:type_name -> payday.Global
+	1, // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
+	2, // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
+	3, // 2: payday.Entity.global:type_name -> payday.Entity.Global
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -510,9 +541,9 @@ func file_payday_entity_proto_init() {
 		return
 	}
 	file_payday_entity_proto_msgTypes[0].OneofWrappers = []any{
-		(*entity_Tenant)(nil),
-		(*entity_Tenanted)(nil),
-		(*entity_Global)(nil),
+		(*entity_Tenant_)(nil),
+		(*entity_Tenanted_)(nil),
+		(*entity_Global_)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

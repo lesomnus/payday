@@ -12,8 +12,10 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/lesomnus/payday/internal/apptest/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/ent/fleet"
+	"github.com/lesomnus/payday/internal/apptest/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/ent/tenant"
@@ -77,8 +79,10 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			audit.Table:  audit.ValidColumn,
 			cell.Table:   cell.ValidColumn,
 			fleet.Table:  fleet.ValidColumn,
+			holder.Table: holder.ValidColumn,
 			joint.Table:  joint.ValidColumn,
 			robot.Table:  robot.ValidColumn,
 			tenant.Table: tenant.ValidColumn,

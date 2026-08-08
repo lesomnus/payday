@@ -6,11 +6,17 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// Audit is the predicate function for audit builders.
+type Audit func(*sql.Selector)
+
 // Cell is the predicate function for cell builders.
 type Cell func(*sql.Selector)
 
 // Fleet is the predicate function for fleet builders.
 type Fleet func(*sql.Selector)
+
+// Holder is the predicate function for holder builders.
+type Holder func(*sql.Selector)
 
 // Joint is the predicate function for joint builders.
 type Joint func(*sql.Selector)

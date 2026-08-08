@@ -6,10 +6,10 @@ edition = "2023";
 package app;
 
 import "app/robot.proto";
-import "app/tenant_svc.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "patch/patch.proto";
+import "payday/tenant_svc.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -28,7 +28,7 @@ service RobotService {
 
 message RobotAddRequest {
 	bytes id = 1;
-	TenantRef tenant = 2;
+	payday.TenantRef tenant = 2;
 	string alias = 4 [
 		features.field_presence = IMPLICIT
 	];
@@ -37,7 +37,7 @@ message RobotAddRequest {
 
 message RobotRefBySlug {
 	string alias = 4;
-	TenantRef tenant = 2;
+	payday.TenantRef tenant = 2;
 }
 
 message RobotRef {
@@ -49,7 +49,7 @@ message RobotRef {
 
 message RobotSelect {
 	bool all = 1;
-	TenantSelect tenant = 2;
+	payday.TenantSelect tenant = 2;
 	bool alias = 4;
 	bool date_created = 15;
 }
@@ -179,7 +179,7 @@ service CellService {
 
 message CellAddRequest {
 	bytes id = 1;
-	TenantRef tenant = 2;
+	payday.TenantRef tenant = 2;
 	string alias = 4 [
 		features.field_presence = IMPLICIT
 	];
@@ -193,7 +193,7 @@ message CellRef {
 
 message CellSelect {
 	bool all = 1;
-	TenantSelect tenant = 2;
+	payday.TenantSelect tenant = 2;
 	bool alias = 4;
 }
 

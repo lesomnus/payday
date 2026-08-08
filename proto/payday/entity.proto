@@ -54,33 +54,54 @@ message Entity {
     // see that tenant, which from inside one means exactly itself.
     Tenant tenant = 3;
 
-    // Rows of this entity belong to a tenant, reached by an edge.
+    // Rows of this entity belong to a tenant, reached by an edge or named by a
+    // column.
     Tenanted tenanted = 4;
 
     // Rows of this entity are not behind the wall.
     Global global = 5;
   }
-}
 
-// Tenant is the entity a wall is made of. There is one of these in a schema.
-message Tenant {}
+  // The three are nested because they are what a tenancy is written as and
+  // nothing else -- and because `payday.Tenant` is the entity, which is a
+  // different thing entirely.
 
-// Tenanted is an entity whose rows belong to a tenant, and are read only by
-// callers who may see that tenant.
-message Tenanted {
-  // Via is the edge that reaches the tenant, and it does not have to be a
-  // direct one: `"tenant"` for a row that holds its own, `"holder.tenant"` for
-  // a row that reaches it through whatever holds it.
+  // Tenant is the entity a wall is made of. There is one of these in a schema.
+  message Tenant {}
+
+  // Tenanted is an entity whose rows belong to a tenant, and are read only by
+  // callers who may see that tenant.
   //
-  // Left out, it is `"tenant"`, since that is what the edge is called when
-  // there is one.
-  string via = 1;
-}
+  // A row reaches its tenant one of two ways, and both are here because both
+  // happen. Most rows hold an edge to one. Some name one without holding an
+  // edge -- an audit trail is the reason: it has to outlive the tenant it
+  // points at, so there is no foreign key to walk along.
+  message Tenanted {
+    // Via is the edge that reaches the tenant, and it does not have to be a
+    // direct one: `"tenant"` for a row that holds its own, `"holder.tenant"`
+    // for a row that reaches it through whatever holds it.
+    //
+    // Left out with no `field` either, it is `"tenant"`, since that is what the
+    // edge is called when there is one.
+    string via = 1;
 
-// Global is an entity that is not behind the wall -- a table the whole
-// deployment shares.
-//
-// It is written out rather than left unsaid so that it is a decision somebody
-// made, and so that a reader of the schema can tell "this is shared" from
-// "somebody forgot".
-message Global {}
+    // Field is the column holding the tenant's identifier, for a row that names
+    // one without a foreign key to it.
+    //
+    // It is not the same thing as `via` written shorter. An edge says the
+    // tenant is still there; a column says only what its identifier was. A
+    // trail row wants exactly the second: what it records happened, and it goes
+    // on being true after the tenant it happened in is gone.
+    //
+    // Say one or the other, never both.
+    string field = 2;
+  }
+
+  // Global is an entity that is not behind the wall -- a table the whole
+  // deployment shares.
+  //
+  // It is written out rather than left unsaid so that it is a decision somebody
+  // made, and so that a reader of the schema can tell "this is shared" from
+  // "somebody forgot".
+  message Global {}
+}

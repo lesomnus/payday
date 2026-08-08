@@ -12,6 +12,34 @@ __root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${__root}"
 
 APP="internal/apptest"
+MODULE="github.com/lesomnus/payday/internal/apptest"
+
+# 0. payday's own entities, merged with whatever this app added to them.
+#
+# They are copied into the app rather than imported because everything
+# generated from them -- the messages, the ent schema, the servers -- has to be
+# one set of types in one module. `go_package` is rewritten for the same
+# reason: it is the app's module that all of this lands in.
+#
+# An overlay may only add. `pd gen` will refuse one that redeclares a number
+# payday owns, since protobuf-merge takes the overlay's word and `alias` would
+# quietly become whatever it said.
+PD_SCHEMA="$(go list -m -f '{{.Dir}}' github.com/lesomnus/payday 2>/dev/null || echo .)/schema/payday"
+mkdir -p "${APP}/proto/payday"
+for f in "${PD_SCHEMA}"/{tenant,holder,audit}.proto; do
+	name="$(basename "$f")"
+	ext="${APP}/proto.ext/payday/${name%.proto}.ext.proto"
+	out="${APP}/proto/payday/${name}"
+
+	if [ -f "${ext}" ]; then
+		echo "merge : payday/${name}  +  $(basename "${ext}")"
+		go tool protobuf-merge "$f" "${ext}" >"${out}"
+	else
+		cp "$f" "${out}"
+	fi
+
+	sed -i "s|^option go_package = .*|option go_package = \"${MODULE}\";|" "${out}"
+done
 
 # 1. Service contracts from the entities.
 rm -rf "${APP}/proto.svc" "${APP}"/proto/app/*_svc.proto

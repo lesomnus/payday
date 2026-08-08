@@ -12,10 +12,14 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// Audit is the client for interacting with the Audit builders.
+	Audit *AuditClient
 	// Cell is the client for interacting with the Cell builders.
 	Cell *CellClient
 	// Fleet is the client for interacting with the Fleet builders.
 	Fleet *FleetClient
+	// Holder is the client for interacting with the Holder builders.
+	Holder *HolderClient
 	// Joint is the client for interacting with the Joint builders.
 	Joint *JointClient
 	// Robot is the client for interacting with the Robot builders.
@@ -153,8 +157,10 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.Audit = NewAuditClient(tx.config)
 	tx.Cell = NewCellClient(tx.config)
 	tx.Fleet = NewFleetClient(tx.config)
+	tx.Holder = NewHolderClient(tx.config)
 	tx.Joint = NewJointClient(tx.config)
 	tx.Robot = NewRobotClient(tx.config)
 	tx.Tenant = NewTenantClient(tx.config)
@@ -167,7 +173,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: Cell.QueryXXX(), the query will be executed
+// applies a query, for example: Audit.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: app/tenant.proto
+// source: payday/tenant.proto
 
 package apptest
 
@@ -23,11 +23,25 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Tenant is the wall this app is divided by.
+// Tenant is the wall an app is divided by.
+//
+// It is payday's rather than each app's because everything that reads a request
+// reads it: the wall narrows every query by it, the trail stamps it, a rate
+// limit counts against it. An app that declared its own would be an app in
+// which none of those could be written once.
+//
+// **Fields 1..7 and 13..15 are payday's.** An app adds its own in 8..12 and
+// from 16, in a `tenant.ext.proto` beside this; `pd gen` refuses an overlay
+// that touches a number here, since the merge would take it silently and
+// `alias` would quietly become whatever the overlay said.
 type Tenant struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Name        string                 `protobuf:"bytes,5,opt,name=name"`
+	xxx_hidden_Desc        string                 `protobuf:"bytes,6,opt,name=desc"`
+	xxx_hidden_Labels      map[string]string      `protobuf:"bytes,7,rep,name=labels" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
@@ -35,7 +49,7 @@ type Tenant struct {
 
 func (x *Tenant) Reset() {
 	*x = Tenant{}
-	mi := &file_app_tenant_proto_msgTypes[0]
+	mi := &file_payday_tenant_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +61,7 @@ func (x *Tenant) String() string {
 func (*Tenant) ProtoMessage() {}
 
 func (x *Tenant) ProtoReflect() protoreflect.Message {
-	mi := &file_app_tenant_proto_msgTypes[0]
+	mi := &file_payday_tenant_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -72,6 +86,34 @@ func (x *Tenant) GetAlias() string {
 	return ""
 }
 
+func (x *Tenant) GetName() string {
+	if x != nil {
+		return x.xxx_hidden_Name
+	}
+	return ""
+}
+
+func (x *Tenant) GetDesc() string {
+	if x != nil {
+		return x.xxx_hidden_Desc
+	}
+	return ""
+}
+
+func (x *Tenant) GetLabels() map[string]string {
+	if x != nil {
+		return x.xxx_hidden_Labels
+	}
+	return nil
+}
+
+func (x *Tenant) GetDateUpdated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateUpdated
+	}
+	return nil
+}
+
 func (x *Tenant) GetDateCreated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateCreated
@@ -90,8 +132,31 @@ func (x *Tenant) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
 }
 
+func (x *Tenant) SetName(v string) {
+	x.xxx_hidden_Name = v
+}
+
+func (x *Tenant) SetDesc(v string) {
+	x.xxx_hidden_Desc = v
+}
+
+func (x *Tenant) SetLabels(v map[string]string) {
+	x.xxx_hidden_Labels = v
+}
+
+func (x *Tenant) SetDateUpdated(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateUpdated = v
+}
+
 func (x *Tenant) SetDateCreated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateCreated = v
+}
+
+func (x *Tenant) HasDateUpdated() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateUpdated != nil
 }
 
 func (x *Tenant) HasDateCreated() bool {
@@ -101,6 +166,10 @@ func (x *Tenant) HasDateCreated() bool {
 	return x.xxx_hidden_DateCreated != nil
 }
 
+func (x *Tenant) ClearDateUpdated() {
+	x.xxx_hidden_DateUpdated = nil
+}
+
 func (x *Tenant) ClearDateCreated() {
 	x.xxx_hidden_DateCreated = nil
 }
@@ -108,8 +177,21 @@ func (x *Tenant) ClearDateCreated() {
 type Tenant_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id          []byte
-	Alias       string
+	Id []byte
+	// Alias is what a person writes this tenant as, and it is unique across the
+	// deployment: `@acme/arm-01` says which tenant before it says which row.
+	Alias  string
+	Name   string
+	Desc   string
+	Labels map[string]string
+	// DateUpdated is stamped by the server on every write and refused to a patch
+	// document, so it is a version and not a field.
+	//
+	// What needs it is a client holding a copy: a `Watch` sends state rather than
+	// deltas, so two answers about one row have to be orderable or a late one
+	// overwrites an early one that was newer. It is here rather than added when
+	// that is built because adding it later is every app's migration.
+	DateUpdated *timestamppb.Timestamp
 	DateCreated *timestamppb.Timestamp
 }
 
@@ -119,54 +201,68 @@ func (b0 Tenant_builder) Build() *Tenant {
 	_, _ = b, x
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_Name = b.Name
+	x.xxx_hidden_Desc = b.Desc
+	x.xxx_hidden_Labels = b.Labels
+	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
 }
 
-var File_app_tenant_proto protoreflect.FileDescriptor
+var File_payday_tenant_proto protoreflect.FileDescriptor
 
-const file_app_tenant_proto_rawDesc = "" +
+const file_payday_tenant_proto_rawDesc = "" +
 	"\n" +
-	"\x10app/tenant.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x9f\x01\n" +
+	"\x13payday/tenant.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xfe\x02\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x1c\n" +
-	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\x01\x1a\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\x12\x12\n" +
+	"\x04desc\x18\x06 \x01(\tR\x04desc\x122\n" +
+	"\x06labels\x18\a \x03(\v2\x1a.payday.Tenant.LabelsEntryR\x06labels\x12F\n" +
+	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\x01\x1a\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_app_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_app_tenant_proto_goTypes = []any{
-	(*Tenant)(nil),                // 0: app.Tenant
-	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
+var file_payday_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_payday_tenant_proto_goTypes = []any{
+	(*Tenant)(nil),                // 0: payday.Tenant
+	nil,                           // 1: payday.Tenant.LabelsEntry
+	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
 }
-var file_app_tenant_proto_depIdxs = []int32{
-	1, // 0: app.Tenant.date_created:type_name -> google.protobuf.Timestamp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+var file_payday_tenant_proto_depIdxs = []int32{
+	1, // 0: payday.Tenant.labels:type_name -> payday.Tenant.LabelsEntry
+	2, // 1: payday.Tenant.date_updated:type_name -> google.protobuf.Timestamp
+	2, // 2: payday.Tenant.date_created:type_name -> google.protobuf.Timestamp
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_app_tenant_proto_init() }
-func file_app_tenant_proto_init() {
-	if File_app_tenant_proto != nil {
+func init() { file_payday_tenant_proto_init() }
+func file_payday_tenant_proto_init() {
+	if File_payday_tenant_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_tenant_proto_rawDesc), len(file_app_tenant_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_tenant_proto_rawDesc), len(file_payday_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_app_tenant_proto_goTypes,
-		DependencyIndexes: file_app_tenant_proto_depIdxs,
-		MessageInfos:      file_app_tenant_proto_msgTypes,
+		GoTypes:           file_payday_tenant_proto_goTypes,
+		DependencyIndexes: file_payday_tenant_proto_depIdxs,
+		MessageInfos:      file_payday_tenant_proto_msgTypes,
 	}.Build()
-	File_app_tenant_proto = out.File
-	file_app_tenant_proto_goTypes = nil
-	file_app_tenant_proto_depIdxs = nil
+	File_payday_tenant_proto = out.File
+	file_payday_tenant_proto_goTypes = nil
+	file_payday_tenant_proto_depIdxs = nil
 }

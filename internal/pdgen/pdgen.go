@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/protobuf-orm/protobuf-orm/graph"
+	"github.com/protobuf-orm/protobuf-orm/ormpb"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -47,8 +48,13 @@ type Entity struct {
 	Name string
 
 	// Via is the path of edges that reaches the tenant, empty for an entity
-	// that is the tenant or is not behind the wall.
+	// that is the tenant, is not behind the wall, or names its tenant with a
+	// column instead.
 	Via []string
+
+	// Field is the column holding the tenant's identifier, for a row that
+	// names one without an edge to it. Empty when [Entity.Via] says how.
+	Field string
 
 	// IsTenant says this entity is the one a wall is made of.
 	IsTenant bool
@@ -108,6 +114,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	if err := s.check(); err != nil {
 		return nil, err
 	}
+	if err := CheckOverlay(s); err != nil {
+		return nil, err
+	}
 
 	return s, nil
 }
@@ -148,11 +157,24 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		v.IsGlobal = true
 
 	case opts.HasTenanted():
-		via := opts.GetTenanted().GetVia()
-		if via == "" {
-			via = "tenant"
+		t := opts.GetTenanted()
+		switch {
+		case t.GetVia() != "" && t.GetField() != "":
+			return nil, fmt.Errorf(
+				"tenanted: says both `via: %q` and `field: %q`, and they are not two ways of "+
+					"writing one thing: an edge says the tenant is still there, a column says "+
+					"only what its identifier was",
+				t.GetVia(), t.GetField())
+
+		case t.GetField() != "":
+			v.Field = t.GetField()
+
+		case t.GetVia() != "":
+			v.Via = strings.Split(t.GetVia(), ".")
+
+		default:
+			v.Via = []string{"tenant"}
 		}
-		v.Via = strings.Split(via, ".")
 
 	default:
 		return nil, fmt.Errorf(
@@ -197,13 +219,19 @@ func (s *Schema) check() error {
 	}
 
 	for _, v := range s.Entities {
-		if len(v.Via) == 0 {
+		if len(v.Via) == 0 && v.Field == "" {
 			continue
 		}
 		if s.Tenant == nil {
 			return fmt.Errorf(
 				"%s is tenanted but nothing in this schema says it is the tenant; "+
 					"one entity has to declare `tenant: {}`", v.FullName())
+		}
+		if v.Field != "" {
+			if err := s.checkField(v); err != nil {
+				return fmt.Errorf("%s: field: %w", v.FullName(), err)
+			}
+			continue
 		}
 		if err := s.checkVia(v); err != nil {
 			return fmt.Errorf("%s: via: %w", v.FullName(), err)
@@ -232,6 +260,28 @@ func (s *Schema) checkVia(v *Entity) error {
 	}
 
 	return nil
+}
+
+// checkField refuses a column that is not there, or one that could not hold an
+// identifier if it were.
+func (s *Schema) checkField(v *Entity) error {
+	for p := range v.Props() {
+		if p.Name() != v.Field {
+			continue
+		}
+
+		f, ok := p.(graph.Field)
+		if !ok {
+			return fmt.Errorf("%q is an edge; say `via` for those", v.Field)
+		}
+		if f.Type() != ormpb.Type_TYPE_UUID {
+			return fmt.Errorf("%q is %s, and a tenant is named by a uuid", v.Field, f.Type())
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("%s has no field %q", v.FullName(), v.Field)
 }
 
 func edge(e graph.Entity, name string) (graph.Edge, bool) {

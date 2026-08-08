@@ -34,11 +34,18 @@ import (
 // `payday.proto` are linked into this binary -- so there is no import path to
 // keep in step with anything.
 func read(t *testing.T, src string) (*pdgen.Schema, error) {
+	return readAs(t, "test", src)
+}
+
+// readAs is [read] in a named package, for the cases that are about payday's
+// own entities and so have to be declared where payday declares them.
+func readAs(t *testing.T, pkg string, src string) (*pdgen.Schema, error) {
 	t.Helper()
 
 	const name = "test/schema.proto"
-	whole := "edition = \"2023\";\npackage test;\n" +
+	whole := "edition = \"2023\";\npackage " + pkg + ";\n" +
 		"import \"orm.proto\";\nimport \"payday.proto\";\n" +
+		"import \"google/protobuf/timestamp.proto\";\n" +
 		"option features.field_presence = IMPLICIT;\n" +
 		"option go_package = \"example.com/app\";\n" + src
 
@@ -260,4 +267,164 @@ func TestNames(t *testing.T) {
 			t.Errorf("%s: %q, want %q", v.GoName(), got, want[v.GoName()])
 		}
 	}
+}
+
+// TestTenantedByField is the form an audit trail needs.
+//
+// A trail row names its tenant with a column and holds no edge to it, and that
+// is deliberate: what it records happened, and it goes on being true after the
+// tenant it happened in is gone. There is no foreign key to walk, so `via`
+// cannot say it.
+func TestTenantedByField(t *testing.T) {
+	t.Run("reads a column instead of an edge", func(t *testing.T) {
+		s, err := read(t, tenant+`
+message Audit {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 3, tenanted: {field: "tenant_id"}};
+}`)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, v := range s.Entities {
+			if v.GoName() != "Audit" {
+				continue
+			}
+			if v.Field != "tenant_id" {
+				t.Errorf("field: %q", v.Field)
+			}
+			if len(v.Via) != 0 {
+				t.Errorf("via: %v, and a column is not an edge", v.Via)
+			}
+		}
+	})
+
+	for _, tt := range []struct {
+		what string
+		src  string
+		says string
+	}{{
+		what: "a column that is not there",
+		src:  tenant + entity("Audit", `domain: 3, tenanted: {field: "tenant_id"}`),
+		says: `no field "tenant_id"`,
+	}, {
+		what: "a column that could not hold an identifier",
+		src:  tenant + entity("Audit", `domain: 3, tenanted: {field: "alias"}`),
+		says: "a tenant is named by a uuid",
+	}, {
+		what: "an edge named where a column was asked for",
+		src: tenant + entity("Audit", `domain: 3, tenanted: {field: "tenant"}`,
+			`Tenant tenant = 2 [(orm.edge) = {}];`),
+		says: "say `via` for those",
+	}, {
+		what: "both at once, which are not two ways of writing one thing",
+		src: tenant + entity("Audit", `domain: 3, tenanted: {via: "tenant", field: "tenant_id"}`,
+			`Tenant tenant = 2 [(orm.edge) = {}];`),
+		says: "not two ways of writing one thing",
+	}} {
+		t.Run(tt.what+" is refused", func(t *testing.T) {
+			_, err := read(t, tt.src)
+			if err == nil {
+				t.Fatal("generated anyway")
+			}
+			if !strings.Contains(err.Error(), tt.says) {
+				t.Fatalf("the refusal does not say %q:\n%s", tt.says, err)
+			}
+			t.Log(err)
+		})
+	}
+}
+
+// TestOverlayMayAddAndMayNotChange is the guard on the one thing merging does
+// silently.
+//
+// protobuf-merge takes the overlay's word for a number that is already there.
+// So an overlay that redeclares payday's `alias` wins, and the app compiles: the
+// wall goes on reading a tenant and `auth` goes on looking a holder up, both
+// against a column that is no longer what they were written for.
+func TestOverlayMayAddAndMayNotChange(t *testing.T) {
+	// payday's Holder as it ships, with the numbers this test is about spelled
+	// out so that a reader does not have to open another file.
+	holder := func(extra string) string {
+		return `
+message Holder {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  string alias = 4;
+  string name = 5;
+  string desc = 6;
+  map<string, string> labels = 7;
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+` + extra + `
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}};
+}`
+	}
+
+	t.Run("adding in the app's own numbers is fine", func(t *testing.T) {
+		if _, err := readAs(t, "payday", tenantOf("payday")+holder(`
+  string email = 8;
+  bytes badge = 16;
+`)); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	for _, tt := range []struct {
+		what string
+		body string
+		says string
+	}{{
+		what: "redeclaring one of payday's with another type",
+		body: `  int64 alias = 4;`,
+		says: `4 is payday's "alias"`,
+	}, {
+		what: "renaming one of payday's",
+		body: `  string handle = 4;`,
+		says: `redeclared as "handle"`,
+	}} {
+		t.Run(tt.what+" is refused", func(t *testing.T) {
+			// The overlay has already been merged by the time a generator sees
+			// it, so what is written here is the merged file: payday's Holder
+			// with that number replaced.
+			src := tenantOf("payday") + strings.Replace(holder(""), "  string alias = 4;", tt.body, 1)
+
+			_, err := readAs(t, "payday", src)
+			if err == nil {
+				t.Fatal("generated anyway")
+			}
+			if !strings.Contains(err.Error(), tt.says) {
+				t.Fatalf("the refusal does not say %q:\n%s", tt.says, err)
+			}
+			t.Log(err)
+		})
+	}
+
+	t.Run("an app's own entity is the app's entirely", func(t *testing.T) {
+		// Nothing here is payday's, so nothing is checked against it.
+		if _, err := read(t, tenant+entity("Robot", `domain: 7, global: {}`)); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+// tenantOf is payday's Tenant in the given package, for a test that has to
+// compile one.
+func tenantOf(pkg string) string {
+	return `
+message Tenant {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  string alias = 4 [(orm.field) = {unique: true}];
+  string name = 5;
+  string desc = 6;
+  map<string, string> labels = 7;
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 1, tenant: {}};
+}`
 }

@@ -2,7 +2,7 @@ edition = "2023";
 
 package app;
 
-import "app/tenant.proto";
+import "payday/tenant.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
 import "payday.proto";
@@ -18,7 +18,7 @@ message Robot {
     key: true
     default: ""
   }];
-  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
   string alias = 4;
 
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {
@@ -94,7 +94,7 @@ message Cell {
     key: true
     default: ""
   }];
-  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
   string alias = 4;
 
   option (orm.message) = {rpc: {crud: true}};

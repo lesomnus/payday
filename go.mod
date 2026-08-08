@@ -1,11 +1,11 @@
 module github.com/lesomnus/payday
 
-go 1.26.2
+go 1.26.4
 
 require (
 	ariga.io/atlas v0.36.2-0.20250730182955-2c6300d0a3e1
 	entgo.io/ent v0.14.6
-	github.com/bufbuild/protocompile v0.14.1
+	github.com/bufbuild/protocompile v0.14.2-0.20260605203730-cd7c3c124e10
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
@@ -48,10 +48,14 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/ncruces/go-sqlite3-wasm/v3 v3.2.35304 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
+	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df // indirect
 	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260807205916-3e9c932f5f85 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260804121030-6619a23a2859 // indirect
-	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260807033829-df58c6f1abb6 // indirect
+	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260807210724-9ecafa02f5f7 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/tidwall/btree v1.8.1 // indirect
 	github.com/zclconf/go-cty v1.14.4 // indirect
 	github.com/zclconf/go-cty-yaml v1.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
@@ -61,6 +65,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
+	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
@@ -72,6 +77,7 @@ require (
 
 tool (
 	github.com/lesomnus/payday/cmd/protoc-gen-pd
+	github.com/protobuf-orm/protobuf-merge
 	github.com/protobuf-orm/protoc-gen-orm-ent
 	github.com/protobuf-orm/protoc-gen-orm-go
 	github.com/protobuf-orm/protoc-gen-orm-service

@@ -9,6 +9,35 @@ import (
 )
 
 var (
+	// AuditColumns holds the columns for the "audit" table.
+	AuditColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "tenant_id", Type: field.TypeUUID},
+		{Name: "actor_id", Type: field.TypeUUID},
+		{Name: "trace_id", Type: field.TypeBytes},
+		{Name: "action", Type: field.TypeString},
+		{Name: "object_id", Type: field.TypeUUID},
+		{Name: "patch", Type: field.TypeBytes},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+	}
+	// AuditTable holds the schema information for the "audit" table.
+	AuditTable = &schema.Table{
+		Name:       "audit",
+		Columns:    AuditColumns,
+		PrimaryKey: []*schema.Column{AuditColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "audit_object_id",
+				Unique:  false,
+				Columns: []*schema.Column{AuditColumns[5]},
+			},
+			{
+				Name:    "audit_tenant_id_date_created",
+				Unique:  false,
+				Columns: []*schema.Column{AuditColumns[1], AuditColumns[7]},
+			},
+		},
+	}
 	// CellColumns holds the columns for the "cell" table.
 	CellColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
@@ -39,6 +68,43 @@ var (
 		Name:       "fleet",
 		Columns:    FleetColumns,
 		PrimaryKey: []*schema.Column{FleetColumns[0]},
+	}
+	// HolderColumns holds the columns for the "holder" table.
+	HolderColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "alias", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString},
+		{Name: "desc", Type: field.TypeString},
+		{Name: "labels", Type: field.TypeJSON, Nullable: true},
+		{Name: "date_updated", Type: field.TypeTime},
+		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "idp_subject", Type: field.TypeString},
+		{Name: "holder_tenant", Type: field.TypeUUID},
+	}
+	// HolderTable holds the schema information for the "holder" table.
+	HolderTable = &schema.Table{
+		Name:       "holder",
+		Columns:    HolderColumns,
+		PrimaryKey: []*schema.Column{HolderColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "holder_tenant_tenant",
+				Columns:    []*schema.Column{HolderColumns[9]},
+				RefColumns: []*schema.Column{TenantColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "holder_alias_holder_tenant",
+				Unique:  true,
+				Columns: []*schema.Column{HolderColumns[1], HolderColumns[9]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "date_erased IS NULL",
+				},
+			},
+		},
 	}
 	// JointColumns holds the columns for the "joint" table.
 	JointColumns = []*schema.Column{
@@ -92,6 +158,10 @@ var (
 	TenantColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString, Unique: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "desc", Type: field.TypeString},
+		{Name: "labels", Type: field.TypeJSON, Nullable: true},
+		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 	}
 	// TenantTable holds the schema information for the "tenant" table.
@@ -102,8 +172,10 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AuditTable,
 		CellTable,
 		FleetTable,
+		HolderTable,
 		JointTable,
 		RobotTable,
 		TenantTable,
@@ -111,12 +183,19 @@ var (
 )
 
 func init() {
+	AuditTable.Annotation = &entsql.Annotation{
+		Table: "audit",
+	}
 	CellTable.ForeignKeys[0].RefTable = TenantTable
 	CellTable.Annotation = &entsql.Annotation{
 		Table: "cell",
 	}
 	FleetTable.Annotation = &entsql.Annotation{
 		Table: "fleet",
+	}
+	HolderTable.ForeignKeys[0].RefTable = TenantTable
+	HolderTable.Annotation = &entsql.Annotation{
+		Table: "holder",
 	}
 	JointTable.ForeignKeys[0].RefTable = RobotTable
 	JointTable.Annotation = &entsql.Annotation{

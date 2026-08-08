@@ -9,6 +9,18 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/ent"
 )
 
+// The AuditFunc type is an adapter to allow the use of ordinary
+// function as Audit mutator.
+type AuditFunc func(context.Context, *ent.AuditMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AuditFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AuditMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuditMutation", m)
+}
+
 // The CellFunc type is an adapter to allow the use of ordinary
 // function as Cell mutator.
 type CellFunc func(context.Context, *ent.CellMutation) (ent.Value, error)
@@ -31,6 +43,18 @@ func (f FleetFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FleetMutation", m)
+}
+
+// The HolderFunc type is an adapter to allow the use of ordinary
+// function as Holder mutator.
+type HolderFunc func(context.Context, *ent.HolderMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f HolderFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.HolderMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.HolderMutation", m)
 }
 
 // The JointFunc type is an adapter to allow the use of ordinary

@@ -12,7 +12,9 @@ import (
 	context "context"
 	uuid "github.com/google/uuid"
 	frame "github.com/lesomnus/payday/frame"
+	audit "github.com/lesomnus/payday/internal/apptest/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/ent/cell"
+	holder "github.com/lesomnus/payday/internal/apptest/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/ent/joint"
 	predicate "github.com/lesomnus/payday/internal/apptest/ent/predicate"
 	robot "github.com/lesomnus/payday/internal/apptest/ent/robot"
@@ -31,6 +33,8 @@ const (
 	FleetDomain  pdid.Domain = 9  // "fleet"
 	JointDomain  pdid.Domain = 8  // "joint"
 	RobotDomain  pdid.Domain = 7  // "robot"
+	AuditDomain  pdid.Domain = 3  // "audit"
+	HolderDomain pdid.Domain = 2  // "holder"
 	TenantDomain pdid.Domain = 1  // "tenant"
 )
 
@@ -39,17 +43,21 @@ func init() {
 	pdid.Register("app.Fleet", FleetDomain, "fleet")
 	pdid.Register("app.Joint", JointDomain, "joint")
 	pdid.Register("app.Robot", RobotDomain, "robot")
-	pdid.Register("app.Tenant", TenantDomain, "tenant")
+	pdid.Register("payday.Audit", AuditDomain, "audit")
+	pdid.Register("payday.Holder", HolderDomain, "holder")
+	pdid.Register("payday.Tenant", TenantDomain, "tenant")
 }
 
 // Domains is the domain of each entity by the full name of its message,
 // which is the name a [Minter] is asked about.
 var Domains = map[string]pdid.Domain{
-	"app.Cell":   CellDomain,
-	"app.Fleet":  FleetDomain,
-	"app.Joint":  JointDomain,
-	"app.Robot":  RobotDomain,
-	"app.Tenant": TenantDomain,
+	"app.Cell":      CellDomain,
+	"app.Fleet":     FleetDomain,
+	"app.Joint":     JointDomain,
+	"app.Robot":     RobotDomain,
+	"payday.Audit":  AuditDomain,
+	"payday.Holder": HolderDomain,
+	"payday.Tenant": TenantDomain,
 }
 
 // Minter answers with the [bare.Minter] that gives every new row an
@@ -127,6 +135,26 @@ func (wall) RobotScope(ctx context.Context) (predicate.Robot, error) {
 	}
 
 	return robot.HasTenantWith(tenant.IDIn(vs...)), nil
+}
+
+// AuditScope: a row belongs to the tenant its "tenant_id" names, which it holds without an edge.
+func (wall) AuditScope(ctx context.Context) (predicate.Audit, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return audit.TenantIDIn(vs...), nil
+}
+
+// HolderScope: a row belongs to the tenant its "tenant" reaches.
+func (wall) HolderScope(ctx context.Context) (predicate.Holder, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return holder.HasTenantWith(tenant.IDIn(vs...)), nil
 }
 
 // TenantScope: a tenant is inside itself, which is what a tenant being a wall comes down to.

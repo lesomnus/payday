@@ -2870,22 +2870,22 @@ var File_app_robot_svc_proto protoreflect.FileDescriptor
 
 const file_app_robot_svc_proto_rawDesc = "" +
 	"\n" +
-	"\x13app/robot_svc.proto\x12\x03app\x1a\x0fapp/robot.proto\x1a\x14app/tenant_svc.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xa5\x01\n" +
+	"\x13app/robot_svc.proto\x12\x03app\x1a\x0fapp/robot.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x17payday/tenant_svc.proto\"\xa8\x01\n" +
 	"\x0fRobotAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
+	"\x02id\x18\x01 \x01(\fR\x02id\x12)\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12=\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"N\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"Q\n" +
 	"\x0eRobotRefBySlug\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12&\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\"N\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12)\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\"N\n" +
 	"\bRobotRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02id\x12)\n" +
 	"\x04slug\x18\x04 \x01(\v2\x13.app.RobotRefBySlugH\x00R\x04slugB\x05\n" +
-	"\x03key\"\x83\x01\n" +
+	"\x03key\"\x86\x01\n" +
 	"\vRobotSelect\x12\x10\n" +
-	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x11.app.TenantSelectR\x06tenant\x12\x14\n" +
+	"\x03all\x18\x01 \x01(\bR\x03all\x12,\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\bR\x05alias\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"\\\n" +
 	"\x0fRobotGetRequest\x12\x1f\n" +
@@ -2935,18 +2935,18 @@ const file_app_robot_svc_proto_rawDesc = "" +
 	"\x05alias\x18\b \x01(\tR\x05alias\"X\n" +
 	"\x11FleetApplyRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.FleetRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"e\n" +
+	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"h\n" +
 	"\x0eCellAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
+	"\x02id\x18\x01 \x01(\fR\x02id\x12)\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\"\"\n" +
 	"\aCellRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
-	"\x03key\"_\n" +
+	"\x03key\"b\n" +
 	"\n" +
 	"CellSelect\x12\x10\n" +
-	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x11.app.TenantSelectR\x06tenant\x12\x14\n" +
+	"\x03all\x18\x01 \x01(\bR\x03all\x12,\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\bR\x05alias\"Y\n" +
 	"\x0eCellGetRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12'\n" +
@@ -3021,9 +3021,9 @@ var file_app_robot_svc_proto_goTypes = []any{
 	(*CellGetRequest)(nil),        // 22: app.CellGetRequest
 	(*CellPatchRequest)(nil),      // 23: app.CellPatchRequest
 	(*CellApplyRequest)(nil),      // 24: app.CellApplyRequest
-	(*TenantRef)(nil),             // 25: app.TenantRef
+	(*TenantRef)(nil),             // 25: payday.TenantRef
 	(*timestamppb.Timestamp)(nil), // 26: google.protobuf.Timestamp
-	(*TenantSelect)(nil),          // 27: app.TenantSelect
+	(*TenantSelect)(nil),          // 27: payday.TenantSelect
 	(*patchpb.Patch)(nil),         // 28: patch.Patch
 	(*Robot)(nil),                 // 29: app.Robot
 	(*emptypb.Empty)(nil),         // 30: google.protobuf.Empty
@@ -3032,11 +3032,11 @@ var file_app_robot_svc_proto_goTypes = []any{
 	(*Cell)(nil),                  // 33: app.Cell
 }
 var file_app_robot_svc_proto_depIdxs = []int32{
-	25, // 0: app.RobotAddRequest.tenant:type_name -> app.TenantRef
+	25, // 0: app.RobotAddRequest.tenant:type_name -> payday.TenantRef
 	26, // 1: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	25, // 2: app.RobotRefBySlug.tenant:type_name -> app.TenantRef
+	25, // 2: app.RobotRefBySlug.tenant:type_name -> payday.TenantRef
 	1,  // 3: app.RobotRef.slug:type_name -> app.RobotRefBySlug
-	27, // 4: app.RobotSelect.tenant:type_name -> app.TenantSelect
+	27, // 4: app.RobotSelect.tenant:type_name -> payday.TenantSelect
 	2,  // 5: app.RobotGetRequest.ref:type_name -> app.RobotRef
 	3,  // 6: app.RobotGetRequest.select:type_name -> app.RobotSelect
 	2,  // 7: app.RobotPatchRequest.ref:type_name -> app.RobotRef
@@ -3054,8 +3054,8 @@ var file_app_robot_svc_proto_depIdxs = []int32{
 	14, // 19: app.FleetPatchRequest.ref:type_name -> app.FleetRef
 	14, // 20: app.FleetApplyRequest.ref:type_name -> app.FleetRef
 	28, // 21: app.FleetApplyRequest.patch:type_name -> patch.Patch
-	25, // 22: app.CellAddRequest.tenant:type_name -> app.TenantRef
-	27, // 23: app.CellSelect.tenant:type_name -> app.TenantSelect
+	25, // 22: app.CellAddRequest.tenant:type_name -> payday.TenantRef
+	27, // 23: app.CellSelect.tenant:type_name -> payday.TenantSelect
 	20, // 24: app.CellGetRequest.ref:type_name -> app.CellRef
 	21, // 25: app.CellGetRequest.select:type_name -> app.CellSelect
 	20, // 26: app.CellPatchRequest.ref:type_name -> app.CellRef
@@ -3114,7 +3114,7 @@ func file_app_robot_svc_proto_init() {
 		return
 	}
 	file_app_robot_proto_init()
-	file_app_tenant_svc_proto_init()
+	file_payday_tenant_svc_proto_init()
 	file_app_robot_svc_proto_msgTypes[2].OneofWrappers = []any{
 		(*robotRef_Id)(nil),
 		(*robotRef_Slug)(nil),

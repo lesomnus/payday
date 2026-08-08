@@ -27,6 +27,30 @@ func (_c *TenantCreate) SetAlias(v string) *TenantCreate {
 	return _c
 }
 
+// SetName sets the "name" field.
+func (_c *TenantCreate) SetName(v string) *TenantCreate {
+	_c.mutation.SetName(v)
+	return _c
+}
+
+// SetDesc sets the "desc" field.
+func (_c *TenantCreate) SetDesc(v string) *TenantCreate {
+	_c.mutation.SetDesc(v)
+	return _c
+}
+
+// SetLabels sets the "labels" field.
+func (_c *TenantCreate) SetLabels(v map[string]string) *TenantCreate {
+	_c.mutation.SetLabels(v)
+	return _c
+}
+
+// SetDateUpdated sets the "date_updated" field.
+func (_c *TenantCreate) SetDateUpdated(v time.Time) *TenantCreate {
+	_c.mutation.SetDateUpdated(v)
+	return _c
+}
+
 // SetDateCreated sets the "date_created" field.
 func (_c *TenantCreate) SetDateCreated(v time.Time) *TenantCreate {
 	_c.mutation.SetDateCreated(v)
@@ -84,6 +108,15 @@ func (_c *TenantCreate) check() error {
 	if _, ok := _c.mutation.Alias(); !ok {
 		return &ValidationError{Name: "alias", err: errors.New(`ent: missing required field "Tenant.alias"`)}
 	}
+	if _, ok := _c.mutation.Name(); !ok {
+		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Tenant.name"`)}
+	}
+	if _, ok := _c.mutation.Desc(); !ok {
+		return &ValidationError{Name: "desc", err: errors.New(`ent: missing required field "Tenant.desc"`)}
+	}
+	if _, ok := _c.mutation.DateUpdated(); !ok {
+		return &ValidationError{Name: "date_updated", err: errors.New(`ent: missing required field "Tenant.date_updated"`)}
+	}
 	return nil
 }
 
@@ -122,6 +155,22 @@ func (_c *TenantCreate) createSpec() (*Tenant, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(tenant.FieldAlias, field.TypeString, value)
 		_node.Alias = value
+	}
+	if value, ok := _c.mutation.Name(); ok {
+		_spec.SetField(tenant.FieldName, field.TypeString, value)
+		_node.Name = value
+	}
+	if value, ok := _c.mutation.Desc(); ok {
+		_spec.SetField(tenant.FieldDesc, field.TypeString, value)
+		_node.Desc = value
+	}
+	if value, ok := _c.mutation.Labels(); ok {
+		_spec.SetField(tenant.FieldLabels, field.TypeJSON, value)
+		_node.Labels = value
+	}
+	if value, ok := _c.mutation.DateUpdated(); ok {
+		_spec.SetField(tenant.FieldDateUpdated, field.TypeTime, value)
+		_node.DateUpdated = value
 	}
 	if value, ok := _c.mutation.DateCreated(); ok {
 		_spec.SetField(tenant.FieldDateCreated, field.TypeTime, value)

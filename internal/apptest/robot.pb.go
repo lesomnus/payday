@@ -431,10 +431,10 @@ var File_app_robot_proto protoreflect.FileDescriptor
 
 const file_app_robot_proto_rawDesc = "" +
 	"\n" +
-	"\x0fapp/robot.proto\x12\x03app\x1a\x10app/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xec\x01\n" +
+	"\x0fapp/robot.proto\x12\x03app\x1a\x13payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xef\x01\n" +
 	"\x05Robot\x12\x1b\n" +
-	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
-	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
+	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12.\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:9\xca\xfc\x15%\x12\x02\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
 	"\x05alias\x10\x04\x1a\n" +
@@ -449,10 +449,10 @@ const file_app_robot_proto_rawDesc = "" +
 	"\frobot.tenant\"T\n" +
 	"\x05Fleet\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x1c\n" +
-	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\t*\x00\"\x80\x01\n" +
+	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\t*\x00\"\x83\x01\n" +
 	"\x04Cell\x12\x1b\n" +
-	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
-	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
+	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12.\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias:\x18\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\f\b\n" +
 	"\"\b\n" +
 	"\x06tenantB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
@@ -463,14 +463,14 @@ var file_app_robot_proto_goTypes = []any{
 	(*Joint)(nil),                 // 1: app.Joint
 	(*Fleet)(nil),                 // 2: app.Fleet
 	(*Cell)(nil),                  // 3: app.Cell
-	(*Tenant)(nil),                // 4: app.Tenant
+	(*Tenant)(nil),                // 4: payday.Tenant
 	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
 }
 var file_app_robot_proto_depIdxs = []int32{
-	4, // 0: app.Robot.tenant:type_name -> app.Tenant
+	4, // 0: app.Robot.tenant:type_name -> payday.Tenant
 	5, // 1: app.Robot.date_created:type_name -> google.protobuf.Timestamp
 	0, // 2: app.Joint.robot:type_name -> app.Robot
-	4, // 3: app.Cell.tenant:type_name -> app.Tenant
+	4, // 3: app.Cell.tenant:type_name -> payday.Tenant
 	4, // [4:4] is the sub-list for method output_type
 	4, // [4:4] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
@@ -483,7 +483,7 @@ func file_app_robot_proto_init() {
 	if File_app_robot_proto != nil {
 		return
 	}
-	file_app_tenant_proto_init()
+	file_payday_tenant_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

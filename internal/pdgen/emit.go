@@ -167,6 +167,14 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 		return tenantIn
 	}
 
+	if v.Field != "" {
+		// A row that names its tenant without holding an edge to it. The
+		// predicate is on this entity's own column, so there is nothing to
+		// walk: `audit.TenantIDIn(vs...)`.
+		return fmt.Sprintf("%s(vs...)", g.QualifiedGoIdent(
+			(p.Ent + "/" + protogen.GoImportPath(v.EntPkg())).Ident(pascal(v.Field)+"In")))
+	}
+
 	// Built inside out: the innermost predicate is the tenant's, and each step
 	// back along the path wraps it in the edge that reached it.
 	at := v.Entity
@@ -190,27 +198,44 @@ func why(v *Entity, s *Schema) string {
 		return "a tenant is inside itself, which is what a tenant being a wall comes down to."
 	case v.IsGlobal:
 		return "declared `global`, so it is not behind the wall at all."
+	case v.Field != "":
+		return fmt.Sprintf("a row belongs to the tenant its %q names, which it holds without an edge.", v.Field)
 	default:
 		return fmt.Sprintf("a row belongs to the tenant its %q reaches.", strings.Join(v.Via, "."))
 	}
 }
 
+// pascal is a name as ent spells it in Go.
+//
+// The initialisms are ent's own list and not a style preference: a predicate is
+// looked up by the name ent generated, so `tenant_id` has to come out
+// `TenantID` and not `TenantId` or nothing compiles.
 func pascal(v string) string {
 	var b strings.Builder
-	up := true
-	for _, r := range v {
-		if r == '_' || r == '-' {
-			up = true
+	for _, part := range strings.Split(v, "_") {
+		if part == "" {
 			continue
 		}
-		if up && r >= 'a' && r <= 'z' {
-			b.WriteRune(r - 'a' + 'A')
-			up = false
+		if up, ok := initialisms[part]; ok {
+			b.WriteString(up)
 			continue
 		}
-		b.WriteRune(r)
-		up = false
+
+		b.WriteString(strings.ToUpper(part[:1]))
+		b.WriteString(part[1:])
 	}
 
 	return b.String()
+}
+
+// initialisms is what ent writes in capitals. It is short because the only
+// names that reach here are the ones a schema wrote down, and it grows when
+// something that should have been capitalized was not.
+var initialisms = map[string]string{
+	"id":   "ID",
+	"ids":  "IDs",
+	"url":  "URL",
+	"uri":  "URI",
+	"uuid": "UUID",
+	"ip":   "IP",
 }

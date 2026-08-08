@@ -250,6 +250,8 @@ type Scope interface {
 	JointScope(ctx context.Context) (predicate.Joint, error)
 	FleetScope(ctx context.Context) (predicate.Fleet, error)
 	CellScope(ctx context.Context) (predicate.Cell, error)
+	AuditScope(ctx context.Context) (predicate.Audit, error)
+	HolderScope(ctx context.Context) (predicate.Holder, error)
 }
 
 // Unscoped is a [Scope] that narrows nothing. Embed it and write out the
@@ -277,6 +279,12 @@ func (Unscoped) FleetScope(_ context.Context) (predicate.Fleet, error) {
 	return nil, nil
 }
 func (Unscoped) CellScope(_ context.Context) (predicate.Cell, error) {
+	return nil, nil
+}
+func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
+	return nil, nil
+}
+func (Unscoped) HolderScope(_ context.Context) (predicate.Holder, error) {
 	return nil, nil
 }
 
@@ -325,6 +333,14 @@ func mint(ctx context.Context, m Minter, entity string, given uuid.UUID, ok bool
 // name -- a PostgreSQL-compatible server -- is named when the connection
 // is opened, which is where saying so belongs: everything the client does
 // is rendered for that dialect, not just what this server writes.
+//
+// That set is also what a soft erasure needs, so this is the whole
+// check. Holder frees the names it held when a row
+// is erased, which is a unique index covering only the rows that are
+// still there -- a partial index, and the dialects above are the ones
+// that have one. MySQL does not, and ent writes the annotation out for
+// it rather than refusing, so the index would come up covering every
+// row and a freed name would stay taken with nothing to say so.
 func NewServer(db *ent.Client, opts ...Option) (Server, error) {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
@@ -360,3 +376,5 @@ func (s Server) Robot() apptest.RobotServiceServer   { return RobotServiceServer
 func (s Server) Joint() apptest.JointServiceServer   { return JointServiceServer{Store: s.Store} }
 func (s Server) Fleet() apptest.FleetServiceServer   { return FleetServiceServer{Store: s.Store} }
 func (s Server) Cell() apptest.CellServiceServer     { return CellServiceServer{Store: s.Store} }
+func (s Server) Audit() apptest.AuditServiceServer   { return AuditServiceServer{Store: s.Store} }
+func (s Server) Holder() apptest.HolderServiceServer { return HolderServiceServer{Store: s.Store} }
