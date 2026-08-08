@@ -1,0 +1,53 @@
+# One job, because there is one thing to say: does it build, does it pass, and
+# is the generated code what the schema says.
+#
+# The third is the one worth having a machine for. The first two fail at a desk;
+# a generated file that was not regenerated compiles perfectly and is wrong, and
+# `pd gen --check` is the only thing that looks.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - run: go build ./...
+      - run: go test ./...
+
+      # The app payday is tried against, regenerated from its schema. Anything
+      # that moves is something a commit did not carry.
+      - run: go tool pd gen --check internal/apptest
+
+      # And that payday still builds for the browser, which is a promise about
+      # the runtime -- no file system, no listener, no network assumed -- that
+      # is only kept by being checked.
+      - run: GOOS=js GOARCH=wasm go build ./...
+
+  ts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ts/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
