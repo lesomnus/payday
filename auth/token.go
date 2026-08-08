@@ -204,7 +204,15 @@ func (s *MemTokenStore) Lookup(_ context.Context, token string) (Identity, error
 		return Identity{}, fmt.Errorf("expired: %w", ErrUnknownToken)
 	}
 
-	return v.id, nil
+	// The expiry travels with the answer, which a call has no use for -- it
+	// reads its credential again next time -- and a stream does: a stream is
+	// authenticated once and served until somebody hangs up. A store that keeps
+	// this to itself hands out streams that outlive the tokens they were opened
+	// with. See [InterceptorStream].
+	id := v.id
+	id.Expires = v.exp
+
+	return id, nil
 }
 
 func (s *MemTokenStore) now() time.Time {

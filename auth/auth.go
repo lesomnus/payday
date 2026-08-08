@@ -66,6 +66,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"time"
 
 	"github.com/lesomnus/payday/frame"
 )
@@ -129,6 +130,18 @@ type Identity struct {
 	// names allows. A handler that reads a credential with nowhere to carry an
 	// attenuation answers [frame.Whole]; see [frame.Grant].
 	Grant frame.Grant
+
+	// Expires is when this credential stops working, and the zero time is one
+	// that does not. Only a [TokenStore] fills it: a header and a certificate
+	// have nowhere to carry an expiry.
+	//
+	// It is here rather than being the store's private business because a
+	// **stream** needs it. A unary call carries its credential every time and
+	// is refused at the next one; a stream reads it once, at the handshake, and
+	// without this would go on being served for as long as it stays open --
+	// which for a Watch is until somebody hangs up. See [Identity.Valid] and
+	// the note on cutting a stream in [InterceptorStream].
+	Expires time.Time
 }
 
 // NamesNobody reports whether this identity says who the caller is at all.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 	"strings"
 
 	"github.com/lesomnus/otx/log"
@@ -43,7 +44,11 @@ func InterceptorUnary(h Handler, r Resolver, public Public) grpc.UnaryServerInte
 	of := authenticate(h, r, public)
 
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		ctx, err := of(ctx, info.FullMethod)
+		// A credential's expiry needs nothing here. Every call carries one and
+		// is read again, so an expired one is refused by whatever answers
+		// [TokenStore.Lookup] -- which is where an expiry is known and where
+		// revocation is too.
+		ctx, _, err := of(ctx, info.FullMethod)
 		if err != nil {
 			return nil, err
 		}
@@ -52,16 +57,63 @@ func InterceptorUnary(h Handler, r Resolver, public Public) grpc.UnaryServerInte
 	}
 }
 
+// ErrExpired is a stream that outlived the credential it was opened with.
+//
+// Unauthenticated, and that is the answer that makes the recovery work: a
+// client told this goes and gets another credential and opens the stream again,
+// and a fresh Watch begins with everything that matches now. So an expiry
+// recovers down the same road a disconnection does, which is a road that had to
+// exist anyway.
+var ErrExpired = errors.New("the credential this stream was opened with has expired")
+
+// InterceptorStream is [InterceptorUnary] for a stream, plus the one thing a
+// stream needs and a call does not.
+//
+// # Why a stream is cut
+//
+// A call carries its credential every time, so an expiry is enforced by not
+// being renewed: the next call is refused. A stream carries one **once**, at
+// the handshake, and is then served for as long as it stays open -- which for a
+// Watch is until somebody hangs up. Without this, a token with a ten-minute
+// life is a stream that runs for a week.
+//
+// It matters more with a browser than it looks. Over HTTP/2 a credential rides
+// in per-call metadata; over a WebSocket the browser puts the cookie on the
+// handshake and never again, so **identity is per connection rather than per
+// call** and there is no next call to refuse.
+//
+// Of the two ways to handle that -- cut the connection, or re-check
+// periodically -- this cuts. `Watch` is already built so that a client which
+// was cut off reconnects and is sent what matches now, so an expiry travels a
+// road that exists. Re-checking would be a second road to the same place.
 func InterceptorStream(h Handler, r Resolver, public Public) grpc.StreamServerInterceptor {
 	of := authenticate(h, r, public)
 
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		ctx, err := of(ss.Context(), info.FullMethod)
+		ctx, id, err := of(ss.Context(), info.FullMethod)
 		if err != nil {
 			return err
 		}
 
-		return handler(srv, grpcx.StreamWithContext(ss, ctx))
+		if !id.Expires.IsZero() {
+			// Cancelled with a cause rather than given a deadline, so that a
+			// stream cut for this is told apart from one that ran out of the
+			// time its caller asked for. The two want different answers: get
+			// another credential, or ask for longer.
+			var cancel context.CancelCauseFunc
+			ctx, cancel = context.WithCancelCause(ctx)
+			defer cancel(nil)
+
+			t := time.AfterFunc(time.Until(id.Expires), func() { cancel(ErrExpired) })
+			defer t.Stop()
+		}
+
+		err = handler(srv, grpcx.StreamWithContext(ss, ctx))
+		if errors.Is(context.Cause(ctx), ErrExpired) {
+			return status.Error(codes.Unauthenticated, ErrExpired.Error())
+		}
+
+		return err
 	}
 }
 
@@ -71,14 +123,14 @@ func InterceptorStream(h Handler, r Resolver, public Public) grpc.StreamServerIn
 // A call that already has a frame is left alone. That is a call that did not
 // come in over the wire - one server calling another in the same process - and
 // it was vouched for when it did come in.
-func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context, method string) (context.Context, error) {
+func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context, method string) (context.Context, Identity, error) {
 	if public == nil {
 		public = func(string) bool { return false }
 	}
 
-	return func(ctx context.Context, method string) (context.Context, error) {
+	return func(ctx context.Context, method string) (context.Context, Identity, error) {
 		if _, ok := frame.From(ctx); ok {
-			return ctx, nil
+			return ctx, Identity{}, nil
 		}
 
 		id, err := h.Handle(ctx)
@@ -90,7 +142,7 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 					// nil frame in the context reads as a frame that is there
 					// and says nothing, which is worse than none: everything
 					// behind it stops asking whether there is one.
-					return nil, status.Error(codes.Internal, "the resolver answered with neither a frame nor an error")
+					return nil, Identity{}, status.Error(codes.Internal, "the resolver answered with neither a frame nor an error")
 				}
 
 				// Who called what, for every RPC there is -- the reads that
@@ -115,7 +167,7 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				// for this, which is a question about the request and not
 				// about the row it is going to touch.
 				if !id.Grant.Allows(method) {
-					return nil, status.Errorf(codes.PermissionDenied,
+					return nil, Identity{}, status.Errorf(codes.PermissionDenied,
 						"%s: this credential is not for that", method)
 				}
 
@@ -128,23 +180,23 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				v := *f
 				v.Grant = id.Grant
 
-				return frame.Into(ctx, &v), nil
+				return frame.Into(ctx, &v), id, nil
 			}
 
 			// Fall through: somebody said something and it did not name anyone
 			// who is here, which is a bad credential and not a missing one.
 			if !errors.Is(err, ErrNoCredential) {
-				return nil, resolveFailed(ctx, err)
+				return nil, Identity{}, resolveFailed(ctx, err)
 			}
 		} else if !errors.Is(err, ErrNoCredential) {
-			return nil, statusOf(err)
+			return nil, Identity{}, statusOf(err)
 		}
 
 		if public(method) {
-			return ctx, nil
+			return ctx, Identity{}, nil
 		}
 
-		return nil, status.Error(codes.Unauthenticated, "who is asking?")
+		return nil, Identity{}, status.Error(codes.Unauthenticated, "who is asking?")
 	}
 }
 
