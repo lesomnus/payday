@@ -1,25 +1,44 @@
 /**
- * The local store: a replica of what this caller may see.
+ * The local store and the reads that keep themselves up to date.
  *
  * `entities` is generated -- one declaration per entity, and no behaviour. The
- * store reads those together with the protobuf descriptors and implements
+ * runtime reads those together with the protobuf descriptors and implements
  * normalizing, reconciling and applying a `Watch` once, for every entity there
  * is.
+ *
+ * `Queries` is the half above it. A read that goes through it is a read the
+ * framework knows about, so when a row it answered with changes, everything
+ * drawing that row is told -- and every place it appears changes at once, with
+ * nothing declared anywhere. `@lesomnus/payday/react` is thirty lines over
+ * this; Vue or Svelte is the same file, the same length.
  *
  * @module
  */
 
-import { Store } from '@lesomnus/payday/store'
+import type { Transport } from '@connectrpc/connect'
+
+import { Queries } from '@lesomnus/payday/query'
+import { Store, identityOf } from '@lesomnus/payday/store'
 
 import { entities } from '../gen/entities.js'
 
+/** App is what a page reads through. */
+export interface App {
+	readonly store: Store
+	readonly queries: Queries
+}
+
 /**
- * open answers with this app's store for one caller.
+ * open answers with this app's store and queries, for one caller.
  *
- * The identity is not optional. A store shared between two callers shows the
- * first one's rows to the second -- nothing leaked, since the server never sent
- * anything they could not see, but the screen is wrong.
+ * The identity is a digest of the **credential** rather than a name for the
+ * person -- see `identityOf`. What a caller may see is the actor and the scope
+ * together, so the same person holding a narrowed credential is a different
+ * store; keyed on the person, the narrowed session would draw the wide
+ * session's rows. Nothing leaks either way, and the screen is wrong.
  */
-export function open(identity: string): Store {
-	return Store.open(entities, { name: '{{.Name}}', identity })
+export async function open(transport: Transport, credential: string): Promise<App> {
+	const store = Store.open(entities, { name: '{{.Name}}', identity: await identityOf(credential) })
+
+	return { store, queries: new Queries(store, transport, entities) }
 }

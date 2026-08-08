@@ -14,7 +14,8 @@
 		"exactOptionalPropertyTypes": true,
 		"noEmit": true,
 		"skipLibCheck": true,
-		"verbatimModuleSyntax": true
+		"verbatimModuleSyntax": true,
+		"jsx": "react-jsx"
 	},
 	"include": [
 		"src",

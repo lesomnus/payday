@@ -1,6 +1,6 @@
 {
 	"name": "@lesomnus/payday",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "The identifier and the slug a payday app names its rows by, for whatever runs outside the server",
 	"license": "Apache-2.0",
 	"author": "lesomnus",
@@ -72,7 +72,6 @@
 		"@bufbuild/protoc-gen-es": "^2.13.0",
 		"@connectrpc/connect": "^2.1.2",
 		"@types/react": "^19.2.2",
-		"react": "^19.2.0",
 		"typescript": "~5.9.3",
 		"vitest": "^4.1.10"
 	},
