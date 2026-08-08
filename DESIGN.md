@@ -241,12 +241,23 @@ pd gen                      # 스키마가 움직였다
 > `PLAN.md`의 "필터는 도메인이다"가 맞았는지 여기서 판명된다. 자주 나오면 선언 문법을
 > 키울 것이 아니라 생성 범위를 줄여야 한다.
 
-### CP5 — 브라우저가 실제로 쓸 만한가
+### CP5 — 브라우저가 실제로 쓸 만한가 · **Go 쪽 완료**
 
-인터셉터 함수화 → 샌드박스(`wasm/main.go`, `sqlite3-wasm`, jsport) → TS 층 0~2.
+인터셉터 함수화(`grpcx.Chain`, CP2)와 샌드박스의 Go 절반이 섰다.
 
-> **멈추고 볼 것.** wasm 크기가 감당되는가? 새로고침이 서버 재시작이라는 것이 실제 프런트
-> 작업에서 쓸 만한가? COOP/COEP를 앱의 dev server가 무는가?
+- `payday`가 **`GOOS=js GOARCH=wasm`으로 그대로 빌드된다.** §7의 4g — 런타임이
+  파일 시스템·리스너·네트워크를 전제하지 않는다 — 가 오늘 사실이다.
+- `internal/apptest/wasm`이 앱 전체를 페이지 안에서 띄운다. **60.7 MB.** 프로세스와
+  다른 줄은 둘뿐이다: 드라이버(`sqlite3-wasm`, 엔진이 자기 워커에서 돈다 — 다른
+  드라이버는 wazero 위에서 돌아 여기서는 wasm 안의 wasm이 된다)와 트랜스포트(`jsport`).
+- 그것이 가능해진 것은 상류의 한 줄이다: `RegisterServer`가 `*grpc.Server` 대신
+  `grpc.ServiceRegistrar`를 받는다. 순수한 넓히기라 기존 호출부는 그대로다.
+
+**남은 것은 페이지다.** npm 쪽 둘(`sqlite3-wasm-go`의 워커, `grpc-dgram`의 TS 절반)을
+잇는 일이고 Go가 아니라 프런트 작업이다. 거기서 물릴 두 가지는
+`internal/apptest/wasm/README.md`에 적어 뒀다 — COOP/COEP가 없으면
+`SharedArrayBuffer`가 아예 없다는 것, 그리고 번들러가 `.wasm`을 URL로 풀고 워커를 띄울
+수 있어야 한다는 것.
 
 ### CP6 이후
 

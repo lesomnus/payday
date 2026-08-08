@@ -216,12 +216,12 @@ op에 적어 넣으면 끝이다. 서버는 그것이 배치인지도 알 필요
 | --- | --- | --- |
 | ~~0~~ | ~~패키지를 넘는 엣지 확인~~ | **완료** — 된다. `strategy: all`과 단일 `go_package`가 조건 (§2) |
 | ~~**1**~~ | **완료** — `payday/pdid`. 순서 보존은 나이브한 구현을 나란히 두고 그쪽이 순서를 잃는 것을 단언하는 테스트로 실증 | 없음 |
-| **1b** | `payday/slug` — 합친 문법 + `@tenant/alias#domain` (§3.6). 진행 중 | 1 |
+| ~~**1b**~~ | **완료** — `payday/slug`. oasys의 결함 셋(`#` 빠뜨리는 `WithDomain`, `z`를 못 내는 첫 글자, 알파벳이 다른 두 인코더) 재현 후 수정 |
 | **1c** | `pdid`/`slug`의 **TS 절반을 npm으로** (§10.3 층 0). 문법이 하나라는 것을 두 언어에서 지키는 유일한 방법이고, §12.6의 배치가 이것을 전제한다 | 1,1b |
-| **2** | **Tier 1 이동** — `grpcx` **완료**(`Chain` 추가), `migrate`·`config`·`version` 진행 중 | 없음 |
+| ~~**2**~~ | **완료** — `grpcx`(+`Chain`), `config`, `migrate`, `version`, `pdtest`. 앱이 쓰는 배선은 144줄이 됐다 |
 | ~~**3**~~ | **완료** — `payday.entity` + `protoc-gen-pd`. 거절 10가지가 테스트로 있다. 테넌시는 2갈래가 아니라 3갈래(`tenant`/`tenanted`/`global`)가 되었다 — "`via`가 비면 자기 자신"은 문서가 싸우는 종류의 암묵이라서 | 1 |
 | ~~**4**~~ | **완료 · 상류에 병합** — `protoc-gen-orm-ent`의 `Minter`. 덤으로 `protoc-gen-orm-service`의 자기 참조 import 버그도 고쳤다: 한 `.proto`에 엔티티가 둘 이상이고 하나가 다른 하나를 참조하면 생성 파일이 자기를 import한다 | 없음 |
-| **5** | Tenant/Holder/Audit 베이스 proto + 오버레이 병합을 `pd gen`에 (번호 범위 검사 포함) | 0 |
+| ~~**5**~~ | **완료** — `schema/payday`, 오버레이 병합, 번호 범위 가드. `Tenanted`에 `field` 형태가 붙었다 |
 
 CP3 준비 중에 나온 것 하나. **`Audit`은 `via`로 벽을 세울 수 없다.** 그 행은 테넌트를
 엣지가 아니라 `tenant_id` 컬럼으로 들고 있고, 그것이 의도다 — 트레일은 자기가 가리키는
@@ -237,8 +237,8 @@ message Tenanted {
 
 둘 중 하나만 쓸 수 있고, `field`면 술어가 `audit.TenantIDIn(vs...)`가 된다. 지금 옵션에
 없는 것이므로 CP3에서 함께 넣는다.
-| **6** | `frame`/`auth` 런타임 — ID와 `proto.Message`로 | 5 |
-| **7** | `gate`/`audit` — 런타임의 판단 + 레이어와 벽 술어 생성 (§2) | 3,5,6 |
+| ~~**6**~~ | **완료** — `frame`은 ID 둘과 `proto.Message`, `auth`는 클레임을 문자열로. `Resolver`만 앱의 것 |
+| ~~**7**~~ | **완료** — 판단은 `payday/gate`·`payday/audit`, 레이어와 벽은 생성 |
 | **7b** | `List` 생성 — `list:` 옵션, `payday/entlist`, 인덱스·키 검사 (§4.1) | 3,7 |
 | **7c** | `Watch` — `bare.Change`를 상류 런타임으로, `payday/watch`, 그다음 `Watch` RPC 생성 (§4.2) | 7b |
 | **8** | `pd` CLI — `gen`, `gen --check`, `config env`, `doctor` | 2,3 |
