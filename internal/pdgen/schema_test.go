@@ -671,3 +671,86 @@ func TestAWatchWithNothingToNameARowByIsRefused(t *testing.T) {
 		t.Fatalf("the refusal throws away the filters that were declared: %s", err)
 	}
 }
+
+// TestAHeaderFieldOfTheWrongKindIsRefused is the check that makes a reflective
+// read safe.
+//
+// `payday/header` matches on the name and then on the kind, so a `name` that is
+// an int is a field that **silently reads as absent**: a page falls back to the
+// alias, or to the identifier, and nothing anywhere says why. That is the class
+// worth refusing, and it is the only thing about the header that is.
+func TestAHeaderFieldOfTheWrongKindIsRefused(t *testing.T) {
+	_, err := read(t, `
+		message Tenant {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			string alias = 4 [(orm.field) = {unique: true}];
+			int64 name = 5;
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {domain: 1, tenant: {}};
+		}
+	`)
+	if err == nil {
+		t.Fatal("a name nothing generic can read was generated")
+	}
+	if !strings.Contains(err.Error(), "expects a TYPE_STRING") {
+		t.Fatalf("the refusal does not say what is expected: %s", err)
+	}
+	if !strings.Contains(err.Error(), "Call it something else if it is not that") {
+		t.Fatalf("the refusal does not say the way out: %s", err)
+	}
+}
+
+// TestAnEntityWithNoHeaderIsFine, which is payday's own Audit and Outbox.
+//
+// Their early fields are structural rather than descriptive -- a trail row's
+// 4..7 are the trace, the action, the object and the patch. A rule that made
+// every entity carry a name would be one payday exempts itself from twice on
+// the first day, and that is the shape of a rule that is wrong.
+func TestAnEntityWithNoHeaderIsFine(t *testing.T) {
+	_, err := read(t, `
+		message Tenant {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			string alias = 4 [(orm.field) = {unique: true}];
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {domain: 1, tenant: {}};
+		}
+		message Trail {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
+			string action = 5;
+			bytes object_id = 6 [(orm.field) = {type: TYPE_UUID}];
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {domain: 8, tenanted: {field: "tenant_id"}};
+		}
+	`)
+	if err != nil {
+		t.Fatalf("an entity whose early fields are structural was refused: %s", err)
+	}
+}
+
+// TestAHeaderFieldSomewhereElseIsOnlyMentioned.
+//
+// Nothing reads it by number -- the read matches on the name -- so there is
+// nothing to go wrong, and refusing would be refusing over a convention.
+func TestAHeaderFieldSomewhereElseIsOnlyMentioned(t *testing.T) {
+	s, err := read(t, `
+		message Tenant {
+			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+			string alias = 4 [(orm.field) = {unique: true}];
+			string name = 9;
+			option (orm.message) = {rpc: {crud: true}};
+			option (payday.entity) = {domain: 1, tenant: {}};
+		}
+	`)
+	if err != nil {
+		t.Fatalf("a name at another number was refused: %s", err)
+	}
+
+	var said string
+	for _, w := range pdgen.Warnings(s) {
+		said += w + "\n"
+	}
+	if !strings.Contains(said, "name is 9 and payday's own entities put it at 5") {
+		t.Fatalf("nothing was said about it: %s", said)
+	}
+}

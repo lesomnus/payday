@@ -138,6 +138,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	if err := s.checkAlias(); err != nil {
 		return nil, err
 	}
+	if err := s.checkHeader(); err != nil {
+		return nil, err
+	}
 
 	return s, nil
 }
@@ -725,6 +728,92 @@ func Warnings(s *Schema) []string {
 	for _, v := range s.Sorted() {
 		if w := checkListIndex(v); w != "" {
 			vs = append(vs, w)
+		}
+	}
+
+	return append(vs, warnHeader(s)...)
+}
+
+// header is the shape a reflective reader expects of the fields every entity
+// can have; see `payday/header`.
+//
+// It is matched by **name**. A number is what an overlay guard compares and
+// what a wire format is made of; what a generic reader needs is only that two
+// schemas calling something `name` mean the same thing by it.
+var header = []struct {
+	Name string
+	Type ormpb.Type
+	// At is where payday's own entities put it. It is a convention rather than
+	// a rule -- see [Schema.checkHeader] for why one is refused and the other
+	// only mentioned.
+	At int
+}{
+	{"alias", ormpb.Type_TYPE_STRING, 4},
+	{"name", ormpb.Type_TYPE_STRING, 5},
+	{"desc", ormpb.Type_TYPE_STRING, 6},
+}
+
+// checkHeader refuses a header field that is not the kind a reader will look
+// for.
+//
+// # Why the type is refused and the number is not
+//
+// A reflective read matches on the name and then on the kind, so a `name` that
+// is an int is a field that **silently reads as absent** -- a page falls back
+// to the alias, or to the identifier, and nothing anywhere says why. That is
+// the class payday refuses.
+//
+// A number that is not the conventional one costs nothing at all: the read does
+// not use numbers. It is worth mentioning because a schema that reads like its
+// neighbours is easier to hold in the head, and it is not worth refusing
+// because there is nothing to go wrong.
+//
+// # Why presence is not required
+//
+// payday's own `Audit` and `Outbox` have none of these, and their early fields
+// are structural rather than descriptive -- a trail row's 4..7 are the trace,
+// the action, the object and the patch. A rule that made every entity carry a
+// name would be a rule payday exempts itself from twice on the first day, and
+// that is the shape of a rule that is wrong.
+func (s *Schema) checkHeader() error {
+	for _, v := range s.Entities {
+		for f := range v.Fields() {
+			for _, want := range header {
+				if string(f.Name()) != want.Name || f.Type() == want.Type {
+					continue
+				}
+
+				return fmt.Errorf(
+					"%s: %s: is a %s, and everything that reads a row it has no type for "+
+						"expects a %s.\n\n"+
+						"    %s %s = %d;\n\n"+
+						"It is refused rather than ignored because ignoring it is invisible: "+
+						"a page looking for a name would find none and fall back, and nothing "+
+						"would say why. Call it something else if it is not that",
+					v.FullName(), want.Name, f.Type(), want.Type,
+					protoTypeOf(want.Type), want.Name, want.At)
+			}
+		}
+	}
+
+	return nil
+}
+
+// warnHeader mentions a header field that is not where payday's own put it.
+func warnHeader(s *Schema) []string {
+	var vs []string
+	for _, v := range s.Entities {
+		for f := range v.Fields() {
+			for _, want := range header {
+				if string(f.Name()) != want.Name || int(f.Number()) == want.At {
+					continue
+				}
+
+				vs = append(vs, fmt.Sprintf(
+					"%s: %s is %d and payday's own entities put it at %d. Nothing reads it by "+
+						"number, so this only costs a reader who expected the usual shape",
+					v.FullName(), want.Name, f.Number(), want.At))
+			}
 		}
 	}
 
