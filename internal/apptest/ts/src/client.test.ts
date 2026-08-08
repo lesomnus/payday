@@ -16,6 +16,7 @@ import { ConnectError, Code } from '@connectrpc/connect'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { pdid, slug } from '@lesomnus/payday'
+import * as pderr from '@lesomnus/payday/pderr'
 
 import { app, type App } from './client.js'
 import { RobotDomain, TenantDomain } from '../gen/domains.js'
@@ -182,5 +183,50 @@ describe('the generated descriptors describe the same server', () => {
 		}
 
 		expect(seen).toEqual(['arm-01'])
+	})
+})
+
+describe('a refusal says which box', () => {
+	it('carries the field path beside the message and not inside it', async () => {
+		const tenant = await c.tenant.get({ ref: { key: { case: 'alias', value: 'acme' } } })
+
+		try {
+			await c.robot.add({
+				tenant: { key: { case: 'id', value: tenant.id } },
+				alias: 'Not An Alias',
+			})
+			expect.unreachable('a name that is not one was taken')
+		} catch (e) {
+			// The check a form makes first: everything else -- gone, not
+			// allowed, not reachable -- is a different thing to show, and none
+			// of it belongs under a box.
+			expect(pderr.isInvalid(e)).toBe(true)
+
+			const vs = pderr.violations(e)
+			expect(vs).toHaveLength(1)
+			expect(vs[0]?.field).toBe('alias')
+			expect(vs[0]?.why).toMatch(/lowercase/)
+
+			// And keyed by the box, which is what a form actually wants.
+			expect([...pderr.byField(e).keys()]).toEqual(['alias'])
+
+			// The words a page shows are the app's, from the app's own table.
+			// payday carries no language and no tone: what a UI matches on is
+			// the code and the field path.
+			const said = pderr.messages(e, (field) =>
+				field === 'alias' ? '이름은 소문자, 숫자, 하이픈만 쓸 수 있습니다' : '입력을 확인해 주세요',
+			)
+			expect(said.get('alias')).toEqual(['이름은 소문자, 숫자, 하이픈만 쓸 수 있습니다'])
+		}
+	})
+
+	it('has nothing to place for a refusal that was never about a form', async () => {
+		try {
+			await c.robot.get({ ref: { key: { case: 'id', value: pdid.newId(RobotDomain).bytes } } })
+			expect.unreachable('a row that is not there was found')
+		} catch (e) {
+			expect(pderr.isInvalid(e)).toBe(false)
+			expect(pderr.violations(e)).toEqual([])
+		}
 	})
 })

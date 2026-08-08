@@ -1,0 +1,15 @@
+# The one file payday needs from googleapis: `google.rpc.BadRequest`, which is
+# what a refusal carries its field paths in.
+#
+# It is generated from the registry rather than by adding googleapis to payday's
+# own buf.yaml, because that dep would then be every app's -- and what an app
+# imports is the app's business. What comes out is one file, and it is exported
+# from `@lesomnus/payday/pderr`.
+version: v2
+plugins:
+  - local: [ts/node_modules/.bin/protoc-gen-es]
+    out: ts/gen
+    opt:
+      - target=ts
+      - import_extension=js
+    strategy: all

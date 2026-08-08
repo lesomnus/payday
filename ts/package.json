@@ -30,6 +30,10 @@
 		"./store": {
 			"types": "./dist/src/store/index.d.ts",
 			"import": "./dist/src/store/index.js"
+		},
+		"./pderr": {
+			"types": "./dist/src/pderr/index.d.ts",
+			"import": "./dist/src/pderr/index.js"
 		}
 	},
 	"scripts": {
@@ -38,7 +42,7 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"prepack": "npm run check && npm run test && npm run build",
-		"gen": "cd .. && buf generate --template buf.gen.ts.yaml"
+		"gen": "cd .. && buf generate --template buf.gen.ts.yaml && buf generate --template buf.gen.ts.rpc.yaml buf.build/googleapis/googleapis --path google/rpc/error_details.proto"
 	},
 	"devDependencies": {
 		"@bufbuild/protoc-gen-es": "^2.13.0",
@@ -46,17 +50,22 @@
 		"vitest": "^4.1.10",
 		"@bufbuild/protobuf": "^2.12.1",
 		"dexie": "^4.2.0",
-		"fake-indexeddb": "^6.2.2"
+		"fake-indexeddb": "^6.2.2",
+		"@connectrpc/connect": "^2.1.2"
 	},
 	"peerDependencies": {
 		"@bufbuild/protobuf": "^2",
-		"dexie": "^4"
+		"dexie": "^4",
+		"@connectrpc/connect": "^2"
 	},
 	"peerDependenciesMeta": {
 		"@bufbuild/protobuf": {
 			"optional": true
 		},
 		"dexie": {
+			"optional": true
+		},
+		"@connectrpc/connect": {
 			"optional": true
 		}
 	}

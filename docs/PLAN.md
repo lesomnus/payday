@@ -249,7 +249,7 @@ message Tenanted {
 | ~~**13**~~ | **완료(배선까지)** — `sandbox.ts`가 두 줄이다: `open('/app.wasm')` → `createDrpcTransport(sock.dial())` → `app(transport)`. 위층이 전부 트랜스포트-무지하기 때문이다. **브라우저에 띄워보진 못했다** — 여기 브라우저가 없다. `@lesomnus/grpc-dgram`이 미게시라 CI의 `check`에서는 빠져 있고 `check:sandbox`로 따로 있다 | 9 |
 | ~~**14**~~ | **완료** — `pd gen --ts`. 플러그인은 **하나**다: protobuf-es v2가 서비스 서술자까지 내고 Connect의 `createClient`가 그것을 그대로 받는다 — 서비스별 생성 파일이 없으니 어긋날 것도 없다. 도메인 표는 생성한다(두 벌로 쓰면 그게 `pdid`가 막으려던 어긋남이다). 실제 Go 서버를 띄우고 바이트를 보내는 테스트 6개 | 7b,13 |
 | ~~**15**~~ | **완료** — `@lesomnus/payday/store`. §10.5대로 **생성물은 선언만**이다: 옛 생성기가 엔티티마다 찍던 `get`/`_hydrate`/`_dehydrate`/`_compare`의 **본문**이 서술자를 읽는 런타임 한 벌이 됐다. 그리고 §10.5가 지적한 결함(버전 없는 엔티티가 눈감고 덮어쓰기)은 이제 **생성 실패**다 | 7c,14 |
-| **16** | 오류의 모양 — **Go 쪽 완료** (`pderr`, 위반을 싣는 alias 강제). TS가 폼에 붙이는 절반은 14와 함께 | 14 |
+| ~~**16**~~ | **완료** — Go의 `pderr`와 TS의 `@lesomnus/payday/pderr`. `google.rpc.BadRequest`가 서버에서 폼까지 통째로 간다는 것을 실제 서버에 바이트를 보내 확인했다. **문구는 앱의 것**이다 — `messages(err, say)`가 표를 받는다. 프레임워크가 사용자에게 보일 문장을 정하기 시작하면 언어와 어조까지 물려받는다 | 14 |
 | ~~**17**~~ | **완료(이음매 + 참조)** — `auth.Issuer`/`Sessions`/`Subject`/`Credential`, 참조로 `MemIssuer`. 그리고 §12.3이 권한 **"연결을 끊는 쪽"**이 실제 코드가 됐다: `Identity.Expires`가 생기고 스트림이 만료 시각에 잘린다. 실제 로그인(비밀번호·OIDC)은 HTTP 엔드포인트가 필요해서 여전히 앱의 것 | 14,16 |
 | ~~**18**~~ | **완료** — `payday/batch`(가드), `pdpb.BatchService`, 디스패처 생성. 넷 다 op마다 다시 적용되고 각각에 테스트가 있다. 가드는 `config.ServerConfig.Guard()`로만 만든다 — 두 곳이 정하면 어긋나고, 어긋나는 방향은 배치가 더 허용하는 쪽이다 | 7,13 |
 
