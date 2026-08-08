@@ -42,15 +42,31 @@ func (g Gen) Run(ctx context.Context) error {
 		g.Out = g.Layout.Root
 	}
 
+	// The two halves of a contract before they are merged: what the service
+	// generator wrote, and what payday adds to it. Nothing but the merge reads
+	// either, so they are temporary -- the same way the generated Go is staged.
+	// They used to be `proto.svc/` and `proto.pd/` in the app, and a directory
+	// nobody reads is one somebody eventually edits.
+	r := run{Gen: g}
+	for _, v := range []*string{&r.svc, &r.pd} {
+		d, err := os.MkdirTemp("", "pd-gen-")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(d)
+
+		*v = d
+	}
+
 	for _, step := range []struct {
 		what string
 		do   func(context.Context) error
 	}{
-		{"payday's entities, and what this app added to them", g.entities},
-		{"service contracts from the entities", g.contracts},
-		{"merging what payday and the app add to them", g.merge},
-		{"messages, servers, ent schema", g.code},
-		{"the ent runtime", g.entRuntime},
+		{"payday's entities, and what this app added to them", r.entities},
+		{"service contracts from the entities", r.contracts},
+		{"merging what payday and the app add to them", r.merge},
+		{"messages, servers, ent schema", r.code},
+		{"the ent runtime", r.entRuntime},
 	} {
 		g.say("pd: %s", step.what)
 		if err := step.do(ctx); err != nil {
@@ -59,6 +75,15 @@ func (g Gen) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// run is one [Gen.Run], with the scratch space its steps hand to one another.
+type run struct {
+	Gen
+
+	// svc and pd are the two halves of every contract, before they are merged.
+	svc string
+	pd  string
 }
 
 func (g Gen) say(format string, vs ...any) {
@@ -79,6 +104,11 @@ var goPackage = regexp.MustCompile(`(?m)^option go_package = .*$`)
 // has to be one set of types in one module: an ent schema in another package
 // cannot have an edge to one here, and the wall is an edge. `go_package` is
 // rewritten for the same reason.
+//
+// They keep their names -- `payday/tenant.proto` and not `.g.proto` -- because
+// an app's own entity imports one by name, and a file a person writes should
+// not have to spell a generated suffix. What says they are generated is the
+// first line of each of them, and the directory they are in.
 func (g Gen) entities(ctx context.Context) error {
 	src, err := SchemaDir()
 	if err != nil {
@@ -122,29 +152,50 @@ func (g Gen) entities(ctx context.Context) error {
 		}
 	}
 
-	return nil
+	return os.WriteFile(filepath.Join(dst, "README.md"), []byte(copied), 0o644)
 }
 
-// contracts writes the service contracts and payday's additions to them.
-func (g Gen) contracts(ctx context.Context) error {
-	for _, d := range []string{DirSvc, DirPd} {
-		if err := os.RemoveAll(filepath.Join(g.Out, d)); err != nil {
+// copied is what this directory says about itself, and it is a file beside the
+// entities rather than a comment at the top of each of them.
+//
+// A comment there would be a comment on the .proto file, and protoc hands those
+// to every generator: it came out at the top of the generated Go, the generated
+// TypeScript, and anything else anybody ever generates from this schema, each
+// one telling its reader to go and edit an overlay that has nothing to do with
+// the file they have open.
+const copied = `# Generated
+
+Everything in this directory is written by ` + "`pd gen`" + `, and editing it lasts
+until the next one.
+
+- ` + "`*.proto`" + ` are payday's own entities, copied in whole. They are copied
+  rather than imported because everything generated from them has to be one set
+  of types in one Go package: an ent schema in another package cannot have an
+  edge to one here, and the wall between tenants is an edge.
+- ` + "`*_svc.g.proto`" + ` are the service contracts generated from them, the same
+  as the ones beside your own entities.
+
+To change what payday's entities hold, write an overlay in ` + "`" + DirExt + `/payday/` + "`" + `
+-- one file per entity, named after it, and it is merged in here on the next
+generation.
+`
+
+// contracts writes the service contracts and payday's additions to them, into
+// the scratch directories the merge reads.
+func (r run) contracts(ctx context.Context) error {
+	// The previous run's contracts, which are inputs to this one if they are
+	// left where buf can read them.
+	vs, err := filepath.Glob(filepath.Join(r.Out, DirProto, "*", "*_svc.g.proto"))
+	if err != nil {
+		return err
+	}
+	for _, v := range vs {
+		if err := os.Remove(v); err != nil {
 			return err
 		}
 	}
 
-	// The previous run's contracts, which are inputs to this one if they are
-	// left where buf can read them.
-	for _, d := range []string{"app", "payday"} {
-		vs, _ := filepath.Glob(filepath.Join(g.Out, DirProto, d, "*_svc.proto"))
-		for _, v := range vs {
-			if err := os.Remove(v); err != nil {
-				return err
-			}
-		}
-	}
-
-	return g.buf(ctx, tmplContracts(g.Layout, g.Out))
+	return r.buf(ctx, tmplContracts(r.Layout, r.svc, r.pd))
 }
 
 // merge folds each contract together with what payday adds and with whatever
@@ -155,21 +206,26 @@ func (g Gen) contracts(ctx context.Context) error {
 // typed. An overlay that redeclares a number payday owns is refused before any
 // of this, in `pd gen`'s reading of the schema -- protobuf-merge takes the
 // overlay's word, so `alias` would quietly become whatever it said.
-func (g Gen) merge(ctx context.Context) error {
-	root := filepath.Join(g.Out, DirSvc)
-
-	return filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+// The contract keeps the name it was generated under -- `_svc.g.proto` all the
+// way through -- and that is not only cosmetic. It used to be renamed to
+// `_svc.proto` on the way out, which meant a contract and an overlay referred
+// to the same file by two names until that line ran, and the merge kept both
+// imports. The first hand-written RPC in any app hit it. There is no rename
+// now, so there is nothing to reconcile: what a contract imports is what is on
+// disk, before the merge and after it.
+func (r run) merge(ctx context.Context) error {
+	return filepath.WalkDir(r.svc, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(p, "_svc.g.proto") {
 			return err
 		}
 
-		rel, err := filepath.Rel(root, p)
+		rel, err := filepath.Rel(r.svc, p)
 		if err != nil {
 			return err
 		}
 
 		stem := strings.TrimSuffix(rel, "_svc.g.proto")
-		out := filepath.Join(g.Out, DirProto, stem+"_svc.proto")
+		out := filepath.Join(r.Out, DirProto, rel)
 
 		b, err := os.ReadFile(p)
 		if err != nil {
@@ -177,14 +233,14 @@ func (g Gen) merge(ctx context.Context) error {
 		}
 
 		for _, overlay := range []string{
-			filepath.Join(g.Out, DirPd, stem+"_svc.pd.proto"),
-			g.Layout.Path(DirExt, stem+"_svc.ext.proto"),
+			filepath.Join(r.pd, stem+"_svc.pd.proto"),
+			r.Layout.Path(DirExt, stem+"_svc.ext.proto"),
 		} {
 			if _, err := os.Stat(overlay); err != nil {
 				continue
 			}
 
-			g.say("  merge %s + %s", rel, filepath.Base(overlay))
+			r.say("  merge %s + %s", rel, filepath.Base(overlay))
 
 			if err := CheckOverlayFile(overlay); err != nil {
 				return err
@@ -197,25 +253,12 @@ func (g Gen) merge(ctx context.Context) error {
 				return err
 			}
 
-			b, err = g.run(ctx, "go", "tool", "protobuf-merge", tmp, overlay)
+			b, err = r.run(ctx, "go", "tool", "protobuf-merge", tmp, overlay)
 			os.Remove(tmp)
 			if err != nil {
 				return err
 			}
 		}
-
-		// The contract imports its neighbours by the name they had before they
-		// were merged, and after this they are all `_svc.proto`.
-		b = importSvc.ReplaceAll(b, []byte(`${1}${2}_svc.proto${3}`))
-
-		// And that rewrite is what makes two of them the same. An overlay that
-		// uses a generated type -- a hand-written RPC taking an `AssetRef` --
-		// imports `..._svc.proto`, while the contract it merges into still says
-		// `..._svc.g.proto`; the merge keeps both because the text differs, and
-		// this line is where they stop differing. It is the first thing an app
-		// hits on its first hand-written RPC, and protoc refuses a file that
-		// imports the same thing twice.
-		b = dedupeImports(b)
 
 		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 			return err
@@ -224,10 +267,6 @@ func (g Gen) merge(ctx context.Context) error {
 		return os.WriteFile(out, b, 0o644)
 	})
 }
-
-var importSvc = regexp.MustCompile(`(import ")([^"]*)_svc\.g\.proto(";)`)
-
-var importLine = regexp.MustCompile(`(?m)^import .*;$`)
 
 // fileFeature is a `features.*` set at the top of a file, outside any message.
 var fileFeature = regexp.MustCompile(`(?m)^option features\.[a-z_]+\s*=`)
@@ -274,28 +313,6 @@ func CheckOverlayFile(p string) error {
 		filepath.Base(p), strings.TrimSpace(string(b[m[0]:m[1]]))+" ...")
 }
 
-// dedupeImports drops an import that is already there, keeping the first.
-//
-// Order is kept rather than sorted: what comes out of the merge is the
-// contract's imports and then the overlay's, and a reader looking for what an
-// overlay added finds it at the bottom where it was written.
-func dedupeImports(b []byte) []byte {
-	seen := map[string]bool{}
-
-	return importLine.ReplaceAllFunc(b, func(v []byte) []byte {
-		if seen[string(v)] {
-			// The line goes, and the newline after it is left -- which is a
-			// blank line rather than a missing one, and gofmt has no opinion
-			// about proto.
-			return nil
-		}
-
-		seen[string(v)] = true
-
-		return v
-	})
-}
-
 // code writes the messages, the stubs, the query helpers, the ent schema, the
 // servers, and what payday makes of the declarations.
 func (g Gen) code(ctx context.Context) error {
@@ -330,10 +347,24 @@ func (g Gen) code(ctx context.Context) error {
 	}
 
 	// `module=` strips the prefix, so the staging tree is already rooted where
-	// the app is: `robot.pb.go` and `ent/schema/robot.go` rather than the whole
-	// import path spelled out as directories.
-	return copyTree(stage, g.Out)
+	// the app is: `robot.pb.go` and `internal/ent/schema/robot.go` rather than
+	// the whole import path spelled out as directories.
+	return copyTree(stage, g.Out, unsuffix)
 }
+
+// unsuffix takes the `.g` back off, and it is the whole of what keeps that
+// marker inside `proto/`.
+//
+// A contract is `robot_svc.g.proto`, and every generator downstream names its
+// output after the file it read -- so protoc-gen-go writes `robot_svc.g.pb.go`
+// and protoc-gen-go-grpc writes `robot_svc.g_grpc.pb.go`. The marker means
+// "generated from something you wrote", which is true of the contract and true
+// of every one of those as well: carried along it says nothing and is merely in
+// the way, and in TypeScript it ends up in an import somebody types.
+//
+// Only contracts are `.g.proto`, and every contract ends in `_svc`, so this is
+// exact rather than a guess at what a `.g` in a name might have meant.
+func unsuffix(name string) string { return strings.Replace(name, "_svc.g", "_svc", 1) }
 
 // entRuntime runs ent over the schema that was just written.
 //
@@ -415,7 +446,9 @@ func writeTemp(b []byte, pattern string) (string, error) {
 	return f.Name(), nil
 }
 
-func copyTree(src string, dst string) error {
+// copyTree lays one tree over another, with `name` deciding what each file is
+// called on the way.
+func copyTree(src string, dst string, name func(string) string) error {
 	return filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -424,6 +457,9 @@ func copyTree(src string, dst string) error {
 		rel, err := filepath.Rel(src, p)
 		if err != nil {
 			return err
+		}
+		if !d.IsDir() {
+			rel = filepath.Join(filepath.Dir(rel), name(filepath.Base(rel)))
 		}
 
 		out := filepath.Join(dst, rel)
@@ -490,7 +526,43 @@ func (g Gen) Ts(ctx context.Context) error {
 	// this does not generate is an import of a module that is not there. The
 	// well-known types are the exception and protobuf-es skips them itself --
 	// it ships them.
-	return g.buf(ctx, tmplTs(g.Layout, g.Out, plugin), "--include-imports")
+	if err := g.buf(ctx, tmplTs(g.Layout, g.Out, plugin), "--include-imports"); err != nil {
+		return err
+	}
+
+	// And [unsuffix] here as well, with the difference that a TypeScript file
+	// names the ones it imports: `robot_svc.g_pb.ts` is a name somebody types in
+	// `ts/src`, so the specifiers move with the files.
+	return renameTs(filepath.Join(g.Out, DirTsGen))
+}
+
+// tsImport is the `.g` inside a module specifier, which is the same substring
+// that is in the file name and is replaced with it.
+var tsImport = regexp.MustCompile(`_svc\.g(_pb\.js")`)
+
+func renameTs(root string) error {
+	return filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+
+		b = tsImport.ReplaceAll(b, []byte("_svc${1}"))
+		if err := os.WriteFile(p, b, 0o644); err != nil {
+			return err
+		}
+
+		name := unsuffix(d.Name())
+		if name == d.Name() {
+			return nil
+		}
+
+		return os.Rename(p, filepath.Join(filepath.Dir(p), name))
+	})
 }
 
 // ErrNoTsPlugin is a working copy with no protobuf-es to generate with.

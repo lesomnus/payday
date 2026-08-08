@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: app/robot_svc.proto
+// source: app/robot_svc.g.proto
 
 package apptest
 
@@ -37,7 +37,7 @@ type RobotAddRequest struct {
 
 func (x *RobotAddRequest) Reset() {
 	*x = RobotAddRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[0]
+	mi := &file_app_robot_svc_g_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -49,7 +49,7 @@ func (x *RobotAddRequest) String() string {
 func (*RobotAddRequest) ProtoMessage() {}
 
 func (x *RobotAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[0]
+	mi := &file_app_robot_svc_g_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -175,7 +175,7 @@ type RobotGetRequest struct {
 
 func (x *RobotGetRequest) Reset() {
 	*x = RobotGetRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[1]
+	mi := &file_app_robot_svc_g_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -187,7 +187,7 @@ func (x *RobotGetRequest) String() string {
 func (*RobotGetRequest) ProtoMessage() {}
 
 func (x *RobotGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[1]
+	mi := &file_app_robot_svc_g_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -267,7 +267,7 @@ type RobotRef struct {
 
 func (x *RobotRef) Reset() {
 	*x = RobotRef{}
-	mi := &file_app_robot_svc_proto_msgTypes[2]
+	mi := &file_app_robot_svc_g_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -279,7 +279,7 @@ func (x *RobotRef) String() string {
 func (*RobotRef) ProtoMessage() {}
 
 func (x *RobotRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[2]
+	mi := &file_app_robot_svc_g_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -405,7 +405,7 @@ func (b0 RobotRef_builder) Build() *RobotRef {
 type case_RobotRef_Key protoreflect.FieldNumber
 
 func (x case_RobotRef_Key) String() string {
-	md := file_app_robot_svc_proto_msgTypes[2].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[2].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -440,7 +440,7 @@ type RobotRefBySlug struct {
 
 func (x *RobotRefBySlug) Reset() {
 	*x = RobotRefBySlug{}
-	mi := &file_app_robot_svc_proto_msgTypes[3]
+	mi := &file_app_robot_svc_g_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -452,7 +452,7 @@ func (x *RobotRefBySlug) String() string {
 func (*RobotRefBySlug) ProtoMessage() {}
 
 func (x *RobotRefBySlug) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[3]
+	mi := &file_app_robot_svc_g_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -546,7 +546,7 @@ type RobotSelect struct {
 
 func (x *RobotSelect) Reset() {
 	*x = RobotSelect{}
-	mi := &file_app_robot_svc_proto_msgTypes[4]
+	mi := &file_app_robot_svc_g_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -558,7 +558,7 @@ func (x *RobotSelect) String() string {
 func (*RobotSelect) ProtoMessage() {}
 
 func (x *RobotSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[4]
+	mi := &file_app_robot_svc_g_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -735,7 +735,7 @@ type RobotPatchRequest struct {
 
 func (x *RobotPatchRequest) Reset() {
 	*x = RobotPatchRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[5]
+	mi := &file_app_robot_svc_g_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -747,7 +747,7 @@ func (x *RobotPatchRequest) String() string {
 func (*RobotPatchRequest) ProtoMessage() {}
 
 func (x *RobotPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[5]
+	mi := &file_app_robot_svc_g_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -901,7 +901,7 @@ type RobotApplyRequest struct {
 
 func (x *RobotApplyRequest) Reset() {
 	*x = RobotApplyRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[6]
+	mi := &file_app_robot_svc_g_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -913,7 +913,7 @@ func (x *RobotApplyRequest) String() string {
 func (*RobotApplyRequest) ProtoMessage() {}
 
 func (x *RobotApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[6]
+	mi := &file_app_robot_svc_g_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -995,7 +995,7 @@ type RobotListRequest struct {
 
 func (x *RobotListRequest) Reset() {
 	*x = RobotListRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[7]
+	mi := &file_app_robot_svc_g_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1007,7 +1007,7 @@ func (x *RobotListRequest) String() string {
 func (*RobotListRequest) ProtoMessage() {}
 
 func (x *RobotListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[7]
+	mi := &file_app_robot_svc_g_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1090,7 +1090,7 @@ type RobotListResponse struct {
 
 func (x *RobotListResponse) Reset() {
 	*x = RobotListResponse{}
-	mi := &file_app_robot_svc_proto_msgTypes[8]
+	mi := &file_app_robot_svc_g_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1102,7 +1102,7 @@ func (x *RobotListResponse) String() string {
 func (*RobotListResponse) ProtoMessage() {}
 
 func (x *RobotListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[8]
+	mi := &file_app_robot_svc_g_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1169,7 +1169,7 @@ type RobotFilter struct {
 
 func (x *RobotFilter) Reset() {
 	*x = RobotFilter{}
-	mi := &file_app_robot_svc_proto_msgTypes[9]
+	mi := &file_app_robot_svc_g_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1181,7 +1181,7 @@ func (x *RobotFilter) String() string {
 func (*RobotFilter) ProtoMessage() {}
 
 func (x *RobotFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[9]
+	mi := &file_app_robot_svc_g_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1238,7 +1238,7 @@ type RobotWatchRequest struct {
 
 func (x *RobotWatchRequest) Reset() {
 	*x = RobotWatchRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[10]
+	mi := &file_app_robot_svc_g_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1250,7 +1250,7 @@ func (x *RobotWatchRequest) String() string {
 func (*RobotWatchRequest) ProtoMessage() {}
 
 func (x *RobotWatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[10]
+	mi := &file_app_robot_svc_g_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1322,7 +1322,7 @@ type RobotWatchResponse struct {
 
 func (x *RobotWatchResponse) Reset() {
 	*x = RobotWatchResponse{}
-	mi := &file_app_robot_svc_proto_msgTypes[11]
+	mi := &file_app_robot_svc_g_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1334,7 +1334,7 @@ func (x *RobotWatchResponse) String() string {
 func (*RobotWatchResponse) ProtoMessage() {}
 
 func (x *RobotWatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[11]
+	mi := &file_app_robot_svc_g_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1386,7 +1386,7 @@ type RobotWatchItem struct {
 
 func (x *RobotWatchItem) Reset() {
 	*x = RobotWatchItem{}
-	mi := &file_app_robot_svc_proto_msgTypes[12]
+	mi := &file_app_robot_svc_g_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1398,7 +1398,7 @@ func (x *RobotWatchItem) String() string {
 func (*RobotWatchItem) ProtoMessage() {}
 
 func (x *RobotWatchItem) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[12]
+	mi := &file_app_robot_svc_g_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1520,7 +1520,7 @@ type JointAddRequest struct {
 
 func (x *JointAddRequest) Reset() {
 	*x = JointAddRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[13]
+	mi := &file_app_robot_svc_g_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1532,7 +1532,7 @@ func (x *JointAddRequest) String() string {
 func (*JointAddRequest) ProtoMessage() {}
 
 func (x *JointAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[13]
+	mi := &file_app_robot_svc_g_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1634,7 +1634,7 @@ type JointGetRequest struct {
 
 func (x *JointGetRequest) Reset() {
 	*x = JointGetRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[14]
+	mi := &file_app_robot_svc_g_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1646,7 +1646,7 @@ func (x *JointGetRequest) String() string {
 func (*JointGetRequest) ProtoMessage() {}
 
 func (x *JointGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[14]
+	mi := &file_app_robot_svc_g_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1726,7 +1726,7 @@ type JointRef struct {
 
 func (x *JointRef) Reset() {
 	*x = JointRef{}
-	mi := &file_app_robot_svc_proto_msgTypes[15]
+	mi := &file_app_robot_svc_g_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1738,7 +1738,7 @@ func (x *JointRef) String() string {
 func (*JointRef) ProtoMessage() {}
 
 func (x *JointRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[15]
+	mi := &file_app_robot_svc_g_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1826,7 +1826,7 @@ func (b0 JointRef_builder) Build() *JointRef {
 type case_JointRef_Key protoreflect.FieldNumber
 
 func (x case_JointRef_Key) String() string {
-	md := file_app_robot_svc_proto_msgTypes[15].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[15].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -1856,7 +1856,7 @@ type JointSelect struct {
 
 func (x *JointSelect) Reset() {
 	*x = JointSelect{}
-	mi := &file_app_robot_svc_proto_msgTypes[16]
+	mi := &file_app_robot_svc_g_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1868,7 +1868,7 @@ func (x *JointSelect) String() string {
 func (*JointSelect) ProtoMessage() {}
 
 func (x *JointSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[16]
+	mi := &file_app_robot_svc_g_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1985,7 +1985,7 @@ type JointPatchRequest struct {
 
 func (x *JointPatchRequest) Reset() {
 	*x = JointPatchRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[17]
+	mi := &file_app_robot_svc_g_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1997,7 +1997,7 @@ func (x *JointPatchRequest) String() string {
 func (*JointPatchRequest) ProtoMessage() {}
 
 func (x *JointPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[17]
+	mi := &file_app_robot_svc_g_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2086,7 +2086,7 @@ type JointApplyRequest struct {
 
 func (x *JointApplyRequest) Reset() {
 	*x = JointApplyRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[18]
+	mi := &file_app_robot_svc_g_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2098,7 +2098,7 @@ func (x *JointApplyRequest) String() string {
 func (*JointApplyRequest) ProtoMessage() {}
 
 func (x *JointApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[18]
+	mi := &file_app_robot_svc_g_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2181,7 +2181,7 @@ type FleetAddRequest struct {
 
 func (x *FleetAddRequest) Reset() {
 	*x = FleetAddRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[19]
+	mi := &file_app_robot_svc_g_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2193,7 +2193,7 @@ func (x *FleetAddRequest) String() string {
 func (*FleetAddRequest) ProtoMessage() {}
 
 func (x *FleetAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[19]
+	mi := &file_app_robot_svc_g_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2271,7 +2271,7 @@ type FleetGetRequest struct {
 
 func (x *FleetGetRequest) Reset() {
 	*x = FleetGetRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[20]
+	mi := &file_app_robot_svc_g_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2283,7 +2283,7 @@ func (x *FleetGetRequest) String() string {
 func (*FleetGetRequest) ProtoMessage() {}
 
 func (x *FleetGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[20]
+	mi := &file_app_robot_svc_g_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2363,7 +2363,7 @@ type FleetRef struct {
 
 func (x *FleetRef) Reset() {
 	*x = FleetRef{}
-	mi := &file_app_robot_svc_proto_msgTypes[21]
+	mi := &file_app_robot_svc_g_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2375,7 +2375,7 @@ func (x *FleetRef) String() string {
 func (*FleetRef) ProtoMessage() {}
 
 func (x *FleetRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[21]
+	mi := &file_app_robot_svc_g_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2497,7 +2497,7 @@ func (b0 FleetRef_builder) Build() *FleetRef {
 type case_FleetRef_Key protoreflect.FieldNumber
 
 func (x case_FleetRef_Key) String() string {
-	md := file_app_robot_svc_proto_msgTypes[21].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[21].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -2532,7 +2532,7 @@ type FleetSelect struct {
 
 func (x *FleetSelect) Reset() {
 	*x = FleetSelect{}
-	mi := &file_app_robot_svc_proto_msgTypes[22]
+	mi := &file_app_robot_svc_g_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2544,7 +2544,7 @@ func (x *FleetSelect) String() string {
 func (*FleetSelect) ProtoMessage() {}
 
 func (x *FleetSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[22]
+	mi := &file_app_robot_svc_g_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2637,7 +2637,7 @@ type FleetPatchRequest struct {
 
 func (x *FleetPatchRequest) Reset() {
 	*x = FleetPatchRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[23]
+	mi := &file_app_robot_svc_g_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2649,7 +2649,7 @@ func (x *FleetPatchRequest) String() string {
 func (*FleetPatchRequest) ProtoMessage() {}
 
 func (x *FleetPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[23]
+	mi := &file_app_robot_svc_g_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2738,7 +2738,7 @@ type FleetApplyRequest struct {
 
 func (x *FleetApplyRequest) Reset() {
 	*x = FleetApplyRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[24]
+	mi := &file_app_robot_svc_g_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2750,7 +2750,7 @@ func (x *FleetApplyRequest) String() string {
 func (*FleetApplyRequest) ProtoMessage() {}
 
 func (x *FleetApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[24]
+	mi := &file_app_robot_svc_g_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2834,7 +2834,7 @@ type CellAddRequest struct {
 
 func (x *CellAddRequest) Reset() {
 	*x = CellAddRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[25]
+	mi := &file_app_robot_svc_g_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2846,7 +2846,7 @@ func (x *CellAddRequest) String() string {
 func (*CellAddRequest) ProtoMessage() {}
 
 func (x *CellAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[25]
+	mi := &file_app_robot_svc_g_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2948,7 +2948,7 @@ type CellGetRequest struct {
 
 func (x *CellGetRequest) Reset() {
 	*x = CellGetRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[26]
+	mi := &file_app_robot_svc_g_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2960,7 +2960,7 @@ func (x *CellGetRequest) String() string {
 func (*CellGetRequest) ProtoMessage() {}
 
 func (x *CellGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[26]
+	mi := &file_app_robot_svc_g_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3040,7 +3040,7 @@ type CellRef struct {
 
 func (x *CellRef) Reset() {
 	*x = CellRef{}
-	mi := &file_app_robot_svc_proto_msgTypes[27]
+	mi := &file_app_robot_svc_g_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3052,7 +3052,7 @@ func (x *CellRef) String() string {
 func (*CellRef) ProtoMessage() {}
 
 func (x *CellRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[27]
+	mi := &file_app_robot_svc_g_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3140,7 +3140,7 @@ func (b0 CellRef_builder) Build() *CellRef {
 type case_CellRef_Key protoreflect.FieldNumber
 
 func (x case_CellRef_Key) String() string {
-	md := file_app_robot_svc_proto_msgTypes[27].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[27].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -3170,7 +3170,7 @@ type CellSelect struct {
 
 func (x *CellSelect) Reset() {
 	*x = CellSelect{}
-	mi := &file_app_robot_svc_proto_msgTypes[28]
+	mi := &file_app_robot_svc_g_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3182,7 +3182,7 @@ func (x *CellSelect) String() string {
 func (*CellSelect) ProtoMessage() {}
 
 func (x *CellSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[28]
+	mi := &file_app_robot_svc_g_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3299,7 +3299,7 @@ type CellPatchRequest struct {
 
 func (x *CellPatchRequest) Reset() {
 	*x = CellPatchRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[29]
+	mi := &file_app_robot_svc_g_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3311,7 +3311,7 @@ func (x *CellPatchRequest) String() string {
 func (*CellPatchRequest) ProtoMessage() {}
 
 func (x *CellPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[29]
+	mi := &file_app_robot_svc_g_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3400,7 +3400,7 @@ type CellApplyRequest struct {
 
 func (x *CellApplyRequest) Reset() {
 	*x = CellApplyRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[30]
+	mi := &file_app_robot_svc_g_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3412,7 +3412,7 @@ func (x *CellApplyRequest) String() string {
 func (*CellApplyRequest) ProtoMessage() {}
 
 func (x *CellApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[30]
+	mi := &file_app_robot_svc_g_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3497,7 +3497,7 @@ type ReadingAddRequest struct {
 
 func (x *ReadingAddRequest) Reset() {
 	*x = ReadingAddRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[31]
+	mi := &file_app_robot_svc_g_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3509,7 +3509,7 @@ func (x *ReadingAddRequest) String() string {
 func (*ReadingAddRequest) ProtoMessage() {}
 
 func (x *ReadingAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[31]
+	mi := &file_app_robot_svc_g_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3635,7 +3635,7 @@ type ReadingGetRequest struct {
 
 func (x *ReadingGetRequest) Reset() {
 	*x = ReadingGetRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[32]
+	mi := &file_app_robot_svc_g_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3647,7 +3647,7 @@ func (x *ReadingGetRequest) String() string {
 func (*ReadingGetRequest) ProtoMessage() {}
 
 func (x *ReadingGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[32]
+	mi := &file_app_robot_svc_g_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3727,7 +3727,7 @@ type ReadingRef struct {
 
 func (x *ReadingRef) Reset() {
 	*x = ReadingRef{}
-	mi := &file_app_robot_svc_proto_msgTypes[33]
+	mi := &file_app_robot_svc_g_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3739,7 +3739,7 @@ func (x *ReadingRef) String() string {
 func (*ReadingRef) ProtoMessage() {}
 
 func (x *ReadingRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[33]
+	mi := &file_app_robot_svc_g_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3827,7 +3827,7 @@ func (b0 ReadingRef_builder) Build() *ReadingRef {
 type case_ReadingRef_Key protoreflect.FieldNumber
 
 func (x case_ReadingRef_Key) String() string {
-	md := file_app_robot_svc_proto_msgTypes[33].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[33].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -3858,7 +3858,7 @@ type ReadingSelect struct {
 
 func (x *ReadingSelect) Reset() {
 	*x = ReadingSelect{}
-	mi := &file_app_robot_svc_proto_msgTypes[34]
+	mi := &file_app_robot_svc_g_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3870,7 +3870,7 @@ func (x *ReadingSelect) String() string {
 func (*ReadingSelect) ProtoMessage() {}
 
 func (x *ReadingSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[34]
+	mi := &file_app_robot_svc_g_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4016,7 +4016,7 @@ type ReadingPatchRequest struct {
 
 func (x *ReadingPatchRequest) Reset() {
 	*x = ReadingPatchRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[35]
+	mi := &file_app_robot_svc_g_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4028,7 +4028,7 @@ func (x *ReadingPatchRequest) String() string {
 func (*ReadingPatchRequest) ProtoMessage() {}
 
 func (x *ReadingPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[35]
+	mi := &file_app_robot_svc_g_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4114,7 +4114,7 @@ type ReadingApplyRequest struct {
 
 func (x *ReadingApplyRequest) Reset() {
 	*x = ReadingApplyRequest{}
-	mi := &file_app_robot_svc_proto_msgTypes[36]
+	mi := &file_app_robot_svc_g_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4126,7 +4126,7 @@ func (x *ReadingApplyRequest) String() string {
 func (*ReadingApplyRequest) ProtoMessage() {}
 
 func (x *ReadingApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_proto_msgTypes[36]
+	mi := &file_app_robot_svc_g_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4197,11 +4197,11 @@ func (b0 ReadingApplyRequest_builder) Build() *ReadingApplyRequest {
 	return m0
 }
 
-var File_app_robot_svc_proto protoreflect.FileDescriptor
+var File_app_robot_svc_g_proto protoreflect.FileDescriptor
 
-const file_app_robot_svc_proto_rawDesc = "" +
+const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x13app/robot_svc.proto\x12\x03app\x1a\x0fapp/robot.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x17payday/tenant_svc.proto\"\xa8\x01\n" +
+	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x0fapp/robot.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x19payday/tenant_svc.g.proto\"\xa8\x01\n" +
 	"\x0fRobotAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12)\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\x12\x1b\n" +
@@ -4379,8 +4379,8 @@ const file_app_robot_svc_proto_rawDesc = "" +
 	"\x05Apply\x12\x18.app.ReadingApplyRequest\x1a\f.app.Reading\x120\n" +
 	"\x05Erase\x12\x0f.app.ReadingRef\x1a\x16.google.protobuf.EmptyB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_robot_svc_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
-var file_app_robot_svc_proto_goTypes = []any{
+var file_app_robot_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_app_robot_svc_g_proto_goTypes = []any{
 	(*RobotAddRequest)(nil),       // 0: app.RobotAddRequest
 	(*RobotGetRequest)(nil),       // 1: app.RobotGetRequest
 	(*RobotRef)(nil),              // 2: app.RobotRef
@@ -4429,7 +4429,7 @@ var file_app_robot_svc_proto_goTypes = []any{
 	(*Cell)(nil),                  // 45: app.Cell
 	(*Reading)(nil),               // 46: app.Reading
 }
-var file_app_robot_svc_proto_depIdxs = []int32{
+var file_app_robot_svc_g_proto_depIdxs = []int32{
 	37, // 0: app.RobotAddRequest.tenant:type_name -> payday.TenantRef
 	38, // 1: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
 	2,  // 2: app.RobotGetRequest.ref:type_name -> app.RobotRef
@@ -4535,45 +4535,45 @@ var file_app_robot_svc_proto_depIdxs = []int32{
 	0,  // [0:44] is the sub-list for field type_name
 }
 
-func init() { file_app_robot_svc_proto_init() }
-func file_app_robot_svc_proto_init() {
-	if File_app_robot_svc_proto != nil {
+func init() { file_app_robot_svc_g_proto_init() }
+func file_app_robot_svc_g_proto_init() {
+	if File_app_robot_svc_g_proto != nil {
 		return
 	}
 	file_app_robot_proto_init()
-	file_payday_tenant_svc_proto_init()
-	file_app_robot_svc_proto_msgTypes[2].OneofWrappers = []any{
+	file_payday_tenant_svc_g_proto_init()
+	file_app_robot_svc_g_proto_msgTypes[2].OneofWrappers = []any{
 		(*robotRef_Id)(nil),
 		(*robotRef_Slug)(nil),
 	}
-	file_app_robot_svc_proto_msgTypes[15].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[15].OneofWrappers = []any{
 		(*jointRef_Id)(nil),
 	}
-	file_app_robot_svc_proto_msgTypes[21].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[21].OneofWrappers = []any{
 		(*fleetRef_Id)(nil),
 		(*fleetRef_Alias)(nil),
 	}
-	file_app_robot_svc_proto_msgTypes[27].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[27].OneofWrappers = []any{
 		(*cellRef_Id)(nil),
 	}
-	file_app_robot_svc_proto_msgTypes[33].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[33].OneofWrappers = []any{
 		(*readingRef_Id)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_robot_svc_proto_rawDesc), len(file_app_robot_svc_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_robot_svc_g_proto_rawDesc), len(file_app_robot_svc_g_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   5,
 		},
-		GoTypes:           file_app_robot_svc_proto_goTypes,
-		DependencyIndexes: file_app_robot_svc_proto_depIdxs,
-		MessageInfos:      file_app_robot_svc_proto_msgTypes,
+		GoTypes:           file_app_robot_svc_g_proto_goTypes,
+		DependencyIndexes: file_app_robot_svc_g_proto_depIdxs,
+		MessageInfos:      file_app_robot_svc_g_proto_msgTypes,
 	}.Build()
-	File_app_robot_svc_proto = out.File
-	file_app_robot_svc_proto_goTypes = nil
-	file_app_robot_svc_proto_depIdxs = nil
+	File_app_robot_svc_g_proto = out.File
+	file_app_robot_svc_g_proto_goTypes = nil
+	file_app_robot_svc_g_proto_depIdxs = nil
 }

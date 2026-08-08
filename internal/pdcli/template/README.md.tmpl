@@ -7,6 +7,29 @@ The generated messages live at the module root, which is why the binary is in
 everything generated -- the ent schemas of two packages cannot have an edge
 between them, and the tenant wall is an edge.
 
+## What is where
+
+Two rules, and between them they say whether a file is yours.
+
+| | |
+| --- | --- |
+| `proto/app/*.proto` | **yours** -- the entities, and any service you write |
+| `proto/ext/**` | **yours** -- overlays, merged into a generated contract |
+| `proto/**/*_svc.g.proto` | generated: the contract of an entity |
+| `proto/payday/` | generated in whole; payday's own entities, copied in |
+| `internal/ent/`, `server/bare/`, `server/pd/` | generated |
+| `*.g.go`, `*.pb.go` | generated |
+| everything else | yours |
+
+So: **`.g` means a generator wrote it**, and `proto/payday/` is the one
+directory where that is true of every file rather than of the ones marked.
+Nothing else needs remembering; `pd gen` rewrites all of it and `pd gen --check`
+says when a commit did not carry it.
+
+The `.g` stops at the schema on purpose. A contract is `thing_svc.g.proto` and
+the Go generated from it is `thing_svc.pb.go`, because by then the marker is
+true of everything in sight and says nothing.
+
 ## What to read first
 
 `cmd/serve.go`. It is the stack written out -- which layers, in which order, and

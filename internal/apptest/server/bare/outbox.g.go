@@ -6,9 +6,9 @@ package bare
 import (
 	context "context"
 	apptest "github.com/lesomnus/payday/internal/apptest"
-	ent "github.com/lesomnus/payday/internal/apptest/ent"
-	outbox "github.com/lesomnus/payday/internal/apptest/ent/outbox"
-	predicate "github.com/lesomnus/payday/internal/apptest/ent/predicate"
+	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
+	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 )
 
 type OutboxServiceServer struct {

@@ -31,7 +31,11 @@ message Thing {
   // refused with the field it was in.
   string alias = 4;
 
-  string desc = 5;
+  // 5 is the name and 6 is the description, in this entity and in every one
+  // payday ships. An entity that does not want one of them leaves the number
+  // empty rather than spending it on something else, which is what keeps
+  // `header.Of` able to read any of them.
+  string desc = 6;
 
   // Stamped on every write and refused to a patch document, so it is a version
   // and not a field. Generation refuses a `watch:` without one: a watch sends

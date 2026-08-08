@@ -18,7 +18,7 @@ import (
 	"github.com/lesomnus/payday/watch"
 
 	app "github.com/lesomnus/payday/internal/apptest"
-	"github.com/lesomnus/payday/internal/apptest/ent"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )

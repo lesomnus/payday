@@ -18,8 +18,8 @@ import (
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
-	"github.com/lesomnus/payday/internal/apptest/ent/predicate"
-	"github.com/lesomnus/payday/internal/apptest/ent/robot"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )

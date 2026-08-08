@@ -40,12 +40,27 @@ type Layout struct {
 // The names under [Layout.Root]. They are constants rather than fields for the
 // reason in [Layout]: an app that moved `proto/` somewhere else would be an app
 // whose every instruction needs a footnote.
+//
+// There is **one** proto directory, and what is in it says which half it
+// belongs to:
+//
+//   - `proto/<pkg>/thing.proto` is yours. So is anything else you write there.
+//   - `proto/<pkg>/thing_svc.g.proto` is generated from it -- the same `.g.`
+//     that marks generated Go.
+//   - `proto/payday/` is payday's own entities, copied in whole. Every file
+//     there is generated, which is why they do not need the suffix, and each
+//     one says so on its first line.
+//   - `proto/ext/` is yours again: the overlays. It is excluded from the buf
+//     module, because an overlay is a fragment rather than a file that
+//     compiles.
+//
+// What used to be `proto.svc/` and `proto.pd/` is gone. Both were inputs to the
+// merge and nothing else read them, so they are written to a temporary
+// directory the way the generated Go already was.
 const (
-	DirProto = "proto"     // entities and whatever the app declared by hand
-	DirExt   = "proto.ext" // overlays: what the app adds to payday's own
-	DirSvc   = "proto.svc" // generated service contracts, before merging
-	DirPd    = "proto.pd"  // payday's additions to them, before merging
-	DirEnt   = "ent"
+	DirProto = "proto"     // one directory: the schema, yours and generated
+	DirExt   = "proto/ext" // overlays: what the app adds to what is generated
+	DirEnt   = "internal/ent"
 	DirBare  = "server/bare"
 	DirPd_   = "server/pd"
 

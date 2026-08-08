@@ -47,6 +47,63 @@ jobs:
       # is only kept by being checked.
       - run: GOOS=js GOARCH=wasm go build ./...
 
+  # A brand new app, generated and built.
+  #
+  # `internal/apptest` does not cover this: it was written by hand and has been
+  # regenerated ever since, so what it checks is the generator against a schema
+  # that already works. Nothing checked the **template** until this job, and the
+  # entity it ships had a field on the wrong number for as long as the header
+  # rule existed -- so `pd new` produced an app that failed on its first
+  # generation, and every test in the repository passed.
+  #
+  # It replaces payday with this checkout, which is the point: the template is
+  # held to the payday it ships with rather than to the last tagged one.
+  new:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: payday
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: payday/go.mod
+          cache: true
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - run: go tool pd new github.com/acme/widget "${GITHUB_WORKSPACE}/widget"
+        working-directory: payday
+
+      - name: as an app would be set up
+        working-directory: widget
+        run: |
+          go mod edit -replace github.com/lesomnus/payday="${GITHUB_WORKSPACE}/payday"
+          while read -r t; do go get -tool "$t"; done <<'EOF'
+          google.golang.org/protobuf/cmd/protoc-gen-go
+          google.golang.org/grpc/cmd/protoc-gen-go-grpc
+          github.com/protobuf-orm/protobuf-merge
+          github.com/protobuf-orm/protoc-gen-orm-service
+          github.com/protobuf-orm/protoc-gen-orm-go
+          github.com/protobuf-orm/protoc-gen-orm-ent
+          github.com/lesomnus/payday/cmd/protoc-gen-pd
+          entgo.io/ent/cmd/ent
+          EOF
+          buf dep update
+
+      - name: and generated
+        working-directory: widget
+        run: |
+          go tool pd doctor .
+          go tool pd gen .
+          go mod tidy
+          go build ./...
+
+      # And that a second run writes what the first did, which is the promise
+      # `pd gen --check` makes to every app.
+      - run: go tool pd gen --check .
+        working-directory: widget
+
   # The TypeScript, twice: payday's own half, and the app's -- which is where
   # the two halves are checked against each other. That job starts the real
   # server and sends it bytes, so it needs Go as well; a mock would agree with

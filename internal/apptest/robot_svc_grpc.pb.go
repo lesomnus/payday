@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: app/robot_svc.proto
+// source: app/robot_svc.g.proto
 
 package apptest
 
@@ -384,7 +384,7 @@ var RobotService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "app/robot_svc.proto",
+	Metadata: "app/robot_svc.g.proto",
 }
 
 const (
@@ -648,7 +648,7 @@ var JointService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/robot_svc.proto",
+	Metadata: "app/robot_svc.g.proto",
 }
 
 const (
@@ -912,7 +912,7 @@ var FleetService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/robot_svc.proto",
+	Metadata: "app/robot_svc.g.proto",
 }
 
 const (
@@ -1176,7 +1176,7 @@ var CellService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/robot_svc.proto",
+	Metadata: "app/robot_svc.g.proto",
 }
 
 const (
@@ -1440,5 +1440,5 @@ var ReadingService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/robot_svc.proto",
+	Metadata: "app/robot_svc.g.proto",
 }

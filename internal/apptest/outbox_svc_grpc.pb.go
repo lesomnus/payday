@@ -5,7 +5,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: payday/outbox_svc.proto
+// source: payday/outbox_svc.g.proto
 
 package apptest
 
@@ -75,5 +75,5 @@ var OutboxService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*OutboxServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams:     []grpc.StreamDesc{},
-	Metadata:    "payday/outbox_svc.proto",
+	Metadata:    "payday/outbox_svc.g.proto",
 }

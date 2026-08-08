@@ -5,7 +5,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: payday/tenant_svc.proto
+// source: payday/tenant_svc.g.proto
 
 package apptest
 
@@ -283,5 +283,5 @@ var TenantService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "payday/tenant_svc.proto",
+	Metadata: "payday/tenant_svc.g.proto",
 }

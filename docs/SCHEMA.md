@@ -39,7 +39,7 @@ message Holder {
 쓰고 있는 바로 그 기계장치다.
 
 ```proto
-// app/proto.ext/payday/holder.ext.proto
+// app/proto/ext/payday/holder.ext.proto
 message Holder {
   string email = 8;
   bytes  idp_subject = 9;

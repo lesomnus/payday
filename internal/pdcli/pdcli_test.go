@@ -22,9 +22,98 @@ func app(t *testing.T, module string) string {
 	x.NoError(os.WriteFile(filepath.Join(root, "go.mod"),
 		[]byte("module "+module+"\n\ngo 1.25\n"), 0o644))
 	x.NoError(os.WriteFile(filepath.Join(root, "buf.yaml"),
-		[]byte("version: v2\nmodules:\n  - path: ./proto\ndeps:\n  - buf.build/payday/payday:dev\n  - buf.build/orm/orm\n  - buf.build/patch/patch\n"), 0o644))
+		[]byte("version: v2\nmodules:\n  - path: ./proto\n    excludes:\n      - proto/ext\ndeps:\n  - buf.build/payday/payday:dev\n  - buf.build/orm/orm\n  - buf.build/patch/patch\n"), 0o644))
 
 	return root
+}
+
+// TestOverlaysAreKeptFromBuf is the one line of `buf.yaml` that is payday's
+// shape rather than the app's choice.
+//
+// The overlays live under `proto/` now, which is where buf looks. An overlay is
+// not a file that compiles -- it names messages that exist only after the merge
+// -- so a module that does not exclude them is one where `pd gen` fails on its
+// first step with an error about a type nobody declared.
+func TestOverlaysAreKeptFromBuf(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	x.NoError(os.MkdirAll(filepath.Join(root, pdcli.DirExt, "app"), 0o755))
+	x.NoError(os.WriteFile(filepath.Join(root, "buf.yaml"),
+		[]byte("version: v2\nmodules:\n  - path: ./proto\ndeps:\n  - buf.build/payday/payday:dev\n  - buf.build/orm/orm\n"), 0o644))
+
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+
+	var said string
+	for _, v := range pdcli.Doctor(t.Context(), l) {
+		said += v.String() + "\n"
+	}
+	x.Contains(said, "does not exclude proto/ext")
+	x.Contains(said, "excludes:")
+}
+
+// TestOverlaysAreOnlyMentionedWhenThereAreSome, since an app with none has
+// nothing to exclude and should not be told to write a line about it.
+func TestOverlaysAreOnlyMentionedWhenThereAreSome(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	x.NoError(os.WriteFile(filepath.Join(root, "buf.yaml"),
+		[]byte("version: v2\nmodules:\n  - path: ./proto\ndeps:\n  - buf.build/payday/payday:dev\n  - buf.build/orm/orm\n"), 0o644))
+
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+
+	var said string
+	for _, v := range pdcli.Doctor(t.Context(), l) {
+		said += v.String() + "\n"
+	}
+	x.NotContains(said, "exclude")
+}
+
+// TestTheGeneratedMarkerStaysInTheSchema is what [pdcli.DirProto] promises.
+//
+// A contract is `robot_svc.g.proto`, and every generator downstream names its
+// output after the file it read -- so without taking it back off, the app root
+// holds `robot_svc.g_grpc.pb.go` and `ts/gen` holds a `robot_svc.g_pb.ts` that
+// somebody has to type in an import. The marker says "generated from something
+// you wrote", which is as true of those as of the contract, so carried along it
+// says nothing and is only in the way.
+//
+// It is checked against the app rather than by calling the function, because
+// what is claimed is about the tree that is committed.
+func TestTheGeneratedMarkerStaysInTheSchema(t *testing.T) {
+	x := require.New(t)
+
+	root := filepath.Join("..", "apptest")
+	proto := filepath.Join(root, pdcli.DirProto)
+
+	x.NoError(filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if d.Name() == "node_modules" {
+				return filepath.SkipDir
+			}
+
+			return nil
+		}
+		if strings.HasPrefix(p, proto) {
+			return nil
+		}
+
+		x.NotContains(d.Name(), "_svc.g", "%s: the `.g` of a contract left the schema", p)
+
+		return nil
+	}))
+
+	// And that the marker is there to begin with, so this does not pass by
+	// there being nothing to find.
+	vs, err := filepath.Glob(filepath.Join(proto, "*", "*_svc.g.proto"))
+	x.NoError(err)
+	x.NotEmpty(vs)
 }
 
 func TestTheLayoutIsReadAndNotGuessed(t *testing.T) {

@@ -6,6 +6,10 @@ modules:
   # depend on `orm` the way an app does, and so that what is generated for it
   # is generated the way an app's is.
   - path: ./internal/apptest/proto
+    excludes:
+      # The overlays: fragments handed to protobuf-merge by path, naming types
+      # that exist only after the merge. buf must not try to compile them.
+      - internal/apptest/proto/ext
 deps:
   - buf.build/orm/orm
   - buf.build/patch/patch

@@ -196,6 +196,13 @@ func (n New) Setup(ctx context.Context, log io.Writer) error {
 
 // Steps is what to type, for a `new` that did not set the app up itself.
 func (n New) Steps() []string {
+	// The same defaults [New.Write] applies, and applied again here because it
+	// takes a value: an app named after its module wrote `cmd/widget/` and then
+	// said to run `./cmd/`.
+	if n.Name == "" {
+		n.Name = alias(path(n.Module))
+	}
+
 	dir := n.Dir
 	if dir == "" {
 		dir = n.Name

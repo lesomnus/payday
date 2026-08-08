@@ -30,14 +30,20 @@ import (
 // reading them, which is the only way to test most of it: a `strategy` left at
 // the default does not fail, it generates less.
 func Templates(l Layout, out string) []string {
-	return []string{tmplContracts(l, out), tmplCode(l, out)}
+	return []string{
+		tmplContracts(l, filepath.Join(out, "svc"), filepath.Join(out, "pd")),
+		tmplCode(l, out),
+	}
 }
 
 // tmplContracts is the pass that writes the service contracts.
 //
 // It runs `protoc-gen-pd` as well, because a `List` is an RPC and has to be in
 // the contract before anything is generated from the contract.
-func tmplContracts(l Layout, out string) string {
+//
+// `svc` and `pd` are the two halves, and they are scratch directories rather
+// than places in the app: only the merge reads them.
+func tmplContracts(l Layout, svc string, pd string) string {
 	return fmt.Sprintf(`version: v2
 inputs:
   - directory: %s
@@ -52,8 +58,8 @@ plugins:
     strategy: all
 `,
 		yamlPath(l.Rel(DirProto)),
-		yamlPath(rel(l.Work, filepath.Join(out, DirSvc))),
-		yamlPath(rel(l.Work, filepath.Join(out, DirPd))),
+		yamlPath(rel(l.Work, svc)),
+		yamlPath(rel(l.Work, pd)),
 	)
 }
 

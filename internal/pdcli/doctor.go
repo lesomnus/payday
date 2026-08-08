@@ -140,6 +140,20 @@ func doctorBuf(l Layout) []Finding {
 		})
 	}
 
+	// The overlays live under the schema, so buf finds them, and an overlay is
+	// not a file that compiles: it is a fragment naming messages that exist only
+	// after the merge. Excluding them is the one line of `buf.yaml` that is
+	// payday's shape rather than the app's choice.
+	if _, err := os.Stat(l.Path(DirExt)); err == nil && !bytes.Contains(b, []byte(l.Rel(DirExt))) {
+		vs = append(vs, Finding{
+			What: fmt.Sprintf("%s does not exclude %s, and buf will try to compile the overlays there",
+				p, l.Rel(DirExt)),
+			Fix: fmt.Sprintf("modules:\n  - path: %s\n    excludes:\n      - %s",
+				l.Rel(DirProto), l.Rel(DirExt)),
+			Fatal: true,
+		})
+	}
+
 	return vs
 }
 
