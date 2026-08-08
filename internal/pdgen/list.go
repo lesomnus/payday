@@ -61,9 +61,9 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	// that struct is the ORM generator's and knows nothing about payday.")
 	g.P("	w *", pkgWatch.Ident("Watch"))
 	g.P("")
-	g.P("	// namer decides the alias of a row being added, and nil is the")
-	g.P("	// default: fold it, and refuse one that is not a name. See")
-	g.P("	// [Sink.WithNamer].")
+	g.P("	// namer decides the alias of a row being added, and nil is")
+	g.P("	// `slug.Names`: fold what was given, make one up when nothing was.")
+	g.P("	// See [Sink.WithNamer].")
 	g.P("	namer ", pkgSlug.Ident("Namer"))
 	g.P("}")
 	g.P("")
@@ -92,11 +92,11 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("// rather than the ORM generator's because an alias is payday's idea: it is")
 	g.P("// what a slug resolves against, and nothing in `orm` has a word for it.")
 	g.P("//")
-	g.P("// Unset is fold-and-refuse, which is what every app gets by saying")
-	g.P("// nothing. An app that wants a name made up for the rows nobody names")
-	g.P("// says so here, where a reader finds it:")
+	g.P("// Unset is `slug.Names`: fold what was given, and make a name up when")
+	g.P("// nothing was. An app whose rows have to be named says so here, where a")
+	g.P("// reader finds it:")
 	g.P("//")
-	g.P("//	sink = sink.WithNamer(slug.GenerateFor(nil, \"app.Joint\", \"app.Cell\"))")
+	g.P("//	sink = sink.WithNamer(slug.RequiredFor(nil, \"payday.Tenant\", \"app.Project\"))")
 	g.P("func (s Sink) WithNamer(n ", pkgSlug.Ident("Namer"), ") Sink {")
 	g.P("	s.namer = n")
 	g.P("	return s")
@@ -153,21 +153,25 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 // have left exactly that hole, and a hole that only opens on the admin path is
 // one nothing notices until a row written by hand cannot be found by name.
 //
-// What it does is fold and refuse, in that order. Folding is why: "  Acme " and
-// "acme" are one tenant to a person and two rows to a unique index, and the
-// only place the difference can be closed once is on the way in. Refusing is
-// what keeps `@acme/arm-01` able to name anything at all -- a row called
-// "Not An Alias!!" is reachable by identifier and by nothing a person writes.
+// What it does is fold, and refuse a name that is not one. Folding is why:
+// "  Acme " and "acme" are one tenant to a person and two rows to a unique
+// index, and the only place the difference can be closed once is on the way in.
+// Refusing is what keeps `@acme/arm-01` able to name anything at all -- a row
+// called "Not An Alias!!" is reachable by identifier and by nothing a person
+// writes.
+//
+// What it does with a row nobody named is `slug.Namer`'s, and by default it
+// makes a name up; see there.
 func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
 	e := v.GoName()
 
-	g.P("// Add decides the name and refuses one that cannot be one.")
+	g.P("// Add decides the name, and refuses one that was given and cannot be one.")
 	g.P("//")
-	g.P("// It goes through [Sink.WithNamer], which is unset in most deployments")
-	g.P("// and then means fold-and-refuse. An app that wants a name made up for")
-	g.P("// the rows nobody names wires one; see `slug.Namer` for why an empty")
-	g.P("// alias cannot be told from an absent one, and why this is a decision")
-	g.P("// rather than a default.")
+	g.P("// It goes through [Sink.WithNamer], which is unset in most deployments and")
+	g.P("// then means: fold what was given, and make a name up when nothing was --")
+	g.P("// for the reason `bare.Minter` makes a key up. An app whose rows have to")
+	g.P("// be named says so with `slug.Required`; see `slug.Names` for why that is")
+	g.P("// the way round it is.")
 	g.P("//")
 	g.P("// The request is copied rather than written to. It belongs to whoever")
 	g.P("// called, and for a call made in this process that is a message they may")

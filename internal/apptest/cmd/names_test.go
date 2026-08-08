@@ -58,7 +58,7 @@ func TestANameThatIsNotOneIsRefused(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
-	for _, v := range []string{"Not An Alias!!", "", "-leading", "trailing-", "9front", "a--b"} {
+	for _, v := range []string{"Not An Alias!!", "-leading", "trailing-", "9front", "a--b"} {
 		_, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
 			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
 			Alias:  v,
@@ -174,23 +174,89 @@ func (b *built) sink(t *testing.T, n slug.Namer) app.Server {
 	return s.WithNamer(n)
 }
 
-// TestANameCanBeMadeUpWhenAnAppSaysSo is the fourth hook doing what the other
-// three do: the judgement is injected, and the shape of it is general.
+// TestARowNobodyNamedIsGivenOne is the default, and it is the default for the
+// reason `bare.Minter` makes a key up.
 //
-// `bare.Minter` decides the key, `bare.Recorder` is told about the write,
-// `bare.Scope` narrows the read, and `slug.Namer` decides the name. Each is one
-// method with the entity as an argument, because a key is a uuid and a name is
-// a string whatever entity they belong to -- a `Scope` needs a method per
-// entity only because a predicate is typed per entity.
-func TestANameCanBeMadeUpWhenAnAppSaysSo(t *testing.T) {
+// A row needs an identity the caller may not have an opinion about, and payday
+// already supplies one of the two -- an Add with no `id` gets a fresh uuid and
+// nobody calls that dangerous. A name is that decision one field over.
+func TestARowNobodyNamedIsGivenOne(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
-	// Only for the rows nobody names. A Robot still has to be given one, which
-	// is the whole point of it being a decision per entity rather than a switch
-	// on the server.
-	s := b.sink(t, slug.GenerateFor(nil, "app.Joint"))
+	v, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+	}.Build())
+	x.NoError(err)
 
+	// A name, and one `@acme/...` can reach -- which is the whole of what an
+	// alias is for.
+	x.NotEmpty(v.GetAlias())
+	x.NoError(slug.Validate(v.GetAlias()))
+
+	got, err := b.Walled.Robot().Get(b.as(ctx), app.RobotGetRequest_builder{
+		Ref: app.RobotRef_builder{
+			Slug: app.RobotRefBySlug_builder{
+				Alias:  z.Ptr(v.GetAlias()),
+				Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			}.Build(),
+		}.Build(),
+	}.Build())
+	x.NoError(err)
+	x.Equal(v.GetId(), got.GetId())
+}
+
+// TestTwoRowsNobodyNamedDoNotCollide, which is what makes the default usable at
+// all: an entity nobody names is one where every Add would otherwise be an
+// AlreadyExists on the empty string.
+func TestTwoRowsNobodyNamedDoNotCollide(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	seen := map[string]bool{}
+	for range 8 {
+		v, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		}.Build())
+		x.NoError(err)
+		x.False(seen[v.GetAlias()], "two rows were named %q", v.GetAlias())
+		seen[v.GetAlias()] = true
+	}
+}
+
+// TestANameThatWasGivenIsStillJudged. Making one up is what happens when
+// nothing was said, and not a repair of what was.
+func TestANameThatWasGivenIsStillJudged(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	_, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "Not An Alias",
+	}.Build())
+	x.Equal(codes.InvalidArgument, status.Code(err))
+	x.Equal("alias", pderr.Violations(err)[0].Field)
+}
+
+// TestAnAppCanSayARowHasToBeNamed is the other way round, per entity.
+//
+// What it buys is not safety -- a made-up name is visible on the first screen
+// that draws one -- it is **feedback**: a client that dropped the field is told
+// so, rather than writing a row somebody has to find and rename.
+func TestAnAppCanSayARowHasToBeNamed(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	s := b.sink(t, slug.RequiredFor(nil, "app.Robot"))
+
+	_, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+	}.Build())
+	x.Equal(codes.InvalidArgument, status.Code(err))
+	x.Equal("alias", pderr.Violations(err)[0].Field)
+
+	// And the entity that was not in the list still gets one made up, which is
+	// the point of it being per entity rather than a switch on the server.
 	v, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
 		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
 		Alias:  "arm-01",
@@ -201,17 +267,18 @@ func TestANameCanBeMadeUpWhenAnAppSaysSo(t *testing.T) {
 		Robot: app.RobotRef_builder{Id: v.GetId()}.Build(),
 	}.Build())
 	x.NoError(err)
-
-	// A name it did not ask for, and one it can be found by.
 	x.NotEmpty(joint.GetAlias())
-	x.NoError(slug.Validate(joint.GetAlias()))
+}
 
-	// And the entity that was not in the list is still refused.
-	_, err = s.Robot().Add(ctx, app.RobotAddRequest_builder{
+// TestRequiredEverywhereIsOneLine, for a deployment that wants it.
+func TestRequiredEverywhereIsOneLine(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	_, err := b.sink(t, slug.Required()).Robot().Add(ctx, app.RobotAddRequest_builder{
 		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
 	}.Build())
 	x.Equal(codes.InvalidArgument, status.Code(err))
-	x.Equal("alias", pderr.Violations(err)[0].Field)
 }
 
 // TestANamerIsNotAskedToRenameSomethingThatExists is the difference from a
@@ -224,7 +291,7 @@ func TestANamerIsNotAskedToRenameSomethingThatExists(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
-	s := b.sink(t, slug.Generate(nil))
+	s := b.sink(t, nil)
 
 	v, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
 		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
@@ -238,16 +305,4 @@ func TestANamerIsNotAskedToRenameSomethingThatExists(t *testing.T) {
 		DateUpdated: v.GetDateUpdated(),
 	}.Build())
 	x.Equal(codes.InvalidArgument, status.Code(err), "the row was renamed to something nobody asked for")
-}
-
-// TestSayingNothingIsFoldAndRefuse, which is what every app gets and what the
-// tests above this one are about.
-func TestSayingNothingIsFoldAndRefuse(t *testing.T) {
-	x := require.New(t)
-	b, ctx := build(t)
-
-	_, err := b.sink(t, nil).Robot().Add(ctx, app.RobotAddRequest_builder{
-		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
-	}.Build())
-	x.Equal(codes.InvalidArgument, status.Code(err))
 }

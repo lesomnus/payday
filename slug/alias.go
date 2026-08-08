@@ -90,11 +90,9 @@ func ParseAlias(v string) (string, error) {
 // do not collide in a table a person will ever read, and short enough to say
 // over a phone.
 //
-// **A server does not call this on its own.** An Add that arrived with no alias
-// is refused, because an empty string and an absent one are the same request --
-// so a caller who forgot the field would get a row called `qxbmrtz` and never
-// find out. An app that wants it anyway says so, per entity, through
-// [Generate]; see [Namer].
+// **This is what a server does with an Add that named nothing**, for the reason
+// a minter makes a key up when the caller gave none; see [Names]. An app whose
+// rows have to be named says so with [Required] or [RequiredFor].
 func RandomAlias() string { return RandomAliasN(7) }
 
 // RandomAliasN is [RandomAlias] of a given length.

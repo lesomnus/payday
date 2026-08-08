@@ -6,6 +6,9 @@ import (
 
 // Namer decides the alias of a row that is being created.
 //
+// Unset is [Names]: fold what was given, and make a name up when nothing was.
+// [Required] is the other way, per entity with [RequiredFor].
+//
 // # Why one method rather than one per entity
 //
 // The same reason `bare.Minter` has one: an alias is a string whatever entity
@@ -46,12 +49,12 @@ type Namer interface {
 	Name(ctx context.Context, entity string, given string) (string, error)
 }
 
-// NamerFunc is a [Namer] written as a function, which is what a per-entity
-// policy usually is:
+// NamerFunc is a [Namer] written as a function, which is what a policy that is
+// neither [Names] nor [Required] looks like:
 //
 //	slug.NamerFunc(func(ctx context.Context, entity string, given string) (string, error) {
-//		if entity == "app.Joint" && given == "" {
-//			given = slug.RandomAlias()
+//		if entity == "app.Project" && given == "" {
+//			return "", errors.New("a project has to be named")
 //		}
 //
 //		return slug.Names().Name(ctx, entity, given)
@@ -62,71 +65,96 @@ func (f NamerFunc) Name(ctx context.Context, entity string, given string) (strin
 	return f(ctx, entity, given)
 }
 
-// Names is what a server with no namer does: fold the name, and refuse one that
-// is not a name.
+// Names is what a server with no namer does: fold the name, and make one up
+// when the request carried none.
 //
-// Folding is the half that is not a refusal and is the one that matters most:
-// "  Acme " and "acme" are one row to a person and two to a unique index, and
-// the only place that difference can be closed once is on the way in.
+// # Why making one up is the default
+//
+// The same reason `bare.Minter` makes a key up. A row needs an identity the
+// caller may not have an opinion about, and the framework already supplies one
+// of the two -- an Add with no `id` gets a fresh uuid and nobody calls that
+// dangerous. A name is that decision one field over.
+//
+// The argument against it does not survive payday's own test for what is worth
+// refusing, which is **does it go quietly wrong.** A row called `qxbmrtz` is not
+// quiet: it is on the first screen that draws a name, in the first log line that
+// mentions it. Compare the things generation does refuse -- an entity with no
+// domain, one that never said which side of the wall it is on, a watch with
+// nothing to order two answers by. Every one of those is invisible until much
+// later and somewhere else.
+//
+// So an entity nobody names -- a joint of a robot, a cell of a fleet -- costs
+// nothing, and the alternative was every client carrying the same
+// `if alias == ""`.
+//
+// # What it does not do
+//
+// Folding is the other half and is the one that matters most: "  Acme " and
+// "acme" are one row to a person and two to a unique index, and the only place
+// that difference can be closed once is on the way in.
+//
+// And a name that is **given** and is not a name is still refused. Making one
+// up is what happens when nothing was said, not a repair of what was.
 func Names() Namer { return names{} }
 
 type names struct{}
 
 func (names) Name(_ context.Context, _ string, given string) (string, error) {
+	if given == "" {
+		return RandomAlias(), nil
+	}
+
 	return ParseAlias(given)
 }
 
-// Generate answers with a namer that makes a name up when the request carried
-// none, and otherwise does what `next` does.
+// Required answers with a namer that refuses a row nobody named, rather than
+// making a name up for it.
+//
+// It is for an entity whose name is the point: a tenant, a project, anything a
+// person writes in a URL or says out loud. The thing it buys is not safety --
+// see [Names] -- it is **feedback**: a client that dropped the field is told
+// so, instead of writing a row that has to be found and renamed.
+//
+// It also changes what a repeated mistake looks like. With a name made up, a
+// client that drops the field writes a new row every time, since a made-up name
+// never collides; with this, the second attempt is the same refusal as the
+// first.
+//
+//	sink.WithNamer(slug.Required())
+func Required() Namer { return required{} }
+
+type required struct{}
+
+func (required) Name(_ context.Context, _ string, given string) (string, error) {
+	return ParseAlias(given)
+}
+
+// RequiredFor is [Required] for some entities and `next` for the rest, which is
+// the shape a schema with a mixture has.
 //
 // `next` may be nil, which is [Names].
 //
-// # What it costs, said plainly
+// It is here rather than left to a switch because the switch is the thing
+// people get wrong: a name in the list that is not an entity is a policy that
+// silently never applies, and this at least keeps the list in one place where
+// it can be read against the schema.
 //
-// A caller who **forgot** the field gets a row called `qxbmrtz` and never finds
-// out, because there is no way to tell that from a caller who meant it (see
-// [Namer]). That is why it is not what a server does by default: it is a
-// decision about one entity in one app, and it reads as one where it is wired.
-//
-// For an entity nobody names -- a joint of a robot, a cell of a fleet -- it is
-// the right answer, and the alternative is every client carrying the same
-// `if alias == ""`.
-func Generate(next Namer) Namer {
+//	sink.WithNamer(slug.RequiredFor(nil, "payday.Tenant", "app.Project"))
+func RequiredFor(next Namer, entities ...string) Namer {
 	if next == nil {
 		next = Names()
 	}
 
-	return NamerFunc(func(ctx context.Context, entity string, given string) (string, error) {
-		if given == "" {
-			given = RandomAlias()
-		}
-
-		return next.Name(ctx, entity, given)
-	})
-}
-
-// GenerateFor is [Generate] for some entities and `next` for the rest.
-//
-// It is the shape a schema with a mixture has, and it is here rather than left
-// to a switch because the switch is the thing people get wrong -- a name in the
-// list that is not an entity is a policy that silently never applies.
-//
-//	pd.WithNamer(slug.GenerateFor(nil, "app.Joint", "app.Cell"))
-func GenerateFor(next Namer, entities ...string) Namer {
-	if next == nil {
-		next = Names()
-	}
-
-	auto := make(map[string]bool, len(entities))
+	must := make(map[string]bool, len(entities))
 	for _, v := range entities {
-		auto[v] = true
+		must[v] = true
 	}
 
-	gen := Generate(next)
+	req := Required()
 
 	return NamerFunc(func(ctx context.Context, entity string, given string) (string, error) {
-		if auto[entity] {
-			return gen.Name(ctx, entity, given)
+		if must[entity] {
+			return req.Name(ctx, entity, given)
 		}
 
 		return next.Name(ctx, entity, given)
@@ -137,7 +165,7 @@ func GenerateFor(next Namer, entities ...string) Namer {
 // [Namer] is written once rather than at every site.
 func NameWith(ctx context.Context, n Namer, entity string, given string) (string, error) {
 	if n == nil {
-		return ParseAlias(given)
+		n = Names()
 	}
 
 	return n.Name(ctx, entity, given)

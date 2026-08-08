@@ -218,9 +218,9 @@ type Sink struct {
 	// that struct is the ORM generator's and knows nothing about payday.
 	w *watch.Watch
 
-	// namer decides the alias of a row being added, and nil is the
-	// default: fold it, and refuse one that is not a name. See
-	// [Sink.WithNamer].
+	// namer decides the alias of a row being added, and nil is
+	// `slug.Names`: fold what was given, make one up when nothing was.
+	// See [Sink.WithNamer].
 	namer slug.Namer
 }
 
@@ -248,11 +248,11 @@ func (s Sink) WithWatch(w *watch.Watch) Sink {
 // rather than the ORM generator's because an alias is payday's idea: it is
 // what a slug resolves against, and nothing in `orm` has a word for it.
 //
-// Unset is fold-and-refuse, which is what every app gets by saying
-// nothing. An app that wants a name made up for the rows nobody names
-// says so here, where a reader finds it:
+// Unset is `slug.Names`: fold what was given, and make a name up when
+// nothing was. An app whose rows have to be named says so here, where a
+// reader finds it:
 //
-//	sink = sink.WithNamer(slug.GenerateFor(nil, "app.Joint", "app.Cell"))
+//	sink = sink.WithNamer(slug.RequiredFor(nil, "payday.Tenant", "app.Project"))
 func (s Sink) WithNamer(n slug.Namer) Sink {
 	s.namer = n
 	return s
@@ -285,13 +285,13 @@ func (s Sink) Cell() apptest.CellServiceServer {
 	return sinkCell{s.Server.Cell(), s.Server.Store, s.w, s.namer}
 }
 
-// Add decides the name and refuses one that cannot be one.
+// Add decides the name, and refuses one that was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments
-// and then means fold-and-refuse. An app that wants a name made up for
-// the rows nobody names wires one; see `slug.Namer` for why an empty
-// alias cannot be told from an absent one, and why this is a decision
-// rather than a default.
+// It goes through [Sink.WithNamer], which is unset in most deployments and
+// then means: fold what was given, and make a name up when nothing was --
+// for the reason `bare.Minter` makes a key up. An app whose rows have to
+// be named says so with `slug.Required`; see `slug.Names` for why that is
+// the way round it is.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
@@ -347,13 +347,13 @@ func (s Sink) Fleet() apptest.FleetServiceServer {
 	return sinkFleet{s.Server.Fleet(), s.Server.Store, s.w, s.namer}
 }
 
-// Add decides the name and refuses one that cannot be one.
+// Add decides the name, and refuses one that was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments
-// and then means fold-and-refuse. An app that wants a name made up for
-// the rows nobody names wires one; see `slug.Namer` for why an empty
-// alias cannot be told from an absent one, and why this is a decision
-// rather than a default.
+// It goes through [Sink.WithNamer], which is unset in most deployments and
+// then means: fold what was given, and make a name up when nothing was --
+// for the reason `bare.Minter` makes a key up. An app whose rows have to
+// be named says so with `slug.Required`; see `slug.Names` for why that is
+// the way round it is.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
@@ -409,13 +409,13 @@ func (s Sink) Joint() apptest.JointServiceServer {
 	return sinkJoint{s.Server.Joint(), s.Server.Store, s.w, s.namer}
 }
 
-// Add decides the name and refuses one that cannot be one.
+// Add decides the name, and refuses one that was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments
-// and then means fold-and-refuse. An app that wants a name made up for
-// the rows nobody names wires one; see `slug.Namer` for why an empty
-// alias cannot be told from an absent one, and why this is a decision
-// rather than a default.
+// It goes through [Sink.WithNamer], which is unset in most deployments and
+// then means: fold what was given, and make a name up when nothing was --
+// for the reason `bare.Minter` makes a key up. An app whose rows have to
+// be named says so with `slug.Required`; see `slug.Names` for why that is
+// the way round it is.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
@@ -471,13 +471,13 @@ func (s Sink) Robot() apptest.RobotServiceServer {
 	return sinkRobot{s.Server.Robot(), s.Server.Store, s.w, s.namer}
 }
 
-// Add decides the name and refuses one that cannot be one.
+// Add decides the name, and refuses one that was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments
-// and then means fold-and-refuse. An app that wants a name made up for
-// the rows nobody names wires one; see `slug.Namer` for why an empty
-// alias cannot be told from an absent one, and why this is a decision
-// rather than a default.
+// It goes through [Sink.WithNamer], which is unset in most deployments and
+// then means: fold what was given, and make a name up when nothing was --
+// for the reason `bare.Minter` makes a key up. An app whose rows have to
+// be named says so with `slug.Required`; see `slug.Names` for why that is
+// the way round it is.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
@@ -848,13 +848,13 @@ func (s Sink) Holder() apptest.HolderServiceServer {
 	return sinkHolder{s.Server.Holder(), s.Server.Store, s.w, s.namer}
 }
 
-// Add decides the name and refuses one that cannot be one.
+// Add decides the name, and refuses one that was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments
-// and then means fold-and-refuse. An app that wants a name made up for
-// the rows nobody names wires one; see `slug.Namer` for why an empty
-// alias cannot be told from an absent one, and why this is a decision
-// rather than a default.
+// It goes through [Sink.WithNamer], which is unset in most deployments and
+// then means: fold what was given, and make a name up when nothing was --
+// for the reason `bare.Minter` makes a key up. An app whose rows have to
+// be named says so with `slug.Required`; see `slug.Names` for why that is
+// the way round it is.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
@@ -910,13 +910,13 @@ func (s Sink) Tenant() apptest.TenantServiceServer {
 	return sinkTenant{s.Server.Tenant(), s.Server.Store, s.w, s.namer}
 }
 
-// Add decides the name and refuses one that cannot be one.
+// Add decides the name, and refuses one that was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments
-// and then means fold-and-refuse. An app that wants a name made up for
-// the rows nobody names wires one; see `slug.Namer` for why an empty
-// alias cannot be told from an absent one, and why this is a decision
-// rather than a default.
+// It goes through [Sink.WithNamer], which is unset in most deployments and
+// then means: fold what was given, and make a name up when nothing was --
+// for the reason `bare.Minter` makes a key up. An app whose rows have to
+// be named says so with `slug.Required`; see `slug.Names` for why that is
+// the way round it is.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
