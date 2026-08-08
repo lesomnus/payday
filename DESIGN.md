@@ -85,6 +85,7 @@ Go 패키지에 `pd`를 붙일지는 **하나의 기준**으로 정한다.
 | --- | --- |
 | **[docs/SCHEMA.md](docs/SCHEMA.md)** | payday가 소유하는 스키마(Tenant/Holder/Audit), 참조(ID와 slug), 선언에서 생성되는 `List`/`Watch` |
 | **[docs/RUNTIME.md](docs/RUNTIME.md)** | 런타임 패키지 구성, CLI, **강제할 것**, 레이어 라이프사이클 |
+| **[docs/TENANCY.md](docs/TENANCY.md)** | 벽과 정책이 각각 무엇을 정하는가, 교차 테넌트 권한(본사 admin), 공개 리소스, 배포를 나누는 결정 |
 | **[docs/CLIENT.md](docs/CLIENT.md)** | 브라우저 안의 서버(샌드박스), UI 층 나누기, 로컬 스토어 |
 | **[docs/PLAN.md](docs/PLAN.md)** | 저장소 배치, 아직 답하지 않은 것, 작업 순서 |
 

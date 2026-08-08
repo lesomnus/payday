@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/lesomnus/z"
 	"github.com/ncruces/go-sqlite3/vfs/memdb"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -17,6 +18,9 @@ import (
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
+	"github.com/lesomnus/payday/internal/apptest/ent/predicate"
+	"github.com/lesomnus/payday/internal/apptest/ent/robot"
+	"github.com/lesomnus/payday/internal/apptest/server/bare"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
@@ -318,4 +322,80 @@ func TestTheWallReadsTheKeyRatherThanWalkingToIt(t *testing.T) {
 	x.NoError(err)
 	x.Len(page.GetItems(), 1)
 	x.Equal("mine", page.GetItems()[0].GetAlias())
+}
+
+// TestAHookGivenTwiceIsRefused is the rule an app meets the first time it wires
+// two of anything.
+//
+// Neither answer to "you gave it twice, what did you mean" is safe to pick.
+// Replacing loses one -- the recorder that was going to write the trail, the
+// scope that was the tenant wall -- and says nothing at the time; appending
+// invents a rule nobody wrote, in an order nobody chose. So the option refuses,
+// and `bare.Recorders` / `bare.Scopes` are where an app says which it meant.
+func TestAHookGivenTwiceIsRefused(t *testing.T) {
+	x := require.New(t)
+	b, _ := build(t)
+
+	_, err := pd.NewSink(b.Ent,
+		bare.WithScope(pd.Wall()),
+		bare.WithScope(bare.Unscoped{}),
+	)
+	x.ErrorIs(err, bare.ErrTwice)
+	x.ErrorContains(err, "Scopes{...}", "the refusal does not say where to say it")
+}
+
+// TestTheWallAndSomethingElse is what `Scopes` is for, and it is the shape an
+// app reaches for the moment it has a rule of its own -- a region, a
+// published flag, a soft archive.
+//
+// The wall is one of the list rather than something wrapped, so nothing has to
+// re-implement what "narrows nothing" means: a scope says that with a nil
+// predicate, and `Scopes` is where the And-of-whichever-are-not-nil is written
+// once instead of once per app per entity.
+func TestTheWallAndSomethingElse(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	mine, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "keep",
+	}.Build())
+	x.NoError(err)
+
+	_, err = b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "drop",
+	}.Build())
+	x.NoError(err)
+
+	s, err := pd.NewSink(b.Ent,
+		bare.WithMinter(pd.Minter()),
+		bare.WithScope(bare.Scopes{pd.Wall(), keeps{}}),
+	)
+	x.NoError(err)
+
+	// Inside the wall and what the second scope keeps.
+	got, err := s.Robot().Get(b.as(ctx), app.RobotGetRequest_builder{
+		Ref: app.RobotRef_builder{Id: mine.GetId()}.Build(),
+	}.Build())
+	x.NoError(err)
+	x.Equal("keep", got.GetAlias())
+
+	// Inside the wall and not what it keeps: the same NotFound the wall gives,
+	// because narrowing is narrowing whoever did it.
+	_, err = s.Robot().Get(b.as(ctx), app.RobotGetRequest_builder{
+		Ref: app.RobotRef_builder{Slug: app.RobotRefBySlug_builder{
+			Alias:  z.Ptr("drop"),
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		}.Build()}.Build(),
+	}.Build())
+	x.Equal(codes.NotFound, status.Code(err))
+}
+
+// keeps is an app's own narrowing: one rule about one entity, and nothing to
+// say about the rest.
+type keeps struct{ bare.Unscoped }
+
+func (keeps) RobotScope(context.Context) (predicate.Robot, error) {
+	return robot.AliasEQ("keep"), nil
 }

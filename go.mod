@@ -54,7 +54,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df // indirect
-	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260807205916-3e9c932f5f85 // indirect
+	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260808123324-e497f4cbdc13 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260808062124-7336db3ccda7 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260807210724-9ecafa02f5f7 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
