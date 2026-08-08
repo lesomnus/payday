@@ -36,7 +36,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.18.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/lesomnus/grpc-dgram v0.0.0-20260726142955-d48ce49dbd65 // indirect
+	github.com/lesomnus/grpc-dgram v0.0.0-20260727054342-be775dcd6ec2 // indirect
 	github.com/lesomnus/mkot v0.0.0-20260801183340-9c83100aa7c2 // indirect
 	github.com/lesomnus/mkot/mkotx v0.0.0-20260801183340-9c83100aa7c2 // indirect
 	github.com/lesomnus/mkot/pretty v0.0.0-20260801183340-9c83100aa7c2 // indirect
@@ -86,8 +86,3 @@ tool (
 	entgo.io/ent/cmd/ent
 	github.com/protobuf-orm/protoc-gen-orm-go
 )
-
-// transport/jsport is in grpc-dgram's tree and not in any version the proxy
-// has yet. It is somebody else's unpushed work, so this points at the checkout
-// rather than pushing it; drop the line once grpc-dgram publishes it.
-replace github.com/lesomnus/grpc-dgram => /workspaces/github.com/lesomnus/grpc-dgram
