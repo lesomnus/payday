@@ -89,6 +89,12 @@ func ParseAlias(v string) (string, error) {
 // Seven characters of [Alphabet] is about 31 bits, which is enough that these
 // do not collide in a table a person will ever read, and short enough to say
 // over a phone.
+//
+// **A server does not call this on its own.** An Add that arrived with no alias
+// is refused, because an empty string and an absent one are the same request --
+// so a caller who forgot the field would get a row called `qxbmrtz` and never
+// find out. An app that wants it anyway says so, per entity, through
+// [Generate]; see [Namer].
 func RandomAlias() string { return RandomAliasN(7) }
 
 // RandomAliasN is [RandomAlias] of a given length.

@@ -217,6 +217,11 @@ type Sink struct {
 	// serves none. It is here rather than on the generated Store because
 	// that struct is the ORM generator's and knows nothing about payday.
 	w *watch.Watch
+
+	// namer decides the alias of a row being added, and nil is the
+	// default: fold it, and refuse one that is not a name. See
+	// [Sink.WithNamer].
+	namer slug.Namer
 }
 
 func NewSink(db *ent.Client, opts ...bare.Option) (Sink, error) {
@@ -235,6 +240,24 @@ func (s Sink) WithWatch(w *watch.Watch) Sink {
 	return s
 }
 
+// WithNamer answers with this server deciding aliases with `n`.
+//
+// It is the fourth of the hooks the generated servers converge on --
+// `bare.Minter` decides the key, `bare.Recorder` is told about the write,
+// `bare.Scope` narrows the read, and this decides the name. It is payday's
+// rather than the ORM generator's because an alias is payday's idea: it is
+// what a slug resolves against, and nothing in `orm` has a word for it.
+//
+// Unset is fold-and-refuse, which is what every app gets by saying
+// nothing. An app that wants a name made up for the rows nobody names
+// says so here, where a reader finds it:
+//
+//	sink = sink.WithNamer(slug.GenerateFor(nil, "app.Joint", "app.Cell"))
+func (s Sink) WithNamer(n slug.Namer) Sink {
+	s.namer = n
+	return s
+}
+
 var _ apptest.Server = Sink{}
 var _ enttx.Binder[apptest.Server] = Sink{}
 
@@ -245,27 +268,37 @@ func (s Sink) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 		return nil, err
 	}
 
-	return Sink{Server: v.(bare.Server), w: s.w}, nil
+	// Everything this Sink was told, carried across. A field left out here
+	// is a rule the requests inside a transaction go around, and it fails
+	// only there -- which is the hardest place to notice it.
+	return Sink{Server: v.(bare.Server), w: s.w, namer: s.namer}, nil
 }
 
 type sinkCell struct {
 	apptest.CellServiceServer
 	store bare.Store
 	w     *watch.Watch
+	namer slug.Namer
 }
 
 func (s Sink) Cell() apptest.CellServiceServer {
-	return sinkCell{s.Server.Cell(), s.Server.Store, s.w}
+	return sinkCell{s.Server.Cell(), s.Server.Store, s.w, s.namer}
 }
 
-// Add folds the name and refuses one that is not a name.
+// Add decides the name and refuses one that cannot be one.
+//
+// It goes through [Sink.WithNamer], which is unset in most deployments
+// and then means fold-and-refuse. An app that wants a name made up for
+// the rows nobody names wires one; see `slug.Namer` for why an empty
+// alias cannot be told from an absent one, and why this is a decision
+// rather than a default.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
-	v, err := slug.ParseAlias(req.GetAlias())
+	v, err := slug.NameWith(ctx, s.namer, "app.Cell", req.GetAlias())
 	if err != nil {
 		return nil, pderr.At("alias", err)
 	}
@@ -282,6 +315,11 @@ func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptes
 // that does not mention the alias is not a patch setting it to the empty
 // string, and refusing one would make every patch of any other field carry
 // the name along.
+//
+// The namer is **not** asked here, and that is the second difference. It
+// decides the name of a row being made; a patch that cleared the alias is
+// a caller asking for something invalid, and answering that with an
+// invented name would hand them a row they did not ask for.
 func (s sinkCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
 	if !req.HasAlias() {
 		return s.CellServiceServer.Patch(ctx, req)
@@ -302,20 +340,27 @@ type sinkFleet struct {
 	apptest.FleetServiceServer
 	store bare.Store
 	w     *watch.Watch
+	namer slug.Namer
 }
 
 func (s Sink) Fleet() apptest.FleetServiceServer {
-	return sinkFleet{s.Server.Fleet(), s.Server.Store, s.w}
+	return sinkFleet{s.Server.Fleet(), s.Server.Store, s.w, s.namer}
 }
 
-// Add folds the name and refuses one that is not a name.
+// Add decides the name and refuses one that cannot be one.
+//
+// It goes through [Sink.WithNamer], which is unset in most deployments
+// and then means fold-and-refuse. An app that wants a name made up for
+// the rows nobody names wires one; see `slug.Namer` for why an empty
+// alias cannot be told from an absent one, and why this is a decision
+// rather than a default.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
-	v, err := slug.ParseAlias(req.GetAlias())
+	v, err := slug.NameWith(ctx, s.namer, "app.Fleet", req.GetAlias())
 	if err != nil {
 		return nil, pderr.At("alias", err)
 	}
@@ -332,6 +377,11 @@ func (s sinkFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*appt
 // that does not mention the alias is not a patch setting it to the empty
 // string, and refusing one would make every patch of any other field carry
 // the name along.
+//
+// The namer is **not** asked here, and that is the second difference. It
+// decides the name of a row being made; a patch that cleared the alias is
+// a caller asking for something invalid, and answering that with an
+// invented name would hand them a row they did not ask for.
 func (s sinkFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
 	if !req.HasAlias() {
 		return s.FleetServiceServer.Patch(ctx, req)
@@ -352,20 +402,27 @@ type sinkJoint struct {
 	apptest.JointServiceServer
 	store bare.Store
 	w     *watch.Watch
+	namer slug.Namer
 }
 
 func (s Sink) Joint() apptest.JointServiceServer {
-	return sinkJoint{s.Server.Joint(), s.Server.Store, s.w}
+	return sinkJoint{s.Server.Joint(), s.Server.Store, s.w, s.namer}
 }
 
-// Add folds the name and refuses one that is not a name.
+// Add decides the name and refuses one that cannot be one.
+//
+// It goes through [Sink.WithNamer], which is unset in most deployments
+// and then means fold-and-refuse. An app that wants a name made up for
+// the rows nobody names wires one; see `slug.Namer` for why an empty
+// alias cannot be told from an absent one, and why this is a decision
+// rather than a default.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
-	v, err := slug.ParseAlias(req.GetAlias())
+	v, err := slug.NameWith(ctx, s.namer, "app.Joint", req.GetAlias())
 	if err != nil {
 		return nil, pderr.At("alias", err)
 	}
@@ -382,6 +439,11 @@ func (s sinkJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*appt
 // that does not mention the alias is not a patch setting it to the empty
 // string, and refusing one would make every patch of any other field carry
 // the name along.
+//
+// The namer is **not** asked here, and that is the second difference. It
+// decides the name of a row being made; a patch that cleared the alias is
+// a caller asking for something invalid, and answering that with an
+// invented name would hand them a row they did not ask for.
 func (s sinkJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
 	if !req.HasAlias() {
 		return s.JointServiceServer.Patch(ctx, req)
@@ -402,20 +464,27 @@ type sinkRobot struct {
 	apptest.RobotServiceServer
 	store bare.Store
 	w     *watch.Watch
+	namer slug.Namer
 }
 
 func (s Sink) Robot() apptest.RobotServiceServer {
-	return sinkRobot{s.Server.Robot(), s.Server.Store, s.w}
+	return sinkRobot{s.Server.Robot(), s.Server.Store, s.w, s.namer}
 }
 
-// Add folds the name and refuses one that is not a name.
+// Add decides the name and refuses one that cannot be one.
+//
+// It goes through [Sink.WithNamer], which is unset in most deployments
+// and then means fold-and-refuse. An app that wants a name made up for
+// the rows nobody names wires one; see `slug.Namer` for why an empty
+// alias cannot be told from an absent one, and why this is a decision
+// rather than a default.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
-	v, err := slug.ParseAlias(req.GetAlias())
+	v, err := slug.NameWith(ctx, s.namer, "app.Robot", req.GetAlias())
 	if err != nil {
 		return nil, pderr.At("alias", err)
 	}
@@ -432,6 +501,11 @@ func (s sinkRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 // that does not mention the alias is not a patch setting it to the empty
 // string, and refusing one would make every patch of any other field carry
 // the name along.
+//
+// The namer is **not** asked here, and that is the second difference. It
+// decides the name of a row being made; a patch that cleared the alias is
+// a caller asking for something invalid, and answering that with an
+// invented name would hand them a row they did not ask for.
 func (s sinkRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
 	if !req.HasAlias() {
 		return s.RobotServiceServer.Patch(ctx, req)
@@ -767,20 +841,27 @@ type sinkHolder struct {
 	apptest.HolderServiceServer
 	store bare.Store
 	w     *watch.Watch
+	namer slug.Namer
 }
 
 func (s Sink) Holder() apptest.HolderServiceServer {
-	return sinkHolder{s.Server.Holder(), s.Server.Store, s.w}
+	return sinkHolder{s.Server.Holder(), s.Server.Store, s.w, s.namer}
 }
 
-// Add folds the name and refuses one that is not a name.
+// Add decides the name and refuses one that cannot be one.
+//
+// It goes through [Sink.WithNamer], which is unset in most deployments
+// and then means fold-and-refuse. An app that wants a name made up for
+// the rows nobody names wires one; see `slug.Namer` for why an empty
+// alias cannot be told from an absent one, and why this is a decision
+// rather than a default.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
-	v, err := slug.ParseAlias(req.GetAlias())
+	v, err := slug.NameWith(ctx, s.namer, "payday.Holder", req.GetAlias())
 	if err != nil {
 		return nil, pderr.At("alias", err)
 	}
@@ -797,6 +878,11 @@ func (s sinkHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 // that does not mention the alias is not a patch setting it to the empty
 // string, and refusing one would make every patch of any other field carry
 // the name along.
+//
+// The namer is **not** asked here, and that is the second difference. It
+// decides the name of a row being made; a patch that cleared the alias is
+// a caller asking for something invalid, and answering that with an
+// invented name would hand them a row they did not ask for.
 func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
 	if !req.HasAlias() {
 		return s.HolderServiceServer.Patch(ctx, req)
@@ -817,20 +903,27 @@ type sinkTenant struct {
 	apptest.TenantServiceServer
 	store bare.Store
 	w     *watch.Watch
+	namer slug.Namer
 }
 
 func (s Sink) Tenant() apptest.TenantServiceServer {
-	return sinkTenant{s.Server.Tenant(), s.Server.Store, s.w}
+	return sinkTenant{s.Server.Tenant(), s.Server.Store, s.w, s.namer}
 }
 
-// Add folds the name and refuses one that is not a name.
+// Add decides the name and refuses one that cannot be one.
+//
+// It goes through [Sink.WithNamer], which is unset in most deployments
+// and then means fold-and-refuse. An app that wants a name made up for
+// the rows nobody names wires one; see `slug.Namer` for why an empty
+// alias cannot be told from an absent one, and why this is a decision
+// rather than a default.
 //
 // The request is copied rather than written to. It belongs to whoever
 // called, and for a call made in this process that is a message they may
 // still be holding -- a server that folded a caller's own field would be
 // changing a value they can read back.
 func (s sinkTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
-	v, err := slug.ParseAlias(req.GetAlias())
+	v, err := slug.NameWith(ctx, s.namer, "payday.Tenant", req.GetAlias())
 	if err != nil {
 		return nil, pderr.At("alias", err)
 	}
@@ -847,6 +940,11 @@ func (s sinkTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*ap
 // that does not mention the alias is not a patch setting it to the empty
 // string, and refusing one would make every patch of any other field carry
 // the name along.
+//
+// The namer is **not** asked here, and that is the second difference. It
+// decides the name of a row being made; a patch that cleared the alias is
+// a caller asking for something invalid, and answering that with an
+// invented name would hand them a row they did not ask for.
 func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) (*apptest.Tenant, error) {
 	if !req.HasAlias() {
 		return s.TenantServiceServer.Patch(ctx, req)

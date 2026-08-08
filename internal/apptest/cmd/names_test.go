@@ -10,8 +10,11 @@ import (
 
 	"github.com/lesomnus/payday/pderr"
 	"github.com/lesomnus/payday/pdid"
+	"github.com/lesomnus/payday/slug"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/server/bare"
+	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
 // TestANameIsFoldedOnTheWayIn is the half that is not a refusal.
@@ -157,4 +160,94 @@ func TestAFoldedNameIsFoundByTheNameThatWasWritten(t *testing.T) {
 	}.Build())
 	x.NoError(err)
 	x.Equal("arm-01", v.GetAlias())
+}
+
+// sink is the innermost server with a namer on it, which is where the hook
+// lives: in front of the database and behind everything else, so both the
+// served stack and the deployment's own path go through it.
+func (b *built) sink(t *testing.T, n slug.Namer) app.Server {
+	t.Helper()
+
+	s, err := pd.NewSink(b.Ent, bare.WithMinter(pd.Minter()))
+	require.NoError(t, err)
+
+	return s.WithNamer(n)
+}
+
+// TestANameCanBeMadeUpWhenAnAppSaysSo is the fourth hook doing what the other
+// three do: the judgement is injected, and the shape of it is general.
+//
+// `bare.Minter` decides the key, `bare.Recorder` is told about the write,
+// `bare.Scope` narrows the read, and `slug.Namer` decides the name. Each is one
+// method with the entity as an argument, because a key is a uuid and a name is
+// a string whatever entity they belong to -- a `Scope` needs a method per
+// entity only because a predicate is typed per entity.
+func TestANameCanBeMadeUpWhenAnAppSaysSo(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	// Only for the rows nobody names. A Robot still has to be given one, which
+	// is the whole point of it being a decision per entity rather than a switch
+	// on the server.
+	s := b.sink(t, slug.GenerateFor(nil, "app.Joint"))
+
+	v, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	joint, err := s.Joint().Add(ctx, app.JointAddRequest_builder{
+		Robot: app.RobotRef_builder{Id: v.GetId()}.Build(),
+	}.Build())
+	x.NoError(err)
+
+	// A name it did not ask for, and one it can be found by.
+	x.NotEmpty(joint.GetAlias())
+	x.NoError(slug.Validate(joint.GetAlias()))
+
+	// And the entity that was not in the list is still refused.
+	_, err = s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+	}.Build())
+	x.Equal(codes.InvalidArgument, status.Code(err))
+	x.Equal("alias", pderr.Violations(err)[0].Field)
+}
+
+// TestANamerIsNotAskedToRenameSomethingThatExists is the difference from a
+// minter that is worth having a test for.
+//
+// A namer decides the name of a row being made. A patch that cleared the alias
+// is a caller asking for something invalid, and answering it with an invented
+// name would hand them a row they did not ask for.
+func TestANamerIsNotAskedToRenameSomethingThatExists(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	s := b.sink(t, slug.Generate(nil))
+
+	v, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	_, err = s.Robot().Patch(ctx, app.RobotPatchRequest_builder{
+		Ref:         app.RobotRef_builder{Id: v.GetId()}.Build(),
+		Alias:       z.Ptr(""),
+		DateUpdated: v.GetDateUpdated(),
+	}.Build())
+	x.Equal(codes.InvalidArgument, status.Code(err), "the row was renamed to something nobody asked for")
+}
+
+// TestSayingNothingIsFoldAndRefuse, which is what every app gets and what the
+// tests above this one are about.
+func TestSayingNothingIsFoldAndRefuse(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	_, err := b.sink(t, nil).Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+	}.Build())
+	x.Equal(codes.InvalidArgument, status.Code(err))
 }
