@@ -186,6 +186,10 @@ func (g Gen) merge(ctx context.Context) error {
 
 			g.say("  merge %s + %s", rel, filepath.Base(overlay))
 
+			if err := CheckOverlayFile(overlay); err != nil {
+				return err
+			}
+
 			// protobuf-merge takes files, so what has been merged so far has to
 			// be one.
 			tmp, err := writeTemp(b, "*.proto")
@@ -204,6 +208,15 @@ func (g Gen) merge(ctx context.Context) error {
 		// were merged, and after this they are all `_svc.proto`.
 		b = importSvc.ReplaceAll(b, []byte(`${1}${2}_svc.proto${3}`))
 
+		// And that rewrite is what makes two of them the same. An overlay that
+		// uses a generated type -- a hand-written RPC taking an `AssetRef` --
+		// imports `..._svc.proto`, while the contract it merges into still says
+		// `..._svc.g.proto`; the merge keeps both because the text differs, and
+		// this line is where they stop differing. It is the first thing an app
+		// hits on its first hand-written RPC, and protoc refuses a file that
+		// imports the same thing twice.
+		b = dedupeImports(b)
+
 		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 			return err
 		}
@@ -213,6 +226,75 @@ func (g Gen) merge(ctx context.Context) error {
 }
 
 var importSvc = regexp.MustCompile(`(import ")([^"]*)_svc\.g\.proto(";)`)
+
+var importLine = regexp.MustCompile(`(?m)^import .*;$`)
+
+// fileFeature is a `features.*` set at the top of a file, outside any message.
+var fileFeature = regexp.MustCompile(`(?m)^option features\.[a-z_]+\s*=`)
+
+// CheckOverlayFile refuses an overlay that changes the file's features.
+//
+// It is the one thing an overlay can say that is not about what it adds. The
+// merge unions the options, so a `features.field_presence = IMPLICIT` copied
+// from the entity file lands on the **whole contract** -- every field of every
+// message in it, including the ones the generator wrote and the app has never
+// read.
+//
+// What it costs is not obvious, which is why it is refused rather than
+// documented. Here it happened to take `HasId` off an Add request and stop the
+// build, which is the lucky version; on a field nothing calls `Has` on it would
+// change only what "not set" means on the wire, and nothing would say so.
+//
+// An overlay adds messages and RPCs. What the file is is the contract's, and
+// the contract is generated.
+func CheckOverlayFile(p string) error {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return err
+	}
+
+	m := fileFeature.FindIndex(b)
+	if m == nil {
+		return nil
+	}
+
+	// Only what is outside a message: inside one it is about that message and
+	// is the app's to say.
+	if bytes.Contains(b[:m[0]], []byte("message ")) {
+		return nil
+	}
+
+	return fmt.Errorf(
+		"%s: sets a file-level `features.` option, and the merge would put it on the whole "+
+			"contract -- every field of every message in it, including the ones the generator "+
+			"wrote.\n\n"+
+			"    %s\n\n"+
+			"Delete the line. An overlay adds messages and RPCs; what the file **is** belongs "+
+			"to the contract, which is generated",
+		filepath.Base(p), strings.TrimSpace(string(b[m[0]:m[1]]))+" ...")
+}
+
+// dedupeImports drops an import that is already there, keeping the first.
+//
+// Order is kept rather than sorted: what comes out of the merge is the
+// contract's imports and then the overlay's, and a reader looking for what an
+// overlay added finds it at the bottom where it was written.
+func dedupeImports(b []byte) []byte {
+	seen := map[string]bool{}
+
+	return importLine.ReplaceAllFunc(b, func(v []byte) []byte {
+		if seen[string(v)] {
+			// The line goes, and the newline after it is left -- which is a
+			// blank line rather than a missing one, and gofmt has no opinion
+			// about proto.
+			return nil
+		}
+
+		seen[string(v)] = true
+
+		return v
+	})
+}
 
 // code writes the messages, the stubs, the query helpers, the ent schema, the
 // servers, and what payday makes of the declarations.

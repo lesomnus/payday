@@ -196,3 +196,63 @@ func TestAnOverlayForNothingIsFound(t *testing.T) {
 	// typo in the name.
 	x.Contains(said, "holder")
 }
+
+// TestAnOverlayDoesNotChangeWhatTheFileIs is the one thing an overlay can say
+// that is not about what it adds.
+//
+// The merge unions the file's options, so a `features.field_presence = IMPLICIT`
+// copied out of the entity file lands on the **whole contract** -- every field
+// of every message in it, including the ones the generator wrote. It was found
+// by writing the first hand-written RPC in an app: it took `HasId` off an Add
+// request and stopped the build, which is the lucky version. On a field nothing
+// calls `Has` on it would change only what "not set" means on the wire.
+func TestAnOverlayDoesNotChangeWhatTheFileIs(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	x.NoError(os.MkdirAll(filepath.Join(root, pdcli.DirExt, "app"), 0o755))
+
+	p := filepath.Join(root, pdcli.DirExt, "app", "thing_svc.ext.proto")
+	x.NoError(os.WriteFile(p, []byte(`edition = "2023";
+
+package app;
+
+option features.field_presence = IMPLICIT;
+
+service ThingService {
+  rpc Ping(PingRequest) returns (PingRequest);
+}
+
+message PingRequest {
+  string what = 1;
+}
+`), 0o644))
+
+	err := pdcli.CheckOverlayFile(p)
+	x.Error(err)
+	x.ErrorContains(err, "the whole contract")
+	x.ErrorContains(err, "Delete the line")
+}
+
+// TestAnOverlayMaySayItInsideAMessage, which is about that message and is the
+// app's to say.
+func TestAnOverlayMaySayItInsideAMessage(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	x.NoError(os.MkdirAll(filepath.Join(root, pdcli.DirExt, "app"), 0o755))
+
+	p := filepath.Join(root, pdcli.DirExt, "app", "thing_svc.ext.proto")
+	x.NoError(os.WriteFile(p, []byte(`edition = "2023";
+
+package app;
+
+message PingRequest {
+  option features.field_presence = IMPLICIT;
+
+  string what = 1;
+}
+`), 0o644))
+
+	x.NoError(pdcli.CheckOverlayFile(p))
+}
