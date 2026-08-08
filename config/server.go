@@ -94,6 +94,14 @@ type HttpConfig struct {
 	// There is no default here, which is the difference between this and
 	// [ServerConfig.Addr]: not serving is a perfectly good thing for this one
 	// to do, so an unwritten field has an answer already.
+	//
+	// An address with neither of the switches below turned on is **not** an
+	// error, and that is a deliberate reversal: this listener is also where an
+	// app puts whatever it serves over HTTP -- a login endpoint, an OIDC
+	// callback -- and payday has no way to know it has routes. A deployment
+	// that serves those and no browser RPCs is a real one. What that costs is
+	// that an address with genuinely nothing behind it answers 404 instead of
+	// being refused at startup.
 	Addr string `yaml:"addr"`
 
 	// AllowWeb translates the protocols a browser can speak -- Connect and

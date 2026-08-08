@@ -19,6 +19,13 @@
 // said, and nothing is served at all unless an address is written down: an app
 // with no UI has no reason to open a port.
 //
+// **Under TLS this listener carries native gRPC as well**, and that is worth
+// knowing rather than guessing at: HTTP/2 arrives by ALPN, the transcoder takes
+// gRPC as an incoming protocol like any other, and a `grpcurl` reaches it. So
+// the two listeners are a decision about the transport gRPC brings -- Go's
+// HTTP/2 server is not grpc-go's, and grpc-go says so about its own
+// `ServeHTTP` -- and not about what is reachable where.
+//
 // # What it is not
 //
 // It is not authentication and it is not the wall. An origin says which page
@@ -42,15 +49,39 @@ import (
 	"github.com/lesomnus/payday/config"
 )
 
-// Handler is what the second listener serves, and is nil when the configuration
-// asked for nothing.
+// Mux is the second listener: what the configuration asked for, plus whatever
+// the app serves over HTTP, with the cross-origin answer over all of it.
 //
-// It is nil rather than an empty mux on purpose: an address with nothing behind
-// it is a port that accepts a connection and answers 404, which reads as a
-// deployment problem rather than as a configuration that turned everything off.
-func Handler(c config.HttpConfig, s *grpc.Server) (http.Handler, error) {
+// It embeds [http.ServeMux], so an app adds a route the way it adds one to
+// anything -- `h.Handle("/login", ...)`. payday does not invent a router; what
+// it owns here is the two things an app gets wrong by leaving them out, which
+// are the transcoder's options and the cross-origin answer.
+//
+// # Why the CORS is on the whole mux
+//
+// It used to be on the transcoder alone, and that is the arrangement where an
+// app mounts `/login` and finds that **only that route** is refused by the
+// browser while every RPC works. The two are not told apart by anything a
+// reader can see, so the answer covers everything on this listener.
+//
+// # What it does not decide
+//
+// Whether there is anything here. An address with nothing behind it used to be
+// refused, and that was right only while payday owned the whole mux: a
+// deployment that serves a login endpoint and no browser RPCs is a real one,
+// and payday has no way to know the app has routes. See [config.HttpConfig].
+type Mux struct {
+	*http.ServeMux
+
+	// h is the mux with [Cors] over it, built once rather than per request.
+	// It closes over the *inner* mux, so a route added after this was made is
+	// dispatched like any other -- a `ServeMux` resolves at request time.
+	h http.Handler
+}
+
+// New answers with the second listener's mux.
+func New(c config.HttpConfig, s *grpc.Server) (*Mux, error) {
 	mux := http.NewServeMux()
-	any := false
 
 	if c.AllowWeb {
 		h, err := Transcode(s)
@@ -58,8 +89,7 @@ func Handler(c config.HttpConfig, s *grpc.Server) (http.Handler, error) {
 			return nil, err
 		}
 
-		mux.Handle("/", Cors(c.Origin(), h))
-		any = true
+		mux.Handle("/", h)
 	}
 	if c.AllowPprof {
 		// One by one rather than by prefix, because `pprof.Index` serves the
@@ -68,14 +98,12 @@ func Handler(c config.HttpConfig, s *grpc.Server) (http.Handler, error) {
 		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-		any = true
-	}
-	if !any {
-		return nil, nil
 	}
 
-	return mux, nil
+	return &Mux{ServeMux: mux, h: Cors(c.Origin(), mux)}, nil
 }
+
+func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) { m.h.ServeHTTP(w, r) }
 
 // Transcode is every service registered on `s`, answering the protocols a
 // browser can speak.

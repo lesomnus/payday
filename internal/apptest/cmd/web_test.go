@@ -2,8 +2,10 @@ package cmd_test
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/lesomnus/payday/auth"
@@ -35,12 +39,18 @@ func (b *built) serving(t *testing.T) *httptest.Server {
 	t.Helper()
 	x := require.New(t)
 
-	h, err := web.Handler(config.HttpConfig{
+	h, err := web.New(config.HttpConfig{
 		AllowWeb: true,
 		Origins:  []string{"http://localhost:5173"},
 	}, b.Grpc(t.Context(), cmd0))
 	x.NoError(err)
-	x.NotNil(h)
+
+	// The app's own, which is the half payday cannot fill: `auth` reads a
+	// credential and does not issue one, and issuing is an HTTP endpoint.
+	h.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"token":"nope"}`)
+	})
 
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
@@ -272,16 +282,122 @@ func TestAnOriginNobodyNamedIsNotAnsweredFor(t *testing.T) {
 	x.Empty(other.Header.Get("Access-Control-Allow-Origin"))
 }
 
-// TestAnAddressWithNothingBehindItIsRefused.
+// TestTheAppsOwnRoutesGetTheSameAnswer, which is why the cross-origin answer is
+// on the mux rather than on the transcoder.
 //
-// `server.http.addr` with neither `allow_web` nor `allow_pprof` is a port that
-// accepts a connection and answers 404, which reads as a deployment problem. It
-// is a configuration to be told about instead.
-func TestAnAddressWithNothingBehindItIsRefused(t *testing.T) {
+// With it on the transcoder alone, an app mounts `/login` and finds that **only
+// that route** is refused by the browser while every RPC works -- and nothing a
+// reader can see tells the two apart. This is the assertion that arrangement
+// would fail.
+func TestTheAppsOwnRoutesGetTheSameAnswer(t *testing.T) {
 	x := require.New(t)
 	b, _ := build(t)
 
-	h, err := web.Handler(config.HttpConfig{Addr: ":8080"}, b.Grpc(t.Context(), cmd0))
+	srv := b.serving(t)
+
+	for _, path := range []string{"/app.RobotService/List", "/login"} {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions, srv.URL+path, nil)
+		x.NoError(err)
+		req.Header.Set("Origin", "http://localhost:5173")
+		req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+
+		res, err := http.DefaultClient.Do(req)
+		x.NoError(err)
+		res.Body.Close()
+
+		x.Equal("http://localhost:5173", res.Header.Get("Access-Control-Allow-Origin"), path)
+	}
+
+	// And that the route is actually served, so the check above is not agreeing
+	// with a 404.
+	res, err := http.Post(srv.URL+"/login", "application/json", strings.NewReader("{}"))
 	x.NoError(err)
-	x.Nil(h)
+	defer res.Body.Close()
+
+	out, err := io.ReadAll(res.Body)
+	x.NoError(err)
+	x.Equal(http.StatusOK, res.StatusCode)
+	x.Contains(string(out), "token")
+}
+
+// TestAnAddressWithNothingConfiguredIsStillAMux.
+//
+// It used to be refused, and that was right only while payday owned the whole
+// mux. This listener is also where an app puts what it serves over HTTP, and
+// payday has no way to know it has routes -- a deployment serving a login
+// endpoint and no browser RPCs is a real one.
+func TestAnAddressWithNothingConfiguredIsStillAMux(t *testing.T) {
+	x := require.New(t)
+	b, _ := build(t)
+
+	h, err := web.New(config.HttpConfig{Addr: ":8080"}, b.Grpc(t.Context(), cmd0))
+	x.NoError(err)
+	x.NotNil(h)
+
+	h.HandleFunc("/login", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
+
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	res, err := http.Get(srv.URL + "/login")
+	x.NoError(err)
+	res.Body.Close()
+	x.Equal(http.StatusTeapot, res.StatusCode)
+}
+
+// TestTheBrowserPortCarriesGrpcToo.
+//
+// The two listeners are a decision about the transport gRPC brings -- Go's
+// HTTP/2 server is not grpc-go's, and grpc-go says so about its own `ServeHTTP`
+// -- and **not** about what is reachable where. Under TLS this one takes HTTP/2
+// by ALPN and the transcoder takes gRPC as an incoming protocol like any other,
+// so a `grpcurl` reaches it.
+//
+// Worth pinning because it is the sort of thing that gets asserted from memory:
+// somebody reads "a browser cannot speak cleartext HTTP/2" and concludes the
+// port is browsers-only.
+func TestTheBrowserPortCarriesGrpcToo(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant[:]}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	h, err := web.New(config.HttpConfig{AllowWeb: true}, b.Grpc(t.Context(), cmd0))
+	x.NoError(err)
+
+	// Cleartext would be HTTP/1.1, which is the whole reason this is its own
+	// listener; TLS is what makes it HTTP/2 without an upgrade dance.
+	srv := httptest.NewUnstartedServer(h)
+	srv.EnableHTTP2 = true
+	srv.StartTLS()
+	defer srv.Close()
+
+	cc, err := grpc.NewClient(srv.Listener.Addr().String(),
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			RootCAs: srv.Client().Transport.(*http.Transport).TLSClientConfig.RootCAs,
+		})))
+	x.NoError(err)
+	defer cc.Close()
+
+	res, err := app.NewRobotServiceClient(cc).List(
+		auth.PlainProvider("@acme/admin").Provide(ctx),
+		app.RobotListRequest_builder{
+			Filters: []*app.RobotFilter{
+				app.RobotFilter_builder{
+					Ref: app.RobotRef_builder{
+						Slug: app.RobotRefBySlug_builder{
+							Alias:  proto.String("arm-01"),
+							Tenant: app.TenantRef_builder{Alias: proto.String("acme")}.Build(),
+						}.Build(),
+					}.Build(),
+				}.Build(),
+			},
+		}.Build())
+	x.NoError(err)
+	x.Len(res.GetItems(), 1)
+	x.Equal("arm-01", res.GetItems()[0].GetAlias())
 }

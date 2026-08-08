@@ -114,6 +114,22 @@ curl -sX POST http://localhost:8080/app.ThingService/List \
   -H 'Content-Type: application/json' -H 'Connect-Protocol-Version: 1' -d '{}'
 ```
 
+Under TLS it carries **native gRPC** as well — HTTP/2 arrives by ALPN and a
+`grpcurl` reaches it. The two listeners are a decision about the transport gRPC
+brings, not about what is reachable where.
+
+Whatever else this app serves over HTTP goes on the same mux, in `serve.go`:
+
+```go
+h, err := web.New(c.Server.Http, g)
+h.Handle("/login", login(s.Ungated))
+```
+
+That is where a login endpoint lands. `auth` reads a credential and does not
+issue one — issuing is HTTP, and this is the HTTP. The cross-origin answer is
+over the whole mux, so a route added here is reachable from the same page the
+RPCs are.
+
 `ts/` is the TypeScript half. `go tool pd gen --ts .` writes the messages and
 service descriptors into `ts/gen`, and `ts/src/client.ts` turns a descriptor into
 a client — one line per service, with nothing generated per service to keep in

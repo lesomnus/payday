@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -235,17 +234,21 @@ func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(
 		return func() {}, nil
 	}
 
-	h, err := web.Handler(c.Server.Http, g)
+	h, err := web.New(c.Server.Http, g)
 	if err != nil {
 		return nil, err
 	}
-	if h == nil {
-		// An address, and nothing turned on to serve at it. That is a
-		// configuration to be told about rather than a port that accepts a
-		// connection and answers 404.
-		return nil, fmt.Errorf("server.http.addr is %s and nothing is served there: "+
-			"set allow_web for a browser, or allow_pprof, or take the address out", c.Server.Http.Addr)
-	}
+
+	// Whatever this app serves over HTTP goes here, on the same mux and behind
+	// the same cross-origin answer. A login endpoint is the case payday left a
+	// seam for and cannot fill: `auth` reads a credential and does not issue
+	// one, and issuing is an HTTP endpoint.
+	//
+	//	h.Handle("/login", login(s.Ungated))
+	//
+	// A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide
+	// with one -- and `ServeMux` panics rather than shadowing if one somehow
+	// does.
 
 	l, err := net.Listen("tcp", c.Server.Http.Addr)
 	if err != nil {
