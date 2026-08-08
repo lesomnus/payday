@@ -18,6 +18,11 @@ import (
 //   - one `module=` for every plugin, so that everything lands in one Go
 //     package. Two packages means two sets of ent schemas and no edge between
 //     them, which is the wall again.
+//   - `../` in front of every namer for an app whose messages are not at the
+//     module root. A generator names its output relative to `go_package`, and
+//     the ent runtime and the servers belong beside `go.mod` rather than beside
+//     the messages; without it they follow the messages and `internal/ent`
+//     becomes `api/internal/ent`.
 //   - `API_OPAQUE`. The generated servers build requests with the `_builder`
 //     form and read them with `Has`/`Get`; the open API has neither.
 //
@@ -108,7 +113,7 @@ plugins:
 		yamlPath(l.Rel(DirProto)),
 		yamlPath(out),
 		l.Module,
-		DirEnt, DirBare, DirPd_,
+		l.Up()+DirEnt, l.Up()+DirBare, l.Up()+DirPd_,
 	)
 }
 

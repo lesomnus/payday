@@ -137,7 +137,11 @@ func (g Gen) hashes() (map[string]string, error) {
 	// And the generated files that sit beside the app's own rather than in a
 	// directory of their own. Under `proto/` that is exactly the `.g.proto`,
 	// which is the whole of why they are named that way.
-	for _, pat := range []string{"*.pb.go", "*.g.go", filepath.Join(DirProto, "*", "*.g.proto")} {
+	for _, pat := range []string{
+		filepath.Join(g.Layout.PkgDir(), "*.pb.go"),
+		filepath.Join(g.Layout.PkgDir(), "*.g.go"),
+		filepath.Join(DirProto, "*", "*.g.proto"),
+	} {
 		ps, err := filepath.Glob(filepath.Join(g.Out, pat))
 		if err != nil {
 			return nil, err

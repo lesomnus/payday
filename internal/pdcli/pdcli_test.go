@@ -27,6 +27,97 @@ func app(t *testing.T, module string) string {
 	return root
 }
 
+// entity writes one of an app's own .proto files, with `go_package` in it.
+func entity(t *testing.T, root string, name string, pkg string) {
+	t.Helper()
+
+	require.NoError(t, os.WriteFile(filepath.Join(root, "proto", "app", name),
+		[]byte("edition = \"2023\";\n\npackage app;\n\noption go_package = \""+pkg+"\";\n"), 0o644))
+}
+
+// TestTheMessagePackageIsReadAndNotDecided.
+//
+// Where the generated messages land is already written down -- it is the
+// `go_package` the app's own entities declare -- so payday reads it rather than
+// taking a flag or inventing a convention. An app that wants `ls` at the top of
+// its repository to be the app rather than a hundred `.pb.go` changes that one
+// line, and the ent runtime and the servers stay where they were: they are
+// named relative to the module root, and the namers climb out with `../`.
+func TestTheMessagePackageIsReadAndNotDecided(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	entity(t, root, "thing.proto", "github.com/acme/thing/api")
+
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+	x.Equal("github.com/acme/thing/api", l.Pkg)
+	x.Equal("api", l.PkgDir())
+	x.Equal("../", l.Up())
+
+	for _, v := range pdcli.Templates(l, root) {
+		if !strings.Contains(v, "orm-ent") {
+			continue
+		}
+
+		x.Contains(v, "schema.namer=../internal/ent/schema/")
+		x.Contains(v, "server.namer=../server/bare/")
+	}
+}
+
+// TestTheModuleRootIsTheDefault, which is what `pd new` writes and what nearly
+// every app keeps -- and then nothing climbs anywhere.
+func TestTheModuleRootIsTheDefault(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	entity(t, root, "thing.proto", "github.com/acme/thing")
+
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+	x.Equal("github.com/acme/thing", l.Pkg)
+	x.Equal(".", l.PkgDir())
+	x.Equal("", l.Up())
+}
+
+// TestTwoPackagesAreRefused, which is the one that would otherwise be found as
+// a wall that is not there.
+//
+// Everything generated has to be one Go package, because an ent schema cannot
+// have an edge to one in another package and the wall between tenants **is** an
+// edge. Two `go_package` is two sets of schemas, and the entity behind the wall
+// simply has no edge to the tenant.
+func TestTwoPackagesAreRefused(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	entity(t, root, "thing.proto", "github.com/acme/thing/api")
+	entity(t, root, "other.proto", "github.com/acme/thing/other")
+
+	_, err := pdcli.Discover(root)
+	x.Error(err)
+	x.ErrorContains(err, "two go_package")
+	x.ErrorContains(err, "wall that is not there")
+
+	// And it says both of them, since the whole question is which one is wrong.
+	x.ErrorContains(err, "proto/app/thing.proto")
+	x.ErrorContains(err, "proto/app/other.proto")
+}
+
+// TestAPackageOutsideTheModuleIsRefused. `pd gen` lays the generated tree over
+// the app, so a `go_package` that is not in this module names a directory
+// nobody imports -- and the tree is written there all the same.
+func TestAPackageOutsideTheModuleIsRefused(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	entity(t, root, "thing.proto", "github.com/acme/other/api")
+
+	_, err := pdcli.Discover(root)
+	x.Error(err)
+	x.ErrorContains(err, "not in this module")
+}
+
 // TestOverlaysAreKeptFromBuf is the one line of `buf.yaml` that is payday's
 // shape rather than the app's choice.
 //

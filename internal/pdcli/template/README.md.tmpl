@@ -7,6 +7,21 @@ The generated messages live at the module root, which is why the binary is in
 everything generated -- the ent schemas of two packages cannot have an edge
 between them, and the tenant wall is an edge.
 
+To put them somewhere else, change `option go_package` in `proto/app/*.proto`
+and regenerate. It is read rather than configured, so there is one place that
+says it and it is a place you own:
+
+```proto
+option go_package = "{{.Module}}/api";   // -> api/thing.pb.go, api.Thing
+```
+
+Everything else stays where it is -- `internal/ent`, `server/bare`, `server/pd`
+are named from the module root, not from the messages. Every entity has to say
+the same one, and `pd gen` refuses rather than generating an app whose wall has
+no edge to stand on. What it will not do is rewrite the Go you wrote: the
+imports in `cmd/` are yours, and moving the package is a compile error until you
+follow it.
+
 ## What is where
 
 Two rules, and between them they say whether a file is yours.
@@ -18,7 +33,7 @@ Two rules, and between them they say whether a file is yours.
 | `proto/**/*_svc.g.proto` | generated: the contract of an entity |
 | `proto/payday/` | generated in whole; payday's own entities, copied in |
 | `internal/ent/`, `server/bare/`, `server/pd/` | generated |
-| `*.g.go`, `*.pb.go` | generated |
+| `*.g.go`, `*.pb.go` | generated, wherever `go_package` puts them |
 | everything else | yours |
 
 So: **`.g` means a generator wrote it**, and `proto/payday/` is the one
