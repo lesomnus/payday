@@ -510,6 +510,7 @@ payday:
 | | |
 | --- | --- |
 | [schema.md](schema.md) | declaring the entity all of this is generated from |
+| [client.md](client.md) | reads, writes and the store a page sees this through |
 | [TENANCY.md](../TENANCY.md) | the wall, the policy, and deploying per tenant |
 | [SCHEMA.md](../SCHEMA.md) | what the schema owns, field 3, erasure, the trail |
 | [RUNTIME.md](../RUNTIME.md) | layers, the CLI, what generation refuses |

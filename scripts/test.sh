@@ -14,6 +14,18 @@ set -o pipefail
 __root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${__root}"
 
+# Formatting, which `go vet` does not read and so sat wrong for a while. It is
+# first because it is the cheapest thing here and the only one whose answer is
+# the same on every machine.
+echo "== gofmt"
+if v="$(gofmt -l . | grep -v node_modules || true)"; [ -n "${v}" ]; then
+	echo "not gofmt'd:" >&2
+	echo "${v}" >&2
+	echo >&2
+	echo "    gofmt -w ${v}" >&2
+	exit 1
+fi
+
 echo "== payday"
 go build ./...
 go vet ./...

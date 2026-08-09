@@ -7,6 +7,8 @@ it is generated rather than remembered.
   where each part of that answer is enforced. Start here.
 - [**Declaring an entity**](docs/guide/schema.md) — the two options, the field
   numbers, `list:` and `watch:`, and everything generation refuses.
+- [**The page**](docs/guide/client.md) — reads that keep themselves current,
+  writes that need no invalidation rule, and what persists across a reload.
 - [docs/](docs/) — the design record: why it is this way. Written for whoever is
   changing payday rather than using it.
 

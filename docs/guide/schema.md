@@ -390,5 +390,6 @@ the older payday wrote.
 | | |
 | --- | --- |
 | [permissions.md](permissions.md) | who may see what comes out of this |
+| [client.md](client.md) | what a page does with what this generates |
 | [SCHEMA.md](../SCHEMA.md) | why payday owns these entities, and what it costs |
 | [RUNTIME.md](../RUNTIME.md) | what `List` and `Watch` generate, and what is refused |

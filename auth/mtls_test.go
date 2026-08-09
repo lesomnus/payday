@@ -20,9 +20,13 @@ const (
 )
 
 func init() {
-	pdid.Register(pdid.EntityTenant, domainTenant, "tenant")
-	pdid.Register("app.Robot", domainRobot, "robot")
-	pdid.Register("app.Cell", domainCell, "cell")
+	// What generated code does: the entities by name, and separately which of
+	// them is the wall. The name is the app's -- these may be in its own proto
+	// package -- so the tenant is registered as a number and not looked up.
+	pdid.Register("hday.Tenant", domainTenant, "tenant")
+	pdid.Register("hday.Robot", domainRobot, "robot")
+	pdid.Register("hday.Cell", domainCell, "cell")
+	pdid.RegisterTenant(domainTenant)
 }
 
 func certOf(t *testing.T, vs ...string) *x509.Certificate {
