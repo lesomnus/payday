@@ -519,6 +519,14 @@ type Catalogue struct {
 	// the layer said `api.Overlay`, so the server is `api.Server`.
 	x.Contains(said, "var _ enttx.Binder[api.Server] = Catalogue{}")
 
+	// And it has to be `enttx.Rebind` rather than `s.Next().WithDriver(drv)`,
+	// which does not compile: `Next()` answers the generated `Server`, and
+	// `WithDriver` is deliberately not one of its methods -- a promoted one
+	// would rebind the layer underneath this one. A fix that does not build is
+	// worse than no fix, since it is read as the shape that was wanted.
+	x.Contains(said, "enttx.Rebind(s.Next(), drv)")
+	x.NotContains(said, "s.Next().WithDriver")
+
 	// A test file is not an app's layer, and neither is a struct embedding
 	// something else.
 	write("other.go", `package core

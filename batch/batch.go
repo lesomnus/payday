@@ -40,8 +40,9 @@
 //
 // A [Guard] that was not built from the same configuration the interceptors
 // were built from is a batch that enforces less than the transport it sits
-// behind. There is no zero value that means "allow everything" here, and
-// [New] refuses one that was not told: see [ErrNoGuard].
+// behind. There is no zero value that means "allow everything" here: the
+// generated `Batch` refuses one that [Guard.IsZero] answers for, with
+// [ErrNoGuard], rather than serving it open.
 package batch
 
 import (

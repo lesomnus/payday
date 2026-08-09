@@ -200,12 +200,12 @@ func doctorLayers(l Layout) []Finding {
 			vs = append(vs, Finding{
 				What: fmt.Sprintf("%s is a layer with no WithDriver, so a transaction will refuse the stack it is in", v.at),
 				Fix: fmt.Sprintf(`func (s %[1]s) WithDriver(drv dialect.Driver) (%[2]s, error) {
-	v, err := s.Next().WithDriver(drv)
+	next, err := enttx.Rebind(s.Next(), drv)
 	if err != nil {
 		return nil, err
 	}
 
-	return New(v), nil
+	return New(next), nil
 }
 
 // And this, so that a signature that drifts is a compile error here rather
