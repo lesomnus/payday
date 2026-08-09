@@ -35,6 +35,9 @@ message Thing {
   // payday ships. An entity that does not want one of them leaves the number
   // empty rather than spending it on something else, which is what keeps
   // `header.Of` able to read any of them.
+  //
+  // 3 is yours: a set smaller than a tenant, if this app has one. payday
+  // leaves it open and will not spend it -- see `docs/SCHEMA.md`.
   string desc = 6;
 
   // Stamped on every write and refused to a patch document, so it is a version

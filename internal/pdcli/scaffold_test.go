@@ -40,6 +40,69 @@ func TestAnEntityIsGivenADomainNothingElseHas(t *testing.T) {
 	x.Equal("Fleet", vs[9])
 }
 
+// TestADeletedEntitysDomainIsNotOfferedAgain, as far as it can be known.
+//
+// A domain outlives the row it named -- an identifier in an audit trail says
+// what kind of thing it was long after the row is gone -- so handing a deleted
+// entity's number to the next one makes those rows say the wrong word, and
+// nothing detects it before or after.
+//
+// It is not refused. The number is written in the app's own schema in plain
+// sight, and reusing it is a decision an app may make. What this says is that
+// it will not be made by accepting a suggestion.
+//
+// **And it is bounded, which the second half asserts.** This reads the schema
+// as it is now; a schema does not record what it used to say. So a number is
+// skipped only while something above it survives to raise the highest, and
+// deleting the highest-numbered entity does hand its number back. Closing that
+// needs a record of what has ever been allocated, which is a file to keep in
+// step -- and the number is in the schema, where a person about to reuse one
+// can see it.
+func TestADeletedEntitysDomainIsNotOfferedAgain(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+
+	first, err := (pdcli.Entity{Layout: l, Name: "Robot", Tenanted: true}).Add()
+	x.NoError(err)
+	_, err = (pdcli.Entity{Layout: l, Name: "Joint", Tenanted: true}).Add()
+	x.NoError(err)
+
+	// Robot had 7 and is gone; Joint still holds 8.
+	x.NoError(os.Remove(first))
+
+	p, err := (pdcli.Entity{Layout: l, Name: "Fleet", Tenanted: true}).Add()
+	x.NoError(err)
+
+	b, err := os.ReadFile(p)
+	x.NoError(err)
+	x.Contains(string(b), "domain: 9", "a number a deleted entity held was handed out again")
+
+	t.Run("and not when the highest is the one that went", func(t *testing.T) {
+		x := require.New(t)
+
+		root := app(t, "github.com/acme/other")
+		l, err := pdcli.Discover(root)
+		x.NoError(err)
+
+		p, err := (pdcli.Entity{Layout: l, Name: "Robot", Tenanted: true}).Add()
+		x.NoError(err)
+		x.NoError(os.Remove(p))
+
+		q, err := (pdcli.Entity{Layout: l, Name: "Joint", Tenanted: true}).Add()
+		x.NoError(err)
+
+		b, err := os.ReadFile(q)
+		x.NoError(err)
+
+		// 7 again. Nothing here knows Robot ever existed, and the alternative
+		// is a file that has to be kept in step with the schema.
+		x.Contains(string(b), "domain: 7")
+	})
+}
+
 // TestTenancyDefaultsToTheLoudAnswer is the second.
 //
 // Getting tenancy wrong fails two ways and they are not alike: a wall assumed

@@ -114,6 +114,11 @@ func (e Entity) Add() (string, error) {
 // half a person doing this by hand forgets: payday's own entities hold the low
 // numbers, and an app that started at 1 collides with Tenant on its first
 // entity.
+//
+// It is what goes into the file this writes, and nothing else reads it.
+// Generation does not allocate: an entity with no `(payday.entity)` is refused
+// and told what to write. So this is a first draft that somebody edits, not an
+// assignment somebody inherits.
 func (e Entity) free() (int, error) {
 	taken := map[int]bool{}
 
@@ -146,16 +151,37 @@ func (e Entity) free() (int, error) {
 		}
 	}
 
-	// From 7, which is where an app's own entities start: payday keeps the low
-	// numbers for what it ships, and leaving a gap means an entity added to
-	// payday later does not have to take one an app is using.
-	for n := 7; n < 256; n++ {
-		if !taken[n] {
-			return n, nil
+	// One past the highest, rather than the lowest that is free, and starting
+	// at 7 -- payday keeps the low numbers for what it ships, and the gap means
+	// an entity added to payday later does not have to take one an app uses.
+	//
+	// **Past the highest** because a number is only free in the file. A domain
+	// outlives the row it named: an identifier in an audit trail says what kind
+	// of thing it was long after the row is gone, so handing a deleted entity's
+	// number to the next one makes those rows say the wrong word. Nothing
+	// detects that, before or after.
+	//
+	// Which is a reason to not offer the number, not a reason to refuse it.
+	// Reuse is a decision an app can make -- the number is written in its own
+	// schema, in plain sight -- and one it should make on purpose rather than
+	// by accepting what this suggested.
+	//
+	// It only goes as far as the schema can say. A schema holds what it is, not
+	// what it used to be, so a number is skipped while something above it
+	// survives and comes back when the highest-numbered entity is the one that
+	// went. Closing that needs a record of every number ever allocated, which
+	// is a second file to keep in step with the first.
+	next := 6
+	for n := range taken {
+		if n > next {
+			next = n
 		}
 	}
+	if next++; next < 256 {
+		return next, nil
+	}
 
-	return 0, fmt.Errorf("every domain from 7 to 255 is taken, which is 249 entities")
+	return 0, fmt.Errorf("the highest domain in this schema is 255, and this would be the next one")
 }
 
 var domainAt = regexp.MustCompile(`(?m)^\s*domain:\s*(\d+)`)
@@ -195,10 +221,13 @@ func (e Entity) message(domain int) string {
 	b.WriteString("  // sample, a row of a log. There is no switch to turn off: `alias` is\n")
 	b.WriteString("  // found by name, so an entity without one gets no naming and no slug.\n")
 	b.WriteString("  string alias = 4;\n")
-	b.WriteString("\n  // 5 is `name`, 6 is `desc`, 7 is `map<string, string> labels`, and 3 is\n")
-	b.WriteString("  // held for a set smaller than a tenant. They are the header: what\n")
-	b.WriteString("  // anything can read off a row it has no type for. Declare the ones this\n")
-	b.WriteString("  // entity wants, at those numbers, and leave the rest empty.\n")
+	b.WriteString("\n  // 5 is `name`, 6 is `desc`, 7 is `map<string, string> labels`. They are\n")
+	b.WriteString("  // the header: what anything can read off a row it has no type for.\n")
+	b.WriteString("  // Declare the ones this entity wants, at those numbers, and leave the\n")
+	b.WriteString("  // rest empty.\n")
+	b.WriteString("\n  // 3 is yours, and payday will not spend it. It is where a set smaller\n")
+	b.WriteString("  // than a tenant goes -- a site, a cell, a region -- so that a reader\n")
+	b.WriteString("  // with no type for this row can still find it. See `docs/SCHEMA.md`.\n")
 	b.WriteString("\n  // TODO: this entity's own fields, in 8..12 and from 16.\n")
 
 	if e.Watch {

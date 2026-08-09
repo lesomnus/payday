@@ -51,7 +51,7 @@ message Holder {
 
 | payday의 것 | 앱의 것 |
 | --- | --- |
-| `holder.proto` 베이스 — 필드 1..7, 13..15, 인덱스, 도메인 번호 | `holder.ext.proto` — 필드 8..12, 16.. |
+| `holder.proto` 베이스 — 필드 1·2, 4..7, 13..15, 인덱스, 도메인 번호 | `holder.ext.proto` — **필드 3**, 8..12, 16.. |
 | 의미 — 테넌트는 벽이다, Holder는 softly erase되고 그 이유, 감사는 행위자의 것이다 | 그 위의 도메인 규칙 |
 | 생성되는 벽 술어·감사 레코더·auth 리졸버 | 정책 |
 | 생성된 Go 타입은 **앱 패키지에** 떨어진다 (`go_app.Holder`) | |
@@ -77,6 +77,96 @@ type Frame struct {
 공변이 아니기** 때문이다. `func (h *Holder) GetTenant() *Tenant`는 그런 인터페이스를
 만족하지 않는다. 메시지 그래프를 인터페이스로 뚫으려면 어댑터가 필요하고, 원시값을
 들고 있으면 그 문제가 아예 없다.
+
+### 2.1 3번 필드는 앱의 것이다 — 테넌트보다 작은 집합
+
+헤더는 **타입을 모르는 행에서도 읽을 수 있는 것**이다. 1은 키, 2는 테넌트, 4는 별칭,
+5·6은 이름과 설명, 7은 라벨. `header.Of`가 어떤 엔티티에서든 그것들을 읽는다.
+
+**3은 비어 있고, payday의 것이 아니다.** 앱이 **테넌트보다 작은 집합**을 둘 자리이고,
+payday는 여기에 아무것도 쓰지 않는다.
+
+왜 8..12가 아니라 3인가. 8..12도 앱의 것이지만 그것은 **그 앱의** 번호이고 공유된 뜻이
+없다. 3에 두면 타입을 모르는 읽는 쪽이 "이 행이 속한 집합"을 일반적으로 물을 수 있는
+유일한 번호가 된다. 지금 `header.Of`가 그것을 읽지 않더라도, 읽게 만들 수 있는 자리가
+하나는 있어야 한다.
+
+#### 넣는 법
+
+payday의 엔티티에는 오버레이로, 자기 엔티티에는 직접.
+
+```proto
+// proto/ext/payday/holder.ext.proto
+message Holder {
+  Site site = 3 [(orm.edge) = {}];
+}
+```
+
+```proto
+// proto/app/asset.proto
+message Asset {
+  bytes  id     = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  Site   site   = 3 [(orm.edge) = {}];
+  string alias  = 4;
+  // ...
+}
+```
+
+`Site` 자체는 앱의 평범한 엔티티다. `pd entity add --tenanted Site .`
+
+#### 좁히는 법 — 벽을 하나 더 얹는다
+
+**payday에 두 번째 격리 축을 넣을 필요가 없다.** 생성된 `Scope`가 엔티티마다 술어를
+내는 인터페이스이고, `Scopes`가 그것들을 AND로 합성한다.
+
+```go
+bare.WithScope(bare.Scopes{pd.Wall(), SiteWall{}})
+```
+
+```go
+// SiteWall은 앱의 것이다. payday는 이 축을 모른다.
+type SiteWall struct{ bare.Unscoped }
+
+func (SiteWall) AssetScope(ctx context.Context) (predicate.Asset, error) {
+    f, ok := frame.From(ctx)
+    if !ok {
+        return nil, nil
+    }
+
+    // 리졸버가 읽어온 행. `Frame.Row`가 있는 이유가 이것이다 --
+    // 손에 쥔 식별자가 아니라 데이터베이스에서 읽어온 것으로 판단한다.
+    h, ok := f.Row.(*app.Holder)
+    if !ok {
+        return nil, nil
+    }
+
+    return asset.SiteIDEQ(h.GetSite().GetId()), nil
+}
+```
+
+셋이 중요하다.
+
+- **`bare.Unscoped`를 임베드한다.** 할 말이 있는 엔티티만 쓰면 되고, 나중에 스키마에
+  추가되는 엔티티가 이 파일을 깨뜨리지 않는다. 그게 없으면 무언가를 좁히는 모든 앱이
+  엔티티가 늘 때마다 컴파일이 깨지고, 고치는 방법은 "의견 없음"이라고 적는 메서드다.
+- **쓰기도 따라온다.** `Scope`는 술어이고 `Patch`·`Erase`는 WHERE를 가진 쿼리다.
+  `Add`는 아니지만, 남의 Site에 넣으려면 그 Site 엣지를 **읽어야** 하고 그 읽기가 이미
+  좁혀져 있어 `NotFound`가 난다. 테넌트 벽이 지금 그렇게 동작하는 것과 같은 기계장치다.
+- **`WithScope`는 두 번 못 준다.** 두 번 주면 `ErrTwice`이고 에러가 `Scopes{...}`를
+  가리킨다 — 둘 중 하나를 조용히 잃는 것이 이 자리에서 가장 나쁜 답이기 때문이다.
+
+#### 왜 payday가 흡수하지 않는가
+
+두 번째 격리 축은 기능 추가가 아니라 재작성이다. `frame.Narrow`의 단일 리스트 계약,
+`Grant`의 두 축, `gate.ByTenant`의 단일 키, `audit.Row`의 단일 테넌트, `slug`의 2단
+`@tenant/alias`, `alias`의 테넌트별 유일성, `checkVia`의 단일 대상, 그리고 생성되는 모든
+`<E>Scope`가 전부 하나를 전제한다.
+
+그리고 대개 그것이 필요한 앱에게도 답이 아니다. Site가 **배포 단위**라면 [TENANCY.md]의
+답이 더 강하다 — 배포를 나누고, 격리를 술어가 아니라 **행의 부재**로 만드는 것. 술어는
+빠뜨릴 수 있고 없는 데이터는 빠뜨릴 수 없다. 두 축이 실제로 일하는 곳은 여러 Site를 한
+번에 보는 관제 평면 하나뿐이고, 거기서는 이 절의 `Scopes`로 충분하다.
 
 ### 하나 남는 경계: ent
 

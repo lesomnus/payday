@@ -19,12 +19,15 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 //
 // # Where its fields are
 //
-// 1..7 and 13..15 are payday's on every entity it ships, and this one leaves
-// almost all of them **empty**: 3 is held for a set smaller than a tenant, and
-// 4..7 are the header -- the alias, the name, the description and the labels
-// that anything can read off a row it has no type for. A trail row has none of
-// those and never will, so the numbers stay reserved rather than being spent on
-// something else.
+// 1, 2, 4..7 and 13..15 are payday's on every entity it ships, and this one
+// leaves almost all of them **empty**: 4..7 are the header -- the alias, the
+// name, the description and the labels that anything can read off a row it has
+// no type for. A trail row has none of those and never will, so the numbers
+// stay reserved rather than being spent on something else.
+//
+// 3 is not payday's. It is left open **for the app**, for a set smaller than a
+// tenant -- a site, a cell, a region -- and payday will not spend it. See
+// `docs/SCHEMA.md` §2.1 for what to put there and how to narrow reads by it.
 //
 // Its own fields are in 8..12, which is where an app's would be. That is not a
 // special rule: `CheckOverlay` derives what payday owns from what payday
