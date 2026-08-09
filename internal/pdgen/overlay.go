@@ -10,6 +10,63 @@ import (
 	"github.com/lesomnus/payday/schema"
 )
 
+// CheckOwn refuses a schema that is missing an entity payday ships.
+//
+// # Why it is a refusal and not a skip
+//
+// Three emitters look for payday's own entities **by full name** -- [EmitGate]
+// wants `payday.Tenant` and `payday.Holder`, [EmitAudit] wants `payday.Audit`,
+// [EmitOutbox] wants `payday.Outbox` -- and each of them returned quietly when
+// it did not find one.
+//
+// Quietly is the problem. What EmitGate writes is the whole of the `Add` tenant
+// check: the wall is a predicate and an insert has no query, so with the layer
+// gone **reads stay walled and writes stop being**. Nothing else changes. It
+// compiles, it links, it serves, and the first signal is a row planted in
+// somebody else's tenant.
+//
+// The names cannot be missing by accident: `pd gen` copies these four files
+// into the app whole, every time. So an absence means something took one out --
+// and the likeliest something is **renaming the proto package**, which is a
+// reasonable thing to want and is not supported yet. Either way, stopping is
+// the only answer that does not hand back a smaller app that looks whole.
+//
+// # Why the plugin calls it rather than [Read]
+//
+// Because `pdgen` is a library and its own tests build partial schemas on
+// purpose -- a tenant called `test.Tenant` is a perfectly good schema to ask
+// questions of, and is not an app. What makes the invariant true is `pd gen`
+// having just copied the files in, so it is asserted where that is known.
+func CheckOwn(s *Schema) error {
+	owned, err := schema.Owned()
+	if err != nil {
+		return err
+	}
+
+	// From what payday ships rather than a list written here, so an entity
+	// added to payday's schema is covered by having been added.
+	gone := []string{}
+	for name := range owned {
+		if !s.Has(name) {
+			gone = append(gone, name)
+		}
+	}
+	if len(gone) == 0 {
+		return nil
+	}
+	sort.Strings(gone)
+
+	return fmt.Errorf(
+		"%s: not in this schema, and payday copies these in whole on every `pd gen`\n\n"+
+			"Generation finds payday's own entities by full name, and what is built from them "+
+			"is the Gate layer -- which is the whole of the `Add` tenant check -- the audit "+
+			"trail's layer, and the outbox drain. Missing, those are not generated and nothing "+
+			"else fails: reads stay walled and writes stop being.\n\n"+
+			"If the proto package was renamed, that is why. payday has no way to be told a "+
+			"different name for its own entities yet.",
+		strings.Join(gone, ", "))
+}
+
 // CheckOverlay refuses an entity of payday's that an app changed rather than
 // added to.
 //

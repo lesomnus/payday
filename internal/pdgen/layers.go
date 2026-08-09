@@ -47,6 +47,9 @@ func (s *Schema) Has(name string) bool {
 // generated is the wiring, because a layer is a `struct{ app.Overlay }` and
 // `app.Server` is an interface generated per app.
 func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
+	// A schema without them does not reach here from `pd gen`; [CheckOwn]
+	// refuses it first, because what this writes is the whole of the `Add`
+	// tenant check and losing it quietly leaves reads walled and writes not.
 	if !s.Has(OwnTenant) || !s.Has(OwnHolder) {
 		return
 	}
@@ -308,6 +311,7 @@ func seen(g *protogen.GeneratedFile, root protogen.GoImportPath, edge string, to
 // trail without anybody having listed them. The layer is here because a trail a
 // deployment can edit is evidence of nothing.
 func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
+	// Refused by [CheckOwn] before this, for a real app; see there.
 	if !s.Has(OwnAudit) {
 		return
 	}

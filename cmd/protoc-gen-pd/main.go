@@ -112,6 +112,13 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 		return nil
 	}
 
+	// Here rather than in `pdgen.Read`, because what makes this true is `pd
+	// gen` having copied payday's entities in and a library caller has not.
+	// See [pdgen.CheckOwn] for what goes missing quietly without it.
+	if err := pdgen.CheckOwn(s); err != nil {
+		return err
+	}
+
 	// The module root is where the message package lives, and everything else
 	// is named relative to it -- the same way the orm generators are told
 	// about it.

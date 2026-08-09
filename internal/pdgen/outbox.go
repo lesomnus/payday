@@ -22,6 +22,7 @@ const OwnOutbox = "payday.Outbox"
 // cannot name them. What is not generated is any judgement -- there is none
 // here beyond "in order, then delete".
 func EmitOutbox(g *protogen.GeneratedFile, s *Schema, p Paths) {
+	// Refused by [CheckOwn] before this, for a real app; see there.
 	if !s.Has(OwnOutbox) {
 		return
 	}
