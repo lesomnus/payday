@@ -1391,6 +1391,22 @@ func (c *RobotClient) QueryTenant(_m *Robot) *TenantQuery {
 	return query
 }
 
+// QueryCell queries the cell edge of a Robot.
+func (c *RobotClient) QueryCell(_m *Robot) *CellQuery {
+	query := (&CellClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(robot.Table, robot.FieldID, id),
+			sqlgraph.To(cell.Table, cell.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, robot.CellTable, robot.CellColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *RobotClient) Hooks() []Hook {
 	return c.hooks.Robot

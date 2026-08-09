@@ -11,6 +11,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 )
@@ -77,9 +79,40 @@ func (_u *RobotUpdate) ClearDateErased() *RobotUpdate {
 	return _u
 }
 
+// SetCellID sets the "cell_id" field.
+func (_u *RobotUpdate) SetCellID(v uuid.UUID) *RobotUpdate {
+	_u.mutation.SetCellID(v)
+	return _u
+}
+
+// SetNillableCellID sets the "cell_id" field if the given value is not nil.
+func (_u *RobotUpdate) SetNillableCellID(v *uuid.UUID) *RobotUpdate {
+	if v != nil {
+		_u.SetCellID(*v)
+	}
+	return _u
+}
+
+// ClearCellID clears the value of the "cell_id" field.
+func (_u *RobotUpdate) ClearCellID() *RobotUpdate {
+	_u.mutation.ClearCellID()
+	return _u
+}
+
+// SetCell sets the "cell" edge to the Cell entity.
+func (_u *RobotUpdate) SetCell(v *Cell) *RobotUpdate {
+	return _u.SetCellID(v.ID)
+}
+
 // Mutation returns the RobotMutation object of the builder.
 func (_u *RobotUpdate) Mutation() *RobotMutation {
 	return _u.mutation
+}
+
+// ClearCell clears the "cell" edge to the Cell entity.
+func (_u *RobotUpdate) ClearCell() *RobotUpdate {
+	_u.mutation.ClearCell()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -149,6 +182,35 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(robot.FieldDateErased, field.TypeTime)
+	}
+	if _u.mutation.CellCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.CellTable,
+			Columns: []string{robot.CellColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cell.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CellIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.CellTable,
+			Columns: []string{robot.CellColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cell.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -220,9 +282,40 @@ func (_u *RobotUpdateOne) ClearDateErased() *RobotUpdateOne {
 	return _u
 }
 
+// SetCellID sets the "cell_id" field.
+func (_u *RobotUpdateOne) SetCellID(v uuid.UUID) *RobotUpdateOne {
+	_u.mutation.SetCellID(v)
+	return _u
+}
+
+// SetNillableCellID sets the "cell_id" field if the given value is not nil.
+func (_u *RobotUpdateOne) SetNillableCellID(v *uuid.UUID) *RobotUpdateOne {
+	if v != nil {
+		_u.SetCellID(*v)
+	}
+	return _u
+}
+
+// ClearCellID clears the value of the "cell_id" field.
+func (_u *RobotUpdateOne) ClearCellID() *RobotUpdateOne {
+	_u.mutation.ClearCellID()
+	return _u
+}
+
+// SetCell sets the "cell" edge to the Cell entity.
+func (_u *RobotUpdateOne) SetCell(v *Cell) *RobotUpdateOne {
+	return _u.SetCellID(v.ID)
+}
+
 // Mutation returns the RobotMutation object of the builder.
 func (_u *RobotUpdateOne) Mutation() *RobotMutation {
 	return _u.mutation
+}
+
+// ClearCell clears the "cell" edge to the Cell entity.
+func (_u *RobotUpdateOne) ClearCell() *RobotUpdateOne {
+	_u.mutation.ClearCell()
+	return _u
 }
 
 // Where appends a list predicates to the RobotUpdate builder.
@@ -322,6 +415,35 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(robot.FieldDateErased, field.TypeTime)
+	}
+	if _u.mutation.CellCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.CellTable,
+			Columns: []string{robot.CellColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cell.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CellIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.CellTable,
+			Columns: []string{robot.CellColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cell.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Robot{config: _u.config}

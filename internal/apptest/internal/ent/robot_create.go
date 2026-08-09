@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 )
@@ -68,6 +69,20 @@ func (_c *RobotCreate) SetTenantID(v uuid.UUID) *RobotCreate {
 	return _c
 }
 
+// SetCellID sets the "cell_id" field.
+func (_c *RobotCreate) SetCellID(v uuid.UUID) *RobotCreate {
+	_c.mutation.SetCellID(v)
+	return _c
+}
+
+// SetNillableCellID sets the "cell_id" field if the given value is not nil.
+func (_c *RobotCreate) SetNillableCellID(v *uuid.UUID) *RobotCreate {
+	if v != nil {
+		_c.SetCellID(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *RobotCreate) SetID(v uuid.UUID) *RobotCreate {
 	_c.mutation.SetID(v)
@@ -77,6 +92,11 @@ func (_c *RobotCreate) SetID(v uuid.UUID) *RobotCreate {
 // SetTenant sets the "tenant" edge to the Tenant entity.
 func (_c *RobotCreate) SetTenant(v *Tenant) *RobotCreate {
 	return _c.SetTenantID(v.ID)
+}
+
+// SetCell sets the "cell" edge to the Cell entity.
+func (_c *RobotCreate) SetCell(v *Cell) *RobotCreate {
+	return _c.SetCellID(v.ID)
 }
 
 // Mutation returns the RobotMutation object of the builder.
@@ -191,6 +211,23 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.TenantID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.CellIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.CellTable,
+			Columns: []string{robot.CellColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cell.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.CellID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

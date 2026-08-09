@@ -4391,6 +4391,8 @@ type RobotMutation struct {
 	clearedFields map[string]struct{}
 	tenant        *uuid.UUID
 	clearedtenant bool
+	cell          *uuid.UUID
+	clearedcell   bool
 	done          bool
 	oldValue      func(context.Context) (*Robot, error)
 	predicates    []predicate.Robot
@@ -4706,6 +4708,55 @@ func (m *RobotMutation) ResetTenantID() {
 	m.tenant = nil
 }
 
+// SetCellID sets the "cell_id" field.
+func (m *RobotMutation) SetCellID(u uuid.UUID) {
+	m.cell = &u
+}
+
+// CellID returns the value of the "cell_id" field in the mutation.
+func (m *RobotMutation) CellID() (r uuid.UUID, exists bool) {
+	v := m.cell
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCellID returns the old "cell_id" field's value of the Robot entity.
+// If the Robot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RobotMutation) OldCellID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCellID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCellID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCellID: %w", err)
+	}
+	return oldValue.CellID, nil
+}
+
+// ClearCellID clears the value of the "cell_id" field.
+func (m *RobotMutation) ClearCellID() {
+	m.cell = nil
+	m.clearedFields[robot.FieldCellID] = struct{}{}
+}
+
+// CellIDCleared returns if the "cell_id" field was cleared in this mutation.
+func (m *RobotMutation) CellIDCleared() bool {
+	_, ok := m.clearedFields[robot.FieldCellID]
+	return ok
+}
+
+// ResetCellID resets all changes to the "cell_id" field.
+func (m *RobotMutation) ResetCellID() {
+	m.cell = nil
+	delete(m.clearedFields, robot.FieldCellID)
+}
+
 // ClearTenant clears the "tenant" edge to the Tenant entity.
 func (m *RobotMutation) ClearTenant() {
 	m.clearedtenant = true
@@ -4731,6 +4782,33 @@ func (m *RobotMutation) TenantIDs() (ids []uuid.UUID) {
 func (m *RobotMutation) ResetTenant() {
 	m.tenant = nil
 	m.clearedtenant = false
+}
+
+// ClearCell clears the "cell" edge to the Cell entity.
+func (m *RobotMutation) ClearCell() {
+	m.clearedcell = true
+	m.clearedFields[robot.FieldCellID] = struct{}{}
+}
+
+// CellCleared reports if the "cell" edge to the Cell entity was cleared.
+func (m *RobotMutation) CellCleared() bool {
+	return m.CellIDCleared() || m.clearedcell
+}
+
+// CellIDs returns the "cell" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// CellID instead. It exists only for internal usage by the builders.
+func (m *RobotMutation) CellIDs() (ids []uuid.UUID) {
+	if id := m.cell; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetCell resets all changes to the "cell" edge.
+func (m *RobotMutation) ResetCell() {
+	m.cell = nil
+	m.clearedcell = false
 }
 
 // Where appends a list predicates to the RobotMutation builder.
@@ -4767,7 +4845,7 @@ func (m *RobotMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RobotMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
 	if m.alias != nil {
 		fields = append(fields, robot.FieldAlias)
 	}
@@ -4782,6 +4860,9 @@ func (m *RobotMutation) Fields() []string {
 	}
 	if m.tenant != nil {
 		fields = append(fields, robot.FieldTenantID)
+	}
+	if m.cell != nil {
+		fields = append(fields, robot.FieldCellID)
 	}
 	return fields
 }
@@ -4801,6 +4882,8 @@ func (m *RobotMutation) Field(name string) (ent.Value, bool) {
 		return m.DateErased()
 	case robot.FieldTenantID:
 		return m.TenantID()
+	case robot.FieldCellID:
+		return m.CellID()
 	}
 	return nil, false
 }
@@ -4820,6 +4903,8 @@ func (m *RobotMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDateErased(ctx)
 	case robot.FieldTenantID:
 		return m.OldTenantID(ctx)
+	case robot.FieldCellID:
+		return m.OldCellID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Robot field %s", name)
 }
@@ -4864,6 +4949,13 @@ func (m *RobotMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetTenantID(v)
 		return nil
+	case robot.FieldCellID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCellID(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Robot field %s", name)
 }
@@ -4900,6 +4992,9 @@ func (m *RobotMutation) ClearedFields() []string {
 	if m.FieldCleared(robot.FieldDateErased) {
 		fields = append(fields, robot.FieldDateErased)
 	}
+	if m.FieldCleared(robot.FieldCellID) {
+		fields = append(fields, robot.FieldCellID)
+	}
 	return fields
 }
 
@@ -4919,6 +5014,9 @@ func (m *RobotMutation) ClearField(name string) error {
 		return nil
 	case robot.FieldDateErased:
 		m.ClearDateErased()
+		return nil
+	case robot.FieldCellID:
+		m.ClearCellID()
 		return nil
 	}
 	return fmt.Errorf("unknown Robot nullable field %s", name)
@@ -4943,15 +5041,21 @@ func (m *RobotMutation) ResetField(name string) error {
 	case robot.FieldTenantID:
 		m.ResetTenantID()
 		return nil
+	case robot.FieldCellID:
+		m.ResetCellID()
+		return nil
 	}
 	return fmt.Errorf("unknown Robot field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RobotMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.tenant != nil {
 		edges = append(edges, robot.EdgeTenant)
+	}
+	if m.cell != nil {
+		edges = append(edges, robot.EdgeCell)
 	}
 	return edges
 }
@@ -4964,13 +5068,17 @@ func (m *RobotMutation) AddedIDs(name string) []ent.Value {
 		if id := m.tenant; id != nil {
 			return []ent.Value{*id}
 		}
+	case robot.EdgeCell:
+		if id := m.cell; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RobotMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	return edges
 }
 
@@ -4982,9 +5090,12 @@ func (m *RobotMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RobotMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedtenant {
 		edges = append(edges, robot.EdgeTenant)
+	}
+	if m.clearedcell {
+		edges = append(edges, robot.EdgeCell)
 	}
 	return edges
 }
@@ -4995,6 +5106,8 @@ func (m *RobotMutation) EdgeCleared(name string) bool {
 	switch name {
 	case robot.EdgeTenant:
 		return m.clearedtenant
+	case robot.EdgeCell:
+		return m.clearedcell
 	}
 	return false
 }
@@ -5006,6 +5119,9 @@ func (m *RobotMutation) ClearEdge(name string) error {
 	case robot.EdgeTenant:
 		m.ClearTenant()
 		return nil
+	case robot.EdgeCell:
+		m.ClearCell()
+		return nil
 	}
 	return fmt.Errorf("unknown Robot unique edge %s", name)
 }
@@ -5016,6 +5132,9 @@ func (m *RobotMutation) ResetEdge(name string) error {
 	switch name {
 	case robot.EdgeTenant:
 		m.ResetTenant()
+		return nil
+	case robot.EdgeCell:
+		m.ResetCell()
 		return nil
 	}
 	return fmt.Errorf("unknown Robot edge %s", name)

@@ -7,6 +7,52 @@ import (
 	protojson "google.golang.org/protobuf/encoding/protojson"
 )
 
+func (x *CellRef) Pick() *CellGetRequest {
+	return CellGetRequest_builder{Ref: x}.Build()
+}
+
+func (x *Cell) Ref() *CellRef {
+	if v := x.GetId(); len(v) > 0 {
+		return CellById(v)
+	}
+
+	return nil
+}
+
+func (x *Cell) Pick() *CellGetRequest {
+	return x.Ref().Pick()
+}
+
+func (x *CellRef) Picks(v *Cell) bool {
+	switch x.WhichKey() {
+	case CellRef_Id_case:
+		return bytes.Equal(x.GetId(), v.GetId())
+	default:
+		return false
+	}
+}
+
+func (x *CellGetRequest) WithSelect(f func(s *CellSelect)) *CellGetRequest {
+	if !x.HasSelect() {
+		x.SetSelect(&CellSelect{})
+	}
+	f(x.GetSelect())
+	return x
+}
+
+func (x *Cell) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
+func (x *Cell) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
+
+func CellById(v []byte) *CellRef {
+	x := &CellRef{}
+	x.SetId(v)
+	return x
+}
+
+func CellGetById(v []byte) *CellGetRequest {
+	return CellGetRequest_builder{Ref: CellById(v)}.Build()
+}
+
 func (x *RobotRef) Pick() *RobotGetRequest {
 	return RobotGetRequest_builder{Ref: x}.Build()
 }
@@ -180,52 +226,6 @@ func FleetGetById(v []byte) *FleetGetRequest {
 
 func FleetGetByAlias(v string) *FleetGetRequest {
 	return FleetGetRequest_builder{Ref: FleetByAlias(v)}.Build()
-}
-
-func (x *CellRef) Pick() *CellGetRequest {
-	return CellGetRequest_builder{Ref: x}.Build()
-}
-
-func (x *Cell) Ref() *CellRef {
-	if v := x.GetId(); len(v) > 0 {
-		return CellById(v)
-	}
-
-	return nil
-}
-
-func (x *Cell) Pick() *CellGetRequest {
-	return x.Ref().Pick()
-}
-
-func (x *CellRef) Picks(v *Cell) bool {
-	switch x.WhichKey() {
-	case CellRef_Id_case:
-		return bytes.Equal(x.GetId(), v.GetId())
-	default:
-		return false
-	}
-}
-
-func (x *CellGetRequest) WithSelect(f func(s *CellSelect)) *CellGetRequest {
-	if !x.HasSelect() {
-		x.SetSelect(&CellSelect{})
-	}
-	f(x.GetSelect())
-	return x
-}
-
-func (x *Cell) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Cell) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
-
-func CellById(v []byte) *CellRef {
-	x := &CellRef{}
-	x.SetId(v)
-	return x
-}
-
-func CellGetById(v []byte) *CellGetRequest {
-	return CellGetRequest_builder{Ref: CellById(v)}.Build()
 }
 
 func (x *ReadingRef) Pick() *ReadingGetRequest {

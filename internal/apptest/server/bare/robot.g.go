@@ -17,14 +17,428 @@ import (
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	graph "github.com/protobuf-orm/protobuf-orm/graph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	time "time"
 )
+
+type CellServiceServer struct {
+	Store
+
+	apptest.UnimplementedCellServiceServer
+}
+
+// NewCellServiceServer answers with a server that runs its queries with `db`.
+//
+// It takes the options of [Server] so that what is built here can be told
+// where to report its writes and what it may see. Built without them, it
+// reports nowhere and sees everything.
+func NewCellServiceServer(db *ent.Client, opts ...Option) apptest.CellServiceServer {
+	s := Server{Store: Store{Db: db}}
+	for _, opt := range opts {
+		opt(&s)
+	}
+	return CellServiceServer{Store: s.Store}
+}
+
+// CellNarrow answers with `p` and everything else that narrows a
+// read of a Cell: the rows that have not been erased, and whatever
+// `scope` says of those.
+//
+// Every read this package makes goes through it, and a read written by
+// hand should too -- a List is the one read nothing generates, and so the
+// one that would otherwise answer with rows nobody should be given.
+func CellNarrow(ctx context.Context, scope Scope, p predicate.Cell) (predicate.Cell, error) {
+	ps := make([]predicate.Cell, 0, 3)
+
+	// A row that was erased is not a row a read answers with.
+	ps = append(ps, cell.DateErasedIsNil())
+	if p != nil {
+		ps = append(ps, p)
+	}
+	if scope != nil {
+		q, err := scope.CellScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if q != nil {
+			ps = append(ps, q)
+		}
+	}
+
+	switch len(ps) {
+	case 0:
+		return nil, nil
+	case 1:
+		return ps[0], nil
+	default:
+		return cell.And(ps...), nil
+	}
+}
+
+// narrow is [CellNarrow] with this server's own scope.
+func (s CellServiceServer) narrow(ctx context.Context, p predicate.Cell) (predicate.Cell, error) {
+	return CellNarrow(ctx, s.Scope, p)
+}
+
+func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
+	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	ds := make([]func(v *apptest.Cell), 0, 1)
+	q := st.Db.Cell.Create()
+	var k uuid.UUID
+	if req.HasId() {
+		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			k = v
+		}
+	}
+	if v, err := mint(ctx, s.Mint, "app.Cell", k, req.HasId()); err != nil {
+		return nil, err
+	} else {
+		q.SetID(v)
+	}
+	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
+		return nil, err
+	} else {
+		q.SetTenantID(k)
+		ds = append(ds, func(v *apptest.Cell) {
+			v.SetTenant(apptest.Tenant_builder{Id: k[:]}.Build())
+		})
+	}
+	q.SetAlias(req.GetAlias())
+
+	u, err := q.Save(ctx)
+	if err != nil {
+		if err, ok := err.(*ent.ConstraintError); ok {
+			if sqlgraph.IsUniqueConstraintError(err) {
+				return nil, status.Errorf(codes.AlreadyExists, "Cell already exists: %s", err.Unwrap())
+			}
+			if sqlgraph.IsForeignKeyConstraintError(err) {
+				return nil, status.Errorf(codes.NotFound, "Cell: referenced entity not found: %s", err.Unwrap())
+			}
+		}
+		return nil, err
+	}
+
+	if err := record(ctx, s.Rec, st.Db, Change{
+		By:  apptest.CellService_Add_FullMethodName,
+		Key: u.ID,
+	}); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
+	return v, nil
+}
+
+func (s CellServiceServer) Get(ctx context.Context, req *apptest.CellGetRequest) (*apptest.Cell, error) {
+	p, err := CellPick(req.GetRef())
+	if err != nil {
+		return nil, err
+	}
+	p, err = s.narrow(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	q := s.Db.Cell.Query().Where(p)
+	CellSelectInit(q, req.GetSelect())
+
+	v, err := q.Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "Cell not found")
+		}
+		return nil, err
+	}
+	return v.Proto(), nil
+}
+
+func selectCellKey(q *ent.CellQuery) {
+	q.Select(cell.FieldID)
+}
+
+func CellSelectedFields(m *apptest.CellSelect) []string {
+	if m.GetAll() {
+		return cell.Columns
+	}
+
+	vs := make([]string, 0, len(cell.Columns))
+	{
+		vs = append(vs, cell.FieldID)
+	}
+	if m.GetAlias() {
+		vs = append(vs, cell.FieldAlias)
+	}
+	if m.GetDateErased() {
+		vs = append(vs, cell.FieldDateErased)
+	}
+
+	return vs
+}
+
+func CellSelect(q *ent.CellQuery, m *apptest.CellSelect) {
+	if !m.GetAll() {
+		fields := CellSelectedFields(m)
+		q.Select(fields...)
+	}
+	if m.HasTenant() {
+		q.WithTenant(func(q *ent.TenantQuery) {
+			TenantSelect(q, m.GetTenant())
+		})
+	}
+}
+
+func CellSelectInit(q *ent.CellQuery, m *apptest.CellSelect) {
+	if m != nil {
+		CellSelect(q, m)
+	} else {
+		q.WithTenant(selectTenantKey)
+	}
+}
+
+func (s CellServiceServer) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
+	doc, err := ormpatch.FromPatchRequest(cellOrmEntity, req.ProtoReflect(), nil)
+	if err != nil {
+		if _, ok := status.FromError(err); ok {
+			return nil, err
+		}
+		if errors.Is(err, ormpatch.ErrRequestLayout) {
+			return nil, status.Errorf(codes.Internal, "%s", err)
+		}
+		if errors.Is(err, ormpatch.ErrUnsupported) {
+			return nil, status.Errorf(codes.Unimplemented, "%s", err)
+		}
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	return s.apply(ctx, req.GetRef(), doc, apptest.CellService_Patch_FullMethodName)
+}
+
+func CellGetKey(ctx context.Context, db *ent.Client, ref *apptest.CellRef) (uuid.UUID, error) {
+	var z uuid.UUID
+	if ref.HasId() {
+		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			return v, nil
+		}
+	}
+
+	p, err := CellPick(ref)
+	if err != nil {
+		return z, err
+	}
+
+	v, err := db.Cell.Query().Where(p).OnlyID(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return z, status.Error(codes.NotFound, "Cell not found")
+		}
+		return z, err
+	}
+
+	return v, nil
+}
+
+var cellOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Cell")
+
+var cellPatchColumns = entpatch.Columns{
+	1: cell.FieldID, 2: cell.TenantColumn, 4: cell.FieldAlias, 14: cell.FieldDateErased}
+
+func (s CellServiceServer) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
+	if !req.HasPatch() {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
+	}
+	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.CellService_Apply_FullMethodName)
+}
+
+func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc *patchpb.Patch, by string) (*apptest.Cell, error) {
+	plan := &ormpatch.Plan{Entity: cellOrmEntity}
+	if doc != nil {
+		v, err := ormpatch.Compile(cellOrmEntity, doc)
+		if err != nil {
+			if errors.Is(err, ormpatch.ErrUnsupported) {
+				return nil, status.Errorf(codes.Unimplemented, "%s", err)
+			}
+			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+		}
+		plan = v
+	}
+
+	pred, mod, err := entpatch.Build(plan, cellPatchColumns, s.Db.Dialect())
+	if err != nil {
+		if errors.Is(err, entpatch.ErrValue) {
+			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+		}
+		return nil, status.Errorf(codes.Internal, "%s", err)
+	}
+
+	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	k, err := CellGetKey(ctx, st.Db, ref)
+	if err != nil {
+		return nil, err
+	}
+	at := &apptest.CellRef{}
+	at.SetId(k[:])
+	p, err := s.narrow(ctx, cell.IDEQ(k))
+	if err != nil {
+		return nil, err
+	}
+
+	if mod == nil {
+		q := st.Db.Cell.Query().Where(p)
+		if pred != nil {
+			q.Where(predicate.Cell(pred))
+		}
+		if ok, err := q.Exist(ctx); err != nil {
+			return nil, err
+		} else if !ok {
+			return nil, func() error {
+				if ok, err := st.Db.Cell.Query().Where(p).Exist(ctx); err != nil {
+					return err
+				} else if !ok {
+					return status.Error(codes.NotFound, "Cell not found")
+				}
+				return status.Error(codes.FailedPrecondition, "a test in the patch did not hold")
+			}()
+		}
+	} else {
+		q := st.Db.Cell.Update().Where(p)
+		if pred != nil {
+			q.Where(predicate.Cell(pred))
+		}
+		q.Modify(mod)
+		if n, err := q.Save(ctx); err != nil {
+			return nil, err
+		} else if n == 0 {
+			return nil, func() error {
+				if ok, err := st.Db.Cell.Query().Where(p).Exist(ctx); err != nil {
+					return err
+				} else if !ok {
+					return status.Error(codes.NotFound, "Cell not found")
+				}
+				return status.Error(codes.FailedPrecondition, "a test in the patch did not hold")
+			}()
+		}
+	}
+
+	if mod != nil {
+		if err := record(ctx, s.Rec, st.Db, Change{
+			By:    by,
+			Key:   k,
+			Patch: doc,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*emptypb.Empty, error) {
+	p, err := CellPick(req)
+	if err != nil {
+		return nil, err
+	}
+	p, err = s.narrow(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	var k any
+	if s.Rec != nil {
+		v, err := st.Db.Cell.Query().Where(p).OnlyID(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return &emptypb.Empty{}, nil
+			}
+			return nil, err
+		}
+
+		k = v
+		p = cell.IDEQ(v)
+	}
+
+	u := st.Db.Cell.Update().Where(p)
+	u.SetDateErased(time.Now().UTC())
+	n, err := u.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if n > 0 {
+		if err := record(ctx, s.Rec, st.Db, Change{
+			By:  apptest.CellService_Erase_FullMethodName,
+			Key: k,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func CellPick(req *apptest.CellRef) (predicate.Cell, error) {
+	switch req.WhichKey() {
+	case apptest.CellRef_Id_case:
+		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			return cell.IDEQ(v), nil
+		}
+	case apptest.CellRef_Key_not_set_case:
+		return nil, status.Errorf(codes.InvalidArgument, "key not set: Cell")
+	default:
+		return nil, status.Errorf(codes.Unimplemented, "unknown type of key: %s", req.WhichKey())
+	}
+}
 
 type RobotServiceServer struct {
 	Store
@@ -95,7 +509,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	st := s
 	st.Db = tx.Db
 
-	ds := make([]func(v *apptest.Robot), 0, 1)
+	ds := make([]func(v *apptest.Robot), 0, 2)
 	q := st.Db.Robot.Create()
 	var k uuid.UUID
 	if req.HasId() {
@@ -117,6 +531,16 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		ds = append(ds, func(v *apptest.Robot) {
 			v.SetTenant(apptest.Tenant_builder{Id: k[:]}.Build())
 		})
+	}
+	if req.HasCell() {
+		if k, err := CellGetKey(ctx, st.Db, req.GetCell()); err != nil {
+			return nil, err
+		} else {
+			q.SetCellID(k)
+			ds = append(ds, func(v *apptest.Robot) {
+				v.SetCell(apptest.Cell_builder{Id: k[:]}.Build())
+			})
+		}
 	}
 	q.SetAlias(req.GetAlias())
 	q.SetDateUpdated(time.Now().UTC())
@@ -218,6 +642,11 @@ func RobotSelect(q *ent.RobotQuery, m *apptest.RobotSelect) {
 			TenantSelect(q, m.GetTenant())
 		})
 	}
+	if m.HasCell() {
+		q.WithCell(func(q *ent.CellQuery) {
+			CellSelect(q, m.GetCell())
+		})
+	}
 }
 
 func RobotSelectInit(q *ent.RobotQuery, m *apptest.RobotSelect) {
@@ -225,11 +654,22 @@ func RobotSelectInit(q *ent.RobotQuery, m *apptest.RobotSelect) {
 		RobotSelect(q, m)
 	} else {
 		q.WithTenant(selectTenantKey)
+		q.WithCell(selectCellKey)
 	}
 }
 
 func (s RobotServiceServer) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
-	doc, err := ormpatch.FromPatchRequest(robotOrmEntity, req.ProtoReflect(), nil)
+	doc, err := ormpatch.FromPatchRequest(robotOrmEntity, req.ProtoReflect(), func(ed graph.Edge, ref protoreflect.Message) (protoreflect.Value, error) {
+		switch ed.Number() {
+		case 3:
+			k, err := CellGetKey(ctx, s.Db, ref.Interface().(*apptest.CellRef))
+			if err != nil {
+				return protoreflect.Value{}, err
+			}
+			return protoreflect.ValueOfBytes(k[:]), nil
+		}
+		return protoreflect.Value{}, status.Errorf(codes.Internal, "no key resolver for edge: %s", ed.Name())
+	})
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
 			return nil, err
@@ -275,7 +715,7 @@ func RobotGetKey(ctx context.Context, db *ent.Client, ref *apptest.RobotRef) (uu
 var robotOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Robot")
 
 var robotPatchColumns = entpatch.Columns{
-	1: robot.FieldID, 2: robot.TenantColumn, 4: robot.FieldAlias, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
+	1: robot.FieldID, 2: robot.TenantColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
 
 func (s RobotServiceServer) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
 	if !req.HasPatch() {
@@ -1266,418 +1706,6 @@ func FleetPick(req *apptest.FleetRef) (predicate.Fleet, error) {
 		return fleet.AliasEQ(req.GetAlias()), nil
 	case apptest.FleetRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Fleet")
-	default:
-		return nil, status.Errorf(codes.Unimplemented, "unknown type of key: %s", req.WhichKey())
-	}
-}
-
-type CellServiceServer struct {
-	Store
-
-	apptest.UnimplementedCellServiceServer
-}
-
-// NewCellServiceServer answers with a server that runs its queries with `db`.
-//
-// It takes the options of [Server] so that what is built here can be told
-// where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
-func NewCellServiceServer(db *ent.Client, opts ...Option) apptest.CellServiceServer {
-	s := Server{Store: Store{Db: db}}
-	for _, opt := range opts {
-		opt(&s)
-	}
-	return CellServiceServer{Store: s.Store}
-}
-
-// CellNarrow answers with `p` and everything else that narrows a
-// read of a Cell: the rows that have not been erased, and whatever
-// `scope` says of those.
-//
-// Every read this package makes goes through it, and a read written by
-// hand should too -- a List is the one read nothing generates, and so the
-// one that would otherwise answer with rows nobody should be given.
-func CellNarrow(ctx context.Context, scope Scope, p predicate.Cell) (predicate.Cell, error) {
-	ps := make([]predicate.Cell, 0, 3)
-
-	// A row that was erased is not a row a read answers with.
-	ps = append(ps, cell.DateErasedIsNil())
-	if p != nil {
-		ps = append(ps, p)
-	}
-	if scope != nil {
-		q, err := scope.CellScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if q != nil {
-			ps = append(ps, q)
-		}
-	}
-
-	switch len(ps) {
-	case 0:
-		return nil, nil
-	case 1:
-		return ps[0], nil
-	default:
-		return cell.And(ps...), nil
-	}
-}
-
-// narrow is [CellNarrow] with this server's own scope.
-func (s CellServiceServer) narrow(ctx context.Context, p predicate.Cell) (predicate.Cell, error) {
-	return CellNarrow(ctx, s.Scope, p)
-}
-
-func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Close()
-
-	st := s
-	st.Db = tx.Db
-
-	ds := make([]func(v *apptest.Cell), 0, 1)
-	q := st.Db.Cell.Create()
-	var k uuid.UUID
-	if req.HasId() {
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
-		} else {
-			k = v
-		}
-	}
-	if v, err := mint(ctx, s.Mint, "app.Cell", k, req.HasId()); err != nil {
-		return nil, err
-	} else {
-		q.SetID(v)
-	}
-	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
-		return nil, err
-	} else {
-		q.SetTenantID(k)
-		ds = append(ds, func(v *apptest.Cell) {
-			v.SetTenant(apptest.Tenant_builder{Id: k[:]}.Build())
-		})
-	}
-	q.SetAlias(req.GetAlias())
-
-	u, err := q.Save(ctx)
-	if err != nil {
-		if err, ok := err.(*ent.ConstraintError); ok {
-			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Cell already exists: %s", err.Unwrap())
-			}
-			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Cell: referenced entity not found: %s", err.Unwrap())
-			}
-		}
-		return nil, err
-	}
-
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.CellService_Add_FullMethodName,
-		Key: u.ID,
-	}); err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	v := u.Proto()
-	for _, d := range ds {
-		d(v)
-	}
-	return v, nil
-}
-
-func (s CellServiceServer) Get(ctx context.Context, req *apptest.CellGetRequest) (*apptest.Cell, error) {
-	p, err := CellPick(req.GetRef())
-	if err != nil {
-		return nil, err
-	}
-	p, err = s.narrow(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-
-	q := s.Db.Cell.Query().Where(p)
-	CellSelectInit(q, req.GetSelect())
-
-	v, err := q.Only(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, status.Error(codes.NotFound, "Cell not found")
-		}
-		return nil, err
-	}
-	return v.Proto(), nil
-}
-
-func selectCellKey(q *ent.CellQuery) {
-	q.Select(cell.FieldID)
-}
-
-func CellSelectedFields(m *apptest.CellSelect) []string {
-	if m.GetAll() {
-		return cell.Columns
-	}
-
-	vs := make([]string, 0, len(cell.Columns))
-	{
-		vs = append(vs, cell.FieldID)
-	}
-	if m.GetAlias() {
-		vs = append(vs, cell.FieldAlias)
-	}
-	if m.GetDateErased() {
-		vs = append(vs, cell.FieldDateErased)
-	}
-
-	return vs
-}
-
-func CellSelect(q *ent.CellQuery, m *apptest.CellSelect) {
-	if !m.GetAll() {
-		fields := CellSelectedFields(m)
-		q.Select(fields...)
-	}
-	if m.HasTenant() {
-		q.WithTenant(func(q *ent.TenantQuery) {
-			TenantSelect(q, m.GetTenant())
-		})
-	}
-}
-
-func CellSelectInit(q *ent.CellQuery, m *apptest.CellSelect) {
-	if m != nil {
-		CellSelect(q, m)
-	} else {
-		q.WithTenant(selectTenantKey)
-	}
-}
-
-func (s CellServiceServer) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
-	doc, err := ormpatch.FromPatchRequest(cellOrmEntity, req.ProtoReflect(), nil)
-	if err != nil {
-		if _, ok := status.FromError(err); ok {
-			return nil, err
-		}
-		if errors.Is(err, ormpatch.ErrRequestLayout) {
-			return nil, status.Errorf(codes.Internal, "%s", err)
-		}
-		if errors.Is(err, ormpatch.ErrUnsupported) {
-			return nil, status.Errorf(codes.Unimplemented, "%s", err)
-		}
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	return s.apply(ctx, req.GetRef(), doc, apptest.CellService_Patch_FullMethodName)
-}
-
-func CellGetKey(ctx context.Context, db *ent.Client, ref *apptest.CellRef) (uuid.UUID, error) {
-	var z uuid.UUID
-	if ref.HasId() {
-		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
-			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
-		} else {
-			return v, nil
-		}
-	}
-
-	p, err := CellPick(ref)
-	if err != nil {
-		return z, err
-	}
-
-	v, err := db.Cell.Query().Where(p).OnlyID(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return z, status.Error(codes.NotFound, "Cell not found")
-		}
-		return z, err
-	}
-
-	return v, nil
-}
-
-var cellOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Cell")
-
-var cellPatchColumns = entpatch.Columns{
-	1: cell.FieldID, 2: cell.TenantColumn, 4: cell.FieldAlias, 14: cell.FieldDateErased}
-
-func (s CellServiceServer) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.CellService_Apply_FullMethodName)
-}
-
-func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc *patchpb.Patch, by string) (*apptest.Cell, error) {
-	plan := &ormpatch.Plan{Entity: cellOrmEntity}
-	if doc != nil {
-		v, err := ormpatch.Compile(cellOrmEntity, doc)
-		if err != nil {
-			if errors.Is(err, ormpatch.ErrUnsupported) {
-				return nil, status.Errorf(codes.Unimplemented, "%s", err)
-			}
-			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-		}
-		plan = v
-	}
-
-	pred, mod, err := entpatch.Build(plan, cellPatchColumns, s.Db.Dialect())
-	if err != nil {
-		if errors.Is(err, entpatch.ErrValue) {
-			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-		}
-		return nil, status.Errorf(codes.Internal, "%s", err)
-	}
-
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Close()
-
-	st := s
-	st.Db = tx.Db
-
-	k, err := CellGetKey(ctx, st.Db, ref)
-	if err != nil {
-		return nil, err
-	}
-	at := &apptest.CellRef{}
-	at.SetId(k[:])
-	p, err := s.narrow(ctx, cell.IDEQ(k))
-	if err != nil {
-		return nil, err
-	}
-
-	if mod == nil {
-		q := st.Db.Cell.Query().Where(p)
-		if pred != nil {
-			q.Where(predicate.Cell(pred))
-		}
-		if ok, err := q.Exist(ctx); err != nil {
-			return nil, err
-		} else if !ok {
-			return nil, func() error {
-				if ok, err := st.Db.Cell.Query().Where(p).Exist(ctx); err != nil {
-					return err
-				} else if !ok {
-					return status.Error(codes.NotFound, "Cell not found")
-				}
-				return status.Error(codes.FailedPrecondition, "a test in the patch did not hold")
-			}()
-		}
-	} else {
-		q := st.Db.Cell.Update().Where(p)
-		if pred != nil {
-			q.Where(predicate.Cell(pred))
-		}
-		q.Modify(mod)
-		if n, err := q.Save(ctx); err != nil {
-			return nil, err
-		} else if n == 0 {
-			return nil, func() error {
-				if ok, err := st.Db.Cell.Query().Where(p).Exist(ctx); err != nil {
-					return err
-				} else if !ok {
-					return status.Error(codes.NotFound, "Cell not found")
-				}
-				return status.Error(codes.FailedPrecondition, "a test in the patch did not hold")
-			}()
-		}
-	}
-
-	if mod != nil {
-		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
-		}); err != nil {
-			return nil, err
-		}
-	}
-
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*emptypb.Empty, error) {
-	p, err := CellPick(req)
-	if err != nil {
-		return nil, err
-	}
-	p, err = s.narrow(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Close()
-
-	st := s
-	st.Db = tx.Db
-
-	var k any
-	if s.Rec != nil {
-		v, err := st.Db.Cell.Query().Where(p).OnlyID(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
-			}
-			return nil, err
-		}
-
-		k = v
-		p = cell.IDEQ(v)
-	}
-
-	u := st.Db.Cell.Update().Where(p)
-	u.SetDateErased(time.Now().UTC())
-	n, err := u.Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.CellService_Erase_FullMethodName,
-			Key: k,
-		}); err != nil {
-			return nil, err
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	return &emptypb.Empty{}, nil
-}
-
-func CellPick(req *apptest.CellRef) (predicate.Cell, error) {
-	switch req.WhichKey() {
-	case apptest.CellRef_Id_case:
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
-		} else {
-			return cell.IDEQ(v), nil
-		}
-	case apptest.CellRef_Key_not_set_case:
-		return nil, status.Errorf(codes.InvalidArgument, "key not set: Cell")
 	default:
 		return nil, status.Errorf(codes.Unimplemented, "unknown type of key: %s", req.WhichKey())
 	}

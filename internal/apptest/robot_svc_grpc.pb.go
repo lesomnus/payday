@@ -20,6 +20,270 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	CellService_Add_FullMethodName   = "/app.CellService/Add"
+	CellService_Get_FullMethodName   = "/app.CellService/Get"
+	CellService_Patch_FullMethodName = "/app.CellService/Patch"
+	CellService_Apply_FullMethodName = "/app.CellService/Apply"
+	CellService_Erase_FullMethodName = "/app.CellService/Erase"
+)
+
+// CellServiceClient is the client API for CellService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type CellServiceClient interface {
+	// Add creates a new Cell
+	Add(ctx context.Context, in *CellAddRequest, opts ...grpc.CallOption) (*Cell, error)
+	// Get retrieves a Cell
+	Get(ctx context.Context, in *CellGetRequest, opts ...grpc.CallOption) (*Cell, error)
+	// Patch updates an existing Cell
+	Patch(ctx context.Context, in *CellPatchRequest, opts ...grpc.CallOption) (*Cell, error)
+	// Apply applies a patch document to an existing Cell
+	Apply(ctx context.Context, in *CellApplyRequest, opts ...grpc.CallOption) (*Cell, error)
+	// Erase deletes a Cell
+	Erase(ctx context.Context, in *CellRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+}
+
+type cellServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewCellServiceClient(cc grpc.ClientConnInterface) CellServiceClient {
+	return &cellServiceClient{cc}
+}
+
+func (c *cellServiceClient) Add(ctx context.Context, in *CellAddRequest, opts ...grpc.CallOption) (*Cell, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Cell)
+	err := c.cc.Invoke(ctx, CellService_Add_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cellServiceClient) Get(ctx context.Context, in *CellGetRequest, opts ...grpc.CallOption) (*Cell, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Cell)
+	err := c.cc.Invoke(ctx, CellService_Get_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cellServiceClient) Patch(ctx context.Context, in *CellPatchRequest, opts ...grpc.CallOption) (*Cell, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Cell)
+	err := c.cc.Invoke(ctx, CellService_Patch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cellServiceClient) Apply(ctx context.Context, in *CellApplyRequest, opts ...grpc.CallOption) (*Cell, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Cell)
+	err := c.cc.Invoke(ctx, CellService_Apply_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cellServiceClient) Erase(ctx context.Context, in *CellRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, CellService_Erase_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CellServiceServer is the server API for CellService service.
+// All implementations must embed UnimplementedCellServiceServer
+// for forward compatibility.
+type CellServiceServer interface {
+	// Add creates a new Cell
+	Add(context.Context, *CellAddRequest) (*Cell, error)
+	// Get retrieves a Cell
+	Get(context.Context, *CellGetRequest) (*Cell, error)
+	// Patch updates an existing Cell
+	Patch(context.Context, *CellPatchRequest) (*Cell, error)
+	// Apply applies a patch document to an existing Cell
+	Apply(context.Context, *CellApplyRequest) (*Cell, error)
+	// Erase deletes a Cell
+	Erase(context.Context, *CellRef) (*emptypb.Empty, error)
+	mustEmbedUnimplementedCellServiceServer()
+}
+
+// UnimplementedCellServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedCellServiceServer struct{}
+
+func (UnimplementedCellServiceServer) Add(context.Context, *CellAddRequest) (*Cell, error) {
+	return nil, status.Error(codes.Unimplemented, "method Add not implemented")
+}
+func (UnimplementedCellServiceServer) Get(context.Context, *CellGetRequest) (*Cell, error) {
+	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedCellServiceServer) Patch(context.Context, *CellPatchRequest) (*Cell, error) {
+	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
+}
+func (UnimplementedCellServiceServer) Apply(context.Context, *CellApplyRequest) (*Cell, error) {
+	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
+}
+func (UnimplementedCellServiceServer) Erase(context.Context, *CellRef) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
+}
+func (UnimplementedCellServiceServer) mustEmbedUnimplementedCellServiceServer() {}
+func (UnimplementedCellServiceServer) testEmbeddedByValue()                     {}
+
+// UnsafeCellServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to CellServiceServer will
+// result in compilation errors.
+type UnsafeCellServiceServer interface {
+	mustEmbedUnimplementedCellServiceServer()
+}
+
+func RegisterCellServiceServer(s grpc.ServiceRegistrar, srv CellServiceServer) {
+	// If the following call panics, it indicates UnimplementedCellServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&CellService_ServiceDesc, srv)
+}
+
+func _CellService_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CellAddRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CellServiceServer).Add(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CellService_Add_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CellServiceServer).Add(ctx, req.(*CellAddRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CellService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CellGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CellServiceServer).Get(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CellService_Get_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CellServiceServer).Get(ctx, req.(*CellGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CellService_Patch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CellPatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CellServiceServer).Patch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CellService_Patch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CellServiceServer).Patch(ctx, req.(*CellPatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CellService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CellApplyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CellServiceServer).Apply(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CellService_Apply_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CellServiceServer).Apply(ctx, req.(*CellApplyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CellService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CellRef)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CellServiceServer).Erase(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CellService_Erase_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CellServiceServer).Erase(ctx, req.(*CellRef))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// CellService_ServiceDesc is the grpc.ServiceDesc for CellService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var CellService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "app.CellService",
+	HandlerType: (*CellServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Add",
+			Handler:    _CellService_Add_Handler,
+		},
+		{
+			MethodName: "Get",
+			Handler:    _CellService_Get_Handler,
+		},
+		{
+			MethodName: "Patch",
+			Handler:    _CellService_Patch_Handler,
+		},
+		{
+			MethodName: "Apply",
+			Handler:    _CellService_Apply_Handler,
+		},
+		{
+			MethodName: "Erase",
+			Handler:    _CellService_Erase_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "app/robot_svc.g.proto",
+}
+
+const (
 	RobotService_Add_FullMethodName   = "/app.RobotService/Add"
 	RobotService_Get_FullMethodName   = "/app.RobotService/Get"
 	RobotService_Patch_FullMethodName = "/app.RobotService/Patch"
@@ -909,270 +1173,6 @@ var FleetService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Erase",
 			Handler:    _FleetService_Erase_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/robot_svc.g.proto",
-}
-
-const (
-	CellService_Add_FullMethodName   = "/app.CellService/Add"
-	CellService_Get_FullMethodName   = "/app.CellService/Get"
-	CellService_Patch_FullMethodName = "/app.CellService/Patch"
-	CellService_Apply_FullMethodName = "/app.CellService/Apply"
-	CellService_Erase_FullMethodName = "/app.CellService/Erase"
-)
-
-// CellServiceClient is the client API for CellService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type CellServiceClient interface {
-	// Add creates a new Cell
-	Add(ctx context.Context, in *CellAddRequest, opts ...grpc.CallOption) (*Cell, error)
-	// Get retrieves a Cell
-	Get(ctx context.Context, in *CellGetRequest, opts ...grpc.CallOption) (*Cell, error)
-	// Patch updates an existing Cell
-	Patch(ctx context.Context, in *CellPatchRequest, opts ...grpc.CallOption) (*Cell, error)
-	// Apply applies a patch document to an existing Cell
-	Apply(ctx context.Context, in *CellApplyRequest, opts ...grpc.CallOption) (*Cell, error)
-	// Erase deletes a Cell
-	Erase(ctx context.Context, in *CellRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
-}
-
-type cellServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewCellServiceClient(cc grpc.ClientConnInterface) CellServiceClient {
-	return &cellServiceClient{cc}
-}
-
-func (c *cellServiceClient) Add(ctx context.Context, in *CellAddRequest, opts ...grpc.CallOption) (*Cell, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Cell)
-	err := c.cc.Invoke(ctx, CellService_Add_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *cellServiceClient) Get(ctx context.Context, in *CellGetRequest, opts ...grpc.CallOption) (*Cell, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Cell)
-	err := c.cc.Invoke(ctx, CellService_Get_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *cellServiceClient) Patch(ctx context.Context, in *CellPatchRequest, opts ...grpc.CallOption) (*Cell, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Cell)
-	err := c.cc.Invoke(ctx, CellService_Patch_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *cellServiceClient) Apply(ctx context.Context, in *CellApplyRequest, opts ...grpc.CallOption) (*Cell, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Cell)
-	err := c.cc.Invoke(ctx, CellService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *cellServiceClient) Erase(ctx context.Context, in *CellRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, CellService_Erase_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// CellServiceServer is the server API for CellService service.
-// All implementations must embed UnimplementedCellServiceServer
-// for forward compatibility.
-type CellServiceServer interface {
-	// Add creates a new Cell
-	Add(context.Context, *CellAddRequest) (*Cell, error)
-	// Get retrieves a Cell
-	Get(context.Context, *CellGetRequest) (*Cell, error)
-	// Patch updates an existing Cell
-	Patch(context.Context, *CellPatchRequest) (*Cell, error)
-	// Apply applies a patch document to an existing Cell
-	Apply(context.Context, *CellApplyRequest) (*Cell, error)
-	// Erase deletes a Cell
-	Erase(context.Context, *CellRef) (*emptypb.Empty, error)
-	mustEmbedUnimplementedCellServiceServer()
-}
-
-// UnimplementedCellServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedCellServiceServer struct{}
-
-func (UnimplementedCellServiceServer) Add(context.Context, *CellAddRequest) (*Cell, error) {
-	return nil, status.Error(codes.Unimplemented, "method Add not implemented")
-}
-func (UnimplementedCellServiceServer) Get(context.Context, *CellGetRequest) (*Cell, error) {
-	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
-}
-func (UnimplementedCellServiceServer) Patch(context.Context, *CellPatchRequest) (*Cell, error) {
-	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedCellServiceServer) Apply(context.Context, *CellApplyRequest) (*Cell, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
-}
-func (UnimplementedCellServiceServer) Erase(context.Context, *CellRef) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
-}
-func (UnimplementedCellServiceServer) mustEmbedUnimplementedCellServiceServer() {}
-func (UnimplementedCellServiceServer) testEmbeddedByValue()                     {}
-
-// UnsafeCellServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to CellServiceServer will
-// result in compilation errors.
-type UnsafeCellServiceServer interface {
-	mustEmbedUnimplementedCellServiceServer()
-}
-
-func RegisterCellServiceServer(s grpc.ServiceRegistrar, srv CellServiceServer) {
-	// If the following call panics, it indicates UnimplementedCellServiceServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&CellService_ServiceDesc, srv)
-}
-
-func _CellService_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CellAddRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CellServiceServer).Add(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CellService_Add_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CellServiceServer).Add(ctx, req.(*CellAddRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CellService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CellGetRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CellServiceServer).Get(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CellService_Get_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CellServiceServer).Get(ctx, req.(*CellGetRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CellService_Patch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CellPatchRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CellServiceServer).Patch(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CellService_Patch_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CellServiceServer).Patch(ctx, req.(*CellPatchRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CellService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CellApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CellServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CellService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CellServiceServer).Apply(ctx, req.(*CellApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CellService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CellRef)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CellServiceServer).Erase(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CellService_Erase_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CellServiceServer).Erase(ctx, req.(*CellRef))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// CellService_ServiceDesc is the grpc.ServiceDesc for CellService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var CellService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "app.CellService",
-	HandlerType: (*CellServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Add",
-			Handler:    _CellService_Add_Handler,
-		},
-		{
-			MethodName: "Get",
-			Handler:    _CellService_Get_Handler,
-		},
-		{
-			MethodName: "Patch",
-			Handler:    _CellService_Patch_Handler,
-		},
-		{
-			MethodName: "Apply",
-			Handler:    _CellService_Apply_Handler,
-		},
-		{
-			MethodName: "Erase",
-			Handler:    _CellService_Erase_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

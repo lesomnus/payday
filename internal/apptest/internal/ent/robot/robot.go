@@ -22,8 +22,12 @@ const (
 	FieldDateErased = "date_erased"
 	// FieldTenantID holds the string denoting the tenant_id field in the database.
 	FieldTenantID = "tenant_id"
+	// FieldCellID holds the string denoting the cell_id field in the database.
+	FieldCellID = "cell_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
 	EdgeTenant = "tenant"
+	// EdgeCell holds the string denoting the cell edge name in mutations.
+	EdgeCell = "cell"
 	// Table holds the table name of the robot in the database.
 	Table = "robot"
 	// TenantTable is the table that holds the tenant relation/edge.
@@ -33,6 +37,13 @@ const (
 	TenantInverseTable = "tenant"
 	// TenantColumn is the table column denoting the tenant relation/edge.
 	TenantColumn = "tenant_id"
+	// CellTable is the table that holds the cell relation/edge.
+	CellTable = "robot"
+	// CellInverseTable is the table name for the Cell entity.
+	// It exists in this package in order to avoid circular dependency with the "cell" package.
+	CellInverseTable = "cell"
+	// CellColumn is the table column denoting the cell relation/edge.
+	CellColumn = "cell_id"
 )
 
 // Columns holds all SQL columns for robot fields.
@@ -43,6 +54,7 @@ var Columns = []string{
 	FieldDateCreated,
 	FieldDateErased,
 	FieldTenantID,
+	FieldCellID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -88,10 +100,22 @@ func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
 }
 
+// ByCellID orders the results by the cell_id field.
+func ByCellID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCellID, opts...).ToFunc()
+}
+
 // ByTenantField orders the results by tenant field.
 func ByTenantField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newTenantStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByCellField orders the results by cell field.
+func ByCellField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCellStep(), sql.OrderByField(field, opts...))
 	}
 }
 func newTenantStep() *sqlgraph.Step {
@@ -99,5 +123,12 @@ func newTenantStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TenantInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, false, TenantTable, TenantColumn),
+	)
+}
+func newCellStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CellInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, false, CellTable, CellColumn),
 	)
 }

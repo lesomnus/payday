@@ -23,12 +23,142 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Cell was added to answer one question: what does adding an entity cost?
+// Nothing below this line is Go, and nothing else in this app was touched.
+type Cell struct {
+	state                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id         []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Tenant     *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Alias      string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_DateErased *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *Cell) Reset() {
+	*x = Cell{}
+	mi := &file_app_robot_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Cell) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Cell) ProtoMessage() {}
+
+func (x *Cell) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Cell) GetId() []byte {
+	if x != nil {
+		return x.xxx_hidden_Id
+	}
+	return nil
+}
+
+func (x *Cell) GetTenant() *Tenant {
+	if x != nil {
+		return x.xxx_hidden_Tenant
+	}
+	return nil
+}
+
+func (x *Cell) GetAlias() string {
+	if x != nil {
+		return x.xxx_hidden_Alias
+	}
+	return ""
+}
+
+func (x *Cell) GetDateErased() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return nil
+}
+
+func (x *Cell) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Id = v
+}
+
+func (x *Cell) SetTenant(v *Tenant) {
+	x.xxx_hidden_Tenant = v
+}
+
+func (x *Cell) SetAlias(v string) {
+	x.xxx_hidden_Alias = v
+}
+
+func (x *Cell) SetDateErased(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateErased = v
+}
+
+func (x *Cell) HasTenant() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Tenant != nil
+}
+
+func (x *Cell) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateErased != nil
+}
+
+func (x *Cell) ClearTenant() {
+	x.xxx_hidden_Tenant = nil
+}
+
+func (x *Cell) ClearDateErased() {
+	x.xxx_hidden_DateErased = nil
+}
+
+type Cell_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id     []byte
+	Tenant *Tenant
+	Alias  string
+	// Erased softly, which is what saying nothing means: the row is stamped and
+	// stays, so it cannot be read or changed, its alias comes free again, and the
+	// trail can still say what it held.
+	DateErased *timestamppb.Timestamp
+}
+
+func (b0 Cell_builder) Build() *Cell {
+	m0 := &Cell{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Id = b.Id
+	x.xxx_hidden_Tenant = b.Tenant
+	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_DateErased = b.DateErased
+	return m0
+}
+
 // Robot is an ordinary entity: it belongs to a tenant, and is read only by
 // callers who may see that tenant.
 type Robot struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Tenant      *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Cell        *Cell                  `protobuf:"bytes,3,opt,name=cell"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
 	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
@@ -39,7 +169,7 @@ type Robot struct {
 
 func (x *Robot) Reset() {
 	*x = Robot{}
-	mi := &file_app_robot_proto_msgTypes[0]
+	mi := &file_app_robot_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -51,7 +181,7 @@ func (x *Robot) String() string {
 func (*Robot) ProtoMessage() {}
 
 func (x *Robot) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[0]
+	mi := &file_app_robot_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -72,6 +202,13 @@ func (x *Robot) GetId() []byte {
 func (x *Robot) GetTenant() *Tenant {
 	if x != nil {
 		return x.xxx_hidden_Tenant
+	}
+	return nil
+}
+
+func (x *Robot) GetCell() *Cell {
+	if x != nil {
+		return x.xxx_hidden_Cell
 	}
 	return nil
 }
@@ -115,6 +252,10 @@ func (x *Robot) SetTenant(v *Tenant) {
 	x.xxx_hidden_Tenant = v
 }
 
+func (x *Robot) SetCell(v *Cell) {
+	x.xxx_hidden_Cell = v
+}
+
 func (x *Robot) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
 }
@@ -136,6 +277,13 @@ func (x *Robot) HasTenant() bool {
 		return false
 	}
 	return x.xxx_hidden_Tenant != nil
+}
+
+func (x *Robot) HasCell() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Cell != nil
 }
 
 func (x *Robot) HasDateUpdated() bool {
@@ -163,6 +311,10 @@ func (x *Robot) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
 
+func (x *Robot) ClearCell() {
+	x.xxx_hidden_Cell = nil
+}
+
 func (x *Robot) ClearDateUpdated() {
 	x.xxx_hidden_DateUpdated = nil
 }
@@ -180,7 +332,21 @@ type Robot_builder struct {
 
 	Id     []byte
 	Tenant *Tenant
-	Alias  string
+	// Field 3 is the app's, and this is what putting something there means: a set
+	// smaller than a tenant, and a second axis every read of this entity is
+	// narrowed by. payday fixes the number and the shape -- an edge, one of them,
+	// to an entity inside the wall -- and the name is this app's to choose.
+	//
+	// It is here so that the generated `pd.Grouped` is compiled and run rather
+	// than only written.
+	//
+	// Nullable, which is the case worth having in the app payday tests itself
+	// against: a schema gains field 3 after there are rows, and requiring it
+	// would mean no app could ever add one. A row in no set is then invisible to
+	// a read narrowed to one -- fail-closed, and surprising enough to be pinned
+	// by a test.
+	Cell  *Cell
+	Alias string
 	// Stamped on every write and refused to a patch document, so it is a version
 	// and not a field. It is here because this entity declares a `watch:`, and
 	// the generator refuses one without it: a watch sends state, so a client
@@ -200,6 +366,7 @@ func (b0 Robot_builder) Build() *Robot {
 	_, _ = b, x
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Tenant = b.Tenant
+	x.xxx_hidden_Cell = b.Cell
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
@@ -221,7 +388,7 @@ type Joint struct {
 
 func (x *Joint) Reset() {
 	*x = Joint{}
-	mi := &file_app_robot_proto_msgTypes[1]
+	mi := &file_app_robot_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -233,7 +400,7 @@ func (x *Joint) String() string {
 func (*Joint) ProtoMessage() {}
 
 func (x *Joint) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[1]
+	mi := &file_app_robot_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -349,7 +516,7 @@ type Fleet struct {
 
 func (x *Fleet) Reset() {
 	*x = Fleet{}
-	mi := &file_app_robot_proto_msgTypes[2]
+	mi := &file_app_robot_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -361,7 +528,7 @@ func (x *Fleet) String() string {
 func (*Fleet) ProtoMessage() {}
 
 func (x *Fleet) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[2]
+	mi := &file_app_robot_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -435,135 +602,6 @@ func (b0 Fleet_builder) Build() *Fleet {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Id = b.Id
-	x.xxx_hidden_Alias = b.Alias
-	x.xxx_hidden_DateErased = b.DateErased
-	return m0
-}
-
-// Cell was added to answer one question: what does adding an entity cost?
-// Nothing below this line is Go, and nothing else in this app was touched.
-type Cell struct {
-	state                 protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id         []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Tenant     *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
-	xxx_hidden_Alias      string                 `protobuf:"bytes,4,opt,name=alias"`
-	xxx_hidden_DateErased *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
-}
-
-func (x *Cell) Reset() {
-	*x = Cell{}
-	mi := &file_app_robot_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Cell) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Cell) ProtoMessage() {}
-
-func (x *Cell) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *Cell) GetId() []byte {
-	if x != nil {
-		return x.xxx_hidden_Id
-	}
-	return nil
-}
-
-func (x *Cell) GetTenant() *Tenant {
-	if x != nil {
-		return x.xxx_hidden_Tenant
-	}
-	return nil
-}
-
-func (x *Cell) GetAlias() string {
-	if x != nil {
-		return x.xxx_hidden_Alias
-	}
-	return ""
-}
-
-func (x *Cell) GetDateErased() *timestamppb.Timestamp {
-	if x != nil {
-		return x.xxx_hidden_DateErased
-	}
-	return nil
-}
-
-func (x *Cell) SetId(v []byte) {
-	if v == nil {
-		v = []byte{}
-	}
-	x.xxx_hidden_Id = v
-}
-
-func (x *Cell) SetTenant(v *Tenant) {
-	x.xxx_hidden_Tenant = v
-}
-
-func (x *Cell) SetAlias(v string) {
-	x.xxx_hidden_Alias = v
-}
-
-func (x *Cell) SetDateErased(v *timestamppb.Timestamp) {
-	x.xxx_hidden_DateErased = v
-}
-
-func (x *Cell) HasTenant() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Tenant != nil
-}
-
-func (x *Cell) HasDateErased() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_DateErased != nil
-}
-
-func (x *Cell) ClearTenant() {
-	x.xxx_hidden_Tenant = nil
-}
-
-func (x *Cell) ClearDateErased() {
-	x.xxx_hidden_DateErased = nil
-}
-
-type Cell_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Id     []byte
-	Tenant *Tenant
-	Alias  string
-	// Erased softly, which is what saying nothing means: the row is stamped and
-	// stays, so it cannot be read or changed, its alias comes free again, and the
-	// trail can still say what it held.
-	DateErased *timestamppb.Timestamp
-}
-
-func (b0 Cell_builder) Build() *Cell {
-	m0 := &Cell{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Id = b.Id
-	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_DateErased = b.DateErased
 	return m0
@@ -704,10 +742,18 @@ var File_app_robot_proto protoreflect.FileDescriptor
 
 const file_app_robot_proto_rawDesc = "" +
 	"\n" +
-	"\x0fapp/robot.proto\x12\x03app\x1a\x13payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xc0\x03\n" +
-	"\x05Robot\x12\x1b\n" +
+	"\x0fapp/robot.proto\x12\x03app\x1a\x13payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xbf\x01\n" +
+	"\x04Cell\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12.\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
+	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
+	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
+	"\"\xe7\x03\n" +
+	"\x05Robot\x12\x1b\n" +
+	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12.\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12%\n" +
+	"\x04cell\x18\x03 \x01(\v2\t.app.CellB\x06\xf2\x82\x16\x028\x01R\x04cell\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12D\n" +
@@ -734,14 +780,7 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x1c\n" +
 	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
-	"dateErased:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\t*\x00\"\xbf\x01\n" +
-	"\x04Cell\x12\x1b\n" +
-	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12.\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
-	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
-	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
-	"\"\xd8\x01\n" +
+	"dateErased:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\t*\x00\"\xd8\x01\n" +
 	"\aReading\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12(\n" +
 	"\x05robot\x18\x02 \x01(\v2\n" +
@@ -753,31 +792,32 @@ const file_app_robot_proto_rawDesc = "" +
 
 var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_app_robot_proto_goTypes = []any{
-	(*Robot)(nil),                 // 0: app.Robot
-	(*Joint)(nil),                 // 1: app.Joint
-	(*Fleet)(nil),                 // 2: app.Fleet
-	(*Cell)(nil),                  // 3: app.Cell
+	(*Cell)(nil),                  // 0: app.Cell
+	(*Robot)(nil),                 // 1: app.Robot
+	(*Joint)(nil),                 // 2: app.Joint
+	(*Fleet)(nil),                 // 3: app.Fleet
 	(*Reading)(nil),               // 4: app.Reading
 	(*Tenant)(nil),                // 5: payday.Tenant
 	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
 }
 var file_app_robot_proto_depIdxs = []int32{
-	5,  // 0: app.Robot.tenant:type_name -> payday.Tenant
-	6,  // 1: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
-	6,  // 2: app.Robot.date_created:type_name -> google.protobuf.Timestamp
-	6,  // 3: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
-	0,  // 4: app.Joint.robot:type_name -> app.Robot
-	6,  // 5: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
-	6,  // 6: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
-	5,  // 7: app.Cell.tenant:type_name -> payday.Tenant
-	6,  // 8: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
-	0,  // 9: app.Reading.robot:type_name -> app.Robot
-	6,  // 10: app.Reading.date_created:type_name -> google.protobuf.Timestamp
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	5,  // 0: app.Cell.tenant:type_name -> payday.Tenant
+	6,  // 1: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
+	5,  // 2: app.Robot.tenant:type_name -> payday.Tenant
+	0,  // 3: app.Robot.cell:type_name -> app.Cell
+	6,  // 4: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
+	6,  // 5: app.Robot.date_created:type_name -> google.protobuf.Timestamp
+	6,  // 6: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 7: app.Joint.robot:type_name -> app.Robot
+	6,  // 8: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
+	6,  // 9: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 10: app.Reading.robot:type_name -> app.Robot
+	6,  // 11: app.Reading.date_created:type_name -> google.protobuf.Timestamp
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_proto_init() }

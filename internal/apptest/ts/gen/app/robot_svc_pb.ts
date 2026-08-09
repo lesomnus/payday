@@ -18,7 +18,155 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot_svc.g.proto.
  */
 export const file_app_robot_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCKIAQoPUm9ib3RBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEiEKBnRlbmFudBgCIAEoCzIRLnBheWRheS5UZW5hbnRSZWYSFAoFYWxpYXMYBCABKAlCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiTwoPUm9ib3RHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QiRAoIUm9ib3RSZWYSDAoCaWQYASABKAxIABIjCgRzbHVnGAQgASgLMhMuYXBwLlJvYm90UmVmQnlTbHVnSABCBQoDa2V5IkIKDlJvYm90UmVmQnlTbHVnEg0KBWFsaWFzGAQgASgJEiEKBnRlbmFudBgCIAEoCzIRLnBheWRheS5UZW5hbnRSZWYikAEKC1JvYm90U2VsZWN0EgsKA2FsbBgBIAEoCBIkCgZ0ZW5hbnQYAiABKAsyFC5wYXlkYXkuVGVuYW50U2VsZWN0Eg0KBWFsaWFzGAQgASgIEhQKDGRhdGVfdXBkYXRlZBgNIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgijAEKEVJvYm90UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhINCgVhbGlhcxgIIAEoCRIwCgxkYXRlX3VwZGF0ZWQYGiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRhdGVfdXBkYXRlZF9mb3JjZRgbIAEoCCJMChFSb2JvdEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJgChBSb2JvdExpc3RSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuUm9ib3RGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCIkMKEVJvYm90TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90EhMKBG5leHQYAiABKAlCBaoBAggCIikKC1JvYm90RmlsdGVyEhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZiJUChFSb2JvdFdhdGNoUmVxdWVzdBIhCgdmaWx0ZXJzGAEgAygLMhAuYXBwLlJvYm90RmlsdGVyEhwKDXNraXBfc25hcHNob3QYAiABKAhCBaoBAggCIjgKElJvYm90V2F0Y2hSZXNwb25zZRIiCgVpdGVtcxgBIAMoCzITLmFwcC5Sb2JvdFdhdGNoSXRlbSJOCg5Sb2JvdFdhdGNoSXRlbRIKCgJpZBgBIAEoDBIZCgV2YWx1ZRgCIAEoCzIKLmFwcC5Sb2JvdBIVCgZhY3Rpb24YAyABKAlCBaoBAggCIlEKD0pvaW50QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPSm9pbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuSm9pbnRTZWxlY3QiHwoISm9pbnRSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiXwoLSm9pbnRTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0Eg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIIj4KEUpvaW50UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhINCgVhbGlhcxgIIAEoCSJMChFKb2ludEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuSm9pbnRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIzCg9GbGVldEFkZFJlcXVlc3QSCgoCaWQYASABKAwSFAoFYWxpYXMYBCABKAlCBaoBAggCIk8KD0ZsZWV0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkZsZWV0U2VsZWN0IjAKCEZsZWV0UmVmEgwKAmlkGAEgASgMSAASDwoFYWxpYXMYBCABKAlIAEIFCgNrZXkiPgoLRmxlZXRTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIIj4KEUZsZWV0UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhINCgVhbGlhcxgIIAEoCSJMChFGbGVldEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJVCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIhCgZ0ZW5hbnQYAiABKAsyES5wYXlkYXkuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5ImMKCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiQKBnRlbmFudBgCIAEoCzIULnBheWRheS5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gihwEKEVJlYWRpbmdBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhwKBXJvYm90GAIgASgLMg0uYXBwLlJvYm90UmVmEhYKB2NlbHNpdXMYCCABKAFCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoRUmVhZGluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlJlYWRpbmdTZWxlY3QiIQoKUmVhZGluZ1JlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJkCg1SZWFkaW5nU2VsZWN0EgsKA2FsbBgBIAEoCBIfCgVyb2JvdBgCIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdBIPCgdjZWxzaXVzGAggASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJEChNSZWFkaW5nUGF0Y2hSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEg8KB2NlbHNpdXMYECABKAEiUAoTUmVhZGluZ0FwcGx5UmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUmVhZGluZ1JlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoMt0CCgxSb2JvdFNlcnZpY2USJwoDQWRkEhQuYXBwLlJvYm90QWRkUmVxdWVzdBoKLmFwcC5Sb2JvdBInCgNHZXQSFC5hcHAuUm9ib3RHZXRSZXF1ZXN0GgouYXBwLlJvYm90EisKBVBhdGNoEhYuYXBwLlJvYm90UGF0Y2hSZXF1ZXN0GgouYXBwLlJvYm90EisKBUFwcGx5EhYuYXBwLlJvYm90QXBwbHlSZXF1ZXN0GgouYXBwLlJvYm90Ei4KBUVyYXNlEg0uYXBwLlJvYm90UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5EjUKBExpc3QSFS5hcHAuUm9ib3RMaXN0UmVxdWVzdBoWLmFwcC5Sb2JvdExpc3RSZXNwb25zZRI6CgVXYXRjaBIWLmFwcC5Sb2JvdFdhdGNoUmVxdWVzdBoXLmFwcC5Sb2JvdFdhdGNoUmVzcG9uc2UwATLqAQoMSm9pbnRTZXJ2aWNlEicKA0FkZBIULmFwcC5Kb2ludEFkZFJlcXVlc3QaCi5hcHAuSm9pbnQSJwoDR2V0EhQuYXBwLkpvaW50R2V0UmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVQYXRjaBIWLmFwcC5Kb2ludFBhdGNoUmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVBcHBseRIWLmFwcC5Kb2ludEFwcGx5UmVxdWVzdBoKLmFwcC5Kb2ludBIuCgVFcmFzZRINLmFwcC5Kb2ludFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eTLqAQoMRmxlZXRTZXJ2aWNlEicKA0FkZBIULmFwcC5GbGVldEFkZFJlcXVlc3QaCi5hcHAuRmxlZXQSJwoDR2V0EhQuYXBwLkZsZWV0R2V0UmVxdWVzdBoKLmFwcC5GbGVldBIrCgVQYXRjaBIWLmFwcC5GbGVldFBhdGNoUmVxdWVzdBoKLmFwcC5GbGVldBIrCgVBcHBseRIWLmFwcC5GbGVldEFwcGx5UmVxdWVzdBoKLmFwcC5GbGVldBIuCgVFcmFzZRINLmFwcC5GbGVldFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eTLgAQoLQ2VsbFNlcnZpY2USJQoDQWRkEhMuYXBwLkNlbGxBZGRSZXF1ZXN0GgkuYXBwLkNlbGwSJQoDR2V0EhMuYXBwLkNlbGxHZXRSZXF1ZXN0GgkuYXBwLkNlbGwSKQoFUGF0Y2gSFS5hcHAuQ2VsbFBhdGNoUmVxdWVzdBoJLmFwcC5DZWxsEikKBUFwcGx5EhUuYXBwLkNlbGxBcHBseVJlcXVlc3QaCS5hcHAuQ2VsbBItCgVFcmFzZRIMLmFwcC5DZWxsUmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Mv4BCg5SZWFkaW5nU2VydmljZRIrCgNBZGQSFi5hcHAuUmVhZGluZ0FkZFJlcXVlc3QaDC5hcHAuUmVhZGluZxIrCgNHZXQSFi5hcHAuUmVhZGluZ0dldFJlcXVlc3QaDC5hcHAuUmVhZGluZxIvCgVQYXRjaBIYLmFwcC5SZWFkaW5nUGF0Y2hSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSLwoFQXBwbHkSGC5hcHAuUmVhZGluZ0FwcGx5UmVxdWVzdBoMLmFwcC5SZWFkaW5nEjAKBUVyYXNlEg8uYXBwLlJlYWRpbmdSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHlCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_robot, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch, file_payday_tenant_svc_g]);
+  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCJVCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIhCgZ0ZW5hbnQYAiABKAsyES5wYXlkYXkuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5ImMKCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiQKBnRlbmFudBgCIAEoCzIULnBheWRheS5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gipAEKD1JvYm90QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIhCgZ0ZW5hbnQYAiABKAsyES5wYXlkYXkuVGVuYW50UmVmEhoKBGNlbGwYAyABKAsyDC5hcHAuQ2VsbFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAISMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJPCg9Sb2JvdEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdCJECghSb2JvdFJlZhIMCgJpZBgBIAEoDEgAEiMKBHNsdWcYBCABKAsyEy5hcHAuUm9ib3RSZWZCeVNsdWdIAEIFCgNrZXkiQgoOUm9ib3RSZWZCeVNsdWcSDQoFYWxpYXMYBCABKAkSIQoGdGVuYW50GAIgASgLMhEucGF5ZGF5LlRlbmFudFJlZiKvAQoLUm9ib3RTZWxlY3QSCwoDYWxsGAEgASgIEiQKBnRlbmFudBgCIAEoCzIULnBheWRheS5UZW5hbnRTZWxlY3QSHQoEY2VsbBgDIAEoCzIPLmFwcC5DZWxsU2VsZWN0Eg0KBWFsaWFzGAQgASgIEhQKDGRhdGVfdXBkYXRlZBgNIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiuwEKEVJvYm90UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIaCgRjZWxsGAYgASgLMgwuYXBwLkNlbGxSZWYSEQoJY2VsbF9udWxsGAcgASgIEg0KBWFsaWFzGAggASgJEjAKDGRhdGVfdXBkYXRlZBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV91cGRhdGVkX2ZvcmNlGBsgASgIIkwKEVJvYm90QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoImAKEFJvYm90TGlzdFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5Sb2JvdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAIiQwoRUm9ib3RMaXN0UmVzcG9uc2USGQoFaXRlbXMYASADKAsyCi5hcHAuUm9ib3QSEwoEbmV4dBgCIAEoCUIFqgECCAIiKQoLUm9ib3RGaWx0ZXISGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmIlQKEVJvYm90V2F0Y2hSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuUm9ib3RGaWx0ZXISHAoNc2tpcF9zbmFwc2hvdBgCIAEoCEIFqgECCAIiOAoSUm9ib3RXYXRjaFJlc3BvbnNlEiIKBWl0ZW1zGAEgAygLMhMuYXBwLlJvYm90V2F0Y2hJdGVtIk4KDlJvYm90V2F0Y2hJdGVtEgoKAmlkGAEgASgMEhkKBXZhbHVlGAIgASgLMgouYXBwLlJvYm90EhUKBmFjdGlvbhgDIAEoCUIFqgECCAIiUQoPSm9pbnRBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhwKBXJvYm90GAIgASgLMg0uYXBwLlJvYm90UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJPCg9Kb2ludEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5Kb2ludFNlbGVjdCIfCghKb2ludFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJfCgtKb2ludFNlbGVjdBILCgNhbGwYASABKAgSHwoFcm9ib3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRSm9pbnRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEg0KBWFsaWFzGAggASgJIkwKEUpvaW50QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIjMKD0ZsZWV0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPRmxlZXRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuRmxlZXRTZWxlY3QiMAoIRmxlZXRSZWYSDAoCaWQYASABKAxIABIPCgVhbGlhcxgEIAEoCUgAQgUKA2tleSI+CgtGbGVldFNlbGVjdBILCgNhbGwYASABKAgSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRRmxlZXRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkZsZWV0UmVmEg0KBWFsaWFzGAggASgJIkwKEUZsZWV0QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIocBChFSZWFkaW5nQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIWCgdjZWxzaXVzGAggASgBQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIlUKEVJlYWRpbmdHZXRSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEiIKBnNlbGVjdBgCIAEoCzISLmFwcC5SZWFkaW5nU2VsZWN0IiEKClJlYWRpbmdSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiZAoNUmVhZGluZ1NlbGVjdBILCgNhbGwYASABKAgSHwoFcm9ib3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSDwoHY2Vsc2l1cxgIIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgiRAoTUmVhZGluZ1BhdGNoUmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUmVhZGluZ1JlZhIPCgdjZWxzaXVzGBAgASgBIlAKE1JlYWRpbmdBcHBseVJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaDLgAQoLQ2VsbFNlcnZpY2USJQoDQWRkEhMuYXBwLkNlbGxBZGRSZXF1ZXN0GgkuYXBwLkNlbGwSJQoDR2V0EhMuYXBwLkNlbGxHZXRSZXF1ZXN0GgkuYXBwLkNlbGwSKQoFUGF0Y2gSFS5hcHAuQ2VsbFBhdGNoUmVxdWVzdBoJLmFwcC5DZWxsEikKBUFwcGx5EhUuYXBwLkNlbGxBcHBseVJlcXVlc3QaCS5hcHAuQ2VsbBItCgVFcmFzZRIMLmFwcC5DZWxsUmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Mt0CCgxSb2JvdFNlcnZpY2USJwoDQWRkEhQuYXBwLlJvYm90QWRkUmVxdWVzdBoKLmFwcC5Sb2JvdBInCgNHZXQSFC5hcHAuUm9ib3RHZXRSZXF1ZXN0GgouYXBwLlJvYm90EisKBVBhdGNoEhYuYXBwLlJvYm90UGF0Y2hSZXF1ZXN0GgouYXBwLlJvYm90EisKBUFwcGx5EhYuYXBwLlJvYm90QXBwbHlSZXF1ZXN0GgouYXBwLlJvYm90Ei4KBUVyYXNlEg0uYXBwLlJvYm90UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5EjUKBExpc3QSFS5hcHAuUm9ib3RMaXN0UmVxdWVzdBoWLmFwcC5Sb2JvdExpc3RSZXNwb25zZRI6CgVXYXRjaBIWLmFwcC5Sb2JvdFdhdGNoUmVxdWVzdBoXLmFwcC5Sb2JvdFdhdGNoUmVzcG9uc2UwATLqAQoMSm9pbnRTZXJ2aWNlEicKA0FkZBIULmFwcC5Kb2ludEFkZFJlcXVlc3QaCi5hcHAuSm9pbnQSJwoDR2V0EhQuYXBwLkpvaW50R2V0UmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVQYXRjaBIWLmFwcC5Kb2ludFBhdGNoUmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVBcHBseRIWLmFwcC5Kb2ludEFwcGx5UmVxdWVzdBoKLmFwcC5Kb2ludBIuCgVFcmFzZRINLmFwcC5Kb2ludFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eTLqAQoMRmxlZXRTZXJ2aWNlEicKA0FkZBIULmFwcC5GbGVldEFkZFJlcXVlc3QaCi5hcHAuRmxlZXQSJwoDR2V0EhQuYXBwLkZsZWV0R2V0UmVxdWVzdBoKLmFwcC5GbGVldBIrCgVQYXRjaBIWLmFwcC5GbGVldFBhdGNoUmVxdWVzdBoKLmFwcC5GbGVldBIrCgVBcHBseRIWLmFwcC5GbGVldEFwcGx5UmVxdWVzdBoKLmFwcC5GbGVldBIuCgVFcmFzZRINLmFwcC5GbGVldFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eTL+AQoOUmVhZGluZ1NlcnZpY2USKwoDQWRkEhYuYXBwLlJlYWRpbmdBZGRSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSKwoDR2V0EhYuYXBwLlJlYWRpbmdHZXRSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSLwoFUGF0Y2gSGC5hcHAuUmVhZGluZ1BhdGNoUmVxdWVzdBoMLmFwcC5SZWFkaW5nEi8KBUFwcGx5EhguYXBwLlJlYWRpbmdBcHBseVJlcXVlc3QaDC5hcHAuUmVhZGluZxIwCgVFcmFzZRIPLmFwcC5SZWFkaW5nUmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Qi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_robot, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch, file_payday_tenant_svc_g]);
+
+/**
+ * @generated from message app.CellAddRequest
+ */
+export type CellAddRequest = Message<"app.CellAddRequest"> & {
+  /**
+   * @generated from field: bytes id = 1;
+   */
+  id: Uint8Array;
+
+  /**
+   * @generated from field: payday.TenantRef tenant = 2;
+   */
+  tenant?: TenantRef | undefined;
+
+  /**
+   * @generated from field: string alias = 4 [features.field_presence = IMPLICIT];
+   */
+  alias: string;
+};
+
+/**
+ * Describes the message app.CellAddRequest.
+ * Use `create(CellAddRequestSchema)` to create a new message.
+ */
+export const CellAddRequestSchema: GenMessage<CellAddRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 0);
+
+/**
+ * @generated from message app.CellGetRequest
+ */
+export type CellGetRequest = Message<"app.CellGetRequest"> & {
+  /**
+   * @generated from field: app.CellRef ref = 1;
+   */
+  ref?: CellRef | undefined;
+
+  /**
+   * @generated from field: app.CellSelect select = 2;
+   */
+  select?: CellSelect | undefined;
+};
+
+/**
+ * Describes the message app.CellGetRequest.
+ * Use `create(CellGetRequestSchema)` to create a new message.
+ */
+export const CellGetRequestSchema: GenMessage<CellGetRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 1);
+
+/**
+ * @generated from message app.CellRef
+ */
+export type CellRef = Message<"app.CellRef"> & {
+  /**
+   * @generated from oneof app.CellRef.key
+   */
+  key: {
+    /**
+     * @generated from field: bytes id = 1;
+     */
+    value: Uint8Array;
+    case: "id";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message app.CellRef.
+ * Use `create(CellRefSchema)` to create a new message.
+ */
+export const CellRefSchema: GenMessage<CellRef> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 2);
+
+/**
+ * @generated from message app.CellSelect
+ */
+export type CellSelect = Message<"app.CellSelect"> & {
+  /**
+   * @generated from field: bool all = 1;
+   */
+  all: boolean;
+
+  /**
+   * @generated from field: payday.TenantSelect tenant = 2;
+   */
+  tenant?: TenantSelect | undefined;
+
+  /**
+   * @generated from field: bool alias = 4;
+   */
+  alias: boolean;
+
+  /**
+   * @generated from field: bool date_erased = 14;
+   */
+  dateErased: boolean;
+};
+
+/**
+ * Describes the message app.CellSelect.
+ * Use `create(CellSelectSchema)` to create a new message.
+ */
+export const CellSelectSchema: GenMessage<CellSelect> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 3);
+
+/**
+ * @generated from message app.CellPatchRequest
+ */
+export type CellPatchRequest = Message<"app.CellPatchRequest"> & {
+  /**
+   * @generated from field: app.CellRef ref = 1;
+   */
+  ref?: CellRef | undefined;
+
+  /**
+   * @generated from field: string alias = 8;
+   */
+  alias: string;
+};
+
+/**
+ * Describes the message app.CellPatchRequest.
+ * Use `create(CellPatchRequestSchema)` to create a new message.
+ */
+export const CellPatchRequestSchema: GenMessage<CellPatchRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 4);
+
+/**
+ * @generated from message app.CellApplyRequest
+ */
+export type CellApplyRequest = Message<"app.CellApplyRequest"> & {
+  /**
+   * @generated from field: app.CellRef ref = 1;
+   */
+  ref?: CellRef | undefined;
+
+  /**
+   * @generated from field: patch.Patch patch = 2;
+   */
+  patch?: Patch | undefined;
+};
+
+/**
+ * Describes the message app.CellApplyRequest.
+ * Use `create(CellApplyRequestSchema)` to create a new message.
+ */
+export const CellApplyRequestSchema: GenMessage<CellApplyRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 5);
 
 /**
  * @generated from message app.RobotAddRequest
@@ -33,6 +181,11 @@ export type RobotAddRequest = Message<"app.RobotAddRequest"> & {
    * @generated from field: payday.TenantRef tenant = 2;
    */
   tenant?: TenantRef | undefined;
+
+  /**
+   * @generated from field: app.CellRef cell = 3;
+   */
+  cell?: CellRef | undefined;
 
   /**
    * @generated from field: string alias = 4 [features.field_presence = IMPLICIT];
@@ -50,7 +203,7 @@ export type RobotAddRequest = Message<"app.RobotAddRequest"> & {
  * Use `create(RobotAddRequestSchema)` to create a new message.
  */
 export const RobotAddRequestSchema: GenMessage<RobotAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 0);
+  messageDesc(file_app_robot_svc_g, 6);
 
 /**
  * @generated from message app.RobotGetRequest
@@ -72,7 +225,7 @@ export type RobotGetRequest = Message<"app.RobotGetRequest"> & {
  * Use `create(RobotGetRequestSchema)` to create a new message.
  */
 export const RobotGetRequestSchema: GenMessage<RobotGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 1);
+  messageDesc(file_app_robot_svc_g, 7);
 
 /**
  * @generated from message app.RobotRef
@@ -101,7 +254,7 @@ export type RobotRef = Message<"app.RobotRef"> & {
  * Use `create(RobotRefSchema)` to create a new message.
  */
 export const RobotRefSchema: GenMessage<RobotRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 2);
+  messageDesc(file_app_robot_svc_g, 8);
 
 /**
  * @generated from message app.RobotRefBySlug
@@ -123,7 +276,7 @@ export type RobotRefBySlug = Message<"app.RobotRefBySlug"> & {
  * Use `create(RobotRefBySlugSchema)` to create a new message.
  */
 export const RobotRefBySlugSchema: GenMessage<RobotRefBySlug> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 3);
+  messageDesc(file_app_robot_svc_g, 9);
 
 /**
  * @generated from message app.RobotSelect
@@ -138,6 +291,11 @@ export type RobotSelect = Message<"app.RobotSelect"> & {
    * @generated from field: payday.TenantSelect tenant = 2;
    */
   tenant?: TenantSelect | undefined;
+
+  /**
+   * @generated from field: app.CellSelect cell = 3;
+   */
+  cell?: CellSelect | undefined;
 
   /**
    * @generated from field: bool alias = 4;
@@ -165,7 +323,7 @@ export type RobotSelect = Message<"app.RobotSelect"> & {
  * Use `create(RobotSelectSchema)` to create a new message.
  */
 export const RobotSelectSchema: GenMessage<RobotSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 4);
+  messageDesc(file_app_robot_svc_g, 10);
 
 /**
  * @generated from message app.RobotPatchRequest
@@ -175,6 +333,21 @@ export type RobotPatchRequest = Message<"app.RobotPatchRequest"> & {
    * @generated from field: app.RobotRef ref = 1;
    */
   ref?: RobotRef | undefined;
+
+  /**
+   * @generated from field: app.CellRef cell = 6;
+   */
+  cell?: CellRef | undefined;
+
+  /**
+   * Clear cell instead of writing it.
+   * It takes a field of its own because an unset value already means
+   * "leave it alone", so no value could have meant NULL. It wins
+   * outright: setting both this and cell clears.
+   *
+   * @generated from field: bool cell_null = 7;
+   */
+  cellNull: boolean;
 
   /**
    * @generated from field: string alias = 8;
@@ -211,7 +384,7 @@ export type RobotPatchRequest = Message<"app.RobotPatchRequest"> & {
  * Use `create(RobotPatchRequestSchema)` to create a new message.
  */
 export const RobotPatchRequestSchema: GenMessage<RobotPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 5);
+  messageDesc(file_app_robot_svc_g, 11);
 
 /**
  * @generated from message app.RobotApplyRequest
@@ -233,7 +406,7 @@ export type RobotApplyRequest = Message<"app.RobotApplyRequest"> & {
  * Use `create(RobotApplyRequestSchema)` to create a new message.
  */
 export const RobotApplyRequestSchema: GenMessage<RobotApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 6);
+  messageDesc(file_app_robot_svc_g, 12);
 
 /**
  * @generated from message app.RobotListRequest
@@ -272,7 +445,7 @@ export type RobotListRequest = Message<"app.RobotListRequest"> & {
  * Use `create(RobotListRequestSchema)` to create a new message.
  */
 export const RobotListRequestSchema: GenMessage<RobotListRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 7);
+  messageDesc(file_app_robot_svc_g, 13);
 
 /**
  * @generated from message app.RobotListResponse
@@ -302,7 +475,7 @@ export type RobotListResponse = Message<"app.RobotListResponse"> & {
  * Use `create(RobotListResponseSchema)` to create a new message.
  */
 export const RobotListResponseSchema: GenMessage<RobotListResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 8);
+  messageDesc(file_app_robot_svc_g, 14);
 
 /**
  * @generated from message app.RobotFilter
@@ -319,7 +492,7 @@ export type RobotFilter = Message<"app.RobotFilter"> & {
  * Use `create(RobotFilterSchema)` to create a new message.
  */
 export const RobotFilterSchema: GenMessage<RobotFilter> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 9);
+  messageDesc(file_app_robot_svc_g, 15);
 
 /**
  * @generated from message app.RobotWatchRequest
@@ -355,7 +528,7 @@ export type RobotWatchRequest = Message<"app.RobotWatchRequest"> & {
  * Use `create(RobotWatchRequestSchema)` to create a new message.
  */
 export const RobotWatchRequestSchema: GenMessage<RobotWatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 10);
+  messageDesc(file_app_robot_svc_g, 16);
 
 /**
  * @generated from message app.RobotWatchResponse
@@ -374,7 +547,7 @@ export type RobotWatchResponse = Message<"app.RobotWatchResponse"> & {
  * Use `create(RobotWatchResponseSchema)` to create a new message.
  */
 export const RobotWatchResponseSchema: GenMessage<RobotWatchResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 11);
+  messageDesc(file_app_robot_svc_g, 17);
 
 /**
  * @generated from message app.RobotWatchItem
@@ -421,7 +594,7 @@ export type RobotWatchItem = Message<"app.RobotWatchItem"> & {
  * Use `create(RobotWatchItemSchema)` to create a new message.
  */
 export const RobotWatchItemSchema: GenMessage<RobotWatchItem> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 12);
+  messageDesc(file_app_robot_svc_g, 18);
 
 /**
  * @generated from message app.JointAddRequest
@@ -448,7 +621,7 @@ export type JointAddRequest = Message<"app.JointAddRequest"> & {
  * Use `create(JointAddRequestSchema)` to create a new message.
  */
 export const JointAddRequestSchema: GenMessage<JointAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 13);
+  messageDesc(file_app_robot_svc_g, 19);
 
 /**
  * @generated from message app.JointGetRequest
@@ -470,7 +643,7 @@ export type JointGetRequest = Message<"app.JointGetRequest"> & {
  * Use `create(JointGetRequestSchema)` to create a new message.
  */
 export const JointGetRequestSchema: GenMessage<JointGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 14);
+  messageDesc(file_app_robot_svc_g, 20);
 
 /**
  * @generated from message app.JointRef
@@ -493,7 +666,7 @@ export type JointRef = Message<"app.JointRef"> & {
  * Use `create(JointRefSchema)` to create a new message.
  */
 export const JointRefSchema: GenMessage<JointRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 15);
+  messageDesc(file_app_robot_svc_g, 21);
 
 /**
  * @generated from message app.JointSelect
@@ -525,7 +698,7 @@ export type JointSelect = Message<"app.JointSelect"> & {
  * Use `create(JointSelectSchema)` to create a new message.
  */
 export const JointSelectSchema: GenMessage<JointSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 16);
+  messageDesc(file_app_robot_svc_g, 22);
 
 /**
  * @generated from message app.JointPatchRequest
@@ -547,7 +720,7 @@ export type JointPatchRequest = Message<"app.JointPatchRequest"> & {
  * Use `create(JointPatchRequestSchema)` to create a new message.
  */
 export const JointPatchRequestSchema: GenMessage<JointPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 17);
+  messageDesc(file_app_robot_svc_g, 23);
 
 /**
  * @generated from message app.JointApplyRequest
@@ -569,7 +742,7 @@ export type JointApplyRequest = Message<"app.JointApplyRequest"> & {
  * Use `create(JointApplyRequestSchema)` to create a new message.
  */
 export const JointApplyRequestSchema: GenMessage<JointApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 18);
+  messageDesc(file_app_robot_svc_g, 24);
 
 /**
  * @generated from message app.FleetAddRequest
@@ -591,7 +764,7 @@ export type FleetAddRequest = Message<"app.FleetAddRequest"> & {
  * Use `create(FleetAddRequestSchema)` to create a new message.
  */
 export const FleetAddRequestSchema: GenMessage<FleetAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 19);
+  messageDesc(file_app_robot_svc_g, 25);
 
 /**
  * @generated from message app.FleetGetRequest
@@ -613,7 +786,7 @@ export type FleetGetRequest = Message<"app.FleetGetRequest"> & {
  * Use `create(FleetGetRequestSchema)` to create a new message.
  */
 export const FleetGetRequestSchema: GenMessage<FleetGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 20);
+  messageDesc(file_app_robot_svc_g, 26);
 
 /**
  * @generated from message app.FleetRef
@@ -642,7 +815,7 @@ export type FleetRef = Message<"app.FleetRef"> & {
  * Use `create(FleetRefSchema)` to create a new message.
  */
 export const FleetRefSchema: GenMessage<FleetRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 21);
+  messageDesc(file_app_robot_svc_g, 27);
 
 /**
  * @generated from message app.FleetSelect
@@ -669,7 +842,7 @@ export type FleetSelect = Message<"app.FleetSelect"> & {
  * Use `create(FleetSelectSchema)` to create a new message.
  */
 export const FleetSelectSchema: GenMessage<FleetSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 22);
+  messageDesc(file_app_robot_svc_g, 28);
 
 /**
  * @generated from message app.FleetPatchRequest
@@ -691,7 +864,7 @@ export type FleetPatchRequest = Message<"app.FleetPatchRequest"> & {
  * Use `create(FleetPatchRequestSchema)` to create a new message.
  */
 export const FleetPatchRequestSchema: GenMessage<FleetPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 23);
+  messageDesc(file_app_robot_svc_g, 29);
 
 /**
  * @generated from message app.FleetApplyRequest
@@ -713,154 +886,6 @@ export type FleetApplyRequest = Message<"app.FleetApplyRequest"> & {
  * Use `create(FleetApplyRequestSchema)` to create a new message.
  */
 export const FleetApplyRequestSchema: GenMessage<FleetApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 24);
-
-/**
- * @generated from message app.CellAddRequest
- */
-export type CellAddRequest = Message<"app.CellAddRequest"> & {
-  /**
-   * @generated from field: bytes id = 1;
-   */
-  id: Uint8Array;
-
-  /**
-   * @generated from field: payday.TenantRef tenant = 2;
-   */
-  tenant?: TenantRef | undefined;
-
-  /**
-   * @generated from field: string alias = 4 [features.field_presence = IMPLICIT];
-   */
-  alias: string;
-};
-
-/**
- * Describes the message app.CellAddRequest.
- * Use `create(CellAddRequestSchema)` to create a new message.
- */
-export const CellAddRequestSchema: GenMessage<CellAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 25);
-
-/**
- * @generated from message app.CellGetRequest
- */
-export type CellGetRequest = Message<"app.CellGetRequest"> & {
-  /**
-   * @generated from field: app.CellRef ref = 1;
-   */
-  ref?: CellRef | undefined;
-
-  /**
-   * @generated from field: app.CellSelect select = 2;
-   */
-  select?: CellSelect | undefined;
-};
-
-/**
- * Describes the message app.CellGetRequest.
- * Use `create(CellGetRequestSchema)` to create a new message.
- */
-export const CellGetRequestSchema: GenMessage<CellGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 26);
-
-/**
- * @generated from message app.CellRef
- */
-export type CellRef = Message<"app.CellRef"> & {
-  /**
-   * @generated from oneof app.CellRef.key
-   */
-  key: {
-    /**
-     * @generated from field: bytes id = 1;
-     */
-    value: Uint8Array;
-    case: "id";
-  } | { case: undefined; value?: undefined };
-};
-
-/**
- * Describes the message app.CellRef.
- * Use `create(CellRefSchema)` to create a new message.
- */
-export const CellRefSchema: GenMessage<CellRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 27);
-
-/**
- * @generated from message app.CellSelect
- */
-export type CellSelect = Message<"app.CellSelect"> & {
-  /**
-   * @generated from field: bool all = 1;
-   */
-  all: boolean;
-
-  /**
-   * @generated from field: payday.TenantSelect tenant = 2;
-   */
-  tenant?: TenantSelect | undefined;
-
-  /**
-   * @generated from field: bool alias = 4;
-   */
-  alias: boolean;
-
-  /**
-   * @generated from field: bool date_erased = 14;
-   */
-  dateErased: boolean;
-};
-
-/**
- * Describes the message app.CellSelect.
- * Use `create(CellSelectSchema)` to create a new message.
- */
-export const CellSelectSchema: GenMessage<CellSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 28);
-
-/**
- * @generated from message app.CellPatchRequest
- */
-export type CellPatchRequest = Message<"app.CellPatchRequest"> & {
-  /**
-   * @generated from field: app.CellRef ref = 1;
-   */
-  ref?: CellRef | undefined;
-
-  /**
-   * @generated from field: string alias = 8;
-   */
-  alias: string;
-};
-
-/**
- * Describes the message app.CellPatchRequest.
- * Use `create(CellPatchRequestSchema)` to create a new message.
- */
-export const CellPatchRequestSchema: GenMessage<CellPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 29);
-
-/**
- * @generated from message app.CellApplyRequest
- */
-export type CellApplyRequest = Message<"app.CellApplyRequest"> & {
-  /**
-   * @generated from field: app.CellRef ref = 1;
-   */
-  ref?: CellRef | undefined;
-
-  /**
-   * @generated from field: patch.Patch patch = 2;
-   */
-  patch?: Patch | undefined;
-};
-
-/**
- * Describes the message app.CellApplyRequest.
- * Use `create(CellApplyRequestSchema)` to create a new message.
- */
-export const CellApplyRequestSchema: GenMessage<CellApplyRequest> = /*@__PURE__*/
   messageDesc(file_app_robot_svc_g, 30);
 
 /**
@@ -1017,6 +1042,63 @@ export const ReadingApplyRequestSchema: GenMessage<ReadingApplyRequest> = /*@__P
   messageDesc(file_app_robot_svc_g, 36);
 
 /**
+ * @generated from service app.CellService
+ */
+export const CellService: GenService<{
+  /**
+   * Add creates a new Cell
+   *
+   * @generated from rpc app.CellService.Add
+   */
+  add: {
+    methodKind: "unary";
+    input: typeof CellAddRequestSchema;
+    output: typeof CellSchema;
+  },
+  /**
+   * Get retrieves a Cell
+   *
+   * @generated from rpc app.CellService.Get
+   */
+  get: {
+    methodKind: "unary";
+    input: typeof CellGetRequestSchema;
+    output: typeof CellSchema;
+  },
+  /**
+   * Patch updates an existing Cell
+   *
+   * @generated from rpc app.CellService.Patch
+   */
+  patch: {
+    methodKind: "unary";
+    input: typeof CellPatchRequestSchema;
+    output: typeof CellSchema;
+  },
+  /**
+   * Apply applies a patch document to an existing Cell
+   *
+   * @generated from rpc app.CellService.Apply
+   */
+  apply: {
+    methodKind: "unary";
+    input: typeof CellApplyRequestSchema;
+    output: typeof CellSchema;
+  },
+  /**
+   * Erase deletes a Cell
+   *
+   * @generated from rpc app.CellService.Erase
+   */
+  erase: {
+    methodKind: "unary";
+    input: typeof CellRefSchema;
+    output: typeof EmptySchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_app_robot_svc_g, 0);
+
+/**
  * @generated from service app.RobotService
  */
 export const RobotService: GenService<{
@@ -1101,7 +1183,7 @@ export const RobotService: GenService<{
     output: typeof RobotWatchResponseSchema;
   },
 }> = /*@__PURE__*/
-  serviceDesc(file_app_robot_svc_g, 0);
+  serviceDesc(file_app_robot_svc_g, 1);
 
 /**
  * @generated from service app.JointService
@@ -1158,7 +1240,7 @@ export const JointService: GenService<{
     output: typeof EmptySchema;
   },
 }> = /*@__PURE__*/
-  serviceDesc(file_app_robot_svc_g, 1);
+  serviceDesc(file_app_robot_svc_g, 2);
 
 /**
  * @generated from service app.FleetService
@@ -1212,63 +1294,6 @@ export const FleetService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof FleetRefSchema;
-    output: typeof EmptySchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_app_robot_svc_g, 2);
-
-/**
- * @generated from service app.CellService
- */
-export const CellService: GenService<{
-  /**
-   * Add creates a new Cell
-   *
-   * @generated from rpc app.CellService.Add
-   */
-  add: {
-    methodKind: "unary";
-    input: typeof CellAddRequestSchema;
-    output: typeof CellSchema;
-  },
-  /**
-   * Get retrieves a Cell
-   *
-   * @generated from rpc app.CellService.Get
-   */
-  get: {
-    methodKind: "unary";
-    input: typeof CellGetRequestSchema;
-    output: typeof CellSchema;
-  },
-  /**
-   * Patch updates an existing Cell
-   *
-   * @generated from rpc app.CellService.Patch
-   */
-  patch: {
-    methodKind: "unary";
-    input: typeof CellPatchRequestSchema;
-    output: typeof CellSchema;
-  },
-  /**
-   * Apply applies a patch document to an existing Cell
-   *
-   * @generated from rpc app.CellService.Apply
-   */
-  apply: {
-    methodKind: "unary";
-    input: typeof CellApplyRequestSchema;
-    output: typeof CellSchema;
-  },
-  /**
-   * Erase deletes a Cell
-   *
-   * @generated from rpc app.CellService.Erase
-   */
-  erase: {
-    methodKind: "unary";
-    input: typeof CellRefSchema;
     output: typeof EmptySchema;
   },
 }> = /*@__PURE__*/

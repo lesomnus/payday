@@ -17,135 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot.proto.
  */
 export const file_app_robot: GenFile = /*@__PURE__*/
-  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCKHAwoFUm9ib3QSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBABI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6fMr8FUcSAhABGiASBHBhZ2UaEAoMZGF0ZV9jcmVhdGVkEA8aBgoCaWQQARofEgRzbHVnGgkKBWFsaWFzEAQaCgoGdGVuYW50EAIwAYq7Fi0IBzInCg4KDGRhdGVfY3JlYXRlZAoECgJpZBIGdGVuYW50GgNyZWYgMihkOgAirAEKBUpvaW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIhCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEIG8oIWAkABEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoeyvwVBBICEAGKuxYSCAgiDgoMcm9ib3QudGVuYW50IoMBCgVGbGVldBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASFQoFYWxpYXMYBCABKAlCBuqCFgIwARI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6EMr8FQQSAhABirsWBAgJKgAioAEKBENlbGwSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6Dsr8FQQSAhABirsWAggKIrcBCgdSZWFkaW5nEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIhCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEIG8oIWAkABEg8KB2NlbHNpdXMYCCABKAESOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOiLK/BUEEgIQAYq7FhYIC0ICCgAiDgoMcm9ib3QudGVuYW50QjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
-
-/**
- * Robot is an ordinary entity: it belongs to a tenant, and is read only by
- * callers who may see that tenant.
- *
- * @generated from message app.Robot
- */
-export type Robot = Message<"app.Robot"> & {
-  /**
-   * @generated from field: bytes id = 1;
-   */
-  id: Uint8Array;
-
-  /**
-   * @generated from field: payday.Tenant tenant = 2;
-   */
-  tenant?: Tenant | undefined;
-
-  /**
-   * @generated from field: string alias = 4;
-   */
-  alias: string;
-
-  /**
-   * Stamped on every write and refused to a patch document, so it is a version
-   * and not a field. It is here because this entity declares a `watch:`, and
-   * the generator refuses one without it: a watch sends state, so a client
-   * replaces what it holds, and two answers about one row can arrive out of
-   * order.
-   *
-   * @generated from field: google.protobuf.Timestamp date_updated = 13;
-   */
-  dateUpdated?: Timestamp | undefined;
-
-  /**
-   * @generated from field: google.protobuf.Timestamp date_created = 15;
-   */
-  dateCreated?: Timestamp | undefined;
-
-  /**
-   * Erased softly, which is what saying nothing means: the row is stamped and
-   * stays, so it cannot be read or changed, its alias comes free again, and the
-   * trail can still say what it held.
-   *
-   * @generated from field: google.protobuf.Timestamp date_erased = 14;
-   */
-  dateErased?: Timestamp | undefined;
-};
-
-/**
- * Describes the message app.Robot.
- * Use `create(RobotSchema)` to create a new message.
- */
-export const RobotSchema: GenMessage<Robot> = /*@__PURE__*/
-  messageDesc(file_app_robot, 0);
-
-/**
- * Joint reaches its tenant through the Robot it is part of, which is what a
- * `via` of more than one step is for. Nothing else about it is interesting.
- *
- * @generated from message app.Joint
- */
-export type Joint = Message<"app.Joint"> & {
-  /**
-   * @generated from field: bytes id = 1;
-   */
-  id: Uint8Array;
-
-  /**
-   * @generated from field: app.Robot robot = 2;
-   */
-  robot?: Robot | undefined;
-
-  /**
-   * @generated from field: string alias = 4;
-   */
-  alias: string;
-
-  /**
-   * Erased softly, which is what saying nothing means: the row is stamped and
-   * stays, so it cannot be read or changed, its alias comes free again, and the
-   * trail can still say what it held.
-   *
-   * @generated from field: google.protobuf.Timestamp date_erased = 14;
-   */
-  dateErased?: Timestamp | undefined;
-};
-
-/**
- * Describes the message app.Joint.
- * Use `create(JointSchema)` to create a new message.
- */
-export const JointSchema: GenMessage<Joint> = /*@__PURE__*/
-  messageDesc(file_app_robot, 1);
-
-/**
- * Fleet is shared by the whole deployment, and says so. A reader of the schema
- * can tell that from "somebody forgot" because there is no way to forget.
- *
- * @generated from message app.Fleet
- */
-export type Fleet = Message<"app.Fleet"> & {
-  /**
-   * @generated from field: bytes id = 1;
-   */
-  id: Uint8Array;
-
-  /**
-   * @generated from field: string alias = 4;
-   */
-  alias: string;
-
-  /**
-   * Erased softly, which is what saying nothing means: the row is stamped and
-   * stays, so it cannot be read or changed, its alias comes free again, and the
-   * trail can still say what it held.
-   *
-   * @generated from field: google.protobuf.Timestamp date_erased = 14;
-   */
-  dateErased?: Timestamp | undefined;
-};
-
-/**
- * Describes the message app.Fleet.
- * Use `create(FleetSchema)` to create a new message.
- */
-export const FleetSchema: GenMessage<Fleet> = /*@__PURE__*/
-  messageDesc(file_app_robot, 2);
+  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCKgAQoEQ2VsbBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASJgoGdGVuYW50GAIgASgLMg4ucGF5ZGF5LlRlbmFudEIG8oIWAkABEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoOyvwVBBICEAGKuxYCCAoiqAMKBVJvYm90EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABImCgZ0ZW5hbnQYAiABKAsyDi5wYXlkYXkuVGVuYW50QgbyghYCQAESHwoEY2VsbBgDIAEoCzIJLmFwcC5DZWxsQgbyghYCOAESDQoFYWxpYXMYBCABKAkSOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAOnzK/BVHEgIQARogEgRwYWdlGhAKDGRhdGVfY3JlYXRlZBAPGgYKAmlkEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAGKuxYtCAcyJwoOCgxkYXRlX2NyZWF0ZWQKBAoCaWQSBnRlbmFudBoDcmVmIDIoZDoAIqwBCgVKb2ludBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIQoFcm9ib3QYAiABKAsyCi5hcHAuUm9ib3RCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6Hsr8FQQSAhABirsWEggIIg4KDHJvYm90LnRlbmFudCKDAQoFRmxlZXQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhUKBWFsaWFzGAQgASgJQgbqghYCMAESOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAOhDK/BUEEgIQAYq7FgQICSoAIrcBCgdSZWFkaW5nEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIhCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEIG8oIWAkABEg8KB2NlbHNpdXMYCCABKAESOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOiLK/BUEEgIQAYq7FhYIC0ICCgAiDgoMcm9ib3QudGVuYW50QjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Cell was added to answer one question: what does adding an entity cost?
@@ -184,6 +56,153 @@ export type Cell = Message<"app.Cell"> & {
  * Use `create(CellSchema)` to create a new message.
  */
 export const CellSchema: GenMessage<Cell> = /*@__PURE__*/
+  messageDesc(file_app_robot, 0);
+
+/**
+ * Robot is an ordinary entity: it belongs to a tenant, and is read only by
+ * callers who may see that tenant.
+ *
+ * @generated from message app.Robot
+ */
+export type Robot = Message<"app.Robot"> & {
+  /**
+   * @generated from field: bytes id = 1;
+   */
+  id: Uint8Array;
+
+  /**
+   * @generated from field: payday.Tenant tenant = 2;
+   */
+  tenant?: Tenant | undefined;
+
+  /**
+   * Field 3 is the app's, and this is what putting something there means: a set
+   * smaller than a tenant, and a second axis every read of this entity is
+   * narrowed by. payday fixes the number and the shape -- an edge, one of them,
+   * to an entity inside the wall -- and the name is this app's to choose.
+   *
+   * It is here so that the generated `pd.Grouped` is compiled and run rather
+   * than only written.
+   *
+   * Nullable, which is the case worth having in the app payday tests itself
+   * against: a schema gains field 3 after there are rows, and requiring it
+   * would mean no app could ever add one. A row in no set is then invisible to
+   * a read narrowed to one -- fail-closed, and surprising enough to be pinned
+   * by a test.
+   *
+   * @generated from field: app.Cell cell = 3;
+   */
+  cell?: Cell | undefined;
+
+  /**
+   * @generated from field: string alias = 4;
+   */
+  alias: string;
+
+  /**
+   * Stamped on every write and refused to a patch document, so it is a version
+   * and not a field. It is here because this entity declares a `watch:`, and
+   * the generator refuses one without it: a watch sends state, so a client
+   * replaces what it holds, and two answers about one row can arrive out of
+   * order.
+   *
+   * @generated from field: google.protobuf.Timestamp date_updated = 13;
+   */
+  dateUpdated?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp date_created = 15;
+   */
+  dateCreated?: Timestamp | undefined;
+
+  /**
+   * Erased softly, which is what saying nothing means: the row is stamped and
+   * stays, so it cannot be read or changed, its alias comes free again, and the
+   * trail can still say what it held.
+   *
+   * @generated from field: google.protobuf.Timestamp date_erased = 14;
+   */
+  dateErased?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message app.Robot.
+ * Use `create(RobotSchema)` to create a new message.
+ */
+export const RobotSchema: GenMessage<Robot> = /*@__PURE__*/
+  messageDesc(file_app_robot, 1);
+
+/**
+ * Joint reaches its tenant through the Robot it is part of, which is what a
+ * `via` of more than one step is for. Nothing else about it is interesting.
+ *
+ * @generated from message app.Joint
+ */
+export type Joint = Message<"app.Joint"> & {
+  /**
+   * @generated from field: bytes id = 1;
+   */
+  id: Uint8Array;
+
+  /**
+   * @generated from field: app.Robot robot = 2;
+   */
+  robot?: Robot | undefined;
+
+  /**
+   * @generated from field: string alias = 4;
+   */
+  alias: string;
+
+  /**
+   * Erased softly, which is what saying nothing means: the row is stamped and
+   * stays, so it cannot be read or changed, its alias comes free again, and the
+   * trail can still say what it held.
+   *
+   * @generated from field: google.protobuf.Timestamp date_erased = 14;
+   */
+  dateErased?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message app.Joint.
+ * Use `create(JointSchema)` to create a new message.
+ */
+export const JointSchema: GenMessage<Joint> = /*@__PURE__*/
+  messageDesc(file_app_robot, 2);
+
+/**
+ * Fleet is shared by the whole deployment, and says so. A reader of the schema
+ * can tell that from "somebody forgot" because there is no way to forget.
+ *
+ * @generated from message app.Fleet
+ */
+export type Fleet = Message<"app.Fleet"> & {
+  /**
+   * @generated from field: bytes id = 1;
+   */
+  id: Uint8Array;
+
+  /**
+   * @generated from field: string alias = 4;
+   */
+  alias: string;
+
+  /**
+   * Erased softly, which is what saying nothing means: the row is stamped and
+   * stays, so it cannot be read or changed, its alias comes free again, and the
+   * trail can still say what it held.
+   *
+   * @generated from field: google.protobuf.Timestamp date_erased = 14;
+   */
+  dateErased?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message app.Fleet.
+ * Use `create(FleetSchema)` to create a new message.
+ */
+export const FleetSchema: GenMessage<Fleet> = /*@__PURE__*/
   messageDesc(file_app_robot, 3);
 
 /**

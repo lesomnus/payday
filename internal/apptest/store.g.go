@@ -27,10 +27,10 @@ import (
 
 type Server interface {
 	Tenant() TenantServiceServer
+	Cell() CellServiceServer
 	Robot() RobotServiceServer
 	Joint() JointServiceServer
 	Fleet() FleetServiceServer
-	Cell() CellServiceServer
 	Reading() ReadingServiceServer
 	Audit() AuditServiceServer
 	Holder() HolderServiceServer
@@ -43,10 +43,10 @@ type Server interface {
 // server which is not gRPC's own can be handed the same set of services.
 func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterTenantServiceServer(g, s.Tenant())
+	RegisterCellServiceServer(g, s.Cell())
 	RegisterRobotServiceServer(g, s.Robot())
 	RegisterJointServiceServer(g, s.Joint())
 	RegisterFleetServiceServer(g, s.Fleet())
-	RegisterCellServiceServer(g, s.Cell())
 	RegisterReadingServiceServer(g, s.Reading())
 	RegisterAuditServiceServer(g, s.Audit())
 	RegisterHolderServiceServer(g, s.Holder())
@@ -55,10 +55,10 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 
 type UnimplementedServer struct {
 	TenantServer  TenantServiceServer
+	CellServer    CellServiceServer
 	RobotServer   RobotServiceServer
 	JointServer   JointServiceServer
 	FleetServer   FleetServiceServer
-	CellServer    CellServiceServer
 	ReadingServer ReadingServiceServer
 	AuditServer   AuditServiceServer
 	HolderServer  HolderServiceServer
@@ -66,10 +66,10 @@ type UnimplementedServer struct {
 }
 
 func (UnimplementedServer) Tenant() TenantServiceServer   { return UnimplementedTenantServiceServer{} }
+func (UnimplementedServer) Cell() CellServiceServer       { return UnimplementedCellServiceServer{} }
 func (UnimplementedServer) Robot() RobotServiceServer     { return UnimplementedRobotServiceServer{} }
 func (UnimplementedServer) Joint() JointServiceServer     { return UnimplementedJointServiceServer{} }
 func (UnimplementedServer) Fleet() FleetServiceServer     { return UnimplementedFleetServiceServer{} }
-func (UnimplementedServer) Cell() CellServiceServer       { return UnimplementedCellServiceServer{} }
 func (UnimplementedServer) Reading() ReadingServiceServer { return UnimplementedReadingServiceServer{} }
 func (UnimplementedServer) Audit() AuditServiceServer     { return UnimplementedAuditServiceServer{} }
 func (UnimplementedServer) Holder() HolderServiceServer   { return UnimplementedHolderServiceServer{} }
@@ -77,10 +77,10 @@ func (UnimplementedServer) Outbox() OutboxServiceServer   { return Unimplemented
 
 type StaticServer struct {
 	TenantServer  TenantServiceServer
+	CellServer    CellServiceServer
 	RobotServer   RobotServiceServer
 	JointServer   JointServiceServer
 	FleetServer   FleetServiceServer
-	CellServer    CellServiceServer
 	ReadingServer ReadingServiceServer
 	AuditServer   AuditServiceServer
 	HolderServer  HolderServiceServer
@@ -88,10 +88,10 @@ type StaticServer struct {
 }
 
 func (s StaticServer) Tenant() TenantServiceServer   { return s.TenantServer }
+func (s StaticServer) Cell() CellServiceServer       { return s.CellServer }
 func (s StaticServer) Robot() RobotServiceServer     { return s.RobotServer }
 func (s StaticServer) Joint() JointServiceServer     { return s.JointServer }
 func (s StaticServer) Fleet() FleetServiceServer     { return s.FleetServer }
-func (s StaticServer) Cell() CellServiceServer       { return s.CellServer }
 func (s StaticServer) Reading() ReadingServiceServer { return s.ReadingServer }
 func (s StaticServer) Audit() AuditServiceServer     { return s.AuditServer }
 func (s StaticServer) Holder() HolderServiceServer   { return s.HolderServer }
@@ -99,10 +99,10 @@ func (s StaticServer) Outbox() OutboxServiceServer   { return s.OutboxServer }
 
 type Client interface {
 	Tenant() TenantServiceClient
+	Cell() CellServiceClient
 	Robot() RobotServiceClient
 	Joint() JointServiceClient
 	Fleet() FleetServiceClient
-	Cell() CellServiceClient
 	Reading() ReadingServiceClient
 	Audit() AuditServiceClient
 	Holder() HolderServiceClient
@@ -112,10 +112,10 @@ type Client interface {
 func NewClient(c *grpc.ClientConn) Client {
 	return &client{
 		_Tenant:  NewTenantServiceClient(c),
+		_Cell:    NewCellServiceClient(c),
 		_Robot:   NewRobotServiceClient(c),
 		_Joint:   NewJointServiceClient(c),
 		_Fleet:   NewFleetServiceClient(c),
-		_Cell:    NewCellServiceClient(c),
 		_Reading: NewReadingServiceClient(c),
 		_Audit:   NewAuditServiceClient(c),
 		_Holder:  NewHolderServiceClient(c),
@@ -125,10 +125,10 @@ func NewClient(c *grpc.ClientConn) Client {
 
 type client struct {
 	_Tenant  TenantServiceClient
+	_Cell    CellServiceClient
 	_Robot   RobotServiceClient
 	_Joint   JointServiceClient
 	_Fleet   FleetServiceClient
-	_Cell    CellServiceClient
 	_Reading ReadingServiceClient
 	_Audit   AuditServiceClient
 	_Holder  HolderServiceClient
@@ -136,10 +136,10 @@ type client struct {
 }
 
 func (c *client) Tenant() TenantServiceClient   { return c._Tenant }
+func (c *client) Cell() CellServiceClient       { return c._Cell }
 func (c *client) Robot() RobotServiceClient     { return c._Robot }
 func (c *client) Joint() JointServiceClient     { return c._Joint }
 func (c *client) Fleet() FleetServiceClient     { return c._Fleet }
-func (c *client) Cell() CellServiceClient       { return c._Cell }
 func (c *client) Reading() ReadingServiceClient { return c._Reading }
 func (c *client) Audit() AuditServiceClient     { return c._Audit }
 func (c *client) Holder() HolderServiceClient   { return c._Holder }

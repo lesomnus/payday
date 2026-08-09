@@ -13,6 +13,40 @@ import (
 	uuid "github.com/google/uuid"
 )
 
+type Cell struct {
+	ent.Schema
+}
+
+func (Cell) Fields() []ent.Field {
+	return []ent.Field{
+		field.UUID("id", uuid.UUID{}).
+			Unique().
+			Immutable(),
+		field.String("alias"),
+		field.Time("date_erased").
+			Nillable().
+			Optional(),
+		field.UUID("tenant_id", uuid.UUID{}).
+			Immutable(),
+	}
+}
+
+func (Cell) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("tenant", Tenant.Type).
+			Unique().
+			Field("tenant_id").
+			Required().
+			Immutable(),
+	}
+}
+
+func (Cell) Annotations() []schema.Annotation {
+	return []schema.Annotation{
+		entsql.Annotation{Table: "cell"},
+	}
+}
+
 type Robot struct {
 	ent.Schema
 }
@@ -32,6 +66,8 @@ func (Robot) Fields() []ent.Field {
 			Optional(),
 		field.UUID("tenant_id", uuid.UUID{}).
 			Immutable(),
+		field.UUID("cell_id", uuid.UUID{}).
+			Optional(),
 	}
 }
 
@@ -42,6 +78,9 @@ func (Robot) Edges() []ent.Edge {
 			Field("tenant_id").
 			Required().
 			Immutable(),
+		edge.To("cell", Cell.Type).
+			Unique().
+			Field("cell_id"),
 	}
 }
 
@@ -122,40 +161,6 @@ func (Fleet) Indexes() []ent.Index {
 func (Fleet) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		entsql.Annotation{Table: "fleet"},
-	}
-}
-
-type Cell struct {
-	ent.Schema
-}
-
-func (Cell) Fields() []ent.Field {
-	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
-			Unique().
-			Immutable(),
-		field.String("alias"),
-		field.Time("date_erased").
-			Nillable().
-			Optional(),
-		field.UUID("tenant_id", uuid.UUID{}).
-			Immutable(),
-	}
-}
-
-func (Cell) Edges() []ent.Edge {
-	return []ent.Edge{
-		edge.To("tenant", Tenant.Type).
-			Unique().
-			Field("tenant_id").
-			Required().
-			Immutable(),
-	}
-}
-
-func (Cell) Annotations() []schema.Annotation {
-	return []schema.Annotation{
-		entsql.Annotation{Table: "cell"},
 	}
 }
 

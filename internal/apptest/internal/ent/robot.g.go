@@ -9,6 +9,22 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func (e *Cell) Proto() *apptest.Cell {
+	x := &apptest.Cell{}
+	x.SetId(e.ID[:])
+	if v := e.Edges.Tenant; v != nil {
+		x.SetTenant(v.Proto())
+	} else if v := e.TenantID; v != *new(uuid.UUID) {
+		r := &apptest.Tenant{}
+		r.SetId(v[:])
+		x.SetTenant(r)
+	}
+	x.SetAlias(e.Alias)
+	if e.DateErased != nil {
+		x.SetDateErased(timestamppb.New(*e.DateErased))
+	}
+	return x
+}
 func (e *Robot) Proto() *apptest.Robot {
 	x := &apptest.Robot{}
 	x.SetId(e.ID[:])
@@ -18,6 +34,13 @@ func (e *Robot) Proto() *apptest.Robot {
 		r := &apptest.Tenant{}
 		r.SetId(v[:])
 		x.SetTenant(r)
+	}
+	if v := e.Edges.Cell; v != nil {
+		x.SetCell(v.Proto())
+	} else if v := e.CellID; v != *new(uuid.UUID) {
+		r := &apptest.Cell{}
+		r.SetId(v[:])
+		x.SetCell(r)
 	}
 	x.SetAlias(e.Alias)
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
@@ -46,22 +69,6 @@ func (e *Joint) Proto() *apptest.Joint {
 func (e *Fleet) Proto() *apptest.Fleet {
 	x := &apptest.Fleet{}
 	x.SetId(e.ID[:])
-	x.SetAlias(e.Alias)
-	if e.DateErased != nil {
-		x.SetDateErased(timestamppb.New(*e.DateErased))
-	}
-	return x
-}
-func (e *Cell) Proto() *apptest.Cell {
-	x := &apptest.Cell{}
-	x.SetId(e.ID[:])
-	if v := e.Edges.Tenant; v != nil {
-		x.SetTenant(v.Proto())
-	} else if v := e.TenantID; v != *new(uuid.UUID) {
-		r := &apptest.Tenant{}
-		r.SetId(v[:])
-		x.SetTenant(r)
-	}
 	x.SetAlias(e.Alias)
 	if e.DateErased != nil {
 		x.SetDateErased(timestamppb.New(*e.DateErased))

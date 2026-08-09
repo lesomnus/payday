@@ -16,11 +16,13 @@ import (
 const (
 	Tenant pdid.Domain = 1
 	Holder pdid.Domain = 2
+	Cell   pdid.Domain = 10
 )
 
 func TestMain(m *testing.M) {
 	pdid.Register("test.Tenant", Tenant, "tenant")
 	pdid.Register("test.Holder", Holder, "holder")
+	pdid.Register("test.Cell", Cell, "cell")
 
 	m.Run()
 }
@@ -102,8 +104,10 @@ func TestGrant(t *testing.T) {
 		var z frame.Grant
 		x.False(z.IsWhole())
 		x.False(z.AnyTenant())
+		x.False(z.AnySet())
 		x.False(z.Allows("/app.RobotService/Get"))
 		x.Empty(z.TenantIds())
+		x.Empty(z.SetIds())
 	})
 
 	t.Run("Whole allows whatever the actor does", func(t *testing.T) {
@@ -112,6 +116,7 @@ func TestGrant(t *testing.T) {
 		g := frame.Whole()
 		x.True(g.IsWhole())
 		x.True(g.AnyTenant())
+		x.True(g.AnySet())
 		x.True(g.Allows("/anything/at/all"))
 	})
 
@@ -121,15 +126,92 @@ func TestGrant(t *testing.T) {
 		x.False(frame.Whole().To().Allows("/app.RobotService/Get"))
 		x.Empty(frame.Whole().In().TenantIds())
 		x.False(frame.Whole().In().AnyTenant())
+		x.Empty(frame.Whole().Within().SetIds())
+		x.False(frame.Whole().Within().AnySet())
 	})
 
-	t.Run("narrowing one axis leaves the other", func(t *testing.T) {
+	t.Run("narrowing one axis leaves the others", func(t *testing.T) {
 		x := require.New(t)
 
 		g := frame.Whole().To("/app.RobotService/Get")
 		x.True(g.AnyTenant())
+		x.True(g.AnySet())
 		x.True(g.Allows("/app.RobotService/Get"))
 		x.False(g.Allows("/app.RobotService/Erase"))
+
+		// The set is its own axis and not a finer tenant: narrowing to a site
+		// says nothing about which tenants, and a credential for one site of
+		// one tenant has to say both.
+		h := frame.Whole().Within(pdid.New(Cell))
+		x.True(h.AnyTenant())
+		x.True(h.Allows("/anything/at/all"))
+		x.False(h.AnySet())
+		x.False(h.IsWhole())
+	})
+}
+
+// TestNarrowSet is the second axis's [frame.Narrow], and what it adds is the
+// meet: `of` answers about the actor, and the credential narrows that.
+//
+// It is here rather than left to whatever calls it because the failure is
+// silent. An app that answers "which sets may this caller see" correctly and
+// never thinks about the credential hands out site-scoped keys that reach every
+// site, and nothing says so.
+func TestNarrowSet(t *testing.T) {
+	north, south := pdid.New(Cell), pdid.New(Cell)
+
+	only := func(vs ...pdid.Id) frame.Sets {
+		return func(context.Context) ([]uuid.UUID, bool, error) {
+			us := make([]uuid.UUID, len(vs))
+			for i, v := range vs {
+				us[i] = v.Uuid()
+			}
+
+			return us, false, nil
+		}
+	}
+	every := frame.Sets(func(context.Context) ([]uuid.UUID, bool, error) {
+		return nil, true, nil
+	})
+
+	as := func(g frame.Grant) context.Context {
+		return frame.Into(t.Context(), frame.New(pdid.New(Holder), pdid.New(Tenant), g))
+	}
+
+	for _, tc := range []struct {
+		name  string
+		of    frame.Sets
+		grant frame.Grant
+		all   bool
+		vs    []uuid.UUID
+	}{
+		{"nothing narrows", nil, frame.Whole(), true, nil},
+		{"only the credential does", nil, frame.Whole().Within(north), false, []uuid.UUID{north.Uuid()}},
+		{"only the policy does", only(north), frame.Whole(), false, []uuid.UUID{north.Uuid()}},
+		{"the policy says every one", every, frame.Whole().Within(south), false, []uuid.UUID{south.Uuid()}},
+		{"both, and they agree", only(north, south), frame.Whole().Within(south), false, []uuid.UUID{south.Uuid()}},
+		{"both, and they do not", only(north), frame.Whole().Within(south), false, []uuid.UUID{}},
+
+		// An empty list is not "no narrowing". `IDIn()` renders as
+		// `WHERE FALSE`, so a credential made for no set reads no rows -- read
+		// the other way round it would open up as it ran out.
+		{"a credential for no set at all", only(north), frame.Whole().Within(), false, []uuid.UUID{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			x := require.New(t)
+
+			vs, all, err := frame.NarrowSet(as(tc.grant), tc.of)
+			x.NoError(err)
+			x.Equal(tc.all, all)
+			x.Equal(tc.vs, vs)
+		})
+	}
+
+	t.Run("a request with no frame is refused rather than served as anybody", func(t *testing.T) {
+		x := require.New(t)
+
+		_, _, err := frame.NarrowSet(t.Context(), every)
+		x.Equal(codes.Unauthenticated, status.Code(err))
 	})
 }
 

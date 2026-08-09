@@ -10,6 +10,28 @@ import "payday.proto";
 option features.field_presence = IMPLICIT;
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
+// Cell was added to answer one question: what does adding an entity cost?
+// Nothing below this line is Go, and nothing else in this app was touched.
+message Cell {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  string alias = 4;
+
+  // Erased softly, which is what saying nothing means: the row is stamped and
+  // stays, so it cannot be read or changed, its alias comes free again, and the
+  // trail can still say what it held.
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 10
+  };
+}
+
 // Robot is an ordinary entity: it belongs to a tenant, and is read only by
 // callers who may see that tenant.
 message Robot {
@@ -19,6 +41,22 @@ message Robot {
     default: ""
   }];
   payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+
+  // Field 3 is the app's, and this is what putting something there means: a set
+  // smaller than a tenant, and a second axis every read of this entity is
+  // narrowed by. payday fixes the number and the shape -- an edge, one of them,
+  // to an entity inside the wall -- and the name is this app's to choose.
+  //
+  // It is here so that the generated `pd.Grouped` is compiled and run rather
+  // than only written.
+  //
+  // Nullable, which is the case worth having in the app payday tests itself
+  // against: a schema gains field 3 after there are rows, and requiring it
+  // would mean no app could ever add one. A row in no set is then invisible to
+  // a read narrowed to one -- fail-closed, and surprising enough to be pinned
+  // by a test.
+  Cell cell = 3 [(orm.edge) = {nullable: true}];
+
   string alias = 4;
 
   // Stamped on every write and refused to a patch document, so it is a version
@@ -131,28 +169,6 @@ message Fleet {
   option (payday.entity) = {
     domain: 9
     global: {}
-  };
-}
-
-// Cell was added to answer one question: what does adding an entity cost?
-// Nothing below this line is Go, and nothing else in this app was touched.
-message Cell {
-  bytes id = 1 [(orm.field) = {
-    type: TYPE_UUID
-    key: true
-    default: ""
-  }];
-  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  string alias = 4;
-
-  // Erased softly, which is what saying nothing means: the row is stamped and
-  // stays, so it cannot be read or changed, its alias comes free again, and the
-  // trail can still say what it held.
-  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
-
-  option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {
-    domain: 10
   };
 }
 

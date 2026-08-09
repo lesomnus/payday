@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 )
@@ -29,6 +30,8 @@ type Robot struct {
 	DateErased *time.Time `json:"date_erased,omitempty"`
 	// TenantID holds the value of the "tenant_id" field.
 	TenantID uuid.UUID `json:"tenant_id,omitempty"`
+	// CellID holds the value of the "cell_id" field.
+	CellID uuid.UUID `json:"cell_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RobotQuery when eager-loading is set.
 	Edges        RobotEdges `json:"edges"`
@@ -39,9 +42,11 @@ type Robot struct {
 type RobotEdges struct {
 	// Tenant holds the value of the tenant edge.
 	Tenant *Tenant `json:"tenant,omitempty"`
+	// Cell holds the value of the cell edge.
+	Cell *Cell `json:"cell,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // TenantOrErr returns the Tenant value or an error if the edge
@@ -55,6 +60,17 @@ func (e RobotEdges) TenantOrErr() (*Tenant, error) {
 	return nil, &NotLoadedError{edge: "tenant"}
 }
 
+// CellOrErr returns the Cell value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RobotEdges) CellOrErr() (*Cell, error) {
+	if e.Cell != nil {
+		return e.Cell, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: cell.Label}
+	}
+	return nil, &NotLoadedError{edge: "cell"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Robot) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -64,7 +80,7 @@ func (*Robot) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case robot.FieldDateUpdated, robot.FieldDateCreated, robot.FieldDateErased:
 			values[i] = new(sql.NullTime)
-		case robot.FieldID, robot.FieldTenantID:
+		case robot.FieldID, robot.FieldTenantID, robot.FieldCellID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -118,6 +134,12 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.TenantID = *value
 			}
+		case robot.FieldCellID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field cell_id", values[i])
+			} else if value != nil {
+				_m.CellID = *value
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -134,6 +156,11 @@ func (_m *Robot) Value(name string) (ent.Value, error) {
 // QueryTenant queries the "tenant" edge of the Robot entity.
 func (_m *Robot) QueryTenant() *TenantQuery {
 	return NewRobotClient(_m.config).QueryTenant(_m)
+}
+
+// QueryCell queries the "cell" edge of the Robot entity.
+func (_m *Robot) QueryCell() *CellQuery {
+	return NewRobotClient(_m.config).QueryCell(_m)
 }
 
 // Update returns a builder for updating this Robot.
@@ -175,6 +202,9 @@ func (_m *Robot) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("tenant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))
+	builder.WriteString(", ")
+	builder.WriteString("cell_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CellID))
 	builder.WriteByte(')')
 	return builder.String()
 }

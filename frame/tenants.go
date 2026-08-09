@@ -123,3 +123,77 @@ func Narrow(ctx context.Context) (vs []uuid.UUID, all bool, err error) {
 
 	return s.Uuids(), false, nil
 }
+
+// Sets is what answers which sets a caller may see, for a schema that declared
+// one at field 3.
+//
+// It is a function rather than a field of a [Frame] because it is not settled
+// the way a tenant is. A caller's tenant is one row and comes back with them; a
+// caller's sets are a membership table an app owns and queries how it likes,
+// and often does not need at all -- so payday takes the answer where it is
+// asked for rather than making every frame carry one.
+type Sets func(ctx context.Context) (vs []uuid.UUID, all bool, err error)
+
+// NarrowSet is what generated set scopes ask, and it is [Narrow]'s shape for
+// the second axis: the sets to narrow a query by, and whether there is anything
+// to narrow by at all.
+//
+// It is the meet of two answers -- what `of` says the caller may see, and what
+// the credential allows of that -- and either may be missing:
+//
+//	of is nil          the app has no rule; the credential still narrows
+//	of says all        every set, narrowed by the credential
+//	the grant is whole what `of` said, unnarrowed
+//
+// # Why generated code calls this rather than `of` directly
+//
+// Because the attenuation would otherwise be the app's to remember. `of` is
+// written to answer "which sets may this caller see", which is a question about
+// the actor -- and a credential narrowed to one site is not about the actor at
+// all. An app that answers the first question correctly and never thinks about
+// the second hands out site-scoped keys that reach every site, and nothing
+// anywhere says so.
+//
+// That is the same reason the predicate is generated in the first place: not
+// that the code is hard, but that the failure is silent.
+func NarrowSet(ctx context.Context, of Sets) (vs []uuid.UUID, all bool, err error) {
+	f, ok := From(ctx)
+	if !ok {
+		// The same refusal [Scope] makes, for the same reason: a request with
+		// no frame is one nobody vouched for, and there is no scope that means
+		// "everything, because nobody asked".
+		return nil, false, status.Error(codes.Unauthenticated, "who is asking?")
+	}
+
+	given, all := []uuid.UUID(nil), true
+	if of != nil {
+		if given, all, err = of(ctx); err != nil {
+			return nil, false, err
+		}
+	}
+
+	if f.Grant.AnySet() {
+		return given, all, nil
+	}
+
+	held := make([]uuid.UUID, len(f.Grant.SetIds()))
+	for i, v := range f.Grant.SetIds() {
+		held[i] = v.Uuid()
+	}
+
+	if all {
+		// Every set the app knows of, narrowed to the ones the credential was
+		// made for. An empty list here is a credential that allows no set,
+		// which renders as `WHERE FALSE`; see [Tenants.Uuids].
+		return held, false, nil
+	}
+
+	vs = make([]uuid.UUID, 0, min(len(given), len(held)))
+	for _, v := range given {
+		if slices.Contains(held, v) {
+			vs = append(vs, v)
+		}
+	}
+
+	return vs, false, nil
+}

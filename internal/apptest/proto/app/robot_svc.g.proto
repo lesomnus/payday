@@ -9,6 +9,19 @@ import "payday/tenant_svc.g.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
+service CellService {
+  // Add creates a new Cell
+  rpc Add(CellAddRequest) returns (Cell);
+  // Get retrieves a Cell
+  rpc Get(CellGetRequest) returns (Cell);
+  // Patch updates an existing Cell
+  rpc Patch(CellPatchRequest) returns (Cell);
+  // Apply applies a patch document to an existing Cell
+  rpc Apply(CellApplyRequest) returns (Cell);
+  // Erase deletes a Cell
+  rpc Erase(CellRef) returns (google.protobuf.Empty);
+}
+
 service RobotService {
   // Add creates a new Robot
   rpc Add(RobotAddRequest) returns (Robot);
@@ -62,19 +75,6 @@ service FleetService {
   rpc Erase(FleetRef) returns (google.protobuf.Empty);
 }
 
-service CellService {
-  // Add creates a new Cell
-  rpc Add(CellAddRequest) returns (Cell);
-  // Get retrieves a Cell
-  rpc Get(CellGetRequest) returns (Cell);
-  // Patch updates an existing Cell
-  rpc Patch(CellPatchRequest) returns (Cell);
-  // Apply applies a patch document to an existing Cell
-  rpc Apply(CellApplyRequest) returns (Cell);
-  // Erase deletes a Cell
-  rpc Erase(CellRef) returns (google.protobuf.Empty);
-}
-
 service ReadingService {
   // Add creates a new Reading
   rpc Add(ReadingAddRequest) returns (Reading);
@@ -88,9 +88,44 @@ service ReadingService {
   rpc Erase(ReadingRef) returns (google.protobuf.Empty);
 }
 
+message CellAddRequest {
+  bytes id = 1;
+  payday.TenantRef tenant = 2;
+  string alias = 4 [features.field_presence = IMPLICIT];
+}
+
+message CellGetRequest {
+  CellRef ref = 1;
+  CellSelect select = 2;
+}
+
+message CellRef {
+  oneof key {
+    bytes id = 1;
+  }
+}
+
+message CellSelect {
+  bool all = 1;
+  payday.TenantSelect tenant = 2;
+  bool alias = 4;
+  bool date_erased = 14;
+}
+
+message CellPatchRequest {
+  CellRef ref = 1;
+  string alias = 8;
+}
+
+message CellApplyRequest {
+  CellRef ref = 1;
+  patch.Patch patch = 2;
+}
+
 message RobotAddRequest {
   bytes id = 1;
   payday.TenantRef tenant = 2;
+  CellRef cell = 3;
   string alias = 4 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_created = 15;
 }
@@ -115,6 +150,7 @@ message RobotRefBySlug {
 message RobotSelect {
   bool all = 1;
   payday.TenantSelect tenant = 2;
+  CellSelect cell = 3;
   bool alias = 4;
   bool date_updated = 13;
   bool date_created = 15;
@@ -123,6 +159,12 @@ message RobotSelect {
 
 message RobotPatchRequest {
   RobotRef ref = 1;
+  CellRef cell = 6;
+  // Clear cell instead of writing it.
+  // It takes a field of its own because an unset value already means
+  // "leave it alone", so no value could have meant NULL. It wins
+  // outright: setting both this and cell clears.
+  bool cell_null = 7;
   string alias = 8;
   // The version this update requires the stored date_updated to be.
   // It is a precondition, not a write: the update applies only if the row
@@ -291,40 +333,6 @@ message FleetPatchRequest {
 
 message FleetApplyRequest {
   FleetRef ref = 1;
-  patch.Patch patch = 2;
-}
-
-message CellAddRequest {
-  bytes id = 1;
-  payday.TenantRef tenant = 2;
-  string alias = 4 [features.field_presence = IMPLICIT];
-}
-
-message CellGetRequest {
-  CellRef ref = 1;
-  CellSelect select = 2;
-}
-
-message CellRef {
-  oneof key {
-    bytes id = 1;
-  }
-}
-
-message CellSelect {
-  bool all = 1;
-  payday.TenantSelect tenant = 2;
-  bool alias = 4;
-  bool date_erased = 14;
-}
-
-message CellPatchRequest {
-  CellRef ref = 1;
-  string alias = 8;
-}
-
-message CellApplyRequest {
-  CellRef ref = 1;
   patch.Patch patch = 2;
 }
 

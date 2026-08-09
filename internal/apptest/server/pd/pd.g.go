@@ -234,6 +234,97 @@ func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	return tenant.IDIn(vs...), nil
 }
 
+// Sets is which Cells a caller may see.
+//
+// `all` is how "every one of them" is said, and it is a second return
+// rather than a value in the first: an empty list has to mean none, or the
+// safe answer and the open one are the same value and a bug that loses the
+// list opens the door. This is [frame.Narrow]'s shape for the same reason.
+//
+// Answer what the **actor** may see and nothing else. What the credential
+// they came with allows of that is applied after, by [frame.NarrowSet], so
+// a Cell-scoped token narrows whatever this says without this
+// knowing there is such a thing.
+type Sets = frame.Sets
+
+// Grouped answers with the scope that narrows every read to the Cells
+// `of` says the caller may see.
+//
+// It goes beside the wall rather than instead of it, and both are applied:
+//
+//	bare.WithScope(bare.Scopes{pd.Wall(), pd.Grouped(of)})
+//
+// The two are not the same question. The wall is who holds the row; this is
+// which set inside them it is in. An app that narrows only by the set is one
+// where two tenants naming the same Cell see each other's rows.
+//
+// `of` may be nil, and a credential narrowed to a Cell still narrows:
+// what a caller may see and what their credential allows of it are two
+// questions, and only the first is `of`'s. See [frame.NarrowSet].
+func Grouped(of Sets) bare.Scope { return grouped{of} }
+
+// grouped is what [Grouped] answers with. It writes out every entity,
+// including the ones that are in no set, so that an entity added to the
+// schema cannot arrive without a decision having been made about it.
+type grouped struct{ of Sets }
+
+var _ bare.Scope = grouped{}
+
+// CellScope: it is the set, so the sets a caller may see are the rows they may see.
+func (x grouped) CellScope(ctx context.Context) (predicate.Cell, error) {
+	vs, all, err := frame.NarrowSet(ctx, x.of)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return cell.IDIn(vs...), nil
+}
+
+// FleetScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) FleetScope(ctx context.Context) (predicate.Fleet, error) {
+	return nil, nil
+}
+
+// JointScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) JointScope(ctx context.Context) (predicate.Joint, error) {
+	return nil, nil
+}
+
+// ReadingScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) ReadingScope(ctx context.Context) (predicate.Reading, error) {
+	return nil, nil
+}
+
+// RobotScope: in the Cell its "cell" names.
+func (x grouped) RobotScope(ctx context.Context) (predicate.Robot, error) {
+	vs, all, err := frame.NarrowSet(ctx, x.of)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return robot.CellIDIn(vs...), nil
+}
+
+// AuditScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) AuditScope(ctx context.Context) (predicate.Audit, error) {
+	return nil, nil
+}
+
+// HolderScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) HolderScope(ctx context.Context) (predicate.Holder, error) {
+	return nil, nil
+}
+
+// OutboxScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
+	return nil, nil
+}
+
+// TenantScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) TenantScope(ctx context.Context) (predicate.Tenant, error) {
+	return nil, nil
+}
+
 // Sink is the server the stack is built on: the generated CRUD servers,
 // with a List on every entity that declared one.
 //
@@ -1575,6 +1666,18 @@ func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 		}
 	}
 
+	if ref := req.GetCell(); ref != nil {
+		if _, err := s.Gate.Next().Cell().Get(ctx, apptest.CellGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Cell")
+			}
+
+			return nil, err
+		}
+	}
+
 	return s.RobotServiceServer.Add(ctx, req)
 }
 
@@ -2313,6 +2416,71 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 
 		return anypb.New(res)
 
+	case apptest.CellService_Add_FullMethodName:
+		v := &apptest.CellAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.CellService_Get_FullMethodName:
+		v := &apptest.CellGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.CellService_Patch_FullMethodName:
+		v := &apptest.CellPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.CellService_Apply_FullMethodName:
+		v := &apptest.CellApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.CellService_Erase_FullMethodName:
+		v := &apptest.CellRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Cell().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
 	case apptest.RobotService_Add_FullMethodName:
 		v := &apptest.RobotAddRequest{}
 		if err := op.GetRequest().UnmarshalTo(v); err != nil {
@@ -2515,71 +2683,6 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Fleet().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.CellService_Add_FullMethodName:
-		v := &apptest.CellAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.CellService_Get_FullMethodName:
-		v := &apptest.CellGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.CellService_Patch_FullMethodName:
-		v := &apptest.CellPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.CellService_Apply_FullMethodName:
-		v := &apptest.CellApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.CellService_Erase_FullMethodName:
-		v := &apptest.CellRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Erase(ctx, v)
 		if err != nil {
 			return nil, err
 		}

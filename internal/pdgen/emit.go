@@ -238,7 +238,12 @@ func EmitGrouped(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("// rather than a value in the first: an empty list has to mean none, or the")
 	g.P("// safe answer and the open one are the same value and a bug that loses the")
 	g.P("// list opens the door. This is [frame.Narrow]'s shape for the same reason.")
-	g.P("type Sets func(ctx ", pkgCtx.Ident("Context"), ") (vs []", pkgUuid.Ident("UUID"), ", all bool, err error)")
+	g.P("//")
+	g.P("// Answer what the **actor** may see and nothing else. What the credential")
+	g.P("// they came with allows of that is applied after, by [frame.NarrowSet], so")
+	g.P("// a ", set, "-scoped token narrows whatever this says without this")
+	g.P("// knowing there is such a thing.")
+	g.P("type Sets = ", pkgFrame.Ident("Sets"))
 	g.P("")
 
 	g.P("// Grouped answers with the scope that narrows every read to the ", set, "s")
@@ -251,6 +256,10 @@ func EmitGrouped(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("// The two are not the same question. The wall is who holds the row; this is")
 	g.P("// which set inside them it is in. An app that narrows only by the set is one")
 	g.P("// where two tenants naming the same ", set, " see each other's rows.")
+	g.P("//")
+	g.P("// `of` may be nil, and a credential narrowed to a ", set, " still narrows:")
+	g.P("// what a caller may see and what their credential allows of it are two")
+	g.P("// questions, and only the first is `of`'s. See [frame.NarrowSet].")
 	g.P("func Grouped(of Sets) ", p.Bare.Ident("Scope"), " { return grouped{of} }")
 	g.P("")
 
@@ -274,11 +283,11 @@ func EmitGrouped(g *protogen.GeneratedFile, s *Schema, p Paths) {
 			continue
 		}
 
-		g.P("	if x.of == nil {")
-		g.P("		return nil, nil")
-		g.P("	}")
-		g.P("")
-		g.P("	vs, all, err := x.of(ctx)")
+		// Never `x.of` directly. It answers about the actor, and what the
+		// credential allows of that is the other half; see [frame.NarrowSet].
+		// An app with no rule at all -- `of` nil -- still has its set-scoped
+		// credentials honoured, which is the case a short circuit here lost.
+		g.P("	vs, all, err := ", pkgFrame.Ident("NarrowSet"), "(ctx, x.of)")
 		g.P("	if all || err != nil {")
 		g.P("		return nil, err")
 		g.P("	}")

@@ -269,3 +269,5 @@ set 같은 것 — 은 조용히 넘기지 않고 거절한다.
 | 벽 그리고 앱의 규칙 | `bare.Scopes{pd.Wall(), …}` |
 | 배포가 자기 일을 하는 것 | `Ungated` — 특권이 아니라 인스턴스 |
 | 인증서가 말한 테넌트 | `Identity.TenantId` — 주장, 인터셉터가 행과 대조 |
+| 테넌트보다 작은 집합으로 좁히기 | 스키마 3번 → `pd.Grouped(of)` |
+| 한 site 전용 키 | `frame.Grant.Within` — `of`와 교집합 |

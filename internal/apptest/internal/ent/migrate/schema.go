@@ -204,6 +204,7 @@ var (
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUUID},
+		{Name: "cell_id", Type: field.TypeUUID, Nullable: true},
 	}
 	// RobotTable holds the schema information for the "robot" table.
 	RobotTable = &schema.Table{
@@ -216,6 +217,12 @@ var (
 				Columns:    []*schema.Column{RobotColumns[5]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "robot_cell_cell",
+				Columns:    []*schema.Column{RobotColumns[6]},
+				RefColumns: []*schema.Column{CellColumns[0]},
+				OnDelete:   schema.SetNull,
 			},
 		},
 		Indexes: []*schema.Index{
@@ -291,6 +298,7 @@ func init() {
 		Table: "reading",
 	}
 	RobotTable.ForeignKeys[0].RefTable = TenantTable
+	RobotTable.ForeignKeys[1].RefTable = CellTable
 	RobotTable.Annotation = &entsql.Annotation{
 		Table: "robot",
 	}

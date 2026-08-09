@@ -23,2894 +23,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type RobotAddRequest struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Tenant      *TenantRef             `protobuf:"bytes,2,opt,name=tenant"`
-	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
-	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *RobotAddRequest) Reset() {
-	*x = RobotAddRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotAddRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotAddRequest) ProtoMessage() {}
-
-func (x *RobotAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotAddRequest) GetId() []byte {
-	if x != nil {
-		return x.xxx_hidden_Id
-	}
-	return nil
-}
-
-func (x *RobotAddRequest) GetTenant() *TenantRef {
-	if x != nil {
-		return x.xxx_hidden_Tenant
-	}
-	return nil
-}
-
-func (x *RobotAddRequest) GetAlias() string {
-	if x != nil {
-		return x.xxx_hidden_Alias
-	}
-	return ""
-}
-
-func (x *RobotAddRequest) GetDateCreated() *timestamppb.Timestamp {
-	if x != nil {
-		return x.xxx_hidden_DateCreated
-	}
-	return nil
-}
-
-func (x *RobotAddRequest) SetId(v []byte) {
-	if v == nil {
-		v = []byte{}
-	}
-	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
-}
-
-func (x *RobotAddRequest) SetTenant(v *TenantRef) {
-	x.xxx_hidden_Tenant = v
-}
-
-func (x *RobotAddRequest) SetAlias(v string) {
-	x.xxx_hidden_Alias = v
-}
-
-func (x *RobotAddRequest) SetDateCreated(v *timestamppb.Timestamp) {
-	x.xxx_hidden_DateCreated = v
-}
-
-func (x *RobotAddRequest) HasId() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *RobotAddRequest) HasTenant() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Tenant != nil
-}
-
-func (x *RobotAddRequest) HasDateCreated() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_DateCreated != nil
-}
-
-func (x *RobotAddRequest) ClearId() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Id = nil
-}
-
-func (x *RobotAddRequest) ClearTenant() {
-	x.xxx_hidden_Tenant = nil
-}
-
-func (x *RobotAddRequest) ClearDateCreated() {
-	x.xxx_hidden_DateCreated = nil
-}
-
-type RobotAddRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Id          []byte
-	Tenant      *TenantRef
-	Alias       string
-	DateCreated *timestamppb.Timestamp
-}
-
-func (b0 RobotAddRequest_builder) Build() *RobotAddRequest {
-	m0 := &RobotAddRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
-		x.xxx_hidden_Id = b.Id
-	}
-	x.xxx_hidden_Tenant = b.Tenant
-	x.xxx_hidden_Alias = b.Alias
-	x.xxx_hidden_DateCreated = b.DateCreated
-	return m0
-}
-
-type RobotGetRequest struct {
-	state             protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref    *RobotRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Select *RobotSelect           `protobuf:"bytes,2,opt,name=select"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *RobotGetRequest) Reset() {
-	*x = RobotGetRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotGetRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotGetRequest) ProtoMessage() {}
-
-func (x *RobotGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotGetRequest) GetRef() *RobotRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *RobotGetRequest) GetSelect() *RobotSelect {
-	if x != nil {
-		return x.xxx_hidden_Select
-	}
-	return nil
-}
-
-func (x *RobotGetRequest) SetRef(v *RobotRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *RobotGetRequest) SetSelect(v *RobotSelect) {
-	x.xxx_hidden_Select = v
-}
-
-func (x *RobotGetRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *RobotGetRequest) HasSelect() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Select != nil
-}
-
-func (x *RobotGetRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *RobotGetRequest) ClearSelect() {
-	x.xxx_hidden_Select = nil
-}
-
-type RobotGetRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref    *RobotRef
-	Select *RobotSelect
-}
-
-func (b0 RobotGetRequest_builder) Build() *RobotGetRequest {
-	m0 := &RobotGetRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Select = b.Select
-	return m0
-}
-
-type RobotRef struct {
-	state          protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Key isRobotRef_Key         `protobuf_oneof:"key"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *RobotRef) Reset() {
-	*x = RobotRef{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotRef) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotRef) ProtoMessage() {}
-
-func (x *RobotRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotRef) GetId() []byte {
-	if x != nil {
-		if x, ok := x.xxx_hidden_Key.(*robotRef_Id); ok {
-			return x.Id
-		}
-	}
-	return nil
-}
-
-func (x *RobotRef) GetSlug() *RobotRefBySlug {
-	if x != nil {
-		if x, ok := x.xxx_hidden_Key.(*robotRef_Slug); ok {
-			return x.Slug
-		}
-	}
-	return nil
-}
-
-func (x *RobotRef) SetId(v []byte) {
-	if v == nil {
-		v = []byte{}
-	}
-	x.xxx_hidden_Key = &robotRef_Id{v}
-}
-
-func (x *RobotRef) SetSlug(v *RobotRefBySlug) {
-	if v == nil {
-		x.xxx_hidden_Key = nil
-		return
-	}
-	x.xxx_hidden_Key = &robotRef_Slug{v}
-}
-
-func (x *RobotRef) HasKey() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Key != nil
-}
-
-func (x *RobotRef) HasId() bool {
-	if x == nil {
-		return false
-	}
-	_, ok := x.xxx_hidden_Key.(*robotRef_Id)
-	return ok
-}
-
-func (x *RobotRef) HasSlug() bool {
-	if x == nil {
-		return false
-	}
-	_, ok := x.xxx_hidden_Key.(*robotRef_Slug)
-	return ok
-}
-
-func (x *RobotRef) ClearKey() {
-	x.xxx_hidden_Key = nil
-}
-
-func (x *RobotRef) ClearId() {
-	if _, ok := x.xxx_hidden_Key.(*robotRef_Id); ok {
-		x.xxx_hidden_Key = nil
-	}
-}
-
-func (x *RobotRef) ClearSlug() {
-	if _, ok := x.xxx_hidden_Key.(*robotRef_Slug); ok {
-		x.xxx_hidden_Key = nil
-	}
-}
-
-const RobotRef_Key_not_set_case case_RobotRef_Key = 0
-const RobotRef_Id_case case_RobotRef_Key = 1
-const RobotRef_Slug_case case_RobotRef_Key = 4
-
-func (x *RobotRef) WhichKey() case_RobotRef_Key {
-	if x == nil {
-		return RobotRef_Key_not_set_case
-	}
-	switch x.xxx_hidden_Key.(type) {
-	case *robotRef_Id:
-		return RobotRef_Id_case
-	case *robotRef_Slug:
-		return RobotRef_Slug_case
-	default:
-		return RobotRef_Key_not_set_case
-	}
-}
-
-type RobotRef_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	// Fields of oneof xxx_hidden_Key:
-	Id   []byte
-	Slug *RobotRefBySlug
-	// -- end of xxx_hidden_Key
-}
-
-func (b0 RobotRef_builder) Build() *RobotRef {
-	m0 := &RobotRef{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Id != nil {
-		x.xxx_hidden_Key = &robotRef_Id{b.Id}
-	}
-	if b.Slug != nil {
-		x.xxx_hidden_Key = &robotRef_Slug{b.Slug}
-	}
-	return m0
-}
-
-type case_RobotRef_Key protoreflect.FieldNumber
-
-func (x case_RobotRef_Key) String() string {
-	md := file_app_robot_svc_g_proto_msgTypes[2].Descriptor()
-	if x == 0 {
-		return "not set"
-	}
-	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
-}
-
-type isRobotRef_Key interface {
-	isRobotRef_Key()
-}
-
-type robotRef_Id struct {
-	Id []byte `protobuf:"bytes,1,opt,name=id,oneof"`
-}
-
-type robotRef_Slug struct {
-	Slug *RobotRefBySlug `protobuf:"bytes,4,opt,name=slug,oneof"`
-}
-
-func (*robotRef_Id) isRobotRef_Key() {}
-
-func (*robotRef_Slug) isRobotRef_Key() {}
-
-type RobotRefBySlug struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Alias       *string                `protobuf:"bytes,4,opt,name=alias"`
-	xxx_hidden_Tenant      *TenantRef             `protobuf:"bytes,2,opt,name=tenant"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *RobotRefBySlug) Reset() {
-	*x = RobotRefBySlug{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotRefBySlug) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotRefBySlug) ProtoMessage() {}
-
-func (x *RobotRefBySlug) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotRefBySlug) GetAlias() string {
-	if x != nil {
-		if x.xxx_hidden_Alias != nil {
-			return *x.xxx_hidden_Alias
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *RobotRefBySlug) GetTenant() *TenantRef {
-	if x != nil {
-		return x.xxx_hidden_Tenant
-	}
-	return nil
-}
-
-func (x *RobotRefBySlug) SetAlias(v string) {
-	x.xxx_hidden_Alias = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
-}
-
-func (x *RobotRefBySlug) SetTenant(v *TenantRef) {
-	x.xxx_hidden_Tenant = v
-}
-
-func (x *RobotRefBySlug) HasAlias() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *RobotRefBySlug) HasTenant() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Tenant != nil
-}
-
-func (x *RobotRefBySlug) ClearAlias() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Alias = nil
-}
-
-func (x *RobotRefBySlug) ClearTenant() {
-	x.xxx_hidden_Tenant = nil
-}
-
-type RobotRefBySlug_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Alias  *string
-	Tenant *TenantRef
-}
-
-func (b0 RobotRefBySlug_builder) Build() *RobotRefBySlug {
-	m0 := &RobotRefBySlug{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
-		x.xxx_hidden_Alias = b.Alias
-	}
-	x.xxx_hidden_Tenant = b.Tenant
-	return m0
-}
-
-type RobotSelect struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
-	xxx_hidden_Tenant      *TenantSelect          `protobuf:"bytes,2,opt,name=tenant"`
-	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
-	xxx_hidden_DateUpdated bool                   `protobuf:"varint,13,opt,name=date_updated,json=dateUpdated"`
-	xxx_hidden_DateCreated bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
-	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *RobotSelect) Reset() {
-	*x = RobotSelect{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotSelect) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotSelect) ProtoMessage() {}
-
-func (x *RobotSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotSelect) GetAll() bool {
-	if x != nil {
-		return x.xxx_hidden_All
-	}
-	return false
-}
-
-func (x *RobotSelect) GetTenant() *TenantSelect {
-	if x != nil {
-		return x.xxx_hidden_Tenant
-	}
-	return nil
-}
-
-func (x *RobotSelect) GetAlias() bool {
-	if x != nil {
-		return x.xxx_hidden_Alias
-	}
-	return false
-}
-
-func (x *RobotSelect) GetDateUpdated() bool {
-	if x != nil {
-		return x.xxx_hidden_DateUpdated
-	}
-	return false
-}
-
-func (x *RobotSelect) GetDateCreated() bool {
-	if x != nil {
-		return x.xxx_hidden_DateCreated
-	}
-	return false
-}
-
-func (x *RobotSelect) GetDateErased() bool {
-	if x != nil {
-		return x.xxx_hidden_DateErased
-	}
-	return false
-}
-
-func (x *RobotSelect) SetAll(v bool) {
-	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
-}
-
-func (x *RobotSelect) SetTenant(v *TenantSelect) {
-	x.xxx_hidden_Tenant = v
-}
-
-func (x *RobotSelect) SetAlias(v bool) {
-	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
-}
-
-func (x *RobotSelect) SetDateUpdated(v bool) {
-	x.xxx_hidden_DateUpdated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
-}
-
-func (x *RobotSelect) SetDateCreated(v bool) {
-	x.xxx_hidden_DateCreated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
-}
-
-func (x *RobotSelect) SetDateErased(v bool) {
-	x.xxx_hidden_DateErased = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
-}
-
-func (x *RobotSelect) HasAll() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *RobotSelect) HasTenant() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Tenant != nil
-}
-
-func (x *RobotSelect) HasAlias() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
-}
-
-func (x *RobotSelect) HasDateUpdated() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
-}
-
-func (x *RobotSelect) HasDateCreated() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
-}
-
-func (x *RobotSelect) HasDateErased() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
-}
-
-func (x *RobotSelect) ClearAll() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_All = false
-}
-
-func (x *RobotSelect) ClearTenant() {
-	x.xxx_hidden_Tenant = nil
-}
-
-func (x *RobotSelect) ClearAlias() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
-	x.xxx_hidden_Alias = false
-}
-
-func (x *RobotSelect) ClearDateUpdated() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
-	x.xxx_hidden_DateUpdated = false
-}
-
-func (x *RobotSelect) ClearDateCreated() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
-	x.xxx_hidden_DateCreated = false
-}
-
-func (x *RobotSelect) ClearDateErased() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
-	x.xxx_hidden_DateErased = false
-}
-
-type RobotSelect_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	All         *bool
-	Tenant      *TenantSelect
-	Alias       *bool
-	DateUpdated *bool
-	DateCreated *bool
-	DateErased  *bool
-}
-
-func (b0 RobotSelect_builder) Build() *RobotSelect {
-	m0 := &RobotSelect{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
-		x.xxx_hidden_All = *b.All
-	}
-	x.xxx_hidden_Tenant = b.Tenant
-	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
-		x.xxx_hidden_Alias = *b.Alias
-	}
-	if b.DateUpdated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
-		x.xxx_hidden_DateUpdated = *b.DateUpdated
-	}
-	if b.DateCreated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
-		x.xxx_hidden_DateCreated = *b.DateCreated
-	}
-	if b.DateErased != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
-		x.xxx_hidden_DateErased = *b.DateErased
-	}
-	return m0
-}
-
-type RobotPatchRequest struct {
-	state                       protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref              *RobotRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Alias            *string                `protobuf:"bytes,8,opt,name=alias"`
-	xxx_hidden_DateUpdated      *timestamppb.Timestamp `protobuf:"bytes,26,opt,name=date_updated,json=dateUpdated"`
-	xxx_hidden_DateUpdatedForce bool                   `protobuf:"varint,27,opt,name=date_updated_force,json=dateUpdatedForce"`
-	XXX_raceDetectHookData      protoimpl.RaceDetectHookData
-	XXX_presence                [1]uint32
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
-}
-
-func (x *RobotPatchRequest) Reset() {
-	*x = RobotPatchRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotPatchRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotPatchRequest) ProtoMessage() {}
-
-func (x *RobotPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotPatchRequest) GetRef() *RobotRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *RobotPatchRequest) GetAlias() string {
-	if x != nil {
-		if x.xxx_hidden_Alias != nil {
-			return *x.xxx_hidden_Alias
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *RobotPatchRequest) GetDateUpdated() *timestamppb.Timestamp {
-	if x != nil {
-		return x.xxx_hidden_DateUpdated
-	}
-	return nil
-}
-
-func (x *RobotPatchRequest) GetDateUpdatedForce() bool {
-	if x != nil {
-		return x.xxx_hidden_DateUpdatedForce
-	}
-	return false
-}
-
-func (x *RobotPatchRequest) SetRef(v *RobotRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *RobotPatchRequest) SetAlias(v string) {
-	x.xxx_hidden_Alias = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
-}
-
-func (x *RobotPatchRequest) SetDateUpdated(v *timestamppb.Timestamp) {
-	x.xxx_hidden_DateUpdated = v
-}
-
-func (x *RobotPatchRequest) SetDateUpdatedForce(v bool) {
-	x.xxx_hidden_DateUpdatedForce = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
-}
-
-func (x *RobotPatchRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *RobotPatchRequest) HasAlias() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *RobotPatchRequest) HasDateUpdated() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_DateUpdated != nil
-}
-
-func (x *RobotPatchRequest) HasDateUpdatedForce() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
-}
-
-func (x *RobotPatchRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *RobotPatchRequest) ClearAlias() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Alias = nil
-}
-
-func (x *RobotPatchRequest) ClearDateUpdated() {
-	x.xxx_hidden_DateUpdated = nil
-}
-
-func (x *RobotPatchRequest) ClearDateUpdatedForce() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
-	x.xxx_hidden_DateUpdatedForce = false
-}
-
-type RobotPatchRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *RobotRef
-	Alias *string
-	// The version this update requires the stored date_updated to be.
-	// It is a precondition, not a write: the update applies only if the row
-	// still holds this value, and the server stamps the new version itself.
-	// Setting it together with date_updated_force is an error --
-	// the version is the token every client's compare-and-swap is measured
-	// against, so it is not the caller's to choose.
-	DateUpdated *timestamppb.Timestamp
-	// Update whatever the stored date_updated is, with no precondition.
-	// The server still stamps a new version, so other clients' tokens are
-	// invalidated as usual; this declines the check for THIS update only.
-	// One of date_updated or this must be set. An omitted version is
-	// refused rather than assumed, because an unset field cannot be told
-	// apart from a caller who never considered locking at all.
-	DateUpdatedForce *bool
-}
-
-func (b0 RobotPatchRequest_builder) Build() *RobotPatchRequest {
-	m0 := &RobotPatchRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
-		x.xxx_hidden_Alias = b.Alias
-	}
-	x.xxx_hidden_DateUpdated = b.DateUpdated
-	if b.DateUpdatedForce != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
-		x.xxx_hidden_DateUpdatedForce = *b.DateUpdatedForce
-	}
-	return m0
-}
-
-type RobotApplyRequest struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref   *RobotRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *RobotApplyRequest) Reset() {
-	*x = RobotApplyRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotApplyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotApplyRequest) ProtoMessage() {}
-
-func (x *RobotApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotApplyRequest) GetRef() *RobotRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *RobotApplyRequest) GetPatch() *patchpb.Patch {
-	if x != nil {
-		return x.xxx_hidden_Patch
-	}
-	return nil
-}
-
-func (x *RobotApplyRequest) SetRef(v *RobotRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *RobotApplyRequest) SetPatch(v *patchpb.Patch) {
-	x.xxx_hidden_Patch = v
-}
-
-func (x *RobotApplyRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *RobotApplyRequest) HasPatch() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Patch != nil
-}
-
-func (x *RobotApplyRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *RobotApplyRequest) ClearPatch() {
-	x.xxx_hidden_Patch = nil
-}
-
-type RobotApplyRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *RobotRef
-	Patch *patchpb.Patch
-}
-
-func (b0 RobotApplyRequest_builder) Build() *RobotApplyRequest {
-	m0 := &RobotApplyRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Patch = b.Patch
-	return m0
-}
-
-type RobotListRequest struct {
-	state              protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Filters *[]*RobotFilter        `protobuf:"bytes,1,rep,name=filters"`
-	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
-	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
-}
-
-func (x *RobotListRequest) Reset() {
-	*x = RobotListRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotListRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotListRequest) ProtoMessage() {}
-
-func (x *RobotListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotListRequest) GetFilters() []*RobotFilter {
-	if x != nil {
-		if x.xxx_hidden_Filters != nil {
-			return *x.xxx_hidden_Filters
-		}
-	}
-	return nil
-}
-
-func (x *RobotListRequest) GetSize() int32 {
-	if x != nil {
-		return x.xxx_hidden_Size
-	}
-	return 0
-}
-
-func (x *RobotListRequest) GetAfter() string {
-	if x != nil {
-		return x.xxx_hidden_After
-	}
-	return ""
-}
-
-func (x *RobotListRequest) SetFilters(v []*RobotFilter) {
-	x.xxx_hidden_Filters = &v
-}
-
-func (x *RobotListRequest) SetSize(v int32) {
-	x.xxx_hidden_Size = v
-}
-
-func (x *RobotListRequest) SetAfter(v string) {
-	x.xxx_hidden_After = v
-}
-
-type RobotListRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	// Bounded because the work is: each filter is a predicate in the same query,
-	// so this is what says how much of the database one request may read.
-	Filters []*RobotFilter
-	// How many to answer with. Nothing said is what the schema declared, and more
-	// than the cap is the cap -- a caller asking for more than there is meant no
-	// harm, so it is not an error and it is not the whole table either.
-	Size int32
-	// Where to carry on from: the "next" of the answer before. It names the last
-	// row of that page rather than counting rows from the start, so a row added
-	// ahead of the page does not shift it and a caller reading through never sees
-	// one twice or misses one.
-	After string
-}
-
-func (b0 RobotListRequest_builder) Build() *RobotListRequest {
-	m0 := &RobotListRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Filters = &b.Filters
-	x.xxx_hidden_Size = b.Size
-	x.xxx_hidden_After = b.After
-	return m0
-}
-
-type RobotListResponse struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Items *[]*Robot              `protobuf:"bytes,1,rep,name=items"`
-	xxx_hidden_Next  string                 `protobuf:"bytes,2,opt,name=next"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *RobotListResponse) Reset() {
-	*x = RobotListResponse{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotListResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotListResponse) ProtoMessage() {}
-
-func (x *RobotListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotListResponse) GetItems() []*Robot {
-	if x != nil {
-		if x.xxx_hidden_Items != nil {
-			return *x.xxx_hidden_Items
-		}
-	}
-	return nil
-}
-
-func (x *RobotListResponse) GetNext() string {
-	if x != nil {
-		return x.xxx_hidden_Next
-	}
-	return ""
-}
-
-func (x *RobotListResponse) SetItems(v []*Robot) {
-	x.xxx_hidden_Items = &v
-}
-
-func (x *RobotListResponse) SetNext(v string) {
-	x.xxx_hidden_Next = v
-}
-
-type RobotListResponse_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Items []*Robot
-	// What to ask for next, and empty when this was the last of them.
-	//
-	// Empty means there is no more *for now*: a list is read as it is, and one
-	// that has grown since answers a fresh call. It is not empty merely because
-	// the page came back short -- a page is short when the last row of it was the
-	// last row there was, which is a thing the server can only know by having
-	// looked.
-	Next string
-}
-
-func (b0 RobotListResponse_builder) Build() *RobotListResponse {
-	m0 := &RobotListResponse{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Items = &b.Items
-	x.xxx_hidden_Next = b.Next
-	return m0
-}
-
-type RobotFilter struct {
-	state          protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref *RobotRef              `protobuf:"bytes,1,opt,name=ref"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *RobotFilter) Reset() {
-	*x = RobotFilter{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotFilter) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotFilter) ProtoMessage() {}
-
-func (x *RobotFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotFilter) GetRef() *RobotRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *RobotFilter) SetRef(v *RobotRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *RobotFilter) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *RobotFilter) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-type RobotFilter_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref *RobotRef
-}
-
-func (b0 RobotFilter_builder) Build() *RobotFilter {
-	m0 := &RobotFilter{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	return m0
-}
-
-type RobotWatchRequest struct {
-	state                   protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Filters      *[]*RobotFilter        `protobuf:"bytes,1,rep,name=filters"`
-	xxx_hidden_SkipSnapshot bool                   `protobuf:"varint,2,opt,name=skip_snapshot,json=skipSnapshot"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
-}
-
-func (x *RobotWatchRequest) Reset() {
-	*x = RobotWatchRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotWatchRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotWatchRequest) ProtoMessage() {}
-
-func (x *RobotWatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotWatchRequest) GetFilters() []*RobotFilter {
-	if x != nil {
-		if x.xxx_hidden_Filters != nil {
-			return *x.xxx_hidden_Filters
-		}
-	}
-	return nil
-}
-
-func (x *RobotWatchRequest) GetSkipSnapshot() bool {
-	if x != nil {
-		return x.xxx_hidden_SkipSnapshot
-	}
-	return false
-}
-
-func (x *RobotWatchRequest) SetFilters(v []*RobotFilter) {
-	x.xxx_hidden_Filters = &v
-}
-
-func (x *RobotWatchRequest) SetSkipSnapshot(v bool) {
-	x.xxx_hidden_SkipSnapshot = v
-}
-
-type RobotWatchRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	// Which rows to watch, in the same words List takes them: what is watched is
-	// what that list would answer with, now and afterwards.
-	//
-	// Required, and bounded the way a List is -- for a heavier reason. A list
-	// runs its filters once; a watch runs them again for every write that touches
-	// the entity, for as long as the stream is open. A watch with no filters is
-	// the whole table, forever, which is the one shape that has no cap at all.
-	Filters []*RobotFilter
-	// Skip what is there now and send only what changes from here.
-	//
-	// Off by default, and the default is the safe one: a client that does not
-	// know the current state and did not ask for it holds something wrong until
-	// the next write happens to correct it.
-	SkipSnapshot bool
-}
-
-func (b0 RobotWatchRequest_builder) Build() *RobotWatchRequest {
-	m0 := &RobotWatchRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Filters = &b.Filters
-	x.xxx_hidden_SkipSnapshot = b.SkipSnapshot
-	return m0
-}
-
-type RobotWatchResponse struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Items *[]*RobotWatchItem     `protobuf:"bytes,1,rep,name=items"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *RobotWatchResponse) Reset() {
-	*x = RobotWatchResponse{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotWatchResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotWatchResponse) ProtoMessage() {}
-
-func (x *RobotWatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotWatchResponse) GetItems() []*RobotWatchItem {
-	if x != nil {
-		if x.xxx_hidden_Items != nil {
-			return *x.xxx_hidden_Items
-		}
-	}
-	return nil
-}
-
-func (x *RobotWatchResponse) SetItems(v []*RobotWatchItem) {
-	x.xxx_hidden_Items = &v
-}
-
-type RobotWatchResponse_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	// What changed, or -- in the first message -- everything that matches.
-	Items []*RobotWatchItem
-}
-
-func (b0 RobotWatchResponse_builder) Build() *RobotWatchResponse {
-	m0 := &RobotWatchResponse{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Items = &b.Items
-	return m0
-}
-
-type RobotWatchItem struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Value       *Robot                 `protobuf:"bytes,2,opt,name=value"`
-	xxx_hidden_Action      string                 `protobuf:"bytes,3,opt,name=action"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *RobotWatchItem) Reset() {
-	*x = RobotWatchItem{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RobotWatchItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RobotWatchItem) ProtoMessage() {}
-
-func (x *RobotWatchItem) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *RobotWatchItem) GetId() []byte {
-	if x != nil {
-		return x.xxx_hidden_Id
-	}
-	return nil
-}
-
-func (x *RobotWatchItem) GetValue() *Robot {
-	if x != nil {
-		return x.xxx_hidden_Value
-	}
-	return nil
-}
-
-func (x *RobotWatchItem) GetAction() string {
-	if x != nil {
-		return x.xxx_hidden_Action
-	}
-	return ""
-}
-
-func (x *RobotWatchItem) SetId(v []byte) {
-	if v == nil {
-		v = []byte{}
-	}
-	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
-}
-
-func (x *RobotWatchItem) SetValue(v *Robot) {
-	x.xxx_hidden_Value = v
-}
-
-func (x *RobotWatchItem) SetAction(v string) {
-	x.xxx_hidden_Action = v
-}
-
-func (x *RobotWatchItem) HasId() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *RobotWatchItem) HasValue() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Value != nil
-}
-
-func (x *RobotWatchItem) ClearId() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Id = nil
-}
-
-func (x *RobotWatchItem) ClearValue() {
-	x.xxx_hidden_Value = nil
-}
-
-type RobotWatchItem_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	// Which row. Always said, since one that is gone still has to be named.
-	Id []byte
-	// The row as it is now, and **absent when it is no longer one this caller may
-	// see**: erased, or moved out of the filters this stream named.
-	//
-	// Absence is the whole of how a removal is said. There is no flag for it, and
-	// there is deliberately no way to tell those two apart -- a stream that
-	// distinguished "erased" from "no longer yours" would be telling a caller
-	// about rows that stopped being theirs, which is the thing the wall is for.
-	//
-	// It is only ever said about a row this stream has already carried. One that
-	// never matched is not news.
-	Value *Robot
-	// The RPC that changed it, by the name gRPC knows it by. It is what the
-	// caller of *that* RPC asked for and not the write it became, so an RPC
-	// written by hand is here under its own name.
-	//
-	// Empty in the first message, which is not something anybody asked for -- it
-	// is what is already there.
-	Action string
-}
-
-func (b0 RobotWatchItem_builder) Build() *RobotWatchItem {
-	m0 := &RobotWatchItem{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
-		x.xxx_hidden_Id = b.Id
-	}
-	x.xxx_hidden_Value = b.Value
-	x.xxx_hidden_Action = b.Action
-	return m0
-}
-
-type JointAddRequest struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Robot       *RobotRef              `protobuf:"bytes,2,opt,name=robot"`
-	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *JointAddRequest) Reset() {
-	*x = JointAddRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *JointAddRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*JointAddRequest) ProtoMessage() {}
-
-func (x *JointAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *JointAddRequest) GetId() []byte {
-	if x != nil {
-		return x.xxx_hidden_Id
-	}
-	return nil
-}
-
-func (x *JointAddRequest) GetRobot() *RobotRef {
-	if x != nil {
-		return x.xxx_hidden_Robot
-	}
-	return nil
-}
-
-func (x *JointAddRequest) GetAlias() string {
-	if x != nil {
-		return x.xxx_hidden_Alias
-	}
-	return ""
-}
-
-func (x *JointAddRequest) SetId(v []byte) {
-	if v == nil {
-		v = []byte{}
-	}
-	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
-}
-
-func (x *JointAddRequest) SetRobot(v *RobotRef) {
-	x.xxx_hidden_Robot = v
-}
-
-func (x *JointAddRequest) SetAlias(v string) {
-	x.xxx_hidden_Alias = v
-}
-
-func (x *JointAddRequest) HasId() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *JointAddRequest) HasRobot() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Robot != nil
-}
-
-func (x *JointAddRequest) ClearId() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Id = nil
-}
-
-func (x *JointAddRequest) ClearRobot() {
-	x.xxx_hidden_Robot = nil
-}
-
-type JointAddRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Id    []byte
-	Robot *RobotRef
-	Alias string
-}
-
-func (b0 JointAddRequest_builder) Build() *JointAddRequest {
-	m0 := &JointAddRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
-		x.xxx_hidden_Id = b.Id
-	}
-	x.xxx_hidden_Robot = b.Robot
-	x.xxx_hidden_Alias = b.Alias
-	return m0
-}
-
-type JointGetRequest struct {
-	state             protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref    *JointRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Select *JointSelect           `protobuf:"bytes,2,opt,name=select"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *JointGetRequest) Reset() {
-	*x = JointGetRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *JointGetRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*JointGetRequest) ProtoMessage() {}
-
-func (x *JointGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *JointGetRequest) GetRef() *JointRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *JointGetRequest) GetSelect() *JointSelect {
-	if x != nil {
-		return x.xxx_hidden_Select
-	}
-	return nil
-}
-
-func (x *JointGetRequest) SetRef(v *JointRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *JointGetRequest) SetSelect(v *JointSelect) {
-	x.xxx_hidden_Select = v
-}
-
-func (x *JointGetRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *JointGetRequest) HasSelect() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Select != nil
-}
-
-func (x *JointGetRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *JointGetRequest) ClearSelect() {
-	x.xxx_hidden_Select = nil
-}
-
-type JointGetRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref    *JointRef
-	Select *JointSelect
-}
-
-func (b0 JointGetRequest_builder) Build() *JointGetRequest {
-	m0 := &JointGetRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Select = b.Select
-	return m0
-}
-
-type JointRef struct {
-	state          protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Key isJointRef_Key         `protobuf_oneof:"key"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *JointRef) Reset() {
-	*x = JointRef{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[15]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *JointRef) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*JointRef) ProtoMessage() {}
-
-func (x *JointRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[15]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *JointRef) GetId() []byte {
-	if x != nil {
-		if x, ok := x.xxx_hidden_Key.(*jointRef_Id); ok {
-			return x.Id
-		}
-	}
-	return nil
-}
-
-func (x *JointRef) SetId(v []byte) {
-	if v == nil {
-		v = []byte{}
-	}
-	x.xxx_hidden_Key = &jointRef_Id{v}
-}
-
-func (x *JointRef) HasKey() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Key != nil
-}
-
-func (x *JointRef) HasId() bool {
-	if x == nil {
-		return false
-	}
-	_, ok := x.xxx_hidden_Key.(*jointRef_Id)
-	return ok
-}
-
-func (x *JointRef) ClearKey() {
-	x.xxx_hidden_Key = nil
-}
-
-func (x *JointRef) ClearId() {
-	if _, ok := x.xxx_hidden_Key.(*jointRef_Id); ok {
-		x.xxx_hidden_Key = nil
-	}
-}
-
-const JointRef_Key_not_set_case case_JointRef_Key = 0
-const JointRef_Id_case case_JointRef_Key = 1
-
-func (x *JointRef) WhichKey() case_JointRef_Key {
-	if x == nil {
-		return JointRef_Key_not_set_case
-	}
-	switch x.xxx_hidden_Key.(type) {
-	case *jointRef_Id:
-		return JointRef_Id_case
-	default:
-		return JointRef_Key_not_set_case
-	}
-}
-
-type JointRef_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	// Fields of oneof xxx_hidden_Key:
-	Id []byte
-	// -- end of xxx_hidden_Key
-}
-
-func (b0 JointRef_builder) Build() *JointRef {
-	m0 := &JointRef{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Id != nil {
-		x.xxx_hidden_Key = &jointRef_Id{b.Id}
-	}
-	return m0
-}
-
-type case_JointRef_Key protoreflect.FieldNumber
-
-func (x case_JointRef_Key) String() string {
-	md := file_app_robot_svc_g_proto_msgTypes[15].Descriptor()
-	if x == 0 {
-		return "not set"
-	}
-	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
-}
-
-type isJointRef_Key interface {
-	isJointRef_Key()
-}
-
-type jointRef_Id struct {
-	Id []byte `protobuf:"bytes,1,opt,name=id,oneof"`
-}
-
-func (*jointRef_Id) isJointRef_Key() {}
-
-type JointSelect struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
-	xxx_hidden_Robot       *RobotSelect           `protobuf:"bytes,2,opt,name=robot"`
-	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
-	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *JointSelect) Reset() {
-	*x = JointSelect{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *JointSelect) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*JointSelect) ProtoMessage() {}
-
-func (x *JointSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *JointSelect) GetAll() bool {
-	if x != nil {
-		return x.xxx_hidden_All
-	}
-	return false
-}
-
-func (x *JointSelect) GetRobot() *RobotSelect {
-	if x != nil {
-		return x.xxx_hidden_Robot
-	}
-	return nil
-}
-
-func (x *JointSelect) GetAlias() bool {
-	if x != nil {
-		return x.xxx_hidden_Alias
-	}
-	return false
-}
-
-func (x *JointSelect) GetDateErased() bool {
-	if x != nil {
-		return x.xxx_hidden_DateErased
-	}
-	return false
-}
-
-func (x *JointSelect) SetAll(v bool) {
-	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
-}
-
-func (x *JointSelect) SetRobot(v *RobotSelect) {
-	x.xxx_hidden_Robot = v
-}
-
-func (x *JointSelect) SetAlias(v bool) {
-	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
-}
-
-func (x *JointSelect) SetDateErased(v bool) {
-	x.xxx_hidden_DateErased = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
-}
-
-func (x *JointSelect) HasAll() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *JointSelect) HasRobot() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Robot != nil
-}
-
-func (x *JointSelect) HasAlias() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
-}
-
-func (x *JointSelect) HasDateErased() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
-}
-
-func (x *JointSelect) ClearAll() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_All = false
-}
-
-func (x *JointSelect) ClearRobot() {
-	x.xxx_hidden_Robot = nil
-}
-
-func (x *JointSelect) ClearAlias() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
-	x.xxx_hidden_Alias = false
-}
-
-func (x *JointSelect) ClearDateErased() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
-	x.xxx_hidden_DateErased = false
-}
-
-type JointSelect_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	All        *bool
-	Robot      *RobotSelect
-	Alias      *bool
-	DateErased *bool
-}
-
-func (b0 JointSelect_builder) Build() *JointSelect {
-	m0 := &JointSelect{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
-		x.xxx_hidden_All = *b.All
-	}
-	x.xxx_hidden_Robot = b.Robot
-	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
-		x.xxx_hidden_Alias = *b.Alias
-	}
-	if b.DateErased != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
-		x.xxx_hidden_DateErased = *b.DateErased
-	}
-	return m0
-}
-
-type JointPatchRequest struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref         *JointRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Alias       *string                `protobuf:"bytes,8,opt,name=alias"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *JointPatchRequest) Reset() {
-	*x = JointPatchRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[17]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *JointPatchRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*JointPatchRequest) ProtoMessage() {}
-
-func (x *JointPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[17]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *JointPatchRequest) GetRef() *JointRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *JointPatchRequest) GetAlias() string {
-	if x != nil {
-		if x.xxx_hidden_Alias != nil {
-			return *x.xxx_hidden_Alias
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *JointPatchRequest) SetRef(v *JointRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *JointPatchRequest) SetAlias(v string) {
-	x.xxx_hidden_Alias = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
-}
-
-func (x *JointPatchRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *JointPatchRequest) HasAlias() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *JointPatchRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *JointPatchRequest) ClearAlias() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Alias = nil
-}
-
-type JointPatchRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *JointRef
-	Alias *string
-}
-
-func (b0 JointPatchRequest_builder) Build() *JointPatchRequest {
-	m0 := &JointPatchRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
-		x.xxx_hidden_Alias = b.Alias
-	}
-	return m0
-}
-
-type JointApplyRequest struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref   *JointRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *JointApplyRequest) Reset() {
-	*x = JointApplyRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[18]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *JointApplyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*JointApplyRequest) ProtoMessage() {}
-
-func (x *JointApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[18]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *JointApplyRequest) GetRef() *JointRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *JointApplyRequest) GetPatch() *patchpb.Patch {
-	if x != nil {
-		return x.xxx_hidden_Patch
-	}
-	return nil
-}
-
-func (x *JointApplyRequest) SetRef(v *JointRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *JointApplyRequest) SetPatch(v *patchpb.Patch) {
-	x.xxx_hidden_Patch = v
-}
-
-func (x *JointApplyRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *JointApplyRequest) HasPatch() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Patch != nil
-}
-
-func (x *JointApplyRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *JointApplyRequest) ClearPatch() {
-	x.xxx_hidden_Patch = nil
-}
-
-type JointApplyRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *JointRef
-	Patch *patchpb.Patch
-}
-
-func (b0 JointApplyRequest_builder) Build() *JointApplyRequest {
-	m0 := &JointApplyRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Patch = b.Patch
-	return m0
-}
-
-type FleetAddRequest struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *FleetAddRequest) Reset() {
-	*x = FleetAddRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[19]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FleetAddRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FleetAddRequest) ProtoMessage() {}
-
-func (x *FleetAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[19]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *FleetAddRequest) GetId() []byte {
-	if x != nil {
-		return x.xxx_hidden_Id
-	}
-	return nil
-}
-
-func (x *FleetAddRequest) GetAlias() string {
-	if x != nil {
-		return x.xxx_hidden_Alias
-	}
-	return ""
-}
-
-func (x *FleetAddRequest) SetId(v []byte) {
-	if v == nil {
-		v = []byte{}
-	}
-	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
-}
-
-func (x *FleetAddRequest) SetAlias(v string) {
-	x.xxx_hidden_Alias = v
-}
-
-func (x *FleetAddRequest) HasId() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *FleetAddRequest) ClearId() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Id = nil
-}
-
-type FleetAddRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Id    []byte
-	Alias string
-}
-
-func (b0 FleetAddRequest_builder) Build() *FleetAddRequest {
-	m0 := &FleetAddRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
-		x.xxx_hidden_Id = b.Id
-	}
-	x.xxx_hidden_Alias = b.Alias
-	return m0
-}
-
-type FleetGetRequest struct {
-	state             protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref    *FleetRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Select *FleetSelect           `protobuf:"bytes,2,opt,name=select"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *FleetGetRequest) Reset() {
-	*x = FleetGetRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[20]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FleetGetRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FleetGetRequest) ProtoMessage() {}
-
-func (x *FleetGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[20]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *FleetGetRequest) GetRef() *FleetRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *FleetGetRequest) GetSelect() *FleetSelect {
-	if x != nil {
-		return x.xxx_hidden_Select
-	}
-	return nil
-}
-
-func (x *FleetGetRequest) SetRef(v *FleetRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *FleetGetRequest) SetSelect(v *FleetSelect) {
-	x.xxx_hidden_Select = v
-}
-
-func (x *FleetGetRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *FleetGetRequest) HasSelect() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Select != nil
-}
-
-func (x *FleetGetRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *FleetGetRequest) ClearSelect() {
-	x.xxx_hidden_Select = nil
-}
-
-type FleetGetRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref    *FleetRef
-	Select *FleetSelect
-}
-
-func (b0 FleetGetRequest_builder) Build() *FleetGetRequest {
-	m0 := &FleetGetRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Select = b.Select
-	return m0
-}
-
-type FleetRef struct {
-	state          protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Key isFleetRef_Key         `protobuf_oneof:"key"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *FleetRef) Reset() {
-	*x = FleetRef{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[21]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FleetRef) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FleetRef) ProtoMessage() {}
-
-func (x *FleetRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[21]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *FleetRef) GetId() []byte {
-	if x != nil {
-		if x, ok := x.xxx_hidden_Key.(*fleetRef_Id); ok {
-			return x.Id
-		}
-	}
-	return nil
-}
-
-func (x *FleetRef) GetAlias() string {
-	if x != nil {
-		if x, ok := x.xxx_hidden_Key.(*fleetRef_Alias); ok {
-			return x.Alias
-		}
-	}
-	return ""
-}
-
-func (x *FleetRef) SetId(v []byte) {
-	if v == nil {
-		v = []byte{}
-	}
-	x.xxx_hidden_Key = &fleetRef_Id{v}
-}
-
-func (x *FleetRef) SetAlias(v string) {
-	x.xxx_hidden_Key = &fleetRef_Alias{v}
-}
-
-func (x *FleetRef) HasKey() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Key != nil
-}
-
-func (x *FleetRef) HasId() bool {
-	if x == nil {
-		return false
-	}
-	_, ok := x.xxx_hidden_Key.(*fleetRef_Id)
-	return ok
-}
-
-func (x *FleetRef) HasAlias() bool {
-	if x == nil {
-		return false
-	}
-	_, ok := x.xxx_hidden_Key.(*fleetRef_Alias)
-	return ok
-}
-
-func (x *FleetRef) ClearKey() {
-	x.xxx_hidden_Key = nil
-}
-
-func (x *FleetRef) ClearId() {
-	if _, ok := x.xxx_hidden_Key.(*fleetRef_Id); ok {
-		x.xxx_hidden_Key = nil
-	}
-}
-
-func (x *FleetRef) ClearAlias() {
-	if _, ok := x.xxx_hidden_Key.(*fleetRef_Alias); ok {
-		x.xxx_hidden_Key = nil
-	}
-}
-
-const FleetRef_Key_not_set_case case_FleetRef_Key = 0
-const FleetRef_Id_case case_FleetRef_Key = 1
-const FleetRef_Alias_case case_FleetRef_Key = 4
-
-func (x *FleetRef) WhichKey() case_FleetRef_Key {
-	if x == nil {
-		return FleetRef_Key_not_set_case
-	}
-	switch x.xxx_hidden_Key.(type) {
-	case *fleetRef_Id:
-		return FleetRef_Id_case
-	case *fleetRef_Alias:
-		return FleetRef_Alias_case
-	default:
-		return FleetRef_Key_not_set_case
-	}
-}
-
-type FleetRef_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	// Fields of oneof xxx_hidden_Key:
-	Id    []byte
-	Alias *string
-	// -- end of xxx_hidden_Key
-}
-
-func (b0 FleetRef_builder) Build() *FleetRef {
-	m0 := &FleetRef{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Id != nil {
-		x.xxx_hidden_Key = &fleetRef_Id{b.Id}
-	}
-	if b.Alias != nil {
-		x.xxx_hidden_Key = &fleetRef_Alias{*b.Alias}
-	}
-	return m0
-}
-
-type case_FleetRef_Key protoreflect.FieldNumber
-
-func (x case_FleetRef_Key) String() string {
-	md := file_app_robot_svc_g_proto_msgTypes[21].Descriptor()
-	if x == 0 {
-		return "not set"
-	}
-	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
-}
-
-type isFleetRef_Key interface {
-	isFleetRef_Key()
-}
-
-type fleetRef_Id struct {
-	Id []byte `protobuf:"bytes,1,opt,name=id,oneof"`
-}
-
-type fleetRef_Alias struct {
-	Alias string `protobuf:"bytes,4,opt,name=alias,oneof"`
-}
-
-func (*fleetRef_Id) isFleetRef_Key() {}
-
-func (*fleetRef_Alias) isFleetRef_Key() {}
-
-type FleetSelect struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
-	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
-	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *FleetSelect) Reset() {
-	*x = FleetSelect{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[22]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FleetSelect) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FleetSelect) ProtoMessage() {}
-
-func (x *FleetSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[22]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *FleetSelect) GetAll() bool {
-	if x != nil {
-		return x.xxx_hidden_All
-	}
-	return false
-}
-
-func (x *FleetSelect) GetAlias() bool {
-	if x != nil {
-		return x.xxx_hidden_Alias
-	}
-	return false
-}
-
-func (x *FleetSelect) GetDateErased() bool {
-	if x != nil {
-		return x.xxx_hidden_DateErased
-	}
-	return false
-}
-
-func (x *FleetSelect) SetAll(v bool) {
-	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
-}
-
-func (x *FleetSelect) SetAlias(v bool) {
-	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
-}
-
-func (x *FleetSelect) SetDateErased(v bool) {
-	x.xxx_hidden_DateErased = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
-}
-
-func (x *FleetSelect) HasAll() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *FleetSelect) HasAlias() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *FleetSelect) HasDateErased() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
-}
-
-func (x *FleetSelect) ClearAll() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_All = false
-}
-
-func (x *FleetSelect) ClearAlias() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Alias = false
-}
-
-func (x *FleetSelect) ClearDateErased() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
-	x.xxx_hidden_DateErased = false
-}
-
-type FleetSelect_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	All        *bool
-	Alias      *bool
-	DateErased *bool
-}
-
-func (b0 FleetSelect_builder) Build() *FleetSelect {
-	m0 := &FleetSelect{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
-		x.xxx_hidden_All = *b.All
-	}
-	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
-		x.xxx_hidden_Alias = *b.Alias
-	}
-	if b.DateErased != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
-		x.xxx_hidden_DateErased = *b.DateErased
-	}
-	return m0
-}
-
-type FleetPatchRequest struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref         *FleetRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Alias       *string                `protobuf:"bytes,8,opt,name=alias"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *FleetPatchRequest) Reset() {
-	*x = FleetPatchRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[23]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FleetPatchRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FleetPatchRequest) ProtoMessage() {}
-
-func (x *FleetPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[23]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *FleetPatchRequest) GetRef() *FleetRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *FleetPatchRequest) GetAlias() string {
-	if x != nil {
-		if x.xxx_hidden_Alias != nil {
-			return *x.xxx_hidden_Alias
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *FleetPatchRequest) SetRef(v *FleetRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *FleetPatchRequest) SetAlias(v string) {
-	x.xxx_hidden_Alias = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
-}
-
-func (x *FleetPatchRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *FleetPatchRequest) HasAlias() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *FleetPatchRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *FleetPatchRequest) ClearAlias() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Alias = nil
-}
-
-type FleetPatchRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *FleetRef
-	Alias *string
-}
-
-func (b0 FleetPatchRequest_builder) Build() *FleetPatchRequest {
-	m0 := &FleetPatchRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
-		x.xxx_hidden_Alias = b.Alias
-	}
-	return m0
-}
-
-type FleetApplyRequest struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref   *FleetRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *FleetApplyRequest) Reset() {
-	*x = FleetApplyRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[24]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FleetApplyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FleetApplyRequest) ProtoMessage() {}
-
-func (x *FleetApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[24]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *FleetApplyRequest) GetRef() *FleetRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *FleetApplyRequest) GetPatch() *patchpb.Patch {
-	if x != nil {
-		return x.xxx_hidden_Patch
-	}
-	return nil
-}
-
-func (x *FleetApplyRequest) SetRef(v *FleetRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *FleetApplyRequest) SetPatch(v *patchpb.Patch) {
-	x.xxx_hidden_Patch = v
-}
-
-func (x *FleetApplyRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *FleetApplyRequest) HasPatch() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Patch != nil
-}
-
-func (x *FleetApplyRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *FleetApplyRequest) ClearPatch() {
-	x.xxx_hidden_Patch = nil
-}
-
-type FleetApplyRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *FleetRef
-	Patch *patchpb.Patch
-}
-
-func (b0 FleetApplyRequest_builder) Build() *FleetApplyRequest {
-	m0 := &FleetApplyRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Patch = b.Patch
-	return m0
-}
-
 type CellAddRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
@@ -2924,7 +36,7 @@ type CellAddRequest struct {
 
 func (x *CellAddRequest) Reset() {
 	*x = CellAddRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[25]
+	mi := &file_app_robot_svc_g_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2936,7 +48,7 @@ func (x *CellAddRequest) String() string {
 func (*CellAddRequest) ProtoMessage() {}
 
 func (x *CellAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[25]
+	mi := &file_app_robot_svc_g_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3038,7 +150,7 @@ type CellGetRequest struct {
 
 func (x *CellGetRequest) Reset() {
 	*x = CellGetRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[26]
+	mi := &file_app_robot_svc_g_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3050,7 +162,7 @@ func (x *CellGetRequest) String() string {
 func (*CellGetRequest) ProtoMessage() {}
 
 func (x *CellGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[26]
+	mi := &file_app_robot_svc_g_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3130,7 +242,7 @@ type CellRef struct {
 
 func (x *CellRef) Reset() {
 	*x = CellRef{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[27]
+	mi := &file_app_robot_svc_g_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3142,7 +254,7 @@ func (x *CellRef) String() string {
 func (*CellRef) ProtoMessage() {}
 
 func (x *CellRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[27]
+	mi := &file_app_robot_svc_g_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3230,7 +342,7 @@ func (b0 CellRef_builder) Build() *CellRef {
 type case_CellRef_Key protoreflect.FieldNumber
 
 func (x case_CellRef_Key) String() string {
-	md := file_app_robot_svc_g_proto_msgTypes[27].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[2].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -3261,7 +373,7 @@ type CellSelect struct {
 
 func (x *CellSelect) Reset() {
 	*x = CellSelect{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[28]
+	mi := &file_app_robot_svc_g_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3273,7 +385,7 @@ func (x *CellSelect) String() string {
 func (*CellSelect) ProtoMessage() {}
 
 func (x *CellSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[28]
+	mi := &file_app_robot_svc_g_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3419,7 +531,7 @@ type CellPatchRequest struct {
 
 func (x *CellPatchRequest) Reset() {
 	*x = CellPatchRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[29]
+	mi := &file_app_robot_svc_g_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3431,7 +543,7 @@ func (x *CellPatchRequest) String() string {
 func (*CellPatchRequest) ProtoMessage() {}
 
 func (x *CellPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[29]
+	mi := &file_app_robot_svc_g_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3520,7 +632,7 @@ type CellApplyRequest struct {
 
 func (x *CellApplyRequest) Reset() {
 	*x = CellApplyRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[30]
+	mi := &file_app_robot_svc_g_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3532,7 +644,7 @@ func (x *CellApplyRequest) String() string {
 func (*CellApplyRequest) ProtoMessage() {}
 
 func (x *CellApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[30]
+	mi := &file_app_robot_svc_g_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3596,6 +708,3003 @@ type CellApplyRequest_builder struct {
 
 func (b0 CellApplyRequest_builder) Build() *CellApplyRequest {
 	m0 := &CellApplyRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Patch = b.Patch
+	return m0
+}
+
+type RobotAddRequest struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Tenant      *TenantRef             `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Cell        *CellRef               `protobuf:"bytes,3,opt,name=cell"`
+	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *RobotAddRequest) Reset() {
+	*x = RobotAddRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotAddRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotAddRequest) ProtoMessage() {}
+
+func (x *RobotAddRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotAddRequest) GetId() []byte {
+	if x != nil {
+		return x.xxx_hidden_Id
+	}
+	return nil
+}
+
+func (x *RobotAddRequest) GetTenant() *TenantRef {
+	if x != nil {
+		return x.xxx_hidden_Tenant
+	}
+	return nil
+}
+
+func (x *RobotAddRequest) GetCell() *CellRef {
+	if x != nil {
+		return x.xxx_hidden_Cell
+	}
+	return nil
+}
+
+func (x *RobotAddRequest) GetAlias() string {
+	if x != nil {
+		return x.xxx_hidden_Alias
+	}
+	return ""
+}
+
+func (x *RobotAddRequest) GetDateCreated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateCreated
+	}
+	return nil
+}
+
+func (x *RobotAddRequest) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Id = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+}
+
+func (x *RobotAddRequest) SetTenant(v *TenantRef) {
+	x.xxx_hidden_Tenant = v
+}
+
+func (x *RobotAddRequest) SetCell(v *CellRef) {
+	x.xxx_hidden_Cell = v
+}
+
+func (x *RobotAddRequest) SetAlias(v string) {
+	x.xxx_hidden_Alias = v
+}
+
+func (x *RobotAddRequest) SetDateCreated(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateCreated = v
+}
+
+func (x *RobotAddRequest) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *RobotAddRequest) HasTenant() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Tenant != nil
+}
+
+func (x *RobotAddRequest) HasCell() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Cell != nil
+}
+
+func (x *RobotAddRequest) HasDateCreated() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateCreated != nil
+}
+
+func (x *RobotAddRequest) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *RobotAddRequest) ClearTenant() {
+	x.xxx_hidden_Tenant = nil
+}
+
+func (x *RobotAddRequest) ClearCell() {
+	x.xxx_hidden_Cell = nil
+}
+
+func (x *RobotAddRequest) ClearDateCreated() {
+	x.xxx_hidden_DateCreated = nil
+}
+
+type RobotAddRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id          []byte
+	Tenant      *TenantRef
+	Cell        *CellRef
+	Alias       string
+	DateCreated *timestamppb.Timestamp
+}
+
+func (b0 RobotAddRequest_builder) Build() *RobotAddRequest {
+	m0 := &RobotAddRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		x.xxx_hidden_Id = b.Id
+	}
+	x.xxx_hidden_Tenant = b.Tenant
+	x.xxx_hidden_Cell = b.Cell
+	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_DateCreated = b.DateCreated
+	return m0
+}
+
+type RobotGetRequest struct {
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref    *RobotRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Select *RobotSelect           `protobuf:"bytes,2,opt,name=select"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *RobotGetRequest) Reset() {
+	*x = RobotGetRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotGetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotGetRequest) ProtoMessage() {}
+
+func (x *RobotGetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotGetRequest) GetRef() *RobotRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *RobotGetRequest) GetSelect() *RobotSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
+func (x *RobotGetRequest) SetRef(v *RobotRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *RobotGetRequest) SetSelect(v *RobotSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *RobotGetRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *RobotGetRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *RobotGetRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *RobotGetRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
+}
+
+type RobotGetRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref    *RobotRef
+	Select *RobotSelect
+}
+
+func (b0 RobotGetRequest_builder) Build() *RobotGetRequest {
+	m0 := &RobotGetRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Select = b.Select
+	return m0
+}
+
+type RobotRef struct {
+	state          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Key isRobotRef_Key         `protobuf_oneof:"key"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RobotRef) Reset() {
+	*x = RobotRef{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotRef) ProtoMessage() {}
+
+func (x *RobotRef) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotRef) GetId() []byte {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Key.(*robotRef_Id); ok {
+			return x.Id
+		}
+	}
+	return nil
+}
+
+func (x *RobotRef) GetSlug() *RobotRefBySlug {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Key.(*robotRef_Slug); ok {
+			return x.Slug
+		}
+	}
+	return nil
+}
+
+func (x *RobotRef) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Key = &robotRef_Id{v}
+}
+
+func (x *RobotRef) SetSlug(v *RobotRefBySlug) {
+	if v == nil {
+		x.xxx_hidden_Key = nil
+		return
+	}
+	x.xxx_hidden_Key = &robotRef_Slug{v}
+}
+
+func (x *RobotRef) HasKey() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Key != nil
+}
+
+func (x *RobotRef) HasId() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Key.(*robotRef_Id)
+	return ok
+}
+
+func (x *RobotRef) HasSlug() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Key.(*robotRef_Slug)
+	return ok
+}
+
+func (x *RobotRef) ClearKey() {
+	x.xxx_hidden_Key = nil
+}
+
+func (x *RobotRef) ClearId() {
+	if _, ok := x.xxx_hidden_Key.(*robotRef_Id); ok {
+		x.xxx_hidden_Key = nil
+	}
+}
+
+func (x *RobotRef) ClearSlug() {
+	if _, ok := x.xxx_hidden_Key.(*robotRef_Slug); ok {
+		x.xxx_hidden_Key = nil
+	}
+}
+
+const RobotRef_Key_not_set_case case_RobotRef_Key = 0
+const RobotRef_Id_case case_RobotRef_Key = 1
+const RobotRef_Slug_case case_RobotRef_Key = 4
+
+func (x *RobotRef) WhichKey() case_RobotRef_Key {
+	if x == nil {
+		return RobotRef_Key_not_set_case
+	}
+	switch x.xxx_hidden_Key.(type) {
+	case *robotRef_Id:
+		return RobotRef_Id_case
+	case *robotRef_Slug:
+		return RobotRef_Slug_case
+	default:
+		return RobotRef_Key_not_set_case
+	}
+}
+
+type RobotRef_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Fields of oneof xxx_hidden_Key:
+	Id   []byte
+	Slug *RobotRefBySlug
+	// -- end of xxx_hidden_Key
+}
+
+func (b0 RobotRef_builder) Build() *RobotRef {
+	m0 := &RobotRef{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		x.xxx_hidden_Key = &robotRef_Id{b.Id}
+	}
+	if b.Slug != nil {
+		x.xxx_hidden_Key = &robotRef_Slug{b.Slug}
+	}
+	return m0
+}
+
+type case_RobotRef_Key protoreflect.FieldNumber
+
+func (x case_RobotRef_Key) String() string {
+	md := file_app_robot_svc_g_proto_msgTypes[8].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
+type isRobotRef_Key interface {
+	isRobotRef_Key()
+}
+
+type robotRef_Id struct {
+	Id []byte `protobuf:"bytes,1,opt,name=id,oneof"`
+}
+
+type robotRef_Slug struct {
+	Slug *RobotRefBySlug `protobuf:"bytes,4,opt,name=slug,oneof"`
+}
+
+func (*robotRef_Id) isRobotRef_Key() {}
+
+func (*robotRef_Slug) isRobotRef_Key() {}
+
+type RobotRefBySlug struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Alias       *string                `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Tenant      *TenantRef             `protobuf:"bytes,2,opt,name=tenant"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *RobotRefBySlug) Reset() {
+	*x = RobotRefBySlug{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotRefBySlug) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotRefBySlug) ProtoMessage() {}
+
+func (x *RobotRefBySlug) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotRefBySlug) GetAlias() string {
+	if x != nil {
+		if x.xxx_hidden_Alias != nil {
+			return *x.xxx_hidden_Alias
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *RobotRefBySlug) GetTenant() *TenantRef {
+	if x != nil {
+		return x.xxx_hidden_Tenant
+	}
+	return nil
+}
+
+func (x *RobotRefBySlug) SetAlias(v string) {
+	x.xxx_hidden_Alias = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *RobotRefBySlug) SetTenant(v *TenantRef) {
+	x.xxx_hidden_Tenant = v
+}
+
+func (x *RobotRefBySlug) HasAlias() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *RobotRefBySlug) HasTenant() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Tenant != nil
+}
+
+func (x *RobotRefBySlug) ClearAlias() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Alias = nil
+}
+
+func (x *RobotRefBySlug) ClearTenant() {
+	x.xxx_hidden_Tenant = nil
+}
+
+type RobotRefBySlug_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Alias  *string
+	Tenant *TenantRef
+}
+
+func (b0 RobotRefBySlug_builder) Build() *RobotRefBySlug {
+	m0 := &RobotRefBySlug{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Alias != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Alias = b.Alias
+	}
+	x.xxx_hidden_Tenant = b.Tenant
+	return m0
+}
+
+type RobotSelect struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
+	xxx_hidden_Tenant      *TenantSelect          `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Cell        *CellSelect            `protobuf:"bytes,3,opt,name=cell"`
+	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
+	xxx_hidden_DateUpdated bool                   `protobuf:"varint,13,opt,name=date_updated,json=dateUpdated"`
+	xxx_hidden_DateCreated bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *RobotSelect) Reset() {
+	*x = RobotSelect{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotSelect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotSelect) ProtoMessage() {}
+
+func (x *RobotSelect) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotSelect) GetAll() bool {
+	if x != nil {
+		return x.xxx_hidden_All
+	}
+	return false
+}
+
+func (x *RobotSelect) GetTenant() *TenantSelect {
+	if x != nil {
+		return x.xxx_hidden_Tenant
+	}
+	return nil
+}
+
+func (x *RobotSelect) GetCell() *CellSelect {
+	if x != nil {
+		return x.xxx_hidden_Cell
+	}
+	return nil
+}
+
+func (x *RobotSelect) GetAlias() bool {
+	if x != nil {
+		return x.xxx_hidden_Alias
+	}
+	return false
+}
+
+func (x *RobotSelect) GetDateUpdated() bool {
+	if x != nil {
+		return x.xxx_hidden_DateUpdated
+	}
+	return false
+}
+
+func (x *RobotSelect) GetDateCreated() bool {
+	if x != nil {
+		return x.xxx_hidden_DateCreated
+	}
+	return false
+}
+
+func (x *RobotSelect) GetDateErased() bool {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return false
+}
+
+func (x *RobotSelect) SetAll(v bool) {
+	x.xxx_hidden_All = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+}
+
+func (x *RobotSelect) SetTenant(v *TenantSelect) {
+	x.xxx_hidden_Tenant = v
+}
+
+func (x *RobotSelect) SetCell(v *CellSelect) {
+	x.xxx_hidden_Cell = v
+}
+
+func (x *RobotSelect) SetAlias(v bool) {
+	x.xxx_hidden_Alias = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+}
+
+func (x *RobotSelect) SetDateUpdated(v bool) {
+	x.xxx_hidden_DateUpdated = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+}
+
+func (x *RobotSelect) SetDateCreated(v bool) {
+	x.xxx_hidden_DateCreated = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+}
+
+func (x *RobotSelect) SetDateErased(v bool) {
+	x.xxx_hidden_DateErased = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
+}
+
+func (x *RobotSelect) HasAll() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *RobotSelect) HasTenant() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Tenant != nil
+}
+
+func (x *RobotSelect) HasCell() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Cell != nil
+}
+
+func (x *RobotSelect) HasAlias() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *RobotSelect) HasDateUpdated() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *RobotSelect) HasDateCreated() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *RobotSelect) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *RobotSelect) ClearAll() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_All = false
+}
+
+func (x *RobotSelect) ClearTenant() {
+	x.xxx_hidden_Tenant = nil
+}
+
+func (x *RobotSelect) ClearCell() {
+	x.xxx_hidden_Cell = nil
+}
+
+func (x *RobotSelect) ClearAlias() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Alias = false
+}
+
+func (x *RobotSelect) ClearDateUpdated() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_DateUpdated = false
+}
+
+func (x *RobotSelect) ClearDateCreated() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_DateCreated = false
+}
+
+func (x *RobotSelect) ClearDateErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_DateErased = false
+}
+
+type RobotSelect_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	All         *bool
+	Tenant      *TenantSelect
+	Cell        *CellSelect
+	Alias       *bool
+	DateUpdated *bool
+	DateCreated *bool
+	DateErased  *bool
+}
+
+func (b0 RobotSelect_builder) Build() *RobotSelect {
+	m0 := &RobotSelect{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.All != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		x.xxx_hidden_All = *b.All
+	}
+	x.xxx_hidden_Tenant = b.Tenant
+	x.xxx_hidden_Cell = b.Cell
+	if b.Alias != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		x.xxx_hidden_Alias = *b.Alias
+	}
+	if b.DateUpdated != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		x.xxx_hidden_DateUpdated = *b.DateUpdated
+	}
+	if b.DateCreated != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		x.xxx_hidden_DateCreated = *b.DateCreated
+	}
+	if b.DateErased != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		x.xxx_hidden_DateErased = *b.DateErased
+	}
+	return m0
+}
+
+type RobotPatchRequest struct {
+	state                       protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref              *RobotRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Cell             *CellRef               `protobuf:"bytes,6,opt,name=cell"`
+	xxx_hidden_CellNull         bool                   `protobuf:"varint,7,opt,name=cell_null,json=cellNull"`
+	xxx_hidden_Alias            *string                `protobuf:"bytes,8,opt,name=alias"`
+	xxx_hidden_DateUpdated      *timestamppb.Timestamp `protobuf:"bytes,26,opt,name=date_updated,json=dateUpdated"`
+	xxx_hidden_DateUpdatedForce bool                   `protobuf:"varint,27,opt,name=date_updated_force,json=dateUpdatedForce"`
+	XXX_raceDetectHookData      protoimpl.RaceDetectHookData
+	XXX_presence                [1]uint32
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *RobotPatchRequest) Reset() {
+	*x = RobotPatchRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotPatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotPatchRequest) ProtoMessage() {}
+
+func (x *RobotPatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotPatchRequest) GetRef() *RobotRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *RobotPatchRequest) GetCell() *CellRef {
+	if x != nil {
+		return x.xxx_hidden_Cell
+	}
+	return nil
+}
+
+func (x *RobotPatchRequest) GetCellNull() bool {
+	if x != nil {
+		return x.xxx_hidden_CellNull
+	}
+	return false
+}
+
+func (x *RobotPatchRequest) GetAlias() string {
+	if x != nil {
+		if x.xxx_hidden_Alias != nil {
+			return *x.xxx_hidden_Alias
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *RobotPatchRequest) GetDateUpdated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateUpdated
+	}
+	return nil
+}
+
+func (x *RobotPatchRequest) GetDateUpdatedForce() bool {
+	if x != nil {
+		return x.xxx_hidden_DateUpdatedForce
+	}
+	return false
+}
+
+func (x *RobotPatchRequest) SetRef(v *RobotRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *RobotPatchRequest) SetCell(v *CellRef) {
+	x.xxx_hidden_Cell = v
+}
+
+func (x *RobotPatchRequest) SetCellNull(v bool) {
+	x.xxx_hidden_CellNull = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+}
+
+func (x *RobotPatchRequest) SetAlias(v string) {
+	x.xxx_hidden_Alias = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+}
+
+func (x *RobotPatchRequest) SetDateUpdated(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateUpdated = v
+}
+
+func (x *RobotPatchRequest) SetDateUpdatedForce(v bool) {
+	x.xxx_hidden_DateUpdatedForce = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+}
+
+func (x *RobotPatchRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *RobotPatchRequest) HasCell() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Cell != nil
+}
+
+func (x *RobotPatchRequest) HasCellNull() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *RobotPatchRequest) HasAlias() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *RobotPatchRequest) HasDateUpdated() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateUpdated != nil
+}
+
+func (x *RobotPatchRequest) HasDateUpdatedForce() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *RobotPatchRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *RobotPatchRequest) ClearCell() {
+	x.xxx_hidden_Cell = nil
+}
+
+func (x *RobotPatchRequest) ClearCellNull() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_CellNull = false
+}
+
+func (x *RobotPatchRequest) ClearAlias() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Alias = nil
+}
+
+func (x *RobotPatchRequest) ClearDateUpdated() {
+	x.xxx_hidden_DateUpdated = nil
+}
+
+func (x *RobotPatchRequest) ClearDateUpdatedForce() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_DateUpdatedForce = false
+}
+
+type RobotPatchRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref  *RobotRef
+	Cell *CellRef
+	// Clear cell instead of writing it.
+	// It takes a field of its own because an unset value already means
+	// "leave it alone", so no value could have meant NULL. It wins
+	// outright: setting both this and cell clears.
+	CellNull *bool
+	Alias    *string
+	// The version this update requires the stored date_updated to be.
+	// It is a precondition, not a write: the update applies only if the row
+	// still holds this value, and the server stamps the new version itself.
+	// Setting it together with date_updated_force is an error --
+	// the version is the token every client's compare-and-swap is measured
+	// against, so it is not the caller's to choose.
+	DateUpdated *timestamppb.Timestamp
+	// Update whatever the stored date_updated is, with no precondition.
+	// The server still stamps a new version, so other clients' tokens are
+	// invalidated as usual; this declines the check for THIS update only.
+	// One of date_updated or this must be set. An omitted version is
+	// refused rather than assumed, because an unset field cannot be told
+	// apart from a caller who never considered locking at all.
+	DateUpdatedForce *bool
+}
+
+func (b0 RobotPatchRequest_builder) Build() *RobotPatchRequest {
+	m0 := &RobotPatchRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Cell = b.Cell
+	if b.CellNull != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		x.xxx_hidden_CellNull = *b.CellNull
+	}
+	if b.Alias != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		x.xxx_hidden_Alias = b.Alias
+	}
+	x.xxx_hidden_DateUpdated = b.DateUpdated
+	if b.DateUpdatedForce != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_DateUpdatedForce = *b.DateUpdatedForce
+	}
+	return m0
+}
+
+type RobotApplyRequest struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref   *RobotRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *RobotApplyRequest) Reset() {
+	*x = RobotApplyRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotApplyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotApplyRequest) ProtoMessage() {}
+
+func (x *RobotApplyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotApplyRequest) GetRef() *RobotRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *RobotApplyRequest) GetPatch() *patchpb.Patch {
+	if x != nil {
+		return x.xxx_hidden_Patch
+	}
+	return nil
+}
+
+func (x *RobotApplyRequest) SetRef(v *RobotRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *RobotApplyRequest) SetPatch(v *patchpb.Patch) {
+	x.xxx_hidden_Patch = v
+}
+
+func (x *RobotApplyRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *RobotApplyRequest) HasPatch() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Patch != nil
+}
+
+func (x *RobotApplyRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *RobotApplyRequest) ClearPatch() {
+	x.xxx_hidden_Patch = nil
+}
+
+type RobotApplyRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref   *RobotRef
+	Patch *patchpb.Patch
+}
+
+func (b0 RobotApplyRequest_builder) Build() *RobotApplyRequest {
+	m0 := &RobotApplyRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Patch = b.Patch
+	return m0
+}
+
+type RobotListRequest struct {
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Filters *[]*RobotFilter        `protobuf:"bytes,1,rep,name=filters"`
+	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
+	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *RobotListRequest) Reset() {
+	*x = RobotListRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotListRequest) ProtoMessage() {}
+
+func (x *RobotListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotListRequest) GetFilters() []*RobotFilter {
+	if x != nil {
+		if x.xxx_hidden_Filters != nil {
+			return *x.xxx_hidden_Filters
+		}
+	}
+	return nil
+}
+
+func (x *RobotListRequest) GetSize() int32 {
+	if x != nil {
+		return x.xxx_hidden_Size
+	}
+	return 0
+}
+
+func (x *RobotListRequest) GetAfter() string {
+	if x != nil {
+		return x.xxx_hidden_After
+	}
+	return ""
+}
+
+func (x *RobotListRequest) SetFilters(v []*RobotFilter) {
+	x.xxx_hidden_Filters = &v
+}
+
+func (x *RobotListRequest) SetSize(v int32) {
+	x.xxx_hidden_Size = v
+}
+
+func (x *RobotListRequest) SetAfter(v string) {
+	x.xxx_hidden_After = v
+}
+
+type RobotListRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Bounded because the work is: each filter is a predicate in the same query,
+	// so this is what says how much of the database one request may read.
+	Filters []*RobotFilter
+	// How many to answer with. Nothing said is what the schema declared, and more
+	// than the cap is the cap -- a caller asking for more than there is meant no
+	// harm, so it is not an error and it is not the whole table either.
+	Size int32
+	// Where to carry on from: the "next" of the answer before. It names the last
+	// row of that page rather than counting rows from the start, so a row added
+	// ahead of the page does not shift it and a caller reading through never sees
+	// one twice or misses one.
+	After string
+}
+
+func (b0 RobotListRequest_builder) Build() *RobotListRequest {
+	m0 := &RobotListRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Filters = &b.Filters
+	x.xxx_hidden_Size = b.Size
+	x.xxx_hidden_After = b.After
+	return m0
+}
+
+type RobotListResponse struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Items *[]*Robot              `protobuf:"bytes,1,rep,name=items"`
+	xxx_hidden_Next  string                 `protobuf:"bytes,2,opt,name=next"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *RobotListResponse) Reset() {
+	*x = RobotListResponse{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotListResponse) ProtoMessage() {}
+
+func (x *RobotListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotListResponse) GetItems() []*Robot {
+	if x != nil {
+		if x.xxx_hidden_Items != nil {
+			return *x.xxx_hidden_Items
+		}
+	}
+	return nil
+}
+
+func (x *RobotListResponse) GetNext() string {
+	if x != nil {
+		return x.xxx_hidden_Next
+	}
+	return ""
+}
+
+func (x *RobotListResponse) SetItems(v []*Robot) {
+	x.xxx_hidden_Items = &v
+}
+
+func (x *RobotListResponse) SetNext(v string) {
+	x.xxx_hidden_Next = v
+}
+
+type RobotListResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Items []*Robot
+	// What to ask for next, and empty when this was the last of them.
+	//
+	// Empty means there is no more *for now*: a list is read as it is, and one
+	// that has grown since answers a fresh call. It is not empty merely because
+	// the page came back short -- a page is short when the last row of it was the
+	// last row there was, which is a thing the server can only know by having
+	// looked.
+	Next string
+}
+
+func (b0 RobotListResponse_builder) Build() *RobotListResponse {
+	m0 := &RobotListResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Items = &b.Items
+	x.xxx_hidden_Next = b.Next
+	return m0
+}
+
+type RobotFilter struct {
+	state          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref *RobotRef              `protobuf:"bytes,1,opt,name=ref"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RobotFilter) Reset() {
+	*x = RobotFilter{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotFilter) ProtoMessage() {}
+
+func (x *RobotFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotFilter) GetRef() *RobotRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *RobotFilter) SetRef(v *RobotRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *RobotFilter) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *RobotFilter) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+type RobotFilter_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref *RobotRef
+}
+
+func (b0 RobotFilter_builder) Build() *RobotFilter {
+	m0 := &RobotFilter{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	return m0
+}
+
+type RobotWatchRequest struct {
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Filters      *[]*RobotFilter        `protobuf:"bytes,1,rep,name=filters"`
+	xxx_hidden_SkipSnapshot bool                   `protobuf:"varint,2,opt,name=skip_snapshot,json=skipSnapshot"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *RobotWatchRequest) Reset() {
+	*x = RobotWatchRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotWatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotWatchRequest) ProtoMessage() {}
+
+func (x *RobotWatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotWatchRequest) GetFilters() []*RobotFilter {
+	if x != nil {
+		if x.xxx_hidden_Filters != nil {
+			return *x.xxx_hidden_Filters
+		}
+	}
+	return nil
+}
+
+func (x *RobotWatchRequest) GetSkipSnapshot() bool {
+	if x != nil {
+		return x.xxx_hidden_SkipSnapshot
+	}
+	return false
+}
+
+func (x *RobotWatchRequest) SetFilters(v []*RobotFilter) {
+	x.xxx_hidden_Filters = &v
+}
+
+func (x *RobotWatchRequest) SetSkipSnapshot(v bool) {
+	x.xxx_hidden_SkipSnapshot = v
+}
+
+type RobotWatchRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Which rows to watch, in the same words List takes them: what is watched is
+	// what that list would answer with, now and afterwards.
+	//
+	// Required, and bounded the way a List is -- for a heavier reason. A list
+	// runs its filters once; a watch runs them again for every write that touches
+	// the entity, for as long as the stream is open. A watch with no filters is
+	// the whole table, forever, which is the one shape that has no cap at all.
+	Filters []*RobotFilter
+	// Skip what is there now and send only what changes from here.
+	//
+	// Off by default, and the default is the safe one: a client that does not
+	// know the current state and did not ask for it holds something wrong until
+	// the next write happens to correct it.
+	SkipSnapshot bool
+}
+
+func (b0 RobotWatchRequest_builder) Build() *RobotWatchRequest {
+	m0 := &RobotWatchRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Filters = &b.Filters
+	x.xxx_hidden_SkipSnapshot = b.SkipSnapshot
+	return m0
+}
+
+type RobotWatchResponse struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Items *[]*RobotWatchItem     `protobuf:"bytes,1,rep,name=items"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *RobotWatchResponse) Reset() {
+	*x = RobotWatchResponse{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotWatchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotWatchResponse) ProtoMessage() {}
+
+func (x *RobotWatchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotWatchResponse) GetItems() []*RobotWatchItem {
+	if x != nil {
+		if x.xxx_hidden_Items != nil {
+			return *x.xxx_hidden_Items
+		}
+	}
+	return nil
+}
+
+func (x *RobotWatchResponse) SetItems(v []*RobotWatchItem) {
+	x.xxx_hidden_Items = &v
+}
+
+type RobotWatchResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// What changed, or -- in the first message -- everything that matches.
+	Items []*RobotWatchItem
+}
+
+func (b0 RobotWatchResponse_builder) Build() *RobotWatchResponse {
+	m0 := &RobotWatchResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Items = &b.Items
+	return m0
+}
+
+type RobotWatchItem struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Value       *Robot                 `protobuf:"bytes,2,opt,name=value"`
+	xxx_hidden_Action      string                 `protobuf:"bytes,3,opt,name=action"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *RobotWatchItem) Reset() {
+	*x = RobotWatchItem{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotWatchItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotWatchItem) ProtoMessage() {}
+
+func (x *RobotWatchItem) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotWatchItem) GetId() []byte {
+	if x != nil {
+		return x.xxx_hidden_Id
+	}
+	return nil
+}
+
+func (x *RobotWatchItem) GetValue() *Robot {
+	if x != nil {
+		return x.xxx_hidden_Value
+	}
+	return nil
+}
+
+func (x *RobotWatchItem) GetAction() string {
+	if x != nil {
+		return x.xxx_hidden_Action
+	}
+	return ""
+}
+
+func (x *RobotWatchItem) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Id = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *RobotWatchItem) SetValue(v *Robot) {
+	x.xxx_hidden_Value = v
+}
+
+func (x *RobotWatchItem) SetAction(v string) {
+	x.xxx_hidden_Action = v
+}
+
+func (x *RobotWatchItem) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *RobotWatchItem) HasValue() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Value != nil
+}
+
+func (x *RobotWatchItem) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *RobotWatchItem) ClearValue() {
+	x.xxx_hidden_Value = nil
+}
+
+type RobotWatchItem_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Which row. Always said, since one that is gone still has to be named.
+	Id []byte
+	// The row as it is now, and **absent when it is no longer one this caller may
+	// see**: erased, or moved out of the filters this stream named.
+	//
+	// Absence is the whole of how a removal is said. There is no flag for it, and
+	// there is deliberately no way to tell those two apart -- a stream that
+	// distinguished "erased" from "no longer yours" would be telling a caller
+	// about rows that stopped being theirs, which is the thing the wall is for.
+	//
+	// It is only ever said about a row this stream has already carried. One that
+	// never matched is not news.
+	Value *Robot
+	// The RPC that changed it, by the name gRPC knows it by. It is what the
+	// caller of *that* RPC asked for and not the write it became, so an RPC
+	// written by hand is here under its own name.
+	//
+	// Empty in the first message, which is not something anybody asked for -- it
+	// is what is already there.
+	Action string
+}
+
+func (b0 RobotWatchItem_builder) Build() *RobotWatchItem {
+	m0 := &RobotWatchItem{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Id = b.Id
+	}
+	x.xxx_hidden_Value = b.Value
+	x.xxx_hidden_Action = b.Action
+	return m0
+}
+
+type JointAddRequest struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Robot       *RobotRef              `protobuf:"bytes,2,opt,name=robot"`
+	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *JointAddRequest) Reset() {
+	*x = JointAddRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JointAddRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JointAddRequest) ProtoMessage() {}
+
+func (x *JointAddRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *JointAddRequest) GetId() []byte {
+	if x != nil {
+		return x.xxx_hidden_Id
+	}
+	return nil
+}
+
+func (x *JointAddRequest) GetRobot() *RobotRef {
+	if x != nil {
+		return x.xxx_hidden_Robot
+	}
+	return nil
+}
+
+func (x *JointAddRequest) GetAlias() string {
+	if x != nil {
+		return x.xxx_hidden_Alias
+	}
+	return ""
+}
+
+func (x *JointAddRequest) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Id = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *JointAddRequest) SetRobot(v *RobotRef) {
+	x.xxx_hidden_Robot = v
+}
+
+func (x *JointAddRequest) SetAlias(v string) {
+	x.xxx_hidden_Alias = v
+}
+
+func (x *JointAddRequest) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *JointAddRequest) HasRobot() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Robot != nil
+}
+
+func (x *JointAddRequest) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *JointAddRequest) ClearRobot() {
+	x.xxx_hidden_Robot = nil
+}
+
+type JointAddRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id    []byte
+	Robot *RobotRef
+	Alias string
+}
+
+func (b0 JointAddRequest_builder) Build() *JointAddRequest {
+	m0 := &JointAddRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Id = b.Id
+	}
+	x.xxx_hidden_Robot = b.Robot
+	x.xxx_hidden_Alias = b.Alias
+	return m0
+}
+
+type JointGetRequest struct {
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref    *JointRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Select *JointSelect           `protobuf:"bytes,2,opt,name=select"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *JointGetRequest) Reset() {
+	*x = JointGetRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JointGetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JointGetRequest) ProtoMessage() {}
+
+func (x *JointGetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *JointGetRequest) GetRef() *JointRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *JointGetRequest) GetSelect() *JointSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
+func (x *JointGetRequest) SetRef(v *JointRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *JointGetRequest) SetSelect(v *JointSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *JointGetRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *JointGetRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *JointGetRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *JointGetRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
+}
+
+type JointGetRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref    *JointRef
+	Select *JointSelect
+}
+
+func (b0 JointGetRequest_builder) Build() *JointGetRequest {
+	m0 := &JointGetRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Select = b.Select
+	return m0
+}
+
+type JointRef struct {
+	state          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Key isJointRef_Key         `protobuf_oneof:"key"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *JointRef) Reset() {
+	*x = JointRef{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JointRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JointRef) ProtoMessage() {}
+
+func (x *JointRef) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *JointRef) GetId() []byte {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Key.(*jointRef_Id); ok {
+			return x.Id
+		}
+	}
+	return nil
+}
+
+func (x *JointRef) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Key = &jointRef_Id{v}
+}
+
+func (x *JointRef) HasKey() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Key != nil
+}
+
+func (x *JointRef) HasId() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Key.(*jointRef_Id)
+	return ok
+}
+
+func (x *JointRef) ClearKey() {
+	x.xxx_hidden_Key = nil
+}
+
+func (x *JointRef) ClearId() {
+	if _, ok := x.xxx_hidden_Key.(*jointRef_Id); ok {
+		x.xxx_hidden_Key = nil
+	}
+}
+
+const JointRef_Key_not_set_case case_JointRef_Key = 0
+const JointRef_Id_case case_JointRef_Key = 1
+
+func (x *JointRef) WhichKey() case_JointRef_Key {
+	if x == nil {
+		return JointRef_Key_not_set_case
+	}
+	switch x.xxx_hidden_Key.(type) {
+	case *jointRef_Id:
+		return JointRef_Id_case
+	default:
+		return JointRef_Key_not_set_case
+	}
+}
+
+type JointRef_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Fields of oneof xxx_hidden_Key:
+	Id []byte
+	// -- end of xxx_hidden_Key
+}
+
+func (b0 JointRef_builder) Build() *JointRef {
+	m0 := &JointRef{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		x.xxx_hidden_Key = &jointRef_Id{b.Id}
+	}
+	return m0
+}
+
+type case_JointRef_Key protoreflect.FieldNumber
+
+func (x case_JointRef_Key) String() string {
+	md := file_app_robot_svc_g_proto_msgTypes[21].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
+type isJointRef_Key interface {
+	isJointRef_Key()
+}
+
+type jointRef_Id struct {
+	Id []byte `protobuf:"bytes,1,opt,name=id,oneof"`
+}
+
+func (*jointRef_Id) isJointRef_Key() {}
+
+type JointSelect struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
+	xxx_hidden_Robot       *RobotSelect           `protobuf:"bytes,2,opt,name=robot"`
+	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
+	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *JointSelect) Reset() {
+	*x = JointSelect{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JointSelect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JointSelect) ProtoMessage() {}
+
+func (x *JointSelect) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *JointSelect) GetAll() bool {
+	if x != nil {
+		return x.xxx_hidden_All
+	}
+	return false
+}
+
+func (x *JointSelect) GetRobot() *RobotSelect {
+	if x != nil {
+		return x.xxx_hidden_Robot
+	}
+	return nil
+}
+
+func (x *JointSelect) GetAlias() bool {
+	if x != nil {
+		return x.xxx_hidden_Alias
+	}
+	return false
+}
+
+func (x *JointSelect) GetDateErased() bool {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return false
+}
+
+func (x *JointSelect) SetAll(v bool) {
+	x.xxx_hidden_All = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *JointSelect) SetRobot(v *RobotSelect) {
+	x.xxx_hidden_Robot = v
+}
+
+func (x *JointSelect) SetAlias(v bool) {
+	x.xxx_hidden_Alias = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *JointSelect) SetDateErased(v bool) {
+	x.xxx_hidden_DateErased = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *JointSelect) HasAll() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *JointSelect) HasRobot() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Robot != nil
+}
+
+func (x *JointSelect) HasAlias() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *JointSelect) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *JointSelect) ClearAll() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_All = false
+}
+
+func (x *JointSelect) ClearRobot() {
+	x.xxx_hidden_Robot = nil
+}
+
+func (x *JointSelect) ClearAlias() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Alias = false
+}
+
+func (x *JointSelect) ClearDateErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_DateErased = false
+}
+
+type JointSelect_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	All        *bool
+	Robot      *RobotSelect
+	Alias      *bool
+	DateErased *bool
+}
+
+func (b0 JointSelect_builder) Build() *JointSelect {
+	m0 := &JointSelect{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.All != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_All = *b.All
+	}
+	x.xxx_hidden_Robot = b.Robot
+	if b.Alias != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_Alias = *b.Alias
+	}
+	if b.DateErased != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_DateErased = *b.DateErased
+	}
+	return m0
+}
+
+type JointPatchRequest struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref         *JointRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Alias       *string                `protobuf:"bytes,8,opt,name=alias"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *JointPatchRequest) Reset() {
+	*x = JointPatchRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JointPatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JointPatchRequest) ProtoMessage() {}
+
+func (x *JointPatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *JointPatchRequest) GetRef() *JointRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *JointPatchRequest) GetAlias() string {
+	if x != nil {
+		if x.xxx_hidden_Alias != nil {
+			return *x.xxx_hidden_Alias
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *JointPatchRequest) SetRef(v *JointRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *JointPatchRequest) SetAlias(v string) {
+	x.xxx_hidden_Alias = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *JointPatchRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *JointPatchRequest) HasAlias() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *JointPatchRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *JointPatchRequest) ClearAlias() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Alias = nil
+}
+
+type JointPatchRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref   *JointRef
+	Alias *string
+}
+
+func (b0 JointPatchRequest_builder) Build() *JointPatchRequest {
+	m0 := &JointPatchRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	if b.Alias != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Alias = b.Alias
+	}
+	return m0
+}
+
+type JointApplyRequest struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref   *JointRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *JointApplyRequest) Reset() {
+	*x = JointApplyRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JointApplyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JointApplyRequest) ProtoMessage() {}
+
+func (x *JointApplyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *JointApplyRequest) GetRef() *JointRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *JointApplyRequest) GetPatch() *patchpb.Patch {
+	if x != nil {
+		return x.xxx_hidden_Patch
+	}
+	return nil
+}
+
+func (x *JointApplyRequest) SetRef(v *JointRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *JointApplyRequest) SetPatch(v *patchpb.Patch) {
+	x.xxx_hidden_Patch = v
+}
+
+func (x *JointApplyRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *JointApplyRequest) HasPatch() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Patch != nil
+}
+
+func (x *JointApplyRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *JointApplyRequest) ClearPatch() {
+	x.xxx_hidden_Patch = nil
+}
+
+type JointApplyRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref   *JointRef
+	Patch *patchpb.Patch
+}
+
+func (b0 JointApplyRequest_builder) Build() *JointApplyRequest {
+	m0 := &JointApplyRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Patch = b.Patch
+	return m0
+}
+
+type FleetAddRequest struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *FleetAddRequest) Reset() {
+	*x = FleetAddRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FleetAddRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FleetAddRequest) ProtoMessage() {}
+
+func (x *FleetAddRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *FleetAddRequest) GetId() []byte {
+	if x != nil {
+		return x.xxx_hidden_Id
+	}
+	return nil
+}
+
+func (x *FleetAddRequest) GetAlias() string {
+	if x != nil {
+		return x.xxx_hidden_Alias
+	}
+	return ""
+}
+
+func (x *FleetAddRequest) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Id = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *FleetAddRequest) SetAlias(v string) {
+	x.xxx_hidden_Alias = v
+}
+
+func (x *FleetAddRequest) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *FleetAddRequest) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+type FleetAddRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id    []byte
+	Alias string
+}
+
+func (b0 FleetAddRequest_builder) Build() *FleetAddRequest {
+	m0 := &FleetAddRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Id = b.Id
+	}
+	x.xxx_hidden_Alias = b.Alias
+	return m0
+}
+
+type FleetGetRequest struct {
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref    *FleetRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Select *FleetSelect           `protobuf:"bytes,2,opt,name=select"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *FleetGetRequest) Reset() {
+	*x = FleetGetRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FleetGetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FleetGetRequest) ProtoMessage() {}
+
+func (x *FleetGetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *FleetGetRequest) GetRef() *FleetRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *FleetGetRequest) GetSelect() *FleetSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
+func (x *FleetGetRequest) SetRef(v *FleetRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *FleetGetRequest) SetSelect(v *FleetSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *FleetGetRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *FleetGetRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *FleetGetRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *FleetGetRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
+}
+
+type FleetGetRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref    *FleetRef
+	Select *FleetSelect
+}
+
+func (b0 FleetGetRequest_builder) Build() *FleetGetRequest {
+	m0 := &FleetGetRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Select = b.Select
+	return m0
+}
+
+type FleetRef struct {
+	state          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Key isFleetRef_Key         `protobuf_oneof:"key"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FleetRef) Reset() {
+	*x = FleetRef{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FleetRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FleetRef) ProtoMessage() {}
+
+func (x *FleetRef) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *FleetRef) GetId() []byte {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Key.(*fleetRef_Id); ok {
+			return x.Id
+		}
+	}
+	return nil
+}
+
+func (x *FleetRef) GetAlias() string {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Key.(*fleetRef_Alias); ok {
+			return x.Alias
+		}
+	}
+	return ""
+}
+
+func (x *FleetRef) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Key = &fleetRef_Id{v}
+}
+
+func (x *FleetRef) SetAlias(v string) {
+	x.xxx_hidden_Key = &fleetRef_Alias{v}
+}
+
+func (x *FleetRef) HasKey() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Key != nil
+}
+
+func (x *FleetRef) HasId() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Key.(*fleetRef_Id)
+	return ok
+}
+
+func (x *FleetRef) HasAlias() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Key.(*fleetRef_Alias)
+	return ok
+}
+
+func (x *FleetRef) ClearKey() {
+	x.xxx_hidden_Key = nil
+}
+
+func (x *FleetRef) ClearId() {
+	if _, ok := x.xxx_hidden_Key.(*fleetRef_Id); ok {
+		x.xxx_hidden_Key = nil
+	}
+}
+
+func (x *FleetRef) ClearAlias() {
+	if _, ok := x.xxx_hidden_Key.(*fleetRef_Alias); ok {
+		x.xxx_hidden_Key = nil
+	}
+}
+
+const FleetRef_Key_not_set_case case_FleetRef_Key = 0
+const FleetRef_Id_case case_FleetRef_Key = 1
+const FleetRef_Alias_case case_FleetRef_Key = 4
+
+func (x *FleetRef) WhichKey() case_FleetRef_Key {
+	if x == nil {
+		return FleetRef_Key_not_set_case
+	}
+	switch x.xxx_hidden_Key.(type) {
+	case *fleetRef_Id:
+		return FleetRef_Id_case
+	case *fleetRef_Alias:
+		return FleetRef_Alias_case
+	default:
+		return FleetRef_Key_not_set_case
+	}
+}
+
+type FleetRef_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Fields of oneof xxx_hidden_Key:
+	Id    []byte
+	Alias *string
+	// -- end of xxx_hidden_Key
+}
+
+func (b0 FleetRef_builder) Build() *FleetRef {
+	m0 := &FleetRef{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		x.xxx_hidden_Key = &fleetRef_Id{b.Id}
+	}
+	if b.Alias != nil {
+		x.xxx_hidden_Key = &fleetRef_Alias{*b.Alias}
+	}
+	return m0
+}
+
+type case_FleetRef_Key protoreflect.FieldNumber
+
+func (x case_FleetRef_Key) String() string {
+	md := file_app_robot_svc_g_proto_msgTypes[27].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
+type isFleetRef_Key interface {
+	isFleetRef_Key()
+}
+
+type fleetRef_Id struct {
+	Id []byte `protobuf:"bytes,1,opt,name=id,oneof"`
+}
+
+type fleetRef_Alias struct {
+	Alias string `protobuf:"bytes,4,opt,name=alias,oneof"`
+}
+
+func (*fleetRef_Id) isFleetRef_Key() {}
+
+func (*fleetRef_Alias) isFleetRef_Key() {}
+
+type FleetSelect struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
+	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
+	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *FleetSelect) Reset() {
+	*x = FleetSelect{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FleetSelect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FleetSelect) ProtoMessage() {}
+
+func (x *FleetSelect) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *FleetSelect) GetAll() bool {
+	if x != nil {
+		return x.xxx_hidden_All
+	}
+	return false
+}
+
+func (x *FleetSelect) GetAlias() bool {
+	if x != nil {
+		return x.xxx_hidden_Alias
+	}
+	return false
+}
+
+func (x *FleetSelect) GetDateErased() bool {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return false
+}
+
+func (x *FleetSelect) SetAll(v bool) {
+	x.xxx_hidden_All = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *FleetSelect) SetAlias(v bool) {
+	x.xxx_hidden_Alias = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *FleetSelect) SetDateErased(v bool) {
+	x.xxx_hidden_DateErased = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *FleetSelect) HasAll() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *FleetSelect) HasAlias() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *FleetSelect) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *FleetSelect) ClearAll() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_All = false
+}
+
+func (x *FleetSelect) ClearAlias() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Alias = false
+}
+
+func (x *FleetSelect) ClearDateErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_DateErased = false
+}
+
+type FleetSelect_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	All        *bool
+	Alias      *bool
+	DateErased *bool
+}
+
+func (b0 FleetSelect_builder) Build() *FleetSelect {
+	m0 := &FleetSelect{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.All != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_All = *b.All
+	}
+	if b.Alias != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Alias = *b.Alias
+	}
+	if b.DateErased != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_DateErased = *b.DateErased
+	}
+	return m0
+}
+
+type FleetPatchRequest struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref         *FleetRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Alias       *string                `protobuf:"bytes,8,opt,name=alias"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *FleetPatchRequest) Reset() {
+	*x = FleetPatchRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FleetPatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FleetPatchRequest) ProtoMessage() {}
+
+func (x *FleetPatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *FleetPatchRequest) GetRef() *FleetRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *FleetPatchRequest) GetAlias() string {
+	if x != nil {
+		if x.xxx_hidden_Alias != nil {
+			return *x.xxx_hidden_Alias
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *FleetPatchRequest) SetRef(v *FleetRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *FleetPatchRequest) SetAlias(v string) {
+	x.xxx_hidden_Alias = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *FleetPatchRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *FleetPatchRequest) HasAlias() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *FleetPatchRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *FleetPatchRequest) ClearAlias() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Alias = nil
+}
+
+type FleetPatchRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref   *FleetRef
+	Alias *string
+}
+
+func (b0 FleetPatchRequest_builder) Build() *FleetPatchRequest {
+	m0 := &FleetPatchRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	if b.Alias != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Alias = b.Alias
+	}
+	return m0
+}
+
+type FleetApplyRequest struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref   *FleetRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *FleetApplyRequest) Reset() {
+	*x = FleetApplyRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FleetApplyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FleetApplyRequest) ProtoMessage() {}
+
+func (x *FleetApplyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *FleetApplyRequest) GetRef() *FleetRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *FleetApplyRequest) GetPatch() *patchpb.Patch {
+	if x != nil {
+		return x.xxx_hidden_Patch
+	}
+	return nil
+}
+
+func (x *FleetApplyRequest) SetRef(v *FleetRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *FleetApplyRequest) SetPatch(v *patchpb.Patch) {
+	x.xxx_hidden_Patch = v
+}
+
+func (x *FleetApplyRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *FleetApplyRequest) HasPatch() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Patch != nil
+}
+
+func (x *FleetApplyRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *FleetApplyRequest) ClearPatch() {
+	x.xxx_hidden_Patch = nil
+}
+
+type FleetApplyRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref   *FleetRef
+	Patch *patchpb.Patch
+}
+
+func (b0 FleetApplyRequest_builder) Build() *FleetApplyRequest {
+	m0 := &FleetApplyRequest{}
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Ref = b.Ref
@@ -4321,10 +4430,34 @@ var File_app_robot_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x0fapp/robot.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x19payday/tenant_svc.g.proto\"\xa8\x01\n" +
-	"\x0fRobotAddRequest\x12\x0e\n" +
+	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x0fapp/robot.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x19payday/tenant_svc.g.proto\"h\n" +
+	"\x0eCellAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12)\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\x12\x1b\n" +
+	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\"Y\n" +
+	"\x0eCellGetRequest\x12\x1e\n" +
+	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12'\n" +
+	"\x06select\x18\x02 \x01(\v2\x0f.app.CellSelectR\x06select\"\"\n" +
+	"\aCellRef\x12\x10\n" +
+	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"\x03key\"\x83\x01\n" +
+	"\n" +
+	"CellSelect\x12\x10\n" +
+	"\x03all\x18\x01 \x01(\bR\x03all\x12,\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06tenant\x12\x14\n" +
+	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x1f\n" +
+	"\vdate_erased\x18\x0e \x01(\bR\n" +
+	"dateErased\"H\n" +
+	"\x10CellPatchRequest\x12\x1e\n" +
+	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12\x14\n" +
+	"\x05alias\x18\b \x01(\tR\x05alias\"V\n" +
+	"\x10CellApplyRequest\x12\x1e\n" +
+	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12\"\n" +
+	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"\xca\x01\n" +
+	"\x0fRobotAddRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\fR\x02id\x12)\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\x12 \n" +
+	"\x04cell\x18\x03 \x01(\v2\f.app.CellRefR\x04cell\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"\\\n" +
 	"\x0fRobotGetRequest\x12\x1f\n" +
@@ -4336,17 +4469,20 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03key\"Q\n" +
 	"\x0eRobotRefBySlug\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12)\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\"\xca\x01\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\"\xef\x01\n" +
 	"\vRobotSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12,\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06tenant\x12\x14\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06tenant\x12#\n" +
+	"\x04cell\x18\x03 \x01(\v2\x0f.app.CellSelectR\x04cell\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\bR\x05alias\x12!\n" +
 	"\fdate_updated\x18\r \x01(\bR\vdateUpdated\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\x12\x1f\n" +
 	"\vdate_erased\x18\x0e \x01(\bR\n" +
-	"dateErased\"\xb7\x01\n" +
+	"dateErased\"\xf6\x01\n" +
 	"\x11RobotPatchRequest\x12\x1f\n" +
-	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12\x14\n" +
+	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12 \n" +
+	"\x04cell\x18\x06 \x01(\v2\f.app.CellRefR\x04cell\x12\x1b\n" +
+	"\tcell_null\x18\a \x01(\bR\bcellNull\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\x12=\n" +
 	"\fdate_updated\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\vdateUpdated\x12,\n" +
 	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\"X\n" +
@@ -4415,29 +4551,6 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x05alias\x18\b \x01(\tR\x05alias\"X\n" +
 	"\x11FleetApplyRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.FleetRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"h\n" +
-	"\x0eCellAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12)\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\x12\x1b\n" +
-	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\"Y\n" +
-	"\x0eCellGetRequest\x12\x1e\n" +
-	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12'\n" +
-	"\x06select\x18\x02 \x01(\v2\x0f.app.CellSelectR\x06select\"\"\n" +
-	"\aCellRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
-	"\x03key\"\x83\x01\n" +
-	"\n" +
-	"CellSelect\x12\x10\n" +
-	"\x03all\x18\x01 \x01(\bR\x03all\x12,\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06tenant\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x1f\n" +
-	"\vdate_erased\x18\x0e \x01(\bR\n" +
-	"dateErased\"H\n" +
-	"\x10CellPatchRequest\x12\x1e\n" +
-	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12\x14\n" +
-	"\x05alias\x18\b \x01(\tR\x05alias\"V\n" +
-	"\x10CellApplyRequest\x12\x1e\n" +
-	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"\xa8\x01\n" +
 	"\x11ReadingAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12#\n" +
@@ -4461,7 +4574,13 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\acelsius\x18\x10 \x01(\x01R\acelsius\"\\\n" +
 	"\x13ReadingApplyRequest\x12!\n" +
 	"\x03ref\x18\x01 \x01(\v2\x0f.app.ReadingRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch2\xdd\x02\n" +
+	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch2\xe0\x01\n" +
+	"\vCellService\x12%\n" +
+	"\x03Add\x12\x13.app.CellAddRequest\x1a\t.app.Cell\x12%\n" +
+	"\x03Get\x12\x13.app.CellGetRequest\x1a\t.app.Cell\x12)\n" +
+	"\x05Patch\x12\x15.app.CellPatchRequest\x1a\t.app.Cell\x12)\n" +
+	"\x05Apply\x12\x15.app.CellApplyRequest\x1a\t.app.Cell\x12-\n" +
+	"\x05Erase\x12\f.app.CellRef\x1a\x16.google.protobuf.Empty2\xdd\x02\n" +
 	"\fRobotService\x12'\n" +
 	"\x03Add\x12\x14.app.RobotAddRequest\x1a\n" +
 	".app.Robot\x12'\n" +
@@ -4493,13 +4612,7 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	".app.Fleet\x12+\n" +
 	"\x05Apply\x12\x16.app.FleetApplyRequest\x1a\n" +
 	".app.Fleet\x12.\n" +
-	"\x05Erase\x12\r.app.FleetRef\x1a\x16.google.protobuf.Empty2\xe0\x01\n" +
-	"\vCellService\x12%\n" +
-	"\x03Add\x12\x13.app.CellAddRequest\x1a\t.app.Cell\x12%\n" +
-	"\x03Get\x12\x13.app.CellGetRequest\x1a\t.app.Cell\x12)\n" +
-	"\x05Patch\x12\x15.app.CellPatchRequest\x1a\t.app.Cell\x12)\n" +
-	"\x05Apply\x12\x15.app.CellApplyRequest\x1a\t.app.Cell\x12-\n" +
-	"\x05Erase\x12\f.app.CellRef\x1a\x16.google.protobuf.Empty2\xfe\x01\n" +
+	"\x05Erase\x12\r.app.FleetRef\x1a\x16.google.protobuf.Empty2\xfe\x01\n" +
 	"\x0eReadingService\x12+\n" +
 	"\x03Add\x12\x16.app.ReadingAddRequest\x1a\f.app.Reading\x12+\n" +
 	"\x03Get\x12\x16.app.ReadingGetRequest\x1a\f.app.Reading\x12/\n" +
@@ -4509,37 +4622,37 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 
 var file_app_robot_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_app_robot_svc_g_proto_goTypes = []any{
-	(*RobotAddRequest)(nil),       // 0: app.RobotAddRequest
-	(*RobotGetRequest)(nil),       // 1: app.RobotGetRequest
-	(*RobotRef)(nil),              // 2: app.RobotRef
-	(*RobotRefBySlug)(nil),        // 3: app.RobotRefBySlug
-	(*RobotSelect)(nil),           // 4: app.RobotSelect
-	(*RobotPatchRequest)(nil),     // 5: app.RobotPatchRequest
-	(*RobotApplyRequest)(nil),     // 6: app.RobotApplyRequest
-	(*RobotListRequest)(nil),      // 7: app.RobotListRequest
-	(*RobotListResponse)(nil),     // 8: app.RobotListResponse
-	(*RobotFilter)(nil),           // 9: app.RobotFilter
-	(*RobotWatchRequest)(nil),     // 10: app.RobotWatchRequest
-	(*RobotWatchResponse)(nil),    // 11: app.RobotWatchResponse
-	(*RobotWatchItem)(nil),        // 12: app.RobotWatchItem
-	(*JointAddRequest)(nil),       // 13: app.JointAddRequest
-	(*JointGetRequest)(nil),       // 14: app.JointGetRequest
-	(*JointRef)(nil),              // 15: app.JointRef
-	(*JointSelect)(nil),           // 16: app.JointSelect
-	(*JointPatchRequest)(nil),     // 17: app.JointPatchRequest
-	(*JointApplyRequest)(nil),     // 18: app.JointApplyRequest
-	(*FleetAddRequest)(nil),       // 19: app.FleetAddRequest
-	(*FleetGetRequest)(nil),       // 20: app.FleetGetRequest
-	(*FleetRef)(nil),              // 21: app.FleetRef
-	(*FleetSelect)(nil),           // 22: app.FleetSelect
-	(*FleetPatchRequest)(nil),     // 23: app.FleetPatchRequest
-	(*FleetApplyRequest)(nil),     // 24: app.FleetApplyRequest
-	(*CellAddRequest)(nil),        // 25: app.CellAddRequest
-	(*CellGetRequest)(nil),        // 26: app.CellGetRequest
-	(*CellRef)(nil),               // 27: app.CellRef
-	(*CellSelect)(nil),            // 28: app.CellSelect
-	(*CellPatchRequest)(nil),      // 29: app.CellPatchRequest
-	(*CellApplyRequest)(nil),      // 30: app.CellApplyRequest
+	(*CellAddRequest)(nil),        // 0: app.CellAddRequest
+	(*CellGetRequest)(nil),        // 1: app.CellGetRequest
+	(*CellRef)(nil),               // 2: app.CellRef
+	(*CellSelect)(nil),            // 3: app.CellSelect
+	(*CellPatchRequest)(nil),      // 4: app.CellPatchRequest
+	(*CellApplyRequest)(nil),      // 5: app.CellApplyRequest
+	(*RobotAddRequest)(nil),       // 6: app.RobotAddRequest
+	(*RobotGetRequest)(nil),       // 7: app.RobotGetRequest
+	(*RobotRef)(nil),              // 8: app.RobotRef
+	(*RobotRefBySlug)(nil),        // 9: app.RobotRefBySlug
+	(*RobotSelect)(nil),           // 10: app.RobotSelect
+	(*RobotPatchRequest)(nil),     // 11: app.RobotPatchRequest
+	(*RobotApplyRequest)(nil),     // 12: app.RobotApplyRequest
+	(*RobotListRequest)(nil),      // 13: app.RobotListRequest
+	(*RobotListResponse)(nil),     // 14: app.RobotListResponse
+	(*RobotFilter)(nil),           // 15: app.RobotFilter
+	(*RobotWatchRequest)(nil),     // 16: app.RobotWatchRequest
+	(*RobotWatchResponse)(nil),    // 17: app.RobotWatchResponse
+	(*RobotWatchItem)(nil),        // 18: app.RobotWatchItem
+	(*JointAddRequest)(nil),       // 19: app.JointAddRequest
+	(*JointGetRequest)(nil),       // 20: app.JointGetRequest
+	(*JointRef)(nil),              // 21: app.JointRef
+	(*JointSelect)(nil),           // 22: app.JointSelect
+	(*JointPatchRequest)(nil),     // 23: app.JointPatchRequest
+	(*JointApplyRequest)(nil),     // 24: app.JointApplyRequest
+	(*FleetAddRequest)(nil),       // 25: app.FleetAddRequest
+	(*FleetGetRequest)(nil),       // 26: app.FleetGetRequest
+	(*FleetRef)(nil),              // 27: app.FleetRef
+	(*FleetSelect)(nil),           // 28: app.FleetSelect
+	(*FleetPatchRequest)(nil),     // 29: app.FleetPatchRequest
+	(*FleetApplyRequest)(nil),     // 30: app.FleetApplyRequest
 	(*ReadingAddRequest)(nil),     // 31: app.ReadingAddRequest
 	(*ReadingGetRequest)(nil),     // 32: app.ReadingGetRequest
 	(*ReadingRef)(nil),            // 33: app.ReadingRef
@@ -4547,120 +4660,123 @@ var file_app_robot_svc_g_proto_goTypes = []any{
 	(*ReadingPatchRequest)(nil),   // 35: app.ReadingPatchRequest
 	(*ReadingApplyRequest)(nil),   // 36: app.ReadingApplyRequest
 	(*TenantRef)(nil),             // 37: payday.TenantRef
-	(*timestamppb.Timestamp)(nil), // 38: google.protobuf.Timestamp
-	(*TenantSelect)(nil),          // 39: payday.TenantSelect
-	(*patchpb.Patch)(nil),         // 40: patch.Patch
+	(*TenantSelect)(nil),          // 38: payday.TenantSelect
+	(*patchpb.Patch)(nil),         // 39: patch.Patch
+	(*timestamppb.Timestamp)(nil), // 40: google.protobuf.Timestamp
 	(*Robot)(nil),                 // 41: app.Robot
-	(*emptypb.Empty)(nil),         // 42: google.protobuf.Empty
-	(*Joint)(nil),                 // 43: app.Joint
-	(*Fleet)(nil),                 // 44: app.Fleet
-	(*Cell)(nil),                  // 45: app.Cell
+	(*Cell)(nil),                  // 42: app.Cell
+	(*emptypb.Empty)(nil),         // 43: google.protobuf.Empty
+	(*Joint)(nil),                 // 44: app.Joint
+	(*Fleet)(nil),                 // 45: app.Fleet
 	(*Reading)(nil),               // 46: app.Reading
 }
 var file_app_robot_svc_g_proto_depIdxs = []int32{
-	37, // 0: app.RobotAddRequest.tenant:type_name -> payday.TenantRef
-	38, // 1: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	2,  // 2: app.RobotGetRequest.ref:type_name -> app.RobotRef
-	4,  // 3: app.RobotGetRequest.select:type_name -> app.RobotSelect
-	3,  // 4: app.RobotRef.slug:type_name -> app.RobotRefBySlug
-	37, // 5: app.RobotRefBySlug.tenant:type_name -> payday.TenantRef
-	39, // 6: app.RobotSelect.tenant:type_name -> payday.TenantSelect
-	2,  // 7: app.RobotPatchRequest.ref:type_name -> app.RobotRef
-	38, // 8: app.RobotPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	2,  // 9: app.RobotApplyRequest.ref:type_name -> app.RobotRef
-	40, // 10: app.RobotApplyRequest.patch:type_name -> patch.Patch
-	9,  // 11: app.RobotListRequest.filters:type_name -> app.RobotFilter
-	41, // 12: app.RobotListResponse.items:type_name -> app.Robot
-	2,  // 13: app.RobotFilter.ref:type_name -> app.RobotRef
-	9,  // 14: app.RobotWatchRequest.filters:type_name -> app.RobotFilter
-	12, // 15: app.RobotWatchResponse.items:type_name -> app.RobotWatchItem
-	41, // 16: app.RobotWatchItem.value:type_name -> app.Robot
-	2,  // 17: app.JointAddRequest.robot:type_name -> app.RobotRef
-	15, // 18: app.JointGetRequest.ref:type_name -> app.JointRef
-	16, // 19: app.JointGetRequest.select:type_name -> app.JointSelect
-	4,  // 20: app.JointSelect.robot:type_name -> app.RobotSelect
-	15, // 21: app.JointPatchRequest.ref:type_name -> app.JointRef
-	15, // 22: app.JointApplyRequest.ref:type_name -> app.JointRef
-	40, // 23: app.JointApplyRequest.patch:type_name -> patch.Patch
-	21, // 24: app.FleetGetRequest.ref:type_name -> app.FleetRef
-	22, // 25: app.FleetGetRequest.select:type_name -> app.FleetSelect
-	21, // 26: app.FleetPatchRequest.ref:type_name -> app.FleetRef
-	21, // 27: app.FleetApplyRequest.ref:type_name -> app.FleetRef
-	40, // 28: app.FleetApplyRequest.patch:type_name -> patch.Patch
-	37, // 29: app.CellAddRequest.tenant:type_name -> payday.TenantRef
-	27, // 30: app.CellGetRequest.ref:type_name -> app.CellRef
-	28, // 31: app.CellGetRequest.select:type_name -> app.CellSelect
-	39, // 32: app.CellSelect.tenant:type_name -> payday.TenantSelect
-	27, // 33: app.CellPatchRequest.ref:type_name -> app.CellRef
-	27, // 34: app.CellApplyRequest.ref:type_name -> app.CellRef
-	40, // 35: app.CellApplyRequest.patch:type_name -> patch.Patch
-	2,  // 36: app.ReadingAddRequest.robot:type_name -> app.RobotRef
-	38, // 37: app.ReadingAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	33, // 38: app.ReadingGetRequest.ref:type_name -> app.ReadingRef
-	34, // 39: app.ReadingGetRequest.select:type_name -> app.ReadingSelect
-	4,  // 40: app.ReadingSelect.robot:type_name -> app.RobotSelect
-	33, // 41: app.ReadingPatchRequest.ref:type_name -> app.ReadingRef
-	33, // 42: app.ReadingApplyRequest.ref:type_name -> app.ReadingRef
-	40, // 43: app.ReadingApplyRequest.patch:type_name -> patch.Patch
-	0,  // 44: app.RobotService.Add:input_type -> app.RobotAddRequest
-	1,  // 45: app.RobotService.Get:input_type -> app.RobotGetRequest
-	5,  // 46: app.RobotService.Patch:input_type -> app.RobotPatchRequest
-	6,  // 47: app.RobotService.Apply:input_type -> app.RobotApplyRequest
-	2,  // 48: app.RobotService.Erase:input_type -> app.RobotRef
-	7,  // 49: app.RobotService.List:input_type -> app.RobotListRequest
-	10, // 50: app.RobotService.Watch:input_type -> app.RobotWatchRequest
-	13, // 51: app.JointService.Add:input_type -> app.JointAddRequest
-	14, // 52: app.JointService.Get:input_type -> app.JointGetRequest
-	17, // 53: app.JointService.Patch:input_type -> app.JointPatchRequest
-	18, // 54: app.JointService.Apply:input_type -> app.JointApplyRequest
-	15, // 55: app.JointService.Erase:input_type -> app.JointRef
-	19, // 56: app.FleetService.Add:input_type -> app.FleetAddRequest
-	20, // 57: app.FleetService.Get:input_type -> app.FleetGetRequest
-	23, // 58: app.FleetService.Patch:input_type -> app.FleetPatchRequest
-	24, // 59: app.FleetService.Apply:input_type -> app.FleetApplyRequest
-	21, // 60: app.FleetService.Erase:input_type -> app.FleetRef
-	25, // 61: app.CellService.Add:input_type -> app.CellAddRequest
-	26, // 62: app.CellService.Get:input_type -> app.CellGetRequest
-	29, // 63: app.CellService.Patch:input_type -> app.CellPatchRequest
-	30, // 64: app.CellService.Apply:input_type -> app.CellApplyRequest
-	27, // 65: app.CellService.Erase:input_type -> app.CellRef
-	31, // 66: app.ReadingService.Add:input_type -> app.ReadingAddRequest
-	32, // 67: app.ReadingService.Get:input_type -> app.ReadingGetRequest
-	35, // 68: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
-	36, // 69: app.ReadingService.Apply:input_type -> app.ReadingApplyRequest
-	33, // 70: app.ReadingService.Erase:input_type -> app.ReadingRef
-	41, // 71: app.RobotService.Add:output_type -> app.Robot
-	41, // 72: app.RobotService.Get:output_type -> app.Robot
-	41, // 73: app.RobotService.Patch:output_type -> app.Robot
-	41, // 74: app.RobotService.Apply:output_type -> app.Robot
-	42, // 75: app.RobotService.Erase:output_type -> google.protobuf.Empty
-	8,  // 76: app.RobotService.List:output_type -> app.RobotListResponse
-	11, // 77: app.RobotService.Watch:output_type -> app.RobotWatchResponse
-	43, // 78: app.JointService.Add:output_type -> app.Joint
-	43, // 79: app.JointService.Get:output_type -> app.Joint
-	43, // 80: app.JointService.Patch:output_type -> app.Joint
-	43, // 81: app.JointService.Apply:output_type -> app.Joint
-	42, // 82: app.JointService.Erase:output_type -> google.protobuf.Empty
-	44, // 83: app.FleetService.Add:output_type -> app.Fleet
-	44, // 84: app.FleetService.Get:output_type -> app.Fleet
-	44, // 85: app.FleetService.Patch:output_type -> app.Fleet
-	44, // 86: app.FleetService.Apply:output_type -> app.Fleet
-	42, // 87: app.FleetService.Erase:output_type -> google.protobuf.Empty
-	45, // 88: app.CellService.Add:output_type -> app.Cell
-	45, // 89: app.CellService.Get:output_type -> app.Cell
-	45, // 90: app.CellService.Patch:output_type -> app.Cell
-	45, // 91: app.CellService.Apply:output_type -> app.Cell
-	42, // 92: app.CellService.Erase:output_type -> google.protobuf.Empty
-	46, // 93: app.ReadingService.Add:output_type -> app.Reading
-	46, // 94: app.ReadingService.Get:output_type -> app.Reading
-	46, // 95: app.ReadingService.Patch:output_type -> app.Reading
-	46, // 96: app.ReadingService.Apply:output_type -> app.Reading
-	42, // 97: app.ReadingService.Erase:output_type -> google.protobuf.Empty
-	71, // [71:98] is the sub-list for method output_type
-	44, // [44:71] is the sub-list for method input_type
-	44, // [44:44] is the sub-list for extension type_name
-	44, // [44:44] is the sub-list for extension extendee
-	0,  // [0:44] is the sub-list for field type_name
+	37, // 0: app.CellAddRequest.tenant:type_name -> payday.TenantRef
+	2,  // 1: app.CellGetRequest.ref:type_name -> app.CellRef
+	3,  // 2: app.CellGetRequest.select:type_name -> app.CellSelect
+	38, // 3: app.CellSelect.tenant:type_name -> payday.TenantSelect
+	2,  // 4: app.CellPatchRequest.ref:type_name -> app.CellRef
+	2,  // 5: app.CellApplyRequest.ref:type_name -> app.CellRef
+	39, // 6: app.CellApplyRequest.patch:type_name -> patch.Patch
+	37, // 7: app.RobotAddRequest.tenant:type_name -> payday.TenantRef
+	2,  // 8: app.RobotAddRequest.cell:type_name -> app.CellRef
+	40, // 9: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	8,  // 10: app.RobotGetRequest.ref:type_name -> app.RobotRef
+	10, // 11: app.RobotGetRequest.select:type_name -> app.RobotSelect
+	9,  // 12: app.RobotRef.slug:type_name -> app.RobotRefBySlug
+	37, // 13: app.RobotRefBySlug.tenant:type_name -> payday.TenantRef
+	38, // 14: app.RobotSelect.tenant:type_name -> payday.TenantSelect
+	3,  // 15: app.RobotSelect.cell:type_name -> app.CellSelect
+	8,  // 16: app.RobotPatchRequest.ref:type_name -> app.RobotRef
+	2,  // 17: app.RobotPatchRequest.cell:type_name -> app.CellRef
+	40, // 18: app.RobotPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	8,  // 19: app.RobotApplyRequest.ref:type_name -> app.RobotRef
+	39, // 20: app.RobotApplyRequest.patch:type_name -> patch.Patch
+	15, // 21: app.RobotListRequest.filters:type_name -> app.RobotFilter
+	41, // 22: app.RobotListResponse.items:type_name -> app.Robot
+	8,  // 23: app.RobotFilter.ref:type_name -> app.RobotRef
+	15, // 24: app.RobotWatchRequest.filters:type_name -> app.RobotFilter
+	18, // 25: app.RobotWatchResponse.items:type_name -> app.RobotWatchItem
+	41, // 26: app.RobotWatchItem.value:type_name -> app.Robot
+	8,  // 27: app.JointAddRequest.robot:type_name -> app.RobotRef
+	21, // 28: app.JointGetRequest.ref:type_name -> app.JointRef
+	22, // 29: app.JointGetRequest.select:type_name -> app.JointSelect
+	10, // 30: app.JointSelect.robot:type_name -> app.RobotSelect
+	21, // 31: app.JointPatchRequest.ref:type_name -> app.JointRef
+	21, // 32: app.JointApplyRequest.ref:type_name -> app.JointRef
+	39, // 33: app.JointApplyRequest.patch:type_name -> patch.Patch
+	27, // 34: app.FleetGetRequest.ref:type_name -> app.FleetRef
+	28, // 35: app.FleetGetRequest.select:type_name -> app.FleetSelect
+	27, // 36: app.FleetPatchRequest.ref:type_name -> app.FleetRef
+	27, // 37: app.FleetApplyRequest.ref:type_name -> app.FleetRef
+	39, // 38: app.FleetApplyRequest.patch:type_name -> patch.Patch
+	8,  // 39: app.ReadingAddRequest.robot:type_name -> app.RobotRef
+	40, // 40: app.ReadingAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	33, // 41: app.ReadingGetRequest.ref:type_name -> app.ReadingRef
+	34, // 42: app.ReadingGetRequest.select:type_name -> app.ReadingSelect
+	10, // 43: app.ReadingSelect.robot:type_name -> app.RobotSelect
+	33, // 44: app.ReadingPatchRequest.ref:type_name -> app.ReadingRef
+	33, // 45: app.ReadingApplyRequest.ref:type_name -> app.ReadingRef
+	39, // 46: app.ReadingApplyRequest.patch:type_name -> patch.Patch
+	0,  // 47: app.CellService.Add:input_type -> app.CellAddRequest
+	1,  // 48: app.CellService.Get:input_type -> app.CellGetRequest
+	4,  // 49: app.CellService.Patch:input_type -> app.CellPatchRequest
+	5,  // 50: app.CellService.Apply:input_type -> app.CellApplyRequest
+	2,  // 51: app.CellService.Erase:input_type -> app.CellRef
+	6,  // 52: app.RobotService.Add:input_type -> app.RobotAddRequest
+	7,  // 53: app.RobotService.Get:input_type -> app.RobotGetRequest
+	11, // 54: app.RobotService.Patch:input_type -> app.RobotPatchRequest
+	12, // 55: app.RobotService.Apply:input_type -> app.RobotApplyRequest
+	8,  // 56: app.RobotService.Erase:input_type -> app.RobotRef
+	13, // 57: app.RobotService.List:input_type -> app.RobotListRequest
+	16, // 58: app.RobotService.Watch:input_type -> app.RobotWatchRequest
+	19, // 59: app.JointService.Add:input_type -> app.JointAddRequest
+	20, // 60: app.JointService.Get:input_type -> app.JointGetRequest
+	23, // 61: app.JointService.Patch:input_type -> app.JointPatchRequest
+	24, // 62: app.JointService.Apply:input_type -> app.JointApplyRequest
+	21, // 63: app.JointService.Erase:input_type -> app.JointRef
+	25, // 64: app.FleetService.Add:input_type -> app.FleetAddRequest
+	26, // 65: app.FleetService.Get:input_type -> app.FleetGetRequest
+	29, // 66: app.FleetService.Patch:input_type -> app.FleetPatchRequest
+	30, // 67: app.FleetService.Apply:input_type -> app.FleetApplyRequest
+	27, // 68: app.FleetService.Erase:input_type -> app.FleetRef
+	31, // 69: app.ReadingService.Add:input_type -> app.ReadingAddRequest
+	32, // 70: app.ReadingService.Get:input_type -> app.ReadingGetRequest
+	35, // 71: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
+	36, // 72: app.ReadingService.Apply:input_type -> app.ReadingApplyRequest
+	33, // 73: app.ReadingService.Erase:input_type -> app.ReadingRef
+	42, // 74: app.CellService.Add:output_type -> app.Cell
+	42, // 75: app.CellService.Get:output_type -> app.Cell
+	42, // 76: app.CellService.Patch:output_type -> app.Cell
+	42, // 77: app.CellService.Apply:output_type -> app.Cell
+	43, // 78: app.CellService.Erase:output_type -> google.protobuf.Empty
+	41, // 79: app.RobotService.Add:output_type -> app.Robot
+	41, // 80: app.RobotService.Get:output_type -> app.Robot
+	41, // 81: app.RobotService.Patch:output_type -> app.Robot
+	41, // 82: app.RobotService.Apply:output_type -> app.Robot
+	43, // 83: app.RobotService.Erase:output_type -> google.protobuf.Empty
+	14, // 84: app.RobotService.List:output_type -> app.RobotListResponse
+	17, // 85: app.RobotService.Watch:output_type -> app.RobotWatchResponse
+	44, // 86: app.JointService.Add:output_type -> app.Joint
+	44, // 87: app.JointService.Get:output_type -> app.Joint
+	44, // 88: app.JointService.Patch:output_type -> app.Joint
+	44, // 89: app.JointService.Apply:output_type -> app.Joint
+	43, // 90: app.JointService.Erase:output_type -> google.protobuf.Empty
+	45, // 91: app.FleetService.Add:output_type -> app.Fleet
+	45, // 92: app.FleetService.Get:output_type -> app.Fleet
+	45, // 93: app.FleetService.Patch:output_type -> app.Fleet
+	45, // 94: app.FleetService.Apply:output_type -> app.Fleet
+	43, // 95: app.FleetService.Erase:output_type -> google.protobuf.Empty
+	46, // 96: app.ReadingService.Add:output_type -> app.Reading
+	46, // 97: app.ReadingService.Get:output_type -> app.Reading
+	46, // 98: app.ReadingService.Patch:output_type -> app.Reading
+	46, // 99: app.ReadingService.Apply:output_type -> app.Reading
+	43, // 100: app.ReadingService.Erase:output_type -> google.protobuf.Empty
+	74, // [74:101] is the sub-list for method output_type
+	47, // [47:74] is the sub-list for method input_type
+	47, // [47:47] is the sub-list for extension type_name
+	47, // [47:47] is the sub-list for extension extendee
+	0,  // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_svc_g_proto_init() }
@@ -4671,18 +4787,18 @@ func file_app_robot_svc_g_proto_init() {
 	file_app_robot_proto_init()
 	file_payday_tenant_svc_g_proto_init()
 	file_app_robot_svc_g_proto_msgTypes[2].OneofWrappers = []any{
+		(*cellRef_Id)(nil),
+	}
+	file_app_robot_svc_g_proto_msgTypes[8].OneofWrappers = []any{
 		(*robotRef_Id)(nil),
 		(*robotRef_Slug)(nil),
 	}
-	file_app_robot_svc_g_proto_msgTypes[15].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[21].OneofWrappers = []any{
 		(*jointRef_Id)(nil),
 	}
-	file_app_robot_svc_g_proto_msgTypes[21].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[27].OneofWrappers = []any{
 		(*fleetRef_Id)(nil),
 		(*fleetRef_Alias)(nil),
-	}
-	file_app_robot_svc_g_proto_msgTypes[27].OneofWrappers = []any{
-		(*cellRef_Id)(nil),
 	}
 	file_app_robot_svc_g_proto_msgTypes[33].OneofWrappers = []any{
 		(*readingRef_Id)(nil),

@@ -81,6 +81,11 @@ func TenantID(v uuid.UUID) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldTenantID, v))
 }
 
+// CellID applies equality check predicate on the "cell_id" field. It's identical to CellIDEQ.
+func CellID(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldCellID, v))
+}
+
 // AliasEQ applies the EQ predicate on the "alias" field.
 func AliasEQ(v string) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldAlias, v))
@@ -306,6 +311,36 @@ func TenantIDNotIn(vs ...uuid.UUID) predicate.Robot {
 	return predicate.Robot(sql.FieldNotIn(FieldTenantID, vs...))
 }
 
+// CellIDEQ applies the EQ predicate on the "cell_id" field.
+func CellIDEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldCellID, v))
+}
+
+// CellIDNEQ applies the NEQ predicate on the "cell_id" field.
+func CellIDNEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldCellID, v))
+}
+
+// CellIDIn applies the In predicate on the "cell_id" field.
+func CellIDIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldCellID, vs...))
+}
+
+// CellIDNotIn applies the NotIn predicate on the "cell_id" field.
+func CellIDNotIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldCellID, vs...))
+}
+
+// CellIDIsNil applies the IsNil predicate on the "cell_id" field.
+func CellIDIsNil() predicate.Robot {
+	return predicate.Robot(sql.FieldIsNull(FieldCellID))
+}
+
+// CellIDNotNil applies the NotNil predicate on the "cell_id" field.
+func CellIDNotNil() predicate.Robot {
+	return predicate.Robot(sql.FieldNotNull(FieldCellID))
+}
+
 // HasTenant applies the HasEdge predicate on the "tenant" edge.
 func HasTenant() predicate.Robot {
 	return predicate.Robot(func(s *sql.Selector) {
@@ -321,6 +356,29 @@ func HasTenant() predicate.Robot {
 func HasTenantWith(preds ...predicate.Tenant) predicate.Robot {
 	return predicate.Robot(func(s *sql.Selector) {
 		step := newTenantStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasCell applies the HasEdge predicate on the "cell" edge.
+func HasCell() predicate.Robot {
+	return predicate.Robot(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, CellTable, CellColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCellWith applies the HasEdge predicate on the "cell" edge with a given conditions (other predicates).
+func HasCellWith(preds ...predicate.Cell) predicate.Robot {
+	return predicate.Robot(func(s *sql.Selector) {
+		step := newCellStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
