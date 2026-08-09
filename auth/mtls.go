@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
 
 	"google.golang.org/grpc/credentials"
@@ -51,7 +52,14 @@ func MTLS() Handler {
 			return Identity{}, err
 		}
 
-		v, ok := certName(cert)
+		v, ok, err := certName(cert)
+		if err != nil {
+			// A certificate that says two things is wrong rather than absent,
+			// and it stops the search: falling through to another handler would
+			// serve the request as somebody, which is the whole of what this
+			// refuses to guess at.
+			return Identity{}, fmt.Errorf("%s: %w", MethodMTLS, err)
+		}
 		if !ok {
 			// A verified certificate that names nobody this app knows about is
 			// not a bad credential -- it is a caller who has not said who they
@@ -97,22 +105,67 @@ func peerCert(ctx context.Context) (*x509.Certificate, error) {
 	return info.State.VerifiedChains[0][0], nil
 }
 
-// certName is the name a certificate carries, if it carries one.
-func certName(cert *x509.Certificate) (string, bool) {
+// ErrAmbiguous is a certificate that names more than one caller.
+//
+// It is its own error because it is the one failure here that is not about a
+// caller doing something wrong: a certificate with two names is a certificate
+// somebody issued, and what has to change is the issuing.
+var ErrAmbiguous = errors.New("names more than one caller")
+
+// certName is the name a certificate carries, if it carries exactly one.
+//
+// # Why it counts rather than takes the first
+//
+// This is the only place in payday where a trust boundary could be settled by
+// **the order of a field**. With two URI SANs in one certificate, taking the
+// first makes who authenticates a property of how the encoder happened to lay
+// them out -- and no error is raised, on either end, ever.
+//
+// The second SAN does not need an attacker. A SPIFFE identity beside a service
+// URL, a rename that adds the new name before removing the old, a certificate
+// tool that appends a default: any of those quietly changes who the caller is.
+// So more than one is refused, and the refusal names the problem rather than
+// the caller.
+//
+// # And it does not fall through to the Common Name
+//
+// Only when there was no URI SAN at all. A certificate that carries one this
+// cannot read is a certificate that meant to say something, and answering with
+// a Common Name that happens to be there is answering a question that was not
+// asked -- which is how a name nobody manages any more comes back to life.
+//
+// The scheme is still not read. `spiffe://host/a/b` and `https://host/a/b` both
+// say `a/b`, because the scheme is about who issues names and this app has one
+// issuer. What changed is that a URI whose path says nothing -- an opaque one
+// like `urn:x:y`, where everything is in `Opaque` -- is counted as a SAN this
+// cannot read rather than skipped in silence.
+func certName(cert *x509.Certificate) (string, bool, error) {
+	var name string
+	var found int
+
 	for _, u := range cert.URIs {
-		// The path of a URI SAN, whatever the scheme: `spiffe://host/a/b` and
-		// `https://host/a/b` both say `a/b`. The scheme is about who issues
-		// names, and this app has one issuer.
-		if v := trimSlash(u.Path); v != "" {
-			return v, true
+		found++
+		if v := trimSlash(u.Path); v != "" && name == "" {
+			name = v
 		}
 	}
 
-	if v := cert.Subject.CommonName; v != "" {
-		return v, true
+	switch {
+	case found > 1:
+		return "", false, fmt.Errorf("%w: %d URI names", ErrAmbiguous, found)
+	case found == 1 && name == "":
+		// It carries one and this cannot read it. Answering with a Common Name
+		// instead would be answering about a name nobody wrote there.
+		return "", false, fmt.Errorf("%w: a URI name with no path", ErrAmbiguous)
+	case found == 1:
+		return name, true, nil
 	}
 
-	return "", false
+	if v := cert.Subject.CommonName; v != "" {
+		return v, true, nil
+	}
+
+	return "", false, nil
 }
 
 func trimSlash(v string) string {
