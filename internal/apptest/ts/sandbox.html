@@ -1,0 +1,59 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>sandbox</title>
+<pre id="out">…</pre>
+<script type="module">
+// The page `sandbox.browser.test.ts` drives. It reports on `window.__out`
+// rather than only in the console, because a worker's console and the page's
+// are two streams and the test reads one thing.
+const el = document.getElementById('out')
+window.__out = []
+window.__done = false
+const say = (...v) => { const s = v.join(' '); window.__out.push(s); el.textContent += '\n' + s; console.log(s) }
+
+say('crossOriginIsolated:', String(crossOriginIsolated))
+say('SharedArrayBuffer:', typeof SharedArrayBuffer)
+
+try {
+	const { start } = await import('/src/sandbox.ts')
+	const { createDrpcTransport } = await import('@lesomnus/grpc-dgram/transport/connect')
+	const { app } = await import('/src/client.ts')
+
+	const sb = await start('/app.wasm')
+	say('served')
+
+	// A client that says who is calling. `start` builds one that does not, so
+	// this makes its own from the same socket -- which is what `sock` is on the
+	// Sandbox for. `Plain` believes what it is told, which is right here:
+	// there is nobody else in the page to lie to.
+	const raw = createDrpcTransport(sb.sock.dial())
+	const who = (h) => new Headers({ ...Object.fromEntries(new Headers(h)), authorization: 'Plain @acme/admin' })
+	const c = app({
+		unary: (m, s, t, h, i, o) => raw.unary(m, s, t, who(h), i, o),
+		stream: (m, s, t, h, i, o) => raw.stream(m, s, t, who(h), i, o),
+	})
+
+	const t = await c.tenant.get({ ref: { key: { case: 'alias', value: 'acme' } } })
+	say('tenant:', t.alias)
+
+	const r = await c.robot.add({ tenant: { key: { case: 'id', value: t.id } }, alias: 'arm-01' })
+	say('robot:', r.alias)
+
+	say('list:', (await c.robot.list({ filters: [] })).items.length)
+
+	// The wall, and it is the same answer it gives over HTTP: a row this caller
+	// may not see is a row the query did not match.
+	try {
+		await c.robot.get({ ref: { key: { case: 'id', value: new Uint8Array(16) } } })
+		say('wall: a bogus identifier was found')
+	} catch (e) {
+		say('wall:', String(e).match(/\[(\w+)\]/)?.[1] ?? String(e))
+	}
+
+	sb.close()
+} catch (e) {
+	say('FAILED:', String(e))
+	say(String(e?.stack ?? '').split('\n').slice(0, 3).join(' | '))
+}
+window.__done = true
+</script>

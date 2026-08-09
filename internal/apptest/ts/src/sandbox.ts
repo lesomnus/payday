@@ -33,6 +33,9 @@
  *
  *         cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./public/
  *
+ * And one that is not optional at all: **the worker is yours to supply.** See
+ * [start].
+ *
  * @module
  */
 
@@ -59,9 +62,36 @@ export interface Sandbox {
  * `url` is where the build landed:
  *
  *     GOOS=js GOARCH=wasm go build -o public/app.wasm ./wasm
+ *
+ * # The worker is yours, and it has to be
+ *
+ * Two things must be in the **same realm** and neither package can put them
+ * there for the other. `sqlite3-wasm-go` installs the global the Go driver
+ * looks for; `@lesomnus/grpc-dgram` runs the module that looks for it.
+ * Importing the driver on the main thread installs it in the wrong realm, and
+ * what you get is the instance exiting with
+ *
+ *     sqlite3-wasm: globalThis["sqlite3-wasm-go"] is not installed
+ *
+ * which names the problem exactly and does not say that the answer is two lines
+ * in a file of your own:
+ *
+ *     // sandbox-worker.ts
+ *     import 'sqlite3-wasm-go'
+ *     import '@lesomnus/grpc-dgram/wasm/worker'
+ *
+ * It defaults to the one beside this file, so an app that took the template as
+ * it comes says nothing. It is a parameter because the driver is the app's
+ * choice -- OPFS instead of memory, or no SQLite at all.
+ *
+ * This did not exist until the page was first loaded in a browser: there was
+ * nowhere to pass a worker, and the sandbox could not run without one.
  */
-export async function start(url = '/app.wasm'): Promise<Sandbox> {
-	const sock = await open(url)
+export async function start(
+	url = '/app.wasm',
+	workerUrl: URL | string = new URL('./sandbox-worker.ts', import.meta.url),
+): Promise<Sandbox> {
+	const sock = await open(url, { workerUrl: new URL(workerUrl, location.href) })
 
 	// No cast. `createDrpcTransport` answers a Connect `Transport` and `app`
 	// takes one, which is the whole reason the sandbox and a real server differ

@@ -158,3 +158,18 @@ jobs:
         working-directory: internal/apptest/ts
       - run: npm test
         working-directory: internal/apptest/ts
+
+      # The sandbox, in a browser. `GOOS=js GOARCH=wasm go build` above says the
+      # runtime assumes no file system; this says the thing it builds runs.
+      #
+      # It is worth its minute. The first time this was loaded in a page, three
+      # things were wrong -- no broker named, nothing seeded, no interceptors --
+      # and every one of them compiled, linked and started. A main that is built
+      # and never run says nothing at all.
+      - name: and the sandbox it compiles to
+        working-directory: internal/apptest/ts
+        run: |
+          GOOS=js GOARCH=wasm go build -o public/app.wasm ../wasm
+          cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./public/
+          npx playwright install --with-deps chromium
+          npm run test:sandbox
