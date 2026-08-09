@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
+	// FieldDateErased holds the string denoting the date_erased field in the database.
+	FieldDateErased = "date_erased"
 	// FieldTenantID holds the string denoting the tenant_id field in the database.
 	FieldTenantID = "tenant_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
@@ -33,6 +35,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldAlias,
+	FieldDateErased,
 	FieldTenantID,
 }
 
@@ -57,6 +60,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByAlias orders the results by the alias field.
 func ByAlias(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAlias, opts...).ToFunc()
+}
+
+// ByDateErased orders the results by the date_erased field.
+func ByDateErased(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateErased, opts...).ToFunc()
 }
 
 // ByTenantID orders the results by the tenant_id field.

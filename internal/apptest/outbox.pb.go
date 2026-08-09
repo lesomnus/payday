@@ -268,7 +268,7 @@ var File_payday_outbox_proto protoreflect.FileDescriptor
 
 const file_payday_outbox_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/outbox.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xb9\x02\n" +
+	"\x13payday/outbox.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xbd\x02\n" +
 	"\x06Outbox\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
@@ -278,8 +278,9 @@ const file_payday_outbox_proto_rawDesc = "" +
 	" \x01(\tR\x02by\x12#\n" +
 	"\tobject_id\x18\v \x01(\fB\x06\xea\x82\x16\x02\x10@R\bobjectId\x12\x14\n" +
 	"\x05patch\x18\f \x01(\fR\x05patch\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x1d\xca\xfc\x15\x11\x1a\x0f\x12\x05queue\x1a\x06\n" +
-	"\x02id\x10\x01\x8a\xbb\x16\x04\b\x04*\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:!\xca\xfc\x15\x11\x1a\x0f\x12\x05queue\x1a\x06\n" +
+	"\x02id\x10\x01\x8a\xbb\x16\b\b\x04B\x02\n" +
+	"\x00*\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_outbox_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_payday_outbox_proto_goTypes = []any{

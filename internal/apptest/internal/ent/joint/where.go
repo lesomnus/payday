@@ -3,6 +3,8 @@
 package joint
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
@@ -57,6 +59,11 @@ func IDLTE(id uuid.UUID) predicate.Joint {
 // Alias applies equality check predicate on the "alias" field. It's identical to AliasEQ.
 func Alias(v string) predicate.Joint {
 	return predicate.Joint(sql.FieldEQ(FieldAlias, v))
+}
+
+// DateErased applies equality check predicate on the "date_erased" field. It's identical to DateErasedEQ.
+func DateErased(v time.Time) predicate.Joint {
+	return predicate.Joint(sql.FieldEQ(FieldDateErased, v))
 }
 
 // RobotID applies equality check predicate on the "robot_id" field. It's identical to RobotIDEQ.
@@ -127,6 +134,56 @@ func AliasEqualFold(v string) predicate.Joint {
 // AliasContainsFold applies the ContainsFold predicate on the "alias" field.
 func AliasContainsFold(v string) predicate.Joint {
 	return predicate.Joint(sql.FieldContainsFold(FieldAlias, v))
+}
+
+// DateErasedEQ applies the EQ predicate on the "date_erased" field.
+func DateErasedEQ(v time.Time) predicate.Joint {
+	return predicate.Joint(sql.FieldEQ(FieldDateErased, v))
+}
+
+// DateErasedNEQ applies the NEQ predicate on the "date_erased" field.
+func DateErasedNEQ(v time.Time) predicate.Joint {
+	return predicate.Joint(sql.FieldNEQ(FieldDateErased, v))
+}
+
+// DateErasedIn applies the In predicate on the "date_erased" field.
+func DateErasedIn(vs ...time.Time) predicate.Joint {
+	return predicate.Joint(sql.FieldIn(FieldDateErased, vs...))
+}
+
+// DateErasedNotIn applies the NotIn predicate on the "date_erased" field.
+func DateErasedNotIn(vs ...time.Time) predicate.Joint {
+	return predicate.Joint(sql.FieldNotIn(FieldDateErased, vs...))
+}
+
+// DateErasedGT applies the GT predicate on the "date_erased" field.
+func DateErasedGT(v time.Time) predicate.Joint {
+	return predicate.Joint(sql.FieldGT(FieldDateErased, v))
+}
+
+// DateErasedGTE applies the GTE predicate on the "date_erased" field.
+func DateErasedGTE(v time.Time) predicate.Joint {
+	return predicate.Joint(sql.FieldGTE(FieldDateErased, v))
+}
+
+// DateErasedLT applies the LT predicate on the "date_erased" field.
+func DateErasedLT(v time.Time) predicate.Joint {
+	return predicate.Joint(sql.FieldLT(FieldDateErased, v))
+}
+
+// DateErasedLTE applies the LTE predicate on the "date_erased" field.
+func DateErasedLTE(v time.Time) predicate.Joint {
+	return predicate.Joint(sql.FieldLTE(FieldDateErased, v))
+}
+
+// DateErasedIsNil applies the IsNil predicate on the "date_erased" field.
+func DateErasedIsNil() predicate.Joint {
+	return predicate.Joint(sql.FieldIsNull(FieldDateErased))
+}
+
+// DateErasedNotNil applies the NotNil predicate on the "date_erased" field.
+func DateErasedNotNil() predicate.Joint {
+	return predicate.Joint(sql.FieldNotNull(FieldDateErased))
 }
 
 // RobotIDEQ applies the EQ predicate on the "robot_id" field.

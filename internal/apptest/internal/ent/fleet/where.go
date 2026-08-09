@@ -3,6 +3,8 @@
 package fleet
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
@@ -56,6 +58,11 @@ func IDLTE(id uuid.UUID) predicate.Fleet {
 // Alias applies equality check predicate on the "alias" field. It's identical to AliasEQ.
 func Alias(v string) predicate.Fleet {
 	return predicate.Fleet(sql.FieldEQ(FieldAlias, v))
+}
+
+// DateErased applies equality check predicate on the "date_erased" field. It's identical to DateErasedEQ.
+func DateErased(v time.Time) predicate.Fleet {
+	return predicate.Fleet(sql.FieldEQ(FieldDateErased, v))
 }
 
 // AliasEQ applies the EQ predicate on the "alias" field.
@@ -121,6 +128,56 @@ func AliasEqualFold(v string) predicate.Fleet {
 // AliasContainsFold applies the ContainsFold predicate on the "alias" field.
 func AliasContainsFold(v string) predicate.Fleet {
 	return predicate.Fleet(sql.FieldContainsFold(FieldAlias, v))
+}
+
+// DateErasedEQ applies the EQ predicate on the "date_erased" field.
+func DateErasedEQ(v time.Time) predicate.Fleet {
+	return predicate.Fleet(sql.FieldEQ(FieldDateErased, v))
+}
+
+// DateErasedNEQ applies the NEQ predicate on the "date_erased" field.
+func DateErasedNEQ(v time.Time) predicate.Fleet {
+	return predicate.Fleet(sql.FieldNEQ(FieldDateErased, v))
+}
+
+// DateErasedIn applies the In predicate on the "date_erased" field.
+func DateErasedIn(vs ...time.Time) predicate.Fleet {
+	return predicate.Fleet(sql.FieldIn(FieldDateErased, vs...))
+}
+
+// DateErasedNotIn applies the NotIn predicate on the "date_erased" field.
+func DateErasedNotIn(vs ...time.Time) predicate.Fleet {
+	return predicate.Fleet(sql.FieldNotIn(FieldDateErased, vs...))
+}
+
+// DateErasedGT applies the GT predicate on the "date_erased" field.
+func DateErasedGT(v time.Time) predicate.Fleet {
+	return predicate.Fleet(sql.FieldGT(FieldDateErased, v))
+}
+
+// DateErasedGTE applies the GTE predicate on the "date_erased" field.
+func DateErasedGTE(v time.Time) predicate.Fleet {
+	return predicate.Fleet(sql.FieldGTE(FieldDateErased, v))
+}
+
+// DateErasedLT applies the LT predicate on the "date_erased" field.
+func DateErasedLT(v time.Time) predicate.Fleet {
+	return predicate.Fleet(sql.FieldLT(FieldDateErased, v))
+}
+
+// DateErasedLTE applies the LTE predicate on the "date_erased" field.
+func DateErasedLTE(v time.Time) predicate.Fleet {
+	return predicate.Fleet(sql.FieldLTE(FieldDateErased, v))
+}
+
+// DateErasedIsNil applies the IsNil predicate on the "date_erased" field.
+func DateErasedIsNil() predicate.Fleet {
+	return predicate.Fleet(sql.FieldIsNull(FieldDateErased))
+}
+
+// DateErasedNotNil applies the NotNil predicate on the "date_erased" field.
+func DateErasedNotNil() predicate.Fleet {
+	return predicate.Fleet(sql.FieldNotNull(FieldDateErased))
 }
 
 // And groups predicates with the AND operator between them.

@@ -358,7 +358,56 @@ func TestEveryWriteIsOnTheTrail(t *testing.T) {
 // identifier is unique across all of them. The standing cost of that was a row
 // erased later leaving an identifier nothing answers to and no way to say what
 // it used to be. It carries its own domain now, so the answer outlives the row.
+//
+// The entity here is the one that says `erase: {hard: {}}`, because it is the
+// only one where the row really does go. Everything else is erased softly, and
+// then the identifier answers to something the whole time -- which is a weaker
+// version of the same test and not the one worth having.
 func TestTheTrailNamesWhatChangedByKind(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	robot, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	v, err := b.Walled.Reading().Add(b.as(ctx), app.ReadingAddRequest_builder{
+		Robot: app.RobotRef_builder{Id: robot.GetId()}.Build(),
+	}.Build())
+	x.NoError(err)
+
+	_, err = b.Walled.Reading().Erase(b.as(ctx), app.ReadingRef_builder{Id: v.GetId()}.Build())
+	x.NoError(err)
+
+	// The row is gone -- really gone, not stamped -- and the trail still says
+	// what it was.
+	_, err = b.Ent.Reading.Get(ctx, must(pdid.From(v.GetId())).Uuid())
+	x.Error(err)
+
+	rows, err := b.Ent.Audit.Query().All(ctx)
+	x.NoError(err)
+
+	var erased bool
+	for _, row := range rows {
+		if row.Action != app.ReadingService_Erase_FullMethodName {
+			continue
+		}
+
+		erased = true
+		x.Equal(pd.ReadingDomain, pdid.Id(row.ObjectID).Domain(),
+			"the identifier still says what it named")
+	}
+	x.True(erased, "the erase was not recorded")
+}
+
+// TestASoftErasedRowIsGoneToEveryReadAndStillThere.
+//
+// Saying nothing about erasure means softly, which is a different thing from
+// nothing happening: the row cannot be read, cannot be changed, and its alias
+// comes free -- and it is still there for the trail to have read.
+func TestASoftErasedRowIsGoneToEveryReadAndStillThere(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
@@ -371,24 +420,23 @@ func TestTheTrailNamesWhatChangedByKind(t *testing.T) {
 	_, err = b.Walled.Robot().Erase(b.as(ctx), app.RobotRef_builder{Id: v.GetId()}.Build())
 	x.NoError(err)
 
-	// The row is gone and the trail still says what it was.
-	_, err = b.Ent.Robot.Get(ctx, must(pdid.From(v.GetId())).Uuid())
-	x.Error(err)
+	_, err = b.Walled.Robot().Get(b.as(ctx), app.RobotGetRequest_builder{
+		Ref: app.RobotRef_builder{Id: v.GetId()}.Build(),
+	}.Build())
+	x.Equal(codes.NotFound, status.Code(err), "a soft erase left the row readable")
 
-	rows, err := b.Ent.Audit.Query().All(ctx)
+	// The alias comes free, which is what the partial unique index is for.
+	_, err = b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err, "the erased row is still holding its name")
+
+	// And the row is there, which is what makes the trail able to say what it
+	// held -- see `Audit.value`.
+	got, err := b.Ent.Robot.Get(ctx, must(pdid.From(v.GetId())).Uuid())
 	x.NoError(err)
-
-	var erased bool
-	for _, row := range rows {
-		if row.Action != app.RobotService_Erase_FullMethodName {
-			continue
-		}
-
-		erased = true
-		x.Equal(pd.RobotDomain, pdid.Id(row.ObjectID).Domain(),
-			"the identifier still says what it named")
-	}
-	x.True(erased, "the erase was not recorded")
+	x.False(got.DateErased.IsZero())
 }
 
 func must[T any](v T, err error) T {

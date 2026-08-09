@@ -115,6 +115,10 @@ message Outbox {
     ]
   };
   option (payday.entity) = {
+
+    // A queue is emptied. A row that stayed after it was drained would be a
+    // queue that is also a log, and this is not the table for that.
+    erase: {hard: {}}
     domain: 4
 
     // Not behind the wall, and not because it was awkward: a drainer is the

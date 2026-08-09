@@ -231,7 +231,13 @@ func (e Entity) message(domain int) string {
 	b.WriteString("\n  // TODO: this entity's own fields, in 8..12 and from 16.\n")
 
 	if e.Watch {
-		b.WriteString("\n  // Stamped on every write and refused to a patch document, so it is a\n")
+		b.WriteString("\n  // Erased softly, which is what saying nothing about erasure means: the\n")
+	b.WriteString("  // row is stamped and stays, so it cannot be read or changed, its alias\n")
+	b.WriteString("  // comes free again, and the trail can still say what it held. Delete\n")
+	b.WriteString("  // this and say `erase: {hard: {}}` if losing the row is the point --\n")
+	b.WriteString("  // a table of readings cannot be one nothing may be removed from.\n")
+	b.WriteString("  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];\n")
+	b.WriteString("\n  // Stamped on every write and refused to a patch document, so it is a\n")
 		b.WriteString("  // version and not a field. A `watch:` is refused without one: a watch\n")
 		b.WriteString("  // sends state, so two answers about one row have to be orderable or a\n")
 		b.WriteString("  // late one erases an early one that was newer.\n")

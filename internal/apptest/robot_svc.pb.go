@@ -538,6 +538,7 @@ type RobotSelect struct {
 	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
 	xxx_hidden_DateUpdated bool                   `protobuf:"varint,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -604,9 +605,16 @@ func (x *RobotSelect) GetDateCreated() bool {
 	return false
 }
 
+func (x *RobotSelect) GetDateErased() bool {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return false
+}
+
 func (x *RobotSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
 }
 
 func (x *RobotSelect) SetTenant(v *TenantSelect) {
@@ -615,17 +623,22 @@ func (x *RobotSelect) SetTenant(v *TenantSelect) {
 
 func (x *RobotSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
 }
 
 func (x *RobotSelect) SetDateUpdated(v bool) {
 	x.xxx_hidden_DateUpdated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
 }
 
 func (x *RobotSelect) SetDateCreated(v bool) {
 	x.xxx_hidden_DateCreated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *RobotSelect) SetDateErased(v bool) {
+	x.xxx_hidden_DateErased = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
 }
 
 func (x *RobotSelect) HasAll() bool {
@@ -663,6 +676,13 @@ func (x *RobotSelect) HasDateCreated() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
+func (x *RobotSelect) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
 func (x *RobotSelect) ClearAll() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_All = false
@@ -687,6 +707,11 @@ func (x *RobotSelect) ClearDateCreated() {
 	x.xxx_hidden_DateCreated = false
 }
 
+func (x *RobotSelect) ClearDateErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_DateErased = false
+}
+
 type RobotSelect_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -695,6 +720,7 @@ type RobotSelect_builder struct {
 	Alias       *bool
 	DateUpdated *bool
 	DateCreated *bool
+	DateErased  *bool
 }
 
 func (b0 RobotSelect_builder) Build() *RobotSelect {
@@ -702,21 +728,25 @@ func (b0 RobotSelect_builder) Build() *RobotSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
 		x.xxx_hidden_All = *b.All
 	}
 	x.xxx_hidden_Tenant = b.Tenant
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
 		x.xxx_hidden_Alias = *b.Alias
 	}
 	if b.DateUpdated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
 		x.xxx_hidden_DateUpdated = *b.DateUpdated
 	}
 	if b.DateCreated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
 		x.xxx_hidden_DateCreated = *b.DateCreated
+	}
+	if b.DateErased != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	return m0
 }
@@ -1848,6 +1878,7 @@ type JointSelect struct {
 	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
 	xxx_hidden_Robot       *RobotSelect           `protobuf:"bytes,2,opt,name=robot"`
 	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
+	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -1900,9 +1931,16 @@ func (x *JointSelect) GetAlias() bool {
 	return false
 }
 
+func (x *JointSelect) GetDateErased() bool {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return false
+}
+
 func (x *JointSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
 }
 
 func (x *JointSelect) SetRobot(v *RobotSelect) {
@@ -1911,7 +1949,12 @@ func (x *JointSelect) SetRobot(v *RobotSelect) {
 
 func (x *JointSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *JointSelect) SetDateErased(v bool) {
+	x.xxx_hidden_DateErased = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
 }
 
 func (x *JointSelect) HasAll() bool {
@@ -1935,6 +1978,13 @@ func (x *JointSelect) HasAlias() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
+func (x *JointSelect) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
 func (x *JointSelect) ClearAll() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_All = false
@@ -1949,12 +1999,18 @@ func (x *JointSelect) ClearAlias() {
 	x.xxx_hidden_Alias = false
 }
 
+func (x *JointSelect) ClearDateErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_DateErased = false
+}
+
 type JointSelect_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	All   *bool
-	Robot *RobotSelect
-	Alias *bool
+	All        *bool
+	Robot      *RobotSelect
+	Alias      *bool
+	DateErased *bool
 }
 
 func (b0 JointSelect_builder) Build() *JointSelect {
@@ -1962,13 +2018,17 @@ func (b0 JointSelect_builder) Build() *JointSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
 		x.xxx_hidden_All = *b.All
 	}
 	x.xxx_hidden_Robot = b.Robot
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
 		x.xxx_hidden_Alias = *b.Alias
+	}
+	if b.DateErased != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	return m0
 }
@@ -2524,6 +2584,7 @@ type FleetSelect struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
 	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
+	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -2569,14 +2630,26 @@ func (x *FleetSelect) GetAlias() bool {
 	return false
 }
 
+func (x *FleetSelect) GetDateErased() bool {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return false
+}
+
 func (x *FleetSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
 }
 
 func (x *FleetSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *FleetSelect) SetDateErased(v bool) {
+	x.xxx_hidden_DateErased = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
 }
 
 func (x *FleetSelect) HasAll() bool {
@@ -2593,6 +2666,13 @@ func (x *FleetSelect) HasAlias() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
+func (x *FleetSelect) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
 func (x *FleetSelect) ClearAll() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_All = false
@@ -2603,11 +2683,17 @@ func (x *FleetSelect) ClearAlias() {
 	x.xxx_hidden_Alias = false
 }
 
+func (x *FleetSelect) ClearDateErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_DateErased = false
+}
+
 type FleetSelect_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	All   *bool
-	Alias *bool
+	All        *bool
+	Alias      *bool
+	DateErased *bool
 }
 
 func (b0 FleetSelect_builder) Build() *FleetSelect {
@@ -2615,12 +2701,16 @@ func (b0 FleetSelect_builder) Build() *FleetSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
 		x.xxx_hidden_All = *b.All
 	}
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
 		x.xxx_hidden_Alias = *b.Alias
+	}
+	if b.DateErased != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	return m0
 }
@@ -3162,6 +3252,7 @@ type CellSelect struct {
 	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
 	xxx_hidden_Tenant      *TenantSelect          `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
+	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -3214,9 +3305,16 @@ func (x *CellSelect) GetAlias() bool {
 	return false
 }
 
+func (x *CellSelect) GetDateErased() bool {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return false
+}
+
 func (x *CellSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
 }
 
 func (x *CellSelect) SetTenant(v *TenantSelect) {
@@ -3225,7 +3323,12 @@ func (x *CellSelect) SetTenant(v *TenantSelect) {
 
 func (x *CellSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *CellSelect) SetDateErased(v bool) {
+	x.xxx_hidden_DateErased = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
 }
 
 func (x *CellSelect) HasAll() bool {
@@ -3249,6 +3352,13 @@ func (x *CellSelect) HasAlias() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
+func (x *CellSelect) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
 func (x *CellSelect) ClearAll() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_All = false
@@ -3263,12 +3373,18 @@ func (x *CellSelect) ClearAlias() {
 	x.xxx_hidden_Alias = false
 }
 
+func (x *CellSelect) ClearDateErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_DateErased = false
+}
+
 type CellSelect_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	All    *bool
-	Tenant *TenantSelect
-	Alias  *bool
+	All        *bool
+	Tenant     *TenantSelect
+	Alias      *bool
+	DateErased *bool
 }
 
 func (b0 CellSelect_builder) Build() *CellSelect {
@@ -3276,13 +3392,17 @@ func (b0 CellSelect_builder) Build() *CellSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
 		x.xxx_hidden_All = *b.All
 	}
 	x.xxx_hidden_Tenant = b.Tenant
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
 		x.xxx_hidden_Alias = *b.Alias
+	}
+	if b.DateErased != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	return m0
 }
@@ -4216,13 +4336,15 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03key\"Q\n" +
 	"\x0eRobotRefBySlug\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12)\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\"\xa9\x01\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\"\xca\x01\n" +
 	"\vRobotSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12,\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\bR\x05alias\x12!\n" +
 	"\fdate_updated\x18\r \x01(\bR\vdateUpdated\x12!\n" +
-	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"\xb7\x01\n" +
+	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\x12\x1f\n" +
+	"\vdate_erased\x18\x0e \x01(\bR\n" +
+	"dateErased\"\xb7\x01\n" +
 	"\x11RobotPatchRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\x12=\n" +
@@ -4260,11 +4382,13 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x06select\x18\x02 \x01(\v2\x10.app.JointSelectR\x06select\"#\n" +
 	"\bJointRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
-	"\x03key\"]\n" +
+	"\x03key\"~\n" +
 	"\vJointSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12&\n" +
 	"\x05robot\x18\x02 \x01(\v2\x10.app.RobotSelectR\x05robot\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\bR\x05alias\"J\n" +
+	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x1f\n" +
+	"\vdate_erased\x18\x0e \x01(\bR\n" +
+	"dateErased\"J\n" +
 	"\x11JointPatchRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.JointRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\"X\n" +
@@ -4280,10 +4404,12 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\bFleetRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02id\x12\x16\n" +
 	"\x05alias\x18\x04 \x01(\tH\x00R\x05aliasB\x05\n" +
-	"\x03key\"5\n" +
+	"\x03key\"V\n" +
 	"\vFleetSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\bR\x05alias\"J\n" +
+	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x1f\n" +
+	"\vdate_erased\x18\x0e \x01(\bR\n" +
+	"dateErased\"J\n" +
 	"\x11FleetPatchRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.FleetRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\"X\n" +
@@ -4299,12 +4425,14 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x06select\x18\x02 \x01(\v2\x0f.app.CellSelectR\x06select\"\"\n" +
 	"\aCellRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
-	"\x03key\"b\n" +
+	"\x03key\"\x83\x01\n" +
 	"\n" +
 	"CellSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12,\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06tenant\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\bR\x05alias\"H\n" +
+	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x1f\n" +
+	"\vdate_erased\x18\x0e \x01(\bR\n" +
+	"dateErased\"H\n" +
 	"\x10CellPatchRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\"V\n" +

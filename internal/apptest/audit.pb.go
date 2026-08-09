@@ -350,7 +350,7 @@ var File_payday_audit_proto protoreflect.FileDescriptor
 
 const file_payday_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x12payday/audit.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x95\x05\n" +
+	"\x12payday/audit.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x99\x05\n" +
 	"\x05Audit\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
@@ -362,18 +362,19 @@ const file_payday_audit_proto_rawDesc = "" +
 	"\x05patch\x18\f \x01(\fR\x05patch\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12.\n" +
 	"\x0factor_tenant_id\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10@R\ractorTenantId\x12\x14\n" +
-	"\x05value\x18\x11 \x01(\fR\x05value:\xa8\x02\xca\xfc\x15\xad\x01\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
+	"\x05value\x18\x11 \x01(\fR\x05value:\xac\x02\xca\xfc\x15\xad\x01\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
 	"\tobject_id\x10\v\x1a(\x12\x05trail\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a8\x12\x0fby_actor_tenant\x1a\x13\n" +
 	"\x0factor_tenant_id\x10\x10\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a*\x12\bby_actor\x1a\f\n" +
 	"\bactor_id\x10\b\x1a\x10\n" +
-	"\fdate_created\x10\x0f\x8a\xbb\x16r\b\x032P\n" +
+	"\fdate_created\x10\x0f\x8a\xbb\x16v\b\x032P\n" +
 	"\x10\n" +
 	"\fdate_created\x10\x01\n" +
 	"\x06\n" +
-	"\x02id\x10\x01\x1a\tobject_id\x1a\bactor_id\x1a\ttenant_id\x1a\x0factor_tenant_id 2(\xc8\x01\"\x1c\x12\ttenant_id\x12\x0factor_tenant_idB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x02id\x10\x01\x1a\tobject_id\x1a\bactor_id\x1a\ttenant_id\x1a\x0factor_tenant_id 2(\xc8\x01B\x02\n" +
+	"\x00\"\x1c\x12\ttenant_id\x12\x0factor_tenant_idB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_payday_audit_proto_goTypes = []any{

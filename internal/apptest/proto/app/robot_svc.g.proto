@@ -118,6 +118,7 @@ message RobotSelect {
   bool alias = 4;
   bool date_updated = 13;
   bool date_created = 15;
+  bool date_erased = 14;
 }
 
 message RobotPatchRequest {
@@ -247,6 +248,7 @@ message JointSelect {
   bool all = 1;
   RobotSelect robot = 2;
   bool alias = 4;
+  bool date_erased = 14;
 }
 
 message JointPatchRequest {
@@ -279,6 +281,7 @@ message FleetRef {
 message FleetSelect {
   bool all = 1;
   bool alias = 4;
+  bool date_erased = 14;
 }
 
 message FleetPatchRequest {
@@ -312,6 +315,7 @@ message CellSelect {
   bool all = 1;
   payday.TenantSelect tenant = 2;
   bool alias = 4;
+  bool date_erased = 14;
 }
 
 message CellPatchRequest {

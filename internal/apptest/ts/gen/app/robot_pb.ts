@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot.proto.
  */
 export const file_app_robot: GenFile = /*@__PURE__*/
-  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCLNAgoFUm9ib3QSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBADp8yvwVRxICEAEaIBIEcGFnZRoQCgxkYXRlX2NyZWF0ZWQQDxoGCgJpZBABGh8SBHNsdWcaCQoFYWxpYXMQBBoKCgZ0ZW5hbnQQAjABirsWLQgHMicKDgoMZGF0ZV9jcmVhdGVkCgQKAmlkEgZ0ZW5hbnQaA3JlZiAyKGQ6ACJyCgVKb2ludBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIQoFcm9ib3QYAiABKAsyCi5hcHAuUm9ib3RCBvKCFgJAARINCgVhbGlhcxgEIAEoCToeyvwVBBICEAGKuxYSCAgiDgoMcm9ib3QudGVuYW50IkkKBUZsZWV0EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIVCgVhbGlhcxgEIAEoCUIG6oIWAjABOhDK/BUEEgIQAYq7FgQICSoAImYKBENlbGwSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCToOyvwVBBICEAGKuxYCCAoiswEKB1JlYWRpbmcSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiEKBXJvYm90GAIgASgLMgouYXBwLlJvYm90QgbyghYCQAESDwoHY2Vsc2l1cxgIIAEoARI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6Hsr8FQQSAhABirsWEggLIg4KDHJvYm90LnRlbmFudEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCKHAwoFUm9ib3QSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBABI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6fMr8FUcSAhABGiASBHBhZ2UaEAoMZGF0ZV9jcmVhdGVkEA8aBgoCaWQQARofEgRzbHVnGgkKBWFsaWFzEAQaCgoGdGVuYW50EAIwAYq7Fi0IBzInCg4KDGRhdGVfY3JlYXRlZAoECgJpZBIGdGVuYW50GgNyZWYgMihkOgAirAEKBUpvaW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIhCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEIG8oIWAkABEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoeyvwVBBICEAGKuxYSCAgiDgoMcm9ib3QudGVuYW50IoMBCgVGbGVldBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASFQoFYWxpYXMYBCABKAlCBuqCFgIwARI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6EMr8FQQSAhABirsWBAgJKgAioAEKBENlbGwSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiYKBnRlbmFudBgCIAEoCzIOLnBheWRheS5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6Dsr8FQQSAhABirsWAggKIrcBCgdSZWFkaW5nEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIhCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEIG8oIWAkABEg8KB2NlbHNpdXMYCCABKAESOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOiLK/BUEEgIQAYq7FhYIC0ICCgAiDgoMcm9ib3QudGVuYW50QjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Robot is an ordinary entity: it belongs to a tenant, and is read only by
@@ -56,6 +56,15 @@ export type Robot = Message<"app.Robot"> & {
    * @generated from field: google.protobuf.Timestamp date_created = 15;
    */
   dateCreated?: Timestamp | undefined;
+
+  /**
+   * Erased softly, which is what saying nothing means: the row is stamped and
+   * stays, so it cannot be read or changed, its alias comes free again, and the
+   * trail can still say what it held.
+   *
+   * @generated from field: google.protobuf.Timestamp date_erased = 14;
+   */
+  dateErased?: Timestamp | undefined;
 };
 
 /**
@@ -86,6 +95,15 @@ export type Joint = Message<"app.Joint"> & {
    * @generated from field: string alias = 4;
    */
   alias: string;
+
+  /**
+   * Erased softly, which is what saying nothing means: the row is stamped and
+   * stays, so it cannot be read or changed, its alias comes free again, and the
+   * trail can still say what it held.
+   *
+   * @generated from field: google.protobuf.Timestamp date_erased = 14;
+   */
+  dateErased?: Timestamp | undefined;
 };
 
 /**
@@ -111,6 +129,15 @@ export type Fleet = Message<"app.Fleet"> & {
    * @generated from field: string alias = 4;
    */
   alias: string;
+
+  /**
+   * Erased softly, which is what saying nothing means: the row is stamped and
+   * stays, so it cannot be read or changed, its alias comes free again, and the
+   * trail can still say what it held.
+   *
+   * @generated from field: google.protobuf.Timestamp date_erased = 14;
+   */
+  dateErased?: Timestamp | undefined;
 };
 
 /**
@@ -141,6 +168,15 @@ export type Cell = Message<"app.Cell"> & {
    * @generated from field: string alias = 4;
    */
   alias: string;
+
+  /**
+   * Erased softly, which is what saying nothing means: the row is stamped and
+   * stays, so it cannot be read or changed, its alias comes free again, and the
+   * trail can still say what it held.
+   *
+   * @generated from field: google.protobuf.Timestamp date_erased = 14;
+   */
+  dateErased?: Timestamp | undefined;
 };
 
 /**

@@ -22,6 +22,9 @@ func (e *Robot) Proto() *apptest.Robot {
 	x.SetAlias(e.Alias)
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
+	if e.DateErased != nil {
+		x.SetDateErased(timestamppb.New(*e.DateErased))
+	}
 	return x
 }
 func (e *Joint) Proto() *apptest.Joint {
@@ -35,12 +38,18 @@ func (e *Joint) Proto() *apptest.Joint {
 		x.SetRobot(r)
 	}
 	x.SetAlias(e.Alias)
+	if e.DateErased != nil {
+		x.SetDateErased(timestamppb.New(*e.DateErased))
+	}
 	return x
 }
 func (e *Fleet) Proto() *apptest.Fleet {
 	x := &apptest.Fleet{}
 	x.SetId(e.ID[:])
 	x.SetAlias(e.Alias)
+	if e.DateErased != nil {
+		x.SetDateErased(timestamppb.New(*e.DateErased))
+	}
 	return x
 }
 func (e *Cell) Proto() *apptest.Cell {
@@ -54,6 +63,9 @@ func (e *Cell) Proto() *apptest.Cell {
 		x.SetTenant(r)
 	}
 	x.SetAlias(e.Alias)
+	if e.DateErased != nil {
+		x.SetDateErased(timestamppb.New(*e.DateErased))
+	}
 	return x
 }
 func (e *Reading) Proto() *apptest.Reading {

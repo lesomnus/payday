@@ -32,6 +32,7 @@ type Robot struct {
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
 	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_DateErased  *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -96,6 +97,13 @@ func (x *Robot) GetDateCreated() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Robot) GetDateErased() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return nil
+}
+
 func (x *Robot) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -119,6 +127,10 @@ func (x *Robot) SetDateCreated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateCreated = v
 }
 
+func (x *Robot) SetDateErased(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateErased = v
+}
+
 func (x *Robot) HasTenant() bool {
 	if x == nil {
 		return false
@@ -140,6 +152,13 @@ func (x *Robot) HasDateCreated() bool {
 	return x.xxx_hidden_DateCreated != nil
 }
 
+func (x *Robot) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateErased != nil
+}
+
 func (x *Robot) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
@@ -150,6 +169,10 @@ func (x *Robot) ClearDateUpdated() {
 
 func (x *Robot) ClearDateCreated() {
 	x.xxx_hidden_DateCreated = nil
+}
+
+func (x *Robot) ClearDateErased() {
+	x.xxx_hidden_DateErased = nil
 }
 
 type Robot_builder struct {
@@ -165,6 +188,10 @@ type Robot_builder struct {
 	// order.
 	DateUpdated *timestamppb.Timestamp
 	DateCreated *timestamppb.Timestamp
+	// Erased softly, which is what saying nothing means: the row is stamped and
+	// stays, so it cannot be read or changed, its alias comes free again, and the
+	// trail can still say what it held.
+	DateErased *timestamppb.Timestamp
 }
 
 func (b0 Robot_builder) Build() *Robot {
@@ -176,18 +203,20 @@ func (b0 Robot_builder) Build() *Robot {
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
+	x.xxx_hidden_DateErased = b.DateErased
 	return m0
 }
 
 // Joint reaches its tenant through the Robot it is part of, which is what a
 // `via` of more than one step is for. Nothing else about it is interesting.
 type Joint struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id    []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Robot *Robot                 `protobuf:"bytes,2,opt,name=robot"`
-	xxx_hidden_Alias string                 `protobuf:"bytes,4,opt,name=alias"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id         []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Robot      *Robot                 `protobuf:"bytes,2,opt,name=robot"`
+	xxx_hidden_Alias      string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_DateErased *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Joint) Reset() {
@@ -236,6 +265,13 @@ func (x *Joint) GetAlias() string {
 	return ""
 }
 
+func (x *Joint) GetDateErased() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return nil
+}
+
 func (x *Joint) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -251,6 +287,10 @@ func (x *Joint) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
 }
 
+func (x *Joint) SetDateErased(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateErased = v
+}
+
 func (x *Joint) HasRobot() bool {
 	if x == nil {
 		return false
@@ -258,8 +298,19 @@ func (x *Joint) HasRobot() bool {
 	return x.xxx_hidden_Robot != nil
 }
 
+func (x *Joint) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateErased != nil
+}
+
 func (x *Joint) ClearRobot() {
 	x.xxx_hidden_Robot = nil
+}
+
+func (x *Joint) ClearDateErased() {
+	x.xxx_hidden_DateErased = nil
 }
 
 type Joint_builder struct {
@@ -268,6 +319,10 @@ type Joint_builder struct {
 	Id    []byte
 	Robot *Robot
 	Alias string
+	// Erased softly, which is what saying nothing means: the row is stamped and
+	// stays, so it cannot be read or changed, its alias comes free again, and the
+	// trail can still say what it held.
+	DateErased *timestamppb.Timestamp
 }
 
 func (b0 Joint_builder) Build() *Joint {
@@ -277,17 +332,19 @@ func (b0 Joint_builder) Build() *Joint {
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Robot = b.Robot
 	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_DateErased = b.DateErased
 	return m0
 }
 
 // Fleet is shared by the whole deployment, and says so. A reader of the schema
 // can tell that from "somebody forgot" because there is no way to forget.
 type Fleet struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id    []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Alias string                 `protobuf:"bytes,4,opt,name=alias"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id         []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Alias      string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_DateErased *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Fleet) Reset() {
@@ -329,6 +386,13 @@ func (x *Fleet) GetAlias() string {
 	return ""
 }
 
+func (x *Fleet) GetDateErased() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return nil
+}
+
 func (x *Fleet) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -340,11 +404,30 @@ func (x *Fleet) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
 }
 
+func (x *Fleet) SetDateErased(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateErased = v
+}
+
+func (x *Fleet) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateErased != nil
+}
+
+func (x *Fleet) ClearDateErased() {
+	x.xxx_hidden_DateErased = nil
+}
+
 type Fleet_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Id    []byte
 	Alias string
+	// Erased softly, which is what saying nothing means: the row is stamped and
+	// stays, so it cannot be read or changed, its alias comes free again, and the
+	// trail can still say what it held.
+	DateErased *timestamppb.Timestamp
 }
 
 func (b0 Fleet_builder) Build() *Fleet {
@@ -353,18 +436,20 @@ func (b0 Fleet_builder) Build() *Fleet {
 	_, _ = b, x
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_DateErased = b.DateErased
 	return m0
 }
 
 // Cell was added to answer one question: what does adding an entity cost?
 // Nothing below this line is Go, and nothing else in this app was touched.
 type Cell struct {
-	state             protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id     []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Tenant *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
-	xxx_hidden_Alias  string                 `protobuf:"bytes,4,opt,name=alias"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id         []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Tenant     *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Alias      string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_DateErased *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Cell) Reset() {
@@ -413,6 +498,13 @@ func (x *Cell) GetAlias() string {
 	return ""
 }
 
+func (x *Cell) GetDateErased() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateErased
+	}
+	return nil
+}
+
 func (x *Cell) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -428,6 +520,10 @@ func (x *Cell) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
 }
 
+func (x *Cell) SetDateErased(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateErased = v
+}
+
 func (x *Cell) HasTenant() bool {
 	if x == nil {
 		return false
@@ -435,8 +531,19 @@ func (x *Cell) HasTenant() bool {
 	return x.xxx_hidden_Tenant != nil
 }
 
+func (x *Cell) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateErased != nil
+}
+
 func (x *Cell) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
+}
+
+func (x *Cell) ClearDateErased() {
+	x.xxx_hidden_DateErased = nil
 }
 
 type Cell_builder struct {
@@ -445,6 +552,10 @@ type Cell_builder struct {
 	Id     []byte
 	Tenant *Tenant
 	Alias  string
+	// Erased softly, which is what saying nothing means: the row is stamped and
+	// stays, so it cannot be read or changed, its alias comes free again, and the
+	// trail can still say what it held.
+	DateErased *timestamppb.Timestamp
 }
 
 func (b0 Cell_builder) Build() *Cell {
@@ -454,6 +565,7 @@ func (b0 Cell_builder) Build() *Cell {
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_DateErased = b.DateErased
 	return m0
 }
 
@@ -592,13 +704,15 @@ var File_app_robot_proto protoreflect.FileDescriptor
 
 const file_app_robot_proto_rawDesc = "" +
 	"\n" +
-	"\x0fapp/robot.proto\x12\x03app\x1a\x13payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xfa\x02\n" +
+	"\x0fapp/robot.proto\x12\x03app\x1a\x13payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xc0\x03\n" +
 	"\x05Robot\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12.\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:|\xca\xfc\x15G\x12\x02\x10\x01\x1a \x12\x04page\x1a\x10\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12D\n" +
+	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
+	"dateErased:|\xca\xfc\x15G\x12\x02\x10\x01\x1a \x12\x04page\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a\x06\n" +
 	"\x02id\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
 	"\x05alias\x10\x04\x1a\n" +
@@ -607,27 +721,34 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x0e\n" +
 	"\fdate_created\n" +
 	"\x04\n" +
-	"\x02id\x12\x06tenant\x1a\x03ref 2(d:\x00\"\x84\x01\n" +
+	"\x02id\x12\x06tenant\x1a\x03ref 2(d:\x00\"\xca\x01\n" +
 	"\x05Joint\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12(\n" +
 	"\x05robot\x18\x02 \x01(\v2\n" +
 	".app.RobotB\x06\xf2\x82\x16\x02@\x01R\x05robot\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias:\x1e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x12\b\b\"\x0e\n" +
-	"\frobot.tenant\"T\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
+	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
+	"dateErased:\x1e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x12\b\b\"\x0e\n" +
+	"\frobot.tenant\"\x9a\x01\n" +
 	"\x05Fleet\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x1c\n" +
-	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\t*\x00\"y\n" +
+	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias\x12D\n" +
+	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
+	"dateErased:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\t*\x00\"\xbf\x01\n" +
 	"\x04Cell\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12.\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
-	"\"\xd4\x01\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
+	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
+	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
+	"\"\xd8\x01\n" +
 	"\aReading\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12(\n" +
 	"\x05robot\x18\x02 \x01(\v2\n" +
 	".app.RobotB\x06\xf2\x82\x16\x02@\x01R\x05robot\x12\x18\n" +
 	"\acelsius\x18\b \x01(\x01R\acelsius\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x1e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x12\b\v\"\x0e\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\"\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x16\b\vB\x02\n" +
+	"\x00\"\x0e\n" +
 	"\frobot.tenantB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
@@ -641,18 +762,22 @@ var file_app_robot_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
 }
 var file_app_robot_proto_depIdxs = []int32{
-	5, // 0: app.Robot.tenant:type_name -> payday.Tenant
-	6, // 1: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
-	6, // 2: app.Robot.date_created:type_name -> google.protobuf.Timestamp
-	0, // 3: app.Joint.robot:type_name -> app.Robot
-	5, // 4: app.Cell.tenant:type_name -> payday.Tenant
-	0, // 5: app.Reading.robot:type_name -> app.Robot
-	6, // 6: app.Reading.date_created:type_name -> google.protobuf.Timestamp
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	5,  // 0: app.Robot.tenant:type_name -> payday.Tenant
+	6,  // 1: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
+	6,  // 2: app.Robot.date_created:type_name -> google.protobuf.Timestamp
+	6,  // 3: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
+	0,  // 4: app.Joint.robot:type_name -> app.Robot
+	6,  // 5: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
+	6,  // 6: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
+	5,  // 7: app.Cell.tenant:type_name -> payday.Tenant
+	6,  // 8: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
+	0,  // 9: app.Reading.robot:type_name -> app.Robot
+	6,  // 10: app.Reading.date_created:type_name -> google.protobuf.Timestamp
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_proto_init() }

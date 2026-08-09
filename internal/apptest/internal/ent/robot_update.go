@@ -57,6 +57,26 @@ func (_u *RobotUpdate) SetNillableDateUpdated(v *time.Time) *RobotUpdate {
 	return _u
 }
 
+// SetDateErased sets the "date_erased" field.
+func (_u *RobotUpdate) SetDateErased(v time.Time) *RobotUpdate {
+	_u.mutation.SetDateErased(v)
+	return _u
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_u *RobotUpdate) SetNillableDateErased(v *time.Time) *RobotUpdate {
+	if v != nil {
+		_u.SetDateErased(*v)
+	}
+	return _u
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (_u *RobotUpdate) ClearDateErased() *RobotUpdate {
+	_u.mutation.ClearDateErased()
+	return _u
+}
+
 // Mutation returns the RobotMutation object of the builder.
 func (_u *RobotUpdate) Mutation() *RobotMutation {
 	return _u.mutation
@@ -124,6 +144,12 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(robot.FieldDateCreated, field.TypeTime)
 	}
+	if value, ok := _u.mutation.DateErased(); ok {
+		_spec.SetField(robot.FieldDateErased, field.TypeTime, value)
+	}
+	if _u.mutation.DateErasedCleared() {
+		_spec.ClearField(robot.FieldDateErased, field.TypeTime)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -171,6 +197,26 @@ func (_u *RobotUpdateOne) SetNillableDateUpdated(v *time.Time) *RobotUpdateOne {
 	if v != nil {
 		_u.SetDateUpdated(*v)
 	}
+	return _u
+}
+
+// SetDateErased sets the "date_erased" field.
+func (_u *RobotUpdateOne) SetDateErased(v time.Time) *RobotUpdateOne {
+	_u.mutation.SetDateErased(v)
+	return _u
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_u *RobotUpdateOne) SetNillableDateErased(v *time.Time) *RobotUpdateOne {
+	if v != nil {
+		_u.SetDateErased(*v)
+	}
+	return _u
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (_u *RobotUpdateOne) ClearDateErased() *RobotUpdateOne {
+	_u.mutation.ClearDateErased()
 	return _u
 }
 
@@ -270,6 +316,12 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(robot.FieldDateCreated, field.TypeTime)
+	}
+	if value, ok := _u.mutation.DateErased(); ok {
+		_spec.SetField(robot.FieldDateErased, field.TypeTime, value)
+	}
+	if _u.mutation.DateErasedCleared() {
+		_spec.ClearField(robot.FieldDateErased, field.TypeTime)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Robot{config: _u.config}

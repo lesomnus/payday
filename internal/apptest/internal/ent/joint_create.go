@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -24,6 +25,20 @@ type JointCreate struct {
 // SetAlias sets the "alias" field.
 func (_c *JointCreate) SetAlias(v string) *JointCreate {
 	_c.mutation.SetAlias(v)
+	return _c
+}
+
+// SetDateErased sets the "date_erased" field.
+func (_c *JointCreate) SetDateErased(v time.Time) *JointCreate {
+	_c.mutation.SetDateErased(v)
+	return _c
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_c *JointCreate) SetNillableDateErased(v *time.Time) *JointCreate {
+	if v != nil {
+		_c.SetDateErased(*v)
+	}
 	return _c
 }
 
@@ -125,6 +140,10 @@ func (_c *JointCreate) createSpec() (*Joint, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(joint.FieldAlias, field.TypeString, value)
 		_node.Alias = value
+	}
+	if value, ok := _c.mutation.DateErased(); ok {
+		_spec.SetField(joint.FieldDateErased, field.TypeTime, value)
+		_node.DateErased = &value
 	}
 	if nodes := _c.mutation.RobotIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki1gMKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gaCAoGVGVuYW50GiYKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRoICgZHbG9iYWwacQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISDAoEd2l0aBgCIAMoCRIKCgJieRgDIAMoCRIMCgRzaXplGAQgASgNEgsKA21heBgFIAEoDRIPCgdmaWx0ZXJzGAYgASgNGgcKBVdhdGNoGiQKBU9yZGVyEg0KBWZpZWxkGAEgASgJEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXkirwQKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlGggKBlRlbmFudBomCghUZW5hbnRlZBILCgN2aWEYASABKAkSDQoFZmllbGQYAiADKAkaCAoGR2xvYmFsGioKBUVyYXNlEiEKBGhhcmQYASABKAsyEy5wYXlkYXkuRW50aXR5LkhhcmQaBgoESGFyZBpxCgRMaXN0EiMKBW9yZGVyGAEgAygLMhQucGF5ZGF5LkVudGl0eS5PcmRlchIMCgR3aXRoGAIgAygJEgoKAmJ5GAMgAygJEgwKBHNpemUYBCABKA0SCwoDbWF4GAUgASgNEg8KB2ZpbHRlcnMYBiABKA0aBwoFV2F0Y2gaJAoFT3JkZXISDQoFZmllbGQYASABKAkSDAoEZGVzYxgCIAEoCEIJCgd0ZW5hbmN5QiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac");
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -128,6 +128,25 @@ export type Entity = Message<"payday.Entity"> & {
    * @generated from field: payday.Entity.Watch watch = 7;
    */
   watch?: Entity_Watch | undefined;
+
+  /**
+   * Erase is what `Erase` does to a row, and it is only ever said to declare
+   * the destructive answer.
+   *
+   * Saying nothing means **softly**: the row is stamped and stays, so it cannot
+   * be read, cannot be changed, and its alias comes free again -- and the trail
+   * can still say what it held, because it is still there to be read. Which is
+   * what an entity gets by carrying a field marked `erased:`.
+   *
+   * An entity with no such field loses the row for good, and that is refused
+   * unless it is written here. The two failures are not alike: assuming soft
+   * wrongly leaves rows somebody meant to be gone, which is noticed by looking;
+   * assuming hard wrongly destroys them, which is noticed by somebody asking
+   * for one back.
+   *
+   * @generated from field: payday.Entity.Erase erase = 8;
+   */
+  erase?: Entity_Erase | undefined;
 };
 
 /**
@@ -234,6 +253,56 @@ export const Entity_GlobalSchema: GenMessage<Entity_Global> = /*@__PURE__*/
   messageDesc(file_payday_entity, 0, 2);
 
 /**
+ * Erase says the row goes. See [Entity.erase].
+ *
+ * @generated from message payday.Entity.Erase
+ */
+export type Entity_Erase = Message<"payday.Entity.Erase"> & {
+  /**
+   * Hard is losing the row, said out loud.
+   *
+   * It is a real answer and not a mistake to allow: a table of readings, of
+   * events, of anything that arrives faster than anybody reads it, cannot be
+   * one nothing may ever be removed from -- and payday has no retention story
+   * to offer instead.
+   *
+   * What it costs is what the trail then cannot say. `Audit.value` is read
+   * off the row **after** the write, so for a row that is gone there is
+   * nothing to read: the trail records that the erase happened and not what
+   * was destroyed, and the record is filed under the actor's tenant rather
+   * than the row's, because that is the last thing known about it.
+   *
+   * Do not answer this by going to the database instead. A `DELETE` run
+   * outside the app skips the trail, the version and the `Watch` -- and a
+   * watch says a row is gone by not sending it, so a row removed behind the
+   * app's back is one every client that has it keeps forever.
+   *
+   * @generated from field: payday.Entity.Hard hard = 1;
+   */
+  hard?: Entity_Hard | undefined;
+};
+
+/**
+ * Describes the message payday.Entity.Erase.
+ * Use `create(Entity_EraseSchema)` to create a new message.
+ */
+export const Entity_EraseSchema: GenMessage<Entity_Erase> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 0, 3);
+
+/**
+ * @generated from message payday.Entity.Hard
+ */
+export type Entity_Hard = Message<"payday.Entity.Hard"> & {
+};
+
+/**
+ * Describes the message payday.Entity.Hard.
+ * Use `create(Entity_HardSchema)` to create a new message.
+ */
+export const Entity_HardSchema: GenMessage<Entity_Hard> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 0, 4);
+
+/**
  * List is how this entity is read a page at a time.
  *
  * The half of a List that is the same for every entity is the half people get
@@ -320,7 +389,7 @@ export type Entity_List = Message<"payday.Entity.List"> & {
  * Use `create(Entity_ListSchema)` to create a new message.
  */
 export const Entity_ListSchema: GenMessage<Entity_List> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 3);
+  messageDesc(file_payday_entity, 0, 5);
 
 /**
  * Watch is how this entity is read as it changes.
@@ -342,7 +411,7 @@ export type Entity_Watch = Message<"payday.Entity.Watch"> & {
  * Use `create(Entity_WatchSchema)` to create a new message.
  */
 export const Entity_WatchSchema: GenMessage<Entity_Watch> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 4);
+  messageDesc(file_payday_entity, 0, 6);
 
 /**
  * Order is one column of a list's order.
@@ -369,5 +438,5 @@ export type Entity_Order = Message<"payday.Entity.Order"> & {
  * Use `create(Entity_OrderSchema)` to create a new message.
  */
 export const Entity_OrderSchema: GenMessage<Entity_Order> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 5);
+  messageDesc(file_payday_entity, 0, 7);
 

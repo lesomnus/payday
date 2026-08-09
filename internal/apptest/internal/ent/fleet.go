@@ -5,6 +5,7 @@ package ent
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -18,7 +19,9 @@ type Fleet struct {
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
 	// Alias holds the value of the "alias" field.
-	Alias        string `json:"alias,omitempty"`
+	Alias string `json:"alias,omitempty"`
+	// DateErased holds the value of the "date_erased" field.
+	DateErased   *time.Time `json:"date_erased,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -29,6 +32,8 @@ func (*Fleet) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case fleet.FieldAlias:
 			values[i] = new(sql.NullString)
+		case fleet.FieldDateErased:
+			values[i] = new(sql.NullTime)
 		case fleet.FieldID:
 			values[i] = new(uuid.UUID)
 		default:
@@ -57,6 +62,13 @@ func (_m *Fleet) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field alias", values[i])
 			} else if value.Valid {
 				_m.Alias = value.String
+			}
+		case fleet.FieldDateErased:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field date_erased", values[i])
+			} else if value.Valid {
+				_m.DateErased = new(time.Time)
+				*_m.DateErased = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -96,6 +108,11 @@ func (_m *Fleet) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("alias=")
 	builder.WriteString(_m.Alias)
+	builder.WriteString(", ")
+	if v := _m.DateErased; v != nil {
+		builder.WriteString("date_erased=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

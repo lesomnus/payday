@@ -33,6 +33,11 @@ message Robot {
     default: ""
   }];
 
+  // Erased softly, which is what saying nothing means: the row is stamped and
+  // stays, so it cannot be read or changed, its alias comes free again, and the
+  // trail can still say what it held.
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+
   option (orm.message) = {
     rpc: {crud: true}
     indexes: [
@@ -95,6 +100,11 @@ message Joint {
   Robot robot = 2 [(orm.edge) = {immutable: true}];
   string alias = 4;
 
+  // Erased softly, which is what saying nothing means: the row is stamped and
+  // stays, so it cannot be read or changed, its alias comes free again, and the
+  // trail can still say what it held.
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+
   option (orm.message) = {rpc: {crud: true}};
   option (payday.entity) = {
     domain: 8
@@ -111,6 +121,11 @@ message Fleet {
     default: ""
   }];
   string alias = 4 [(orm.field) = {unique: true}];
+
+  // Erased softly, which is what saying nothing means: the row is stamped and
+  // stays, so it cannot be read or changed, its alias comes free again, and the
+  // trail can still say what it held.
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
   option (orm.message) = {rpc: {crud: true}};
   option (payday.entity) = {
@@ -129,6 +144,11 @@ message Cell {
   }];
   payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
   string alias = 4;
+
+  // Erased softly, which is what saying nothing means: the row is stamped and
+  // stays, so it cannot be read or changed, its alias comes free again, and the
+  // trail can still say what it held.
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
   option (orm.message) = {rpc: {crud: true}};
   option (payday.entity) = {
@@ -161,6 +181,11 @@ message Reading {
 
   option (orm.message) = {rpc: {crud: true}};
   option (payday.entity) = {
+
+    // Hard, and it is the case the option exists for: readings arrive faster
+    // than anybody reads them, so a table nothing may ever be removed from is
+    // not one this entity can be.
+    erase: {hard: {}}
     domain: 11
     tenanted: {via: "robot.tenant"}
   };

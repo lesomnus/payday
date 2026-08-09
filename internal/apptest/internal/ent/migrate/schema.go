@@ -54,6 +54,7 @@ var (
 	CellColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString},
+		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUUID},
 	}
 	// CellTable holds the schema information for the "cell" table.
@@ -64,7 +65,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "cell_tenant_tenant",
-				Columns:    []*schema.Column{CellColumns[2]},
+				Columns:    []*schema.Column{CellColumns[3]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -73,13 +74,24 @@ var (
 	// FleetColumns holds the columns for the "fleet" table.
 	FleetColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
-		{Name: "alias", Type: field.TypeString, Unique: true},
+		{Name: "alias", Type: field.TypeString},
+		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 	}
 	// FleetTable holds the schema information for the "fleet" table.
 	FleetTable = &schema.Table{
 		Name:       "fleet",
 		Columns:    FleetColumns,
 		PrimaryKey: []*schema.Column{FleetColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "fleet_alias",
+				Unique:  true,
+				Columns: []*schema.Column{FleetColumns[1]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "date_erased IS NULL",
+				},
+			},
+		},
 	}
 	// HolderColumns holds the columns for the "holder" table.
 	HolderColumns = []*schema.Column{
@@ -122,6 +134,7 @@ var (
 	JointColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString},
+		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "robot_id", Type: field.TypeUUID},
 	}
 	// JointTable holds the schema information for the "joint" table.
@@ -132,7 +145,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "joint_robot_robot",
-				Columns:    []*schema.Column{JointColumns[2]},
+				Columns:    []*schema.Column{JointColumns[3]},
 				RefColumns: []*schema.Column{RobotColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -189,6 +202,7 @@ var (
 		{Name: "alias", Type: field.TypeString},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUUID},
 	}
 	// RobotTable holds the schema information for the "robot" table.
@@ -199,7 +213,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "robot_tenant_tenant",
-				Columns:    []*schema.Column{RobotColumns[4]},
+				Columns:    []*schema.Column{RobotColumns[5]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -213,7 +227,10 @@ var (
 			{
 				Name:    "robot_alias_tenant_id",
 				Unique:  true,
-				Columns: []*schema.Column{RobotColumns[1], RobotColumns[4]},
+				Columns: []*schema.Column{RobotColumns[1], RobotColumns[5]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "date_erased IS NULL",
+				},
 			},
 		},
 	}

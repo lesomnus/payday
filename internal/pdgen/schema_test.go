@@ -144,7 +144,7 @@ message %s {
   string alias = 4;
 %s
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {%s};
+  option (payday.entity) = {%s, erase: {hard: {}}};
 }
 `, name, body, opts)
 }
@@ -154,7 +154,7 @@ message Tenant {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   string alias = 4 [(orm.field) = {unique: true}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 1, tenant: {}};
+  option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 }
 `
 
@@ -285,7 +285,7 @@ message Audit {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 3, tenanted: {field: "tenant_id"}};
+  option (payday.entity) = {domain: 3, tenanted: {field: "tenant_id"}, erase: {hard: {}}};
 }`)
 		if err != nil {
 			t.Fatal(err)
@@ -428,7 +428,7 @@ message Tenant {
   google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 1, tenant: {}};
+  option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 }`
 }
 
@@ -443,7 +443,7 @@ message Robot {
   string alias = 4;
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}, list: {` + list + `}};
+  option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}, list: {` + list + `}, erase: {hard: {}}};
 }`
 	}
 
@@ -540,6 +540,7 @@ message Robot {
     domain: 7
     tenanted: {via: "tenant"}
     list: {order: [{field: "date_created"}, {field: "id"}], max: 100}
+    erase: {hard: {}}
   };
 }`)
 		if err != nil {
@@ -569,7 +570,7 @@ func TestAWatchWithoutAVersionIsRefused(t *testing.T) {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
 			option (orm.message) = {rpc: {crud: true}};
-			option (payday.entity) = {domain: 1, tenant: {}};
+			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Robot {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
@@ -606,7 +607,7 @@ func TestAListWithoutAWatchNeedsNoVersion(t *testing.T) {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
 			option (orm.message) = {rpc: {crud: true}};
-			option (payday.entity) = {domain: 1, tenant: {}};
+			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Robot {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
@@ -618,6 +619,7 @@ func TestAListWithoutAWatchNeedsNoVersion(t *testing.T) {
 				domain: 7
 				tenanted: {via: "tenant"}
 				list: {order: [{field: "date_created"}, {field: "id"}], size: 20, max: 100}
+				erase: {hard: {}}
 			};
 		}
 	`)
@@ -644,7 +646,7 @@ func TestAWatchWithNothingToNameARowByIsRefused(t *testing.T) {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
 			option (orm.message) = {rpc: {crud: true}};
-			option (payday.entity) = {domain: 1, tenant: {}};
+			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Robot {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
@@ -689,7 +691,7 @@ func TestAHeaderFieldOfTheWrongKindIsRefused(t *testing.T) {
 			string alias = 4 [(orm.field) = {unique: true}];
 			int64 name = 5;
 			option (orm.message) = {rpc: {crud: true}};
-			option (payday.entity) = {domain: 1, tenant: {}};
+			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 	`)
 	if err == nil {
@@ -715,7 +717,7 @@ func TestAnEntityWithNoHeaderIsFine(t *testing.T) {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
 			option (orm.message) = {rpc: {crud: true}};
-			option (payday.entity) = {domain: 1, tenant: {}};
+			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Trail {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
@@ -723,7 +725,7 @@ func TestAnEntityWithNoHeaderIsFine(t *testing.T) {
 			string action = 5;
 			bytes object_id = 6 [(orm.field) = {type: TYPE_UUID}];
 			option (orm.message) = {rpc: {crud: true}};
-			option (payday.entity) = {domain: 8, tenanted: {field: "tenant_id"}};
+			option (payday.entity) = {domain: 8, tenanted: {field: "tenant_id"}, erase: {hard: {}}};
 		}
 	`)
 	if err != nil {
@@ -744,7 +746,7 @@ func TestAHeaderFieldSomewhereElseIsRefused(t *testing.T) {
 			string alias = 4 [(orm.field) = {unique: true}];
 			string name = 9;
 			option (orm.message) = {rpc: {crud: true}};
-			option (payday.entity) = {domain: 1, tenant: {}};
+			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 	`)
 	if err == nil {
@@ -767,14 +769,14 @@ func TestAnEntityNobodyNamesIsOrdinary(t *testing.T) {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
 			option (orm.message) = {rpc: {crud: true}};
-			option (payday.entity) = {domain: 1, tenant: {}};
+			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Reading {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			Tenant tenant = 2 [(orm.edge) = {immutable: true}];
 			double celsius = 8;
 			option (orm.message) = {rpc: {crud: true}};
-			option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}};
+			option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}, erase: {hard: {}}};
 		}
 	`)
 	if err != nil {
@@ -870,7 +872,7 @@ message Site {
   Tenant tenant = 2 [(orm.edge) = {}];
   string alias = 4;
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}};
+  option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 ` + strings.Join(vs, "\n")
 	}
@@ -883,7 +885,7 @@ message Asset {
   ` + at + `
   string alias = 4;
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}};
+  option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }`
 	}
 
@@ -955,14 +957,14 @@ message Cell {
   Tenant tenant = 2 [(orm.edge) = {}];
   string alias = 4;
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 10, tenanted: {via: "tenant"}};
+  option (payday.entity) = {domain: 10, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 message Reading {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   Cell cell = 3 [(orm.edge) = {}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 11, tenanted: {via: "tenant"}};
+  option (payday.entity) = {domain: 11, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }`
 		_, err := read(t, app(asset(`Site site = 3 [(orm.edge) = {}];`), second))
 		if err == nil {
@@ -981,21 +983,21 @@ message Area {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}};
+  option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 message Site {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   Area area = 3 [(orm.edge) = {}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}};
+  option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 message Asset {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   Site site = 3 [(orm.edge) = {}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 10, tenanted: {via: "tenant"}};
+  option (payday.entity) = {domain: 10, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }`
 		_, err := read(t, src)
 		if err == nil {
@@ -1014,14 +1016,14 @@ message Asset {
 message Site {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 8, global: {}};
+  option (payday.entity) = {domain: 8, global: {}, erase: {hard: {}}};
 }
 message Asset {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   Site site = 3 [(orm.edge) = {}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}};
+  option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }`
 		_, err := read(t, src)
 		if err == nil {
@@ -1049,7 +1051,7 @@ message Note {
   option (payday.entity) = {
     domain: 7
     tenanted: {field: "about_id", field: "by_id"}
-  };
+  , erase: {hard: {}}};
 }`)
 	if err != nil {
 		t.Fatal(err)
@@ -1073,12 +1075,83 @@ message Note {
   option (payday.entity) = {
     domain: 7
     tenanted: {field: "about_id", field: "nowhere"}
-  };
+  , erase: {hard: {}}};
 }`)
 		if err == nil {
 			t.Fatal("a column nothing declares was taken")
 		}
 		if !strings.Contains(err.Error(), "nowhere") {
+			t.Fatalf("said: %s", err)
+		}
+	})
+}
+
+// TestAnEntityHasToSayWhatEraseDoes.
+//
+// The two failures are not alike, which is why this is a refusal rather than a
+// default. Assuming soft wrongly leaves rows somebody meant to be gone, and
+// that is noticed by looking at them; assuming hard wrongly destroys them, and
+// that is noticed by somebody asking for one back.
+//
+// payday cannot default it either way, because saying it softly means carrying
+// a field and payday does not add fields to an app's schema. So the only thing
+// left is to refuse and say what to write.
+func TestAnEntityHasToSayWhatEraseDoes(t *testing.T) {
+	robot := func(field, opt string) string {
+		return tenant + `
+message Robot {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  ` + field + `
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}` + opt + `};
+}`
+	}
+
+	const erased = `google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];`
+
+	t.Run("a field marked erased is soft, and says nothing else", func(t *testing.T) {
+		s, err := read(t, robot(erased, ``))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, v := range s.Entities {
+			if v.GoName() == "Robot" && v.IsHard {
+				t.Fatal("an entity with an erased field was read as hard")
+			}
+		}
+	})
+
+	t.Run("no field and no word is refused", func(t *testing.T) {
+		_, err := read(t, robot(``, ``))
+		if err == nil {
+			t.Fatal("an entity that destroys rows without saying so was taken")
+		}
+		if !strings.Contains(err.Error(), "erase") || !strings.Contains(err.Error(), "date_erased") {
+			t.Fatalf("said: %s", err)
+		}
+	})
+
+	t.Run("no field and the word is hard", func(t *testing.T) {
+		s, err := read(t, robot(``, `, erase: {hard: {}}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, v := range s.Entities {
+			if v.GoName() == "Robot" && !v.IsHard {
+				t.Fatal("it was not read as hard")
+			}
+		}
+	})
+
+	t.Run("both is refused, because they are two different answers", func(t *testing.T) {
+		// The field is what makes an Erase a stamp, so the row would be softly
+		// erased while the schema says it is destroyed.
+		_, err := read(t, robot(erased, `, erase: {hard: {}}`))
+		if err == nil {
+			t.Fatal("a contradiction was taken")
+		}
+		if !strings.Contains(err.Error(), "two different answers") {
 			t.Fatalf("said: %s", err)
 		}
 	})

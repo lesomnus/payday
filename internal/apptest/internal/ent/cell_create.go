@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -24,6 +25,20 @@ type CellCreate struct {
 // SetAlias sets the "alias" field.
 func (_c *CellCreate) SetAlias(v string) *CellCreate {
 	_c.mutation.SetAlias(v)
+	return _c
+}
+
+// SetDateErased sets the "date_erased" field.
+func (_c *CellCreate) SetDateErased(v time.Time) *CellCreate {
+	_c.mutation.SetDateErased(v)
+	return _c
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_c *CellCreate) SetNillableDateErased(v *time.Time) *CellCreate {
+	if v != nil {
+		_c.SetDateErased(*v)
+	}
 	return _c
 }
 
@@ -125,6 +140,10 @@ func (_c *CellCreate) createSpec() (*Cell, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(cell.FieldAlias, field.TypeString, value)
 		_node.Alias = value
+	}
+	if value, ok := _c.mutation.DateErased(); ok {
+		_spec.SetField(cell.FieldDateErased, field.TypeTime, value)
+		_node.DateErased = &value
 	}
 	if nodes := _c.mutation.TenantIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

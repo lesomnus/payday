@@ -206,6 +206,10 @@ message Audit {
   option (payday.entity) = {
     domain: 3
 
+    // Nothing erases a trail row -- the layer in front does not serve the RPC
+    // -- so what this says is that there is no column here pretending it might.
+    erase: {hard: {}}
+
     // The OR of the two: readable by the tenant whose row changed and by the
     // tenant whose actor changed it. See the note on `field` in the option.
     tenanted: {field: "tenant_id", field: "actor_tenant_id"}

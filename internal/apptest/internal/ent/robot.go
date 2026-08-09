@@ -25,6 +25,8 @@ type Robot struct {
 	DateUpdated time.Time `json:"date_updated,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
+	// DateErased holds the value of the "date_erased" field.
+	DateErased *time.Time `json:"date_erased,omitempty"`
 	// TenantID holds the value of the "tenant_id" field.
 	TenantID uuid.UUID `json:"tenant_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -60,7 +62,7 @@ func (*Robot) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case robot.FieldAlias:
 			values[i] = new(sql.NullString)
-		case robot.FieldDateUpdated, robot.FieldDateCreated:
+		case robot.FieldDateUpdated, robot.FieldDateCreated, robot.FieldDateErased:
 			values[i] = new(sql.NullTime)
 		case robot.FieldID, robot.FieldTenantID:
 			values[i] = new(uuid.UUID)
@@ -102,6 +104,13 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field date_created", values[i])
 			} else if value.Valid {
 				_m.DateCreated = value.Time
+			}
+		case robot.FieldDateErased:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field date_erased", values[i])
+			} else if value.Valid {
+				_m.DateErased = new(time.Time)
+				*_m.DateErased = value.Time
 			}
 		case robot.FieldTenantID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -158,6 +167,11 @@ func (_m *Robot) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("date_created=")
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := _m.DateErased; v != nil {
+		builder.WriteString("date_erased=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("tenant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))

@@ -79,6 +79,11 @@ type Entity struct {
 	// thing the schema had to say out loud.
 	IsGlobal bool
 
+	// IsHard says `Erase` loses the row, which is the other thing the schema
+	// has to say out loud. Saying nothing is soft, and an entity that carries
+	// no field to be softly erased by is refused; see [Schema.checkErase].
+	IsHard bool
+
 	// List is how this entity is read a page at a time, and nil for one that
 	// answers no List.
 	List *List
@@ -350,6 +355,9 @@ func (s *Schema) check() error {
 	}
 
 	if err := s.readSets(); err != nil {
+		return err
+	}
+	if err := s.checkErase(); err != nil {
 		return err
 	}
 
@@ -997,4 +1005,65 @@ func setName(s *Schema, to *Entity) protoreflect.FullName {
 	}
 
 	return to.FullName()
+}
+
+// checkErase refuses an entity that does not say what `Erase` does to a row.
+//
+// Two ways of saying it, and one of them is the row itself: a field marked
+// `erased:` makes the ORM stamp instead of delete, so an entity that has one is
+// soft and needs nothing else. An entity with none loses the row for good, and
+// that has to be written down.
+//
+// The two failures are not alike, which is the whole of why this is a refusal
+// rather than a default. Assuming soft wrongly leaves rows somebody meant to be
+// gone, and that is noticed by looking at them. Assuming hard wrongly destroys
+// them, and that is noticed by somebody asking for one back.
+func (s *Schema) checkErase() error {
+	for _, v := range s.Entities {
+		var at graph.Field
+		for f := range v.Fields() {
+			if f.IsErased() {
+				at = f
+			}
+		}
+
+		hard := v.Opts.GetErase().HasHard()
+		switch {
+		case at != nil && hard:
+			return fmt.Errorf(
+				"%s: erase: says `hard: {}` and carries %q, and they are two different "+
+					"answers: the field is what makes an Erase a stamp rather than a delete, "+
+					"so the row would be softly erased while the schema says it is destroyed",
+				v.FullName(), at.Name())
+
+		case at == nil && !hard:
+			return fmt.Errorf(
+				"%s: erase: nothing says what `Erase` does to a row, and with no field marked "+
+					"`erased:` it destroys one\n\n"+
+					"    google.protobuf.Timestamp date_erased = %d [(orm.field) = {erased: {}}];\n\n"+
+					"or, if losing the row is what this entity is for:\n\n"+
+					"    option (payday.entity) = {... erase: {hard: {}}};",
+				v.FullName(), suggestErased(v.Entity))
+		}
+
+		v.IsHard = hard
+	}
+
+	return nil
+}
+
+// suggestErased is a field number that is free, for the message that tells an
+// entity to declare one. 14 is where payday's own Holder puts it.
+func suggestErased(e graph.Entity) int {
+	taken := map[int]bool{}
+	for f := range e.Fields() {
+		taken[int(f.Number())] = true
+	}
+	for _, f := range []int{14, 16, 17, 18} {
+		if !taken[f] {
+			return f
+		}
+	}
+
+	return 14
 }

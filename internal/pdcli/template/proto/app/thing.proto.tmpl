@@ -40,6 +40,13 @@ message Thing {
   // leaves it open and will not spend it -- see `docs/SCHEMA.md`.
   string desc = 6;
 
+  // Erased softly, which is what saying nothing about erasure means: the row is
+  // stamped and stays, so it cannot be read or changed, its alias comes free
+  // again, and the trail can still say what it held. Delete it and say
+  // `erase: {hard: {}}` if losing the row is the point -- a table of readings
+  // cannot be one nothing may ever be removed from.
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+
   // Stamped on every write and refused to a patch document, so it is a version
   // and not a field. Generation refuses a `watch:` without one: a watch sends
   // state, so two answers about one row have to be orderable or a late one

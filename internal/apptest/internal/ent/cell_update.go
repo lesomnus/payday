@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -39,6 +40,26 @@ func (_u *CellUpdate) SetNillableAlias(v *string) *CellUpdate {
 	if v != nil {
 		_u.SetAlias(*v)
 	}
+	return _u
+}
+
+// SetDateErased sets the "date_erased" field.
+func (_u *CellUpdate) SetDateErased(v time.Time) *CellUpdate {
+	_u.mutation.SetDateErased(v)
+	return _u
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_u *CellUpdate) SetNillableDateErased(v *time.Time) *CellUpdate {
+	if v != nil {
+		_u.SetDateErased(*v)
+	}
+	return _u
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (_u *CellUpdate) ClearDateErased() *CellUpdate {
+	_u.mutation.ClearDateErased()
 	return _u
 }
 
@@ -103,6 +124,12 @@ func (_u *CellUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(cell.FieldAlias, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.DateErased(); ok {
+		_spec.SetField(cell.FieldDateErased, field.TypeTime, value)
+	}
+	if _u.mutation.DateErasedCleared() {
+		_spec.ClearField(cell.FieldDateErased, field.TypeTime)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -136,6 +163,26 @@ func (_u *CellUpdateOne) SetNillableAlias(v *string) *CellUpdateOne {
 	if v != nil {
 		_u.SetAlias(*v)
 	}
+	return _u
+}
+
+// SetDateErased sets the "date_erased" field.
+func (_u *CellUpdateOne) SetDateErased(v time.Time) *CellUpdateOne {
+	_u.mutation.SetDateErased(v)
+	return _u
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_u *CellUpdateOne) SetNillableDateErased(v *time.Time) *CellUpdateOne {
+	if v != nil {
+		_u.SetDateErased(*v)
+	}
+	return _u
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (_u *CellUpdateOne) ClearDateErased() *CellUpdateOne {
+	_u.mutation.ClearDateErased()
 	return _u
 }
 
@@ -229,6 +276,12 @@ func (_u *CellUpdateOne) sqlSave(ctx context.Context) (_node *Cell, err error) {
 	}
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(cell.FieldAlias, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.DateErased(); ok {
+		_spec.SetField(cell.FieldDateErased, field.TypeTime, value)
+	}
+	if _u.mutation.DateErasedCleared() {
+		_spec.ClearField(cell.FieldDateErased, field.TypeTime)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Cell{config: _u.config}

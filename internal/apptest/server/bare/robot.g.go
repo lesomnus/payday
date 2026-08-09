@@ -46,13 +46,17 @@ func NewRobotServiceServer(db *ent.Client, opts ...Option) apptest.RobotServiceS
 }
 
 // RobotNarrow answers with `p` and everything else that narrows a
-// read of a Robot, which is whatever `scope` says.
+// read of a Robot: the rows that have not been erased, and whatever
+// `scope` says of those.
 //
 // Every read this package makes goes through it, and a read written by
 // hand should too -- a List is the one read nothing generates, and so the
 // one that would otherwise answer with rows nobody should be given.
 func RobotNarrow(ctx context.Context, scope Scope, p predicate.Robot) (predicate.Robot, error) {
-	ps := make([]predicate.Robot, 0, 2)
+	ps := make([]predicate.Robot, 0, 3)
+
+	// A row that was erased is not a row a read answers with.
+	ps = append(ps, robot.DateErasedIsNil())
 	if p != nil {
 		ps = append(ps, p)
 	}
@@ -197,6 +201,9 @@ func RobotSelectedFields(m *apptest.RobotSelect) []string {
 	if m.GetDateCreated() {
 		vs = append(vs, robot.FieldDateCreated)
 	}
+	if m.GetDateErased() {
+		vs = append(vs, robot.FieldDateErased)
+	}
 
 	return vs
 }
@@ -268,7 +275,7 @@ func RobotGetKey(ctx context.Context, db *ent.Client, ref *apptest.RobotRef) (uu
 var robotOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Robot")
 
 var robotPatchColumns = entpatch.Columns{
-	1: robot.FieldID, 2: robot.TenantColumn, 4: robot.FieldAlias, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated}
+	1: robot.FieldID, 2: robot.TenantColumn, 4: robot.FieldAlias, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
 
 func (s RobotServiceServer) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
 	if !req.HasPatch() {
@@ -411,7 +418,10 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 		p = robot.IDEQ(v)
 	}
 
-	n, err := st.Db.Robot.Delete().Where(p).Exec(ctx)
+	u := st.Db.Robot.Update().Where(p)
+	u.SetDateErased(time.Now().UTC())
+	u.SetDateUpdated(time.Now().UTC())
+	n, err := u.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -474,13 +484,17 @@ func NewJointServiceServer(db *ent.Client, opts ...Option) apptest.JointServiceS
 }
 
 // JointNarrow answers with `p` and everything else that narrows a
-// read of a Joint, which is whatever `scope` says.
+// read of a Joint: the rows that have not been erased, and whatever
+// `scope` says of those.
 //
 // Every read this package makes goes through it, and a read written by
 // hand should too -- a List is the one read nothing generates, and so the
 // one that would otherwise answer with rows nobody should be given.
 func JointNarrow(ctx context.Context, scope Scope, p predicate.Joint) (predicate.Joint, error) {
-	ps := make([]predicate.Joint, 0, 2)
+	ps := make([]predicate.Joint, 0, 3)
+
+	// A row that was erased is not a row a read answers with.
+	ps = append(ps, joint.DateErasedIsNil())
 	if p != nil {
 		ps = append(ps, p)
 	}
@@ -613,6 +627,9 @@ func JointSelectedFields(m *apptest.JointSelect) []string {
 	if m.GetAlias() {
 		vs = append(vs, joint.FieldAlias)
 	}
+	if m.GetDateErased() {
+		vs = append(vs, joint.FieldDateErased)
+	}
 
 	return vs
 }
@@ -684,7 +701,7 @@ func JointGetKey(ctx context.Context, db *ent.Client, ref *apptest.JointRef) (uu
 var jointOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Joint")
 
 var jointPatchColumns = entpatch.Columns{
-	1: joint.FieldID, 2: joint.RobotColumn, 4: joint.FieldAlias}
+	1: joint.FieldID, 2: joint.RobotColumn, 4: joint.FieldAlias, 14: joint.FieldDateErased}
 
 func (s JointServiceServer) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
 	if !req.HasPatch() {
@@ -824,7 +841,9 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 		p = joint.IDEQ(v)
 	}
 
-	n, err := st.Db.Joint.Delete().Where(p).Exec(ctx)
+	u := st.Db.Joint.Update().Where(p)
+	u.SetDateErased(time.Now().UTC())
+	n, err := u.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -877,13 +896,17 @@ func NewFleetServiceServer(db *ent.Client, opts ...Option) apptest.FleetServiceS
 }
 
 // FleetNarrow answers with `p` and everything else that narrows a
-// read of a Fleet, which is whatever `scope` says.
+// read of a Fleet: the rows that have not been erased, and whatever
+// `scope` says of those.
 //
 // Every read this package makes goes through it, and a read written by
 // hand should too -- a List is the one read nothing generates, and so the
 // one that would otherwise answer with rows nobody should be given.
 func FleetNarrow(ctx context.Context, scope Scope, p predicate.Fleet) (predicate.Fleet, error) {
-	ps := make([]predicate.Fleet, 0, 2)
+	ps := make([]predicate.Fleet, 0, 3)
+
+	// A row that was erased is not a row a read answers with.
+	ps = append(ps, fleet.DateErasedIsNil())
 	if p != nil {
 		ps = append(ps, p)
 	}
@@ -1003,6 +1026,9 @@ func FleetSelectedFields(m *apptest.FleetSelect) []string {
 	if m.GetAlias() {
 		vs = append(vs, fleet.FieldAlias)
 	}
+	if m.GetDateErased() {
+		vs = append(vs, fleet.FieldDateErased)
+	}
 
 	return vs
 }
@@ -1068,7 +1094,7 @@ func FleetGetKey(ctx context.Context, db *ent.Client, ref *apptest.FleetRef) (uu
 var fleetOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Fleet")
 
 var fleetPatchColumns = entpatch.Columns{
-	1: fleet.FieldID, 4: fleet.FieldAlias}
+	1: fleet.FieldID, 4: fleet.FieldAlias, 14: fleet.FieldDateErased}
 
 func (s FleetServiceServer) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
 	if !req.HasPatch() {
@@ -1208,7 +1234,9 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 		p = fleet.IDEQ(v)
 	}
 
-	n, err := st.Db.Fleet.Delete().Where(p).Exec(ctx)
+	u := st.Db.Fleet.Update().Where(p)
+	u.SetDateErased(time.Now().UTC())
+	n, err := u.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1263,13 +1291,17 @@ func NewCellServiceServer(db *ent.Client, opts ...Option) apptest.CellServiceSer
 }
 
 // CellNarrow answers with `p` and everything else that narrows a
-// read of a Cell, which is whatever `scope` says.
+// read of a Cell: the rows that have not been erased, and whatever
+// `scope` says of those.
 //
 // Every read this package makes goes through it, and a read written by
 // hand should too -- a List is the one read nothing generates, and so the
 // one that would otherwise answer with rows nobody should be given.
 func CellNarrow(ctx context.Context, scope Scope, p predicate.Cell) (predicate.Cell, error) {
-	ps := make([]predicate.Cell, 0, 2)
+	ps := make([]predicate.Cell, 0, 3)
+
+	// A row that was erased is not a row a read answers with.
+	ps = append(ps, cell.DateErasedIsNil())
 	if p != nil {
 		ps = append(ps, p)
 	}
@@ -1402,6 +1434,9 @@ func CellSelectedFields(m *apptest.CellSelect) []string {
 	if m.GetAlias() {
 		vs = append(vs, cell.FieldAlias)
 	}
+	if m.GetDateErased() {
+		vs = append(vs, cell.FieldDateErased)
+	}
 
 	return vs
 }
@@ -1473,7 +1508,7 @@ func CellGetKey(ctx context.Context, db *ent.Client, ref *apptest.CellRef) (uuid
 var cellOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Cell")
 
 var cellPatchColumns = entpatch.Columns{
-	1: cell.FieldID, 2: cell.TenantColumn, 4: cell.FieldAlias}
+	1: cell.FieldID, 2: cell.TenantColumn, 4: cell.FieldAlias, 14: cell.FieldDateErased}
 
 func (s CellServiceServer) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
 	if !req.HasPatch() {
@@ -1613,7 +1648,9 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*em
 		p = cell.IDEQ(v)
 	}
 
-	n, err := st.Db.Cell.Delete().Where(p).Exec(ctx)
+	u := st.Db.Cell.Update().Where(p)
+	u.SetDateErased(time.Now().UTC())
+	n, err := u.Save(ctx)
 	if err != nil {
 		return nil, err
 	}

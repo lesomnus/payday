@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -39,6 +40,26 @@ func (_u *FleetUpdate) SetNillableAlias(v *string) *FleetUpdate {
 	if v != nil {
 		_u.SetAlias(*v)
 	}
+	return _u
+}
+
+// SetDateErased sets the "date_erased" field.
+func (_u *FleetUpdate) SetDateErased(v time.Time) *FleetUpdate {
+	_u.mutation.SetDateErased(v)
+	return _u
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_u *FleetUpdate) SetNillableDateErased(v *time.Time) *FleetUpdate {
+	if v != nil {
+		_u.SetDateErased(*v)
+	}
+	return _u
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (_u *FleetUpdate) ClearDateErased() *FleetUpdate {
+	_u.mutation.ClearDateErased()
 	return _u
 }
 
@@ -92,6 +113,12 @@ func (_u *FleetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(fleet.FieldAlias, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.DateErased(); ok {
+		_spec.SetField(fleet.FieldDateErased, field.TypeTime, value)
+	}
+	if _u.mutation.DateErasedCleared() {
+		_spec.ClearField(fleet.FieldDateErased, field.TypeTime)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -125,6 +152,26 @@ func (_u *FleetUpdateOne) SetNillableAlias(v *string) *FleetUpdateOne {
 	if v != nil {
 		_u.SetAlias(*v)
 	}
+	return _u
+}
+
+// SetDateErased sets the "date_erased" field.
+func (_u *FleetUpdateOne) SetDateErased(v time.Time) *FleetUpdateOne {
+	_u.mutation.SetDateErased(v)
+	return _u
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_u *FleetUpdateOne) SetNillableDateErased(v *time.Time) *FleetUpdateOne {
+	if v != nil {
+		_u.SetDateErased(*v)
+	}
+	return _u
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (_u *FleetUpdateOne) ClearDateErased() *FleetUpdateOne {
+	_u.mutation.ClearDateErased()
 	return _u
 }
 
@@ -207,6 +254,12 @@ func (_u *FleetUpdateOne) sqlSave(ctx context.Context) (_node *Fleet, err error)
 	}
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(fleet.FieldAlias, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.DateErased(); ok {
+		_spec.SetField(fleet.FieldDateErased, field.TypeTime, value)
+	}
+	if _u.mutation.DateErasedCleared() {
+		_spec.ClearField(fleet.FieldDateErased, field.TypeTime)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Fleet{config: _u.config}

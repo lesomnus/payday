@@ -36,6 +36,7 @@ type Entity struct {
 	xxx_hidden_Tenancy isEntity_Tenancy       `protobuf_oneof:"tenancy"`
 	xxx_hidden_List    *Entity_List           `protobuf:"bytes,6,opt,name=list"`
 	xxx_hidden_Watch   *Entity_Watch          `protobuf:"bytes,7,opt,name=watch"`
+	xxx_hidden_Erase   *Entity_Erase          `protobuf:"bytes,8,opt,name=erase"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -120,6 +121,13 @@ func (x *Entity) GetWatch() *Entity_Watch {
 	return nil
 }
 
+func (x *Entity) GetErase() *Entity_Erase {
+	if x != nil {
+		return x.xxx_hidden_Erase
+	}
+	return nil
+}
+
 func (x *Entity) SetDomain(v uint32) {
 	x.xxx_hidden_Domain = v
 }
@@ -158,6 +166,10 @@ func (x *Entity) SetList(v *Entity_List) {
 
 func (x *Entity) SetWatch(v *Entity_Watch) {
 	x.xxx_hidden_Watch = v
+}
+
+func (x *Entity) SetErase(v *Entity_Erase) {
+	x.xxx_hidden_Erase = v
 }
 
 func (x *Entity) HasTenancy() bool {
@@ -205,6 +217,13 @@ func (x *Entity) HasWatch() bool {
 	return x.xxx_hidden_Watch != nil
 }
 
+func (x *Entity) HasErase() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Erase != nil
+}
+
 func (x *Entity) ClearTenancy() {
 	x.xxx_hidden_Tenancy = nil
 }
@@ -233,6 +252,10 @@ func (x *Entity) ClearList() {
 
 func (x *Entity) ClearWatch() {
 	x.xxx_hidden_Watch = nil
+}
+
+func (x *Entity) ClearErase() {
+	x.xxx_hidden_Erase = nil
 }
 
 const Entity_Tenancy_not_set_case case_Entity_Tenancy = 0
@@ -320,6 +343,20 @@ type Entity_builder struct {
 	// for a watch to answer with otherwise -- no order to read in, no filters to
 	// be about, no cap on the first message.
 	Watch *Entity_Watch
+	// Erase is what `Erase` does to a row, and it is only ever said to declare
+	// the destructive answer.
+	//
+	// Saying nothing means **softly**: the row is stamped and stays, so it cannot
+	// be read, cannot be changed, and its alias comes free again -- and the trail
+	// can still say what it held, because it is still there to be read. Which is
+	// what an entity gets by carrying a field marked `erased:`.
+	//
+	// An entity with no such field loses the row for good, and that is refused
+	// unless it is written here. The two failures are not alike: assuming soft
+	// wrongly leaves rows somebody meant to be gone, which is noticed by looking;
+	// assuming hard wrongly destroys them, which is noticed by somebody asking
+	// for one back.
+	Erase *Entity_Erase
 }
 
 func (b0 Entity_builder) Build() *Entity {
@@ -339,6 +376,7 @@ func (b0 Entity_builder) Build() *Entity {
 	}
 	x.xxx_hidden_List = b.List
 	x.xxx_hidden_Watch = b.Watch
+	x.xxx_hidden_Erase = b.Erase
 	return m0
 }
 
@@ -579,6 +617,135 @@ func (b0 Entity_Global_builder) Build() *Entity_Global {
 	return m0
 }
 
+// Erase says the row goes. See [Entity.erase].
+type Entity_Erase struct {
+	state           protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Hard *Entity_Hard           `protobuf:"bytes,1,opt,name=hard"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *Entity_Erase) Reset() {
+	*x = Entity_Erase{}
+	mi := &file_payday_entity_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entity_Erase) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entity_Erase) ProtoMessage() {}
+
+func (x *Entity_Erase) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Entity_Erase) GetHard() *Entity_Hard {
+	if x != nil {
+		return x.xxx_hidden_Hard
+	}
+	return nil
+}
+
+func (x *Entity_Erase) SetHard(v *Entity_Hard) {
+	x.xxx_hidden_Hard = v
+}
+
+func (x *Entity_Erase) HasHard() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Hard != nil
+}
+
+func (x *Entity_Erase) ClearHard() {
+	x.xxx_hidden_Hard = nil
+}
+
+type Entity_Erase_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Hard is losing the row, said out loud.
+	//
+	// It is a real answer and not a mistake to allow: a table of readings, of
+	// events, of anything that arrives faster than anybody reads it, cannot be
+	// one nothing may ever be removed from -- and payday has no retention story
+	// to offer instead.
+	//
+	// What it costs is what the trail then cannot say. `Audit.value` is read
+	// off the row **after** the write, so for a row that is gone there is
+	// nothing to read: the trail records that the erase happened and not what
+	// was destroyed, and the record is filed under the actor's tenant rather
+	// than the row's, because that is the last thing known about it.
+	//
+	// Do not answer this by going to the database instead. A `DELETE` run
+	// outside the app skips the trail, the version and the `Watch` -- and a
+	// watch says a row is gone by not sending it, so a row removed behind the
+	// app's back is one every client that has it keeps forever.
+	Hard *Entity_Hard
+}
+
+func (b0 Entity_Erase_builder) Build() *Entity_Erase {
+	m0 := &Entity_Erase{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Hard = b.Hard
+	return m0
+}
+
+type Entity_Hard struct {
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Entity_Hard) Reset() {
+	*x = Entity_Hard{}
+	mi := &file_payday_entity_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entity_Hard) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entity_Hard) ProtoMessage() {}
+
+func (x *Entity_Hard) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+type Entity_Hard_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 Entity_Hard_builder) Build() *Entity_Hard {
+	m0 := &Entity_Hard{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
+}
+
 // List is how this entity is read a page at a time.
 //
 // The half of a List that is the same for every entity is the half people get
@@ -603,7 +770,7 @@ type Entity_List struct {
 
 func (x *Entity_List) Reset() {
 	*x = Entity_List{}
-	mi := &file_payday_entity_proto_msgTypes[4]
+	mi := &file_payday_entity_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -615,7 +782,7 @@ func (x *Entity_List) String() string {
 func (*Entity_List) ProtoMessage() {}
 
 func (x *Entity_List) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[4]
+	mi := &file_payday_entity_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -765,7 +932,7 @@ type Entity_Watch struct {
 
 func (x *Entity_Watch) Reset() {
 	*x = Entity_Watch{}
-	mi := &file_payday_entity_proto_msgTypes[5]
+	mi := &file_payday_entity_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -777,7 +944,7 @@ func (x *Entity_Watch) String() string {
 func (*Entity_Watch) ProtoMessage() {}
 
 func (x *Entity_Watch) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[5]
+	mi := &file_payday_entity_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -811,7 +978,7 @@ type Entity_Order struct {
 
 func (x *Entity_Order) Reset() {
 	*x = Entity_Order{}
-	mi := &file_payday_entity_proto_msgTypes[6]
+	mi := &file_payday_entity_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -823,7 +990,7 @@ func (x *Entity_Order) String() string {
 func (*Entity_Order) ProtoMessage() {}
 
 func (x *Entity_Order) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[6]
+	mi := &file_payday_entity_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -878,7 +1045,7 @@ var File_payday_entity_proto protoreflect.FileDescriptor
 
 const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/entity.proto\x12\x06payday\"\xca\x04\n" +
+	"\x13payday/entity.proto\x12\x06payday\"\xb0\x05\n" +
 	"\x06Entity\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domain\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
@@ -886,12 +1053,16 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\btenanted\x18\x04 \x01(\v2\x17.payday.Entity.TenantedH\x00R\btenanted\x12/\n" +
 	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06global\x12'\n" +
 	"\x04list\x18\x06 \x01(\v2\x13.payday.Entity.ListR\x04list\x12*\n" +
-	"\x05watch\x18\a \x01(\v2\x14.payday.Entity.WatchR\x05watch\x1a\b\n" +
+	"\x05watch\x18\a \x01(\v2\x14.payday.Entity.WatchR\x05watch\x12*\n" +
+	"\x05erase\x18\b \x01(\v2\x14.payday.Entity.EraseR\x05erase\x1a\b\n" +
 	"\x06Tenant\x1a2\n" +
 	"\bTenanted\x12\x10\n" +
 	"\x03via\x18\x01 \x01(\tR\x03via\x12\x14\n" +
 	"\x05field\x18\x02 \x03(\tR\x05field\x1a\b\n" +
-	"\x06Global\x1a\x96\x01\n" +
+	"\x06Global\x1a0\n" +
+	"\x05Erase\x12'\n" +
+	"\x04hard\x18\x01 \x01(\v2\x13.payday.Entity.HardR\x04hard\x1a\x06\n" +
+	"\x04Hard\x1a\x96\x01\n" +
 	"\x04List\x12*\n" +
 	"\x05order\x18\x01 \x03(\v2\x14.payday.Entity.OrderR\x05order\x12\x12\n" +
 	"\x04with\x18\x02 \x03(\tR\x04with\x12\x0e\n" +
@@ -905,28 +1076,32 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
 	"\atenancyB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_payday_entity_proto_goTypes = []any{
 	(*Entity)(nil),          // 0: payday.Entity
 	(*Entity_Tenant)(nil),   // 1: payday.Entity.Tenant
 	(*Entity_Tenanted)(nil), // 2: payday.Entity.Tenanted
 	(*Entity_Global)(nil),   // 3: payday.Entity.Global
-	(*Entity_List)(nil),     // 4: payday.Entity.List
-	(*Entity_Watch)(nil),    // 5: payday.Entity.Watch
-	(*Entity_Order)(nil),    // 6: payday.Entity.Order
+	(*Entity_Erase)(nil),    // 4: payday.Entity.Erase
+	(*Entity_Hard)(nil),     // 5: payday.Entity.Hard
+	(*Entity_List)(nil),     // 6: payday.Entity.List
+	(*Entity_Watch)(nil),    // 7: payday.Entity.Watch
+	(*Entity_Order)(nil),    // 8: payday.Entity.Order
 }
 var file_payday_entity_proto_depIdxs = []int32{
 	1, // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
 	2, // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
 	3, // 2: payday.Entity.global:type_name -> payday.Entity.Global
-	4, // 3: payday.Entity.list:type_name -> payday.Entity.List
-	5, // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
-	6, // 5: payday.Entity.List.order:type_name -> payday.Entity.Order
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6, // 3: payday.Entity.list:type_name -> payday.Entity.List
+	7, // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
+	4, // 5: payday.Entity.erase:type_name -> payday.Entity.Erase
+	5, // 6: payday.Entity.Erase.hard:type_name -> payday.Entity.Hard
+	8, // 7: payday.Entity.List.order:type_name -> payday.Entity.Order
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_payday_entity_proto_init() }
@@ -945,7 +1120,7 @@ func file_payday_entity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_entity_proto_rawDesc), len(file_payday_entity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

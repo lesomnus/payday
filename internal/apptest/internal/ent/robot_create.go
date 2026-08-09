@@ -48,6 +48,20 @@ func (_c *RobotCreate) SetNillableDateCreated(v *time.Time) *RobotCreate {
 	return _c
 }
 
+// SetDateErased sets the "date_erased" field.
+func (_c *RobotCreate) SetDateErased(v time.Time) *RobotCreate {
+	_c.mutation.SetDateErased(v)
+	return _c
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_c *RobotCreate) SetNillableDateErased(v *time.Time) *RobotCreate {
+	if v != nil {
+		_c.SetDateErased(*v)
+	}
+	return _c
+}
+
 // SetTenantID sets the "tenant_id" field.
 func (_c *RobotCreate) SetTenantID(v uuid.UUID) *RobotCreate {
 	_c.mutation.SetTenantID(v)
@@ -157,6 +171,10 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DateCreated(); ok {
 		_spec.SetField(robot.FieldDateCreated, field.TypeTime, value)
 		_node.DateCreated = value
+	}
+	if value, ok := _c.mutation.DateErased(); ok {
+		_spec.SetField(robot.FieldDateErased, field.TypeTime, value)
+		_node.DateErased = &value
 	}
 	if nodes := _c.mutation.TenantIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

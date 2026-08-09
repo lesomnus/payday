@@ -131,6 +131,21 @@ message Entity {
     repeated string field = 2;
   }
 
+  // Erase is what `Erase` does to a row, and it is only ever said to declare
+  // the destructive answer.
+  //
+  // Saying nothing means **softly**: the row is stamped and stays, so it cannot
+  // be read, cannot be changed, and its alias comes free again -- and the trail
+  // can still say what it held, because it is still there to be read. Which is
+  // what an entity gets by carrying a field marked `erased:`.
+  //
+  // An entity with no such field loses the row for good, and that is refused
+  // unless it is written here. The two failures are not alike: assuming soft
+  // wrongly leaves rows somebody meant to be gone, which is noticed by looking;
+  // assuming hard wrongly destroys them, which is noticed by somebody asking
+  // for one back.
+  Erase erase = 8;
+
   // Global is an entity that is not behind the wall -- a table the whole
   // deployment shares.
   //
@@ -138,6 +153,30 @@ message Entity {
   // made, and so that a reader of the schema can tell "this is shared" from
   // "somebody forgot".
   message Global {}
+
+  // Erase says the row goes. See [Entity.erase].
+  message Erase {
+    // Hard is losing the row, said out loud.
+    //
+    // It is a real answer and not a mistake to allow: a table of readings, of
+    // events, of anything that arrives faster than anybody reads it, cannot be
+    // one nothing may ever be removed from -- and payday has no retention story
+    // to offer instead.
+    //
+    // What it costs is what the trail then cannot say. `Audit.value` is read
+    // off the row **after** the write, so for a row that is gone there is
+    // nothing to read: the trail records that the erase happened and not what
+    // was destroyed, and the record is filed under the actor's tenant rather
+    // than the row's, because that is the last thing known about it.
+    //
+    // Do not answer this by going to the database instead. A `DELETE` run
+    // outside the app skips the trail, the version and the `Watch` -- and a
+    // watch says a row is gone by not sending it, so a row removed behind the
+    // app's back is one every client that has it keeps forever.
+    Hard hard = 1;
+  }
+
+  message Hard {}
 
   // List is how this entity is read a page at a time.
   //

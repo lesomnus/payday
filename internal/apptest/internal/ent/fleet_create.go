@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -23,6 +24,20 @@ type FleetCreate struct {
 // SetAlias sets the "alias" field.
 func (_c *FleetCreate) SetAlias(v string) *FleetCreate {
 	_c.mutation.SetAlias(v)
+	return _c
+}
+
+// SetDateErased sets the "date_erased" field.
+func (_c *FleetCreate) SetDateErased(v time.Time) *FleetCreate {
+	_c.mutation.SetDateErased(v)
+	return _c
+}
+
+// SetNillableDateErased sets the "date_erased" field if the given value is not nil.
+func (_c *FleetCreate) SetNillableDateErased(v *time.Time) *FleetCreate {
+	if v != nil {
+		_c.SetDateErased(*v)
+	}
 	return _c
 }
 
@@ -107,6 +122,10 @@ func (_c *FleetCreate) createSpec() (*Fleet, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(fleet.FieldAlias, field.TypeString, value)
 		_node.Alias = value
+	}
+	if value, ok := _c.mutation.DateErased(); ok {
+		_spec.SetField(fleet.FieldDateErased, field.TypeTime, value)
+		_node.DateErased = &value
 	}
 	return _node, _spec
 }

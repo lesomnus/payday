@@ -27,6 +27,9 @@ func (Robot) Fields() []ent.Field {
 		field.Time("date_created").
 			Immutable().
 			Optional(),
+		field.Time("date_erased").
+			Nillable().
+			Optional(),
 		field.UUID("tenant_id", uuid.UUID{}).
 			Immutable(),
 	}
@@ -47,7 +50,8 @@ func (Robot) Indexes() []ent.Index {
 		index.Fields("date_created", "id"),
 		index.Fields("alias").
 			Edges("tenant").
-			Unique(),
+			Unique().
+			Annotations(entsql.IndexWhere("date_erased IS NULL")),
 	}
 }
 
@@ -67,6 +71,9 @@ func (Joint) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 		field.String("alias"),
+		field.Time("date_erased").
+			Nillable().
+			Optional(),
 		field.UUID("robot_id", uuid.UUID{}).
 			Immutable(),
 	}
@@ -97,8 +104,18 @@ func (Fleet) Fields() []ent.Field {
 		field.UUID("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
-		field.String("alias").
-			Unique(),
+		field.String("alias"),
+		field.Time("date_erased").
+			Nillable().
+			Optional(),
+	}
+}
+
+func (Fleet) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("alias").
+			Unique().
+			Annotations(entsql.IndexWhere("date_erased IS NULL")),
 	}
 }
 
@@ -118,6 +135,9 @@ func (Cell) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 		field.String("alias"),
+		field.Time("date_erased").
+			Nillable().
+			Optional(),
 		field.UUID("tenant_id", uuid.UUID{}).
 			Immutable(),
 	}

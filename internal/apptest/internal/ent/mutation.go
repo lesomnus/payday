@@ -837,6 +837,7 @@ type CellMutation struct {
 	typ           string
 	id            *uuid.UUID
 	alias         *string
+	date_erased   *time.Time
 	clearedFields map[string]struct{}
 	tenant        *uuid.UUID
 	clearedtenant bool
@@ -985,6 +986,55 @@ func (m *CellMutation) ResetAlias() {
 	m.alias = nil
 }
 
+// SetDateErased sets the "date_erased" field.
+func (m *CellMutation) SetDateErased(t time.Time) {
+	m.date_erased = &t
+}
+
+// DateErased returns the value of the "date_erased" field in the mutation.
+func (m *CellMutation) DateErased() (r time.Time, exists bool) {
+	v := m.date_erased
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDateErased returns the old "date_erased" field's value of the Cell entity.
+// If the Cell object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CellMutation) OldDateErased(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDateErased is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDateErased requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateErased: %w", err)
+	}
+	return oldValue.DateErased, nil
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (m *CellMutation) ClearDateErased() {
+	m.date_erased = nil
+	m.clearedFields[cell.FieldDateErased] = struct{}{}
+}
+
+// DateErasedCleared returns if the "date_erased" field was cleared in this mutation.
+func (m *CellMutation) DateErasedCleared() bool {
+	_, ok := m.clearedFields[cell.FieldDateErased]
+	return ok
+}
+
+// ResetDateErased resets all changes to the "date_erased" field.
+func (m *CellMutation) ResetDateErased() {
+	m.date_erased = nil
+	delete(m.clearedFields, cell.FieldDateErased)
+}
+
 // SetTenantID sets the "tenant_id" field.
 func (m *CellMutation) SetTenantID(u uuid.UUID) {
 	m.tenant = &u
@@ -1082,9 +1132,12 @@ func (m *CellMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CellMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 3)
 	if m.alias != nil {
 		fields = append(fields, cell.FieldAlias)
+	}
+	if m.date_erased != nil {
+		fields = append(fields, cell.FieldDateErased)
 	}
 	if m.tenant != nil {
 		fields = append(fields, cell.FieldTenantID)
@@ -1099,6 +1152,8 @@ func (m *CellMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case cell.FieldAlias:
 		return m.Alias()
+	case cell.FieldDateErased:
+		return m.DateErased()
 	case cell.FieldTenantID:
 		return m.TenantID()
 	}
@@ -1112,6 +1167,8 @@ func (m *CellMutation) OldField(ctx context.Context, name string) (ent.Value, er
 	switch name {
 	case cell.FieldAlias:
 		return m.OldAlias(ctx)
+	case cell.FieldDateErased:
+		return m.OldDateErased(ctx)
 	case cell.FieldTenantID:
 		return m.OldTenantID(ctx)
 	}
@@ -1129,6 +1186,13 @@ func (m *CellMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAlias(v)
+		return nil
+	case cell.FieldDateErased:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDateErased(v)
 		return nil
 	case cell.FieldTenantID:
 		v, ok := value.(uuid.UUID)
@@ -1166,7 +1230,11 @@ func (m *CellMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *CellMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(cell.FieldDateErased) {
+		fields = append(fields, cell.FieldDateErased)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1179,6 +1247,11 @@ func (m *CellMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *CellMutation) ClearField(name string) error {
+	switch name {
+	case cell.FieldDateErased:
+		m.ClearDateErased()
+		return nil
+	}
 	return fmt.Errorf("unknown Cell nullable field %s", name)
 }
 
@@ -1188,6 +1261,9 @@ func (m *CellMutation) ResetField(name string) error {
 	switch name {
 	case cell.FieldAlias:
 		m.ResetAlias()
+		return nil
+	case cell.FieldDateErased:
+		m.ResetDateErased()
 		return nil
 	case cell.FieldTenantID:
 		m.ResetTenantID()
@@ -1277,6 +1353,7 @@ type FleetMutation struct {
 	typ           string
 	id            *uuid.UUID
 	alias         *string
+	date_erased   *time.Time
 	clearedFields map[string]struct{}
 	done          bool
 	oldValue      func(context.Context) (*Fleet, error)
@@ -1423,6 +1500,55 @@ func (m *FleetMutation) ResetAlias() {
 	m.alias = nil
 }
 
+// SetDateErased sets the "date_erased" field.
+func (m *FleetMutation) SetDateErased(t time.Time) {
+	m.date_erased = &t
+}
+
+// DateErased returns the value of the "date_erased" field in the mutation.
+func (m *FleetMutation) DateErased() (r time.Time, exists bool) {
+	v := m.date_erased
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDateErased returns the old "date_erased" field's value of the Fleet entity.
+// If the Fleet object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FleetMutation) OldDateErased(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDateErased is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDateErased requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateErased: %w", err)
+	}
+	return oldValue.DateErased, nil
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (m *FleetMutation) ClearDateErased() {
+	m.date_erased = nil
+	m.clearedFields[fleet.FieldDateErased] = struct{}{}
+}
+
+// DateErasedCleared returns if the "date_erased" field was cleared in this mutation.
+func (m *FleetMutation) DateErasedCleared() bool {
+	_, ok := m.clearedFields[fleet.FieldDateErased]
+	return ok
+}
+
+// ResetDateErased resets all changes to the "date_erased" field.
+func (m *FleetMutation) ResetDateErased() {
+	m.date_erased = nil
+	delete(m.clearedFields, fleet.FieldDateErased)
+}
+
 // Where appends a list predicates to the FleetMutation builder.
 func (m *FleetMutation) Where(ps ...predicate.Fleet) {
 	m.predicates = append(m.predicates, ps...)
@@ -1457,9 +1583,12 @@ func (m *FleetMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *FleetMutation) Fields() []string {
-	fields := make([]string, 0, 1)
+	fields := make([]string, 0, 2)
 	if m.alias != nil {
 		fields = append(fields, fleet.FieldAlias)
+	}
+	if m.date_erased != nil {
+		fields = append(fields, fleet.FieldDateErased)
 	}
 	return fields
 }
@@ -1471,6 +1600,8 @@ func (m *FleetMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case fleet.FieldAlias:
 		return m.Alias()
+	case fleet.FieldDateErased:
+		return m.DateErased()
 	}
 	return nil, false
 }
@@ -1482,6 +1613,8 @@ func (m *FleetMutation) OldField(ctx context.Context, name string) (ent.Value, e
 	switch name {
 	case fleet.FieldAlias:
 		return m.OldAlias(ctx)
+	case fleet.FieldDateErased:
+		return m.OldDateErased(ctx)
 	}
 	return nil, fmt.Errorf("unknown Fleet field %s", name)
 }
@@ -1497,6 +1630,13 @@ func (m *FleetMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAlias(v)
+		return nil
+	case fleet.FieldDateErased:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDateErased(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Fleet field %s", name)
@@ -1527,7 +1667,11 @@ func (m *FleetMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *FleetMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(fleet.FieldDateErased) {
+		fields = append(fields, fleet.FieldDateErased)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1540,6 +1684,11 @@ func (m *FleetMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *FleetMutation) ClearField(name string) error {
+	switch name {
+	case fleet.FieldDateErased:
+		m.ClearDateErased()
+		return nil
+	}
 	return fmt.Errorf("unknown Fleet nullable field %s", name)
 }
 
@@ -1549,6 +1698,9 @@ func (m *FleetMutation) ResetField(name string) error {
 	switch name {
 	case fleet.FieldAlias:
 		m.ResetAlias()
+		return nil
+	case fleet.FieldDateErased:
+		m.ResetDateErased()
 		return nil
 	}
 	return fmt.Errorf("unknown Fleet field %s", name)
@@ -2487,6 +2639,7 @@ type JointMutation struct {
 	typ           string
 	id            *uuid.UUID
 	alias         *string
+	date_erased   *time.Time
 	clearedFields map[string]struct{}
 	robot         *uuid.UUID
 	clearedrobot  bool
@@ -2635,6 +2788,55 @@ func (m *JointMutation) ResetAlias() {
 	m.alias = nil
 }
 
+// SetDateErased sets the "date_erased" field.
+func (m *JointMutation) SetDateErased(t time.Time) {
+	m.date_erased = &t
+}
+
+// DateErased returns the value of the "date_erased" field in the mutation.
+func (m *JointMutation) DateErased() (r time.Time, exists bool) {
+	v := m.date_erased
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDateErased returns the old "date_erased" field's value of the Joint entity.
+// If the Joint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JointMutation) OldDateErased(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDateErased is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDateErased requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateErased: %w", err)
+	}
+	return oldValue.DateErased, nil
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (m *JointMutation) ClearDateErased() {
+	m.date_erased = nil
+	m.clearedFields[joint.FieldDateErased] = struct{}{}
+}
+
+// DateErasedCleared returns if the "date_erased" field was cleared in this mutation.
+func (m *JointMutation) DateErasedCleared() bool {
+	_, ok := m.clearedFields[joint.FieldDateErased]
+	return ok
+}
+
+// ResetDateErased resets all changes to the "date_erased" field.
+func (m *JointMutation) ResetDateErased() {
+	m.date_erased = nil
+	delete(m.clearedFields, joint.FieldDateErased)
+}
+
 // SetRobotID sets the "robot_id" field.
 func (m *JointMutation) SetRobotID(u uuid.UUID) {
 	m.robot = &u
@@ -2732,9 +2934,12 @@ func (m *JointMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *JointMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 3)
 	if m.alias != nil {
 		fields = append(fields, joint.FieldAlias)
+	}
+	if m.date_erased != nil {
+		fields = append(fields, joint.FieldDateErased)
 	}
 	if m.robot != nil {
 		fields = append(fields, joint.FieldRobotID)
@@ -2749,6 +2954,8 @@ func (m *JointMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case joint.FieldAlias:
 		return m.Alias()
+	case joint.FieldDateErased:
+		return m.DateErased()
 	case joint.FieldRobotID:
 		return m.RobotID()
 	}
@@ -2762,6 +2969,8 @@ func (m *JointMutation) OldField(ctx context.Context, name string) (ent.Value, e
 	switch name {
 	case joint.FieldAlias:
 		return m.OldAlias(ctx)
+	case joint.FieldDateErased:
+		return m.OldDateErased(ctx)
 	case joint.FieldRobotID:
 		return m.OldRobotID(ctx)
 	}
@@ -2779,6 +2988,13 @@ func (m *JointMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAlias(v)
+		return nil
+	case joint.FieldDateErased:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDateErased(v)
 		return nil
 	case joint.FieldRobotID:
 		v, ok := value.(uuid.UUID)
@@ -2816,7 +3032,11 @@ func (m *JointMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *JointMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(joint.FieldDateErased) {
+		fields = append(fields, joint.FieldDateErased)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -2829,6 +3049,11 @@ func (m *JointMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *JointMutation) ClearField(name string) error {
+	switch name {
+	case joint.FieldDateErased:
+		m.ClearDateErased()
+		return nil
+	}
 	return fmt.Errorf("unknown Joint nullable field %s", name)
 }
 
@@ -2838,6 +3063,9 @@ func (m *JointMutation) ResetField(name string) error {
 	switch name {
 	case joint.FieldAlias:
 		m.ResetAlias()
+		return nil
+	case joint.FieldDateErased:
+		m.ResetDateErased()
 		return nil
 	case joint.FieldRobotID:
 		m.ResetRobotID()
@@ -4159,6 +4387,7 @@ type RobotMutation struct {
 	alias         *string
 	date_updated  *time.Time
 	date_created  *time.Time
+	date_erased   *time.Time
 	clearedFields map[string]struct{}
 	tenant        *uuid.UUID
 	clearedtenant bool
@@ -4392,6 +4621,55 @@ func (m *RobotMutation) ResetDateCreated() {
 	delete(m.clearedFields, robot.FieldDateCreated)
 }
 
+// SetDateErased sets the "date_erased" field.
+func (m *RobotMutation) SetDateErased(t time.Time) {
+	m.date_erased = &t
+}
+
+// DateErased returns the value of the "date_erased" field in the mutation.
+func (m *RobotMutation) DateErased() (r time.Time, exists bool) {
+	v := m.date_erased
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDateErased returns the old "date_erased" field's value of the Robot entity.
+// If the Robot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RobotMutation) OldDateErased(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDateErased is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDateErased requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateErased: %w", err)
+	}
+	return oldValue.DateErased, nil
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (m *RobotMutation) ClearDateErased() {
+	m.date_erased = nil
+	m.clearedFields[robot.FieldDateErased] = struct{}{}
+}
+
+// DateErasedCleared returns if the "date_erased" field was cleared in this mutation.
+func (m *RobotMutation) DateErasedCleared() bool {
+	_, ok := m.clearedFields[robot.FieldDateErased]
+	return ok
+}
+
+// ResetDateErased resets all changes to the "date_erased" field.
+func (m *RobotMutation) ResetDateErased() {
+	m.date_erased = nil
+	delete(m.clearedFields, robot.FieldDateErased)
+}
+
 // SetTenantID sets the "tenant_id" field.
 func (m *RobotMutation) SetTenantID(u uuid.UUID) {
 	m.tenant = &u
@@ -4489,7 +4767,7 @@ func (m *RobotMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RobotMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m.alias != nil {
 		fields = append(fields, robot.FieldAlias)
 	}
@@ -4498,6 +4776,9 @@ func (m *RobotMutation) Fields() []string {
 	}
 	if m.date_created != nil {
 		fields = append(fields, robot.FieldDateCreated)
+	}
+	if m.date_erased != nil {
+		fields = append(fields, robot.FieldDateErased)
 	}
 	if m.tenant != nil {
 		fields = append(fields, robot.FieldTenantID)
@@ -4516,6 +4797,8 @@ func (m *RobotMutation) Field(name string) (ent.Value, bool) {
 		return m.DateUpdated()
 	case robot.FieldDateCreated:
 		return m.DateCreated()
+	case robot.FieldDateErased:
+		return m.DateErased()
 	case robot.FieldTenantID:
 		return m.TenantID()
 	}
@@ -4533,6 +4816,8 @@ func (m *RobotMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDateUpdated(ctx)
 	case robot.FieldDateCreated:
 		return m.OldDateCreated(ctx)
+	case robot.FieldDateErased:
+		return m.OldDateErased(ctx)
 	case robot.FieldTenantID:
 		return m.OldTenantID(ctx)
 	}
@@ -4564,6 +4849,13 @@ func (m *RobotMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDateCreated(v)
+		return nil
+	case robot.FieldDateErased:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDateErased(v)
 		return nil
 	case robot.FieldTenantID:
 		v, ok := value.(uuid.UUID)
@@ -4605,6 +4897,9 @@ func (m *RobotMutation) ClearedFields() []string {
 	if m.FieldCleared(robot.FieldDateCreated) {
 		fields = append(fields, robot.FieldDateCreated)
 	}
+	if m.FieldCleared(robot.FieldDateErased) {
+		fields = append(fields, robot.FieldDateErased)
+	}
 	return fields
 }
 
@@ -4622,6 +4917,9 @@ func (m *RobotMutation) ClearField(name string) error {
 	case robot.FieldDateCreated:
 		m.ClearDateCreated()
 		return nil
+	case robot.FieldDateErased:
+		m.ClearDateErased()
+		return nil
 	}
 	return fmt.Errorf("unknown Robot nullable field %s", name)
 }
@@ -4638,6 +4936,9 @@ func (m *RobotMutation) ResetField(name string) error {
 		return nil
 	case robot.FieldDateCreated:
 		m.ResetDateCreated()
+		return nil
+	case robot.FieldDateErased:
+		m.ResetDateErased()
 		return nil
 	case robot.FieldTenantID:
 		m.ResetTenantID()
