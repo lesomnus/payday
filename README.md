@@ -5,6 +5,8 @@ it is generated rather than remembered.
 
 - [**Permissions and the wall**](docs/guide/permissions.md) — who sees what, and
   where each part of that answer is enforced. Start here.
+- [**Declaring an entity**](docs/guide/schema.md) — the two options, the field
+  numbers, `list:` and `watch:`, and everything generation refuses.
 - [docs/](docs/) — the design record: why it is this way. Written for whoever is
   changing payday rather than using it.
 
