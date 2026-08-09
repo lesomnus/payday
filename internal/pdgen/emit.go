@@ -195,6 +195,122 @@ func EmitWall(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	}
 }
 
+// EmitGrouped writes the second axis, and writes nothing when the app declared
+// none -- which is most apps.
+//
+// # Why this is generated rather than left to the app
+//
+// It is fifteen lines per entity written by hand, and the fifteen lines are not
+// the problem. `bare.Unscoped` is: an app writes the entities it has something
+// to say about and embeds it for the rest, so **an entity added later is not
+// narrowed and nothing says so.** That is the same hole payday generates the
+// tenant wall to close, in the same place, for the same reason -- and a second
+// axis with a hole in it is worse than none, because the first one looks like
+// it is doing the work.
+//
+// # What it does not decide
+//
+// Which sets the caller may see. That is a policy question -- one actor is in
+// several sets in most schemas that have them at all -- so it arrives the way
+// the tenant's does: worked out by whatever holds those rules and handed in.
+// What is generated is the predicate per entity, which is the part that is
+// mechanical and the part that goes stale.
+//
+// # One hop
+//
+// A row is in the set its own field 3 names, and an entity with no field 3 is
+// not narrowed. There is no walk out along edges the way `via:` has, and that
+// is a limit rather than an oversight: the tenant is reachable from everything
+// by construction, and a set is not. An app whose child rows belong to a set
+// puts the edge on them -- which is what "every resource table carries it" is
+// already the advice for.
+func EmitGrouped(g *protogen.GeneratedFile, s *Schema, p Paths) {
+	if s.Set == nil {
+		return
+	}
+
+	pred := p.Ent + "/predicate"
+	set := s.Set.GoName()
+
+	g.P("// Sets is which ", set, "s a caller may see.")
+	g.P("//")
+	g.P("// `all` is how \"every one of them\" is said, and it is a second return")
+	g.P("// rather than a value in the first: an empty list has to mean none, or the")
+	g.P("// safe answer and the open one are the same value and a bug that loses the")
+	g.P("// list opens the door. This is [frame.Narrow]'s shape for the same reason.")
+	g.P("type Sets func(ctx ", pkgCtx.Ident("Context"), ") (vs []", pkgUuid.Ident("UUID"), ", all bool, err error)")
+	g.P("")
+
+	g.P("// Grouped answers with the scope that narrows every read to the ", set, "s")
+	g.P("// `of` says the caller may see.")
+	g.P("//")
+	g.P("// It goes beside the wall rather than instead of it, and both are applied:")
+	g.P("//")
+	g.P("//	bare.WithScope(bare.Scopes{pd.Wall(), pd.Grouped(of)})")
+	g.P("//")
+	g.P("// The two are not the same question. The wall is who holds the row; this is")
+	g.P("// which set inside them it is in. An app that narrows only by the set is one")
+	g.P("// where two tenants naming the same ", set, " see each other's rows.")
+	g.P("func Grouped(of Sets) ", p.Bare.Ident("Scope"), " { return grouped{of} }")
+	g.P("")
+
+	g.P("// grouped is what [Grouped] answers with. It writes out every entity,")
+	g.P("// including the ones that are in no set, so that an entity added to the")
+	g.P("// schema cannot arrive without a decision having been made about it.")
+	g.P("type grouped struct{ of Sets }")
+	g.P("")
+	g.P("var _ ", p.Bare.Ident("Scope"), " = grouped{}")
+	g.P("")
+
+	for _, v := range s.Sorted() {
+		g.P("// ", v.GoName(), "Scope: ", whySet(v, s))
+		g.P("func (x grouped) ", v.GoName(), "Scope(ctx ", pkgCtx.Ident("Context"),
+			") (", pred.Ident(v.GoName()), ", error) {")
+
+		if !v.IsSet && v.Set == "" {
+			g.P("	return nil, nil")
+			g.P("}")
+			g.P("")
+			continue
+		}
+
+		g.P("	if x.of == nil {")
+		g.P("		return nil, nil")
+		g.P("	}")
+		g.P("")
+		g.P("	vs, all, err := x.of(ctx)")
+		g.P("	if all || err != nil {")
+		g.P("		return nil, err")
+		g.P("	}")
+		g.P("")
+
+		at := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		if v.IsSet {
+			// From inside the set there is exactly one, the same way a tenant
+			// is its own wall.
+			g.P("	return ", at.Ident("IDIn"), "(vs...), nil")
+		} else {
+			// The foreign key rather than a traversal; see [collapse].
+			g.P("	return ", at.Ident(pascal(v.Set)+"IDIn"), "(vs...), nil")
+		}
+
+		g.P("}")
+		g.P("")
+	}
+}
+
+// whySet is the one-line reason a generated scope narrows the way it does.
+func whySet(v *Entity, s *Schema) string {
+	switch {
+	case v.IsSet:
+		return "it is the set, so the sets a caller may see are the rows they may see."
+	case v.Set != "":
+		return fmt.Sprintf("in the %s its %q names.", s.Set.GoName(), v.Set)
+	default:
+		return "in no set -- it declared no field 3, so this narrows nothing."
+	}
+}
+
 // predicateOf renders the wall of one entity: the tenant's own identity, or a
 // walk out along the edges the schema named until it reaches one.
 func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) string {

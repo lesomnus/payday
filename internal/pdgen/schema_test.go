@@ -855,3 +855,180 @@ func TestNotBehindTheWallIsStillSaidOutLoud(t *testing.T) {
 		}
 	}
 }
+
+// TestTheSecondAxisIsFieldThree.
+//
+// Field 3 is the app's, and the number is the whole declaration -- there is no
+// option to write. What payday fixes is the shape, because a slot whose shape
+// is not fixed is one nothing generic can be taught to read, and then it may as
+// well have been 8.
+func TestTheSecondAxisIsFieldThree(t *testing.T) {
+	app := func(vs ...string) string {
+		return tenant + `
+message Site {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  string alias = 4;
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}};
+}
+` + strings.Join(vs, "\n")
+	}
+
+	asset := func(at string) string {
+		return `
+message Asset {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  ` + at + `
+  string alias = 4;
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}};
+}`
+	}
+
+	t.Run("an edge at 3 is the set, and payday does not name it", func(t *testing.T) {
+		s, err := read(t, app(asset(`Site site = 3 [(orm.edge) = {}];`)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if s.Set == nil {
+			t.Fatal("nothing was read as the set")
+		}
+		if got := string(s.Set.FullName()); got != "test.Site" {
+			t.Fatalf("the set is %s", got)
+		}
+		if !s.Set.IsSet {
+			t.Fatal("the set does not know it is one")
+		}
+
+		for _, v := range s.Entities {
+			if v.GoName() == "Asset" && v.Set != "site" {
+				t.Fatalf("Asset's set edge is %q", v.Set)
+			}
+			if v.GoName() == "Tenant" && v.Set != "" {
+				t.Fatal("the tenant was read as being in a set")
+			}
+		}
+	})
+
+	t.Run("an app that declares none has none", func(t *testing.T) {
+		s, err := read(t, app(asset(``)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if s.Set != nil {
+			t.Fatalf("a set was invented: %s", s.Set.FullName())
+		}
+	})
+
+	for _, tc := range []struct {
+		what string
+		at   string
+		says string
+	}{
+		{
+			// The one that compiles and means nothing. A predicate cannot be
+			// built from it, and the day something generic asks "what set is
+			// this row in" it reads a name as a set.
+			"a scalar at 3", `string region = 3;`, "an edge to it",
+		},
+		{
+			"a list at 3", `repeated Site site = 3 [(orm.edge) = {}];`, "is one set",
+		},
+	} {
+		t.Run(tc.what+" is refused", func(t *testing.T) {
+			_, err := read(t, app(asset(tc.at)))
+			if err == nil {
+				t.Fatal("it was taken")
+			}
+			if !strings.Contains(err.Error(), tc.says) {
+				t.Fatalf("said: %s", err)
+			}
+		})
+	}
+
+	t.Run("two entities meaning two different sets is refused", func(t *testing.T) {
+		second := `
+message Cell {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  string alias = 4;
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 10, tenanted: {via: "tenant"}};
+}
+message Reading {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  Cell cell = 3 [(orm.edge) = {}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 11, tenanted: {via: "tenant"}};
+}`
+		_, err := read(t, app(asset(`Site site = 3 [(orm.edge) = {}];`), second))
+		if err == nil {
+			t.Fatal("two axes wearing one number were taken")
+		}
+		if !strings.Contains(err.Error(), "field 3 is one axis") {
+			t.Fatalf("said: %s", err)
+		}
+	})
+
+	t.Run("a set inside a set is refused", func(t *testing.T) {
+		// The hierarchy the slot exists to avoid: put Area above Site and next
+		// there is a Region above Area. That is what labels are for.
+		src := tenant + `
+message Area {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}};
+}
+message Site {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  Area area = 3 [(orm.edge) = {}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}};
+}
+message Asset {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  Site site = 3 [(orm.edge) = {}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 10, tenanted: {via: "tenant"}};
+}`
+		_, err := read(t, src)
+		if err == nil {
+			t.Fatal("a hierarchy was taken")
+		}
+		if !strings.Contains(err.Error(), "field 3 is one axis") &&
+			!strings.Contains(err.Error(), "a set inside a set") {
+			t.Fatalf("said: %s", err)
+		}
+	})
+
+	t.Run("a set outside the wall is refused", func(t *testing.T) {
+		// Two tenants can name it, and then narrowing to it crosses the wall
+		// with nothing failing.
+		src := tenant + `
+message Site {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 8, global: {}};
+}
+message Asset {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  Site site = 3 [(orm.edge) = {}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}};
+}`
+		_, err := read(t, src)
+		if err == nil {
+			t.Fatal("a set outside the wall was taken")
+		}
+		if !strings.Contains(err.Error(), "crosses the wall") {
+			t.Fatalf("said: %s", err)
+		}
+	})
+}

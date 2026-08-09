@@ -185,6 +185,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitDomains(out, s)
 	pdgen.EmitMinter(out, s, paths)
 	pdgen.EmitWall(out, s, paths)
+	pdgen.EmitGrouped(out, s, paths)
 	for _, w := range pdgen.Warnings(s) {
 		fmt.Fprintln(os.Stderr, "protoc-gen-pd: "+w)
 	}

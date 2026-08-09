@@ -57,6 +57,17 @@ type Entity struct {
 	// names one without an edge to it. Empty when [Entity.Via] says how.
 	Field string
 
+	// Set is the edge at field 3 -- the set inside a tenant this row belongs
+	// to -- and is empty for an entity that declared none.
+	//
+	// Field 3 is the app's, and the number is the declaration: there is no
+	// option to write. See [Schema.Set] and `docs/SCHEMA.md` for why the slot
+	// is a number rather than a name.
+	Set string
+
+	// IsSet says this entity is what the field 3s point at.
+	IsSet bool
+
 	// IsTenant says this entity is the one a wall is made of.
 	IsTenant bool
 
@@ -95,6 +106,18 @@ type Schema struct {
 	// none. A schema with a tenanted entity and no tenant does not get this
 	// far; see [Read].
 	Tenant *Entity
+
+	// Set is the second axis, and nil for an app that declared none -- which
+	// is most of them.
+	//
+	// It is whatever every field 3 in the schema points at. payday does not
+	// name it: the same slot is a Site, a Workspace, a Project or a Cell
+	// depending on the app, and those are the same idea in different words.
+	// What payday fixes is the **shape** -- an edge, at 3, to one entity, all
+	// the way through -- because a slot whose shape is not fixed is a slot a
+	// generic reader can never be taught to ask about, and then it may as well
+	// have been 8.
+	Set *Entity
 }
 
 // Read gathers what the schema declared and refuses what it did not.
@@ -320,6 +343,10 @@ func (s *Schema) check() error {
 			}
 			s.Tenant = v
 		}
+	}
+
+	if err := s.readSets(); err != nil {
+		return err
 	}
 
 	for _, v := range s.Entities {
@@ -840,4 +867,120 @@ func (s *Schema) checkHeader() error {
 	}
 
 	return nil
+}
+
+// setAt is the field number the second axis lives at; see [Schema.Set].
+//
+// A number rather than an option, because the number is the scarce thing. The
+// header is what anything can read off a row it has no type for, and 3 is the
+// one place a reader could ever be taught to ask "what set is this row in"
+// without knowing what the set is called. An option would let two apps answer
+// that question at two different numbers, and then nothing generic can ask it.
+const setAt = 3
+
+// readSets works out whether this app declared a second axis, and refuses the
+// shapes that would make it mean two things.
+//
+// It is the only place field 3 is read, and everything it refuses is something
+// that compiles: a scalar at 3 says nothing a predicate can be built from, two
+// entities pointing at two sets is two axes wearing one number, and a set that
+// is itself inside a set is the hierarchy the slot exists to avoid.
+func (s *Schema) readSets() error {
+	for _, v := range s.Entities {
+		var at graph.Prop
+		for f := range v.Fields() {
+			if f.Number() == setAt {
+				at = f
+			}
+		}
+		for e := range v.Edges() {
+			if e.Number() == setAt {
+				at = e
+			}
+		}
+		if at == nil {
+			continue
+		}
+
+		e, ok := at.(graph.Edge)
+		if !ok {
+			return fmt.Errorf(
+				"%s: field %d is a %s, and field %d is the set this row is in -- an edge to it\n\n"+
+					"    Set set = %d [(orm.edge) = {}];\n\n"+
+					"payday leaves that number for an app to put a set smaller than a tenant in, "+
+					"and reads it as one; anything else there is a field that will be read as a set "+
+					"the day something asks",
+				v.FullName(), setAt, at.Type(), setAt, setAt)
+		}
+		if e.IsList() {
+			return fmt.Errorf(
+				"%s: %s is a list, and the set a row is in is one set",
+				v.FullName(), e.Name())
+		}
+
+		v.Set = string(e.Name())
+
+		to, ok := s.of(e.Target().FullName())
+		if !ok {
+			return fmt.Errorf(
+				"%s: %s names %s, which is not an entity of this app",
+				v.FullName(), e.Name(), e.Target().FullName())
+		}
+		if s.Set == nil {
+			s.Set = to
+			to.IsSet = true
+
+			continue
+		}
+		if s.Set != to {
+			return fmt.Errorf(
+				"%s says its set is %s and %s says it is %s; field %d is one axis, "+
+					"so every entity that declares it has to mean the same set",
+				v.FullName(), to.FullName(), setName(s, s.Set), s.Set.FullName(), setAt)
+		}
+	}
+
+	if s.Set == nil {
+		return nil
+	}
+	if s.Set.Set != "" {
+		return fmt.Errorf(
+			"%s is the set and declares one of its own at field %d; a set inside a set is a "+
+				"hierarchy, and a hierarchy is what labels are for -- put the grouping on the "+
+				"set as a label rather than as another level",
+			s.Set.FullName(), setAt)
+	}
+	if s.Set.IsGlobal {
+		return fmt.Errorf(
+			"%s is the set and is `global: {}`; a set outside the wall can be named by two "+
+				"tenants, and then narrowing to it crosses the wall without anything failing",
+			s.Set.FullName())
+	}
+
+	return nil
+}
+
+// of is the entity of this schema with that name.
+func (s *Schema) of(name protoreflect.FullName) (*Entity, bool) {
+	for _, v := range s.Entities {
+		if v.FullName() == name {
+			return v, true
+		}
+	}
+
+	return nil, false
+}
+
+// setName is the first entity found declaring the set, for a message that has
+// to name the disagreement from both ends.
+func setName(s *Schema, to *Entity) protoreflect.FullName {
+	for _, v := range s.Entities {
+		if v.Set != "" && v != to {
+			if e, ok := edge(v.Entity, v.Set); ok && e.Target().FullName() == to.FullName() {
+				return v.FullName()
+			}
+		}
+	}
+
+	return to.FullName()
 }
