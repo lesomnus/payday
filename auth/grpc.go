@@ -145,6 +145,28 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 					return nil, Identity{}, status.Error(codes.Internal, "the resolver answered with neither a frame nor an error")
 				}
 
+				// A credential that said which tenant holds the actor is
+				// checked against the tenant that does, and this is the only
+				// place both are in hand: a handler has the claim and has read
+				// nothing, a resolver has the row and was asked a different
+				// question. See [Identity.TenantId].
+				//
+				// Refused rather than narrowed to what the credential said.
+				// Disagreeing about who holds somebody is not an attenuation --
+				// there is no smaller answer that is still true -- and one of
+				// the two is wrong in a way that wants looking at.
+				if id.TenantId != "" && id.TenantId != f.Tenant.String() {
+					log.From(ctx).WarnContext(ctx, "credential names the wrong tenant",
+						slog.String("auth.method", id.Method),
+						slog.String("actor.id", f.Actor.String()),
+						slog.String("actor.tenant", f.Tenant.String()),
+						slog.String("credential.tenant", id.TenantId),
+					)
+
+					return nil, Identity{}, status.Error(codes.Unauthenticated,
+						"this credential names a tenant that does not hold the actor it names")
+				}
+
 				// Who called what, for every RPC there is -- the reads that
 				// leave no other trace included. Which RPC is not said here:
 				// `grpcx.Log` puts the service and the method on the logger

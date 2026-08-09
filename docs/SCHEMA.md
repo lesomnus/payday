@@ -665,7 +665,7 @@ admin                  테넌트도 문맥에서 (호출자의 것)
 | 자리 | 지금 | slug로 |
 | --- | --- | --- |
 | `auth.Plain` 헤더 | `Plain <tenant>/<holder>` — 손으로 자름 | `Plain @acme/admin` |
-| `auth.MTLS` 인증서 URI SAN | CN 또는 URI를 앱마다 다르게 읽음 | `payday://acme/admin#holder` |
+| `auth.MTLS` 인증서 URI SAN | `ParseName`이 읽음 — 이름 여럿은 도메인으로 구분 | 같은 문법. `#domain`은 거절 — 자격증명은 누구인지만 말한다 |
 | 설정의 토큰 저장소 키 | `acme/admin:` (YAML 키) | 같은 문자열, 파싱이 하나 |
 | CLI, 로그, 오류 메시지 | UUID 또는 임시 문자열 | `@acme/admin#holder` |
 | 감사 로그 렌더링 | `object_id`가 UUID | 도메인을 알면 slug로 되돌릴 수 있다 |

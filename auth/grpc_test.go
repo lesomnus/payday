@@ -200,6 +200,49 @@ func TestInterceptor(t *testing.T) {
 		x.Equal(codes.Unauthenticated, status.Code(err))
 	})
 
+	// A credential may say which tenant holds the actor it names -- a device
+	// certificate carrying both is the ordinary case -- and this is the only
+	// place the claim and the row are both in hand. A handler has read nothing;
+	// a resolver has the row but was asked a different question, and one that
+	// resolves by identifier never looks at the tenant beside it.
+	//
+	// So it is the interceptor that disagrees, which means an app gets the check
+	// without writing it. That is the point: the issuer of such a certificate
+	// meant the tenant to be checked, and a resolver that quietly ignores it is
+	// what makes it true that it was not.
+	t.Run("a credential that names the wrong tenant is refused", func(t *testing.T) {
+		x := require.New(t)
+
+		// Names the actor by identifier, the way a certificate does, and says
+		// it is held by a tenant that does not hold it.
+		says := func(tenant pdid.Id) auth.Handler {
+			return auth.HandlerFunc(func(context.Context) (auth.Identity, error) {
+				return auth.Identity{
+					Id:       adminId.String(),
+					TenantId: tenant.String(),
+					Grant:    frame.Whole(),
+				}, nil
+			})
+		}
+
+		by := resolverOf(map[string]*frame.Frame{
+			adminId.String(): frame.New(adminId, acme, frame.Whole()),
+		})
+
+		_, err := serve(says(hooli), by, nil, context.Background(), getMethod)
+		x.Equal(codes.Unauthenticated, status.Code(err))
+		x.Contains(status.Convert(err).Message(), "does not hold")
+
+		// And the same credential naming the tenant that does hold them is
+		// served, so what is being tested is the disagreement and not the field.
+		ctx, err := serve(says(acme), by, nil, context.Background(), getMethod)
+		x.NoError(err)
+
+		f, ok := frame.From(ctx)
+		x.True(ok)
+		x.Equal(acme, f.Tenant)
+	})
+
 	// A resolver that fails for a reason of its own is not the caller being
 	// wrong, and they are not sent to fetch a credential they already have.
 	t.Run("a resolver that went wrong is not the caller's fault", func(t *testing.T) {

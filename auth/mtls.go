@@ -5,11 +5,13 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"net/url"
 
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 
 	"github.com/lesomnus/payday/frame"
+	"github.com/lesomnus/payday/pdid"
 )
 
 // MethodMTLS is what [MTLS] calls itself.
@@ -19,7 +21,11 @@ const MethodMTLS = "mtls"
 // with.
 //
 //	URI SAN     spiffe://example.com/@acme/admin   -> @acme/admin
+//	URI SAN     x:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
 //	Common Name @acme/admin
+//
+// A certificate may carry **several** names, and they are told apart by the
+// domain byte rather than by their order; see [certIdentity].
 //
 // It checks nothing, and that is right: by the time a request arrives, the TLS
 // layer has already verified the chain against the certificate authorities the
@@ -52,7 +58,7 @@ func MTLS() Handler {
 			return Identity{}, err
 		}
 
-		v, ok, err := certName(cert)
+		id, ok, err := certIdentity(cert)
 		if err != nil {
 			// A certificate that says two things is wrong rather than absent,
 			// and it stops the search: falling through to another handler would
@@ -65,13 +71,6 @@ func MTLS() Handler {
 			// not a bad credential -- it is a caller who has not said who they
 			// are this way. Another handler may still know them.
 			return Identity{}, ErrNoCredential
-		}
-
-		id, err := ParseName(v)
-		if err != nil {
-			// It did say a name, and the name is not one. That is wrong rather
-			// than absent, and it stops the search.
-			return Identity{}, fmt.Errorf("%s: %w", MethodMTLS, err)
 		}
 
 		// A certificate has nowhere to carry an attenuation, so it narrows
@@ -105,27 +104,44 @@ func peerCert(ctx context.Context) (*x509.Certificate, error) {
 	return info.State.VerifiedChains[0][0], nil
 }
 
-// ErrAmbiguous is a certificate that names more than one caller.
+// ErrAmbiguous is a certificate this cannot read exactly one caller out of --
+// because it names none, or because it names several and nothing says which.
 //
 // It is its own error because it is the one failure here that is not about a
-// caller doing something wrong: a certificate with two names is a certificate
-// somebody issued, and what has to change is the issuing.
-var ErrAmbiguous = errors.New("names more than one caller")
+// caller doing something wrong: such a certificate is one somebody issued, and
+// what has to change is the issuing.
+var ErrAmbiguous = errors.New("cannot say who this certificate is for")
 
-// certName is the name a certificate carries, if it carries exactly one.
+// certIdentity is who a certificate names, out of every name it carries.
 //
-// # Why it counts rather than takes the first
+// # Several names is structure, not ambiguity
 //
-// This is the only place in payday where a trust boundary could be settled by
-// **the order of a field**. With two URI SANs in one certificate, taking the
-// first makes who authenticates a property of how the encoder happened to lay
-// them out -- and no error is raised, on either end, ever.
+// A certificate for a device says more than one thing about it: which device,
+// and which tenant holds it. Those are two URI SANs, and the form this came
+// from refused the certificate outright -- it counted them and called two an
+// ambiguity.
 //
-// The second SAN does not need an attacker. A SPIFFE identity beside a service
-// URL, a rename that adds the new name before removing the old, a certificate
-// tool that appends a default: any of those quietly changes who the caller is.
-// So more than one is refused, and the refusal names the problem rather than
-// the caller.
+// That was the right refusal resting on a wrong premise. What makes two names
+// dangerous is having no rule for which is which, so that the answer falls to
+// **the order of a field** and no error is ever raised on either end. payday
+// has a rule: an identifier carries its domain, so a name says what kind of
+// thing it names before anything looks it up. Two names of different kinds are
+// not two answers to one question; they are answers to two.
+//
+// So this sorts rather than counts, and what it refuses is a certificate that
+// answers one question twice:
+//
+//	device + tenant   the short-lived certificate. Read as both.
+//	device            the long-lived one. Read as the caller.
+//	device + device   refused -- which one is calling?
+//	tenant            refused -- names a tenant and nobody in it.
+//	device + site     refused -- see below.
+//
+// A name whose domain is neither the tenant's nor anything an [Identity] can
+// hold is refused rather than skipped, and that is the point of refusing: a
+// certificate that meant to narrow a caller to one site, read by something that
+// drops the site in silence, is a caller who is not narrowed and a certificate
+// that says they are.
 //
 // # And it does not fall through to the Common Name
 //
@@ -134,43 +150,126 @@ var ErrAmbiguous = errors.New("names more than one caller")
 // a Common Name that happens to be there is answering a question that was not
 // asked -- which is how a name nobody manages any more comes back to life.
 //
-// The scheme is still not read. `spiffe://host/a/b` and `https://host/a/b` both
-// say `a/b`, because the scheme is about who issues names and this app has one
-// issuer. What changed is that a URI whose path says nothing -- an opaque one
-// like `urn:x:y`, where everything is in `Opaque` -- is counted as a SAN this
-// cannot read rather than skipped in silence.
-func certName(cert *x509.Certificate) (string, bool, error) {
-	var name string
-	var found int
+// # The scheme is not read
+//
+// `spiffe://host/a/b` and `https://host/a/b` both say `a/b`, because the scheme
+// is about who issues names and this app has one issuer. An opaque URI -- one
+// with no authority and no path, like `hday:0199c3f4-…`, where everything is in
+// `Opaque` -- says what is after the colon. Both forms reach [ParseName], which
+// is the same code a header goes through: a certificate names an actor either
+// way an actor is named.
+func certIdentity(cert *x509.Certificate) (Identity, bool, error) {
+	if len(cert.URIs) == 0 {
+		if v := cert.Subject.CommonName; v != "" {
+			id, err := ParseName(v)
+			if err != nil {
+				return Identity{}, false, err
+			}
+
+			return id, true, nil
+		}
+
+		return Identity{}, false, nil
+	}
+
+	// What the schema said a tenant is. Generated code registers it, so an app
+	// that has any always has this; one that does not cannot have written a
+	// tenant identifier into a certificate either, and every name is read as a
+	// caller -- which is what this did before there was a second one.
+	tenant, sorted := pdid.Lookup(pdid.EntityTenant)
+
+	var (
+		who  Identity // the caller, once one has been found
+		what string   // and what named them, for the refusal
+		held string   // the tenant it says holds them
+	)
 
 	for _, u := range cert.URIs {
-		found++
-		if v := trimSlash(u.Path); v != "" && name == "" {
-			name = v
+		v := sanValue(u)
+		if v == "" {
+			return Identity{}, false, fmt.Errorf("%w: %q says nothing this can read", ErrAmbiguous, u)
 		}
+
+		id, err := ParseName(v)
+		if err != nil {
+			return Identity{}, false, fmt.Errorf("%w: %q: %w", ErrAmbiguous, v, err)
+		}
+
+		if k, ok := idOf(id); sorted && ok && k.Domain() == tenant {
+			if held != "" {
+				return Identity{}, false, fmt.Errorf("%w: names two tenants", ErrAmbiguous)
+			}
+
+			held = id.Id
+			continue
+		}
+
+		if what != "" {
+			return Identity{}, false, fmt.Errorf("%w: names both a %s and a %s, and nothing says which is calling",
+				ErrAmbiguous, what, kindOf(id))
+		}
+
+		who, what = id, kindOf(id)
 	}
 
-	switch {
-	case found > 1:
-		return "", false, fmt.Errorf("%w: %d URI names", ErrAmbiguous, found)
-	case found == 1 && name == "":
-		// It carries one and this cannot read it. Answering with a Common Name
-		// instead would be answering about a name nobody wrote there.
-		return "", false, fmt.Errorf("%w: a URI name with no path", ErrAmbiguous)
-	case found == 1:
-		return name, true, nil
+	if what == "" {
+		// Every name it carried was the tenant's. A tenant is who holds a
+		// caller, so on its own it names one row in every tenant there is,
+		// which is the same nobody a bare alias names; see [parseSlug].
+		return Identity{}, false, fmt.Errorf("%w: names a tenant and nobody in it", ErrAmbiguous)
 	}
 
-	if v := cert.Subject.CommonName; v != "" {
-		return v, true, nil
+	if held != "" {
+		if who.Tenant != "" {
+			// `@acme/admin` beside the tenant's identifier. Both say which
+			// tenant, and this does not look one up to find out whether they
+			// agree -- a resolver does that, with the row in front of it.
+			return Identity{}, false, fmt.Errorf("%w: says which tenant twice, as %q and as an identifier",
+				ErrAmbiguous, who.Tenant)
+		}
+
+		who.TenantId = held
 	}
 
-	return "", false, nil
+	return who, true, nil
 }
 
-func trimSlash(v string) string {
+// sanValue is what a URI SAN says, whichever of the two shapes it is written
+// in.
+func sanValue(u *url.URL) string {
+	if u.Opaque != "" {
+		return u.Opaque
+	}
+
+	v := u.Path
 	for len(v) > 0 && v[0] == '/' {
 		v = v[1:]
 	}
+
 	return v
+}
+
+// idOf is the identifier an identity names, if it named one directly.
+func idOf(v Identity) (pdid.Id, bool) {
+	if v.Id == "" {
+		return pdid.Nil, false
+	}
+
+	id, err := pdid.Parse(v.Id)
+
+	return id, err == nil
+}
+
+// kindOf is what a name is, for a refusal that has to tell two of them apart.
+// The domain's registered word -- "robot", "cell" -- when there is one, since
+// that is what somebody looking at the certificate has to change.
+func kindOf(v Identity) string {
+	if id, ok := idOf(v); ok {
+		return id.Domain().String()
+	}
+	if v.Id != "" {
+		return "identifier"
+	}
+
+	return "name"
 }

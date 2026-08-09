@@ -7,86 +7,219 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/lesomnus/payday/pdid"
 )
 
-// TestCertNameCountsRatherThanChoosing.
-//
-// It is the only place in payday where a trust boundary could have been settled
-// by the order of a field: with two URI SANs, taking the first makes who
-// authenticates a property of how the encoder laid them out, and nothing errors
-// on either end, ever.
-//
-// The second SAN needs no attacker -- a SPIFFE identity beside a service URL, a
-// rename that adds the new name before removing the old, a tool that appends a
-// default. So the test is about what happens with two, not about which one is
-// picked.
-func TestCertNameCountsRatherThanChoosing(t *testing.T) {
-	at := func(vs ...string) *x509.Certificate {
-		c := &x509.Certificate{}
-		for _, v := range vs {
-			u, err := url.Parse(v)
-			if err != nil {
-				t.Fatal(err)
-			}
-			c.URIs = append(c.URIs, u)
-		}
+// Domains the way generated code registers them: the tenant is payday's own and
+// is always 1, and an app's start at 7.
+const (
+	domainTenant pdid.Domain = 1
+	domainRobot  pdid.Domain = 7
+	domainCell   pdid.Domain = 10
+)
 
-		return c
+func init() {
+	pdid.Register(pdid.EntityTenant, domainTenant, "tenant")
+	pdid.Register("app.Robot", domainRobot, "robot")
+	pdid.Register("app.Cell", domainCell, "cell")
+}
+
+func certOf(t *testing.T, vs ...string) *x509.Certificate {
+	t.Helper()
+
+	c := &x509.Certificate{}
+	for _, v := range vs {
+		u, err := url.Parse(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c.URIs = append(c.URIs, u)
 	}
 
-	t.Run("one URI name is the name", func(t *testing.T) {
+	return c
+}
+
+// TestACertificateMayNameMoreThanOneThing.
+//
+// The form this came from counted URI SANs and refused two, which refused every
+// certificate that says both which device is calling and which tenant holds it
+// -- the ordinary shape for a device credential, and the one payday's own
+// identifiers were designed to make readable.
+//
+// What made two names dangerous was never that there were two. It was having no
+// rule for which is which, so that the answer falls to the order of a field and
+// nothing errors on either end. The domain byte is the rule.
+func TestACertificateMayNameMoreThanOneThing(t *testing.T) {
+	robot := pdid.New(domainRobot)
+	tenant := pdid.New(domainTenant)
+
+	t.Run("the caller and the tenant that holds them", func(t *testing.T) {
 		x := require.New(t)
 
-		v, ok, err := certName(at("spiffe://host/@acme/arm-01"))
+		v, ok, err := certIdentity(certOf(t, "hday:"+robot.String(), "hday:"+tenant.String()))
 		x.NoError(err)
 		x.True(ok)
-		x.Equal("@acme/arm-01", v)
-	})
+		x.Equal(robot.String(), v.Id)
+		x.Equal(tenant.String(), v.TenantId)
 
-	t.Run("two are refused rather than one being chosen", func(t *testing.T) {
-		x := require.New(t)
-
-		_, _, err := certName(at("spiffe://host/@acme/arm-01", "https://host/@other/admin"))
-		x.ErrorIs(err, ErrAmbiguous)
-
-		// And the other way round, because a test that only tried one order
-		// would pass on the implementation that takes the last.
-		_, _, err = certName(at("https://host/@other/admin", "spiffe://host/@acme/arm-01"))
-		x.ErrorIs(err, ErrAmbiguous)
-	})
-
-	t.Run("a URI whose path says nothing is refused, not skipped", func(t *testing.T) {
-		x := require.New(t)
-
-		// An opaque URI -- `hday:0199...`, `urn:x:y` -- keeps everything in
-		// Opaque and leaves Path empty. Skipping it fell through to the Common
-		// Name, so a certificate that meant to say one thing authenticated as
-		// another.
-		c := at("hday:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a")
-		c.Subject = pkix.Name{CommonName: "@acme/admin"}
-
-		_, ok, err := certName(c)
-		x.ErrorIs(err, ErrAmbiguous)
-		x.False(ok)
-	})
-
-	t.Run("the Common Name is read when there is no URI name at all", func(t *testing.T) {
-		x := require.New(t)
-
-		c := at()
-		c.Subject = pkix.Name{CommonName: "@acme/admin"}
-
-		v, ok, err := certName(c)
+		// And the other way round, because a test that tried one order would
+		// pass on an implementation that takes the first or the last.
+		v, ok, err = certIdentity(certOf(t, "hday:"+tenant.String(), "hday:"+robot.String()))
 		x.NoError(err)
 		x.True(ok)
-		x.Equal("@acme/admin", v)
+		x.Equal(robot.String(), v.Id)
+		x.Equal(tenant.String(), v.TenantId)
+	})
+
+	t.Run("the caller alone, which is the long-lived certificate", func(t *testing.T) {
+		x := require.New(t)
+
+		v, ok, err := certIdentity(certOf(t, "hday:"+robot.String()))
+		x.NoError(err)
+		x.True(ok)
+		x.Equal(robot.String(), v.Id)
+		x.Empty(v.TenantId, "a tenant nobody wrote there")
+	})
+
+	t.Run("the path form still reads, and says nothing about the tenant", func(t *testing.T) {
+		x := require.New(t)
+
+		v, ok, err := certIdentity(certOf(t, "spiffe://host/@acme/arm-01"))
+		x.NoError(err)
+		x.True(ok)
+		x.Equal("acme", v.Tenant)
+		x.Equal("arm-01", v.Alias)
+		x.Empty(v.TenantId)
+	})
+}
+
+// TestACertificateThatAnswersOneQuestionTwiceIsRefused.
+//
+// Sorting by domain is what makes several names readable, and it is exactly why
+// two of a kind cannot be: there is no second rule underneath to break the tie,
+// so whichever this took would be the order of a field deciding who is calling.
+func TestACertificateThatAnswersOneQuestionTwiceIsRefused(t *testing.T) {
+	robot, other := pdid.New(domainRobot), pdid.New(domainRobot)
+	tenant, elsewhere := pdid.New(domainTenant), pdid.New(domainTenant)
+
+	for _, tc := range []struct {
+		name string
+		uris []string
+		says string
+	}{
+		{
+			"two callers of the same kind",
+			[]string{"hday:" + robot.String(), "hday:" + other.String()},
+			"nothing says which is calling",
+		},
+		{
+			"two tenants",
+			[]string{"hday:" + tenant.String(), "hday:" + elsewhere.String()},
+			"names two tenants",
+		},
+		{
+			// Both say which tenant. Nothing here reads a row, so there is
+			// nothing to tell which of them is right.
+			"a name and an identifier that both say the tenant",
+			[]string{"spiffe://host/@acme/arm-01", "hday:" + tenant.String()},
+			"says which tenant twice",
+		},
+		{
+			// The tenant is who holds a caller. On its own it names one row in
+			// every tenant there is, which is the nobody a bare alias names.
+			"a tenant and nobody in it",
+			[]string{"hday:" + tenant.String()},
+			"names a tenant and nobody in it",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			x := require.New(t)
+
+			_, ok, err := certIdentity(certOf(t, tc.uris...))
+			x.ErrorIs(err, ErrAmbiguous)
+			x.ErrorContains(err, tc.says)
+			x.False(ok)
+		})
+	}
+}
+
+// TestANameWithNowhereToGoIsRefusedRatherThanDropped.
+//
+// This is what the refusal is for. A certificate whose issuer narrowed a caller
+// to one site, read by something that drops the site in silence, is a caller who
+// is not narrowed and a certificate that says they are -- and both ends believe
+// the narrowing happened.
+//
+// So it is refused until an [Identity] has somewhere to put it, and the refusal
+// says what it saw.
+func TestANameWithNowhereToGoIsRefusedRatherThanDropped(t *testing.T) {
+	x := require.New(t)
+
+	robot, cell := pdid.New(domainRobot), pdid.New(domainCell)
+
+	_, ok, err := certIdentity(certOf(t, "hday:"+robot.String(), "hday:"+cell.String()))
+	x.ErrorIs(err, ErrAmbiguous)
+	x.False(ok)
+
+	// By the words the schema registered, since that is what somebody looking
+	// at the certificate has to change.
+	x.ErrorContains(err, "robot")
+	x.ErrorContains(err, "cell")
+}
+
+// TestAnUnreadableNameDoesNotFallThroughToTheCommonName.
+//
+// A certificate that carries a URI SAN meant to say something with it, and
+// answering with a Common Name that happens to be there answers a question
+// nobody asked -- which is how a name nobody manages any more comes back to
+// life.
+func TestAnUnreadableNameDoesNotFallThroughToTheCommonName(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		uri  string
+	}{
+		// Opaque and not an identifier. The opaque form itself is readable --
+		// it is how `hday:<uuid>` is written -- so what is unreadable here is
+		// what it says, not the shape it is in.
+		{"an opaque URI that is not a name", "urn:x:y"},
+
+		// A UUID, and not one of ours: no app ever wrote a row with it.
+		{"a UUID from somewhere else", "hday:f81d4fae-7dec-11d0-a765-00a0c91e6bf6"},
+
+		// Nothing after the scheme at all.
+		{"a URI that says nothing", "https://host/"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			x := require.New(t)
+
+			c := certOf(t, tc.uri)
+			c.Subject = pkix.Name{CommonName: "@acme/admin"}
+
+			_, ok, err := certIdentity(c)
+			x.ErrorIs(err, ErrAmbiguous)
+			x.False(ok)
+		})
+	}
+
+	t.Run("and is read when there is no URI name at all", func(t *testing.T) {
+		x := require.New(t)
+
+		c := certOf(t)
+		c.Subject = pkix.Name{CommonName: "@acme/admin"}
+
+		v, ok, err := certIdentity(c)
+		x.NoError(err)
+		x.True(ok)
+		x.Equal("acme", v.Tenant)
+		x.Equal("admin", v.Alias)
 	})
 
 	t.Run("a certificate that names nobody is absent rather than wrong", func(t *testing.T) {
 		x := require.New(t)
 
 		// Another handler may still know this caller, so it is not an error.
-		_, ok, err := certName(at())
+		_, ok, err := certIdentity(certOf(t))
 		x.NoError(err)
 		x.False(ok)
 	})

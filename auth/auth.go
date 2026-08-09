@@ -126,6 +126,24 @@ type Identity struct {
 	// call it would save.
 	Id string
 
+	// TenantId is the tenant the credential said holds the actor, when it said
+	// so by identifier, and empty otherwise -- which is nearly always. It is
+	// [Identity.Tenant]'s other half, the way [Identity.Id] is [Identity.Alias]'s.
+	//
+	// Nothing resolves anybody with it. It is a **claim to be disagreed with**:
+	// a resolver reads the row and knows which tenant really holds the actor,
+	// and [Interceptor] refuses the call when the two differ. So a credential
+	// cannot move an actor between tenants by saying it has moved, and one that
+	// is merely out of date is refused rather than served under the tenant it
+	// used to be in.
+	//
+	// That is why it is separate from Tenant rather than sharing it. A resolver
+	// asked about `@acme/admin` looks up both halves together, so the alias is
+	// checked by being used. An identifier resolves on its own and the tenant
+	// beside it would never be read -- which is exactly the credential a device
+	// certificate is, and exactly the check its issuer meant to be making.
+	TenantId string
+
 	// Grant is what this credential allows, which is at most what the actor it
 	// names allows. A handler that reads a credential with nowhere to carry an
 	// attenuation answers [frame.Whole]; see [frame.Grant].

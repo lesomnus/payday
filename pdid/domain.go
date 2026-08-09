@@ -18,6 +18,17 @@ type Domain uint8
 // domain would otherwise be every entity that forgot.
 const Unknown Domain = 0
 
+// EntityTenant is what payday's own tenant is called, for a [Lookup] by
+// something that has to recognise one and cannot name its Go type.
+//
+// It is a string rather than a constant domain because the number is the
+// schema's to declare and this is not the place that reads it. What is fixed is
+// the **name**: an app does not write this entity, payday ships it, so every
+// app that has a tenant at all has this one under this name -- which is the
+// whole reason a lookup by name is safe here and would not be for anything an
+// app declares.
+const EntityTenant = "payday.Tenant"
+
 var (
 	// ErrNotAnId is what bytes that are a UUID but not one of ours are.
 	ErrNotAnId = errors.New("not a payday identifier")
