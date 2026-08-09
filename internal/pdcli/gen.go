@@ -544,10 +544,49 @@ func (g Gen) buf(ctx context.Context, template string, args ...string) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("buf generate: %w\n%s", err, stderr.String())
+		return fmt.Errorf("buf generate: %w\n%s%s", err, stderr.String(), whyStale(stderr.Bytes()))
 	}
 
 	return nil
+}
+
+// staleOption is what buf says about a `(payday.entity)` written against a
+// newer payday than the one the app has pinned.
+var staleOption = regexp.MustCompile(`option \(payday\.entity\): field (\w+) not found`)
+
+// whyStale explains that failure, because the message buf gives names the
+// symptom and nothing else.
+//
+// The app's schema is copied in from **this** payday and the option it is
+// written against comes from `buf.build/payday/payday`, so the two can be of
+// different ages. `pd gen` writes `buf.lock` only when nothing has, which is
+// right -- a pin is the app's to move -- and it means an app that has generated
+// once stays where it was pinned however far payday travels afterwards.
+//
+// What comes out of that is `field own not found` on a file the app never
+// wrote, naming a field it has never heard of. Nothing in it says the word
+// "pin", and the file it points at is regenerated on every run, so the obvious
+// readings are all wrong: a corrupt copy, a bad merge, a broken payday.
+func whyStale(b []byte) string {
+	m := staleOption.FindAllSubmatch(b, -1)
+	if len(m) == 0 {
+		return ""
+	}
+
+	seen := map[string]bool{}
+	names := []string{}
+	for _, v := range m {
+		if k := string(v[1]); !seen[k] {
+			seen[k], names = true, append(names, "`"+k+":`")
+		}
+	}
+
+	return fmt.Sprintf(
+		"\npayday's entities were copied in from the payday you are running, and they say %s -- "+
+			"which the `payday.entity` option this app has pinned does not have.\n\n"+
+			"    buf dep update\n\n"+
+			"`pd gen` writes buf.lock only when nothing has, because a pin is yours to move.",
+		strings.Join(names, ", "))
 }
 
 // run answers with what a command wrote to stdout, and with its stderr in the
