@@ -476,18 +476,25 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 			continue
 		}
 
-		name := pascal(by.Field)
-		g.P("	if f.Has", name, "() {")
+		// Two names for one field, and they are not the same word. The
+		// filter is a protobuf message, so its accessor is whatever
+		// protoc-gen-go called it -- `GetObjectId`. The predicate is ent's,
+		// and ent capitalises an initialism -- `ObjectIDEQ`. They agree on
+		// every field that does not end in one, which is why this was one
+		// variable until a filter on `object_id` was declared.
+		at, col := camel(by.Field), pascal(by.Field)
+
+		g.P("	if f.Has", at, "() {")
 		switch by.Type {
 		case ormpb.Type_TYPE_UUID:
-			g.P("		k, err := ", pkgUuid2.Ident("FromBytes"), "(f.Get", name, "())")
+			g.P("		k, err := ", pkgUuid2.Ident("FromBytes"), "(f.Get", at, "())")
 			g.P("		if err != nil {")
 			g.P("			return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"", by.Field, ": %s\", err)")
 			g.P("		}")
 			g.P("")
-			g.P("		ps = append(ps, ", entPkg.Ident(name+"EQ"), "(k))")
+			g.P("		ps = append(ps, ", entPkg.Ident(col+"EQ"), "(k))")
 		default:
-			g.P("		ps = append(ps, ", entPkg.Ident(name+"EQ"), "(f.Get", name, "()))")
+			g.P("		ps = append(ps, ", entPkg.Ident(col+"EQ"), "(f.Get", at, "()))")
 		}
 		g.P("	}")
 	}

@@ -53,9 +53,13 @@ type Entity struct {
 	// column instead.
 	Via []string
 
-	// Field is the column holding the tenant's identifier, for a row that
+	// Fields are the columns holding a tenant's identifier, for a row that
 	// names one without an edge to it. Empty when [Entity.Via] says how.
-	Field string
+	//
+	// More than one is OR: the row is behind the wall of **any** tenant it
+	// names. That is the trail and nothing else -- one write has a tenant whose
+	// row changed and a tenant whose actor made it, and both are parties to it.
+	Columns []string
 
 	// Set is the edge at field 3 -- the set inside a tenant this row belongs
 	// to -- and is empty for an entity that declared none.
@@ -211,15 +215,15 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 	case opts.HasTenanted():
 		t := opts.GetTenanted()
 		switch {
-		case t.GetVia() != "" && t.GetField() != "":
+		case t.GetVia() != "" && len(t.GetField()) > 0:
 			return nil, fmt.Errorf(
 				"tenanted: says both `via: %q` and `field: %q`, and they are not two ways of "+
 					"writing one thing: an edge says the tenant is still there, a column says "+
 					"only what its identifier was",
-				t.GetVia(), t.GetField())
+				t.GetVia(), t.GetField()[0])
 
-		case t.GetField() != "":
-			v.Field = t.GetField()
+		case len(t.GetField()) > 0:
+			v.Columns = t.GetField()
 
 		case t.GetVia() != "":
 			v.Via = strings.Split(t.GetVia(), ".")
@@ -350,7 +354,7 @@ func (s *Schema) check() error {
 	}
 
 	for _, v := range s.Entities {
-		if len(v.Via) == 0 && v.Field == "" {
+		if len(v.Via) == 0 && len(v.Columns) == 0 {
 			continue
 		}
 		if s.Tenant == nil {
@@ -358,7 +362,7 @@ func (s *Schema) check() error {
 				"%s is tenanted but nothing in this schema says it is the tenant; "+
 					"one entity has to declare `tenant: {}`", v.FullName())
 		}
-		if v.Field != "" {
+		if len(v.Columns) > 0 {
 			if err := s.checkField(v); err != nil {
 				return fmt.Errorf("%s: field: %w", v.FullName(), err)
 			}
@@ -503,23 +507,33 @@ func (s *Schema) checkVia(v *Entity) error {
 // checkField refuses a column that is not there, or one that could not hold an
 // identifier if it were.
 func (s *Schema) checkField(v *Entity) error {
+	for _, name := range v.Columns {
+		if err := s.checkOneField(v, name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Schema) checkOneField(v *Entity, name string) error {
 	for p := range v.Props() {
-		if p.Name() != v.Field {
+		if p.Name() != name {
 			continue
 		}
 
 		f, ok := p.(graph.Field)
 		if !ok {
-			return fmt.Errorf("%q is an edge; say `via` for those", v.Field)
+			return fmt.Errorf("%q is an edge; say `via` for those", name)
 		}
 		if f.Type() != ormpb.Type_TYPE_UUID {
-			return fmt.Errorf("%q is %s, and a tenant is named by a uuid", v.Field, f.Type())
+			return fmt.Errorf("%q is %s, and a tenant is named by a uuid", name, f.Type())
 		}
 
 		return nil
 	}
 
-	return fmt.Errorf("%s has no field %q", v.FullName(), v.Field)
+	return fmt.Errorf("%s has no field %q", v.FullName(), name)
 }
 
 func edge(e graph.Entity, name string) (graph.Edge, bool) {

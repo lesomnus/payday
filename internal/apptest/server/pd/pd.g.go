@@ -12,6 +12,7 @@ package pd
 import (
 	context "context"
 	dialect "entgo.io/ent/dialect"
+	sql "entgo.io/ent/dialect/sql"
 	uuid "github.com/google/uuid"
 	log "github.com/lesomnus/otx/log"
 	audit1 "github.com/lesomnus/payday/audit"
@@ -198,14 +199,14 @@ func (wall) RobotScope(ctx context.Context) (predicate.Robot, error) {
 	return robot.TenantIDIn(vs...), nil
 }
 
-// AuditScope: a row belongs to the tenant its "tenant_id" names, which it holds without an edge.
+// AuditScope: a row is readable by every tenant it names -- tenant_id, actor_tenant_id -- which is the trail.
 func (wall) AuditScope(ctx context.Context) (predicate.Audit, error) {
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
 	}
 
-	return audit.TenantIDIn(vs...), nil
+	return audit.Or(audit.TenantIDIn(vs...), audit.ActorTenantIDIn(vs...)), nil
 }
 
 // HolderScope: a row belongs to the tenant its "tenant" reaches.
@@ -984,6 +985,173 @@ func (s sinkRobot) watchRobotKeys(
 	return ks, nil
 }
 
+type sinkAudit struct {
+	apptest.AuditServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Audit() apptest.AuditServiceServer {
+	return sinkAudit{s.Server.Audit(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// orderAudit is how Audits come back.
+//
+// The last column is the key, and it is not decoration: a cursor cannot
+// tell apart two rows equal in every column of the order, so the page after
+// the first of them either repeats the second or skips it. Rows written by
+// one request are stamped a moment apart at best.
+var orderAudit = []entpage.Order{
+	{Column: audit.FieldDateCreated, Desc: true},
+	{Column: audit.FieldID, Desc: true},
+}
+
+const (
+	// AuditPageSize is what a request that did not say gets, and
+	// AuditPageLimit is the most it gets however loudly it asks.
+	AuditPageSize  = 50
+	AuditPageLimit = 200
+
+	// AuditFilterLimit is how many filters one request may carry. Each is a
+	// predicate in the same query, so it is what says how much of the
+	// database a request may ask to read -- and it is refused rather than
+	// clamped, because dropping half the filters would answer a question
+	// nobody asked.
+	AuditFilterLimit = 32
+)
+
+// List answers with the Audits that match any of the given filters, or with
+// every one there is if the request named none, a page at a time.
+func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
+	q := s.store.Db.Audit.Query()
+
+	// Through the same narrowing every generated read goes through, and not
+	// by asking the scope alone: what narrows a read is the wall today and
+	// the wall and something else tomorrow, and a list that reached past it
+	// would be the one read that missed the something else.
+	if p, err := bare.AuditNarrow(ctx, s.store.Scope, nil); err != nil {
+		return nil, err
+	} else if p != nil {
+		q.Where(p)
+	}
+
+	if fs := req.GetFilters(); len(fs) > 0 {
+		if len(fs) > AuditFilterLimit {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"filters: %d of them, and %d is the most one list carries", len(fs), AuditFilterLimit)
+		}
+
+		ps := make([]predicate.Audit, 0, len(fs))
+		for i, f := range fs {
+			p, err := filterAudit(f)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "filters[%d]: %s", i, err)
+			}
+
+			ps = append(ps, p)
+		}
+
+		q.Where(audit.Or(ps...))
+	}
+
+	if v := req.GetAfter(); v != "" {
+		var (
+			at0 time.Time
+			at1 uuid.UUID
+		)
+		if err := entpage.Decode(v, &at0, &at1); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
+		}
+
+		p, err := entpage.After(orderAudit, []any{at0, at1})
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
+		}
+
+		q.Where(p)
+	}
+
+	// One row more than the page, which is how "is there another" is answered
+	// without a second query and without a count. The extra is dropped before
+	// the answer is built; it was only ever asked for to see whether it was
+	// there -- so a full last page answers with no cursor rather than sending
+	// the caller back for an empty one.
+	size := entpage.Size(int(req.GetSize()), AuditPageSize, AuditPageLimit)
+	us, err := q.Order(audit.ByDateCreated(sql.OrderDesc()), audit.ByID(sql.OrderDesc())).Limit(size + 1).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	more := len(us) > size
+	if more {
+		us = us[:size]
+	}
+
+	items := make([]*apptest.Audit, len(us))
+	for i, u := range us {
+		items[i] = u.Proto()
+	}
+
+	res := apptest.AuditListResponse_builder{Items: items}.Build()
+	if more {
+		last := us[len(us)-1]
+		next, err := entpage.Encode(last.DateCreated, last.ID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "next: %s", err)
+		}
+
+		res.SetNext(next)
+	}
+
+	return res, nil
+}
+
+// filterAudit turns one filter into the predicate that selects what it
+// names. Naming nothing is refused, since the request asked for "these" and
+// did not say which.
+func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
+	ps := make([]predicate.Audit, 0, 1)
+	if f.HasObjectId() {
+		k, err := uuid.FromBytes(f.GetObjectId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "object_id: %s", err)
+		}
+
+		ps = append(ps, audit.ObjectIDEQ(k))
+	}
+	if f.HasActorId() {
+		k, err := uuid.FromBytes(f.GetActorId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
+		}
+
+		ps = append(ps, audit.ActorIDEQ(k))
+	}
+	if f.HasTenantId() {
+		k, err := uuid.FromBytes(f.GetTenantId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
+		}
+
+		ps = append(ps, audit.TenantIDEQ(k))
+	}
+	if f.HasActorTenantId() {
+		k, err := uuid.FromBytes(f.GetActorTenantId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
+		}
+
+		ps = append(ps, audit.ActorTenantIDEQ(k))
+	}
+	if len(ps) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
+	}
+
+	return audit.And(ps...), nil
+}
+
 type sinkHolder struct {
 	apptest.HolderServiceServer
 	store  bare.Store
@@ -1510,16 +1678,221 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		return err
 	}
 
+	// The row this happened to, which is where the object's tenant and the
+	// state after the write both come from. Absent for an Erase that took
+	// the row with it; see [subject].
+	tenant, value, err := subject(ctx, s, v.Object)
+	if err != nil {
+		return err
+	}
+	if tenant == uuid.Nil {
+		// Nothing to file it under but the actor's own, which is what the
+		// trail said for every row before this. It is the honest fallback
+		// rather than a zero: a record nobody can read is not a record.
+		tenant = uuid.UUID(v.Tenant)
+	}
+
 	_, err = s.Audit().Add(ctx, apptest.AuditAddRequest_builder{
-		TenantId: v.Tenant.Bytes(),
-		ActorId:  v.Actor.Bytes(),
-		TraceId:  v.Trace,
-		Action:   v.Action,
-		ObjectId: v.Object.Bytes(),
-		Patch:    v.Patch,
+		TenantId:      tenant[:],
+		ActorTenantId: v.Tenant.Bytes(),
+		ActorId:       v.Actor.Bytes(),
+		TraceId:       v.Trace,
+		Action:        v.Action,
+		ObjectId:      v.Object.Bytes(),
+		Patch:         v.Patch,
+		Value:         value,
 	}.Build())
 
 	return err
+}
+
+// subject is the tenant of the row `key` names and the row itself, and the
+// nil identifier when there is no such row any more.
+func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte, error) {
+	switch key.Domain() {
+	case CellDomain:
+		row, err := s.Cell().Get(ctx, apptest.CellGetRequest_builder{
+			Ref: apptest.CellRef_builder{Id: key.Bytes()}.Build(),
+		}.Build())
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return uuid.Nil, nil, nil
+			}
+
+			return uuid.Nil, nil, err
+		}
+
+		b, err := proto.Marshal(row)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		k, err := uuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		return k, b, nil
+
+	case JointDomain:
+		row, err := s.Joint().Get(ctx, apptest.JointGetRequest_builder{
+			Ref: apptest.JointRef_builder{Id: key.Bytes()}.Build(),
+		}.Build())
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return uuid.Nil, nil, nil
+			}
+
+			return uuid.Nil, nil, err
+		}
+
+		b, err := proto.Marshal(row)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		up, err := pdid.From(row.GetRobot().GetId())
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		k, _, err := subject(ctx, s, up)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		return k, b, nil
+
+	case ReadingDomain:
+		row, err := s.Reading().Get(ctx, apptest.ReadingGetRequest_builder{
+			Ref: apptest.ReadingRef_builder{Id: key.Bytes()}.Build(),
+		}.Build())
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return uuid.Nil, nil, nil
+			}
+
+			return uuid.Nil, nil, err
+		}
+
+		b, err := proto.Marshal(row)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		up, err := pdid.From(row.GetRobot().GetId())
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		k, _, err := subject(ctx, s, up)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		return k, b, nil
+
+	case RobotDomain:
+		row, err := s.Robot().Get(ctx, apptest.RobotGetRequest_builder{
+			Ref: apptest.RobotRef_builder{Id: key.Bytes()}.Build(),
+		}.Build())
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return uuid.Nil, nil, nil
+			}
+
+			return uuid.Nil, nil, err
+		}
+
+		b, err := proto.Marshal(row)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		k, err := uuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		return k, b, nil
+
+	case AuditDomain:
+		row, err := s.Audit().Get(ctx, apptest.AuditGetRequest_builder{
+			Ref: apptest.AuditRef_builder{Id: key.Bytes()}.Build(),
+		}.Build())
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return uuid.Nil, nil, nil
+			}
+
+			return uuid.Nil, nil, err
+		}
+
+		b, err := proto.Marshal(row)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		k, err := uuid.FromBytes(row.GetTenantId())
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		return k, b, nil
+
+	case HolderDomain:
+		row, err := s.Holder().Get(ctx, apptest.HolderGetRequest_builder{
+			Ref: apptest.HolderRef_builder{Id: key.Bytes()}.Build(),
+		}.Build())
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return uuid.Nil, nil, nil
+			}
+
+			return uuid.Nil, nil, err
+		}
+
+		b, err := proto.Marshal(row)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		k, err := uuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		return k, b, nil
+
+	case TenantDomain:
+		row, err := s.Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+			Ref: apptest.TenantRef_builder{Id: key.Bytes()}.Build(),
+		}.Build())
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return uuid.Nil, nil, nil
+			}
+
+			return uuid.Nil, nil, err
+		}
+
+		b, err := proto.Marshal(row)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		k, err := uuid.FromBytes(row.GetId())
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		return k, b, nil
+
+	}
+
+	// A domain nothing registered, which is an identifier from somewhere
+	// else. Nothing to read and nothing to say about it.
+	return uuid.Nil, nil, nil
 }
 
 var _ *patchpb.Patch
@@ -2337,6 +2710,19 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Audit().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_List_FullMethodName:
+		v := &apptest.AuditListRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().List(ctx, v)
 		if err != nil {
 			return nil, err
 		}

@@ -113,8 +113,22 @@ message Entity {
     // trail row wants exactly the second: what it records happened, and it goes
     // on being true after the tenant it happened in is gone.
     //
-    // Say one or the other, never both.
-    string field = 2;
+    // Say this or `via`, never both.
+    //
+    // # Several of them is OR, and it widens
+    //
+    // A row with more than one is behind the wall of **any** of them: readable
+    // by every tenant it names. That is the trail and nothing else -- one write
+    // has a tenant whose row changed and a tenant whose actor made it, and both
+    // are parties to the record.
+    //
+    // It is the one construct here that makes a row *more* visible, so it is
+    // worth saying what it is not for. Two tenants sharing a row is not a thing
+    // payday models: there is no owner, no answer to who may erase it, and the
+    // wall stops being the sentence "a row belongs to a tenant". A record of
+    // something that happened between two of them is a different shape, and it
+    // is the only one this is for.
+    repeated string field = 2;
   }
 
   // Global is an entity that is not behind the wall -- a table the whole

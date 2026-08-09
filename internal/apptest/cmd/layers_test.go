@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
@@ -219,6 +220,85 @@ func TestARowIsAddedToATenantYouCanSee(t *testing.T) {
 		}.Build())
 		x.Equal(codes.NotFound, status.Code(err))
 	})
+}
+
+// TestTheTrailIsFiledUnderWhatChanged.
+//
+// The row is stamped with the tenant of the **thing that changed**, not of the
+// actor -- so the tenant whose row it was can read what was done to it. Filed
+// under the actor, a headquarters operator writing to a customer produced a
+// record behind headquarters' wall, and the customer's trail said nothing
+// happened. That is not repairable afterwards: nothing recorded which tenant it
+// had been about.
+func TestTheTrailIsFiledUnderWhatChanged(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	other, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "other"}.Build())
+	x.NoError(err)
+
+	theirs, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: other.GetId()}.Build(),
+		Alias:  "theirs",
+	}.Build())
+	x.NoError(err)
+
+	// Read it back through the server that sees everything, since the point is
+	// which tenant it was filed under rather than who can read it here.
+	vs, err := b.Ungated.Audit().List(ctx, app.AuditListRequest_builder{
+		Filters: []*app.AuditFilter{
+			app.AuditFilter_builder{ObjectId: theirs.GetId()}.Build(),
+		},
+	}.Build())
+	x.NoError(err)
+	x.Len(vs.GetItems(), 1)
+
+	row := vs.GetItems()[0]
+	x.Equal(other.GetId(), row.GetTenantId(), "the trail was filed under the actor rather than the row")
+
+	// And the actor's tenant is still recorded, so the write is attributable
+	// from both ends. Here the actor is the deployment writing to itself, which
+	// has no tenant at all -- what matters is that the column is its own.
+	x.NotEqual(row.GetTenantId(), row.GetActorTenantId())
+
+	// The state after the write, which is the only record of what an Add
+	// created: `patch` is empty for one, and for an Erase the row is gone.
+	x.NotEmpty(row.GetValue())
+
+	var got app.Robot
+	x.NoError(proto.Unmarshal(row.GetValue(), &got))
+	x.Equal("theirs", got.GetAlias())
+}
+
+// TestTheTrailIsQueryable is what makes it a trail rather than a table.
+func TestTheTrailIsQueryable(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	mine, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "mine",
+	}.Build())
+	x.NoError(err)
+
+	for _, tc := range []struct {
+		what string
+		f    *app.AuditFilter
+	}{
+		{"what happened to this row", app.AuditFilter_builder{ObjectId: mine.GetId()}.Build()},
+		{"what happened in this tenant", app.AuditFilter_builder{TenantId: b.Tenant.Bytes()}.Build()},
+		{"what this tenant's people did", app.AuditFilter_builder{ActorTenantId: b.Tenant.Bytes()}.Build()},
+	} {
+		t.Run(tc.what, func(t *testing.T) {
+			x := require.New(t)
+
+			vs, err := b.Walled.Audit().List(b.as(ctx), app.AuditListRequest_builder{
+				Filters: []*app.AuditFilter{tc.f},
+			}.Build())
+			x.NoError(err)
+			x.NotEmpty(vs.GetItems())
+		})
+	}
 }
 
 // TestTheTrailIsNotWrittenByHand is what makes it evidence of anything.

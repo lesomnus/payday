@@ -97,6 +97,26 @@ func (_u *AuditUpdate) SetPatch(v []byte) *AuditUpdate {
 	return _u
 }
 
+// SetActorTenantID sets the "actor_tenant_id" field.
+func (_u *AuditUpdate) SetActorTenantID(v uuid.UUID) *AuditUpdate {
+	_u.mutation.SetActorTenantID(v)
+	return _u
+}
+
+// SetNillableActorTenantID sets the "actor_tenant_id" field if the given value is not nil.
+func (_u *AuditUpdate) SetNillableActorTenantID(v *uuid.UUID) *AuditUpdate {
+	if v != nil {
+		_u.SetActorTenantID(*v)
+	}
+	return _u
+}
+
+// SetValue sets the "value" field.
+func (_u *AuditUpdate) SetValue(v []byte) *AuditUpdate {
+	_u.mutation.SetValue(v)
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdate) Mutation() *AuditMutation {
 	return _u.mutation
@@ -164,6 +184,12 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(audit.FieldDateCreated, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ActorTenantID(); ok {
+		_spec.SetField(audit.FieldActorTenantID, field.TypeUUID, value)
+	}
+	if value, ok := _u.mutation.Value(); ok {
+		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -252,6 +278,26 @@ func (_u *AuditUpdateOne) SetNillableObjectID(v *uuid.UUID) *AuditUpdateOne {
 // SetPatch sets the "patch" field.
 func (_u *AuditUpdateOne) SetPatch(v []byte) *AuditUpdateOne {
 	_u.mutation.SetPatch(v)
+	return _u
+}
+
+// SetActorTenantID sets the "actor_tenant_id" field.
+func (_u *AuditUpdateOne) SetActorTenantID(v uuid.UUID) *AuditUpdateOne {
+	_u.mutation.SetActorTenantID(v)
+	return _u
+}
+
+// SetNillableActorTenantID sets the "actor_tenant_id" field if the given value is not nil.
+func (_u *AuditUpdateOne) SetNillableActorTenantID(v *uuid.UUID) *AuditUpdateOne {
+	if v != nil {
+		_u.SetActorTenantID(*v)
+	}
+	return _u
+}
+
+// SetValue sets the "value" field.
+func (_u *AuditUpdateOne) SetValue(v []byte) *AuditUpdateOne {
+	_u.mutation.SetValue(v)
 	return _u
 }
 
@@ -352,6 +398,12 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(audit.FieldDateCreated, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ActorTenantID(); ok {
+		_spec.SetField(audit.FieldActorTenantID, field.TypeUUID, value)
+	}
+	if value, ok := _u.mutation.Value(); ok {
+		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Audit{config: _u.config}

@@ -19,6 +19,8 @@ var (
 		{Name: "object_id", Type: field.TypeUUID},
 		{Name: "patch", Type: field.TypeBytes},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "actor_tenant_id", Type: field.TypeUUID},
+		{Name: "value", Type: field.TypeBytes},
 	}
 	// AuditTable holds the schema information for the "audit" table.
 	AuditTable = &schema.Table{
@@ -35,6 +37,16 @@ var (
 				Name:    "audit_tenant_id_date_created",
 				Unique:  false,
 				Columns: []*schema.Column{AuditColumns[1], AuditColumns[7]},
+			},
+			{
+				Name:    "audit_actor_tenant_id_date_created",
+				Unique:  false,
+				Columns: []*schema.Column{AuditColumns[8], AuditColumns[7]},
+			},
+			{
+				Name:    "audit_actor_id_date_created",
+				Unique:  false,
+				Columns: []*schema.Column{AuditColumns[2], AuditColumns[7]},
 			},
 		},
 	}

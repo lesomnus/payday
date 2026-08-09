@@ -42,7 +42,7 @@ message Audit {
     default: ""
   }];
 
-  // The tenant the caller was held by, which is who this was done on behalf of.
+  // The tenant of the **thing that changed**, as it was when this happened.
   //
   // It is a column and not an edge, which is the one place in payday's own
   // schema that is true, and it is on purpose: **the trail has to outlive the
@@ -52,11 +52,21 @@ message Audit {
   //
   // The wall reads this column directly; see `tenanted: {field: ...}` below.
   //
-  // It is the tenant of the *actor* and not of the thing that changed. So the
-  // trail is the actor's: a row is stamped with who was acting and nothing
-  // moves it, which means something transferred to another tenant leaves its
-  // whole trail behind -- receiving something does not come with the right to
-  // read what its previous owner did inside their own walls.
+  // It is the object's tenant and not the actor's, and it used to be the other
+  // way round. The reason given for that was the transfer: a row is stamped
+  // once and nothing moves it, so something that changes hands leaves its whole
+  // trail behind and receiving it does not come with the right to read what its
+  // previous owner did. **That reason survives this change** -- the stamp is
+  // still taken at the moment of the write and still never moves. What it does
+  // not survive is the case it was silent about: an actor of one tenant writing
+  // to a row of another, which is the headquarters pattern payday itself
+  // recommends. Filed under the actor, the record of what was done to somebody
+  // lands behind a wall that somebody cannot see over, and their trail says
+  // nothing happened.
+  //
+  // payday is resource-centric everywhere else -- `object_id` is what a history
+  // is asked with, and both indexes below are about it -- so the actor is an
+  // attribute of the event and not the drawer it is filed in.
   bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
 
   // The holder that made the request, and the zero identifier for a write
@@ -101,6 +111,37 @@ message Audit {
     default: ""
   }];
 
+  // The tenant the **actor** was held by, and the same value as `tenant_id` for
+  // the ordinary write, which is nearly all of them.
+  //
+  // It is here so that the two parties to a cross-tenant write are both parties
+  // to the record: the wall is the OR of these two columns, so the tenant whose
+  // row changed reads it and the tenant whose operator made the change reads it,
+  // and neither has to hold a scope wide enough to see the other.
+  //
+  // Not derived from `actor_id`. That would need the holder to still be there
+  // and to still be in the same tenant, and the trail is kept precisely for
+  // when neither is true.
+  bytes actor_tenant_id = 16 [(orm.field) = {type: TYPE_UUID}];
+
+  // The row this happened to, marshaled, as it was when the event was over --
+  // and for an Erase, as it was the moment before.
+  //
+  // `patch` is the delta and this is the state, and the trail needs both for a
+  // reason each of them cannot answer alone. A patch says what changed and not
+  // what it became; and an Add and an Erase have no patch at all, so without
+  // this the two events that matter most -- what was created, what was
+  // destroyed -- record nothing but their own names.
+  //
+  // Erase is the sharp one. An entity that is not softly erased loses its row
+  // for good, and then this is the **only** record that it ever held anything.
+  //
+  // Which is also what it costs: the trail outlives what it names, so an erased
+  // row's contents live here afterwards. An app with an obligation to destroy
+  // data has to reckon with the trail, and the answer is a retention policy
+  // rather than an empty column.
+  bytes value = 17;
+
   option (orm.message) = {
     rpc: {crud: true}
     indexes: [
@@ -116,6 +157,11 @@ message Audit {
       // The trail as it is read: one tenant's, newest first. Without it the
       // only read there is scans the one table that never stops growing and
       // sorts what it finds.
+      //
+      // One per column the wall reads, because the wall is their OR and a read
+      // filters by one of them: `WHERE (a IN vs OR b IN vs) AND a = me` uses the
+      // index on `a` and leaves the OR as a residual. Without the second, half
+      // the reads scan.
       {
         name: "trail"
         refs: [
@@ -128,11 +174,56 @@ message Audit {
             number: 15
           }
         ]
+      },
+      {
+        name: "by_actor_tenant"
+        refs: [
+          {
+            name: "actor_tenant_id"
+            number: 16
+          },
+          {
+            name: "date_created"
+            number: 15
+          }
+        ]
+      },
+      {
+        name: "by_actor"
+        refs: [
+          {
+            name: "actor_id"
+            number: 8
+          },
+          {
+            name: "date_created"
+            number: 15
+          }
+        ]
       }
     ]
   };
   option (payday.entity) = {
     domain: 3
-    tenanted: {field: "tenant_id"}
+
+    // The OR of the two: readable by the tenant whose row changed and by the
+    // tenant whose actor changed it. See the note on `field` in the option.
+    tenanted: {field: "tenant_id", field: "actor_tenant_id"}
+
+    // A trail nobody can query is not a trail. The filters are the four
+    // identifiers a question is actually asked with -- what happened to this
+    // row, what did this person do, what happened in this tenant, what did this
+    // tenant's people do.
+    list: {
+      // Backwards, which is what a trail wants: what it is asked is what
+      // happened, and the answer starts with what happened last.
+      order: [
+        {field: "date_created", desc: true},
+        {field: "id", desc: true}
+      ]
+      by: ["object_id", "actor_id", "tenant_id", "actor_tenant_id"]
+      size: 50
+      max: 200
+    }
   };
 }

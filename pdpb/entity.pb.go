@@ -433,7 +433,7 @@ func (b0 Entity_Tenant_builder) Build() *Entity_Tenant {
 type Entity_Tenanted struct {
 	state            protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Via   string                 `protobuf:"bytes,1,opt,name=via"`
-	xxx_hidden_Field string                 `protobuf:"bytes,2,opt,name=field"`
+	xxx_hidden_Field []string               `protobuf:"bytes,2,rep,name=field"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -470,18 +470,18 @@ func (x *Entity_Tenanted) GetVia() string {
 	return ""
 }
 
-func (x *Entity_Tenanted) GetField() string {
+func (x *Entity_Tenanted) GetField() []string {
 	if x != nil {
 		return x.xxx_hidden_Field
 	}
-	return ""
+	return nil
 }
 
 func (x *Entity_Tenanted) SetVia(v string) {
 	x.xxx_hidden_Via = v
 }
 
-func (x *Entity_Tenanted) SetField(v string) {
+func (x *Entity_Tenanted) SetField(v []string) {
 	x.xxx_hidden_Field = v
 }
 
@@ -503,8 +503,22 @@ type Entity_Tenanted_builder struct {
 	// trail row wants exactly the second: what it records happened, and it goes
 	// on being true after the tenant it happened in is gone.
 	//
-	// Say one or the other, never both.
-	Field string
+	// Say this or `via`, never both.
+	//
+	// # Several of them is OR, and it widens
+	//
+	// A row with more than one is behind the wall of **any** of them: readable
+	// by every tenant it names. That is the trail and nothing else -- one write
+	// has a tenant whose row changed and a tenant whose actor made it, and both
+	// are parties to the record.
+	//
+	// It is the one construct here that makes a row *more* visible, so it is
+	// worth saying what it is not for. Two tenants sharing a row is not a thing
+	// payday models: there is no owner, no answer to who may erase it, and the
+	// wall stops being the sentence "a row belongs to a tenant". A record of
+	// something that happened between two of them is a different shape, and it
+	// is the only one this is for.
+	Field []string
 }
 
 func (b0 Entity_Tenanted_builder) Build() *Entity_Tenanted {
@@ -876,7 +890,7 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x06Tenant\x1a2\n" +
 	"\bTenanted\x12\x10\n" +
 	"\x03via\x18\x01 \x01(\tR\x03via\x12\x14\n" +
-	"\x05field\x18\x02 \x01(\tR\x05field\x1a\b\n" +
+	"\x05field\x18\x02 \x03(\tR\x05field\x1a\b\n" +
 	"\x06Global\x1a\x96\x01\n" +
 	"\x04List\x12*\n" +
 	"\x05order\x18\x01 \x03(\v2\x14.payday.Entity.OrderR\x05order\x12\x12\n" +

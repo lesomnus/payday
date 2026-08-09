@@ -295,8 +295,8 @@ message Audit {
 			if v.GoName() != "Audit" {
 				continue
 			}
-			if v.Field != "tenant_id" {
-				t.Errorf("field: %q", v.Field)
+			if len(v.Columns) != 1 || v.Columns[0] != "tenant_id" {
+				t.Errorf("field: %q", v.Columns)
 			}
 			if len(v.Via) != 0 {
 				t.Errorf("via: %v, and a column is not an edge", v.Via)
@@ -1028,6 +1028,57 @@ message Asset {
 			t.Fatal("a set outside the wall was taken")
 		}
 		if !strings.Contains(err.Error(), "crosses the wall") {
+			t.Fatalf("said: %s", err)
+		}
+	})
+}
+
+// TestSeveralTenantColumnsAreOr.
+//
+// The one construct here that makes a row *more* visible, and it exists for the
+// trail: a write has a tenant whose row changed and a tenant whose actor made
+// it, and both are parties to the record. Neither should have to hold a scope
+// wide enough to see the other in order to read what happened.
+func TestSeveralTenantColumnsAreOr(t *testing.T) {
+	s, err := read(t, tenant+`
+message Note {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  bytes about_id = 8 [(orm.field) = {type: TYPE_UUID}];
+  bytes by_id = 9 [(orm.field) = {type: TYPE_UUID}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 7
+    tenanted: {field: "about_id", field: "by_id"}
+  };
+}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, v := range s.Entities {
+		if v.GoName() != "Note" {
+			continue
+		}
+		if len(v.Columns) != 2 || v.Columns[0] != "about_id" || v.Columns[1] != "by_id" {
+			t.Fatalf("columns: %q", v.Columns)
+		}
+	}
+
+	t.Run("and a column that is not there is still refused", func(t *testing.T) {
+		_, err := read(t, tenant+`
+message Note {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  bytes about_id = 8 [(orm.field) = {type: TYPE_UUID}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 7
+    tenanted: {field: "about_id", field: "nowhere"}
+  };
+}`)
+		if err == nil {
+			t.Fatal("a column nothing declares was taken")
+		}
+		if !strings.Contains(err.Error(), "nowhere") {
 			t.Fatalf("said: %s", err)
 		}
 	})

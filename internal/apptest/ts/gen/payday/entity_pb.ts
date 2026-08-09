@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki1gMKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gaCAoGVGVuYW50GiYKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAEoCRoICgZHbG9iYWwacQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISDAoEd2l0aBgCIAMoCRIKCgJieRgDIAMoCRIMCgRzaXplGAQgASgNEgsKA21heBgFIAEoDRIPCgdmaWx0ZXJzGAYgASgNGgcKBVdhdGNoGiQKBU9yZGVyEg0KBWZpZWxkGAEgASgJEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki1gMKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gaCAoGVGVuYW50GiYKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRoICgZHbG9iYWwacQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISDAoEd2l0aBgCIAMoCRIKCgJieRgDIAMoCRIMCgRzaXplGAQgASgNEgsKA21heBgFIAEoDRIPCgdmaWx0ZXJzGAYgASgNGgcKBVdhdGNoGiQKBU9yZGVyEg0KBWZpZWxkGAEgASgJEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -185,11 +185,25 @@ export type Entity_Tenanted = Message<"payday.Entity.Tenanted"> & {
    * trail row wants exactly the second: what it records happened, and it goes
    * on being true after the tenant it happened in is gone.
    *
-   * Say one or the other, never both.
+   * Say this or `via`, never both.
    *
-   * @generated from field: string field = 2;
+   * # Several of them is OR, and it widens
+   *
+   * A row with more than one is behind the wall of **any** of them: readable
+   * by every tenant it names. That is the trail and nothing else -- one write
+   * has a tenant whose row changed and a tenant whose actor made it, and both
+   * are parties to the record.
+   *
+   * It is the one construct here that makes a row *more* visible, so it is
+   * worth saying what it is not for. Two tenants sharing a row is not a thing
+   * payday models: there is no owner, no answer to who may erase it, and the
+   * wall stops being the sentence "a row belongs to a tenant". A record of
+   * something that happened between two of them is a different shape, and it
+   * is the only one this is for.
+   *
+   * @generated from field: repeated string field = 2;
    */
-  field: string;
+  field: string[];
 };
 
 /**

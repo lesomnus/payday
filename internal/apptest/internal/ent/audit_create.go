@@ -71,6 +71,18 @@ func (_c *AuditCreate) SetNillableDateCreated(v *time.Time) *AuditCreate {
 	return _c
 }
 
+// SetActorTenantID sets the "actor_tenant_id" field.
+func (_c *AuditCreate) SetActorTenantID(v uuid.UUID) *AuditCreate {
+	_c.mutation.SetActorTenantID(v)
+	return _c
+}
+
+// SetValue sets the "value" field.
+func (_c *AuditCreate) SetValue(v []byte) *AuditCreate {
+	_c.mutation.SetValue(v)
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *AuditCreate) SetID(v uuid.UUID) *AuditCreate {
 	_c.mutation.SetID(v)
@@ -128,6 +140,12 @@ func (_c *AuditCreate) check() error {
 	}
 	if _, ok := _c.mutation.Patch(); !ok {
 		return &ValidationError{Name: "patch", err: errors.New(`ent: missing required field "Audit.patch"`)}
+	}
+	if _, ok := _c.mutation.ActorTenantID(); !ok {
+		return &ValidationError{Name: "actor_tenant_id", err: errors.New(`ent: missing required field "Audit.actor_tenant_id"`)}
+	}
+	if _, ok := _c.mutation.Value(); !ok {
+		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "Audit.value"`)}
 	}
 	return nil
 }
@@ -191,6 +209,14 @@ func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DateCreated(); ok {
 		_spec.SetField(audit.FieldDateCreated, field.TypeTime, value)
 		_node.DateCreated = value
+	}
+	if value, ok := _c.mutation.ActorTenantID(); ok {
+		_spec.SetField(audit.FieldActorTenantID, field.TypeUUID, value)
+		_node.ActorTenantID = value
+	}
+	if value, ok := _c.mutation.Value(); ok {
+		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
+		_node.Value = value
 	}
 	return _node, _spec
 }

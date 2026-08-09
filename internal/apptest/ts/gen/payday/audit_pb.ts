@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/audit.proto.
  */
 export const file_payday_audit: GenFile = /*@__PURE__*/
-  fileDesc("ChJwYXlkYXkvYXVkaXQucHJvdG8SBnBheWRheSK+AgoFQXVkaXQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhkKCXRlbmFudF9pZBgCIAEoDEIG6oIWAhBAEhgKCGFjdG9yX2lkGAggASgMQgbqghYCEEASEAoIdHJhY2VfaWQYCSABKAwSDgoGYWN0aW9uGAogASgJEhkKCW9iamVjdF9pZBgLIAEoDEIG6oIWAhBAEg0KBXBhdGNoGAwgASgMEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBADpeyvwVRxICEAEaFxIGb2JqZWN0Gg0KCW9iamVjdF9pZBALGigSBXRyYWlsGg0KCXRlbmFudF9pZBACGhAKDGRhdGVfY3JlYXRlZBAPirsWDwgDIgsSCXRlbmFudF9pZEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("ChJwYXlkYXkvYXVkaXQucHJvdG8SBnBheWRheSK5BAoFQXVkaXQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhkKCXRlbmFudF9pZBgCIAEoDEIG6oIWAhBAEhgKCGFjdG9yX2lkGAggASgMQgbqghYCEEASEAoIdHJhY2VfaWQYCSABKAwSDgoGYWN0aW9uGAogASgJEhkKCW9iamVjdF9pZBgLIAEoDEIG6oIWAhBAEg0KBXBhdGNoGAwgASgMEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBABIfCg9hY3Rvcl90ZW5hbnRfaWQYECABKAxCBuqCFgIQQBINCgV2YWx1ZRgRIAEoDDqoAsr8Fa0BEgIQARoXEgZvYmplY3QaDQoJb2JqZWN0X2lkEAsaKBIFdHJhaWwaDQoJdGVuYW50X2lkEAIaEAoMZGF0ZV9jcmVhdGVkEA8aOBIPYnlfYWN0b3JfdGVuYW50GhMKD2FjdG9yX3RlbmFudF9pZBAQGhAKDGRhdGVfY3JlYXRlZBAPGioSCGJ5X2FjdG9yGgwKCGFjdG9yX2lkEAgaEAoMZGF0ZV9jcmVhdGVkEA+KuxZyCAMyUAoQCgxkYXRlX2NyZWF0ZWQQAQoGCgJpZBABGglvYmplY3RfaWQaCGFjdG9yX2lkGgl0ZW5hbnRfaWQaD2FjdG9yX3RlbmFudF9pZCAyKMgBIhwSCXRlbmFudF9pZBIPYWN0b3JfdGVuYW50X2lkQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Audit is one write that happened, and who made it.
@@ -54,7 +54,7 @@ export type Audit = Message<"payday.Audit"> & {
   id: Uint8Array;
 
   /**
-   * The tenant the caller was held by, which is who this was done on behalf of.
+   * The tenant of the **thing that changed**, as it was when this happened.
    *
    * It is a column and not an edge, which is the one place in payday's own
    * schema that is true, and it is on purpose: **the trail has to outlive the
@@ -64,11 +64,21 @@ export type Audit = Message<"payday.Audit"> & {
    *
    * The wall reads this column directly; see `tenanted: {field: ...}` below.
    *
-   * It is the tenant of the *actor* and not of the thing that changed. So the
-   * trail is the actor's: a row is stamped with who was acting and nothing
-   * moves it, which means something transferred to another tenant leaves its
-   * whole trail behind -- receiving something does not come with the right to
-   * read what its previous owner did inside their own walls.
+   * It is the object's tenant and not the actor's, and it used to be the other
+   * way round. The reason given for that was the transfer: a row is stamped
+   * once and nothing moves it, so something that changes hands leaves its whole
+   * trail behind and receiving it does not come with the right to read what its
+   * previous owner did. **That reason survives this change** -- the stamp is
+   * still taken at the moment of the write and still never moves. What it does
+   * not survive is the case it was silent about: an actor of one tenant writing
+   * to a row of another, which is the headquarters pattern payday itself
+   * recommends. Filed under the actor, the record of what was done to somebody
+   * lands behind a wall that somebody cannot see over, and their trail says
+   * nothing happened.
+   *
+   * payday is resource-centric everywhere else -- `object_id` is what a history
+   * is asked with, and both indexes below are about it -- so the actor is an
+   * attribute of the event and not the drawer it is filed in.
    *
    * @generated from field: bytes tenant_id = 2;
    */
@@ -135,6 +145,45 @@ export type Audit = Message<"payday.Audit"> & {
    * @generated from field: google.protobuf.Timestamp date_created = 15;
    */
   dateCreated?: Timestamp | undefined;
+
+  /**
+   * The tenant the **actor** was held by, and the same value as `tenant_id` for
+   * the ordinary write, which is nearly all of them.
+   *
+   * It is here so that the two parties to a cross-tenant write are both parties
+   * to the record: the wall is the OR of these two columns, so the tenant whose
+   * row changed reads it and the tenant whose operator made the change reads it,
+   * and neither has to hold a scope wide enough to see the other.
+   *
+   * Not derived from `actor_id`. That would need the holder to still be there
+   * and to still be in the same tenant, and the trail is kept precisely for
+   * when neither is true.
+   *
+   * @generated from field: bytes actor_tenant_id = 16;
+   */
+  actorTenantId: Uint8Array;
+
+  /**
+   * The row this happened to, marshaled, as it was when the event was over --
+   * and for an Erase, as it was the moment before.
+   *
+   * `patch` is the delta and this is the state, and the trail needs both for a
+   * reason each of them cannot answer alone. A patch says what changed and not
+   * what it became; and an Add and an Erase have no patch at all, so without
+   * this the two events that matter most -- what was created, what was
+   * destroyed -- record nothing but their own names.
+   *
+   * Erase is the sharp one. An entity that is not softly erased loses its row
+   * for good, and then this is the **only** record that it ever held anything.
+   *
+   * Which is also what it costs: the trail outlives what it names, so an erased
+   * row's contents live here afterwards. An app with an obligation to destroy
+   * data has to reckon with the trail, and the answer is a retention policy
+   * rather than an empty column.
+   *
+   * @generated from field: bytes value = 17;
+   */
+  value: Uint8Array;
 };
 
 /**

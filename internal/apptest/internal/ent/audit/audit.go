@@ -25,6 +25,10 @@ const (
 	FieldPatch = "patch"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
 	FieldDateCreated = "date_created"
+	// FieldActorTenantID holds the string denoting the actor_tenant_id field in the database.
+	FieldActorTenantID = "actor_tenant_id"
+	// FieldValue holds the string denoting the value field in the database.
+	FieldValue = "value"
 	// Table holds the table name of the audit in the database.
 	Table = "audit"
 )
@@ -39,6 +43,8 @@ var Columns = []string{
 	FieldObjectID,
 	FieldPatch,
 	FieldDateCreated,
+	FieldActorTenantID,
+	FieldValue,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -82,4 +88,9 @@ func ByObjectID(opts ...sql.OrderTermOption) OrderOption {
 // ByDateCreated orders the results by the date_created field.
 func ByDateCreated(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateCreated, opts...).ToFunc()
+}
+
+// ByActorTenantID orders the results by the actor_tenant_id field.
+func ByActorTenantID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldActorTenantID, opts...).ToFunc()
 }

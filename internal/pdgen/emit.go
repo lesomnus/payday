@@ -323,12 +323,25 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 		return tenantIn
 	}
 
-	if v.Field != "" {
+	if len(v.Columns) > 0 {
 		// A row that names its tenant without holding an edge to it. The
 		// predicate is on this entity's own column, so there is nothing to
 		// walk: `audit.TenantIDIn(vs...)`.
-		return fmt.Sprintf("%s(vs...)", g.QualifiedGoIdent(
-			(p.Ent + "/" + protogen.GoImportPath(v.EntPkg())).Ident(pascal(v.Field)+"In")))
+		//
+		// Several columns is OR, and it is the trail: one write has a tenant
+		// whose row changed and a tenant whose actor made it, and the record is
+		// readable by both.
+		at := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+
+		vs := make([]string, len(v.Columns))
+		for i, name := range v.Columns {
+			vs[i] = fmt.Sprintf("%s(vs...)", g.QualifiedGoIdent(at.Ident(pascal(name)+"In")))
+		}
+		if len(vs) == 1 {
+			return vs[0]
+		}
+
+		return fmt.Sprintf("%s(%s)", g.QualifiedGoIdent(at.Ident("Or")), strings.Join(vs, ", "))
 	}
 
 	// Built inside out: the innermost predicate is the tenant's, and each step
@@ -392,8 +405,11 @@ func why(v *Entity, s *Schema) string {
 		return "a tenant is inside itself, which is what a tenant being a wall comes down to."
 	case v.IsGlobal:
 		return "declared `global`, so it is not behind the wall at all."
-	case v.Field != "":
-		return fmt.Sprintf("a row belongs to the tenant its %q names, which it holds without an edge.", v.Field)
+	case len(v.Columns) == 1:
+		return fmt.Sprintf("a row belongs to the tenant its %q names, which it holds without an edge.", v.Columns[0])
+	case len(v.Columns) > 1:
+		return fmt.Sprintf("a row is readable by every tenant it names -- %s -- which is the trail.",
+			strings.Join(v.Columns, ", "))
 	default:
 		return fmt.Sprintf("a row belongs to the tenant its %q reaches.", strings.Join(v.Via, "."))
 	}
@@ -425,6 +441,26 @@ func pascal(v string) string {
 // initialisms is what ent writes in capitals. It is short because the only
 // names that reach here are the ones a schema wrote down, and it grows when
 // something that should have been capitalized was not.
+// camel is a proto field name as **protoc-gen-go** writes it in Go.
+//
+// It is [pascal] without the initialisms, and the difference is the whole
+// reason it exists: ent writes `object_id` as `ObjectID` and protobuf-go writes
+// it as `ObjectId`, so a generated line that reaches for a message accessor and
+// one that reaches for a predicate cannot share a name.
+func camel(v string) string {
+	var b strings.Builder
+	for _, part := range strings.Split(v, "_") {
+		if part == "" {
+			continue
+		}
+
+		b.WriteString(strings.ToUpper(part[:1]))
+		b.WriteString(part[1:])
+	}
+
+	return b.String()
+}
+
 var initialisms = map[string]string{
 	"id":   "ID",
 	"ids":  "IDs",

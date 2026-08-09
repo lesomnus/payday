@@ -382,11 +382,11 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("}")
 	g.P("")
 
-	emitRecorder(g, p, root)
+	emitRecorder(g, s, p, root)
 }
 
 // emitRecorder writes what turns a write into a line of the trail.
-func emitRecorder(g *protogen.GeneratedFile, p Paths, root protogen.GoImportPath) {
+func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	g.P("// Recorder writes one row of the trail for every write the generated")
 	g.P("// servers make.")
 	g.P("//")
@@ -421,20 +421,149 @@ func emitRecorder(g *protogen.GeneratedFile, p Paths, root protogen.GoImportPath
 	g.P("		return err")
 	g.P("	}")
 	g.P("")
+	g.P("	// The row this happened to, which is where the object's tenant and the")
+	g.P("	// state after the write both come from. Absent for an Erase that took")
+	g.P("	// the row with it; see [subject].")
+	g.P("	tenant, value, err := subject(ctx, s, v.Object)")
+	g.P("	if err != nil {")
+	g.P("		return err")
+	g.P("	}")
+	g.P("	if tenant == ", pkgUuid.Ident("Nil"), " {")
+	g.P("		// Nothing to file it under but the actor's own, which is what the")
+	g.P("		// trail said for every row before this. It is the honest fallback")
+	g.P("		// rather than a zero: a record nobody can read is not a record.")
+	g.P("		tenant = ", pkgUuid.Ident("UUID"), "(v.Tenant)")
+	g.P("	}")
+	g.P("")
 	g.P("	_, err = s.Audit().Add(ctx, ", root.Ident("AuditAddRequest_builder"), "{")
-	g.P("		TenantId: v.Tenant.Bytes(),")
-	g.P("		ActorId:  v.Actor.Bytes(),")
-	g.P("		TraceId:  v.Trace,")
-	g.P("		Action:   v.Action,")
-	g.P("		ObjectId: v.Object.Bytes(),")
-	g.P("		Patch:    v.Patch,")
+	g.P("		TenantId:      tenant[:],")
+	g.P("		ActorTenantId: v.Tenant.Bytes(),")
+	g.P("		ActorId:       v.Actor.Bytes(),")
+	g.P("		TraceId:       v.Trace,")
+	g.P("		Action:        v.Action,")
+	g.P("		ObjectId:      v.Object.Bytes(),")
+	g.P("		Patch:         v.Patch,")
+	g.P("		Value:         value,")
 	g.P("	}.Build())")
 	g.P("")
 	g.P("	return err")
 	g.P("}")
 	g.P("")
 
+	emitSubject(g, s, p, root)
+
 	// Referenced only so that the import is kept when a schema has no patch.
 	g.P("var _ *", pkgPatchpb.Ident("Patch"))
+	g.P("")
+}
+
+// emitSubject writes the read that answers, for a row that just changed, which
+// tenant it belonged to and what it looked like.
+//
+// # Why the recorder reads at all
+//
+// The trail is filed under the tenant of the **thing that changed**, so that
+// whoever holds that thing can read what was done to it. `bare.Change` cannot
+// carry that: it is the ORM generator's type and the ORM generator has never
+// heard of a tenant. payday's recorder can, because payday generated it and
+// knows every entity's path to one.
+//
+// Which entity it is comes from the identifier, not from the method name. A
+// `pdid` carries its domain, so one switch answers it for every entity there
+// will ever be -- and it is the same fact `object_id` is stored for.
+//
+// # And what it costs
+//
+// One read per write, and a second for an entity that reaches its tenant
+// through another row. That is the price of a trail two parties can read, and
+// it is paid on the write path rather than on the read path.
+//
+// # The Erase that took the row with it
+//
+// An entity erased hard has no row left by the time this runs -- the recorder
+// is called inside the transaction, after the delete. Then this answers with
+// the nil identifier and the caller falls back to the actor's tenant, which is
+// what the trail said for everything before this existed. An entity erased
+// softly has its row and answers normally, which is one more reason for soft to
+// be what an entity does unless it says otherwise.
+func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
+	g.P("// subject is the tenant of the row `key` names and the row itself, and the")
+	g.P("// nil identifier when there is no such row any more.")
+	g.P("func subject(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
+		", key ", pkgPdid.Ident("Id"), ") (", pkgUuid.Ident("UUID"), ", []byte, error) {")
+	g.P("	switch key.Domain() {")
+
+	for _, v := range s.Sorted() {
+		if v.IsGlobal {
+			// Not behind the wall, so there is no tenant to file it under.
+			continue
+		}
+
+		g.P("	case ", v.GoName(), "Domain:")
+		g.P("		row, err := s.", v.GoName(), "().Get(ctx, ", root.Ident(v.GoName()+"GetRequest_builder"), "{")
+		g.P("			Ref: ", root.Ident(v.GoName()+"Ref_builder"), "{Id: key.Bytes()}.Build(),")
+		g.P("		}.Build())")
+		g.P("		if err != nil {")
+		g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
+		g.P("				return ", pkgUuid.Ident("Nil"), ", nil, nil")
+		g.P("			}")
+		g.P("")
+		g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+		g.P("		}")
+		g.P("")
+		g.P("		b, err := ", pkgProto.Ident("Marshal"), "(row)")
+		g.P("		if err != nil {")
+		g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+		g.P("		}")
+		g.P("")
+
+		switch {
+		case v.IsTenant:
+			// A tenant is its own, which is what a tenant being a wall comes
+			// down to.
+			g.P("		k, err := ", pkgUuid.Ident("FromBytes"), "(row.GetId())")
+
+		case len(v.Columns) > 0:
+			// A row that names its tenant with a column. The trail is the only
+			// one, and it is never the subject of a write anybody records.
+			g.P("		k, err := ", pkgUuid.Ident("FromBytes"), "(row.Get", camel(v.Columns[0]), "())")
+
+		case len(v.Via) == 1:
+			g.P("		k, err := ", pkgUuid.Ident("FromBytes"), "(row.Get", camel(v.Via[0]), "().GetId())")
+
+		default:
+			// It reaches the tenant through another row, so the walk is a
+			// second read -- and a third, if the schema ever declares one that
+			// far away.
+			g.P("		up, err := ", pkgPdid.Ident("From"), "(row.Get", camel(v.Via[0]), "().GetId())")
+			g.P("		if err != nil {")
+			g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+			g.P("		}")
+			g.P("")
+			g.P("		k, _, err := subject(ctx, s, up)")
+			g.P("		if err != nil {")
+			g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+			g.P("		}")
+			g.P("")
+			g.P("		return k, b, nil")
+		}
+
+		if len(v.Via) <= 1 {
+			g.P("		if err != nil {")
+			g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+			g.P("		}")
+			g.P("")
+			g.P("		return k, b, nil")
+		}
+
+		g.P("")
+	}
+
+	g.P("	}")
+	g.P("")
+	g.P("	// A domain nothing registered, which is an identifier from somewhere")
+	g.P("	// else. Nothing to read and nothing to say about it.")
+	g.P("	return ", pkgUuid.Ident("Nil"), ", nil, nil")
+	g.P("}")
 	g.P("")
 }

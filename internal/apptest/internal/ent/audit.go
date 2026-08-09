@@ -31,7 +31,11 @@ type Audit struct {
 	// Patch holds the value of the "patch" field.
 	Patch []byte `json:"patch,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
-	DateCreated  time.Time `json:"date_created,omitempty"`
+	DateCreated time.Time `json:"date_created,omitempty"`
+	// ActorTenantID holds the value of the "actor_tenant_id" field.
+	ActorTenantID uuid.UUID `json:"actor_tenant_id,omitempty"`
+	// Value holds the value of the "value" field.
+	Value        []byte `json:"value,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -40,13 +44,13 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case audit.FieldTraceID, audit.FieldPatch:
+		case audit.FieldTraceID, audit.FieldPatch, audit.FieldValue:
 			values[i] = new([]byte)
 		case audit.FieldAction:
 			values[i] = new(sql.NullString)
 		case audit.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case audit.FieldID, audit.FieldTenantID, audit.FieldActorID, audit.FieldObjectID:
+		case audit.FieldID, audit.FieldTenantID, audit.FieldActorID, audit.FieldObjectID, audit.FieldActorTenantID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -111,6 +115,18 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DateCreated = value.Time
 			}
+		case audit.FieldActorTenantID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field actor_tenant_id", values[i])
+			} else if value != nil {
+				_m.ActorTenantID = *value
+			}
+		case audit.FieldValue:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field value", values[i])
+			} else if value != nil {
+				_m.Value = *value
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -118,9 +134,9 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 	return nil
 }
 
-// Value returns the ent.Value that was dynamically selected and assigned to the Audit.
+// GetValue returns the ent.Value that was dynamically selected and assigned to the Audit.
 // This includes values selected through modifiers, order, etc.
-func (_m *Audit) Value(name string) (ent.Value, error) {
+func (_m *Audit) GetValue(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
@@ -167,6 +183,12 @@ func (_m *Audit) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("date_created=")
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("actor_tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ActorTenantID))
+	builder.WriteString(", ")
+	builder.WriteString("value=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Value))
 	builder.WriteByte(')')
 	return builder.String()
 }

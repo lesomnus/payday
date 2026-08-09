@@ -124,6 +124,12 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	} else {
 		q.SetDateCreated(time.Now().UTC())
 	}
+	if v, err := uuid.FromBytes(req.GetActorTenantId()); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
+	} else {
+		q.SetActorTenantID(v)
+	}
+	q.SetValue(req.GetValue())
 
 	u, err := q.Save(ctx)
 	if err != nil {
@@ -208,6 +214,12 @@ func AuditSelectedFields(m *apptest.AuditSelect) []string {
 	if m.GetDateCreated() {
 		vs = append(vs, audit.FieldDateCreated)
 	}
+	if m.GetActorTenantId() {
+		vs = append(vs, audit.FieldActorTenantID)
+	}
+	if m.GetValue() {
+		vs = append(vs, audit.FieldValue)
+	}
 
 	return vs
 }
@@ -273,7 +285,7 @@ func AuditGetKey(ctx context.Context, db *ent.Client, ref *apptest.AuditRef) (uu
 var auditOrmEntity = ormpatch.MustEntityOf(apptest.File_payday_audit_proto, "Audit")
 
 var auditPatchColumns = entpatch.Columns{
-	1: audit.FieldID, 2: audit.FieldTenantID, 8: audit.FieldActorID, 9: audit.FieldTraceID, 10: audit.FieldAction, 11: audit.FieldObjectID, 12: audit.FieldPatch, 15: audit.FieldDateCreated}
+	1: audit.FieldID, 2: audit.FieldTenantID, 8: audit.FieldActorID, 9: audit.FieldTraceID, 10: audit.FieldAction, 11: audit.FieldObjectID, 12: audit.FieldPatch, 15: audit.FieldDateCreated, 16: audit.FieldActorTenantID, 17: audit.FieldValue}
 
 func (s AuditServiceServer) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
 	if !req.HasPatch() {
