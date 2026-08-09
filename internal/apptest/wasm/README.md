@@ -24,8 +24,9 @@ blind to which one it got -- the sandbox and the real server are the same code
 with a different argument, which is the whole reason a sandbox is worth having.
 Code that only ever ran against a fake has never run.
 
-It type-checks against `@lesomnus/grpc-dgram`. It has **not** been loaded in a
-browser; see `../ts/SANDBOX.md` for what is verified and what is not.
+It runs -- loaded in headless Chromium, server up in under a second, the wall
+answering as it does over HTTP. It did not before that, and three things in this
+file were wrong; `../ts/SANDBOX.md` lists them and what it takes to serve.
 
 Two requirements will bite whoever serves it, and neither is this file's to fix:
 

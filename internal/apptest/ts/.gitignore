@@ -1,0 +1,3 @@
+# The sandbox's build output: 65MB of wasm and the toolchain's JS half, both
+# made by a command in SANDBOX.md rather than checked in.
+public/
