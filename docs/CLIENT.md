@@ -1,469 +1,181 @@
-# 클라이언트 — 브라우저와 UI
+# The browser
 
-페이지 안의 서버, 그리고 풀스택이 어디까지인가.
-이 문서가 담는 절: §9~§10. 돌아가기: [DESIGN.md](../DESIGN.md)
+Two things a payday app does that most gRPC frameworks stop short of: it serves
+a browser, and it compiles into one.
 
-> 절 번호는 문서를 나누기 전의 것을 그대로 쓴다 — 전역으로 유일하므로 `§7`은
-> 어느 문서에 있든 같은 절을 가리킨다.
+[The page guide](guide/client.md) is how to use the client. This is the
+architecture — the transports, the sandbox, and the layering of the store.
 
-## 9. 브라우저 안의 서버
+- [1. Two transports, and why](#1-two-transports-and-why)
+- [2. The whole app in a page](#2-the-whole-app-in-a-page)
+- [3. The client is a replica](#3-the-client-is-a-replica)
+- [4. What is forced and what is not](#4-what-is-forced-and-what-is-not)
 
-페이지 안에서만 사는 개발용 샌드박스 — 새로고침하면 서버가 새로 뜨는 것. **된다.
-그리고 두 조각이 이미 이것을 위해 만들어져 있다.**
+## 1. Two transports, and why
 
-| | 무엇 | 이 용도로 |
+gRPC is not a protocol a browser speaks. Not a missing library — a thing the
+platform does not expose. So payday serves both:
+
+- **real gRPC over a socket**, for machines
+- **Connect and gRPC-Web**, for pages — [`payday/web`](../web)
+
+They are the same `*grpc.Server`. `web.New` transcodes; it is not a second
+stack. Same handlers, same interceptors, same wall, and no second door for a
+rule to be missing from.
+
+### The reversal
+
+This document originally chose drpc-over-WebSocket for production, on the
+grounds that Connect would make the sandbox and production use different client
+libraries. **That premise was wrong.** `grpc-dgram`'s TypeScript port *is* a
+Connect transport, so either way the client library is Connect-ES and only the
+transport swaps.
+
+With the premise gone, three things were left on the scale:
+
+| | drpc over WebSocket | Connect / gRPC-Web |
 | --- | --- | --- |
-| [`sqlite3-wasm`](https://github.com/lesomnus/sqlite3-wasm) | `js/wasm` Go에서 쓰는 `database/sql` 드라이버. SQLite는 별도 워커에서 돌고 OPFS를 쓴다 | ent가 필요로 하는 것이 정확히 `database/sql` 드라이버다 |
-| [`grpc-dgram`](https://github.com/lesomnus/grpc-dgram) | `transport/jsport` — `js/wasm`으로 컴파일된 `drpc.Server`를 메시지 포트로 페이지에 붙인다 | `examples/browser-wasm`이 이미 그것을 한다 |
+| sandbox vs production | byte-identical wire | different wires |
+| credentials | **per connection** (handshake cookie) | **per call** |
+| infrastructure in front of the browser | knows nothing about it | it is just a POST |
 
-`browser-wasm` 예제는 심지어 **`Watch` 서버 스트림으로 목록을 그린다** — §4.2에서 설계한
-바로 그 모양이다.
+The second is decisive. A credential carried on the handshake means a token that
+expires mid-connection changes **nothing** — the connection goes on being
+trusted — so expiry has to be built as a separate mechanism that cuts the stream.
+Per-call credentials do not have that problem at all.
 
-### 진짜 걸리는 것
+The third is real too. What is actually in front of a browser is a CDN, a WAF, a
+reverse proxy — things that understand HTTP and not gRPC framing. Connect is one
+POST with `Content-Type: application/json`, so devtools read it, a HAR captures
+it, and **a request the page sent can be replayed from a shell**.
 
-기술적 미지수는 없고, payday 쪽에서 고쳐야 할 것이 다섯 개다. 넷은 작고 하나는 무료다.
+What is lost is the first row: the sandbox no longer runs the same wire as
+production. Everything above the transport is identical, so what escapes is a
+defect in the wire itself.
 
-**1. `RegisterServer`가 `*grpc.Server`로 타입되어 있다.** 생성된 것이 이렇다.
+## 2. The whole app in a page
 
-```go
-func RegisterServer(g *grpc.Server, s Server)   // store.g.go
-```
-
-`drpc.Server`는 `grpc.ServiceRegistrar`이고, `protoc-gen-go-grpc`가 내는 서비스별
-`Register<E>ServiceServer`는 **이미** `grpc.ServiceRegistrar`를 받는다. 좁혀 놓은 곳은
-payday가 낼 이 한 줄뿐이다.
-
-```go
-func RegisterServer(g grpc.ServiceRegistrar, s Server)
-```
-
-순수한 넓히기다 — `*grpc.Server`는 그 인터페이스를 만족하므로 기존 호출부가 그대로
-컴파일된다. **이 한 글자가 payday를 트랜스포트-무지하게 만드는 전부다.**
-
-**2. 인터셉터가 `[]grpc.ServerOption`으로만 노출되어 있다.** `gate.Interceptor()`도
-`grpcx.Limit()`도 옵션 슬라이스를 돌려주는데, 그것은 `grpc.NewServer`의 형식이지
-인터셉터의 형식이 아니다. drpc는 자기 옵션 타입을 쓴다.
-
-고칠 방향은 분명하다 — **맨 인터셉터 함수를 내보내고, 옵션 슬라이스는 그 위의 편의로
-둔다.** `watch.Unary()`가 이미 그 모양이니 나머지를 거기 맞추면 된다. drpc가
-`grpc.UnaryServerInterceptor`를 그대로 쓰는지는 확인이 필요하고, 아니어도 얇은 어댑터로
-끝난다.
-
-**3. SQLite 드라이버를 빌드 태그로 갈아 끼워야 한다.** 지금 쓰는 `ncruces/go-sqlite3`는
-SQLite를 wazero로 돌린다 — Go 안의 wasm 런타임이므로 `GOOS=js`에서는 wasm 안의 wasm이
-되어 서지 않는다. `sqlite3-wasm`이 그 자리를 대신한다.
-
-**그리고 이 자리는 이미 열려 있다.** go-app의 드라이버 레지스트리가 "다른 데이터베이스는
-`db-pgx.go` 옆에 파일 하나를 두고 blank import한 뒤 `RegisterDriver`를 부르는 것"으로
-설계되어 있다. 파일 두 개면 된다.
-
-```go
-//go:build !js          → db-sqlite3.go       (ncruces)
-//go:build js && wasm   → db-sqlite3-wasm.go  (sqlite3-wasm)
-```
-
-**4. otel 익스포터를 콘솔로 떨어뜨린다 — 그리고 그것은 거의 공짜다.**
-
-`wasm_exec.js`가 fd 1/2의 쓰기를 개행까지 모았다가 `console.log`/`console.error`로
-넘긴다. 즉 **`js/wasm`에서 stdout은 이미 콘솔이다.** `mkot/pretty`가 지금 프로세스에
-찍는 그 줄들이 그대로 devtools에 나온다. 트레이스와 메트릭도 stdout 익스포터가 있으므로,
-할 일은 코드가 아니라 **OTLP 대신 그쪽을 고르는 설정 하나**다.
-
-한 단계 더 갈 여지는 있고 선택 사항이다. `syscall/js`로 진짜 `console.log(obj)`를
-부르면 devtools에서 객체를 펼쳐 볼 수 있고, 심각도를 `console.debug/info/warn/error`에
-맞추면 devtools의 레벨 필터가 그대로 동작한다. 문자열로 눌러 담는 stdout 경로가 잃는
-것이 그것이다. 개발용 샌드박스에서는 값이 있지만, 없어도 첫날부터 돌아간다.
-
-**5. wasm에는 별도의 엔트리포인트가 선다.** `cmd/`를 wasm으로 빌드하는 것이 아니다 —
-설정 파일도 환경변수도 플래그도 페이지에는 없고, `xli`가 할 일이 없다.
+The sandbox is the entire server — gate, wall, trail, ent, SQLite — compiled
+`GOOS=js GOARCH=wasm` and running in the browser. The page talks to it over a
+message port instead of a socket.
 
 ```
-cmd/           프로세스용 — config, migrate, serve
-wasm/main.go   페이지용   — jsport + OPFS + 같은 스택
+page ── Connect transport ── message port ── worker
+                                              ├ the app, as wasm
+                                              └ SQLite, as wasm
 ```
 
-둘 다 얇고, 둘 다 **같은 부품을 다르게 조립할 뿐**이다. 그리고 조립하는 코드는 이미
-셋째로 존재한다 — **테스트 하네스다.**
+It is about 65 MB and that is fine, because of what it is for:
 
-```go
-// pdtest가 지금 하는 것          →  wasm/main.go가 하는 것
-memdb SQLite                        →  OPFS SQLite
-bufconn                             →  jsport
-Build(sink, core, audit, gate)      →  같음
-auth.Plain                          →  같음
-```
+- **A demo that needs no backend.** A link, and the app runs.
+- **Tests of the real stack** with no database to start.
+- **Proof that the runtime assumes nothing.** No file system, no listener, no
+  network. CI builds `GOOS=js GOARCH=wasm go build ./...` for exactly this, and
+  the sandbox test says the thing it builds actually runs.
 
-**샌드박스는 트랜스포트를 바꾼 테스트 하네스다.** 그래서 작업량이 작고, §5에서
-"배선은 템플릿에 남긴다"고 한 결정이 여기서 값을 낸다 — 이제 배선이 셋이고, 프레임워크는
-그중 어느 것도 소유하지 않는다.
+That last one earns its minute. The first time the sandbox was ever loaded in a
+page, three things were wrong — no broker named, nothing seeded, no interceptors
+— and every one of them compiled, linked and started. **A `main` that is built
+and never run says nothing at all.**
 
-### 프레임워크 입장에서 왜 할 만한가
+### What the sandbox is not
 
-개발 편의는 알기 쉬우니 넘어가고 — 백엔드를 안 띄우고 UI를 만들고, 새로고침이 초기화이고,
-e2e가 결정적이 되고, payday 문서에 살아 있는 플레이그라운드를 넣을 수 있다 — 프레임워크
-쪽 이득이 하나 더 있다.
+It is not the local store. They get confused because both put data in the
+browser, and they are different things:
 
-**두 번째 진입점이 배선이 프로그램이 아니라 라이브러리라는 것을 증명한다.** `serve`가
-덩어리인 프레임워크는 이것을 못 한다. §5에서 "배선은 템플릿에 남긴다"고 한 결정이
-여기서 값을 낸다 — 샌드박스는 같은 부품의 **두 번째 배선**이지 특별한 모드가 아니다.
-
-그리고 그것이 강제 가능한 규칙 하나를 만든다.
-
-> **payday 런타임의 어떤 것도 파일 시스템·리스너·네트워크를 전제하지 않는다.**
-
-CI에서 `GOOS=js GOARCH=wasm go build ./...` 한 줄이면 지켜진다. 누군가 런타임에
-`os.ReadFile`을 넣는 날 빌드가 깨진다 — 기계적이고, 싸고, 지금 아니면 나중에 훨씬
-비싸게 발견된다(§7).
-
-### 하나 짚어둘 것 — drpc는 표준 gRPC 와이어가 아니다
-
-`grpc-dgram`은 프로그래밍 모델은 gRPC이되 **와이어는 아니다.** 그러니 브라우저 클라이언트는
-grpc-web이 아니라 `grpc-dgram`의 TS 포트가 된다. 두 갈래가 있다.
-
-- **샌드박스만 drpc.** 운영은 브라우저 표준 와이어를 쓴다.
-- **UI는 언제나 drpc.** 운영에서는 `transport/gorilla`(WebSocket, reliable) — jsport와
-  **바이트가 같은 와이어**다.
-
-> **결정: 첫 번째다** (2026-08, [PLAN.md](PLAN.md) 19번).
->
-> 이 문서는 원래 두 번째를 골랐고, 근거는 "운영이 grpc-web이면 샌드박스와 운영이 서로
-> 다른 클라이언트 라이브러리가 된다"였다. **그 전제가 틀렸다.** `grpc-dgram`의 TS 포트는
-> `transport/connect` — **Connect 트랜스포트**다. `sandbox.ts`도 그것을 그대로
-> `@connectrpc/connect`의 `Transport`로 넘긴다. 두 갈래 모두 클라이언트 라이브러리는
-> Connect-ES 하나이고 바뀌는 것은 트랜스포트뿐이다. 아래 §"트랜스포트 교체뿐인가"가
-> 지키려던 성질은 어느 쪽에서도 지켜진다.
->
-> 전제가 무너지고 나면 남는 저울은 셋이다.
->
-> | | drpc over WebSocket | Connect / gRPC-Web |
-> | --- | --- | --- |
-> | 샌드박스와 운영 | 바이트가 같은 와이어 | 와이어가 다르다 |
-> | 자격증명 | **연결마다** (핸드셰이크 쿠키) | **호출마다** |
-> | 브라우저 앞의 인프라 | 아는 것이 없다 | 그냥 POST다 |
->
-> 두 번째가 결정적이다. §12.3이 WebSocket의 비용으로 적어 둔 바로 그것 — 토큰이 중간에
-> 만료돼도 "아무 일도 일어나지 않는다", 그래서 연결에 만료를 걸어 끊는 장치를 따로 지어야
-> 한다. 호출마다 실리면 그 문제가 **없다.**
->
-> 세 번째도 실질적이다. 브라우저 앞에 실제로 있는 것은 CDN·WAF·리버스 프록시이고 그것들은
-> gRPC 프레이밍이 아니라 HTTP를 안다. Connect는 `Content-Type: application/json`인 POST
-> 하나라서 devtools도, HAR도, `curl`도 그대로 읽는다 — **페이지가 보낸 요청을 셸에서
-> 똑같이 재현할 수 있다**는 것이 디버깅에서 가장 크다.
->
-> 잃는 것은 첫 줄이다. 샌드박스는 이제 운영과 같은 와이어가 아니다. 그 위층은 전부 같으므로
-> 잡히지 않는 것은 와이어 자체의 결함뿐이고, 그것은 어차피 아래 "안 잡히는 것" 목록과 같은
-> 성질이다.
-
-그래서 **둘 다 서빙**이다: 기계에게는 소켓 위의 진짜 gRPC, 브라우저에게는 Connect와
-gRPC-Web. `payday/web`이 그것이고, 하나의 `grpc.Server`를 트랜스코딩할 뿐이라 두 번째
-스택이 아니다 — 같은 인터셉터, 같은 자격증명, 같은 벽. go-app `todo.md` #12(grpc-web)에
-대한 답이 이것이다.
-
-UI가 무엇을 고르든 서버는 둘 다 받는다(`internal/apptest/cmd/web_test.go`가 프레임을 손으로
-써서 확인한다). custody는 Connect를 고르는데, 이유는 위 표의 셋째 줄뿐이다.
-
-### JS 쪽에서 전환은 트랜스포트 교체뿐인가
-
-**그렇다.** `grpc-dgram`의 `transport/connect`와 `@connectrpc/connect-web`의
-`createConnectTransport`는 둘 다 Connect의 `Transport`이고, `app(transport)` 위층은
-어느 것을 받았는지 모른다.
-
-```ts
-const transport = DEV
-	? createDrpcTransport((await open('/app.wasm')).dial())
-	: createConnectTransport({ baseUrl })
-const client = app(transport)   // 이 아래는 전부 같다
-```
-
-다만 **트랜스포트만은 아닌 것이 하나 있고, 안 잡히는 것이 셋 있다.**
-
-**자격증명은 함께 바뀐다.** 샌드박스는 `Plain`이라 호출자의 말을 믿고, 운영은 bearer나
-mTLS다. 클라이언트가 붙이는 메타데이터가 달라지므로 **트랜스포트와 자격증명 제공자를
-한 자리에서 같이 교체**하는 모양으로 두는 것이 맞다. 둘이 흩어지면 "개발에서는 되는데"가
-거기서 나온다.
-
-그리고 샌드박스가 **구조적으로 잡아줄 수 없는 것**들:
-
-- **재연결.** jsport는 워커가 죽으면 끝이다. 운영에서 끊기는 것은 `Watch` 스트림이고,
-  클라이언트가 다시 붙어 지금 상태를 받는 경로는 운영에만 있으므로 샌드박스는 그 버그를
-  한 번도 실행하지 않는다. (단발 호출에는 재연결이랄 것이 없다 — 그것이 위 결정에서
-  WebSocket을 버리고 얻은 것 중 하나다.)
-- **지연과 경쟁.** 페이지 안은 지연이 사실상 0이라 낙관적 업데이트나 응답 순서에 얽힌
-  결함이 드러나지 않는다. `grpc-dgram`은 자기 테스트를 위해 손실·지연을 흉내내는
-  장치를 갖고 있으니, **샌드박스에 지연 손잡이를 다는 것**은 값이 있고 싸다.
-- **마이그레이션.** 아래.
-
-### UI 툴체인은 강제하지 않는다 — 경계는 파일 하나다
-
-이 문서의 기준을 그대로 적용한다.
-
-> **빠뜨렸을 때 조용히 틀리는가.** 조용히 틀리는 것만 강제한다.
-
-번들러를 빠뜨리면 요란하게 틀린다. React를 안 쓰면 아무것도 틀리지 않는다. **둘 다
-강제 대상이 아니다.**
-
-대신 경계를 이렇게 긋는다.
-
-> **payday가 UI 쪽에 내놓는 것은 `app.wasm` 파일 하나다. 그것을 무엇으로 서빙하든 앱의
-> 일이다.**
-
-`pd sandbox build --out ui/public/`가 wasm을 떨구고, 페이지는 앱의 dev server가 준다.
-그러면 payday는 번들러 사업에 들어가지 않는다.
-
-#### 다만 진짜 요구사항이 둘 있다
-
-Vite가 아니라 **브라우저**가 요구하는 것이고, 무엇을 쓰든 만족시켜야 한다.
-
-- **`Cross-Origin-Opener-Policy: same-origin`과 `Cross-Origin-Embedder-Policy: require-corp`.**
-  `sqlite3-wasm`이 취소에 `SharedArrayBuffer`를 쓰고, 그것은 cross-origin isolation
-  없이는 아예 존재하지 않는다. **이것이 이 판에서 가장 헷갈리는 실패다** — 요란하게
-  틀리기는 하는데 증상이 "저쪽 dev server에서는 되는데"로 나온다. 그러니 문서 한 줄이
-  아니라 **템플릿이 설정을 찍어주고, `pd sandbox`가 자기 페이지를 서빙할 때는 스스로
-  붙이고**, 없을 때의 오류 메시지가 이 두 헤더를 이름으로 말해야 한다.
-- **워커와 `.wasm` URL을 해결할 수 있을 것.** `sqlite3-wasm`은 SQLite를, jsport는 Go
-  서버를 각각 워커에 띄운다. `.wasm`은 URL로 잡혀야 하고, 그 문법이 번들러마다 다르다
-  (`./app.wasm?url` vs `new URL(...)`). `sqlite3-wasm`의 README가 이미 양쪽을 적어 두고
-  있다.
-
-#### Vite — 템플릿 기본값, 강제 아님
-
-`sqlite3-wasm`이 Vite 설정을 들고 있고 위 셋(헤더·워커·wasm URL)을 전부 설정으로 푸니
-템플릿이 찍어줄 것으로는 합리적이다. 하지만 **의존은 아니고, 그것을 증명할 방법도
-있다** — `grpc-dgram`의 `browser-wasm` 예제는 번들러 없이 import map만으로 돈다.
-번들러 없는 최소 예제를 하나 유지하면 결합이 생기는 날 그것이 깨진다. §9의 wasm 빌드
-검사와 같은 성격의, 기계가 지키는 경계다.
-
-#### React — 강제하지 않는다
-
-서버와의 결합점이 **0**이다. 그리고 강제하면 payday의 제약 목록에서 **처음으로 정확성과
-무관한 항목**이 된다 — 취향이다. 취향을 강제하는 순간 이 프로젝트는 Go 백엔드
-프레임워크에서 풀스택 프레임워크가 되고, UI 생태계의 변화를 영원히 물려받는다. §14가
-말하는 "강제는 되돌리기 어렵다"가 가장 아프게 걸리는 자리다.
-
-#### 진짜 물어야 할 것은 TS 클라이언트다
-
-결합이 실제로 생기는 자리는 번들러도 프레임워크도 아니고 **`pd gen`이 TS를 낼 것인가**다.
-`grpc-dgram/ts`가 protobuf-es와 Connect-ES 바인딩을 이미 갖고 있으므로 `pd gen`에 TS
-타깃을 붙이는 것은 가능하고, 그러면 §4의 `List`/`Watch` 생성이 두 번 값을 낸다 — Go
-서버와 TS 클라이언트 양쪽에서 타입이 붙는다.
-
-선은 Go 쪽과 같은 자리에 긋는다. **타입과 스텁까지 내고, 훅은 내지 않는다.**
-`useRobotList()`를 생성하기 시작하면 프레임워크마다 생성기를 하나씩 갖게 되고 쿼리
-라이브러리의 API에 고정된다 — 그것들은 메이저 버전마다 깨진다. 훅은 앱이 쓰는 열 줄이고,
-그 열 줄에는 취향이 들어간다. `List` 필터와 `serve` 배선에 대해 내린 것과 같은 판단이다.
-
-### 샌드박스가 아닌 것
-
-- **마이그레이션을 검증하지 못한다.** 마이그레이션 파일은 PostgreSQL용이고 샌드박스는
-  ent 자동 마이그레이션으로 뜬다 — 테스트가 하는 것과 같다. 스테이징이 아니다.
-- **작지 않다.** protobuf 리플렉션, ent, gRPC가 다 들어간 Go wasm이다. TinyGo는 답이
-  아니다 — 셋 다 완전한 `reflect`를 쓴다. 개발용으로는 감당할 만하고, 최종 사용자에게
-  내려보낼 것은 못 된다.
-- **인증이 진짜가 아니다.** `Plain`은 호출자의 말을 믿는다 — 샌드박스에는 정확히 맞고,
-  그래서 벽과 정책은 진짜로 도는데 신원만 가짜다. 그 차이를 아는 채로 써야 한다.
-
-## 10. UI — 풀스택은 어디까지
-
-"원한다면 프레임워크의 도구로 강제될 수밖에 없지 않나"는 맞는 말이다. 앞 절에서
-"강제하지 말자"라고 쓴 것은 **어디서 강제할지를 정하지 않은 채로 한 말**이라 절반만
-맞았다. 정리하면 이렇다.
-
-> 강제는 한다. 다만 **취향이 아니라 기계적인 층에서** 하고, 층을 넘어 번지지 않게 한다.
-
-### 10.1 옛 실험이 겨냥하던 것
-
-`protoc-gen-orm-ts`를 읽으면 의도가 분명하다. 세 가지를 생성했다.
-
-- **`client.g.ts`의 `queries`** — 서비스마다 `pick`(엔티티의 대표 참조), `refs`(그것을
-  가리키는 **모든** 참조: id, 그리고 `alias+tenant`), `rpc.<name>.extract`(응답에서
-  엔티티를 꺼내는 함수).
-- **`<E>.db.g.ts`** — Dexie 테이블. proto의 키와 유니크 인덱스에서 나온 인덱스 선언
-  (`"&id,[alias+tenant.id]"`), UUID 바이트↔문자열 변환, `version: {}` 필드를 읽는
-  버전 비교와 `_reconcile`.
-- 그리고 결정적으로 **`implements Partial<UserServiceClient>`** — 로컬 테이블이 원격
-  클라이언트와 **같은 인터페이스**를 구현한다.
-
-셋을 합치면 하나의 문장이 된다.
-
-> **엔티티 선언에서 브라우저 쪽 복제본을 만들고, 호출부가 로컬인지 원격인지 모르게 한다.**
-
-이것은 정규화 캐시(Apollo/urql이 하는 것)인데, 애노테이션을 손으로 다는 대신 **스키마에서
-생성한다.** 방향이 옳다.
-
-### 10.2 그때 없던 조각이 지금 있다
-
-옛 설계에서 캐시가 갱신되는 길은 **자기가 부른 RPC의 응답**뿐이었다. 남이 바꾼 것은
-알 수 없다. 그래서 캐시이지 복제본이 아니었다.
-
-**§4.2의 `Watch`가 정확히 그 구멍이다.** 그리고 우연이 아니게 맞물린다.
-
-- `Watch`는 **델타가 아니라 상태**를 보낸다 → `_reconcile` + 버전 비교가 그대로 맞는
-  소비자다. 델타였다면 순서와 유실을 클라이언트에서 풀어야 했다.
-- §3의 **도메인 태그 ID**가 전역 키 공간을 준다 → 정규화 캐시에 타입 접두사가 필요
-  없고, `refs()`에 도메인이 실린다.
-- IndexedDB가 바이트를 인덱싱하지 못해 문자열로 바꿔야 하는 것 → `pdid`의 문자열
-  표기가 그 키다. `uuid.ts`가 이미 하던 일이다.
-- §4.2의 응답 모양(`{method, value}`, 빈 값 = 더는 안 보임) → 로컬에서 지우는 신호가
-  그대로 온다.
-
-### 10.3 층을 긋는다
-
-실패하는 풀스택 프레임워크는 강제해서 실패하는 것이 아니라 **N층을 취했더니 N+2층이
-딸려와서** 실패한다. 그러니 층마다 따로 쓸모 있고 따로 거절 가능하게 한다.
-
-| 층 | 무엇 | 취하면 딸려오는 것 | 안 취하면 |
-| --- | --- | --- | --- |
-| — | Go 서버 | — | — |
-| **0** | **`pdid` / `slug`의 TS 절반** — id 생성·도메인 검사, alias·slug 문법 | **없음.** protobuf도 트랜스포트도 모른다 | 검증을 두 벌 쓴다 |
-| 1 | TS 타입·스텁 (`pd gen --ts`) | protobuf-es | `buf`를 직접 돌린다 |
-| 2 | 트랜스포트 | drpc (§9) | 아무 gRPC 클라이언트 |
-| 3 | **로컬 스토어와 동기화** | IndexedDB, `Watch`, 정규화 캐시 | 그냥 RPC를 부른다 |
-| 4 | UI 프레임워크 바인딩 | React/Vue/Svelte 중 하나 | 층 3의 순수 TS API를 직접 쓴다 |
-
-**강제는 층 3까지 한다.** 그 위는 하지 않는다.
-
-### 10.4 그래서 React가 아니라 스토어를 강제한다
-
-층 3이 값을 내는 이유는 **기계적인데 손으로 하면 틀리기 때문**이다 — 정규화, 여러 개의
-키(id와 alias가 같은 행을 가리킨다), 버전에 따른 조정, 살아 있는 갱신. 이것들은 취향이
-아니고, 스키마가 이미 아는 것에서 전부 나온다.
-
-층 4는 반대다. 취향이고, 스키마가 아는 것이 없다.
-
-**그리고 층 3을 반응형으로 설계하면 층 4가 얇아진다.** 스토어가 `subscribe(keys, cb)`를
-내면 React·Vue·Svelte 어댑터는 각각 열 줄 남짓이다. 그러니
-
-> 층 3은 **옵저버블 스토어**로 낸다. 훅으로 내지 않는다.
-
-이렇게 두면 payday가 React 어댑터를 함께 내더라도 그것은 **열 줄짜리 편의**이지 의존이
-아니고, Vue를 쓰는 앱이 버릴 것도 열 줄이다. 앞 절에서 "React를 강제하지 않는다"고 한
-것과 모순되지 않는다 — 강제하는 층을 **뷰가 아니라 스토어로 잡은 것**이다.
-
-> **이 절은 Dexie의 `liveQuery`를 그 근거로 삼았고, 그 부분은 틀렸다** (2026-08,
-> [PLAN.md](PLAN.md) 20번). 반응형이 요구하는 것은 옵저버블이 아니라 **동기적인 읽기**다
-> — `useSyncExternalStore`는 지금 답하는 함수를 받지 약속을 받지 않는다. IndexedDB는 지금
-> 답할 수 없으므로 IndexedDB 위의 스토어도 메모리 사본을 갖게 되고, 그 사본이 생기는
-> 순간 그것이 스토어이고 데이터베이스는 **영속성**이다. 결론(층 3은 옵저버블 스토어)은
-> 그대로 서고, 그것을 무엇이 떠받치는지가 바뀌었다: `Map`과 `subscribe`, 그리고 40줄.
-
-### 10.5 다시 만든다면
-
-**살릴 것.** `refs()`, `extract()`, proto 인덱스에서 뽑은 Dexie 인덱스 문자열, 버전
-기반 `_reconcile`, 그리고 **로컬 테이블이 클라이언트 인터페이스를 구현한다**는 발상.
-마지막 것이 이 설계의 심장이다.
-
-> **인덱스 문자열은 살리지 않았다** (2026-08, [PLAN.md](PLAN.md) 22번). 한동안
-> `EntityDesc.index`로 서 있었고 아무도 읽지 않았으며, 영속성이 서면 쓰일 것이라는
-> 명분이었다. 서고 보니 **쓸 자리가 없다.** 행은 식별자로만 닿고, 순서와 소속은
-> 서버가 낸 답이다(§10.6의 `list.order`가 키로 끝나야 하는 이유와 같다). 로컬
-> 인덱스가 쓰일 곳은 로컬 쿼리뿐인데, 로컬 쿼리는 이 스토어가 **어쩌다 받아온
-> 것** 위에서 돌므로 다른 질문에 자신 있게 답한다. 그리고 생성된 파일에서
-> `index: "&id,[alias+tenantId]"`를 본 사람은 alias로 빠르게 거를 수 있다고 읽는다
-> — **능력을 서술하는 죽은 선언은 없는 것보다 나쁘다.** 같은 이유로 Dexie도 들어오지
-> 않았다: 거울이 필요로 하는 것은 키와 블롭뿐이라, 생 IndexedDB 120줄이면 되고
-> Dexie의 `stores({...})`는 앱이 엔티티를 추가할 때마다 **캐시에 스키마 마이그레이션**을
-> 요구한다.
-
-> **심장은 다른 모양으로 섰다** (20번). 로컬 테이블이 클라이언트 인터페이스를 흉내내는
-> 것이 아니라, **호출이 프레임워크를 지나간다**. 그래서 무엇이 그려졌는지 알고, 그 행이
-> 바뀌면 그리던 곳이 전부 다시 그려진다 — 호출부는 로컬인지 원격인지 모르고, 알 필요도
-> 없다. `extract()`는 생성되지 않는다: protobuf-es 서술자가 런타임에 응답의 필드를 들고
-> 있으므로, 등록된 엔티티를 만나면 그것이 행이라는 걸 걸어 내려가며 알 수 있다.
-
-**바꿀 것.**
-
-- **`_hydrate`/`_dehydrate`를 생성하지 않는다.** 소스의 TODO가 이미 "서술자에서 런타임에
-  만들 수 있을 것 같다"라고 적어 두었고, 옳다. protobuf-es 서술자는 런타임에 필드
-  타입을 들고 있으므로 UUID 필드를 찾아 변환하는 것은 **한 번 쓰는 런타임 함수**다.
-  생성된 코드의 절반이 사라진다. §2의 "생성된 것이 얇을수록 좋다"와 같은 규율이다.
-- **트랜스포트가 Connect가 아니라 drpc다**(§9). `queries`는 메서드 이름과 추출 함수만
-  들고 있어 **트랜스포트-무지**하므로 그대로 산다. 잘 갈라 놓았던 것이다.
-- **`Watch` 소비를 넣는다.** 이것이 이 층을 캐시에서 복제본으로 바꾼다.
-- **버전 필드가 필수가 된다.** 옛 예제의 `User`에는 `date_updated = 14 [(orm.field) =
-  {version: {}}]`가 있고 `Tenant`에는 없어서, `Tenant`는 `_versioned()`가 거짓이라
-  **눈감고 덮어쓴다.** 늦게 도착한 옛 상태가 새 상태를 지운다. payday의 Tenant/Holder에도
-  지금 버전 필드가 없다. → **`watch:`를 선언한 엔티티가 버전 필드를 갖지 않으면 생성
-  실패**(§7).
-- **스토어는 신원에 매인다.** 토큰이 좁아지거나 사용자가 바뀌면 로컬에 남은 행은 더
-  이상 볼 수 없는 것이다. 서버가 새는 것은 아니지만 **화면이 틀린다.** 신원을 키로
-  두고, 바뀌면 버린다.
-
-### 10.6 새로 쓴다 — 다만 지저분함은 증상이었다
-
-`protoc-gen-orm-ts`는 Go 750줄, TS 230줄이다. 다시 쓰는 것이 부담일 만한 크기가
-아니므로 매몰 비용은 고려할 것이 못 된다. 그보다 **왜 지저분해졌는지**가 중요하다.
-진단하지 않고 다시 쓰면 같은 것이 나온다.
-
-**구조는 맞았다.** `protogen` + `protobuf-orm/graph`로 엔티티를 읽고, 한 번 파싱해
-(`build.Frame`) 두 개의 방출기(client / db)가 나눠 쓴다. Go 쪽 생성기들과 같은 substrate다.
-이 골격은 그대로 간다.
-
-**지저분함은 한 곳에서 나왔다: 데이터가 아니라 동작을 생성했다.** `apps/db/app/app.go`가
-353줄인 이유는 엔티티마다 `_dehydrate`/`_hydrate`/`_compare`/`get()`의 **본문**을 찍기
-때문이다. `get()`은 ref의 case마다 switch를 펼치고, `_dehydrate`는 UUID 필드마다 한 줄씩
-쓴다.
-
-§10.5의 처방이 그대로 답이다. **서술자가 런타임에 들고 있는 것을 생성하지 않는다.**
-그러면 엔티티마다 나오는 것이 이 정도로 줄어든다.
-
-```ts
-// <E>.g.ts — 선언만
-export const Robot = {
-  typeName: "app.Robot",
-  schema:   RobotSchema,          // protobuf-es 서술자
-  domain:   7,
-  version:  "dateUpdated",
-  refs:     [{ field: "tenant", to: "payday.Tenant" }],
-} satisfies EntityDesc
-```
-
-`get`도 `_hydrate`도 `_compare`도 런타임이 이 객체를 읽어 한 번만 구현한다. **생성기와
-생성물이 동시에 얇아진다** — 353줄짜리 문자열 빌더는 저 객체를 찍는 몇십 줄이 되고,
-문자열 연결로 코드를 짜는 것이 더 이상 문제가 되지 않는다.
-
-§2에서 생성된 레이어에 대해 한 말과 같은 규율이다. **생성물은 얇을수록 좋고, 판단은
-읽을 수 있는 런타임 소스에 있어야 한다.**
-
-**그리고 자리를 옮긴다.** 옛것은 `protobuf-orm` 조직에 있다 — "TS를 위한 ORM"으로
-틀을 잡았기 때문이다. 그런데 §10이 말하는 것은 ORM이 아니라 **동기화되는 클라이언트
-복제본**이고, 그것이 필요로 하는 것은 전부 payday의 것이다 — `Watch`(§4), 도메인 태그
-ID(§3), drpc(§9), `payday.entity` 옵션(§3.2).
-
-여기서 §1의 규칙이 갈린다.
-
-> **payday를 모르게 만들 수 있으면 상류로, 없으면 payday로.**
-
-Go 쪽 생성기 변경(`Minter` 훅)은 전자라 상류로 올렸다. TS 쪽은 **동기화가 존재 이유이므로
-payday-무지할 수가 없다.** 그러니 `protoc-gen-pd-ts`가 되고 `pd gen --ts`가 부른다. 덤으로
-biome·vitest·pnpm 워크스페이스 같은 하네스가 payday의 것과 하나로 합쳐진다.
-
-**그대로 가져올 것은 셋뿐이다.** `src/uuid.ts`(바이트↔문자열; `pdid`의 TS 절반이 되고
-도메인 추출이 붙는다), `queries` 서술자의 **모양**(`pick`/`refs`/`extract`), Dexie 인덱스
-문자열을 proto 인덱스에서 뽑는 **규칙**. 나머지는 참조하되 옮기지 않는다.
-
-**지금 쓰지는 않는다.** §13에서 이것은 15번이고, `Watch`(7c)와 TS 층 1~2(14) 뒤다.
-`Watch` 없이 다시 쓰면 **캐시를 또 만들게 된다** — 옛것의 가장 큰 한계는 코드가 아니라
-없는 서버 기능이었다. 요구가 바뀌어서 다시 쓰는 것이지, 코드가 지저분해서 다시 쓰는
-것이 아니다.
-
-### 10.7 샌드박스와 로컬 스토어는 다른 것이다
-
-둘 다 브라우저에 데이터베이스를 두므로 헷갈리기 쉽고, 섞으면 설계가 무너진다.
-
-| | §9 샌드박스 | §10 로컬 스토어 |
+| | Sandbox | Local store |
 | --- | --- | --- |
-| 무엇 | 페이지 안의 **진짜 서버** | 원격 서버의 **복제본** |
-| 저장소 | SQLite / OPFS | IndexedDB |
-| 권위 | 자기가 권위다 | 권위는 서버에 있다 |
-| 갱신 | 자기가 쓴다 | `Watch`로 받는다 |
-| 언제 | 개발할 때 | 운영에서 |
+| what runs | the whole server | a cache in front of a real one |
+| the database | SQLite, in a worker | a memory replica, mirrored to IndexedDB |
+| when it is used | demos, tests | always |
+| is there a server | no | yes, and it is the truth |
 
-샌드박스에 붙은 UI가 로컬 스토어를 쓰면 브라우저 안에 데이터베이스가 둘이 된다.
-**그것이 맞다** — 하나는 서버의 것이고 하나는 클라이언트의 것이며, 층 2 아래로는 서로를
-모른다. 그리고 그 구성이 돈다는 것 자체가 층이 제대로 갈렸다는 증거다.
+An app uses the store every day and the sandbox when it wants to run without a
+backend.
 
-이 표에서 저장소가 갈리는 것도 우연이 아니다. 샌드박스가 OPFS를 쓰는 것은 그 안의
-SQLite가 **파일**을 요구하기 때문이고, 로컬 스토어가 IndexedDB를 쓰는 것은 쓰기가
-**작은 갱신 다수**이기 때문이다 — watch 항목 하나, 쿼리 응답 하나. OPFS에는 부분 갱신이
-없어서 매번 전체를 다시 쓴다. 같은 도구를 양쪽에 쓰려는 순간 둘 중 하나가 틀린다.
+### Two imports that must share a realm
 
+The worker imports the SQLite wasm module and the transport worker in that
+order, in the same file. Splitting them puts them in different realms and the
+`SharedArrayBuffer` handoff stops working — and the page needs COOP/COEP headers
+for `crossOriginIsolated` to be true at all.
+
+## 3. The client is a replica
+
+The design's centre of gravity: **the calling code does not know whether an
+answer is local or remote.**
+
+`payday/query` sits where the call goes, so it knows what was drawn from what.
+When a row changes, everything that drew it re-renders. There are no
+declarations — what a render asked for *is* its dependency.
+
+### Why memory is the truth and the disk is the mirror
+
+Reactivity needs a **synchronous read**: `useSyncExternalStore` takes a function
+that answers *now*. IndexedDB cannot do that, so a store on top of it grows a
+memory copy — and the moment there is a copy, that copy is the store and the
+database is persistence.
+
+So it is memory first, mirrored to IndexedDB, and never the other way round.
+
+### Rows are not enough
+
+A refresh that restores only rows still draws a spinner where a list was one
+second ago, because **a list is an order and a membership** and neither of those
+lives on any row. So the query layer mirrors its own answers under the same
+credential (`Store.blob`), and restoration is **synchronous** — a reopened page
+draws the list on its first frame.
+
+The mirror is stamped with a digest of field numbers, names and kinds. A
+mismatch throws the whole mirror away rather than reinterpreting it: an old
+shape read back as the current one is a screen that is wrong with nothing having
+failed.
+
+### Writes go the other way for the same reason
+
+A write's **answer is the row**, so it goes into the store and everything drawing
+that row is immediately correct — with no round trip and no invalidation rule.
+
+What an answer cannot say is that a *set* changed, so the lists of whatever
+entity the write touched are re-read — and only the ones currently drawn, since
+an idle query re-reads when it wakes. Judging membership locally instead would
+mean evaluating the server's filter and ordering over a partial copy, which is
+confidently wrong at page boundaries.
+
+`Erase` answers with nothing, so its subject is read out of the **request**.
+
+### And an expiry
+
+`DiskOpts.keep`, seven days by default. Without one, the answer to every
+question the app ever asked stays on disk, and a restored answer is drawn as if
+true for one round trip — so *how stale may this be* needs an answer.
+
+It is measured from **when this side last wrote it**, not from the server's
+`dateUpdated`. Measuring the other way discards rows that have not changed since
+2020 first — that is, the rows that never change.
+
+## 4. What is forced and what is not
+
+**Forced: the store.** Not React. The reactive layer is thirty lines of
+`useSyncExternalStore` in a separate entry point, and any framework with a
+subscribe-and-snapshot primitive can have the same thing.
+
+**The template's defaults are Vite and React**, and they are defaults. The
+boundary is one file.
+
+**Two things are genuine requirements**, whatever you build the page with:
+
+- something that bundles ES modules and understands `import.meta.url`, because
+  the worker is loaded that way
+- COOP/COEP headers if you want the sandbox, for `crossOriginIsolated`
+
+**The generated TypeScript is one plugin.** protobuf-es v2 emits service
+descriptors, and Connect's `createClient` takes them directly, so there is no
+per-service generated file to drift. The domain table is generated too — keeping
+two copies is exactly the drift `pdid` exists to prevent.
+
+## See also
+
+- [guide/client.md](guide/client.md) — how to use the store and the query layer
+- [guide/errors.md](guide/errors.md) — a refusal, from the server to a form field
+- [RUNTIME.md](RUNTIME.md) — the server half

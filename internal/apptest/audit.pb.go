@@ -41,7 +41,8 @@ const (
 //
 // 3 is not payday's. It is left open **for the app**, for a set smaller than a
 // tenant -- a site, a cell, a region -- and payday will not spend it. See
-// `docs/SCHEMA.md` §2.1 for what to put there and how to narrow reads by it.
+// `docs/guide/permissions.md` for what to put there and how reads are narrowed
+// by it.
 //
 // Its own fields are in 8..12, which is where an app's would be. That is not a
 // special rule: `CheckOverlay` derives what payday owns from what payday

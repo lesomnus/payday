@@ -1,377 +1,242 @@
-# 런타임, CLI, 강제
+# The runtime
 
-앱마다 똑같이 쓰이는 것과, 프레임워크가 지키게 하는 것.
-이 문서가 담는 절: §5~§8. 돌아가기: [DESIGN.md](../DESIGN.md)
+What payday is made of, and which of it you get by declaring something rather
+than by writing it.
 
-> 절 번호는 문서를 나누기 전의 것을 그대로 쓴다 — 전역으로 유일하므로 `§7`은
-> 어느 문서에 있든 같은 절을 가리킨다.
+This is the map. The [guides](guide/) are how to use each part; the package
+comments are the detail. What is here is the shape of the whole, and the
+decisions that gave it that shape.
 
-## 4. 선언에서 생성되는 것 — List와 Watch
+- [1. Three kinds of code](#1-three-kinds-of-code)
+- [2. The packages](#2-the-packages)
+- [3. What is generated](#3-what-is-generated)
+- [4. What you write](#4-what-you-write)
+- [5. How each rule is enforced](#5-how-each-rule-is-enforced)
+- [6. Background work](#6-background-work)
+- [7. What payday does not do](#7-what-payday-does-not-do)
 
-`Watch`가 go-app에 방금 들어왔고, `List`는 원래 있었다. 둘 다 CRUD가 아니라서 아무것도
-생성해 주지 않고 손으로 쓰인다. **둘은 같은 기계다** — 그것이 이 절의 요지다.
+## 1. Three kinds of code
 
-### 4.1 List — 셋 중 둘은 이미 일반적이다
+An app is made of three things, and the line between them is one question:
+**does this name `*ent.Client` or `predicate.*`?**
 
-go-app의 두 `List`(`core/holder.go`, `audit/list.go`)를 나란히 놓으면 구조가 같다.
+Those types are generated into your app from your schema. Anything that has to
+say one of their names cannot live in a library, so it is generated too.
+Everything else is a package you import.
 
 ```
-1. db, scope를 얻는다
-2. <E>Narrow(ctx, sc, nil) → 기본 술어          ← 벽 + soft erase
-3. 필터를 OR로 묶는다, FilterLimit로 제한
-4. after 커서를 풀어 entpage.After
-5. 엣지를 eager load
-6. 정렬 + Limit(size+1)
-7. 한 행 잘라내고 응답 조립 + next 인코딩
+payday/…       a library. Knows nothing about your entities
+server/pd/     generated. Knows all of them
+server/core/   yours
 ```
 
-다른 것은 넷뿐이다 — 정렬 방향과 컬럼(Holder는 오름차순, Audit은 내림차순), eager
-load할 엣지, 필터가 무엇을 뜻하는가, 페이지 크기 상수.
+The third is the smallest, and that is the point. What is left for you to write
+is your rules — not the wall, not the trail, not the paging, not the page's
+cache invalidation.
 
-**2·4·5·6·7은 전부 선언 가능하고, 손으로 쓰면 반드시 어긋난다.** 지금도 두 파일이
-같은 80줄을 두 벌 들고 있고, 엔티티가 늘면 벌수가 는다. go-app의 PLAN이 "열세 개
-오버라이드"라고 부른 것과 같은 모양이다.
+## 2. The packages
 
-**3만 도메인이다.** 그런데 go-app의 실제 필터 둘을 보면 이렇다.
+Every one of these has a package comment that is the real documentation. This
+table is for finding the right one.
 
-| | 필터 | 실제로 하는 일 |
-| --- | --- | --- |
-| `HolderFilter{ref}` | `bare.HolderPick(ref)` | 키 또는 유니크 인덱스에 대한 동등 비교 |
-| `AuditFilter{object_id}` | `audit.ObjectIDEQ(k)` | 필드에 대한 동등 비교 |
+### Deciding who and what
 
-**둘 다 기계적이다.** 사람이 필요했던 것이 하나도 없다.
+| | |
+| --- | --- |
+| [`frame`](../frame) | who a request is from. Put in the context once, read by everything that has to decide |
+| [`auth`](../auth) | reads a credential and resolves it to a frame. `Plain`, `MTLS`, `Bearer`, `Seq` — and `Issuer`/`Sessions` as seams with nothing wired |
+| [`gate`](../gate) | what the caller may **do**, as against what they may see. Most of the rule is stated here and enforced in the query |
+| [`audit`](../audit) | the trail. A recorder inside the transaction, and a layer serving the trail's own RPCs |
 
-여기서 go-app의 PLAN과 갈린다. 거기 결론은 "**`List` filters stay hand-written.**
-Filtering is the domain and there is no general answer"였다. 페이징만 일반화하고 필터는
-남긴다는 것. **그 결론을 절반만 받는다** — 위 두 예가 그 반례이기 때문이다. 다만
-표본이 둘이고 둘 다 "가장 단순하게 되는 것"으로 쓰인 것이라는 점은 감안해야 한다.
+### Naming things
 
-그래서 나누는 선은 "필터냐 페이징이냐"가 아니라 **"선언할 수 있느냐"** 로 긋는다.
+| | |
+| --- | --- |
+| [`pdid`](../pdid) | the identifier every row is named by: a UUID carrying one byte that says what kind of thing it names |
+| [`slug`](../slug) | the human-readable form — `@acme/arm-01#robot`. What a person writes; never on the wire |
+| [`header`](../header) | the part of a row that is the same whatever entity it is, read from any of them |
+
+### Serving
+
+| | |
+| --- | --- |
+| [`grpcx`](../grpcx) | what every call goes through: deadlines, recovery, logging, rate limits, and what is closed |
+| [`web`](../web) | the same gRPC server answering Connect and gRPC-Web, for browsers |
+| [`config`](../config) | the blocks every app is configured with, and a loader that fills in any struct |
+| [`spin`](../spin) | background work a layer has, found rather than declared |
+| [`watch`](../watch) | publishes what a call changed, once its transaction committed |
+| [`batch`](../batch) | several writes as one transaction, with the four transport rules re-applied per operation |
+| [`pderr`](../pderr) | the shape of a refusal: which field, and why |
+| [`migrate`](../migrate) | plans and applies versioned migrations, using the atlas packages ent already has |
+| [`version`](../version) | what build is running, read from what the toolchain already stamps |
+| [`pdcmd`](../pdcmd) | the commands every app has, ready to mount on your binary |
+| [`pdtest`](../pdtest) | the half of a test harness that does not know what app it is for |
+
+### And the schema itself
+
+| | |
+| --- | --- |
+| [`schema`](../schema) | payday's own entities, embedded, so an app's copies can be checked against them |
+| [`pdpb`](../pdpb) | the generated Go for `payday.entity` and `BatchService` |
+
+## 3. What is generated
+
+`pd gen` writes these into your app. You do not edit them, and `pd gen --check`
+in CI is what keeps that true.
+
+| | Why it cannot be a library |
+| --- | --- |
+| the messages and ent schema for Tenant, Holder, Audit, Outbox | they come out of the merged proto, with your added fields on them |
+| the domain constants and their registration | they come out of the schema's `(payday.entity).domain` |
+| the `Sink` — minter, wall, recorders | a scope is `predicate.Robot`, which is your type |
+| the `Gate` and `Audit` layers | they overlay `app.Server`, which is generated |
+| the per-entity wall predicates | `tenanted: {via: …}` becomes `predicate.Robot` |
+| `List` and `Watch` — request, response, RPC, implementation | the ent query builder is your type |
+| the batch dispatcher | it has to know every RPC the app has |
+
+### `List` and `Watch` are the same machine
+
+Both were the argument for generating anything at all. Written by hand they come
+out as the same eighty lines per entity: get the scope, narrow it, apply the
+filters, decode the cursor, eager-load the edges, order, take `size+1`, cut one
+off, encode the next cursor.
+
+Four things differ between two hand-written `List`s — the order, the edges to
+load, what the filters mean, the page size — and **only the filters are
+domain**. The rest is declarable, and hand-written copies of it drift as soon as
+there are three.
+
+So they are declared:
 
 ```proto
 option (payday.entity) = {
-  domain: 7
-  tenant: {via: "tenant"}
-  list: {
-    // 마지막은 반드시 키. 아니면 커서가 두 행을 구별하지 못한다.
-    order: [{field: "date_created"}, {field: "id"}]
-    with:  ["tenant"]                      // 함께 읽을 엣지
-    by:    ["ref", "tenant"]               // 무엇으로 거를 수 있나 — 동등 비교만
-    size:  {default: 50, max: 100}
-  }
+  list: {order: [{by: "alias"}, {by: "id"}], size: {max: 100}}
+  watch: {by: [{ref: {}}]}
 };
 ```
 
-플러그인이 요청·응답 메시지와 RPC와 구현을 함께 찍는다. **선언할 수 없는 필터를 원하면
-RPC를 손으로 쓴다** — 이미 이 저장소의 교리다("an app that wants a caller to be able to
-do something writes the RPC that means it").
-
-#### 생성기가 거절해야 하는 것
-
-`List`는 **요청이 데이터베이스를 얼마나 읽을지를 정하는 자리**다. 생성한다는 것은 비용을
-생성한다는 뜻이므로, 선언이 싸다고 실행이 싼 것은 아니다. 그래서 검사가 강제의 핵심이다.
-
-- **`order`의 마지막이 키가 아니면 실패.** 커서가 동률인 두 행을 구별하지 못해 페이지
-  경계에서 행이 새거나 중복된다. 지금은 두 파일의 주석이 각각 이 이유를 적어 두고 있고,
-  주석은 강제가 아니다.
-- **`order`를 덮는 인덱스가 없으면 실패.** 이것이 가장 값어치 있는 검사다. go-app의
-  `audit.proto`는 `trail` 인덱스를 손으로 선언해 두고 주석에 "없으면 끝없이 자라는 그
-  테이블을 통째로 훑고 정렬한다"라고 적었다 — 다음 사람이 그 주석을 읽는다는 보장은
-  없다. 생성기는 인덱스 선언을 이미 보고 있으므로 확인할 수 있다.
-- **`by`의 필드가 인덱스에 없으면 경고**(실패는 과하다 — 작은 테이블도 있다).
-- `size.max`가 없으면 실패. 상한 없는 페이지는 상한 없는 응답이다.
-
-### 4.2 Watch — List 위에 선다
-
-`server/watch`가 지금 하는 일과, `Watch` RPC가 아직 없다는 것을 나누어 본다.
-
-**기계장치는 거의 그대로 흡수된다.** `Event`, `Watch`, `Signal()`, `Interceptor`,
-`changes`, `next` — 앱 타입을 부르는 곳이 `Event.Actor *go_app.Holder` 하나뿐이고, 그것은
-§2에서 이미 `proto.Message`가 되기로 했다. `next`의 `c.Key.(uuid.UUID)`도 §3에서 키가
-언제나 UUID이므로 안전해졌다.
-
-걸리는 것 하나: `bare.Change`가 앱에 생성된다. 그런데 그 안에는
-`{Method, By string; Key any; Patch *patchpb.Patch}` — **앱 타입이 하나도 없다.** 전체가
-생성되는 파일에 얹혀 있어서 생성될 뿐이다. 이것을 `protoc-gen-orm-ent/runtime`으로
-옮기면 `payday/watch`가 통째로 앱-무지해진다. `Recorder`는 `bare.Server`를 받으므로 남고,
-앱에는 다섯 줄짜리 어댑터만 생성된다. §3.4와 같은 성격의 상류 변경이다.
-
-**`Watch` RPC는 `List`와 같은 기계다.** `next`가 답하는 것은 "무엇이 바뀌었나"의 키 집합이고,
-그 키로 행을 다시 읽는 것이 바로 `List`의 2·5·6이다. 그래서 §4.1을 생성하면 `Watch`는
-거기에 깨우는 원천 하나를 붙인 것이 된다.
-
-```proto
-option (payday.entity) = {
-  ...
-  list:  { ... }
-  watch: {}     // list 없이 watch만 선언하면 생성 실패
-};
-```
-
-```
-rpc Watch(RobotWatchRequest) returns (stream RobotWatchResponse);
-```
-
-**델타가 아니라 상태를 보낸다.** `watch.go`의 주석이 이유를 적어 두었고 옳다 — 한 행이
-세 번 바뀌었어도 읽을 행은 하나이고 읽으면 마지막 상태가 나오므로, **밀린 스트림이 더
-싸진다.** 델타 스트림은 반대로 밀릴수록 비싸진다.
-
-#### 응답의 모양 — 묘비는 없다
-
-지워진 행에 보낼 상태가 없다는 문제는 **필드를 더해서 풀지 않는다.** 무엇이 그 행을
-마지막으로 건드렸는지를 함께 보내면, 값이 비었다는 것만으로 충분하다. 지우는 RPC가
-`Erase`가 아니라 `Deactivate`여도 마찬가지다 — 호출자는 API 문서를 읽고 그 이름이 무슨
-뜻인지 아는 사람이다.
-
-그리고 이 모양은 `next`가 **이미 돌려주는 것**이다. `map[uuid.UUID]string`, 키에서
-그 키를 마지막으로 건드린 메서드로.
-
-```proto
-message RobotWatchResponse {
-  repeated RobotChange changes = 1;
-}
-
-message RobotChange {
-  // 이 행을 마지막으로 건드린 RPC. 여러 번 바뀌었으면 마지막 것.
-  string method = 1;
-
-  // 지금 상태. 비어 있으면 더 이상 당신에게 보이지 않는다는 뜻이다.
-  Robot value = 2;
-}
-```
-
-빈 값의 뜻을 **"지워졌다"가 아니라 "더 이상 보이지 않는다"** 로 적는 것이 중요하다. 행이
-시야에서 사라지는 길은 넷이다 — 진짜 지워졌거나, soft erase되었거나, 다른 테넌트로
-옮겨져 벽 너머로 갔거나, 필터에 더 이상 맞지 않거나. 넷 다 값이 비고, **어느 것인지는
-`method`가 말한다.** 묘비 필드는 그중 하나만 표현했을 것이므로 없는 편이 정확하다.
-
-#### 스냅샷 — 필터 없는 Watch는 거절한다
-
-첫 스냅샷이 무한할 수 있는 문제는 **필터를 필수로 만들어서** 막는다. 다만 필터가
-있어도 한 테넌트 전체처럼 큰 답은 나올 수 있으므로, 스냅샷은 `list.size.max`씩
-**여러 메시지로 흘려보낸다.** 스트림이므로 커서가 필요 없다.
-
-그리고 스냅샷을 원치 않는다고 말할 수 있어야 한다.
-
-```proto
-message RobotWatchRequest {
-  repeated RobotFilter filters = 1;   // 비면 InvalidArgument
-  RobotSelect select = 2;
-
-  // 지금 있는 것들을 먼저 받지 않고, 앞으로 바뀌는 것만 받는다.
-  bool skip_snapshot = 3;
-}
-```
-
-이름이 `skip_snapshot`이고 기본값이 거짓인 것은 규율이다(go-app `todo.md` #4) —
-포인터를 쓰지 않고 기본값이 안전한 쪽이 되도록 이름을 정한다. 지금 상태를 모르는
-구독자는 무언가 바뀔 때까지 계속 틀린 상태를 들고 있으므로, 스냅샷을 보내는 쪽이
-안전한 기본값이다.
-
-**구독을 스냅샷보다 먼저 연다.** 반대로 하면 그 사이에 일어난 변경을 잃는다. 스냅샷을
-읽는 도중 도착한 이벤트는 구독 채널에 쌓였다가 스냅샷 뒤에 이어지고, 같은 행이 두 번
-나가더라도 **뒤엣것이 최신이므로 해가 없다.** 상태를 보내기 때문에 공짜로 얻는
-성질이고, 델타 스트림이었다면 여기서 순서 문제를 풀어야 했다.
-
-#### 큰 N은 우리 문제가 아니다 — 갈아 끼울 수 있게만 한다
-
-구독자가 늘면 쓰기 한 번에 재조회가 그만큼 는다. 그 규모의 앱은 이미 여러 replica로
-돌고 있을 것이고, 그러면 **replica A에 붙은 구독자가 replica B의 쓰기를 봐야 하므로**
-어차피 외부 메시지 큐가 필요하다. 그 시점에 N개 깨우기는 브로커의 문제가 된다.
-
-그러니 payday가 할 일은 **주입할 수 있게 두는 것**뿐이다. `signals.Signal[Event]`가 그
-이음매이고, `gate.Policy`나 `grpcx.Limiter`와 같은 자리다 — 기본 구현을 주되 그것이
-정책이 아니라 기본값이라는 것을 분명히 한다.
-
-따라오는 것 둘:
-
-- **`Event`가 직렬화 가능해야 한다.** 프로세스 안에서만 돌 때는 `Change.Key any`로
-  충분하지만 브로커를 건너려면 와이어 형식이 필요하다. §3에서 키가 언제나 UUID가
-  되었으므로 `Event`의 proto 표현을 정의할 수 있다. 이것을 처음부터 정해 두는 편이
-  낫다 — 나중에 넣으면 `Event`를 쓰는 모든 구독자가 바뀐다.
-- **기본값이 조용히 틀린다.** 프로세스 안 signal은 replica가 하나일 때만 맞고, 둘이
-  되는 순간 구독자는 절반을 못 보면서 **아무 오류도 보지 못한다.** 그래서 설정에서
-  브로커를 **명시하게** 한다 — `watch: {broker: memory}`라고 적게 만들면 단일
-  프로세스라는 것이 결정이 되고, 빠뜨렸을 때 조용히 틀리는 일이 없어진다(§7).
-
-#### outbox — 이건 결정할 것이 아니었다, 하나 빼고
-
-넷째로 적었던 "outbox가 아니다"는 질문이 아니라 경고였다. 결정할 것처럼 적은 것은
-잘못이다.
-
-다만 위의 브로커 주입을 받아들이면 **진짜 결정이 하나 생긴다.** 브로커를 붙여도 이
-구멍은 메워지지 않기 때문이다 — 커밋과 발행 사이에 프로세스가 죽으면 Kafka에 넣기
-전이므로 이벤트는 그대로 사라진다. 메우는 방법은 하나뿐이다: **같은 트랜잭션 안에서
-행으로 쓰고, 다른 것이 그것을 읽어 발행한다.**
-
-| | 무엇 | 비용 |
-| --- | --- | --- |
-| **A. 안 한다** | 최선을 다하되 잃을 수 있다고 문서에 크게 적는다 | 없음. 잃는다 |
-| **B. outbox 엔티티** | 트랜잭션 안에서 행을 쓰는 레코더 + 그것을 비우는 `Spin` 루프 | 엔티티 하나와 루프 하나 |
-
-**B는 payday에서 유난히 싸다.** 필요한 조각이 이미 전부 결정되어 있다 — 레코더는 여러
-개 달 수 있고(go-app Phase 0.4), 트랜잭션 안에서 행을 쓰는 것은 `Audit`이 이미 하는
-일이고, 비우는 루프는 `Spin`(§8)이다. 그리고 결정적으로, **보내는 것이 델타가 아니라
-상태이므로 at-least-once가 그대로 맞는다** — 같은 행을 두 번 보내는 것은 두 번째가
-최신인 것 말고 아무 뜻도 없다. 델타였다면 중복 제거를 설계해야 했다.
-
-**A로 시작하고 B를 순서에 적어 둔다**(§13). 지금 B를 하지 않는 이유는 비싸서가 아니라,
-브로커 주입과 `Spin`이 먼저 서야 얹을 자리가 생기기 때문이다.
-
-### 4.3 그래서 `entity` 옵션은
-
-```proto
-message Entity {
-  uint32 domain = 1;                              // §3.2
-  oneof tenancy { Tenanted tenant = 2; Global global = 3; }
-  string name = 4;                                // §3.6, slug의 `#` 뒤
-
-  List  list  = 5;                                // 없으면 List RPC를 안 낸다
-  Watch watch = 6;                                // list가 없으면 생성 실패
-}
-```
-
-선언 하나에서 나오는 것: 도메인 상수와 등록(§3.2), slug 이름(§3.6), 벽 술어(§2),
-`List` 요청·응답·RPC·구현, `Watch` RPC와 구현. **엔티티를 더할 때 손으로 쓰는 것은
-proto 메시지와 이 옵션뿐이다.**
-
-## 5. 런타임 패키지 구성
-
-§2 덕분에 분류가 단순해졌다. 남는 기준은 **`*ent.Client`나 `predicate.*`를 이름으로
-부르는가** 하나뿐이다.
-
-### payday 모듈에 산다
-
-| 출처 | payday | 규모 | 비고 |
-| --- | --- | --- | --- |
-| (신규) | `payday/pdid` | — | §3 |
-| `internal/grpcx/*` | `payday/grpcx` | ~900줄 | 앱 이름조차 안 나온다. 가장 순수한 후보 |
-| `internal/migrate/*` | `payday/migrate` | ~300줄 | atlas plan/apply/pending |
-| `cmd/config/*` | `payday/config` | ~830줄 | 리플렉션 환경변수 바인딩, `mkot.ExpandEnv`, 드라이버 레지스트리, TLS/keepalive/limit |
-| `cmd/version/*` | `payday/version` | ~40줄 | `debug.ReadBuildInfo`로 바꾸면 셸 스크립트가 사라짐 |
-| `server/core/alias.go` + oasys `slug/*` | `payday/slug` | ~250줄 | 별칭 문법·정규화 + `@tenant/alias#domain` 파싱·조립 (§3.6) |
-| `server/frame/*` | `payday/frame` | ~350줄 | **제네릭 없이.** 두 개의 `pdid.Id`와 `proto.Message`로 말한다 (§2) |
-| `server/auth/*` | `payday/auth` | ~700줄 | `Plain`/`MTLS`/`Bearer`/`Seq`/인터셉터. `Resolver`는 앱이 생성된 서버로 구현 |
-| `server/gate/*` | `payday/gate` | ~500줄 | `Policy`, `Call`, `ByTenant`, `Interceptor`, 그리고 Tenant/Holder에 대한 규칙 함수들 (§2) |
-| `server/audit/*` | `payday/audit` | ~350줄 | `Recorder` 로직, 거절할 RPC 목록 (§2) |
-| `server/watch/*` | `payday/watch` | ~230줄 | `Event`, `Signal`, `Interceptor`, `next`. `bare.Change`가 상류 런타임으로 옮겨지면 통째로 앱-무지 (§4.2) |
-| 두 `List`의 공통부 | `payday/entlist` | ~120줄 | 커서·크기·`size+1`·응답 조립. 생성된 `List`가 부른다 (§4.1) |
-| `internal/ox/*` 껍데기 | `payday/pdtest` | ~200줄 | `X`, memdb, bufconn, 테스트 로그 주입 |
-
-### 앱에 **생성**된다
-
-`*ent.Client`나 `predicate.*`를 부르는 것들. payday 플러그인이 찍고, 찍힌 코드는 payday
-런타임을 부른다.
-
-| 무엇 | 왜 생성인가 |
-| --- | --- | 
-| Tenant/Holder/Audit의 메시지·ent 스키마·`bare` 서버 | 병합된 proto에서 나온다. 앱이 더한 필드가 함께 붙는다 (§2) |
-| 도메인 상수와 등록 (`domain.g.go`) | proto 옵션에서 나온다 |
-| **`gate` 레이어** | `go_app.Server`가 앱에 생성되는 인터페이스라 오버레이가 payday에 못 산다 (§2) |
-| **`audit` 레이어** | 같은 이유 |
-| **엔티티별 벽 술어** | `predicate.Robot`이 앱의 타입. `tenant: {via: ...}` 선언에서 나온다 |
-| **`List`/`Watch`의 요청·응답·RPC·구현** | ent 쿼리 빌더가 앱의 타입. `list:`/`watch:` 선언에서 나온다 (§4) |
-| watch 레코더 어댑터 | `bare.Recorder`가 `bare.Server`를 받는다. 다섯 줄 |
-| 테스트 하네스의 스택 배선 | 앱의 레이어 구성을 안다 |
-
-### 앱이 손으로 쓴다 — 그리고 써야 한다
-
-레이어는 **`core` 하나로 줄었다.** 남는 것은 이렇다.
-
-- **도메인 규칙** — 별칭 정규화 정책, 필터 상한, 연쇄 삭제.
-- **자기 엔티티에 대한 인가** — payday의 `gate`는 Tenant/Holder에 대한 규칙과 벽까지다.
-  "관리자만 Robot을 지울 수 있다" 같은 것은 `core`나 앞에 세운 자기 레이어, 또는 주입한
-  `gate.Policy`로 간다. **생성된 `gate`는 편집하지 않는다.**
-- **`List`의 필터** — 페이징만 런타임(`entpage`).
-- **`serve`의 배선.** 가장 중요하다. 스택을 쌓는 열 줄, 벽 있는 서버와 없는 서버를
-  따로 만드는 이유, 인터셉터의 순서. 이것이 `pd.Serve(cfg)` 한 줄이 되는 순간
-  payday는 흔한 프레임워크가 된다. **배선은 보이는 곳에 두고, 부품만 런타임이 준다.**
-
-## 6. CLI
-
-`go.mod`의 `tool` 지시자로 배포한다. 별도 설치가 없고 버전이 고정된다.
-
-```sh
-$ go tool pd gen
-```
-
-| 명령 | 대체하는 것 | 왜 CLI인가 |
-| --- | --- | --- |
-| `pd gen` | 셸 스크립트 셋 | 세 단계의 **순서와 스테이징 디렉터리 처리**가 지금 셸에 있다. 임포트 재작성을 `sed`가 아니라 `go/ast`로 하면 문자열 우연 일치가 사라진다. payday의 스키마를 앱의 것과 함께 생성하는 것도 여기 |
-| `pd gen --check` | CI의 "재생성 후 diff" | 명령이 스스로 판단하면 로컬에서 같은 답이 나온다 |
-| `pd new <module>` | `init.sh`의 `sed` 5회 치환 | 지금 방식은 앱 이름이 우연히 들어간 주석까지 바꾼다 |
-| `pd entity add <Name>` | 없음 | **강제의 손잡이.** proto + 도메인 번호(빈 번호를 골라서) + 오버레이 + `<E>Scope` + 테스트 |
-| ~~`pd layer add <name>`~~ | — | **하지 않는다.** 겨냥한 것은 하나였다: `WithDriver`를 빠뜨리면 트랜잭션을 쓸 때에야 안다. 그런데 `entity add`의 논거는 반복이었고(엔티티는 수십 개, 레이어는 앱당 서넛), **세 번째 레이어를 쓰는 방법은 두 번째를 복사하는 것**이다. 생성기는 자기가 찍은 것만 돕고 복사본은 못 돕는다. 그래서 `doctor`가 찾는 쪽으로 갔다 — 아래 5번 |
-| `pd doctor` | 없음 | 지금 넷을 본다: 도구와 buf 의존이 있는가, 오버레이가 없는 엔티티를 늘이지 않는가, **모든 레이어가 `Binder`인가**. 엔티티의 `Scope`와 도메인 충돌은 여기가 아니라 **생성 실패**이고(7절 1·2·4), `*.g.go`의 최신 여부는 `pd gen --check`다 — 생성해 보지 않고는 알 수 없다 |
-| `pd config env` | 없음 | `EnvNames`가 이미 한다. 환경변수 전체 목록 → `.env.example`, CI에서 문서와 대조 |
-| `pd config schema` | 없음 | 설정의 JSON Schema. 리플렉션이 이미 있어 거의 공짜이고 에디터가 설정 파일을 자동완성한다 |
-| `pd dev` | `docker compose` 수동 조합 | db 기동 → `migrate apply` → `serve` |
-| `pd sandbox` | 없음 | `wasm/main.go`를 빌드해 페이지와 함께 띄우고, 새로고침마다 다시 빌드한다 (§9). `grpc-dgram`의 `browser-wasm` 예제가 이미 그 모양이다 |
-
-`migrate plan`/`apply`는 **앱 바이너리에 남는다.** ent 스키마를 링크해야 하고, 배포는
-서빙할 바로 그 이미지로 마이그레이션을 돌려야 한다.
-
-## 7. 강제할 것
-
-수단의 강도는 **생성 실패 > 컴파일 오류 > 생성기가 대신 씀 > 테스트 > 린트 > 문서** 순.
-
-| # | 무엇 | 수단 | 비용 |
-| --- | --- | --- | --- |
-| 1 | 모든 엔티티가 도메인을 선언한다 | **생성 실패** (§3.2) | 없음. 가장 싼 자리에서 터진다 |
-| 2 | 도메인 번호는 겹치지 않는다 | **생성 실패** | 없음 |
-| 2b | 오버레이는 payday 소유 필드 번호를 건드리지 않는다 | **생성 실패** — 추가만 허용, override 불가 (§2) | 없음. 막지 않으면 `alias`가 조용히 덮인다 |
-| 3 | ID는 도메인 태그된 v8 UUID | `Minter` 훅 — 쓰는 쪽과 읽는 쪽 모두 | 생성기 변경 하나, payday를 모르는 |
-| 4 | 모든 엔티티가 벽 안인지 밖인지 말한다 | **생성 실패** — `tenant: {via:...}` 또는 `global: {}` 둘 중 하나 (§2) | 없음. go-app은 기본 구현을 임베드시켜 둬서 엔티티를 더하면 말없이 벽 밖으로 나가고, 주석에 "이게 거꾸로다"라고 적어 두었다. 선언으로 옮기면 컴파일도 안 깨고 새지도 않는다 |
-| 4b | `list.order`의 마지막은 키다 | **생성 실패** (§4.1) | 없음. 지금은 두 파일의 주석이 각각 이유를 적고 있을 뿐이다 |
-| 4c | `list.order`를 덮는 인덱스가 있다 | **생성 실패** (§4.1) | 없음. 생성기가 인덱스 선언을 이미 보고 있다. 없으면 끝없이 자라는 테이블을 훑고 정렬한다 |
-| 4d | `list.size.max`가 있다 | **생성 실패** | 없음. 상한 없는 페이지는 상한 없는 응답이다 |
-| 4e | 필터 없는 `Watch`는 거절 | 생성된 구현이 `InvalidArgument` (§4.2) | 없음. 스냅샷이 무한해지는 유일한 길 |
-| 4f | watch 브로커를 설정에 명시한다 | `watch.broker`를 필수로 — `memory`라고 적게 만든다 | 없음. **replica가 둘이 되면 프로세스 안 signal은 절반을 잃고 오류를 내지 않는다.** 조용히 틀리는 것만 강제한다는 기준에 정확히 걸린다 |
-| 4k | 한 앱의 모든 엔티티가 하나의 `go_package`를 쓴다 | `pd gen`이 거절 (§2 전제 확인) | 없음. 어기면 ent 스키마가 갈라져 엣지가 컴파일되지 않는다 |
-| 4i | 생성물과 런타임의 payday 버전이 같다 | **완료.** `pd gen`이 `server/pd/pd.g.go`에 `const Payday`를 박고 `NewSink`가 `version.Same`으로 거절 (§12.1) | 없음. 어긋나면 조용히 틀린다 — 컴파일되고, 링크되고, 옛 payday가 쓴 벽 위에서 서빙한다. 체크아웃·워크스페이스·`replace`는 **말하지 않는다**: 그것까지 거절하면 개발 빌드가 전부 막힌다 |
-| 4j | 서버는 스키마와 다른 데이터베이스 위에서 뜨지 않는다 | **완료.** `migrate.Check`가 `serve` 앞에서 데이터베이스를 들여다보고 거절 (§12.1) | 없음. 업그레이드 후 마이그레이션을 빠뜨리는 것이 기본 실수가 된다. "같다"가 아니라 **"모자라지 않다"**를 본다 — 모르는 컬럼·인덱스는 놔둔다. `db.migrate: true`는 그 확인 대신 `Schema.Create`를 돌린다 |
-| 4h | `watch:`를 선언한 엔티티는 버전 필드(`version: {}`)를 갖는다 | **생성 실패** (§10.5) | 없음. 없으면 로컬 스토어가 눈감고 덮어써서 **늦게 도착한 옛 상태가 새 상태를 지운다.** 조용히 틀리는 전형 |
-| 4g | 런타임이 파일 시스템·리스너·네트워크를 전제하지 않는다 | CI에서 `GOOS=js GOARCH=wasm go build ./...` (§9) | 없음. 한 줄이고, 누군가 런타임에 `os.ReadFile`을 넣는 날 깨진다 |
-| 5 | 모든 레이어가 `enttx.Binder`다 | **완료.** `pd doctor`가 찾는다 — `Overlay`를 임베드한 구조체 중 `WithDriver`가 없는 것. 그리고 fix가 `var _ enttx.Binder[…]` 줄을 같이 주므로, 한 번 찾은 뒤로는 시그니처가 흔들리는 것이 컴파일 오류다 | 없음 |
-| 6 | 프레임 없는 요청은 거절된다 | 우회는 인터셉터 없는 서버 인스턴스를 **건네받는 것** | 없음. go-app이 "슈퍼유저는 실수였다"에 도달한 결론 |
-| 7 | 일반 쓰기(`Patch`/`Apply`)는 기본으로 닫힌다 | 레이어가 아니라 **트랜스포트**에서 | 없음. 레이어에서 닫으면 서버 자신도 못 쓴다 |
-| 8 | 헬스는 liveness/readiness 둘 | 런타임이 두 이름을 소유. 앱은 readiness 검사만 등록 | 없음 |
-| 9 | 데드라인/패닉복구/로그/추적은 항상 켜짐 | `grpcx.ServerOptions`가 기본. 빼려면 명시 | 없음 |
-| 10 | 요율 제한의 키는 테넌트 | 기본 제공, 교체 가능 | 없음 |
-| 11 | 설정 필드는 전부 환경변수 이름을 가진다 | 리플렉션 + `config env`를 CI에 | 없음 |
-| — | ~~레이어 순서~~ | ~~`Builder`에 순위~~ | **권하지 않는다.** 스택의 값어치는 아무 미들웨어나 끼울 수 있다는 것이다. 순위를 넣으면 앱이 자기 레이어를 어디 둘지 프레임워크에게 물어야 한다. `doctor`의 경고면 족하다 |
-
-1·2·4가 go-app과 실제로 갈리는 항목이다. 나머지는 go-app이 이미 도달한 결론이거나 자리를
-옮기는 것이다.
-
-**강제할 것을 고르는 기준은 하나여야 한다: 빠뜨렸을 때 조용히 틀리는가.** 조용히 틀리는
-것만 강제한다. 요란하게 틀리는 것은 그냥 틀리게 두면 된다.
-
-## 8. 레이어 라이프사이클
-
-레이어가 백그라운드 루프를 갖고 싶은 요구가 있다(GC 등). oasys는 `Server` 인터페이스에
-`Spin(ctx)`을 올려 두고 재귀로 내려간다.
-
-**payday는 그렇게 하지 않는다.** `Server`는 생성되는 인터페이스다. 거기에 메서드를
-올리면 생성기가 그것을 찍어야 하고, 모든 `Overlay`·`StaticServer`·`Unimplemented`가
-따라 바뀐다. go-app이 도달한 원칙 — capability is found, not declared — 이 그대로 적용된다.
-
-```go
-// payday/spin
-type Spinner interface {
-    Spin(ctx context.Context) error
-}
-```
-
-스택을 걷는 `Iter`는 생성기가 이미 낸다. 그것을 돌며 `Spinner`를 구현한 레이어만
-`errgroup`에 올린다. 레이어는 쓰고 싶을 때만 `Spin`을 쓰고, 안 쓰는 레이어는 아무것도
-하지 않는다 — 빈 `Spin`을 상속시키는 방식과 달리 **"이 레이어에 백그라운드 작업이
-있는가"가 코드에 보인다.**
-
-남는 결정 하나: `Spin`이 죽으면 프로세스가 죽는가. **죽어야 한다.** 조용히 멈춘 GC
-루프는 며칠 뒤에 발견된다. readiness에 붙일지는 별개 — 붙이면 GC 하나가 로드밸런서에서
-전체를 빼므로 기본은 붙이지 않는다.
-
-발행/구독(watch)도 같은 자리다. 레코더가 둘 이상 허용되므로 발행자는 레코더로 등록되고
-소비 루프는 `Spin`으로 돈다.
+See [the schema guide](guide/schema.md#5-list--the-page).
 
+## 4. What you write
+
+Four things, and the last one matters most.
+
+**Domain rules.** Alias normalisation, filter limits, cascade behaviour —
+whatever your app means that no schema can state.
+
+**Authorization for your own entities.** payday's `gate` covers the wall and the
+rules about Tenant and Holder. "Only an admin may erase a Robot" is yours: your
+own layer, or a `gate.Policy` you inject. The generated `Gate` is not edited.
+
+**The filters in your `List`s.** Paging is the runtime's.
+
+**The wiring.** Ten lines in `cmd/serve.go` that stack the layers, build both
+server instances, and order the interceptors.
+
+That last one is deliberately not `pd.Serve(cfg)`. The order of the stack and
+the existence of an ungated instance are the two most load-bearing facts about
+an app, and a framework that supplied them would be hiding the thing a reader
+most needs to see. **The wiring stays where it can be read; the runtime supplies
+the parts.**
+
+## 5. How each rule is enforced
+
+The strength of a mechanism, strongest first:
+
+**generation failure > compile error > the generator writes it > a check >
+a test > a lint > a sentence in a document.**
+
+Everything payday enforces is placed as far left as it goes.
+
+| What | How |
+| --- | --- |
+| every entity declares a domain | generation failure |
+| domain numbers do not collide | generation failure |
+| an overlay does not touch a payday-owned field number | generation failure — adding only |
+| every entity says whether it is behind the wall | generation failure. Saying nothing means `tenanted:`, which is the loud way to be wrong |
+| the last key in `list.order` is the row key | generation failure |
+| an index covers `list.order` | generation failure |
+| `list.size.max` is set | generation failure |
+| a `watch:` entity has a version field | generation failure |
+| one `go_package` per app | `pd gen` refuses |
+| identifiers are domain-tagged UUIDs | the minter, on both the write and the read path |
+| a `Watch` with no filter | the generated implementation answers `InvalidArgument` |
+| the watch broker is named | required config field — an unnamed one is right for one replica and silently wrong for two |
+| generated code and linked payday agree | `version.Same`, refused at `NewSink` |
+| the database is not behind the schema | `migrate.Check`, before serving |
+| the runtime assumes no file system | CI builds `GOOS=js GOARCH=wasm` |
+| every layer is an `enttx.Binder` | `pd doctor` finds one that is not |
+| a request with no frame | refused |
+| `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
+| the wire does not break | `buf breaking` in CI, against the published label and the branch |
+
+Two of these deserve their reasoning spelled out.
+
+**Saying nothing means walled.** An entity that forgot to declare its tenancy is
+behind the wall. Get that wrong and every row vanishes and you know in minutes;
+get the other default wrong and every row is visible to everybody and nobody
+finds out. **An assumption should fail loudly, and the dangerous answer should
+be the one somebody had to write down.**
+
+**No superuser.** Going around the wall is being handed a server instance that
+never had one, which is a line of wiring a reader can find — not a claim that
+opens things up wherever it happens to be checked.
+
+### And what is deliberately *not* enforced
+
+**Layer order.** A stack's value is that you can put anything anywhere. Ranking
+the layers would mean asking the framework where your own layer goes. A warning
+from `doctor` is enough.
+
+## 6. Background work
+
+A layer that has something to do on a clock answers `spin.Spinner`, and
+`spin.Run` finds the ones that do.
+
+The alternative was `Spin(ctx)` on the generated `Server` interface, walked
+recursively. That interface is generated, so a method on it is one the generator
+emits and every `Overlay`, `StaticServer` and `UnimplementedServer` carries —
+and then every layer inherits an empty `Spin` saying "nothing here", which is
+exactly the fact worth being able to see.
+
+**Capability is found, not declared.**
+
+A `Spin` that returns kills the process: a sweep loop that stopped quietly is
+found days later. Whether it also fails readiness is separate, and the default
+is no — one dead loop should not pull the whole replica out of the load
+balancer.
+
+## 7. What payday does not do
+
+Some of these are gaps and some are decisions. The difference is written down
+because a reader cannot tell them apart.
+
+**Decided against:**
+
+- **Files and blobs.** Not payday's concern. An app that needs them attaches
+  something that does them.
+- **Jobs and schedules.** `spin` is a background loop a layer owns; a job queue
+  is a durable list of work. `spin` makes a place for one to sit and is not one.
+- **A superuser.** See above.
+- **A runtime schema-compatibility probe.** Breaking the wire is a migration and
+  `buf breaking` is what says so, at build time where there is enough
+  information to tell a breaking change from a compatible one.
+
+**Not built, and the reason is written where the seam is:**
+
+- **An external watch broker.** `watch.Broker`, `payday.Outbox` and `pd.Drain`
+  are the place for one; the implementations are `memory` and `none`.
+- **Bidirectional `Watch`.** Multiplexing many subscriptions onto one stream
+  changes the transport and not the fan-out, which is where the cost actually
+  is.
+- **Issuing a credential.** `auth.Issuer` and `auth.Sessions` are seams with a
+  reference implementation. Real login is an HTTP endpoint, which is the app's.
+- **Client trace propagation.** From a click in the browser to a span on the
+  server. Mechanical, since drpc carries metadata, and worth doing.
+
+## See also
+
+- [guide/server.md](guide/server.md) — how to use all of this
+- [SCHEMA.md](SCHEMA.md) — what a declaration is allowed to say
+- [TENANCY.md](TENANCY.md) — the wall, in full
+- [CLIENT.md](CLIENT.md) — the browser half

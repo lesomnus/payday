@@ -1,273 +1,175 @@
-# 테넌시 — 벽, 정책, 그리고 그 사이의 것들
+# Tenancy
 
-이 문서가 담는 것: 벽이 무엇을 결정하고 정책이 무엇을 결정하는가, 본사 admin 같은
-교차 테넌트 권한을 어떻게 구현하는가, 그리고 그것을 **어디에 배포하는가**가 왜 별개의
-결정인가. 돌아가기: [DESIGN.md](../DESIGN.md)
+The model behind the wall: what it is made of, what it cannot express, and the
+decisions an app has to make around it.
 
-## 1. 두 절반
+[The permissions guide](guide/permissions.md) is how to use it. This is why it
+is shaped this way, and it is the document to read before designing something
+the wall does not obviously cover.
 
-벽은 하나가 아니라 둘이고, 둘을 섞으면 논의가 엉킨다.
+- [1. The wall is two halves](#1-the-wall-is-two-halves)
+- [2. The default is the loud one](#2-the-default-is-the-loud-one)
+- [3. How many deployments](#3-how-many-deployments)
+- [4. Public rows are a projection, not a policy](#4-public-rows-are-a-projection-not-a-policy)
+- [5. Adding something to the wall](#5-adding-something-to-the-wall)
+- [6. When a credential names a tenant](#6-when-a-credential-names-a-tenant)
 
-| | 무엇을 아나 | 어디서 오나 | 왜 거기 |
+## 1. The wall is two halves
+
+Mixing them up is what makes tenancy discussions go in circles.
+
+| | What it knows | Where it comes from | Why there |
 | --- | --- | --- | --- |
-| **경로** | 이 엔티티에서 테넌트에 **어떻게** 닿나 — `robot_tenant` 컬럼, `tenant_id` 컬럼, `joint→robot→tenant` 2홉 | 스키마 → **생성** | 스키마의 사실이지 운영자가 고르는 것이 아니다 |
-| **집합** | 이 호출자가 **어느** 테넌트를 보나 | `gate.Policy` → **주입** | 조직의 결정이고 프레임워크가 알 수 없다 |
+| **The path** | **how** this entity reaches a tenant — a `tenant` edge, a `tenant_id` column, two hops through `joint → robot → tenant` | the schema, **generated** | a fact about the schema, not something an operator picks |
+| **The set** | **which** tenants this caller sees | `gate.Policy`, **injected** | an organisational decision a framework cannot know |
 
-`frame.Narrow(ctx)`가 집합을 주고, 생성된 `wall.<E>Scope(ctx)`가 경로를 써서 그것을
-술어로 바꾼다.
+`frame.Narrow(ctx)` answers the set. The generated `<E>Scope(ctx)` uses the path
+to turn it into a predicate.
 
-### 경로를 정책으로 옮길 수 없다
+### The path cannot move into policy
 
-술어를 돌려주려면 `predicate.Robot`이어야 하는데, 그건 앱마다 엔티티마다 생성되는
-타입이다. **술어를 돌려주는 "정책"이 곧 `bare.Scope`이고**, 그것은 이미 엔티티당
-메서드 하나짜리 인터페이스다. 즉 생성된 세계 밖으로 나갈 수 없고, 고를 수 있는 것은
-**그 구현을 손으로 쓸지 생성할지**뿐이다.
+To return a predicate you have to return a `predicate.Robot`, and that type is
+generated per app per entity. **A "policy" that returns predicates is exactly
+`bare.Scope`** — which is already an interface with one method per entity. There
+is no escaping the generated world here; the only real choice is whether that
+implementation is written or generated.
 
-### 그리고 벽은 이미 주입된다
+### And the wall is already injected
 
-`pd.Wall()`은 값이고 `bare.WithScope(...)`에 건네진다. 앱이 다른 것을 건넬 수 있다.
-생성되는 것은 **기본 구현**이고, 생성하는 이유는 하나다 — 손으로 쓰면 다음 달에
-추가하는 엔티티에 메서드가 없고, 그 엔티티는 벽 밖에 있고, **아무것도 안 깨진다.**
-`bare.Unscoped`의 주석이 그 유출을 그대로 서술한다:
+`pd.Wall()` is a value handed to `bare.WithScope(...)`. An app can hand
+something else. What is generated is the **default** implementation, and the
+reason to generate it is one thing: written by hand, the entity you add next
+month has no method, so it falls outside the wall, and **nothing breaks**.
 
-> Embed it and write out the entities there is something to say about; **the rest go
-> on seeing every row, and so does an entity added to the schema afterwards.**
+`bare.Unscoped` describes that leak in its own comment:
 
-## 2. 아무 말도 안 하면 벽 뒤다
+> Embed it and write out the entities there is something to say about; **the rest
+> go on seeing every row, and so does an entity added to the schema afterwards.**
 
-`payday.entity`에 테넌시를 안 쓰면 `tenanted: {via: "tenant"}`다. 기본값이 있는 이유가
-아니라 **왜 이쪽인가**가 요점이다.
+## 2. The default is the loud one
 
-틀렸을 때 두 방향이 같지 않다. 벽을 잘못 가정하면 **모든 행이 사라지고** 화면이 비니까
-몇 분 만에 안다. 안 가정하면 **모두에게 보이고** 아무도 모른다 — 아무것도 안 깨지고
-테스트도 안 빨개지고, 첫 신호는 남의 테넌트 행을 읽는 호출자다.
+An entity that says nothing about its tenancy is `tenanted:` — behind the wall.
 
-그리고 기본값이 **조용히 틀릴 수가 없다**:
+Get that wrong and every row disappears, and you know within minutes. Get the
+other default wrong and every row is visible to everyone, and nobody finds out.
 
-| `tenant` 엣지가 | 결과 |
-| --- | --- |
-| 진짜 Tenant를 가리킨다 | 술어가 맞다 |
-| 딴 곳을 가리킨다 | `checkVia`가 거절 |
-| 없다 | 거절 — 경로가 가정된 것이라고 말한다 |
+**An assumption should fail loudly, and the dangerous answer should be the one
+somebody had to write down.** `global: {}` exists, and it has to be typed.
 
-**위험한 답이 적히는 쪽**이 되는 것이 진짜 이득이다. 벽 밖의 엔티티는 전부 `global: {}`을
-쓰고, 그것을 검색하면 전부 나온다.
+## 3. How many deployments
 
-## 3. 교차 테넌트 권한 — 본사 admin
+Policy is a mechanism. **How many deployments you run is an attack-surface
+decision.** They are not in competition, and conflating them is the usual
+mistake.
 
-`gate.Policy`가 그 자리다. `frame.Everything`의 주석이 이미 그렇게 적혀 있다:
+Take a headquarters admin who should see every tenant:
 
-> It is what a deployment's own work runs as — through a server the wall was never
-> installed on — **or what a policy answers when a deployment has said so.**
-
-```go
-func (p Hq) Where(ctx context.Context, c gate.Call) (frame.Tenants, error) {
-	if c.Tenant == p.Hq {
-		return frame.Everything, nil
-	}
-
-	return frame.Only(c.Tenant), nil
-}
-```
-
-### "본사인데 지금은 고객 X로"가 공짜로 된다
-
-`Tenants.Meet`이 그 일을 한다:
-
-```go
-if t.all {
-	return Only(g.TenantIds()...)   // 전부 볼 수 있는 자의 자격증명이 하나를 지목하면, 하나다
-}
-```
-
-**정책은 "이 행위자가 볼 수 있는 것"을 말하고, 자격증명은 "지금 하고 있는 일"로 좁힌다.**
-본사 관리자가 고객 X 화면에 들어가면 그 세션이 X로 좁혀진 `frame.Grant`를 들고, 벽은
-X만 본다. 실수로 전 고객을 건드릴 수 없다.
-
-### payday의 "슈퍼유저 없음"과 모순되지 않는다
-
-`gate`가 적어둔 문장은 **payday가** 식별자를 잘 알려진 것과 비교하지 않는다는 뜻이다.
-앱의 정책이 하는 것은 **앱 코드에 있어서 읽힌다**. 그게 이음매의 요점이고,
-`frame.Everything`의 주석이 이미 그 두 경로를 다 열거한다.
-
-### `Ungated`는 이 자리가 아니다
-
-`Ungated`는 특권이 아니라 **인스턴스**다 — 배포가 자기 일을 하려고 손에 쥔 것이고,
-벽이 설치된 적이 없다. admin 테넌트는 그 반대다: **행이고, 자격증명이 있고, 네트워크로
-닿는다.**
-
-| | `Ungated` | `Policy.Where` |
-| --- | --- | --- |
-| 전부 본다 | 항상, 예외 없이 | 정책이 그렇다고 할 때만 |
-| **고객 하나로 좁힌다** | **못 한다 — 벽이 없다** | 된다. 다른 모든 읽기와 같은 술어 |
-| 닫힌 쓰기·요율·배치 가드 | 설정이 둘 | 하나 |
-
-두 번째 줄이 결정적이다. "고객 X의 자산 목록"을 `Ungated`로 하면 전부 받아 앱에서
-걸러야 하고, 그게 벽이 막으려던 실수 그대로다 — 한계 뒤의 필터, 그리고 엔티티마다
-기억해야 하는 것.
-
-## 4. 배포를 몇 개 띄우는가는 별개의 결정
-
-정책이 기계이고, **배포 수는 공격 표면 결정**이다. 둘은 충돌하지 않는다.
-
-| | 벽 | 정책 | 닿는 곳 | 공개 표면에 "전부" 경로가 |
+| | Wall | Policy | Reachable from | A "see everything" path in the public binary |
 | --- | --- | --- | --- | --- |
-| A 서버 하나 + 정책 | 켜짐 | 본사=전부 | 인터넷 | **있다** |
-| **B 배포 둘, 둘 다 벽** | 켜짐 | 배포마다 다름 | admin은 사내만 | **없다** |
-| C 배포 둘, admin은 `Ungated` | admin은 꺼짐 | — | admin은 사내만 | 없다, 대신 좁힐 수 없다 |
+| **A** — one server, policy grants all | on | HQ = all | the internet | **yes** |
+| **B** — two deployments, both walled | on | different per deployment | admin is internal-only | **no** |
+| **C** — two deployments, admin uses `Ungated` | off for admin | — | admin is internal-only | no, but nothing can be narrowed either |
 
-**B를 권한다.** A에서는 공개 바이너리 안에 전부를 돌려주는 **코드 경로가 존재한다.**
-B에서는 그 경로가 그 주소에 없다 — 자격증명을 위조해도 없는 코드는 부를 수 없다.
+**B is the one to reach for.** In A, a code path that returns everything
+**exists inside the public binary**; whether it runs depends on a credential
+check being right everywhere it matters. In B that path is not at that address
+at all — a forged credential cannot call code that is not there.
 
-그리고 payday는 이미 그 모양을 갖고 있다. `cmd`와 `wasm`이 같은 부품을 다르게 조립하는
-두 진입점이고, 그 주석이 이유를 말한다:
+payday already has this shape: `cmd` and `wasm` are two entry points that
+assemble the same parts differently, which is the whole reason the wiring is
+left visible in an app rather than hidden behind a `Serve(cfg)`.
 
-> the two assemble the same parts differently — which is the whole reason the wiring
-> is left visible in an app rather than hidden behind a `Serve(cfg)`.
-
-플래그가 아니라 별도 `main`인 이유도 같다: **설정 실수가 공개 서버를 admin으로 바꿀 수
-없다.**
+Two `main`s rather than a flag, for the same reason: **a configuration mistake
+must not be able to turn the public server into the admin one.**
 
 ```go
-// cmd/<app>        gate.Interceptor(nil)        자기 테넌트만. "전부"라는 답이 없다
-// cmd/<app>-admin  gate.Interceptor(app.Hq{…})  그리고 본사가 아닌 자를 거절한다
+// cmd/<app>        gate.Interceptor(nil)          own tenant only. There is no "all" answer
+// cmd/<app>-admin  gate.Interceptor(app.Hq{…})    and it refuses anyone who is not HQ
 ```
 
-그리고 **구조적 주장이 테스트가 된다** — "공개 스택은 본사 자격증명으로도 남의 행을
-주지 않는다"를 단언하는 테스트 하나가 구멍이 없다는 증거다.
+And the structural claim becomes a test: one test asserting that *the public
+stack does not return another tenant's row even to an HQ credential* is evidence
+there is no hole.
 
-### 배포 둘이 끌고 오는 것 셋
+### What two deployments drag in
 
-| | 무엇 | payday가 |
+| | What | payday's answer |
 | --- | --- | --- |
-| `watch.broker` | 프로세스가 둘이니 `memory`는 절반을 못 본다 | **거절한다** — `config.WatchConfig` |
-| 스키마 버전 | 한쪽만 올리면 다른 쪽이 안 뜬다 | **거절한다** — `migrate.Current` |
-| outbox 드레이너 | 둘이 돌면 두 번 발행한다(틀리진 않는다) | 배선의 선택 |
+| `watch.broker` | two processes, so `memory` sees half the writes | **refuses** — `config.WatchConfig` requires a name |
+| schema version | upgrade one and the other will not start | **refuses** — `migrate.Check` |
+| the outbox drainer | two of them publish twice (not wrong, but wasteful) | your wiring's choice |
 
-## 5. 공개 리소스는 정책이 아니라 투영이다
+## 4. Public rows are a projection, not a policy
 
-교차 테넌트로 **행을 공개**하고 싶은 앱이 있다 — 카탈로그, 디렉터리, 공개 등록부.
-`gate.Policy`로는 닿지 않는다.
+Some apps want to publish rows across the wall — a catalogue, a directory, a
+public register. `gate.Policy` cannot reach it, and it is worth being precise
+about why.
 
-| | 무엇을 묻나 | 답의 모양 |
+| | What it asks | Shape of the answer |
 | --- | --- | --- |
-| `Policy.Where` | 이 **호출자**가 어느 테넌트를 보나 | `frame.Tenants` |
-| 공개 리소스 | 이 **행**을 누가 보나 | — |
+| `Policy.Where` | which tenants does this **caller** see | `frame.Tenants` |
+| a public row | who sees this **row** | — |
 
-전치(transpose)다. 정책은 **행을 본 적이 없다.** 얼마나 영리해도 "이 행은 모두에게"를
-말할 수 없다.
+It is a transpose. **The policy has never seen a row.** However clever it gets,
+it cannot say "this one is for everybody".
 
-`global: {}`도 아니다. 그건 주인이 없고 **쓰기도 안 좁힌다.** 공개 카탈로그 항목은
-주인이 있고 그 주인만 고칠 수 있다.
+`global: {}` is not it either: a global entity has no owner and **its writes are
+not narrowed**. A public catalogue entry has an owner, and only that owner may
+change it.
 
-### 요구사항 자체가 답을 가리킨다
+### The requirement points at its own answer
 
-엔티티를 스키마 수준에서 공개로 만들면 **모든 필드가 공개된다.** 자산번호는 공개해도
-되지만 **위치와 관리자는 아니다.** 즉 공개되는 것은 같은 행의 다른 모양이고, 다른
-모양은 다른 메시지고, **다른 RPC**다.
+Making an entity public at the schema level makes **every field** public. The
+asset number can be public; the location and the manager cannot. So what is
+published is a *different shape of the same row* — and a different shape is a
+different message, which is a different RPC.
 
 ```proto
 service CatalogueService {
-  // 공개. 자산번호와 이름만, 그리고 공개로 표시된 행만.
+  // Public. Asset number and name only, and only rows marked public.
   rpc Search(SearchRequest) returns (SearchResponse);
 }
 ```
 
-- 벽 있는 경로에 **구멍이 안 생긴다**
-- 투영이 명시적이라 `location`이 실수로 새지 않는다
-- "이 행이 공개인가"는 앱의 술어이고 앱 코드에 있다
+- the walled path gets no hole in it
+- the projection is explicit, so `location` cannot leak by accident
+- "is this row public" is your predicate, in your code
 
-**마음을 바꿀 조건은 하나다.** 공개 읽기가 비공개 읽기와 **같은 필드, 같은 필터**를
-원한다면 그건 같은 RPC이고, 그때는 스키마 쪽이 맞다.
+**One condition would change this.** If the public read wants the *same fields
+and the same filters* as the private one, then it is the same RPC, and the
+schema-level answer is the right one.
 
-## 6. 벽에 무언가를 더하기
+## 5. Adding something to the wall
 
-앱의 규칙이 벽 **위에** 얹히는 것은 흔하다 — 지역, 발행 여부, 보관 상태.
+The set a caller sees is `gate.Policy`'s to answer, and an app can widen or
+narrow it. What it must not do is reach around the path.
 
-```go
-sink, err := pd.NewSink(db,
-	bare.WithMinter(pd.Minter()),
-	bare.WithScope(bare.Scopes{pd.Wall(), app.OnlyPublished()}),
-)
-```
+The second axis is the supported way to narrow **within** a tenant — an edge to
+a set smaller than a tenant, declared on field 3, with `pd.Grouped(of)` and
+`frame.NarrowSet(ctx, of)`. See
+[the permissions guide](guide/permissions.md#7-a-second-axis-if-you-need-one).
 
-`bare.WithScope`는 **두 번 주면 거절한다.** 잃는 쪽도 몰래 겹치는 쪽도 조용하기
-때문이고, 어느 쪽인지 호출부가 말해주지 않기 때문이다. `bare.Scopes`가 앱이 뜻을
-말하는 자리다.
+A predicate applies to **queries**. `Add` is gated in the generated `Gate` layer
+instead, because there is no row yet to narrow.
 
-그리고 `Scopes`가 **`nil`을 한 곳에서 처리한다.** 스코프는 "안 좁힘"을 nil로 말하므로
-둘을 합치는 것은 `And(a, b)`가 아니라 nil이 아닌 것들의 And이고, 하나도 없으면 nil이다.
-손으로 감싸는 앱마다 엔티티당 그것을 쓰게 되고, 틀리면 "안 좁힘"이 "아무 행도 안 맞음"이
-되거나 그 반대가 된다 — **앞은 알아채고 뒤는 못 알아챈다.**
+## 6. When a credential names a tenant
 
-`bare.WithRecorder`도 같은 규칙이고, 이유도 같다.
+A credential can carry a tenant — an mTLS certificate with two SAN URIs, say.
+That is a **claim to be disagreed with**, never a way to resolve.
 
-## 7. 자격증명이 테넌트를 말할 때
-
-인증서는 이름을 **여럿** 담을 수 있고, 순서가 아니라 도메인 바이트로 구분된다.
+`Identity.TenantId` is read, and then the resolver looks the actor up on its own
+and the two are compared. If they disagree, the call is refused:
 
 ```
-URI:hday:<robot-uuid>                    장기 인증서 — 누가 부르는가
-URI:hday:<robot-uuid>, URI:hday:<tenant-uuid>   단기 — 누가, 그리고 누가 그를 쥐고 있는가
-URI:spiffe://host/@acme/arm-01           이름으로 쓴 같은 것
+this credential names a tenant that does not hold the actor it names
 ```
 
-이게 payday 식별자가 원래 하려던 일이다. 이름이 둘이라 위험한 게 아니라 **어느 쪽이
-무엇인지 말해주는 규칙이 없어서** 위험한 것이고, 그러면 답이 필드 순서로 정해지면서
-양쪽 어디에서도 오류가 안 난다. 도메인 바이트가 그 규칙이다.
+The alternative — using the claimed tenant to scope the lookup — means a
+certificate can pick which tenant it is resolved in, which is the wall answering
+to the caller.
 
-그래서 세는 대신 **분류한다.** 거절되는 것은 한 질문에 두 번 답하는 인증서다.
+## See also
 
-| 담긴 것 | |
-| --- | --- |
-| robot + tenant | 둘 다 읽는다 |
-| robot | 호출자. 테넌트는 말한 적 없음 |
-| robot + robot | 거절 — 어느 쪽이 부르는가 |
-| tenant | 거절 — 테넌트만 말하면 모든 테넌트의 한 행씩을 가리킨다 |
-| `@acme/arm-01` + tenant | 거절 — 테넌트를 두 번 말한다 |
-| robot + cell | 거절 — [아래](#담을-데가-없으면-떨어뜨리지-않고-거절한다) |
-
-### 말한 테넌트는 행과 대조된다
-
-`Identity.TenantId`로 들어오고, **아무도 그걸로 누구를 찾지 않는다.** 반박당하려고
-있는 주장이다 — `Resolver`가 행을 읽어 진짜 테넌트를 알고, **인터셉터가** 둘이 다르면
-거절한다.
-
-```
-Handler   자격증명이 말한 것을 읽는다        (행을 안 읽음)
-Resolver  누구인지 찾는다                    (다른 질문을 받음)
-인터셉터  둘 다 손에 있는 유일한 자리 → 불일치면 Unauthenticated
-```
-
-이 자리여야 하는 이유는 식별자로 해석되는 자격증명이면 **`Resolver`가 옆에 적힌
-테넌트를 아예 안 읽기** 때문이다. 그래서 앱이 안 써도 검사가 붙는다. 그런 인증서를
-발급한 쪽은 테넌트가 대조되기를 뜻하고 발급한 것이고, 조용히 무시하는 `Resolver`가
-바로 그 뜻을 거짓으로 만드는 것이다.
-
-좁히지 않고 **거절**한다. 누가 누구를 쥐고 있는지에 대한 이견은 attenuation이 아니다 —
-더 작으면서 참인 답이 없다 — 그리고 둘 중 하나는 들여다볼 만한 방식으로 틀렸다.
-
-### 담을 데가 없으면 떨어뜨리지 않고 거절한다
-
-`Identity`가 담을 수 없는 종류의 이름 — 두 번째 축(§[SCHEMA.md 2.1](SCHEMA.md))의
-set 같은 것 — 은 조용히 넘기지 않고 거절한다.
-
-호출자를 한 site로 좁히려고 발급한 인증서를, site를 말없이 떨어뜨리는 쪽이 읽으면,
-**좁혀지지 않은 호출자와 좁혀졌다고 말하는 인증서**가 되고 양쪽 다 좁혀졌다고 믿는다.
-거절이 그것보다 낫다. 거절 메시지는 스키마가 등록한 단어로 무엇을 봤는지 말한다.
-
-## 8. 요약 — 무엇이 어디에 있나
-
-| 원하는 것 | 자리 |
-| --- | --- |
-| 이 엔티티가 테넌트에 닿는 경로 | 스키마 → 생성 |
-| 이 호출자가 어느 테넌트를 보나 | `gate.Policy` |
-| 본사가 전부 보고, 지금은 고객 하나로 | `Policy.Where` + `frame.Grant`, `Meet`이 만난다 |
-| admin 경로가 공개 주소에 없기 | 진입점 둘, 둘 다 벽 |
-| 주인 없는 공유 데이터 | `global: {}` |
-| 주인 있는 행의 공개된 일부 | 손으로 쓴 RPC + 투영 |
-| 벽 그리고 앱의 규칙 | `bare.Scopes{pd.Wall(), …}` |
-| 배포가 자기 일을 하는 것 | `Ungated` — 특권이 아니라 인스턴스 |
-| 인증서가 말한 테넌트 | `Identity.TenantId` — 주장, 인터셉터가 행과 대조 |
-| 테넌트보다 작은 집합으로 좁히기 | 스키마 3번 → `pd.Grouped(of)` |
-| 한 site 전용 키 | `frame.Grant.Within` — `of`와 교집합 |
+- [guide/permissions.md](guide/permissions.md) — how to use all of this
+- [SCHEMA.md](SCHEMA.md) — how a path is declared
+- [RUNTIME.md](RUNTIME.md) — where each half is enforced

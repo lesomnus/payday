@@ -210,9 +210,9 @@ func Seq(hs ...Handler) Handler {
 // implements it**, and it is the seam this package is arranged around.
 //
 // It cannot be written here. Answering "who is @acme/admin" is a query against
-// the app's own generated servers, whose types payday cannot name, and there
-// is no type parameter that fixes that -- see docs/SCHEMA.md, "계약이지 Go
-// 타입이 아니다". So payday says what the question is and what the answer must
+// the app's own generated servers, whose types payday cannot name, and there is
+// no type parameter that fixes that -- see docs/SCHEMA.md, "It is a contract,
+// not a Go type". So payday says what the question is and what the answer must
 // hold, the app says how to find it, and [Interceptor] is what joins them.
 //
 // What the frame must carry:

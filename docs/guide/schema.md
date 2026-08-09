@@ -385,11 +385,13 @@ the older payday wrote.
 
 ---
 
-## Where the reasoning lives
+## Where to go next
 
 | | |
 | --- | --- |
 | [permissions.md](permissions.md) | who may see what comes out of this |
+| [server.md](server.md) | the stack that serves it |
 | [client.md](client.md) | what a page does with what this generates |
+| [testing.md](testing.md) | asserting that a declaration means what you thought |
 | [SCHEMA.md](../SCHEMA.md) | why payday owns these entities, and what it costs |
 | [RUNTIME.md](../RUNTIME.md) | what `List` and `Watch` generate, and what is refused |

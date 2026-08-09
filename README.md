@@ -5,12 +5,17 @@ it is generated rather than remembered.
 
 - [**Permissions and the wall**](docs/guide/permissions.md) — who sees what, and
   where each part of that answer is enforced. Start here.
-- [**Declaring an entity**](docs/guide/schema.md) — the two options, the field
+- [**Declaring an entity**](docs/guide/schema.md) — the options, the field
   numbers, `list:` and `watch:`, and everything generation refuses.
+- [**The server**](docs/guide/server.md) — the stack and why it is ordered that
+  way, writing a layer, the interceptors, configuration, the commands.
 - [**The page**](docs/guide/client.md) — reads that keep themselves current,
   writes that need no invalidation rule, and what persists across a reload.
-- [docs/](docs/) — the design record: why it is this way. Written for whoever is
-  changing payday rather than using it.
+- [docs/](docs/) — the rest: [batch](docs/guide/batch.md),
+  [refusals](docs/guide/errors.md) and [testing](docs/guide/testing.md), and the
+  references behind all of it — [the runtime](docs/RUNTIME.md),
+  [tenancy](docs/TENANCY.md), [the generation contract](docs/SCHEMA.md),
+  [the browser](docs/CLIENT.md).
 
 ```sh
 $ go get -tool github.com/lesomnus/payday/cmd/pd

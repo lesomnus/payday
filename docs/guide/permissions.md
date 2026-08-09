@@ -501,16 +501,13 @@ Before a deployment is reachable by anyone:
 
 ---
 
-## Where the reasoning lives
-
-This document says what payday does. Why it does it that way is in the design
-record, which is a different thing and is written for whoever is changing
-payday:
+## Where to go next
 
 | | |
 | --- | --- |
 | [schema.md](schema.md) | declaring the entity all of this is generated from |
+| [server.md](server.md) | the stack each of these rules sits in |
 | [client.md](client.md) | reads, writes and the store a page sees this through |
-| [TENANCY.md](../TENANCY.md) | the wall, the policy, and deploying per tenant |
-| [SCHEMA.md](../SCHEMA.md) | what the schema owns, field 3, erasure, the trail |
-| [RUNTIME.md](../RUNTIME.md) | layers, the CLI, what generation refuses |
+| [TENANCY.md](../TENANCY.md) | the model behind the wall, and deploying per tenant |
+| [SCHEMA.md](../SCHEMA.md) | what the schema owns, field 3, identifiers, slugs |
+| [RUNTIME.md](../RUNTIME.md) | every package, and how each rule is enforced |

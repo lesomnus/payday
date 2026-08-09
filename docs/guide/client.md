@@ -228,10 +228,11 @@ demo that drifts.
 
 ---
 
-## Where the reasoning lives
+## Where to go next
 
 | | |
 | --- | --- |
 | [schema.md](schema.md) | declaring the entity all of this is generated from |
 | [permissions.md](permissions.md) | what the server does with these calls |
+| [errors.md](errors.md) | putting a refusal under the right form field |
 | [CLIENT.md](../CLIENT.md) | why the store is in memory, and why Connect over drpc |
