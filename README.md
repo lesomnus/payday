@@ -5,7 +5,12 @@ it is generated rather than remembered.
 
 Where it stands: **CP1 of [DESIGN.md](DESIGN.md) is done.** An identifier says
 what kind of thing it names, and the tenant wall is generated from what the
-schema declared. See [docs/](docs/) for the rest of the plan.
+schema declared.
+
+- [**Permissions and the wall**](docs/guide/permissions.md) — who sees what, and
+  where each part of that answer is enforced. Start here.
+- [docs/](docs/) — the design record: why it is this way. Written for whoever is
+  changing payday, not using it.
 
 ## What a schema says
 
