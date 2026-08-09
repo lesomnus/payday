@@ -25,7 +25,6 @@ import (
 	status "google.golang.org/grpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	time "time"
 )
 
 type CellServiceServer struct {
@@ -406,7 +405,7 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*em
 	}
 
 	u := st.Db.Cell.Update().Where(p)
-	u.SetDateErased(time.Now().UTC())
+	u.SetDateErased(st.now())
 	n, err := u.Save(ctx)
 	if err != nil {
 		return nil, err
@@ -543,11 +542,11 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		}
 	}
 	q.SetAlias(req.GetAlias())
-	q.SetDateUpdated(time.Now().UTC())
+	q.SetDateUpdated(st.now())
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
-		q.SetDateCreated(time.Now().UTC())
+		q.SetDateCreated(st.now())
 	}
 
 	u, err := q.Save(ctx)
@@ -789,7 +788,7 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 		}
 		q.Modify(mod)
 		if !plan.WritesTo(13) {
-			q.SetDateUpdated(time.Now().UTC())
+			q.SetDateUpdated(st.now())
 		}
 		if n, err := q.Save(ctx); err != nil {
 			return nil, err
@@ -859,8 +858,8 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 	}
 
 	u := st.Db.Robot.Update().Where(p)
-	u.SetDateErased(time.Now().UTC())
-	u.SetDateUpdated(time.Now().UTC())
+	u.SetDateErased(st.now())
+	u.SetDateUpdated(st.now())
 	n, err := u.Save(ctx)
 	if err != nil {
 		return nil, err
@@ -1282,7 +1281,7 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 	}
 
 	u := st.Db.Joint.Update().Where(p)
-	u.SetDateErased(time.Now().UTC())
+	u.SetDateErased(st.now())
 	n, err := u.Save(ctx)
 	if err != nil {
 		return nil, err
@@ -1675,7 +1674,7 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 	}
 
 	u := st.Db.Fleet.Update().Where(p)
-	u.SetDateErased(time.Now().UTC())
+	u.SetDateErased(st.now())
 	n, err := u.Save(ctx)
 	if err != nil {
 		return nil, err
@@ -1803,7 +1802,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
-		q.SetDateCreated(time.Now().UTC())
+		q.SetDateCreated(st.now())
 	}
 
 	u, err := q.Save(ctx)

@@ -4,6 +4,8 @@ go 1.26.4
 
 require (
 	ariga.io/atlas v0.36.2-0.20250730182955-2c6300d0a3e1
+	connectrpc.com/cors v0.1.0
+	connectrpc.com/vanguard v0.4.0
 	entgo.io/ent v0.14.6
 	github.com/bufbuild/protocompile v0.14.2-0.20260605203730-cd7c3c124e10
 	github.com/goccy/go-yaml v1.19.2
@@ -14,6 +16,7 @@ require (
 	github.com/lesomnus/mkot/pretty v0.0.0-20260801183340-9c83100aa7c2
 	github.com/lesomnus/otx v0.0.0-20260807173743-977a5687d6ba
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20260807173743-977a5687d6ba
+	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e
 	github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/ncruces/go-sqlite3 v0.35.3
@@ -22,7 +25,9 @@ require (
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/log v0.20.0
 	go.opentelemetry.io/otel/sdk/log v0.20.0
+	go.opentelemetry.io/otel/trace v1.45.0
 	golang.org/x/mod v0.37.0
+	golang.org/x/sync v0.22.0
 	golang.org/x/time v0.15.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa
 	google.golang.org/grpc v1.83.0
@@ -31,8 +36,6 @@ require (
 
 require (
 	connectrpc.com/connect v1.19.1 // indirect
-	connectrpc.com/cors v0.1.0 // indirect
-	connectrpc.com/vanguard v0.4.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
@@ -48,7 +51,6 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
@@ -57,7 +59,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df // indirect
-	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260808180613-81a9182b2af7 // indirect
+	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260809191238-74fbf70316d6 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260808062124-7336db3ccda7 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260807210724-9ecafa02f5f7 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -70,10 +72,8 @@ require (
 	go.opentelemetry.io/otel/metric v1.45.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect
-	go.opentelemetry.io/otel/trace v1.45.0 // indirect
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
 	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect

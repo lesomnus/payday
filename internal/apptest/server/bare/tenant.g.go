@@ -19,7 +19,6 @@ import (
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	time "time"
 )
 
 type TenantServiceServer struct {
@@ -107,11 +106,11 @@ func (s TenantServiceServer) Add(ctx context.Context, req *apptest.TenantAddRequ
 	if u := req.GetLabels(); len(u) > 0 {
 		q.SetLabels(u)
 	}
-	q.SetDateUpdated(time.Now().UTC())
+	q.SetDateUpdated(st.now())
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
-		q.SetDateCreated(time.Now().UTC())
+		q.SetDateCreated(st.now())
 	}
 
 	u, err := q.Save(ctx)
@@ -333,7 +332,7 @@ func (s TenantServiceServer) apply(ctx context.Context, ref *apptest.TenantRef, 
 		}
 		q.Modify(mod)
 		if !plan.WritesTo(13) {
-			q.SetDateUpdated(time.Now().UTC())
+			q.SetDateUpdated(st.now())
 		}
 		if n, err := q.Save(ctx); err != nil {
 			return nil, err
