@@ -4,9 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -111,8 +117,191 @@ func Doctor(ctx context.Context, l Layout) []Finding {
 
 	vs = append(vs, doctorBuf(l)...)
 	vs = append(vs, doctorSchema(l)...)
+	vs = append(vs, doctorLayers(l)...)
 
 	return vs
+}
+
+// doctorLayers finds a layer that cannot be put in a transaction.
+//
+// `enttx.Rebind` asks for the [enttx.Binder] at run time -- `any(s).(Binder[S])`
+// -- so a layer that does not answer `WithDriver` is not a compile error
+// anywhere. It is `ErrNotBindable` the first time somebody opens a transaction,
+// which is a batch or a multi-write RPC, which is not the day the layer was
+// written.
+//
+// Embedding `Overlay` does not give it: `Overlay` embeds the generated `Server`
+// interface, and `WithDriver` is not one of its methods -- deliberately, since a
+// promoted one would rebind the layer **underneath** this one and answer with a
+// stack this layer is not in. So the method has to be written, once per layer,
+// and forgetting it looks exactly like remembering it.
+//
+// What it reads is the shape rather than the types: a struct embedding
+// `Overlay` is a layer, and a `WithDriver` method on it is the answer. A method
+// with the wrong signature reads as present here -- which is what the `var _`
+// line in the fix is for, and why the fix carries it.
+func doctorLayers(l Layout) []Finding {
+	byDir := map[string]*layerPkg{}
+
+	err := filepath.WalkDir(l.Work, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			// Generated, vendored, or not Go at all -- and `internal/ent` is
+			// hundreds of files nobody writes a layer in.
+			case "node_modules", "testdata", "vendor", ".git", "ent":
+				return fs.SkipDir
+			}
+
+			return nil
+		}
+		if !strings.HasSuffix(p, ".go") || strings.HasSuffix(p, "_test.go") {
+			return nil
+		}
+
+		f, err := parser.ParseFile(token.NewFileSet(), p, nil, parser.SkipObjectResolution)
+		if err != nil {
+			// Not doctor's to report: a file that does not parse fails at the
+			// build, loudly, with a better message than this could give.
+			return nil
+		}
+
+		dir := filepath.Dir(p)
+		pkg := byDir[dir]
+		if pkg == nil {
+			pkg = &layerPkg{bound: map[string]bool{}}
+			byDir[dir] = pkg
+		}
+		pkg.read(l, p, f)
+
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+
+	var vs []Finding
+	for _, dir := range slices.Sorted(maps.Keys(byDir)) {
+		pkg := byDir[dir]
+		// `api.Server` where the layer said `api.Overlay`, and plain `Server`
+		// where it embedded the generated package's own.
+		srv := "Server"
+		if pkg.api != "" {
+			srv = pkg.api + ".Server"
+		}
+
+		for _, v := range pkg.layers {
+			if pkg.bound[v.name] {
+				continue
+			}
+
+			vs = append(vs, Finding{
+				What: fmt.Sprintf("%s is a layer with no WithDriver, so a transaction will refuse the stack it is in", v.at),
+				Fix: fmt.Sprintf(`func (s %[1]s) WithDriver(drv dialect.Driver) (%[2]s, error) {
+	v, err := s.Next().WithDriver(drv)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(v), nil
+}
+
+// And this, so that a signature that drifts is a compile error here rather
+// than another refusal at run time.
+var _ enttx.Binder[%[2]s] = %[1]s{}`, v.name, srv),
+			})
+		}
+	}
+
+	return vs
+}
+
+// layerPkg is one directory's worth: what looks like a layer, and what answers
+// `WithDriver`.
+type layerPkg struct {
+	layers []layerDecl
+	bound  map[string]bool
+
+	// api is what the package calls the generated one, so the fix reads the way
+	// the file around it does.
+	api string
+}
+
+type layerDecl struct {
+	name string
+	at   string
+}
+
+func (p *layerPkg) read(l Layout, path string, f *ast.File) {
+	for _, d := range f.Decls {
+		switch d := d.(type) {
+		case *ast.FuncDecl:
+			if d.Recv == nil || len(d.Recv.List) == 0 || d.Name.Name != "WithDriver" {
+				continue
+			}
+			if n := receiver(d.Recv.List[0].Type); n != "" {
+				p.bound[n] = true
+			}
+
+		case *ast.GenDecl:
+			for _, s := range d.Specs {
+				s, ok := s.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+				t, ok := s.Type.(*ast.StructType)
+				if !ok || t.Fields == nil {
+					continue
+				}
+
+				for _, fld := range t.Fields.List {
+					// Embedded: a field with a type and no name.
+					if len(fld.Names) > 0 {
+						continue
+					}
+
+					switch e := fld.Type.(type) {
+					case *ast.Ident:
+						// `Overlay` -- the generated package's own layers.
+						if e.Name != "Overlay" {
+							continue
+						}
+
+					case *ast.SelectorExpr:
+						// `api.Overlay`, which is what an app writes.
+						if e.Sel.Name != "Overlay" {
+							continue
+						}
+						if x, ok := e.X.(*ast.Ident); ok {
+							p.api = x.Name
+						}
+
+					default:
+						continue
+					}
+
+					p.layers = append(p.layers, layerDecl{
+						name: s.Name.Name,
+						at:   l.rel(path) + ": " + s.Name.Name,
+					})
+				}
+			}
+		}
+	}
+}
+
+// receiver is the type a method is on, pointer or not.
+func receiver(e ast.Expr) string {
+	if v, ok := e.(*ast.StarExpr); ok {
+		e = v.X
+	}
+	if v, ok := e.(*ast.Ident); ok {
+		return v.Name
+	}
+
+	return ""
 }
 
 // doctorBuf reads the app's `buf.yaml`, which is the one buf file payday does

@@ -301,8 +301,8 @@ $ go tool pd gen
 | `pd gen --check` | CI의 "재생성 후 diff" | 명령이 스스로 판단하면 로컬에서 같은 답이 나온다 |
 | `pd new <module>` | `init.sh`의 `sed` 5회 치환 | 지금 방식은 앱 이름이 우연히 들어간 주석까지 바꾼다 |
 | `pd entity add <Name>` | 없음 | **강제의 손잡이.** proto + 도메인 번호(빈 번호를 골라서) + 오버레이 + `<E>Scope` + 테스트 |
-| `pd layer add <name>` | 없음 | 레이어마다 반복되는 것 — `Overlay` 임베드, `WithDriver`, `Build()`, `var _ Server`, `var _ enttx.Binder`. 뒤의 둘을 빠뜨리면 트랜잭션을 쓸 때에야 안다 |
-| `pd doctor` | 없음 | 모든 레이어가 `Binder`인가, 모든 엔티티에 `Scope`가 있는가, 도메인이 겹치지 않는가, `*.g.go`가 최신인가 |
+| ~~`pd layer add <name>`~~ | — | **하지 않는다.** 겨냥한 것은 하나였다: `WithDriver`를 빠뜨리면 트랜잭션을 쓸 때에야 안다. 그런데 `entity add`의 논거는 반복이었고(엔티티는 수십 개, 레이어는 앱당 서넛), **세 번째 레이어를 쓰는 방법은 두 번째를 복사하는 것**이다. 생성기는 자기가 찍은 것만 돕고 복사본은 못 돕는다. 그래서 `doctor`가 찾는 쪽으로 갔다 — 아래 5번 |
+| `pd doctor` | 없음 | 지금 넷을 본다: 도구와 buf 의존이 있는가, 오버레이가 없는 엔티티를 늘이지 않는가, **모든 레이어가 `Binder`인가**. 엔티티의 `Scope`와 도메인 충돌은 여기가 아니라 **생성 실패**이고(7절 1·2·4), `*.g.go`의 최신 여부는 `pd gen --check`다 — 생성해 보지 않고는 알 수 없다 |
 | `pd config env` | 없음 | `EnvNames`가 이미 한다. 환경변수 전체 목록 → `.env.example`, CI에서 문서와 대조 |
 | `pd config schema` | 없음 | 설정의 JSON Schema. 리플렉션이 이미 있어 거의 공짜이고 에디터가 설정 파일을 자동완성한다 |
 | `pd dev` | `docker compose` 수동 조합 | db 기동 → `migrate apply` → `serve` |
@@ -332,7 +332,7 @@ $ go tool pd gen
 | 4j | 서버는 스키마와 다른 데이터베이스 위에서 뜨지 않는다 | **완료.** `migrate.Check`가 `serve` 앞에서 데이터베이스를 들여다보고 거절 (§12.1) | 없음. 업그레이드 후 마이그레이션을 빠뜨리는 것이 기본 실수가 된다. "같다"가 아니라 **"모자라지 않다"**를 본다 — 모르는 컬럼·인덱스는 놔둔다. `db.migrate: true`는 그 확인 대신 `Schema.Create`를 돌린다 |
 | 4h | `watch:`를 선언한 엔티티는 버전 필드(`version: {}`)를 갖는다 | **생성 실패** (§10.5) | 없음. 없으면 로컬 스토어가 눈감고 덮어써서 **늦게 도착한 옛 상태가 새 상태를 지운다.** 조용히 틀리는 전형 |
 | 4g | 런타임이 파일 시스템·리스너·네트워크를 전제하지 않는다 | CI에서 `GOOS=js GOARCH=wasm go build ./...` (§9) | 없음. 한 줄이고, 누군가 런타임에 `os.ReadFile`을 넣는 날 깨진다 |
-| 5 | 모든 레이어가 `enttx.Binder`다 | `var _`로 컴파일 오류. `layer add`가 찍고 `doctor`가 확인 | 없음 |
+| 5 | 모든 레이어가 `enttx.Binder`다 | **완료.** `pd doctor`가 찾는다 — `Overlay`를 임베드한 구조체 중 `WithDriver`가 없는 것. 그리고 fix가 `var _ enttx.Binder[…]` 줄을 같이 주므로, 한 번 찾은 뒤로는 시그니처가 흔들리는 것이 컴파일 오류다 | 없음 |
 | 6 | 프레임 없는 요청은 거절된다 | 우회는 인터셉터 없는 서버 인스턴스를 **건네받는 것** | 없음. go-app이 "슈퍼유저는 실수였다"에 도달한 결론 |
 | 7 | 일반 쓰기(`Patch`/`Apply`)는 기본으로 닫힌다 | 레이어가 아니라 **트랜스포트**에서 | 없음. 레이어에서 닫으면 서버 자신도 못 쓴다 |
 | 8 | 헬스는 liveness/readiness 둘 | 런타임이 두 이름을 소유. 앱은 readiness 검사만 등록 | 없음 |

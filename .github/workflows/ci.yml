@@ -15,7 +15,11 @@ jobs:
   go:
     runs-on: ubuntu-latest
     steps:
+      # The whole history, because `buf breaking` below compares against the
+      # branch tip and a shallow checkout has no ref to compare against.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -23,6 +27,28 @@ jobs:
       - uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+
+      # Two baselines, because payday's schema reaches apps two ways.
+      #
+      # `proto/` is fetched: an app declares `buf.build/payday/payday:dev` and
+      # buf resolves it, so what an app has is whatever was last pushed and not
+      # whatever is on main. That is the contract, and the BSR is the only place
+      # that knows it.
+      #
+      # The entities in `schema/payday` are **copied** -- `pd gen` writes them
+      # into the app -- so they are in no module anyone depends on. What covers
+      # them is that `internal/apptest` is an app and its copies are in the
+      # workspace: break a shipped entity, and the copy moves. `pd gen --check`
+      # below is what keeps the copy honest enough for this to mean anything.
+      #
+      # `ref=origin/main` rather than `branch=main`: a pull request is checked
+      # out detached and has no local `main`.
+      #
+      # A change that breaks the wire on purpose is a migration, and it fails
+      # here. That is the point -- it should be argued for in a review rather
+      # than noticed by an app. Push the baseline first, or say so and skip.
+      - run: buf breaking --against '.git#ref=origin/main'
+      - run: buf breaking --against buf.build/payday/payday:dev
 
       # Both modules. `internal/apptest` is one of its own -- it owns the ent
       # dependency payday does not -- so `go test ./...` at the root does not

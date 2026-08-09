@@ -462,3 +462,94 @@ message PingRequest {
 
 	x.NoError(pdcli.CheckOverlayFile(p))
 }
+
+// TestALayerThatCannotBeBoundIsFound is the one that waits for a transaction.
+//
+// `enttx.Rebind` asks for the binder at run time -- `any(s).(Binder[S])` -- so a
+// layer with no `WithDriver` is not a compile error anywhere. It is
+// `ErrNotBindable` the first time somebody opens a transaction, which is a batch
+// or a multi-write RPC, and which is not the day the layer was written.
+//
+// Embedding `Overlay` does not give it. `Overlay` embeds the generated `Server`
+// interface and `WithDriver` is deliberately not one of its methods: a promoted
+// one would rebind the layer **underneath** this one and answer with a stack
+// this layer is not in. So it has to be written once per layer, and forgetting
+// it looks exactly like remembering it.
+//
+// There was going to be a `pd layer add` for this. A generator only helps the
+// layer it wrote, and the third layer in an app is written by copying the
+// second; a check finds both.
+func TestALayerThatCannotBeBoundIsFound(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	x.NoError(os.MkdirAll(filepath.Join(root, "server", "core"), 0o755))
+
+	write := func(name string, body string) {
+		x.NoError(os.WriteFile(filepath.Join(root, "server", "core", name), []byte(body), 0o644))
+	}
+
+	// Two layers in one package: one bound, one not. Which is the shape that
+	// makes this worth checking -- the bound one beside it is what the unbound
+	// one was copied from.
+	write("core.go", `package core
+
+import "github.com/acme/thing/api"
+
+type Core struct {
+	api.Overlay
+}
+
+func (s Core) WithDriver(drv dialect.Driver) (api.Server, error) { return s, nil }
+
+type Catalogue struct {
+	api.Overlay
+}
+`)
+
+	var said string
+	for _, v := range pdcli.Doctor(t.Context(), must(pdcli.Discover(root))) {
+		said += v.String() + "\n"
+	}
+
+	x.Contains(said, "Catalogue is a layer with no WithDriver")
+	x.NotContains(said, "Core is a layer", "the one that has it was reported anyway")
+
+	// The fix is what to type, and it reads the way the file around it does:
+	// the layer said `api.Overlay`, so the server is `api.Server`.
+	x.Contains(said, "var _ enttx.Binder[api.Server] = Catalogue{}")
+
+	// A test file is not an app's layer, and neither is a struct embedding
+	// something else.
+	write("other.go", `package core
+
+import "github.com/acme/thing/api"
+
+type NotALayer struct {
+	api.Server
+}
+`)
+	write("core_test.go", `package core
+
+import "github.com/acme/thing/api"
+
+type Stub struct {
+	api.Overlay
+}
+`)
+
+	said = ""
+	for _, v := range pdcli.Doctor(t.Context(), must(pdcli.Discover(root))) {
+		said += v.String() + "\n"
+	}
+	x.NotContains(said, "NotALayer")
+	x.NotContains(said, "Stub")
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+
+	return v
+}
