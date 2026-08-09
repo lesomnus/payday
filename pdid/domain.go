@@ -18,16 +18,40 @@ type Domain uint8
 // domain would otherwise be every entity that forgot.
 const Unknown Domain = 0
 
-// EntityTenant is what payday's own tenant is called, for a [Lookup] by
-// something that has to recognise one and cannot name its Go type.
+// RegisterTenant records which domain is the tenant's, for the runtime that has
+// to recognise one and cannot name its Go type.
 //
-// It is a string rather than a constant domain because the number is the
-// schema's to declare and this is not the place that reads it. What is fixed is
-// the **name**: an app does not write this entity, payday ships it, so every
-// app that has a tenant at all has this one under this name -- which is the
-// whole reason a lookup by name is safe here and would not be for anything an
-// app declares.
-const EntityTenant = "payday.Tenant"
+// Generated code calls it from the same init as [Register], out of the entity
+// that declared `own: OWN_TENANT`. It is a separate call rather than a name to
+// look up because the name is not payday's to know: an app may put payday's
+// entities in its own proto package, and then the tenant is `hday.Tenant` or
+// whatever else it chose. What does not move is which entity is the wall.
+//
+// The number itself is still the schema's to declare.
+func RegisterTenant(d Domain) {
+	if d == Unknown {
+		panic("pdid: the tenant cannot be domain 0")
+	}
+
+	registry.Lock()
+	defer registry.Unlock()
+
+	if v := registry.tenant; v != Unknown && v != d {
+		panic(fmt.Sprintf("pdid: the tenant is already domain %d, now %d", v, d))
+	}
+
+	registry.tenant = d
+}
+
+// TenantDomain is what generated code registered as the tenant, and false for a
+// process that linked none -- which is one that has no schema at all, since
+// payday ships the entity and every app copies it in.
+func TenantDomain() (Domain, bool) {
+	registry.RLock()
+	defer registry.RUnlock()
+
+	return registry.tenant, registry.tenant != Unknown
+}
 
 var (
 	// ErrNotAnId is what bytes that are a UUID but not one of ours are.
@@ -51,6 +75,9 @@ var registry = struct {
 	byName map[string]Domain
 	// names maps a domain back to that name.
 	names map[Domain]string
+
+	// tenant is the domain of whichever entity declared `own: OWN_TENANT`.
+	tenant Domain
 }{
 	byEntity: map[string]Domain{},
 	byName:   map[string]Domain{},

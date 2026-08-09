@@ -75,6 +75,10 @@ message Holder {
     ]
   };
   option (payday.entity) = {
+    // payday's own, so that generation finds it whatever an app called the
+    // proto package. An app never writes this; see `Own` in entity.proto.
+    own: OWN_HOLDER
+
     domain: 2
 
     // Nothing about tenancy, which **is** the declaration: behind the wall, by

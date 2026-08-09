@@ -14,10 +14,9 @@ import (
 //
 // # Why it is a refusal and not a skip
 //
-// Three emitters look for payday's own entities **by full name** -- [EmitGate]
-// wants `payday.Tenant` and `payday.Holder`, [EmitAudit] wants `payday.Audit`,
-// [EmitOutbox] wants `payday.Outbox` -- and each of them returned quietly when
-// it did not find one.
+// Three emitters are built out of payday's own entities -- [EmitGate] from the
+// tenant and the holder, [EmitAudit] from the trail, [EmitOutbox] from the
+// queue -- and each of them returned quietly when it did not find one.
 //
 // Quietly is the problem. What EmitGate writes is the whole of the `Add` tenant
 // check: the wall is a predicate and an insert has no query, so with the layer
@@ -25,11 +24,18 @@ import (
 // compiles, it links, it serves, and the first signal is a row planted in
 // somebody else's tenant.
 //
-// The names cannot be missing by accident: `pd gen` copies these four files
-// into the app whole, every time. So an absence means something took one out --
-// and the likeliest something is **renaming the proto package**, which is a
-// reasonable thing to want and is not supported yet. Either way, stopping is
-// the only answer that does not hand back a smaller app that looks whole.
+// They cannot go missing by accident, since `pd gen` copies these four files
+// into the app whole every time. So an absence means something took one out,
+// and stopping is the only answer that does not hand back a smaller app which
+// looks whole.
+//
+// # It is the marker that is looked for, not the name
+//
+// These used to be found by full name -- `payday.Tenant` and the rest -- which
+// made the proto package payday's rather than the app's, and made renaming it
+// silently destructive in exactly the way above. Each entity now carries
+// `own:`, so an app may put them in its own package and this goes on finding
+// them. See [Schema.Own].
 //
 // # Why the plugin calls it rather than [Read]
 //
@@ -46,9 +52,9 @@ func CheckOwn(s *Schema) error {
 	// From what payday ships rather than a list written here, so an entity
 	// added to payday's schema is covered by having been added.
 	gone := []string{}
-	for name := range owned {
-		if !s.Has(name) {
-			gone = append(gone, name)
+	for own := range owned {
+		if !s.Has(own) {
+			gone = append(gone, own.String())
 		}
 	}
 	if len(gone) == 0 {
@@ -57,13 +63,13 @@ func CheckOwn(s *Schema) error {
 	sort.Strings(gone)
 
 	return fmt.Errorf(
-		"%s: not in this schema, and payday copies these in whole on every `pd gen`\n\n"+
-			"Generation finds payday's own entities by full name, and what is built from them "+
-			"is the Gate layer -- which is the whole of the `Add` tenant check -- the audit "+
-			"trail's layer, and the outbox drain. Missing, those are not generated and nothing "+
-			"else fails: reads stay walled and writes stop being.\n\n"+
-			"If the proto package was renamed, that is why. payday has no way to be told a "+
-			"different name for its own entities yet.",
+		"%s: nothing in this schema declares it, and payday copies its own entities in "+
+			"whole on every `pd gen`\n\n"+
+			"What is built out of them is the Gate layer -- which is the whole of the `Add` "+
+			"tenant check -- the audit trail's layer, and the outbox drain. Missing, those are "+
+			"not generated and nothing else fails: reads stay walled and writes stop being.\n\n"+
+			"They are found by the `own:` each carries and not by name, so renaming the proto "+
+			"package is not what did this. Something removed the entity or the marker.",
 		strings.Join(gone, ", "))
 }
 
@@ -89,9 +95,13 @@ func CheckOverlay(s *Schema) error {
 
 	errs := []string{}
 	for _, v := range s.Entities {
-		want, ok := owned[string(v.FullName())]
+		want, ok := owned[v.Own]
 		if !ok {
-			// Not one of payday's, so all of it is the app's.
+			// Not one of payday's, so all of it is the app's. Read off the
+			// marker rather than the name: keyed on the name, a renamed proto
+			// package matched nothing here and this check quietly stopped
+			// running -- so `string alias = 4` could become `int64 alias = 4`
+			// and nothing said so.
 			continue
 		}
 
@@ -121,13 +131,21 @@ func CheckOverlay(s *Schema) error {
 		strings.Join(errs, "\n  "))
 }
 
+// fieldsOf is what an entity declares, in the shape [schema.Owned] answers in.
+//
+// Message-typed fields are named relative to the package this entity is in, for
+// the reason [schema.Relative] holds: an app may put payday's entities in its
+// own proto package, and then every one of these points at a message whose full
+// name is different and whose identity is not.
 func fieldsOf(d protoreflect.MessageDescriptor) map[int32]schema.Field {
+	pkg := string(d.ParentFile().Package())
+
 	vs := map[int32]schema.Field{}
 	for i := range d.Fields().Len() {
 		f := d.Fields().Get(i)
 		v := schema.Field{Name: string(f.Name()), Kind: f.Kind()}
 		if f.Kind() == protoreflect.MessageKind || f.Kind() == protoreflect.GroupKind {
-			v.Message = string(f.Message().FullName())
+			v.Message = schema.Relative(string(f.Message().FullName()), pkg)
 		}
 		vs[int32(f.Number())] = v
 	}

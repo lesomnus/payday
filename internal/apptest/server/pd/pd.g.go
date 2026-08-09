@@ -96,6 +96,8 @@ func init() {
 	pdid.Register("payday.Holder", HolderDomain, "holder")
 	pdid.Register("payday.Outbox", OutboxDomain, "outbox")
 	pdid.Register("payday.Tenant", TenantDomain, "tenant")
+
+	pdid.RegisterTenant(TenantDomain)
 }
 
 // Domains is the domain of each entity by the full name of its message,

@@ -20,6 +20,64 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Own names one of payday's own entities, so that generation can find it
+// whatever the proto package is called.
+//
+// The numbers are of the same kind as a field number: chosen once and never
+// given to something else. They are **not** domains -- a domain is what an
+// identifier carries and an app declares, and these are what payday declares
+// about its own four.
+type Own int32
+
+const (
+	// The app's own entity, which is everything an app writes.
+	Own_OWN_UNSPECIFIED Own = 0
+	Own_OWN_TENANT      Own = 1
+	Own_OWN_HOLDER      Own = 2
+	Own_OWN_AUDIT       Own = 3
+	Own_OWN_OUTBOX      Own = 4
+)
+
+// Enum value maps for Own.
+var (
+	Own_name = map[int32]string{
+		0: "OWN_UNSPECIFIED",
+		1: "OWN_TENANT",
+		2: "OWN_HOLDER",
+		3: "OWN_AUDIT",
+		4: "OWN_OUTBOX",
+	}
+	Own_value = map[string]int32{
+		"OWN_UNSPECIFIED": 0,
+		"OWN_TENANT":      1,
+		"OWN_HOLDER":      2,
+		"OWN_AUDIT":       3,
+		"OWN_OUTBOX":      4,
+	}
+)
+
+func (x Own) Enum() *Own {
+	p := new(Own)
+	*p = x
+	return p
+}
+
+func (x Own) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Own) Descriptor() protoreflect.EnumDescriptor {
+	return file_payday_entity_proto_enumTypes[0].Descriptor()
+}
+
+func (Own) Type() protoreflect.EnumType {
+	return &file_payday_entity_proto_enumTypes[0]
+}
+
+func (x Own) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
 // Entity is what payday has to be told about a message that `orm` already
 // says is an entity.
 //
@@ -37,6 +95,7 @@ type Entity struct {
 	xxx_hidden_List    *Entity_List           `protobuf:"bytes,6,opt,name=list"`
 	xxx_hidden_Watch   *Entity_Watch          `protobuf:"bytes,7,opt,name=watch"`
 	xxx_hidden_Erase   *Entity_Erase          `protobuf:"bytes,8,opt,name=erase"`
+	xxx_hidden_Own     Own                    `protobuf:"varint,9,opt,name=own,enum=payday.Own"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -128,6 +187,13 @@ func (x *Entity) GetErase() *Entity_Erase {
 	return nil
 }
 
+func (x *Entity) GetOwn() Own {
+	if x != nil {
+		return x.xxx_hidden_Own
+	}
+	return Own_OWN_UNSPECIFIED
+}
+
 func (x *Entity) SetDomain(v uint32) {
 	x.xxx_hidden_Domain = v
 }
@@ -170,6 +236,10 @@ func (x *Entity) SetWatch(v *Entity_Watch) {
 
 func (x *Entity) SetErase(v *Entity_Erase) {
 	x.xxx_hidden_Erase = v
+}
+
+func (x *Entity) SetOwn(v Own) {
+	x.xxx_hidden_Own = v
 }
 
 func (x *Entity) HasTenancy() bool {
@@ -357,6 +427,23 @@ type Entity_builder struct {
 	// assuming hard wrongly destroys them, which is noticed by somebody asking
 	// for one back.
 	Erase *Entity_Erase
+	// Own says this is one of payday's own entities, and is written **only in
+	// payday's own schema.** An app never writes it; `pd gen` copies these files
+	// in whole, and the line comes with them.
+	//
+	// It exists so that generation can find them without reading their names.
+	// Three things are built out of them -- the Gate layer, which is the whole of
+	// the `Add` tenant check; the layer that refuses a hand-written trail row;
+	// and the outbox drain -- and each used to look for `payday.Tenant`,
+	// `payday.Holder`, `payday.Audit`, `payday.Outbox` by full name.
+	//
+	// That made the proto package payday's rather than the app's, and it did so
+	// in the worst way available: renaming it did not fail, it made those layers
+	// **not be generated**, so reads stayed walled and writes stopped being.
+	//
+	// With the marker the name is free. An app may put payday's entities in its
+	// own package, and what a caller of that app sees is that app's namespace.
+	Own Own
 }
 
 func (b0 Entity_builder) Build() *Entity {
@@ -377,6 +464,7 @@ func (b0 Entity_builder) Build() *Entity {
 	x.xxx_hidden_List = b.List
 	x.xxx_hidden_Watch = b.Watch
 	x.xxx_hidden_Erase = b.Erase
+	x.xxx_hidden_Own = b.Own
 	return m0
 }
 
@@ -1045,7 +1133,7 @@ var File_payday_entity_proto protoreflect.FileDescriptor
 
 const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/entity.proto\x12\x06payday\"\xb0\x05\n" +
+	"\x13payday/entity.proto\x12\x06payday\"\xcf\x05\n" +
 	"\x06Entity\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domain\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
@@ -1054,7 +1142,8 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06global\x12'\n" +
 	"\x04list\x18\x06 \x01(\v2\x13.payday.Entity.ListR\x04list\x12*\n" +
 	"\x05watch\x18\a \x01(\v2\x14.payday.Entity.WatchR\x05watch\x12*\n" +
-	"\x05erase\x18\b \x01(\v2\x14.payday.Entity.EraseR\x05erase\x1a\b\n" +
+	"\x05erase\x18\b \x01(\v2\x14.payday.Entity.EraseR\x05erase\x12\x1d\n" +
+	"\x03own\x18\t \x01(\x0e2\v.payday.OwnR\x03own\x1a\b\n" +
 	"\x06Tenant\x1a2\n" +
 	"\bTenanted\x12\x10\n" +
 	"\x03via\x18\x01 \x01(\tR\x03via\x12\x14\n" +
@@ -1074,34 +1163,46 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05Order\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
-	"\atenancyB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\atenancy*Y\n" +
+	"\x03Own\x12\x13\n" +
+	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
+	"\n" +
+	"OWN_TENANT\x10\x01\x12\x0e\n" +
+	"\n" +
+	"OWN_HOLDER\x10\x02\x12\r\n" +
+	"\tOWN_AUDIT\x10\x03\x12\x0e\n" +
+	"\n" +
+	"OWN_OUTBOX\x10\x04B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
+var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_payday_entity_proto_goTypes = []any{
-	(*Entity)(nil),          // 0: payday.Entity
-	(*Entity_Tenant)(nil),   // 1: payday.Entity.Tenant
-	(*Entity_Tenanted)(nil), // 2: payday.Entity.Tenanted
-	(*Entity_Global)(nil),   // 3: payday.Entity.Global
-	(*Entity_Erase)(nil),    // 4: payday.Entity.Erase
-	(*Entity_Hard)(nil),     // 5: payday.Entity.Hard
-	(*Entity_List)(nil),     // 6: payday.Entity.List
-	(*Entity_Watch)(nil),    // 7: payday.Entity.Watch
-	(*Entity_Order)(nil),    // 8: payday.Entity.Order
+	(Own)(0),                // 0: payday.Own
+	(*Entity)(nil),          // 1: payday.Entity
+	(*Entity_Tenant)(nil),   // 2: payday.Entity.Tenant
+	(*Entity_Tenanted)(nil), // 3: payday.Entity.Tenanted
+	(*Entity_Global)(nil),   // 4: payday.Entity.Global
+	(*Entity_Erase)(nil),    // 5: payday.Entity.Erase
+	(*Entity_Hard)(nil),     // 6: payday.Entity.Hard
+	(*Entity_List)(nil),     // 7: payday.Entity.List
+	(*Entity_Watch)(nil),    // 8: payday.Entity.Watch
+	(*Entity_Order)(nil),    // 9: payday.Entity.Order
 }
 var file_payday_entity_proto_depIdxs = []int32{
-	1, // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
-	2, // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
-	3, // 2: payday.Entity.global:type_name -> payday.Entity.Global
-	6, // 3: payday.Entity.list:type_name -> payday.Entity.List
-	7, // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
-	4, // 5: payday.Entity.erase:type_name -> payday.Entity.Erase
-	5, // 6: payday.Entity.Erase.hard:type_name -> payday.Entity.Hard
-	8, // 7: payday.Entity.List.order:type_name -> payday.Entity.Order
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	2, // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
+	3, // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
+	4, // 2: payday.Entity.global:type_name -> payday.Entity.Global
+	7, // 3: payday.Entity.list:type_name -> payday.Entity.List
+	8, // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
+	5, // 5: payday.Entity.erase:type_name -> payday.Entity.Erase
+	0, // 6: payday.Entity.own:type_name -> payday.Own
+	6, // 7: payday.Entity.Erase.hard:type_name -> payday.Entity.Hard
+	9, // 8: payday.Entity.List.order:type_name -> payday.Entity.Order
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_payday_entity_proto_init() }
@@ -1119,13 +1220,14 @@ func file_payday_entity_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_entity_proto_rawDesc), len(file_payday_entity_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_payday_entity_proto_goTypes,
 		DependencyIndexes: file_payday_entity_proto_depIdxs,
+		EnumInfos:         file_payday_entity_proto_enumTypes,
 		MessageInfos:      file_payday_entity_proto_msgTypes,
 	}.Build()
 	File_payday_entity_proto = out.File

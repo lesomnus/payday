@@ -1,8 +1,11 @@
 package pdgen
 
 import (
-	"google.golang.org/protobuf/compiler/protogen"
 	"strconv"
+
+	"google.golang.org/protobuf/compiler/protogen"
+
+	"github.com/lesomnus/payday/pdpb"
 )
 
 const (
@@ -15,24 +18,33 @@ const (
 	pkgPatchpb = protogen.GoImportPath("github.com/lesomnus/protobuf-patch/patchpb")
 )
 
-// Own is the full name of an entity payday ships, for the emitters that only
-// have something to say when an app took it.
-const (
-	OwnTenant = "payday.Tenant"
-	OwnHolder = "payday.Holder"
-	OwnAudit  = "payday.Audit"
-)
+// Own is the entity payday ships under that marker, and nil for a schema that
+// does not hold it.
+//
+// By the marker and never by the name. Reading `"payday.Tenant"` is what made
+// the proto package payday's rather than the app's -- and it did so in the one
+// way that is worst: renaming it did not fail, it made the layers built out of
+// these entities not be generated, so reads stayed walled and writes stopped
+// being. See [CheckOwn], which is what refuses an absence now.
+func (s *Schema) Own(v pdpb.Own) *Entity {
+	if v == pdpb.Own_OWN_UNSPECIFIED {
+		// Everything an app writes says this, so answering with one of them
+		// would be answering that any entity is payday's.
+		return nil
+	}
 
-// Has reports whether the schema holds the entity payday ships under that name.
-func (s *Schema) Has(name string) bool {
-	for _, v := range s.Entities {
-		if string(v.FullName()) == name {
-			return true
+	for _, e := range s.Entities {
+		if e.Own == v {
+			return e
 		}
 	}
 
-	return false
+	return nil
 }
+
+// Has reports whether the schema holds the entity payday ships under that
+// marker.
+func (s *Schema) Has(v pdpb.Own) bool { return s.Own(v) != nil }
 
 // EmitGate writes the layer that holds the rules a wall cannot: whether a
 // tenant may be put up or taken down, and which tenant a holder may be added
@@ -50,7 +62,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	// A schema without them does not reach here from `pd gen`; [CheckOwn]
 	// refuses it first, because what this writes is the whole of the `Add`
 	// tenant check and losing it quietly leaves reads walled and writes not.
-	if !s.Has(OwnTenant) || !s.Has(OwnHolder) {
+	if !s.Has(pdpb.Own_OWN_TENANT) || !s.Has(pdpb.Own_OWN_HOLDER) {
 		return
 	}
 
@@ -224,7 +236,7 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 		// out, and an entity that is not behind the wall has nothing to check.
 		// An entity that names its tenant with a column (`field:`) is refused a
 		// hand-written row by the audit layer.
-		if v.IsTenant || v.IsGlobal || len(v.Via) == 0 || string(v.FullName()) == OwnHolder {
+		if v.IsTenant || v.IsGlobal || len(v.Via) == 0 || v.Own == pdpb.Own_OWN_HOLDER {
 			continue
 		}
 
@@ -312,7 +324,7 @@ func seen(g *protogen.GeneratedFile, root protogen.GoImportPath, edge string, to
 // deployment can edit is evidence of nothing.
 func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	// Refused by [CheckOwn] before this, for a real app; see there.
-	if !s.Has(OwnAudit) {
+	if !s.Has(pdpb.Own_OWN_AUDIT) {
 		return
 	}
 

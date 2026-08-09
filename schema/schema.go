@@ -15,11 +15,17 @@ import (
 	"io"
 	"io/fs"
 	"path"
+	"strings"
 	"sync"
 
 	"github.com/bufbuild/protocompile"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
+
+	"github.com/lesomnus/payday/pdpb"
 )
 
 //go:embed payday/*.proto
@@ -41,22 +47,25 @@ type Field struct {
 
 var (
 	once  sync.Once
-	owned map[string]map[int32]Field
+	owned map[pdpb.Own]map[int32]Field
 	fail  error
 )
 
-// Owned answers with the fields payday declared, by entity full name and then
-// by number.
+// Owned answers with the fields payday declared, by the marker each entity
+// carries and then by number.
 //
 // The numbers are the whole of payday's half of the contract. An app adds its
 // own outside them; what it must not do is redeclare one of these, and
 // [CheckOverlay] is what makes that something other than a promise.
-func Owned() (map[string]map[int32]Field, error) {
+// Keyed on [pdpb.Own] and not on the full name, so that an app may put these
+// entities in its own proto package. The name was the thing that made the
+// package payday's rather than the app's; the marker travels with the message.
+func Owned() (map[pdpb.Own]map[int32]Field, error) {
 	once.Do(func() { owned, fail = read() })
 	return owned, fail
 }
 
-func read() (map[string]map[int32]Field, error) {
+func read() (map[pdpb.Own]map[int32]Field, error) {
 	names := []string{}
 	es, err := files.ReadDir("payday")
 	if err != nil {
@@ -86,8 +95,17 @@ func read() (map[string]map[int32]Field, error) {
 		return nil, fmt.Errorf("read payday's own entities: %w", err)
 	}
 
-	vs := map[string]map[int32]Field{}
+	vs := map[pdpb.Own]map[int32]Field{}
 	for _, fd := range fds {
+		// The compiler resolves `payday.proto` out of the global registry and
+		// makes a *dynamicpb.Message of an option written against it, which
+		// `proto.GetExtension` panics on when handed the concrete type. A
+		// round-trip through the wire form brings it back as the linked one.
+		own, err := ownOf(fd)
+		if err != nil {
+			return nil, err
+		}
+
 		ms := fd.Messages()
 		for i := range ms.Len() {
 			m := ms.Get(i)
@@ -96,14 +114,66 @@ func read() (map[string]map[int32]Field, error) {
 				f := m.Fields().Get(j)
 				v := Field{Name: string(f.Name()), Kind: f.Kind()}
 				if f.Kind() == protoreflect.MessageKind || f.Kind() == protoreflect.GroupKind {
-					v.Message = string(f.Message().FullName())
+					v.Message = Relative(string(f.Message().FullName()), string(fd.Package()))
 				}
 				fs[int32(f.Number())] = v
 			}
 
-			vs[string(m.FullName())] = fs
+			k, ok := own[string(m.Name())]
+			if !ok {
+				// A message payday ships that is not one of its entities.
+				continue
+			}
+
+			vs[k] = fs
 		}
 	}
 
 	return vs, nil
+}
+
+// ownOf is the marker each top-level message of a file declares, by message
+// name, leaving out the ones that declare none.
+//
+// It reads the descriptor back through its wire form because the options on the
+// compiled one are dynamic; see the note at the call site.
+func ownOf(fd protoreflect.FileDescriptor) (map[string]pdpb.Own, error) {
+	b, err := proto.Marshal(protodesc.ToFileDescriptorProto(fd))
+	if err != nil {
+		return nil, fmt.Errorf("hold %s: %w", fd.Path(), err)
+	}
+
+	// The default resolver is the global type registry, which is where the
+	// linked extensions are.
+	v := &descriptorpb.FileDescriptorProto{}
+	if err := proto.Unmarshal(b, v); err != nil {
+		return nil, fmt.Errorf("read %s back: %w", fd.Path(), err)
+	}
+
+	vs := map[string]pdpb.Own{}
+	for _, m := range v.GetMessageType() {
+		e, _ := proto.GetExtension(m.GetOptions(), pdpb.E_Entity).(*pdpb.Entity)
+		if k := e.GetOwn(); k != pdpb.Own_OWN_UNSPECIFIED {
+			vs[m.GetName()] = k
+		}
+	}
+
+	return vs, nil
+}
+
+// Relative is a message's name with `pkg` taken off the front, and the whole
+// name when it is not in that package.
+//
+// It is what makes a field's type comparable across a rename. payday's Holder
+// points at `payday.Tenant` and an app that put these entities in its own
+// package points at `hday.Tenant` -- the same field, and by full name a
+// redeclaration of it. A map field is the sharper case, since its entry type is
+// synthesized from the message it is in: `payday.Tenant.LabelsEntry` against
+// `hday.Tenant.LabelsEntry`.
+//
+// What is left alone is everything outside the package, `google.protobuf.Timestamp`
+// most of all -- those are the same name on both sides and have to stay
+// comparable as one.
+func Relative(name string, pkg string) string {
+	return strings.TrimPrefix(name, pkg+".")
 }

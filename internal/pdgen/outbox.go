@@ -2,6 +2,8 @@ package pdgen
 
 import (
 	"google.golang.org/protobuf/compiler/protogen"
+
+	"github.com/lesomnus/payday/pdpb"
 )
 
 const (
@@ -9,9 +11,6 @@ const (
 	pkgLog  = protogen.GoImportPath("github.com/lesomnus/otx/log")
 	pkgSlog = protogen.GoImportPath("log/slog")
 )
-
-// OwnOutbox is the entity the queue is made of.
-const OwnOutbox = "payday.Outbox"
 
 // EmitOutbox writes the two halves that close the gap between a commit and a
 // publish: the recorder that writes a row inside the transaction, and the loop
@@ -23,7 +22,7 @@ const OwnOutbox = "payday.Outbox"
 // here beyond "in order, then delete".
 func EmitOutbox(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	// Refused by [CheckOwn] before this, for a real app; see there.
-	if !s.Has(OwnOutbox) {
+	if !s.Has(pdpb.Own_OWN_OUTBOX) {
 		return
 	}
 

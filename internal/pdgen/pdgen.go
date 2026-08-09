@@ -69,6 +69,15 @@ type Entity struct {
 	// is a number rather than a name.
 	Set string
 
+	// Own says this is one of payday's own entities, and [pdpb.Own_OWN_UNSPECIFIED]
+	// for everything an app writes.
+	//
+	// It is read instead of the full name, which is what used to identify them.
+	// The name made the proto package payday's rather than the app's, and it did
+	// so quietly: renaming it did not fail, it made the layers built out of
+	// these entities **not be generated**. See [CheckOwn].
+	Own pdpb.Own
+
 	// IsSet says this entity is what the field 3s point at.
 	IsSet bool
 
@@ -205,6 +214,7 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		Opts:   opts,
 		Domain: uint8(d),
 		Name:   opts.GetName(),
+		Own:    opts.GetOwn(),
 	}
 	if v.Name == "" {
 		v.Name = kebab(string(e.FullName().Name()))
@@ -329,8 +339,21 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 func (s *Schema) check() error {
 	byDomain := map[uint8]*Entity{}
 	byName := map[string]*Entity{}
+	byOwn := map[pdpb.Own]*Entity{}
 
 	for _, v := range s.Entities {
+		if v.Own != pdpb.Own_OWN_UNSPECIFIED {
+			// Two of them would make [Schema.Own] answer with whichever came
+			// first, which is the schema deciding a trust boundary by its own
+			// declaration order.
+			if u, ok := byOwn[v.Own]; ok {
+				return fmt.Errorf(
+					"%s and %s both say `own: %s`, and payday ships one of each; "+
+						"an app writes no `own:` at all -- it is copied in with the entity",
+					u.FullName(), v.FullName(), v.Own)
+			}
+			byOwn[v.Own] = v
+		}
 		if u, ok := byDomain[v.Domain]; ok {
 			return fmt.Errorf(
 				"%s and %s both declare domain %d; a domain outlives the row it named, "+

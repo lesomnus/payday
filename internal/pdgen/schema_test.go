@@ -364,7 +364,7 @@ message Holder {
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 ` + extra + `
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}};
+  option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, own: OWN_HOLDER};
 }`
 	}
 
@@ -428,7 +428,7 @@ message Tenant {
   google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
+  option (payday.entity) = {domain: 1, tenant: {}, own: OWN_TENANT, erase: {hard: {}}};
 }`
 }
 

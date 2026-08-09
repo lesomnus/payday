@@ -7,6 +7,8 @@ import (
 
 	"github.com/protobuf-orm/protobuf-orm/graph"
 	"google.golang.org/protobuf/compiler/protogen"
+
+	"github.com/lesomnus/payday/pdpb"
 )
 
 // Paths is where the generated code has to point, which is the one thing this
@@ -93,6 +95,15 @@ func EmitDomains(g *protogen.GeneratedFile, s *Schema) {
 	for _, v := range vs {
 		g.P("	", pkgPdid.Ident("Register"), "(", strconv.Quote(string(v.FullName())), ", ",
 			v.GoName(), "Domain, ", strconv.Quote(v.Name), ")")
+	}
+	if t := s.Own(pdpb.Own_OWN_TENANT); t != nil {
+		// Which of them is the wall, said as a number rather than as a name,
+		// because the name is the app's: these entities may be in the app's own
+		// proto package. What reads it is the runtime that has to recognise a
+		// tenant and cannot name its Go type -- `auth.MTLS`, sorting the names
+		// a certificate carries.
+		g.P("")
+		g.P("	", pkgPdid.Ident("RegisterTenant"), "(", t.GoName(), "Domain)")
 	}
 	g.P("}")
 	g.P("")

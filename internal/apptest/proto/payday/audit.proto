@@ -204,6 +204,10 @@ message Audit {
     ]
   };
   option (payday.entity) = {
+    // payday's own, so that generation finds it whatever an app called the
+    // proto package. An app never writes this; see `Own` in entity.proto.
+    own: OWN_AUDIT
+
     domain: 3
 
     // Nothing erases a trail row -- the layer in front does not serve the RPC

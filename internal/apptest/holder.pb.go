@@ -287,7 +287,7 @@ var File_payday_holder_proto protoreflect.FileDescriptor
 
 const file_payday_holder_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/holder.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x13payday/tenant.proto\"\xac\x04\n" +
+	"\x13payday/holder.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x13payday/tenant.proto\"\xae\x04\n" +
 	"\x06Holder\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12.\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.payday.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
@@ -303,10 +303,10 @@ const file_payday_holder_proto_rawDesc = "" +
 	"idpSubject\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:/\xca\xfc\x15%\x12\x02\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:1\xca\xfc\x15%\x12\x02\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
 	"\x05alias\x10\x04\x1a\n" +
 	"\n" +
-	"\x06tenant\x10\x020\x01\x8a\xbb\x16\x02\b\x02B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x06tenant\x10\x020\x01\x8a\xbb\x16\x04\b\x02H\x02B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_holder_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_payday_holder_proto_goTypes = []any{

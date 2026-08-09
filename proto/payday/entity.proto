@@ -146,6 +146,24 @@ message Entity {
   // for one back.
   Erase erase = 8;
 
+  // Own says this is one of payday's own entities, and is written **only in
+  // payday's own schema.** An app never writes it; `pd gen` copies these files
+  // in whole, and the line comes with them.
+  //
+  // It exists so that generation can find them without reading their names.
+  // Three things are built out of them -- the Gate layer, which is the whole of
+  // the `Add` tenant check; the layer that refuses a hand-written trail row;
+  // and the outbox drain -- and each used to look for `payday.Tenant`,
+  // `payday.Holder`, `payday.Audit`, `payday.Outbox` by full name.
+  //
+  // That made the proto package payday's rather than the app's, and it did so
+  // in the worst way available: renaming it did not fail, it made those layers
+  // **not be generated**, so reads stayed walled and writes stopped being.
+  //
+  // With the marker the name is free. An app may put payday's entities in its
+  // own package, and what a caller of that app sees is that app's namespace.
+  Own own = 9;
+
   // Global is an entity that is not behind the wall -- a table the whole
   // deployment shares.
   //
@@ -250,4 +268,21 @@ message Entity {
     // asked is what happened, and the answer starts with what happened last.
     bool desc = 2;
   }
+}
+
+// Own names one of payday's own entities, so that generation can find it
+// whatever the proto package is called.
+//
+// The numbers are of the same kind as a field number: chosen once and never
+// given to something else. They are **not** domains -- a domain is what an
+// identifier carries and an app declares, and these are what payday declares
+// about its own four.
+enum Own {
+  // The app's own entity, which is everything an app writes.
+  OWN_UNSPECIFIED = 0;
+
+  OWN_TENANT = 1;
+  OWN_HOLDER = 2;
+  OWN_AUDIT = 3;
+  OWN_OUTBOX = 4;
 }

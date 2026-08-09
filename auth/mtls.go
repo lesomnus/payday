@@ -172,11 +172,13 @@ func certIdentity(cert *x509.Certificate) (Identity, bool, error) {
 		return Identity{}, false, nil
 	}
 
-	// What the schema said a tenant is. Generated code registers it, so an app
-	// that has any always has this; one that does not cannot have written a
-	// tenant identifier into a certificate either, and every name is read as a
-	// caller -- which is what this did before there was a second one.
-	tenant, sorted := pdid.Lookup(pdid.EntityTenant)
+	// What the schema said a tenant is. Generated code registers it out of the
+	// entity marked `own: OWN_TENANT`, whatever an app called the proto package
+	// -- so a process that has a schema always has this. One that does not
+	// cannot have written a tenant identifier into a certificate either, and
+	// every name is read as a caller, which is what this did before there was a
+	// second one.
+	tenant, sorted := pdid.TenantDomain()
 
 	var (
 		who  Identity // the caller, once one has been found
