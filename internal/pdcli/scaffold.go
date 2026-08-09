@@ -210,7 +210,7 @@ func (e Entity) message(domain int) string {
 	b.WriteString("  bytes id = 1 [(orm.field) = {\n    type: TYPE_UUID\n    key: true\n    default: \"\"\n  }];\n")
 
 	if e.Tenanted {
-		b.WriteString("\n  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];\n")
+		b.WriteString("\n  Tenant tenant = 2 [(orm.edge) = {immutable: true}];\n")
 	}
 
 	b.WriteString("\n  // The name a person writes this as. Every write of it is folded and\n")

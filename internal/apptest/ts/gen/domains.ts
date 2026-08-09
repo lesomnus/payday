@@ -12,14 +12,23 @@
 
 import { pdid } from '@lesomnus/payday'
 
+/** The domain identifiers of app.Audit carry. */
+export const AuditDomain = 3
+
 /** The domain identifiers of app.Cell carry. */
 export const CellDomain = 10
 
 /** The domain identifiers of app.Fleet carry. */
 export const FleetDomain = 9
 
+/** The domain identifiers of app.Holder carry. */
+export const HolderDomain = 2
+
 /** The domain identifiers of app.Joint carry. */
 export const JointDomain = 8
+
+/** The domain identifiers of app.Outbox carry. */
+export const OutboxDomain = 4
 
 /** The domain identifiers of app.Reading carry. */
 export const ReadingDomain = 11
@@ -27,27 +36,18 @@ export const ReadingDomain = 11
 /** The domain identifiers of app.Robot carry. */
 export const RobotDomain = 7
 
-/** The domain identifiers of payday.Audit carry. */
-export const AuditDomain = 3
-
-/** The domain identifiers of payday.Holder carry. */
-export const HolderDomain = 2
-
-/** The domain identifiers of payday.Outbox carry. */
-export const OutboxDomain = 4
-
-/** The domain identifiers of payday.Tenant carry. */
+/** The domain identifiers of app.Tenant carry. */
 export const TenantDomain = 1
 
 // Registered as this module is loaded, which is why importing it is the
 // whole of what an app does with it.
+pdid.register("app.Audit", AuditDomain, "audit")
 pdid.register("app.Cell", CellDomain, "cell")
 pdid.register("app.Fleet", FleetDomain, "fleet")
+pdid.register("app.Holder", HolderDomain, "holder")
 pdid.register("app.Joint", JointDomain, "joint")
+pdid.register("app.Outbox", OutboxDomain, "outbox")
 pdid.register("app.Reading", ReadingDomain, "reading")
 pdid.register("app.Robot", RobotDomain, "robot")
-pdid.register("payday.Audit", AuditDomain, "audit")
-pdid.register("payday.Holder", HolderDomain, "holder")
-pdid.register("payday.Outbox", OutboxDomain, "outbox")
-pdid.register("payday.Tenant", TenantDomain, "tenant")
+pdid.register("app.Tenant", TenantDomain, "tenant")
 

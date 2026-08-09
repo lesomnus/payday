@@ -18,7 +18,7 @@ message Cell {
     key: true
     default: ""
   }];
-  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
   string alias = 4;
 
   // Erased softly, which is what saying nothing means: the row is stamped and
@@ -40,7 +40,7 @@ message Robot {
     key: true
     default: ""
   }];
-  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
 
   // Field 3 is the app's, and this is what putting something there means: a set
   // smaller than a tenant, and a second axis every read of this entity is

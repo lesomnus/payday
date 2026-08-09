@@ -24,7 +24,7 @@ message Thing {
     default: ""
   }];
 
-  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
 
   // The name a person writes this as. Every write of it is folded and checked
   // on the way in, so "  Arm-01 " and "arm-01" are one row and "Not A Name" is

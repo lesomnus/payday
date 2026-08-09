@@ -90,7 +90,7 @@ service ReadingService {
 
 message CellAddRequest {
   bytes id = 1;
-  payday.TenantRef tenant = 2;
+  TenantRef tenant = 2;
   string alias = 4 [features.field_presence = IMPLICIT];
 }
 
@@ -107,7 +107,7 @@ message CellRef {
 
 message CellSelect {
   bool all = 1;
-  payday.TenantSelect tenant = 2;
+  TenantSelect tenant = 2;
   bool alias = 4;
   bool date_erased = 14;
 }
@@ -124,7 +124,7 @@ message CellApplyRequest {
 
 message RobotAddRequest {
   bytes id = 1;
-  payday.TenantRef tenant = 2;
+  TenantRef tenant = 2;
   CellRef cell = 3;
   string alias = 4 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_created = 15;
@@ -144,12 +144,12 @@ message RobotRef {
 
 message RobotRefBySlug {
   string alias = 4;
-  payday.TenantRef tenant = 2;
+  TenantRef tenant = 2;
 }
 
 message RobotSelect {
   bool all = 1;
-  payday.TenantSelect tenant = 2;
+  TenantSelect tenant = 2;
   CellSelect cell = 3;
   bool alias = 4;
   bool date_updated = 13;

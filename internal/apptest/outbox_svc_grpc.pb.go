@@ -71,7 +71,7 @@ func RegisterOutboxServiceServer(s grpc.ServiceRegistrar, srv OutboxServiceServe
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var OutboxService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "payday.OutboxService",
+	ServiceName: "app.OutboxService",
 	HandlerType: (*OutboxServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams:     []grpc.StreamDesc{},

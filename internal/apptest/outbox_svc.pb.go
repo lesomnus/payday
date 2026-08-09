@@ -27,7 +27,7 @@ var File_payday_outbox_svc_g_proto protoreflect.FileDescriptor
 
 const file_payday_outbox_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x19payday/outbox_svc.g.proto\x12\x06payday2\x0f\n" +
+	"\x19payday/outbox_svc.g.proto\x12\x03app2\x0f\n" +
 	"\rOutboxServiceB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
 var file_payday_outbox_svc_g_proto_goTypes = []any{}

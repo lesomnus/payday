@@ -23,11 +23,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	HolderService_Add_FullMethodName   = "/payday.HolderService/Add"
-	HolderService_Get_FullMethodName   = "/payday.HolderService/Get"
-	HolderService_Patch_FullMethodName = "/payday.HolderService/Patch"
-	HolderService_Apply_FullMethodName = "/payday.HolderService/Apply"
-	HolderService_Erase_FullMethodName = "/payday.HolderService/Erase"
+	HolderService_Add_FullMethodName   = "/app.HolderService/Add"
+	HolderService_Get_FullMethodName   = "/app.HolderService/Get"
+	HolderService_Patch_FullMethodName = "/app.HolderService/Patch"
+	HolderService_Apply_FullMethodName = "/app.HolderService/Apply"
+	HolderService_Erase_FullMethodName = "/app.HolderService/Erase"
 )
 
 // HolderServiceClient is the client API for HolderService service.
@@ -258,7 +258,7 @@ func _HolderService_Erase_Handler(srv interface{}, ctx context.Context, dec func
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var HolderService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "payday.HolderService",
+	ServiceName: "app.HolderService",
 	HandlerType: (*HolderServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

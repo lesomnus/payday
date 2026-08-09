@@ -69,7 +69,7 @@ a generated file that was not regenerated compiles perfectly and is wrong.
 
 `pd gen` also pins the buf dependencies the first time, and that is not a
 convenience. `buf dep update` compiles the workspace before it writes the lock,
-and this app's schema names `payday.Tenant` — which does not exist until a
+and this app's schema names `Tenant` — which does not exist until a
 generation has copied payday's entities into `proto/payday/`. So run by hand it
 fails on a tree nothing has generated yet, and there is exactly one moment it
 can run: inside `pd gen`, between those two things. Once `buf.lock` has entries

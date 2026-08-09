@@ -1310,30 +1310,30 @@ var File_payday_holder_svc_g_proto protoreflect.FileDescriptor
 
 const file_payday_holder_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x19payday/holder_svc.g.proto\x12\x06payday\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x13payday/holder.proto\x1a\x19payday/tenant_svc.g.proto\"\x80\x03\n" +
+	"\x19payday/holder_svc.g.proto\x12\x03app\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x13payday/holder.proto\x1a\x19payday/tenant_svc.g.proto\"\xfa\x02\n" +
 	"\x10HolderAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12)\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\x12\x1b\n" +
+	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x19\n" +
 	"\x04name\x18\x05 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04name\x12\x19\n" +
-	"\x04desc\x18\x06 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04desc\x12<\n" +
-	"\x06labels\x18\a \x03(\v2$.payday.HolderAddRequest.LabelsEntryR\x06labels\x12=\n" +
+	"\x04desc\x18\x06 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04desc\x129\n" +
+	"\x06labels\x18\a \x03(\v2!.app.HolderAddRequest.LabelsEntryR\x06labels\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x12&\n" +
 	"\vidp_subject\x18\b \x01(\tB\x05\xaa\x01\x02\b\x02R\n" +
 	"idpSubject\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"R\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"O\n" +
 	"\x0fHolderRefBySlug\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12)\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x11.payday.TenantRefR\x06tenant\"S\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12&\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\"P\n" +
 	"\tHolderRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02id\x12-\n" +
-	"\x04slug\x18\x04 \x01(\v2\x17.payday.HolderRefBySlugH\x00R\x04slugB\x05\n" +
-	"\x03key\"\xac\x02\n" +
+	"\x02id\x18\x01 \x01(\fH\x00R\x02id\x12*\n" +
+	"\x04slug\x18\x04 \x01(\v2\x14.app.HolderRefBySlugH\x00R\x04slugB\x05\n" +
+	"\x03key\"\xa9\x02\n" +
 	"\fHolderSelect\x12\x10\n" +
-	"\x03all\x18\x01 \x01(\bR\x03all\x12,\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06tenant\x12\x14\n" +
+	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x11.app.TenantSelectR\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x12\n" +
 	"\x04name\x18\x05 \x01(\bR\x04name\x12\x12\n" +
 	"\x04desc\x18\x06 \x01(\bR\x04desc\x12\x16\n" +
@@ -1343,76 +1343,76 @@ const file_payday_holder_svc_g_proto_rawDesc = "" +
 	"dateErased\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\x12\x1f\n" +
 	"\vidp_subject\x18\b \x01(\bR\n" +
-	"idpSubject\"e\n" +
-	"\x10HolderGetRequest\x12#\n" +
-	"\x03ref\x18\x01 \x01(\v2\x11.payday.HolderRefR\x03ref\x12,\n" +
-	"\x06select\x18\x02 \x01(\v2\x14.payday.HolderSelectR\x06select\"\x80\x03\n" +
-	"\x12HolderPatchRequest\x12#\n" +
-	"\x03ref\x18\x01 \x01(\v2\x11.payday.HolderRefR\x03ref\x12\x14\n" +
+	"idpSubject\"_\n" +
+	"\x10HolderGetRequest\x12 \n" +
+	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\x12)\n" +
+	"\x06select\x18\x02 \x01(\v2\x11.app.HolderSelectR\x06select\"\xfa\x02\n" +
+	"\x12HolderPatchRequest\x12 \n" +
+	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\x12\x12\n" +
 	"\x04name\x18\n" +
 	" \x01(\tR\x04name\x12\x12\n" +
-	"\x04desc\x18\f \x01(\tR\x04desc\x12>\n" +
-	"\x06labels\x18\x0e \x03(\v2&.payday.HolderPatchRequest.LabelsEntryR\x06labels\x12=\n" +
+	"\x04desc\x18\f \x01(\tR\x04desc\x12;\n" +
+	"\x06labels\x18\x0e \x03(\v2#.app.HolderPatchRequest.LabelsEntryR\x06labels\x12=\n" +
 	"\fdate_updated\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\vdateUpdated\x12,\n" +
 	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\x12\x1f\n" +
 	"\vidp_subject\x18\x10 \x01(\tR\n" +
 	"idpSubject\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"]\n" +
-	"\x12HolderApplyRequest\x12#\n" +
-	"\x03ref\x18\x01 \x01(\v2\x11.payday.HolderRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch2\x8f\x02\n" +
-	"\rHolderService\x12/\n" +
-	"\x03Add\x12\x18.payday.HolderAddRequest\x1a\x0e.payday.Holder\x12/\n" +
-	"\x03Get\x12\x18.payday.HolderGetRequest\x1a\x0e.payday.Holder\x123\n" +
-	"\x05Patch\x12\x1a.payday.HolderPatchRequest\x1a\x0e.payday.Holder\x123\n" +
-	"\x05Apply\x12\x1a.payday.HolderApplyRequest\x1a\x0e.payday.Holder\x122\n" +
-	"\x05Erase\x12\x11.payday.HolderRef\x1a\x16.google.protobuf.EmptyB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"Z\n" +
+	"\x12HolderApplyRequest\x12 \n" +
+	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\x12\"\n" +
+	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch2\xf4\x01\n" +
+	"\rHolderService\x12)\n" +
+	"\x03Add\x12\x15.app.HolderAddRequest\x1a\v.app.Holder\x12)\n" +
+	"\x03Get\x12\x15.app.HolderGetRequest\x1a\v.app.Holder\x12-\n" +
+	"\x05Patch\x12\x17.app.HolderPatchRequest\x1a\v.app.Holder\x12-\n" +
+	"\x05Apply\x12\x17.app.HolderApplyRequest\x1a\v.app.Holder\x12/\n" +
+	"\x05Erase\x12\x0e.app.HolderRef\x1a\x16.google.protobuf.EmptyB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
 var file_payday_holder_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_payday_holder_svc_g_proto_goTypes = []any{
-	(*HolderAddRequest)(nil),      // 0: payday.HolderAddRequest
-	(*HolderRefBySlug)(nil),       // 1: payday.HolderRefBySlug
-	(*HolderRef)(nil),             // 2: payday.HolderRef
-	(*HolderSelect)(nil),          // 3: payday.HolderSelect
-	(*HolderGetRequest)(nil),      // 4: payday.HolderGetRequest
-	(*HolderPatchRequest)(nil),    // 5: payday.HolderPatchRequest
-	(*HolderApplyRequest)(nil),    // 6: payday.HolderApplyRequest
-	nil,                           // 7: payday.HolderAddRequest.LabelsEntry
-	nil,                           // 8: payday.HolderPatchRequest.LabelsEntry
-	(*TenantRef)(nil),             // 9: payday.TenantRef
+	(*HolderAddRequest)(nil),      // 0: app.HolderAddRequest
+	(*HolderRefBySlug)(nil),       // 1: app.HolderRefBySlug
+	(*HolderRef)(nil),             // 2: app.HolderRef
+	(*HolderSelect)(nil),          // 3: app.HolderSelect
+	(*HolderGetRequest)(nil),      // 4: app.HolderGetRequest
+	(*HolderPatchRequest)(nil),    // 5: app.HolderPatchRequest
+	(*HolderApplyRequest)(nil),    // 6: app.HolderApplyRequest
+	nil,                           // 7: app.HolderAddRequest.LabelsEntry
+	nil,                           // 8: app.HolderPatchRequest.LabelsEntry
+	(*TenantRef)(nil),             // 9: app.TenantRef
 	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
-	(*TenantSelect)(nil),          // 11: payday.TenantSelect
+	(*TenantSelect)(nil),          // 11: app.TenantSelect
 	(*patchpb.Patch)(nil),         // 12: patch.Patch
-	(*Holder)(nil),                // 13: payday.Holder
+	(*Holder)(nil),                // 13: app.Holder
 	(*emptypb.Empty)(nil),         // 14: google.protobuf.Empty
 }
 var file_payday_holder_svc_g_proto_depIdxs = []int32{
-	9,  // 0: payday.HolderAddRequest.tenant:type_name -> payday.TenantRef
-	7,  // 1: payday.HolderAddRequest.labels:type_name -> payday.HolderAddRequest.LabelsEntry
-	10, // 2: payday.HolderAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	9,  // 3: payday.HolderRefBySlug.tenant:type_name -> payday.TenantRef
-	1,  // 4: payday.HolderRef.slug:type_name -> payday.HolderRefBySlug
-	11, // 5: payday.HolderSelect.tenant:type_name -> payday.TenantSelect
-	2,  // 6: payday.HolderGetRequest.ref:type_name -> payday.HolderRef
-	3,  // 7: payday.HolderGetRequest.select:type_name -> payday.HolderSelect
-	2,  // 8: payday.HolderPatchRequest.ref:type_name -> payday.HolderRef
-	8,  // 9: payday.HolderPatchRequest.labels:type_name -> payday.HolderPatchRequest.LabelsEntry
-	10, // 10: payday.HolderPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	2,  // 11: payday.HolderApplyRequest.ref:type_name -> payday.HolderRef
-	12, // 12: payday.HolderApplyRequest.patch:type_name -> patch.Patch
-	0,  // 13: payday.HolderService.Add:input_type -> payday.HolderAddRequest
-	4,  // 14: payday.HolderService.Get:input_type -> payday.HolderGetRequest
-	5,  // 15: payday.HolderService.Patch:input_type -> payday.HolderPatchRequest
-	6,  // 16: payday.HolderService.Apply:input_type -> payday.HolderApplyRequest
-	2,  // 17: payday.HolderService.Erase:input_type -> payday.HolderRef
-	13, // 18: payday.HolderService.Add:output_type -> payday.Holder
-	13, // 19: payday.HolderService.Get:output_type -> payday.Holder
-	13, // 20: payday.HolderService.Patch:output_type -> payday.Holder
-	13, // 21: payday.HolderService.Apply:output_type -> payday.Holder
-	14, // 22: payday.HolderService.Erase:output_type -> google.protobuf.Empty
+	9,  // 0: app.HolderAddRequest.tenant:type_name -> app.TenantRef
+	7,  // 1: app.HolderAddRequest.labels:type_name -> app.HolderAddRequest.LabelsEntry
+	10, // 2: app.HolderAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	9,  // 3: app.HolderRefBySlug.tenant:type_name -> app.TenantRef
+	1,  // 4: app.HolderRef.slug:type_name -> app.HolderRefBySlug
+	11, // 5: app.HolderSelect.tenant:type_name -> app.TenantSelect
+	2,  // 6: app.HolderGetRequest.ref:type_name -> app.HolderRef
+	3,  // 7: app.HolderGetRequest.select:type_name -> app.HolderSelect
+	2,  // 8: app.HolderPatchRequest.ref:type_name -> app.HolderRef
+	8,  // 9: app.HolderPatchRequest.labels:type_name -> app.HolderPatchRequest.LabelsEntry
+	10, // 10: app.HolderPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	2,  // 11: app.HolderApplyRequest.ref:type_name -> app.HolderRef
+	12, // 12: app.HolderApplyRequest.patch:type_name -> patch.Patch
+	0,  // 13: app.HolderService.Add:input_type -> app.HolderAddRequest
+	4,  // 14: app.HolderService.Get:input_type -> app.HolderGetRequest
+	5,  // 15: app.HolderService.Patch:input_type -> app.HolderPatchRequest
+	6,  // 16: app.HolderService.Apply:input_type -> app.HolderApplyRequest
+	2,  // 17: app.HolderService.Erase:input_type -> app.HolderRef
+	13, // 18: app.HolderService.Add:output_type -> app.Holder
+	13, // 19: app.HolderService.Get:output_type -> app.Holder
+	13, // 20: app.HolderService.Patch:output_type -> app.Holder
+	13, // 21: app.HolderService.Apply:output_type -> app.Holder
+	14, // 22: app.HolderService.Erase:output_type -> google.protobuf.Empty
 	18, // [18:23] is the sub-list for method output_type
 	13, // [13:18] is the sub-list for method input_type
 	13, // [13:13] is the sub-list for extension type_name

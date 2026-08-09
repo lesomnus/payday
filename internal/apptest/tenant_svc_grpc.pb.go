@@ -23,11 +23,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TenantService_Add_FullMethodName   = "/payday.TenantService/Add"
-	TenantService_Get_FullMethodName   = "/payday.TenantService/Get"
-	TenantService_Patch_FullMethodName = "/payday.TenantService/Patch"
-	TenantService_Apply_FullMethodName = "/payday.TenantService/Apply"
-	TenantService_Erase_FullMethodName = "/payday.TenantService/Erase"
+	TenantService_Add_FullMethodName   = "/app.TenantService/Add"
+	TenantService_Get_FullMethodName   = "/app.TenantService/Get"
+	TenantService_Patch_FullMethodName = "/app.TenantService/Patch"
+	TenantService_Apply_FullMethodName = "/app.TenantService/Apply"
+	TenantService_Erase_FullMethodName = "/app.TenantService/Erase"
 )
 
 // TenantServiceClient is the client API for TenantService service.
@@ -258,7 +258,7 @@ func _TenantService_Erase_Handler(srv interface{}, ctx context.Context, dec func
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TenantService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "payday.TenantService",
+	ServiceName: "app.TenantService",
 	HandlerType: (*TenantServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

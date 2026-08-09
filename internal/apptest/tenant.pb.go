@@ -213,13 +213,13 @@ var File_payday_tenant_proto protoreflect.FileDescriptor
 
 const file_payday_tenant_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/tenant.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x84\x03\n" +
+	"\x13payday/tenant.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x81\x03\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x1c\n" +
 	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias\x12\x12\n" +
 	"\x04name\x18\x05 \x01(\tR\x04name\x12\x12\n" +
-	"\x04desc\x18\x06 \x01(\tR\x04desc\x122\n" +
-	"\x06labels\x18\a \x03(\v2\x1a.payday.Tenant.LabelsEntryR\x06labels\x12F\n" +
+	"\x04desc\x18\x06 \x01(\tR\x04desc\x12/\n" +
+	"\x06labels\x18\a \x03(\v2\x17.app.Tenant.LabelsEntryR\x06labels\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
@@ -230,14 +230,14 @@ const file_payday_tenant_proto_rawDesc = "" +
 
 var file_payday_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_payday_tenant_proto_goTypes = []any{
-	(*Tenant)(nil),                // 0: payday.Tenant
-	nil,                           // 1: payday.Tenant.LabelsEntry
+	(*Tenant)(nil),                // 0: app.Tenant
+	nil,                           // 1: app.Tenant.LabelsEntry
 	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
 }
 var file_payday_tenant_proto_depIdxs = []int32{
-	1, // 0: payday.Tenant.labels:type_name -> payday.Tenant.LabelsEntry
-	2, // 1: payday.Tenant.date_updated:type_name -> google.protobuf.Timestamp
-	2, // 2: payday.Tenant.date_created:type_name -> google.protobuf.Timestamp
+	1, // 0: app.Tenant.labels:type_name -> app.Tenant.LabelsEntry
+	2, // 1: app.Tenant.date_updated:type_name -> google.protobuf.Timestamp
+	2, // 2: app.Tenant.date_created:type_name -> google.protobuf.Timestamp
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name

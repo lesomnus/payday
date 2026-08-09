@@ -98,6 +98,12 @@ func (g Gen) say(format string, vs ...any) {
 // goPackage is the line every copied entity has rewritten.
 var goPackage = regexp.MustCompile(`(?m)^option go_package = .*$`)
 
+// protoPackage is the `package` line of a copied entity, which is rewritten to
+// the app's for the reason in [Layout.ProtoPkg]: a Tenant and a Holder are the
+// app's own concepts, and a caller should not have to learn the name of the
+// framework to say who they are.
+var protoPackage = regexp.MustCompile(`(?m)^package .*$`)
+
 // entities copies payday's own entities into the app, merged with whatever the
 // app added to them.
 //
@@ -148,6 +154,7 @@ func (g Gen) entities(ctx context.Context) error {
 		}
 
 		b = goPackage.ReplaceAll(b, []byte(fmt.Sprintf("option go_package = %q;", g.Layout.GoPackage())))
+		b = protoPackage.ReplaceAll(b, []byte(fmt.Sprintf("package %s;", g.Layout.ProtoPkg)))
 		if err := os.WriteFile(filepath.Join(dst, name), b, 0o644); err != nil {
 			return err
 		}
@@ -486,7 +493,7 @@ func (g Gen) entRuntime(ctx context.Context) error {
 // deps pins the buf modules the schema imports, the first time.
 //
 // It is here, between payday's entities and the first `buf generate`, because
-// that is the only moment it can be. An app's own schema names `payday.Tenant`,
+// that is the only moment it can be. An app's own schema names `Tenant`,
 // so the workspace does not compile until [run.entities] has copied payday's
 // entities in -- and `buf dep update` compiles the workspace before it writes
 // the lock. Run it before a generation, as the obvious ordering suggests, and

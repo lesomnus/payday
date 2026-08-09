@@ -3,7 +3,7 @@
 
 edition = "2023";
 
-package payday;
+package app;
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 

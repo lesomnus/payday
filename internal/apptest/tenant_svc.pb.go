@@ -1046,13 +1046,13 @@ var File_payday_tenant_svc_g_proto protoreflect.FileDescriptor
 
 const file_payday_tenant_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x19payday/tenant_svc.g.proto\x12\x06payday\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x13payday/tenant.proto\"\xad\x02\n" +
+	"\x19payday/tenant_svc.g.proto\x12\x03app\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x13payday/tenant.proto\"\xaa\x02\n" +
 	"\x10TenantAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x19\n" +
 	"\x04name\x18\x05 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04name\x12\x19\n" +
-	"\x04desc\x18\x06 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04desc\x12<\n" +
-	"\x06labels\x18\a \x03(\v2$.payday.TenantAddRequest.LabelsEntryR\x06labels\x12=\n" +
+	"\x04desc\x18\x06 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04desc\x129\n" +
+	"\x06labels\x18\a \x03(\v2!.app.TenantAddRequest.LabelsEntryR\x06labels\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -1068,67 +1068,67 @@ const file_payday_tenant_svc_g_proto_rawDesc = "" +
 	"\x04desc\x18\x06 \x01(\bR\x04desc\x12\x16\n" +
 	"\x06labels\x18\a \x01(\bR\x06labels\x12!\n" +
 	"\fdate_updated\x18\r \x01(\bR\vdateUpdated\x12!\n" +
-	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"e\n" +
-	"\x10TenantGetRequest\x12#\n" +
-	"\x03ref\x18\x01 \x01(\v2\x11.payday.TenantRefR\x03ref\x12,\n" +
-	"\x06select\x18\x02 \x01(\v2\x14.payday.TenantSelectR\x06select\"\xdf\x02\n" +
-	"\x12TenantPatchRequest\x12#\n" +
-	"\x03ref\x18\x01 \x01(\v2\x11.payday.TenantRefR\x03ref\x12\x14\n" +
+	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"_\n" +
+	"\x10TenantGetRequest\x12 \n" +
+	"\x03ref\x18\x01 \x01(\v2\x0e.app.TenantRefR\x03ref\x12)\n" +
+	"\x06select\x18\x02 \x01(\v2\x11.app.TenantSelectR\x06select\"\xd9\x02\n" +
+	"\x12TenantPatchRequest\x12 \n" +
+	"\x03ref\x18\x01 \x01(\v2\x0e.app.TenantRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\x12\x12\n" +
 	"\x04name\x18\n" +
 	" \x01(\tR\x04name\x12\x12\n" +
-	"\x04desc\x18\f \x01(\tR\x04desc\x12>\n" +
-	"\x06labels\x18\x0e \x03(\v2&.payday.TenantPatchRequest.LabelsEntryR\x06labels\x12=\n" +
+	"\x04desc\x18\f \x01(\tR\x04desc\x12;\n" +
+	"\x06labels\x18\x0e \x03(\v2#.app.TenantPatchRequest.LabelsEntryR\x06labels\x12=\n" +
 	"\fdate_updated\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\vdateUpdated\x12,\n" +
 	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"]\n" +
-	"\x12TenantApplyRequest\x12#\n" +
-	"\x03ref\x18\x01 \x01(\v2\x11.payday.TenantRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch2\x8f\x02\n" +
-	"\rTenantService\x12/\n" +
-	"\x03Add\x12\x18.payday.TenantAddRequest\x1a\x0e.payday.Tenant\x12/\n" +
-	"\x03Get\x12\x18.payday.TenantGetRequest\x1a\x0e.payday.Tenant\x123\n" +
-	"\x05Patch\x12\x1a.payday.TenantPatchRequest\x1a\x0e.payday.Tenant\x123\n" +
-	"\x05Apply\x12\x1a.payday.TenantApplyRequest\x1a\x0e.payday.Tenant\x122\n" +
-	"\x05Erase\x12\x11.payday.TenantRef\x1a\x16.google.protobuf.EmptyB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"Z\n" +
+	"\x12TenantApplyRequest\x12 \n" +
+	"\x03ref\x18\x01 \x01(\v2\x0e.app.TenantRefR\x03ref\x12\"\n" +
+	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch2\xf4\x01\n" +
+	"\rTenantService\x12)\n" +
+	"\x03Add\x12\x15.app.TenantAddRequest\x1a\v.app.Tenant\x12)\n" +
+	"\x03Get\x12\x15.app.TenantGetRequest\x1a\v.app.Tenant\x12-\n" +
+	"\x05Patch\x12\x17.app.TenantPatchRequest\x1a\v.app.Tenant\x12-\n" +
+	"\x05Apply\x12\x17.app.TenantApplyRequest\x1a\v.app.Tenant\x12/\n" +
+	"\x05Erase\x12\x0e.app.TenantRef\x1a\x16.google.protobuf.EmptyB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
 var file_payday_tenant_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_payday_tenant_svc_g_proto_goTypes = []any{
-	(*TenantAddRequest)(nil),      // 0: payday.TenantAddRequest
-	(*TenantRef)(nil),             // 1: payday.TenantRef
-	(*TenantSelect)(nil),          // 2: payday.TenantSelect
-	(*TenantGetRequest)(nil),      // 3: payday.TenantGetRequest
-	(*TenantPatchRequest)(nil),    // 4: payday.TenantPatchRequest
-	(*TenantApplyRequest)(nil),    // 5: payday.TenantApplyRequest
-	nil,                           // 6: payday.TenantAddRequest.LabelsEntry
-	nil,                           // 7: payday.TenantPatchRequest.LabelsEntry
+	(*TenantAddRequest)(nil),      // 0: app.TenantAddRequest
+	(*TenantRef)(nil),             // 1: app.TenantRef
+	(*TenantSelect)(nil),          // 2: app.TenantSelect
+	(*TenantGetRequest)(nil),      // 3: app.TenantGetRequest
+	(*TenantPatchRequest)(nil),    // 4: app.TenantPatchRequest
+	(*TenantApplyRequest)(nil),    // 5: app.TenantApplyRequest
+	nil,                           // 6: app.TenantAddRequest.LabelsEntry
+	nil,                           // 7: app.TenantPatchRequest.LabelsEntry
 	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
 	(*patchpb.Patch)(nil),         // 9: patch.Patch
-	(*Tenant)(nil),                // 10: payday.Tenant
+	(*Tenant)(nil),                // 10: app.Tenant
 	(*emptypb.Empty)(nil),         // 11: google.protobuf.Empty
 }
 var file_payday_tenant_svc_g_proto_depIdxs = []int32{
-	6,  // 0: payday.TenantAddRequest.labels:type_name -> payday.TenantAddRequest.LabelsEntry
-	8,  // 1: payday.TenantAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	1,  // 2: payday.TenantGetRequest.ref:type_name -> payday.TenantRef
-	2,  // 3: payday.TenantGetRequest.select:type_name -> payday.TenantSelect
-	1,  // 4: payday.TenantPatchRequest.ref:type_name -> payday.TenantRef
-	7,  // 5: payday.TenantPatchRequest.labels:type_name -> payday.TenantPatchRequest.LabelsEntry
-	8,  // 6: payday.TenantPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	1,  // 7: payday.TenantApplyRequest.ref:type_name -> payday.TenantRef
-	9,  // 8: payday.TenantApplyRequest.patch:type_name -> patch.Patch
-	0,  // 9: payday.TenantService.Add:input_type -> payday.TenantAddRequest
-	3,  // 10: payday.TenantService.Get:input_type -> payday.TenantGetRequest
-	4,  // 11: payday.TenantService.Patch:input_type -> payday.TenantPatchRequest
-	5,  // 12: payday.TenantService.Apply:input_type -> payday.TenantApplyRequest
-	1,  // 13: payday.TenantService.Erase:input_type -> payday.TenantRef
-	10, // 14: payday.TenantService.Add:output_type -> payday.Tenant
-	10, // 15: payday.TenantService.Get:output_type -> payday.Tenant
-	10, // 16: payday.TenantService.Patch:output_type -> payday.Tenant
-	10, // 17: payday.TenantService.Apply:output_type -> payday.Tenant
-	11, // 18: payday.TenantService.Erase:output_type -> google.protobuf.Empty
+	6,  // 0: app.TenantAddRequest.labels:type_name -> app.TenantAddRequest.LabelsEntry
+	8,  // 1: app.TenantAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	1,  // 2: app.TenantGetRequest.ref:type_name -> app.TenantRef
+	2,  // 3: app.TenantGetRequest.select:type_name -> app.TenantSelect
+	1,  // 4: app.TenantPatchRequest.ref:type_name -> app.TenantRef
+	7,  // 5: app.TenantPatchRequest.labels:type_name -> app.TenantPatchRequest.LabelsEntry
+	8,  // 6: app.TenantPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	1,  // 7: app.TenantApplyRequest.ref:type_name -> app.TenantRef
+	9,  // 8: app.TenantApplyRequest.patch:type_name -> patch.Patch
+	0,  // 9: app.TenantService.Add:input_type -> app.TenantAddRequest
+	3,  // 10: app.TenantService.Get:input_type -> app.TenantGetRequest
+	4,  // 11: app.TenantService.Patch:input_type -> app.TenantPatchRequest
+	5,  // 12: app.TenantService.Apply:input_type -> app.TenantApplyRequest
+	1,  // 13: app.TenantService.Erase:input_type -> app.TenantRef
+	10, // 14: app.TenantService.Add:output_type -> app.Tenant
+	10, // 15: app.TenantService.Get:output_type -> app.Tenant
+	10, // 16: app.TenantService.Patch:output_type -> app.Tenant
+	10, // 17: app.TenantService.Apply:output_type -> app.Tenant
+	11, // 18: app.TenantService.Erase:output_type -> google.protobuf.Empty
 	14, // [14:19] is the sub-list for method output_type
 	9,  // [9:14] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name

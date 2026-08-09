@@ -13,18 +13,25 @@
 
 import type { EntityDesc } from '@lesomnus/payday/store'
 
-import { CellSchema, FleetSchema, JointSchema, ReadingSchema, RobotSchema } from './app/robot_pb.js'
 import { AuditSchema } from './payday/audit_pb.js'
+import { CellSchema, FleetSchema, JointSchema, ReadingSchema, RobotSchema } from './app/robot_pb.js'
 import { HolderSchema } from './payday/holder_pb.js'
 import { OutboxSchema } from './payday/outbox_pb.js'
 import { TenantSchema } from './payday/tenant_pb.js'
+
+/** app.Audit, as the store holds it. */
+export const Audit = {
+	typeName: "app.Audit",
+	schema: AuditSchema,
+	domain: 3,
+} as const satisfies EntityDesc
 
 /** app.Cell, as the store holds it. */
 export const Cell = {
 	typeName: "app.Cell",
 	schema: CellSchema,
 	domain: 10,
-	refs: [{ field: "tenant", to: "payday.Tenant" }],
+	refs: [{ field: "tenant", to: "app.Tenant" }],
 } as const satisfies EntityDesc
 
 /** app.Fleet, as the store holds it. */
@@ -34,12 +41,28 @@ export const Fleet = {
 	domain: 9,
 } as const satisfies EntityDesc
 
+/** app.Holder, as the store holds it. */
+export const Holder = {
+	typeName: "app.Holder",
+	schema: HolderSchema,
+	domain: 2,
+	version: "dateUpdated",
+	refs: [{ field: "tenant", to: "app.Tenant" }],
+} as const satisfies EntityDesc
+
 /** app.Joint, as the store holds it. */
 export const Joint = {
 	typeName: "app.Joint",
 	schema: JointSchema,
 	domain: 8,
 	refs: [{ field: "robot", to: "app.Robot" }],
+} as const satisfies EntityDesc
+
+/** app.Outbox, as the store holds it. */
+export const Outbox = {
+	typeName: "app.Outbox",
+	schema: OutboxSchema,
+	domain: 4,
 } as const satisfies EntityDesc
 
 /** app.Reading, as the store holds it. */
@@ -56,40 +79,17 @@ export const Robot = {
 	schema: RobotSchema,
 	domain: 7,
 	version: "dateUpdated",
-	refs: [{ field: "tenant", to: "payday.Tenant" }, { field: "cell", to: "app.Cell" }],
+	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "cell", to: "app.Cell" }],
 } as const satisfies EntityDesc
 
-/** payday.Audit, as the store holds it. */
-export const Audit = {
-	typeName: "payday.Audit",
-	schema: AuditSchema,
-	domain: 3,
-} as const satisfies EntityDesc
-
-/** payday.Holder, as the store holds it. */
-export const Holder = {
-	typeName: "payday.Holder",
-	schema: HolderSchema,
-	domain: 2,
-	version: "dateUpdated",
-	refs: [{ field: "tenant", to: "payday.Tenant" }],
-} as const satisfies EntityDesc
-
-/** payday.Outbox, as the store holds it. */
-export const Outbox = {
-	typeName: "payday.Outbox",
-	schema: OutboxSchema,
-	domain: 4,
-} as const satisfies EntityDesc
-
-/** payday.Tenant, as the store holds it. */
+/** app.Tenant, as the store holds it. */
 export const Tenant = {
-	typeName: "payday.Tenant",
+	typeName: "app.Tenant",
 	schema: TenantSchema,
 	domain: 1,
 	version: "dateUpdated",
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Cell, Fleet, Joint, Reading, Robot, Audit, Holder, Outbox, Tenant] as const
+export const entities = [Audit, Cell, Fleet, Holder, Joint, Outbox, Reading, Robot, Tenant] as const
 

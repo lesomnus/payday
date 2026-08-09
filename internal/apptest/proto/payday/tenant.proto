@@ -1,6 +1,6 @@
 edition = "2023";
 
-package payday;
+package app;
 
 import "google/protobuf/timestamp.proto";
 import "orm.proto";

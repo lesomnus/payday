@@ -67,6 +67,37 @@ type Layout struct {
 	// `api/`, written `thingpb.Thing`. Empty when nothing said.
 	PkgName string
 
+	// ProtoPkg is the proto package the app's own entities declare, and the one
+	// payday's are copied into.
+	//
+	// Read rather than decided, the same way [Layout.Pkg] is, and for a reason
+	// worth writing down: **payday's entities go into the app's namespace, not
+	// the other way round.** A Tenant and a Holder are the app's own concepts --
+	// its customers and its people -- and a caller of the app should not have to
+	// learn the name of the framework it was built with to say who they are.
+	//
+	// So there is no setting to turn on. Whatever the app calls its package is
+	// where these land, and `payday.` survives on the wire in exactly one place:
+	// `payday.BatchService`, which is a transport and not a domain concept, and
+	// which a generic client finds by that name.
+	//
+	// **One** package, and an app that declares two is refused, for the same
+	// reason as `go_package`: the copies have to say something, and there is no
+	// answer to "which one" that is not a guess.
+	//
+	// # Two apps that share a boundary
+	//
+	// Setting this to the same package in both is how a family of apps says its
+	// tenants and holders are the same concept -- and it is a claim about the
+	// **schema**, not just the name. Two apps whose overlays differ and whose
+	// packages agree publish two different messages under one name, which is the
+	// one thing a fully-qualified name exists to prevent.
+	//
+	// What is shared without any of this is the **identifier**: a tenant is
+	// domain 1 in every payday app and a `pdid` is unique without coordination,
+	// so a row minted by one app is nameable by the other already.
+	ProtoPkg string
+
 	// Work is the directory holding `buf.yaml`, which is where buf is run from
 	// and what every path in a template is relative to. It is [Layout.Root] for
 	// an app that is one module, and above it for a workspace of several.
@@ -168,6 +199,9 @@ func Discover(dir string) (Layout, error) {
 	if l.Pkg, l.PkgName, err = readPkg(l); err != nil {
 		return Layout{}, err
 	}
+	if l.ProtoPkg, err = readProtoPkg(l); err != nil {
+		return Layout{}, err
+	}
 
 	return l, nil
 }
@@ -213,6 +247,12 @@ func (l Layout) Up() string {
 
 // goPkgAt is `option go_package = "..."` in a .proto.
 var goPkgAt = regexp.MustCompile(`(?m)^option go_package\s*=\s*"([^"]*)"`)
+
+var protoPkgAt = regexp.MustCompile(`(?m)^package\s+([^;\s]+)\s*;`)
+
+// ProtoPkgDefault is where payday's entities go in an app that has declared no
+// entity of its own yet, and is what `pd new` writes.
+const ProtoPkgDefault = "app"
 
 // readPkg is the one `go_package` the app's own entities declare, taken apart
 // into the import path and the package name after it.
@@ -392,4 +432,63 @@ func SchemaDir() (string, error) {
 	}
 
 	return filepath.Join(strings.TrimSpace(d), "schema", "payday"), nil
+}
+
+// readProtoPkg is the proto package the app's own entities declare.
+//
+// It walks what [readPkg] walks and skips what it skips: `proto/payday/` holds
+// the copies, whose package is the answer rather than a source of it, and
+// `proto/ext/` holds overlays, which are fragments.
+func readProtoPkg(l Layout) (string, error) {
+	var pkg, at string
+
+	err := filepath.WalkDir(l.Path(DirProto), func(p string, d fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			return err
+		case d.IsDir():
+			if p == l.Path(DirProto, "payday") || p == l.Path(DirExt) {
+				return fs.SkipDir
+			}
+
+			return nil
+		case !strings.HasSuffix(p, ".proto") || strings.HasSuffix(p, ".g.proto"):
+			return nil
+		}
+
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+
+		m := protoPkgAt.FindSubmatch(b)
+		if m == nil {
+			return nil
+		}
+
+		v := string(m[1])
+		switch {
+		case pkg == "":
+			pkg, at = v, p
+		case pkg != v:
+			return fmt.Errorf("this app declares two proto packages:\n\n    %s\n      %s\n    %s\n      %s\n\n"+
+				"It has to be one. payday's own entities -- the tenant, the holder, the trail, "+
+				"the queue -- are copied into it, so that a caller of this app says `%s.Tenant` "+
+				"rather than the name of the framework it was built with; and there is no answer "+
+				"to which of two it should be that is not a guess",
+				l.rel(at), pkg, l.rel(p), v, pkg)
+		}
+
+		return nil
+	})
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return "", err
+	}
+	if pkg == "" {
+		// A schema with no entities of its own yet, which is what `pd new`
+		// leaves behind for the moment before the template is written.
+		return ProtoPkgDefault, nil
+	}
+
+	return pkg, nil
 }

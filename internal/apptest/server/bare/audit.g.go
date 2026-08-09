@@ -96,7 +96,7 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 			k = v
 		}
 	}
-	if v, err := mint(ctx, s.Mint, "payday.Audit", k, req.HasId()); err != nil {
+	if v, err := mint(ctx, s.Mint, "app.Audit", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
 		q.SetID(v)

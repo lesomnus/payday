@@ -20,7 +20,7 @@ Declare an entity and say nothing about tenancy:
 ```proto
 message Robot {
   bytes         id     = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
-  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  Tenant        tenant = 2 [(orm.edge) = {immutable: true}];
   string        alias  = 4;
 
   option (orm.message)   = {rpc: {crud: true}};
@@ -77,7 +77,7 @@ option (payday.entity) = {
 | *silence* | `tenanted: {via: "tenant"}` | the ordinary entity |
 | `tenanted: {via: …}` | walk edges to reach the tenant | a child row — `Joint` reaching its tenant through `Robot` |
 | `tenanted: {field: …}` | a **column**, not an edge | the row has to outlive the tenant it names; see §8 |
-| `tenant: {}` | this entity is the wall | `payday.Tenant`, and nothing else |
+| `tenant: {}` | this entity is the wall | the `Tenant` payday ships, and nothing else |
 | `global: {}` | outside the wall | shared reference data with no owner |
 
 `tenanted: {field: …}` may name several columns, and then they are **OR**ed: the
@@ -282,7 +282,7 @@ spend it.
 ```proto
 message Robot {
   bytes         id     = 1 [/* … */];
-  payday.Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  Tenant        tenant = 2 [(orm.edge) = {immutable: true}];
   Site          site   = 3 [(orm.edge) = {nullable: true}];   // ← yours
   string        alias  = 4;
 }
@@ -384,7 +384,59 @@ database.
 
 ---
 
-## 10. What payday does not do
+## 10. Whose names these are
+
+`Tenant`, `Holder`, `Audit` and `Outbox` are payday's entities and they land in
+**your** proto package. `pd gen` copies the four files in and rewrites their
+`package` line to whatever your own schema declares, so a caller of your app
+says:
+
+```
+/app.TenantService/Get
+/app.HolderService/Add
+/app.RobotService/Get
+```
+
+There is no setting for this and it is not opt-in. A tenant and a holder are
+your customers and your people — domain concepts of the thing you are building —
+and somebody calling your API should not have to learn the name of the framework
+it was built with to say who they are.
+
+`payday.` survives on the wire in exactly one place:
+
+```
+/payday.BatchService/Do
+```
+
+That one is not a domain concept, it is a transport — several writes as one
+transaction, taking `Any` and taking no position on what is in it. It keeps the
+name on purpose, the way `grpc.health.v1.Health` does: it is a **shared
+contract**, so a client written once finds it in any payday app. Renaming it per
+app would cost that and buy nothing.
+
+The `(payday.entity)` option keeps its name too, and it never reaches a caller —
+it is a build-time annotation, like `import "orm.proto"` beside it.
+
+### Two apps that share a boundary
+
+If you build a second app that shares users and tenants with the first, you can
+give both the same proto package, and then `hday.Tenant` names one type across
+the family.
+
+Do that as a claim about the **schema**, not just the name. Two apps whose
+overlays differ and whose packages agree publish two different messages under one
+fully-qualified name, which is the one thing such a name exists to prevent — add
+`employee_number` to Holder in one of them and `hday.Holder` now means two things
+depending on which server you asked.
+
+What is shared without any of this is the **identifier**. A tenant is domain 1
+and a holder is domain 2 in every payday app, and a `pdid` is unique without
+coordination — so a row one app minted is nameable by the other already, with no
+agreement about packages at all. That is usually the thing you actually wanted.
+
+---
+
+## 11. What payday does not do
 
 - **No superuser.** Nothing anywhere compares an identifier against a well-known
   one and answers "everything".
@@ -398,7 +450,7 @@ database.
 
 ---
 
-## 11. Putting it together
+## 12. Putting it together
 
 ```go
 // The innermost servers: one behind the wall, one not.
@@ -430,7 +482,7 @@ the predicate that carries the answer into every query (`pd.Wall`).
 
 ---
 
-## 12. Checklist
+## 13. Checklist
 
 Before a deployment is reachable by anyone:
 

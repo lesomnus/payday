@@ -268,7 +268,7 @@ var File_payday_outbox_proto protoreflect.FileDescriptor
 
 const file_payday_outbox_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/outbox.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xbf\x02\n" +
+	"\x13payday/outbox.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xbf\x02\n" +
 	"\x06Outbox\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
@@ -285,11 +285,11 @@ const file_payday_outbox_proto_rawDesc = "" +
 
 var file_payday_outbox_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_payday_outbox_proto_goTypes = []any{
-	(*Outbox)(nil),                // 0: payday.Outbox
+	(*Outbox)(nil),                // 0: app.Outbox
 	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
 }
 var file_payday_outbox_proto_depIdxs = []int32{
-	1, // 0: payday.Outbox.date_created:type_name -> google.protobuf.Timestamp
+	1, // 0: app.Outbox.date_created:type_name -> google.protobuf.Timestamp
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
