@@ -1266,6 +1266,150 @@ func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 	return s.HolderServiceServer.Add(ctx, req)
 }
 
+type gateCell struct {
+	Gate
+	apptest.CellServiceServer
+}
+
+func (s Gate) Cell() apptest.CellServiceServer {
+	return gateCell{s, s.Next().Cell()}
+}
+
+// Add refuses a Cell put into a Tenant this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `tenant` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Tenant, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+func (s gateCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
+	if ref := req.GetTenant(); ref != nil {
+		if _, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Tenant")
+			}
+
+			return nil, err
+		}
+	}
+
+	return s.CellServiceServer.Add(ctx, req)
+}
+
+type gateJoint struct {
+	Gate
+	apptest.JointServiceServer
+}
+
+func (s Gate) Joint() apptest.JointServiceServer {
+	return gateJoint{s, s.Next().Joint()}
+}
+
+// Add refuses a Joint put into a Robot this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `robot` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Robot, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+func (s gateJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
+	if ref := req.GetRobot(); ref != nil {
+		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Robot")
+			}
+
+			return nil, err
+		}
+	}
+
+	return s.JointServiceServer.Add(ctx, req)
+}
+
+type gateReading struct {
+	Gate
+	apptest.ReadingServiceServer
+}
+
+func (s Gate) Reading() apptest.ReadingServiceServer {
+	return gateReading{s, s.Next().Reading()}
+}
+
+// Add refuses a Reading put into a Robot this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `robot` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Robot, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+func (s gateReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
+	if ref := req.GetRobot(); ref != nil {
+		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Robot")
+			}
+
+			return nil, err
+		}
+	}
+
+	return s.ReadingServiceServer.Add(ctx, req)
+}
+
+type gateRobot struct {
+	Gate
+	apptest.RobotServiceServer
+}
+
+func (s Gate) Robot() apptest.RobotServiceServer {
+	return gateRobot{s, s.Next().Robot()}
+}
+
+// Add refuses a Robot put into a Tenant this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `tenant` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Tenant, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+	if ref := req.GetTenant(); ref != nil {
+		if _, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Tenant")
+			}
+
+			return nil, err
+		}
+	}
+
+	return s.RobotServiceServer.Add(ctx, req)
+}
+
 // Audit is the layer that refuses a trail row written by hand.
 //
 // The RPCs exist because the trail is an entity like any other and a test is

@@ -2,6 +2,7 @@ package pdgen
 
 import (
 	"google.golang.org/protobuf/compiler/protogen"
+	"strconv"
 )
 
 const (
@@ -174,6 +175,127 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("")
 	g.P("	return s.HolderServiceServer.Add(ctx, req)")
 	g.P("}")
+	g.P("")
+
+	emitAdmit(g, s, root)
+}
+
+// emitAdmit writes, for every other entity behind the wall, the check
+// `gateHolder.Add` has always made for payday's own.
+//
+// # The hole this closes
+//
+// The wall is a predicate, so it is on the query -- and an `Add` has no query.
+// The identifier in an edge becomes a foreign key with nothing consulted, so a
+// caller could put a row into a tenant it cannot see. Not a read leak: it never
+// gets to look. What it gets is a row the victim reads as their own, usage the
+// victim is billed for, and -- because the trail row is stamped with the
+// **actor's** tenant -- a write the victim's audit log does not record.
+//
+// It was already written once, above, for `Holder`. What was missing is that
+// the same sentence is true of every entity an app declares, and an app has no
+// way to notice: every read is narrowed, so the row it planted disappears
+// immediately afterwards and looks like a write that failed.
+//
+// # What is checked
+//
+// The **first hop** of the path that reaches the tenant, read through the wall.
+// For the ordinary entity that is its `tenant` edge; for one that reaches the
+// tenant through another row it is that row, and reading it is narrowed for the
+// same reason. Either way the question is "may this caller see the thing it
+// says this row belongs to", and a read is how it is asked -- see the comment
+// on `gateHolder.Add` for why a comparison against the scope is not enough.
+//
+// It is exactly the wall's own invariant and nothing more: a row belongs to a
+// tenant the caller may see. An edge pointing at some *other* row in another
+// tenant is a different question -- referential, not tenancy -- and is not
+// asked here.
+//
+// # What it costs
+//
+// One read per `Add`. Adds are not the path a server spends its time on, and
+// the alternative is a rule that holds for reads and not for writes.
+func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath) {
+	for _, v := range s.Sorted() {
+		// The tenant is refused outright above, the holder has its own written
+		// out, and an entity that is not behind the wall has nothing to check.
+		// An entity that names its tenant with a column (`field:`) is refused a
+		// hand-written row by the audit layer.
+		if v.IsTenant || v.IsGlobal || len(v.Via) == 0 || string(v.FullName()) == OwnHolder {
+			continue
+		}
+
+		hop := v.Via[0]
+		e, ok := edge(v.Entity, hop)
+		if !ok {
+			continue
+		}
+
+		to, ok := s.of(e.Target().FullName())
+		if !ok {
+			continue
+		}
+
+		name := v.GoName()
+		g.P("type gate", name, " struct {")
+		g.P("	Gate")
+		g.P("	", root.Ident(name+"ServiceServer"))
+		g.P("}")
+		g.P("")
+		g.P("func (s Gate) ", name, "() ", root.Ident(name+"ServiceServer"), " {")
+		g.P("	return gate", name, "{s, s.Next().", name, "()}")
+		g.P("}")
+		g.P("")
+
+		g.P("// Add refuses a ", name, " put into a ", to.GoName(), " this caller cannot see.")
+		g.P("//")
+		g.P("// The wall is a predicate and an Add has no query, so without this the")
+		g.P("// identifier in `", hop, "` becomes a foreign key with nothing consulted.")
+		g.P("// The row is then invisible to whoever planted it and visible to whoever")
+		g.P("// holds that ", to.GoName(), ", which is the shape of the bug rather than a")
+		g.P("// mitigation of it.")
+		g.P("//")
+		g.P("// NotFound rather than a refusal, for the reason on `gateHolder.Add`:")
+		g.P("// that a row exists is itself something a caller who may not see it")
+		g.P("// should not be told.")
+		g.P("func (s gate", name, ") Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"AddRequest"),
+			") (*", root.Ident(name), ", error) {")
+		seen(g, root, hop, to)
+
+		// And the second axis, when the app declared one. It is an isolation
+		// boundary the same way the tenant is -- payday says so by reading
+		// field 3 as one -- so an Add into a set the caller cannot see is the
+		// same bug one level down. An ordinary edge is **not** checked: that a
+		// row points at another row somebody else holds is referential and not
+		// tenancy, and asking it would be a read per edge on every write.
+		if v.Set != "" && s.Set != nil {
+			seen(g, root, v.Set, s.Set)
+		}
+
+		g.P("	return s.", name, "ServiceServer.Add(ctx, req)")
+		g.P("}")
+		g.P("")
+	}
+}
+
+// seen writes the read that asks whether the caller may see what an edge names.
+//
+// Through the layer's own `Next()`, so it travels every scope the app installed
+// -- the wall, and the second axis if there is one -- rather than comparing
+// against one of them and missing the other.
+func seen(g *protogen.GeneratedFile, root protogen.GoImportPath, edge string, to *Entity) {
+	g.P("	if ref := req.Get", pascal(edge), "(); ref != nil {")
+	g.P("		if _, err := s.Gate.Next().", to.GoName(), "().Get(ctx, ",
+		root.Ident(to.GoName()+"GetRequest_builder"), "{")
+	g.P("			Ref: ref,")
+	g.P("		}.Build()); err != nil {")
+	g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
+	g.P("				return nil, ", pkgGate.Ident("ErrNotFound"), "(", strconv.Quote(to.GoName()), ")")
+	g.P("			}")
+	g.P("")
+	g.P("			return nil, err")
+	g.P("		}")
+	g.P("	}")
 	g.P("")
 }
 

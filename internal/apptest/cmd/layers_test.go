@@ -149,6 +149,78 @@ func TestAHolderIsAddedToATenantYouCanSee(t *testing.T) {
 	x.NoError(err)
 }
 
+// TestARowIsAddedToATenantYouCanSee is the same rule for the app's own
+// entities, and it was not always true.
+//
+// The wall is a predicate, so it is on the query -- and an Add has no query.
+// For a long time the check above existed for `Holder` alone, so a caller could
+// put a Robot into a tenant it could not see: the identifier in the edge became
+// a foreign key with nothing consulted. Not a read leak, since every read is
+// narrowed and the row vanishes immediately afterwards -- which is exactly why
+// nobody noticed. What it left behind was a row the victim reads as their own,
+// usage they are billed for, and a trail row stamped with the **actor's**
+// tenant, so the victim's audit log records nothing at all.
+//
+// Both ways of naming a tenant, because they take different paths: an
+// identifier goes straight to the foreign key and an alias is resolved by a
+// query that was not narrowed either.
+func TestARowIsAddedToATenantYouCanSee(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	other, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "other"}.Build())
+	x.NoError(err)
+
+	t.Run("by identifier", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: other.GetId()}.Build(),
+			Alias:  "planted",
+		}.Build())
+		x.Equal(codes.NotFound, status.Code(err))
+	})
+
+	t.Run("by alias", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Alias: z.Ptr("other")}.Build(),
+			Alias:  "planted-2",
+		}.Build())
+		x.Equal(codes.NotFound, status.Code(err))
+	})
+
+	t.Run("and into their own, which is the same path arriving at yes", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  "mine",
+		}.Build())
+		x.NoError(err)
+	})
+
+	t.Run("and it reaches an entity that is walled through another row", func(t *testing.T) {
+		x := require.New(t)
+
+		// A Joint reaches the tenant through its Robot, so what is read is the
+		// Robot -- and a Robot in a tenant this caller cannot see is NotFound
+		// for the same reason.
+		theirs, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: other.GetId()}.Build(),
+			Alias:  "theirs",
+		}.Build())
+		x.NoError(err)
+
+		_, err = b.Walled.Joint().Add(b.as(ctx), app.JointAddRequest_builder{
+			Robot: app.RobotRef_builder{Id: theirs.GetId()}.Build(),
+			Alias: "planted-3",
+		}.Build())
+		x.Equal(codes.NotFound, status.Code(err))
+	})
+}
+
 // TestTheTrailIsNotWrittenByHand is what makes it evidence of anything.
 func TestTheTrailIsNotWrittenByHand(t *testing.T) {
 	x := require.New(t)
