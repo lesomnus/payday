@@ -502,6 +502,27 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 // what the trail said for everything before this existed. An entity erased
 // softly has its row and answers normally, which is one more reason for soft to
 // be what an entity does unless it says otherwise.
+// emitViaAbsent guards the first hop of a `via` path against not being there.
+//
+// The edge may be nullable, and payday asks for that: a schema gains field 3
+// after it already has rows, and a required edge could never be added to one.
+// So a row that names no next hop is a real row, and it has no tenant.
+//
+// Read without this guard, `GetId()` on the absent edge answers no bytes and
+// parsing them fails -- which made the **write** fail, with an Internal, from
+// inside the recorder. The row could not be created at all.
+//
+// The answer is the identifier that means "nothing to file it under", which the
+// caller already handles by falling back to the actor's own tenant. The row's
+// bytes go back either way: the trail can still say what happened even when it
+// cannot say whose.
+func emitViaAbsent(g *protogen.GeneratedFile, via string) {
+	g.P("		if !row.Has", camel(via), "() {")
+	g.P("			return ", pkgUuid.Ident("Nil"), ", b, nil")
+	g.P("		}")
+	g.P("")
+}
+
 func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	g.P("// subject is the tenant of the row `key` names and the row itself, and the")
 	g.P("// nil identifier when there is no such row any more.")
@@ -549,12 +570,14 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 			g.P("		k, err := ", pkgUuid.Ident("FromBytes"), "(row.Get", camel(v.Columns[0]), "())")
 
 		case len(v.Via) == 1:
+			emitViaAbsent(g, v.Via[0])
 			g.P("		k, err := ", pkgUuid.Ident("FromBytes"), "(row.Get", camel(v.Via[0]), "().GetId())")
 
 		default:
 			// It reaches the tenant through another row, so the walk is a
 			// second read -- and a third, if the schema ever declares one that
 			// far away.
+			emitViaAbsent(g, v.Via[0])
 			g.P("		up, err := ", pkgPdid.Ident("From"), "(row.Get", camel(v.Via[0]), "().GetId())")
 			g.P("		if err != nil {")
 			g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")

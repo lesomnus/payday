@@ -48,6 +48,14 @@ func (_c *JointCreate) SetRobotID(v uuid.UUID) *JointCreate {
 	return _c
 }
 
+// SetNillableRobotID sets the "robot_id" field if the given value is not nil.
+func (_c *JointCreate) SetNillableRobotID(v *uuid.UUID) *JointCreate {
+	if v != nil {
+		_c.SetRobotID(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *JointCreate) SetID(v uuid.UUID) *JointCreate {
 	_c.mutation.SetID(v)
@@ -95,12 +103,6 @@ func (_c *JointCreate) ExecX(ctx context.Context) {
 func (_c *JointCreate) check() error {
 	if _, ok := _c.mutation.Alias(); !ok {
 		return &ValidationError{Name: "alias", err: errors.New(`ent: missing required field "Joint.alias"`)}
-	}
-	if _, ok := _c.mutation.RobotID(); !ok {
-		return &ValidationError{Name: "robot_id", err: errors.New(`ent: missing required field "Joint.robot_id"`)}
-	}
-	if len(_c.mutation.RobotIDs()) == 0 {
-		return &ValidationError{Name: "robot", err: errors.New(`ent: missing required edge "Joint.robot"`)}
 	}
 	return nil
 }

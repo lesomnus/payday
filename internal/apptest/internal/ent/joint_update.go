@@ -95,14 +95,6 @@ func (_u *JointUpdate) ExecX(ctx context.Context) {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (_u *JointUpdate) check() error {
-	if _u.mutation.RobotCleared() && len(_u.mutation.RobotIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Joint.robot"`)
-	}
-	return nil
-}
-
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
 func (_u *JointUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *JointUpdate {
 	_u.modifiers = append(_u.modifiers, modifiers...)
@@ -110,9 +102,6 @@ func (_u *JointUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *JointUpd
 }
 
 func (_u *JointUpdate) sqlSave(ctx context.Context) (_node int, err error) {
-	if err := _u.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(joint.Table, joint.Columns, sqlgraph.NewFieldSpec(joint.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -231,14 +220,6 @@ func (_u *JointUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (_u *JointUpdateOne) check() error {
-	if _u.mutation.RobotCleared() && len(_u.mutation.RobotIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Joint.robot"`)
-	}
-	return nil
-}
-
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
 func (_u *JointUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *JointUpdateOne {
 	_u.modifiers = append(_u.modifiers, modifiers...)
@@ -246,9 +227,6 @@ func (_u *JointUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Joint
 }
 
 func (_u *JointUpdateOne) sqlSave(ctx context.Context) (_node *Joint, err error) {
-	if err := _u.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(joint.Table, joint.Columns, sqlgraph.NewFieldSpec(joint.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
 	if !ok {

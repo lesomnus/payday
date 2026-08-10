@@ -206,6 +206,16 @@ func RobotIDNotIn(vs ...uuid.UUID) predicate.Joint {
 	return predicate.Joint(sql.FieldNotIn(FieldRobotID, vs...))
 }
 
+// RobotIDIsNil applies the IsNil predicate on the "robot_id" field.
+func RobotIDIsNil() predicate.Joint {
+	return predicate.Joint(sql.FieldIsNull(FieldRobotID))
+}
+
+// RobotIDNotNil applies the NotNil predicate on the "robot_id" field.
+func RobotIDNotNil() predicate.Joint {
+	return predicate.Joint(sql.FieldNotNull(FieldRobotID))
+}
+
 // HasRobot applies the HasEdge predicate on the "robot" edge.
 func HasRobot() predicate.Joint {
 	return predicate.Joint(func(s *sql.Selector) {

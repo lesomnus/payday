@@ -1856,6 +1856,10 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 			return uuid.Nil, nil, err
 		}
 
+		if !row.HasTenant() {
+			return uuid.Nil, b, nil
+		}
+
 		k, err := uuid.FromBytes(row.GetTenant().GetId())
 		if err != nil {
 			return uuid.Nil, nil, err
@@ -1880,6 +1884,10 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 			return uuid.Nil, nil, err
 		}
 
+		if !row.HasTenant() {
+			return uuid.Nil, b, nil
+		}
+
 		k, err := uuid.FromBytes(row.GetTenant().GetId())
 		if err != nil {
 			return uuid.Nil, nil, err
@@ -1902,6 +1910,10 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		b, err := proto.Marshal(row)
 		if err != nil {
 			return uuid.Nil, nil, err
+		}
+
+		if !row.HasRobot() {
+			return uuid.Nil, b, nil
 		}
 
 		up, err := pdid.From(row.GetRobot().GetId())
@@ -1933,6 +1945,10 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 			return uuid.Nil, nil, err
 		}
 
+		if !row.HasRobot() {
+			return uuid.Nil, b, nil
+		}
+
 		up, err := pdid.From(row.GetRobot().GetId())
 		if err != nil {
 			return uuid.Nil, nil, err
@@ -1960,6 +1976,10 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		b, err := proto.Marshal(row)
 		if err != nil {
 			return uuid.Nil, nil, err
+		}
+
+		if !row.HasTenant() {
+			return uuid.Nil, b, nil
 		}
 
 		k, err := uuid.FromBytes(row.GetTenant().GetId())

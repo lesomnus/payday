@@ -114,6 +114,7 @@ func (Joint) Fields() []ent.Field {
 			Nillable().
 			Optional(),
 		field.UUID("robot_id", uuid.UUID{}).
+			Optional().
 			Immutable(),
 	}
 }
@@ -123,7 +124,6 @@ func (Joint) Edges() []ent.Edge {
 		edge.To("robot", Robot.Type).
 			Unique().
 			Field("robot_id").
-			Required().
 			Immutable(),
 	}
 }

@@ -135,7 +135,16 @@ message Joint {
     key: true
     default: ""
   }];
-  Robot robot = 2 [(orm.edge) = {immutable: true}];
+
+  // **Nullable**, which is the interesting part after all.
+  //
+  // A `via` path whose first hop may be absent is the shape payday asks apps
+  // for -- a field-3 edge has to be nullable, since a schema gains one after it
+  // already has rows -- and it is the shape that broke the trail: the recorder
+  // walked the path to find the tenant, found no edge, and failed the **write**
+  // from inside itself. A row that named no next hop could not be created at
+  // all.
+  Robot robot = 2 [(orm.edge) = {immutable: true, nullable: true}];
   string alias = 4;
 
   // Erased softly, which is what saying nothing means: the row is stamped and

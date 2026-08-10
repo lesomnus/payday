@@ -135,7 +135,7 @@ var (
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
-		{Name: "robot_id", Type: field.TypeUUID},
+		{Name: "robot_id", Type: field.TypeUUID, Nullable: true},
 	}
 	// JointTable holds the schema information for the "joint" table.
 	JointTable = &schema.Table{
@@ -147,7 +147,7 @@ var (
 				Symbol:     "joint_robot_robot",
 				Columns:    []*schema.Column{JointColumns[3]},
 				RefColumns: []*schema.Column{RobotColumns[0]},
-				OnDelete:   schema.NoAction,
+				OnDelete:   schema.SetNull,
 			},
 		},
 	}

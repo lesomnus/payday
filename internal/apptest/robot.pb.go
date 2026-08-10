@@ -483,7 +483,15 @@ func (x *Joint) ClearDateErased() {
 type Joint_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id    []byte
+	Id []byte
+	// **Nullable**, which is the interesting part after all.
+	//
+	// A `via` path whose first hop may be absent is the shape payday asks apps
+	// for -- a field-3 edge has to be nullable, since a schema gains one after it
+	// already has rows -- and it is the shape that broke the trail: the recorder
+	// walked the path to find the tenant, found no edge, and failed the **write**
+	// from inside itself. A row that named no next hop could not be created at
+	// all.
 	Robot *Robot
 	Alias string
 	// Erased softly, which is what saying nothing means: the row is stamped and
@@ -767,11 +775,11 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x0e\n" +
 	"\fdate_created\n" +
 	"\x04\n" +
-	"\x02id\x12\x06tenant\x1a\x03ref 2(d:\x00\"\xca\x01\n" +
+	"\x02id\x12\x06tenant\x1a\x03ref 2(d:\x00\"\xcc\x01\n" +
 	"\x05Joint\x12\x1b\n" +
-	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12(\n" +
+	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12*\n" +
 	"\x05robot\x18\x02 \x01(\v2\n" +
-	".app.RobotB\x06\xf2\x82\x16\x02@\x01R\x05robot\x12\x14\n" +
+	".app.RobotB\b\xf2\x82\x16\x048\x01@\x01R\x05robot\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased:\x1e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x12\b\b\"\x0e\n" +

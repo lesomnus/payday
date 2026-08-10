@@ -2868,9 +2868,22 @@ func (m *JointMutation) OldRobotID(ctx context.Context) (v uuid.UUID, err error)
 	return oldValue.RobotID, nil
 }
 
+// ClearRobotID clears the value of the "robot_id" field.
+func (m *JointMutation) ClearRobotID() {
+	m.robot = nil
+	m.clearedFields[joint.FieldRobotID] = struct{}{}
+}
+
+// RobotIDCleared returns if the "robot_id" field was cleared in this mutation.
+func (m *JointMutation) RobotIDCleared() bool {
+	_, ok := m.clearedFields[joint.FieldRobotID]
+	return ok
+}
+
 // ResetRobotID resets all changes to the "robot_id" field.
 func (m *JointMutation) ResetRobotID() {
 	m.robot = nil
+	delete(m.clearedFields, joint.FieldRobotID)
 }
 
 // ClearRobot clears the "robot" edge to the Robot entity.
@@ -2881,7 +2894,7 @@ func (m *JointMutation) ClearRobot() {
 
 // RobotCleared reports if the "robot" edge to the Robot entity was cleared.
 func (m *JointMutation) RobotCleared() bool {
-	return m.clearedrobot
+	return m.RobotIDCleared() || m.clearedrobot
 }
 
 // RobotIDs returns the "robot" edge IDs in the mutation.
@@ -3036,6 +3049,9 @@ func (m *JointMutation) ClearedFields() []string {
 	if m.FieldCleared(joint.FieldDateErased) {
 		fields = append(fields, joint.FieldDateErased)
 	}
+	if m.FieldCleared(joint.FieldRobotID) {
+		fields = append(fields, joint.FieldRobotID)
+	}
 	return fields
 }
 
@@ -3052,6 +3068,9 @@ func (m *JointMutation) ClearField(name string) error {
 	switch name {
 	case joint.FieldDateErased:
 		m.ClearDateErased()
+		return nil
+	case joint.FieldRobotID:
+		m.ClearRobotID()
 		return nil
 	}
 	return fmt.Errorf("unknown Joint nullable field %s", name)

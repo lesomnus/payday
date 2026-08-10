@@ -987,13 +987,15 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	} else {
 		q.SetID(v)
 	}
-	if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
-		return nil, err
-	} else {
-		q.SetRobotID(k)
-		ds = append(ds, func(v *apptest.Joint) {
-			v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
-		})
+	if req.HasRobot() {
+		if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
+			return nil, err
+		} else {
+			q.SetRobotID(k)
+			ds = append(ds, func(v *apptest.Joint) {
+				v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
+			})
+		}
 	}
 	q.SetAlias(req.GetAlias())
 
