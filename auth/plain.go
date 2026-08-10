@@ -3,7 +3,9 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
+	"sync"
 
 	"google.golang.org/grpc/metadata"
 
@@ -27,7 +29,29 @@ const PlainScheme = "Plain"
 // reachable by anyone who is not already trusted to say the truth.
 //
 // The "@" is new; [ParseName] says why.
+//
+// # It says so, once
+//
+// Building one logs a warning, because the way this goes wrong is silence. A
+// deployment serving `Plain` where anyone can reach it has no authentication at
+// all, and nothing else about it looks unusual -- it starts, it answers, the
+// tests pass, and every caller is whoever they typed.
+//
+// Once per process rather than per call: what is worth saying is that this
+// process authenticates this way, and a line per request is a line nobody
+// reads. It goes to the default logger rather than a request's, since there is
+// no request yet.
+//
+// What it is **not** is a switch. Whether a deployment believes its callers is
+// a line of wiring in the app rather than a setting, for the reason payday
+// suggests two deployments rather than a flag: a configuration mistake must not
+// be able to turn authentication off.
 func Plain() Handler {
+	plainSaid.Do(func() {
+		slog.Warn("auth: serving with Plain; every caller is believed to be whoever it says",
+			slog.String("scheme", PlainScheme))
+	})
+
 	return HandlerFunc(func(ctx context.Context) (Identity, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
@@ -68,6 +92,10 @@ func Plain() Handler {
 // It replaces whatever was said before rather than adding to it. Two answers
 // to "who is calling" is not twice as much information; it is a question with
 // no answer, and the one that would win is whichever came first.
+// plainSaid keeps the warning to one a process, however many handlers are made
+// -- a test binary makes one per test.
+var plainSaid sync.Once
+
 func PlainProvider(v string) Provider {
 	return ProviderFunc(func(ctx context.Context) context.Context {
 		md, ok := metadata.FromOutgoingContext(ctx)
