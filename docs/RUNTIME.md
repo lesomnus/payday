@@ -44,7 +44,8 @@ table is for finding the right one.
 | | |
 | --- | --- |
 | [`frame`](../frame) | who a request is from. Put in the context once, read by everything that has to decide |
-| [`auth`](../auth) | reads a credential and resolves it to a frame. `Plain`, `MTLS`, `Bearer`, `Seq` — and `Issuer`/`Sessions` as seams with nothing wired |
+| [`auth`](../auth) | reads a credential and resolves it to a frame: `Plain`, `MTLS`, `Bearer`, `Seq`. It does not issue one |
+| [`auth/authoidc`](../auth/authoidc) | reads the token an external provider issued — signature, issuer, audience, expiry — and turns its claims into an identity |
 | [`gate`](../gate) | what the caller may **do**, as against what they may see. Most of the rule is stated here and enforced in the query |
 | [`audit`](../audit) | the trail. A recorder inside the transaction, and a layer serving the trail's own RPCs |
 
@@ -229,8 +230,12 @@ because a reader cannot tell them apart.
 - **Bidirectional `Watch`.** Multiplexing many subscriptions onto one stream
   changes the transport and not the fan-out, which is where the cost actually
   is.
-- **Issuing a credential.** `auth.Issuer` and `auth.Sessions` are seams with a
-  reference implementation. Real login is an HTTP endpoint, which is the app's.
+- **Issuing a credential.** Logging somebody in — a password, an OIDC dance, a
+  second factor — belongs to whatever issues the token. `auth/authoidc` reads
+  what comes back, and `auth.Bearer` reads a credential a deployment minted
+  itself. There was an `auth.Issuer` interface here for a while; payday neither
+  implemented nor called it, which made it a naming convention wearing a seam's
+  clothes.
 - **Client trace propagation.** From a click in the browser to a span on the
   server. Mechanical, since drpc carries metadata, and worth doing.
 

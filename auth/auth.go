@@ -162,6 +162,19 @@ type Identity struct {
 	Expires time.Time
 }
 
+// Valid reports whether this credential is still good at `at`.
+//
+// An identity with no expiry is always good, which is what a header and a
+// certificate are: neither has anywhere to carry one, and a certificate's own
+// expiry is the transport's business rather than this package's.
+//
+// What needs it is a **stream**. A call carries its credential every time and
+// finds out at the next one; a stream carries it once at the handshake and
+// would otherwise go on being served forever. See [InterceptorStream].
+func (v Identity) Valid(at time.Time) bool {
+	return v.Expires.IsZero() || at.Before(v.Expires)
+}
+
 // NamesNobody reports whether this identity says who the caller is at all.
 //
 // A tenant on its own does not: it says which tenant an alias would have been

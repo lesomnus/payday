@@ -266,10 +266,15 @@ Only `Bearer` can carry one, because only a token has anywhere to put it. A
 header and a certificate name somebody and stop, so `Plain` and `MTLS` answer
 `frame.Whole()` and say so.
 
-payday does not mint credentials. `auth.Issuer` is the shape of the seam — your
-login RPC calls it, having satisfied itself however it likes — because who may
-ask for a credential, and on what evidence, is exactly the kind of thing this
-framework says an app should have to write down.
+**payday does not mint credentials.** Who may have one, and on what evidence,
+is a decision about an organisation rather than about a server — a password
+policy, a provider, a second factor, how long a session lasts. Something else
+issues them and `auth` reads them.
+
+For an external identity provider that is [`auth/authoidc`](../../auth/authoidc):
+it verifies the token against the issuer's key set and hands the claims to your
+`Resolver`. For credentials a deployment issues itself, it is `auth.Bearer` over
+a `TokenStore` your app writes.
 
 ---
 
@@ -443,8 +448,7 @@ agreement about packages at all. That is usually the thing you actually wanted.
 - **No roles, no per-resource ACLs.** `gate.Policy` is where those go if you want
   them. payday supplies the wall and the seam; the rule that "admins may erase
   Robots" is yours.
-- **No credential minting.** `auth.Issuer` is the shape; what satisfies it is
-  your login flow.
+- **No credential minting.** Something else issues them; `auth` reads them.
 - **No IdP.** payday reads credentials and enforces them. OIDC, SAML, LDAP,
   magic links — all of that produces the credential `auth` then reads.
 

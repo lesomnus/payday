@@ -216,9 +216,25 @@ tests, and it is what `pd new` wires because the alternative is an app that
 cannot be run until you have a certificate authority.
 
 `auth` also has `MTLS()` and `Bearer(store)`, and `Seq(hs...)` to try several in
-turn. What it does **not** have is a way to issue a credential: `auth.Issuer`
-and `auth.Sessions` are seams with a reference implementation (`MemIssuer`) and
-nothing wired. Logging in is an HTTP endpoint — see
+turn.
+
+For an external identity provider — Hydra, Entra, a customer's own — there is
+`auth/authoidc`, which verifies the token against the issuer's key set and hands
+its claims to your `Resolver`:
+
+```go
+h, err := authoidc.New(ctx, authoidc.Config{
+	Issuer:   "https://auth.example.com",
+	Audience: "widget",
+})
+```
+
+`Audience` is required rather than optional: a verifier that skips it accepts a
+token minted for **any** relying party of the same issuer.
+
+What `auth` does **not** have is a way to issue a credential. Who may have one,
+and on what evidence, is a decision about an organisation — and logging somebody
+in is an HTTP endpoint besides, since an OIDC redirect is not an RPC. See
 [§9](#9-serving-a-browser).
 
 ### Why `Patch` and `Apply` are closed at the transport
