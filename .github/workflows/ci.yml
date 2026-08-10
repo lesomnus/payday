@@ -177,6 +177,14 @@ jobs:
       - run: go tool pd gen --check .
         working-directory: widget
 
+      # And that what it wrote is formatted. An app starts its life with
+      # whatever `pd new` put in it, so a template that is not gofmt-clean makes
+      # every scaffold fail its own first format check -- which was true of the
+      # import block in `cmd/serve.go` until roster ran gofmt over a fresh one.
+      - name: and formatted
+        working-directory: widget
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22

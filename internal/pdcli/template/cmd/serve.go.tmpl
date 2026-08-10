@@ -18,8 +18,8 @@ import (
 
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/gate"
-	"github.com/lesomnus/payday/migrate"
 	"github.com/lesomnus/payday/grpcx"
+	"github.com/lesomnus/payday/migrate"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/spin"
 	"github.com/lesomnus/payday/watch"
