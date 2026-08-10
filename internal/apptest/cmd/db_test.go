@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/lesomnus/payday/config"
-	_ "github.com/lesomnus/payday/config/dbpgx"
 	"github.com/lesomnus/payday/pdtest"
 )
 

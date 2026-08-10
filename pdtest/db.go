@@ -10,9 +10,17 @@ import (
 
 	"github.com/ncruces/go-sqlite3/vfs/memdb"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/ncruces/go-sqlite3/driver"
-	_ "github.com/ncruces/go-sqlite3/embed"
+	// Both halves of both drivers: the `database/sql` registration that
+	// `sql.Open` needs, and the payday one that `config.DbConfig` needs.
+	//
+	// The second is why these are the driver **packages** rather than the bare
+	// drivers. An app builds its harness by handing what [DB] answers to a
+	// `config.DbConfig`, and a configuration can only name a driver something
+	// registered -- so a helper that answered "pgx" without registering it
+	// would be handing back an answer the app cannot use. Which it did, and
+	// what hid it was that the app already importing `dbpgx` for its own sake.
+	_ "github.com/lesomnus/payday/config/dbpgx"
+	_ "github.com/lesomnus/payday/config/dbsqlite3"
 )
 
 // Postgres is the environment variable naming a database to run the suite
