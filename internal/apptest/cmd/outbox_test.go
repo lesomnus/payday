@@ -2,11 +2,9 @@ package cmd_test
 
 import (
 	"context"
-	"net/url"
 	"testing"
 	"time"
 
-	"github.com/ncruces/go-sqlite3/vfs/memdb"
 	"github.com/stretchr/testify/require"
 
 	"github.com/lesomnus/payday/config"
@@ -26,10 +24,7 @@ func queued(t *testing.T) (*built, context.Context) {
 	ctx := t.Context()
 
 	s, err := cmd.Build(ctx, cmd.Config{
-		Db: config.DbConfig{
-			Driver: "sqlite3",
-			Dsn:    memdb.TestDB(t, url.Values{"_pragma": {"foreign_keys(1)"}}),
-		},
+		Db:    dbOf(t),
 		Watch: config.WatchConfig{Broker: config.BrokerMemory, Outbox: true},
 	})
 	x.NoError(err)
@@ -73,7 +68,7 @@ func TestABrokerIsNamedAndNotDefaulted(t *testing.T) {
 	x := require.New(t)
 
 	_, err := cmd.Build(t.Context(), cmd.Config{
-		Db: config.DbConfig{Driver: "sqlite3", Dsn: memdb.TestDB(t, nil)},
+		Db: dbOf(t),
 	})
 	x.ErrorContains(err, "watch.broker")
 	x.ErrorContains(err, "silently wrong for two")
@@ -81,7 +76,7 @@ func TestABrokerIsNamedAndNotDefaulted(t *testing.T) {
 	// And "no watchers here" is a thing that can be said, rather than something
 	// inferred from a field nobody filled in.
 	s, err := cmd.Build(t.Context(), cmd.Config{
-		Db:    config.DbConfig{Driver: "sqlite3", Dsn: memdb.TestDB(t, nil)},
+		Db:    dbOf(t),
 		Watch: config.WatchConfig{Broker: config.BrokerNone},
 	})
 	x.NoError(err)

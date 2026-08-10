@@ -2,11 +2,9 @@ package cmd_test
 
 import (
 	"context"
-	"net/url"
 	"testing"
 
 	"github.com/lesomnus/z"
-	"github.com/ncruces/go-sqlite3/vfs/memdb"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -51,10 +49,7 @@ func build(t *testing.T) (*built, context.Context) {
 	ctx := t.Context()
 
 	s, err := cmd.Build(ctx, cmd.Config{
-		Db: config.DbConfig{
-			Driver: "sqlite3",
-			Dsn:    memdb.TestDB(t, url.Values{"_pragma": {"foreign_keys(1)"}}),
-		},
+		Db: dbOf(t),
 		// Named, because payday refuses to pick one. A test is one process, so
 		// the answer here is the easy one -- and having to write it is the
 		// point: the same line in a deployment of two replicas is a line

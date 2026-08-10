@@ -73,6 +73,48 @@ jobs:
       # is only kept by being checked.
       - run: GOOS=js GOARCH=wasm go build ./...
 
+  # The same suite, on the database an app is actually deployed on.
+  #
+  # SQLite needs no server, which is why everything above uses it and why it
+  # should stay that way -- a suite nobody can run without a database is a suite
+  # nobody runs. But SQLite is permissive in the directions that hide mistakes:
+  # it has no real types, it sorts NULLs the other way round, and its driver
+  # turns a nil []byte into an empty blob where pgx sends SQL NULL.
+  #
+  # That last one was not hypothetical. The first time this suite met
+  # PostgreSQL, ten tests failed on two NOT NULL columns the trail and the
+  # outbox had been writing nil into since they were written. Everything payday
+  # generates is SQL; a suite that has only ever run on SQLite has not seen the
+  # statements it will issue.
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports: ["5432:5432"]
+        # Without this the container is up before the database accepts, and the
+        # first test is the one that finds out.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - run: go test ./... -count=1
+        working-directory: internal/apptest
+        env:
+          PDTEST_POSTGRES: postgres://app:app@127.0.0.1:5432/app?sslmode=disable
+
   # A brand new app, generated and built.
   #
   # `internal/apptest` does not cover this: it was written by hand and has been

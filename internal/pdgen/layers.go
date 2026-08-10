@@ -521,7 +521,11 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		g.P("		}.Build())")
 		g.P("		if err != nil {")
 		g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
-		g.P("				return ", pkgUuid.Ident("Nil"), ", nil, nil")
+		// Empty rather than nil: the trail's `value` is NOT NULL, and a nil
+		// `[]byte` is SQL NULL to pgx while the SQLite driver makes it an empty
+		// blob. A row that is already gone is the one case that reaches here,
+		// and it is exactly the case no SQLite test can fail on.
+		g.P("				return ", pkgUuid.Ident("Nil"), ", []byte{}, nil")
 		g.P("			}")
 		g.P("")
 		g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")

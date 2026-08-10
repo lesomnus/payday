@@ -71,7 +71,11 @@ func emitOutboxRecorder(g *protogen.GeneratedFile, p Paths) {
 	g.P("		return nil")
 	g.P("	}")
 	g.P("")
-	g.P("	var doc []byte")
+	// Empty rather than nil, and that is not a style choice. This column is NOT
+	// NULL, and a nil `[]byte` is SQL NULL to pgx while the SQLite driver makes
+	// it an empty blob -- so a nil here is an insert that works in every test
+	// and fails on the database the app is deployed on.
+	g.P("	doc := []byte{}")
 	g.P("	if c.Patch != nil {")
 	g.P("		b, err := ", pkgProto.Ident("Marshal"), "(c.Patch)")
 	g.P("		if err != nil {")

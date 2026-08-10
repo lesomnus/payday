@@ -2,14 +2,11 @@ package server_test
 
 import (
 	"context"
-	"net/url"
+	"database/sql"
 	"testing"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
-	"github.com/ncruces/go-sqlite3/driver"
-	_ "github.com/ncruces/go-sqlite3/embed"
-	"github.com/ncruces/go-sqlite3/vfs/memdb"
 	"github.com/stretchr/testify/require"
 
 	app "github.com/lesomnus/payday/internal/apptest"
@@ -19,6 +16,7 @@ import (
 
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/pdid"
+	"github.com/lesomnus/payday/pdtest"
 )
 
 // App is the app under test, twice: the servers as they are served, and the
@@ -42,12 +40,23 @@ func New(t *testing.T) *App {
 	t.Helper()
 	x := require.New(t)
 
-	dsn := memdb.TestDB(t, url.Values{"_pragma": {"foreign_keys(1)"}})
-	db, err := driver.Open(dsn)
+	// The database this suite runs on, which is SQLite unless somebody named
+	// another; see [pdtest.DB]. Everything payday generates is SQL, so a suite
+	// that only ever ran on SQLite has never seen the statements it will issue.
+	drv, dsn := pdtest.DB(t)
+	db, err := sql.Open(drv, dsn)
 	x.NoError(err)
-	db.SetMaxOpenConns(1)
 
-	c := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.SQLite, db)))
+	// One connection, because an in-memory SQLite database belongs to the
+	// connection that opened it. PostgreSQL has no such rule and pooling is the
+	// point of it there.
+	dia := dialect.Postgres
+	if drv == "sqlite3" {
+		db.SetMaxOpenConns(1)
+		dia = dialect.SQLite
+	}
+
+	c := ent.NewClient(ent.Driver(entsql.OpenDB(dia, db)))
 	t.Cleanup(func() { c.Close() })
 	x.NoError(c.Schema.Create(t.Context()))
 

@@ -1,10 +1,8 @@
 package cmd_test
 
 import (
-	"net/url"
 	"testing"
 
-	"github.com/ncruces/go-sqlite3/vfs/memdb"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 
@@ -28,10 +26,7 @@ func TestTheAppIsWhatTheAppWrote(t *testing.T) {
 	ctx := t.Context()
 
 	c := cmd.Config{
-		Db: config.DbConfig{
-			Driver: "sqlite3",
-			Dsn:    memdb.TestDB(t, url.Values{"_pragma": {"foreign_keys(1)"}}),
-		},
+		Db: dbOf(t),
 		// Named rather than defaulted, which is the one thing this app's
 		// configuration is refused for saying nothing about; see
 		// `config.WatchConfig`.
@@ -62,10 +57,7 @@ func TestServes(t *testing.T) {
 	ctx := t.Context()
 
 	c := cmd.Config{
-		Db: config.DbConfig{
-			Driver: "sqlite3",
-			Dsn:    memdb.TestDB(t, url.Values{"_pragma": {"foreign_keys(1)"}}),
-		},
+		Db: dbOf(t),
 		// Named rather than defaulted, which is the one thing this app's
 		// configuration is refused for saying nothing about; see
 		// `config.WatchConfig`.

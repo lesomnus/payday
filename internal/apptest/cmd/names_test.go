@@ -411,7 +411,15 @@ func TestARetryCannotLaunderARealConflict(t *testing.T) {
 		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
 	}.Build())
 	x.Equal(codes.AlreadyExists, status.Code(err))
-	x.Contains(err.Error(), "robot.id", "three fresh names turned a duplicate key into something else")
+
+	// It conflicted on the **key** and not on a name. Which is asserted the
+	// long way round because the message is the driver's, and the two spell it
+	// differently: SQLite names the column (`robot.id`), PostgreSQL names the
+	// constraint (`robot_pkey`). What both agree on is that `alias` is not in
+	// it -- and an alias conflict is the failure this test is about, since a
+	// retry that minted three fresh names would have produced one.
+	x.NotContains(err.Error(), "alias", "three fresh names turned a duplicate key into something else")
+	x.Regexp(`robot[._](id|pkey)`, err.Error())
 }
 
 // TestANameTheCallerGaveIsNotSwappedForAnother, which is the whole of why the
