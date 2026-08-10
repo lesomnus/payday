@@ -99,6 +99,22 @@ row it has no type for can still read the parts every row has. The table is in
 to a set smaller than a tenant — a site, a fleet, a project — and putting one
 there gives you a second axis every read is narrowed by.
 
+### An added field may be a message
+
+An overlay can add a field whose type is a message — a `Profile` on the Holder,
+say. It is stored as the canonical protobuf JSON in a `jsonb` column, and needs
+no declaration beyond the field. See
+[the schema guide](guide/schema.md#a-field-can-be-a-message) for what that costs:
+it cannot be filtered or indexed, it is replaced whole, and renaming one of
+*its* fields is a migration nothing checks.
+
+This did not work until recently, and the way it did not work is worth knowing
+because the shape recurs. It generated an `encoding/json` column, and every
+message payday generates uses the protobuf opaque API — whose fields are all
+unexported. So `encoding/json` saw nothing, every value round-tripped as `{}`,
+and the Add answered with what it had been handed, so it looked stored right up
+until somebody read it back.
+
 ## 3. Whose names these are
 
 Your app has `app.Tenant`, not `payday.Tenant`. `pd gen` rewrites the `package`

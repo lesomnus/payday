@@ -170,6 +170,54 @@ gets no naming, no folding and no slug — there is no switch to turn off.
 you get a second axis every read is narrowed by; see
 [permissions §7](permissions.md#7-a-second-axis-if-you-need-one).
 
+### A field can be a message
+
+Not everything belongs in its own table. A profile, an address, a set of
+preferences — a value that has no key, no lifecycle of its own, and is written
+and read with whoever holds it:
+
+```proto
+message Holder {
+  Profile profile = 9;
+}
+
+message Profile {
+  string display_name = 1;
+  string email = 2;
+}
+```
+
+That works, and it is stored as the canonical protobuf JSON — a `jsonb` column
+on PostgreSQL, `json` on MySQL. There is nothing to declare beyond the field.
+
+Three things follow from it, and the first is the one that decides whether you
+want this at all.
+
+**It cannot be filtered or indexed.** It is one value to the database. There is
+no `HolderByEmail`, no filter for it on `List`, and no index that would make one
+fast. So a claim that has to be **looked up** does not go in here — it goes flat
+beside it, where it can be unique:
+
+```proto
+string idp_subject = 8 [(orm.field) = {unique: true, nullable: true}];
+Profile profile     = 9;
+```
+
+The rule: searched for, flat; shown, in the message.
+
+**It is replaced whole.** A patch that sets it assigns the whole message, so a
+field the new one does not carry is gone rather than kept. That is usually what
+you want from something like a profile — it is what one source said at one
+moment — but it is worth being sure.
+
+**Renaming a field of it is a migration.** protojson writes field *names*, so
+`display_name` → `full_name` does not break the build, does not break the wire,
+and stops finding the old value. Field numbers are what `buf breaking` guards;
+this is the other one and nothing checks it.
+
+If you do need to reach inside from SQL, ent's `sqljson` predicates work on the
+column — and the path is protojson's spelling, so `howMany` and not `how_many`.
+
 ---
 
 ## 4. `alias` — the name a person writes
