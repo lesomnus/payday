@@ -8,18 +8,26 @@ go 1.26.4
 require (
 	entgo.io/ent v0.14.6
 	github.com/google/uuid v1.6.0
-	github.com/lesomnus/payday v0.0.0-20260808062503-7d8351263d45
+	github.com/lesomnus/grpc-dgram v0.0.0-20260727054342-be775dcd6ec2
+	github.com/lesomnus/otx v0.0.0-20260807173743-977a5687d6ba
+	github.com/lesomnus/payday v0.0.0-20260810064608-5ee8c6857b37
 	github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f
+	github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057
+	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29
-	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260807205916-3e9c932f5f85
+	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260810100048-f33c9f3f9054
 	github.com/stretchr/testify v1.11.1
+	golang.org/x/sync v0.22.0
 	google.golang.org/grpc v1.83.0
 	google.golang.org/protobuf v1.36.11
 )
 
 require (
 	ariga.io/atlas v0.36.2-0.20250730182955-2c6300d0a3e1 // indirect
+	connectrpc.com/connect v1.19.1 // indirect
+	connectrpc.com/cors v0.1.0 // indirect
+	connectrpc.com/vanguard v0.4.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
@@ -36,13 +44,11 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.18.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/lesomnus/grpc-dgram v0.0.0-20260727054342-be775dcd6ec2 // indirect
 	github.com/lesomnus/mkot v0.0.0-20260801183340-9c83100aa7c2 // indirect
 	github.com/lesomnus/mkot/mkotx v0.0.0-20260801183340-9c83100aa7c2 // indirect
 	github.com/lesomnus/mkot/pretty v0.0.0-20260801183340-9c83100aa7c2 // indirect
-	github.com/lesomnus/otx v0.0.0-20260807173743-977a5687d6ba // indirect
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20260807173743-977a5687d6ba // indirect
-	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278 // indirect
+	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect
@@ -70,14 +76,14 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.20.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
+	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.47.0 // indirect
-	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260724162435-b2f20204f0df // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
