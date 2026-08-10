@@ -110,8 +110,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29 h1:yLrMWcjBT70hljInsE7zssdIZ8pwvotprlUGsLEs4ms=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29/go.mod h1:jMdK+un3aGD6fB5zl3rBg0OMahe7vP5Dpfxe6Sws7mM=
-github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260810100048-f33c9f3f9054 h1:CBEJuE36QYyyzL9VPWLbkHOOGzdwI+8RVXeywOHupqM=
-github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260810100048-f33c9f3f9054/go.mod h1:vwF56xpIrJT1Oei3VmLl1d2RelAadDO029SJ7jL82mE=
+github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260810155854-895b3eb5257c h1:wV/rKxFSTMNrMHfQNZ7En67BPeSRPyTj7LJ4VvMyKcA=
+github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260810155854-895b3eb5257c/go.mod h1:vwF56xpIrJT1Oei3VmLl1d2RelAadDO029SJ7jL82mE=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260808062124-7336db3ccda7 h1:xj+WO4fsr0arc9NVh9ZAMOVk/u9gfGLEWOCipgqlR/s=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260808062124-7336db3ccda7/go.mod h1:EUiEHkmQI53u+32lC+9OiiECSY2xJ1hrgHk7Km9yn20=
 github.com/rogpeppe/go-internal v1.16.0 h1:O9DK+vNMDVGLr2BeZqmpLeMjiMNkuXfcqntWbZV6S5g=
