@@ -92,15 +92,32 @@ const (
 	InsecureCookie = "pd_session"
 )
 
-// DefaultLifetime is how long a session lasts when nothing said.
+// Two clocks, which is what every session store that people actually use has.
 //
-// Absolute, and deliberately not extended by use. A sliding expiry means a key
-// somebody stole goes on working for as long as they keep using it, which is
-// forever -- the legitimate owner signing in again does not disturb it. An app
-// that wants a longer day says so; an app that wants renewal issues a new
-// session, which is a decision somebody made rather than a side effect of
-// traffic.
-const DefaultLifetime = 12 * time.Hour
+//	DefaultIdle       how long an unused session survives
+//	DefaultLifetime   how long any session survives, used or not
+//
+// # Why both, and why one is not enough
+//
+// This carried only the second for a while, on the argument that a sliding
+// expiry means a key somebody stole works for as long as they keep using it.
+// That is true of a sliding expiry **alone**, and it is not what anybody
+// ships: an absolute cap is what closes it, and the pair is the standard
+// arrangement -- an idle timeout somebody notices as "you were away too long",
+// under a maximum they notice as "sign in again, it has been a day".
+//
+// The cost of leaving the first one out was worse than the risk it avoided. An
+// absolute-only session has to be long enough to be usable, so it is long
+// enough that ending it early becomes a separate problem to solve -- which is
+// how this app grew a streaming channel to end sessions faster, and how that
+// channel came to be the only thing standing between somebody leaving and
+// their access ending.
+//
+// Twelve hours is a working day and thirty minutes is a coffee.
+const (
+	DefaultIdle     = 30 * time.Minute
+	DefaultLifetime = 12 * time.Hour
+)
 
 // ErrNoSession is a key that names nothing here.
 //
@@ -130,10 +147,49 @@ type Session struct {
 	// may do" answers [frame.Whole].
 	Grant frame.Grant
 
-	// Expires is when it stops working. [Sessions.Serve] fills it from the
-	// lifetime unless a [Verify] set one, which is how an app gives a short
-	// session to somebody who has not finished a second factor.
+	// Expires is when it stops working whatever happens, counted from the
+	// sign-in. [Sessions.Serve] fills it from the lifetime unless a [Verify]
+	// set one, which is how an app gives a short session to somebody who has
+	// not finished a second factor.
 	Expires time.Time
+
+	// Idle is when it stops working if it is not used, counted from the last
+	// time it was. [Sessions.Handler] moves it forward as the session is used
+	// and never past [Session.Expires].
+	//
+	// The zero value is a session with no idle timeout, which is what a store
+	// written before this had and what an app that only wants the cap gets by
+	// saying `WithIdle(0)`.
+	Idle time.Time
+}
+
+// Dead reports whether this session has stopped working at `at`, by either
+// clock.
+func (v Session) Dead(at time.Time) bool {
+	if !v.Expires.IsZero() && !at.Before(v.Expires) {
+		return true
+	}
+
+	return !v.Idle.IsZero() && !at.Before(v.Idle)
+}
+
+// Until is when this session stops working, whichever clock runs out first.
+//
+// It is what an [auth.Identity] carries, so that a **stream** ends when the
+// session does rather than when somebody hangs up. The idle clock is the one
+// that usually wins, and a stream being open is not use -- a Watch left running
+// on a forgotten tab is exactly what an idle timeout is for.
+func (v Session) Until() time.Time {
+	switch {
+	case v.Idle.IsZero():
+		return v.Expires
+	case v.Expires.IsZero():
+		return v.Idle
+	case v.Idle.Before(v.Expires):
+		return v.Idle
+	default:
+		return v.Expires
+	}
 }
 
 // Store is where sessions are kept.
@@ -172,6 +228,7 @@ type Sessions struct {
 
 	cookie   string
 	path     string
+	idle     time.Duration
 	lifetime time.Duration
 	sameSite http.SameSite
 	secure   bool
@@ -183,9 +240,17 @@ type Option func(*Sessions)
 // being one value.
 func WithCookie(name string) Option { return func(s *Sessions) { s.cookie = name } }
 
-// WithLifetime is how long a session lasts. See [DefaultLifetime] on why it is
-// absolute.
+// WithLifetime is how long a session lasts however much it is used.
 func WithLifetime(d time.Duration) Option { return func(s *Sessions) { s.lifetime = d } }
+
+// WithIdle is how long an unused session survives, and zero is no idle timeout
+// at all -- a session that lives its whole [WithLifetime] whether anybody
+// touches it or not.
+//
+// It is moved forward as the session is used, and never past the absolute one.
+// That is what makes a short idle window usable: somebody working does not sign
+// in again every half hour, and somebody who walked away is gone in one.
+func WithIdle(d time.Duration) Option { return func(s *Sessions) { s.idle = d } }
 
 // WithPath is what the cookie is pathed at, and `/` is the default.
 //
@@ -239,6 +304,7 @@ func New(store Store, opts ...Option) *Sessions {
 		store:    store,
 		cookie:   DefaultCookie,
 		path:     "/",
+		idle:     DefaultIdle,
 		lifetime: DefaultLifetime,
 		sameSite: http.SameSiteLaxMode,
 		secure:   true,
@@ -304,12 +370,15 @@ func (s *Sessions) Handler() auth.Handler {
 			return auth.Identity{}, fmt.Errorf("%w: %w", auth.ErrUnavailable, err)
 		}
 
-		// Expiry is checked here rather than trusted to the store, because a
-		// store is a cache as often as it is a table and "it will have expired
-		// it" is not a thing this can know.
-		if !v.Expires.IsZero() && !time.Now().Before(v.Expires) {
+		// Both clocks are checked here rather than trusted to the store, because
+		// a store is a cache as often as it is a table and "it will have
+		// expired it" is not a thing this can know.
+		now := time.Now()
+		if v.Dead(now) {
 			return auth.Identity{}, fmt.Errorf("%w", ErrNoSession)
 		}
+
+		v = s.used(ctx, v, now)
 
 		return auth.Identity{
 			Method:   Method,
@@ -317,13 +386,52 @@ func (s *Sessions) Handler() auth.Handler {
 			TenantId: v.TenantId,
 			Grant:    v.Grant,
 
-			// Carried so that a **stream** ends when the session does. A call
-			// presents its cookie every time and finds out at the next one; a
-			// Watch reads it once at the handshake and would otherwise outlive
-			// the session by however long somebody leaves the tab open.
-			Expires: v.Expires,
+			// Carried so that a **stream** ends when the session does, by
+			// whichever clock runs out first. A call presents its cookie every
+			// time and finds out at the next one; a Watch reads it once at the
+			// handshake and would otherwise outlive the session by however long
+			// somebody leaves the tab open -- which is what the idle clock is
+			// for, and a stream being open is not use.
+			Expires: v.Until(),
 		}, nil
 	})
+}
+
+// used moves the idle deadline forward, rarely.
+//
+// **Not on every request.** An idle timeout written every time somebody clicks
+// is a write on the busiest path an app has -- a row version, an audit entry, a
+// cache round trip -- for a value that is about to be written again. So it moves
+// only once the session is more than halfway to going stale, which means at
+// most one write per half-window per session and an idle deadline that is
+// accurate to that half.
+//
+// A store that refuses is ignored. The session is valid, the request should be
+// served, and what is lost is the deadline moving -- so the worst a failing
+// store does is end a session at the idle timeout of somebody who was using it,
+// which is the safe direction.
+//
+// It never moves past the absolute clock. That is what the pair is for: the
+// idle one is a convenience and the other one is the limit.
+func (s *Sessions) used(ctx context.Context, v Session, now time.Time) Session {
+	if s.idle <= 0 || v.Idle.IsZero() {
+		return v
+	}
+	if now.Before(v.Idle.Add(-s.idle / 2)) {
+		return v
+	}
+
+	u := v
+	u.Idle = now.Add(s.idle)
+	if !u.Expires.IsZero() && u.Idle.After(u.Expires) {
+		u.Idle = u.Expires
+	}
+
+	if err := s.store.Put(ctx, u); err != nil {
+		return v
+	}
+
+	return u
 }
 
 // Serve is the endpoint a sign-in form posts to.
@@ -381,8 +489,15 @@ func (s *Sessions) mint(w http.ResponseWriter, r *http.Request, verify Verify) {
 
 		return
 	}
+	now := time.Now()
 	if v.Expires.IsZero() {
-		v.Expires = time.Now().Add(s.lifetime)
+		v.Expires = now.Add(s.lifetime)
+	}
+	if v.Idle.IsZero() && s.idle > 0 {
+		v.Idle = now.Add(s.idle)
+		if v.Idle.After(v.Expires) {
+			v.Idle = v.Expires
+		}
 	}
 
 	if err := s.store.Put(ctx, v); err != nil {

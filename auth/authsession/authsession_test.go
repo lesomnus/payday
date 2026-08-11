@@ -466,3 +466,126 @@ func TestEndingSomebodysSessionsEndsThemNow(t *testing.T) {
 	x.NoError(err)
 	x.Equal("019-xyz", id.Id)
 }
+
+// Two clocks: one for being away, one for the day.
+//
+// This carried only the absolute one for a while, on the argument that a
+// sliding expiry means a stolen key works for as long as somebody keeps using
+// it. That is true of a sliding expiry **alone**; the pair is what everybody
+// ships, and leaving the first out had a cost -- an absolute-only session has
+// to be long enough to be usable, which makes ending one early a separate
+// problem, which is how this grew a streaming channel to end sessions and how
+// that channel became the only thing between somebody leaving and their access
+// ending.
+
+// TestAnIdleSessionEndsWithoutEndingAWorkingOne is the whole of what the second
+// clock buys.
+func TestAnIdleSessionEndsWithoutEndingAWorkingOne(t *testing.T) {
+	x := require.New(t)
+
+	s := authsession.New(authsession.NewMemStore(),
+		authsession.WithIdle(100*time.Millisecond),
+		authsession.WithLifetime(time.Hour))
+
+	c := signIn(t, s, who("019-abc", "019-acme"))
+
+	// Used, so it keeps going. Past the idle window several times over.
+	for range 5 {
+		time.Sleep(60 * time.Millisecond)
+
+		_, err := s.Handler().Handle(carrying(c))
+		x.NoError(err, "a session in use went stale")
+	}
+
+	// Left alone, so it stops.
+	time.Sleep(150 * time.Millisecond)
+
+	_, err := s.Handler().Handle(carrying(c))
+	x.ErrorIs(err, authsession.ErrNoSession)
+}
+
+// TestTheIdleClockNeverPassesTheOtherOne, which is what makes the pair safe:
+// the first is a convenience and the second is the limit.
+func TestTheIdleClockNeverPassesTheOtherOne(t *testing.T) {
+	x := require.New(t)
+
+	store := authsession.NewMemStore()
+	s := authsession.New(store,
+		authsession.WithIdle(time.Hour),
+		authsession.WithLifetime(50*time.Millisecond))
+
+	c := signIn(t, s, who("019-abc", "019-acme"))
+
+	v, err := store.Get(t.Context(), c.Value)
+	x.NoError(err)
+	x.Equal(v.Expires, v.Idle, "a one-hour idle window outlived a fifty-millisecond session")
+
+	time.Sleep(60 * time.Millisecond)
+
+	// And using it does not save it.
+	_, err = s.Handler().Handle(carrying(c))
+	x.ErrorIs(err, authsession.ErrNoSession)
+}
+
+// TestUsingASessionDoesNotWriteEveryTime.
+//
+// An idle deadline written on every request is a write on the busiest path an
+// app has, for a value about to be written again. It moves once the session is
+// more than halfway to stale, so a burst of requests costs one write.
+func TestUsingASessionDoesNotWriteEveryTime(t *testing.T) {
+	x := require.New(t)
+
+	store := authsession.NewMemStore()
+	s := authsession.New(store, authsession.WithIdle(time.Hour))
+
+	c := signIn(t, s, who("019-abc", "019-acme"))
+
+	was, err := store.Get(t.Context(), c.Value)
+	x.NoError(err)
+
+	for range 20 {
+		_, err := s.Handler().Handle(carrying(c))
+		x.NoError(err)
+	}
+
+	now, err := store.Get(t.Context(), c.Value)
+	x.NoError(err)
+	x.Equal(was.Idle, now.Idle, "twenty requests moved the deadline twenty times")
+}
+
+// TestNoIdleClockIsTheOldBehaviour, for a deployment that wants only the cap.
+func TestNoIdleClockIsTheOldBehaviour(t *testing.T) {
+	x := require.New(t)
+
+	store := authsession.NewMemStore()
+	s := authsession.New(store, authsession.WithIdle(0))
+
+	c := signIn(t, s, who("019-abc", "019-acme"))
+
+	v, err := store.Get(t.Context(), c.Value)
+	x.NoError(err)
+	x.True(v.Idle.IsZero())
+	x.False(v.Expires.IsZero())
+
+	id, err := s.Handler().Handle(carrying(c))
+	x.NoError(err)
+	x.Equal(v.Expires, id.Expires, "what a stream is cut by is not the absolute clock")
+}
+
+// TestAStreamIsCutByWhicheverRunsOutFirst, which is the idle one in a
+// deployment that has both -- and a stream being open is not use, so a Watch on
+// a forgotten tab ends.
+func TestAStreamIsCutByWhicheverRunsOutFirst(t *testing.T) {
+	x := require.New(t)
+
+	s := authsession.New(authsession.NewMemStore(),
+		authsession.WithIdle(time.Minute),
+		authsession.WithLifetime(12*time.Hour))
+
+	c := signIn(t, s, who("019-abc", "019-acme"))
+
+	id, err := s.Handler().Handle(carrying(c))
+	x.NoError(err)
+	x.WithinDuration(time.Now().Add(time.Minute), id.Expires, 5*time.Second)
+	x.False(id.Valid(time.Now().Add(2 * time.Minute)))
+}

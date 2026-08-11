@@ -137,20 +137,35 @@ buys nothing here, since there is no GET to protect. `None` gives up the defence
 entirely and needs a real anti-CSRF token; take it only for an app deliberately
 embedded cross-site.
 
-## Sessions do not slide
+## Two clocks
 
-`DefaultLifetime` is twelve hours, absolute. A session extended by use is one a
-thief keeps alive forever by using it — the legitimate owner signing in again
-does not disturb it, and nothing ever expires.
-
-If you want longer, say so:
-
-```go
-authsession.New(store, authsession.WithLifetime(24*time.Hour))
+```
+DefaultIdle       30 minutes   how long an unused session survives
+DefaultLifetime   12 hours     how long any session survives, used or not
 ```
 
-If you want renewal, issue a new session. That way it is a decision somebody
-made rather than a side effect of traffic.
+The idle one moves forward as the session is used and never past the absolute
+one. That is what makes a short idle window usable: somebody working does not
+sign in again every half hour, and somebody who walked away is gone in one.
+
+```go
+authsession.New(store,
+    authsession.WithIdle(15*time.Minute),
+    authsession.WithLifetime(24*time.Hour))
+```
+
+`WithIdle(0)` turns the first one off, for a deployment that wants only the cap.
+
+**Why both.** A sliding expiry alone is a stolen key that works for as long as
+somebody keeps using it; the absolute cap is what closes that, and the pair is
+the standard arrangement. An absolute-only session has to be long enough to be
+usable, which makes ending one early a separate problem to solve -- and solving
+it separately is how an app grows a push channel that becomes the only thing
+between somebody leaving and their access ending.
+
+**What it costs.** The idle deadline is a write, so it moves only once a session
+is more than halfway to stale: at most one write per half-window per session,
+and a deadline accurate to that half.
 
 ## Signing out
 
