@@ -3,6 +3,55 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A grant's methods are patterns, so `*` in one now means something
+
+**Applies if** anything you store and hand to `frame.Grant.To` — a role's
+methods, an API key's, whatever your app calls them — could already contain a
+string with `*` as a whole part, like `/app.RobotService/*`.
+
+`Grant.Allows` was a membership test. A stored `/app.RobotService/*` matched
+only a method named exactly `*`, which cannot exist, so such a string allowed
+**nothing**. It is a pattern now and allows that whole service.
+
+That is a widening, and it is the only backwards-incompatible thing here: a
+grant of whole method names behaves exactly as it did, because `frame.Covers`
+answers on equality first.
+
+**What to check.** One query, against wherever you keep them:
+
+```sql
+SELECT * FROM roles WHERE EXISTS (
+  SELECT 1 FROM json_each(methods) WHERE json_each.value LIKE '%*%'
+);
+```
+
+Anything it returns was allowing nothing and now allows something. Almost
+certainly there is nothing — a string like that is one somebody typed expecting
+this feature before it existed.
+
+**What you gain**, and the reason for it: a list of methods is a snapshot of
+something that grows. Write out every method of a service today and the next
+release adds one the role does not allow — silently, to a role whose name says
+it covers that service.
+
+```
+/app.RobotService/Get     one method
+/app.RobotService/*       one service
+/app.*/*                  one package
+/app.*/Get                that method wherever it appears
+/*.*/*                    everything
+```
+
+A whole part or nothing. `*Get*` is not a glob, it is a method name that
+happens to contain asterisks — partial matching is where three string
+comparisons become a regular expression.
+
+And a pattern is covered by **one** pattern you hold, never by several
+together. Holding `/app.A/*` and `/app.B/*` does not let you hand out
+`/app.*/*` even where those are the only two services, because the third one
+added next release would be covered by a grant made before it existed. See
+[`frame.Covers`](../frame/method.go).
+
 ## payday's entities are copied inside your proto package
 
 **Applies if** your schema has `import "payday/tenant.proto"` or any other
