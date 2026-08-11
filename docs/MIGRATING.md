@@ -1,0 +1,112 @@
+# Migrating
+
+What an app has to change when payday does. Newest first, and each entry says
+how to tell whether it applies to you.
+
+## payday's entities are copied inside your proto package
+
+**Applies if** your schema has `import "payday/tenant.proto"` or any other
+`payday/*.proto`, which is every app generated before this.
+
+`pd gen` used to copy payday's entities to `proto/payday/`. Two apps in one
+process then both registered `payday/holder.proto`, and a protobuf registry is
+per process and keys files by path — so linking them panicked before `main`,
+with nothing to catch it. That is not hypothetical: it is what happened the
+first time one payday app imported another's generated client, and the importing
+app's own binary stopped starting.
+
+The copies land at `proto/<pkg>/payday/` now, so the path carries the app's
+proto package and no two apps collide.
+
+**What to change**, in your hand-written schema and in your overlays:
+
+```diff
+-import "payday/tenant.proto";
++import "app/payday/tenant.proto";
+```
+
+where `app` is whatever your entities declare as their proto package. Then:
+
+```sh
+rm -rf proto/payday       # the old copies; pd gen writes the new ones
+go tool pd gen .
+```
+
+Generated `*_svc.g.proto` are rewritten for you. If one is left holding the old
+import, delete it and generate again — a stale one is an input to the next run.
+
+**And check your proto package is your own.** `pd new` writes `package app;`,
+and two apps that both kept it cannot share a process whatever their file paths
+are — their messages are both `app.Holder`. Renaming it is one line per proto:
+
+```diff
+-package app;
++package roster;
+```
+
+`go_package` is separate and does not have to match.
+
+The rule this leaves: **two payday apps can share a process when their proto
+packages differ.** Two instances of the *same* app always could.
+
+## `payday.Holder` is watchable, and has a list
+
+**Applies to** every app, and needs no change from you.
+
+`Holder` declares `watch: {}` and a `list:`, so `HolderService` gains `Watch`
+and `List`. An app that does not open a stream pays for a generated method and
+nothing else.
+
+It is declared in payday's own schema because an app cannot: an overlay merges
+**fields** and not the entity option, so there was no way for a deployment to
+make payday's entity streamable.
+
+## A field can say it is never answered with
+
+**Applies if** you store a verifier — a password hash, an API key hash.
+
+`(payday.field).secret` marks a field that is written and never handed back, and
+`pd.Secret` is the generated layer that clears it on the way out. Stack it:
+
+```diff
+-app.Build(walled, core.Build(), pd.AuditBuild(), pd.GateBuild())
++app.Build(walled, core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())
+```
+
+The layer is only generated for an app that declared one, so a stack naming it
+without one will not compile — which is the reminder.
+
+**Ordering**: the extension is in payday's buf module, so an app depending on
+`buf.build/payday/payday` needs a version of it that has this. Until then the
+compile says `unknown extension payday.field`.
+
+## A field that lies about presence is refused
+
+**Applies if** your schema has a message field with no `nullable`, no `default`
+and no marker — a `google.protobuf.Timestamp` you meant to be optional, most
+likely.
+
+It generated a NOT NULL column while the API beside it had `Has…`, so a caller
+asking whether a value was set was told yes and read a zero. Generation refuses
+it now and names both fixes, because they mean different things:
+
+```diff
+-google.protobuf.Timestamp date_seen = 8;
++google.protobuf.Timestamp date_seen = 8 [(orm.field) = {nullable: true}];
+```
+
+or a `default`, if the value is always there.
+
+`date_created`, `date_updated` and `date_erased` are exempt, and the rule is
+their declarations rather than their names — an app whose version field is
+called something else is not caught by a rule about spelling.
+
+## `pdtest.DB` gives a second database to a second call
+
+**Applies if** a test of yours calls it twice, which is a test that stands two
+apps up.
+
+It used to name the schema after the test, so two calls got one schema and the
+second's `DROP SCHEMA` removed the first app's tables. It passed on SQLite and
+failed only under `PDTEST_POSTGRES`. Nothing to change: no existing test could
+have wanted the old behaviour.

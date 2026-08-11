@@ -14,6 +14,7 @@ comments, which are where the detail actually lives.
 | [The page](guide/client.md) | reads that keep themselves current, writes that need no invalidation rule |
 | [Several writes at once](guide/batch.md) | one transaction, and the four rules re-applied per operation |
 | [Refusals](guide/errors.md) | a field-level error, from the server to a form field |
+| [Signing somebody in](guide/signing-in.md) | a session cookie, where it lives, and whether you need an identity provider at all |
 | [Testing](guide/testing.md) | the harness, the two seams, and golden files |
 
 ## References
@@ -23,6 +24,7 @@ comments, which are where the detail actually lives.
 | [The runtime](RUNTIME.md) | every package, what is generated, and how each rule is enforced |
 | [Tenancy](TENANCY.md) | the model behind the wall, and the decisions around it |
 | [The generation contract](SCHEMA.md) | what payday owns, overlays, identifiers, slugs |
+| [Migrating](MIGRATING.md) | what an app has to change when payday does, newest first |
 | [The browser](CLIENT.md) | the transports, the sandbox, and the client replica |
 
 ---
