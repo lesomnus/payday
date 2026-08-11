@@ -158,7 +158,7 @@ func TestWhatIsWrittenIsWhatTheGeneratorWillTake(t *testing.T) {
 	src := string(b)
 
 	x.Contains(src, `date_updated = 13 [(orm.field) = {version: {}}]`, "a watch has nothing to order two answers by")
-	x.Contains(src, `by: ["ref"]`, "a watch has no way to name the rows it is about")
+	x.Contains(src, `by: [{name: "ref"}]`, "a watch has no way to name the rows it is about")
 	// Nothing about tenancy, which is the declaration -- behind the wall. What
 	// the scaffold writes out instead is why, since a reader who finds no
 	// tenancy line has to be able to tell "assumed" from "forgotten".

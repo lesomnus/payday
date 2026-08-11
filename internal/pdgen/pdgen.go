@@ -316,7 +316,7 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 			// more in it is the generator deciding what an API offers.
 			return nil, fmt.Errorf(
 				"watch: needs `ref` among the list's `by:`, and this one has %s.\n\n"+
-					"    list: {by: [\"ref\"%s]}\n\n"+
+					"    list: {by: [{name: \"ref\"}%s]}\n\n"+
 					"A watch says which rows it is about, and a reference is how one is named. "+
 					"A list can be filtered by other things and a watch cannot be filtered by "+
 					"nothing",
@@ -475,7 +475,12 @@ func moreBy(l *List) string {
 			continue
 		}
 
-		fmt.Fprintf(b, ", %q", v.Field)
+		name := v.Field
+		if v.Edge != "" {
+			name = v.Edge
+		}
+
+		fmt.Fprintf(b, ", {name: %q}", name)
 	}
 
 	return b.String()
@@ -702,7 +707,6 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 	}
 
 	v := &List{
-		With:    opts.GetWith(),
 		Size:    int(opts.GetSize()),
 		Max:     int(opts.GetMax()),
 		Filters: int(opts.GetFilters()),
@@ -722,12 +726,26 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 			"nothing is more than it may have", v.Max, v.Size)
 	}
 
+	for _, w := range opts.GetWith() {
+		name, err := named(e.Entity, w, "with")
+		if err != nil {
+			return err
+		}
+
+		v.With = append(v.With, name)
+	}
+
 	key := e.Key().Name()
 	for _, o := range opts.GetOrder() {
-		if _, ok := field(e.Entity, o.GetField()); !ok {
-			return fmt.Errorf("list: order: %s has no field %q", e.FullName(), o.GetField())
+		name, err := named(e.Entity, o.GetField(), "order")
+		if err != nil {
+			return err
 		}
-		v.Order = append(v.Order, Order{Field: o.GetField(), Desc: o.GetDesc()})
+		if _, ok := field(e.Entity, name); !ok {
+			return fmt.Errorf("list: order: %s has no field %q", e.FullName(), name)
+		}
+
+		v.Order = append(v.Order, Order{Field: name, Desc: o.GetDesc()})
 	}
 	switch {
 	case len(v.Order) == 0:
@@ -743,10 +761,15 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 			v.Order[len(v.Order)-1].Field, key)
 	}
 
-	for _, name := range opts.GetBy() {
-		if name == "ref" {
+	for _, w := range opts.GetBy() {
+		if w.GetName() == "ref" && w.GetNumber() == 0 {
 			v.By = append(v.By, By{Ref: true})
 			continue
+		}
+
+		name, err := named(e.Entity, w, "by")
+		if err != nil {
+			return err
 		}
 
 		if d, ok := edge(e.Entity, name); ok {
@@ -1213,4 +1236,54 @@ func (s *Schema) checkPresence(v *Entity) error {
 	}
 
 	return nil
+}
+
+// named is what a `{name, number}` points at, and the refusal when the two
+// disagree.
+//
+// # Why both
+//
+// A proto field is renamed without the wire changing, so the **number** is the
+// identity and the name is a label. A declaration carrying only the label
+// follows a rename onto whatever took the old name -- which is not the loud
+// failure of "there is no such field" but the quiet one of "that is a different
+// field now", and a paging order or a filter that quietly moved to another
+// column is exactly the kind of thing this generator exists to refuse.
+//
+// It is also how the rest of a schema already points at a field: `orm`'s
+// indexes carry `{name, number}`, and a schema with two conventions for the
+// same thing is one somebody has to remember which is which for.
+//
+// # What is allowed
+//
+// Either alone works, so an existing schema is not rewritten to be read and a
+// small one is not made verbose. Both together is what is checked, and is what
+// `pd new` writes.
+func named(e graph.Entity, ref *ormpb.Ref, what string) (string, error) {
+	name, number := ref.GetName(), ref.GetNumber()
+	switch {
+	case name == "" && number == 0:
+		return "", fmt.Errorf("list: %s: names nothing; write a name, a number, or both", what)
+
+	case number == 0:
+		return name, nil
+	}
+
+	for p := range e.Props() {
+		if int32(p.Number()) != number {
+			continue
+		}
+		if name != "" && p.Name() != name {
+			return "", fmt.Errorf(
+				"list: %s: %d is %q and this says %q.\n"+
+					"a number is what a field **is** and a name is what it is called, so the two "+
+					"disagreeing means one of them followed a rename and the other did not -- and "+
+					"whichever way round that is, this would read a column nobody meant",
+				what, number, p.Name(), name)
+		}
+
+		return p.Name(), nil
+	}
+
+	return "", fmt.Errorf("list: %s: %s has nothing at %d", what, e.FullName(), number)
 }

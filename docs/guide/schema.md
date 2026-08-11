@@ -46,7 +46,7 @@ message Robot {
   option (payday.entity) = {
     domain: 7
     list: {
-      order: [{field: "date_created"}, {field: "id"}]
+      order: [{field: {name: "date_created"}}, {field: {name: "id"}}]
       by:    ["ref"]
       size:  20
       max:   100
@@ -253,7 +253,7 @@ it.
 
 ```proto
 list: {
-  order: [{field: "date_created"}, {field: "id"}]
+  order: [{field: {name: "date_created"}}, {field: {name: "id"}}]
   by:    ["ref", "listed"]
   size:  20
   max:   100

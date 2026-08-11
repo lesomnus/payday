@@ -134,11 +134,11 @@ message Robot {
     domain: 7
     list: {
       order: [
-        {field: "date_created"},
-        {field: "id"}
+        {field: {name: "date_created"}},
+        {field: {name: "id"}}
       ]
-      with: ["tenant"]
-      by: ["ref", "tenant"]
+      with: [{name: "tenant"}]
+      by: [{name: "ref"}, {name: "tenant"}]
       size: 50
       max: 100
     }

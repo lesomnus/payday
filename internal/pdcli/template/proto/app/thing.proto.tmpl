@@ -109,11 +109,11 @@ message Thing {
       // The order has to end in the key. A cursor cannot tell apart two rows
       // equal in every column of the order, so the page after the first of them
       // repeats the second or skips it.
-      order: [{field: "date_created"}, {field: "id"}]
+      order: [{field: {name: "date_created"}}, {field: {name: "id"}}]
 
       // What a caller may filter by. "ref" is naming a row outright, and a
       // watch is refused without it.
-      by: ["ref"]
+      by: [{name: "ref"}]
 
       size: 20
       max: 100

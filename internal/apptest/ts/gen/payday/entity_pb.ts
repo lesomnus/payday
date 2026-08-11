@@ -5,13 +5,15 @@
 
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Ref } from "../orm/ref_pb.js";
+import { file_orm_ref } from "../orm/ref_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXkiyQQKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GiYKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRoICgZHbG9iYWwaKgoFRXJhc2USIQoEaGFyZBgBIAEoCzITLnBheWRheS5FbnRpdHkuSGFyZBoGCgRIYXJkGnEKBExpc3QSIwoFb3JkZXIYASADKAsyFC5wYXlkYXkuRW50aXR5Lk9yZGVyEgwKBHdpdGgYAiADKAkSCgoCYnkYAyADKAkSDAoEc2l6ZRgEIAEoDRILCgNtYXgYBSABKA0SDwoHZmlsdGVycxgGIAEoDRoHCgVXYXRjaBokCgVPcmRlchINCgVmaWVsZBgBIAEoCRIMCgRkZXNjGAIgASgIQgkKB3RlbmFuY3kiFwoFRmllbGQSDgoGc2VjcmV0GAEgASgIKlkKA093bhITCg9PV05fVU5TUEVDSUZJRUQQABIOCgpPV05fVEVOQU5UEAESDgoKT1dOX0hPTERFUhACEg0KCU9XTl9BVURJVBADEg4KCk9XTl9PVVRCT1gQBEImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki6AQKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GiYKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRoICgZHbG9iYWwaKgoFRXJhc2USIQoEaGFyZBgBIAEoCzITLnBheWRheS5FbnRpdHkuSGFyZBoGCgRIYXJkGoUBCgRMaXN0EiMKBW9yZGVyGAEgAygLMhQucGF5ZGF5LkVudGl0eS5PcmRlchIWCgR3aXRoGAIgAygLMggub3JtLlJlZhIUCgJieRgDIAMoCzIILm9ybS5SZWYSDAoEc2l6ZRgEIAEoDRILCgNtYXgYBSABKA0SDwoHZmlsdGVycxgGIAEoDRoHCgVXYXRjaBouCgVPcmRlchIXCgVmaWVsZBgBIAEoCzIILm9ybS5SZWYSDAoEZGVzYxgCIAEoCEIJCgd0ZW5hbmN5IhcKBUZpZWxkEg4KBnNlY3JldBgBIAEoCCpZCgNPd24SEwoPT1dOX1VOU1BFQ0lGSUVEEAASDgoKT1dOX1RFTkFOVBABEg4KCk9XTl9IT0xERVIQAhINCglPV05fQVVESVQQAxIOCgpPV05fT1VUQk9YEARCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_orm_ref]);
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -359,22 +361,27 @@ export type Entity_List = Message<"payday.Entity.List"> & {
    * With names edges to read along with each row, since almost everything
    * that reads a list wants to know whose the rows are.
    *
-   * @generated from field: repeated string with = 2;
+   * @generated from field: repeated orm.Ref with = 2;
    */
-  with: string[];
+  with: Ref[];
 
   /**
-   * By names what a filter may be about: a field, compared for equality, or
-   * "ref" for the reference that names a row.
+   * By names what a filter may be about: a field or an edge, compared for
+   * equality, or the name "ref" for the reference that names a row.
+   *
+   * An edge is a foreign key, so a filter on one is a comparison against an
+   * indexed column rather than a join. A **one-to-many** edge is refused for
+   * the same reason: there is no column on this row to compare, and that
+   * genuinely is a join.
    *
    * A filter that cannot be written this way is an RPC somebody writes. That
    * is not a limitation being apologised for: a rule about what a caller may
    * ask has a reason, and a reason belongs beside the code that acts on it
    * rather than in a declaration that can only carry the number.
    *
-   * @generated from field: repeated string by = 3;
+   * @generated from field: repeated orm.Ref by = 3;
    */
-  by: string[];
+  by: Ref[];
 
   /**
    * Size is how many rows a request that did not say gets, and Max is the
@@ -437,14 +444,25 @@ export const Entity_WatchSchema: GenMessage<Entity_Watch> = /*@__PURE__*/
 
 /**
  * Order is one column of a list's order.
+ * Every one of these names a field or an edge as `{name, number}`, which is
+ * `orm.Ref` and is how the rest of a schema already points at one -- an index
+ * does, and a schema with two ways of saying the same thing is one somebody
+ * has to remember which is which for.
+ *
+ * The **number** is the identity. A proto field is renamed without the wire
+ * changing, so a declaration that carried only the label would follow a
+ * rename onto whatever took the old name. Carrying both lets generation
+ * resolve by the number and refuse when the label no longer matches, which is
+ * the failure this is for: not "that field is gone" -- which is loud already
+ * -- but "that field is a different field now", which is not.
  *
  * @generated from message payday.Entity.Order
  */
 export type Entity_Order = Message<"payday.Entity.Order"> & {
   /**
-   * @generated from field: string field = 1;
+   * @generated from field: orm.Ref field = 1;
    */
-  field: string;
+  field?: Ref | undefined;
 
   /**
    * Desc reads the list backwards, which is what a trail wants: what it is

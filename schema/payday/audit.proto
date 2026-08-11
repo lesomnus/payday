@@ -227,10 +227,10 @@ message Audit {
       // Backwards, which is what a trail wants: what it is asked is what
       // happened, and the answer starts with what happened last.
       order: [
-        {field: "date_created", desc: true},
-        {field: "id", desc: true}
+        {field: {name: "date_created"}, desc: true},
+        {field: {name: "id"}, desc: true}
       ]
-      by: ["object_id", "actor_id", "tenant_id", "actor_tenant_id"]
+      by: [{name: "object_id"}, {name: "actor_id"}, {name: "tenant_id"}, {name: "actor_tenant_id"}]
       size: 50
       max: 200
     }

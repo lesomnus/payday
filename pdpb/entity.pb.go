@@ -7,6 +7,7 @@
 package pdpb
 
 import (
+	ormpb "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -943,8 +944,8 @@ func (b0 Entity_Hard_builder) Build() *Entity_Hard {
 type Entity_List struct {
 	state              protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Order   *[]*Entity_Order       `protobuf:"bytes,1,rep,name=order"`
-	xxx_hidden_With    []string               `protobuf:"bytes,2,rep,name=with"`
-	xxx_hidden_By      []string               `protobuf:"bytes,3,rep,name=by"`
+	xxx_hidden_With    *[]*ormpb.Ref          `protobuf:"bytes,2,rep,name=with"`
+	xxx_hidden_By      *[]*ormpb.Ref          `protobuf:"bytes,3,rep,name=by"`
 	xxx_hidden_Size    uint32                 `protobuf:"varint,4,opt,name=size"`
 	xxx_hidden_Max     uint32                 `protobuf:"varint,5,opt,name=max"`
 	xxx_hidden_Filters uint32                 `protobuf:"varint,6,opt,name=filters"`
@@ -986,16 +987,20 @@ func (x *Entity_List) GetOrder() []*Entity_Order {
 	return nil
 }
 
-func (x *Entity_List) GetWith() []string {
+func (x *Entity_List) GetWith() []*ormpb.Ref {
 	if x != nil {
-		return x.xxx_hidden_With
+		if x.xxx_hidden_With != nil {
+			return *x.xxx_hidden_With
+		}
 	}
 	return nil
 }
 
-func (x *Entity_List) GetBy() []string {
+func (x *Entity_List) GetBy() []*ormpb.Ref {
 	if x != nil {
-		return x.xxx_hidden_By
+		if x.xxx_hidden_By != nil {
+			return *x.xxx_hidden_By
+		}
 	}
 	return nil
 }
@@ -1025,12 +1030,12 @@ func (x *Entity_List) SetOrder(v []*Entity_Order) {
 	x.xxx_hidden_Order = &v
 }
 
-func (x *Entity_List) SetWith(v []string) {
-	x.xxx_hidden_With = v
+func (x *Entity_List) SetWith(v []*ormpb.Ref) {
+	x.xxx_hidden_With = &v
 }
 
-func (x *Entity_List) SetBy(v []string) {
-	x.xxx_hidden_By = v
+func (x *Entity_List) SetBy(v []*ormpb.Ref) {
+	x.xxx_hidden_By = &v
 }
 
 func (x *Entity_List) SetSize(v uint32) {
@@ -1061,15 +1066,20 @@ type Entity_List_builder struct {
 	Order []*Entity_Order
 	// With names edges to read along with each row, since almost everything
 	// that reads a list wants to know whose the rows are.
-	With []string
-	// By names what a filter may be about: a field, compared for equality, or
-	// "ref" for the reference that names a row.
+	With []*ormpb.Ref
+	// By names what a filter may be about: a field or an edge, compared for
+	// equality, or the name "ref" for the reference that names a row.
+	//
+	// An edge is a foreign key, so a filter on one is a comparison against an
+	// indexed column rather than a join. A **one-to-many** edge is refused for
+	// the same reason: there is no column on this row to compare, and that
+	// genuinely is a join.
 	//
 	// A filter that cannot be written this way is an RPC somebody writes. That
 	// is not a limitation being apologised for: a rule about what a caller may
 	// ask has a reason, and a reason belongs beside the code that acts on it
 	// rather than in a declaration that can only carry the number.
-	By []string
+	By []*ormpb.Ref
 	// Size is how many rows a request that did not say gets, and Max is the
 	// most it gets however loudly it asks.
 	//
@@ -1092,8 +1102,8 @@ func (b0 Entity_List_builder) Build() *Entity_List {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Order = &b.Order
-	x.xxx_hidden_With = b.With
-	x.xxx_hidden_By = b.By
+	x.xxx_hidden_With = &b.With
+	x.xxx_hidden_By = &b.By
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_Max = b.Max
 	x.xxx_hidden_Filters = b.Filters
@@ -1152,9 +1162,20 @@ func (b0 Entity_Watch_builder) Build() *Entity_Watch {
 }
 
 // Order is one column of a list's order.
+// Every one of these names a field or an edge as `{name, number}`, which is
+// `orm.Ref` and is how the rest of a schema already points at one -- an index
+// does, and a schema with two ways of saying the same thing is one somebody
+// has to remember which is which for.
+//
+// The **number** is the identity. A proto field is renamed without the wire
+// changing, so a declaration that carried only the label would follow a
+// rename onto whatever took the old name. Carrying both lets generation
+// resolve by the number and refuse when the label no longer matches, which is
+// the failure this is for: not "that field is gone" -- which is loud already
+// -- but "that field is a different field now", which is not.
 type Entity_Order struct {
 	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Field string                 `protobuf:"bytes,1,opt,name=field"`
+	xxx_hidden_Field *ormpb.Ref             `protobuf:"bytes,1,opt,name=field"`
 	xxx_hidden_Desc  bool                   `protobuf:"varint,2,opt,name=desc"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -1185,11 +1206,11 @@ func (x *Entity_Order) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *Entity_Order) GetField() string {
+func (x *Entity_Order) GetField() *ormpb.Ref {
 	if x != nil {
 		return x.xxx_hidden_Field
 	}
-	return ""
+	return nil
 }
 
 func (x *Entity_Order) GetDesc() bool {
@@ -1199,7 +1220,7 @@ func (x *Entity_Order) GetDesc() bool {
 	return false
 }
 
-func (x *Entity_Order) SetField(v string) {
+func (x *Entity_Order) SetField(v *ormpb.Ref) {
 	x.xxx_hidden_Field = v
 }
 
@@ -1207,10 +1228,21 @@ func (x *Entity_Order) SetDesc(v bool) {
 	x.xxx_hidden_Desc = v
 }
 
+func (x *Entity_Order) HasField() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Field != nil
+}
+
+func (x *Entity_Order) ClearField() {
+	x.xxx_hidden_Field = nil
+}
+
 type Entity_Order_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Field string
+	Field *ormpb.Ref
 	// Desc reads the list backwards, which is what a trail wants: what it is
 	// asked is what happened, and the answer starts with what happened last.
 	Desc bool
@@ -1229,7 +1261,7 @@ var File_payday_entity_proto protoreflect.FileDescriptor
 
 const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/entity.proto\x12\x06payday\"\xcf\x05\n" +
+	"\x13payday/entity.proto\x12\x06payday\x1a\rorm/ref.proto\"\xed\x05\n" +
 	"\x06Entity\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domain\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
@@ -1247,17 +1279,17 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x06Global\x1a0\n" +
 	"\x05Erase\x12'\n" +
 	"\x04hard\x18\x01 \x01(\v2\x13.payday.Entity.HardR\x04hard\x1a\x06\n" +
-	"\x04Hard\x1a\x96\x01\n" +
+	"\x04Hard\x1a\xaa\x01\n" +
 	"\x04List\x12*\n" +
-	"\x05order\x18\x01 \x03(\v2\x14.payday.Entity.OrderR\x05order\x12\x12\n" +
-	"\x04with\x18\x02 \x03(\tR\x04with\x12\x0e\n" +
-	"\x02by\x18\x03 \x03(\tR\x02by\x12\x12\n" +
+	"\x05order\x18\x01 \x03(\v2\x14.payday.Entity.OrderR\x05order\x12\x1c\n" +
+	"\x04with\x18\x02 \x03(\v2\b.orm.RefR\x04with\x12\x18\n" +
+	"\x02by\x18\x03 \x03(\v2\b.orm.RefR\x02by\x12\x12\n" +
 	"\x04size\x18\x04 \x01(\rR\x04size\x12\x10\n" +
 	"\x03max\x18\x05 \x01(\rR\x03max\x12\x18\n" +
 	"\afilters\x18\x06 \x01(\rR\afilters\x1a\a\n" +
-	"\x05Watch\x1a1\n" +
-	"\x05Order\x12\x14\n" +
-	"\x05field\x18\x01 \x01(\tR\x05field\x12\x12\n" +
+	"\x05Watch\x1a;\n" +
+	"\x05Order\x12\x1e\n" +
+	"\x05field\x18\x01 \x01(\v2\b.orm.RefR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
 	"\atenancy\"\x1f\n" +
 	"\x05Field\x12\x16\n" +
@@ -1286,6 +1318,7 @@ var file_payday_entity_proto_goTypes = []any{
 	(*Entity_List)(nil),     // 8: payday.Entity.List
 	(*Entity_Watch)(nil),    // 9: payday.Entity.Watch
 	(*Entity_Order)(nil),    // 10: payday.Entity.Order
+	(*ormpb.Ref)(nil),       // 11: orm.Ref
 }
 var file_payday_entity_proto_depIdxs = []int32{
 	3,  // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
@@ -1297,11 +1330,14 @@ var file_payday_entity_proto_depIdxs = []int32{
 	0,  // 6: payday.Entity.own:type_name -> payday.Own
 	7,  // 7: payday.Entity.Erase.hard:type_name -> payday.Entity.Hard
 	10, // 8: payday.Entity.List.order:type_name -> payday.Entity.Order
-	9,  // [9:9] is the sub-list for method output_type
-	9,  // [9:9] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	11, // 9: payday.Entity.List.with:type_name -> orm.Ref
+	11, // 10: payday.Entity.List.by:type_name -> orm.Ref
+	11, // 11: payday.Entity.Order.field:type_name -> orm.Ref
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_payday_entity_proto_init() }

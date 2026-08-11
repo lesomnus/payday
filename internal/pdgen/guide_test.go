@@ -35,23 +35,23 @@ message Robot {
 	}, {
 		"order not ending in the key",
 		tenant + entity("Robot", `domain: 7, global: {},
-			list: {order: [{field: "date_created"}], by: ["ref"], size: 2, max: 3}`,
+			list: {order: [{field: {name: "date_created"}}], by: [{name: "ref"}], size: 2, max: 3}`,
 			`google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];`),
 		"has to end in the key",
 	}, {
 		"list with no max",
 		tenant + entity("Robot", `domain: 7, global: {},
-			list: {order: [{field: "id"}], by: ["ref"], size: 2}`),
+			list: {order: [{field: {name: "id"}}], by: [{name: "ref"}], size: 2}`),
 		"`max` is required",
 	}, {
 		"watch with no version",
 		tenant + entity("Robot", `domain: 7, global: {},
-			list: {order: [{field: "id"}], by: ["ref"], size: 2, max: 3}, watch: {}`),
+			list: {order: [{field: {name: "id"}}], by: [{name: "ref"}], size: 2, max: 3}, watch: {}`),
 		"needs a version field",
 	}, {
 		"watch with no ref among the filters",
 		tenant + entity("Robot", `domain: 7, global: {},
-			list: {order: [{field: "id"}], by: ["alias"], size: 2, max: 3}, watch: {}`,
+			list: {order: [{field: {name: "id"}}], by: [{name: "alias"}], size: 2, max: 3}, watch: {}`,
 			`google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];`),
 		"needs `ref` among the list's `by:`",
 	}, {

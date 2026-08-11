@@ -110,3 +110,39 @@ It used to name the schema after the test, so two calls got one schema and the
 second's `DROP SCHEMA` removed the first app's tables. It passed on SQLite and
 failed only under `PDTEST_POSTGRES`. Nothing to change: no existing test could
 have wanted the old behaviour.
+
+## `order:`, `by:` and `with:` name a field as `{name, number}`
+
+**Applies if** your schema declares a `list:`, which is every entity with a page
+or a watch.
+
+They took a bare string. A proto field is renamed without the wire changing, so
+the **number** is the identity and the name is a label -- and a declaration
+carrying only the label follows a rename onto whatever took the old name. That
+is not the loud failure of "there is no such field" but the quiet one of "that
+is a different field now", and a paging order that moved to another column is
+exactly what this generator exists to refuse.
+
+It is also how the rest of a schema already points at a field: `orm`'s indexes
+carry `{name, number}`, and two conventions for one thing is one somebody has to
+remember which is which for.
+
+```diff
+     list: {
+-      order: [{field: "date_created"}, {field: "id"}]
+-      by: ["ref", "tenant"]
+-      with: ["tenant"]
++      order: [{field: {name: "date_created", number: 15}}, {field: {name: "id", number: 1}}]
++      by: [{name: "ref"}, {name: "tenant", number: 2}]
++      with: [{name: "tenant", number: 2}]
+     }
+```
+
+Either half alone still works, so a small schema is not made verbose and an
+existing one is not rewritten to be read. **Both together is what is checked**:
+generation resolves by the number and refuses when the name no longer matches.
+
+`{name: "ref"}` has no number, since it is not a field.
+
+`tenanted: {field: ...}` is unchanged and still takes plain strings -- it names
+a column the wall reads, not a filter.

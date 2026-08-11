@@ -109,10 +109,10 @@ message Holder {
     // through never sees one twice or misses one.
     list: {
       order: [
-        {field: "date_created"},
-        {field: "id"}
+        {field: {name: "date_created"}},
+        {field: {name: "id"}}
       ]
-      by: ["ref"]
+      by: [{name: "ref"}]
       size: 20
       max: 100
     }

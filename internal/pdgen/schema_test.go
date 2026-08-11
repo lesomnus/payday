@@ -448,7 +448,7 @@ message Robot {
 	}
 
 	t.Run("a well-formed list reads", func(t *testing.T) {
-		s, err := read(t, robot(`order: [{field: "date_created"}, {field: "id"}], max: 100, by: ["ref"]`))
+		s, err := read(t, robot(`order: [{field: {name: "date_created"}}, {field: {name: "id"}}], max: 100, by: [{name: "ref"}]`))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -467,27 +467,27 @@ message Robot {
 
 	for _, tt := range []struct{ what, list, says string }{{
 		what: "an order that does not end in the key",
-		list: `order: [{field: "date_created"}], max: 100`,
+		list: `order: [{field: {name: "date_created"}}], max: 100`,
 		says: "has to end in the key",
 	}, {
 		what: "no cap on the page",
-		list: `order: [{field: "id"}]`,
+		list: `order: [{field: {name: "id"}}]`,
 		says: "`max` is required",
 	}, {
 		what: "a cap below what nothing-said gets",
-		list: `order: [{field: "id"}], size: 100, max: 10`,
+		list: `order: [{field: {name: "id"}}], size: 100, max: 10`,
 		says: "more than it may have",
 	}, {
 		what: "an order on a column that is not there",
-		list: `order: [{field: "nope"}, {field: "id"}], max: 100`,
+		list: `order: [{field: {name: "nope"}}, {field: {name: "id"}}], max: 100`,
 		says: `no field "nope"`,
 	}, {
 		what: "a filter on a column that is not there",
-		list: `order: [{field: "id"}], max: 100, by: ["nope"]`,
+		list: `order: [{field: {name: "id"}}], max: 100, by: [{name: "nope"}]`,
 		says: `no field or edge "nope"`,
 	}, {
 		what: "an edge to read along that is not there",
-		list: `order: [{field: "id"}], max: 100, with: ["nope"]`,
+		list: `order: [{field: {name: "id"}}], max: 100, with: [{name: "nope"}]`,
 		says: `no edge "nope"`,
 	}} {
 		t.Run(tt.what+" is refused", func(t *testing.T) {
@@ -506,7 +506,7 @@ message Robot {
 		// A warning because a small table is a real thing: a hundred rows of
 		// configuration do not need an index, and refusing to generate for
 		// them would be insisting on a cost nobody is paying.
-		s, err := read(t, robot(`order: [{field: "date_created"}, {field: "id"}], max: 100`))
+		s, err := read(t, robot(`order: [{field: {name: "date_created"}}, {field: {name: "id"}}], max: 100`))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -539,7 +539,7 @@ message Robot {
   option (payday.entity) = {
     domain: 7
     tenanted: {via: "tenant"}
-    list: {order: [{field: "date_created"}, {field: "id"}], max: 100}
+    list: {order: [{field: {name: "date_created"}}, {field: {name: "id"}}], max: 100}
     erase: {hard: {}}
   };
 }`)
@@ -581,7 +581,7 @@ func TestAWatchWithoutAVersionIsRefused(t *testing.T) {
 			option (payday.entity) = {
 				domain: 7
 				tenanted: {via: "tenant"}
-				list: {order: [{field: "date_created"}, {field: "id"}], by: ["ref"], size: 20, max: 100}
+				list: {order: [{field: {name: "date_created"}}, {field: {name: "id"}}], by: [{name: "ref"}], size: 20, max: 100}
 				watch: {}
 			};
 		}
@@ -618,7 +618,7 @@ func TestAListWithoutAWatchNeedsNoVersion(t *testing.T) {
 			option (payday.entity) = {
 				domain: 7
 				tenanted: {via: "tenant"}
-				list: {order: [{field: "date_created"}, {field: "id"}], size: 20, max: 100}
+				list: {order: [{field: {name: "date_created"}}, {field: {name: "id"}}], size: 20, max: 100}
 				erase: {hard: {}}
 			};
 		}
@@ -658,7 +658,7 @@ func TestAWatchWithNothingToNameARowByIsRefused(t *testing.T) {
 			option (payday.entity) = {
 				domain: 7
 				tenanted: {via: "tenant"}
-				list: {order: [{field: "date_created"}, {field: "id"}], by: ["alias"], size: 20, max: 100}
+				list: {order: [{field: {name: "date_created"}}, {field: {name: "id"}}], by: [{name: "alias"}], size: 20, max: 100}
 				watch: {}
 			};
 		}
@@ -672,7 +672,7 @@ func TestAWatchWithNothingToNameARowByIsRefused(t *testing.T) {
 
 	// And the suggestion keeps what the schema already had rather than
 	// replacing it.
-	if !strings.Contains(err.Error(), `list: {by: ["ref", "alias"]}`) {
+	if !strings.Contains(err.Error(), `list: {by: [{name: "ref"}, {name: "alias"}]}`) {
 		t.Fatalf("the refusal throws away the filters that were declared: %s", err)
 	}
 }
@@ -1268,7 +1268,7 @@ message Thing {
 // What the filter carries is the target's **ref**, so a caller names it the way
 // they name it everywhere else: by identifier, or by the alias they typed.
 func TestAFilterMayBeAboutAnEdge(t *testing.T) {
-	s, err := read(t, tenant+entity("Robot", `domain: 7, tenanted: {via: "tenant"}, list: {order: [{field: "id"}], max: 100, by: ["ref", "tenant"]}`,
+	s, err := read(t, tenant+entity("Robot", `domain: 7, tenanted: {via: "tenant"}, list: {order: [{field: {name: "id"}}], max: 100, by: [{name: "ref"}, {name: "tenant"}]}`,
 		`Tenant tenant = 2 [(orm.edge) = {}];`))
 	if err != nil {
 		t.Fatalf("an edge was refused: %v", err)
@@ -1297,7 +1297,7 @@ func TestAFilterMayBeAboutAnEdge(t *testing.T) {
 // acts on it.
 func TestAOneToManyEdgeIsRefused(t *testing.T) {
 	_, err := read(t, tenant+
-		entity("Robot", `domain: 7, tenanted: {via: "tenant"}, list: {order: [{field: "id"}], max: 100, by: ["parts"]}`,
+		entity("Robot", `domain: 7, tenanted: {via: "tenant"}, list: {order: [{field: {name: "id"}}], max: 100, by: [{name: "parts"}]}`,
 			`Tenant tenant = 2 [(orm.edge) = {}];`,
 			`repeated Part parts = 8 [(orm.edge) = {}];`)+
 		entity("Part", `domain: 8, global: {}`))

@@ -116,8 +116,8 @@ message Holder {
     // identifier to break a tie. Stable under insertion, so a client reading
     // through never sees one twice or misses one.
     list: {
-      order: [{field: "date_created"}, {field: "id"}]
-      by: ["ref"]
+      order: [{field: {name: "date_created"}}, {field: {name: "id"}}]
+      by: [{name: "ref"}]
       size: 20
       max: 100
     }

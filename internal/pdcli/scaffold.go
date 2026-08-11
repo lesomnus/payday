@@ -277,11 +277,11 @@ func (e Entity) message(domain int) string {
 		b.WriteString("    global: {}\n")
 	}
 	if e.Watch {
-		b.WriteString("\n    list: {\n      order: [{field: \"date_created\"}, {field: \"id\"}]\n")
+		b.WriteString("\n    list: {\n      order: [{field: {name: \"date_created\"}}, {field: {name: \"id\"}}]\n")
 		b.WriteString("\n      // What a caller may filter by. \"ref\" is naming a row outright,\n")
 		b.WriteString("      // and a watch is refused without it: a watch says which rows it\n")
 		b.WriteString("      // is about, and a reference is how one is named.\n")
-		b.WriteString("      by: [\"ref\"]\n")
+		b.WriteString("      by: [{name: \"ref\"}]\n")
 		b.WriteString("\n      size: 20\n      max: 100\n    }\n")
 		b.WriteString("    watch: {}\n")
 	}

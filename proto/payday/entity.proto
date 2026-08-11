@@ -2,6 +2,8 @@ edition = "2023";
 
 package payday;
 
+import "orm/ref.proto";
+
 option features.field_presence = IMPLICIT;
 option go_package = "github.com/lesomnus/payday/pdpb";
 
@@ -221,16 +223,21 @@ message Entity {
 
     // With names edges to read along with each row, since almost everything
     // that reads a list wants to know whose the rows are.
-    repeated string with = 2;
+    repeated orm.Ref with = 2;
 
-    // By names what a filter may be about: a field, compared for equality, or
-    // "ref" for the reference that names a row.
+    // By names what a filter may be about: a field or an edge, compared for
+    // equality, or the name "ref" for the reference that names a row.
+    //
+    // An edge is a foreign key, so a filter on one is a comparison against an
+    // indexed column rather than a join. A **one-to-many** edge is refused for
+    // the same reason: there is no column on this row to compare, and that
+    // genuinely is a join.
     //
     // A filter that cannot be written this way is an RPC somebody writes. That
     // is not a limitation being apologised for: a rule about what a caller may
     // ask has a reason, and a reason belongs beside the code that acts on it
     // rather than in a declaration that can only carry the number.
-    repeated string by = 3;
+    repeated orm.Ref by = 3;
 
     // Size is how many rows a request that did not say gets, and Max is the
     // most it gets however loudly it asks.
@@ -261,8 +268,19 @@ message Entity {
   message Watch {}
 
   // Order is one column of a list's order.
+  // Every one of these names a field or an edge as `{name, number}`, which is
+  // `orm.Ref` and is how the rest of a schema already points at one -- an index
+  // does, and a schema with two ways of saying the same thing is one somebody
+  // has to remember which is which for.
+  //
+  // The **number** is the identity. A proto field is renamed without the wire
+  // changing, so a declaration that carried only the label would follow a
+  // rename onto whatever took the old name. Carrying both lets generation
+  // resolve by the number and refuse when the label no longer matches, which is
+  // the failure this is for: not "that field is gone" -- which is loud already
+  // -- but "that field is a different field now", which is not.
   message Order {
-    string field = 1;
+    orm.Ref field = 1;
 
     // Desc reads the list backwards, which is what a trail wants: what it is
     // asked is what happened, and the answer starts with what happened last.
