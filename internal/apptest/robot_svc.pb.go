@@ -4430,7 +4430,7 @@ var File_app_robot_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x0fapp/robot.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x19payday/tenant_svc.g.proto\"e\n" +
+	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/robot.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"e\n" +
 	"\x0eCellAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
@@ -4784,8 +4784,8 @@ func file_app_robot_svc_g_proto_init() {
 	if File_app_robot_svc_g_proto != nil {
 		return
 	}
+	file_app_payday_tenant_svc_g_proto_init()
 	file_app_robot_proto_init()
-	file_payday_tenant_svc_g_proto_init()
 	file_app_robot_svc_g_proto_msgTypes[2].OneofWrappers = []any{
 		(*cellRef_Id)(nil),
 	}

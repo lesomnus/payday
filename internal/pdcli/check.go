@@ -84,11 +84,13 @@ func (g Gen) Check(ctx context.Context) ([]Changed, error) {
 // because a file left behind by an entity that was removed from the schema is
 // exactly what a check has to notice -- and it is not in any list the current
 // run makes.
-var generated = []string{
-	filepath.Join(DirProto, "payday"),
-	DirEnt,
-	DirBare,
-	DirPd_,
+func generated(l Layout) []string {
+	return []string{
+		l.DirPd(),
+		DirEnt,
+		DirBare,
+		DirPd_,
+	}
 }
 
 // hashes is the content of everything a generation writes, by path.
@@ -111,7 +113,7 @@ func (g Gen) hashes() (map[string]string, error) {
 		return nil
 	}
 
-	for _, d := range generated {
+	for _, d := range generated(g.Layout) {
 		root := filepath.Join(g.Out, d)
 		err := filepath.WalkDir(root, func(p string, e fs.DirEntry, err error) error {
 			if err != nil {

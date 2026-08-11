@@ -112,14 +112,20 @@ type Layout struct {
 // belongs to:
 //
 //   - `proto/<pkg>/thing.proto` is yours. So is anything else you write there.
+//
 //   - `proto/<pkg>/thing_svc.g.proto` is generated from it -- the same `.g.`
 //     that marks generated Go.
-//   - `proto/payday/` is payday's own entities, copied in whole. Every file
-//     there is generated, which is why they do not need the suffix, and a
+//
+//   - `proto/<pkg>/payday/` is payday's own entities, copied in whole. Every
+//     file there is generated, which is why they do not need the suffix, and a
 //     README written beside them says so. It is a file and not a comment at
 //     the top of each: a comment there is a comment on the .proto, and protoc
 //     hands those to every generator, so it came out at the top of the Go and
 //     the TypeScript as well.
+//
+//     **Inside** the app's package and not beside it, which is [Layout.DirPd]
+//     and is what lets two payday apps be linked into one process.
+//
 //   - `proto/ext/` is yours again: the overlays. It is excluded from the buf
 //     module, because an overlay is a fragment rather than a file that
 //     compiles.
@@ -206,6 +212,26 @@ func Discover(dir string) (Layout, error) {
 	return l, nil
 }
 
+// DirPd is where payday's own entities are copied to, **inside** the app's
+// proto package rather than beside it.
+//
+// It is derived and not a constant, and that is the whole of what lets two
+// payday apps be linked into one process. A protobuf registry is per process
+// and keys files by their path, so two apps that both copied
+// `payday/holder.proto` panic on the second one to register -- before `main`,
+// with no way to catch it. Which is not a hypothetical: it is what happened the
+// first time an app tried to call another one's API.
+//
+// [Layout.ProtoPkg] already says payday's entities go into the app's namespace
+// rather than the other way round, and this is that sentence applied to the
+// **file** as well as to the package. `roster/payday/holder.proto` is roster's
+// copy; `app/payday/holder.proto` is whoever kept the default name.
+//
+// The rule it leaves is one sentence: two payday apps can share a process when
+// their proto packages differ. Two that both took `app` cannot, and could not
+// have anyway -- their messages would both be `app.Holder`.
+func (l Layout) DirPd() string { return filepath.Join(DirProto, l.ProtoPkg, "payday") }
+
 // GoPackage is what the copied entities are made to declare: [Layout.Pkg], with
 // the name after it when the app's own schema said one.
 //
@@ -278,7 +304,7 @@ func readPkg(l Layout) (string, string, error) {
 		case err != nil:
 			return err
 		case d.IsDir():
-			if p == l.Path(DirProto, "payday") || p == l.Path(DirExt) {
+			if p == l.Path(l.DirPd()) || p == l.Path(DirExt) {
 				return fs.SkipDir
 			}
 
@@ -447,7 +473,7 @@ func readProtoPkg(l Layout) (string, error) {
 		case err != nil:
 			return err
 		case d.IsDir():
-			if p == l.Path(DirProto, "payday") || p == l.Path(DirExt) {
+			if p == l.Path(l.DirPd()) || p == l.Path(DirExt) {
 				return fs.SkipDir
 			}
 

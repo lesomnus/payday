@@ -104,6 +104,10 @@ var goPackage = regexp.MustCompile(`(?m)^option go_package = .*$`)
 // framework to say who they are.
 var protoPackage = regexp.MustCompile(`(?m)^package .*$`)
 
+// pdImport is one entity importing another, which moves with them. It does not
+// match `payday.proto`, the options file, which does not move.
+var pdImport = regexp.MustCompile(`(?m)^import "payday/([^"]+)";$`)
+
 // entities copies payday's own entities into the app, merged with whatever the
 // app added to them.
 //
@@ -130,7 +134,7 @@ func (g Gen) entities(ctx context.Context) error {
 		return fmt.Errorf("%s: payday ships no entities here", src)
 	}
 
-	dst := filepath.Join(g.Out, DirProto, "payday")
+	dst := filepath.Join(g.Out, g.Layout.DirPd())
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return err
 	}
@@ -155,6 +159,14 @@ func (g Gen) entities(ctx context.Context) error {
 
 		b = goPackage.ReplaceAll(b, []byte(fmt.Sprintf("option go_package = %q;", g.Layout.GoPackage())))
 		b = protoPackage.ReplaceAll(b, []byte(fmt.Sprintf("package %s;", g.Layout.ProtoPkg)))
+
+		// And what they import of each other, since they have moved with them.
+		// `payday.proto` is deliberately not matched: it is the options file and
+		// stays where it is, which is what keeps `payday.entity` one name in
+		// every app rather than one per app.
+		b = pdImport.ReplaceAll(b, []byte(
+			fmt.Sprintf(`import "%s/payday/$1";`, filepath.ToSlash(g.Layout.ProtoPkg))))
+
 		if err := os.WriteFile(filepath.Join(dst, name), b, 0o644); err != nil {
 			return err
 		}

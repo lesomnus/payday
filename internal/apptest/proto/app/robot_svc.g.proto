@@ -1,11 +1,11 @@
 edition = "2023";
 package app;
 
+import "app/payday/tenant_svc.g.proto";
 import "app/robot.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "patch/patch.proto";
-import "payday/tenant_svc.g.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 

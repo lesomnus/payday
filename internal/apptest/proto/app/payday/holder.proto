@@ -4,7 +4,7 @@ package app;
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
 import "payday.proto";
-import "payday/tenant.proto";
+import "app/payday/tenant.proto";
 
 option features.field_presence = IMPLICIT;
 option go_package = "github.com/lesomnus/payday/internal/apptest";

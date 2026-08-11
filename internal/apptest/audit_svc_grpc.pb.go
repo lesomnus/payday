@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: payday/audit_svc.g.proto
+// source: app/payday/audit_svc.g.proto
 
 package apptest
 
@@ -320,5 +320,5 @@ var AuditService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "payday/audit_svc.g.proto",
+	Metadata: "app/payday/audit_svc.g.proto",
 }

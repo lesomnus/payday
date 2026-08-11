@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: payday/tenant.proto
+// source: app/payday/tenant.proto
 
 package apptest
 
@@ -49,7 +49,7 @@ type Tenant struct {
 
 func (x *Tenant) Reset() {
 	*x = Tenant{}
-	mi := &file_payday_tenant_proto_msgTypes[0]
+	mi := &file_app_payday_tenant_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -61,7 +61,7 @@ func (x *Tenant) String() string {
 func (*Tenant) ProtoMessage() {}
 
 func (x *Tenant) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_tenant_proto_msgTypes[0]
+	mi := &file_app_payday_tenant_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -209,11 +209,11 @@ func (b0 Tenant_builder) Build() *Tenant {
 	return m0
 }
 
-var File_payday_tenant_proto protoreflect.FileDescriptor
+var File_app_payday_tenant_proto protoreflect.FileDescriptor
 
-const file_payday_tenant_proto_rawDesc = "" +
+const file_app_payday_tenant_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/tenant.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x81\x03\n" +
+	"\x17app/payday/tenant.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x81\x03\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x1c\n" +
 	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias\x12\x12\n" +
@@ -228,13 +228,13 @@ const file_payday_tenant_proto_rawDesc = "" +
 	"\b\x01B\x02\n" +
 	"\x00H\x01\x1a\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_payday_tenant_proto_goTypes = []any{
+var file_app_payday_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_app_payday_tenant_proto_goTypes = []any{
 	(*Tenant)(nil),                // 0: app.Tenant
 	nil,                           // 1: app.Tenant.LabelsEntry
 	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
 }
-var file_payday_tenant_proto_depIdxs = []int32{
+var file_app_payday_tenant_proto_depIdxs = []int32{
 	1, // 0: app.Tenant.labels:type_name -> app.Tenant.LabelsEntry
 	2, // 1: app.Tenant.date_updated:type_name -> google.protobuf.Timestamp
 	2, // 2: app.Tenant.date_created:type_name -> google.protobuf.Timestamp
@@ -245,26 +245,26 @@ var file_payday_tenant_proto_depIdxs = []int32{
 	0, // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_payday_tenant_proto_init() }
-func file_payday_tenant_proto_init() {
-	if File_payday_tenant_proto != nil {
+func init() { file_app_payday_tenant_proto_init() }
+func file_app_payday_tenant_proto_init() {
+	if File_app_payday_tenant_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_tenant_proto_rawDesc), len(file_payday_tenant_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_payday_tenant_proto_rawDesc), len(file_app_payday_tenant_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_payday_tenant_proto_goTypes,
-		DependencyIndexes: file_payday_tenant_proto_depIdxs,
-		MessageInfos:      file_payday_tenant_proto_msgTypes,
+		GoTypes:           file_app_payday_tenant_proto_goTypes,
+		DependencyIndexes: file_app_payday_tenant_proto_depIdxs,
+		MessageInfos:      file_app_payday_tenant_proto_msgTypes,
 	}.Build()
-	File_payday_tenant_proto = out.File
-	file_payday_tenant_proto_goTypes = nil
-	file_payday_tenant_proto_depIdxs = nil
+	File_app_payday_tenant_proto = out.File
+	file_app_payday_tenant_proto_goTypes = nil
+	file_app_payday_tenant_proto_depIdxs = nil
 }

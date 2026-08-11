@@ -316,15 +316,15 @@ func record(ctx context.Context, rec Recorder, db *ent.Client, c Change) error {
 // Embed [Unscoped] to write out only the entities there is something to
 // say about.
 type Scope interface {
+	AuditScope(ctx context.Context) (predicate.Audit, error)
 	TenantScope(ctx context.Context) (predicate.Tenant, error)
+	HolderScope(ctx context.Context) (predicate.Holder, error)
+	OutboxScope(ctx context.Context) (predicate.Outbox, error)
 	CellScope(ctx context.Context) (predicate.Cell, error)
 	RobotScope(ctx context.Context) (predicate.Robot, error)
 	JointScope(ctx context.Context) (predicate.Joint, error)
 	FleetScope(ctx context.Context) (predicate.Fleet, error)
 	ReadingScope(ctx context.Context) (predicate.Reading, error)
-	AuditScope(ctx context.Context) (predicate.Audit, error)
-	HolderScope(ctx context.Context) (predicate.Holder, error)
-	OutboxScope(ctx context.Context) (predicate.Outbox, error)
 }
 
 // Unscoped is a [Scope] that narrows nothing. Embed it and write out the
@@ -339,7 +339,16 @@ type Unscoped struct{}
 
 var _ Scope = Unscoped{}
 
+func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
+	return nil, nil
+}
 func (Unscoped) TenantScope(_ context.Context) (predicate.Tenant, error) {
+	return nil, nil
+}
+func (Unscoped) HolderScope(_ context.Context) (predicate.Holder, error) {
+	return nil, nil
+}
+func (Unscoped) OutboxScope(_ context.Context) (predicate.Outbox, error) {
 	return nil, nil
 }
 func (Unscoped) CellScope(_ context.Context) (predicate.Cell, error) {
@@ -355,15 +364,6 @@ func (Unscoped) FleetScope(_ context.Context) (predicate.Fleet, error) {
 	return nil, nil
 }
 func (Unscoped) ReadingScope(_ context.Context) (predicate.Reading, error) {
-	return nil, nil
-}
-func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
-	return nil, nil
-}
-func (Unscoped) HolderScope(_ context.Context) (predicate.Holder, error) {
-	return nil, nil
-}
-func (Unscoped) OutboxScope(_ context.Context) (predicate.Outbox, error) {
 	return nil, nil
 }
 
@@ -386,6 +386,26 @@ type Scopes []Scope
 
 var _ Scope = Scopes{}
 
+func (ss Scopes) AuditScope(ctx context.Context) (predicate.Audit, error) {
+	ps := make([]predicate.Audit, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.AuditScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return audit.And(ps...), nil
+}
+
 func (ss Scopes) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	ps := make([]predicate.Tenant, 0, len(ss))
 	for _, s := range ss {
@@ -404,6 +424,46 @@ func (ss Scopes) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	}
 
 	return tenant.And(ps...), nil
+}
+
+func (ss Scopes) HolderScope(ctx context.Context) (predicate.Holder, error) {
+	ps := make([]predicate.Holder, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.HolderScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return holder.And(ps...), nil
+}
+
+func (ss Scopes) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
+	ps := make([]predicate.Outbox, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.OutboxScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return outbox.And(ps...), nil
 }
 
 func (ss Scopes) CellScope(ctx context.Context) (predicate.Cell, error) {
@@ -504,66 +564,6 @@ func (ss Scopes) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 	}
 
 	return reading.And(ps...), nil
-}
-
-func (ss Scopes) AuditScope(ctx context.Context) (predicate.Audit, error) {
-	ps := make([]predicate.Audit, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.AuditScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return audit.And(ps...), nil
-}
-
-func (ss Scopes) HolderScope(ctx context.Context) (predicate.Holder, error) {
-	ps := make([]predicate.Holder, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.HolderScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return holder.And(ps...), nil
-}
-
-func (ss Scopes) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
-	ps := make([]predicate.Outbox, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.OutboxScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return outbox.And(ps...), nil
 }
 
 // Minter decides the key a row is stored under. It is asked once per Add,
@@ -684,12 +684,12 @@ func (s Server) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	return s, nil
 }
 
+func (s Server) Audit() apptest.AuditServiceServer     { return AuditServiceServer{Store: s.Store} }
 func (s Server) Tenant() apptest.TenantServiceServer   { return TenantServiceServer{Store: s.Store} }
+func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceServer{Store: s.Store} }
+func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }
 func (s Server) Cell() apptest.CellServiceServer       { return CellServiceServer{Store: s.Store} }
 func (s Server) Robot() apptest.RobotServiceServer     { return RobotServiceServer{Store: s.Store} }
 func (s Server) Joint() apptest.JointServiceServer     { return JointServiceServer{Store: s.Store} }
 func (s Server) Fleet() apptest.FleetServiceServer     { return FleetServiceServer{Store: s.Store} }
 func (s Server) Reading() apptest.ReadingServiceServer { return ReadingServiceServer{Store: s.Store} }
-func (s Server) Audit() apptest.AuditServiceServer     { return AuditServiceServer{Store: s.Store} }
-func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceServer{Store: s.Store} }
-func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }

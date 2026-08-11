@@ -2373,6 +2373,84 @@ func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.Batc
 // ask for, and `Any` is checked by type URL so there is a right answer.
 func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, error) {
 	switch m := op.GetMethod(); m {
+	case apptest.AuditService_Add_FullMethodName:
+		v := &apptest.AuditAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_Get_FullMethodName:
+		v := &apptest.AuditGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_Patch_FullMethodName:
+		v := &apptest.AuditPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_Apply_FullMethodName:
+		v := &apptest.AuditApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_Erase_FullMethodName:
+		v := &apptest.AuditRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AuditService_List_FullMethodName:
+		v := &apptest.AuditListRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Audit().List(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
 	case apptest.TenantService_Add_FullMethodName:
 		v := &apptest.TenantAddRequest{}
 		if err := op.GetRequest().UnmarshalTo(v); err != nil {
@@ -2432,6 +2510,71 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Tenant().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Add_FullMethodName:
+		v := &apptest.HolderAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Get_FullMethodName:
+		v := &apptest.HolderGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Patch_FullMethodName:
+		v := &apptest.HolderPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Apply_FullMethodName:
+		v := &apptest.HolderApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Erase_FullMethodName:
+		v := &apptest.HolderRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Erase(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -2770,149 +2913,6 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Reading().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Add_FullMethodName:
-		v := &apptest.AuditAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Get_FullMethodName:
-		v := &apptest.AuditGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Patch_FullMethodName:
-		v := &apptest.AuditPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Apply_FullMethodName:
-		v := &apptest.AuditApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Erase_FullMethodName:
-		v := &apptest.AuditRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_List_FullMethodName:
-		v := &apptest.AuditListRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().List(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_Add_FullMethodName:
-		v := &apptest.HolderAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_Get_FullMethodName:
-		v := &apptest.HolderGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_Patch_FullMethodName:
-		v := &apptest.HolderPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_Apply_FullMethodName:
-		v := &apptest.HolderApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_Erase_FullMethodName:
-		v := &apptest.HolderRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Erase(ctx, v)
 		if err != nil {
 			return nil, err
 		}

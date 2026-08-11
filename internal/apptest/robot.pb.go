@@ -750,7 +750,7 @@ var File_app_robot_proto protoreflect.FileDescriptor
 
 const file_app_robot_proto_rawDesc = "" +
 	"\n" +
-	"\x0fapp/robot.proto\x12\x03app\x1a\x13payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xbc\x01\n" +
+	"\x0fapp/robot.proto\x12\x03app\x1a\x17app/payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xbc\x01\n" +
 	"\x04Cell\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
@@ -833,7 +833,7 @@ func file_app_robot_proto_init() {
 	if File_app_robot_proto != nil {
 		return
 	}
-	file_payday_tenant_proto_init()
+	file_app_payday_tenant_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

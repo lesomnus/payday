@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: payday/holder.proto
+// source: app/payday/holder.proto
 
 package apptest
 
@@ -50,7 +50,7 @@ type Holder struct {
 
 func (x *Holder) Reset() {
 	*x = Holder{}
-	mi := &file_payday_holder_proto_msgTypes[0]
+	mi := &file_app_payday_holder_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -62,7 +62,7 @@ func (x *Holder) String() string {
 func (*Holder) ProtoMessage() {}
 
 func (x *Holder) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_holder_proto_msgTypes[0]
+	mi := &file_app_payday_holder_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -283,11 +283,11 @@ func (b0 Holder_builder) Build() *Holder {
 	return m0
 }
 
-var File_payday_holder_proto protoreflect.FileDescriptor
+var File_app_payday_holder_proto protoreflect.FileDescriptor
 
-const file_payday_holder_proto_rawDesc = "" +
+const file_app_payday_holder_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/holder.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x13payday/tenant.proto\"\xa8\x04\n" +
+	"\x17app/payday/holder.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xa8\x04\n" +
 	"\x06Holder\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
@@ -308,14 +308,14 @@ const file_payday_holder_proto_rawDesc = "" +
 	"\n" +
 	"\x06tenant\x10\x020\x01\x8a\xbb\x16\x04\b\x02H\x02B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_holder_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_payday_holder_proto_goTypes = []any{
+var file_app_payday_holder_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_app_payday_holder_proto_goTypes = []any{
 	(*Holder)(nil),                // 0: app.Holder
 	nil,                           // 1: app.Holder.LabelsEntry
 	(*Tenant)(nil),                // 2: app.Tenant
 	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
 }
-var file_payday_holder_proto_depIdxs = []int32{
+var file_app_payday_holder_proto_depIdxs = []int32{
 	2, // 0: app.Holder.tenant:type_name -> app.Tenant
 	1, // 1: app.Holder.labels:type_name -> app.Holder.LabelsEntry
 	3, // 2: app.Holder.date_updated:type_name -> google.protobuf.Timestamp
@@ -328,27 +328,27 @@ var file_payday_holder_proto_depIdxs = []int32{
 	0, // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_payday_holder_proto_init() }
-func file_payday_holder_proto_init() {
-	if File_payday_holder_proto != nil {
+func init() { file_app_payday_holder_proto_init() }
+func file_app_payday_holder_proto_init() {
+	if File_app_payday_holder_proto != nil {
 		return
 	}
-	file_payday_tenant_proto_init()
+	file_app_payday_tenant_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_holder_proto_rawDesc), len(file_payday_holder_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_payday_holder_proto_rawDesc), len(file_app_payday_holder_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_payday_holder_proto_goTypes,
-		DependencyIndexes: file_payday_holder_proto_depIdxs,
-		MessageInfos:      file_payday_holder_proto_msgTypes,
+		GoTypes:           file_app_payday_holder_proto_goTypes,
+		DependencyIndexes: file_app_payday_holder_proto_depIdxs,
+		MessageInfos:      file_app_payday_holder_proto_msgTypes,
 	}.Build()
-	File_payday_holder_proto = out.File
-	file_payday_holder_proto_goTypes = nil
-	file_payday_holder_proto_depIdxs = nil
+	File_app_payday_holder_proto = out.File
+	file_app_payday_holder_proto_goTypes = nil
+	file_app_payday_holder_proto_depIdxs = nil
 }
