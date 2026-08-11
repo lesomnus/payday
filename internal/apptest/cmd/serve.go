@@ -146,7 +146,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 
 	// The stack a caller reaches. `pd.Gate` is outermost, so nothing behind it
 	// asks again.
-	stacked, err := app.Build(walled.WithWatch(w), pd.AuditBuild(), pd.GateBuild())
+	stacked, err := app.Build(walled.WithWatch(w), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())
 	if err != nil {
 		db.Close()
 		return nil, err

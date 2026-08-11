@@ -61,6 +61,11 @@ func Alias(v string) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldAlias, v))
 }
 
+// Secret applies equality check predicate on the "secret" field. It's identical to SecretEQ.
+func Secret(v []byte) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldSecret, v))
+}
+
 // DateUpdated applies equality check predicate on the "date_updated" field. It's identical to DateUpdatedEQ.
 func DateUpdated(v time.Time) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldDateUpdated, v))
@@ -149,6 +154,46 @@ func AliasEqualFold(v string) predicate.Robot {
 // AliasContainsFold applies the ContainsFold predicate on the "alias" field.
 func AliasContainsFold(v string) predicate.Robot {
 	return predicate.Robot(sql.FieldContainsFold(FieldAlias, v))
+}
+
+// SecretEQ applies the EQ predicate on the "secret" field.
+func SecretEQ(v []byte) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldSecret, v))
+}
+
+// SecretNEQ applies the NEQ predicate on the "secret" field.
+func SecretNEQ(v []byte) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldSecret, v))
+}
+
+// SecretIn applies the In predicate on the "secret" field.
+func SecretIn(vs ...[]byte) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldSecret, vs...))
+}
+
+// SecretNotIn applies the NotIn predicate on the "secret" field.
+func SecretNotIn(vs ...[]byte) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldSecret, vs...))
+}
+
+// SecretGT applies the GT predicate on the "secret" field.
+func SecretGT(v []byte) predicate.Robot {
+	return predicate.Robot(sql.FieldGT(FieldSecret, v))
+}
+
+// SecretGTE applies the GTE predicate on the "secret" field.
+func SecretGTE(v []byte) predicate.Robot {
+	return predicate.Robot(sql.FieldGTE(FieldSecret, v))
+}
+
+// SecretLT applies the LT predicate on the "secret" field.
+func SecretLT(v []byte) predicate.Robot {
+	return predicate.Robot(sql.FieldLT(FieldSecret, v))
+}
+
+// SecretLTE applies the LTE predicate on the "secret" field.
+func SecretLTE(v []byte) predicate.Robot {
+	return predicate.Robot(sql.FieldLTE(FieldSecret, v))
 }
 
 // DateUpdatedEQ applies the EQ predicate on the "date_updated" field.

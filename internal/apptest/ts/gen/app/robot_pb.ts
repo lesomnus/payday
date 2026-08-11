@@ -5,8 +5,8 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Tenant } from "../payday/tenant_pb.js";
-import { file_payday_tenant } from "../payday/tenant_pb.js";
+import type { Tenant } from "./payday/tenant_pb.js";
+import { file_app_payday_tenant } from "./payday/tenant_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../orm_pb.js";
@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot.proto.
  */
 export const file_app_robot: GenFile = /*@__PURE__*/
-  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCKdAQoEQ2VsbBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoGdGVuYW50GAIgASgLMgsuYXBwLlRlbmFudEIG8oIWAkABEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoOyvwVBBICEAGKuxYCCAoipQMKBVJvYm90EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIjCgZ0ZW5hbnQYAiABKAsyCy5hcHAuVGVuYW50QgbyghYCQAESHwoEY2VsbBgDIAEoCzIJLmFwcC5DZWxsQgbyghYCOAESDQoFYWxpYXMYBCABKAkSOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAOnzK/BVHEgIQARogEgRwYWdlGhAKDGRhdGVfY3JlYXRlZBAPGgYKAmlkEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAGKuxYtCAcyJwoOCgxkYXRlX2NyZWF0ZWQKBAoCaWQSBnRlbmFudBoDcmVmIDIoZDoAIq4BCgVKb2ludBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoFcm9ib3QYAiABKAsyCi5hcHAuUm9ib3RCCPKCFgQ4AUABEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoeyvwVBBICEAGKuxYSCAgiDgoMcm9ib3QudGVuYW50IoMBCgVGbGVldBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASFQoFYWxpYXMYBCABKAlCBuqCFgIwARI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6EMr8FQQSAhABirsWBAgJKgAitwEKB1JlYWRpbmcSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiEKBXJvYm90GAIgASgLMgouYXBwLlJvYm90QgbyghYCQAESDwoHY2Vsc2l1cxgIIAEoARI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6Isr8FQQSAhABirsWFggLQgIKACIOCgxyb2JvdC50ZW5hbnRCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCKdAQoEQ2VsbBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoGdGVuYW50GAIgASgLMgsuYXBwLlRlbmFudEIG8oIWAkABEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoOyvwVBBICEAGKuxYCCAoivQMKBVJvYm90EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIjCgZ0ZW5hbnQYAiABKAsyCy5hcHAuVGVuYW50QgbyghYCQAESHwoEY2VsbBgDIAEoCzIJLmFwcC5DZWxsQgbyghYCOAESDQoFYWxpYXMYBCABKAkSFgoGc2VjcmV0GAggASgMQgaqwRYCCAESOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAOnzK/BVHEgIQARogEgRwYWdlGhAKDGRhdGVfY3JlYXRlZBAPGgYKAmlkEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAGKuxYtCAcyJwoOCgxkYXRlX2NyZWF0ZWQKBAoCaWQSBnRlbmFudBoDcmVmIDIoZDoAIq4BCgVKb2ludBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoFcm9ib3QYAiABKAsyCi5hcHAuUm9ib3RCCPKCFgQ4AUABEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoeyvwVBBICEAGKuxYSCAgiDgoMcm9ib3QudGVuYW50IoMBCgVGbGVldBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASFQoFYWxpYXMYBCABKAlCBuqCFgIwARI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6EMr8FQQSAhABirsWBAgJKgAitwEKB1JlYWRpbmcSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiEKBXJvYm90GAIgASgLMgouYXBwLlJvYm90QgbyghYCQAESDwoHY2Vsc2l1cxgIIAEoARI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6Isr8FQQSAhABirsWFggLQgIKACIOCgxyb2JvdC50ZW5hbnRCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Cell was added to answer one question: what does adding an entity cost?
@@ -98,6 +98,22 @@ export type Robot = Message<"app.Robot"> & {
    * @generated from field: string alias = 4;
    */
   alias: string;
+
+  /**
+   * A secret this robot proves itself with, and the reason it is here is the
+   * declaration rather than the robot: `(payday.field).secret` says a field is
+   * written and never answered with, and `pd.Secret` is the layer that makes
+   * that true.
+   *
+   * What it is for in a real schema is a password hash or an API key hash --
+   * rows an app reads itself and must never hand out. There was no way to say
+   * so until this option existed, so apps said it at registration by leaving a
+   * whole service off their server, which is a heavier hammer said in the wrong
+   * place.
+   *
+   * @generated from field: bytes secret = 8;
+   */
+  secret: Uint8Array;
 
   /**
    * Stamped on every write and refused to a patch document, so it is a version

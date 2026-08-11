@@ -43,6 +43,7 @@ func (e *Robot) Proto() *apptest.Robot {
 		x.SetCell(r)
 	}
 	x.SetAlias(e.Alias)
+	x.SetSecret(e.Secret)
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	if e.DateErased != nil {

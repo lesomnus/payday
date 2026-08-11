@@ -13,11 +13,11 @@
 
 import type { EntityDesc } from '@lesomnus/payday/store'
 
-import { AuditSchema } from './payday/audit_pb.js'
+import { AuditSchema } from './app/payday/audit_pb.js'
 import { CellSchema, FleetSchema, JointSchema, ReadingSchema, RobotSchema } from './app/robot_pb.js'
-import { HolderSchema } from './payday/holder_pb.js'
-import { OutboxSchema } from './payday/outbox_pb.js'
-import { TenantSchema } from './payday/tenant_pb.js'
+import { HolderSchema } from './app/payday/holder_pb.js'
+import { OutboxSchema } from './app/payday/outbox_pb.js'
+import { TenantSchema } from './app/payday/tenant_pb.js'
 
 /** app.Audit, as the store holds it. */
 export const Audit = {

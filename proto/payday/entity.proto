@@ -286,3 +286,46 @@ enum Own {
   OWN_AUDIT = 3;
   OWN_OUTBOX = 4;
 }
+
+// Field is what payday adds to one field of an entity.
+//
+// There was nothing here for a long time and the absence had a cost. A password
+// hash and an API key hash are both **written and never read**, and no schema
+// could say so -- so an app said it at registration instead, by leaving the
+// generated service off its server. That works, is checkable, and is said in
+// the app that happens to hold the field rather than beside the field. The next
+// app storing a verifier rediscovers the whole argument.
+message Field {
+  // Secret marks a field that is assigned and never answered with.
+  //
+  // # What it does
+  //
+  // It comes out of every response: the entity message a `Get` answers with,
+  // the one a `List` carries, the one an `Add` echoes back. It comes out of the
+  // `Select` message too, so there is not even a way to ask -- a caller reading
+  // the schema can see that this is not something the server hands out.
+  //
+  // The **write** side is untouched. It is still in `Add` and in `Patch`,
+  // because writing is the half that works: somebody sets a password, and
+  // nothing about that requires reading it back.
+  //
+  // # Why it is not encryption, and not a permission
+  //
+  // It says nothing about who may see the value, because the answer is nobody:
+  // there is no caller, no role and no deployment for which handing out a
+  // verifier is right. A permission would imply there is a level at which it
+  // becomes acceptable.
+  //
+  // It is also not confidentiality at rest. The column holds what it holds, and
+  // an operator with the database has it. What this removes is the far more
+  // likely accident -- a field appearing in an ordinary read because somebody
+  // asked for every column and nothing said no.
+  //
+  // # What it cannot do
+  //
+  // A field the server compares still has to be read **in process**, and the
+  // generated servers read whatever the ORM was told to. So this narrows the
+  // wire and not the database, and an app that wants a secret never loaded into
+  // a query it did not mean to write still has to write the query.
+  bool secret = 1;
+}

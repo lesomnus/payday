@@ -721,6 +721,7 @@ type RobotAddRequest struct {
 	xxx_hidden_Tenant      *TenantRef             `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_Cell        *CellRef               `protobuf:"bytes,3,opt,name=cell"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Secret      []byte                 `protobuf:"bytes,8,opt,name=secret"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
@@ -781,6 +782,13 @@ func (x *RobotAddRequest) GetAlias() string {
 	return ""
 }
 
+func (x *RobotAddRequest) GetSecret() []byte {
+	if x != nil {
+		return x.xxx_hidden_Secret
+	}
+	return nil
+}
+
 func (x *RobotAddRequest) GetDateCreated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateCreated
@@ -793,7 +801,7 @@ func (x *RobotAddRequest) SetId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
 }
 
 func (x *RobotAddRequest) SetTenant(v *TenantRef) {
@@ -806,6 +814,13 @@ func (x *RobotAddRequest) SetCell(v *CellRef) {
 
 func (x *RobotAddRequest) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
+}
+
+func (x *RobotAddRequest) SetSecret(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Secret = v
 }
 
 func (x *RobotAddRequest) SetDateCreated(v *timestamppb.Timestamp) {
@@ -864,6 +879,7 @@ type RobotAddRequest_builder struct {
 	Tenant      *TenantRef
 	Cell        *CellRef
 	Alias       string
+	Secret      []byte
 	DateCreated *timestamppb.Timestamp
 }
 
@@ -872,12 +888,13 @@ func (b0 RobotAddRequest_builder) Build() *RobotAddRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
 		x.xxx_hidden_Id = b.Id
 	}
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Cell = b.Cell
 	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_Secret = b.Secret
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
 }
@@ -1254,6 +1271,7 @@ type RobotSelect struct {
 	xxx_hidden_Tenant      *TenantSelect          `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_Cell        *CellSelect            `protobuf:"bytes,3,opt,name=cell"`
 	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
+	xxx_hidden_Secret      bool                   `protobuf:"varint,8,opt,name=secret"`
 	xxx_hidden_DateUpdated bool                   `protobuf:"varint,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
 	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
@@ -1316,6 +1334,13 @@ func (x *RobotSelect) GetAlias() bool {
 	return false
 }
 
+func (x *RobotSelect) GetSecret() bool {
+	if x != nil {
+		return x.xxx_hidden_Secret
+	}
+	return false
+}
+
 func (x *RobotSelect) GetDateUpdated() bool {
 	if x != nil {
 		return x.xxx_hidden_DateUpdated
@@ -1339,7 +1364,7 @@ func (x *RobotSelect) GetDateErased() bool {
 
 func (x *RobotSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
 }
 
 func (x *RobotSelect) SetTenant(v *TenantSelect) {
@@ -1352,22 +1377,27 @@ func (x *RobotSelect) SetCell(v *CellSelect) {
 
 func (x *RobotSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
+}
+
+func (x *RobotSelect) SetSecret(v bool) {
+	x.xxx_hidden_Secret = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
 }
 
 func (x *RobotSelect) SetDateUpdated(v bool) {
 	x.xxx_hidden_DateUpdated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
 }
 
 func (x *RobotSelect) SetDateCreated(v bool) {
 	x.xxx_hidden_DateCreated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
 }
 
 func (x *RobotSelect) SetDateErased(v bool) {
 	x.xxx_hidden_DateErased = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
 }
 
 func (x *RobotSelect) HasAll() bool {
@@ -1398,25 +1428,32 @@ func (x *RobotSelect) HasAlias() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
-func (x *RobotSelect) HasDateUpdated() bool {
+func (x *RobotSelect) HasSecret() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
-func (x *RobotSelect) HasDateCreated() bool {
+func (x *RobotSelect) HasDateUpdated() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
 }
 
-func (x *RobotSelect) HasDateErased() bool {
+func (x *RobotSelect) HasDateCreated() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *RobotSelect) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
 }
 
 func (x *RobotSelect) ClearAll() {
@@ -1437,18 +1474,23 @@ func (x *RobotSelect) ClearAlias() {
 	x.xxx_hidden_Alias = false
 }
 
-func (x *RobotSelect) ClearDateUpdated() {
+func (x *RobotSelect) ClearSecret() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Secret = false
+}
+
+func (x *RobotSelect) ClearDateUpdated() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
 	x.xxx_hidden_DateUpdated = false
 }
 
 func (x *RobotSelect) ClearDateCreated() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
 	x.xxx_hidden_DateCreated = false
 }
 
 func (x *RobotSelect) ClearDateErased() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
 	x.xxx_hidden_DateErased = false
 }
 
@@ -1459,6 +1501,7 @@ type RobotSelect_builder struct {
 	Tenant      *TenantSelect
 	Cell        *CellSelect
 	Alias       *bool
+	Secret      *bool
 	DateUpdated *bool
 	DateCreated *bool
 	DateErased  *bool
@@ -1469,25 +1512,29 @@ func (b0 RobotSelect_builder) Build() *RobotSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
 		x.xxx_hidden_All = *b.All
 	}
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Cell = b.Cell
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
 		x.xxx_hidden_Alias = *b.Alias
 	}
+	if b.Secret != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
+		x.xxx_hidden_Secret = *b.Secret
+	}
 	if b.DateUpdated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
 		x.xxx_hidden_DateUpdated = *b.DateUpdated
 	}
 	if b.DateCreated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
 		x.xxx_hidden_DateCreated = *b.DateCreated
 	}
 	if b.DateErased != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
 		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	return m0
@@ -1499,6 +1546,7 @@ type RobotPatchRequest struct {
 	xxx_hidden_Cell             *CellRef               `protobuf:"bytes,6,opt,name=cell"`
 	xxx_hidden_CellNull         bool                   `protobuf:"varint,7,opt,name=cell_null,json=cellNull"`
 	xxx_hidden_Alias            *string                `protobuf:"bytes,8,opt,name=alias"`
+	xxx_hidden_Secret           []byte                 `protobuf:"bytes,16,opt,name=secret"`
 	xxx_hidden_DateUpdated      *timestamppb.Timestamp `protobuf:"bytes,26,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateUpdatedForce bool                   `protobuf:"varint,27,opt,name=date_updated_force,json=dateUpdatedForce"`
 	XXX_raceDetectHookData      protoimpl.RaceDetectHookData
@@ -1563,6 +1611,13 @@ func (x *RobotPatchRequest) GetAlias() string {
 	return ""
 }
 
+func (x *RobotPatchRequest) GetSecret() []byte {
+	if x != nil {
+		return x.xxx_hidden_Secret
+	}
+	return nil
+}
+
 func (x *RobotPatchRequest) GetDateUpdated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateUpdated
@@ -1587,12 +1642,20 @@ func (x *RobotPatchRequest) SetCell(v *CellRef) {
 
 func (x *RobotPatchRequest) SetCellNull(v bool) {
 	x.xxx_hidden_CellNull = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
 }
 
 func (x *RobotPatchRequest) SetAlias(v string) {
 	x.xxx_hidden_Alias = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+}
+
+func (x *RobotPatchRequest) SetSecret(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Secret = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
 }
 
 func (x *RobotPatchRequest) SetDateUpdated(v *timestamppb.Timestamp) {
@@ -1601,7 +1664,7 @@ func (x *RobotPatchRequest) SetDateUpdated(v *timestamppb.Timestamp) {
 
 func (x *RobotPatchRequest) SetDateUpdatedForce(v bool) {
 	x.xxx_hidden_DateUpdatedForce = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
 }
 
 func (x *RobotPatchRequest) HasRef() bool {
@@ -1632,6 +1695,13 @@ func (x *RobotPatchRequest) HasAlias() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
+func (x *RobotPatchRequest) HasSecret() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
 func (x *RobotPatchRequest) HasDateUpdated() bool {
 	if x == nil {
 		return false
@@ -1643,7 +1713,7 @@ func (x *RobotPatchRequest) HasDateUpdatedForce() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
 }
 
 func (x *RobotPatchRequest) ClearRef() {
@@ -1664,12 +1734,17 @@ func (x *RobotPatchRequest) ClearAlias() {
 	x.xxx_hidden_Alias = nil
 }
 
+func (x *RobotPatchRequest) ClearSecret() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Secret = nil
+}
+
 func (x *RobotPatchRequest) ClearDateUpdated() {
 	x.xxx_hidden_DateUpdated = nil
 }
 
 func (x *RobotPatchRequest) ClearDateUpdatedForce() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
 	x.xxx_hidden_DateUpdatedForce = false
 }
 
@@ -1684,6 +1759,7 @@ type RobotPatchRequest_builder struct {
 	// outright: setting both this and cell clears.
 	CellNull *bool
 	Alias    *string
+	Secret   []byte
 	// The version this update requires the stored date_updated to be.
 	// It is a precondition, not a write: the update applies only if the row
 	// still holds this value, and the server stamps the new version itself.
@@ -1707,16 +1783,20 @@ func (b0 RobotPatchRequest_builder) Build() *RobotPatchRequest {
 	x.xxx_hidden_Ref = b.Ref
 	x.xxx_hidden_Cell = b.Cell
 	if b.CellNull != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
 		x.xxx_hidden_CellNull = *b.CellNull
 	}
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
 		x.xxx_hidden_Alias = b.Alias
+	}
+	if b.Secret != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		x.xxx_hidden_Secret = b.Secret
 	}
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	if b.DateUpdatedForce != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
 		x.xxx_hidden_DateUpdatedForce = *b.DateUpdatedForce
 	}
 	return m0
@@ -4453,12 +4533,13 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x05alias\x18\b \x01(\tR\x05alias\"V\n" +
 	"\x10CellApplyRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"\xc7\x01\n" +
+	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"\xe6\x01\n" +
 	"\x0fRobotAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12 \n" +
 	"\x04cell\x18\x03 \x01(\v2\f.app.CellRefR\x04cell\x12\x1b\n" +
-	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12=\n" +
+	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x1d\n" +
+	"\x06secret\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\x06secret\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"\\\n" +
 	"\x0fRobotGetRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12(\n" +
@@ -4469,21 +4550,23 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03key\"N\n" +
 	"\x0eRobotRefBySlug\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12&\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\"\xec\x01\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\"\x84\x02\n" +
 	"\vRobotSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x11.app.TenantSelectR\x06tenant\x12#\n" +
 	"\x04cell\x18\x03 \x01(\v2\x0f.app.CellSelectR\x04cell\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\bR\x05alias\x12!\n" +
+	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x16\n" +
+	"\x06secret\x18\b \x01(\bR\x06secret\x12!\n" +
 	"\fdate_updated\x18\r \x01(\bR\vdateUpdated\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\x12\x1f\n" +
 	"\vdate_erased\x18\x0e \x01(\bR\n" +
-	"dateErased\"\xf6\x01\n" +
+	"dateErased\"\x8e\x02\n" +
 	"\x11RobotPatchRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12 \n" +
 	"\x04cell\x18\x06 \x01(\v2\f.app.CellRefR\x04cell\x12\x1b\n" +
 	"\tcell_null\x18\a \x01(\bR\bcellNull\x12\x14\n" +
-	"\x05alias\x18\b \x01(\tR\x05alias\x12=\n" +
+	"\x05alias\x18\b \x01(\tR\x05alias\x12\x16\n" +
+	"\x06secret\x18\x10 \x01(\fR\x06secret\x12=\n" +
 	"\fdate_updated\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\vdateUpdated\x12,\n" +
 	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\"X\n" +
 	"\x11RobotApplyRequest\x12\x1f\n" +

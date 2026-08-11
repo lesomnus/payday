@@ -30,6 +30,14 @@ var file_payday_proto_extTypes = []protoimpl.ExtensionInfo{
 		Tag:           "bytes,46001,opt,name=entity",
 		Filename:      "payday.proto",
 	},
+	{
+		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
+		ExtensionType: (*Field)(nil),
+		Field:         46101,
+		Name:          "payday.field",
+		Tag:           "bytes,46101,opt,name=field",
+		Filename:      "payday.proto",
+	},
 }
 
 // Extension fields to descriptorpb.MessageOptions.
@@ -38,24 +46,35 @@ var (
 	E_Entity = &file_payday_proto_extTypes[0]
 )
 
+// Extension fields to descriptorpb.FieldOptions.
+var (
+	// optional payday.Field field = 46101;
+	E_Field = &file_payday_proto_extTypes[1]
+)
+
 var File_payday_proto protoreflect.FileDescriptor
 
 const file_payday_proto_rawDesc = "" +
 	"\n" +
 	"\fpayday.proto\x12\x06payday\x1a google/protobuf/descriptor.proto\x1a\x13payday/entity.proto:I\n" +
-	"\x06entity\x12\x1f.google.protobuf.MessageOptions\x18\xb1\xe7\x02 \x01(\v2\x0e.payday.EntityR\x06entityB!Z\x1fgithub.com/lesomnus/payday/pdpbb\beditionsp\xe8\a"
+	"\x06entity\x12\x1f.google.protobuf.MessageOptions\x18\xb1\xe7\x02 \x01(\v2\x0e.payday.EntityR\x06entity:D\n" +
+	"\x05field\x12\x1d.google.protobuf.FieldOptions\x18\x95\xe8\x02 \x01(\v2\r.payday.FieldR\x05fieldB!Z\x1fgithub.com/lesomnus/payday/pdpbb\beditionsp\xe8\a"
 
 var file_payday_proto_goTypes = []any{
 	(*descriptorpb.MessageOptions)(nil), // 0: google.protobuf.MessageOptions
-	(*Entity)(nil),                      // 1: payday.Entity
+	(*descriptorpb.FieldOptions)(nil),   // 1: google.protobuf.FieldOptions
+	(*Entity)(nil),                      // 2: payday.Entity
+	(*Field)(nil),                       // 3: payday.Field
 }
 var file_payday_proto_depIdxs = []int32{
 	0, // 0: payday.entity:extendee -> google.protobuf.MessageOptions
-	1, // 1: payday.entity:type_name -> payday.Entity
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	1, // [1:2] is the sub-list for extension type_name
-	0, // [0:1] is the sub-list for extension extendee
+	1, // 1: payday.field:extendee -> google.protobuf.FieldOptions
+	2, // 2: payday.entity:type_name -> payday.Entity
+	3, // 3: payday.field:type_name -> payday.Field
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	2, // [2:4] is the sub-list for extension type_name
+	0, // [0:2] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
 }
 
@@ -72,7 +91,7 @@ func file_payday_proto_init() {
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_proto_rawDesc), len(file_payday_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   0,
-			NumExtensions: 1,
+			NumExtensions: 2,
 			NumServices:   0,
 		},
 		GoTypes:           file_payday_proto_goTypes,

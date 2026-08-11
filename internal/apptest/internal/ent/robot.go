@@ -22,6 +22,8 @@ type Robot struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// Alias holds the value of the "alias" field.
 	Alias string `json:"alias,omitempty"`
+	// Secret holds the value of the "secret" field.
+	Secret []byte `json:"secret,omitempty"`
 	// DateUpdated holds the value of the "date_updated" field.
 	DateUpdated time.Time `json:"date_updated,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
@@ -76,6 +78,8 @@ func (*Robot) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case robot.FieldSecret:
+			values[i] = new([]byte)
 		case robot.FieldAlias:
 			values[i] = new(sql.NullString)
 		case robot.FieldDateUpdated, robot.FieldDateCreated, robot.FieldDateErased:
@@ -108,6 +112,12 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field alias", values[i])
 			} else if value.Valid {
 				_m.Alias = value.String
+			}
+		case robot.FieldSecret:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field secret", values[i])
+			} else if value != nil {
+				_m.Secret = *value
 			}
 		case robot.FieldDateUpdated:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -188,6 +198,9 @@ func (_m *Robot) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("alias=")
 	builder.WriteString(_m.Alias)
+	builder.WriteString(", ")
+	builder.WriteString("secret=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Secret))
 	builder.WriteString(", ")
 	builder.WriteString("date_updated=")
 	builder.WriteString(_m.DateUpdated.Format(time.ANSIC))

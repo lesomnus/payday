@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
+	// FieldSecret holds the string denoting the secret field in the database.
+	FieldSecret = "secret"
 	// FieldDateUpdated holds the string denoting the date_updated field in the database.
 	FieldDateUpdated = "date_updated"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
@@ -50,6 +52,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldAlias,
+	FieldSecret,
 	FieldDateUpdated,
 	FieldDateCreated,
 	FieldDateErased,

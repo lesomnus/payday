@@ -42,6 +42,10 @@ type Entity struct {
 	// anything reads it: [Read] refuses an entity that has none.
 	Opts *pdpb.Entity
 
+	// Secrets are the fields declared `(payday.field).secret`: written, and
+	// never answered with. Empty for nearly every entity.
+	Secrets []string
+
 	// Domain is what identifiers of this entity carry.
 	Domain uint8
 
@@ -209,12 +213,23 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		return nil, fmt.Errorf("domain: %d does not fit in the one byte an identifier carries; it must be 1..255", d)
 	}
 
+	// The fields this entity says are written and never answered with. See
+	// `EmitSecret`, and `payday.Field`.
+	var secrets []string
+	for prop := range e.Props() {
+		f, _ := proto.GetExtension(prop.Descriptor().Options(), pdpb.E_Field).(*pdpb.Field)
+		if f.GetSecret() {
+			secrets = append(secrets, prop.Name())
+		}
+	}
+
 	v := &Entity{
-		Entity: e,
-		Opts:   opts,
-		Domain: uint8(d),
-		Name:   opts.GetName(),
-		Own:    opts.GetOwn(),
+		Entity:  e,
+		Opts:    opts,
+		Secrets: secrets,
+		Domain:  uint8(d),
+		Name:    opts.GetName(),
+		Own:     opts.GetOwn(),
 	}
 	if v.Name == "" {
 		v.Name = kebab(string(e.FullName().Name()))

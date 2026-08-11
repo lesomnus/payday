@@ -542,6 +542,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		}
 	}
 	q.SetAlias(req.GetAlias())
+	q.SetSecret(req.GetSecret())
 	q.SetDateUpdated(st.now())
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
@@ -617,6 +618,9 @@ func RobotSelectedFields(m *apptest.RobotSelect) []string {
 	}
 	if m.GetAlias() {
 		vs = append(vs, robot.FieldAlias)
+	}
+	if m.GetSecret() {
+		vs = append(vs, robot.FieldSecret)
 	}
 	if m.GetDateUpdated() {
 		vs = append(vs, robot.FieldDateUpdated)
@@ -714,7 +718,7 @@ func RobotGetKey(ctx context.Context, db *ent.Client, ref *apptest.RobotRef) (uu
 var robotOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Robot")
 
 var robotPatchColumns = entpatch.Columns{
-	1: robot.FieldID, 2: robot.TenantColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
+	1: robot.FieldID, 2: robot.TenantColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 8: robot.FieldSecret, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
 
 func (s RobotServiceServer) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
 	if !req.HasPatch() {

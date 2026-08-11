@@ -160,6 +160,7 @@ type Robot struct {
 	xxx_hidden_Tenant      *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_Cell        *Cell                  `protobuf:"bytes,3,opt,name=cell"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Secret      []byte                 `protobuf:"bytes,8,opt,name=secret"`
 	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	xxx_hidden_DateErased  *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
@@ -220,6 +221,13 @@ func (x *Robot) GetAlias() string {
 	return ""
 }
 
+func (x *Robot) GetSecret() []byte {
+	if x != nil {
+		return x.xxx_hidden_Secret
+	}
+	return nil
+}
+
 func (x *Robot) GetDateUpdated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateUpdated
@@ -258,6 +266,13 @@ func (x *Robot) SetCell(v *Cell) {
 
 func (x *Robot) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
+}
+
+func (x *Robot) SetSecret(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Secret = v
 }
 
 func (x *Robot) SetDateUpdated(v *timestamppb.Timestamp) {
@@ -347,6 +362,17 @@ type Robot_builder struct {
 	// by a test.
 	Cell  *Cell
 	Alias string
+	// A secret this robot proves itself with, and the reason it is here is the
+	// declaration rather than the robot: `(payday.field).secret` says a field is
+	// written and never answered with, and `pd.Secret` is the layer that makes
+	// that true.
+	//
+	// What it is for in a real schema is a password hash or an API key hash --
+	// rows an app reads itself and must never hand out. There was no way to say
+	// so until this option existed, so apps said it at registration by leaving a
+	// whole service off their server, which is a heavier hammer said in the wrong
+	// place.
+	Secret []byte
 	// Stamped on every write and refused to a patch document, so it is a version
 	// and not a field. It is here because this entity declares a `watch:`, and
 	// the generator refuses one without it: a watch sends state, so a client
@@ -368,6 +394,7 @@ func (b0 Robot_builder) Build() *Robot {
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Cell = b.Cell
 	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_Secret = b.Secret
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_DateErased = b.DateErased
@@ -757,12 +784,13 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
-	"\"\xe4\x03\n" +
+	"\"\x84\x04\n" +
 	"\x05Robot\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12%\n" +
 	"\x04cell\x18\x03 \x01(\v2\t.app.CellB\x06\xf2\x82\x16\x028\x01R\x04cell\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12F\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12\x1e\n" +
+	"\x06secret\x18\b \x01(\fB\x06\xaa\xc1\x16\x02\b\x01R\x06secret\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +

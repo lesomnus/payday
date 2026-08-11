@@ -610,3 +610,159 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	g.P("}")
 	g.P("")
 }
+
+// EmitSecret writes the layer that keeps a declared secret off the wire.
+//
+// # What it is for
+//
+// A password hash and an API key hash are written and never answered with, and
+// until `(payday.field).secret` existed there was nowhere to say so. Apps said
+// it at **registration** instead -- leaving the generated service off the
+// server -- which works, is checkable, and is said in the app that happens to
+// hold the field rather than beside the field. So the next app storing a
+// verifier rediscovered the argument.
+//
+// # Why a layer rather than a smaller message
+//
+// The clean answer is that the field is not in the response type at all, and
+// that is not payday's to do: the entity message and its `Select` are written
+// by the ORM's generators, from the same schema, upstream of anything here.
+//
+// A layer is what payday can write, and what it buys is the same in practice --
+// nothing that goes out of this server carries the value. What it does not buy
+// is the field being *visibly* absent to somebody reading the generated types,
+// which is why this layer's presence is worth a line in an app's stack:
+//
+//	app.Build(walled, core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())
+//
+// # It is not a permission
+//
+// There is no caller for whom this is answered, so there is no argument to it
+// and no way to ask. A permission would imply a level at which handing out a
+// verifier becomes right.
+func EmitSecret(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
+	var vs []*Entity
+	for _, v := range s.Entities {
+		if len(v.Secrets) > 0 {
+			vs = append(vs, v)
+		}
+	}
+	if len(vs) == 0 {
+		// Nothing declared one, so there is no layer -- rather than an empty
+		// one an app would stack for no reason.
+		return
+	}
+
+	g.P("// Secret is the layer that keeps a declared secret off the wire.")
+	g.P("//")
+	g.P("// Every field marked `(payday.field).secret` is cleared on the way out:")
+	g.P("// from what an `Add` echoes, what a `Get` answers, and every item of a")
+	g.P("// `List`. The write side is untouched, because writing is the half that")
+	g.P("// works.")
+	g.P("//")
+	g.P("//	app.Build(walled, core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())")
+	g.P("//")
+	g.P("// It clears rather than refuses. A caller asking for a column that is not")
+	g.P("// answered has not done anything wrong -- `Select{All: true}` is the")
+	g.P("// ordinary way to ask for a row -- and an error there would make the")
+	g.P("// common call the failing one.")
+	g.P("type Secret struct {")
+	g.P("	", root.Ident("Overlay"))
+	g.P("}")
+	g.P("")
+	g.P("func NewSecret(next ", root.Ident("Server"), ") Secret {")
+	g.P("	return Secret{", root.Ident("NewOverlay"), "(next)}")
+	g.P("}")
+	g.P("")
+	g.P("var _ ", root.Ident("Server"), " = Secret{}")
+	g.P("")
+	g.P("// WithDriver answers with this stack running on `drv`.")
+	g.P("//")
+	g.P("// Every layer writes this and none can inherit it: an overlay holds what")
+	g.P("// is behind it and cannot make itself again.")
+	g.P("func (s Secret) WithDriver(drv ", pkgDialect.Ident("Driver"), ") (", root.Ident("Server"), ", error) {")
+	g.P("	next, err := ", pkgEnttx.Ident("Rebind"), "(s.Next(), drv)")
+	g.P("	if err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+	g.P("	return NewSecret(next), nil")
+	g.P("}")
+	g.P("")
+	g.P("func SecretBuild() ", root.Ident("Builder"), " { return secretBuilder{} }")
+	g.P("")
+	g.P("type secretBuilder struct{}")
+	g.P("")
+	g.P("func (secretBuilder) Build(next ", root.Ident("Server"), ") (", root.Ident("Server"), ", error) {")
+	g.P("	return NewSecret(next), nil")
+	g.P("}")
+	g.P("")
+
+	for _, v := range vs {
+		emitSecretOf(g, v, root)
+	}
+}
+
+// emitSecretOf writes the wrapper for one entity that declared a secret.
+func emitSecretOf(g *protogen.GeneratedFile, e *Entity, root protogen.GoImportPath) {
+	name := e.GoName()
+	lower := "secret" + name
+
+	g.P("func (s Secret) ", name, "() ", root.Ident(name+"ServiceServer"), " {")
+	g.P("	return ", lower, "{s, s.Next().", name, "()}")
+	g.P("}")
+	g.P("")
+	g.P("type ", lower, " struct {")
+	g.P("	Secret")
+	g.P("	", root.Ident(name+"ServiceServer"))
+	g.P("}")
+	g.P("")
+
+	// The four that answer with the entity.
+	for _, m := range []struct{ rpc, req string }{
+		{"Add", name + "AddRequest"},
+		{"Get", name + "GetRequest"},
+		{"Patch", name + "PatchRequest"},
+		{"Apply", name + "ApplyRequest"},
+	} {
+		g.P("func (s ", lower, ") ", m.rpc, "(ctx ", pkgCtx.Ident("Context"),
+			", req *", root.Ident(m.req), ") (*", root.Ident(name), ", error) {")
+		g.P("	v, err := s.", name, "ServiceServer.", m.rpc, "(ctx, req)")
+		g.P("")
+		g.P("	return hide", name, "(v), err")
+		g.P("}")
+		g.P("")
+	}
+
+	g.P("func (s ", lower, ") List(ctx ", pkgCtx.Ident("Context"),
+		", req *", root.Ident(name+"ListRequest"), ") (*", root.Ident(name+"ListResponse"), ", error) {")
+	g.P("	v, err := s.", name, "ServiceServer.List(ctx, req)")
+	g.P("	if v == nil {")
+	g.P("		return v, err")
+	g.P("	}")
+	g.P("")
+	g.P("	for _, w := range v.GetItems() {")
+	g.P("		hide", name, "(w)")
+	g.P("	}")
+	g.P("")
+	g.P("	return v, err")
+	g.P("}")
+	g.P("")
+
+	g.P("// hide", name, " clears what this entity declared it never answers with.")
+	g.P("//")
+	g.P("// A nil row passes through, because an error is answered with one and the")
+	g.P("// caller of this is handing both on.")
+	g.P("func hide", name, "(v *", root.Ident(name), ") *", root.Ident(name), " {")
+	g.P("	if v == nil {")
+	g.P("		return nil")
+	g.P("	}")
+	g.P("")
+	for _, f := range e.Secrets {
+		g.P("	v.Set", camel(f), "(nil)")
+	}
+	g.P("")
+	g.P("	return v")
+	g.P("}")
+	g.P("")
+}

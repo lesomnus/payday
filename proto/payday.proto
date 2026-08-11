@@ -12,3 +12,9 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 extend google.protobuf.MessageOptions {
   Entity entity = 46001;
 }
+
+// The field block, one above the message one for the same reason: room to grow
+// without either running into `orm`.
+extend google.protobuf.FieldOptions {
+  Field field = 46101;
+}

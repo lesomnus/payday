@@ -505,6 +505,102 @@ func (*entity_Tenanted_) isEntity_Tenancy() {}
 
 func (*entity_Global_) isEntity_Tenancy() {}
 
+// Field is what payday adds to one field of an entity.
+//
+// There was nothing here for a long time and the absence had a cost. A password
+// hash and an API key hash are both **written and never read**, and no schema
+// could say so -- so an app said it at registration instead, by leaving the
+// generated service off its server. That works, is checkable, and is said in
+// the app that happens to hold the field rather than beside the field. The next
+// app storing a verifier rediscovers the whole argument.
+type Field struct {
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Secret bool                   `protobuf:"varint,1,opt,name=secret"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *Field) Reset() {
+	*x = Field{}
+	mi := &file_payday_entity_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Field) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Field) ProtoMessage() {}
+
+func (x *Field) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Field) GetSecret() bool {
+	if x != nil {
+		return x.xxx_hidden_Secret
+	}
+	return false
+}
+
+func (x *Field) SetSecret(v bool) {
+	x.xxx_hidden_Secret = v
+}
+
+type Field_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Secret marks a field that is assigned and never answered with.
+	//
+	// # What it does
+	//
+	// It comes out of every response: the entity message a `Get` answers with,
+	// the one a `List` carries, the one an `Add` echoes back. It comes out of the
+	// `Select` message too, so there is not even a way to ask -- a caller reading
+	// the schema can see that this is not something the server hands out.
+	//
+	// The **write** side is untouched. It is still in `Add` and in `Patch`,
+	// because writing is the half that works: somebody sets a password, and
+	// nothing about that requires reading it back.
+	//
+	// # Why it is not encryption, and not a permission
+	//
+	// It says nothing about who may see the value, because the answer is nobody:
+	// there is no caller, no role and no deployment for which handing out a
+	// verifier is right. A permission would imply there is a level at which it
+	// becomes acceptable.
+	//
+	// It is also not confidentiality at rest. The column holds what it holds, and
+	// an operator with the database has it. What this removes is the far more
+	// likely accident -- a field appearing in an ordinary read because somebody
+	// asked for every column and nothing said no.
+	//
+	// # What it cannot do
+	//
+	// A field the server compares still has to be read **in process**, and the
+	// generated servers read whatever the ORM was told to. So this narrows the
+	// wire and not the database, and an app that wants a secret never loaded into
+	// a query it did not mean to write still has to write the query.
+	Secret bool
+}
+
+func (b0 Field_builder) Build() *Field {
+	m0 := &Field{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Secret = b.Secret
+	return m0
+}
+
 // Tenant is the entity a wall is made of. There is one of these in a schema.
 type Entity_Tenant struct {
 	state         protoimpl.MessageState `protogen:"opaque.v1"`
@@ -514,7 +610,7 @@ type Entity_Tenant struct {
 
 func (x *Entity_Tenant) Reset() {
 	*x = Entity_Tenant{}
-	mi := &file_payday_entity_proto_msgTypes[1]
+	mi := &file_payday_entity_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -526,7 +622,7 @@ func (x *Entity_Tenant) String() string {
 func (*Entity_Tenant) ProtoMessage() {}
 
 func (x *Entity_Tenant) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[1]
+	mi := &file_payday_entity_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -566,7 +662,7 @@ type Entity_Tenanted struct {
 
 func (x *Entity_Tenanted) Reset() {
 	*x = Entity_Tenanted{}
-	mi := &file_payday_entity_proto_msgTypes[2]
+	mi := &file_payday_entity_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -578,7 +674,7 @@ func (x *Entity_Tenanted) String() string {
 func (*Entity_Tenanted) ProtoMessage() {}
 
 func (x *Entity_Tenanted) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[2]
+	mi := &file_payday_entity_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -670,7 +766,7 @@ type Entity_Global struct {
 
 func (x *Entity_Global) Reset() {
 	*x = Entity_Global{}
-	mi := &file_payday_entity_proto_msgTypes[3]
+	mi := &file_payday_entity_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -682,7 +778,7 @@ func (x *Entity_Global) String() string {
 func (*Entity_Global) ProtoMessage() {}
 
 func (x *Entity_Global) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[3]
+	mi := &file_payday_entity_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -715,7 +811,7 @@ type Entity_Erase struct {
 
 func (x *Entity_Erase) Reset() {
 	*x = Entity_Erase{}
-	mi := &file_payday_entity_proto_msgTypes[4]
+	mi := &file_payday_entity_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +823,7 @@ func (x *Entity_Erase) String() string {
 func (*Entity_Erase) ProtoMessage() {}
 
 func (x *Entity_Erase) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[4]
+	mi := &file_payday_entity_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -799,7 +895,7 @@ type Entity_Hard struct {
 
 func (x *Entity_Hard) Reset() {
 	*x = Entity_Hard{}
-	mi := &file_payday_entity_proto_msgTypes[5]
+	mi := &file_payday_entity_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -811,7 +907,7 @@ func (x *Entity_Hard) String() string {
 func (*Entity_Hard) ProtoMessage() {}
 
 func (x *Entity_Hard) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[5]
+	mi := &file_payday_entity_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -858,7 +954,7 @@ type Entity_List struct {
 
 func (x *Entity_List) Reset() {
 	*x = Entity_List{}
-	mi := &file_payday_entity_proto_msgTypes[6]
+	mi := &file_payday_entity_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -870,7 +966,7 @@ func (x *Entity_List) String() string {
 func (*Entity_List) ProtoMessage() {}
 
 func (x *Entity_List) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[6]
+	mi := &file_payday_entity_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1020,7 +1116,7 @@ type Entity_Watch struct {
 
 func (x *Entity_Watch) Reset() {
 	*x = Entity_Watch{}
-	mi := &file_payday_entity_proto_msgTypes[7]
+	mi := &file_payday_entity_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1032,7 +1128,7 @@ func (x *Entity_Watch) String() string {
 func (*Entity_Watch) ProtoMessage() {}
 
 func (x *Entity_Watch) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[7]
+	mi := &file_payday_entity_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1066,7 +1162,7 @@ type Entity_Order struct {
 
 func (x *Entity_Order) Reset() {
 	*x = Entity_Order{}
-	mi := &file_payday_entity_proto_msgTypes[8]
+	mi := &file_payday_entity_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1078,7 +1174,7 @@ func (x *Entity_Order) String() string {
 func (*Entity_Order) ProtoMessage() {}
 
 func (x *Entity_Order) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[8]
+	mi := &file_payday_entity_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1163,7 +1259,9 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05Order\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
-	"\atenancy*Y\n" +
+	"\atenancy\"\x1f\n" +
+	"\x05Field\x12\x16\n" +
+	"\x06secret\x18\x01 \x01(\bR\x06secret*Y\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -1175,34 +1273,35 @@ const file_payday_entity_proto_rawDesc = "" +
 	"OWN_OUTBOX\x10\x04B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_payday_entity_proto_goTypes = []any{
 	(Own)(0),                // 0: payday.Own
 	(*Entity)(nil),          // 1: payday.Entity
-	(*Entity_Tenant)(nil),   // 2: payday.Entity.Tenant
-	(*Entity_Tenanted)(nil), // 3: payday.Entity.Tenanted
-	(*Entity_Global)(nil),   // 4: payday.Entity.Global
-	(*Entity_Erase)(nil),    // 5: payday.Entity.Erase
-	(*Entity_Hard)(nil),     // 6: payday.Entity.Hard
-	(*Entity_List)(nil),     // 7: payday.Entity.List
-	(*Entity_Watch)(nil),    // 8: payday.Entity.Watch
-	(*Entity_Order)(nil),    // 9: payday.Entity.Order
+	(*Field)(nil),           // 2: payday.Field
+	(*Entity_Tenant)(nil),   // 3: payday.Entity.Tenant
+	(*Entity_Tenanted)(nil), // 4: payday.Entity.Tenanted
+	(*Entity_Global)(nil),   // 5: payday.Entity.Global
+	(*Entity_Erase)(nil),    // 6: payday.Entity.Erase
+	(*Entity_Hard)(nil),     // 7: payday.Entity.Hard
+	(*Entity_List)(nil),     // 8: payday.Entity.List
+	(*Entity_Watch)(nil),    // 9: payday.Entity.Watch
+	(*Entity_Order)(nil),    // 10: payday.Entity.Order
 }
 var file_payday_entity_proto_depIdxs = []int32{
-	2, // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
-	3, // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
-	4, // 2: payday.Entity.global:type_name -> payday.Entity.Global
-	7, // 3: payday.Entity.list:type_name -> payday.Entity.List
-	8, // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
-	5, // 5: payday.Entity.erase:type_name -> payday.Entity.Erase
-	0, // 6: payday.Entity.own:type_name -> payday.Own
-	6, // 7: payday.Entity.Erase.hard:type_name -> payday.Entity.Hard
-	9, // 8: payday.Entity.List.order:type_name -> payday.Entity.Order
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	3,  // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
+	4,  // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
+	5,  // 2: payday.Entity.global:type_name -> payday.Entity.Global
+	8,  // 3: payday.Entity.list:type_name -> payday.Entity.List
+	9,  // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
+	6,  // 5: payday.Entity.erase:type_name -> payday.Entity.Erase
+	0,  // 6: payday.Entity.own:type_name -> payday.Own
+	7,  // 7: payday.Entity.Erase.hard:type_name -> payday.Entity.Hard
+	10, // 8: payday.Entity.List.order:type_name -> payday.Entity.Order
+	9,  // [9:9] is the sub-list for method output_type
+	9,  // [9:9] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_payday_entity_proto_init() }
@@ -1221,7 +1320,7 @@ func file_payday_entity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_entity_proto_rawDesc), len(file_payday_entity_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

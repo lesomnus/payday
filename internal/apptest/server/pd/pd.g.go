@@ -2022,6 +2022,110 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 
 var _ *patchpb.Patch
 
+// Secret is the layer that keeps a declared secret off the wire.
+//
+// Every field marked `(payday.field).secret` is cleared on the way out:
+// from what an `Add` echoes, what a `Get` answers, and every item of a
+// `List`. The write side is untouched, because writing is the half that
+// works.
+//
+//	app.Build(walled, core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())
+//
+// It clears rather than refuses. A caller asking for a column that is not
+// answered has not done anything wrong -- `Select{All: true}` is the
+// ordinary way to ask for a row -- and an error there would make the
+// common call the failing one.
+type Secret struct {
+	apptest.Overlay
+}
+
+func NewSecret(next apptest.Server) Secret {
+	return Secret{apptest.NewOverlay(next)}
+}
+
+var _ apptest.Server = Secret{}
+
+// WithDriver answers with this stack running on `drv`.
+//
+// Every layer writes this and none can inherit it: an overlay holds what
+// is behind it and cannot make itself again.
+func (s Secret) WithDriver(drv dialect.Driver) (apptest.Server, error) {
+	next, err := enttx.Rebind(s.Next(), drv)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSecret(next), nil
+}
+
+func SecretBuild() apptest.Builder { return secretBuilder{} }
+
+type secretBuilder struct{}
+
+func (secretBuilder) Build(next apptest.Server) (apptest.Server, error) {
+	return NewSecret(next), nil
+}
+
+func (s Secret) Robot() apptest.RobotServiceServer {
+	return secretRobot{s, s.Next().Robot()}
+}
+
+type secretRobot struct {
+	Secret
+	apptest.RobotServiceServer
+}
+
+func (s secretRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+	v, err := s.RobotServiceServer.Add(ctx, req)
+
+	return hideRobot(v), err
+}
+
+func (s secretRobot) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
+	v, err := s.RobotServiceServer.Get(ctx, req)
+
+	return hideRobot(v), err
+}
+
+func (s secretRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
+	v, err := s.RobotServiceServer.Patch(ctx, req)
+
+	return hideRobot(v), err
+}
+
+func (s secretRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
+	v, err := s.RobotServiceServer.Apply(ctx, req)
+
+	return hideRobot(v), err
+}
+
+func (s secretRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*apptest.RobotListResponse, error) {
+	v, err := s.RobotServiceServer.List(ctx, req)
+	if v == nil {
+		return v, err
+	}
+
+	for _, w := range v.GetItems() {
+		hideRobot(w)
+	}
+
+	return v, err
+}
+
+// hideRobot clears what this entity declared it never answers with.
+//
+// A nil row passes through, because an error is answered with one and the
+// caller of this is handing both on.
+func hideRobot(v *apptest.Robot) *apptest.Robot {
+	if v == nil {
+		return nil
+	}
+
+	v.SetSecret(nil)
+
+	return v
+}
+
 // WatchRecorder answers with the recorder that remembers a write for `w`.
 //
 // It is the other end of the hook the trail hangs off, and it wants the

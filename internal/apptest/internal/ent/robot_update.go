@@ -45,6 +45,12 @@ func (_u *RobotUpdate) SetNillableAlias(v *string) *RobotUpdate {
 	return _u
 }
 
+// SetSecret sets the "secret" field.
+func (_u *RobotUpdate) SetSecret(v []byte) *RobotUpdate {
+	_u.mutation.SetSecret(v)
+	return _u
+}
+
 // SetDateUpdated sets the "date_updated" field.
 func (_u *RobotUpdate) SetDateUpdated(v time.Time) *RobotUpdate {
 	_u.mutation.SetDateUpdated(v)
@@ -171,6 +177,9 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(robot.FieldAlias, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.Secret(); ok {
+		_spec.SetField(robot.FieldSecret, field.TypeBytes, value)
+	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
 	}
@@ -245,6 +254,12 @@ func (_u *RobotUpdateOne) SetNillableAlias(v *string) *RobotUpdateOne {
 	if v != nil {
 		_u.SetAlias(*v)
 	}
+	return _u
+}
+
+// SetSecret sets the "secret" field.
+func (_u *RobotUpdateOne) SetSecret(v []byte) *RobotUpdateOne {
+	_u.mutation.SetSecret(v)
 	return _u
 }
 
@@ -403,6 +418,9 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	}
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(robot.FieldAlias, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Secret(); ok {
+		_spec.SetField(robot.FieldSecret, field.TypeBytes, value)
 	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)

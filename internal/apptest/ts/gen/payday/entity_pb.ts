@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXkiyQQKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GiYKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRoICgZHbG9iYWwaKgoFRXJhc2USIQoEaGFyZBgBIAEoCzITLnBheWRheS5FbnRpdHkuSGFyZBoGCgRIYXJkGnEKBExpc3QSIwoFb3JkZXIYASADKAsyFC5wYXlkYXkuRW50aXR5Lk9yZGVyEgwKBHdpdGgYAiADKAkSCgoCYnkYAyADKAkSDAoEc2l6ZRgEIAEoDRILCgNtYXgYBSABKA0SDwoHZmlsdGVycxgGIAEoDRoHCgVXYXRjaBokCgVPcmRlchINCgVmaWVsZBgBIAEoCRIMCgRkZXNjGAIgASgIQgkKB3RlbmFuY3kqWQoDT3duEhMKD09XTl9VTlNQRUNJRklFRBAAEg4KCk9XTl9URU5BTlQQARIOCgpPV05fSE9MREVSEAISDQoJT1dOX0FVRElUEAMSDgoKT1dOX09VVEJPWBAEQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac");
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXkiyQQKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GiYKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRoICgZHbG9iYWwaKgoFRXJhc2USIQoEaGFyZBgBIAEoCzITLnBheWRheS5FbnRpdHkuSGFyZBoGCgRIYXJkGnEKBExpc3QSIwoFb3JkZXIYASADKAsyFC5wYXlkYXkuRW50aXR5Lk9yZGVyEgwKBHdpdGgYAiADKAkSCgoCYnkYAyADKAkSDAoEc2l6ZRgEIAEoDRILCgNtYXgYBSABKA0SDwoHZmlsdGVycxgGIAEoDRoHCgVXYXRjaBokCgVPcmRlchINCgVmaWVsZBgBIAEoCRIMCgRkZXNjGAIgASgIQgkKB3RlbmFuY3kiFwoFRmllbGQSDgoGc2VjcmV0GAEgASgIKlkKA093bhITCg9PV05fVU5TUEVDSUZJRUQQABIOCgpPV05fVEVOQU5UEAESDgoKT1dOX0hPTERFUhACEg0KCU9XTl9BVURJVBADEg4KCk9XTl9PVVRCT1gQBEImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -461,6 +461,64 @@ export type Entity_Order = Message<"payday.Entity.Order"> & {
  */
 export const Entity_OrderSchema: GenMessage<Entity_Order> = /*@__PURE__*/
   messageDesc(file_payday_entity, 0, 7);
+
+/**
+ * Field is what payday adds to one field of an entity.
+ *
+ * There was nothing here for a long time and the absence had a cost. A password
+ * hash and an API key hash are both **written and never read**, and no schema
+ * could say so -- so an app said it at registration instead, by leaving the
+ * generated service off its server. That works, is checkable, and is said in
+ * the app that happens to hold the field rather than beside the field. The next
+ * app storing a verifier rediscovers the whole argument.
+ *
+ * @generated from message payday.Field
+ */
+export type Field = Message<"payday.Field"> & {
+  /**
+   * Secret marks a field that is assigned and never answered with.
+   *
+   * # What it does
+   *
+   * It comes out of every response: the entity message a `Get` answers with,
+   * the one a `List` carries, the one an `Add` echoes back. It comes out of the
+   * `Select` message too, so there is not even a way to ask -- a caller reading
+   * the schema can see that this is not something the server hands out.
+   *
+   * The **write** side is untouched. It is still in `Add` and in `Patch`,
+   * because writing is the half that works: somebody sets a password, and
+   * nothing about that requires reading it back.
+   *
+   * # Why it is not encryption, and not a permission
+   *
+   * It says nothing about who may see the value, because the answer is nobody:
+   * there is no caller, no role and no deployment for which handing out a
+   * verifier is right. A permission would imply there is a level at which it
+   * becomes acceptable.
+   *
+   * It is also not confidentiality at rest. The column holds what it holds, and
+   * an operator with the database has it. What this removes is the far more
+   * likely accident -- a field appearing in an ordinary read because somebody
+   * asked for every column and nothing said no.
+   *
+   * # What it cannot do
+   *
+   * A field the server compares still has to be read **in process**, and the
+   * generated servers read whatever the ORM was told to. So this narrows the
+   * wire and not the database, and an app that wants a secret never loaded into
+   * a query it did not mean to write still has to write the query.
+   *
+   * @generated from field: bool secret = 1;
+   */
+  secret: boolean;
+};
+
+/**
+ * Describes the message payday.Field.
+ * Use `create(FieldSchema)` to create a new message.
+ */
+export const FieldSchema: GenMessage<Field> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 1);
 
 /**
  * Own names one of payday's own entities, so that generation can find it

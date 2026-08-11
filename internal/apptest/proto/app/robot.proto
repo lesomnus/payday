@@ -59,6 +59,18 @@ message Robot {
 
   string alias = 4;
 
+  // A secret this robot proves itself with, and the reason it is here is the
+  // declaration rather than the robot: `(payday.field).secret` says a field is
+  // written and never answered with, and `pd.Secret` is the layer that makes
+  // that true.
+  //
+  // What it is for in a real schema is a password hash or an API key hash --
+  // rows an app reads itself and must never hand out. There was no way to say
+  // so until this option existed, so apps said it at registration by leaving a
+  // whole service off their server, which is a heavier hammer said in the wrong
+  // place.
+  bytes secret = 8 [(payday.field) = {secret: true}];
+
   // Stamped on every write and refused to a patch document, so it is a version
   // and not a field. It is here because this entity declares a `watch:`, and
   // the generator refuses one without it: a watch sends state, so a client

@@ -4,20 +4,26 @@
 
 import type { GenExtension, GenFile } from "@bufbuild/protobuf/codegenv2";
 import { extDesc, fileDesc } from "@bufbuild/protobuf/codegenv2";
-import type { MessageOptions } from "@bufbuild/protobuf/wkt";
+import type { FieldOptions, MessageOptions } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_descriptor } from "@bufbuild/protobuf/wkt";
-import type { Entity } from "./payday/entity_pb.js";
+import type { Entity, Field } from "./payday/entity_pb.js";
 import { file_payday_entity } from "./payday/entity_pb.js";
 
 /**
  * Describes the file payday.proto.
  */
 export const file_payday: GenFile = /*@__PURE__*/
-  fileDesc("CgxwYXlkYXkucHJvdG8SBnBheWRheTpJCgZlbnRpdHkSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMYsecCIAEoCzIOLnBheWRheS5FbnRpdHlSBmVudGl0eUIhWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBiYghlZGl0aW9uc3DoBw", [file_google_protobuf_descriptor, file_payday_entity]);
+  fileDesc("CgxwYXlkYXkucHJvdG8SBnBheWRheTpJCgZlbnRpdHkSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMYsecCIAEoCzIOLnBheWRheS5FbnRpdHlSBmVudGl0eTpECgVmaWVsZBIdLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE9wdGlvbnMYlegCIAEoCzINLnBheWRheS5GaWVsZFIFZmllbGRCIVofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_descriptor, file_payday_entity]);
 
 /**
  * @generated from extension: payday.Entity entity = 46001;
  */
 export const entity: GenExtension<MessageOptions, Entity> = /*@__PURE__*/
   extDesc(file_payday, 0);
+
+/**
+ * @generated from extension: payday.Field field = 46101;
+ */
+export const field: GenExtension<FieldOptions, Field> = /*@__PURE__*/
+  extDesc(file_payday, 1);
 

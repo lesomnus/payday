@@ -200,6 +200,7 @@ var (
 	RobotColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString},
+		{Name: "secret", Type: field.TypeBytes},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
@@ -214,13 +215,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "robot_tenant_tenant",
-				Columns:    []*schema.Column{RobotColumns[5]},
+				Columns:    []*schema.Column{RobotColumns[6]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "robot_cell_cell",
-				Columns:    []*schema.Column{RobotColumns[6]},
+				Columns:    []*schema.Column{RobotColumns[7]},
 				RefColumns: []*schema.Column{CellColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -229,12 +230,12 @@ var (
 			{
 				Name:    "robot_date_created_id",
 				Unique:  false,
-				Columns: []*schema.Column{RobotColumns[3], RobotColumns[0]},
+				Columns: []*schema.Column{RobotColumns[4], RobotColumns[0]},
 			},
 			{
 				Name:    "robot_alias_tenant_id",
 				Unique:  true,
-				Columns: []*schema.Column{RobotColumns[1], RobotColumns[5]},
+				Columns: []*schema.Column{RobotColumns[1], RobotColumns[6]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "date_erased IS NULL",
 				},
