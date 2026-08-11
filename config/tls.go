@@ -4,7 +4,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"log/slog"
 	"os"
+	"sync"
 
 	"github.com/lesomnus/z"
 	"google.golang.org/grpc/credentials"
@@ -94,3 +96,106 @@ func (c TLSConfig) Credentials() (credentials.TransportCredentials, error) {
 
 	return credentials.NewTLS(cfg), nil
 }
+
+// DialConfig is TLS for a connection this app **makes**, which is the other
+// half of [TLSConfig] and a different shape.
+//
+// A server proves who it is and decides whether to ask the same of a caller. A
+// client checks that proof and decides whether to offer one. So the fields are
+// not the same fields, and one struct doing both would have every deployment
+// leaving half of them empty and wondering which half.
+//
+// # The zero value is not secure, and says so
+//
+// Nothing written down is a plaintext connection, which is right for a service
+// reaching another one over a loopback in a checkout and wrong the moment
+// either of them moves. Whatever a client sends on that connection -- an API
+// key, a token, a password on its way to be checked -- is readable by anything
+// between them.
+//
+// It is the default anyway, for the reason `auth.Plain` is: an app that cannot
+// be run until certificates exist is an app nobody runs. What it is not is
+// quiet -- see [DialConfig.Credentials].
+type DialConfig struct {
+	// Enabled turns TLS on with the system roots, which is what a public
+	// certificate authority needs and all it needs.
+	Enabled bool `yaml:"enabled"`
+
+	// CAFile is a PEM bundle to verify the server against, instead of the
+	// system roots. It is what a private CA needs, and naming it turns TLS on.
+	CAFile string `yaml:"ca_file"`
+
+	// CertFile and KeyFile are the certificate this client presents, for a
+	// server that asks. Naming them turns TLS on.
+	CertFile string `yaml:"cert_file"`
+	KeyFile  string `yaml:"key_file"`
+
+	// ServerName is the name to verify the server's certificate against, when
+	// it is not the one in the address -- a connection made to a pod's IP, or
+	// through a tunnel.
+	//
+	// It is **not** a way to skip verification. There is deliberately no field
+	// for that: a client that does not check the certificate is a client that
+	// cannot tell the server from whoever answered, which is the whole of what
+	// TLS was for.
+	ServerName string `yaml:"server_name"`
+}
+
+// Active reports whether this connection should use TLS.
+func (c DialConfig) Active() bool {
+	return c.Enabled || c.CAFile != "" || c.CertFile != "" || c.KeyFile != ""
+}
+
+// Credentials is what to dial with, and insecure credentials when nothing was
+// configured -- so a caller passes the result to `grpc.WithTransportCredentials`
+// without asking.
+//
+// The plaintext case warns, once per process, for the reason [auth.Plain] does:
+// the way it goes wrong is silence. A deployment sending an API key over a
+// cleartext connection between two machines has given the key away, and nothing
+// about it looks unusual -- it connects, it answers, the tests pass.
+func (c DialConfig) Credentials() (credentials.TransportCredentials, error) {
+	if !c.Active() {
+		plainDialSaid.Do(func() {
+			slog.Warn("config: dialling without TLS; anything sent on this connection " +
+				"is readable by whatever is between here and there")
+		})
+
+		return insecure.NewCredentials(), nil
+	}
+
+	cfg := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: c.ServerName}
+
+	if c.CAFile != "" {
+		pem, err := os.ReadFile(c.CAFile)
+		if err != nil {
+			return nil, z.Err(err, "read ca")
+		}
+
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(pem) {
+			return nil, fmt.Errorf("no certificates found in %q", c.CAFile)
+		}
+
+		cfg.RootCAs = pool
+	}
+
+	// One without the other is a configuration that cannot work, and saying so
+	// here is better than a handshake failing against a server that asked.
+	switch {
+	case c.CertFile != "" && c.KeyFile == "", c.CertFile == "" && c.KeyFile != "":
+		return nil, fmt.Errorf("both cert_file and key_file are needed to present a certificate")
+
+	case c.CertFile != "":
+		cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+		if err != nil {
+			return nil, z.Err(err, "load key pair")
+		}
+
+		cfg.Certificates = []tls.Certificate{cert}
+	}
+
+	return credentials.NewTLS(cfg), nil
+}
+
+var plainDialSaid sync.Once
