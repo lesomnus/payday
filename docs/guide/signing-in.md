@@ -61,17 +61,90 @@ That is the whole of it. What follows is the parts people get wrong.
 **One app: no.** The app checks the secret, sets its own cookie, and reads it
 back. Nothing else is involved and nothing is signed.
 
-**Several apps, one sign-in: yes.** App A's cookie means nothing to app B, and
-the thing that fixes it — a credential with an issuer, a JWKS endpoint, expiry,
-refresh and revocation — *is* OIDC. Writing it yourself is writing Hydra.
-
-So the question is never "password or OIDC". It is **one relying party or
-many**. An air-gapped single app needs neither an IdP nor a token.
+**Several apps, one browser sign-in: yes.** App A's cookie means nothing to app
+B, and the thing that fixes it for a *browser* — a redirect flow, an issuer, a
+JWKS endpoint, refresh — *is* OIDC. Writing it yourself is writing Hydra.
 
 When you do have one, the cookie does not go away: the provider hands your
 backend a token, and the browser still carries a session your app set. Those are
 two different cookies for two different jobs, and only the second one is this
 package's.
+
+**Several apps, one API token: no, and see below.** A token somebody pastes into
+a script is not a browser sign-in and needs none of the redirect flow. What it
+needs is for the app receiving it to find out what it means, which is
+[`payday.TokenService`](#accepting-a-token-another-server-issued).
+
+So the question is not "password or OIDC" and not even "one relying party or
+many". It is **who is holding the credential** — a browser being sent somewhere
+to sign in, or a caller presenting a string.
+
+## Accepting a token another server issued
+
+An opaque token carries nothing. That is what makes it revocable and it is also
+why the server it arrives at cannot read it: the string means something only to
+whoever issued it, so that issuer has to be asked.
+
+`payday.TokenService` is the asking, and `auth.Remote` is the client half:
+
+```go
+conn, err := grpc.NewClient(addr, creds, /* this app's own credential */)
+h := auth.Bearer(auth.Remote(pdpb.NewTokenServiceClient(conn)))
+```
+
+That is the whole of the wiring. Everything downstream already works: the
+interceptor checks `Grant.Allows(method)` against the method gRPC dispatched,
+`gate` meets the grant with whatever your policy answered, and your resolver
+looks the actor up in your own rows exactly as it does for every other
+credential.
+
+**The connection carries your app's credential, not the bearer's.** That is what
+makes the service safe to serve — the issuer answers only apps it knows, and an
+operator decides which of them may ask.
+
+### What crosses, and what does not
+
+| | |
+| --- | --- |
+| who the bearer is | an identifier, or a `tenant`/`alias` pair |
+| what the token was narrowed to | the three axes of a `frame.Grant` |
+| when it stops working | so that a stream is cut by it |
+| **what they may do in your app** | **does not cross.** Your policy decides, unchanged |
+
+The method names in a grant are *your* app's, and the issuer stores them without
+checking them — it would need every app's service descriptors, and a token would
+stop working the day you added an RPC it had not heard of. What makes that safe
+is that a grant only ever takes away: a method named in one that the actor
+cannot call is still refused.
+
+### Implementing the other half
+
+An identity store implements `Introspect` and answers with `auth.Introspection`:
+
+```go
+func (s server) Introspect(ctx context.Context, req *pdpb.TokenIntrospectRequest) (*pdpb.TokenIntrospectResponse, error) {
+	id, err := s.store.Lookup(ctx, req.GetToken())
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "no such token")
+	}
+
+	return auth.Introspection(id)
+}
+```
+
+Use the encoder rather than filling the message out by hand. A `Grant` writes a
+flag beside each list because "every tenant" and "no tenant at all" are the same
+empty list on the wire, and the encoder is the one place that rule is applied.
+
+`NotFound` for every refusal about the token — unknown, expired, revoked. Told
+apart they are an oracle for "this string was a real token once".
+
+### It asks on every request
+
+There is no cache, deliberately: a token revoked a second ago stops working now,
+which is the whole reason to carry an opaque one. A deployment that cannot pay a
+round trip per request should wrap `auth.Remote` in a store where the window it
+is accepting is written down.
 
 ## Where sessions live
 
@@ -197,8 +270,19 @@ does not — it is a credential that is there and wrong, and serving it as
 whatever the next handler makes of it would be answering a question nobody
 asked.
 
+An app that also takes API tokens adds the third:
+
+```go
+auth.Seq(sessions.Handler(), auth.Bearer(auth.Remote(client)), auth.MTLS())
+```
+
+Each reads a different place — a cookie, an `authorization` scheme, the peer's
+certificate — so ordering decides only what happens to a request that carries
+more than one, and a caller sending two has not decided what it is.
+
 ## See also
 
 - [permissions.md](permissions.md) — what a caller may do once you know who they are
 - [server.md](server.md) — the chain the handler goes in
 - [`auth/authsession`](../../auth/authsession) — the package comment is the detail
+- [`auth.Remote`](../../auth/remote.go) — the client half of `payday.TokenService`

@@ -103,6 +103,33 @@ func (g Grant) AnySet() bool { return g.anySet }
 // SetIds is what this narrows to.
 func (g Grant) SetIds() []pdid.Id { return g.sets }
 
+// AnyAction reports whether this narrows no method, in which case
+// [Grant.Actions] says nothing.
+//
+// It is the third axis's half of the pair the other two have had all along, and
+// it was missing for as long as a Grant never had to leave the process it was
+// made in. [Grant.Allows] answers about one method, so a caller holding a Grant
+// could ask whether a name is in the list and could not obtain the list -- fine
+// for an interceptor, which has exactly one name to ask about, and impossible
+// for anything that has to write the Grant down.
+//
+// Which is what a [auth.TokenStore] answering over a network is. Without these
+// two the axis that carries the most is the one that cannot be serialised, and
+// the shape that gets reached for instead is a second field beside the Grant
+// holding the same list -- two places to keep in step, one of them the one the
+// interceptor does not read.
+func (g Grant) AnyAction() bool { return g.anyAction }
+
+// Actions is what this narrows to, by the name gRPC knows a method by.
+//
+// The slice is this Grant's own and writing to it changes what the Grant
+// allows. It is handed over rather than cloned to match [Grant.TenantIds] and
+// [Grant.SetIds], which do the same: every one of these is read by something
+// about to encode it, and a copy per call on the authentication path is a cost
+// paid on every request to protect against a caller that has no reason to
+// write.
+func (g Grant) Actions() []string { return g.actions }
+
 // Allows reports whether the given method is one this credential may be used
 // for.
 func (g Grant) Allows(method string) bool {

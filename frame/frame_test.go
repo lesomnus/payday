@@ -105,9 +105,11 @@ func TestGrant(t *testing.T) {
 		x.False(z.IsWhole())
 		x.False(z.AnyTenant())
 		x.False(z.AnySet())
+		x.False(z.AnyAction())
 		x.False(z.Allows("/app.RobotService/Get"))
 		x.Empty(z.TenantIds())
 		x.Empty(z.SetIds())
+		x.Empty(z.Actions())
 	})
 
 	t.Run("Whole allows whatever the actor does", func(t *testing.T) {
@@ -117,7 +119,55 @@ func TestGrant(t *testing.T) {
 		x.True(g.IsWhole())
 		x.True(g.AnyTenant())
 		x.True(g.AnySet())
+		x.True(g.AnyAction())
 		x.True(g.Allows("/anything/at/all"))
+	})
+
+	// Every axis readable, which is what it takes to write one down.
+	//
+	// The two answers a list cannot tell apart are "every method" and "no
+	// method at all" -- both hold an empty slice -- so anything encoding a
+	// Grant has to write the flag beside the list. This is the test that says
+	// the flag is reachable at all; `TestGrantRoundTrip` in `auth` is the one
+	// that says an encoder used it.
+	t.Run("every axis says whether it narrows", func(t *testing.T) {
+		x := require.New(t)
+
+		every := frame.Whole()
+		none := frame.Whole().In().Within().To()
+
+		// Indistinguishable by their lists.
+		x.Empty(every.TenantIds())
+		x.Empty(every.SetIds())
+		x.Empty(every.Actions())
+		x.Empty(none.TenantIds())
+		x.Empty(none.SetIds())
+		x.Empty(none.Actions())
+
+		// Told apart only by the flags.
+		x.True(every.AnyTenant())
+		x.True(every.AnySet())
+		x.True(every.AnyAction())
+		x.False(none.AnyTenant())
+		x.False(none.AnySet())
+		x.False(none.AnyAction())
+	})
+
+	t.Run("Actions is what To was given", func(t *testing.T) {
+		x := require.New(t)
+
+		ms := []string{"/app.RobotService/Get", "/app.RobotService/List"}
+		g := frame.Whole().To(ms...)
+
+		x.False(g.AnyAction())
+		x.Equal(ms, g.Actions())
+
+		// And what it was given is what it allows, which is the pair anything
+		// re-encoding a Grant depends on.
+		for _, m := range g.Actions() {
+			x.True(g.Allows(m))
+		}
+		x.False(g.Allows("/app.RobotService/Erase"))
 	})
 
 	t.Run("naming none allows none", func(t *testing.T) {

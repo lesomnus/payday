@@ -1,0 +1,160 @@
+edition = "2023";
+
+package payday;
+
+import "google/protobuf/timestamp.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// TokenService says who an opaque token stands for.
+//
+// It is the wire form of [auth.TokenStore], which until now had only in-process
+// implementations. A token carries nothing -- that is what makes it opaque and
+// what makes it revocable -- so the server it is presented to has to ask
+// somebody, and when the somebody is another process this is the asking.
+//
+// # Why payday owns the contract
+//
+// Because the app that presents a token and the app that issued it are
+// different apps, and neither of them is the right place for the shape they
+// have to agree on. An identity store defines this and every app that trusts it
+// speaks it; a second identity store implements the same service and the apps
+// in front of it change one line of wiring.
+//
+// It is payday's own and not generated per app, for the same reason
+// `BatchService` is: there is nothing per app in it. A token is a string and an
+// answer is who it is -- neither mentions an entity.
+//
+// # It is not public
+//
+// The bearer of the token has no other credential -- that is what they are
+// presenting -- but they are not who is calling. The caller is a product app
+// holding its own credential, and this RPC is behind that app's authentication
+// like anything else. Serving it open would let anybody test tokens against the
+// store as fast as they could send them.
+//
+// So an app that introspects needs this method allowed on its own credential.
+// That is the whole of the trust decision, and it is one an operator makes per
+// app rather than one this file makes for everybody.
+//
+// # What it does not do
+//
+// It does not answer what the bearer may do **in the calling app**. It answers
+// who they are and what the token was narrowed to, and the app applies its own
+// rules to that, unchanged, the way it does for every other credential. An
+// identity store that decided what a caller may do in somebody else's app would
+// need to hold that app's rules, and then there is one place that has to know
+// every app's permissions and no app that can be reasoned about on its own.
+service TokenService {
+  // Introspect answers who a token stands for, or says it knows no such token.
+  //
+  // The name is RFC 7662's, which is the same operation for OAuth 2.0 -- worth
+  // borrowing because somebody arriving at this file has probably met it.
+  //
+  // A token that is not known is `NotFound`, and a token that is known and no
+  // longer good is `NotFound` as well. Told apart, they are an oracle for "this
+  // string was a real token once", which is worth more to somebody guessing
+  // than to anybody else. See `auth.ErrUnknownToken`, which says the same on
+  // the other side of the wire.
+  rpc Introspect(TokenIntrospectRequest) returns (TokenIntrospectResponse);
+}
+
+message TokenIntrospectRequest {
+  // The token, exactly as it arrived.
+  //
+  // A secret in a request body, which is what it has to be: the whole question
+  // is what this string means, and the store cannot answer it from a hash the
+  // caller computed -- the parameters would be the caller's, and a store cannot
+  // vouch for those. It is the same trade `VouchService` makes for a password
+  // and is why both are refused over cleartext.
+  string token = 1;
+}
+
+// TokenIntrospectResponse is `auth.Identity` as it crosses.
+//
+// Every field here fills one there, and the one field of `auth.Identity` that
+// is missing is `Method`: how a caller authenticated is answered by whatever
+// read the credential, and a store that could name it would be naming the
+// wrong process's answer.
+message TokenIntrospectResponse {
+  // Who to serve the request as, by identifier.
+  //
+  // **Not necessarily the row the token hangs off.** An identity store keeps a
+  // token as a row so that revoking one is a delete, and that row is the right
+  // actor for the store's own trail; it is the wrong actor for the app in
+  // front, whose rows are about people and which would otherwise resolve a
+  // token identifier to nobody. So the store decides which of the two crosses,
+  // and what crosses is the one the calling app can look up.
+  bytes id = 1;
+
+  // The tenant the store says holds the actor.
+  //
+  // A claim to be disagreed with, and the interceptor does disagree: the
+  // calling app's resolver reads its own row, learns which tenant really holds
+  // the actor there, and the call is refused when the two differ. So a token
+  // cannot move somebody between tenants by saying they moved. See
+  // `auth.Identity.TenantId`.
+  bytes tenant_id = 2;
+
+  // The same pair by name, for a store that keeps no identifier the calling app
+  // would recognise. Exactly one of the two ways is expected.
+  string tenant = 3;
+  string alias = 4;
+
+  // What the token was narrowed to, which is at most what the actor allows.
+  Grant grant = 5;
+
+  // When the token stops working, unset for one that does not.
+  //
+  // It crosses because a **stream** needs it. A unary call carries its
+  // credential every time and is refused at the next one; a stream reads it
+  // once, at the handshake, and without this would be served for as long as it
+  // stays open -- which for a Watch is until somebody hangs up.
+  google.protobuf.Timestamp expires = 6;
+}
+
+// Grant is `frame.Grant` as it crosses: three axes, each either narrowed to a
+// list or not narrowed at all.
+//
+// # Why every axis is a flag and a list
+//
+// Because the two answers that matter most are both an empty list. "Every
+// tenant" and "no tenant whatsoever" are the same repeated field, and protobuf
+// has nothing to tell them apart -- an unset repeated field and an empty one
+// are one value on the wire.
+//
+// So the flag is written beside the list, and the flag's zero is the safe one:
+// a field nobody filled in is `false`, which means narrowed, and narrowed to an
+// empty list allows **nothing**. A store that forgets an axis hands out a token
+// that can do nothing, which somebody notices within the minute. The other way
+// round it hands out one that can do everything, which nobody notices at all.
+//
+// That is `frame.Grant`'s own rule -- its zero value allows nothing -- kept
+// across the wire rather than restated. The mapping is in `auth`, so this
+// message and that rule cannot drift apart in two places.
+message Grant {
+  // Whether the tenants are narrowed at all; when false, `tenants` is the whole
+  // of what is allowed.
+  bool any_tenant = 1;
+  repeated bytes tenants = 2;
+
+  // The second axis, whatever the app declared at field 3 -- a site, a cell, a
+  // region. An app that declared none has nothing to say here and answers
+  // `any_set`.
+  bool any_set = 3;
+  repeated bytes sets = 4;
+
+  // The methods, by the name gRPC knows them by: "/app.RobotService/Get".
+  //
+  // Opaque to whoever stores them. They are the **calling** app's method names,
+  // which the identity store has no way to check and should not try to -- it
+  // would need every app's service descriptors, and a token would stop working
+  // the day an app added an RPC the store had not heard of.
+  //
+  // What makes that safe is that a grant only ever takes away. The calling app
+  // decides what the actor may do, as it always did, and this narrows the
+  // answer; a method named here that the actor cannot call is still refused.
+  bool any_action = 5;
+  repeated string actions = 6;
+}
