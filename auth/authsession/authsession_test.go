@@ -432,3 +432,37 @@ func TestTheStoreForgetsWhatHasExpired(t *testing.T) {
 	// left is the last one.
 	x.Equal(1, store.Len())
 }
+
+// TestEndingSomebodysSessionsEndsThemNow, which is what a store has to be able
+// to do for a departure to mean anything.
+//
+// A session is keyed by its own value, because that is what a request carries.
+// "Whose are these" is a different question, asked once when somebody leaves
+// rather than once per call, and a store that cannot answer it has sessions
+// outliving the person by however long they had left.
+func TestEndingSomebodysSessionsEndsThemNow(t *testing.T) {
+	x := require.New(t)
+
+	store := authsession.NewMemStore()
+	s := authsession.New(store)
+
+	// Two browsers of theirs, and somebody else's.
+	a := signIn(t, s, who("019-abc", "019-acme"))
+	bb := signIn(t, s, who("019-abc", "019-acme"))
+	other := signIn(t, s, who("019-xyz", "019-acme"))
+	x.Equal(3, store.Len())
+
+	x.NoError(store.DelBy(t.Context(), func(v authsession.Session) bool {
+		return v.Id == "019-abc"
+	}))
+
+	for _, c := range []*http.Cookie{a, bb} {
+		_, err := s.Handler().Handle(carrying(c))
+		x.ErrorIs(err, authsession.ErrNoSession, "a session of theirs survived")
+	}
+
+	// And nobody else's.
+	id, err := s.Handler().Handle(carrying(other))
+	x.NoError(err)
+	x.Equal("019-xyz", id.Id)
+}
