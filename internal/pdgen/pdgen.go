@@ -357,6 +357,12 @@ func (s *Schema) check() error {
 	byOwn := map[pdpb.Own]*Entity{}
 
 	for _, v := range s.Entities {
+		// Before anything about tenancy, because it is about the fields
+		// themselves and applies to an entity whether or not it is walled.
+		if err := s.checkPresence(v); err != nil {
+			return err
+		}
+
 		if v.Own != pdpb.Own_OWN_UNSPECIFIED {
 			// Two of them would make [Schema.Own] answer with whichever came
 			// first, which is the schema deciding a trust boundary by its own
@@ -1104,4 +1110,76 @@ func suggestErased(e graph.Entity) int {
 	}
 
 	return 14
+}
+
+// checkPresence refuses a field that has presence in the API and nowhere to
+// keep it.
+//
+// # What goes wrong
+//
+// A message field -- a `google.protobuf.Timestamp`, a nested message -- with no
+// `nullable`, no `default` and no marker generates a **NOT NULL** column. The
+// API generated beside it still has `HasXxx()`, because a message field has
+// presence in proto whatever the column does.
+//
+// So the two disagree, and the caller is the one told the lie: they ask whether
+// a value is set, are told yes, and read a zero somebody wrote because the
+// column would not take null. It is not a failure anywhere -- it is a row that
+// says a thing happened at the beginning of the epoch.
+//
+// # Why it is refused rather than fixed
+//
+// Because both fixes are the schema's to choose and mean different things.
+// `nullable: true` says the value may be absent; a default says it is always
+// there and here is what it starts as. A generator picking one would be
+// deciding what an app meant.
+//
+// # The three that are exempt, and why the boundary is where it is
+//
+// `date_created` has a default, `date_updated` is the version and `date_erased`
+// is the erased marker -- and each is stamped by the **server** rather than
+// given by a caller. Their presence is not a claim about what somebody sent.
+//
+// The boundary is stated as those three declarations rather than those three
+// names, so an app that puts its version on a differently named field is not
+// caught by a rule about spelling.
+func (s *Schema) checkPresence(v *Entity) error {
+	// Fields and not props, which is what leaves edges out. An edge is a
+	// message field too, and its presence is the foreign key being there rather
+	// than a claim about what somebody sent.
+	for prop := range v.Fields() {
+		fd := prop.Descriptor()
+		if fd.Kind() != protoreflect.MessageKind {
+			// Scalars under IMPLICIT presence have no `Has`, so there is
+			// nothing to disagree with.
+			continue
+		}
+		if fd.IsMap() || fd.IsList() {
+			// Neither has presence either, and a map's descriptor says
+			// `MessageKind` because its entries are a synthetic message -- which
+			// is what this check caught the first time it was run. Empty and
+			// absent are one state for both, so there is no `Has` to be wrong.
+			continue
+		}
+		if prop.IsNullable() || prop.HasDefault() {
+			continue
+		}
+
+		opts, _ := proto.GetExtension(fd.Options(), ormpb.E_Field).(*ormpb.FieldOptions)
+		if opts.GetVersion() != nil || opts.GetErased() != nil {
+			// Stamped by the server. Its presence says nothing about what a
+			// caller sent, so there is nothing to be wrong about.
+			continue
+		}
+
+		return fmt.Errorf(
+			"%s.%s: this field has presence in the API -- `Has%s()` -- and a NOT NULL "+
+				"column to keep it in, so a caller who never set it is told it is set\n\n"+
+				"    say which one you meant:\n"+
+				"      [(orm.field) = {nullable: true}]  the value may be absent\n"+
+				"      [(orm.field) = {default: \"\"}]     it is always there, and starts here",
+			v.FullName(), prop.Name(), camel(prop.Name()))
+	}
+
+	return nil
 }

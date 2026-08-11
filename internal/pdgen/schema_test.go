@@ -1156,3 +1156,104 @@ message Robot {
 		}
 	})
 }
+
+// A field that has presence in the API and nowhere to keep it.
+//
+// A message field with no `nullable`, no `default` and no marker generates a
+// NOT NULL column while the API beside it still has `Has…`, because a message
+// field has presence in proto whatever the column does. So a caller asks
+// whether a value is set, is told yes, and reads a zero somebody wrote because
+// the column would not take null -- a row saying a thing happened at the
+// beginning of the epoch.
+//
+// The first version of this test asserted nothing. Its schemas were malformed,
+// so `Read` found no entities and returned without checking any, and four
+// subtests passed by never reaching the code they were about. What caught it
+// was that the one expected to fail did not.
+func TestAFieldThatLiesAboutPresence(t *testing.T) {
+	// The entity a subtest is about, built the way every other test here builds
+	// one -- so that a mistake in the schema is a mistake in the schema rather
+	// than a test that quietly checks nothing.
+	of := func(t *testing.T, field string) error {
+		t.Helper()
+
+		_, err := read(t, tenant+entity("Thing", `domain: 9, global: {}`, field))
+
+		return err
+	}
+
+	// The whole point: this is the only shape refused.
+	t.Run("refused", func(t *testing.T) {
+		err := of(t, `google.protobuf.Timestamp date_seen = 8;`)
+		if err == nil {
+			t.Fatal("a field that lies about presence was accepted")
+		}
+		for _, want := range []string{"date_seen", "presence"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("the refusal does not say %q: %v", want, err)
+			}
+		}
+	})
+
+	// Both fixes are the schema's to choose and they mean different things, so
+	// the generator names them rather than picking one.
+	for _, tt := range []struct {
+		what string
+		decl string
+	}{
+		{"nullable", `[(orm.field) = {nullable: true}]`},
+		{"a default", `[(orm.field) = {default: ""}]`},
+	} {
+		t.Run("said with "+tt.what, func(t *testing.T) {
+			if err := of(t, `google.protobuf.Timestamp date_seen = 8 `+tt.decl+`;`); err != nil {
+				t.Fatalf("saying %s was not enough: %v", tt.what, err)
+			}
+		})
+	}
+
+	// The stamps payday writes itself are exempt, and the rule is stated as
+	// their declarations rather than their names -- an app whose version field
+	// is called something else is not caught by a rule about spelling.
+	t.Run("a version is not a claim about a caller", func(t *testing.T) {
+		if err := of(t, `google.protobuf.Timestamp changed_at = 8 [(orm.field) = {version: {}}];`); err != nil {
+			t.Fatalf("a server stamp was read as a claim: %v", err)
+		}
+	})
+
+	// Written out rather than through the helper, because an erased marker and
+	// the helper's `erase: {hard: {}}` are two different answers about the same
+	// thing and the schema is refused for saying both.
+	t.Run("an erased marker is not a claim about a caller", func(t *testing.T) {
+		_, err := read(t, tenant+`
+message Thing {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  string alias = 4;
+  google.protobuf.Timestamp gone_at = 8 [(orm.field) = {erased: {}}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 9, global: {}};
+}`)
+		if err != nil {
+			t.Fatalf("a server stamp was read as a claim: %v", err)
+		}
+	})
+
+	// A map has no presence either, and its descriptor says `MessageKind`
+	// because its entries are a synthetic message. That is what this check
+	// caught the first time it was run against apptest.
+	t.Run("a map is not a message field", func(t *testing.T) {
+		if err := of(t, `map<string, string> labels = 8;`); err != nil {
+			t.Fatalf("a map was read as a message field: %v", err)
+		}
+	})
+
+	// And an edge is a message field too. Its presence is the foreign key being
+	// there rather than a claim about what somebody sent -- which is why this
+	// walks `Fields()` and not `Props()`.
+	t.Run("an edge is not a field", func(t *testing.T) {
+		_, err := read(t, tenant+entity("Thing", `domain: 9, tenanted: {via: "tenant"}`,
+			`Tenant tenant = 2 [(orm.edge) = {}];`))
+		if err != nil {
+			t.Fatalf("an edge was read as a field: %v", err)
+		}
+	})
+}
