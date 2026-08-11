@@ -542,7 +542,11 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		}
 	}
 	q.SetAlias(req.GetAlias())
-	q.SetSecret(req.GetSecret())
+	if req.HasSecret() {
+		q.SetSecret(req.GetSecret())
+	} else {
+		q.SetSecret([]byte{})
+	}
 	q.SetDateUpdated(st.now())
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())

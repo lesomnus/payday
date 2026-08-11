@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -178,4 +179,53 @@ func TestListReadsTheEdgesItWasToldTo(t *testing.T) {
 	x.NoError(err)
 	x.Len(res.GetItems(), 1)
 	x.Equal(b.Tenant.Bytes(), res.GetItems()[0].GetTenant().GetId())
+}
+
+// TestAFilterOnAnEdgeIsAColumn, which is what makes "everyone in this tenant" a
+// declaration rather than a hand-written RPC.
+//
+// An edge is a foreign key, so this is `WHERE tenant_id = ?` against an index.
+// It was refused until it was tried -- `by:` looked only at fields, and the
+// common filters are all edges.
+func TestAFilterOnAnEdgeIsAColumn(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	other, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "hooli"}.Build())
+	x.NoError(err)
+
+	for _, tt := range []struct {
+		tenant []byte
+		alias  string
+	}{
+		{b.Tenant[:], "ours-1"},
+		{b.Tenant[:], "ours-2"},
+		{other.GetId(), "theirs"},
+	} {
+		_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: tt.tenant}.Build(),
+			Alias:  tt.alias,
+		}.Build())
+		x.NoError(err)
+	}
+
+	// By identifier.
+	vs, err := b.Ungated.Robot().List(ctx, app.RobotListRequest_builder{
+		Filters: []*app.RobotFilter{app.RobotFilter_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant[:]}.Build(),
+		}.Build()},
+	}.Build())
+	x.NoError(err)
+	x.Len(vs.GetItems(), 2)
+
+	// And by the alias somebody typed, which is why the filter carries a ref
+	// rather than an identifier.
+	vs, err = b.Ungated.Robot().List(ctx, app.RobotListRequest_builder{
+		Filters: []*app.RobotFilter{app.RobotFilter_builder{
+			Tenant: app.TenantRef_builder{Alias: z.Ptr("hooli")}.Build(),
+		}.Build()},
+	}.Build())
+	x.NoError(err)
+	x.Len(vs.GetItems(), 1)
+	x.Equal("theirs", vs.GetItems()[0].GetAlias())
 }

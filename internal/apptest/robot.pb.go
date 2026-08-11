@@ -372,6 +372,10 @@ type Robot_builder struct {
 	// so until this option existed, so apps said it at registration by leaving a
 	// whole service off their server, which is a heavier hammer said in the wrong
 	// place.
+	// A default, because most robots have none -- and without one this is a NOT
+	// NULL column that every `Add` omitting it fails against, on PostgreSQL and
+	// not on SQLite. Which is what happened: adding this field broke sixty-six
+	// tests that only ran on the permissive one.
 	Secret []byte
 	// Stamped on every write and refused to a patch document, so it is a version
 	// and not a field. It is here because this entity declares a `watch:`, and
@@ -784,26 +788,26 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
-	"\"\x84\x04\n" +
+	"\"\x94\x04\n" +
 	"\x05Robot\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12%\n" +
 	"\x04cell\x18\x03 \x01(\v2\t.app.CellB\x06\xf2\x82\x16\x028\x01R\x04cell\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12\x1e\n" +
-	"\x06secret\x18\b \x01(\fB\x06\xaa\xc1\x16\x02\b\x01R\x06secret\x12F\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12%\n" +
+	"\x06secret\x18\b \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\b\x01R\x06secret\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
-	"dateErased:|\xca\xfc\x15G\x12\x02\x10\x01\x1a \x12\x04page\x1a\x10\n" +
+	"dateErased:\x84\x01\xca\xfc\x15G\x12\x02\x10\x01\x1a \x12\x04page\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a\x06\n" +
 	"\x02id\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
 	"\x05alias\x10\x04\x1a\n" +
 	"\n" +
-	"\x06tenant\x10\x020\x01\x8a\xbb\x16-\b\a2'\n" +
+	"\x06tenant\x10\x020\x01\x8a\xbb\x165\b\a2/\n" +
 	"\x0e\n" +
 	"\fdate_created\n" +
 	"\x04\n" +
-	"\x02id\x12\x06tenant\x1a\x03ref 2(d:\x00\"\xcc\x01\n" +
+	"\x02id\x12\x06tenant\x1a\x03ref\x1a\x06tenant 2(d:\x00\"\xcc\x01\n" +
 	"\x05Joint\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12*\n" +
 	"\x05robot\x18\x02 \x01(\v2\n" +

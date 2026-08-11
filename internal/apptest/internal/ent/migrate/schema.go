@@ -200,7 +200,7 @@ var (
 	RobotColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString},
-		{Name: "secret", Type: field.TypeBytes},
+		{Name: "secret", Type: field.TypeBytes, Nullable: true},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},

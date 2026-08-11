@@ -484,7 +484,7 @@ message Robot {
 	}, {
 		what: "a filter on a column that is not there",
 		list: `order: [{field: "id"}], max: 100, by: ["nope"]`,
-		says: `no field "nope"`,
+		says: `no field or edge "nope"`,
 	}, {
 		what: "an edge to read along that is not there",
 		list: `order: [{field: "id"}], max: 100, with: ["nope"]`,
@@ -1256,4 +1256,55 @@ message Thing {
 			t.Fatalf("an edge was read as a field: %v", err)
 		}
 	})
+}
+
+// A filter may be about an edge, which is a column.
+//
+// "Everyone in this tenant", "every team in this site" -- the common filters,
+// and each is `WHERE <fk>_id = ?` against an index rather than a join. That it
+// was refused made those a hand-written RPC apiece, for what a WHERE clause
+// does.
+//
+// What the filter carries is the target's **ref**, so a caller names it the way
+// they name it everywhere else: by identifier, or by the alias they typed.
+func TestAFilterMayBeAboutAnEdge(t *testing.T) {
+	s, err := read(t, tenant+entity("Robot", `domain: 7, tenanted: {via: "tenant"}, list: {order: [{field: "id"}], max: 100, by: ["ref", "tenant"]}`,
+		`Tenant tenant = 2 [(orm.edge) = {}];`))
+	if err != nil {
+		t.Fatalf("an edge was refused: %v", err)
+	}
+
+	var by []pdgen.By
+	for _, v := range s.Entities {
+		if v.GoName() == "Robot" {
+			by = v.List.By
+		}
+	}
+
+	if len(by) != 2 {
+		t.Fatalf("by: %d of them", len(by))
+	}
+	if !by[0].Ref {
+		t.Fatal("the first is not the ref")
+	}
+	if by[1].Edge != "tenant" || by[1].Target != "Tenant" {
+		t.Fatalf("the second is %+v", by[1])
+	}
+}
+
+// TestAOneToManyEdgeIsRefused, because there is no column on this row to
+// compare -- which is a join, and a join wants a reason beside the code that
+// acts on it.
+func TestAOneToManyEdgeIsRefused(t *testing.T) {
+	_, err := read(t, tenant+
+		entity("Robot", `domain: 7, tenanted: {via: "tenant"}, list: {order: [{field: "id"}], max: 100, by: ["parts"]}`,
+			`Tenant tenant = 2 [(orm.edge) = {}];`,
+			`repeated Part parts = 8 [(orm.edge) = {}];`)+
+		entity("Part", `domain: 8, global: {}`))
+	if err == nil {
+		t.Fatal("a one-to-many edge was accepted as a filter")
+	}
+	if !strings.Contains(err.Error(), "join") {
+		t.Fatalf("the refusal does not say why: %v", err)
+	}
 }

@@ -670,12 +670,23 @@ type By struct {
 	// generated servers already know how to turn into a predicate.
 	Ref bool
 
-	// Field is the column compared for equality, empty when Ref.
+	// Field is the column compared for equality, empty when Ref or Edge.
 	Field string
 
 	// Type is what that column holds, so that the generated code knows how to
 	// read it out of the request.
 	Type ormpb.Type
+
+	// Edge is the edge compared, empty otherwise, and Target is the entity it
+	// points at.
+	//
+	// It is a column comparison like any other: an edge is a foreign key, so
+	// "in this tenant" is `WHERE tenant_id = ?` against an index and not a
+	// join. What the filter carries is the target's **ref** rather than its
+	// identifier, so a caller may name it the way they name it everywhere else
+	// -- by id, or by the alias they typed.
+	Edge   string
+	Target string
 }
 
 // readList reads the list declaration and refuses what would be wrong.
@@ -738,9 +749,29 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 			continue
 		}
 
+		if d, ok := edge(e.Entity, name); ok {
+			// An edge, which is a foreign key and therefore a column. A filter
+			// on one costs an indexed comparison, which is what makes "everyone
+			// in this tenant" a declaration rather than a hand-written RPC.
+			if d.IsList() {
+				return fmt.Errorf(
+					"list: by: %q is a one-to-many edge, and there is no column on this row "+
+						"to compare -- which is a join, and a join wants an RPC somebody wrote",
+					name)
+			}
+
+			v.By = append(v.By, By{
+				Edge:   name,
+				Target: string(d.Target().FullName().Name()),
+			})
+
+			continue
+		}
+
 		f, ok := field(e.Entity, name)
 		if !ok {
-			return fmt.Errorf("list: by: %s has no field %q", e.FullName(), name)
+			return fmt.Errorf(
+				"list: by: %s has no field or edge %q", e.FullName(), name)
 		}
 		if protoTypeOf(f.Type()) == "" {
 			return fmt.Errorf(

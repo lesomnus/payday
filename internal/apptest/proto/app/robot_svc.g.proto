@@ -127,7 +127,7 @@ message RobotAddRequest {
   TenantRef tenant = 2;
   CellRef cell = 3;
   string alias = 4 [features.field_presence = IMPLICIT];
-  bytes secret = 8 [features.field_presence = IMPLICIT];
+  bytes secret = 8;
   google.protobuf.Timestamp date_created = 15;
 }
 
@@ -222,6 +222,7 @@ message RobotListResponse {
 
 message RobotFilter {
   RobotRef ref = 1;
+  TenantRef tenant = 2;
 }
 
 message RobotWatchRequest {

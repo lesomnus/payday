@@ -69,7 +69,14 @@ message Robot {
   // so until this option existed, so apps said it at registration by leaving a
   // whole service off their server, which is a heavier hammer said in the wrong
   // place.
-  bytes secret = 8 [(payday.field) = {secret: true}];
+  // A default, because most robots have none -- and without one this is a NOT
+  // NULL column that every `Add` omitting it fails against, on PostgreSQL and
+  // not on SQLite. Which is what happened: adding this field broke sixty-six
+  // tests that only ran on the permissive one.
+  bytes secret = 8 [
+    (orm.field) = {default: ""},
+    (payday.field) = {secret: true}
+  ];
 
   // Stamped on every write and refused to a patch document, so it is a version
   // and not a field. It is here because this entity declares a `watch:`, and
@@ -131,7 +138,7 @@ message Robot {
         {field: "id"}
       ]
       with: ["tenant"]
-      by: ["ref"]
+      by: ["ref", "tenant"]
       size: 50
       max: 100
     }

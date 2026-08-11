@@ -145,6 +145,12 @@ message %sWatchItem {
 				b.WriteString(fmt.Sprintf("  %sRef ref = %d;\n", e, i+1))
 				continue
 			}
+			if by.Edge != "" {
+				// The target's ref rather than its identifier, so that a caller
+				// names it the way they name it everywhere else.
+				b.WriteString(fmt.Sprintf("  %sRef %s = %d;\n", by.Target, by.Edge, i+1))
+				continue
+			}
 			b.WriteString(fmt.Sprintf("  %s %s = %d;\n", protoTypeOf(by.Type), by.Field, i+1))
 		}
 		b.WriteString("}\n")

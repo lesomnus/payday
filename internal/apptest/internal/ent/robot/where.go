@@ -196,6 +196,16 @@ func SecretLTE(v []byte) predicate.Robot {
 	return predicate.Robot(sql.FieldLTE(FieldSecret, v))
 }
 
+// SecretIsNil applies the IsNil predicate on the "secret" field.
+func SecretIsNil() predicate.Robot {
+	return predicate.Robot(sql.FieldIsNull(FieldSecret))
+}
+
+// SecretNotNil applies the NotNil predicate on the "secret" field.
+func SecretNotNil() predicate.Robot {
+	return predicate.Robot(sql.FieldNotNull(FieldSecret))
+}
+
 // DateUpdatedEQ applies the EQ predicate on the "date_updated" field.
 func DateUpdatedEQ(v time.Time) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldDateUpdated, v))

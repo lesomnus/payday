@@ -142,9 +142,6 @@ func (_c *RobotCreate) check() error {
 	if _, ok := _c.mutation.Alias(); !ok {
 		return &ValidationError{Name: "alias", err: errors.New(`ent: missing required field "Robot.alias"`)}
 	}
-	if _, ok := _c.mutation.Secret(); !ok {
-		return &ValidationError{Name: "secret", err: errors.New(`ent: missing required field "Robot.secret"`)}
-	}
 	if _, ok := _c.mutation.DateUpdated(); !ok {
 		return &ValidationError{Name: "date_updated", err: errors.New(`ent: missing required field "Robot.date_updated"`)}
 	}

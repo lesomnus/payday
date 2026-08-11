@@ -4589,9 +4589,22 @@ func (m *RobotMutation) OldSecret(ctx context.Context) (v []byte, err error) {
 	return oldValue.Secret, nil
 }
 
+// ClearSecret clears the value of the "secret" field.
+func (m *RobotMutation) ClearSecret() {
+	m.secret = nil
+	m.clearedFields[robot.FieldSecret] = struct{}{}
+}
+
+// SecretCleared returns if the "secret" field was cleared in this mutation.
+func (m *RobotMutation) SecretCleared() bool {
+	_, ok := m.clearedFields[robot.FieldSecret]
+	return ok
+}
+
 // ResetSecret resets all changes to the "secret" field.
 func (m *RobotMutation) ResetSecret() {
 	m.secret = nil
+	delete(m.clearedFields, robot.FieldSecret)
 }
 
 // SetDateUpdated sets the "date_updated" field.
@@ -5056,6 +5069,9 @@ func (m *RobotMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *RobotMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(robot.FieldSecret) {
+		fields = append(fields, robot.FieldSecret)
+	}
 	if m.FieldCleared(robot.FieldDateCreated) {
 		fields = append(fields, robot.FieldDateCreated)
 	}
@@ -5079,6 +5095,9 @@ func (m *RobotMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *RobotMutation) ClearField(name string) error {
 	switch name {
+	case robot.FieldSecret:
+		m.ClearSecret()
+		return nil
 	case robot.FieldDateCreated:
 		m.ClearDateCreated()
 		return nil

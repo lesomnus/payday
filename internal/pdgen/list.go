@@ -482,6 +482,38 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 		// and ent capitalises an initialism -- `ObjectIDEQ`. They agree on
 		// every field that does not end in one, which is why this was one
 		// variable until a filter on `object_id` was declared.
+		if by.Edge != "" {
+			at := camel(by.Edge)
+
+			g.P("	if f.Has", at, "() {")
+			g.P("		w := f.Get", at, "()")
+			g.P("		if b := w.GetId(); len(b) > 0 {")
+			g.P("			// The **foreign key column** on this row, which is what an")
+			g.P("			// edge is. A subquery for a comparison against an indexed")
+			g.P("			// column is work nobody asked for.")
+			g.P("			k, err := ", pkgUuid2.Ident("FromBytes"), "(b)")
+			g.P("			if err != nil {")
+			g.P("				return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"", by.Edge, ": %s\", err)")
+			g.P("			}")
+			g.P("")
+			g.P("			ps = append(ps, ", entPkg.Ident(pascal(by.Edge)+"IDEQ"), "(k))")
+			g.P("		} else {")
+			g.P("			// Named some other way -- an alias, a slug. Resolving it")
+			g.P("			// would be a read, and a predicate is built without one, so")
+			g.P("			// it becomes a condition on the target instead. One hop,")
+			g.P("			// against whatever index that column has.")
+			g.P("			q, err := ", p.Bare.Ident(by.Target+"Pick"), "(w)")
+			g.P("			if err != nil {")
+			g.P("				return nil, err")
+			g.P("			}")
+			g.P("")
+			g.P("			ps = append(ps, ", entPkg.Ident("Has"+pascal(by.Edge)+"With"), "(q))")
+			g.P("		}")
+			g.P("	}")
+
+			continue
+		}
+
 		at, col := camel(by.Field), pascal(by.Field)
 
 		g.P("	if f.Has", at, "() {")
