@@ -132,10 +132,20 @@ func (g Grant) Actions() []string { return g.actions }
 
 // Allows reports whether the given method is one this credential may be used
 // for.
+//
+// Each action is a name or a pattern; see [Covers]. A grant listing only whole
+// method names behaves exactly as it did when this was a membership test,
+// because [Covers] answers on equality first.
 func (g Grant) Allows(method string) bool {
 	if g.anyAction {
 		return true
 	}
 
-	return slices.Contains(g.actions, method)
+	for _, v := range g.actions {
+		if Covers(v, method) {
+			return true
+		}
+	}
+
+	return false
 }
