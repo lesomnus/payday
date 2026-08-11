@@ -86,6 +86,36 @@ message Holder {
     // noticed; getting it wrong the other way shows every row to everybody,
     // which is not -- so the assumption is the loud one, and the quiet one
     // (`global: {}`) is the thing that has to be written.
+
+    // Watchable, which is here and not in an app because an app cannot add it:
+    // an overlay merges **fields** and not the entity option, so a deployment
+    // has no way to declare payday's own entity streamable.
+    //
+    // It earns the RPC. A product app anchors an identifier and a tenant --
+    // neither of which changes -- so the one fact about somebody that has to
+    // travel is that they are **gone**. Without a stream that arrives when the
+    // next sign-in fails, and a session already issued outlives it.
+    //
+    // A `Watch` nobody opens costs a generated method and nothing else: the
+    // outbox and the drain are already there for whatever else an app declares.
+    watch: {}
+
+    // And the page a watch is, over and over. Without one there is no order to
+    // read in, nothing for a filter to be about, and no cap on the first
+    // message -- which is a stream whose opening frame is the whole table.
+    //
+    // The order is what every entity here uses: when the row was made, then its
+    // identifier to break a tie. Stable under insertion, so a client reading
+    // through never sees one twice or misses one.
+    list: {
+      order: [
+        {field: "date_created"},
+        {field: "id"}
+      ]
+      by: ["ref"]
+      size: 20
+      max: 100
+    }
   };
   // The subject an external identity provider knows this holder by.
   string idp_subject = 8;
