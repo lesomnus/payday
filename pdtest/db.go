@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/ncruces/go-sqlite3/vfs/memdb"
@@ -79,6 +80,21 @@ func pgSchema(tb testing.TB, dsn string) string {
 	defer db.Close()
 
 	name := schemaName(tb.Name())
+	if n := nth(tb.Name()); n > 0 {
+		// A second database in one test is a second database.
+		//
+		// Two apps in one process is the case: an integration test that stands
+		// roster up and points custody at it calls this twice, and without
+		// this both got one schema -- so the second call's `DROP SCHEMA`
+		// removed the first app's tables and every later read found nothing.
+		// It passed on SQLite, where each call is its own file, which is
+		// exactly the direction that hides a mistake.
+		//
+		// Counted rather than named by the caller, so that no existing test has
+		// to say anything. Nothing could have wanted the old behaviour: a
+		// second call always dropped what the first had made.
+		name = schemaName(fmt.Sprintf("%s_%d", tb.Name(), n))
+	}
 	if _, err := db.Exec(fmt.Sprintf(`DROP SCHEMA IF EXISTS %q CASCADE`, name)); err != nil {
 		tb.Fatalf("drop schema %s: %v", name, err)
 	}
@@ -138,3 +154,19 @@ func schemaName(v string) string {
 
 	return v
 }
+
+// nth is how many databases this test has already been given.
+var nth = func() func(string) int {
+	var mu sync.Mutex
+	seen := map[string]int{}
+
+	return func(name string) int {
+		mu.Lock()
+		defer mu.Unlock()
+
+		n := seen[name]
+		seen[name] = n + 1
+
+		return n
+	}
+}()
