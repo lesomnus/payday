@@ -75,6 +75,9 @@ var registry = struct {
 	byName map[string]Domain
 	// names maps a domain back to that name.
 	names map[Domain]string
+	// shared is a domain two apps in this process numbered differently, so it
+	// has no one name. See [Register].
+	shared map[Domain]bool
 
 	// tenant is the domain of whichever entity declared `own: OWN_TENANT`.
 	tenant Domain
@@ -82,6 +85,7 @@ var registry = struct {
 	byEntity: map[string]Domain{},
 	byName:   map[string]Domain{},
 	names:    map[Domain]string{},
+	shared:   map[Domain]bool{},
 }
 
 // Register records what the schema declared: the message `entity` is of domain
@@ -109,15 +113,37 @@ func Register(entity string, d Domain, name string) {
 	if v, ok := registry.byEntity[entity]; ok && v != d {
 		panic(fmt.Sprintf("pdid: %s: already registered as domain %d, now %d", entity, v, d))
 	}
-	if v, ok := registry.names[d]; ok && v != name {
-		panic(fmt.Sprintf("pdid: domain %d: already registered as %q, now %q", d, v, name))
-	}
 	if v, ok := registry.byName[name]; ok && v != d {
 		panic(fmt.Sprintf("pdid: %q: already registered as domain %d, now %d", name, v, d))
 	}
 
 	registry.byEntity[entity] = d
 	registry.byName[name] = d
+
+	// The number, back to a name -- and this is the one that two apps in one
+	// process disagree about.
+	//
+	// A domain number is the **app's** to declare. payday's own are the same
+	// everywhere by construction, but 7 is whatever each app numbered first:
+	// custody's asset, roster's site. So a process holding both has no single
+	// answer to "what is 7 called", and it used to panic on the second app to
+	// register -- before `main`, taking the process down over a display name.
+	//
+	// Nothing functional was ever at stake here. What resolves a domain is
+	// [Lookup], keyed by the message's full name, and [DomainOf], keyed by the
+	// name a person writes; both of those stay unique because a proto package
+	// is an app's own. This map is read by [Domain.String] and by [Domains],
+	// which are a label and a diagnostic.
+	//
+	// So a disagreement is recorded rather than refused, and the number stops
+	// having a name: `domain(7)` is true in a process where two apps mean two
+	// things by it, and a name would be true in only one of them.
+	if v, ok := registry.names[d]; ok && v != name {
+		registry.shared[d] = true
+
+		return
+	}
+
 	registry.names[d] = name
 }
 
@@ -146,7 +172,7 @@ func (d Domain) String() string {
 	registry.RLock()
 	defer registry.RUnlock()
 
-	if v, ok := registry.names[d]; ok {
+	if v, ok := registry.names[d]; ok && !registry.shared[d] {
 		return v
 	}
 	if d == Unknown {
@@ -164,6 +190,12 @@ func Domains() map[Domain]string {
 
 	vs := make(map[Domain]string, len(registry.names))
 	for d, n := range registry.names {
+		if registry.shared[d] {
+			// Two apps mean two things by this number, so there is no name to
+			// list. See [Register].
+			continue
+		}
+
 		vs[d] = n
 	}
 

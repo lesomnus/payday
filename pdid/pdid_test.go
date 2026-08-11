@@ -259,12 +259,47 @@ func TestRegistry(t *testing.T) {
 		})
 	})
 
-	t.Run("refuses to let a number mean two things", func(t *testing.T) {
+	t.Run("refuses a name or an entity that means two numbers", func(t *testing.T) {
 		x := require.New(t)
 
-		x.Panics(func() { pdid.Register("test.Other", Robot, "other") })
+		// These are one app contradicting itself, which is a schema that should
+		// not have generated.
 		x.Panics(func() { pdid.Register("test.Robot", pdid.Domain(9), "robot") })
 		x.Panics(func() { pdid.Register("test.Zero", pdid.Unknown, "zero") })
+	})
+
+	// TestANumberTwoAppsMeanDifferentlyLosesItsName.
+	//
+	// A domain number is the app's to declare, so two apps linked into one
+	// process disagree about what 7 is -- custody's asset, roster's site. This
+	// used to panic from an init, taking the process down before `main` over a
+	// display name, and it is how the first attempt to have one payday app call
+	// another ended.
+	//
+	// Nothing functional is at stake: what resolves a domain is `Lookup` by
+	// message name and `DomainOf` by written name, and both stay unique because
+	// a proto package is an app's own. So the number keeps working and stops
+	// having a name, which is the true thing to say about it.
+	t.Run("a number two apps mean differently loses its name", func(t *testing.T) {
+		x := require.New(t)
+
+		d := pdid.Domain(200)
+		pdid.Register("one.Thing", d, "thing")
+		x.Equal("thing", d.String())
+
+		x.NotPanics(func() { pdid.Register("two.Other", d, "other") })
+
+		x.Equal("domain(200)", d.String(), "one app's name was served for both")
+		x.NotContains(pdid.Domains(), d)
+
+		// And both still resolve, which is the half that matters.
+		v, ok := pdid.Lookup("one.Thing")
+		x.True(ok)
+		x.Equal(d, v)
+
+		v, ok = pdid.Lookup("two.Other")
+		x.True(ok)
+		x.Equal(d, v)
 	})
 }
 
