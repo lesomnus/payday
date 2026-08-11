@@ -19,6 +19,11 @@
 // interesting one: it can fail in a way the caller did not cause, and
 // [ErrUnavailable] is how it says so.
 //
+// Two more live beside this package because they carry a dependency this one
+// should not: `auth/authoidc` reads a token an external provider signed, and
+// `auth/authsession` reads a cookie -- which is what a browser has, since it
+// has nowhere safe to keep anything else.
+//
 // [Plain] believes whatever it is told, and is for development and for tests.
 // It must not be reachable by anyone who is not already trusted to say the
 // truth -- a deployment that serves it where anybody can reach it has no
@@ -57,9 +62,24 @@
 // answer [frame.Whole] and say so.
 //
 // What issues such a token, and who decided what it should be narrowed to, is
-// not here and should not be. payday reads credentials and enforces them; it
-// does not mint them. [MemTokenStore] is a sample of the shape, and a real one
-// is a table or an issuer.
+// not here and should not be. [MemTokenStore] is a sample of the shape, and a
+// real one is a table or an issuer.
+//
+// # What payday will and will not hand out
+//
+// It will not issue a credential **somebody else verifies**. A token with an
+// issuer, a signing key and an audience is what an identity provider is, and
+// there is no version of payday that is one.
+//
+// It will hand a browser a **handle to state this server keeps**, which is what
+// `auth/authsession` does, and the difference is not a technicality: a session
+// key is opaque, means nothing to anybody else, and is revoked by deleting a
+// row. Nothing about it has to be believed, so nothing about it has to be
+// signed.
+//
+// Checking the secret is the app's either way. payday has no name for the
+// people in an app's schema, which is the same reason [Resolver] is an
+// interface.
 package auth
 
 import (

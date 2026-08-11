@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/lesomnus/z"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/frame"
@@ -42,6 +44,18 @@ func Resolver(s app.Server) auth.Resolver {
 			}.Build(),
 		}.Build())
 		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				// A credential that names nobody who is here is a **bad**
+				// credential and not a missing one, which is what
+				// `auth.Resolver` asks for -- and the difference is what a
+				// client is told to do about it. NotFound is a client that
+				// retries the same call and keeps failing; Unauthenticated is
+				// one that goes and authenticates again, which is right,
+				// because a session held by somebody who has since been erased
+				// is exactly this case.
+				return nil, fmt.Errorf("%w: %s", auth.ErrNoCredential, err)
+			}
+
 			return nil, err
 		}
 

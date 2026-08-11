@@ -46,6 +46,7 @@ table is for finding the right one.
 | [`frame`](../frame) | who a request is from. Put in the context once, read by everything that has to decide |
 | [`auth`](../auth) | reads a credential and resolves it to a frame: `Plain`, `MTLS`, `Bearer`, `Seq`. It does not issue one |
 | [`auth/authoidc`](../auth/authoidc) | reads the token an external provider issued — signature, issuer, audience, expiry — and turns its claims into an identity |
+| [`auth/authsession`](../auth/authsession) | the browser's half: a `POST /session` that sets an opaque cookie, and the handler that reads it back. The app supplies a `Verify` and a `Store` |
 | [`gate`](../gate) | what the caller may **do**, as against what they may see. Most of the rule is stated here and enforced in the query |
 | [`audit`](../audit) | the trail. A recorder inside the transaction, and a layer serving the trail's own RPCs |
 
@@ -230,12 +231,25 @@ because a reader cannot tell them apart.
 - **Bidirectional `Watch`.** Multiplexing many subscriptions onto one stream
   changes the transport and not the fan-out, which is where the cost actually
   is.
-- **Issuing a credential.** Logging somebody in — a password, an OIDC dance, a
-  second factor — belongs to whatever issues the token. `auth/authoidc` reads
-  what comes back, and `auth.Bearer` reads a credential a deployment minted
-  itself. There was an `auth.Issuer` interface here for a while; payday neither
-  implemented nor called it, which made it a naming convention wearing a seam's
-  clothes.
+- **Issuing a credential that somebody else verifies.** A token with an issuer,
+  a signing key and a JWKS endpoint is what an identity provider is, and payday
+  is not one. `auth/authoidc` reads what one issued; `auth.Bearer` reads a
+  credential a deployment minted itself. There was an `auth.Issuer` interface
+  here for a while; payday neither implemented nor called it, which made it a
+  naming convention wearing a seam's clothes.
+
+  `auth/authsession` is **not** the exception it looks like. A session key is
+  opaque, is verified by nothing but the server that minted it, and is a row
+  rather than a claim — closer to a row number than to a token. That is why
+  revoking one is a delete, and why it needs no key, no rotation and no
+  audience. The line is: payday will hand a browser a handle to state it keeps
+  itself, and will not tell a third party who somebody is.
+
+- **Checking a secret.** `authsession.Verify` is a function payday calls and
+  never writes: the people are in the app's schema and their secrets are
+  wherever it keeps them. `github.com/lesomnus/roster` is a payday app that does
+  this part, and a deployment with one behind it fills the seam with a single
+  RPC.
 - **Client trace propagation.** From a click in the browser to a span on the
   server. Mechanical, since drpc carries metadata, and worth doing.
 

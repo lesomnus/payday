@@ -168,6 +168,20 @@ func Cors(is func(origin string) bool, next http.Handler) http.Handler {
 			h.Set("Access-Control-Allow-Origin", origin)
 			h.Set("Access-Control-Expose-Headers", expose)
 
+			// Cookies, which is what a session is carried in; see
+			// `auth/authsession`. Without this a page on another origin --
+			// every `npm run dev` -- neither receives the cookie a sign-in sets
+			// nor sends it back, and the symptom is a login that works in
+			// `curl` and does nothing in a browser.
+			//
+			// It is not a second setting, because the trust decision was
+			// already made: this branch is only reached for an origin somebody
+			// wrote down, and the origin is echoed rather than `*` -- which a
+			// browser refuses to combine with credentials anyway. An app that
+			// named an origin it does not trust has a larger problem than this
+			// header.
+			h.Set("Access-Control-Allow-Credentials", "true")
+
 			// The answer depends on who asked, so a cache in front of this must
 			// not serve one origin's answer to another.
 			h.Add("Vary", "Origin")

@@ -64,6 +64,13 @@ type Server struct {
 	Walled  app.Server
 	Ungated app.Server
 
+	// Auth is how a credential is read, and nothing here is [auth.Plain].
+	//
+	// It is set after [Build] rather than being one of its arguments, because
+	// what reads a credential is often built from what [Build] made -- a
+	// session handler needs a store, and a store is a table in this database.
+	Auth auth.Handler
+
 	// Spin is whatever this deployment has to run besides answering requests.
 	// It is a slice rather than a method because a server with nothing to run
 	// should write nothing at all; see `payday/spin`.
@@ -183,9 +190,20 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 	// Who is calling comes first, since everything after it reads the frame.
 	// `Plain` believes what the caller writes, which is right for a sandbox
 	// and for tests and is not something to serve where anyone can reach it.
+	//
+	// [Server.Auth] replaces it, which is how a deployment reads something
+	// else -- a certificate, a token, a session cookie. It is a field rather
+	// than a configuration setting for the reason payday suggests two
+	// deployments rather than a flag: a mistake in a YAML file must not be able
+	// to turn authentication off.
+	h := s.Auth
+	if h == nil {
+		h = auth.Plain()
+	}
+
 	chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
-		WithUnary(auth.InterceptorUnary(auth.Plain(), Resolver(s.Ungated), auth.PublicDefault)).
-		WithStream(auth.InterceptorStream(auth.Plain(), Resolver(s.Ungated), auth.PublicDefault)).
+		WithUnary(auth.InterceptorUnary(h, Resolver(s.Ungated), auth.PublicDefault)).
+		WithStream(auth.InterceptorStream(h, Resolver(s.Ungated), auth.PublicDefault)).
 		WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant())).
 		With(gate.Interceptor(nil)).
 		With(s.Watch.Interceptor()).
