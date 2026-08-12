@@ -56,6 +56,49 @@ func login(ctx context.Context, r *http.Request) (authsession.Session, error) {
 
 That is the whole of it. What follows is the parts people get wrong.
 
+## Or serve it as an RPC
+
+`Serve` is a wrapper. What it wraps is exported, so a sign-in does not have to
+be the one endpoint in a different protocol from everything else your app
+offers:
+
+```go
+func (s server) SignIn(ctx context.Context, req *app.SignInRequest) (*app.SignInResponse, error) {
+	v, err := verify(ctx, req)   // whatever checking a secret means here
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "no")
+	}
+
+	_, c, err := sessions.Mint(ctx, v)
+	if err != nil {
+		return nil, err
+	}
+
+	return &app.SignInResponse{}, grpc.SetHeader(ctx,
+		metadata.Pairs("set-cookie", c.String()))
+}
+```
+
+It sounds as though it should not work — a cookie is an HTTP response header
+and a gRPC handler has no response writer — and it does. `set-cookie` as
+response metadata reaches the browser through [`web.Transcode`](../../web) as a
+header like any other, and the cookie it sends back arrives as request
+metadata, which is where `Sessions.Handler` already reads one.
+
+`sessions.End(ctx, key)` is the other half, and returns the cookie that clears
+it.
+
+**Why you might want this.** A schema is one definition every language
+generates from, so a sign-in declared there has the same shape in Go, in
+TypeScript and in anything else — rather than one call somebody implements by
+reading a document. In an app whose every other operation is an RPC, the odd
+one out is the one that gets implemented differently in each client.
+
+**What you give up.** `Serve` maps failures to statuses for you — 401 for a
+refusal, 503 for a store that would not take it, 204 and no body. An RPC maps
+them to whatever its own contract says, and `Mint` answers `ErrNobody` for a
+session that names nobody so you can tell the two apart.
+
 ## Do I need Hydra, or an OIDC provider at all?
 
 **One app: no.** The app checks the secret, sets its own cookie, and reads it

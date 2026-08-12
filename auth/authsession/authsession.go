@@ -462,33 +462,45 @@ func (s *Sessions) Serve(verify Verify) http.Handler {
 	})
 }
 
-func (s *Sessions) mint(w http.ResponseWriter, r *http.Request, verify Verify) {
-	ctx := r.Context()
+// ErrNobody is a session that names no actor.
+//
+// Minting one would make a cookie that resolves to nothing on every later call,
+// and the sign-in would look like it worked -- which is the failure somebody
+// spends an afternoon on, because every part of it succeeded.
+var ErrNobody = errors.New("authsession: this session names nobody")
 
-	v, err := verify(ctx, r)
-	if err != nil {
-		// One answer for every way a sign-in can fail, and no detail. Which
-		// half was wrong is exactly what somebody working through a list of
-		// addresses is asking.
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-
-		return
-	}
+// Mint puts a session in the store and answers with the cookie that names it.
+//
+// # Why this is not only [Sessions.Serve]
+//
+// Because a sign-in is not necessarily an HTTP handler. It looked like one
+// while payday served exactly one shape of it, and a deployment that defines
+// its own `AuthService` -- so that every language gets the same sign-in from
+// generated code, rather than one language reading a document -- needs these
+// three lines and none of the request handling around them.
+//
+// It works over a transcoder, which is worth saying because it sounds as though
+// it should not: a gRPC handler sets `set-cookie` as response metadata and
+// `web.Transcode` hands it to the browser as a header like any other. Confirmed
+// by running it.
+//
+// The caller owns the answer. `Serve` maps a refusal to 401 and a store that
+// would not take it to 503; an RPC maps them to whatever its own contract says.
+//
+// `v` is what a [Verify] answered with, and this fills the rest: the key, and
+// whichever of the two clocks it left unset.
+func (s *Sessions) Mint(ctx context.Context, v Session) (Session, *http.Cookie, error) {
 	if v.Id == "" {
-		// A verify that answered nobody. Minting here would make a cookie that
-		// resolves to nothing on every later call, and the sign-in would look
-		// like it worked.
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-
-		return
+		return Session{}, nil, ErrNobody
 	}
 
-	v.Key, err = key()
+	k, err := key()
 	if err != nil {
-		http.Error(w, "cannot sign in just now", http.StatusServiceUnavailable)
-
-		return
+		return Session{}, nil, fmt.Errorf("authsession: %w", err)
 	}
+
+	v.Key = k
+
 	now := time.Now()
 	if v.Expires.IsZero() {
 		v.Expires = now.Add(s.lifetime)
@@ -501,12 +513,10 @@ func (s *Sessions) mint(w http.ResponseWriter, r *http.Request, verify Verify) {
 	}
 
 	if err := s.store.Put(ctx, v); err != nil {
-		http.Error(w, "cannot sign in just now", http.StatusServiceUnavailable)
-
-		return
+		return Session{}, nil, fmt.Errorf("authsession: %w", err)
 	}
 
-	http.SetCookie(w, &http.Cookie{
+	return v, &http.Cookie{
 		Name:  s.cookie,
 		Value: v.Key,
 		Path:  s.path,
@@ -522,24 +532,28 @@ func (s *Sessions) mint(w http.ResponseWriter, r *http.Request, verify Verify) {
 		HttpOnly: true,
 		Secure:   s.secure,
 		SameSite: s.sameSite,
-	})
-
-	w.WriteHeader(http.StatusNoContent)
+	}, nil
 }
 
-func (s *Sessions) end(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(s.cookie); err == nil && c.Value != "" {
-		// A store that refuses is not reported. The caller asked to be signed
-		// out and the cookie below is cleared either way; answering 503 would
-		// leave somebody looking at a page that says they are still signed in.
-		// What the store keeps expires on its own.
-		_ = s.store.Del(r.Context(), c.Value)
+// End deletes a session and answers with the cookie that clears it.
+//
+// A store that refuses is not reported, and that is the whole of the error
+// handling: the caller asked to be signed out and the cookie clears either way.
+// Answering with a failure would leave somebody looking at a page that says
+// they are still signed in, and what the store kept expires on its own.
+//
+// An empty key is a caller with no cookie, which is somebody signing out twice.
+// It is not an error; the cookie comes back regardless, so the browser is left
+// in the state that was asked for.
+func (s *Sessions) End(ctx context.Context, key string) *http.Cookie {
+	if key != "" {
+		_ = s.store.Del(ctx, key)
 	}
 
 	// Cleared with the same attributes it was set with. A browser matches a
 	// cookie to overwrite by name, path and domain, so one cleared at a
 	// different path leaves the original exactly where it was.
-	http.SetCookie(w, &http.Cookie{
+	return &http.Cookie{
 		Name:     s.cookie,
 		Value:    "",
 		Path:     s.path,
@@ -547,8 +561,46 @@ func (s *Sessions) end(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure:   s.secure,
 		SameSite: s.sameSite,
-	})
+	}
+}
 
+func (s *Sessions) mint(w http.ResponseWriter, r *http.Request, verify Verify) {
+	ctx := r.Context()
+
+	v, err := verify(ctx, r)
+	if err != nil {
+		// One answer for every way a sign-in can fail, and no detail. Which
+		// half was wrong is exactly what somebody working through a list of
+		// addresses is asking.
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+		return
+	}
+
+	_, c, err := s.Mint(ctx, v)
+	if err != nil {
+		if errors.Is(err, ErrNobody) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		http.Error(w, "cannot sign in just now", http.StatusServiceUnavailable)
+
+		return
+	}
+
+	http.SetCookie(w, c)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Sessions) end(w http.ResponseWriter, r *http.Request) {
+	var was string
+	if c, err := r.Cookie(s.cookie); err == nil {
+		was = c.Value
+	}
+
+	http.SetCookie(w, s.End(r.Context(), was))
 	w.WriteHeader(http.StatusNoContent)
 }
 
