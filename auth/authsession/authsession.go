@@ -327,6 +327,35 @@ func New(store Store, opts ...Option) *Sessions {
 // The cookie arrives as ordinary gRPC metadata. A browser cannot speak gRPC, so
 // its call came through `web`'s transcoder, and headers travel across that as
 // metadata -- `cookie` among them.
+// KeyOf is the session a `cookie` header names, and empty for one that names
+// none.
+//
+// Exported because a sign-out has to read it and a sign-out is not necessarily
+// an HTTP handler: [Sessions.End] takes the key, and something has to get it
+// out of the metadata a gRPC handler was called with. [Sessions.Handler] does
+// the same thing on the way in and now does it through here, so there is one
+// answer to "which cookie is ours" rather than two that agree today.
+//
+// A header this cannot read is not a credential and is skipped. Something else
+// in the chain may still find one.
+func (s *Sessions) KeyOf(cookies []string) string {
+	key := ""
+	for _, line := range cookies {
+		cs, err := http.ParseCookie(line)
+		if err != nil {
+			continue
+		}
+
+		for _, c := range cs {
+			if c.Name == s.cookie {
+				key = c.Value
+			}
+		}
+	}
+
+	return key
+}
+
 func (s *Sessions) Handler() auth.Handler {
 	return auth.HandlerFunc(func(ctx context.Context) (auth.Identity, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
@@ -334,21 +363,7 @@ func (s *Sessions) Handler() auth.Handler {
 			return auth.Identity{}, auth.ErrNoCredential
 		}
 
-		key := ""
-		for _, line := range md.Get("cookie") {
-			cs, err := http.ParseCookie(line)
-			if err != nil {
-				// A header this cannot read is not a credential. Something else
-				// in the chain may still find one.
-				continue
-			}
-
-			for _, c := range cs {
-				if c.Name == s.cookie {
-					key = c.Value
-				}
-			}
-		}
+		key := s.KeyOf(md.Get("cookie"))
 		if key == "" {
 			return auth.Identity{}, auth.ErrNoCredential
 		}

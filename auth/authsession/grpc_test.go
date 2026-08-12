@@ -39,7 +39,7 @@ func (s signer) Introspect(ctx context.Context, req *pdpb.TokenIntrospectRequest
 	if req.GetToken() == "out" {
 		var was string
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
-			was = cookieOf(md.Get("cookie"), "pd_session")
+			was = s.sessions.KeyOf(md.Get("cookie"))
 		}
 
 		return &pdpb.TokenIntrospectResponse{}, grpc.SetHeader(ctx,
@@ -62,19 +62,6 @@ func (s signer) Introspect(ctx context.Context, req *pdpb.TokenIntrospectRequest
 	}
 
 	return pdpb.TokenIntrospectResponse_builder{Alias: v.Id}.Build(), nil
-}
-
-func cookieOf(vs []string, name string) string {
-	for _, v := range vs {
-		for _, part := range strings.Split(v, ";") {
-			k, w, ok := strings.Cut(strings.TrimSpace(part), "=")
-			if ok && k == name {
-				return w
-			}
-		}
-	}
-
-	return ""
 }
 
 // TestASignInCanBeAnRpc is why [Sessions.Mint] is exported.
