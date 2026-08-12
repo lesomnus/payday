@@ -30,7 +30,7 @@ import { deleteDisk, openDisk } from '@lesomnus/payday/store/idb'
 import { entities, Robot, Tenant } from '../gen/entities.js'
 import { RobotSchema, type Robot as RobotMsg } from '../gen/app/robot_pb.js'
 import { RobotService, RobotListResponseSchema } from '../gen/app/robot_svc_pb.js'
-import { TenantSchema } from '../gen/payday/tenant_pb.js'
+import { TenantSchema } from '../gen/app/payday/tenant_pb.js'
 import { RobotDomain, TenantDomain } from '../gen/domains.js'
 
 let at: { name: string; identity: string }

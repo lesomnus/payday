@@ -15,11 +15,14 @@ import { useState } from 'react'
 import { useCall, useQuery, useRow } from '@lesomnus/payday/react'
 import { key } from '@lesomnus/payday/store'
 
+// `gen/` mirrors `proto/`, so these begin with the proto package -- and
+// payday's own entities are inside it, at `gen/app/payday/`. See `client.ts`.
+// `entities.js` is payday's own and is at the root of `gen/`.
 import { Tenant } from '../gen/entities.js'
 import type { Thing } from '../gen/app/thing_pb.js'
-import type { Tenant as TenantMsg } from '../gen/payday/tenant_pb.js'
+import type { Tenant as TenantMsg } from '../gen/app/payday/tenant_pb.js'
 import { ThingService } from '../gen/app/thing_svc_pb.js'
-import { TenantService } from '../gen/payday/tenant_svc_pb.js'
+import { TenantService } from '../gen/app/payday/tenant_svc_pb.js'
 
 export function Page(props: { who: string; onSignOut: () => void }): React.ReactNode {
 	// `@acme/admin` -- the tenant this credential is inside.

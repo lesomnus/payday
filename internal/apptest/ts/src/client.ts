@@ -30,9 +30,9 @@
 
 import { createClient, type Client, type Transport } from '@connectrpc/connect'
 
-import { TenantService } from '../gen/payday/tenant_svc_pb.js'
-import { HolderService } from '../gen/payday/holder_svc_pb.js'
-import { AuditService } from '../gen/payday/audit_svc_pb.js'
+import { TenantService } from '../gen/app/payday/tenant_svc_pb.js'
+import { HolderService } from '../gen/app/payday/holder_svc_pb.js'
+import { AuditService } from '../gen/app/payday/audit_svc_pb.js'
 import { RobotService } from '../gen/app/robot_svc_pb.js'
 import { JointService, FleetService, CellService } from '../gen/app/robot_svc_pb.js'
 import { BatchService } from '@lesomnus/payday/pdpb'

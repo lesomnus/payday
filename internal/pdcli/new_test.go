@@ -3,6 +3,8 @@ package pdcli_test
 import (
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -54,6 +56,94 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 		"ts/src/client.ts",
 	} {
 		x.Contains(vs, want)
+	}
+}
+
+// TestTheTemplateImportsWhatGenerationWrites.
+//
+// The template's TypeScript names generated modules by path, and nothing else
+// checks that those paths are the ones `pd gen --ts` produces: the Go half is
+// compiled by the slow test below, and the TypeScript half is not compiled by
+// anything -- it needs an `npm install` in a tree that has been generated.
+//
+// So it was wrong, in four lines, from the first commit. `gen/` mirrors
+// `proto/`, and payday's entities are copied **into** the app's proto package
+// -- `gen/app/payday/tenant_svc_pb.js`. The template asked for
+// `gen/payday/tenant_svc_pb.js`, and the reason that is easy to write and hard
+// to see is that `gen/payday/` **exists**: it holds `entity_pb.ts`, the
+// descriptor for the `(payday.entity)` option. The import resolves to a real
+// directory and finds no module in it.
+//
+// What this derives the answer from is the two things a generation reads -- the
+// app's own `.proto` files and payday's schema directory -- rather than a list
+// written out here, which would be the same mistake one level up.
+func TestTheTemplateImportsWhatGenerationWrites(t *testing.T) {
+	x := require.New(t)
+
+	dir := filepath.Join(t.TempDir(), "app")
+	x.NoError((pdcli.New{Dir: dir, Module: "github.com/acme/thing"}).Write())
+
+	// payday writes these itself, at the root of `gen/` rather than under any
+	// package: they are one declaration per entity for the local store, and
+	// there is no `.proto` they correspond to.
+	want := []string{"../gen/entities.js", "../gen/domains.js"}
+
+	// One `.proto` becomes a module for its messages and one for the contract
+	// generated from it, both named after the file.
+	add := func(from string, under string) {
+		vs, err := os.ReadDir(from)
+		x.NoError(err)
+
+		for _, v := range vs {
+			name := v.Name()
+			if !strings.HasSuffix(name, ".proto") || strings.HasSuffix(name, ".g.proto") {
+				continue
+			}
+
+			stem := strings.TrimSuffix(name, ".proto")
+			want = append(want, under+stem+"_pb.js", under+stem+"_svc_pb.js")
+		}
+	}
+
+	pkg := "../gen/" + pdcli.ProtoPkgDefault + "/"
+	add(filepath.Join(dir, pdcli.DirProto, pdcli.ProtoPkgDefault), pkg)
+
+	// And payday's, **inside** the app's package rather than beside it. This is
+	// the line the bug was in.
+	schema, err := pdcli.SchemaDir()
+	x.NoError(err)
+	add(schema, pkg+"payday/")
+
+	// Every generated module the template names.
+	from := regexp.MustCompile(`from '(\.\./gen/[^']+)'`)
+
+	var got []string
+	root := filepath.Join(dir, "ts", "src")
+	x.NoError(filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+
+		rel, _ := filepath.Rel(dir, p)
+		for _, m := range from.FindAllSubmatch(b, -1) {
+			got = append(got, string(m[1])+"\t"+filepath.ToSlash(rel))
+		}
+
+		return nil
+	}))
+
+	x.NotEmpty(got, "the template names no generated module, so this checks nothing")
+
+	for _, v := range got {
+		path, where, _ := strings.Cut(v, "\t")
+		x.True(slices.Contains(want, path),
+			"%s imports %s, which no generation writes.\n\nWhat there is:\n  %s",
+			where, path, strings.Join(want, "\n  "))
 	}
 }
 

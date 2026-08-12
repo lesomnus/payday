@@ -26,7 +26,7 @@ import { Store } from '@lesomnus/payday/store'
 
 import { entities, Robot, Tenant } from '../gen/entities.js'
 import { RobotService } from '../gen/app/robot_svc_pb.js'
-import { TenantService } from '../gen/payday/tenant_svc_pb.js'
+import { TenantService } from '../gen/app/payday/tenant_svc_pb.js'
 import { RobotDomain } from '../gen/domains.js'
 import type { Robot as RobotMsg } from '../gen/app/robot_pb.js'
 

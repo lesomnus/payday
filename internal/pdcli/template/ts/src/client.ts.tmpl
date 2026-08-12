@@ -13,14 +13,29 @@
  * The transport is the only thing that changes between a real server and the
  * sandbox, and nothing above this file knows which it got.
  *
+ * # The import paths
+ *
+ * `gen/` mirrors `proto/`, so every path below begins with this app's **proto
+ * package** -- `app` until the schema says otherwise. payday's own entities are
+ * copied *into* that package rather than beside it, which is why a Tenant is at
+ * `gen/app/payday/` and is `app.Tenant` on the wire.
+ *
+ * `gen/payday/` is a different directory that also exists, and it is not this
+ * one: it holds `entity_pb.ts`, the descriptor for the `(payday.entity)` option.
+ * An import that lands there resolves to a directory and fails to find the
+ * module, which reads like a generation that did not happen.
+ *
+ * Rename the package and these move with it. `pd gen` reads it off the schema
+ * and will not rewrite the TypeScript you wrote.
+ *
  * @module
  */
 
 import { createClient, type Client, type Transport } from '@connectrpc/connect'
 
 import { ThingService } from '../gen/app/thing_svc_pb.js'
-import { TenantService } from '../gen/payday/tenant_svc_pb.js'
-import { HolderService } from '../gen/payday/holder_svc_pb.js'
+import { TenantService } from '../gen/app/payday/tenant_svc_pb.js'
+import { HolderService } from '../gen/app/payday/holder_svc_pb.js'
 import { BatchService } from '@lesomnus/payday/pdpb'
 
 export interface App {
