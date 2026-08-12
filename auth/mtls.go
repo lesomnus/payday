@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -22,6 +23,7 @@ const MethodMTLS = "mtls"
 //
 //	URI SAN     spiffe://example.com/@acme/admin   -> @acme/admin
 //	URI SAN     x:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
+//	URI SAN     urn:hday:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
 //	Common Name @acme/admin
 //
 // A certificate may carry **several** names, and they are told apart by the
@@ -238,8 +240,39 @@ func certIdentity(cert *x509.Certificate) (Identity, bool, error) {
 
 // sanValue is what a URI SAN says, whichever of the two shapes it is written
 // in.
+//
+// # The namespace in front of the name is not read
+//
+// A URI SAN is a name inside somebody's namespace, and payday reads the name.
+// It already ignored the **scheme** -- `x:` in the example above means nothing,
+// and any other scheme would have done -- so this ignores whatever else is in
+// front of the name for the same reason: which namespace a deployment issues
+// its certificates in is the deployment's, and payday has no opinion to have
+// about it.
+//
+//	x:0199c3f4-...          -> 0199c3f4-...
+//	urn:hday:0199c3f4-...   -> 0199c3f4-...
+//	urn:uuid:0199c3f4-...   -> 0199c3f4-...
+//
+// The last one is worth knowing about: `uuid` is the one URN namespace that is
+// actually registered (RFC 4122), so a deployment that wanted a form nobody has
+// to be told about would write that.
+//
+// It is safe to cut at the last colon because nothing payday accepts contains
+// one. An identifier is a UUID and a name is `@tenant/alias`, whose alias is
+// lowercase letters, digits and single hyphens -- see [ParseName]. A value with
+// a colon in it was never a name this could read, so cutting cannot turn a
+// refusal into an acceptance of something else.
+//
+// The hierarchical shape needs none of this. `spiffe://example.com/@acme/admin`
+// puts the name in the path, and what is in front of it is the authority, which
+// is already not read.
 func sanValue(u *url.URL) string {
 	if u.Opaque != "" {
+		if i := strings.LastIndexByte(u.Opaque, ':'); i >= 0 {
+			return u.Opaque[i+1:]
+		}
+
 		return u.Opaque
 	}
 

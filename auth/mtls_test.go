@@ -98,6 +98,56 @@ func TestACertificateMayNameMoreThanOneThing(t *testing.T) {
 	})
 }
 
+// TestTheNamespaceInFrontOfTheNameIsNotRead.
+//
+// A URI SAN is a name inside somebody's namespace, and what this reads is the
+// name. The scheme was already ignored -- `hday:` above means nothing, and any
+// other word would have done -- so ignoring whatever else is in front of the
+// name is the same rule rather than a new liberty.
+//
+// It is here because of a real certificate. An app issuing device certificates
+// wrote `urn:hday:{uuid}`, which is the ordinary way to spell a name in a
+// namespace of one's own, and this refused every one of them: the opaque part
+// of that URI is `hday:{uuid}`, which is neither an identifier nor a name. Two
+// systems that had independently agreed on UUIDv8 with a domain byte, and on a
+// certificate carrying both the caller and its tenant, could not read each
+// other over one colon.
+func TestTheNamespaceInFrontOfTheNameIsNotRead(t *testing.T) {
+	robot := pdid.New(domainRobot)
+	tenant := pdid.New(domainTenant)
+
+	for _, form := range []string{
+		// The scheme carries it, which is what payday's own examples write.
+		"hday:",
+		// A namespace of one's own, and what an app was actually issuing.
+		"urn:hday:",
+		// The one URN namespace that is registered (RFC 4122), for a deployment
+		// that wants a form nobody has to be told about.
+		"urn:uuid:",
+	} {
+		t.Run(form, func(t *testing.T) {
+			x := require.New(t)
+
+			v, ok, err := certIdentity(certOf(t, form+robot.String(), form+tenant.String()))
+			x.NoError(err)
+			x.True(ok)
+			x.Equal(robot.String(), v.Id)
+			x.Equal(tenant.String(), v.TenantId)
+		})
+	}
+
+	// And the half that makes cutting safe. Nothing payday accepts holds a
+	// colon, so a value that has one was never a name this could read -- and
+	// cutting at the last one must not turn that refusal into an acceptance of
+	// whatever came after it.
+	t.Run("a name it never could read is still refused", func(t *testing.T) {
+		x := require.New(t)
+
+		_, _, err := certIdentity(certOf(t, "urn:dev:mac:0024beffff804ff1"))
+		x.ErrorIs(err, ErrAmbiguous)
+	})
+}
+
 // TestACertificateThatAnswersOneQuestionTwiceIsRefused.
 //
 // Sorting by domain is what makes several names readable, and it is exactly why
