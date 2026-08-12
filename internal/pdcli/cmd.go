@@ -283,7 +283,17 @@ func NewCmdEntityAdd() *xli.Command {
 				return err
 			}
 
-			cmd.Printf("pd: %s is in %s\n", name, l.Rel(DirProto, "app", filepath.Base(p)))
+			// The path `Add` actually wrote, rather than one rebuilt from the
+			// pieces it was given. Rebuilding it is what printed
+			// `proto/app/fleet.proto` for a file that went to
+			// `proto/hday.oasys/` -- a second answer to a question already
+			// answered, and the one a person reads.
+			where := p
+			if v, err := filepath.Rel(l.Work, p); err == nil {
+				where = filepath.ToSlash(v)
+			}
+
+			cmd.Printf("pd: %s is in %s\n", name, where)
 			cmd.Println("    write its fields, then `pd gen`")
 
 			return nil

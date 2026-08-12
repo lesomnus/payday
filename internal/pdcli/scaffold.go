@@ -68,7 +68,11 @@ func (e Entity) Add() (string, error) {
 		return "", fmt.Errorf("an entity is behind the wall or it is not; pick one of --tenanted, --tenant, --global")
 	}
 
-	dir := e.Layout.Path(DirProto, "app")
+	// Beside this app's other entities, which is the directory named after its
+	// proto package rather than after the one `pd new` happens to write. An app
+	// that renamed its package would otherwise get a second one here, and
+	// generation refuses two -- correctly, and after the file is written.
+	dir := e.Layout.Path(DirProto, e.Layout.ProtoPkg)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
@@ -188,19 +192,29 @@ var domainAt = regexp.MustCompile(`(?m)^\s*domain:\s*(\d+)`)
 
 var valid = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
 
+// head is the top of a new .proto: what this app's other entities say, read off
+// the layout rather than written out.
+//
+// All three of these were the template's defaults hard-coded, and all three are
+// wrong for any app that moved: the package, the Go the messages land in, and
+// the import. The last one was wrong even at the defaults -- payday's entities
+// are copied **into** the app's package, so the tenant is at
+// `app/payday/tenant.proto` and never at `payday/tenant.proto`. What is at the
+// second path is nothing; it is the shape of a schema payday stopped writing
+// when two payday apps first had to share a process.
 func (e Entity) head() string {
 	return fmt.Sprintf(`edition = "2023";
 
-package app;
+package %s;
 
-import "payday/tenant.proto";
+import "%s/payday/tenant.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
 import "payday.proto";
 
 option features.field_presence = IMPLICIT;
 option go_package = %q;
-`, e.Layout.Module)
+`, e.Layout.ProtoPkg, e.Layout.ProtoPkg, e.Layout.GoPackage())
 }
 
 func (e Entity) message(domain int) string {

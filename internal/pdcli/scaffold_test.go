@@ -166,6 +166,62 @@ func TestWhatIsWrittenIsWhatTheGeneratorWillTake(t *testing.T) {
 	x.Contains(src, "Nothing about tenancy, which is the declaration")
 	x.Contains(src, `name: "page"`, "a list with no index scans the table")
 	x.Contains(src, `option go_package = "github.com/acme/thing"`)
+
+	// The tenant, where a generation puts it. payday's entities are copied
+	// **into** the app's proto package, so this is `app/payday/` even for an app
+	// that kept every default -- and `proto/payday/` is a path nothing writes.
+	x.Contains(src, `import "app/payday/tenant.proto";`)
+}
+
+// TestAnEntityIsWrittenInThisAppsPackage, and not in the one `pd new` happens to
+// write.
+//
+// Three things in the head of a new .proto are the app's and all three were the
+// template's defaults hard-coded: the proto package, the Go package the messages
+// land in, and the import that reaches the tenant. Every one of them is read off
+// the layout, which reads them off the schema -- so an app that renamed its
+// package says so once and everything follows.
+//
+// What it cost is worth keeping: run against an app whose package is its own,
+// this wrote `proto/app/fleet.proto` declaring `package app` and a `go_package`
+// pointing at the module root. `pd gen` then refused the app for declaring two
+// of each, which is the right answer arriving after the file is on disk.
+func TestAnEntityIsWrittenInThisAppsPackage(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "hday.io/kamino")
+
+	// An app at none of the defaults: a package of its own, and its messages
+	// under `api/` rather than at the module root.
+	dir := filepath.Join(root, "proto", "hday.oasys")
+	x.NoError(os.MkdirAll(dir, 0o755))
+	x.NoError(os.WriteFile(filepath.Join(dir, "robot.proto"), []byte(
+		"edition = \"2023\";\n\npackage hday.oasys;\n\noption go_package = \"hday.io/kamino/api\";\n"), 0o644))
+
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+	x.Equal("hday.oasys", l.ProtoPkg)
+
+	p, err := (pdcli.Entity{Layout: l, Name: "Fleet", Tenanted: true}).Add()
+	x.NoError(err)
+
+	rel, err := filepath.Rel(root, p)
+	x.NoError(err)
+	x.Equal(filepath.Join("proto", "hday.oasys", "fleet.proto"), rel,
+		"it went into a package this app does not have")
+
+	b, err := os.ReadFile(p)
+	x.NoError(err)
+	src := string(b)
+
+	x.Contains(src, "package hday.oasys;")
+	x.NotContains(src, "package app;")
+	x.Contains(src, `option go_package = "hday.io/kamino/api"`)
+	x.Contains(src, `import "hday.oasys/payday/tenant.proto";`)
+
+	// And the domain is still one past the highest, which is the other half of
+	// what this command is for. Nothing here declares one, so it is the first.
+	x.Contains(src, "domain: 7")
 }
 
 // TestASecondEntityGoesBesideTheFirst rather than replacing the file.
