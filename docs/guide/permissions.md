@@ -381,17 +381,24 @@ the response; CloudTrail splits management events from data events and bills
 them apart.
 
 So if you need it, it is a second stream and not this table. What makes it an
-audit record is not where it is stored but three properties this table gets from
-being a table and a log pipeline usually does not:
+audit record is not where it is stored but three properties:
 
-- it is not gated by a level somebody turns off in production
-- it is not dropped under backpressure
-- its subject cannot delete it
+| | |
+| --- | --- |
+| it is not gated by a level somebody turns off | **payday's**, and it is why `authenticated` is `Info` |
+| it is not dropped under backpressure | **yours** — a synchronous processor and an exporter that blocks |
+| its subject cannot delete it | **yours** — where the pipeline lands |
 
-payday cannot arrange any of the three for you. What it does is emit an
-`authenticated` line at **Info** for every call it serves — who, from which
-credential type, in which tenant — which is the one read-shaped event most
-deployments want and the cheapest to keep.
+The second is a configuration and not a limitation of logs. OTel's default
+processor batches and may drop; a simple one exports each record and waits.
+`otel:` is the OpenTelemetry Collector's own configuration language inlined, and
+payday adds only what your file did not name — so a deployment that describes a
+synchronous pipeline gets that, unmodified.
+
+payday's part is the one you cannot configure your way to: an `authenticated`
+line for **every call it serves**, at a level a deployment keeps — who, from
+which credential type, in which tenant. That is the read-shaped event most
+deployments want, and the delivery guarantee is yours to choose.
 
 ---
 

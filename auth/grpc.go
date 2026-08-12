@@ -187,10 +187,14 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				// It is a log and not an audit row, and the difference is
 				// delivery rather than the word: a trail row is bound to the
 				// transaction it describes, and there is no transaction here
-				// because nothing changed. What this needs instead is to
-				// survive production and reach somewhere its subject cannot
-				// edit -- neither of which this package can arrange, and both
-				// of which a deployment must. See `docs/guide/permissions.md`.
+				// because nothing changed.
+				//
+				// What a deployment does with it is a pipeline it configures --
+				// a synchronous processor is a setting rather than a property
+				// logs lack, and where the records land decides whether their
+				// subject can delete them. Neither is this package's to choose.
+				// Emitting the line at all, for every call, at a level a
+				// deployment keeps, is. See `docs/guide/permissions.md`.
 				log.From(ctx).InfoContext(ctx, "authenticated",
 					slog.String("auth.method", id.Method),
 					slog.String("actor.id", f.Actor.String()),
