@@ -356,8 +356,42 @@ operator changing a customer's row leaves a record the customer can read, and
 the actor's tenant is a second column so headquarters can read it too — neither
 needs a scope wide enough to see the other.
 
+A field declared `secret` is **not** in it. The layer that clears those on the
+way out is in front of the sink and the recorder is behind it — deliberately, so
+a row is recorded as it was written rather than as somebody was allowed to see
+it. That is right for every column but a verifier, which in the trail would be a
+second copy of itself, in the one table nothing erases.
+
 Reads go through `AuditService.List`, filtered by object, actor, object tenant
 or actor tenant.
+
+### What the trail is not
+
+**It records writes.** A read leaves nothing here, and that is not an omission
+to fix by widening it: `object_id` is the thing that changed, `patch` is the
+delta and `value` is the state, and a `List` has none of the three. Reads also
+outnumber writes by orders of magnitude, and mixing them turns "what happened to
+this row" into a scan of the one table that never stops growing.
+
+Auditing reads is a real requirement in some deployments — who *looked at* a
+record is the event that matters when the harm is disclosure rather than change.
+Every system that does it keeps it separate: Kubernetes' audit is a log with a
+level per rule, and its recommended policy records reads as metadata only, never
+the response; CloudTrail splits management events from data events and bills
+them apart.
+
+So if you need it, it is a second stream and not this table. What makes it an
+audit record is not where it is stored but three properties this table gets from
+being a table and a log pipeline usually does not:
+
+- it is not gated by a level somebody turns off in production
+- it is not dropped under backpressure
+- its subject cannot delete it
+
+payday cannot arrange any of the three for you. What it does is emit an
+`authenticated` line at **Info** for every call it serves — who, from which
+credential type, in which tenant — which is the one read-shaped event most
+deployments want and the cheapest to keep.
 
 ---
 

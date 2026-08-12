@@ -552,6 +552,28 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
 		g.P("		}")
 		g.P("")
+		if len(v.Secrets) > 0 {
+			// What the entity declared it never answers with, cleared before
+			// the trail holds a copy.
+			//
+			// The layer that does this on the way out is in front of the sink
+			// and this is behind it -- the recorder reads the bare server on
+			// purpose, so that a row is recorded as it was written rather than
+			// as somebody was allowed to see it. Which is right for every
+			// column but these: a verifier written into `value` is a second
+			// copy of it, in the one table nothing erases, reachable by anybody
+			// who may read the trail.
+			//
+			// Found by writing it: an argon2id hash sat in the trail of a
+			// deployment whose `CredentialService` is unregistered and closed
+			// precisely so that it could not be read.
+			//
+			// The row is the one `Get` just answered with and nothing else
+			// holds it, so clearing in place costs no copy.
+			g.P("		hide", v.GoName(), "(row)")
+			g.P("")
+		}
+
 		g.P("		b, err := ", pkgProto.Ident("Marshal"), "(row)")
 		g.P("		if err != nil {")
 		g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")

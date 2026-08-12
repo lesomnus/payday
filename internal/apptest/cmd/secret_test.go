@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 
@@ -65,4 +66,50 @@ func TestTheWriteHalfStillWorks(t *testing.T) {
 	v, err := b.Ent.Robot.Query().Only(ctx)
 	x.NoError(err)
 	x.Equal([]byte("hunter2"), v.Secret, "the write did not land")
+}
+
+// TestASecretIsNotInTheTrail, which is the path the option did not cover.
+//
+// The layer that clears these is in front of the sink; the recorder is behind
+// it, reading the bare server on purpose so that a row is recorded as it was
+// written rather than as somebody was allowed to see it. Right for every column
+// but this one: a verifier in `value` is a second copy of it, in the one table
+// nothing erases, readable by anybody who may read the trail.
+//
+// Found by writing it against roster, where an argon2id hash sat in the trail
+// of a deployment whose `CredentialService` is unregistered and closed
+// precisely so that it could not be read.
+func TestASecretIsNotInTheTrail(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	secret := []byte("hunter2-and-something-long-enough-to-find")
+
+	v, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant[:]}.Build(),
+		Alias:  "arm-02",
+		Secret: secret,
+	}.Build())
+	x.NoError(err)
+
+	// It really was stored -- otherwise this passes because nothing was written.
+	k, err := uuid.FromBytes(v.GetId())
+	x.NoError(err)
+
+	row, err := b.Ent.Robot.Get(ctx, k)
+	x.NoError(err)
+	x.Equal(secret, row.Secret, "the secret was not stored at all")
+
+	vs, err := b.Ent.Audit.Query().All(ctx)
+	x.NoError(err)
+	x.NotEmpty(vs, "nothing was recorded, so this proves nothing")
+
+	found := false
+	for _, w := range vs {
+		x.NotContains(string(w.Value), string(secret), "the trail holds the verifier")
+		if len(w.Value) > 0 {
+			found = true
+		}
+	}
+	x.True(found, "no row carried a value, so the check above never looked at one")
 }

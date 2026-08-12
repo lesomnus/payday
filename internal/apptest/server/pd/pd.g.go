@@ -2311,6 +2311,8 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 			return uuid.Nil, nil, err
 		}
 
+		hideRobot(row)
+
 		b, err := proto.Marshal(row)
 		if err != nil {
 			return uuid.Nil, nil, err

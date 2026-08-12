@@ -176,7 +176,22 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				// The identifiers are the ones that came back, and not the
 				// name the caller wrote: what is worth recording is who the
 				// request was served as.
-				log.From(ctx).DebugContext(ctx, "authenticated",
+				//
+				// **Info, and it was Debug.** Every way of failing here is
+				// already `Warn` or `Error`, so at Debug a deployment kept
+				// every refusal and no success -- which is backwards for the
+				// question this line exists to answer. What an investigation
+				// asks first is who actually got in, and a level most
+				// deployments turn off is not where that belongs.
+				//
+				// It is a log and not an audit row, and the difference is
+				// delivery rather than the word: a trail row is bound to the
+				// transaction it describes, and there is no transaction here
+				// because nothing changed. What this needs instead is to
+				// survive production and reach somewhere its subject cannot
+				// edit -- neither of which this package can arrange, and both
+				// of which a deployment must. See `docs/guide/permissions.md`.
+				log.From(ctx).InfoContext(ctx, "authenticated",
 					slog.String("auth.method", id.Method),
 					slog.String("actor.id", f.Actor.String()),
 					slog.String("actor.tenant", f.Tenant.String()),
