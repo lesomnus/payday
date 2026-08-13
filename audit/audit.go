@@ -66,6 +66,56 @@ type Row struct {
 	// Patch is the document the write was compiled from, and empty for a write
 	// that was not one.
 	Patch []byte
+
+	// Counterpart is the other tenant this write was about, and zero for
+	// nearly every one. It is what [Concerning] put in the context.
+	Counterpart pdid.Id
+}
+
+// concerning is where [Concerning] keeps it.
+type concerning struct{}
+
+// Concerning says that the write about to happen is about `id` as well as
+// whatever it is written on.
+//
+// # What it is for
+//
+// A write with two sides. A row moves from one tenant to another and the record
+// is filed under where it ended up, so the tenant that let it go cannot see the
+// event that took it away -- the one row it most needs is the one it is not a
+// party to. This names that other party, and the wall on the trail counts it.
+//
+// It is deliberately not "the previous tenant". What the pair means is the
+// operation's to know: a transfer says where the row came from, and something
+// else may mean something else by it. What payday decides is only that both
+// tenants may read the row.
+//
+// # Why a context and not an argument
+//
+// Because the write is several calls below whoever knows. An operation that
+// means something -- a Transfer -- is a layer, and what it does is call the
+// generated Patch underneath; the recorder runs below that again, inside the
+// transaction. Nothing in between has a parameter to carry this, and giving
+// every generated write one would be paying for it everywhere for the sake of
+// the one place that has something to say.
+//
+// It travels the way the frame and the trace already do, which is what [Of]
+// reads, so this is the same seam rather than a second one.
+//
+// # It is server-side, and that is the whole of the rule
+//
+// A caller cannot reach this: there is no request field for it, and a layer is
+// the only thing that can put it in a context. What names a tenant here grants
+// that tenant a read of this row, so it has to stay something the deployment's
+// own code says.
+func Concerning(ctx context.Context, id pdid.Id) context.Context {
+	return context.WithValue(ctx, concerning{}, id)
+}
+
+// counterpart is what [Concerning] said, or zero.
+func counterpart(ctx context.Context) pdid.Id {
+	v, _ := ctx.Value(concerning{}).(pdid.Id)
+	return v
 }
 
 // Of answers with the line the trail holds for one write.
@@ -91,10 +141,11 @@ func Of(ctx context.Context, method string, key any, patch proto.Message) (Row, 
 	}
 
 	v := Row{
-		Trace:  traceOf(ctx),
-		Action: method,
-		Object: object,
-		Patch:  doc,
+		Trace:       traceOf(ctx),
+		Action:      method,
+		Object:      object,
+		Patch:       doc,
+		Counterpart: counterpart(ctx),
 	}
 	if f, ok := frame.From(ctx); ok {
 		v.Actor = f.Actor

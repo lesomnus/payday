@@ -51,19 +51,20 @@ const (
 // reason than usual to want any, since a column here is a column on the one
 // table that never stops growing.
 type Audit struct {
-	state                    protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id            []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_TenantId      []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorId       []byte                 `protobuf:"bytes,8,opt,name=actor_id,json=actorId"`
-	xxx_hidden_TraceId       []byte                 `protobuf:"bytes,9,opt,name=trace_id,json=traceId"`
-	xxx_hidden_Action        string                 `protobuf:"bytes,10,opt,name=action"`
-	xxx_hidden_ObjectId      []byte                 `protobuf:"bytes,11,opt,name=object_id,json=objectId"`
-	xxx_hidden_Patch         []byte                 `protobuf:"bytes,12,opt,name=patch"`
-	xxx_hidden_DateCreated   *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
-	xxx_hidden_ActorTenantId []byte                 `protobuf:"bytes,16,opt,name=actor_tenant_id,json=actorTenantId"`
-	xxx_hidden_Value         []byte                 `protobuf:"bytes,17,opt,name=value"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id                  []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_TenantId            []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
+	xxx_hidden_ActorId             []byte                 `protobuf:"bytes,8,opt,name=actor_id,json=actorId"`
+	xxx_hidden_TraceId             []byte                 `protobuf:"bytes,9,opt,name=trace_id,json=traceId"`
+	xxx_hidden_Action              string                 `protobuf:"bytes,10,opt,name=action"`
+	xxx_hidden_ObjectId            []byte                 `protobuf:"bytes,11,opt,name=object_id,json=objectId"`
+	xxx_hidden_Patch               []byte                 `protobuf:"bytes,12,opt,name=patch"`
+	xxx_hidden_DateCreated         *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_ActorTenantId       []byte                 `protobuf:"bytes,16,opt,name=actor_tenant_id,json=actorTenantId"`
+	xxx_hidden_Value               []byte                 `protobuf:"bytes,17,opt,name=value"`
+	xxx_hidden_CounterpartTenantId []byte                 `protobuf:"bytes,18,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *Audit) Reset() {
@@ -161,6 +162,13 @@ func (x *Audit) GetValue() []byte {
 	return nil
 }
 
+func (x *Audit) GetCounterpartTenantId() []byte {
+	if x != nil {
+		return x.xxx_hidden_CounterpartTenantId
+	}
+	return nil
+}
+
 func (x *Audit) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -223,6 +231,13 @@ func (x *Audit) SetValue(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Value = v
+}
+
+func (x *Audit) SetCounterpartTenantId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_CounterpartTenantId = v
 }
 
 func (x *Audit) HasDateCreated() bool {
@@ -328,6 +343,30 @@ type Audit_builder struct {
 	// data has to reckon with the trail, and the answer is a retention policy
 	// rather than an empty column.
 	Value []byte
+	// The **other** tenant this write was about, and unset for nearly every one.
+	//
+	// Some writes have two sides. A row moves from one tenant to another, and the
+	// record of it is filed under where it ended up: `tenant_id` is read off the
+	// row after the write, so the tenant that received it can see what happened
+	// and the tenant that let it go **cannot see the event that took it away**.
+	// The one row it most needs is the one it is not a party to.
+	//
+	// So this is where the other party goes, and the wall counts it. It is not
+	// "the previous tenant": that would be a field about transfers, and the shape
+	// is more general than transfers -- one write, two tenants with a right to
+	// read it. What the pair means is the app's to say, in the operation that
+	// knows.
+	//
+	// It is **not** a list, and that is a decision rather than a first version.
+	// The wall on this table is the OR of equalities, which is what the indexes
+	// below cover; a list would make it a containment test on the one table that
+	// never stops growing, and would make "who can read this row" a property of
+	// the row rather than of the schema. A third party to a single write has not
+	// turned up yet, and if it does it can be argued for then.
+	//
+	// Set through `audit.Concerning`, so it is server-side and never a field of a
+	// request: a caller that could name it could grant a stranger a read.
+	CounterpartTenantId []byte
 }
 
 func (b0 Audit_builder) Build() *Audit {
@@ -344,6 +383,7 @@ func (b0 Audit_builder) Build() *Audit {
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_ActorTenantId = b.ActorTenantId
 	x.xxx_hidden_Value = b.Value
+	x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
 	return m0
 }
 
@@ -351,7 +391,7 @@ var File_app_payday_audit_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xa8\x05\n" +
+	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xd3\x06\n" +
 	"\x05Audit\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
@@ -363,14 +403,17 @@ const file_app_payday_audit_proto_rawDesc = "" +
 	"\x05patch\x18\f \x01(\fR\x05patch\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12.\n" +
 	"\x0factor_tenant_id\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10@R\ractorTenantId\x12\x14\n" +
-	"\x05value\x18\x11 \x01(\fR\x05value:\xbb\x02\xca\xfc\x15\xad\x01\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
+	"\x05value\x18\x11 \x01(\fR\x05value\x12:\n" +
+	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x13counterpartTenantId:\xaa\x03\xca\xfc\x15\xec\x01\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
 	"\tobject_id\x10\v\x1a(\x12\x05trail\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a8\x12\x0fby_actor_tenant\x1a\x13\n" +
 	"\x0factor_tenant_id\x10\x10\x1a\x10\n" +
+	"\fdate_created\x10\x0f\x1a=\x12\x0eby_counterpart\x1a\x19\n" +
+	"\x15counterpart_tenant_id\x10\x12\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a*\x12\bby_actor\x1a\f\n" +
 	"\bactor_id\x10\b\x1a\x10\n" +
-	"\fdate_created\x10\x0f\x8a\xbb\x16\x84\x01\b\x032\\\n" +
+	"\fdate_created\x10\x0f\x8a\xbb\x16\xb4\x01\b\x032u\n" +
 	"\x12\n" +
 	"\x0e\n" +
 	"\fdate_created\x10\x01\n" +
@@ -381,8 +424,9 @@ const file_app_payday_audit_proto_rawDesc = "" +
 	"\n" +
 	"\bactor_id\x1a\v\n" +
 	"\ttenant_id\x1a\x11\n" +
-	"\x0factor_tenant_id 2(\xc8\x01B\x02\n" +
-	"\x00H\x03\"\x1c\x12\ttenant_id\x12\x0factor_tenant_idB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x0factor_tenant_id\x1a\x17\n" +
+	"\x15counterpart_tenant_id 2(\xc8\x01B\x02\n" +
+	"\x00H\x03\"3\x12\ttenant_id\x12\x0factor_tenant_id\x12\x15counterpart_tenant_idB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_payday_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_app_payday_audit_proto_goTypes = []any{

@@ -117,6 +117,20 @@ func (_u *AuditUpdate) SetValue(v []byte) *AuditUpdate {
 	return _u
 }
 
+// SetCounterpartTenantID sets the "counterpart_tenant_id" field.
+func (_u *AuditUpdate) SetCounterpartTenantID(v uuid.UUID) *AuditUpdate {
+	_u.mutation.SetCounterpartTenantID(v)
+	return _u
+}
+
+// SetNillableCounterpartTenantID sets the "counterpart_tenant_id" field if the given value is not nil.
+func (_u *AuditUpdate) SetNillableCounterpartTenantID(v *uuid.UUID) *AuditUpdate {
+	if v != nil {
+		_u.SetCounterpartTenantID(*v)
+	}
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdate) Mutation() *AuditMutation {
 	return _u.mutation
@@ -190,6 +204,9 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
+	}
+	if value, ok := _u.mutation.CounterpartTenantID(); ok {
+		_spec.SetField(audit.FieldCounterpartTenantID, field.TypeUUID, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -301,6 +318,20 @@ func (_u *AuditUpdateOne) SetValue(v []byte) *AuditUpdateOne {
 	return _u
 }
 
+// SetCounterpartTenantID sets the "counterpart_tenant_id" field.
+func (_u *AuditUpdateOne) SetCounterpartTenantID(v uuid.UUID) *AuditUpdateOne {
+	_u.mutation.SetCounterpartTenantID(v)
+	return _u
+}
+
+// SetNillableCounterpartTenantID sets the "counterpart_tenant_id" field if the given value is not nil.
+func (_u *AuditUpdateOne) SetNillableCounterpartTenantID(v *uuid.UUID) *AuditUpdateOne {
+	if v != nil {
+		_u.SetCounterpartTenantID(*v)
+	}
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdateOne) Mutation() *AuditMutation {
 	return _u.mutation
@@ -404,6 +435,9 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 	}
 	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
+	}
+	if value, ok := _u.mutation.CounterpartTenantID(); ok {
+		_spec.SetField(audit.FieldCounterpartTenantID, field.TypeUUID, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Audit{config: _u.config}

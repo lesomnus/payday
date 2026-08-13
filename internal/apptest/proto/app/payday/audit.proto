@@ -143,6 +143,31 @@ message Audit {
   // rather than an empty column.
   bytes value = 17;
 
+  // The **other** tenant this write was about, and unset for nearly every one.
+  //
+  // Some writes have two sides. A row moves from one tenant to another, and the
+  // record of it is filed under where it ended up: `tenant_id` is read off the
+  // row after the write, so the tenant that received it can see what happened
+  // and the tenant that let it go **cannot see the event that took it away**.
+  // The one row it most needs is the one it is not a party to.
+  //
+  // So this is where the other party goes, and the wall counts it. It is not
+  // "the previous tenant": that would be a field about transfers, and the shape
+  // is more general than transfers -- one write, two tenants with a right to
+  // read it. What the pair means is the app's to say, in the operation that
+  // knows.
+  //
+  // It is **not** a list, and that is a decision rather than a first version.
+  // The wall on this table is the OR of equalities, which is what the indexes
+  // below cover; a list would make it a containment test on the one table that
+  // never stops growing, and would make "who can read this row" a property of
+  // the row rather than of the schema. A third party to a single write has not
+  // turned up yet, and if it does it can be argued for then.
+  //
+  // Set through `audit.Concerning`, so it is server-side and never a field of a
+  // request: a caller that could name it could grant a stranger a read.
+  bytes counterpart_tenant_id = 18 [(orm.field) = {type: TYPE_UUID}];
+
   option (orm.message) = {
     rpc: {crud: true}
     indexes: [
@@ -189,6 +214,22 @@ message Audit {
           }
         ]
       },
+      // The third column the wall reads, for the same reason as the second: the
+      // OR is a residual on whichever index the read used, so a column without
+      // one is half the reads scanning.
+      {
+        name: "by_counterpart"
+        refs: [
+          {
+            name: "counterpart_tenant_id"
+            number: 18
+          },
+          {
+            name: "date_created"
+            number: 15
+          }
+        ]
+      },
       {
         name: "by_actor"
         refs: [
@@ -215,9 +256,14 @@ message Audit {
     // -- so what this says is that there is no column here pretending it might.
     erase: {hard: {}}
 
-    // The OR of the two: readable by the tenant whose row changed and by the
-    // tenant whose actor changed it. See the note on `field` in the option.
-    tenanted: {field: "tenant_id", field: "actor_tenant_id"}
+    // The OR of the three: readable by the tenant whose row changed, by the
+    // tenant whose actor changed it, and by the other tenant the write was
+    // about when it had one. See the note on `field` in the option.
+    tenanted: {
+      field: "tenant_id"
+      field: "actor_tenant_id"
+      field: "counterpart_tenant_id"
+    }
 
     // A trail nobody can query is not a trail. The filters are the four
     // identifiers a question is actually asked with -- what happened to this
@@ -230,7 +276,13 @@ message Audit {
         {field: {name: "date_created"}, desc: true},
         {field: {name: "id"}, desc: true}
       ]
-      by: [{name: "object_id"}, {name: "actor_id"}, {name: "tenant_id"}, {name: "actor_tenant_id"}]
+      by: [
+        {name: "object_id"},
+        {name: "actor_id"},
+        {name: "tenant_id"},
+        {name: "actor_tenant_id"},
+        {name: "counterpart_tenant_id"}
+      ]
       size: 50
       max: 200
     }

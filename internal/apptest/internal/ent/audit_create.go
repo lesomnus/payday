@@ -83,6 +83,12 @@ func (_c *AuditCreate) SetValue(v []byte) *AuditCreate {
 	return _c
 }
 
+// SetCounterpartTenantID sets the "counterpart_tenant_id" field.
+func (_c *AuditCreate) SetCounterpartTenantID(v uuid.UUID) *AuditCreate {
+	_c.mutation.SetCounterpartTenantID(v)
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *AuditCreate) SetID(v uuid.UUID) *AuditCreate {
 	_c.mutation.SetID(v)
@@ -146,6 +152,9 @@ func (_c *AuditCreate) check() error {
 	}
 	if _, ok := _c.mutation.Value(); !ok {
 		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "Audit.value"`)}
+	}
+	if _, ok := _c.mutation.CounterpartTenantID(); !ok {
+		return &ValidationError{Name: "counterpart_tenant_id", err: errors.New(`ent: missing required field "Audit.counterpart_tenant_id"`)}
 	}
 	return nil
 }
@@ -217,6 +226,10 @@ func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Value(); ok {
 		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
 		_node.Value = value
+	}
+	if value, ok := _c.mutation.CounterpartTenantID(); ok {
+		_spec.SetField(audit.FieldCounterpartTenantID, field.TypeUUID, value)
+		_node.CounterpartTenantID = value
 	}
 	return _node, _spec
 }

@@ -100,6 +100,11 @@ func Value(v []byte) predicate.Audit {
 	return predicate.Audit(sql.FieldEQ(FieldValue, v))
 }
 
+// CounterpartTenantID applies equality check predicate on the "counterpart_tenant_id" field. It's identical to CounterpartTenantIDEQ.
+func CounterpartTenantID(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldCounterpartTenantID, v))
+}
+
 // TenantIDEQ applies the EQ predicate on the "tenant_id" field.
 func TenantIDEQ(v uuid.UUID) predicate.Audit {
 	return predicate.Audit(sql.FieldEQ(FieldTenantID, v))
@@ -493,6 +498,46 @@ func ValueLT(v []byte) predicate.Audit {
 // ValueLTE applies the LTE predicate on the "value" field.
 func ValueLTE(v []byte) predicate.Audit {
 	return predicate.Audit(sql.FieldLTE(FieldValue, v))
+}
+
+// CounterpartTenantIDEQ applies the EQ predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldCounterpartTenantID, v))
+}
+
+// CounterpartTenantIDNEQ applies the NEQ predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDNEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNEQ(FieldCounterpartTenantID, v))
+}
+
+// CounterpartTenantIDIn applies the In predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldIn(FieldCounterpartTenantID, vs...))
+}
+
+// CounterpartTenantIDNotIn applies the NotIn predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDNotIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNotIn(FieldCounterpartTenantID, vs...))
+}
+
+// CounterpartTenantIDGT applies the GT predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDGT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGT(FieldCounterpartTenantID, v))
+}
+
+// CounterpartTenantIDGTE applies the GTE predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDGTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGTE(FieldCounterpartTenantID, v))
+}
+
+// CounterpartTenantIDLT applies the LT predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDLT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLT(FieldCounterpartTenantID, v))
+}
+
+// CounterpartTenantIDLTE applies the LTE predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDLTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLTE(FieldCounterpartTenantID, v))
 }
 
 // And groups predicates with the AND operator between them.

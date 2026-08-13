@@ -24,21 +24,22 @@ const (
 )
 
 type AuditAddRequest struct {
-	state                    protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id            []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_TenantId      []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorId       []byte                 `protobuf:"bytes,8,opt,name=actor_id,json=actorId"`
-	xxx_hidden_TraceId       []byte                 `protobuf:"bytes,9,opt,name=trace_id,json=traceId"`
-	xxx_hidden_Action        string                 `protobuf:"bytes,10,opt,name=action"`
-	xxx_hidden_ObjectId      []byte                 `protobuf:"bytes,11,opt,name=object_id,json=objectId"`
-	xxx_hidden_Patch         []byte                 `protobuf:"bytes,12,opt,name=patch"`
-	xxx_hidden_DateCreated   *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
-	xxx_hidden_ActorTenantId []byte                 `protobuf:"bytes,16,opt,name=actor_tenant_id,json=actorTenantId"`
-	xxx_hidden_Value         []byte                 `protobuf:"bytes,17,opt,name=value"`
-	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
-	XXX_presence             [1]uint32
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id                  []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_TenantId            []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
+	xxx_hidden_ActorId             []byte                 `protobuf:"bytes,8,opt,name=actor_id,json=actorId"`
+	xxx_hidden_TraceId             []byte                 `protobuf:"bytes,9,opt,name=trace_id,json=traceId"`
+	xxx_hidden_Action              string                 `protobuf:"bytes,10,opt,name=action"`
+	xxx_hidden_ObjectId            []byte                 `protobuf:"bytes,11,opt,name=object_id,json=objectId"`
+	xxx_hidden_Patch               []byte                 `protobuf:"bytes,12,opt,name=patch"`
+	xxx_hidden_DateCreated         *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_ActorTenantId       []byte                 `protobuf:"bytes,16,opt,name=actor_tenant_id,json=actorTenantId"`
+	xxx_hidden_Value               []byte                 `protobuf:"bytes,17,opt,name=value"`
+	xxx_hidden_CounterpartTenantId []byte                 `protobuf:"bytes,18,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
+	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
+	XXX_presence                   [1]uint32
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *AuditAddRequest) Reset() {
@@ -136,12 +137,19 @@ func (x *AuditAddRequest) GetValue() []byte {
 	return nil
 }
 
+func (x *AuditAddRequest) GetCounterpartTenantId() []byte {
+	if x != nil {
+		return x.xxx_hidden_CounterpartTenantId
+	}
+	return nil
+}
+
 func (x *AuditAddRequest) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
 	}
 	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
 }
 
 func (x *AuditAddRequest) SetTenantId(v []byte) {
@@ -201,6 +209,13 @@ func (x *AuditAddRequest) SetValue(v []byte) {
 	x.xxx_hidden_Value = v
 }
 
+func (x *AuditAddRequest) SetCounterpartTenantId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_CounterpartTenantId = v
+}
+
 func (x *AuditAddRequest) HasId() bool {
 	if x == nil {
 		return false
@@ -227,16 +242,17 @@ func (x *AuditAddRequest) ClearDateCreated() {
 type AuditAddRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id            []byte
-	TenantId      []byte
-	ActorId       []byte
-	TraceId       []byte
-	Action        string
-	ObjectId      []byte
-	Patch         []byte
-	DateCreated   *timestamppb.Timestamp
-	ActorTenantId []byte
-	Value         []byte
+	Id                  []byte
+	TenantId            []byte
+	ActorId             []byte
+	TraceId             []byte
+	Action              string
+	ObjectId            []byte
+	Patch               []byte
+	DateCreated         *timestamppb.Timestamp
+	ActorTenantId       []byte
+	Value               []byte
+	CounterpartTenantId []byte
 }
 
 func (b0 AuditAddRequest_builder) Build() *AuditAddRequest {
@@ -244,7 +260,7 @@ func (b0 AuditAddRequest_builder) Build() *AuditAddRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
 		x.xxx_hidden_Id = b.Id
 	}
 	x.xxx_hidden_TenantId = b.TenantId
@@ -256,6 +272,7 @@ func (b0 AuditAddRequest_builder) Build() *AuditAddRequest {
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_ActorTenantId = b.ActorTenantId
 	x.xxx_hidden_Value = b.Value
+	x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
 	return m0
 }
 
@@ -479,21 +496,22 @@ type auditRef_Id struct {
 func (*auditRef_Id) isAuditRef_Key() {}
 
 type AuditSelect struct {
-	state                    protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_All           bool                   `protobuf:"varint,1,opt,name=all"`
-	xxx_hidden_TenantId      bool                   `protobuf:"varint,2,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorId       bool                   `protobuf:"varint,8,opt,name=actor_id,json=actorId"`
-	xxx_hidden_TraceId       bool                   `protobuf:"varint,9,opt,name=trace_id,json=traceId"`
-	xxx_hidden_Action        bool                   `protobuf:"varint,10,opt,name=action"`
-	xxx_hidden_ObjectId      bool                   `protobuf:"varint,11,opt,name=object_id,json=objectId"`
-	xxx_hidden_Patch         bool                   `protobuf:"varint,12,opt,name=patch"`
-	xxx_hidden_DateCreated   bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
-	xxx_hidden_ActorTenantId bool                   `protobuf:"varint,16,opt,name=actor_tenant_id,json=actorTenantId"`
-	xxx_hidden_Value         bool                   `protobuf:"varint,17,opt,name=value"`
-	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
-	XXX_presence             [1]uint32
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_All                 bool                   `protobuf:"varint,1,opt,name=all"`
+	xxx_hidden_TenantId            bool                   `protobuf:"varint,2,opt,name=tenant_id,json=tenantId"`
+	xxx_hidden_ActorId             bool                   `protobuf:"varint,8,opt,name=actor_id,json=actorId"`
+	xxx_hidden_TraceId             bool                   `protobuf:"varint,9,opt,name=trace_id,json=traceId"`
+	xxx_hidden_Action              bool                   `protobuf:"varint,10,opt,name=action"`
+	xxx_hidden_ObjectId            bool                   `protobuf:"varint,11,opt,name=object_id,json=objectId"`
+	xxx_hidden_Patch               bool                   `protobuf:"varint,12,opt,name=patch"`
+	xxx_hidden_DateCreated         bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_ActorTenantId       bool                   `protobuf:"varint,16,opt,name=actor_tenant_id,json=actorTenantId"`
+	xxx_hidden_Value               bool                   `protobuf:"varint,17,opt,name=value"`
+	xxx_hidden_CounterpartTenantId bool                   `protobuf:"varint,18,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
+	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
+	XXX_presence                   [1]uint32
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *AuditSelect) Reset() {
@@ -591,54 +609,66 @@ func (x *AuditSelect) GetValue() bool {
 	return false
 }
 
+func (x *AuditSelect) GetCounterpartTenantId() bool {
+	if x != nil {
+		return x.xxx_hidden_CounterpartTenantId
+	}
+	return false
+}
+
 func (x *AuditSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
 }
 
 func (x *AuditSelect) SetTenantId(v bool) {
 	x.xxx_hidden_TenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 11)
 }
 
 func (x *AuditSelect) SetActorId(v bool) {
 	x.xxx_hidden_ActorId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 11)
 }
 
 func (x *AuditSelect) SetTraceId(v bool) {
 	x.xxx_hidden_TraceId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 11)
 }
 
 func (x *AuditSelect) SetAction(v bool) {
 	x.xxx_hidden_Action = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
 }
 
 func (x *AuditSelect) SetObjectId(v bool) {
 	x.xxx_hidden_ObjectId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 11)
 }
 
 func (x *AuditSelect) SetPatch(v bool) {
 	x.xxx_hidden_Patch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
 }
 
 func (x *AuditSelect) SetDateCreated(v bool) {
 	x.xxx_hidden_DateCreated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 11)
 }
 
 func (x *AuditSelect) SetActorTenantId(v bool) {
 	x.xxx_hidden_ActorTenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
 }
 
 func (x *AuditSelect) SetValue(v bool) {
 	x.xxx_hidden_Value = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 11)
+}
+
+func (x *AuditSelect) SetCounterpartTenantId(v bool) {
+	x.xxx_hidden_CounterpartTenantId = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 11)
 }
 
 func (x *AuditSelect) HasAll() bool {
@@ -711,6 +741,13 @@ func (x *AuditSelect) HasValue() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
 }
 
+func (x *AuditSelect) HasCounterpartTenantId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+}
+
 func (x *AuditSelect) ClearAll() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_All = false
@@ -761,19 +798,25 @@ func (x *AuditSelect) ClearValue() {
 	x.xxx_hidden_Value = false
 }
 
+func (x *AuditSelect) ClearCounterpartTenantId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	x.xxx_hidden_CounterpartTenantId = false
+}
+
 type AuditSelect_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	All           *bool
-	TenantId      *bool
-	ActorId       *bool
-	TraceId       *bool
-	Action        *bool
-	ObjectId      *bool
-	Patch         *bool
-	DateCreated   *bool
-	ActorTenantId *bool
-	Value         *bool
+	All                 *bool
+	TenantId            *bool
+	ActorId             *bool
+	TraceId             *bool
+	Action              *bool
+	ObjectId            *bool
+	Patch               *bool
+	DateCreated         *bool
+	ActorTenantId       *bool
+	Value               *bool
+	CounterpartTenantId *bool
 }
 
 func (b0 AuditSelect_builder) Build() *AuditSelect {
@@ -781,63 +824,68 @@ func (b0 AuditSelect_builder) Build() *AuditSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
 		x.xxx_hidden_All = *b.All
 	}
 	if b.TenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 11)
 		x.xxx_hidden_TenantId = *b.TenantId
 	}
 	if b.ActorId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 11)
 		x.xxx_hidden_ActorId = *b.ActorId
 	}
 	if b.TraceId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 11)
 		x.xxx_hidden_TraceId = *b.TraceId
 	}
 	if b.Action != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
 		x.xxx_hidden_Action = *b.Action
 	}
 	if b.ObjectId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 11)
 		x.xxx_hidden_ObjectId = *b.ObjectId
 	}
 	if b.Patch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
 		x.xxx_hidden_Patch = *b.Patch
 	}
 	if b.DateCreated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 11)
 		x.xxx_hidden_DateCreated = *b.DateCreated
 	}
 	if b.ActorTenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
 		x.xxx_hidden_ActorTenantId = *b.ActorTenantId
 	}
 	if b.Value != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 11)
 		x.xxx_hidden_Value = *b.Value
+	}
+	if b.CounterpartTenantId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 11)
+		x.xxx_hidden_CounterpartTenantId = *b.CounterpartTenantId
 	}
 	return m0
 }
 
 type AuditPatchRequest struct {
-	state                    protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref           *AuditRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_TenantId      []byte                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorId       []byte                 `protobuf:"bytes,16,opt,name=actor_id,json=actorId"`
-	xxx_hidden_TraceId       []byte                 `protobuf:"bytes,18,opt,name=trace_id,json=traceId"`
-	xxx_hidden_Action        *string                `protobuf:"bytes,20,opt,name=action"`
-	xxx_hidden_ObjectId      []byte                 `protobuf:"bytes,22,opt,name=object_id,json=objectId"`
-	xxx_hidden_Patch         []byte                 `protobuf:"bytes,24,opt,name=patch"`
-	xxx_hidden_ActorTenantId []byte                 `protobuf:"bytes,32,opt,name=actor_tenant_id,json=actorTenantId"`
-	xxx_hidden_Value         []byte                 `protobuf:"bytes,34,opt,name=value"`
-	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
-	XXX_presence             [1]uint32
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref                 *AuditRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_TenantId            []byte                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId"`
+	xxx_hidden_ActorId             []byte                 `protobuf:"bytes,16,opt,name=actor_id,json=actorId"`
+	xxx_hidden_TraceId             []byte                 `protobuf:"bytes,18,opt,name=trace_id,json=traceId"`
+	xxx_hidden_Action              *string                `protobuf:"bytes,20,opt,name=action"`
+	xxx_hidden_ObjectId            []byte                 `protobuf:"bytes,22,opt,name=object_id,json=objectId"`
+	xxx_hidden_Patch               []byte                 `protobuf:"bytes,24,opt,name=patch"`
+	xxx_hidden_ActorTenantId       []byte                 `protobuf:"bytes,32,opt,name=actor_tenant_id,json=actorTenantId"`
+	xxx_hidden_Value               []byte                 `protobuf:"bytes,34,opt,name=value"`
+	xxx_hidden_CounterpartTenantId []byte                 `protobuf:"bytes,36,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
+	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
+	XXX_presence                   [1]uint32
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *AuditPatchRequest) Reset() {
@@ -931,6 +979,13 @@ func (x *AuditPatchRequest) GetValue() []byte {
 	return nil
 }
 
+func (x *AuditPatchRequest) GetCounterpartTenantId() []byte {
+	if x != nil {
+		return x.xxx_hidden_CounterpartTenantId
+	}
+	return nil
+}
+
 func (x *AuditPatchRequest) SetRef(v *AuditRef) {
 	x.xxx_hidden_Ref = v
 }
@@ -940,7 +995,7 @@ func (x *AuditPatchRequest) SetTenantId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_TenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 10)
 }
 
 func (x *AuditPatchRequest) SetActorId(v []byte) {
@@ -948,7 +1003,7 @@ func (x *AuditPatchRequest) SetActorId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_ActorId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 10)
 }
 
 func (x *AuditPatchRequest) SetTraceId(v []byte) {
@@ -956,12 +1011,12 @@ func (x *AuditPatchRequest) SetTraceId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_TraceId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 10)
 }
 
 func (x *AuditPatchRequest) SetAction(v string) {
 	x.xxx_hidden_Action = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 10)
 }
 
 func (x *AuditPatchRequest) SetObjectId(v []byte) {
@@ -969,7 +1024,7 @@ func (x *AuditPatchRequest) SetObjectId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_ObjectId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 10)
 }
 
 func (x *AuditPatchRequest) SetPatch(v []byte) {
@@ -977,7 +1032,7 @@ func (x *AuditPatchRequest) SetPatch(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Patch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 10)
 }
 
 func (x *AuditPatchRequest) SetActorTenantId(v []byte) {
@@ -985,7 +1040,7 @@ func (x *AuditPatchRequest) SetActorTenantId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_ActorTenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 10)
 }
 
 func (x *AuditPatchRequest) SetValue(v []byte) {
@@ -993,7 +1048,15 @@ func (x *AuditPatchRequest) SetValue(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Value = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
+}
+
+func (x *AuditPatchRequest) SetCounterpartTenantId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_CounterpartTenantId = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 10)
 }
 
 func (x *AuditPatchRequest) HasRef() bool {
@@ -1059,6 +1122,13 @@ func (x *AuditPatchRequest) HasValue() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
 }
 
+func (x *AuditPatchRequest) HasCounterpartTenantId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
+}
+
 func (x *AuditPatchRequest) ClearRef() {
 	x.xxx_hidden_Ref = nil
 }
@@ -1103,18 +1173,24 @@ func (x *AuditPatchRequest) ClearValue() {
 	x.xxx_hidden_Value = nil
 }
 
+func (x *AuditPatchRequest) ClearCounterpartTenantId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 9)
+	x.xxx_hidden_CounterpartTenantId = nil
+}
+
 type AuditPatchRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Ref           *AuditRef
-	TenantId      []byte
-	ActorId       []byte
-	TraceId       []byte
-	Action        *string
-	ObjectId      []byte
-	Patch         []byte
-	ActorTenantId []byte
-	Value         []byte
+	Ref                 *AuditRef
+	TenantId            []byte
+	ActorId             []byte
+	TraceId             []byte
+	Action              *string
+	ObjectId            []byte
+	Patch               []byte
+	ActorTenantId       []byte
+	Value               []byte
+	CounterpartTenantId []byte
 }
 
 func (b0 AuditPatchRequest_builder) Build() *AuditPatchRequest {
@@ -1123,36 +1199,40 @@ func (b0 AuditPatchRequest_builder) Build() *AuditPatchRequest {
 	_, _ = b, x
 	x.xxx_hidden_Ref = b.Ref
 	if b.TenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 10)
 		x.xxx_hidden_TenantId = b.TenantId
 	}
 	if b.ActorId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 10)
 		x.xxx_hidden_ActorId = b.ActorId
 	}
 	if b.TraceId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 10)
 		x.xxx_hidden_TraceId = b.TraceId
 	}
 	if b.Action != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 10)
 		x.xxx_hidden_Action = b.Action
 	}
 	if b.ObjectId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 10)
 		x.xxx_hidden_ObjectId = b.ObjectId
 	}
 	if b.Patch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 10)
 		x.xxx_hidden_Patch = b.Patch
 	}
 	if b.ActorTenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 10)
 		x.xxx_hidden_ActorTenantId = b.ActorTenantId
 	}
 	if b.Value != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
 		x.xxx_hidden_Value = b.Value
+	}
+	if b.CounterpartTenantId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 10)
+		x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
 	}
 	return m0
 }
@@ -1427,15 +1507,16 @@ func (b0 AuditListResponse_builder) Build() *AuditListResponse {
 }
 
 type AuditFilter struct {
-	state                    protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_ObjectId      []byte                 `protobuf:"bytes,1,opt,name=object_id,json=objectId"`
-	xxx_hidden_ActorId       []byte                 `protobuf:"bytes,2,opt,name=actor_id,json=actorId"`
-	xxx_hidden_TenantId      []byte                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_ActorTenantId []byte                 `protobuf:"bytes,4,opt,name=actor_tenant_id,json=actorTenantId"`
-	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
-	XXX_presence             [1]uint32
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ObjectId            []byte                 `protobuf:"bytes,1,opt,name=object_id,json=objectId"`
+	xxx_hidden_ActorId             []byte                 `protobuf:"bytes,2,opt,name=actor_id,json=actorId"`
+	xxx_hidden_TenantId            []byte                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId"`
+	xxx_hidden_ActorTenantId       []byte                 `protobuf:"bytes,4,opt,name=actor_tenant_id,json=actorTenantId"`
+	xxx_hidden_CounterpartTenantId []byte                 `protobuf:"bytes,5,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
+	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
+	XXX_presence                   [1]uint32
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *AuditFilter) Reset() {
@@ -1491,12 +1572,19 @@ func (x *AuditFilter) GetActorTenantId() []byte {
 	return nil
 }
 
+func (x *AuditFilter) GetCounterpartTenantId() []byte {
+	if x != nil {
+		return x.xxx_hidden_CounterpartTenantId
+	}
+	return nil
+}
+
 func (x *AuditFilter) SetObjectId(v []byte) {
 	if v == nil {
 		v = []byte{}
 	}
 	x.xxx_hidden_ObjectId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
 }
 
 func (x *AuditFilter) SetActorId(v []byte) {
@@ -1504,7 +1592,7 @@ func (x *AuditFilter) SetActorId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_ActorId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
 }
 
 func (x *AuditFilter) SetTenantId(v []byte) {
@@ -1512,7 +1600,7 @@ func (x *AuditFilter) SetTenantId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_TenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
 }
 
 func (x *AuditFilter) SetActorTenantId(v []byte) {
@@ -1520,7 +1608,15 @@ func (x *AuditFilter) SetActorTenantId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_ActorTenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+}
+
+func (x *AuditFilter) SetCounterpartTenantId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_CounterpartTenantId = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
 }
 
 func (x *AuditFilter) HasObjectId() bool {
@@ -1551,6 +1647,13 @@ func (x *AuditFilter) HasActorTenantId() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
+func (x *AuditFilter) HasCounterpartTenantId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
 func (x *AuditFilter) ClearObjectId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_ObjectId = nil
@@ -1571,13 +1674,19 @@ func (x *AuditFilter) ClearActorTenantId() {
 	x.xxx_hidden_ActorTenantId = nil
 }
 
+func (x *AuditFilter) ClearCounterpartTenantId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_CounterpartTenantId = nil
+}
+
 type AuditFilter_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	ObjectId      []byte
-	ActorId       []byte
-	TenantId      []byte
-	ActorTenantId []byte
+	ObjectId            []byte
+	ActorId             []byte
+	TenantId            []byte
+	ActorTenantId       []byte
+	CounterpartTenantId []byte
 }
 
 func (b0 AuditFilter_builder) Build() *AuditFilter {
@@ -1585,20 +1694,24 @@ func (b0 AuditFilter_builder) Build() *AuditFilter {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.ObjectId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
 		x.xxx_hidden_ObjectId = b.ObjectId
 	}
 	if b.ActorId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
 		x.xxx_hidden_ActorId = b.ActorId
 	}
 	if b.TenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
 		x.xxx_hidden_TenantId = b.TenantId
 	}
 	if b.ActorTenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
 		x.xxx_hidden_ActorTenantId = b.ActorTenantId
+	}
+	if b.CounterpartTenantId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
 	}
 	return m0
 }
@@ -1607,7 +1720,7 @@ var File_app_payday_audit_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xf4\x02\n" +
+	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xaf\x03\n" +
 	"\x0fAuditAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\"\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x05\xaa\x01\x02\b\x02R\btenantId\x12 \n" +
@@ -1619,13 +1732,14 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x05patch\x18\f \x01(\fB\x05\xaa\x01\x02\b\x02R\x05patch\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x12-\n" +
 	"\x0factor_tenant_id\x18\x10 \x01(\fB\x05\xaa\x01\x02\b\x02R\ractorTenantId\x12\x1b\n" +
-	"\x05value\x18\x11 \x01(\fB\x05\xaa\x01\x02\b\x02R\x05value\"\\\n" +
+	"\x05value\x18\x11 \x01(\fB\x05\xaa\x01\x02\b\x02R\x05value\x129\n" +
+	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\x05\xaa\x01\x02\b\x02R\x13counterpartTenantId\"\\\n" +
 	"\x0fAuditGetRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12(\n" +
 	"\x06select\x18\x02 \x01(\v2\x10.app.AuditSelectR\x06select\"#\n" +
 	"\bAuditRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
-	"\x03key\"\x9e\x02\n" +
+	"\x03key\"\xd2\x02\n" +
 	"\vAuditSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\bR\btenantId\x12\x19\n" +
@@ -1637,7 +1751,8 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x05patch\x18\f \x01(\bR\x05patch\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\x12&\n" +
 	"\x0factor_tenant_id\x18\x10 \x01(\bR\ractorTenantId\x12\x14\n" +
-	"\x05value\x18\x11 \x01(\bR\x05value\"\x90\x02\n" +
+	"\x05value\x18\x11 \x01(\bR\x05value\x122\n" +
+	"\x15counterpart_tenant_id\x18\x12 \x01(\bR\x13counterpartTenantId\"\xc4\x02\n" +
 	"\x11AuditPatchRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12\x1b\n" +
 	"\ttenant_id\x18\x04 \x01(\fR\btenantId\x12\x19\n" +
@@ -1647,7 +1762,8 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\tobject_id\x18\x16 \x01(\fR\bobjectId\x12\x14\n" +
 	"\x05patch\x18\x18 \x01(\fR\x05patch\x12&\n" +
 	"\x0factor_tenant_id\x18  \x01(\fR\ractorTenantId\x12\x14\n" +
-	"\x05value\x18\" \x01(\fR\x05value\"X\n" +
+	"\x05value\x18\" \x01(\fR\x05value\x122\n" +
+	"\x15counterpart_tenant_id\x18$ \x01(\fR\x13counterpartTenantId\"X\n" +
 	"\x11AuditApplyRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"v\n" +
@@ -1658,12 +1774,13 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x11AuditListResponse\x12 \n" +
 	"\x05items\x18\x01 \x03(\v2\n" +
 	".app.AuditR\x05items\x12\x19\n" +
-	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\x8a\x01\n" +
+	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\xbe\x01\n" +
 	"\vAuditFilter\x12\x1b\n" +
 	"\tobject_id\x18\x01 \x01(\fR\bobjectId\x12\x19\n" +
 	"\bactor_id\x18\x02 \x01(\fR\aactorId\x12\x1b\n" +
 	"\ttenant_id\x18\x03 \x01(\fR\btenantId\x12&\n" +
-	"\x0factor_tenant_id\x18\x04 \x01(\fR\ractorTenantId2\xa1\x02\n" +
+	"\x0factor_tenant_id\x18\x04 \x01(\fR\ractorTenantId\x122\n" +
+	"\x15counterpart_tenant_id\x18\x05 \x01(\fR\x13counterpartTenantId2\xa1\x02\n" +
 	"\fAuditService\x12'\n" +
 	"\x03Add\x12\x14.app.AuditAddRequest\x1a\n" +
 	".app.Audit\x12'\n" +

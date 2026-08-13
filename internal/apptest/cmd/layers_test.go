@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/frame"
@@ -593,4 +594,61 @@ type keeps struct{ bare.Unscoped }
 
 func (keeps) RobotScope(context.Context) (predicate.Robot, error) {
 	return robot.AliasEQ("keep"), nil
+}
+
+// TestBothSidesOfAWriteAboutTwoTenantsReadIt.
+//
+// A write can be about two tenants, and the record of it is filed under one:
+// `tenant_id` is read off the row after the write, so a row that moved from one
+// tenant to another leaves the tenant it left with no record of the event that
+// took it away. The row it most needs is the one it is not a party to.
+//
+// `audit.Concerning` is how the operation that knows says so, and the wall on
+// the trail counts that column. It is a context and not a request field for the
+// reason in that function: naming a tenant here grants that tenant a read.
+func TestBothSidesOfAWriteAboutTwoTenantsReadIt(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	other, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "other"}.Build())
+	x.NoError(err)
+	ok, err := pdid.From(other.GetId())
+	x.NoError(err)
+
+	mine, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "shared",
+	}.Build())
+	x.NoError(err)
+
+	// A write on acme's row, said to be about `other` as well.
+	_, err = b.Ungated.Robot().Patch(audit.Concerning(ctx, ok), app.RobotPatchRequest_builder{
+		Ref:              app.RobotRef_builder{Id: mine.GetId()}.Build(),
+		Alias:            z.Ptr("moved"),
+		DateUpdatedForce: z.Ptr(true),
+	}.Build())
+	x.NoError(err)
+
+	// The tenant the row is in reads it, as it always did.
+	seen := func(who pdid.Id) []*app.Audit {
+		f := frame.New(b.Holder, who, frame.Whole()).WithScope(frame.Only(who))
+
+		vs, err := b.Walled.Audit().List(frame.Into(ctx, f), app.AuditListRequest_builder{
+			Filters: []*app.AuditFilter{
+				app.AuditFilter_builder{ObjectId: mine.GetId()}.Build(),
+			},
+		}.Build())
+		x.NoError(err)
+
+		return vs.GetItems()
+	}
+
+	x.NotEmpty(seen(b.Tenant), "the tenant the row is in cannot read its own trail")
+
+	// And so does the other one -- only this row. The Add before it was about
+	// nobody else and stays where it was.
+	got := seen(ok)
+	x.Len(got, 1, "the other tenant reads the write it was a party to, and nothing else")
+	x.Equal(other.GetId(), got[0].GetCounterpartTenantId())
+	x.Equal(b.Tenant.Bytes(), got[0].GetTenantId())
 }

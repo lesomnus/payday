@@ -156,14 +156,14 @@ type wall struct{}
 
 var _ bare.Scope = wall{}
 
-// AuditScope: a row is readable by every tenant it names -- tenant_id, actor_tenant_id -- which is the trail.
+// AuditScope: a row is readable by every tenant it names -- tenant_id, actor_tenant_id, counterpart_tenant_id -- which is the trail.
 func (wall) AuditScope(ctx context.Context) (predicate.Audit, error) {
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
 	}
 
-	return audit.Or(audit.TenantIDIn(vs...), audit.ActorTenantIDIn(vs...)), nil
+	return audit.Or(audit.TenantIDIn(vs...), audit.ActorTenantIDIn(vs...), audit.CounterpartTenantIDIn(vs...)), nil
 }
 
 // CellScope: a row belongs to the tenant its "tenant" reaches.
@@ -578,6 +578,14 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 		}
 
 		ps = append(ps, audit.ActorTenantIDEQ(k))
+	}
+	if f.HasCounterpartTenantId() {
+		k, err := uuid.FromBytes(f.GetCounterpartTenantId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
+		}
+
+		ps = append(ps, audit.CounterpartTenantIDEQ(k))
 	}
 	if len(ps) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
@@ -2136,14 +2144,15 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 	}
 
 	_, err = s.Audit().Add(ctx, apptest.AuditAddRequest_builder{
-		TenantId:      tenant[:],
-		ActorTenantId: v.Tenant.Bytes(),
-		ActorId:       v.Actor.Bytes(),
-		TraceId:       v.Trace,
-		Action:        v.Action,
-		ObjectId:      v.Object.Bytes(),
-		Patch:         v.Patch,
-		Value:         value,
+		TenantId:            tenant[:],
+		ActorTenantId:       v.Tenant.Bytes(),
+		ActorId:             v.Actor.Bytes(),
+		TraceId:             v.Trace,
+		Action:              v.Action,
+		ObjectId:            v.Object.Bytes(),
+		Patch:               v.Patch,
+		Value:               value,
+		CounterpartTenantId: v.Counterpart.Bytes(),
 	}.Build())
 
 	return err

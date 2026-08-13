@@ -34,6 +34,7 @@ message AuditAddRequest {
   google.protobuf.Timestamp date_created = 15;
   bytes actor_tenant_id = 16 [features.field_presence = IMPLICIT];
   bytes value = 17 [features.field_presence = IMPLICIT];
+  bytes counterpart_tenant_id = 18 [features.field_presence = IMPLICIT];
 }
 
 message AuditGetRequest {
@@ -58,6 +59,7 @@ message AuditSelect {
   bool date_created = 15;
   bool actor_tenant_id = 16;
   bool value = 17;
+  bool counterpart_tenant_id = 18;
 }
 
 message AuditPatchRequest {
@@ -70,6 +72,7 @@ message AuditPatchRequest {
   bytes patch = 24;
   bytes actor_tenant_id = 32;
   bytes value = 34;
+  bytes counterpart_tenant_id = 36;
 }
 
 message AuditApplyRequest {
@@ -112,4 +115,5 @@ message AuditFilter {
   bytes actor_id = 2;
   bytes tenant_id = 3;
   bytes actor_tenant_id = 4;
+  bytes counterpart_tenant_id = 5;
 }

@@ -20,5 +20,6 @@ func (e *Audit) Proto() *apptest.Audit {
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	x.SetActorTenantId(e.ActorTenantID[:])
 	x.SetValue(e.Value)
+	x.SetCounterpartTenantId(e.CounterpartTenantID[:])
 	return x
 }

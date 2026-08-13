@@ -35,8 +35,10 @@ type Audit struct {
 	// ActorTenantID holds the value of the "actor_tenant_id" field.
 	ActorTenantID uuid.UUID `json:"actor_tenant_id,omitempty"`
 	// Value holds the value of the "value" field.
-	Value        []byte `json:"value,omitempty"`
-	selectValues sql.SelectValues
+	Value []byte `json:"value,omitempty"`
+	// CounterpartTenantID holds the value of the "counterpart_tenant_id" field.
+	CounterpartTenantID uuid.UUID `json:"counterpart_tenant_id,omitempty"`
+	selectValues        sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -50,7 +52,7 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case audit.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case audit.FieldID, audit.FieldTenantID, audit.FieldActorID, audit.FieldObjectID, audit.FieldActorTenantID:
+		case audit.FieldID, audit.FieldTenantID, audit.FieldActorID, audit.FieldObjectID, audit.FieldActorTenantID, audit.FieldCounterpartTenantID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -127,6 +129,12 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.Value = *value
 			}
+		case audit.FieldCounterpartTenantID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field counterpart_tenant_id", values[i])
+			} else if value != nil {
+				_m.CounterpartTenantID = *value
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -189,6 +197,9 @@ func (_m *Audit) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("value=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Value))
+	builder.WriteString(", ")
+	builder.WriteString("counterpart_tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CounterpartTenantID))
 	builder.WriteByte(')')
 	return builder.String()
 }

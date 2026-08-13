@@ -29,6 +29,8 @@ const (
 	FieldActorTenantID = "actor_tenant_id"
 	// FieldValue holds the string denoting the value field in the database.
 	FieldValue = "value"
+	// FieldCounterpartTenantID holds the string denoting the counterpart_tenant_id field in the database.
+	FieldCounterpartTenantID = "counterpart_tenant_id"
 	// Table holds the table name of the audit in the database.
 	Table = "audit"
 )
@@ -45,6 +47,7 @@ var Columns = []string{
 	FieldDateCreated,
 	FieldActorTenantID,
 	FieldValue,
+	FieldCounterpartTenantID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -93,4 +96,9 @@ func ByDateCreated(opts ...sql.OrderTermOption) OrderOption {
 // ByActorTenantID orders the results by the actor_tenant_id field.
 func ByActorTenantID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldActorTenantID, opts...).ToFunc()
+}
+
+// ByCounterpartTenantID orders the results by the counterpart_tenant_id field.
+func ByCounterpartTenantID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCounterpartTenantID, opts...).ToFunc()
 }
