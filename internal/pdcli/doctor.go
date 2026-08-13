@@ -53,21 +53,7 @@ func (f Finding) String() string {
 // missing it cannot be running `pd doctor` to be told so.
 const cli = "github.com/lesomnus/payday/cmd/pd"
 
-// BufTool is buf, as a tool of the app's module.
-//
-// It is in [tools] with the plugins, and it is the one of them that is not a
-// plugin: buf is what **compiles the schema**, so its version decides what the
-// descriptors every plugin reads actually carry. Two of them disagree about
-// whether a file's leading comment reaches the generated code, which moves
-// `.pb.go` files nothing in the app touched -- and `pd gen --check` is a CI gate
-// on exactly that, so an unpinned buf is a red build nobody caused.
-//
-// `pd gen` runs `go tool buf` when this is here and the PATH otherwise, so an
-// app written before this still generates; see [Gen.bufCmd].
-const BufTool = "github.com/bufbuild/buf/cmd/buf"
-
 var tools = []string{
-	BufTool,
 	"google.golang.org/protobuf/cmd/protoc-gen-go",
 	"google.golang.org/grpc/cmd/protoc-gen-go-grpc",
 	"github.com/protobuf-orm/protobuf-merge",
@@ -121,16 +107,15 @@ func Doctor(ctx context.Context, l Layout) []Finding {
 		}
 	}
 
-	// The PATH, and only for the app that pins no buf of its own -- for that one
-	// `pd gen` falls back to whatever is installed, so whether anything is
-	// installed is the question. The app that pins one has answered it already,
-	// and answered it better: a version, in a file, the same for everybody who
-	// generates.
-	if !have[BufTool] {
-		if _, err := exec.LookPath("buf"); err != nil {
+	// buf is not among them and is not asked about here: `pd gen` fetches the
+	// one this payday pins, so there is nothing an app can be missing. The
+	// exception is somebody who named their own, and the only thing worth
+	// saying about that one is whether it is there.
+	if v := os.Getenv(BufEnv); v != "" {
+		if _, err := exec.LookPath(v); err != nil {
 			vs = append(vs, Finding{
-				What:  "no buf is pinned and none is on the PATH either, and every generation is one",
-				Fix:   "go get -tool " + BufTool,
+				What:  fmt.Sprintf("%s names %s, and every generation is a buf: %s", BufEnv, v, err),
+				Fix:   "unset " + BufEnv + " to use the buf payday pins (" + BufVersion + ")",
 				Fatal: true,
 			})
 		}

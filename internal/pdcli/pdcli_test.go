@@ -374,11 +374,10 @@ func TestDoctorSaysWhatIsMissingBeforeBufDoes(t *testing.T) {
 	// what to type rather than a description of the problem.
 	x.Contains(said, "go get -tool")
 
-	// buf among them, and it is the one that is not a plugin: it compiles the
-	// schema, so its version is what the descriptors every plugin reads carry.
-	// An app that pins none generates with whatever is installed, which is a
-	// `pd gen --check` that fails on files nobody touched.
-	x.Contains(said, pdcli.BufTool)
+	// And buf is **not** among them, which is the difference from every other
+	// generator: it is payday that pins the buf a generation runs and payday
+	// that fetches it, so there is nothing here for an app to be missing.
+	x.NotContains(said, "bufbuild/buf")
 }
 
 // TestAnOverlayForNothingIsFound is the one that would otherwise be silent.

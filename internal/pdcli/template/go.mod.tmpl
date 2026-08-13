@@ -9,18 +9,11 @@ go 1.26.4
 // and `pd doctor` is what says when one is missing rather than `buf generate`
 // failing over an executable nobody has heard of.
 //
-// buf is here for the same reason and is not a plugin: it is what compiles the
-// schema, so its version decides what the descriptors every plugin reads carry.
-// Two of them disagree about whether a file's leading comment reaches the
-// generated code, which moves `.pb.go` files nothing in this app touched -- and
-// `pd gen --check` is a CI gate on exactly that.
-//
 // `go mod tidy` fills in the requires. Nothing is pinned in this file on
 // purpose: a template that carried version numbers would be a template that is
 // out of date the week after it was written.
 tool (
 	entgo.io/ent/cmd/ent
-	github.com/bufbuild/buf/cmd/buf
 	github.com/lesomnus/payday/cmd/pd
 	github.com/lesomnus/payday/cmd/protoc-gen-pd
 	github.com/protobuf-orm/protobuf-merge
