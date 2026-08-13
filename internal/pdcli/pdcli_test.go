@@ -373,6 +373,12 @@ func TestDoctorSaysWhatIsMissingBeforeBufDoes(t *testing.T) {
 	// And the generators, which this temporary module has none of. The fix is
 	// what to type rather than a description of the problem.
 	x.Contains(said, "go get -tool")
+
+	// buf among them, and it is the one that is not a plugin: it compiles the
+	// schema, so its version is what the descriptors every plugin reads carry.
+	// An app that pins none generates with whatever is installed, which is a
+	// `pd gen --check` that fails on files nobody touched.
+	x.Contains(said, pdcli.BufTool)
 }
 
 // TestAnOverlayForNothingIsFound is the one that would otherwise be silent.

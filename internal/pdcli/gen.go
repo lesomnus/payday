@@ -528,7 +528,9 @@ func (r run) deps(ctx context.Context) error {
 	}
 
 	r.say("  buf dep update")
-	if _, err := r.Gen.run(ctx, "buf", "dep", "update"); err != nil {
+
+	name, args := r.Gen.bufCmd(ctx)
+	if _, err := r.Gen.run(ctx, name, append(args, "dep", "update")...); err != nil {
 		return err
 	}
 
@@ -550,7 +552,10 @@ func (g Gen) buf(ctx context.Context, template string, args ...string) error {
 	}
 	defer os.Remove(p)
 
-	cmd := exec.CommandContext(ctx, "buf", append([]string{"generate", "--template", p}, args...)...)
+	name, pre := g.bufCmd(ctx)
+	pre = append(pre, "generate", "--template", p)
+
+	cmd := exec.CommandContext(ctx, name, append(pre, args...)...)
 	cmd.Dir = g.Layout.Work
 
 	var stderr bytes.Buffer
@@ -599,6 +604,28 @@ func whyStale(b []byte) string {
 			"    buf dep update\n\n"+
 			"`pd gen` writes buf.lock only when nothing has, because a pin is yours to move.",
 		strings.Join(names, ", "))
+}
+
+// bufCmd is how buf is run: as a tool of the app's module when the app pins
+// one, and otherwise whatever is on the PATH.
+//
+// **Which buf ran is part of what a generation produced.** buf compiles the
+// schema, so its version decides what the descriptors carry -- two of them
+// disagree about whether a file's leading comment reaches the generated code,
+// which moves `.pb.go` files that nothing in the app touched. `pd gen --check`
+// is a CI gate on exactly that output, so a version nobody pinned is a red
+// build nobody caused.
+//
+// Every other generator is a tool of the app's module for that reason, and the
+// same argument reaches this one. The PATH is the fallback rather than the
+// answer: an app written before buf was in the template still generates, and
+// `pd doctor` is what says which of the two this app is on.
+func (g Gen) bufCmd(ctx context.Context) (string, []string) {
+	if have, err := goTools(ctx, g.Layout.Root); err == nil && have[BufTool] {
+		return "go", []string{"tool", "buf"}
+	}
+
+	return "buf", nil
 }
 
 // run answers with what a command wrote to stdout, and with its stderr in the
