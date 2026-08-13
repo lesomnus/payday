@@ -3,6 +3,7 @@ package config_test
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -116,5 +117,58 @@ func TestTLSConfig(t *testing.T) {
 		cert, key := keypair(t)
 		_, err := config.TLSConfig{CertFile: cert, KeyFile: key, ClientCAFile: "nowhere.pem"}.Credentials()
 		x.ErrorContains(err, "read client ca")
+	})
+}
+
+// TestTheSameTlsServesEveryListener.
+//
+// `Credentials` is gRPC's shape and not every listener a payday app opens is a
+// gRPC one -- a transcoder, a sign-in, a port robots present certificates to.
+// Without a `*tls.Config` of its own, the app builds the mutual-TLS setup a
+// second time by hand, and the second one is where the client CA is forgotten.
+func TestTheSameTlsServesEveryListener(t *testing.T) {
+	cert, key := keypair(t)
+
+	t.Run("nothing said is nothing to serve with", func(t *testing.T) {
+		x := require.New(t)
+
+		got, err := config.TLSConfig{}.Server()
+		x.NoError(err)
+		x.Nil(got, "a plaintext listener has to be able to tell")
+	})
+
+	t.Run("a certificate and a client ca", func(t *testing.T) {
+		x := require.New(t)
+
+		got, err := config.TLSConfig{
+			CertFile:     cert,
+			KeyFile:      key,
+			ClientCAFile: cert,
+		}.Server()
+		x.NoError(err)
+		x.NotNil(got)
+		x.Len(got.Certificates, 1)
+		x.NotNil(got.ClientCAs)
+		x.Equal(tls.RequireAndVerifyClientCert, got.ClientAuth)
+	})
+
+	t.Run("and a caller that may arrive without one", func(t *testing.T) {
+		x := require.New(t)
+
+		got, err := config.TLSConfig{
+			CertFile:           cert,
+			KeyFile:            key,
+			ClientCAFile:       cert,
+			ClientCertOptional: true,
+		}.Server()
+		x.NoError(err)
+		x.Equal(tls.VerifyClientCertIfGiven, got.ClientAuth)
+	})
+
+	t.Run("half a key pair is refused", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := config.TLSConfig{CertFile: cert}.Server()
+		x.Error(err)
 	})
 }

@@ -55,12 +55,20 @@ func (c TLSConfig) Active() bool {
 	return c.Enabled || c.CertFile != "" || c.KeyFile != "" || c.ClientCAFile != ""
 }
 
-// Credentials builds gRPC transport credentials from the TLS configuration.
-// It returns insecure credentials when TLS is not configured, so the caller
-// can pass the result to grpc.Creds unconditionally.
-func (c TLSConfig) Credentials() (credentials.TransportCredentials, error) {
+// Server is what this configuration says, as a `*tls.Config` for a server.
+//
+// **Nil when nothing said anything**, which is the answer that keeps a caller
+// from having to ask twice: `if cfg == nil` is a plaintext listener, and
+// everything else is the handshake this block described.
+//
+// It is separate from [TLSConfig.Credentials] because not every listener an app
+// opens is a gRPC one. A payday app that serves HTTP as well -- a transcoder, a
+// sign-in, a port robots present certificates to -- would otherwise build the
+// same mutual-TLS setup a second time by hand, and the second one is where the
+// client CA is forgotten.
+func (c TLSConfig) Server() (*tls.Config, error) {
 	if !c.Active() {
-		return insecure.NewCredentials(), nil
+		return nil, nil
 	}
 	if c.CertFile == "" || c.KeyFile == "" {
 		return nil, fmt.Errorf("both cert_file and key_file must be set to enable TLS")
@@ -92,6 +100,21 @@ func (c TLSConfig) Credentials() (credentials.TransportCredentials, error) {
 		if c.ClientCertOptional {
 			cfg.ClientAuth = tls.VerifyClientCertIfGiven
 		}
+	}
+
+	return cfg, nil
+}
+
+// Credentials builds gRPC transport credentials from the TLS configuration.
+// It returns insecure credentials when TLS is not configured, so the caller
+// can pass the result to grpc.Creds unconditionally.
+func (c TLSConfig) Credentials() (credentials.TransportCredentials, error) {
+	cfg, err := c.Server()
+	if err != nil {
+		return nil, err
+	}
+	if cfg == nil {
+		return insecure.NewCredentials(), nil
 	}
 
 	return credentials.NewTLS(cfg), nil
