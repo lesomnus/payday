@@ -92,6 +92,11 @@ wall for every call it serves. That is the whole risk and it is a grep away.
 
 ## 3. Writing a layer
 
+A layer is where an RPC of your own is answered. Declaring one is a schema
+change and is written up there — see
+[an RPC of your own](schema.md#an-rpc-of-your-own); what follows is what answers
+it.
+
 A layer is a struct embedding the generated `Overlay`, which forwards every
 service you do not override:
 

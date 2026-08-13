@@ -115,6 +115,23 @@ Every entity has to say what `Erase` does to a row:
 It is a refusal rather than a default because payday cannot add a field to your
 schema: the only way to say "soft" is to carry one, so silence cannot mean it.
 
+`erase:` is an entity option and goes beside `domain:`, not in `(orm.message)`
+with `rpc:` and `indexes:`:
+
+```proto
+  option (payday.entity) = {
+    domain: 8
+    erase: {hard: {}}
+  };
+```
+
+Putting it in the other block is refused by protobuf itself rather than by
+payday, so what comes back names neither the option nor the block it belongs in:
+
+```
+cannot resolve message field name for `orm.MessageOptions`
+```
+
 Soft is what you want almost always. The row is stamped and stays, so it cannot
 be read or changed, its alias comes free for a new row (the unique index becomes
 partial, `WHERE date_erased IS NULL`), and the trail can still say what it held.
@@ -355,8 +372,50 @@ The check exists because merging takes the overlay's word: without it,
 the wall goes on reading a tenant and `auth` goes on looking a holder up, both
 against a column that is no longer what they were written for.
 
-Overlays for your own generated services go in `proto/ext/app/`, and are how a
-hand-written RPC joins a generated one.
+### An RPC of your own
+
+The CRUD of an entity is generated and the general writes are closed, so an
+operation that means something is an RPC you declare. It goes in an overlay too,
+in `proto/ext/app/`, named after the **generated contract** it joins. That
+contract is named from the file the entity is in rather than from the entity, so
+`proto/app/widget.proto` produces `app/widget_svc.g.proto` and is overlaid by
+`proto/ext/app/widget_svc.ext.proto` — a file declaring several entities has one
+contract and one overlay for all of them:
+
+```proto
+// proto/ext/app/widget_svc.ext.proto
+edition = "2023";
+
+package app;
+
+import "app/widget.proto";
+
+option go_package = "github.com/acme/widget";
+
+service WidgetService {
+  rpc Retire(WidgetRetireRequest) returns (Widget);
+}
+
+message WidgetRetireRequest {
+  WidgetRef ref    = 1;
+  string    reason = 2;
+}
+```
+
+It is an overlay rather than a file of its own because of the second line of
+that request: `WidgetRef` does not exist until the contract is generated, and an
+RPC that names a row the way every other RPC names one has to be merged into the
+place those names live. Redeclaring `service WidgetService` adds to it; the
+generated methods stay.
+
+The service keeps the name of the entity — `WidgetService` for `Widget` — and
+what you write joins whatever `pd gen` put there. `WidgetRef` needs no import:
+the overlay is merged **into** the file that declares it, so importing that file
+would be importing itself.
+
+Implementing it is [a layer](server.md#3-writing-a-layer), which is also what
+puts it on the trail: an RPC nothing listed is audited for the same reason an
+`Add` is.
 
 ---
 
