@@ -366,6 +366,15 @@ type Audit_builder struct {
 	//
 	// Set through `audit.Concerning`, so it is server-side and never a field of a
 	// request: a caller that could name it could grant a stranger a read.
+	//
+	// It has a default, which the other two identifiers here do not, and that is
+	// about who writes a trail row. The recorder is not the only one: an app that
+	// records something the servers cannot see -- roster writes the operator's
+	// intent before the attempt, through ent, because every server refuses a
+	// write to the trail -- composes the row itself. A column with no default is
+	// one every such writer has to learn about on the day it is added, and what
+	// it learns is a runtime refusal on a deployment that upgraded. Unset is the
+	// honest value for nearly every row anyway.
 	CounterpartTenantId []byte
 }
 
@@ -391,7 +400,7 @@ var File_app_payday_audit_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xd3\x06\n" +
+	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xd6\x06\n" +
 	"\x05Audit\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
@@ -403,8 +412,8 @@ const file_app_payday_audit_proto_rawDesc = "" +
 	"\x05patch\x18\f \x01(\fR\x05patch\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12.\n" +
 	"\x0factor_tenant_id\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10@R\ractorTenantId\x12\x14\n" +
-	"\x05value\x18\x11 \x01(\fR\x05value\x12:\n" +
-	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x13counterpartTenantId:\xaa\x03\xca\xfc\x15\xec\x01\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
+	"\x05value\x18\x11 \x01(\fR\x05value\x12=\n" +
+	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\t\xea\x82\x16\x05\x10@\x82\x01\x00R\x13counterpartTenantId:\xaa\x03\xca\xfc\x15\xec\x01\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
 	"\tobject_id\x10\v\x1a(\x12\x05trail\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a8\x12\x0fby_actor_tenant\x1a\x13\n" +

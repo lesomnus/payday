@@ -32,7 +32,8 @@ func (Audit) Fields() []ent.Field {
 			Optional(),
 		field.UUID("actor_tenant_id", uuid.UUID{}),
 		field.Bytes("value"),
-		field.UUID("counterpart_tenant_id", uuid.UUID{}),
+		field.UUID("counterpart_tenant_id", uuid.UUID{}).
+			Optional(),
 	}
 }
 

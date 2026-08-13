@@ -540,6 +540,16 @@ func CounterpartTenantIDLTE(v uuid.UUID) predicate.Audit {
 	return predicate.Audit(sql.FieldLTE(FieldCounterpartTenantID, v))
 }
 
+// CounterpartTenantIDIsNil applies the IsNil predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDIsNil() predicate.Audit {
+	return predicate.Audit(sql.FieldIsNull(FieldCounterpartTenantID))
+}
+
+// CounterpartTenantIDNotNil applies the NotNil predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIDNotNil() predicate.Audit {
+	return predicate.Audit(sql.FieldNotNull(FieldCounterpartTenantID))
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Audit) predicate.Audit {
 	return predicate.Audit(sql.AndPredicates(predicates...))

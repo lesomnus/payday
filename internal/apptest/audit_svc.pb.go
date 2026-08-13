@@ -214,6 +214,7 @@ func (x *AuditAddRequest) SetCounterpartTenantId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_CounterpartTenantId = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 11)
 }
 
 func (x *AuditAddRequest) HasId() bool {
@@ -230,6 +231,13 @@ func (x *AuditAddRequest) HasDateCreated() bool {
 	return x.xxx_hidden_DateCreated != nil
 }
 
+func (x *AuditAddRequest) HasCounterpartTenantId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+}
+
 func (x *AuditAddRequest) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -237,6 +245,11 @@ func (x *AuditAddRequest) ClearId() {
 
 func (x *AuditAddRequest) ClearDateCreated() {
 	x.xxx_hidden_DateCreated = nil
+}
+
+func (x *AuditAddRequest) ClearCounterpartTenantId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	x.xxx_hidden_CounterpartTenantId = nil
 }
 
 type AuditAddRequest_builder struct {
@@ -272,7 +285,10 @@ func (b0 AuditAddRequest_builder) Build() *AuditAddRequest {
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_ActorTenantId = b.ActorTenantId
 	x.xxx_hidden_Value = b.Value
-	x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
+	if b.CounterpartTenantId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 11)
+		x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
+	}
 	return m0
 }
 
@@ -1720,7 +1736,7 @@ var File_app_payday_audit_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xaf\x03\n" +
+	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xa8\x03\n" +
 	"\x0fAuditAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\"\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x05\xaa\x01\x02\b\x02R\btenantId\x12 \n" +
@@ -1732,8 +1748,8 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x05patch\x18\f \x01(\fB\x05\xaa\x01\x02\b\x02R\x05patch\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x12-\n" +
 	"\x0factor_tenant_id\x18\x10 \x01(\fB\x05\xaa\x01\x02\b\x02R\ractorTenantId\x12\x1b\n" +
-	"\x05value\x18\x11 \x01(\fB\x05\xaa\x01\x02\b\x02R\x05value\x129\n" +
-	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\x05\xaa\x01\x02\b\x02R\x13counterpartTenantId\"\\\n" +
+	"\x05value\x18\x11 \x01(\fB\x05\xaa\x01\x02\b\x02R\x05value\x122\n" +
+	"\x15counterpart_tenant_id\x18\x12 \x01(\fR\x13counterpartTenantId\"\\\n" +
 	"\x0fAuditGetRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12(\n" +
 	"\x06select\x18\x02 \x01(\v2\x10.app.AuditSelectR\x06select\"#\n" +

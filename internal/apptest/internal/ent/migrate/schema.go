@@ -21,7 +21,7 @@ var (
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "actor_tenant_id", Type: field.TypeUUID},
 		{Name: "value", Type: field.TypeBytes},
-		{Name: "counterpart_tenant_id", Type: field.TypeUUID},
+		{Name: "counterpart_tenant_id", Type: field.TypeUUID, Nullable: true},
 	}
 	// AuditTable holds the schema information for the "audit" table.
 	AuditTable = &schema.Table{

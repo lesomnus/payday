@@ -166,7 +166,19 @@ message Audit {
   //
   // Set through `audit.Concerning`, so it is server-side and never a field of a
   // request: a caller that could name it could grant a stranger a read.
-  bytes counterpart_tenant_id = 18 [(orm.field) = {type: TYPE_UUID}];
+  //
+  // It has a default, which the other two identifiers here do not, and that is
+  // about who writes a trail row. The recorder is not the only one: an app that
+  // records something the servers cannot see -- roster writes the operator's
+  // intent before the attempt, through ent, because every server refuses a
+  // write to the trail -- composes the row itself. A column with no default is
+  // one every such writer has to learn about on the day it is added, and what
+  // it learns is a runtime refusal on a deployment that upgraded. Unset is the
+  // honest value for nearly every row anyway.
+  bytes counterpart_tenant_id = 18 [(orm.field) = {
+    type: TYPE_UUID
+    default: ""
+  }];
 
   option (orm.message) = {
     rpc: {crud: true}

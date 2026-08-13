@@ -129,10 +129,14 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 		q.SetActorTenantID(v)
 	}
 	q.SetValue(req.GetValue())
-	if v, err := uuid.FromBytes(req.GetCounterpartTenantId()); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
+	if req.HasCounterpartTenantId() {
+		if v, err := uuid.FromBytes(req.GetCounterpartTenantId()); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
+		} else {
+			q.SetCounterpartTenantID(v)
+		}
 	} else {
-		q.SetCounterpartTenantID(v)
+		q.SetCounterpartTenantID(uuid.New())
 	}
 
 	u, err := q.Save(ctx)

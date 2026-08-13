@@ -538,9 +538,22 @@ func (m *AuditMutation) OldCounterpartTenantID(ctx context.Context) (v uuid.UUID
 	return oldValue.CounterpartTenantID, nil
 }
 
+// ClearCounterpartTenantID clears the value of the "counterpart_tenant_id" field.
+func (m *AuditMutation) ClearCounterpartTenantID() {
+	m.counterpart_tenant_id = nil
+	m.clearedFields[audit.FieldCounterpartTenantID] = struct{}{}
+}
+
+// CounterpartTenantIDCleared returns if the "counterpart_tenant_id" field was cleared in this mutation.
+func (m *AuditMutation) CounterpartTenantIDCleared() bool {
+	_, ok := m.clearedFields[audit.FieldCounterpartTenantID]
+	return ok
+}
+
 // ResetCounterpartTenantID resets all changes to the "counterpart_tenant_id" field.
 func (m *AuditMutation) ResetCounterpartTenantID() {
 	m.counterpart_tenant_id = nil
+	delete(m.clearedFields, audit.FieldCounterpartTenantID)
 }
 
 // Where appends a list predicates to the AuditMutation builder.
@@ -777,6 +790,9 @@ func (m *AuditMutation) ClearedFields() []string {
 	if m.FieldCleared(audit.FieldDateCreated) {
 		fields = append(fields, audit.FieldDateCreated)
 	}
+	if m.FieldCleared(audit.FieldCounterpartTenantID) {
+		fields = append(fields, audit.FieldCounterpartTenantID)
+	}
 	return fields
 }
 
@@ -793,6 +809,9 @@ func (m *AuditMutation) ClearField(name string) error {
 	switch name {
 	case audit.FieldDateCreated:
 		m.ClearDateCreated()
+		return nil
+	case audit.FieldCounterpartTenantID:
+		m.ClearCounterpartTenantID()
 		return nil
 	}
 	return fmt.Errorf("unknown Audit nullable field %s", name)

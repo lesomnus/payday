@@ -89,6 +89,14 @@ func (_c *AuditCreate) SetCounterpartTenantID(v uuid.UUID) *AuditCreate {
 	return _c
 }
 
+// SetNillableCounterpartTenantID sets the "counterpart_tenant_id" field if the given value is not nil.
+func (_c *AuditCreate) SetNillableCounterpartTenantID(v *uuid.UUID) *AuditCreate {
+	if v != nil {
+		_c.SetCounterpartTenantID(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *AuditCreate) SetID(v uuid.UUID) *AuditCreate {
 	_c.mutation.SetID(v)
@@ -152,9 +160,6 @@ func (_c *AuditCreate) check() error {
 	}
 	if _, ok := _c.mutation.Value(); !ok {
 		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "Audit.value"`)}
-	}
-	if _, ok := _c.mutation.CounterpartTenantID(); !ok {
-		return &ValidationError{Name: "counterpart_tenant_id", err: errors.New(`ent: missing required field "Audit.counterpart_tenant_id"`)}
 	}
 	return nil
 }

@@ -131,6 +131,12 @@ func (_u *AuditUpdate) SetNillableCounterpartTenantID(v *uuid.UUID) *AuditUpdate
 	return _u
 }
 
+// ClearCounterpartTenantID clears the value of the "counterpart_tenant_id" field.
+func (_u *AuditUpdate) ClearCounterpartTenantID() *AuditUpdate {
+	_u.mutation.ClearCounterpartTenantID()
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdate) Mutation() *AuditMutation {
 	return _u.mutation
@@ -207,6 +213,9 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.CounterpartTenantID(); ok {
 		_spec.SetField(audit.FieldCounterpartTenantID, field.TypeUUID, value)
+	}
+	if _u.mutation.CounterpartTenantIDCleared() {
+		_spec.ClearField(audit.FieldCounterpartTenantID, field.TypeUUID)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -332,6 +341,12 @@ func (_u *AuditUpdateOne) SetNillableCounterpartTenantID(v *uuid.UUID) *AuditUpd
 	return _u
 }
 
+// ClearCounterpartTenantID clears the value of the "counterpart_tenant_id" field.
+func (_u *AuditUpdateOne) ClearCounterpartTenantID() *AuditUpdateOne {
+	_u.mutation.ClearCounterpartTenantID()
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdateOne) Mutation() *AuditMutation {
 	return _u.mutation
@@ -438,6 +453,9 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 	}
 	if value, ok := _u.mutation.CounterpartTenantID(); ok {
 		_spec.SetField(audit.FieldCounterpartTenantID, field.TypeUUID, value)
+	}
+	if _u.mutation.CounterpartTenantIDCleared() {
+		_spec.ClearField(audit.FieldCounterpartTenantID, field.TypeUUID)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Audit{config: _u.config}
