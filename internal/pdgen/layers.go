@@ -463,7 +463,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	// Zero unless a layer said otherwise, which is nearly every write. It is
 	// the other tenant this one was about, and the wall on the trail counts
 	// it; see `audit.Concerning`.
-	g.P("		CounterpartTenantId: v.Counterpart.Bytes(),")
+	g.P("		CounterpartTenantId: v.CounterpartBytes(),")
 	g.P("	}.Build())")
 	g.P("")
 	g.P("	return err")

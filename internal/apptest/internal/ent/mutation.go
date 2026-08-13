@@ -524,7 +524,7 @@ func (m *AuditMutation) CounterpartTenantID() (r uuid.UUID, exists bool) {
 // OldCounterpartTenantID returns the old "counterpart_tenant_id" field's value of the Audit entity.
 // If the Audit object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AuditMutation) OldCounterpartTenantID(ctx context.Context) (v uuid.UUID, err error) {
+func (m *AuditMutation) OldCounterpartTenantID(ctx context.Context) (v *uuid.UUID, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldCounterpartTenantID is only allowed on UpdateOne operations")
 	}

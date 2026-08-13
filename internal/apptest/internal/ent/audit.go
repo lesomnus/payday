@@ -37,7 +37,7 @@ type Audit struct {
 	// Value holds the value of the "value" field.
 	Value []byte `json:"value,omitempty"`
 	// CounterpartTenantID holds the value of the "counterpart_tenant_id" field.
-	CounterpartTenantID uuid.UUID `json:"counterpart_tenant_id,omitempty"`
+	CounterpartTenantID *uuid.UUID `json:"counterpart_tenant_id,omitempty"`
 	selectValues        sql.SelectValues
 }
 
@@ -46,13 +46,15 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case audit.FieldCounterpartTenantID:
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case audit.FieldTraceID, audit.FieldPatch, audit.FieldValue:
 			values[i] = new([]byte)
 		case audit.FieldAction:
 			values[i] = new(sql.NullString)
 		case audit.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case audit.FieldID, audit.FieldTenantID, audit.FieldActorID, audit.FieldObjectID, audit.FieldActorTenantID, audit.FieldCounterpartTenantID:
+		case audit.FieldID, audit.FieldTenantID, audit.FieldActorID, audit.FieldObjectID, audit.FieldActorTenantID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -130,10 +132,11 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 				_m.Value = *value
 			}
 		case audit.FieldCounterpartTenantID:
-			if value, ok := values[i].(*uuid.UUID); !ok {
+			if value, ok := values[i].(*sql.NullScanner); !ok {
 				return fmt.Errorf("unexpected type %T for field counterpart_tenant_id", values[i])
-			} else if value != nil {
-				_m.CounterpartTenantID = *value
+			} else if value.Valid {
+				_m.CounterpartTenantID = new(uuid.UUID)
+				*_m.CounterpartTenantID = *value.S.(*uuid.UUID)
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -198,8 +201,10 @@ func (_m *Audit) String() string {
 	builder.WriteString("value=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Value))
 	builder.WriteString(", ")
-	builder.WriteString("counterpart_tenant_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.CounterpartTenantID))
+	if v := _m.CounterpartTenantID; v != nil {
+		builder.WriteString("counterpart_tenant_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

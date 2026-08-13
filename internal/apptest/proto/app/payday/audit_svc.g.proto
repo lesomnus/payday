@@ -73,6 +73,11 @@ message AuditPatchRequest {
   bytes actor_tenant_id = 32;
   bytes value = 34;
   bytes counterpart_tenant_id = 36;
+  // Clear counterpart_tenant_id instead of writing it.
+  // It takes a field of its own because an unset value already means
+  // "leave it alone", so no value could have meant NULL. It wins
+  // outright: setting both this and counterpart_tenant_id clears.
+  bool counterpart_tenant_id_null = 37;
 }
 
 message AuditApplyRequest {

@@ -135,8 +135,6 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 		} else {
 			q.SetCounterpartTenantID(v)
 		}
-	} else {
-		q.SetCounterpartTenantID(uuid.New())
 	}
 
 	u, err := q.Save(ctx)

@@ -651,4 +651,15 @@ func TestBothSidesOfAWriteAboutTwoTenantsReadIt(t *testing.T) {
 	x.Len(got, 1, "the other tenant reads the write it was a party to, and nothing else")
 	x.Equal(other.GetId(), got[0].GetCounterpartTenantId())
 	x.Equal(b.Tenant.Bytes(), got[0].GetTenantId())
+
+	// And a write about nobody else leaves the column empty. It is nullable for
+	// this: a default on a uuid column means *the server picks one*, so for one
+	// commit every ordinary row of the trail carried a **random tenant
+	// identifier** in the column that decides who may read it. It matched
+	// nobody and was still the wrong thing to have written.
+	for _, row := range seen(b.Tenant) {
+		if row.GetAction() == app.RobotService_Add_FullMethodName {
+			x.Empty(row.GetCounterpartTenantId(), "a write about one tenant named a second")
+		}
+	}
 }

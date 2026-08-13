@@ -2152,7 +2152,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		ObjectId:            v.Object.Bytes(),
 		Patch:               v.Patch,
 		Value:               value,
-		CounterpartTenantId: v.Counterpart.Bytes(),
+		CounterpartTenantId: v.CounterpartBytes(),
 	}.Build())
 
 	return err

@@ -167,17 +167,26 @@ message Audit {
   // Set through `audit.Concerning`, so it is server-side and never a field of a
   // request: a caller that could name it could grant a stranger a read.
   //
-  // It has a default, which the other two identifiers here do not, and that is
-  // about who writes a trail row. The recorder is not the only one: an app that
-  // records something the servers cannot see -- roster writes the operator's
-  // intent before the attempt, through ent, because every server refuses a
-  // write to the trail -- composes the row itself. A column with no default is
-  // one every such writer has to learn about on the day it is added, and what
-  // it learns is a runtime refusal on a deployment that upgraded. Unset is the
-  // honest value for nearly every row anyway.
+  // **Nullable**, which the other two identifiers here are not, and it is the
+  // only honest shape: nearly every write is about one tenant, and a column
+  // that has to hold something would be holding a lie about who may read the
+  // row. NULL matches no scope, so an unset one is a row with two readers
+  // rather than three.
+  //
+  // Not a default, which was the first attempt and was wrong: a default on a
+  // uuid column means *the server picks one*, so every ordinary trail row would
+  // have carried a **random tenant identifier** in the column that decides who
+  // can read it. It matched nobody and was still the wrong value to write.
+  //
+  // Nullable is also what keeps the other writers working. The recorder is not
+  // the only one: an app that records something the servers cannot see --
+  // roster writes an operator's intent before the attempt, through ent, because
+  // every server refuses a write to the trail -- composes the row itself, and a
+  // column it must fill in is one it learns about from a runtime refusal on the
+  // day somebody upgrades.
   bytes counterpart_tenant_id = 18 [(orm.field) = {
     type: TYPE_UUID
-    default: ""
+    nullable: true
   }];
 
   option (orm.message) = {

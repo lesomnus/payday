@@ -234,7 +234,7 @@ func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := _c.mutation.CounterpartTenantID(); ok {
 		_spec.SetField(audit.FieldCounterpartTenantID, field.TypeUUID, value)
-		_node.CounterpartTenantID = value
+		_node.CounterpartTenantID = &value
 	}
 	return _node, _spec
 }

@@ -72,6 +72,22 @@ type Row struct {
 	Counterpart pdid.Id
 }
 
+// CounterpartBytes is [Row.Counterpart] as a request carries it, and **nil**
+// when there is none.
+//
+// Nil rather than sixteen zero bytes, because the column is nullable and the
+// difference is what the row says: a zero identifier is a value in the column
+// that decides who may read the row, and NULL is the absence of one. They
+// narrow the same -- no scope holds the zero identifier -- and only one of them
+// is true.
+func (v Row) CounterpartBytes() []byte {
+	if v.Counterpart.IsZero() {
+		return nil
+	}
+
+	return v.Counterpart.Bytes()
+}
+
 // concerning is where [Concerning] keeps it.
 type concerning struct{}
 
