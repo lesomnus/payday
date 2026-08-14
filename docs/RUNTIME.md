@@ -112,8 +112,13 @@ So they are declared:
 
 ```proto
 option (payday.entity) = {
-  list: {order: [{by: "alias"}, {by: "id"}], size: {max: 100}}
-  watch: {by: [{ref: {}}]}
+  list: {
+    order: [{field: {name: "alias"}}, {field: {name: "id"}}]
+    by:    [{name: "ref"}]
+    size:  20
+    max:   100
+  }
+  watch: {}
 };
 ```
 
@@ -158,7 +163,7 @@ Everything payday enforces is placed as far left as it goes.
 | every entity says whether it is behind the wall | generation failure. Saying nothing means `tenanted:`, which is the loud way to be wrong |
 | the last key in `list.order` is the row key | generation failure |
 | an index covers `list.order` | generation failure |
-| `list.size.max` is set | generation failure |
+| `list.max` is set | generation failure |
 | a `watch:` entity has a version field | generation failure |
 | one `go_package` per app | `pd gen` refuses |
 | identifiers are domain-tagged UUIDs | the minter, on both the write and the read path |

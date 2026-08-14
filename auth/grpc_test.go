@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -372,4 +373,38 @@ func TestInject(t *testing.T) {
 		x.NoError(err)
 		x.Equal(auth.MethodBearer, v.Method)
 	})
+}
+
+// TestAStoreThatIsNotThereSaysSo is the order of two questions in `statusOf`,
+// and it was the wrong way round.
+//
+// `status.FromError` unwraps -- since grpc-go 1.83 it asks `errors.As` -- so a
+// handler that wrapped both an upstream error and `ErrUnavailable` was reported
+// with the upstream code. A token store that was down answered `Unimplemented`,
+// which reads as "the method you called does not exist" and sends nobody to
+// look at the store.
+func TestAStoreThatIsNotThereSaysSo(t *testing.T) {
+	x := require.New(t)
+
+	// What `auth.Remote` builds when the call to the store fails: the upstream
+	// status and ErrUnavailable, in one error.
+	up := status.Error(codes.Unimplemented, "unknown method Introspect")
+	err := fmt.Errorf("%w: introspect: %w", auth.ErrUnavailable, up)
+
+	h := auth.HandlerFunc(func(ctx context.Context) (auth.Identity, error) {
+		return auth.Identity{}, err
+	})
+
+	_, got := auth.InterceptorUnary(h, auth.ResolverFunc(
+		func(ctx context.Context, id auth.Identity) (*frame.Frame, error) {
+			return nil, errors.New("never reached")
+		}), nil)(
+		context.Background(),
+		nil,
+		&grpc.UnaryServerInfo{FullMethod: "/app.RobotService/Get"},
+		func(ctx context.Context, req any) (any, error) { return nil, nil },
+	)
+
+	x.Equal(codes.Unavailable, status.Code(got),
+		"the store is down, which is not the caller's credential and not a missing method")
 }

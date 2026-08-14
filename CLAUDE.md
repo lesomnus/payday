@@ -53,7 +53,7 @@ buf breaking --against buf.build/payday/payday:dev
 
 - `internal/apptest/**/*.g.go`, `*.pb.go`, `server/bare/`, `server/pd/`,
   `internal/ent/`, `ts/gen/` — regenerate instead
-- `internal/apptest/proto/payday/*.proto` — these are **copies**. The source is
+- `internal/apptest/proto/app/payday/*.proto` — these are **copies**. The source is
   `schema/payday/`, and `pd gen` copies and rewrites the package line
 
 ## Where things live

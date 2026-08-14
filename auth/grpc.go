@@ -249,12 +249,23 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 // could not reach the thing it asks must not say that: it would send every
 // caller at once to an issuer that is, by assumption, already having a bad
 // day, and each of them would discard a token that was never wrong.
+// The order of the two questions below is the whole of this function, and it
+// was the wrong way round.
+//
+// `status.FromError` **unwraps**: since grpc-go 1.83 it asks `errors.As`, so it
+// answers for a status buried anywhere in the chain. [Remote] wraps both -- the
+// upstream error and [ErrUnavailable] -- so asking it first meant a store that
+// could not be reached was reported with whatever code the call to it failed
+// with. A dead token store answered `Unimplemented`, which reads as "the method
+// you called does not exist" and sends nobody to look at the store.
+//
+// So this asks what payday knows before it asks what the wire said.
 func statusOf(err error) error {
-	if s, ok := status.FromError(err); ok {
-		return s.Err()
-	}
 	if errors.Is(err, ErrUnavailable) {
 		return status.Error(codes.Unavailable, err.Error())
+	}
+	if s, ok := status.FromError(err); ok {
+		return s.Err()
 	}
 
 	return status.Error(codes.Unauthenticated, err.Error())

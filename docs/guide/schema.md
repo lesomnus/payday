@@ -47,7 +47,7 @@ message Robot {
     domain: 7
     list: {
       order: [{field: {name: "date_created"}}, {field: {name: "id"}}]
-      by:    ["ref"]
+      by:    [{name: "ref"}]
       size:  20
       max:   100
     }
@@ -338,7 +338,7 @@ it.
 ```proto
 list: {
   order: [{field: {name: "date_created"}}, {field: {name: "id"}}]
-  by:    ["ref", "listed"]
+  by:    [{name: "ref"}, {name: "listed"}]
   size:  20
   max:   100
 }
