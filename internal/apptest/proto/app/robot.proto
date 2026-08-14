@@ -271,7 +271,24 @@ message Reading {
     default: ""
   }];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {
+    rpc: {crud: true}
+    indexes: [
+      // The stamp leads, which is what makes it worth keeping: the wall on this
+      // entity is `tenant_id IN (...)`, and a predicate on the first column of
+      // an index is answered by it. Third would satisfy nothing.
+      //
+      // `date_created` after it because a reading is read by tenant and in
+      // time, which is one index rather than two.
+      {
+        name: "wall"
+        refs: [
+          {name: "tenant_id", number: 9},
+          {name: "date_created", number: 15}
+        ]
+      }
+    ]
+  };
   option (payday.entity) = {
 
     // Hard, and it is the case the option exists for: readings arrive faster

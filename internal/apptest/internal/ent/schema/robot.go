@@ -235,6 +235,12 @@ func (Reading) Edges() []ent.Edge {
 	}
 }
 
+func (Reading) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("tenant_id", "date_created"),
+	}
+}
+
 func (Reading) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		entsql.Annotation{Table: "reading"},

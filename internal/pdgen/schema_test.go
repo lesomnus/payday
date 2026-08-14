@@ -133,6 +133,12 @@ func rebuild(t *testing.T, fd protoreflect.FileDescriptor) *descriptorpb.FileDes
 // entity is the boilerplate every case below would otherwise repeat: a keyed
 // message with whatever payday option the case is about.
 func entity(name, opts string, extra ...string) string {
+	return entityWith(name, opts, "", extra...)
+}
+
+// entityWith is [entity] with something more in `(orm.message)` -- an index,
+// today.
+func entityWith(name, opts, orm string, extra ...string) string {
 	body := ""
 	for _, v := range extra {
 		body += v + "\n"
@@ -143,10 +149,10 @@ message %s {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   string alias = 4;
 %s
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {crud: true}%s};
   option (payday.entity) = {%s, erase: {hard: {}}};
 }
-`, name, body, opts)
+`, name, body, orm, opts)
 }
 
 const tenant = `
@@ -1334,8 +1340,13 @@ message Holder {
 }
 `
 
+	// An index the stamp leads, which every stamp needs -- see the subtest
+	// below for what happens without one.
+	const indexed = `
+    indexes: [{name: "wall", refs: [{name: "tenant_id", number: 8}]}]`
+
 	identity := func(opts string) string {
-		return entity("Identity", opts,
+		return entityWith("Identity", opts, indexed,
 			`Holder holder = 2 [(orm.edge) = {immutable: true}];`,
 			`bytes tenant_id = 8 [(orm.field) = {type: TYPE_UUID}];`)
 	}
@@ -1370,6 +1381,37 @@ message Holder {
 		}
 		if !strings.Contains(err.Error(), "not immutable") {
 			t.Errorf("refused for the wrong reason: %v", err)
+		}
+	})
+
+	// The rule that makes the feature honest rather than merely compiling. What
+	// a stamp replaces is a semi-join over two indexed columns, and a predicate
+	// on an unindexed column is not faster than that -- it is a scan of the
+	// table the wall is read from most.
+	t.Run("and one with no index to be read by", func(t *testing.T) {
+		_, err := read(t, tenant+holder+entity("Identity",
+			`domain: 8, tenanted: {via: "holder.tenant", stamp: "tenant_id"}`,
+			`Holder holder = 2 [(orm.edge) = {immutable: true}];`,
+			`bytes tenant_id = 8 [(orm.field) = {type: TYPE_UUID}];`))
+		if err == nil {
+			t.Fatal("a stamp with no index was accepted")
+		}
+		if !strings.Contains(err.Error(), "not the first column of any index") {
+			t.Errorf("refused for the wrong reason: %v", err)
+		}
+	})
+
+	// **Leads**, not merely appears in: a composite index answers a predicate
+	// on its first column and not on its third.
+	t.Run("and one that is not the first column of one", func(t *testing.T) {
+		_, err := read(t, tenant+holder+entityWith("Identity",
+			`domain: 8, tenanted: {via: "holder.tenant", stamp: "tenant_id"}`,
+			`
+    indexes: [{name: "wall", refs: [{name: "alias", number: 4}, {name: "tenant_id", number: 8}]}]`,
+			`Holder holder = 2 [(orm.edge) = {immutable: true}];`,
+			`bytes tenant_id = 8 [(orm.field) = {type: TYPE_UUID}];`))
+		if err == nil {
+			t.Fatal("a stamp in the middle of an index was accepted")
 		}
 	})
 

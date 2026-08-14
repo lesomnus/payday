@@ -651,6 +651,37 @@ func (s *Schema) checkStamp(v *Entity) error {
 		return fmt.Errorf("tenanted: stamp: %w", err)
 	}
 
+	// And an index it leads, or the wall is a scan.
+	//
+	// This is the rule that makes the feature honest rather than merely
+	// compiling. What a stamp replaces is `HasHolderWith(holder.TenantIDIn(...))`
+	// -- a semi-join over two indexed columns -- and `tenant_id IN (...)` on an
+	// unindexed column is not faster than that, it is a sequential scan of the
+	// table the wall is read from most.
+	//
+	// **Leads**, not merely appears in. A composite index answers a predicate
+	// on its first column and not on its third, so an index of
+	// (provider, subject, tenant_id) would satisfy a rule about membership and
+	// none about speed.
+	led := false
+	for x := range v.Entity.Indexes() {
+		for p := range x.Props() {
+			led = p.Name() == v.Stamp
+			break
+		}
+		if led {
+			break
+		}
+	}
+	if !led {
+		return fmt.Errorf(
+			"tenanted: `stamp: %q` is not the first column of any index, so the wall it is "+
+				"read by scans -- which is not faster than the join it replaced. Declare one "+
+				"under `(orm.message).indexes` that begins with %q; a unique index it already "+
+				"leads counts",
+			v.Stamp, v.Stamp)
+	}
+
 	at := v.Entity
 	for _, step := range v.Via {
 		e, ok := edge(at, step)

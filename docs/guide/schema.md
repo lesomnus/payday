@@ -171,11 +171,22 @@ becomes possible, which a path of two has nothing to name.
 ```proto
 bytes tenant_id = 9 [(orm.field) = {type: TYPE_UUID}];
 
+option (orm.message) = {
+  rpc: {crud: true}
+  indexes: [{name: "wall", refs: [{name: "tenant_id"}, {name: "date_created"}]}]
+};
 option (payday.entity) = {
   domain: 11
   tenanted: {via: "robot.tenant", stamp: "tenant_id"}
 };
 ```
+
+**The index is not optional and generation refuses without one.** What a stamp
+replaces is `HasHolderWith(holder.TenantIDIn(...))` — a semi-join over two
+indexed columns — and `tenant_id IN (...)` on an unindexed column is not faster
+than that, it is a scan of the table the wall is read from most. The stamp has
+to be the index's **first** column: a composite index answers a predicate on its
+first column and not on its third.
 
 **It is not a field of the request.** A caller that could write it could put a
 row behind a wall its edge does not agree with, and the row would then be

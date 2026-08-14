@@ -229,6 +229,13 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "reading_tenant_id_date_created",
+				Unique:  false,
+				Columns: []*schema.Column{ReadingColumns[1], ReadingColumns[3]},
+			},
+		},
 	}
 	// RobotColumns holds the columns for the "robot" table.
 	RobotColumns = []*schema.Column{
