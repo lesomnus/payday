@@ -407,6 +407,153 @@ func (b0 Robot_builder) Build() *Robot {
 
 // Joint reaches its tenant through the Robot it is part of, which is what a
 // `via` of more than one step is for. Nothing else about it is interesting.
+// Pairing is two robots that work together, and the entity `agrees:` is for.
+//
+// It reaches its tenant through `lead`, which is the ordinary declaration. What
+// is not ordinary is `follow`: a second edge that also arrives at a tenant, and
+// payday says nothing about such an edge unless it is named -- its own trail
+// holds two tenants on purpose, so there is no rule that they agree.
+//
+// This one names it, because a pairing across two tenants is not a thing this
+// app means. What that buys over the gate's own check is the caller who can see
+// both: an operator whose scope covers several tenants passes "may I read this"
+// with one robot in each, and the deployment writing through the server with no
+// wall passes it without being asked.
+type Pairing struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Lead        *Robot                 `protobuf:"bytes,2,opt,name=lead"`
+	xxx_hidden_Follow      *Robot                 `protobuf:"bytes,8,opt,name=follow"`
+	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *Pairing) Reset() {
+	*x = Pairing{}
+	mi := &file_app_robot_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Pairing) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Pairing) ProtoMessage() {}
+
+func (x *Pairing) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Pairing) GetId() []byte {
+	if x != nil {
+		return x.xxx_hidden_Id
+	}
+	return nil
+}
+
+func (x *Pairing) GetLead() *Robot {
+	if x != nil {
+		return x.xxx_hidden_Lead
+	}
+	return nil
+}
+
+func (x *Pairing) GetFollow() *Robot {
+	if x != nil {
+		return x.xxx_hidden_Follow
+	}
+	return nil
+}
+
+func (x *Pairing) GetDateCreated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateCreated
+	}
+	return nil
+}
+
+func (x *Pairing) SetId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Id = v
+}
+
+func (x *Pairing) SetLead(v *Robot) {
+	x.xxx_hidden_Lead = v
+}
+
+func (x *Pairing) SetFollow(v *Robot) {
+	x.xxx_hidden_Follow = v
+}
+
+func (x *Pairing) SetDateCreated(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateCreated = v
+}
+
+func (x *Pairing) HasLead() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Lead != nil
+}
+
+func (x *Pairing) HasFollow() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Follow != nil
+}
+
+func (x *Pairing) HasDateCreated() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateCreated != nil
+}
+
+func (x *Pairing) ClearLead() {
+	x.xxx_hidden_Lead = nil
+}
+
+func (x *Pairing) ClearFollow() {
+	x.xxx_hidden_Follow = nil
+}
+
+func (x *Pairing) ClearDateCreated() {
+	x.xxx_hidden_DateCreated = nil
+}
+
+type Pairing_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id          []byte
+	Lead        *Robot
+	Follow      *Robot
+	DateCreated *timestamppb.Timestamp
+}
+
+func (b0 Pairing_builder) Build() *Pairing {
+	m0 := &Pairing{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Id = b.Id
+	x.xxx_hidden_Lead = b.Lead
+	x.xxx_hidden_Follow = b.Follow
+	x.xxx_hidden_DateCreated = b.DateCreated
+	return m0
+}
+
 type Joint struct {
 	state                 protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id         []byte                 `protobuf:"bytes,1,opt,name=id"`
@@ -419,7 +566,7 @@ type Joint struct {
 
 func (x *Joint) Reset() {
 	*x = Joint{}
-	mi := &file_app_robot_proto_msgTypes[2]
+	mi := &file_app_robot_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -431,7 +578,7 @@ func (x *Joint) String() string {
 func (*Joint) ProtoMessage() {}
 
 func (x *Joint) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[2]
+	mi := &file_app_robot_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -555,7 +702,7 @@ type Fleet struct {
 
 func (x *Fleet) Reset() {
 	*x = Fleet{}
-	mi := &file_app_robot_proto_msgTypes[3]
+	mi := &file_app_robot_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -567,7 +714,7 @@ func (x *Fleet) String() string {
 func (*Fleet) ProtoMessage() {}
 
 func (x *Fleet) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[3]
+	mi := &file_app_robot_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -657,6 +804,7 @@ type Reading struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Robot       *Robot                 `protobuf:"bytes,2,opt,name=robot"`
+	xxx_hidden_TenantId    []byte                 `protobuf:"bytes,9,opt,name=tenant_id,json=tenantId"`
 	xxx_hidden_Celsius     float64                `protobuf:"fixed64,8,opt,name=celsius"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields          protoimpl.UnknownFields
@@ -665,7 +813,7 @@ type Reading struct {
 
 func (x *Reading) Reset() {
 	*x = Reading{}
-	mi := &file_app_robot_proto_msgTypes[4]
+	mi := &file_app_robot_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -677,7 +825,7 @@ func (x *Reading) String() string {
 func (*Reading) ProtoMessage() {}
 
 func (x *Reading) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[4]
+	mi := &file_app_robot_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -698,6 +846,13 @@ func (x *Reading) GetId() []byte {
 func (x *Reading) GetRobot() *Robot {
 	if x != nil {
 		return x.xxx_hidden_Robot
+	}
+	return nil
+}
+
+func (x *Reading) GetTenantId() []byte {
+	if x != nil {
+		return x.xxx_hidden_TenantId
 	}
 	return nil
 }
@@ -725,6 +880,13 @@ func (x *Reading) SetId(v []byte) {
 
 func (x *Reading) SetRobot(v *Robot) {
 	x.xxx_hidden_Robot = v
+}
+
+func (x *Reading) SetTenantId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_TenantId = v
 }
 
 func (x *Reading) SetCelsius(v float64) {
@@ -760,8 +922,20 @@ func (x *Reading) ClearDateCreated() {
 type Reading_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id          []byte
-	Robot       *Robot
+	Id    []byte
+	Robot *Robot
+	// The tenant `robot.tenant` reaches, kept here. payday stamps it.
+	//
+	// A reading is the entity that makes this worth having: readings arrive
+	// faster than anybody reads them, and without a stamp every read of one is
+	// `HasRobotWith(robot.TenantIDIn(...))` -- a correlated subquery on the table
+	// that grows fastest. With it the wall is the comparison a direct edge gets.
+	//
+	// It is not a second answer to be kept in step. `robot` is immutable and so
+	// is `Robot.tenant`, so the value is decided when the row is written and
+	// nothing can move it afterwards -- which is what `pd gen` refuses a stamp
+	// without.
+	TenantId    []byte
 	Celsius     float64
 	DateCreated *timestamppb.Timestamp
 }
@@ -772,6 +946,7 @@ func (b0 Reading_builder) Build() *Reading {
 	_, _ = b, x
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Robot = b.Robot
+	x.xxx_hidden_TenantId = b.TenantId
 	x.xxx_hidden_Celsius = b.Celsius
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
@@ -812,7 +987,16 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x02id\x12\b\n" +
 	"\x06tenant\x1a\x05\n" +
 	"\x03ref\x1a\b\n" +
-	"\x06tenant 2(d:\x00\"\xcc\x01\n" +
+	"\x06tenant 2(d:\x00\"\xf6\x01\n" +
+	"\aPairing\x12\x1b\n" +
+	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12&\n" +
+	"\x04lead\x18\x02 \x01(\v2\n" +
+	".app.RobotB\x06\xf2\x82\x16\x02@\x01R\x04lead\x12*\n" +
+	"\x06follow\x18\b \x01(\v2\n" +
+	".app.RobotB\x06\xf2\x82\x16\x02@\x01R\x06follow\x12H\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:0\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16$\b\fB\x02\n" +
+	"\x00\"\x1c\n" +
+	"\vlead.tenant\"\rfollow.tenant\"\xcc\x01\n" +
 	"\x05Joint\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12*\n" +
 	"\x05robot\x18\x02 \x01(\v2\n" +
@@ -825,44 +1009,49 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x1c\n" +
 	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
-	"dateErased:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\t*\x00\"\xd8\x01\n" +
+	"dateErased:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\t*\x00\"\x88\x02\n" +
 	"\aReading\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12(\n" +
 	"\x05robot\x18\x02 \x01(\v2\n" +
-	".app.RobotB\x06\xf2\x82\x16\x02@\x01R\x05robot\x12\x18\n" +
+	".app.RobotB\x06\xf2\x82\x16\x02@\x01R\x05robot\x12#\n" +
+	"\ttenant_id\x18\t \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12\x18\n" +
 	"\acelsius\x18\b \x01(\x01R\acelsius\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\"\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x16\b\vB\x02\n" +
-	"\x00\"\x0e\n" +
-	"\frobot.tenantB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:-\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16!\b\vB\x02\n" +
+	"\x00\"\x19\n" +
+	"\frobot.tenant\x1a\ttenant_idB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_app_robot_proto_goTypes = []any{
 	(*Cell)(nil),                  // 0: app.Cell
 	(*Robot)(nil),                 // 1: app.Robot
-	(*Joint)(nil),                 // 2: app.Joint
-	(*Fleet)(nil),                 // 3: app.Fleet
-	(*Reading)(nil),               // 4: app.Reading
-	(*Tenant)(nil),                // 5: app.Tenant
-	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
+	(*Pairing)(nil),               // 2: app.Pairing
+	(*Joint)(nil),                 // 3: app.Joint
+	(*Fleet)(nil),                 // 4: app.Fleet
+	(*Reading)(nil),               // 5: app.Reading
+	(*Tenant)(nil),                // 6: app.Tenant
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
 }
 var file_app_robot_proto_depIdxs = []int32{
-	5,  // 0: app.Cell.tenant:type_name -> app.Tenant
-	6,  // 1: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
-	5,  // 2: app.Robot.tenant:type_name -> app.Tenant
+	6,  // 0: app.Cell.tenant:type_name -> app.Tenant
+	7,  // 1: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
+	6,  // 2: app.Robot.tenant:type_name -> app.Tenant
 	0,  // 3: app.Robot.cell:type_name -> app.Cell
-	6,  // 4: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
-	6,  // 5: app.Robot.date_created:type_name -> google.protobuf.Timestamp
-	6,  // 6: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
-	1,  // 7: app.Joint.robot:type_name -> app.Robot
-	6,  // 8: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
-	6,  // 9: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
-	1,  // 10: app.Reading.robot:type_name -> app.Robot
-	6,  // 11: app.Reading.date_created:type_name -> google.protobuf.Timestamp
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	7,  // 4: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
+	7,  // 5: app.Robot.date_created:type_name -> google.protobuf.Timestamp
+	7,  // 6: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 7: app.Pairing.lead:type_name -> app.Robot
+	1,  // 8: app.Pairing.follow:type_name -> app.Robot
+	7,  // 9: app.Pairing.date_created:type_name -> google.protobuf.Timestamp
+	1,  // 10: app.Joint.robot:type_name -> app.Robot
+	7,  // 11: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
+	7,  // 12: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 13: app.Reading.robot:type_name -> app.Robot
+	7,  // 14: app.Reading.date_created:type_name -> google.protobuf.Timestamp
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_proto_init() }
@@ -877,7 +1066,7 @@ func file_app_robot_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_robot_proto_rawDesc), len(file_app_robot_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

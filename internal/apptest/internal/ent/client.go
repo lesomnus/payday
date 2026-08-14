@@ -22,6 +22,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
@@ -44,6 +45,8 @@ type Client struct {
 	Joint *JointClient
 	// Outbox is the client for interacting with the Outbox builders.
 	Outbox *OutboxClient
+	// Pairing is the client for interacting with the Pairing builders.
+	Pairing *PairingClient
 	// Reading is the client for interacting with the Reading builders.
 	Reading *ReadingClient
 	// Robot is the client for interacting with the Robot builders.
@@ -67,6 +70,7 @@ func (c *Client) init() {
 	c.Holder = NewHolderClient(c.config)
 	c.Joint = NewJointClient(c.config)
 	c.Outbox = NewOutboxClient(c.config)
+	c.Pairing = NewPairingClient(c.config)
 	c.Reading = NewReadingClient(c.config)
 	c.Robot = NewRobotClient(c.config)
 	c.Tenant = NewTenantClient(c.config)
@@ -168,6 +172,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Holder:  NewHolderClient(cfg),
 		Joint:   NewJointClient(cfg),
 		Outbox:  NewOutboxClient(cfg),
+		Pairing: NewPairingClient(cfg),
 		Reading: NewReadingClient(cfg),
 		Robot:   NewRobotClient(cfg),
 		Tenant:  NewTenantClient(cfg),
@@ -196,6 +201,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Holder:  NewHolderClient(cfg),
 		Joint:   NewJointClient(cfg),
 		Outbox:  NewOutboxClient(cfg),
+		Pairing: NewPairingClient(cfg),
 		Reading: NewReadingClient(cfg),
 		Robot:   NewRobotClient(cfg),
 		Tenant:  NewTenantClient(cfg),
@@ -228,8 +234,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Reading, c.Robot,
-		c.Tenant,
+		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing, c.Reading,
+		c.Robot, c.Tenant,
 	} {
 		n.Use(hooks...)
 	}
@@ -239,8 +245,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Reading, c.Robot,
-		c.Tenant,
+		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing, c.Reading,
+		c.Robot, c.Tenant,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -261,6 +267,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Joint.mutate(ctx, m)
 	case *OutboxMutation:
 		return c.Outbox.mutate(ctx, m)
+	case *PairingMutation:
+		return c.Pairing.mutate(ctx, m)
 	case *ReadingMutation:
 		return c.Reading.mutate(ctx, m)
 	case *RobotMutation:
@@ -1118,6 +1126,171 @@ func (c *OutboxClient) mutate(ctx context.Context, m *OutboxMutation) (Value, er
 	}
 }
 
+// PairingClient is a client for the Pairing schema.
+type PairingClient struct {
+	config
+}
+
+// NewPairingClient returns a client for the Pairing from the given config.
+func NewPairingClient(c config) *PairingClient {
+	return &PairingClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `pairing.Hooks(f(g(h())))`.
+func (c *PairingClient) Use(hooks ...Hook) {
+	c.hooks.Pairing = append(c.hooks.Pairing, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `pairing.Intercept(f(g(h())))`.
+func (c *PairingClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Pairing = append(c.inters.Pairing, interceptors...)
+}
+
+// Create returns a builder for creating a Pairing entity.
+func (c *PairingClient) Create() *PairingCreate {
+	mutation := newPairingMutation(c.config, OpCreate)
+	return &PairingCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Pairing entities.
+func (c *PairingClient) CreateBulk(builders ...*PairingCreate) *PairingCreateBulk {
+	return &PairingCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PairingClient) MapCreateBulk(slice any, setFunc func(*PairingCreate, int)) *PairingCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PairingCreateBulk{err: fmt.Errorf("calling to PairingClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PairingCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PairingCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Pairing.
+func (c *PairingClient) Update() *PairingUpdate {
+	mutation := newPairingMutation(c.config, OpUpdate)
+	return &PairingUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PairingClient) UpdateOne(_m *Pairing) *PairingUpdateOne {
+	mutation := newPairingMutation(c.config, OpUpdateOne, withPairing(_m))
+	return &PairingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PairingClient) UpdateOneID(id uuid.UUID) *PairingUpdateOne {
+	mutation := newPairingMutation(c.config, OpUpdateOne, withPairingID(id))
+	return &PairingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Pairing.
+func (c *PairingClient) Delete() *PairingDelete {
+	mutation := newPairingMutation(c.config, OpDelete)
+	return &PairingDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PairingClient) DeleteOne(_m *Pairing) *PairingDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PairingClient) DeleteOneID(id uuid.UUID) *PairingDeleteOne {
+	builder := c.Delete().Where(pairing.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PairingDeleteOne{builder}
+}
+
+// Query returns a query builder for Pairing.
+func (c *PairingClient) Query() *PairingQuery {
+	return &PairingQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePairing},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Pairing entity by its id.
+func (c *PairingClient) Get(ctx context.Context, id uuid.UUID) (*Pairing, error) {
+	return c.Query().Where(pairing.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PairingClient) GetX(ctx context.Context, id uuid.UUID) *Pairing {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryLead queries the lead edge of a Pairing.
+func (c *PairingClient) QueryLead(_m *Pairing) *RobotQuery {
+	query := (&RobotClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(pairing.Table, pairing.FieldID, id),
+			sqlgraph.To(robot.Table, robot.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, pairing.LeadTable, pairing.LeadColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryFollow queries the follow edge of a Pairing.
+func (c *PairingClient) QueryFollow(_m *Pairing) *RobotQuery {
+	query := (&RobotClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(pairing.Table, pairing.FieldID, id),
+			sqlgraph.To(robot.Table, robot.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, pairing.FollowTable, pairing.FollowColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *PairingClient) Hooks() []Hook {
+	return c.hooks.Pairing
+}
+
+// Interceptors returns the client interceptors.
+func (c *PairingClient) Interceptors() []Interceptor {
+	return c.inters.Pairing
+}
+
+func (c *PairingClient) mutate(ctx context.Context, m *PairingMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PairingCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PairingUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PairingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PairingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Pairing mutation op: %q", m.Op())
+	}
+}
+
 // ReadingClient is a client for the Reading schema.
 type ReadingClient struct {
 	config
@@ -1568,10 +1741,11 @@ func (c *TenantClient) mutate(ctx context.Context, m *TenantMutation) (Value, er
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Audit, Cell, Fleet, Holder, Joint, Outbox, Reading, Robot, Tenant []ent.Hook
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot,
+		Tenant []ent.Hook
 	}
 	inters struct {
-		Audit, Cell, Fleet, Holder, Joint, Outbox, Reading, Robot,
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot,
 		Tenant []ent.Interceptor
 	}
 )

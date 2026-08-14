@@ -6,7 +6,7 @@ import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegen
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { TenantRef, TenantSelect } from "./payday/tenant_svc_pb.js";
 import { file_app_payday_tenant_svc_g } from "./payday/tenant_svc_pb.js";
-import type { CellSchema, FleetSchema, JointSchema, ReadingSchema, Robot, RobotSchema } from "./robot_pb.js";
+import type { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, Robot, RobotSchema } from "./robot_pb.js";
 import { file_app_robot } from "./robot_pb.js";
 import type { EmptySchema, Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_empty, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot_svc.g.proto.
  */
 export const file_app_robot_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCJSCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5ImAKCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiEKBnRlbmFudBgCIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gisQEKD1JvYm90QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEhoKBGNlbGwYAyABKAsyDC5hcHAuQ2VsbFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAISDgoGc2VjcmV0GAggASgMEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiTwoPUm9ib3RHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QiRAoIUm9ib3RSZWYSDAoCaWQYASABKAxIABIjCgRzbHVnGAQgASgLMhMuYXBwLlJvYm90UmVmQnlTbHVnSABCBQoDa2V5Ij8KDlJvYm90UmVmQnlTbHVnEg0KBWFsaWFzGAQgASgJEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYivAEKC1JvYm90U2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0Eh0KBGNlbGwYAyABKAsyDy5hcHAuQ2VsbFNlbGVjdBINCgVhbGlhcxgEIAEoCBIOCgZzZWNyZXQYCCABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCCLLAQoRUm9ib3RQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEhoKBGNlbGwYBiABKAsyDC5hcHAuQ2VsbFJlZhIRCgljZWxsX251bGwYByABKAgSDQoFYWxpYXMYCCABKAkSDgoGc2VjcmV0GBAgASgMEjAKDGRhdGVfdXBkYXRlZBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV91cGRhdGVkX2ZvcmNlGBsgASgIIkwKEVJvYm90QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoImAKEFJvYm90TGlzdFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5Sb2JvdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAIiQwoRUm9ib3RMaXN0UmVzcG9uc2USGQoFaXRlbXMYASADKAsyCi5hcHAuUm9ib3QSEwoEbmV4dBgCIAEoCUIFqgECCAIiSQoLUm9ib3RGaWx0ZXISGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYiVAoRUm9ib3RXYXRjaFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5Sb2JvdEZpbHRlchIcCg1za2lwX3NuYXBzaG90GAIgASgIQgWqAQIIAiI4ChJSb2JvdFdhdGNoUmVzcG9uc2USIgoFaXRlbXMYASADKAsyEy5hcHAuUm9ib3RXYXRjaEl0ZW0iTgoOUm9ib3RXYXRjaEl0ZW0SCgoCaWQYASABKAwSGQoFdmFsdWUYAiABKAsyCi5hcHAuUm9ib3QSFQoGYWN0aW9uGAMgASgJQgWqAQIIAiJIChBSb2JvdE1vdmVSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIYCgJ0bxgCIAEoCzIMLmFwcC5DZWxsUmVmIlEKD0pvaW50QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPSm9pbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuSm9pbnRTZWxlY3QiHwoISm9pbnRSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiXwoLSm9pbnRTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0Eg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIIj4KEUpvaW50UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhINCgVhbGlhcxgIIAEoCSJMChFKb2ludEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuSm9pbnRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIzCg9GbGVldEFkZFJlcXVlc3QSCgoCaWQYASABKAwSFAoFYWxpYXMYBCABKAlCBaoBAggCIk8KD0ZsZWV0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkZsZWV0U2VsZWN0IjAKCEZsZWV0UmVmEgwKAmlkGAEgASgMSAASDwoFYWxpYXMYBCABKAlIAEIFCgNrZXkiPgoLRmxlZXRTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIIj4KEUZsZWV0UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhINCgVhbGlhcxgIIAEoCSJMChFGbGVldEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCKHAQoRUmVhZGluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSHAoFcm9ib3QYAiABKAsyDS5hcHAuUm9ib3RSZWYSFgoHY2Vsc2l1cxgIIAEoAUIFqgECCAISMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJVChFSZWFkaW5nR2V0UmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUmVhZGluZ1JlZhIiCgZzZWxlY3QYAiABKAsyEi5hcHAuUmVhZGluZ1NlbGVjdCIhCgpSZWFkaW5nUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5ImQKDVJlYWRpbmdTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0Eg8KB2NlbHNpdXMYCCABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIkQKE1JlYWRpbmdQYXRjaFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSDwoHY2Vsc2l1cxgQIAEoASJQChNSZWFkaW5nQXBwbHlSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gy4AEKC0NlbGxTZXJ2aWNlEiUKA0FkZBITLmFwcC5DZWxsQWRkUmVxdWVzdBoJLmFwcC5DZWxsEiUKA0dldBITLmFwcC5DZWxsR2V0UmVxdWVzdBoJLmFwcC5DZWxsEikKBVBhdGNoEhUuYXBwLkNlbGxQYXRjaFJlcXVlc3QaCS5hcHAuQ2VsbBIpCgVBcHBseRIVLmFwcC5DZWxsQXBwbHlSZXF1ZXN0GgkuYXBwLkNlbGwSLQoFRXJhc2USDC5hcHAuQ2VsbFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eTKIAwoMUm9ib3RTZXJ2aWNlEicKA0FkZBIULmFwcC5Sb2JvdEFkZFJlcXVlc3QaCi5hcHAuUm9ib3QSJwoDR2V0EhQuYXBwLlJvYm90R2V0UmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVQYXRjaBIWLmFwcC5Sb2JvdFBhdGNoUmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVBcHBseRIWLmFwcC5Sb2JvdEFwcGx5UmVxdWVzdBoKLmFwcC5Sb2JvdBIuCgVFcmFzZRINLmFwcC5Sb2JvdFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRI1CgRMaXN0EhUuYXBwLlJvYm90TGlzdFJlcXVlc3QaFi5hcHAuUm9ib3RMaXN0UmVzcG9uc2USOgoFV2F0Y2gSFi5hcHAuUm9ib3RXYXRjaFJlcXVlc3QaFy5hcHAuUm9ib3RXYXRjaFJlc3BvbnNlMAESKQoETW92ZRIVLmFwcC5Sb2JvdE1vdmVSZXF1ZXN0GgouYXBwLlJvYm90MuoBCgxKb2ludFNlcnZpY2USJwoDQWRkEhQuYXBwLkpvaW50QWRkUmVxdWVzdBoKLmFwcC5Kb2ludBInCgNHZXQSFC5hcHAuSm9pbnRHZXRSZXF1ZXN0GgouYXBwLkpvaW50EisKBVBhdGNoEhYuYXBwLkpvaW50UGF0Y2hSZXF1ZXN0GgouYXBwLkpvaW50EisKBUFwcGx5EhYuYXBwLkpvaW50QXBwbHlSZXF1ZXN0GgouYXBwLkpvaW50Ei4KBUVyYXNlEg0uYXBwLkpvaW50UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5MuoBCgxGbGVldFNlcnZpY2USJwoDQWRkEhQuYXBwLkZsZWV0QWRkUmVxdWVzdBoKLmFwcC5GbGVldBInCgNHZXQSFC5hcHAuRmxlZXRHZXRSZXF1ZXN0GgouYXBwLkZsZWV0EisKBVBhdGNoEhYuYXBwLkZsZWV0UGF0Y2hSZXF1ZXN0GgouYXBwLkZsZWV0EisKBUFwcGx5EhYuYXBwLkZsZWV0QXBwbHlSZXF1ZXN0GgouYXBwLkZsZWV0Ei4KBUVyYXNlEg0uYXBwLkZsZWV0UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Mv4BCg5SZWFkaW5nU2VydmljZRIrCgNBZGQSFi5hcHAuUmVhZGluZ0FkZFJlcXVlc3QaDC5hcHAuUmVhZGluZxIrCgNHZXQSFi5hcHAuUmVhZGluZ0dldFJlcXVlc3QaDC5hcHAuUmVhZGluZxIvCgVQYXRjaBIYLmFwcC5SZWFkaW5nUGF0Y2hSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSLwoFQXBwbHkSGC5hcHAuUmVhZGluZ0FwcGx5UmVxdWVzdBoMLmFwcC5SZWFkaW5nEjAKBUVyYXNlEg8uYXBwLlJlYWRpbmdSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHlCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_tenant_svc_g, file_app_robot, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch]);
+  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCJSCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5ImAKCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiEKBnRlbmFudBgCIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gisQEKD1JvYm90QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEhoKBGNlbGwYAyABKAsyDC5hcHAuQ2VsbFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAISDgoGc2VjcmV0GAggASgMEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiTwoPUm9ib3RHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QiRAoIUm9ib3RSZWYSDAoCaWQYASABKAxIABIjCgRzbHVnGAQgASgLMhMuYXBwLlJvYm90UmVmQnlTbHVnSABCBQoDa2V5Ij8KDlJvYm90UmVmQnlTbHVnEg0KBWFsaWFzGAQgASgJEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYivAEKC1JvYm90U2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0Eh0KBGNlbGwYAyABKAsyDy5hcHAuQ2VsbFNlbGVjdBINCgVhbGlhcxgEIAEoCBIOCgZzZWNyZXQYCCABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCCLLAQoRUm9ib3RQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEhoKBGNlbGwYBiABKAsyDC5hcHAuQ2VsbFJlZhIRCgljZWxsX251bGwYByABKAgSDQoFYWxpYXMYCCABKAkSDgoGc2VjcmV0GBAgASgMEjAKDGRhdGVfdXBkYXRlZBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV91cGRhdGVkX2ZvcmNlGBsgASgIIkwKEVJvYm90QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoImAKEFJvYm90TGlzdFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5Sb2JvdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAIiQwoRUm9ib3RMaXN0UmVzcG9uc2USGQoFaXRlbXMYASADKAsyCi5hcHAuUm9ib3QSEwoEbmV4dBgCIAEoCUIFqgECCAIiSQoLUm9ib3RGaWx0ZXISGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYiVAoRUm9ib3RXYXRjaFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5Sb2JvdEZpbHRlchIcCg1za2lwX3NuYXBzaG90GAIgASgIQgWqAQIIAiI4ChJSb2JvdFdhdGNoUmVzcG9uc2USIgoFaXRlbXMYASADKAsyEy5hcHAuUm9ib3RXYXRjaEl0ZW0iTgoOUm9ib3RXYXRjaEl0ZW0SCgoCaWQYASABKAwSGQoFdmFsdWUYAiABKAsyCi5hcHAuUm9ib3QSFQoGYWN0aW9uGAMgASgJQgWqAQIIAiJIChBSb2JvdE1vdmVSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIYCgJ0bxgCIAEoCzIMLmFwcC5DZWxsUmVmIo0BChFQYWlyaW5nQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIbCgRsZWFkGAIgASgLMg0uYXBwLlJvYm90UmVmEh0KBmZvbGxvdxgIIAEoCzINLmFwcC5Sb2JvdFJlZhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIlUKEVBhaXJpbmdHZXRSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5QYWlyaW5nUmVmEiIKBnNlbGVjdBgCIAEoCzISLmFwcC5QYWlyaW5nU2VsZWN0IiEKClBhaXJpbmdSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkidAoNUGFpcmluZ1NlbGVjdBILCgNhbGwYASABKAgSHgoEbGVhZBgCIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdBIgCgZmb2xsb3cYCCABKAsyEC5hcHAuUm9ib3RTZWxlY3QSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIjMKE1BhaXJpbmdQYXRjaFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlBhaXJpbmdSZWYiUAoTUGFpcmluZ0FwcGx5UmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUGFpcmluZ1JlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIlEKD0pvaW50QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPSm9pbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuSm9pbnRTZWxlY3QiHwoISm9pbnRSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiXwoLSm9pbnRTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0Eg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIIj4KEUpvaW50UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhINCgVhbGlhcxgIIAEoCSJMChFKb2ludEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuSm9pbnRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIzCg9GbGVldEFkZFJlcXVlc3QSCgoCaWQYASABKAwSFAoFYWxpYXMYBCABKAlCBaoBAggCIk8KD0ZsZWV0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkZsZWV0U2VsZWN0IjAKCEZsZWV0UmVmEgwKAmlkGAEgASgMSAASDwoFYWxpYXMYBCABKAlIAEIFCgNrZXkiPgoLRmxlZXRTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIIj4KEUZsZWV0UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhINCgVhbGlhcxgIIAEoCSJMChFGbGVldEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCKhAQoRUmVhZGluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSHAoFcm9ib3QYAiABKAsyDS5hcHAuUm9ib3RSZWYSGAoJdGVuYW50X2lkGAkgASgMQgWqAQIIAhIWCgdjZWxzaXVzGAggASgBQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIlUKEVJlYWRpbmdHZXRSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEiIKBnNlbGVjdBgCIAEoCzISLmFwcC5SZWFkaW5nU2VsZWN0IiEKClJlYWRpbmdSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkidwoNUmVhZGluZ1NlbGVjdBILCgNhbGwYASABKAgSHwoFcm9ib3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSEQoJdGVuYW50X2lkGAkgASgIEg8KB2NlbHNpdXMYCCABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIlcKE1JlYWRpbmdQYXRjaFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSEQoJdGVuYW50X2lkGBIgASgMEg8KB2NlbHNpdXMYECABKAEiUAoTUmVhZGluZ0FwcGx5UmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUmVhZGluZ1JlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoMuABCgtDZWxsU2VydmljZRIlCgNBZGQSEy5hcHAuQ2VsbEFkZFJlcXVlc3QaCS5hcHAuQ2VsbBIlCgNHZXQSEy5hcHAuQ2VsbEdldFJlcXVlc3QaCS5hcHAuQ2VsbBIpCgVQYXRjaBIVLmFwcC5DZWxsUGF0Y2hSZXF1ZXN0GgkuYXBwLkNlbGwSKQoFQXBwbHkSFS5hcHAuQ2VsbEFwcGx5UmVxdWVzdBoJLmFwcC5DZWxsEi0KBUVyYXNlEgwuYXBwLkNlbGxSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHkyiAMKDFJvYm90U2VydmljZRInCgNBZGQSFC5hcHAuUm9ib3RBZGRSZXF1ZXN0GgouYXBwLlJvYm90EicKA0dldBIULmFwcC5Sb2JvdEdldFJlcXVlc3QaCi5hcHAuUm9ib3QSKwoFUGF0Y2gSFi5hcHAuUm9ib3RQYXRjaFJlcXVlc3QaCi5hcHAuUm9ib3QSKwoFQXBwbHkSFi5hcHAuUm9ib3RBcHBseVJlcXVlc3QaCi5hcHAuUm9ib3QSLgoFRXJhc2USDS5hcHAuUm9ib3RSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSNQoETGlzdBIVLmFwcC5Sb2JvdExpc3RSZXF1ZXN0GhYuYXBwLlJvYm90TGlzdFJlc3BvbnNlEjoKBVdhdGNoEhYuYXBwLlJvYm90V2F0Y2hSZXF1ZXN0GhcuYXBwLlJvYm90V2F0Y2hSZXNwb25zZTABEikKBE1vdmUSFS5hcHAuUm9ib3RNb3ZlUmVxdWVzdBoKLmFwcC5Sb2JvdDL+AQoOUGFpcmluZ1NlcnZpY2USKwoDQWRkEhYuYXBwLlBhaXJpbmdBZGRSZXF1ZXN0GgwuYXBwLlBhaXJpbmcSKwoDR2V0EhYuYXBwLlBhaXJpbmdHZXRSZXF1ZXN0GgwuYXBwLlBhaXJpbmcSLwoFUGF0Y2gSGC5hcHAuUGFpcmluZ1BhdGNoUmVxdWVzdBoMLmFwcC5QYWlyaW5nEi8KBUFwcGx5EhguYXBwLlBhaXJpbmdBcHBseVJlcXVlc3QaDC5hcHAuUGFpcmluZxIwCgVFcmFzZRIPLmFwcC5QYWlyaW5nUmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5MuoBCgxKb2ludFNlcnZpY2USJwoDQWRkEhQuYXBwLkpvaW50QWRkUmVxdWVzdBoKLmFwcC5Kb2ludBInCgNHZXQSFC5hcHAuSm9pbnRHZXRSZXF1ZXN0GgouYXBwLkpvaW50EisKBVBhdGNoEhYuYXBwLkpvaW50UGF0Y2hSZXF1ZXN0GgouYXBwLkpvaW50EisKBUFwcGx5EhYuYXBwLkpvaW50QXBwbHlSZXF1ZXN0GgouYXBwLkpvaW50Ei4KBUVyYXNlEg0uYXBwLkpvaW50UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5MuoBCgxGbGVldFNlcnZpY2USJwoDQWRkEhQuYXBwLkZsZWV0QWRkUmVxdWVzdBoKLmFwcC5GbGVldBInCgNHZXQSFC5hcHAuRmxlZXRHZXRSZXF1ZXN0GgouYXBwLkZsZWV0EisKBVBhdGNoEhYuYXBwLkZsZWV0UGF0Y2hSZXF1ZXN0GgouYXBwLkZsZWV0EisKBUFwcGx5EhYuYXBwLkZsZWV0QXBwbHlSZXF1ZXN0GgouYXBwLkZsZWV0Ei4KBUVyYXNlEg0uYXBwLkZsZWV0UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Mv4BCg5SZWFkaW5nU2VydmljZRIrCgNBZGQSFi5hcHAuUmVhZGluZ0FkZFJlcXVlc3QaDC5hcHAuUmVhZGluZxIrCgNHZXQSFi5hcHAuUmVhZGluZ0dldFJlcXVlc3QaDC5hcHAuUmVhZGluZxIvCgVQYXRjaBIYLmFwcC5SZWFkaW5nUGF0Y2hSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSLwoFQXBwbHkSGC5hcHAuUmVhZGluZ0FwcGx5UmVxdWVzdBoMLmFwcC5SZWFkaW5nEjAKBUVyYXNlEg8uYXBwLlJlYWRpbmdSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHlCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_tenant_svc_g, file_app_robot, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch]);
 
 /**
  * @generated from message app.CellAddRequest
@@ -650,6 +650,154 @@ export const RobotMoveRequestSchema: GenMessage<RobotMoveRequest> = /*@__PURE__*
   messageDesc(file_app_robot_svc_g, 19);
 
 /**
+ * @generated from message app.PairingAddRequest
+ */
+export type PairingAddRequest = Message<"app.PairingAddRequest"> & {
+  /**
+   * @generated from field: bytes id = 1;
+   */
+  id: Uint8Array;
+
+  /**
+   * @generated from field: app.RobotRef lead = 2;
+   */
+  lead?: RobotRef | undefined;
+
+  /**
+   * @generated from field: app.RobotRef follow = 8;
+   */
+  follow?: RobotRef | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp date_created = 15;
+   */
+  dateCreated?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message app.PairingAddRequest.
+ * Use `create(PairingAddRequestSchema)` to create a new message.
+ */
+export const PairingAddRequestSchema: GenMessage<PairingAddRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 20);
+
+/**
+ * @generated from message app.PairingGetRequest
+ */
+export type PairingGetRequest = Message<"app.PairingGetRequest"> & {
+  /**
+   * @generated from field: app.PairingRef ref = 1;
+   */
+  ref?: PairingRef | undefined;
+
+  /**
+   * @generated from field: app.PairingSelect select = 2;
+   */
+  select?: PairingSelect | undefined;
+};
+
+/**
+ * Describes the message app.PairingGetRequest.
+ * Use `create(PairingGetRequestSchema)` to create a new message.
+ */
+export const PairingGetRequestSchema: GenMessage<PairingGetRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 21);
+
+/**
+ * @generated from message app.PairingRef
+ */
+export type PairingRef = Message<"app.PairingRef"> & {
+  /**
+   * @generated from oneof app.PairingRef.key
+   */
+  key: {
+    /**
+     * @generated from field: bytes id = 1;
+     */
+    value: Uint8Array;
+    case: "id";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message app.PairingRef.
+ * Use `create(PairingRefSchema)` to create a new message.
+ */
+export const PairingRefSchema: GenMessage<PairingRef> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 22);
+
+/**
+ * @generated from message app.PairingSelect
+ */
+export type PairingSelect = Message<"app.PairingSelect"> & {
+  /**
+   * @generated from field: bool all = 1;
+   */
+  all: boolean;
+
+  /**
+   * @generated from field: app.RobotSelect lead = 2;
+   */
+  lead?: RobotSelect | undefined;
+
+  /**
+   * @generated from field: app.RobotSelect follow = 8;
+   */
+  follow?: RobotSelect | undefined;
+
+  /**
+   * @generated from field: bool date_created = 15;
+   */
+  dateCreated: boolean;
+};
+
+/**
+ * Describes the message app.PairingSelect.
+ * Use `create(PairingSelectSchema)` to create a new message.
+ */
+export const PairingSelectSchema: GenMessage<PairingSelect> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 23);
+
+/**
+ * @generated from message app.PairingPatchRequest
+ */
+export type PairingPatchRequest = Message<"app.PairingPatchRequest"> & {
+  /**
+   * @generated from field: app.PairingRef ref = 1;
+   */
+  ref?: PairingRef | undefined;
+};
+
+/**
+ * Describes the message app.PairingPatchRequest.
+ * Use `create(PairingPatchRequestSchema)` to create a new message.
+ */
+export const PairingPatchRequestSchema: GenMessage<PairingPatchRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 24);
+
+/**
+ * @generated from message app.PairingApplyRequest
+ */
+export type PairingApplyRequest = Message<"app.PairingApplyRequest"> & {
+  /**
+   * @generated from field: app.PairingRef ref = 1;
+   */
+  ref?: PairingRef | undefined;
+
+  /**
+   * @generated from field: patch.Patch patch = 2;
+   */
+  patch?: Patch | undefined;
+};
+
+/**
+ * Describes the message app.PairingApplyRequest.
+ * Use `create(PairingApplyRequestSchema)` to create a new message.
+ */
+export const PairingApplyRequestSchema: GenMessage<PairingApplyRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 25);
+
+/**
  * @generated from message app.JointAddRequest
  */
 export type JointAddRequest = Message<"app.JointAddRequest"> & {
@@ -674,7 +822,7 @@ export type JointAddRequest = Message<"app.JointAddRequest"> & {
  * Use `create(JointAddRequestSchema)` to create a new message.
  */
 export const JointAddRequestSchema: GenMessage<JointAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 20);
+  messageDesc(file_app_robot_svc_g, 26);
 
 /**
  * @generated from message app.JointGetRequest
@@ -696,7 +844,7 @@ export type JointGetRequest = Message<"app.JointGetRequest"> & {
  * Use `create(JointGetRequestSchema)` to create a new message.
  */
 export const JointGetRequestSchema: GenMessage<JointGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 21);
+  messageDesc(file_app_robot_svc_g, 27);
 
 /**
  * @generated from message app.JointRef
@@ -719,7 +867,7 @@ export type JointRef = Message<"app.JointRef"> & {
  * Use `create(JointRefSchema)` to create a new message.
  */
 export const JointRefSchema: GenMessage<JointRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 22);
+  messageDesc(file_app_robot_svc_g, 28);
 
 /**
  * @generated from message app.JointSelect
@@ -751,7 +899,7 @@ export type JointSelect = Message<"app.JointSelect"> & {
  * Use `create(JointSelectSchema)` to create a new message.
  */
 export const JointSelectSchema: GenMessage<JointSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 23);
+  messageDesc(file_app_robot_svc_g, 29);
 
 /**
  * @generated from message app.JointPatchRequest
@@ -773,7 +921,7 @@ export type JointPatchRequest = Message<"app.JointPatchRequest"> & {
  * Use `create(JointPatchRequestSchema)` to create a new message.
  */
 export const JointPatchRequestSchema: GenMessage<JointPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 24);
+  messageDesc(file_app_robot_svc_g, 30);
 
 /**
  * @generated from message app.JointApplyRequest
@@ -795,7 +943,7 @@ export type JointApplyRequest = Message<"app.JointApplyRequest"> & {
  * Use `create(JointApplyRequestSchema)` to create a new message.
  */
 export const JointApplyRequestSchema: GenMessage<JointApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 25);
+  messageDesc(file_app_robot_svc_g, 31);
 
 /**
  * @generated from message app.FleetAddRequest
@@ -817,7 +965,7 @@ export type FleetAddRequest = Message<"app.FleetAddRequest"> & {
  * Use `create(FleetAddRequestSchema)` to create a new message.
  */
 export const FleetAddRequestSchema: GenMessage<FleetAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 26);
+  messageDesc(file_app_robot_svc_g, 32);
 
 /**
  * @generated from message app.FleetGetRequest
@@ -839,7 +987,7 @@ export type FleetGetRequest = Message<"app.FleetGetRequest"> & {
  * Use `create(FleetGetRequestSchema)` to create a new message.
  */
 export const FleetGetRequestSchema: GenMessage<FleetGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 27);
+  messageDesc(file_app_robot_svc_g, 33);
 
 /**
  * @generated from message app.FleetRef
@@ -868,7 +1016,7 @@ export type FleetRef = Message<"app.FleetRef"> & {
  * Use `create(FleetRefSchema)` to create a new message.
  */
 export const FleetRefSchema: GenMessage<FleetRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 28);
+  messageDesc(file_app_robot_svc_g, 34);
 
 /**
  * @generated from message app.FleetSelect
@@ -895,7 +1043,7 @@ export type FleetSelect = Message<"app.FleetSelect"> & {
  * Use `create(FleetSelectSchema)` to create a new message.
  */
 export const FleetSelectSchema: GenMessage<FleetSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 29);
+  messageDesc(file_app_robot_svc_g, 35);
 
 /**
  * @generated from message app.FleetPatchRequest
@@ -917,7 +1065,7 @@ export type FleetPatchRequest = Message<"app.FleetPatchRequest"> & {
  * Use `create(FleetPatchRequestSchema)` to create a new message.
  */
 export const FleetPatchRequestSchema: GenMessage<FleetPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 30);
+  messageDesc(file_app_robot_svc_g, 36);
 
 /**
  * @generated from message app.FleetApplyRequest
@@ -939,7 +1087,7 @@ export type FleetApplyRequest = Message<"app.FleetApplyRequest"> & {
  * Use `create(FleetApplyRequestSchema)` to create a new message.
  */
 export const FleetApplyRequestSchema: GenMessage<FleetApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 31);
+  messageDesc(file_app_robot_svc_g, 37);
 
 /**
  * @generated from message app.ReadingAddRequest
@@ -954,6 +1102,11 @@ export type ReadingAddRequest = Message<"app.ReadingAddRequest"> & {
    * @generated from field: app.RobotRef robot = 2;
    */
   robot?: RobotRef | undefined;
+
+  /**
+   * @generated from field: bytes tenant_id = 9 [features.field_presence = IMPLICIT];
+   */
+  tenantId: Uint8Array;
 
   /**
    * @generated from field: double celsius = 8 [features.field_presence = IMPLICIT];
@@ -971,7 +1124,7 @@ export type ReadingAddRequest = Message<"app.ReadingAddRequest"> & {
  * Use `create(ReadingAddRequestSchema)` to create a new message.
  */
 export const ReadingAddRequestSchema: GenMessage<ReadingAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 32);
+  messageDesc(file_app_robot_svc_g, 38);
 
 /**
  * @generated from message app.ReadingGetRequest
@@ -993,7 +1146,7 @@ export type ReadingGetRequest = Message<"app.ReadingGetRequest"> & {
  * Use `create(ReadingGetRequestSchema)` to create a new message.
  */
 export const ReadingGetRequestSchema: GenMessage<ReadingGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 33);
+  messageDesc(file_app_robot_svc_g, 39);
 
 /**
  * @generated from message app.ReadingRef
@@ -1016,7 +1169,7 @@ export type ReadingRef = Message<"app.ReadingRef"> & {
  * Use `create(ReadingRefSchema)` to create a new message.
  */
 export const ReadingRefSchema: GenMessage<ReadingRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 34);
+  messageDesc(file_app_robot_svc_g, 40);
 
 /**
  * @generated from message app.ReadingSelect
@@ -1031,6 +1184,11 @@ export type ReadingSelect = Message<"app.ReadingSelect"> & {
    * @generated from field: app.RobotSelect robot = 2;
    */
   robot?: RobotSelect | undefined;
+
+  /**
+   * @generated from field: bool tenant_id = 9;
+   */
+  tenantId: boolean;
 
   /**
    * @generated from field: bool celsius = 8;
@@ -1048,7 +1206,7 @@ export type ReadingSelect = Message<"app.ReadingSelect"> & {
  * Use `create(ReadingSelectSchema)` to create a new message.
  */
 export const ReadingSelectSchema: GenMessage<ReadingSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 35);
+  messageDesc(file_app_robot_svc_g, 41);
 
 /**
  * @generated from message app.ReadingPatchRequest
@@ -1058,6 +1216,11 @@ export type ReadingPatchRequest = Message<"app.ReadingPatchRequest"> & {
    * @generated from field: app.ReadingRef ref = 1;
    */
   ref?: ReadingRef | undefined;
+
+  /**
+   * @generated from field: bytes tenant_id = 18;
+   */
+  tenantId: Uint8Array;
 
   /**
    * @generated from field: double celsius = 16;
@@ -1070,7 +1233,7 @@ export type ReadingPatchRequest = Message<"app.ReadingPatchRequest"> & {
  * Use `create(ReadingPatchRequestSchema)` to create a new message.
  */
 export const ReadingPatchRequestSchema: GenMessage<ReadingPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 36);
+  messageDesc(file_app_robot_svc_g, 42);
 
 /**
  * @generated from message app.ReadingApplyRequest
@@ -1092,7 +1255,7 @@ export type ReadingApplyRequest = Message<"app.ReadingApplyRequest"> & {
  * Use `create(ReadingApplyRequestSchema)` to create a new message.
  */
 export const ReadingApplyRequestSchema: GenMessage<ReadingApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 37);
+  messageDesc(file_app_robot_svc_g, 43);
 
 /**
  * @generated from service app.CellService
@@ -1265,6 +1428,63 @@ export const RobotService: GenService<{
   serviceDesc(file_app_robot_svc_g, 1);
 
 /**
+ * @generated from service app.PairingService
+ */
+export const PairingService: GenService<{
+  /**
+   * Add creates a new Pairing
+   *
+   * @generated from rpc app.PairingService.Add
+   */
+  add: {
+    methodKind: "unary";
+    input: typeof PairingAddRequestSchema;
+    output: typeof PairingSchema;
+  },
+  /**
+   * Get retrieves a Pairing
+   *
+   * @generated from rpc app.PairingService.Get
+   */
+  get: {
+    methodKind: "unary";
+    input: typeof PairingGetRequestSchema;
+    output: typeof PairingSchema;
+  },
+  /**
+   * Patch updates an existing Pairing
+   *
+   * @generated from rpc app.PairingService.Patch
+   */
+  patch: {
+    methodKind: "unary";
+    input: typeof PairingPatchRequestSchema;
+    output: typeof PairingSchema;
+  },
+  /**
+   * Apply applies a patch document to an existing Pairing
+   *
+   * @generated from rpc app.PairingService.Apply
+   */
+  apply: {
+    methodKind: "unary";
+    input: typeof PairingApplyRequestSchema;
+    output: typeof PairingSchema;
+  },
+  /**
+   * Erase deletes a Pairing
+   *
+   * @generated from rpc app.PairingService.Erase
+   */
+  erase: {
+    methodKind: "unary";
+    input: typeof PairingRefSchema;
+    output: typeof EmptySchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_app_robot_svc_g, 2);
+
+/**
  * @generated from service app.JointService
  */
 export const JointService: GenService<{
@@ -1319,7 +1539,7 @@ export const JointService: GenService<{
     output: typeof EmptySchema;
   },
 }> = /*@__PURE__*/
-  serviceDesc(file_app_robot_svc_g, 2);
+  serviceDesc(file_app_robot_svc_g, 3);
 
 /**
  * @generated from service app.FleetService
@@ -1376,7 +1596,7 @@ export const FleetService: GenService<{
     output: typeof EmptySchema;
   },
 }> = /*@__PURE__*/
-  serviceDesc(file_app_robot_svc_g, 3);
+  serviceDesc(file_app_robot_svc_g, 4);
 
 /**
  * @generated from service app.ReadingService
@@ -1433,5 +1653,5 @@ export const ReadingService: GenService<{
     output: typeof EmptySchema;
   },
 }> = /*@__PURE__*/
-  serviceDesc(file_app_robot_svc_g, 4);
+  serviceDesc(file_app_robot_svc_g, 5);
 

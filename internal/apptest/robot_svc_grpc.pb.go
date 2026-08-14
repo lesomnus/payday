@@ -724,6 +724,270 @@ var RobotService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	PairingService_Add_FullMethodName   = "/app.PairingService/Add"
+	PairingService_Get_FullMethodName   = "/app.PairingService/Get"
+	PairingService_Patch_FullMethodName = "/app.PairingService/Patch"
+	PairingService_Apply_FullMethodName = "/app.PairingService/Apply"
+	PairingService_Erase_FullMethodName = "/app.PairingService/Erase"
+)
+
+// PairingServiceClient is the client API for PairingService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type PairingServiceClient interface {
+	// Add creates a new Pairing
+	Add(ctx context.Context, in *PairingAddRequest, opts ...grpc.CallOption) (*Pairing, error)
+	// Get retrieves a Pairing
+	Get(ctx context.Context, in *PairingGetRequest, opts ...grpc.CallOption) (*Pairing, error)
+	// Patch updates an existing Pairing
+	Patch(ctx context.Context, in *PairingPatchRequest, opts ...grpc.CallOption) (*Pairing, error)
+	// Apply applies a patch document to an existing Pairing
+	Apply(ctx context.Context, in *PairingApplyRequest, opts ...grpc.CallOption) (*Pairing, error)
+	// Erase deletes a Pairing
+	Erase(ctx context.Context, in *PairingRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+}
+
+type pairingServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewPairingServiceClient(cc grpc.ClientConnInterface) PairingServiceClient {
+	return &pairingServiceClient{cc}
+}
+
+func (c *pairingServiceClient) Add(ctx context.Context, in *PairingAddRequest, opts ...grpc.CallOption) (*Pairing, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Pairing)
+	err := c.cc.Invoke(ctx, PairingService_Add_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pairingServiceClient) Get(ctx context.Context, in *PairingGetRequest, opts ...grpc.CallOption) (*Pairing, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Pairing)
+	err := c.cc.Invoke(ctx, PairingService_Get_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pairingServiceClient) Patch(ctx context.Context, in *PairingPatchRequest, opts ...grpc.CallOption) (*Pairing, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Pairing)
+	err := c.cc.Invoke(ctx, PairingService_Patch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pairingServiceClient) Apply(ctx context.Context, in *PairingApplyRequest, opts ...grpc.CallOption) (*Pairing, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Pairing)
+	err := c.cc.Invoke(ctx, PairingService_Apply_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pairingServiceClient) Erase(ctx context.Context, in *PairingRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PairingService_Erase_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PairingServiceServer is the server API for PairingService service.
+// All implementations must embed UnimplementedPairingServiceServer
+// for forward compatibility.
+type PairingServiceServer interface {
+	// Add creates a new Pairing
+	Add(context.Context, *PairingAddRequest) (*Pairing, error)
+	// Get retrieves a Pairing
+	Get(context.Context, *PairingGetRequest) (*Pairing, error)
+	// Patch updates an existing Pairing
+	Patch(context.Context, *PairingPatchRequest) (*Pairing, error)
+	// Apply applies a patch document to an existing Pairing
+	Apply(context.Context, *PairingApplyRequest) (*Pairing, error)
+	// Erase deletes a Pairing
+	Erase(context.Context, *PairingRef) (*emptypb.Empty, error)
+	mustEmbedUnimplementedPairingServiceServer()
+}
+
+// UnimplementedPairingServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedPairingServiceServer struct{}
+
+func (UnimplementedPairingServiceServer) Add(context.Context, *PairingAddRequest) (*Pairing, error) {
+	return nil, status.Error(codes.Unimplemented, "method Add not implemented")
+}
+func (UnimplementedPairingServiceServer) Get(context.Context, *PairingGetRequest) (*Pairing, error) {
+	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedPairingServiceServer) Patch(context.Context, *PairingPatchRequest) (*Pairing, error) {
+	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
+}
+func (UnimplementedPairingServiceServer) Apply(context.Context, *PairingApplyRequest) (*Pairing, error) {
+	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
+}
+func (UnimplementedPairingServiceServer) Erase(context.Context, *PairingRef) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
+}
+func (UnimplementedPairingServiceServer) mustEmbedUnimplementedPairingServiceServer() {}
+func (UnimplementedPairingServiceServer) testEmbeddedByValue()                        {}
+
+// UnsafePairingServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PairingServiceServer will
+// result in compilation errors.
+type UnsafePairingServiceServer interface {
+	mustEmbedUnimplementedPairingServiceServer()
+}
+
+func RegisterPairingServiceServer(s grpc.ServiceRegistrar, srv PairingServiceServer) {
+	// If the following call panics, it indicates UnimplementedPairingServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&PairingService_ServiceDesc, srv)
+}
+
+func _PairingService_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PairingAddRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PairingServiceServer).Add(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PairingService_Add_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PairingServiceServer).Add(ctx, req.(*PairingAddRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PairingService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PairingGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PairingServiceServer).Get(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PairingService_Get_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PairingServiceServer).Get(ctx, req.(*PairingGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PairingService_Patch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PairingPatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PairingServiceServer).Patch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PairingService_Patch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PairingServiceServer).Patch(ctx, req.(*PairingPatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PairingService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PairingApplyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PairingServiceServer).Apply(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PairingService_Apply_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PairingServiceServer).Apply(ctx, req.(*PairingApplyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PairingService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PairingRef)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PairingServiceServer).Erase(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PairingService_Erase_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PairingServiceServer).Erase(ctx, req.(*PairingRef))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// PairingService_ServiceDesc is the grpc.ServiceDesc for PairingService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var PairingService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "app.PairingService",
+	HandlerType: (*PairingServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Add",
+			Handler:    _PairingService_Add_Handler,
+		},
+		{
+			MethodName: "Get",
+			Handler:    _PairingService_Get_Handler,
+		},
+		{
+			MethodName: "Patch",
+			Handler:    _PairingService_Patch_Handler,
+		},
+		{
+			MethodName: "Apply",
+			Handler:    _PairingService_Apply_Handler,
+		},
+		{
+			MethodName: "Erase",
+			Handler:    _PairingService_Erase_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "app/robot_svc.g.proto",
+}
+
+const (
 	JointService_Add_FullMethodName   = "/app.JointService/Add"
 	JointService_Get_FullMethodName   = "/app.JointService/Get"
 	JointService_Patch_FullMethodName = "/app.JointService/Patch"

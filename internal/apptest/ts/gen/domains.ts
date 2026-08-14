@@ -30,6 +30,9 @@ export const JointDomain = 8
 /** The domain identifiers of app.Outbox carry. */
 export const OutboxDomain = 4
 
+/** The domain identifiers of app.Pairing carry. */
+export const PairingDomain = 12
+
 /** The domain identifiers of app.Reading carry. */
 export const ReadingDomain = 11
 
@@ -47,6 +50,7 @@ pdid.register("app.Fleet", FleetDomain, "fleet")
 pdid.register("app.Holder", HolderDomain, "holder")
 pdid.register("app.Joint", JointDomain, "joint")
 pdid.register("app.Outbox", OutboxDomain, "outbox")
+pdid.register("app.Pairing", PairingDomain, "pairing")
 pdid.register("app.Reading", ReadingDomain, "reading")
 pdid.register("app.Robot", RobotDomain, "robot")
 pdid.register("app.Tenant", TenantDomain, "tenant")

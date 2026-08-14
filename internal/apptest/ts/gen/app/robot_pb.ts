@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot.proto.
  */
 export const file_app_robot: GenFile = /*@__PURE__*/
-  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCKdAQoEQ2VsbBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoGdGVuYW50GAIgASgLMgsuYXBwLlRlbmFudEIG8oIWAkABEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoOyvwVBBICEAGKuxYCCAoi1wMKBVJvYm90EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIjCgZ0ZW5hbnQYAiABKAsyCy5hcHAuVGVuYW50QgbyghYCQAESHwoEY2VsbBgDIAEoCzIJLmFwcC5DZWxsQgbyghYCOAESDQoFYWxpYXMYBCABKAkSHQoGc2VjcmV0GAggASgMQg3qghYDggEAqsEWAggBEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADqOAcr8FUcSAhABGiASBHBhZ2UaEAoMZGF0ZV9jcmVhdGVkEA8aBgoCaWQQARofEgRzbHVnGgkKBWFsaWFzEAQaCgoGdGVuYW50EAIwAYq7Fj8IBzI5ChAKDgoMZGF0ZV9jcmVhdGVkCgYKBAoCaWQSCAoGdGVuYW50GgUKA3JlZhoICgZ0ZW5hbnQgMihkOgAirgEKBUpvaW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIjCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEII8oIWBDgBQAESDQoFYWxpYXMYBCABKAkSOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAOh7K/BUEEgIQAYq7FhIICCIOCgxyb2JvdC50ZW5hbnQigwEKBUZsZWV0EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIVCgVhbGlhcxgEIAEoCUIG6oIWAjABEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoQyvwVBBICEAGKuxYECAkqACK3AQoHUmVhZGluZxIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIQoFcm9ib3QYAiABKAsyCi5hcHAuUm9ib3RCBvKCFgJAARIPCgdjZWxzaXVzGAggASgBEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBADoiyvwVBBICEAGKuxYWCAtCAgoAIg4KDHJvYm90LnRlbmFudEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Cg9hcHAvcm9ib3QucHJvdG8SA2FwcCKdAQoEQ2VsbBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoGdGVuYW50GAIgASgLMgsuYXBwLlRlbmFudEIG8oIWAkABEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADoOyvwVBBICEAGKuxYCCAoi1wMKBVJvYm90EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIjCgZ0ZW5hbnQYAiABKAsyCy5hcHAuVGVuYW50QgbyghYCQAESHwoEY2VsbBgDIAEoCzIJLmFwcC5DZWxsQgbyghYCOAESDQoFYWxpYXMYBCABKAkSHQoGc2VjcmV0GAggASgMQg3qghYDggEAqsEWAggBEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBADqOAcr8FUcSAhABGiASBHBhZ2UaEAoMZGF0ZV9jcmVhdGVkEA8aBgoCaWQQARofEgRzbHVnGgkKBWFsaWFzEAQaCgoGdGVuYW50EAIwAYq7Fj8IBzI5ChAKDgoMZGF0ZV9jcmVhdGVkCgYKBAoCaWQSCAoGdGVuYW50GgUKA3JlZhoICgZ0ZW5hbnQgMihkOgAi1wEKB1BhaXJpbmcSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiAKBGxlYWQYAiABKAsyCi5hcHAuUm9ib3RCBvKCFgJAARIiCgZmb2xsb3cYCCABKAsyCi5hcHAuUm9ib3RCBvKCFgJAARI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6MMr8FQQSAhABirsWJAgMQgIKACIcCgtsZWFkLnRlbmFudCINZm9sbG93LnRlbmFudCKuAQoFSm9pbnQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBXJvYm90GAIgASgLMgouYXBwLlJvYm90QgjyghYEOAFAARINCgVhbGlhcxgEIAEoCRI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQA6Hsr8FQQSAhABirsWEggIIg4KDHJvYm90LnRlbmFudCKDAQoFRmxlZXQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhUKBWFsaWFzGAQgASgJQgbqghYCMAESOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAOhDK/BUEEgIQAYq7FgQICSoAIt0BCgdSZWFkaW5nEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIhCgVyb2JvdBgCIAEoCzIKLmFwcC5Sb2JvdEIG8oIWAkABEhkKCXRlbmFudF9pZBgJIAEoDEIG6oIWAhBAEg8KB2NlbHNpdXMYCCABKAESOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOi3K/BUEEgIQAYq7FiEIC0ICCgAiGQoMcm9ib3QudGVuYW50Ggl0ZW5hbnRfaWRCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Cell was added to answer one question: what does adding an entity cost?
@@ -155,7 +155,51 @@ export const RobotSchema: GenMessage<Robot> = /*@__PURE__*/
 /**
  * Joint reaches its tenant through the Robot it is part of, which is what a
  * `via` of more than one step is for. Nothing else about it is interesting.
+ * Pairing is two robots that work together, and the entity `agrees:` is for.
  *
+ * It reaches its tenant through `lead`, which is the ordinary declaration. What
+ * is not ordinary is `follow`: a second edge that also arrives at a tenant, and
+ * payday says nothing about such an edge unless it is named -- its own trail
+ * holds two tenants on purpose, so there is no rule that they agree.
+ *
+ * This one names it, because a pairing across two tenants is not a thing this
+ * app means. What that buys over the gate's own check is the caller who can see
+ * both: an operator whose scope covers several tenants passes "may I read this"
+ * with one robot in each, and the deployment writing through the server with no
+ * wall passes it without being asked.
+ *
+ * @generated from message app.Pairing
+ */
+export type Pairing = Message<"app.Pairing"> & {
+  /**
+   * @generated from field: bytes id = 1;
+   */
+  id: Uint8Array;
+
+  /**
+   * @generated from field: app.Robot lead = 2;
+   */
+  lead?: Robot | undefined;
+
+  /**
+   * @generated from field: app.Robot follow = 8;
+   */
+  follow?: Robot | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp date_created = 15;
+   */
+  dateCreated?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message app.Pairing.
+ * Use `create(PairingSchema)` to create a new message.
+ */
+export const PairingSchema: GenMessage<Pairing> = /*@__PURE__*/
+  messageDesc(file_app_robot, 2);
+
+/**
  * @generated from message app.Joint
  */
 export type Joint = Message<"app.Joint"> & {
@@ -198,7 +242,7 @@ export type Joint = Message<"app.Joint"> & {
  * Use `create(JointSchema)` to create a new message.
  */
 export const JointSchema: GenMessage<Joint> = /*@__PURE__*/
-  messageDesc(file_app_robot, 2);
+  messageDesc(file_app_robot, 3);
 
 /**
  * Fleet is shared by the whole deployment, and says so. A reader of the schema
@@ -232,7 +276,7 @@ export type Fleet = Message<"app.Fleet"> & {
  * Use `create(FleetSchema)` to create a new message.
  */
 export const FleetSchema: GenMessage<Fleet> = /*@__PURE__*/
-  messageDesc(file_app_robot, 3);
+  messageDesc(file_app_robot, 4);
 
 /**
  * Reading is an entity nobody names.
@@ -257,6 +301,23 @@ export type Reading = Message<"app.Reading"> & {
   robot?: Robot | undefined;
 
   /**
+   * The tenant `robot.tenant` reaches, kept here. payday stamps it.
+   *
+   * A reading is the entity that makes this worth having: readings arrive
+   * faster than anybody reads them, and without a stamp every read of one is
+   * `HasRobotWith(robot.TenantIDIn(...))` -- a correlated subquery on the table
+   * that grows fastest. With it the wall is the comparison a direct edge gets.
+   *
+   * It is not a second answer to be kept in step. `robot` is immutable and so
+   * is `Robot.tenant`, so the value is decided when the row is written and
+   * nothing can move it afterwards -- which is what `pd gen` refuses a stamp
+   * without.
+   *
+   * @generated from field: bytes tenant_id = 9;
+   */
+  tenantId: Uint8Array;
+
+  /**
    * @generated from field: double celsius = 8;
    */
   celsius: number;
@@ -272,5 +333,5 @@ export type Reading = Message<"app.Reading"> & {
  * Use `create(ReadingSchema)` to create a new message.
  */
 export const ReadingSchema: GenMessage<Reading> = /*@__PURE__*/
-  messageDesc(file_app_robot, 4);
+  messageDesc(file_app_robot, 5);
 

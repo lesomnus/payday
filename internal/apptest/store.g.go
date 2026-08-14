@@ -32,6 +32,7 @@ type Server interface {
 	Outbox() OutboxServiceServer
 	Cell() CellServiceServer
 	Robot() RobotServiceServer
+	Pairing() PairingServiceServer
 	Joint() JointServiceServer
 	Fleet() FleetServiceServer
 	Reading() ReadingServiceServer
@@ -48,6 +49,7 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterOutboxServiceServer(g, s.Outbox())
 	RegisterCellServiceServer(g, s.Cell())
 	RegisterRobotServiceServer(g, s.Robot())
+	RegisterPairingServiceServer(g, s.Pairing())
 	RegisterJointServiceServer(g, s.Joint())
 	RegisterFleetServiceServer(g, s.Fleet())
 	RegisterReadingServiceServer(g, s.Reading())
@@ -60,6 +62,7 @@ type UnimplementedServer struct {
 	OutboxServer  OutboxServiceServer
 	CellServer    CellServiceServer
 	RobotServer   RobotServiceServer
+	PairingServer PairingServiceServer
 	JointServer   JointServiceServer
 	FleetServer   FleetServiceServer
 	ReadingServer ReadingServiceServer
@@ -71,6 +74,7 @@ func (UnimplementedServer) Holder() HolderServiceServer   { return Unimplemented
 func (UnimplementedServer) Outbox() OutboxServiceServer   { return UnimplementedOutboxServiceServer{} }
 func (UnimplementedServer) Cell() CellServiceServer       { return UnimplementedCellServiceServer{} }
 func (UnimplementedServer) Robot() RobotServiceServer     { return UnimplementedRobotServiceServer{} }
+func (UnimplementedServer) Pairing() PairingServiceServer { return UnimplementedPairingServiceServer{} }
 func (UnimplementedServer) Joint() JointServiceServer     { return UnimplementedJointServiceServer{} }
 func (UnimplementedServer) Fleet() FleetServiceServer     { return UnimplementedFleetServiceServer{} }
 func (UnimplementedServer) Reading() ReadingServiceServer { return UnimplementedReadingServiceServer{} }
@@ -82,6 +86,7 @@ type StaticServer struct {
 	OutboxServer  OutboxServiceServer
 	CellServer    CellServiceServer
 	RobotServer   RobotServiceServer
+	PairingServer PairingServiceServer
 	JointServer   JointServiceServer
 	FleetServer   FleetServiceServer
 	ReadingServer ReadingServiceServer
@@ -93,6 +98,7 @@ func (s StaticServer) Holder() HolderServiceServer   { return s.HolderServer }
 func (s StaticServer) Outbox() OutboxServiceServer   { return s.OutboxServer }
 func (s StaticServer) Cell() CellServiceServer       { return s.CellServer }
 func (s StaticServer) Robot() RobotServiceServer     { return s.RobotServer }
+func (s StaticServer) Pairing() PairingServiceServer { return s.PairingServer }
 func (s StaticServer) Joint() JointServiceServer     { return s.JointServer }
 func (s StaticServer) Fleet() FleetServiceServer     { return s.FleetServer }
 func (s StaticServer) Reading() ReadingServiceServer { return s.ReadingServer }
@@ -104,6 +110,7 @@ type Client interface {
 	Outbox() OutboxServiceClient
 	Cell() CellServiceClient
 	Robot() RobotServiceClient
+	Pairing() PairingServiceClient
 	Joint() JointServiceClient
 	Fleet() FleetServiceClient
 	Reading() ReadingServiceClient
@@ -117,6 +124,7 @@ func NewClient(c *grpc.ClientConn) Client {
 		_Outbox:  NewOutboxServiceClient(c),
 		_Cell:    NewCellServiceClient(c),
 		_Robot:   NewRobotServiceClient(c),
+		_Pairing: NewPairingServiceClient(c),
 		_Joint:   NewJointServiceClient(c),
 		_Fleet:   NewFleetServiceClient(c),
 		_Reading: NewReadingServiceClient(c),
@@ -130,6 +138,7 @@ type client struct {
 	_Outbox  OutboxServiceClient
 	_Cell    CellServiceClient
 	_Robot   RobotServiceClient
+	_Pairing PairingServiceClient
 	_Joint   JointServiceClient
 	_Fleet   FleetServiceClient
 	_Reading ReadingServiceClient
@@ -141,6 +150,7 @@ func (c *client) Holder() HolderServiceClient   { return c._Holder }
 func (c *client) Outbox() OutboxServiceClient   { return c._Outbox }
 func (c *client) Cell() CellServiceClient       { return c._Cell }
 func (c *client) Robot() RobotServiceClient     { return c._Robot }
+func (c *client) Pairing() PairingServiceClient { return c._Pairing }
 func (c *client) Joint() JointServiceClient     { return c._Joint }
 func (c *client) Fleet() FleetServiceClient     { return c._Fleet }
 func (c *client) Reading() ReadingServiceClient { return c._Reading }

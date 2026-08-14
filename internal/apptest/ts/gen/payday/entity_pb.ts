@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki6AQKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GiYKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRoICgZHbG9iYWwaKgoFRXJhc2USIQoEaGFyZBgBIAEoCzITLnBheWRheS5FbnRpdHkuSGFyZBoGCgRIYXJkGoUBCgRMaXN0EiMKBW9yZGVyGAEgAygLMhQucGF5ZGF5LkVudGl0eS5PcmRlchIWCgR3aXRoGAIgAygLMggub3JtLlJlZhIUCgJieRgDIAMoCzIILm9ybS5SZWYSDAoEc2l6ZRgEIAEoDRILCgNtYXgYBSABKA0SDwoHZmlsdGVycxgGIAEoDRoHCgVXYXRjaBouCgVPcmRlchIXCgVmaWVsZBgBIAEoCzIILm9ybS5SZWYSDAoEZGVzYxgCIAEoCEIJCgd0ZW5hbmN5IhcKBUZpZWxkEg4KBnNlY3JldBgBIAEoCCpZCgNPd24SEwoPT1dOX1VOU1BFQ0lGSUVEEAASDgoKT1dOX1RFTkFOVBABEg4KCk9XTl9IT0xERVIQAhINCglPV05fQVVESVQQAxIOCgpPV05fT1VUQk9YEARCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_orm_ref]);
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXkihwUKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GkUKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRINCgVzdGFtcBgDIAEoCRIOCgZhZ3JlZXMYBCADKAkaCAoGR2xvYmFsGioKBUVyYXNlEiEKBGhhcmQYASABKAsyEy5wYXlkYXkuRW50aXR5LkhhcmQaBgoESGFyZBqFAQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISFgoEd2l0aBgCIAMoCzIILm9ybS5SZWYSFAoCYnkYAyADKAsyCC5vcm0uUmVmEgwKBHNpemUYBCABKA0SCwoDbWF4GAUgASgNEg8KB2ZpbHRlcnMYBiABKA0aBwoFV2F0Y2gaLgoFT3JkZXISFwoFZmllbGQYASABKAsyCC5vcm0uUmVmEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeSIXCgVGaWVsZBIOCgZzZWNyZXQYASABKAgqWQoDT3duEhMKD09XTl9VTlNQRUNJRklFRBAAEg4KCk9XTl9URU5BTlQQARIOCgpPV05fSE9MREVSEAISDQoJT1dOX0FVRElUEAMSDgoKT1dOX09VVEJPWBAEQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac", [file_orm_ref]);
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -247,6 +247,70 @@ export type Entity_Tenanted = Message<"payday.Entity.Tenanted"> & {
    * @generated from field: repeated string field = 2;
    */
   field: string[];
+
+  /**
+   * Stamp is a column on this row holding what [Tenanted.via] reaches, and
+   * payday writes it.
+   *
+   * It is the word `date_updated` is described with, and for the same reason:
+   * **stamped by the server on every write and refused to a patch**. It is
+   * not a field of a request and never becomes one. A caller that could write
+   * it could put a row behind a wall its edge does not agree with, and then
+   * the row is readable by a tenant that does not hold it.
+   *
+   * # What it is for
+   *
+   * A `via` of more than one step is a subquery in the wall, on every read:
+   *
+   * 	identity.HasHolderWith(holder.TenantIDIn(vs...))   // via "holder.tenant"
+   * 	role.TenantIDIn(vs...)                             // a direct edge
+   *
+   * With a stamp the second line is what an entity gets whatever its path is.
+   * It is also what makes `list: {by: [{name: "tenant"}]}` possible at all --
+   * a filter reaches one hop, and a path of two has nothing to name.
+   *
+   * # It is not a cache
+   *
+   * Nothing refreshes it, because nothing can move it: every edge on the
+   * `via` path has to be immutable, and generation refuses a path that is
+   * not. So the value is decided once, when the row is written, and the
+   * question "is it still right" has no way to be asked.
+   *
+   * Say this with `via`. There is nothing to derive it from otherwise.
+   *
+   * @generated from field: string stamp = 3;
+   */
+  stamp: string;
+
+  /**
+   * Agrees are other paths from this row to a tenant that must reach the same
+   * one, checked when the row is written.
+   *
+   * # Why it is opt-in
+   *
+   * A row can hold two edges that each reach a tenant, and payday cannot know
+   * which disagreements are mistakes: its own trail holds two on purpose. So
+   * there is no rule that they agree, and this is how an app says it wants
+   * one for a path it names. A path nobody named is an ordinary edge and
+   * nothing is said about it, ever.
+   *
+   * # What it adds to what is already refused
+   *
+   * The generated gate already reads every edge of an `Add` **through the
+   * wall**, so a caller cannot point a row at a row it cannot see. That is
+   * most of this, and it is free.
+   *
+   * What it does not cover is a caller who can see both: an operator whose
+   * scope is several tenants passes that check with one edge in each. This is
+   * that case, and the one where a deployment writes through a server the
+   * wall was never installed on.
+   *
+   * Each is a path like `via` -- an edge, or a dotted one. What is compared
+   * is the tenant each reaches.
+   *
+   * @generated from field: repeated string agrees = 4;
+   */
+  agrees: string[];
 };
 
 /**

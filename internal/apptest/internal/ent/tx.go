@@ -24,6 +24,8 @@ type Tx struct {
 	Joint *JointClient
 	// Outbox is the client for interacting with the Outbox builders.
 	Outbox *OutboxClient
+	// Pairing is the client for interacting with the Pairing builders.
+	Pairing *PairingClient
 	// Reading is the client for interacting with the Reading builders.
 	Reading *ReadingClient
 	// Robot is the client for interacting with the Robot builders.
@@ -167,6 +169,7 @@ func (tx *Tx) init() {
 	tx.Holder = NewHolderClient(tx.config)
 	tx.Joint = NewJointClient(tx.config)
 	tx.Outbox = NewOutboxClient(tx.config)
+	tx.Pairing = NewPairingClient(tx.config)
 	tx.Reading = NewReadingClient(tx.config)
 	tx.Robot = NewRobotClient(tx.config)
 	tx.Tenant = NewTenantClient(tx.config)

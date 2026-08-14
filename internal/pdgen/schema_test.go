@@ -1308,3 +1308,145 @@ func TestAOneToManyEdgeIsRefused(t *testing.T) {
 		t.Fatalf("the refusal does not say why: %v", err)
 	}
 }
+
+// A stamp is the tenant of a `via`, kept on the row, written by the server.
+//
+// The rules are what make it safe to read, so the refusals are the test. A
+// stamp nobody could keep true is worse than the subquery it replaces: the wall
+// reads the column.
+func TestTenantedStamp(t *testing.T) {
+	const holder = `
+message Holder {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, erase: {hard: {}}};
+}
+`
+
+	// Holder whose edge to the tenant can be repointed.
+	const mutable = `
+message Holder {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, erase: {hard: {}}};
+}
+`
+
+	identity := func(opts string) string {
+		return entity("Identity", opts,
+			`Holder holder = 2 [(orm.edge) = {immutable: true}];`,
+			`bytes tenant_id = 8 [(orm.field) = {type: TYPE_UUID}];`)
+	}
+
+	t.Run("is read off the option", func(t *testing.T) {
+		s, err := read(t, tenant+holder+identity(
+			`domain: 8, tenanted: {via: "holder.tenant", stamp: "tenant_id"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, v := range s.Entities {
+			if v.GoName() != "Identity" {
+				continue
+			}
+			if v.Stamp != "tenant_id" {
+				t.Errorf("stamp: %q", v.Stamp)
+			}
+			if len(v.Via) != 2 || v.Via[0] != "holder" || v.Via[1] != "tenant" {
+				t.Errorf("via: %q", v.Via)
+			}
+		}
+	})
+
+	// The rule worth having. A step that can be repointed leaves the column
+	// saying where the row used to belong, and the wall reads the column.
+	t.Run("and a path that can move is refused", func(t *testing.T) {
+		_, err := read(t, tenant+mutable+identity(
+			`domain: 8, tenanted: {via: "holder.tenant", stamp: "tenant_id"}`))
+		if err == nil {
+			t.Fatal("a stamp over a mutable edge was accepted")
+		}
+		if !strings.Contains(err.Error(), "not immutable") {
+			t.Errorf("refused for the wrong reason: %v", err)
+		}
+	})
+
+	t.Run("and a column that is not there", func(t *testing.T) {
+		_, err := read(t, tenant+holder+entity("Identity",
+			`domain: 8, tenanted: {via: "holder.tenant", stamp: "nowhere"}`,
+			`Holder holder = 2 [(orm.edge) = {immutable: true}];`))
+		if err == nil {
+			t.Fatal("a stamp naming no column was accepted")
+		}
+	})
+
+	t.Run("and one with nothing to fill it from", func(t *testing.T) {
+		_, err := read(t, tenant+entity("Audit",
+			`domain: 3, tenanted: {field: "tenant_id", stamp: "tenant_id"}`,
+			`bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];`))
+		if err == nil {
+			t.Fatal("a stamp beside the column form was accepted")
+		}
+		if !strings.Contains(err.Error(), "no edge here to fill it from") {
+			t.Errorf("refused for the wrong reason: %v", err)
+		}
+	})
+}
+
+// `agrees` is opt-in, so what it has to get right is refusing a path that is
+// not a second way to the tenant.
+func TestTenantedAgrees(t *testing.T) {
+	const holder = `
+message Holder {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, erase: {hard: {}}};
+}
+`
+
+	t.Run("is read off the option", func(t *testing.T) {
+		s, err := read(t, tenant+holder+entity("Grant",
+			`domain: 9, tenanted: {via: "holder.tenant", agrees: ["signer.tenant"]}`,
+			`Holder holder = 2 [(orm.edge) = {immutable: true}];`,
+			`Holder signer = 8 [(orm.edge) = {immutable: true}];`))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, v := range s.Entities {
+			if v.GoName() != "Grant" {
+				continue
+			}
+			if len(v.Agrees) != 1 || len(v.Agrees[0]) != 2 || v.Agrees[0][0] != "signer" {
+				t.Errorf("agrees: %q", v.Agrees)
+			}
+		}
+	})
+
+	t.Run("and a path that arrives somewhere else is refused", func(t *testing.T) {
+		_, err := read(t, tenant+holder+entity("Grant",
+			`domain: 9, tenanted: {via: "holder.tenant", agrees: ["signer"]}`,
+			`Holder holder = 2 [(orm.edge) = {immutable: true}];`,
+			`Holder signer = 8 [(orm.edge) = {immutable: true}];`))
+		if err == nil {
+			t.Fatal("a path arriving at a Holder was accepted as a tenancy")
+		}
+		if !strings.Contains(err.Error(), "arrives at") {
+			t.Errorf("refused for the wrong reason: %v", err)
+		}
+	})
+
+	// The trail names two tenants **because** they differ. A rule that they
+	// agree is the opposite of what that form is for.
+	t.Run("and it is refused beside the column form", func(t *testing.T) {
+		_, err := read(t, tenant+entity("Audit",
+			`domain: 3, tenanted: {field: "tenant_id", agrees: ["x.tenant"]}`,
+			`bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];`))
+		if err == nil {
+			t.Fatal("agrees beside the column form was accepted")
+		}
+	})
+}

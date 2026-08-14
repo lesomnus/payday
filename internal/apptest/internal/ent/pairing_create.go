@@ -11,72 +11,71 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 )
 
-// ReadingCreate is the builder for creating a Reading entity.
-type ReadingCreate struct {
+// PairingCreate is the builder for creating a Pairing entity.
+type PairingCreate struct {
 	config
-	mutation *ReadingMutation
+	mutation *PairingMutation
 	hooks    []Hook
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_c *ReadingCreate) SetTenantID(v uuid.UUID) *ReadingCreate {
-	_c.mutation.SetTenantID(v)
-	return _c
-}
-
-// SetCelsius sets the "celsius" field.
-func (_c *ReadingCreate) SetCelsius(v float64) *ReadingCreate {
-	_c.mutation.SetCelsius(v)
-	return _c
-}
-
 // SetDateCreated sets the "date_created" field.
-func (_c *ReadingCreate) SetDateCreated(v time.Time) *ReadingCreate {
+func (_c *PairingCreate) SetDateCreated(v time.Time) *PairingCreate {
 	_c.mutation.SetDateCreated(v)
 	return _c
 }
 
 // SetNillableDateCreated sets the "date_created" field if the given value is not nil.
-func (_c *ReadingCreate) SetNillableDateCreated(v *time.Time) *ReadingCreate {
+func (_c *PairingCreate) SetNillableDateCreated(v *time.Time) *PairingCreate {
 	if v != nil {
 		_c.SetDateCreated(*v)
 	}
 	return _c
 }
 
-// SetRobotID sets the "robot_id" field.
-func (_c *ReadingCreate) SetRobotID(v uuid.UUID) *ReadingCreate {
-	_c.mutation.SetRobotID(v)
+// SetLeadID sets the "lead_id" field.
+func (_c *PairingCreate) SetLeadID(v uuid.UUID) *PairingCreate {
+	_c.mutation.SetLeadID(v)
+	return _c
+}
+
+// SetFollowID sets the "follow_id" field.
+func (_c *PairingCreate) SetFollowID(v uuid.UUID) *PairingCreate {
+	_c.mutation.SetFollowID(v)
 	return _c
 }
 
 // SetID sets the "id" field.
-func (_c *ReadingCreate) SetID(v uuid.UUID) *ReadingCreate {
+func (_c *PairingCreate) SetID(v uuid.UUID) *PairingCreate {
 	_c.mutation.SetID(v)
 	return _c
 }
 
-// SetRobot sets the "robot" edge to the Robot entity.
-func (_c *ReadingCreate) SetRobot(v *Robot) *ReadingCreate {
-	return _c.SetRobotID(v.ID)
+// SetLead sets the "lead" edge to the Robot entity.
+func (_c *PairingCreate) SetLead(v *Robot) *PairingCreate {
+	return _c.SetLeadID(v.ID)
 }
 
-// Mutation returns the ReadingMutation object of the builder.
-func (_c *ReadingCreate) Mutation() *ReadingMutation {
+// SetFollow sets the "follow" edge to the Robot entity.
+func (_c *PairingCreate) SetFollow(v *Robot) *PairingCreate {
+	return _c.SetFollowID(v.ID)
+}
+
+// Mutation returns the PairingMutation object of the builder.
+func (_c *PairingCreate) Mutation() *PairingMutation {
 	return _c.mutation
 }
 
-// Save creates the Reading in the database.
-func (_c *ReadingCreate) Save(ctx context.Context) (*Reading, error) {
+// Save creates the Pairing in the database.
+func (_c *PairingCreate) Save(ctx context.Context) (*Pairing, error) {
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (_c *ReadingCreate) SaveX(ctx context.Context) *Reading {
+func (_c *PairingCreate) SaveX(ctx context.Context) *Pairing {
 	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
@@ -85,36 +84,36 @@ func (_c *ReadingCreate) SaveX(ctx context.Context) *Reading {
 }
 
 // Exec executes the query.
-func (_c *ReadingCreate) Exec(ctx context.Context) error {
+func (_c *PairingCreate) Exec(ctx context.Context) error {
 	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_c *ReadingCreate) ExecX(ctx context.Context) {
+func (_c *PairingCreate) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (_c *ReadingCreate) check() error {
-	if _, ok := _c.mutation.TenantID(); !ok {
-		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Reading.tenant_id"`)}
+func (_c *PairingCreate) check() error {
+	if _, ok := _c.mutation.LeadID(); !ok {
+		return &ValidationError{Name: "lead_id", err: errors.New(`ent: missing required field "Pairing.lead_id"`)}
 	}
-	if _, ok := _c.mutation.Celsius(); !ok {
-		return &ValidationError{Name: "celsius", err: errors.New(`ent: missing required field "Reading.celsius"`)}
+	if _, ok := _c.mutation.FollowID(); !ok {
+		return &ValidationError{Name: "follow_id", err: errors.New(`ent: missing required field "Pairing.follow_id"`)}
 	}
-	if _, ok := _c.mutation.RobotID(); !ok {
-		return &ValidationError{Name: "robot_id", err: errors.New(`ent: missing required field "Reading.robot_id"`)}
+	if len(_c.mutation.LeadIDs()) == 0 {
+		return &ValidationError{Name: "lead", err: errors.New(`ent: missing required edge "Pairing.lead"`)}
 	}
-	if len(_c.mutation.RobotIDs()) == 0 {
-		return &ValidationError{Name: "robot", err: errors.New(`ent: missing required edge "Reading.robot"`)}
+	if len(_c.mutation.FollowIDs()) == 0 {
+		return &ValidationError{Name: "follow", err: errors.New(`ent: missing required edge "Pairing.follow"`)}
 	}
 	return nil
 }
 
-func (_c *ReadingCreate) sqlSave(ctx context.Context) (*Reading, error) {
+func (_c *PairingCreate) sqlSave(ctx context.Context) (*Pairing, error) {
 	if err := _c.check(); err != nil {
 		return nil, err
 	}
@@ -137,33 +136,25 @@ func (_c *ReadingCreate) sqlSave(ctx context.Context) (*Reading, error) {
 	return _node, nil
 }
 
-func (_c *ReadingCreate) createSpec() (*Reading, *sqlgraph.CreateSpec) {
+func (_c *PairingCreate) createSpec() (*Pairing, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Reading{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(reading.Table, sqlgraph.NewFieldSpec(reading.FieldID, field.TypeUUID))
+		_node = &Pairing{config: _c.config}
+		_spec = sqlgraph.NewCreateSpec(pairing.Table, sqlgraph.NewFieldSpec(pairing.FieldID, field.TypeUUID))
 	)
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.TenantID(); ok {
-		_spec.SetField(reading.FieldTenantID, field.TypeUUID, value)
-		_node.TenantID = value
-	}
-	if value, ok := _c.mutation.Celsius(); ok {
-		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)
-		_node.Celsius = value
-	}
 	if value, ok := _c.mutation.DateCreated(); ok {
-		_spec.SetField(reading.FieldDateCreated, field.TypeTime, value)
+		_spec.SetField(pairing.FieldDateCreated, field.TypeTime, value)
 		_node.DateCreated = value
 	}
-	if nodes := _c.mutation.RobotIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.LeadIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
-			Table:   reading.RobotTable,
-			Columns: []string{reading.RobotColumn},
+			Table:   pairing.LeadTable,
+			Columns: []string{pairing.LeadColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(robot.FieldID, field.TypeUUID),
@@ -172,32 +163,49 @@ func (_c *ReadingCreate) createSpec() (*Reading, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.RobotID = nodes[0]
+		_node.LeadID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.FollowIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   pairing.FollowTable,
+			Columns: []string{pairing.FollowColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(robot.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.FollowID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }
 
-// ReadingCreateBulk is the builder for creating many Reading entities in bulk.
-type ReadingCreateBulk struct {
+// PairingCreateBulk is the builder for creating many Pairing entities in bulk.
+type PairingCreateBulk struct {
 	config
 	err      error
-	builders []*ReadingCreate
+	builders []*PairingCreate
 }
 
-// Save creates the Reading entities in the database.
-func (_c *ReadingCreateBulk) Save(ctx context.Context) ([]*Reading, error) {
+// Save creates the Pairing entities in the database.
+func (_c *PairingCreateBulk) Save(ctx context.Context) ([]*Pairing, error) {
 	if _c.err != nil {
 		return nil, _c.err
 	}
 	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
-	nodes := make([]*Reading, len(_c.builders))
+	nodes := make([]*Pairing, len(_c.builders))
 	mutators := make([]Mutator, len(_c.builders))
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-				mutation, ok := m.(*ReadingMutation)
+				mutation, ok := m.(*PairingMutation)
 				if !ok {
 					return nil, fmt.Errorf("unexpected mutation type %T", m)
 				}
@@ -240,7 +248,7 @@ func (_c *ReadingCreateBulk) Save(ctx context.Context) ([]*Reading, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (_c *ReadingCreateBulk) SaveX(ctx context.Context) []*Reading {
+func (_c *PairingCreateBulk) SaveX(ctx context.Context) []*Pairing {
 	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
@@ -249,13 +257,13 @@ func (_c *ReadingCreateBulk) SaveX(ctx context.Context) []*Reading {
 }
 
 // Exec executes the query.
-func (_c *ReadingCreateBulk) Exec(ctx context.Context) error {
+func (_c *PairingCreateBulk) Exec(ctx context.Context) error {
 	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_c *ReadingCreateBulk) ExecX(ctx context.Context) {
+func (_c *PairingCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}

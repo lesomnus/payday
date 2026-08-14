@@ -654,11 +654,13 @@ func (b0 Entity_Tenant_builder) Build() *Entity_Tenant {
 // edge -- an audit trail is the reason: it has to outlive the tenant it
 // points at, so there is no foreign key to walk along.
 type Entity_Tenanted struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Via   string                 `protobuf:"bytes,1,opt,name=via"`
-	xxx_hidden_Field []string               `protobuf:"bytes,2,rep,name=field"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Via    string                 `protobuf:"bytes,1,opt,name=via"`
+	xxx_hidden_Field  []string               `protobuf:"bytes,2,rep,name=field"`
+	xxx_hidden_Stamp  string                 `protobuf:"bytes,3,opt,name=stamp"`
+	xxx_hidden_Agrees []string               `protobuf:"bytes,4,rep,name=agrees"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Entity_Tenanted) Reset() {
@@ -700,12 +702,34 @@ func (x *Entity_Tenanted) GetField() []string {
 	return nil
 }
 
+func (x *Entity_Tenanted) GetStamp() string {
+	if x != nil {
+		return x.xxx_hidden_Stamp
+	}
+	return ""
+}
+
+func (x *Entity_Tenanted) GetAgrees() []string {
+	if x != nil {
+		return x.xxx_hidden_Agrees
+	}
+	return nil
+}
+
 func (x *Entity_Tenanted) SetVia(v string) {
 	x.xxx_hidden_Via = v
 }
 
 func (x *Entity_Tenanted) SetField(v []string) {
 	x.xxx_hidden_Field = v
+}
+
+func (x *Entity_Tenanted) SetStamp(v string) {
+	x.xxx_hidden_Stamp = v
+}
+
+func (x *Entity_Tenanted) SetAgrees(v []string) {
+	x.xxx_hidden_Agrees = v
 }
 
 type Entity_Tenanted_builder struct {
@@ -742,6 +766,60 @@ type Entity_Tenanted_builder struct {
 	// something that happened between two of them is a different shape, and it
 	// is the only one this is for.
 	Field []string
+	// Stamp is a column on this row holding what [Tenanted.via] reaches, and
+	// payday writes it.
+	//
+	// It is the word `date_updated` is described with, and for the same reason:
+	// **stamped by the server on every write and refused to a patch**. It is
+	// not a field of a request and never becomes one. A caller that could write
+	// it could put a row behind a wall its edge does not agree with, and then
+	// the row is readable by a tenant that does not hold it.
+	//
+	// # What it is for
+	//
+	// A `via` of more than one step is a subquery in the wall, on every read:
+	//
+	//	identity.HasHolderWith(holder.TenantIDIn(vs...))   // via "holder.tenant"
+	//	role.TenantIDIn(vs...)                             // a direct edge
+	//
+	// With a stamp the second line is what an entity gets whatever its path is.
+	// It is also what makes `list: {by: [{name: "tenant"}]}` possible at all --
+	// a filter reaches one hop, and a path of two has nothing to name.
+	//
+	// # It is not a cache
+	//
+	// Nothing refreshes it, because nothing can move it: every edge on the
+	// `via` path has to be immutable, and generation refuses a path that is
+	// not. So the value is decided once, when the row is written, and the
+	// question "is it still right" has no way to be asked.
+	//
+	// Say this with `via`. There is nothing to derive it from otherwise.
+	Stamp string
+	// Agrees are other paths from this row to a tenant that must reach the same
+	// one, checked when the row is written.
+	//
+	// # Why it is opt-in
+	//
+	// A row can hold two edges that each reach a tenant, and payday cannot know
+	// which disagreements are mistakes: its own trail holds two on purpose. So
+	// there is no rule that they agree, and this is how an app says it wants
+	// one for a path it names. A path nobody named is an ordinary edge and
+	// nothing is said about it, ever.
+	//
+	// # What it adds to what is already refused
+	//
+	// The generated gate already reads every edge of an `Add` **through the
+	// wall**, so a caller cannot point a row at a row it cannot see. That is
+	// most of this, and it is free.
+	//
+	// What it does not cover is a caller who can see both: an operator whose
+	// scope is several tenants passes that check with one edge in each. This is
+	// that case, and the one where a deployment writes through a server the
+	// wall was never installed on.
+	//
+	// Each is a path like `via` -- an edge, or a dotted one. What is compared
+	// is the tenant each reaches.
+	Agrees []string
 }
 
 func (b0 Entity_Tenanted_builder) Build() *Entity_Tenanted {
@@ -750,6 +828,8 @@ func (b0 Entity_Tenanted_builder) Build() *Entity_Tenanted {
 	_, _ = b, x
 	x.xxx_hidden_Via = b.Via
 	x.xxx_hidden_Field = b.Field
+	x.xxx_hidden_Stamp = b.Stamp
+	x.xxx_hidden_Agrees = b.Agrees
 	return m0
 }
 
@@ -1261,7 +1341,7 @@ var File_payday_entity_proto protoreflect.FileDescriptor
 
 const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/entity.proto\x12\x06payday\x1a\rorm/ref.proto\"\xed\x05\n" +
+	"\x13payday/entity.proto\x12\x06payday\x1a\rorm/ref.proto\"\x9b\x06\n" +
 	"\x06Entity\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domain\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
@@ -1272,10 +1352,12 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05watch\x18\a \x01(\v2\x14.payday.Entity.WatchR\x05watch\x12*\n" +
 	"\x05erase\x18\b \x01(\v2\x14.payday.Entity.EraseR\x05erase\x12\x1d\n" +
 	"\x03own\x18\t \x01(\x0e2\v.payday.OwnR\x03own\x1a\b\n" +
-	"\x06Tenant\x1a2\n" +
+	"\x06Tenant\x1a`\n" +
 	"\bTenanted\x12\x10\n" +
 	"\x03via\x18\x01 \x01(\tR\x03via\x12\x14\n" +
-	"\x05field\x18\x02 \x03(\tR\x05field\x1a\b\n" +
+	"\x05field\x18\x02 \x03(\tR\x05field\x12\x14\n" +
+	"\x05stamp\x18\x03 \x01(\tR\x05stamp\x12\x16\n" +
+	"\x06agrees\x18\x04 \x03(\tR\x06agrees\x1a\b\n" +
 	"\x06Global\x1a0\n" +
 	"\x05Erase\x12'\n" +
 	"\x04hard\x18\x01 \x01(\v2\x13.payday.Entity.HardR\x04hard\x1a\x06\n" +

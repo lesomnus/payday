@@ -102,6 +102,46 @@ func (Robot) Annotations() []schema.Annotation {
 	}
 }
 
+type Pairing struct {
+	ent.Schema
+}
+
+func (Pairing) Fields() []ent.Field {
+	return []ent.Field{
+		field.UUID("id", uuid.UUID{}).
+			Unique().
+			Immutable(),
+		field.Time("date_created").
+			Immutable().
+			Optional(),
+		field.UUID("lead_id", uuid.UUID{}).
+			Immutable(),
+		field.UUID("follow_id", uuid.UUID{}).
+			Immutable(),
+	}
+}
+
+func (Pairing) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("lead", Robot.Type).
+			Unique().
+			Field("lead_id").
+			Required().
+			Immutable(),
+		edge.To("follow", Robot.Type).
+			Unique().
+			Field("follow_id").
+			Required().
+			Immutable(),
+	}
+}
+
+func (Pairing) Annotations() []schema.Annotation {
+	return []schema.Annotation{
+		entsql.Annotation{Table: "pairing"},
+	}
+}
+
 type Joint struct {
 	ent.Schema
 }
@@ -175,6 +215,7 @@ func (Reading) Fields() []ent.Field {
 		field.UUID("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
+		field.UUID("tenant_id", uuid.UUID{}),
 		field.Float("celsius"),
 		field.Time("date_created").
 			Immutable().

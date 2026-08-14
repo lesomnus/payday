@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 )
@@ -25,6 +26,20 @@ type ReadingUpdate struct {
 // Where appends a list predicates to the ReadingUpdate builder.
 func (_u *ReadingUpdate) Where(ps ...predicate.Reading) *ReadingUpdate {
 	_u.mutation.Where(ps...)
+	return _u
+}
+
+// SetTenantID sets the "tenant_id" field.
+func (_u *ReadingUpdate) SetTenantID(v uuid.UUID) *ReadingUpdate {
+	_u.mutation.SetTenantID(v)
+	return _u
+}
+
+// SetNillableTenantID sets the "tenant_id" field if the given value is not nil.
+func (_u *ReadingUpdate) SetNillableTenantID(v *uuid.UUID) *ReadingUpdate {
+	if v != nil {
+		_u.SetTenantID(*v)
+	}
 	return _u
 }
 
@@ -107,6 +122,9 @@ func (_u *ReadingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.TenantID(); ok {
+		_spec.SetField(reading.FieldTenantID, field.TypeUUID, value)
+	}
 	if value, ok := _u.mutation.Celsius(); ok {
 		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)
 	}
@@ -136,6 +154,20 @@ type ReadingUpdateOne struct {
 	hooks     []Hook
 	mutation  *ReadingMutation
 	modifiers []func(*sql.UpdateBuilder)
+}
+
+// SetTenantID sets the "tenant_id" field.
+func (_u *ReadingUpdateOne) SetTenantID(v uuid.UUID) *ReadingUpdateOne {
+	_u.mutation.SetTenantID(v)
+	return _u
+}
+
+// SetNillableTenantID sets the "tenant_id" field if the given value is not nil.
+func (_u *ReadingUpdateOne) SetNillableTenantID(v *uuid.UUID) *ReadingUpdateOne {
+	if v != nil {
+		_u.SetTenantID(*v)
+	}
+	return _u
 }
 
 // SetCelsius sets the "celsius" field.
@@ -246,6 +278,9 @@ func (_u *ReadingUpdateOne) sqlSave(ctx context.Context) (_node *Reading, err er
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.TenantID(); ok {
+		_spec.SetField(reading.FieldTenantID, field.TypeUUID, value)
 	}
 	if value, ok := _u.mutation.Celsius(); ok {
 		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)

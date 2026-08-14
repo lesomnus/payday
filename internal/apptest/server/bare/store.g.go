@@ -16,6 +16,7 @@ import (
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
@@ -322,6 +323,7 @@ type Scope interface {
 	OutboxScope(ctx context.Context) (predicate.Outbox, error)
 	CellScope(ctx context.Context) (predicate.Cell, error)
 	RobotScope(ctx context.Context) (predicate.Robot, error)
+	PairingScope(ctx context.Context) (predicate.Pairing, error)
 	JointScope(ctx context.Context) (predicate.Joint, error)
 	FleetScope(ctx context.Context) (predicate.Fleet, error)
 	ReadingScope(ctx context.Context) (predicate.Reading, error)
@@ -355,6 +357,9 @@ func (Unscoped) CellScope(_ context.Context) (predicate.Cell, error) {
 	return nil, nil
 }
 func (Unscoped) RobotScope(_ context.Context) (predicate.Robot, error) {
+	return nil, nil
+}
+func (Unscoped) PairingScope(_ context.Context) (predicate.Pairing, error) {
 	return nil, nil
 }
 func (Unscoped) JointScope(_ context.Context) (predicate.Joint, error) {
@@ -504,6 +509,26 @@ func (ss Scopes) RobotScope(ctx context.Context) (predicate.Robot, error) {
 	}
 
 	return robot.And(ps...), nil
+}
+
+func (ss Scopes) PairingScope(ctx context.Context) (predicate.Pairing, error) {
+	ps := make([]predicate.Pairing, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.PairingScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return pairing.And(ps...), nil
 }
 
 func (ss Scopes) JointScope(ctx context.Context) (predicate.Joint, error) {
@@ -690,6 +715,7 @@ func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceSer
 func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }
 func (s Server) Cell() apptest.CellServiceServer       { return CellServiceServer{Store: s.Store} }
 func (s Server) Robot() apptest.RobotServiceServer     { return RobotServiceServer{Store: s.Store} }
+func (s Server) Pairing() apptest.PairingServiceServer { return PairingServiceServer{Store: s.Store} }
 func (s Server) Joint() apptest.JointServiceServer     { return JointServiceServer{Store: s.Store} }
 func (s Server) Fleet() apptest.FleetServiceServer     { return FleetServiceServer{Store: s.Store} }
 func (s Server) Reading() apptest.ReadingServiceServer { return ReadingServiceServer{Store: s.Store} }

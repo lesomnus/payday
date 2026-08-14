@@ -364,6 +364,19 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 		return fmt.Sprintf("%s(%s)", g.QualifiedGoIdent(at.Ident("Or")), strings.Join(vs, ", "))
 	}
 
+	if v.Stamp != "" {
+		// The tenant this row's `via` reached, kept on the row. So the wall is
+		// the comparison a direct edge gets, whatever the path was -- which is
+		// the whole reason a stamp is worth a column.
+		//
+		// It is read here rather than walked because it cannot be stale: every
+		// edge on the path is immutable, which is what `checkStamp` refuses a
+		// path without.
+		at := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+
+		return fmt.Sprintf("%s(vs...)", g.QualifiedGoIdent(at.Ident(pascal(v.Stamp)+"In")))
+	}
+
 	// Built inside out: the innermost predicate is the tenant's, and each step
 	// back along the path wraps it in the edge that reached it.
 	//
@@ -430,6 +443,10 @@ func why(v *Entity, s *Schema) string {
 	case len(v.Columns) > 1:
 		return fmt.Sprintf("a row is readable by every tenant it names -- %s -- which is the trail.",
 			strings.Join(v.Columns, ", "))
+	case v.Stamp != "":
+		return fmt.Sprintf(
+			"a row belongs to the tenant its %q reaches, read off %q -- which the\n// server stamped when the row was written and no step of that path can move.",
+			strings.Join(v.Via, "."), v.Stamp)
 	default:
 		return fmt.Sprintf("a row belongs to the tenant its %q reaches.", strings.Join(v.Via, "."))
 	}

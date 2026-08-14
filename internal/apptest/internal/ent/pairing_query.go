@@ -12,58 +12,59 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 )
 
-// ReadingQuery is the builder for querying Reading entities.
-type ReadingQuery struct {
+// PairingQuery is the builder for querying Pairing entities.
+type PairingQuery struct {
 	config
 	ctx        *QueryContext
-	order      []reading.OrderOption
+	order      []pairing.OrderOption
 	inters     []Interceptor
-	predicates []predicate.Reading
-	withRobot  *RobotQuery
+	predicates []predicate.Pairing
+	withLead   *RobotQuery
+	withFollow *RobotQuery
 	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the ReadingQuery builder.
-func (_q *ReadingQuery) Where(ps ...predicate.Reading) *ReadingQuery {
+// Where adds a new predicate for the PairingQuery builder.
+func (_q *PairingQuery) Where(ps ...predicate.Pairing) *PairingQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *ReadingQuery) Limit(limit int) *ReadingQuery {
+func (_q *PairingQuery) Limit(limit int) *PairingQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *ReadingQuery) Offset(offset int) *ReadingQuery {
+func (_q *PairingQuery) Offset(offset int) *PairingQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *ReadingQuery) Unique(unique bool) *ReadingQuery {
+func (_q *PairingQuery) Unique(unique bool) *PairingQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *ReadingQuery) Order(o ...reading.OrderOption) *ReadingQuery {
+func (_q *PairingQuery) Order(o ...pairing.OrderOption) *PairingQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// QueryRobot chains the current query on the "robot" edge.
-func (_q *ReadingQuery) QueryRobot() *RobotQuery {
+// QueryLead chains the current query on the "lead" edge.
+func (_q *PairingQuery) QueryLead() *RobotQuery {
 	query := (&RobotClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -74,9 +75,9 @@ func (_q *ReadingQuery) QueryRobot() *RobotQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(reading.Table, reading.FieldID, selector),
+			sqlgraph.From(pairing.Table, pairing.FieldID, selector),
 			sqlgraph.To(robot.Table, robot.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, reading.RobotTable, reading.RobotColumn),
+			sqlgraph.Edge(sqlgraph.M2O, false, pairing.LeadTable, pairing.LeadColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -84,21 +85,43 @@ func (_q *ReadingQuery) QueryRobot() *RobotQuery {
 	return query
 }
 
-// First returns the first Reading entity from the query.
-// Returns a *NotFoundError when no Reading was found.
-func (_q *ReadingQuery) First(ctx context.Context) (*Reading, error) {
+// QueryFollow chains the current query on the "follow" edge.
+func (_q *PairingQuery) QueryFollow() *RobotQuery {
+	query := (&RobotClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(pairing.Table, pairing.FieldID, selector),
+			sqlgraph.To(robot.Table, robot.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, pairing.FollowTable, pairing.FollowColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// First returns the first Pairing entity from the query.
+// Returns a *NotFoundError when no Pairing was found.
+func (_q *PairingQuery) First(ctx context.Context) (*Pairing, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{reading.Label}
+		return nil, &NotFoundError{pairing.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *ReadingQuery) FirstX(ctx context.Context) *Reading {
+func (_q *PairingQuery) FirstX(ctx context.Context) *Pairing {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -106,22 +129,22 @@ func (_q *ReadingQuery) FirstX(ctx context.Context) *Reading {
 	return node
 }
 
-// FirstID returns the first Reading ID from the query.
-// Returns a *NotFoundError when no Reading ID was found.
-func (_q *ReadingQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstID returns the first Pairing ID from the query.
+// Returns a *NotFoundError when no Pairing ID was found.
+func (_q *PairingQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{reading.Label}
+		err = &NotFoundError{pairing.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *ReadingQuery) FirstIDX(ctx context.Context) uuid.UUID {
+func (_q *PairingQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -129,10 +152,10 @@ func (_q *ReadingQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// Only returns a single Reading entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one Reading entity is found.
-// Returns a *NotFoundError when no Reading entities are found.
-func (_q *ReadingQuery) Only(ctx context.Context) (*Reading, error) {
+// Only returns a single Pairing entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one Pairing entity is found.
+// Returns a *NotFoundError when no Pairing entities are found.
+func (_q *PairingQuery) Only(ctx context.Context) (*Pairing, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -141,14 +164,14 @@ func (_q *ReadingQuery) Only(ctx context.Context) (*Reading, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{reading.Label}
+		return nil, &NotFoundError{pairing.Label}
 	default:
-		return nil, &NotSingularError{reading.Label}
+		return nil, &NotSingularError{pairing.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *ReadingQuery) OnlyX(ctx context.Context) *Reading {
+func (_q *PairingQuery) OnlyX(ctx context.Context) *Pairing {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -156,10 +179,10 @@ func (_q *ReadingQuery) OnlyX(ctx context.Context) *Reading {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Reading ID in the query.
-// Returns a *NotSingularError when more than one Reading ID is found.
+// OnlyID is like Only, but returns the only Pairing ID in the query.
+// Returns a *NotSingularError when more than one Pairing ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *ReadingQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *PairingQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -168,15 +191,15 @@ func (_q *ReadingQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{reading.Label}
+		err = &NotFoundError{pairing.Label}
 	default:
-		err = &NotSingularError{reading.Label}
+		err = &NotSingularError{pairing.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *ReadingQuery) OnlyIDX(ctx context.Context) uuid.UUID {
+func (_q *PairingQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -184,18 +207,18 @@ func (_q *ReadingQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// All executes the query and returns a list of Readings.
-func (_q *ReadingQuery) All(ctx context.Context) ([]*Reading, error) {
+// All executes the query and returns a list of Pairings.
+func (_q *PairingQuery) All(ctx context.Context) ([]*Pairing, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*Reading, *ReadingQuery]()
-	return withInterceptors[[]*Reading](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*Pairing, *PairingQuery]()
+	return withInterceptors[[]*Pairing](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *ReadingQuery) AllX(ctx context.Context) []*Reading {
+func (_q *PairingQuery) AllX(ctx context.Context) []*Pairing {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -203,20 +226,20 @@ func (_q *ReadingQuery) AllX(ctx context.Context) []*Reading {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Reading IDs.
-func (_q *ReadingQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// IDs executes the query and returns a list of Pairing IDs.
+func (_q *PairingQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(reading.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(pairing.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *ReadingQuery) IDsX(ctx context.Context) []uuid.UUID {
+func (_q *PairingQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -225,16 +248,16 @@ func (_q *ReadingQuery) IDsX(ctx context.Context) []uuid.UUID {
 }
 
 // Count returns the count of the given query.
-func (_q *ReadingQuery) Count(ctx context.Context) (int, error) {
+func (_q *PairingQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*ReadingQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*PairingQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *ReadingQuery) CountX(ctx context.Context) int {
+func (_q *PairingQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -243,7 +266,7 @@ func (_q *ReadingQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *ReadingQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *PairingQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -256,7 +279,7 @@ func (_q *ReadingQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *ReadingQuery) ExistX(ctx context.Context) bool {
+func (_q *PairingQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -264,19 +287,20 @@ func (_q *ReadingQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the ReadingQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the PairingQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *ReadingQuery) Clone() *ReadingQuery {
+func (_q *PairingQuery) Clone() *PairingQuery {
 	if _q == nil {
 		return nil
 	}
-	return &ReadingQuery{
+	return &PairingQuery{
 		config:     _q.config,
 		ctx:        _q.ctx.Clone(),
-		order:      append([]reading.OrderOption{}, _q.order...),
+		order:      append([]pairing.OrderOption{}, _q.order...),
 		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.Reading{}, _q.predicates...),
-		withRobot:  _q.withRobot.Clone(),
+		predicates: append([]predicate.Pairing{}, _q.predicates...),
+		withLead:   _q.withLead.Clone(),
+		withFollow: _q.withFollow.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -284,14 +308,25 @@ func (_q *ReadingQuery) Clone() *ReadingQuery {
 	}
 }
 
-// WithRobot tells the query-builder to eager-load the nodes that are connected to
-// the "robot" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ReadingQuery) WithRobot(opts ...func(*RobotQuery)) *ReadingQuery {
+// WithLead tells the query-builder to eager-load the nodes that are connected to
+// the "lead" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *PairingQuery) WithLead(opts ...func(*RobotQuery)) *PairingQuery {
 	query := (&RobotClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withRobot = query
+	_q.withLead = query
+	return _q
+}
+
+// WithFollow tells the query-builder to eager-load the nodes that are connected to
+// the "follow" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *PairingQuery) WithFollow(opts ...func(*RobotQuery)) *PairingQuery {
+	query := (&RobotClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withFollow = query
 	return _q
 }
 
@@ -301,19 +336,19 @@ func (_q *ReadingQuery) WithRobot(opts ...func(*RobotQuery)) *ReadingQuery {
 // Example:
 //
 //	var v []struct {
-//		TenantID uuid.UUID `json:"tenant_id,omitempty"`
+//		DateCreated time.Time `json:"date_created,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.Reading.Query().
-//		GroupBy(reading.FieldTenantID).
+//	client.Pairing.Query().
+//		GroupBy(pairing.FieldDateCreated).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *ReadingQuery) GroupBy(field string, fields ...string) *ReadingGroupBy {
+func (_q *PairingQuery) GroupBy(field string, fields ...string) *PairingGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &ReadingGroupBy{build: _q}
+	grbuild := &PairingGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = reading.Label
+	grbuild.label = pairing.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -324,26 +359,26 @@ func (_q *ReadingQuery) GroupBy(field string, fields ...string) *ReadingGroupBy 
 // Example:
 //
 //	var v []struct {
-//		TenantID uuid.UUID `json:"tenant_id,omitempty"`
+//		DateCreated time.Time `json:"date_created,omitempty"`
 //	}
 //
-//	client.Reading.Query().
-//		Select(reading.FieldTenantID).
+//	client.Pairing.Query().
+//		Select(pairing.FieldDateCreated).
 //		Scan(ctx, &v)
-func (_q *ReadingQuery) Select(fields ...string) *ReadingSelect {
+func (_q *PairingQuery) Select(fields ...string) *PairingSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &ReadingSelect{ReadingQuery: _q}
-	sbuild.label = reading.Label
+	sbuild := &PairingSelect{PairingQuery: _q}
+	sbuild.label = pairing.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a ReadingSelect configured with the given aggregations.
-func (_q *ReadingQuery) Aggregate(fns ...AggregateFunc) *ReadingSelect {
+// Aggregate returns a PairingSelect configured with the given aggregations.
+func (_q *PairingQuery) Aggregate(fns ...AggregateFunc) *PairingSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *ReadingQuery) prepareQuery(ctx context.Context) error {
+func (_q *PairingQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -355,7 +390,7 @@ func (_q *ReadingQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !reading.ValidColumn(f) {
+		if !pairing.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -369,19 +404,20 @@ func (_q *ReadingQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *ReadingQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Reading, error) {
+func (_q *PairingQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Pairing, error) {
 	var (
-		nodes       = []*Reading{}
+		nodes       = []*Pairing{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
-			_q.withRobot != nil,
+		loadedTypes = [2]bool{
+			_q.withLead != nil,
+			_q.withFollow != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*Reading).scanValues(nil, columns)
+		return (*Pairing).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &Reading{config: _q.config}
+		node := &Pairing{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -398,20 +434,26 @@ func (_q *ReadingQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Read
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withRobot; query != nil {
-		if err := _q.loadRobot(ctx, query, nodes, nil,
-			func(n *Reading, e *Robot) { n.Edges.Robot = e }); err != nil {
+	if query := _q.withLead; query != nil {
+		if err := _q.loadLead(ctx, query, nodes, nil,
+			func(n *Pairing, e *Robot) { n.Edges.Lead = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withFollow; query != nil {
+		if err := _q.loadFollow(ctx, query, nodes, nil,
+			func(n *Pairing, e *Robot) { n.Edges.Follow = e }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *ReadingQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes []*Reading, init func(*Reading), assign func(*Reading, *Robot)) error {
+func (_q *PairingQuery) loadLead(ctx context.Context, query *RobotQuery, nodes []*Pairing, init func(*Pairing), assign func(*Pairing, *Robot)) error {
 	ids := make([]uuid.UUID, 0, len(nodes))
-	nodeids := make(map[uuid.UUID][]*Reading)
+	nodeids := make(map[uuid.UUID][]*Pairing)
 	for i := range nodes {
-		fk := nodes[i].RobotID
+		fk := nodes[i].LeadID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -428,7 +470,36 @@ func (_q *ReadingQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes 
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "robot_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "lead_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *PairingQuery) loadFollow(ctx context.Context, query *RobotQuery, nodes []*Pairing, init func(*Pairing), assign func(*Pairing, *Robot)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Pairing)
+	for i := range nodes {
+		fk := nodes[i].FollowID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(robot.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "follow_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -437,7 +508,7 @@ func (_q *ReadingQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes 
 	return nil
 }
 
-func (_q *ReadingQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *PairingQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	if len(_q.modifiers) > 0 {
 		_spec.Modifiers = _q.modifiers
@@ -449,8 +520,8 @@ func (_q *ReadingQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *ReadingQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(reading.Table, reading.Columns, sqlgraph.NewFieldSpec(reading.FieldID, field.TypeUUID))
+func (_q *PairingQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(pairing.Table, pairing.Columns, sqlgraph.NewFieldSpec(pairing.FieldID, field.TypeUUID))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -459,14 +530,17 @@ func (_q *ReadingQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, reading.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, pairing.FieldID)
 		for i := range fields {
-			if fields[i] != reading.FieldID {
+			if fields[i] != pairing.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
-		if _q.withRobot != nil {
-			_spec.Node.AddColumnOnce(reading.FieldRobotID)
+		if _q.withLead != nil {
+			_spec.Node.AddColumnOnce(pairing.FieldLeadID)
+		}
+		if _q.withFollow != nil {
+			_spec.Node.AddColumnOnce(pairing.FieldFollowID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {
@@ -492,12 +566,12 @@ func (_q *ReadingQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *ReadingQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *PairingQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(reading.Table)
+	t1 := builder.Table(pairing.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = reading.Columns
+		columns = pairing.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -528,33 +602,33 @@ func (_q *ReadingQuery) sqlQuery(ctx context.Context) *sql.Selector {
 }
 
 // Modify adds a query modifier for attaching custom logic to queries.
-func (_q *ReadingQuery) Modify(modifiers ...func(s *sql.Selector)) *ReadingSelect {
+func (_q *PairingQuery) Modify(modifiers ...func(s *sql.Selector)) *PairingSelect {
 	_q.modifiers = append(_q.modifiers, modifiers...)
 	return _q.Select()
 }
 
-// ReadingGroupBy is the group-by builder for Reading entities.
-type ReadingGroupBy struct {
+// PairingGroupBy is the group-by builder for Pairing entities.
+type PairingGroupBy struct {
 	selector
-	build *ReadingQuery
+	build *PairingQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *ReadingGroupBy) Aggregate(fns ...AggregateFunc) *ReadingGroupBy {
+func (_g *PairingGroupBy) Aggregate(fns ...AggregateFunc) *PairingGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *ReadingGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *PairingGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*ReadingQuery, *ReadingGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*PairingQuery, *PairingGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *ReadingGroupBy) sqlScan(ctx context.Context, root *ReadingQuery, v any) error {
+func (_g *PairingGroupBy) sqlScan(ctx context.Context, root *PairingQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -581,28 +655,28 @@ func (_g *ReadingGroupBy) sqlScan(ctx context.Context, root *ReadingQuery, v any
 	return sql.ScanSlice(rows, v)
 }
 
-// ReadingSelect is the builder for selecting fields of Reading entities.
-type ReadingSelect struct {
-	*ReadingQuery
+// PairingSelect is the builder for selecting fields of Pairing entities.
+type PairingSelect struct {
+	*PairingQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *ReadingSelect) Aggregate(fns ...AggregateFunc) *ReadingSelect {
+func (_s *PairingSelect) Aggregate(fns ...AggregateFunc) *PairingSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *ReadingSelect) Scan(ctx context.Context, v any) error {
+func (_s *PairingSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*ReadingQuery, *ReadingSelect](ctx, _s.ReadingQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*PairingQuery, *PairingSelect](ctx, _s.PairingQuery, _s, _s.inters, v)
 }
 
-func (_s *ReadingSelect) sqlScan(ctx context.Context, root *ReadingQuery, v any) error {
+func (_s *PairingSelect) sqlScan(ctx context.Context, root *PairingQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {
@@ -624,7 +698,7 @@ func (_s *ReadingSelect) sqlScan(ctx context.Context, root *ReadingQuery, v any)
 }
 
 // Modify adds a query modifier for attaching custom logic to queries.
-func (_s *ReadingSelect) Modify(modifiers ...func(s *sql.Selector)) *ReadingSelect {
+func (_s *PairingSelect) Modify(modifiers ...func(s *sql.Selector)) *PairingSelect {
 	_s.modifiers = append(_s.modifiers, modifiers...)
 	return _s
 }

@@ -26,6 +26,7 @@ import (
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
@@ -81,6 +82,7 @@ const (
 	HolderDomain  pdid.Domain = 2  // "holder"
 	JointDomain   pdid.Domain = 8  // "joint"
 	OutboxDomain  pdid.Domain = 4  // "outbox"
+	PairingDomain pdid.Domain = 12 // "pairing"
 	ReadingDomain pdid.Domain = 11 // "reading"
 	RobotDomain   pdid.Domain = 7  // "robot"
 	TenantDomain  pdid.Domain = 1  // "tenant"
@@ -93,6 +95,7 @@ func init() {
 	pdid.Register("app.Holder", HolderDomain, "holder")
 	pdid.Register("app.Joint", JointDomain, "joint")
 	pdid.Register("app.Outbox", OutboxDomain, "outbox")
+	pdid.Register("app.Pairing", PairingDomain, "pairing")
 	pdid.Register("app.Reading", ReadingDomain, "reading")
 	pdid.Register("app.Robot", RobotDomain, "robot")
 	pdid.Register("app.Tenant", TenantDomain, "tenant")
@@ -109,6 +112,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Holder":  HolderDomain,
 	"app.Joint":   JointDomain,
 	"app.Outbox":  OutboxDomain,
+	"app.Pairing": PairingDomain,
 	"app.Reading": ReadingDomain,
 	"app.Robot":   RobotDomain,
 	"app.Tenant":  TenantDomain,
@@ -206,14 +210,25 @@ func (wall) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
 	return nil, nil
 }
 
-// ReadingScope: a row belongs to the tenant its "robot.tenant" reaches.
+// PairingScope: a row belongs to the tenant its "lead.tenant" reaches.
+func (wall) PairingScope(ctx context.Context) (predicate.Pairing, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return pairing.HasLeadWith(robot.TenantIDIn(vs...)), nil
+}
+
+// ReadingScope: a row belongs to the tenant its "robot.tenant" reaches, read off "tenant_id" -- which the
+// server stamped when the row was written and no step of that path can move.
 func (wall) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
 	}
 
-	return reading.HasRobotWith(robot.TenantIDIn(vs...)), nil
+	return reading.TenantIDIn(vs...), nil
 }
 
 // RobotScope: a row belongs to the tenant its "tenant" reaches.
@@ -304,6 +319,11 @@ func (x grouped) JointScope(ctx context.Context) (predicate.Joint, error) {
 
 // OutboxScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
+	return nil, nil
+}
+
+// PairingScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) PairingScope(ctx context.Context) (predicate.Pairing, error) {
 	return nil, nil
 }
 
@@ -1276,6 +1296,170 @@ func (s sinkJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*
 	return s.JointServiceServer.Patch(ctx, req)
 }
 
+type sinkPairing struct {
+	apptest.PairingServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Pairing() apptest.PairingServiceServer {
+	return sinkPairing{s.Server.Pairing(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// tenantAtLeadTenant is the tenant "lead.tenant" arrives at.
+func (s sinkPairing) tenantAtLeadTenant(ctx context.Context, ref *apptest.RobotRef) ([]byte, error) {
+	if ref == nil {
+		return nil, pderr.Invalidf("lead", "required: it is what says which tenant this belongs to")
+	}
+
+	// The row the edge names, picked the way every other reference is.
+	pick, err := bare.RobotPick(ref)
+	if err != nil {
+		return nil, pderr.At("lead", err)
+	}
+
+	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyID(ctx)
+	if err != nil {
+		// Not there, or more than one -- both are the reference being wrong,
+		// and both are the caller's to fix.
+		return nil, pderr.Invalidf("lead", "it does not name one row")
+	}
+
+	return k[:], nil
+}
+
+// tenantAtFollowTenant is the tenant "follow.tenant" arrives at.
+func (s sinkPairing) tenantAtFollowTenant(ctx context.Context, ref *apptest.RobotRef) ([]byte, error) {
+	if ref == nil {
+		return nil, pderr.Invalidf("follow", "required: it is what says which tenant this belongs to")
+	}
+
+	// The row the edge names, picked the way every other reference is.
+	pick, err := bare.RobotPick(ref)
+	if err != nil {
+		return nil, pderr.At("follow", err)
+	}
+
+	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyID(ctx)
+	if err != nil {
+		// Not there, or more than one -- both are the reference being wrong,
+		// and both are the caller's to fix.
+		return nil, pderr.Invalidf("follow", "it does not name one row")
+	}
+
+	return k[:], nil
+}
+
+// tenancy fills what the schema says this row's tenant is, and refuses a
+// row whose other paths do not agree with it.
+//
+// The request is already this server's copy by the time it arrives, so it
+// is written to rather than cloned again.
+func (s sinkPairing) tenancy(ctx context.Context, req *apptest.PairingAddRequest) error {
+	want, err := s.tenantAtLeadTenant(ctx, req.GetLead())
+	if err != nil {
+		return err
+	}
+
+	if req.HasFollow() {
+		got, err := s.tenantAtFollowTenant(ctx, req.GetFollow())
+		if err != nil {
+			return err
+		}
+		if string(got) != string(want) {
+			// Both exist and both are visible to whoever is writing --
+			// the gate already saw to that. What it cannot see is that
+			// they are in different tenants, because it asks "may I read
+			// this" and a caller who holds several tenants may read both.
+			return pderr.Invalidf("follow",
+				"it is in another tenant than lead.tenant")
+		}
+	}
+
+	return nil
+}
+
+// Add stamps this row's tenant before writing it.
+func (s sinkPairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding.
+	r := proto.CloneOf(req)
+	if err := s.tenancy(ctx, r); err != nil {
+		return nil, err
+	}
+
+	return s.PairingServiceServer.Add(ctx, r)
+}
+
+type sinkReading struct {
+	apptest.ReadingServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Reading() apptest.ReadingServiceServer {
+	return sinkReading{s.Server.Reading(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// tenantAtRobotTenant is the tenant "robot.tenant" arrives at.
+func (s sinkReading) tenantAtRobotTenant(ctx context.Context, ref *apptest.RobotRef) ([]byte, error) {
+	if ref == nil {
+		return nil, pderr.Invalidf("robot", "required: it is what says which tenant this belongs to")
+	}
+
+	// The row the edge names, picked the way every other reference is.
+	pick, err := bare.RobotPick(ref)
+	if err != nil {
+		return nil, pderr.At("robot", err)
+	}
+
+	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyID(ctx)
+	if err != nil {
+		// Not there, or more than one -- both are the reference being wrong,
+		// and both are the caller's to fix.
+		return nil, pderr.Invalidf("robot", "it does not name one row")
+	}
+
+	return k[:], nil
+}
+
+// tenancy fills what the schema says this row's tenant is, and refuses a
+// row whose other paths do not agree with it.
+//
+// The request is already this server's copy by the time it arrives, so it
+// is written to rather than cloned again.
+func (s sinkReading) tenancy(ctx context.Context, req *apptest.ReadingAddRequest) error {
+	want, err := s.tenantAtRobotTenant(ctx, req.GetRobot())
+	if err != nil {
+		return err
+	}
+
+	// Stamped, whatever the caller said. It is not a field of the request
+	// and a caller that reached this server another way does not get to
+	// keep what they put there.
+	req.SetTenantId(want)
+
+	return nil
+}
+
+// Add stamps this row's tenant before writing it.
+func (s sinkReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding.
+	r := proto.CloneOf(req)
+	if err := s.tenancy(ctx, r); err != nil {
+		return nil, err
+	}
+
+	return s.ReadingServiceServer.Add(ctx, r)
+}
+
 type sinkRobot struct {
 	apptest.RobotServiceServer
 	store  bare.Store
@@ -2101,6 +2285,42 @@ func (s gateJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*appt
 	return s.JointServiceServer.Add(ctx, req)
 }
 
+type gatePairing struct {
+	Gate
+	apptest.PairingServiceServer
+}
+
+func (s Gate) Pairing() apptest.PairingServiceServer {
+	return gatePairing{s, s.Next().Pairing()}
+}
+
+// Add refuses a Pairing put into a Robot this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `lead` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Robot, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+func (s gatePairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+	if ref := req.GetLead(); ref != nil {
+		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Robot")
+			}
+
+			return nil, err
+		}
+	}
+
+	return s.PairingServiceServer.Add(ctx, req)
+}
+
 type gateReading struct {
 	Gate
 	apptest.ReadingServiceServer
@@ -2420,6 +2640,39 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		}
 
 		up, err := pdid.From(row.GetRobot().GetId())
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		k, _, err := subject(ctx, s, up)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		return k, b, nil
+
+	case PairingDomain:
+		row, err := s.Pairing().Get(ctx, apptest.PairingGetRequest_builder{
+			Ref: apptest.PairingRef_builder{Id: key.Bytes()}.Build(),
+		}.Build())
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return uuid.Nil, []byte{}, nil
+			}
+
+			return uuid.Nil, nil, err
+		}
+
+		b, err := proto.Marshal(row)
+		if err != nil {
+			return uuid.Nil, nil, err
+		}
+
+		if !row.HasLead() {
+			return uuid.Nil, b, nil
+		}
+
+		up, err := pdid.From(row.GetLead().GetId())
 		if err != nil {
 			return uuid.Nil, nil, err
 		}
@@ -3366,6 +3619,71 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Robot().Move(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.PairingService_Add_FullMethodName:
+		v := &apptest.PairingAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Pairing().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.PairingService_Get_FullMethodName:
+		v := &apptest.PairingGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Pairing().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.PairingService_Patch_FullMethodName:
+		v := &apptest.PairingPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Pairing().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.PairingService_Apply_FullMethodName:
+		v := &apptest.PairingApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Pairing().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.PairingService_Erase_FullMethodName:
+		v := &apptest.PairingRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Pairing().Erase(ctx, v)
 		if err != nil {
 			return nil, err
 		}

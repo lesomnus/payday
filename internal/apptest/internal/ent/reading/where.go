@@ -56,6 +56,11 @@ func IDLTE(id uuid.UUID) predicate.Reading {
 	return predicate.Reading(sql.FieldLTE(FieldID, id))
 }
 
+// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
+func TenantID(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldTenantID, v))
+}
+
 // Celsius applies equality check predicate on the "celsius" field. It's identical to CelsiusEQ.
 func Celsius(v float64) predicate.Reading {
 	return predicate.Reading(sql.FieldEQ(FieldCelsius, v))
@@ -69,6 +74,46 @@ func DateCreated(v time.Time) predicate.Reading {
 // RobotID applies equality check predicate on the "robot_id" field. It's identical to RobotIDEQ.
 func RobotID(v uuid.UUID) predicate.Reading {
 	return predicate.Reading(sql.FieldEQ(FieldRobotID, v))
+}
+
+// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIDEQ(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldTenantID, v))
+}
+
+// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIDNEQ(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNEQ(FieldTenantID, v))
+}
+
+// TenantIDIn applies the In predicate on the "tenant_id" field.
+func TenantIDIn(vs ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldIn(FieldTenantID, vs...))
+}
+
+// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIDNotIn(vs ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNotIn(FieldTenantID, vs...))
+}
+
+// TenantIDGT applies the GT predicate on the "tenant_id" field.
+func TenantIDGT(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldGT(FieldTenantID, v))
+}
+
+// TenantIDGTE applies the GTE predicate on the "tenant_id" field.
+func TenantIDGTE(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldGTE(FieldTenantID, v))
+}
+
+// TenantIDLT applies the LT predicate on the "tenant_id" field.
+func TenantIDLT(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldLT(FieldTenantID, v))
+}
+
+// TenantIDLTE applies the LTE predicate on the "tenant_id" field.
+func TenantIDLTE(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldLTE(FieldTenantID, v))
 }
 
 // CelsiusEQ applies the EQ predicate on the "celsius" field.

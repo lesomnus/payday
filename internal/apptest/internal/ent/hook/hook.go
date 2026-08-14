@@ -81,6 +81,18 @@ func (f OutboxFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OutboxMutation", m)
 }
 
+// The PairingFunc type is an adapter to allow the use of ordinary
+// function as Pairing mutator.
+type PairingFunc func(context.Context, *ent.PairingMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PairingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PairingMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PairingMutation", m)
+}
+
 // The ReadingFunc type is an adapter to allow the use of ordinary
 // function as Reading mutator.
 type ReadingFunc func(context.Context, *ent.ReadingMutation) (ent.Value, error)

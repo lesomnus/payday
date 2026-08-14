@@ -121,6 +121,52 @@ func RobotGetBySlug(alias string, tenant *TenantRef) *RobotGetRequest {
 	return RobotGetRequest_builder{Ref: RobotBySlug(alias, tenant)}.Build()
 }
 
+func (x *PairingRef) Pick() *PairingGetRequest {
+	return PairingGetRequest_builder{Ref: x}.Build()
+}
+
+func (x *Pairing) Ref() *PairingRef {
+	if v := x.GetId(); len(v) > 0 {
+		return PairingById(v)
+	}
+
+	return nil
+}
+
+func (x *Pairing) Pick() *PairingGetRequest {
+	return x.Ref().Pick()
+}
+
+func (x *PairingRef) Picks(v *Pairing) bool {
+	switch x.WhichKey() {
+	case PairingRef_Id_case:
+		return bytes.Equal(x.GetId(), v.GetId())
+	default:
+		return false
+	}
+}
+
+func (x *PairingGetRequest) WithSelect(f func(s *PairingSelect)) *PairingGetRequest {
+	if !x.HasSelect() {
+		x.SetSelect(&PairingSelect{})
+	}
+	f(x.GetSelect())
+	return x
+}
+
+func (x *Pairing) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
+func (x *Pairing) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
+
+func PairingById(v []byte) *PairingRef {
+	x := &PairingRef{}
+	x.SetId(v)
+	return x
+}
+
+func PairingGetById(v []byte) *PairingGetRequest {
+	return PairingGetRequest_builder{Ref: PairingById(v)}.Build()
+}
+
 func (x *JointRef) Pick() *JointGetRequest {
 	return JointGetRequest_builder{Ref: x}.Build()
 }

@@ -131,6 +131,62 @@ message Entity {
     // something that happened between two of them is a different shape, and it
     // is the only one this is for.
     repeated string field = 2;
+
+    // Stamp is a column on this row holding what [Tenanted.via] reaches, and
+    // payday writes it.
+    //
+    // It is the word `date_updated` is described with, and for the same reason:
+    // **stamped by the server on every write and refused to a patch**. It is
+    // not a field of a request and never becomes one. A caller that could write
+    // it could put a row behind a wall its edge does not agree with, and then
+    // the row is readable by a tenant that does not hold it.
+    //
+    // # What it is for
+    //
+    // A `via` of more than one step is a subquery in the wall, on every read:
+    //
+    //	identity.HasHolderWith(holder.TenantIDIn(vs...))   // via "holder.tenant"
+    //	role.TenantIDIn(vs...)                             // a direct edge
+    //
+    // With a stamp the second line is what an entity gets whatever its path is.
+    // It is also what makes `list: {by: [{name: "tenant"}]}` possible at all --
+    // a filter reaches one hop, and a path of two has nothing to name.
+    //
+    // # It is not a cache
+    //
+    // Nothing refreshes it, because nothing can move it: every edge on the
+    // `via` path has to be immutable, and generation refuses a path that is
+    // not. So the value is decided once, when the row is written, and the
+    // question "is it still right" has no way to be asked.
+    //
+    // Say this with `via`. There is nothing to derive it from otherwise.
+    string stamp = 3;
+
+    // Agrees are other paths from this row to a tenant that must reach the same
+    // one, checked when the row is written.
+    //
+    // # Why it is opt-in
+    //
+    // A row can hold two edges that each reach a tenant, and payday cannot know
+    // which disagreements are mistakes: its own trail holds two on purpose. So
+    // there is no rule that they agree, and this is how an app says it wants
+    // one for a path it names. A path nobody named is an ordinary edge and
+    // nothing is said about it, ever.
+    //
+    // # What it adds to what is already refused
+    //
+    // The generated gate already reads every edge of an `Add` **through the
+    // wall**, so a caller cannot point a row at a row it cannot see. That is
+    // most of this, and it is free.
+    //
+    // What it does not cover is a caller who can see both: an operator whose
+    // scope is several tenants passes that check with one edge in each. This is
+    // that case, and the one where a deployment writes through a server the
+    // wall was never installed on.
+    //
+    // Each is a path like `via` -- an edge, or a dotted one. What is compared
+    // is the tenant each reaches.
+    repeated string agrees = 4;
   }
 
   // Erase is what `Erase` does to a row, and it is only ever said to declare

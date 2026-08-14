@@ -67,6 +67,19 @@ service RobotService {
   rpc Move(RobotMoveRequest) returns (Robot);
 }
 
+service PairingService {
+  // Add creates a new Pairing
+  rpc Add(PairingAddRequest) returns (Pairing);
+  // Get retrieves a Pairing
+  rpc Get(PairingGetRequest) returns (Pairing);
+  // Patch updates an existing Pairing
+  rpc Patch(PairingPatchRequest) returns (Pairing);
+  // Apply applies a patch document to an existing Pairing
+  rpc Apply(PairingApplyRequest) returns (Pairing);
+  // Erase deletes a Pairing
+  rpc Erase(PairingRef) returns (google.protobuf.Empty);
+}
+
 service JointService {
   // Add creates a new Joint
   rpc Add(JointAddRequest) returns (Joint);
@@ -306,6 +319,40 @@ message RobotMoveRequest {
   CellRef to = 2;
 }
 
+message PairingAddRequest {
+  bytes id = 1;
+  RobotRef lead = 2;
+  RobotRef follow = 8;
+  google.protobuf.Timestamp date_created = 15;
+}
+
+message PairingGetRequest {
+  PairingRef ref = 1;
+  PairingSelect select = 2;
+}
+
+message PairingRef {
+  oneof key {
+    bytes id = 1;
+  }
+}
+
+message PairingSelect {
+  bool all = 1;
+  RobotSelect lead = 2;
+  RobotSelect follow = 8;
+  bool date_created = 15;
+}
+
+message PairingPatchRequest {
+  PairingRef ref = 1;
+}
+
+message PairingApplyRequest {
+  PairingRef ref = 1;
+  patch.Patch patch = 2;
+}
+
 message JointAddRequest {
   bytes id = 1;
   RobotRef robot = 2;
@@ -376,6 +423,7 @@ message FleetApplyRequest {
 message ReadingAddRequest {
   bytes id = 1;
   RobotRef robot = 2;
+  bytes tenant_id = 9 [features.field_presence = IMPLICIT];
   double celsius = 8 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_created = 15;
 }
@@ -394,12 +442,14 @@ message ReadingRef {
 message ReadingSelect {
   bool all = 1;
   RobotSelect robot = 2;
+  bool tenant_id = 9;
   bool celsius = 8;
   bool date_created = 15;
 }
 
 message ReadingPatchRequest {
   ReadingRef ref = 1;
+  bytes tenant_id = 18;
   double celsius = 16;
 }
 

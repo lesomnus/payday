@@ -154,6 +154,62 @@ are not behind it.
 
 The whole of why is in [permissions §1](permissions.md#1-what-you-get-by-saying-nothing).
 
+#### `stamp:` — when the path is long and the table is hot
+
+A `via` of more than one step is a subquery in the wall, on **every read**:
+
+```go
+identity.HasHolderWith(holder.TenantIDIn(vs...))   // via "holder.tenant"
+role.TenantIDIn(vs...)                             // a direct edge
+```
+
+`stamp:` names a `bytes` column on the row, and payday writes what the path
+reaches into it. The wall then reads the column, so an entity two hops from its
+tenant gets the predicate a direct edge gets — and `list: {by: [{name: ...}]}`
+becomes possible, which a path of two has nothing to name.
+
+```proto
+bytes tenant_id = 9 [(orm.field) = {type: TYPE_UUID}];
+
+option (payday.entity) = {
+  domain: 11
+  tenanted: {via: "robot.tenant", stamp: "tenant_id"}
+};
+```
+
+**It is not a field of the request.** A caller that could write it could put a
+row behind a wall its edge does not agree with, and the row would then be
+readable by a tenant that does not hold it. Whatever a caller puts there is
+overwritten, on every path in — the stamp is on the Sink, which is what both
+stacks are built on, so the server a deployment does its own work through cannot
+write one either.
+
+**It is not a cache.** Generation refuses a `via` whose steps are not all
+immutable and not nullable, so the value is decided when the row is written and
+nothing can move it. That is why nothing refreshes it: there is no way for the
+question to arise.
+
+#### `agrees:` — when a second edge also reaches a tenant
+
+A row can hold two edges that each arrive at a tenant. payday says nothing about
+the second, because it cannot know which disagreements are mistakes: its own
+trail holds two tenants on purpose.
+
+`agrees:` is how an app says it wants one path checked against `via`:
+
+```proto
+tenanted: {via: "lead.tenant", agrees: ["follow.tenant"]}
+```
+
+Most of this is already free. The generated gate reads every edge of an `Add`
+**through the wall**, so an ordinary caller cannot point a row at a row it
+cannot see. What that misses is a caller who can see *both* — an operator whose
+scope covers several tenants — and the deployment writing through the server
+with no wall. Those are the two cases this covers.
+
+Paths here are immutable too, for the same reason, so the comparison happens
+once and stays true.
+
 ---
 
 ## 3. The field numbers

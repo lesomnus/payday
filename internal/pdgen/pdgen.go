@@ -65,6 +65,24 @@ type Entity struct {
 	// row changed and a tenant whose actor made it, and both are parties to it.
 	Columns []string
 
+	// Stamp is a column on this row holding what [Entity.Via] reaches, written
+	// by the server and refused to a caller. Empty for nearly every entity.
+	//
+	// What it buys is the wall: a `Via` of more than one step is a subquery on
+	// every read, and a stamp makes it the same indexed comparison a direct
+	// edge gets. It is safe to keep because it cannot go stale -- every edge on
+	// `Via` is immutable, which [Schema.checkStamp] refuses a path without.
+	Stamp string
+
+	// Agrees are other paths from this row to a tenant that must reach the same
+	// one, checked when the row is written. Each is split the way [Entity.Via]
+	// is.
+	//
+	// Opt-in, and deliberately: payday cannot know which disagreements are
+	// mistakes -- its own trail holds two tenants on purpose -- so a path
+	// nobody named here is an ordinary edge and nothing is said about it.
+	Agrees [][]string
+
 	// Set is the edge at field 3 -- the set inside a tenant this row belongs
 	// to -- and is empty for an entity that declared none.
 	//
@@ -262,6 +280,34 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 			v.Via = []string{"tenant"}
 		}
 
+		// A stamp is what `via` reaches, kept on this row. There is nothing to
+		// derive it from without one, and the column form already **is** a
+		// column -- saying both would be asking for two of the same thing.
+		if s := t.GetStamp(); s != "" {
+			if len(v.Columns) > 0 {
+				return nil, fmt.Errorf(
+					"tenanted: says both `field: %q` and `stamp: %q`, and a stamp is a column "+
+						"payday fills from an edge -- there is no edge here to fill it from",
+					v.Columns[0], s)
+			}
+
+			v.Stamp = s
+		}
+
+		if len(t.GetAgrees()) > 0 && len(v.Columns) > 0 {
+			// The column form is the trail, which holds two tenants **because**
+			// they differ. A rule that they agree is the opposite of what it is
+			// for.
+			return nil, fmt.Errorf(
+				"tenanted: says both `field:` and `agrees:`, and the column form is the one " +
+					"that names more than one tenant on purpose -- there is nothing here for " +
+					"them to agree with")
+		}
+
+		for _, a := range t.GetAgrees() {
+			v.Agrees = append(v.Agrees, strings.Split(a, "."))
+		}
+
 	default:
 		// Nothing said, which means behind the wall by the edge called `tenant`.
 		//
@@ -423,6 +469,12 @@ func (s *Schema) check() error {
 		if err := s.checkVia(v); err != nil {
 			return fmt.Errorf("%s: via: %w", v.FullName(), err)
 		}
+		if err := s.checkStamp(v); err != nil {
+			return fmt.Errorf("%s: %w", v.FullName(), err)
+		}
+		if err := s.checkAgrees(v); err != nil {
+			return fmt.Errorf("%s: %w", v.FullName(), err)
+		}
 	}
 
 	return nil
@@ -555,6 +607,120 @@ func (s *Schema) checkVia(v *Entity) error {
 			return fmt.Errorf(
 				"%q arrives at %s, and the tenant is %s%s",
 				strings.Join(v.Via, "."), at.FullName(), s.Tenant.FullName(), assumed)
+		}
+	}
+
+	return nil
+}
+
+// checkStamp refuses a stamp that cannot be kept true.
+//
+// Two rules, and the second is the one worth having.
+//
+// The column has to be there and has to be able to hold an identifier, which is
+// [Schema.checkOneField]'s job and the same test a `field` gets.
+//
+// And **every edge on the path has to be immutable**. A stamp is decided once,
+// when the row is written; if any step of the path could be repointed
+// afterwards the column would go on saying where the row used to belong, and
+// the wall reads the column. Refusing the schema is cheaper than a check on
+// every write, and it costs nothing today: every tenancy path in payday,
+// roster and this repository's own test app already runs through immutable
+// edges. What it prevents is the next one that does not.
+func (s *Schema) checkStamp(v *Entity) error {
+	if v.Stamp == "" {
+		return nil
+	}
+	if len(v.Via) == 0 {
+		return fmt.Errorf("tenanted: `stamp: %q` with no `via`, and nothing to fill it from", v.Stamp)
+	}
+
+	if len(v.Via) == 1 {
+		// One hop is already a column. `collapse` reads the foreign key rather
+		// than walking it, so the wall on a direct edge is the comparison a
+		// stamp would add -- and the stamp would be a second copy of the same
+		// identifier, kept in step with nothing to keep it in step with.
+		return fmt.Errorf(
+			"tenanted: `stamp: %q` over `via: %q`, which is one hop and already a column: "+
+				"the wall reads the foreign key rather than walking it, so there is nothing "+
+				"here for a stamp to save",
+			v.Stamp, v.Via[0])
+	}
+
+	if err := s.checkOneField(v, v.Stamp); err != nil {
+		return fmt.Errorf("tenanted: stamp: %w", err)
+	}
+
+	at := v.Entity
+	for _, step := range v.Via {
+		e, ok := edge(at, step)
+		if !ok {
+			// checkVia says this better; it runs first.
+			return nil
+		}
+		if e.IsNullable() {
+			// A row with no edge has no tenant to stamp, and an empty stamp is
+			// a row the wall hides from everybody. Today that entity is
+			// invisible anyway -- `HasRobotWith(...)` matches nothing when
+			// there is no robot -- so this refuses a declaration rather than
+			// changing what a row does.
+			return fmt.Errorf(
+				"tenanted: `stamp: %q` reaches the tenant through %s.%s, which is nullable -- "+
+					"a row with no edge has no tenant to stamp, and an empty stamp is a row "+
+					"nobody can read",
+				v.Stamp, at.FullName(), step)
+		}
+		if !e.IsImmutable() {
+			return fmt.Errorf(
+				"tenanted: `stamp: %q` reaches the tenant through %s.%s, which is not immutable -- "+
+					"a stamp is written once and the wall reads it, so a step that can be repointed "+
+					"leaves the column saying where the row used to belong. Mark it "+
+					"`[(orm.edge) = {immutable: true}]` or drop the stamp",
+				v.Stamp, at.FullName(), step)
+		}
+
+		at = e.Target()
+	}
+
+	return nil
+}
+
+// checkAgrees refuses a path that does not arrive at the tenant.
+//
+// The same walk `via` gets, for the same reason: a path that arrives somewhere
+// else is not a second opinion about the tenant, it is a mistake that would be
+// compared against one.
+func (s *Schema) checkAgrees(v *Entity) error {
+	for _, path := range v.Agrees {
+		at := v.Entity
+		for i, step := range path {
+			e, ok := edge(at, step)
+			if !ok {
+				return fmt.Errorf("tenanted: agrees: %s has no edge %q", at.FullName(), step)
+			}
+
+			// Immutable for the same reason a `stamp`'s path is, arrived at
+			// from the other side: the comparison happens when the row is
+			// written, and a step that can be repointed afterwards makes it a
+			// statement about a moment rather than an invariant. Checking on
+			// every write instead would be a read per path per write, to hold
+			// something the schema can simply not allow to move.
+			if !e.IsImmutable() {
+				return fmt.Errorf(
+					"tenanted: agrees: %q goes through %s.%s, which is not immutable -- the "+
+						"paths are compared when the row is written, so a step that can be "+
+						"repointed makes the agreement true only until somebody moves it. Mark "+
+						"it `[(orm.edge) = {immutable: true}]`",
+					strings.Join(path, "."), at.FullName(), step)
+			}
+
+			at = e.Target()
+
+			if i == len(path)-1 && at.FullName() != s.Tenant.FullName() {
+				return fmt.Errorf(
+					"tenanted: agrees: %q arrives at %s, and the tenant is %s",
+					strings.Join(path, "."), at.FullName(), s.Tenant.FullName())
+			}
 		}
 	}
 

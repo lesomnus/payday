@@ -51,6 +51,26 @@ func (e *Robot) Proto() *apptest.Robot {
 	}
 	return x
 }
+func (e *Pairing) Proto() *apptest.Pairing {
+	x := &apptest.Pairing{}
+	x.SetId(e.ID[:])
+	if v := e.Edges.Lead; v != nil {
+		x.SetLead(v.Proto())
+	} else if v := e.LeadID; v != *new(uuid.UUID) {
+		r := &apptest.Robot{}
+		r.SetId(v[:])
+		x.SetLead(r)
+	}
+	if v := e.Edges.Follow; v != nil {
+		x.SetFollow(v.Proto())
+	} else if v := e.FollowID; v != *new(uuid.UUID) {
+		r := &apptest.Robot{}
+		r.SetId(v[:])
+		x.SetFollow(r)
+	}
+	x.SetDateCreated(timestamppb.New(e.DateCreated))
+	return x
+}
 func (e *Joint) Proto() *apptest.Joint {
 	x := &apptest.Joint{}
 	x.SetId(e.ID[:])
@@ -86,6 +106,7 @@ func (e *Reading) Proto() *apptest.Reading {
 		r.SetId(v[:])
 		x.SetRobot(r)
 	}
+	x.SetTenantId(e.TenantID[:])
 	x.SetCelsius(e.Celsius)
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	return x

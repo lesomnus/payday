@@ -13,6 +13,7 @@ import (
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
+	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
@@ -906,6 +907,427 @@ func RobotPick(req *apptest.RobotRef) (predicate.Robot, error) {
 		return robot.And(ps...), nil
 	case apptest.RobotRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Robot")
+	default:
+		return nil, status.Errorf(codes.Unimplemented, "unknown type of key: %s", req.WhichKey())
+	}
+}
+
+type PairingServiceServer struct {
+	Store
+
+	apptest.UnimplementedPairingServiceServer
+}
+
+// NewPairingServiceServer answers with a server that runs its queries with `db`.
+//
+// It takes the options of [Server] so that what is built here can be told
+// where to report its writes and what it may see. Built without them, it
+// reports nowhere and sees everything.
+func NewPairingServiceServer(db *ent.Client, opts ...Option) apptest.PairingServiceServer {
+	s := Server{Store: Store{Db: db}}
+	for _, opt := range opts {
+		opt(&s)
+	}
+	return PairingServiceServer{Store: s.Store}
+}
+
+// PairingNarrow answers with `p` and everything else that narrows a
+// read of a Pairing, which is whatever `scope` says.
+//
+// Every read this package makes goes through it, and a read written by
+// hand should too -- a List is the one read nothing generates, and so the
+// one that would otherwise answer with rows nobody should be given.
+func PairingNarrow(ctx context.Context, scope Scope, p predicate.Pairing) (predicate.Pairing, error) {
+	ps := make([]predicate.Pairing, 0, 2)
+	if p != nil {
+		ps = append(ps, p)
+	}
+	if scope != nil {
+		q, err := scope.PairingScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if q != nil {
+			ps = append(ps, q)
+		}
+	}
+
+	switch len(ps) {
+	case 0:
+		return nil, nil
+	case 1:
+		return ps[0], nil
+	default:
+		return pairing.And(ps...), nil
+	}
+}
+
+// narrow is [PairingNarrow] with this server's own scope.
+func (s PairingServiceServer) narrow(ctx context.Context, p predicate.Pairing) (predicate.Pairing, error) {
+	return PairingNarrow(ctx, s.Scope, p)
+}
+
+func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	ds := make([]func(v *apptest.Pairing), 0, 2)
+	q := st.Db.Pairing.Create()
+	var k uuid.UUID
+	if req.HasId() {
+		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			k = v
+		}
+	}
+	if v, err := mint(ctx, s.Mint, "app.Pairing", k, req.HasId()); err != nil {
+		return nil, err
+	} else {
+		q.SetID(v)
+	}
+	if k, err := RobotGetKey(ctx, st.Db, req.GetLead()); err != nil {
+		return nil, err
+	} else {
+		q.SetLeadID(k)
+		ds = append(ds, func(v *apptest.Pairing) {
+			v.SetLead(apptest.Robot_builder{Id: k[:]}.Build())
+		})
+	}
+	if k, err := RobotGetKey(ctx, st.Db, req.GetFollow()); err != nil {
+		return nil, err
+	} else {
+		q.SetFollowID(k)
+		ds = append(ds, func(v *apptest.Pairing) {
+			v.SetFollow(apptest.Robot_builder{Id: k[:]}.Build())
+		})
+	}
+	if req.HasDateCreated() {
+		q.SetDateCreated(req.GetDateCreated().AsTime())
+	} else {
+		q.SetDateCreated(st.now())
+	}
+
+	u, err := q.Save(ctx)
+	if err != nil {
+		if err, ok := err.(*ent.ConstraintError); ok {
+			if sqlgraph.IsUniqueConstraintError(err) {
+				return nil, status.Errorf(codes.AlreadyExists, "Pairing already exists: %s", err.Unwrap())
+			}
+			if sqlgraph.IsForeignKeyConstraintError(err) {
+				return nil, status.Errorf(codes.NotFound, "Pairing: referenced entity not found: %s", err.Unwrap())
+			}
+		}
+		return nil, err
+	}
+
+	if err := record(ctx, s.Rec, st.Db, Change{
+		By:  apptest.PairingService_Add_FullMethodName,
+		Key: u.ID,
+	}); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
+	return v, nil
+}
+
+func (s PairingServiceServer) Get(ctx context.Context, req *apptest.PairingGetRequest) (*apptest.Pairing, error) {
+	p, err := PairingPick(req.GetRef())
+	if err != nil {
+		return nil, err
+	}
+	p, err = s.narrow(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	q := s.Db.Pairing.Query().Where(p)
+	PairingSelectInit(q, req.GetSelect())
+
+	v, err := q.Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "Pairing not found")
+		}
+		return nil, err
+	}
+	return v.Proto(), nil
+}
+
+func selectPairingKey(q *ent.PairingQuery) {
+	q.Select(pairing.FieldID)
+}
+
+func PairingSelectedFields(m *apptest.PairingSelect) []string {
+	if m.GetAll() {
+		return pairing.Columns
+	}
+
+	vs := make([]string, 0, len(pairing.Columns))
+	{
+		vs = append(vs, pairing.FieldID)
+	}
+	if m.GetDateCreated() {
+		vs = append(vs, pairing.FieldDateCreated)
+	}
+
+	return vs
+}
+
+func PairingSelect(q *ent.PairingQuery, m *apptest.PairingSelect) {
+	if !m.GetAll() {
+		fields := PairingSelectedFields(m)
+		q.Select(fields...)
+	}
+	if m.HasLead() {
+		q.WithLead(func(q *ent.RobotQuery) {
+			RobotSelect(q, m.GetLead())
+		})
+	}
+	if m.HasFollow() {
+		q.WithFollow(func(q *ent.RobotQuery) {
+			RobotSelect(q, m.GetFollow())
+		})
+	}
+}
+
+func PairingSelectInit(q *ent.PairingQuery, m *apptest.PairingSelect) {
+	if m != nil {
+		PairingSelect(q, m)
+	} else {
+		q.WithLead(selectRobotKey)
+		q.WithFollow(selectRobotKey)
+	}
+}
+
+func (s PairingServiceServer) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
+	doc, err := ormpatch.FromPatchRequest(pairingOrmEntity, req.ProtoReflect(), nil)
+	if err != nil {
+		if _, ok := status.FromError(err); ok {
+			return nil, err
+		}
+		if errors.Is(err, ormpatch.ErrRequestLayout) {
+			return nil, status.Errorf(codes.Internal, "%s", err)
+		}
+		if errors.Is(err, ormpatch.ErrUnsupported) {
+			return nil, status.Errorf(codes.Unimplemented, "%s", err)
+		}
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	return s.apply(ctx, req.GetRef(), doc, apptest.PairingService_Patch_FullMethodName)
+}
+
+func PairingGetKey(ctx context.Context, db *ent.Client, ref *apptest.PairingRef) (uuid.UUID, error) {
+	var z uuid.UUID
+	if ref.HasId() {
+		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			return v, nil
+		}
+	}
+
+	p, err := PairingPick(ref)
+	if err != nil {
+		return z, err
+	}
+
+	v, err := db.Pairing.Query().Where(p).OnlyID(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return z, status.Error(codes.NotFound, "Pairing not found")
+		}
+		return z, err
+	}
+
+	return v, nil
+}
+
+var pairingOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Pairing")
+
+var pairingPatchColumns = entpatch.Columns{
+	1: pairing.FieldID, 2: pairing.LeadColumn, 8: pairing.FollowColumn, 15: pairing.FieldDateCreated}
+
+func (s PairingServiceServer) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
+	if !req.HasPatch() {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
+	}
+	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.PairingService_Apply_FullMethodName)
+}
+
+func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef, doc *patchpb.Patch, by string) (*apptest.Pairing, error) {
+	plan := &ormpatch.Plan{Entity: pairingOrmEntity}
+	if doc != nil {
+		v, err := ormpatch.Compile(pairingOrmEntity, doc)
+		if err != nil {
+			if errors.Is(err, ormpatch.ErrUnsupported) {
+				return nil, status.Errorf(codes.Unimplemented, "%s", err)
+			}
+			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+		}
+		plan = v
+	}
+
+	pred, mod, err := entpatch.Build(plan, pairingPatchColumns, s.Db.Dialect())
+	if err != nil {
+		if errors.Is(err, entpatch.ErrValue) {
+			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+		}
+		return nil, status.Errorf(codes.Internal, "%s", err)
+	}
+
+	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	k, err := PairingGetKey(ctx, st.Db, ref)
+	if err != nil {
+		return nil, err
+	}
+	at := &apptest.PairingRef{}
+	at.SetId(k[:])
+	p, err := s.narrow(ctx, pairing.IDEQ(k))
+	if err != nil {
+		return nil, err
+	}
+
+	if mod == nil {
+		q := st.Db.Pairing.Query().Where(p)
+		if pred != nil {
+			q.Where(predicate.Pairing(pred))
+		}
+		if ok, err := q.Exist(ctx); err != nil {
+			return nil, err
+		} else if !ok {
+			return nil, func() error {
+				if ok, err := st.Db.Pairing.Query().Where(p).Exist(ctx); err != nil {
+					return err
+				} else if !ok {
+					return status.Error(codes.NotFound, "Pairing not found")
+				}
+				return status.Error(codes.FailedPrecondition, "a test in the patch did not hold")
+			}()
+		}
+	} else {
+		q := st.Db.Pairing.Update().Where(p)
+		if pred != nil {
+			q.Where(predicate.Pairing(pred))
+		}
+		q.Modify(mod)
+		if n, err := q.Save(ctx); err != nil {
+			return nil, err
+		} else if n == 0 {
+			return nil, func() error {
+				if ok, err := st.Db.Pairing.Query().Where(p).Exist(ctx); err != nil {
+					return err
+				} else if !ok {
+					return status.Error(codes.NotFound, "Pairing not found")
+				}
+				return status.Error(codes.FailedPrecondition, "a test in the patch did not hold")
+			}()
+		}
+	}
+
+	if mod != nil {
+		if err := record(ctx, s.Rec, st.Db, Change{
+			By:    by,
+			Key:   k,
+			Patch: doc,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef) (*emptypb.Empty, error) {
+	p, err := PairingPick(req)
+	if err != nil {
+		return nil, err
+	}
+	p, err = s.narrow(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	var k any
+	if s.Rec != nil {
+		v, err := st.Db.Pairing.Query().Where(p).OnlyID(ctx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return &emptypb.Empty{}, nil
+			}
+			return nil, err
+		}
+
+		k = v
+		p = pairing.IDEQ(v)
+	}
+
+	n, err := st.Db.Pairing.Delete().Where(p).Exec(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if n > 0 {
+		if err := record(ctx, s.Rec, st.Db, Change{
+			By:  apptest.PairingService_Erase_FullMethodName,
+			Key: k,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func PairingPick(req *apptest.PairingRef) (predicate.Pairing, error) {
+	switch req.WhichKey() {
+	case apptest.PairingRef_Id_case:
+		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			return pairing.IDEQ(v), nil
+		}
+	case apptest.PairingRef_Key_not_set_case:
+		return nil, status.Errorf(codes.InvalidArgument, "key not set: Pairing")
 	default:
 		return nil, status.Errorf(codes.Unimplemented, "unknown type of key: %s", req.WhichKey())
 	}
@@ -1808,6 +2230,11 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 			v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
 		})
 	}
+	if v, err := uuid.FromBytes(req.GetTenantId()); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
+	} else {
+		q.SetTenantID(v)
+	}
 	q.SetCelsius(req.GetCelsius())
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
@@ -1880,6 +2307,9 @@ func ReadingSelectedFields(m *apptest.ReadingSelect) []string {
 	vs := make([]string, 0, len(reading.Columns))
 	{
 		vs = append(vs, reading.FieldID)
+	}
+	if m.GetTenantId() {
+		vs = append(vs, reading.FieldTenantID)
 	}
 	if m.GetCelsius() {
 		vs = append(vs, reading.FieldCelsius)
@@ -1958,7 +2388,7 @@ func ReadingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ReadingRef)
 var readingOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Reading")
 
 var readingPatchColumns = entpatch.Columns{
-	1: reading.FieldID, 2: reading.RobotColumn, 8: reading.FieldCelsius, 15: reading.FieldDateCreated}
+	1: reading.FieldID, 2: reading.RobotColumn, 9: reading.FieldTenantID, 8: reading.FieldCelsius, 15: reading.FieldDateCreated}
 
 func (s ReadingServiceServer) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
 	if !req.HasPatch() {

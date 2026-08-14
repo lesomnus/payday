@@ -148,6 +148,41 @@ message Robot {
 
 // Joint reaches its tenant through the Robot it is part of, which is what a
 // `via` of more than one step is for. Nothing else about it is interesting.
+// Pairing is two robots that work together, and the entity `agrees:` is for.
+//
+// It reaches its tenant through `lead`, which is the ordinary declaration. What
+// is not ordinary is `follow`: a second edge that also arrives at a tenant, and
+// payday says nothing about such an edge unless it is named -- its own trail
+// holds two tenants on purpose, so there is no rule that they agree.
+//
+// This one names it, because a pairing across two tenants is not a thing this
+// app means. What that buys over the gate's own check is the caller who can see
+// both: an operator whose scope covers several tenants passes "may I read this"
+// with one robot in each, and the deployment writing through the server with no
+// wall passes it without being asked.
+message Pairing {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+
+  Robot lead = 2 [(orm.edge) = {immutable: true}];
+  Robot follow = 8 [(orm.edge) = {immutable: true}];
+
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {
+    immutable: true
+    default: ""
+  }];
+
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    erase: {hard: {}}
+    domain: 12
+    tenanted: {via: "lead.tenant", agrees: ["follow.tenant"]}
+  };
+}
+
 message Joint {
   bytes id = 1 [(orm.field) = {
     type: TYPE_UUID
@@ -216,6 +251,19 @@ message Reading {
 
   Robot robot = 2 [(orm.edge) = {immutable: true}];
 
+  // The tenant `robot.tenant` reaches, kept here. payday stamps it.
+  //
+  // A reading is the entity that makes this worth having: readings arrive
+  // faster than anybody reads them, and without a stamp every read of one is
+  // `HasRobotWith(robot.TenantIDIn(...))` -- a correlated subquery on the table
+  // that grows fastest. With it the wall is the comparison a direct edge gets.
+  //
+  // It is not a second answer to be kept in step. `robot` is immutable and so
+  // is `Robot.tenant`, so the value is decided when the row is written and
+  // nothing can move it afterwards -- which is what `pd gen` refuses a stamp
+  // without.
+  bytes tenant_id = 9 [(orm.field) = {type: TYPE_UUID}];
+
   double celsius = 8;
 
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {
@@ -231,6 +279,6 @@ message Reading {
     // not one this entity can be.
     erase: {hard: {}}
     domain: 11
-    tenanted: {via: "robot.tenant"}
+    tenanted: {via: "robot.tenant", stamp: "tenant_id"}
   };
 }

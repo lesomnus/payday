@@ -18,6 +18,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
@@ -39,6 +40,7 @@ const (
 	TypeHolder  = "Holder"
 	TypeJoint   = "Joint"
 	TypeOutbox  = "Outbox"
+	TypePairing = "Pairing"
 	TypeReading = "Reading"
 	TypeRobot   = "Robot"
 	TypeTenant  = "Tenant"
@@ -3918,12 +3920,575 @@ func (m *OutboxMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Outbox edge %s", name)
 }
 
+// PairingMutation represents an operation that mutates the Pairing nodes in the graph.
+type PairingMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	date_created  *time.Time
+	clearedFields map[string]struct{}
+	lead          *uuid.UUID
+	clearedlead   bool
+	follow        *uuid.UUID
+	clearedfollow bool
+	done          bool
+	oldValue      func(context.Context) (*Pairing, error)
+	predicates    []predicate.Pairing
+}
+
+var _ ent.Mutation = (*PairingMutation)(nil)
+
+// pairingOption allows management of the mutation configuration using functional options.
+type pairingOption func(*PairingMutation)
+
+// newPairingMutation creates new mutation for the Pairing entity.
+func newPairingMutation(c config, op Op, opts ...pairingOption) *PairingMutation {
+	m := &PairingMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePairing,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPairingID sets the ID field of the mutation.
+func withPairingID(id uuid.UUID) pairingOption {
+	return func(m *PairingMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Pairing
+		)
+		m.oldValue = func(ctx context.Context) (*Pairing, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Pairing.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPairing sets the old Pairing of the mutation.
+func withPairing(node *Pairing) pairingOption {
+	return func(m *PairingMutation) {
+		m.oldValue = func(context.Context) (*Pairing, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PairingMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PairingMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Pairing entities.
+func (m *PairingMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PairingMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PairingMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Pairing.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDateCreated sets the "date_created" field.
+func (m *PairingMutation) SetDateCreated(t time.Time) {
+	m.date_created = &t
+}
+
+// DateCreated returns the value of the "date_created" field in the mutation.
+func (m *PairingMutation) DateCreated() (r time.Time, exists bool) {
+	v := m.date_created
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDateCreated returns the old "date_created" field's value of the Pairing entity.
+// If the Pairing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PairingMutation) OldDateCreated(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDateCreated is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDateCreated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateCreated: %w", err)
+	}
+	return oldValue.DateCreated, nil
+}
+
+// ClearDateCreated clears the value of the "date_created" field.
+func (m *PairingMutation) ClearDateCreated() {
+	m.date_created = nil
+	m.clearedFields[pairing.FieldDateCreated] = struct{}{}
+}
+
+// DateCreatedCleared returns if the "date_created" field was cleared in this mutation.
+func (m *PairingMutation) DateCreatedCleared() bool {
+	_, ok := m.clearedFields[pairing.FieldDateCreated]
+	return ok
+}
+
+// ResetDateCreated resets all changes to the "date_created" field.
+func (m *PairingMutation) ResetDateCreated() {
+	m.date_created = nil
+	delete(m.clearedFields, pairing.FieldDateCreated)
+}
+
+// SetLeadID sets the "lead_id" field.
+func (m *PairingMutation) SetLeadID(u uuid.UUID) {
+	m.lead = &u
+}
+
+// LeadID returns the value of the "lead_id" field in the mutation.
+func (m *PairingMutation) LeadID() (r uuid.UUID, exists bool) {
+	v := m.lead
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLeadID returns the old "lead_id" field's value of the Pairing entity.
+// If the Pairing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PairingMutation) OldLeadID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLeadID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLeadID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLeadID: %w", err)
+	}
+	return oldValue.LeadID, nil
+}
+
+// ResetLeadID resets all changes to the "lead_id" field.
+func (m *PairingMutation) ResetLeadID() {
+	m.lead = nil
+}
+
+// SetFollowID sets the "follow_id" field.
+func (m *PairingMutation) SetFollowID(u uuid.UUID) {
+	m.follow = &u
+}
+
+// FollowID returns the value of the "follow_id" field in the mutation.
+func (m *PairingMutation) FollowID() (r uuid.UUID, exists bool) {
+	v := m.follow
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFollowID returns the old "follow_id" field's value of the Pairing entity.
+// If the Pairing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PairingMutation) OldFollowID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFollowID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFollowID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFollowID: %w", err)
+	}
+	return oldValue.FollowID, nil
+}
+
+// ResetFollowID resets all changes to the "follow_id" field.
+func (m *PairingMutation) ResetFollowID() {
+	m.follow = nil
+}
+
+// ClearLead clears the "lead" edge to the Robot entity.
+func (m *PairingMutation) ClearLead() {
+	m.clearedlead = true
+	m.clearedFields[pairing.FieldLeadID] = struct{}{}
+}
+
+// LeadCleared reports if the "lead" edge to the Robot entity was cleared.
+func (m *PairingMutation) LeadCleared() bool {
+	return m.clearedlead
+}
+
+// LeadIDs returns the "lead" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// LeadID instead. It exists only for internal usage by the builders.
+func (m *PairingMutation) LeadIDs() (ids []uuid.UUID) {
+	if id := m.lead; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetLead resets all changes to the "lead" edge.
+func (m *PairingMutation) ResetLead() {
+	m.lead = nil
+	m.clearedlead = false
+}
+
+// ClearFollow clears the "follow" edge to the Robot entity.
+func (m *PairingMutation) ClearFollow() {
+	m.clearedfollow = true
+	m.clearedFields[pairing.FieldFollowID] = struct{}{}
+}
+
+// FollowCleared reports if the "follow" edge to the Robot entity was cleared.
+func (m *PairingMutation) FollowCleared() bool {
+	return m.clearedfollow
+}
+
+// FollowIDs returns the "follow" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// FollowID instead. It exists only for internal usage by the builders.
+func (m *PairingMutation) FollowIDs() (ids []uuid.UUID) {
+	if id := m.follow; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetFollow resets all changes to the "follow" edge.
+func (m *PairingMutation) ResetFollow() {
+	m.follow = nil
+	m.clearedfollow = false
+}
+
+// Where appends a list predicates to the PairingMutation builder.
+func (m *PairingMutation) Where(ps ...predicate.Pairing) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PairingMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PairingMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Pairing, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PairingMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PairingMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Pairing).
+func (m *PairingMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PairingMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.date_created != nil {
+		fields = append(fields, pairing.FieldDateCreated)
+	}
+	if m.lead != nil {
+		fields = append(fields, pairing.FieldLeadID)
+	}
+	if m.follow != nil {
+		fields = append(fields, pairing.FieldFollowID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PairingMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case pairing.FieldDateCreated:
+		return m.DateCreated()
+	case pairing.FieldLeadID:
+		return m.LeadID()
+	case pairing.FieldFollowID:
+		return m.FollowID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PairingMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case pairing.FieldDateCreated:
+		return m.OldDateCreated(ctx)
+	case pairing.FieldLeadID:
+		return m.OldLeadID(ctx)
+	case pairing.FieldFollowID:
+		return m.OldFollowID(ctx)
+	}
+	return nil, fmt.Errorf("unknown Pairing field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PairingMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case pairing.FieldDateCreated:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDateCreated(v)
+		return nil
+	case pairing.FieldLeadID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLeadID(v)
+		return nil
+	case pairing.FieldFollowID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFollowID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Pairing field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PairingMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PairingMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PairingMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Pairing numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PairingMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(pairing.FieldDateCreated) {
+		fields = append(fields, pairing.FieldDateCreated)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PairingMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PairingMutation) ClearField(name string) error {
+	switch name {
+	case pairing.FieldDateCreated:
+		m.ClearDateCreated()
+		return nil
+	}
+	return fmt.Errorf("unknown Pairing nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PairingMutation) ResetField(name string) error {
+	switch name {
+	case pairing.FieldDateCreated:
+		m.ResetDateCreated()
+		return nil
+	case pairing.FieldLeadID:
+		m.ResetLeadID()
+		return nil
+	case pairing.FieldFollowID:
+		m.ResetFollowID()
+		return nil
+	}
+	return fmt.Errorf("unknown Pairing field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PairingMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.lead != nil {
+		edges = append(edges, pairing.EdgeLead)
+	}
+	if m.follow != nil {
+		edges = append(edges, pairing.EdgeFollow)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PairingMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case pairing.EdgeLead:
+		if id := m.lead; id != nil {
+			return []ent.Value{*id}
+		}
+	case pairing.EdgeFollow:
+		if id := m.follow; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PairingMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PairingMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PairingMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedlead {
+		edges = append(edges, pairing.EdgeLead)
+	}
+	if m.clearedfollow {
+		edges = append(edges, pairing.EdgeFollow)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PairingMutation) EdgeCleared(name string) bool {
+	switch name {
+	case pairing.EdgeLead:
+		return m.clearedlead
+	case pairing.EdgeFollow:
+		return m.clearedfollow
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PairingMutation) ClearEdge(name string) error {
+	switch name {
+	case pairing.EdgeLead:
+		m.ClearLead()
+		return nil
+	case pairing.EdgeFollow:
+		m.ClearFollow()
+		return nil
+	}
+	return fmt.Errorf("unknown Pairing unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PairingMutation) ResetEdge(name string) error {
+	switch name {
+	case pairing.EdgeLead:
+		m.ResetLead()
+		return nil
+	case pairing.EdgeFollow:
+		m.ResetFollow()
+		return nil
+	}
+	return fmt.Errorf("unknown Pairing edge %s", name)
+}
+
 // ReadingMutation represents an operation that mutates the Reading nodes in the graph.
 type ReadingMutation struct {
 	config
 	op            Op
 	typ           string
 	id            *uuid.UUID
+	tenant_id     *uuid.UUID
 	celsius       *float64
 	addcelsius    *float64
 	date_created  *time.Time
@@ -4037,6 +4602,42 @@ func (m *ReadingMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetTenantID sets the "tenant_id" field.
+func (m *ReadingMutation) SetTenantID(u uuid.UUID) {
+	m.tenant_id = &u
+}
+
+// TenantID returns the value of the "tenant_id" field in the mutation.
+func (m *ReadingMutation) TenantID() (r uuid.UUID, exists bool) {
+	v := m.tenant_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTenantID returns the old "tenant_id" field's value of the Reading entity.
+// If the Reading object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ReadingMutation) OldTenantID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTenantID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTenantID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTenantID: %w", err)
+	}
+	return oldValue.TenantID, nil
+}
+
+// ResetTenantID resets all changes to the "tenant_id" field.
+func (m *ReadingMutation) ResetTenantID() {
+	m.tenant_id = nil
 }
 
 // SetCelsius sets the "celsius" field.
@@ -4241,7 +4842,10 @@ func (m *ReadingMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ReadingMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
+	if m.tenant_id != nil {
+		fields = append(fields, reading.FieldTenantID)
+	}
 	if m.celsius != nil {
 		fields = append(fields, reading.FieldCelsius)
 	}
@@ -4259,6 +4863,8 @@ func (m *ReadingMutation) Fields() []string {
 // schema.
 func (m *ReadingMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case reading.FieldTenantID:
+		return m.TenantID()
 	case reading.FieldCelsius:
 		return m.Celsius()
 	case reading.FieldDateCreated:
@@ -4274,6 +4880,8 @@ func (m *ReadingMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *ReadingMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case reading.FieldTenantID:
+		return m.OldTenantID(ctx)
 	case reading.FieldCelsius:
 		return m.OldCelsius(ctx)
 	case reading.FieldDateCreated:
@@ -4289,6 +4897,13 @@ func (m *ReadingMutation) OldField(ctx context.Context, name string) (ent.Value,
 // type.
 func (m *ReadingMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case reading.FieldTenantID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTenantID(v)
+		return nil
 	case reading.FieldCelsius:
 		v, ok := value.(float64)
 		if !ok {
@@ -4383,6 +4998,9 @@ func (m *ReadingMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *ReadingMutation) ResetField(name string) error {
 	switch name {
+	case reading.FieldTenantID:
+		m.ResetTenantID()
+		return nil
 	case reading.FieldCelsius:
 		m.ResetCelsius()
 		return nil

@@ -181,9 +181,37 @@ var (
 			},
 		},
 	}
+	// PairingColumns holds the columns for the "pairing" table.
+	PairingColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "lead_id", Type: field.TypeUUID},
+		{Name: "follow_id", Type: field.TypeUUID},
+	}
+	// PairingTable holds the schema information for the "pairing" table.
+	PairingTable = &schema.Table{
+		Name:       "pairing",
+		Columns:    PairingColumns,
+		PrimaryKey: []*schema.Column{PairingColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "pairing_robot_lead",
+				Columns:    []*schema.Column{PairingColumns[2]},
+				RefColumns: []*schema.Column{RobotColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "pairing_robot_follow",
+				Columns:    []*schema.Column{PairingColumns[3]},
+				RefColumns: []*schema.Column{RobotColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// ReadingColumns holds the columns for the "reading" table.
 	ReadingColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "tenant_id", Type: field.TypeUUID},
 		{Name: "celsius", Type: field.TypeFloat64},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "robot_id", Type: field.TypeUUID},
@@ -196,7 +224,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "reading_robot_robot",
-				Columns:    []*schema.Column{ReadingColumns[3]},
+				Columns:    []*schema.Column{ReadingColumns[4]},
 				RefColumns: []*schema.Column{RobotColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -272,6 +300,7 @@ var (
 		HolderTable,
 		JointTable,
 		OutboxTable,
+		PairingTable,
 		ReadingTable,
 		RobotTable,
 		TenantTable,
@@ -299,6 +328,11 @@ func init() {
 	}
 	OutboxTable.Annotation = &entsql.Annotation{
 		Table: "outbox",
+	}
+	PairingTable.ForeignKeys[0].RefTable = RobotTable
+	PairingTable.ForeignKeys[1].RefTable = RobotTable
+	PairingTable.Annotation = &entsql.Annotation{
+		Table: "pairing",
 	}
 	ReadingTable.ForeignKeys[0].RefTable = RobotTable
 	ReadingTable.Annotation = &entsql.Annotation{

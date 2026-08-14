@@ -35,7 +35,7 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	// pass the methods it did not override.
 	wraps := []*Entity{}
 	for _, v := range s.Sorted() {
-		if v.List != nil || v.Alias {
+		if v.List != nil || v.Alias || v.Stamp != "" || len(v.Agrees) > 0 {
 			wraps = append(wraps, v)
 		}
 	}
@@ -155,6 +155,9 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 
 		if v.Alias {
 			emitAlias(g, v, root)
+		}
+		if v.Stamp != "" || len(v.Agrees) > 0 {
+			emitTenancy(g, v, s, p, root)
 		}
 		if v.List != nil {
 			emitList(g, v, s, p, root)
@@ -570,3 +573,163 @@ func pf(g *protogen.GeneratedFile, format string, vs ...any) {
 }
 
 var _ = strings.Join
+
+// emitTenancy writes what keeps a `stamp` true and an `agrees` honest.
+//
+// It is on the Sink for the reason [emitAlias] is: the Sink is what **both**
+// stacks are built on, so the path a deployment does its own work through --
+// the one with no wall and no gate -- cannot write a row the served path would
+// have refused. A layer would leave exactly that hole, and a stamp that is only
+// filled on the served path is worse than none: the row lands with an empty
+// column and the wall makes it invisible to everybody.
+//
+// Both happen before the write and neither is re-checked afterwards, which is
+// what the immutability rules in [Schema.checkStamp] and [Schema.checkAgrees]
+// buy: no step of any path here can be repointed, so what was true when the row
+// was written stays true.
+func emitTenancy(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root protogen.GoImportPath) {
+	e := v.GoName()
+
+	// `via` is always read: it is what a stamp is filled from and what an
+	// `agrees` is compared against. One reader per path, so the two do not each
+	// write their own.
+	paths := [][]string{v.Via}
+	paths = append(paths, v.Agrees...)
+
+	for _, path := range paths {
+		emitTenantAt(g, v, path, p, root)
+	}
+
+	g.P("// tenancy fills what the schema says this row's tenant is, and refuses a")
+	g.P("// row whose other paths do not agree with it.")
+	g.P("//")
+	g.P("// The request is already this server's copy by the time it arrives, so it")
+	g.P("// is written to rather than cloned again.")
+	g.P("func (s sink", e, ") tenancy(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"AddRequest"), ") error {")
+
+	if v.Stamp != "" {
+		g.P("	want, err := s.tenantAt", pathName(v.Via), "(ctx, req.Get", camel(v.Via[0]), "())")
+		g.P("	if err != nil {")
+		g.P("		return err")
+		g.P("	}")
+		g.P("")
+		g.P("	// Stamped, whatever the caller said. It is not a field of the request")
+		g.P("	// and a caller that reached this server another way does not get to")
+		g.P("	// keep what they put there.")
+		g.P("	req.Set", camel(v.Stamp), "(want)")
+	} else {
+		// Nothing to stamp, so the first `agrees` path is what the rest are
+		// compared against -- and it is `via` itself.
+		g.P("	want, err := s.tenantAt", pathName(v.Via), "(ctx, req.Get", camel(v.Via[0]), "())")
+		g.P("	if err != nil {")
+		g.P("		return err")
+		g.P("	}")
+	}
+
+	for _, path := range v.Agrees {
+		at := camel(path[0])
+		g.P("")
+		g.P("	if req.Has", at, "() {")
+		g.P("		got, err := s.tenantAt", pathName(path), "(ctx, req.Get", at, "())")
+		g.P("		if err != nil {")
+		g.P("			return err")
+		g.P("		}")
+		g.P("		if string(got) != string(want) {")
+		g.P("			// Both exist and both are visible to whoever is writing --")
+		g.P("			// the gate already saw to that. What it cannot see is that")
+		g.P("			// they are in different tenants, because it asks \"may I read")
+		g.P("			// this\" and a caller who holds several tenants may read both.")
+		g.P("			return ", pkgPderr.Ident("Invalidf"), "(\"", path[0], "\",")
+		g.P("				\"it is in another tenant than ", strings.Join(v.Via, "."), "\")")
+		g.P("		}")
+		g.P("	}")
+	}
+
+	g.P("")
+	g.P("	return nil")
+	g.P("}")
+	g.P("")
+
+	if v.Alias {
+		// `Add` is emitted by [emitAlias], which calls the above.
+		return
+	}
+
+	g.P("// Add stamps this row's tenant before writing it.")
+	g.P("func (s sink", e, ") Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"AddRequest"),
+		") (*", root.Ident(e), ", error) {")
+	g.P("	// Copied rather than written to: the request belongs to whoever called,")
+	g.P("	// and for a call made in this process that is a message they may still")
+	g.P("	// be holding.")
+	g.P("	r := ", pkgProto.Ident("CloneOf"), "(req)")
+	g.P("	if err := s.tenancy(ctx, r); err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+	g.P("	return s.", e, "ServiceServer.Add(ctx, r)")
+	g.P("}")
+	g.P("")
+}
+
+// emitTenantAt writes the reader for one path: the tenant it arrives at, read
+// from below the wall.
+//
+// Below, deliberately. Reading through the wall would answer NotFound for a row
+// in another tenant, and a disagreement -- the one thing `agrees` is for --
+// would arrive as "there is no such row" instead of as a disagreement.
+//
+// It is one query. ent traverses an edge in the statement rather than by
+// fetching the row and asking again, so a path of any depth is a join and not a
+// round trip per hop.
+func emitTenantAt(g *protogen.GeneratedFile, v *Entity, path []string, p Paths, root protogen.GoImportPath) {
+	e := v.GoName()
+
+	first, ok := edge(v.Entity, path[0])
+	if !ok {
+		return
+	}
+
+	head := string(first.Target().FullName().Name())
+
+	g.P("// tenantAt", pathName(path), " is the tenant \"", strings.Join(path, "."), "\" arrives at.")
+	g.P("func (s sink", e, ") tenantAt", pathName(path), "(ctx ", pkgCtx.Ident("Context"),
+		", ref *", root.Ident(head+"Ref"), ") ([]byte, error) {")
+	g.P("	if ref == nil {")
+	g.P("		return nil, ", pkgPderr.Ident("Invalidf"), "(\"", path[0],
+		"\", \"required: it is what says which tenant this belongs to\")")
+	g.P("	}")
+	g.P("")
+	g.P("	// The row the edge names, picked the way every other reference is.")
+	g.P("	pick, err := ", p.Bare.Ident(head+"Pick"), "(ref)")
+	g.P("	if err != nil {")
+	g.P("		return nil, ", pkgPderr.Ident("At"), "(\"", path[0], "\", err)")
+	g.P("	}")
+	g.P("")
+
+	q := "s.store.Db." + head + ".Query().Where(pick)"
+	for _, step := range path[1:] {
+		q += ".Query" + camel(step) + "()"
+	}
+
+	g.P("	k, err := ", q, ".OnlyID(ctx)")
+	g.P("	if err != nil {")
+	g.P("		// Not there, or more than one -- both are the reference being wrong,")
+	g.P("		// and both are the caller's to fix.")
+	g.P("		return nil, ", pkgPderr.Ident("Invalidf"), "(\"", path[0],
+		"\", \"it does not name one row\")")
+	g.P("	}")
+	g.P("")
+	g.P("	return k[:], nil")
+	g.P("}")
+	g.P("")
+}
+
+// pathName is a path as one Go identifier: "holder.tenant" is "HolderTenant".
+func pathName(path []string) string {
+	out := ""
+	for _, v := range path {
+		out += camel(v)
+	}
+
+	return out
+}

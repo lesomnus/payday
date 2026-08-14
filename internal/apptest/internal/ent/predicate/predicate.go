@@ -24,6 +24,9 @@ type Joint func(*sql.Selector)
 // Outbox is the predicate function for outbox builders.
 type Outbox func(*sql.Selector)
 
+// Pairing is the predicate function for pairing builders.
+type Pairing func(*sql.Selector)
+
 // Reading is the predicate function for reading builders.
 type Reading func(*sql.Selector)
 

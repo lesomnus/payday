@@ -19,6 +19,8 @@ type Reading struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID uuid.UUID `json:"tenant_id,omitempty"`
 	// Celsius holds the value of the "celsius" field.
 	Celsius float64 `json:"celsius,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
@@ -60,7 +62,7 @@ func (*Reading) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case reading.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case reading.FieldID, reading.FieldRobotID:
+		case reading.FieldID, reading.FieldTenantID, reading.FieldRobotID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -82,6 +84,12 @@ func (_m *Reading) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
 				_m.ID = *value
+			}
+		case reading.FieldTenantID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value != nil {
+				_m.TenantID = *value
 			}
 		case reading.FieldCelsius:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -142,6 +150,9 @@ func (_m *Reading) String() string {
 	var builder strings.Builder
 	builder.WriteString("Reading(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))
+	builder.WriteString(", ")
 	builder.WriteString("celsius=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Celsius))
 	builder.WriteString(", ")
