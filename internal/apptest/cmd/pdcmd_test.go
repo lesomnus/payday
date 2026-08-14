@@ -16,8 +16,14 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
+	"github.com/google/uuid"
+
 	"github.com/lesomnus/payday/pdcmd"
+	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdtest"
+
+	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
 // The commands payday generates nothing for and builds anyway.
@@ -132,10 +138,13 @@ func TestTheDefaultFormatIsReadable(t *testing.T) {
 	x.NotContains(got.Stdout, "0001-01-01")
 	x.NotContains(got.Stdout, "-62135596800")
 
-	// And `-o text` is still exactly prototext, for when the question is what
-	// is on the wire.
+	// And `-o prototext` is still exactly prototext, for when the question is
+	// what is on the wire. Named after the encoding rather than `-o raw`,
+	// because `raw` already names the *input* here -- the trailing protojson of
+	// a request -- and one word for both halves of a call is a word that has to
+	// be explained every time.
 	raw := xlitest.Harness{Cmd: rooted(t, b.dialed(t, ctx)), Ctx: b.travels(ctx)}.
-		Run(t, "holder", "get", "-o", "text", "@acme/admin")
+		Run(t, "holder", "get", "-o", "prototext", "@acme/admin")
 	x.NoError(raw.Err)
 	x.Contains(raw.Stdout, `\x`)
 	x.NotContains(raw.Stdout, b.Holder.String())
@@ -394,4 +403,33 @@ func TestATreeCanBeNarrowed(t *testing.T) {
 	for _, c := range tree.Commands() {
 		x.NotEqual("audit", c.Name)
 	}
+}
+
+// TestAnIdentifierIsWhatTheSchemaSaysItIs, and not what its name looks like.
+//
+// The first version of the pretty format matched `id` and anything ending in
+// `_id`, which is payday's field-number rule written in names and is wrong on
+// this app: `Audit.trace_id` is a `bytes` field ending in `_id` that carries no
+// `type: TYPE_UUID`, because it is a trace identifier from somewhere else. A
+// rule about names prints it as a uuid that names nothing here.
+func TestAnIdentifierIsWhatTheSchemaSaysItIs(t *testing.T) {
+	x := require.New(t)
+
+	u, err := pdid.Mint(pd.AuditDomain, uuid.Nil, false)
+	x.NoError(err)
+	id := pdid.Id(u)
+
+	trace := []byte{0xde, 0xad, 0xbe, 0xef, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+
+	var b strings.Builder
+	x.NoError(pdcmd.Pretty.Print(&b, app.Audit_builder{
+		Id:      id.Bytes(),
+		TraceId: trace,
+		Action:  "Add",
+	}.Build()))
+
+	got := b.String()
+	x.Contains(got, id.String(), "the key carries TYPE_UUID")
+	x.NotContains(got, "dead-beef", "and the trace identifier does not, so it is not drawn as one")
+	x.Contains(got, "(16 bytes)", "what a bytes field payday did not put there is worth saying")
 }

@@ -6,8 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/protobuf-orm/protobuf-orm/ormpb"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -120,6 +122,20 @@ func pretty(w io.Writer, m protoreflect.Message, indent string) error {
 		case isTimestamp(fd):
 			fmt.Fprintf(w, "%s%s\n", name, timeOf(v))
 
+		case isDuration(fd):
+			fmt.Fprintf(w, "%s%s\n", name, durationOf(v))
+
+		case fd.Kind() == protoreflect.EnumKind:
+			// The name rather than the number. A schema that bothered to name
+			// its values did so for a reader, and `state 3` is not that.
+			ed := fd.Enum().Values().ByNumber(v.Enum())
+			if ed == nil {
+				fmt.Fprintf(w, "%s%d\n", name, v.Enum())
+				continue
+			}
+
+			fmt.Fprintf(w, "%s%s\n", name, ed.Name())
+
 		case fd.Kind() == protoreflect.MessageKind:
 			// A nested entity is shown on one line when it can be -- its
 			// identifier and its alias are what somebody is looking for, and
@@ -172,20 +188,41 @@ func oneLine(m protoreflect.Message) (string, bool) {
 	return s, true
 }
 
-// isId says a `bytes` field holds an identifier.
+// isId says a `bytes` field holds an identifier, by asking the schema.
 //
-// By name, because that is what payday's field-number rule is written in: `id`
-// is the key, and everything that points at one is `<something>_id` -- there is
-// no `bytes` field in payday's own entities that is named that way and is not
-// an identifier.
+// `(orm.field) = {type: TYPE_UUID}`, which is what every payday identifier
+// carries and what the ent schema is generated from. Not a rule about names:
+// the first version of this matched `id` and anything ending in `_id`, and
+// `Audit.trace_id` is a `bytes` field ending in `_id` that is **not** one of
+// these -- it is a trace identifier from somewhere else, and printing it as a
+// uuid would be printing a uuid that names nothing in this app.
+//
+// A field the schema says nothing about is left alone. That is the honest
+// answer for a `bytes` field payday did not put there.
 func isId(fd protoreflect.FieldDescriptor) bool {
-	n := string(fd.Name())
-	return n == "id" || strings.HasSuffix(n, "_id")
+	opts, _ := proto.GetExtension(fd.Options(), ormpb.E_Field).(*ormpb.FieldOptions)
+	return opts.GetType() == ormpb.Type_TYPE_UUID
 }
 
 func isTimestamp(fd protoreflect.FieldDescriptor) bool {
 	return fd.Kind() == protoreflect.MessageKind &&
 		fd.Message().FullName() == "google.protobuf.Timestamp"
+}
+
+func isDuration(fd protoreflect.FieldDescriptor) bool {
+	return fd.Kind() == protoreflect.MessageKind &&
+		fd.Message().FullName() == "google.protobuf.Duration"
+}
+
+// durationOf is `720h0m0s` rather than a `seconds`/`nanos` pair.
+func durationOf(v protoreflect.Value) string {
+	d := &durationpb.Duration{}
+	b, err := proto.Marshal(v.Message().Interface())
+	if err != nil || proto.Unmarshal(b, d) != nil {
+		return "-"
+	}
+
+	return d.AsDuration().String()
 }
 
 // isZeroTime is a timestamp that is set and means nothing.

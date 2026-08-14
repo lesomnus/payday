@@ -333,7 +333,7 @@ func (r *runner) byDefault() Printer {
 		if v, ok := r.opts.Printers[r.opts.def()]; ok {
 			p = v
 		} else {
-			p = Text
+			p = ProtoText
 		}
 	}
 
@@ -354,10 +354,12 @@ func builtin(name string) (Printer, error) {
 	switch {
 	case name == "pretty":
 		return Pretty, nil
-	case name == "text":
-		return Text, nil
-	case name == "json":
-		return JSON, nil
+	case name == "prototext":
+		return ProtoText, nil
+	case name == "protojson", name == "json":
+		// `json` as well, because it is what somebody types and it is not
+		// ambiguous: there is one JSON here and protojson is it.
+		return ProtoJSON, nil
 	case name == "name":
 		return Name, nil
 	case name == "table":
@@ -368,5 +370,5 @@ func builtin(name string) (Printer, error) {
 		return Template(strings.TrimPrefix(name, "template="))
 	}
 
-	return nil, fmt.Errorf("-o %s: not a format; one of pretty, text, json, name, table, wide, template=...", name)
+	return nil, fmt.Errorf("-o %s: not a format; one of pretty, prototext, protojson, name, table, wide, template=...", name)
 }

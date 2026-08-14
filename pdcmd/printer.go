@@ -39,12 +39,20 @@ type PrinterFunc func(w io.Writer, m proto.Message) error
 
 func (f PrinterFunc) Print(w io.Writer, m proto.Message) error { return f(w, m) }
 
-// Text is protobuf's own text format, and the default.
+// ProtoText is protobuf's own text format, exactly as the library emits it.
 //
-// Default because it is the one that cannot mislead: every field that is set is
-// shown, with the name the schema gave it, and nothing is elided to make it
-// fit. A person reading it is reading the message.
-var Text Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
+// `-o prototext` rather than `-o text` or `-o raw`, and the name is the point:
+// it says which encoding this is, so there is nothing to guess about what a
+// person gets. `raw` was considered and dropped -- in these commands `raw`
+// already names the **input**, the trailing protojson of a request, and one
+// word meaning both halves of a call is a word that has to be explained every
+// time.
+//
+// What it is for is the question "what is actually on the wire". It cannot
+// mislead: every field that is set is shown, with the name the schema gave it,
+// and nothing is derived. That is also why it is not the default -- see
+// [Pretty].
+var ProtoText Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	b, err := prototext.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(m)
 	if err != nil {
 		return err
@@ -54,14 +62,14 @@ var Text Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	return err
 })
 
-// JSON is protojson, indented.
+// ProtoJSON is protojson, indented.
 //
 // It costs nothing to support -- every message this app has is a protobuf, so
 // the encoder is already linked in -- and it is the format anything downstream
 // of a shell can read. `EmitUnpopulated` is off: a field that was not set reads
 // as absent rather than as a zero somebody might act on, which matters most for
 // the `bytes` identifiers, where an empty one is not a valid id.
-var JSON Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
+var ProtoJSON Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	b, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(m)
 	if err != nil {
 		return err

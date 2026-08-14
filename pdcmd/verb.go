@@ -67,7 +67,7 @@ func flgOutput(def string) *flg.String {
 	return &flg.String{
 		Name:  "output",
 		Alias: 'o',
-		Brief: fmt.Sprintf("one of: pretty, text, json, name, table, wide, template=... (default %s)", def),
+		Brief: fmt.Sprintf("one of: pretty, prototext, protojson, name, table, wide, template=... (default %s)", def),
 	}
 }
 
