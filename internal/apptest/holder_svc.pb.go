@@ -1480,10 +1480,11 @@ func (b0 HolderListResponse_builder) Build() *HolderListResponse {
 }
 
 type HolderFilter struct {
-	state          protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref *HolderRef             `protobuf:"bytes,1,opt,name=ref"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref    *HolderRef             `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Tenant *TenantRef             `protobuf:"bytes,2,opt,name=tenant"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *HolderFilter) Reset() {
@@ -1518,8 +1519,19 @@ func (x *HolderFilter) GetRef() *HolderRef {
 	return nil
 }
 
+func (x *HolderFilter) GetTenant() *TenantRef {
+	if x != nil {
+		return x.xxx_hidden_Tenant
+	}
+	return nil
+}
+
 func (x *HolderFilter) SetRef(v *HolderRef) {
 	x.xxx_hidden_Ref = v
+}
+
+func (x *HolderFilter) SetTenant(v *TenantRef) {
+	x.xxx_hidden_Tenant = v
 }
 
 func (x *HolderFilter) HasRef() bool {
@@ -1529,14 +1541,26 @@ func (x *HolderFilter) HasRef() bool {
 	return x.xxx_hidden_Ref != nil
 }
 
+func (x *HolderFilter) HasTenant() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Tenant != nil
+}
+
 func (x *HolderFilter) ClearRef() {
 	x.xxx_hidden_Ref = nil
+}
+
+func (x *HolderFilter) ClearTenant() {
+	x.xxx_hidden_Tenant = nil
 }
 
 type HolderFilter_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Ref *HolderRef
+	Ref    *HolderRef
+	Tenant *TenantRef
 }
 
 func (b0 HolderFilter_builder) Build() *HolderFilter {
@@ -1544,6 +1568,7 @@ func (b0 HolderFilter_builder) Build() *HolderFilter {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Tenant = b.Tenant
 	return m0
 }
 
@@ -1890,9 +1915,10 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\"R\n" +
 	"\x12HolderListResponse\x12!\n" +
 	"\x05items\x18\x01 \x03(\v2\v.app.HolderR\x05items\x12\x19\n" +
-	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"0\n" +
+	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"X\n" +
 	"\fHolderFilter\x12 \n" +
-	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\"m\n" +
+	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\x12&\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\"m\n" +
 	"\x12HolderWatchRequest\x12+\n" +
 	"\afilters\x18\x01 \x03(\v2\x11.app.HolderFilterR\afilters\x12*\n" +
 	"\rskip_snapshot\x18\x02 \x01(\bB\x05\xaa\x01\x02\b\x02R\fskipSnapshot\"A\n" +
@@ -1952,28 +1978,29 @@ var file_app_payday_holder_svc_g_proto_depIdxs = []int32{
 	9,  // 13: app.HolderListRequest.filters:type_name -> app.HolderFilter
 	19, // 14: app.HolderListResponse.items:type_name -> app.Holder
 	2,  // 15: app.HolderFilter.ref:type_name -> app.HolderRef
-	9,  // 16: app.HolderWatchRequest.filters:type_name -> app.HolderFilter
-	12, // 17: app.HolderWatchResponse.items:type_name -> app.HolderWatchItem
-	19, // 18: app.HolderWatchItem.value:type_name -> app.Holder
-	0,  // 19: app.HolderService.Add:input_type -> app.HolderAddRequest
-	1,  // 20: app.HolderService.Get:input_type -> app.HolderGetRequest
-	5,  // 21: app.HolderService.Patch:input_type -> app.HolderPatchRequest
-	6,  // 22: app.HolderService.Apply:input_type -> app.HolderApplyRequest
-	2,  // 23: app.HolderService.Erase:input_type -> app.HolderRef
-	7,  // 24: app.HolderService.List:input_type -> app.HolderListRequest
-	10, // 25: app.HolderService.Watch:input_type -> app.HolderWatchRequest
-	19, // 26: app.HolderService.Add:output_type -> app.Holder
-	19, // 27: app.HolderService.Get:output_type -> app.Holder
-	19, // 28: app.HolderService.Patch:output_type -> app.Holder
-	19, // 29: app.HolderService.Apply:output_type -> app.Holder
-	20, // 30: app.HolderService.Erase:output_type -> google.protobuf.Empty
-	8,  // 31: app.HolderService.List:output_type -> app.HolderListResponse
-	11, // 32: app.HolderService.Watch:output_type -> app.HolderWatchResponse
-	26, // [26:33] is the sub-list for method output_type
-	19, // [19:26] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	15, // 16: app.HolderFilter.tenant:type_name -> app.TenantRef
+	9,  // 17: app.HolderWatchRequest.filters:type_name -> app.HolderFilter
+	12, // 18: app.HolderWatchResponse.items:type_name -> app.HolderWatchItem
+	19, // 19: app.HolderWatchItem.value:type_name -> app.Holder
+	0,  // 20: app.HolderService.Add:input_type -> app.HolderAddRequest
+	1,  // 21: app.HolderService.Get:input_type -> app.HolderGetRequest
+	5,  // 22: app.HolderService.Patch:input_type -> app.HolderPatchRequest
+	6,  // 23: app.HolderService.Apply:input_type -> app.HolderApplyRequest
+	2,  // 24: app.HolderService.Erase:input_type -> app.HolderRef
+	7,  // 25: app.HolderService.List:input_type -> app.HolderListRequest
+	10, // 26: app.HolderService.Watch:input_type -> app.HolderWatchRequest
+	19, // 27: app.HolderService.Add:output_type -> app.Holder
+	19, // 28: app.HolderService.Get:output_type -> app.Holder
+	19, // 29: app.HolderService.Patch:output_type -> app.Holder
+	19, // 30: app.HolderService.Apply:output_type -> app.Holder
+	20, // 31: app.HolderService.Erase:output_type -> google.protobuf.Empty
+	8,  // 32: app.HolderService.List:output_type -> app.HolderListResponse
+	11, // 33: app.HolderService.Watch:output_type -> app.HolderWatchResponse
+	27, // [27:34] is the sub-list for method output_type
+	20, // [20:27] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_holder_svc_g_proto_init() }

@@ -72,5 +72,29 @@ message Tenant {
     // one, so a tenant with anything in it cannot go, and the gate does not
     // serve the RPC.
     erase: {hard: {}}
+
+    // A tenant can be listed, and the wall is what makes that safe rather than
+    // alarming.
+    //
+    // `Tenant` **is** the wall, so a list of them is narrowed to the tenants
+    // the caller's scope already covers: an ordinary person sees the one they
+    // are in, and a caller whose grant covers everything -- a deployment
+    // administering its customers from a port with no wall -- sees them all.
+    // Neither is a new right; both are the scope that was already there,
+    // enumerated.
+    //
+    // It was absent rather than declined. Nothing wrote down a reason, `Holder`
+    // has had one all along, and the asymmetry showed up the first time
+    // somebody built a console: an operator could open a tenant they already
+    // knew the name of and could not find out which ones there were.
+    list: {
+      order: [
+        {field: {name: "date_created"}},
+        {field: {name: "id"}}
+      ]
+      by: [{name: "ref"}]
+      size: 20
+      max: 100
+    }
   };
 }

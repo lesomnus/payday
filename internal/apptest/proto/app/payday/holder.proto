@@ -112,7 +112,19 @@ message Holder {
         {field: {name: "date_created"}},
         {field: {name: "id"}}
       ]
-      by: [{name: "ref"}]
+
+      // `tenant` as well as `ref`, because "who is in this tenant" is the
+      // question a deployment administering its customers asks first and could
+      // not ask at all.
+      //
+      // It grants nothing. The wall already narrows this list to the tenants
+      // the caller may see, so a filter that names one can only ever cut that
+      // down further -- naming a tenant outside the scope answers with nothing
+      // rather than with somebody else's people.
+      by: [
+        {name: "ref"},
+        {name: "tenant"}
+      ]
       size: 20
       max: 100
     }

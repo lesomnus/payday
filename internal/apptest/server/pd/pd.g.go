@@ -976,6 +976,31 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 
 		ps = append(ps, p)
 	}
+	if f.HasTenant() {
+		w := f.GetTenant()
+		if b := w.GetId(); len(b) > 0 {
+			// The **foreign key column** on this row, which is what an
+			// edge is. A subquery for a comparison against an indexed
+			// column is work nobody asked for.
+			k, err := uuid.FromBytes(b)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "tenant: %s", err)
+			}
+
+			ps = append(ps, holder.TenantIDEQ(k))
+		} else {
+			// Named some other way -- an alias, a slug. Resolving it
+			// would be a read, and a predicate is built without one, so
+			// it becomes a condition on the target instead. One hop,
+			// against whatever index that column has.
+			q, err := bare.TenantPick(w)
+			if err != nil {
+				return nil, err
+			}
+
+			ps = append(ps, holder.HasTenantWith(q))
+		}
+	}
 	if len(ps) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
 	}
@@ -1761,6 +1786,137 @@ func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) 
 	req.SetAlias(v)
 
 	return s.TenantServiceServer.Patch(ctx, req)
+}
+
+// orderTenant is how Tenants come back.
+//
+// The last column is the key, and it is not decoration: a cursor cannot
+// tell apart two rows equal in every column of the order, so the page after
+// the first of them either repeats the second or skips it. Rows written by
+// one request are stamped a moment apart at best.
+var orderTenant = []entpage.Order{
+	{Column: tenant.FieldDateCreated, Desc: false},
+	{Column: tenant.FieldID, Desc: false},
+}
+
+const (
+	// TenantPageSize is what a request that did not say gets, and
+	// TenantPageLimit is the most it gets however loudly it asks.
+	TenantPageSize  = 20
+	TenantPageLimit = 100
+
+	// TenantFilterLimit is how many filters one request may carry. Each is a
+	// predicate in the same query, so it is what says how much of the
+	// database a request may ask to read -- and it is refused rather than
+	// clamped, because dropping half the filters would answer a question
+	// nobody asked.
+	TenantFilterLimit = 32
+)
+
+// List answers with the Tenants that match any of the given filters, or with
+// every one there is if the request named none, a page at a time.
+func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
+	q := s.store.Db.Tenant.Query()
+
+	// Through the same narrowing every generated read goes through, and not
+	// by asking the scope alone: what narrows a read is the wall today and
+	// the wall and something else tomorrow, and a list that reached past it
+	// would be the one read that missed the something else.
+	if p, err := bare.TenantNarrow(ctx, s.store.Scope, nil); err != nil {
+		return nil, err
+	} else if p != nil {
+		q.Where(p)
+	}
+
+	if fs := req.GetFilters(); len(fs) > 0 {
+		if len(fs) > TenantFilterLimit {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"filters: %d of them, and %d is the most one list carries", len(fs), TenantFilterLimit)
+		}
+
+		ps := make([]predicate.Tenant, 0, len(fs))
+		for i, f := range fs {
+			p, err := filterTenant(f)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "filters[%d]: %s", i, err)
+			}
+
+			ps = append(ps, p)
+		}
+
+		q.Where(tenant.Or(ps...))
+	}
+
+	if v := req.GetAfter(); v != "" {
+		var (
+			at0 time.Time
+			at1 uuid.UUID
+		)
+		if err := entpage.Decode(v, &at0, &at1); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
+		}
+
+		p, err := entpage.After(orderTenant, []any{at0, at1})
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
+		}
+
+		q.Where(p)
+	}
+
+	// One row more than the page, which is how "is there another" is answered
+	// without a second query and without a count. The extra is dropped before
+	// the answer is built; it was only ever asked for to see whether it was
+	// there -- so a full last page answers with no cursor rather than sending
+	// the caller back for an empty one.
+	size := entpage.Size(int(req.GetSize()), TenantPageSize, TenantPageLimit)
+	us, err := q.Order(tenant.ByDateCreated(), tenant.ByID()).Limit(size + 1).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	more := len(us) > size
+	if more {
+		us = us[:size]
+	}
+
+	items := make([]*apptest.Tenant, len(us))
+	for i, u := range us {
+		items[i] = u.Proto()
+	}
+
+	res := apptest.TenantListResponse_builder{Items: items}.Build()
+	if more {
+		last := us[len(us)-1]
+		next, err := entpage.Encode(last.DateCreated, last.ID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "next: %s", err)
+		}
+
+		res.SetNext(next)
+	}
+
+	return res, nil
+}
+
+// filterTenant turns one filter into the predicate that selects what it
+// names. Naming nothing is refused, since the request asked for "these" and
+// did not say which.
+func filterTenant(f *apptest.TenantFilter) (predicate.Tenant, error) {
+	ps := make([]predicate.Tenant, 0, 1)
+	if f.HasRef() {
+		p, err := bare.TenantPick(f.GetRef())
+		if err != nil {
+			return nil, err
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
+	}
+
+	return tenant.And(ps...), nil
 }
 
 // Gate is the layer that says what a caller may do with a request.
@@ -2963,6 +3119,19 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Tenant().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.TenantService_List_FullMethodName:
+		v := &apptest.TenantListRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Tenant().List(ctx, v)
 		if err != nil {
 			return nil, err
 		}
