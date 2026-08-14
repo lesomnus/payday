@@ -67,7 +67,21 @@ func flgOutput(def string) *flg.String {
 	return &flg.String{
 		Name:  "output",
 		Alias: 'o',
-		Brief: fmt.Sprintf("one of: pretty, prototext, protojson, name, table, wide, template=... (default %s)", def),
+		Brief: fmt.Sprintf("one of: pretty, json, prototext, protojson, name, table, wide, template=... (default %s)", def),
+	}
+}
+
+// flgInput is how the trailing request is read.
+//
+// Two names and one of them is the default, because the lenient reading cannot
+// misread the strict one: a uuid and base64 of sixteen bytes have no string in
+// common. So this is not a mode to pick before writing a request -- it is there
+// for a caller that wants the contract to be exactly protojson and nothing
+// more.
+func flgInput() *flg.String {
+	return &flg.String{
+		Name:  "in",
+		Brief: "how REQ is read: json (identifiers may be uuids) or protojson (default json)",
 	}
 }
 
@@ -76,7 +90,7 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 		Name:  "get",
 		Brief: fmt.Sprintf("get one %s", e.Message.Name()),
 
-		Flags: flg.Flags{flgOutput(r.opts.def())},
+		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
@@ -110,6 +124,7 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 
 		Flags: flg.Flags{
 			flgOutput(r.opts.def()),
+			flgInput(),
 			&flg.Int{Name: "size", Alias: 'n', Brief: "how many to answer with"},
 			&flg.String{Name: "next", Brief: `carry on from the "next" of an earlier answer`},
 		},
@@ -154,7 +169,7 @@ func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 		Name:  "add",
 		Brief: fmt.Sprintf("add a %s", e.Message.Name()),
 
-		Flags: flg.Flags{flgOutput(r.opts.def())},
+		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
 		Args:  arg.Args{&arg.String{Name: "NAME", Optional: true}, argRaw()},
 
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
@@ -198,7 +213,7 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 		Name:  "patch",
 		Brief: fmt.Sprintf("change one %s", e.Message.Name()),
 
-		Flags: flg.Flags{flgOutput(r.opts.def())},
+		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
@@ -228,7 +243,7 @@ func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 		Name:  "erase",
 		Brief: fmt.Sprintf("erase one %s", e.Message.Name()),
 
-		Flags: flg.Flags{flgOutput(r.opts.def())},
+		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {

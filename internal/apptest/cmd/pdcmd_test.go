@@ -2,6 +2,8 @@ package cmd_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -251,7 +253,7 @@ func TestTheFormats(t *testing.T) {
 		return xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, args...)
 	}
 
-	t.Run("json is protojson", func(t *testing.T) {
+	t.Run("json is JSON", func(t *testing.T) {
 		x := require.New(t)
 
 		got := run(t, "holder", "get", "-o", "json", "@acme/admin")
@@ -259,12 +261,8 @@ func TestTheFormats(t *testing.T) {
 		x.Contains(got.Stdout, `"alias"`)
 		x.Contains(got.Stdout, `"admin"`)
 
-		// And the identifier is base64, because that is what protojson does
-		// with `bytes`. It is left alone: `-o json` means protojson, and a
-		// `-o json` that quietly rewrote a field would be one a script could
-		// not round-trip back into a request. The uuid is what `-o name` and
-		// the table print, which are the formats a person reads.
-		x.NotContains(got.Stdout, b.Holder.String())
+		// Which of the two JSONs this is, and how they differ, is
+		// TestThereAreTwoJSONs.
 	})
 
 	t.Run("name is the identifier and nothing else", func(t *testing.T) {
@@ -432,4 +430,122 @@ func TestAnIdentifierIsWhatTheSchemaSaysItIs(t *testing.T) {
 	x.Contains(got, id.String(), "the key carries TYPE_UUID")
 	x.NotContains(got, "dead-beef", "and the trace identifier does not, so it is not drawn as one")
 	x.Contains(got, "(16 bytes)", "what a bytes field payday did not put there is worth saying")
+}
+
+// TestThereAreTwoJSONs, and which one somebody gets is which one they asked for.
+//
+// protojson is right about `bytes` and useless to a person: every payday
+// identifier is one, so `-o protojson` answers base64 that has to be decoded
+// before it means anything. Rewriting it in place would break the property that
+// makes `-o protojson` worth having -- that a script can feed it back.
+func TestThereAreTwoJSONs(t *testing.T) {
+	b, ctx := build(t)
+	conn := b.dialed(t, ctx)
+	as := b.travels(ctx)
+
+	run := func(t *testing.T, args ...string) xlitest.Result {
+		t.Helper()
+		return xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, args...)
+	}
+
+	t.Run("protojson is exactly protojson", func(t *testing.T) {
+		x := require.New(t)
+
+		got := run(t, "holder", "get", "-o", "protojson", "@acme/admin")
+		x.NoError(got.Err)
+		x.NotContains(got.Stdout, b.Holder.String())
+
+		var v map[string]any
+		x.NoError(json.Unmarshal([]byte(got.Stdout), &v))
+		x.Equal(base64.StdEncoding.EncodeToString(b.Holder.Bytes()), v["id"])
+	})
+
+	t.Run("json writes the identifiers a person writes", func(t *testing.T) {
+		x := require.New(t)
+
+		got := run(t, "holder", "get", "-o", "json", "@acme/admin")
+		x.NoError(got.Err)
+
+		var v map[string]any
+		x.NoError(json.Unmarshal([]byte(got.Stdout), &v), "still JSON")
+		x.Equal(b.Holder.String(), v["id"])
+		x.Equal(b.Tenant.String(), v["tenant"].(map[string]any)["id"], "and inside a nested entity")
+
+		// In the order the schema declares them, not alphabetically: `id` is
+		// written first and read first, and an encoder that sorted would put
+		// `alias` above it.
+		x.Less(strings.Index(got.Stdout, `"id"`), strings.Index(got.Stdout, `"alias"`))
+	})
+
+	t.Run("and a bytes field payday did not put there stays base64", func(t *testing.T) {
+		x := require.New(t)
+
+		var s strings.Builder
+		x.NoError(pdcmd.JSON.Print(&s, app.Audit_builder{
+			Id:      b.Holder.Bytes(),
+			TraceId: []byte{0xde, 0xad, 0xbe, 0xef, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+		}.Build()))
+
+		var v map[string]any
+		x.NoError(json.Unmarshal([]byte(s.String()), &v))
+		x.Equal("3q2+7wECAwQFBgcICQoLDA==", v["traceId"], "no TYPE_UUID, so it is what it is")
+	})
+}
+
+// TestAnIdentifierCanBeWrittenAsAUuid is the other half of the round trip.
+//
+// Without it this app prints an identifier one way and refuses to be told it
+// that way: protojson reads `bytes` as base64, so the uuid somebody just read
+// off the screen cannot be typed back into a request.
+func TestAnIdentifierCanBeWrittenAsAUuid(t *testing.T) {
+	b, ctx := build(t)
+	conn := b.dialed(t, ctx)
+	as := b.travels(ctx)
+
+	run := func(t *testing.T, args ...string) xlitest.Result {
+		t.Helper()
+		return xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, args...)
+	}
+
+	t.Run("in a request", func(t *testing.T) {
+		x := require.New(t)
+
+		got := run(t, "holder", "add",
+			fmt.Sprintf(`{"tenant":{"id":"%s"},"alias":"erin"}`, b.Tenant))
+		x.NoError(got.Err)
+		x.Contains(got.Stdout, "erin")
+		x.Contains(got.Stdout, b.Tenant.String())
+	})
+
+	t.Run("and base64 still works, because only an exact uuid is converted", func(t *testing.T) {
+		x := require.New(t)
+
+		got := run(t, "holder", "add",
+			fmt.Sprintf(`{"tenant":{"id":"%s"},"alias":"frank"}`,
+				base64.StdEncoding.EncodeToString(b.Tenant.Bytes())))
+		x.NoError(got.Err)
+		x.Contains(got.Stdout, "frank")
+	})
+
+	// This is what the lenient reading is actually for, and it is not what it
+	// looked like. protojson does not refuse a uuid: it accepts URL-safe base64
+	// as well as standard, `-` is in that alphabet, and a uuid string decodes
+	// to 27 bytes of nothing. The refusal comes later, from the server, about a
+	// value nobody wrote.
+	t.Run("and --in protojson is the stricter contract, which reads it as base64", func(t *testing.T) {
+		x := require.New(t)
+
+		got := run(t, "holder", "add", "--in", "protojson",
+			fmt.Sprintf(`{"tenant":{"id":"%s"},"alias":"grace"}`, b.Tenant))
+		x.Error(got.Err)
+		x.Contains(got.Err.Error(), "27 bytes")
+	})
+
+	t.Run("and an input format that is not one is refused by name", func(t *testing.T) {
+		x := require.New(t)
+
+		got := run(t, "holder", "add", "--in", "yaml", `{"alias":"heidi"}`)
+		x.Error(got.Err)
+		x.Contains(got.Err.Error(), "not an input format")
+	})
 }

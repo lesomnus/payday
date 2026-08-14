@@ -356,10 +356,10 @@ func builtin(name string) (Printer, error) {
 		return Pretty, nil
 	case name == "prototext":
 		return ProtoText, nil
-	case name == "protojson", name == "json":
-		// `json` as well, because it is what somebody types and it is not
-		// ambiguous: there is one JSON here and protojson is it.
+	case name == "protojson":
 		return ProtoJSON, nil
+	case name == "json":
+		return JSON, nil
 	case name == "name":
 		return Name, nil
 	case name == "table":
@@ -370,5 +370,5 @@ func builtin(name string) (Printer, error) {
 		return Template(strings.TrimPrefix(name, "template="))
 	}
 
-	return nil, fmt.Errorf("-o %s: not a format; one of pretty, prototext, protojson, name, table, wide, template=...", name)
+	return nil, fmt.Errorf("-o %s: not a format; one of pretty, json, prototext, protojson, name, table, wide, template=...", name)
 }

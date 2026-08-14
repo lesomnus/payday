@@ -7,8 +7,8 @@ import (
 
 	"github.com/lesomnus/xli"
 	"github.com/lesomnus/xli/arg"
+	"github.com/lesomnus/xli/flg"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -96,6 +96,20 @@ func fillRaw(cmd *xli.Command, in proto.Message, first ...string) error {
 		return nil
 	}
 
+	// `--in` decides how strictly the request is read; both readings are
+	// protojson and the lenient one only adds identifiers written as uuids. See
+	// [unmarshalJSON].
+	strict := false
+	if v, ok := flg.Find[string](cmd, "in"); ok && v != "" {
+		switch v {
+		case "json":
+		case "protojson":
+			strict = true
+		default:
+			return fmt.Errorf("--in %s: not an input format; one of json, protojson", v)
+		}
+	}
+
 	raw := in.ProtoReflect().New().Interface()
 	for _, v := range vs {
 		var b []byte
@@ -112,7 +126,7 @@ func fillRaw(cmd *xli.Command, in proto.Message, first ...string) error {
 			b = []byte(v)
 		}
 
-		if err := protojson.Unmarshal(b, raw); err != nil {
+		if err := unmarshalJSON(b, raw, strict); err != nil {
 			return fmt.Errorf("REQ: %w", err)
 		}
 	}

@@ -11,6 +11,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/lesomnus/payday/pdpb"
 )
 
 // Pretty is one message, field by field, for a person.
@@ -188,20 +190,40 @@ func oneLine(m protoreflect.Message) (string, bool) {
 	return s, true
 }
 
-// isId says a `bytes` field holds an identifier, by asking the schema.
+// isId says a `bytes` field holds a payday identifier.
 //
-// `(orm.field) = {type: TYPE_UUID}`, which is what every payday identifier
-// carries and what the ent schema is generated from. Not a rule about names:
-// the first version of this matched `id` and anything ending in `_id`, and
-// `Audit.trace_id` is a `bytes` field ending in `_id` that is **not** one of
-// these -- it is a trace identifier from somewhere else, and printing it as a
-// uuid would be printing a uuid that names nothing in this app.
+// # Two sources, because there are two kinds of message
 //
-// A field the schema says nothing about is left alone. That is the honest
-// answer for a `bytes` field payday did not put there.
+// An **entity** is annotated. Every identifier it carries says so:
+//
+//	bytes actor_id = 8 [(orm.field) = {type: TYPE_UUID}];
+//	bytes trace_id = 9;
+//
+// so for an entity the annotation is the whole answer, and its absence is an
+// answer too -- `Audit.trace_id` ends in `_id`, is sixteen bytes, and is a trace
+// identifier from somewhere else. A rule about names gets that one wrong.
+//
+// The **generated contract** is not annotated. `TenantRef`, `RobotAddRequest`
+// and the rest are written by `pd gen` from the entity, and the `bytes id` on
+// them carries no `(orm.field)` at all -- there is no column behind it to
+// describe. Requiring the annotation there would mean an identifier in a
+// request is never recognised, which is exactly where a person writes one.
+//
+// So: an annotated field is what it says; a field on an entity with no
+// annotation is not an identifier; and a field on anything else falls back to
+// payday's own field-number rule, which is written in names -- `id` is the key
+// and everything pointing at one is `<something>_id`.
 func isId(fd protoreflect.FieldDescriptor) bool {
-	opts, _ := proto.GetExtension(fd.Options(), ormpb.E_Field).(*ormpb.FieldOptions)
-	return opts.GetType() == ormpb.Type_TYPE_UUID
+	if opts, _ := proto.GetExtension(fd.Options(), ormpb.E_Field).(*ormpb.FieldOptions); opts != nil {
+		return opts.GetType() == ormpb.Type_TYPE_UUID
+	}
+
+	if e, _ := proto.GetExtension(fd.Parent().Options(), pdpb.E_Entity).(*pdpb.Entity); e != nil {
+		return false
+	}
+
+	n := string(fd.Name())
+	return n == "id" || strings.HasSuffix(n, "_id")
 }
 
 func isTimestamp(fd protoreflect.FieldDescriptor) bool {
