@@ -1,0 +1,351 @@
+# Commands on your binary
+
+Every app ends up needing the same commands — read a row, list a page, add one,
+fix a typo in an alias — and every app has written them by hand. `payday/pdcmd`
+builds them from what is already in the binary:
+
+```go
+t, err := pdcmd.New(conn)
+if err != nil {
+	return err
+}
+
+root.Commands = append(root.Commands, t.Commands()...)
+```
+
+That is the whole of it. `robot get`, `robot ls`, `holder add`, `tenant patch`,
+and so on for every entity your schema declares.
+
+For what these commands are and why they are in `pdcmd` rather than in `pd`, see
+[the server guide](server.md#8-the-commands). This page is how to use them.
+
+---
+
+## 1. The connection is yours
+
+`pdcmd.New` takes a `grpc.ClientConnInterface` and nothing else. It does not
+dial, does not authenticate, and reads no configuration file.
+
+That is not an omission. **Where to connect, as whom, and what that credential
+may do are the three decisions that make an admin command safe or unsafe**, and
+they belong to the deployment. A package that made them for you would be making
+them the same way for every app.
+
+So the app opens the connection it means:
+
+```go
+// A socket, with whatever credentials this deployment uses.
+conn, err := grpc.NewClient(c.Addr, grpc.WithTransportCredentials(creds))
+```
+
+and passes the credential on the context it runs with:
+
+```go
+return root.Run(as.Provide(ctx), os.Args[1:])
+```
+
+One app can have several trees, and this is why. roster has an operator port and
+a data port with different policies in front of them; a tree per connection is a
+command tree per policy. An in-process server over `bufconn` hands back a
+`*grpc.ClientConn` like any other, so an embedded deployment needs no different
+code.
+
+**The wall is untouched.** A command is a caller like any other: without a
+credential the same call comes back `Unauthenticated`, from the server.
+
+---
+
+## 2. What you get, and what you do not
+
+Five verbs, and only where the schema declared them:
+
+| | |
+| --- | --- |
+| `get <REF>` | one row |
+| `ls` | a page, with `--size` and `--next` |
+| `add [NAME]` | a new row |
+| `patch <REF>` | change one |
+| `erase <REF>` | remove one |
+
+`ls` exists only for an entity that declared `list:`. In payday's own test app
+four of nine entities have none, so `robot ls` is built and `cell ls` is not —
+and nobody decided that twice. The commands are read from the descriptors your
+`.pb.go` files register at init, so a verb exists exactly when the method does.
+
+Two are deliberately absent:
+
+- **`apply`** is one of payday's two general writes and is
+  [closed at the transport](server.md#why-patch-and-apply-are-closed-at-the-transport)
+  unless an app opts in. A command for it would fail on every app that took the
+  default.
+- **`watch`** is a stream, which is not this shape.
+
+Both can be mounted anyway — see [§5](#5-an-rpc-of-your-own).
+
+### Naming a row
+
+Anywhere a command takes a `REF`:
+
+```sh
+$ app holder get 019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
+$ app holder get @acme/alice
+$ app tenant get @acme
+```
+
+The tenant travels with the alias because an alias is unique inside one and
+names somebody else in every other. An entity that is not inside a tenant — a
+Tenant itself — takes `@alias` alone.
+
+`add` takes the same syntax for the name the new row is to have:
+
+```sh
+$ app holder add @acme/bob
+```
+
+---
+
+## 3. The request is an argument
+
+A flag per field would be a second copy of your schema, and the copy is what
+goes stale the day somebody adds a field. So the typed arguments cover what is
+written constantly — which row, what it is called — and everything else the
+request can hold is protojson, merged over them:
+
+```sh
+$ app robot add @acme/arm-01 '{"cell":{"alias":"floor-2"}}'
+$ app robot patch @acme/arm-01 '{"alias":"arm-02"}'
+$ app holder add - < holder.json
+```
+
+The JSON wins where the two overlap, which is what makes it a complete escape
+hatch: any field a command sets can be overridden without the command growing a
+flag to unset it.
+
+### Identifiers can be written as uuids
+
+```sh
+$ app holder add '{"tenant":{"id":"01a0011c-5078-8018-ad01-940b1f868ded"}}'
+```
+
+protojson reads `bytes` as base64, so without this the app would print an
+identifier one way and refuse to be told it that way. Only an exact uuid is
+converted — base64 of sixteen bytes is 24 characters ending in `==` and never
+parses as one — so nothing you meant as base64 is reinterpreted.
+
+`--in protojson` asks for the stricter contract instead. It is worth knowing what
+that gets you: protojson accepts URL-safe base64, `-` is in that alphabet, and a
+uuid string decodes to 27 bytes of nothing. The refusal then comes from the
+server, about a value nobody wrote:
+
+```
+id: invalid UUID (got 27 bytes)
+```
+
+---
+
+## 4. Output
+
+`-o` on any command:
+
+| | |
+| --- | --- |
+| `pretty` | the default. Identifiers as uuids, timestamps as times, a nested entity on one line |
+| `json` | protojson with the identifiers as uuids |
+| `protojson` | exactly protojson |
+| `prototext` | exactly prototext |
+| `name` | the identifier of each row, one per line |
+| `table` | columns |
+| `wide` | the same table, with the identifiers |
+| `template=...` | `text/template` over the JSON |
+
+```
+$ app holder get @acme/bob            $ app holder ls -o table
+id           01a00104-e385-8595-…     ALIAS   NAME        AGE
+tenant       01a00104-e380-8aa9-…     admin   -           3d
+alias        bob                      bob     Bob Vance   2h
+name         Bob Vance
+date_created 2026-08-14T16:04:52Z
+```
+
+**There are two JSONs on purpose.** `-o protojson` is base64 for every
+identifier, because that is what protojson is and a script that feeds it back
+somewhere depends on it. `-o json` is the same document with the uuids written
+out, which is what a person or a `jq` needs. Changing the first would have been
+the easy answer and would have broken the round trip.
+
+`pretty` is the default rather than `prototext` for a reason worth stating: every
+payday identifier is a `bytes` field, and prototext prints bytes as an escaped
+string. The exact format was also the one nobody could use.
+
+### Adding a format
+
+An app's own format is not a lesser kind of format — it is the same one-method
+interface the built-in ones implement:
+
+```go
+t, err := pdcmd.New(conn, pdcmd.Options{
+	Printers: map[string]pdcmd.Printer{
+		"csv": pdcmd.PrinterFunc(func(w io.Writer, m proto.Message) error {
+			for _, row := range pdcmd.Rows(m) {
+				// ...
+			}
+			return nil
+		}),
+	},
+})
+```
+
+`pdcmd.Rows` is what makes a printer work for both a `get` and an `ls`: a `Get`
+answers with the entity and a `List` with the response that holds them, and this
+hands back rows either way.
+
+### Rendering one message your own way
+
+`Options.Renderers` is a format for a single message type, used **only when the
+person did not ask for a format**:
+
+```go
+pdcmd.Options{
+	Renderers: map[protoreflect.FullName]pdcmd.Printer{
+		"app.Robot": myRobotPrinter,
+	},
+}
+```
+
+Only then, and that line is worth keeping: `-o json` means JSON, and a renderer
+that changed what `-o json` produced would make a script's output depend on which
+app it ran against. kubectl draws the same line — its typed print handlers shape
+the human-readable table and never the serialisations.
+
+---
+
+## 5. An RPC of your own
+
+The five verbs are the ones every entity has. An operation that *means*
+something is not one of them: payday closes the general writes on purpose, so
+"move this asset to another tenant" is an RPC you
+[declare in an overlay](schema.md#an-rpc-of-your-own) and implement in
+[a layer](server.md#3-writing-a-layer).
+
+This is custody's, and it is a real one:
+
+```proto
+// proto/ext/app/asset_svc.ext.proto
+service AssetService {
+  rpc Transfer(AssetTransferRequest) returns (Asset);
+}
+
+message AssetTransferRequest {
+  AssetRef  ref    = 1;
+  TenantRef to     = 2;
+  string    reason = 3;
+}
+```
+
+Nothing can generate a command for it, because nothing knows what it means. What
+*can* be shared is everything around it — the reference argument, the trailing
+protojson, `-o`, `--in`, the call, the printing — and that is `Unary`:
+
+```go
+c, err := t.Unary("app.AssetService.Transfer")
+if err != nil {
+	return err
+}
+
+if err := t.Add("asset/transfer", c); err != nil {
+	return err
+}
+```
+
+```sh
+$ app asset transfer @acme/forklift-3 '{"to":{"alias":"beta"},"reason":"sold"}'
+```
+
+**It does not care where the method came from.** A method you declared in an
+overlay and a method `pd gen` wrote land in the same `ServiceDescriptor` — the
+overlay is merged before generation — so there is no second path for a
+hand-written RPC. It is the same property that lets the tree know `Robot` has a
+`List` and `Cell` does not.
+
+Two things it works out for itself:
+
+- **Whether to take a `REF`.** A request with a `ref` field takes one; a request
+  without takes only the trailing JSON. That is not a convention this package
+  invented — it is the shape `pd gen` writes, and the shape
+  `AssetTransferRequest` follows, because an RPC about a row names it the way
+  every other RPC names one.
+- **Whether it can be a command at all.** A stream is refused **while you are
+  wiring it**, not when somebody runs it:
+
+  ```
+  pdcmd: app.RobotService.Watch: is a stream, which is not this shape
+  pdcmd: app.RobotService.Nope: app.RobotService has no such method
+  ```
+
+This is also how the two absent verbs are mounted, if your app wants them:
+
+```go
+c, _ := t.Unary("app.RobotService.Apply")
+t.Add("robot/apply", c)
+```
+
+---
+
+## 6. Changing the tree
+
+What goes in is an `*xli.Command` and so is everything that came out, so a
+hand-written command is not a lesser kind of command here:
+
+```go
+t.Command("robot/ls")            // one of it, to mount elsewhere or to wrap
+t.Replace("holder/erase", mine)  // this deployment means something else by it
+t.Add("robot/transfer", mine)    // yours, beside the rest
+t.Drop("audit")                  // the whole group, verbs included
+```
+
+`Replace` refuses a path that is not there rather than adding it, because a typo
+would otherwise be a command that silently never runs — and a typo and a
+deliberate addition look identical at the call site.
+
+That everything is one type is deliberate, and it is the lesson of
+`kubectl describe`: its typed describers are in-tree, a custom resource falls
+back to a generic one whose output is noticeably worse, and so the fallback
+exists and nobody wants it. `kubectl get` avoided it by letting the resource
+declare its own columns.
+
+---
+
+## 7. Two payday apps in one process
+
+`New` refuses when there is more than one, and names them:
+
+```
+pdcmd: 2 payday apps are in this process (hday.oasys, roster), so which one
+this connection speaks to has to be said: use NewIn
+```
+
+This is not an edge case. Two payday apps can share a process whenever their
+proto packages differ — which is
+[why an app may choose its own](../SCHEMA.md) — and kamino2 is such a process:
+it embeds roster, so `roster.Holder` and `hday.oasys.Holder` are both in the
+registry. A connection cannot say which of them it speaks to.
+
+So the app says:
+
+```go
+mine := pdcmd.NewIn(conn, "hday.oasys")
+theirs := pdcmd.NewIn(rosterConn, "roster")
+```
+
+Which is the right shape anyway: a process with two servers wants two trees.
+
+---
+
+## Where to go next
+
+- [Declaring an entity](schema.md) — including
+  [an RPC of your own](schema.md#an-rpc-of-your-own)
+- [The server](server.md) — the stack that answers these calls, and the rest of
+  the commands on your binary
+- [Permissions and the wall](permissions.md) — what a command may do, which is
+  never this package's decision

@@ -398,6 +398,18 @@ The last two come ready-made from `payday/pdcmd` — `pdcmd.NewCmdConfig(Loader,
 and `pdcmd.NewCmdVersion()` — and the first two are written into your repository
 by `pd new`, because their bodies are the stack and the first row.
 
+The same package builds `get`, `ls`, `add`, `patch` and `erase` for every entity
+you have, from a connection you opened:
+
+```go
+t, err := pdcmd.New(conn)
+root.Commands = append(root.Commands, t.Commands()...)
+```
+
+They are here rather than in `pd` for the reason everything above is: they run
+against a deployment. See [Commands on your binary](commands.md), which also
+covers mounting one for an RPC you declared yourself.
+
 `pd` is distributed as a `tool` directive in your `go.mod`, so there is nothing
 to install and the version is pinned with everything else:
 

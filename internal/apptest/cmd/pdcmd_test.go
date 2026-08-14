@@ -549,3 +549,126 @@ func TestAnIdentifierCanBeWrittenAsAUuid(t *testing.T) {
 		x.Contains(got.Err.Error(), "not an input format")
 	})
 }
+
+// TestAnRpcThisAppWroteGetsACommandToo is the case the five verbs do not cover.
+//
+// payday closes the general writes on purpose, so an operation that means
+// something -- custody's `AssetService.Transfer`, moving a row to another
+// tenant -- is an RPC the app declares in an overlay and implements in a layer.
+// Nothing can generate a command for it, because nothing knows what it means.
+// What can be shared is everything around it, which is what [pdcmd.Tree.Unary]
+// is.
+//
+// It reaches a method by name and does not care where the method came from: an
+// overlay and `pd gen` write into the same `ServiceDescriptor`, merged before
+// generation. `Apply` stands in for one here because it is a real method this
+// tree deliberately does not build -- the same position an app's own RPC is in.
+func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
+	b, ctx := build(t)
+	conn := b.dialed(t, ctx)
+	as := b.travels(ctx)
+
+	t.Run("it is mounted where the app says", func(t *testing.T) {
+		x := require.New(t)
+
+		tree, err := pdcmd.New(conn)
+		x.NoError(err)
+		x.Nil(tree.Command("holder/show"), "nothing generated this")
+
+		c, err := tree.Unary("app.HolderService.Get")
+		x.NoError(err)
+		x.NoError(tree.Add("holder/show", c))
+
+		root := &xli.Command{Name: "app", Commands: tree.Commands()}
+		got := xlitest.Harness{Cmd: root, Ctx: as}.Run(t, "holder", "show", "@acme/admin")
+
+		x.NoError(got.Err)
+		x.Contains(got.Stdout, "admin")
+		x.Contains(got.Stdout, b.Holder.String())
+	})
+
+	t.Run("and a method the tree does not build still travels", func(t *testing.T) {
+		x := require.New(t)
+
+		tree, err := pdcmd.New(conn)
+		x.NoError(err)
+		x.Nil(tree.Command("robot/apply"), "Apply is a general write and is not built")
+
+		c, err := tree.Unary("app.RobotService.Apply")
+		x.NoError(err)
+		x.NoError(tree.Add("robot/apply", c))
+
+		root := &xli.Command{Name: "app", Commands: tree.Commands()}
+		got := xlitest.Harness{Cmd: root, Ctx: as}.Run(t,
+			"robot", "apply", "@acme/nothing", `{"patch":{}}`)
+
+		// The refusal is the server's, about the patch -- so the request was
+		// built, sent, and understood. That is what is being checked; a valid
+		// patch would be checking `patch.Patch`.
+		x.Error(got.Err)
+		x.Contains(got.Err.Error(), "delta")
+	})
+
+	t.Run("the reference argument is worked out from the request", func(t *testing.T) {
+		x := require.New(t)
+
+		tree, err := pdcmd.New(conn)
+		x.NoError(err)
+
+		// `HolderGetRequest` has a `ref`, so the command takes one.
+		c, err := tree.Unary("app.HolderService.Get")
+		x.NoError(err)
+		x.Equal("REF", c.Args[0].Info().Name)
+
+		// `HolderAddRequest` does not, so it takes only the request.
+		c, err = tree.Unary("app.HolderService.Add")
+		x.NoError(err)
+		x.Equal("REQ", c.Args[0].Info().Name)
+	})
+
+	t.Run("and what cannot be a command is refused while it is being wired", func(t *testing.T) {
+		x := require.New(t)
+
+		tree, err := pdcmd.New(conn)
+		x.NoError(err)
+
+		_, err = tree.Unary("app.RobotService.Watch")
+		x.ErrorContains(err, "is a stream")
+
+		_, err = tree.Unary("app.RobotService.Nope")
+		x.ErrorContains(err, "no such method")
+
+		_, err = tree.Unary("app.NoSuchService.X")
+		x.ErrorContains(err, "app.NoSuchService")
+	})
+}
+
+// TestWhichAppThisConnectionSpeaksTo covers the case an embedded server creates.
+//
+// Two payday apps can share a process whenever their proto packages differ, and
+// kamino2 is such a process: it embeds roster, so two `Holder` entities are in
+// the registry at once and a connection cannot say which of them it reaches.
+// This app is not that -- it is one app -- so what is checked here is that the
+// answer is arrived at rather than assumed, and that naming the package works.
+func TestWhichAppThisConnectionSpeaksTo(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+	conn := b.dialed(t, ctx)
+
+	x.Equal([]protoreflect.FullName{"app"}, pdcmd.Packages(),
+		"one app is linked in, which is why New has something to guess with")
+
+	tree := pdcmd.NewIn(conn, "app")
+	x.NotNil(tree.Command("holder/get"))
+
+	got := xlitest.Harness{
+		Cmd: &xli.Command{Name: "app", Commands: tree.Commands()},
+		Ctx: b.travels(ctx),
+	}.Run(t, "holder", "get", "@acme/admin")
+	x.NoError(got.Err)
+	x.Contains(got.Stdout, "admin")
+
+	// A package with no entities builds an empty tree rather than failing, so
+	// that a caller naming the wrong one finds out from the tree it got.
+	x.Empty(pdcmd.NewIn(conn, "payday").Commands())
+}
