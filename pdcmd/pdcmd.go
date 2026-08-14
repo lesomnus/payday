@@ -19,6 +19,21 @@
 // The rest follow the same rule. `version` reads the build information of the
 // binary it is in; `migrate` needs the database the app configured.
 //
+// # The entity commands
+//
+// `get`, `ls`, `add`, `patch` and `erase`, for every entity the app has, are
+// the same kind of thing and are here for the same reason: they need a
+// connection to a running deployment, and which connection -- and who it is
+// authenticated as -- is the app's to decide. See [Tree].
+//
+// They are built rather than generated. Everything they need is already in the
+// process: an app's `.pb.go` files register their descriptors at init, and the
+// `(payday.entity)` option travels with them, so what generation would add is a
+// second copy of a list the binary already has. It also gets the hard part
+// right for free -- an entity has a `List` only if it declared `list:`, and a
+// tree built from the descriptors has `robot ls` and no `cell ls` without
+// anybody deciding that twice.
+//
 // # What is not here
 //
 // `serve`. It is the one command whose body is the app's stack -- which layers,
