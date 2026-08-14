@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/audit_svc.g.proto.
  */
 export const file_app_payday_audit_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChxhcHAvcGF5ZGF5L2F1ZGl0X3N2Yy5nLnByb3RvEgNhcHAimAIKD0F1ZGl0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIYCgl0ZW5hbnRfaWQYAiABKAxCBaoBAggCEhcKCGFjdG9yX2lkGAggASgMQgWqAQIIAhIXCgh0cmFjZV9pZBgJIAEoDEIFqgECCAISFQoGYWN0aW9uGAogASgJQgWqAQIIAhIYCglvYmplY3RfaWQYCyABKAxCBaoBAggCEhQKBXBhdGNoGAwgASgMQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh4KD2FjdG9yX3RlbmFudF9pZBgQIAEoDEIFqgECCAISFAoFdmFsdWUYESABKAxCBaoBAggCIk8KD0F1ZGl0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkF1ZGl0U2VsZWN0Ih8KCEF1ZGl0UmVmEgwKAmlkGAEgASgMSABCBQoDa2V5IsEBCgtBdWRpdFNlbGVjdBILCgNhbGwYASABKAgSEQoJdGVuYW50X2lkGAIgASgIEhAKCGFjdG9yX2lkGAggASgIEhAKCHRyYWNlX2lkGAkgASgIEg4KBmFjdGlvbhgKIAEoCBIRCglvYmplY3RfaWQYCyABKAgSDQoFcGF0Y2gYDCABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIEhcKD2FjdG9yX3RlbmFudF9pZBgQIAEoCBINCgV2YWx1ZRgRIAEoCCLAAQoRQXVkaXRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkF1ZGl0UmVmEhEKCXRlbmFudF9pZBgEIAEoDBIQCghhY3Rvcl9pZBgQIAEoDBIQCgh0cmFjZV9pZBgSIAEoDBIOCgZhY3Rpb24YFCABKAkSEQoJb2JqZWN0X2lkGBYgASgMEg0KBXBhdGNoGBggASgMEhcKD2FjdG9yX3RlbmFudF9pZBggIAEoDBINCgV2YWx1ZRgiIAEoDCJMChFBdWRpdEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJgChBBdWRpdExpc3RSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuQXVkaXRGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCIkMKEUF1ZGl0TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLkF1ZGl0EhMKBG5leHQYAiABKAlCBaoBAggCIl4KC0F1ZGl0RmlsdGVyEhEKCW9iamVjdF9pZBgBIAEoDBIQCghhY3Rvcl9pZBgCIAEoDBIRCgl0ZW5hbnRfaWQYAyABKAwSFwoPYWN0b3JfdGVuYW50X2lkGAQgASgMMqECCgxBdWRpdFNlcnZpY2USJwoDQWRkEhQuYXBwLkF1ZGl0QWRkUmVxdWVzdBoKLmFwcC5BdWRpdBInCgNHZXQSFC5hcHAuQXVkaXRHZXRSZXF1ZXN0GgouYXBwLkF1ZGl0EisKBVBhdGNoEhYuYXBwLkF1ZGl0UGF0Y2hSZXF1ZXN0GgouYXBwLkF1ZGl0EisKBUFwcGx5EhYuYXBwLkF1ZGl0QXBwbHlSZXF1ZXN0GgouYXBwLkF1ZGl0Ei4KBUVyYXNlEg0uYXBwLkF1ZGl0UmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5EjUKBExpc3QSFS5hcHAuQXVkaXRMaXN0UmVxdWVzdBoWLmFwcC5BdWRpdExpc3RSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_audit, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch]);
+  fileDesc("ChxhcHAvcGF5ZGF5L2F1ZGl0X3N2Yy5nLnByb3RvEgNhcHAitwIKD0F1ZGl0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIYCgl0ZW5hbnRfaWQYAiABKAxCBaoBAggCEhcKCGFjdG9yX2lkGAggASgMQgWqAQIIAhIXCgh0cmFjZV9pZBgJIAEoDEIFqgECCAISFQoGYWN0aW9uGAogASgJQgWqAQIIAhIYCglvYmplY3RfaWQYCyABKAxCBaoBAggCEhQKBXBhdGNoGAwgASgMQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh4KD2FjdG9yX3RlbmFudF9pZBgQIAEoDEIFqgECCAISFAoFdmFsdWUYESABKAxCBaoBAggCEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgSIAEoDCJPCg9BdWRpdEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkF1ZGl0UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5BdWRpdFNlbGVjdCIfCghBdWRpdFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSLgAQoLQXVkaXRTZWxlY3QSCwoDYWxsGAEgASgIEhEKCXRlbmFudF9pZBgCIAEoCBIQCghhY3Rvcl9pZBgIIAEoCBIQCgh0cmFjZV9pZBgJIAEoCBIOCgZhY3Rpb24YCiABKAgSEQoJb2JqZWN0X2lkGAsgASgIEg0KBXBhdGNoGAwgASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBIXCg9hY3Rvcl90ZW5hbnRfaWQYECABKAgSDQoFdmFsdWUYESABKAgSHQoVY291bnRlcnBhcnRfdGVuYW50X2lkGBIgASgIIoMCChFBdWRpdFBhdGNoUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSEQoJdGVuYW50X2lkGAQgASgMEhAKCGFjdG9yX2lkGBAgASgMEhAKCHRyYWNlX2lkGBIgASgMEg4KBmFjdGlvbhgUIAEoCRIRCglvYmplY3RfaWQYFiABKAwSDQoFcGF0Y2gYGCABKAwSFwoPYWN0b3JfdGVuYW50X2lkGCAgASgMEg0KBXZhbHVlGCIgASgMEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgkIAEoDBIiChpjb3VudGVycGFydF90ZW5hbnRfaWRfbnVsbBglIAEoCCJMChFBdWRpdEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJgChBBdWRpdExpc3RSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuQXVkaXRGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCIkMKEUF1ZGl0TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLkF1ZGl0EhMKBG5leHQYAiABKAlCBaoBAggCIn0KC0F1ZGl0RmlsdGVyEhEKCW9iamVjdF9pZBgBIAEoDBIQCghhY3Rvcl9pZBgCIAEoDBIRCgl0ZW5hbnRfaWQYAyABKAwSFwoPYWN0b3JfdGVuYW50X2lkGAQgASgMEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgFIAEoDDKhAgoMQXVkaXRTZXJ2aWNlEicKA0FkZBIULmFwcC5BdWRpdEFkZFJlcXVlc3QaCi5hcHAuQXVkaXQSJwoDR2V0EhQuYXBwLkF1ZGl0R2V0UmVxdWVzdBoKLmFwcC5BdWRpdBIrCgVQYXRjaBIWLmFwcC5BdWRpdFBhdGNoUmVxdWVzdBoKLmFwcC5BdWRpdBIrCgVBcHBseRIWLmFwcC5BdWRpdEFwcGx5UmVxdWVzdBoKLmFwcC5BdWRpdBIuCgVFcmFzZRINLmFwcC5BdWRpdFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRI1CgRMaXN0EhUuYXBwLkF1ZGl0TGlzdFJlcXVlc3QaFi5hcHAuQXVkaXRMaXN0UmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_audit, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch]);
 
 /**
  * @generated from message app.AuditAddRequest
@@ -71,6 +71,11 @@ export type AuditAddRequest = Message<"app.AuditAddRequest"> & {
    * @generated from field: bytes value = 17 [features.field_presence = IMPLICIT];
    */
   value: Uint8Array;
+
+  /**
+   * @generated from field: bytes counterpart_tenant_id = 18;
+   */
+  counterpartTenantId: Uint8Array;
 };
 
 /**
@@ -178,6 +183,11 @@ export type AuditSelect = Message<"app.AuditSelect"> & {
    * @generated from field: bool value = 17;
    */
   value: boolean;
+
+  /**
+   * @generated from field: bool counterpart_tenant_id = 18;
+   */
+  counterpartTenantId: boolean;
 };
 
 /**
@@ -235,6 +245,21 @@ export type AuditPatchRequest = Message<"app.AuditPatchRequest"> & {
    * @generated from field: bytes value = 34;
    */
   value: Uint8Array;
+
+  /**
+   * @generated from field: bytes counterpart_tenant_id = 36;
+   */
+  counterpartTenantId: Uint8Array;
+
+  /**
+   * Clear counterpart_tenant_id instead of writing it.
+   * It takes a field of its own because an unset value already means
+   * "leave it alone", so no value could have meant NULL. It wins
+   * outright: setting both this and counterpart_tenant_id clears.
+   *
+   * @generated from field: bool counterpart_tenant_id_null = 37;
+   */
+  counterpartTenantIdNull: boolean;
 };
 
 /**
@@ -358,6 +383,11 @@ export type AuditFilter = Message<"app.AuditFilter"> & {
    * @generated from field: bytes actor_tenant_id = 4;
    */
   actorTenantId: Uint8Array;
+
+  /**
+   * @generated from field: bytes counterpart_tenant_id = 5;
+   */
+  counterpartTenantId: Uint8Array;
 };
 
 /**

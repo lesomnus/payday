@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/audit.proto.
  */
 export const file_app_payday_audit: GenFile = /*@__PURE__*/
-  fileDesc("ChZhcHAvcGF5ZGF5L2F1ZGl0LnByb3RvEgNhcHAizAQKBUF1ZGl0EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIZCgl0ZW5hbnRfaWQYAiABKAxCBuqCFgIQQBIYCghhY3Rvcl9pZBgIIAEoDEIG6oIWAhBAEhAKCHRyYWNlX2lkGAkgASgMEg4KBmFjdGlvbhgKIAEoCRIZCglvYmplY3RfaWQYCyABKAxCBuqCFgIQQBINCgVwYXRjaBgMIAEoDBI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASHwoPYWN0b3JfdGVuYW50X2lkGBAgASgMQgbqghYCEEASDQoFdmFsdWUYESABKAw6uwLK/BWtARICEAEaFxIGb2JqZWN0Gg0KCW9iamVjdF9pZBALGigSBXRyYWlsGg0KCXRlbmFudF9pZBACGhAKDGRhdGVfY3JlYXRlZBAPGjgSD2J5X2FjdG9yX3RlbmFudBoTCg9hY3Rvcl90ZW5hbnRfaWQQEBoQCgxkYXRlX2NyZWF0ZWQQDxoqEghieV9hY3RvchoMCghhY3Rvcl9pZBAIGhAKDGRhdGVfY3JlYXRlZBAPirsWhAEIAzJcChIKDgoMZGF0ZV9jcmVhdGVkEAEKCAoECgJpZBABGgsKCW9iamVjdF9pZBoKCghhY3Rvcl9pZBoLCgl0ZW5hbnRfaWQaEQoPYWN0b3JfdGVuYW50X2lkIDIoyAFCAgoASAMiHBIJdGVuYW50X2lkEg9hY3Rvcl90ZW5hbnRfaWRCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("ChZhcHAvcGF5ZGF5L2F1ZGl0LnByb3RvEgNhcHAi5AUKBUF1ZGl0EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIZCgl0ZW5hbnRfaWQYAiABKAxCBuqCFgIQQBIYCghhY3Rvcl9pZBgIIAEoDEIG6oIWAhBAEhAKCHRyYWNlX2lkGAkgASgMEg4KBmFjdGlvbhgKIAEoCRIZCglvYmplY3RfaWQYCyABKAxCBuqCFgIQQBINCgVwYXRjaBgMIAEoDBI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASHwoPYWN0b3JfdGVuYW50X2lkGBAgASgMQgbqghYCEEASDQoFdmFsdWUYESABKAwSJwoVY291bnRlcnBhcnRfdGVuYW50X2lkGBIgASgMQgjqghYEEEA4ATqqA8r8FewBEgIQARoXEgZvYmplY3QaDQoJb2JqZWN0X2lkEAsaKBIFdHJhaWwaDQoJdGVuYW50X2lkEAIaEAoMZGF0ZV9jcmVhdGVkEA8aOBIPYnlfYWN0b3JfdGVuYW50GhMKD2FjdG9yX3RlbmFudF9pZBAQGhAKDGRhdGVfY3JlYXRlZBAPGj0SDmJ5X2NvdW50ZXJwYXJ0GhkKFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBASGhAKDGRhdGVfY3JlYXRlZBAPGioSCGJ5X2FjdG9yGgwKCGFjdG9yX2lkEAgaEAoMZGF0ZV9jcmVhdGVkEA+Kuxa0AQgDMnUKEgoOCgxkYXRlX2NyZWF0ZWQQAQoICgQKAmlkEAEaCwoJb2JqZWN0X2lkGgoKCGFjdG9yX2lkGgsKCXRlbmFudF9pZBoRCg9hY3Rvcl90ZW5hbnRfaWQaFwoVY291bnRlcnBhcnRfdGVuYW50X2lkIDIoyAFCAgoASAMiMxIJdGVuYW50X2lkEg9hY3Rvcl90ZW5hbnRfaWQSFWNvdW50ZXJwYXJ0X3RlbmFudF9pZEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Audit is one write that happened, and who made it.
@@ -185,6 +185,53 @@ export type Audit = Message<"app.Audit"> & {
    * @generated from field: bytes value = 17;
    */
   value: Uint8Array;
+
+  /**
+   * The **other** tenant this write was about, and unset for nearly every one.
+   *
+   * Some writes have two sides. A row moves from one tenant to another, and the
+   * record of it is filed under where it ended up: `tenant_id` is read off the
+   * row after the write, so the tenant that received it can see what happened
+   * and the tenant that let it go **cannot see the event that took it away**.
+   * The one row it most needs is the one it is not a party to.
+   *
+   * So this is where the other party goes, and the wall counts it. It is not
+   * "the previous tenant": that would be a field about transfers, and the shape
+   * is more general than transfers -- one write, two tenants with a right to
+   * read it. What the pair means is the app's to say, in the operation that
+   * knows.
+   *
+   * It is **not** a list, and that is a decision rather than a first version.
+   * The wall on this table is the OR of equalities, which is what the indexes
+   * below cover; a list would make it a containment test on the one table that
+   * never stops growing, and would make "who can read this row" a property of
+   * the row rather than of the schema. A third party to a single write has not
+   * turned up yet, and if it does it can be argued for then.
+   *
+   * Set through `audit.Concerning`, so it is server-side and never a field of a
+   * request: a caller that could name it could grant a stranger a read.
+   *
+   * **Nullable**, which the other two identifiers here are not, and it is the
+   * only honest shape: nearly every write is about one tenant, and a column
+   * that has to hold something would be holding a lie about who may read the
+   * row. NULL matches no scope, so an unset one is a row with two readers
+   * rather than three.
+   *
+   * Not a default, which was the first attempt and was wrong: a default on a
+   * uuid column means *the server picks one*, so every ordinary trail row would
+   * have carried a **random tenant identifier** in the column that decides who
+   * can read it. It matched nobody and was still the wrong value to write.
+   *
+   * Nullable is also what keeps the other writers working. The recorder is not
+   * the only one: an app that records something the servers cannot see --
+   * roster writes an operator's intent before the attempt, through ent, because
+   * every server refuses a write to the trail -- composes the row itself, and a
+   * column it must fill in is one it learns about from a runtime refusal on the
+   * day somebody upgrades.
+   *
+   * @generated from field: bytes counterpart_tenant_id = 18;
+   */
+  counterpartTenantId: Uint8Array;
 };
 
 /**
