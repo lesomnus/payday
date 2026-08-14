@@ -223,42 +223,45 @@ the human-readable table and never the serialisations.
 
 The five verbs are the ones every entity has. An operation that *means*
 something is not one of them: payday closes the general writes on purpose, so
-"move this asset to another tenant" is an RPC you
+"put this robot in another cell" is an RPC you
 [declare in an overlay](schema.md#an-rpc-of-your-own) and implement in
 [a layer](server.md#3-writing-a-layer).
 
-This is custody's, and it is a real one:
+This is payday's own test app, and it is a real one:
 
 ```proto
-// proto/ext/app/asset_svc.ext.proto
-service AssetService {
-  rpc Transfer(AssetTransferRequest) returns (Asset);
+// proto/ext/app/robot_svc.ext.proto
+service RobotService {
+  rpc Move(RobotMoveRequest) returns (Robot);
 }
 
-message AssetTransferRequest {
-  AssetRef  ref    = 1;
-  TenantRef to     = 2;
-  string    reason = 3;
+message RobotMoveRequest {
+  RobotRef ref = 1;
+  CellRef  to  = 2;
 }
 ```
+
+`Robot.cell` is field 3 — the set a row is in, payday's second narrowing. A
+`Patch` could write it, which is exactly why the general writes are closed: a
+rule attached to one field is a rule a general write walks past.
 
 Nothing can generate a command for it, because nothing knows what it means. What
 *can* be shared is everything around it — the reference argument, the trailing
 protojson, `-o`, `--in`, the call, the printing — and that is `Unary`:
 
 ```go
-c, err := t.Unary("app.AssetService.Transfer")
+c, err := t.Unary("app.RobotService.Move")
 if err != nil {
 	return err
 }
 
-if err := t.Add("asset/transfer", c); err != nil {
+if err := t.Add("robot/move", c); err != nil {
 	return err
 }
 ```
 
 ```sh
-$ app asset transfer @acme/forklift-3 '{"to":{"alias":"beta"},"reason":"sold"}'
+$ app robot move @acme/arm-07 '{"to":{"alias":"floor-2"}}'
 ```
 
 **It does not care where the method came from.** A method you declared in an
@@ -272,7 +275,7 @@ Two things it works out for itself:
 - **Whether to take a `REF`.** A request with a `ref` field takes one; a request
   without takes only the trailing JSON. That is not a convention this package
   invented — it is the shape `pd gen` writes, and the shape
-  `AssetTransferRequest` follows, because an RPC about a row names it the way
+  `RobotMoveRequest` follows, because an RPC about a row names it the way
   every other RPC names one.
 - **Whether it can be a command at all.** A stream is refused **while you are
   wiring it**, not when somebody runs it:

@@ -29,6 +29,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent"
 	entmigrate "github.com/lesomnus/payday/internal/apptest/internal/ent/migrate"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
+	"github.com/lesomnus/payday/internal/apptest/server/core"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
@@ -146,7 +147,16 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 
 	// The stack a caller reaches. `pd.Gate` is outermost, so nothing behind it
 	// asks again.
-	stacked, err := app.Build(walled.WithWatch(w), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())
+	//
+	// `core` is innermost of the layers, so what this app wrote is decided by
+	// the gate and narrowed by the wall like anything else, and the write it
+	// issues goes to the servers below rather than back through them.
+	//
+	// What puts a `Move` on the trail is not this position -- it is
+	// `bare.Change.Method`, which carries the RPC gRPC dispatched for the whole
+	// request rather than the leg being written. So the trail answers "who
+	// moved this robot" with `Move` and not with the `Patch` it turned into.
+	stacked, err := app.Build(walled.WithWatch(w), core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())
 	if err != nil {
 		db.Close()
 		return nil, err

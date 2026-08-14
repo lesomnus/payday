@@ -2459,6 +2459,108 @@ func (b0 RobotWatchItem_builder) Build() *RobotWatchItem {
 	return m0
 }
 
+type RobotMoveRequest struct {
+	state          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref *RobotRef              `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_To  *CellRef               `protobuf:"bytes,2,opt,name=to"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RobotMoveRequest) Reset() {
+	*x = RobotMoveRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotMoveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotMoveRequest) ProtoMessage() {}
+
+func (x *RobotMoveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotMoveRequest) GetRef() *RobotRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *RobotMoveRequest) GetTo() *CellRef {
+	if x != nil {
+		return x.xxx_hidden_To
+	}
+	return nil
+}
+
+func (x *RobotMoveRequest) SetRef(v *RobotRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *RobotMoveRequest) SetTo(v *CellRef) {
+	x.xxx_hidden_To = v
+}
+
+func (x *RobotMoveRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *RobotMoveRequest) HasTo() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_To != nil
+}
+
+func (x *RobotMoveRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *RobotMoveRequest) ClearTo() {
+	x.xxx_hidden_To = nil
+}
+
+type RobotMoveRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// The robot, named the way anything else names one. It is read through the
+	// wall, so a caller who cannot see it is told NotFound rather than refused --
+	// that it exists is itself something not to say.
+	Ref *RobotRef
+	// Where it goes, and null is a legitimate answer: `Robot.cell` is nullable,
+	// so taking a robot out of every cell is a move like any other.
+	//
+	// Whether the caller may name this cell is the whole of the rule, and it is
+	// not a predicate: the row has not moved yet, so there is nothing to narrow.
+	// It is read through the wall for the same reason the robot is.
+	To *CellRef
+}
+
+func (b0 RobotMoveRequest_builder) Build() *RobotMoveRequest {
+	m0 := &RobotMoveRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_To = b.To
+	return m0
+}
+
 type JointAddRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
@@ -2472,7 +2574,7 @@ type JointAddRequest struct {
 
 func (x *JointAddRequest) Reset() {
 	*x = JointAddRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[19]
+	mi := &file_app_robot_svc_g_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2484,7 +2586,7 @@ func (x *JointAddRequest) String() string {
 func (*JointAddRequest) ProtoMessage() {}
 
 func (x *JointAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[19]
+	mi := &file_app_robot_svc_g_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2586,7 +2688,7 @@ type JointGetRequest struct {
 
 func (x *JointGetRequest) Reset() {
 	*x = JointGetRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[20]
+	mi := &file_app_robot_svc_g_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2598,7 +2700,7 @@ func (x *JointGetRequest) String() string {
 func (*JointGetRequest) ProtoMessage() {}
 
 func (x *JointGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[20]
+	mi := &file_app_robot_svc_g_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2678,7 +2780,7 @@ type JointRef struct {
 
 func (x *JointRef) Reset() {
 	*x = JointRef{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[21]
+	mi := &file_app_robot_svc_g_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2690,7 +2792,7 @@ func (x *JointRef) String() string {
 func (*JointRef) ProtoMessage() {}
 
 func (x *JointRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[21]
+	mi := &file_app_robot_svc_g_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2778,7 +2880,7 @@ func (b0 JointRef_builder) Build() *JointRef {
 type case_JointRef_Key protoreflect.FieldNumber
 
 func (x case_JointRef_Key) String() string {
-	md := file_app_robot_svc_g_proto_msgTypes[21].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[22].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -2809,7 +2911,7 @@ type JointSelect struct {
 
 func (x *JointSelect) Reset() {
 	*x = JointSelect{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[22]
+	mi := &file_app_robot_svc_g_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2821,7 +2923,7 @@ func (x *JointSelect) String() string {
 func (*JointSelect) ProtoMessage() {}
 
 func (x *JointSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[22]
+	mi := &file_app_robot_svc_g_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2967,7 +3069,7 @@ type JointPatchRequest struct {
 
 func (x *JointPatchRequest) Reset() {
 	*x = JointPatchRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[23]
+	mi := &file_app_robot_svc_g_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2979,7 +3081,7 @@ func (x *JointPatchRequest) String() string {
 func (*JointPatchRequest) ProtoMessage() {}
 
 func (x *JointPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[23]
+	mi := &file_app_robot_svc_g_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3068,7 +3170,7 @@ type JointApplyRequest struct {
 
 func (x *JointApplyRequest) Reset() {
 	*x = JointApplyRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[24]
+	mi := &file_app_robot_svc_g_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3080,7 +3182,7 @@ func (x *JointApplyRequest) String() string {
 func (*JointApplyRequest) ProtoMessage() {}
 
 func (x *JointApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[24]
+	mi := &file_app_robot_svc_g_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3163,7 +3265,7 @@ type FleetAddRequest struct {
 
 func (x *FleetAddRequest) Reset() {
 	*x = FleetAddRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[25]
+	mi := &file_app_robot_svc_g_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3175,7 +3277,7 @@ func (x *FleetAddRequest) String() string {
 func (*FleetAddRequest) ProtoMessage() {}
 
 func (x *FleetAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[25]
+	mi := &file_app_robot_svc_g_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3253,7 +3355,7 @@ type FleetGetRequest struct {
 
 func (x *FleetGetRequest) Reset() {
 	*x = FleetGetRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[26]
+	mi := &file_app_robot_svc_g_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3265,7 +3367,7 @@ func (x *FleetGetRequest) String() string {
 func (*FleetGetRequest) ProtoMessage() {}
 
 func (x *FleetGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[26]
+	mi := &file_app_robot_svc_g_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3345,7 +3447,7 @@ type FleetRef struct {
 
 func (x *FleetRef) Reset() {
 	*x = FleetRef{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[27]
+	mi := &file_app_robot_svc_g_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3357,7 +3459,7 @@ func (x *FleetRef) String() string {
 func (*FleetRef) ProtoMessage() {}
 
 func (x *FleetRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[27]
+	mi := &file_app_robot_svc_g_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3479,7 +3581,7 @@ func (b0 FleetRef_builder) Build() *FleetRef {
 type case_FleetRef_Key protoreflect.FieldNumber
 
 func (x case_FleetRef_Key) String() string {
-	md := file_app_robot_svc_g_proto_msgTypes[27].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[28].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -3515,7 +3617,7 @@ type FleetSelect struct {
 
 func (x *FleetSelect) Reset() {
 	*x = FleetSelect{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[28]
+	mi := &file_app_robot_svc_g_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3527,7 +3629,7 @@ func (x *FleetSelect) String() string {
 func (*FleetSelect) ProtoMessage() {}
 
 func (x *FleetSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[28]
+	mi := &file_app_robot_svc_g_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3649,7 +3751,7 @@ type FleetPatchRequest struct {
 
 func (x *FleetPatchRequest) Reset() {
 	*x = FleetPatchRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[29]
+	mi := &file_app_robot_svc_g_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3661,7 +3763,7 @@ func (x *FleetPatchRequest) String() string {
 func (*FleetPatchRequest) ProtoMessage() {}
 
 func (x *FleetPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[29]
+	mi := &file_app_robot_svc_g_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3750,7 +3852,7 @@ type FleetApplyRequest struct {
 
 func (x *FleetApplyRequest) Reset() {
 	*x = FleetApplyRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[30]
+	mi := &file_app_robot_svc_g_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3762,7 +3864,7 @@ func (x *FleetApplyRequest) String() string {
 func (*FleetApplyRequest) ProtoMessage() {}
 
 func (x *FleetApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[30]
+	mi := &file_app_robot_svc_g_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3847,7 +3949,7 @@ type ReadingAddRequest struct {
 
 func (x *ReadingAddRequest) Reset() {
 	*x = ReadingAddRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[31]
+	mi := &file_app_robot_svc_g_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3859,7 +3961,7 @@ func (x *ReadingAddRequest) String() string {
 func (*ReadingAddRequest) ProtoMessage() {}
 
 func (x *ReadingAddRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[31]
+	mi := &file_app_robot_svc_g_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3985,7 +4087,7 @@ type ReadingGetRequest struct {
 
 func (x *ReadingGetRequest) Reset() {
 	*x = ReadingGetRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[32]
+	mi := &file_app_robot_svc_g_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3997,7 +4099,7 @@ func (x *ReadingGetRequest) String() string {
 func (*ReadingGetRequest) ProtoMessage() {}
 
 func (x *ReadingGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[32]
+	mi := &file_app_robot_svc_g_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4077,7 +4179,7 @@ type ReadingRef struct {
 
 func (x *ReadingRef) Reset() {
 	*x = ReadingRef{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[33]
+	mi := &file_app_robot_svc_g_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4089,7 +4191,7 @@ func (x *ReadingRef) String() string {
 func (*ReadingRef) ProtoMessage() {}
 
 func (x *ReadingRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[33]
+	mi := &file_app_robot_svc_g_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4177,7 +4279,7 @@ func (b0 ReadingRef_builder) Build() *ReadingRef {
 type case_ReadingRef_Key protoreflect.FieldNumber
 
 func (x case_ReadingRef_Key) String() string {
-	md := file_app_robot_svc_g_proto_msgTypes[33].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[34].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -4208,7 +4310,7 @@ type ReadingSelect struct {
 
 func (x *ReadingSelect) Reset() {
 	*x = ReadingSelect{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[34]
+	mi := &file_app_robot_svc_g_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4220,7 +4322,7 @@ func (x *ReadingSelect) String() string {
 func (*ReadingSelect) ProtoMessage() {}
 
 func (x *ReadingSelect) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[34]
+	mi := &file_app_robot_svc_g_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4366,7 +4468,7 @@ type ReadingPatchRequest struct {
 
 func (x *ReadingPatchRequest) Reset() {
 	*x = ReadingPatchRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[35]
+	mi := &file_app_robot_svc_g_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4378,7 +4480,7 @@ func (x *ReadingPatchRequest) String() string {
 func (*ReadingPatchRequest) ProtoMessage() {}
 
 func (x *ReadingPatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[35]
+	mi := &file_app_robot_svc_g_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4464,7 +4566,7 @@ type ReadingApplyRequest struct {
 
 func (x *ReadingApplyRequest) Reset() {
 	*x = ReadingApplyRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[36]
+	mi := &file_app_robot_svc_g_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4476,7 +4578,7 @@ func (x *ReadingApplyRequest) String() string {
 func (*ReadingApplyRequest) ProtoMessage() {}
 
 func (x *ReadingApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[36]
+	mi := &file_app_robot_svc_g_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4633,7 +4735,10 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12 \n" +
 	"\x05value\x18\x02 \x01(\v2\n" +
 	".app.RobotR\x05value\x12\x1d\n" +
-	"\x06action\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action\"c\n" +
+	"\x06action\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action\"Q\n" +
+	"\x10RobotMoveRequest\x12\x1f\n" +
+	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12\x1c\n" +
+	"\x02to\x18\x02 \x01(\v2\f.app.CellRefR\x02to\"c\n" +
 	"\x0fJointAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12#\n" +
 	"\x05robot\x18\x02 \x01(\v2\r.app.RobotRefR\x05robot\x12\x1b\n" +
@@ -4705,7 +4810,7 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03Get\x12\x13.app.CellGetRequest\x1a\t.app.Cell\x12)\n" +
 	"\x05Patch\x12\x15.app.CellPatchRequest\x1a\t.app.Cell\x12)\n" +
 	"\x05Apply\x12\x15.app.CellApplyRequest\x1a\t.app.Cell\x12-\n" +
-	"\x05Erase\x12\f.app.CellRef\x1a\x16.google.protobuf.Empty2\xdd\x02\n" +
+	"\x05Erase\x12\f.app.CellRef\x1a\x16.google.protobuf.Empty2\x88\x03\n" +
 	"\fRobotService\x12'\n" +
 	"\x03Add\x12\x14.app.RobotAddRequest\x1a\n" +
 	".app.Robot\x12'\n" +
@@ -4717,7 +4822,9 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	".app.Robot\x12.\n" +
 	"\x05Erase\x12\r.app.RobotRef\x1a\x16.google.protobuf.Empty\x125\n" +
 	"\x04List\x12\x15.app.RobotListRequest\x1a\x16.app.RobotListResponse\x12:\n" +
-	"\x05Watch\x12\x16.app.RobotWatchRequest\x1a\x17.app.RobotWatchResponse0\x012\xea\x01\n" +
+	"\x05Watch\x12\x16.app.RobotWatchRequest\x1a\x17.app.RobotWatchResponse0\x01\x12)\n" +
+	"\x04Move\x12\x15.app.RobotMoveRequest\x1a\n" +
+	".app.Robot2\xea\x01\n" +
 	"\fJointService\x12'\n" +
 	"\x03Add\x12\x14.app.JointAddRequest\x1a\n" +
 	".app.Joint\x12'\n" +
@@ -4745,7 +4852,7 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x05Apply\x12\x18.app.ReadingApplyRequest\x1a\f.app.Reading\x120\n" +
 	"\x05Erase\x12\x0f.app.ReadingRef\x1a\x16.google.protobuf.EmptyB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_robot_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_app_robot_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_app_robot_svc_g_proto_goTypes = []any{
 	(*CellAddRequest)(nil),        // 0: app.CellAddRequest
 	(*CellGetRequest)(nil),        // 1: app.CellGetRequest
@@ -4766,143 +4873,148 @@ var file_app_robot_svc_g_proto_goTypes = []any{
 	(*RobotWatchRequest)(nil),     // 16: app.RobotWatchRequest
 	(*RobotWatchResponse)(nil),    // 17: app.RobotWatchResponse
 	(*RobotWatchItem)(nil),        // 18: app.RobotWatchItem
-	(*JointAddRequest)(nil),       // 19: app.JointAddRequest
-	(*JointGetRequest)(nil),       // 20: app.JointGetRequest
-	(*JointRef)(nil),              // 21: app.JointRef
-	(*JointSelect)(nil),           // 22: app.JointSelect
-	(*JointPatchRequest)(nil),     // 23: app.JointPatchRequest
-	(*JointApplyRequest)(nil),     // 24: app.JointApplyRequest
-	(*FleetAddRequest)(nil),       // 25: app.FleetAddRequest
-	(*FleetGetRequest)(nil),       // 26: app.FleetGetRequest
-	(*FleetRef)(nil),              // 27: app.FleetRef
-	(*FleetSelect)(nil),           // 28: app.FleetSelect
-	(*FleetPatchRequest)(nil),     // 29: app.FleetPatchRequest
-	(*FleetApplyRequest)(nil),     // 30: app.FleetApplyRequest
-	(*ReadingAddRequest)(nil),     // 31: app.ReadingAddRequest
-	(*ReadingGetRequest)(nil),     // 32: app.ReadingGetRequest
-	(*ReadingRef)(nil),            // 33: app.ReadingRef
-	(*ReadingSelect)(nil),         // 34: app.ReadingSelect
-	(*ReadingPatchRequest)(nil),   // 35: app.ReadingPatchRequest
-	(*ReadingApplyRequest)(nil),   // 36: app.ReadingApplyRequest
-	(*TenantRef)(nil),             // 37: app.TenantRef
-	(*TenantSelect)(nil),          // 38: app.TenantSelect
-	(*patchpb.Patch)(nil),         // 39: patch.Patch
-	(*timestamppb.Timestamp)(nil), // 40: google.protobuf.Timestamp
-	(*Robot)(nil),                 // 41: app.Robot
-	(*Cell)(nil),                  // 42: app.Cell
-	(*emptypb.Empty)(nil),         // 43: google.protobuf.Empty
-	(*Joint)(nil),                 // 44: app.Joint
-	(*Fleet)(nil),                 // 45: app.Fleet
-	(*Reading)(nil),               // 46: app.Reading
+	(*RobotMoveRequest)(nil),      // 19: app.RobotMoveRequest
+	(*JointAddRequest)(nil),       // 20: app.JointAddRequest
+	(*JointGetRequest)(nil),       // 21: app.JointGetRequest
+	(*JointRef)(nil),              // 22: app.JointRef
+	(*JointSelect)(nil),           // 23: app.JointSelect
+	(*JointPatchRequest)(nil),     // 24: app.JointPatchRequest
+	(*JointApplyRequest)(nil),     // 25: app.JointApplyRequest
+	(*FleetAddRequest)(nil),       // 26: app.FleetAddRequest
+	(*FleetGetRequest)(nil),       // 27: app.FleetGetRequest
+	(*FleetRef)(nil),              // 28: app.FleetRef
+	(*FleetSelect)(nil),           // 29: app.FleetSelect
+	(*FleetPatchRequest)(nil),     // 30: app.FleetPatchRequest
+	(*FleetApplyRequest)(nil),     // 31: app.FleetApplyRequest
+	(*ReadingAddRequest)(nil),     // 32: app.ReadingAddRequest
+	(*ReadingGetRequest)(nil),     // 33: app.ReadingGetRequest
+	(*ReadingRef)(nil),            // 34: app.ReadingRef
+	(*ReadingSelect)(nil),         // 35: app.ReadingSelect
+	(*ReadingPatchRequest)(nil),   // 36: app.ReadingPatchRequest
+	(*ReadingApplyRequest)(nil),   // 37: app.ReadingApplyRequest
+	(*TenantRef)(nil),             // 38: app.TenantRef
+	(*TenantSelect)(nil),          // 39: app.TenantSelect
+	(*patchpb.Patch)(nil),         // 40: patch.Patch
+	(*timestamppb.Timestamp)(nil), // 41: google.protobuf.Timestamp
+	(*Robot)(nil),                 // 42: app.Robot
+	(*Cell)(nil),                  // 43: app.Cell
+	(*emptypb.Empty)(nil),         // 44: google.protobuf.Empty
+	(*Joint)(nil),                 // 45: app.Joint
+	(*Fleet)(nil),                 // 46: app.Fleet
+	(*Reading)(nil),               // 47: app.Reading
 }
 var file_app_robot_svc_g_proto_depIdxs = []int32{
-	37, // 0: app.CellAddRequest.tenant:type_name -> app.TenantRef
+	38, // 0: app.CellAddRequest.tenant:type_name -> app.TenantRef
 	2,  // 1: app.CellGetRequest.ref:type_name -> app.CellRef
 	3,  // 2: app.CellGetRequest.select:type_name -> app.CellSelect
-	38, // 3: app.CellSelect.tenant:type_name -> app.TenantSelect
+	39, // 3: app.CellSelect.tenant:type_name -> app.TenantSelect
 	2,  // 4: app.CellPatchRequest.ref:type_name -> app.CellRef
 	2,  // 5: app.CellApplyRequest.ref:type_name -> app.CellRef
-	39, // 6: app.CellApplyRequest.patch:type_name -> patch.Patch
-	37, // 7: app.RobotAddRequest.tenant:type_name -> app.TenantRef
+	40, // 6: app.CellApplyRequest.patch:type_name -> patch.Patch
+	38, // 7: app.RobotAddRequest.tenant:type_name -> app.TenantRef
 	2,  // 8: app.RobotAddRequest.cell:type_name -> app.CellRef
-	40, // 9: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	41, // 9: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
 	8,  // 10: app.RobotGetRequest.ref:type_name -> app.RobotRef
 	10, // 11: app.RobotGetRequest.select:type_name -> app.RobotSelect
 	9,  // 12: app.RobotRef.slug:type_name -> app.RobotRefBySlug
-	37, // 13: app.RobotRefBySlug.tenant:type_name -> app.TenantRef
-	38, // 14: app.RobotSelect.tenant:type_name -> app.TenantSelect
+	38, // 13: app.RobotRefBySlug.tenant:type_name -> app.TenantRef
+	39, // 14: app.RobotSelect.tenant:type_name -> app.TenantSelect
 	3,  // 15: app.RobotSelect.cell:type_name -> app.CellSelect
 	8,  // 16: app.RobotPatchRequest.ref:type_name -> app.RobotRef
 	2,  // 17: app.RobotPatchRequest.cell:type_name -> app.CellRef
-	40, // 18: app.RobotPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	41, // 18: app.RobotPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
 	8,  // 19: app.RobotApplyRequest.ref:type_name -> app.RobotRef
-	39, // 20: app.RobotApplyRequest.patch:type_name -> patch.Patch
+	40, // 20: app.RobotApplyRequest.patch:type_name -> patch.Patch
 	15, // 21: app.RobotListRequest.filters:type_name -> app.RobotFilter
-	41, // 22: app.RobotListResponse.items:type_name -> app.Robot
+	42, // 22: app.RobotListResponse.items:type_name -> app.Robot
 	8,  // 23: app.RobotFilter.ref:type_name -> app.RobotRef
-	37, // 24: app.RobotFilter.tenant:type_name -> app.TenantRef
+	38, // 24: app.RobotFilter.tenant:type_name -> app.TenantRef
 	15, // 25: app.RobotWatchRequest.filters:type_name -> app.RobotFilter
 	18, // 26: app.RobotWatchResponse.items:type_name -> app.RobotWatchItem
-	41, // 27: app.RobotWatchItem.value:type_name -> app.Robot
-	8,  // 28: app.JointAddRequest.robot:type_name -> app.RobotRef
-	21, // 29: app.JointGetRequest.ref:type_name -> app.JointRef
-	22, // 30: app.JointGetRequest.select:type_name -> app.JointSelect
-	10, // 31: app.JointSelect.robot:type_name -> app.RobotSelect
-	21, // 32: app.JointPatchRequest.ref:type_name -> app.JointRef
-	21, // 33: app.JointApplyRequest.ref:type_name -> app.JointRef
-	39, // 34: app.JointApplyRequest.patch:type_name -> patch.Patch
-	27, // 35: app.FleetGetRequest.ref:type_name -> app.FleetRef
-	28, // 36: app.FleetGetRequest.select:type_name -> app.FleetSelect
-	27, // 37: app.FleetPatchRequest.ref:type_name -> app.FleetRef
-	27, // 38: app.FleetApplyRequest.ref:type_name -> app.FleetRef
-	39, // 39: app.FleetApplyRequest.patch:type_name -> patch.Patch
-	8,  // 40: app.ReadingAddRequest.robot:type_name -> app.RobotRef
-	40, // 41: app.ReadingAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	33, // 42: app.ReadingGetRequest.ref:type_name -> app.ReadingRef
-	34, // 43: app.ReadingGetRequest.select:type_name -> app.ReadingSelect
-	10, // 44: app.ReadingSelect.robot:type_name -> app.RobotSelect
-	33, // 45: app.ReadingPatchRequest.ref:type_name -> app.ReadingRef
-	33, // 46: app.ReadingApplyRequest.ref:type_name -> app.ReadingRef
-	39, // 47: app.ReadingApplyRequest.patch:type_name -> patch.Patch
-	0,  // 48: app.CellService.Add:input_type -> app.CellAddRequest
-	1,  // 49: app.CellService.Get:input_type -> app.CellGetRequest
-	4,  // 50: app.CellService.Patch:input_type -> app.CellPatchRequest
-	5,  // 51: app.CellService.Apply:input_type -> app.CellApplyRequest
-	2,  // 52: app.CellService.Erase:input_type -> app.CellRef
-	6,  // 53: app.RobotService.Add:input_type -> app.RobotAddRequest
-	7,  // 54: app.RobotService.Get:input_type -> app.RobotGetRequest
-	11, // 55: app.RobotService.Patch:input_type -> app.RobotPatchRequest
-	12, // 56: app.RobotService.Apply:input_type -> app.RobotApplyRequest
-	8,  // 57: app.RobotService.Erase:input_type -> app.RobotRef
-	13, // 58: app.RobotService.List:input_type -> app.RobotListRequest
-	16, // 59: app.RobotService.Watch:input_type -> app.RobotWatchRequest
-	19, // 60: app.JointService.Add:input_type -> app.JointAddRequest
-	20, // 61: app.JointService.Get:input_type -> app.JointGetRequest
-	23, // 62: app.JointService.Patch:input_type -> app.JointPatchRequest
-	24, // 63: app.JointService.Apply:input_type -> app.JointApplyRequest
-	21, // 64: app.JointService.Erase:input_type -> app.JointRef
-	25, // 65: app.FleetService.Add:input_type -> app.FleetAddRequest
-	26, // 66: app.FleetService.Get:input_type -> app.FleetGetRequest
-	29, // 67: app.FleetService.Patch:input_type -> app.FleetPatchRequest
-	30, // 68: app.FleetService.Apply:input_type -> app.FleetApplyRequest
-	27, // 69: app.FleetService.Erase:input_type -> app.FleetRef
-	31, // 70: app.ReadingService.Add:input_type -> app.ReadingAddRequest
-	32, // 71: app.ReadingService.Get:input_type -> app.ReadingGetRequest
-	35, // 72: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
-	36, // 73: app.ReadingService.Apply:input_type -> app.ReadingApplyRequest
-	33, // 74: app.ReadingService.Erase:input_type -> app.ReadingRef
-	42, // 75: app.CellService.Add:output_type -> app.Cell
-	42, // 76: app.CellService.Get:output_type -> app.Cell
-	42, // 77: app.CellService.Patch:output_type -> app.Cell
-	42, // 78: app.CellService.Apply:output_type -> app.Cell
-	43, // 79: app.CellService.Erase:output_type -> google.protobuf.Empty
-	41, // 80: app.RobotService.Add:output_type -> app.Robot
-	41, // 81: app.RobotService.Get:output_type -> app.Robot
-	41, // 82: app.RobotService.Patch:output_type -> app.Robot
-	41, // 83: app.RobotService.Apply:output_type -> app.Robot
-	43, // 84: app.RobotService.Erase:output_type -> google.protobuf.Empty
-	14, // 85: app.RobotService.List:output_type -> app.RobotListResponse
-	17, // 86: app.RobotService.Watch:output_type -> app.RobotWatchResponse
-	44, // 87: app.JointService.Add:output_type -> app.Joint
-	44, // 88: app.JointService.Get:output_type -> app.Joint
-	44, // 89: app.JointService.Patch:output_type -> app.Joint
-	44, // 90: app.JointService.Apply:output_type -> app.Joint
-	43, // 91: app.JointService.Erase:output_type -> google.protobuf.Empty
-	45, // 92: app.FleetService.Add:output_type -> app.Fleet
-	45, // 93: app.FleetService.Get:output_type -> app.Fleet
-	45, // 94: app.FleetService.Patch:output_type -> app.Fleet
-	45, // 95: app.FleetService.Apply:output_type -> app.Fleet
-	43, // 96: app.FleetService.Erase:output_type -> google.protobuf.Empty
-	46, // 97: app.ReadingService.Add:output_type -> app.Reading
-	46, // 98: app.ReadingService.Get:output_type -> app.Reading
-	46, // 99: app.ReadingService.Patch:output_type -> app.Reading
-	46, // 100: app.ReadingService.Apply:output_type -> app.Reading
-	43, // 101: app.ReadingService.Erase:output_type -> google.protobuf.Empty
-	75, // [75:102] is the sub-list for method output_type
-	48, // [48:75] is the sub-list for method input_type
-	48, // [48:48] is the sub-list for extension type_name
-	48, // [48:48] is the sub-list for extension extendee
-	0,  // [0:48] is the sub-list for field type_name
+	42, // 27: app.RobotWatchItem.value:type_name -> app.Robot
+	8,  // 28: app.RobotMoveRequest.ref:type_name -> app.RobotRef
+	2,  // 29: app.RobotMoveRequest.to:type_name -> app.CellRef
+	8,  // 30: app.JointAddRequest.robot:type_name -> app.RobotRef
+	22, // 31: app.JointGetRequest.ref:type_name -> app.JointRef
+	23, // 32: app.JointGetRequest.select:type_name -> app.JointSelect
+	10, // 33: app.JointSelect.robot:type_name -> app.RobotSelect
+	22, // 34: app.JointPatchRequest.ref:type_name -> app.JointRef
+	22, // 35: app.JointApplyRequest.ref:type_name -> app.JointRef
+	40, // 36: app.JointApplyRequest.patch:type_name -> patch.Patch
+	28, // 37: app.FleetGetRequest.ref:type_name -> app.FleetRef
+	29, // 38: app.FleetGetRequest.select:type_name -> app.FleetSelect
+	28, // 39: app.FleetPatchRequest.ref:type_name -> app.FleetRef
+	28, // 40: app.FleetApplyRequest.ref:type_name -> app.FleetRef
+	40, // 41: app.FleetApplyRequest.patch:type_name -> patch.Patch
+	8,  // 42: app.ReadingAddRequest.robot:type_name -> app.RobotRef
+	41, // 43: app.ReadingAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	34, // 44: app.ReadingGetRequest.ref:type_name -> app.ReadingRef
+	35, // 45: app.ReadingGetRequest.select:type_name -> app.ReadingSelect
+	10, // 46: app.ReadingSelect.robot:type_name -> app.RobotSelect
+	34, // 47: app.ReadingPatchRequest.ref:type_name -> app.ReadingRef
+	34, // 48: app.ReadingApplyRequest.ref:type_name -> app.ReadingRef
+	40, // 49: app.ReadingApplyRequest.patch:type_name -> patch.Patch
+	0,  // 50: app.CellService.Add:input_type -> app.CellAddRequest
+	1,  // 51: app.CellService.Get:input_type -> app.CellGetRequest
+	4,  // 52: app.CellService.Patch:input_type -> app.CellPatchRequest
+	5,  // 53: app.CellService.Apply:input_type -> app.CellApplyRequest
+	2,  // 54: app.CellService.Erase:input_type -> app.CellRef
+	6,  // 55: app.RobotService.Add:input_type -> app.RobotAddRequest
+	7,  // 56: app.RobotService.Get:input_type -> app.RobotGetRequest
+	11, // 57: app.RobotService.Patch:input_type -> app.RobotPatchRequest
+	12, // 58: app.RobotService.Apply:input_type -> app.RobotApplyRequest
+	8,  // 59: app.RobotService.Erase:input_type -> app.RobotRef
+	13, // 60: app.RobotService.List:input_type -> app.RobotListRequest
+	16, // 61: app.RobotService.Watch:input_type -> app.RobotWatchRequest
+	19, // 62: app.RobotService.Move:input_type -> app.RobotMoveRequest
+	20, // 63: app.JointService.Add:input_type -> app.JointAddRequest
+	21, // 64: app.JointService.Get:input_type -> app.JointGetRequest
+	24, // 65: app.JointService.Patch:input_type -> app.JointPatchRequest
+	25, // 66: app.JointService.Apply:input_type -> app.JointApplyRequest
+	22, // 67: app.JointService.Erase:input_type -> app.JointRef
+	26, // 68: app.FleetService.Add:input_type -> app.FleetAddRequest
+	27, // 69: app.FleetService.Get:input_type -> app.FleetGetRequest
+	30, // 70: app.FleetService.Patch:input_type -> app.FleetPatchRequest
+	31, // 71: app.FleetService.Apply:input_type -> app.FleetApplyRequest
+	28, // 72: app.FleetService.Erase:input_type -> app.FleetRef
+	32, // 73: app.ReadingService.Add:input_type -> app.ReadingAddRequest
+	33, // 74: app.ReadingService.Get:input_type -> app.ReadingGetRequest
+	36, // 75: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
+	37, // 76: app.ReadingService.Apply:input_type -> app.ReadingApplyRequest
+	34, // 77: app.ReadingService.Erase:input_type -> app.ReadingRef
+	43, // 78: app.CellService.Add:output_type -> app.Cell
+	43, // 79: app.CellService.Get:output_type -> app.Cell
+	43, // 80: app.CellService.Patch:output_type -> app.Cell
+	43, // 81: app.CellService.Apply:output_type -> app.Cell
+	44, // 82: app.CellService.Erase:output_type -> google.protobuf.Empty
+	42, // 83: app.RobotService.Add:output_type -> app.Robot
+	42, // 84: app.RobotService.Get:output_type -> app.Robot
+	42, // 85: app.RobotService.Patch:output_type -> app.Robot
+	42, // 86: app.RobotService.Apply:output_type -> app.Robot
+	44, // 87: app.RobotService.Erase:output_type -> google.protobuf.Empty
+	14, // 88: app.RobotService.List:output_type -> app.RobotListResponse
+	17, // 89: app.RobotService.Watch:output_type -> app.RobotWatchResponse
+	42, // 90: app.RobotService.Move:output_type -> app.Robot
+	45, // 91: app.JointService.Add:output_type -> app.Joint
+	45, // 92: app.JointService.Get:output_type -> app.Joint
+	45, // 93: app.JointService.Patch:output_type -> app.Joint
+	45, // 94: app.JointService.Apply:output_type -> app.Joint
+	44, // 95: app.JointService.Erase:output_type -> google.protobuf.Empty
+	46, // 96: app.FleetService.Add:output_type -> app.Fleet
+	46, // 97: app.FleetService.Get:output_type -> app.Fleet
+	46, // 98: app.FleetService.Patch:output_type -> app.Fleet
+	46, // 99: app.FleetService.Apply:output_type -> app.Fleet
+	44, // 100: app.FleetService.Erase:output_type -> google.protobuf.Empty
+	47, // 101: app.ReadingService.Add:output_type -> app.Reading
+	47, // 102: app.ReadingService.Get:output_type -> app.Reading
+	47, // 103: app.ReadingService.Patch:output_type -> app.Reading
+	47, // 104: app.ReadingService.Apply:output_type -> app.Reading
+	44, // 105: app.ReadingService.Erase:output_type -> google.protobuf.Empty
+	78, // [78:106] is the sub-list for method output_type
+	50, // [50:78] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_svc_g_proto_init() }
@@ -4919,14 +5031,14 @@ func file_app_robot_svc_g_proto_init() {
 		(*robotRef_Id)(nil),
 		(*robotRef_Slug)(nil),
 	}
-	file_app_robot_svc_g_proto_msgTypes[21].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[22].OneofWrappers = []any{
 		(*jointRef_Id)(nil),
 	}
-	file_app_robot_svc_g_proto_msgTypes[27].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[28].OneofWrappers = []any{
 		(*fleetRef_Id)(nil),
 		(*fleetRef_Alias)(nil),
 	}
-	file_app_robot_svc_g_proto_msgTypes[33].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[34].OneofWrappers = []any{
 		(*readingRef_Id)(nil),
 	}
 	type x struct{}
@@ -4935,7 +5047,7 @@ func file_app_robot_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_robot_svc_g_proto_rawDesc), len(file_app_robot_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   37,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   5,
 		},

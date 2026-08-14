@@ -3190,6 +3190,19 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 
 		return anypb.New(res)
 
+	case apptest.RobotService_Move_FullMethodName:
+		v := &apptest.RobotMoveRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Robot().Move(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
 	case apptest.JointService_Add_FullMethodName:
 		v := &apptest.JointAddRequest{}
 		if err := op.GetRequest().UnmarshalTo(v); err != nil {

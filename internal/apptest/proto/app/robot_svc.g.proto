@@ -47,6 +47,24 @@ service RobotService {
   // once in that first message and once as a change that happened while it was
   // being read -- and that is harmless for the same reason.
   rpc Watch(RobotWatchRequest) returns (stream RobotWatchResponse);
+  // Move puts a robot in another cell.
+  //
+  // # Why it cannot be a Patch
+  //
+  // `Robot.cell` is mutable and nullable, so `Patch` could set it -- which is
+  // exactly why `Patch` and `Apply` are closed at the transport. A general
+  // write sets any field the schema has, so a rule attached to one field is a
+  // rule it walks past. This is where the rule lives, and closing the general
+  // writes is what makes it the only door.
+  //
+  // # What the cell is
+  //
+  // Field 3, which in payday is the set a row is in -- the second narrowing,
+  // under the tenant. So this is not an ordinary field write: it moves a row
+  // between the groups a caller's grant is written in terms of, and after it
+  // the same caller may no longer be able to read the row it just moved. That
+  // is the whole reason it is worth being an operation somebody can point at.
+  rpc Move(RobotMoveRequest) returns (Robot);
 }
 
 service JointService {
@@ -271,6 +289,21 @@ message RobotWatchItem {
   // Empty in the first message, which is not something anybody asked for -- it
   // is what is already there.
   string action = 3 [features.field_presence = IMPLICIT];
+}
+
+message RobotMoveRequest {
+  // The robot, named the way anything else names one. It is read through the
+  // wall, so a caller who cannot see it is told NotFound rather than refused --
+  // that it exists is itself something not to say.
+  RobotRef ref = 1;
+
+  // Where it goes, and null is a legitimate answer: `Robot.cell` is nullable,
+  // so taking a robot out of every cell is a move like any other.
+  //
+  // Whether the caller may name this cell is the whole of the rule, and it is
+  // not a predicate: the row has not moved yet, so there is nothing to narrow.
+  // It is read through the wall for the same reason the robot is.
+  CellRef to = 2;
 }
 
 message JointAddRequest {

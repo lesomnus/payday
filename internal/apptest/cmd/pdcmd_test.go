@@ -561,33 +561,47 @@ func TestAnIdentifierCanBeWrittenAsAUuid(t *testing.T) {
 //
 // It reaches a method by name and does not care where the method came from: an
 // overlay and `pd gen` write into the same `ServiceDescriptor`, merged before
-// generation. `Apply` stands in for one here because it is a real method this
-// tree deliberately does not build -- the same position an app's own RPC is in.
+// generation. This app has one -- `RobotService.Move`, declared in
+// `proto/ext/app/robot_svc.ext.proto` and answered in `server/core` -- so that
+// is what is used here rather than something standing in for it.
 func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 	b, ctx := build(t)
 	conn := b.dialed(t, ctx)
 	as := b.travels(ctx)
 
-	t.Run("it is mounted where the app says", func(t *testing.T) {
+	t.Run("the RPC this app declared", func(t *testing.T) {
 		x := require.New(t)
+
+		tenant := app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build()
+		cell, err := b.Ungated.Cell().Add(ctx, app.CellAddRequest_builder{
+			Tenant: tenant, Alias: "floor-7",
+		}.Build())
+		x.NoError(err)
+		_, err = b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: tenant, Alias: "arm-07",
+		}.Build())
+		x.NoError(err)
 
 		tree, err := pdcmd.New(conn)
 		x.NoError(err)
-		x.Nil(tree.Command("holder/show"), "nothing generated this")
+		x.Nil(tree.Command("robot/move"), "the five verbs do not include it")
 
-		c, err := tree.Unary("app.HolderService.Get")
+		c, err := tree.Unary("app.RobotService.Move")
 		x.NoError(err)
-		x.NoError(tree.Add("holder/show", c))
+		x.NoError(tree.Add("robot/move", c))
 
 		root := &xli.Command{Name: "app", Commands: tree.Commands()}
-		got := xlitest.Harness{Cmd: root, Ctx: as}.Run(t, "holder", "show", "@acme/admin")
+		got := xlitest.Harness{Cmd: root, Ctx: as}.Run(t,
+			"robot", "move", "@acme/arm-07",
+			fmt.Sprintf(`{"to":{"id":"%s"}}`, mustId(x, cell.GetId())))
 
 		x.NoError(got.Err)
-		x.Contains(got.Stdout, "admin")
-		x.Contains(got.Stdout, b.Holder.String())
+		x.Contains(got.Stdout, "arm-07")
+		x.Contains(got.Stdout, mustId(x, cell.GetId()).String(),
+			"and it is in the cell it was moved to")
 	})
 
-	t.Run("and a method the tree does not build still travels", func(t *testing.T) {
+	t.Run("and one payday generated but does not build", func(t *testing.T) {
 		x := require.New(t)
 
 		tree, err := pdcmd.New(conn)
@@ -671,4 +685,12 @@ func TestWhichAppThisConnectionSpeaksTo(t *testing.T) {
 	// A package with no entities builds an empty tree rather than failing, so
 	// that a caller naming the wrong one finds out from the tree it got.
 	x.Empty(pdcmd.NewIn(conn, "payday").Commands())
+}
+
+// mustId is a `bytes` identifier as the uuid a command line carries.
+func mustId(x *require.Assertions, b []byte) pdid.Id {
+	v, err := pdid.From(b)
+	x.NoError(err)
+
+	return v
 }

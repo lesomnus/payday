@@ -291,6 +291,7 @@ const (
 	RobotService_Erase_FullMethodName = "/app.RobotService/Erase"
 	RobotService_List_FullMethodName  = "/app.RobotService/List"
 	RobotService_Watch_FullMethodName = "/app.RobotService/Watch"
+	RobotService_Move_FullMethodName  = "/app.RobotService/Move"
 )
 
 // RobotServiceClient is the client API for RobotService service.
@@ -321,6 +322,24 @@ type RobotServiceClient interface {
 	// once in that first message and once as a change that happened while it was
 	// being read -- and that is harmless for the same reason.
 	Watch(ctx context.Context, in *RobotWatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[RobotWatchResponse], error)
+	// Move puts a robot in another cell.
+	//
+	// # Why it cannot be a Patch
+	//
+	// `Robot.cell` is mutable and nullable, so `Patch` could set it -- which is
+	// exactly why `Patch` and `Apply` are closed at the transport. A general
+	// write sets any field the schema has, so a rule attached to one field is a
+	// rule it walks past. This is where the rule lives, and closing the general
+	// writes is what makes it the only door.
+	//
+	// # What the cell is
+	//
+	// Field 3, which in payday is the set a row is in -- the second narrowing,
+	// under the tenant. So this is not an ordinary field write: it moves a row
+	// between the groups a caller's grant is written in terms of, and after it
+	// the same caller may no longer be able to read the row it just moved. That
+	// is the whole reason it is worth being an operation somebody can point at.
+	Move(ctx context.Context, in *RobotMoveRequest, opts ...grpc.CallOption) (*Robot, error)
 }
 
 type robotServiceClient struct {
@@ -410,6 +429,16 @@ func (c *robotServiceClient) Watch(ctx context.Context, in *RobotWatchRequest, o
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type RobotService_WatchClient = grpc.ServerStreamingClient[RobotWatchResponse]
 
+func (c *robotServiceClient) Move(ctx context.Context, in *RobotMoveRequest, opts ...grpc.CallOption) (*Robot, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Robot)
+	err := c.cc.Invoke(ctx, RobotService_Move_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RobotServiceServer is the server API for RobotService service.
 // All implementations must embed UnimplementedRobotServiceServer
 // for forward compatibility.
@@ -438,6 +467,24 @@ type RobotServiceServer interface {
 	// once in that first message and once as a change that happened while it was
 	// being read -- and that is harmless for the same reason.
 	Watch(*RobotWatchRequest, grpc.ServerStreamingServer[RobotWatchResponse]) error
+	// Move puts a robot in another cell.
+	//
+	// # Why it cannot be a Patch
+	//
+	// `Robot.cell` is mutable and nullable, so `Patch` could set it -- which is
+	// exactly why `Patch` and `Apply` are closed at the transport. A general
+	// write sets any field the schema has, so a rule attached to one field is a
+	// rule it walks past. This is where the rule lives, and closing the general
+	// writes is what makes it the only door.
+	//
+	// # What the cell is
+	//
+	// Field 3, which in payday is the set a row is in -- the second narrowing,
+	// under the tenant. So this is not an ordinary field write: it moves a row
+	// between the groups a caller's grant is written in terms of, and after it
+	// the same caller may no longer be able to read the row it just moved. That
+	// is the whole reason it is worth being an operation somebody can point at.
+	Move(context.Context, *RobotMoveRequest) (*Robot, error)
 	mustEmbedUnimplementedRobotServiceServer()
 }
 
@@ -468,6 +515,9 @@ func (UnimplementedRobotServiceServer) List(context.Context, *RobotListRequest) 
 }
 func (UnimplementedRobotServiceServer) Watch(*RobotWatchRequest, grpc.ServerStreamingServer[RobotWatchResponse]) error {
 	return status.Error(codes.Unimplemented, "method Watch not implemented")
+}
+func (UnimplementedRobotServiceServer) Move(context.Context, *RobotMoveRequest) (*Robot, error) {
+	return nil, status.Error(codes.Unimplemented, "method Move not implemented")
 }
 func (UnimplementedRobotServiceServer) mustEmbedUnimplementedRobotServiceServer() {}
 func (UnimplementedRobotServiceServer) testEmbeddedByValue()                      {}
@@ -609,6 +659,24 @@ func _RobotService_Watch_Handler(srv interface{}, stream grpc.ServerStream) erro
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type RobotService_WatchServer = grpc.ServerStreamingServer[RobotWatchResponse]
 
+func _RobotService_Move_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RobotMoveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RobotServiceServer).Move(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RobotService_Move_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RobotServiceServer).Move(ctx, req.(*RobotMoveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RobotService_ServiceDesc is the grpc.ServiceDesc for RobotService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -639,6 +707,10 @@ var RobotService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _RobotService_List_Handler,
+		},
+		{
+			MethodName: "Move",
+			Handler:    _RobotService_Move_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
