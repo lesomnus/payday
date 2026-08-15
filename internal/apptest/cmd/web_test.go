@@ -42,7 +42,7 @@ func (b *built) serving(t *testing.T) *httptest.Server {
 	h, err := web.New(config.HttpConfig{
 		AllowWeb: true,
 		Origins:  []string{"http://localhost:5173"},
-	}, b.Grpc(t.Context(), cmd0))
+	}, b.grpc(t))
 	x.NoError(err)
 
 	// The app's own, which is the half payday cannot fill: `auth` reads a
@@ -330,7 +330,7 @@ func TestAnAddressWithNothingConfiguredIsStillAMux(t *testing.T) {
 	x := require.New(t)
 	b, _ := build(t)
 
-	h, err := web.New(config.HttpConfig{Addr: ":8080"}, b.Grpc(t.Context(), cmd0))
+	h, err := web.New(config.HttpConfig{Addr: ":8080"}, b.grpc(t))
 	x.NoError(err)
 	x.NotNil(h)
 
@@ -366,7 +366,7 @@ func TestTheBrowserPortCarriesGrpcToo(t *testing.T) {
 	}.Build())
 	x.NoError(err)
 
-	h, err := web.New(config.HttpConfig{AllowWeb: true}, b.Grpc(t.Context(), cmd0))
+	h, err := web.New(config.HttpConfig{AllowWeb: true}, b.grpc(t))
 	x.NoError(err)
 
 	// Cleartext would be HTTP/1.1, which is the whole reason this is its own

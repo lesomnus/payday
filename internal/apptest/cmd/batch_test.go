@@ -383,7 +383,7 @@ func TestABatchIsOneEventOverTheWire(t *testing.T) {
 	events, stop := b.Watch.Subscribe()
 	defer stop()
 
-	conn := pdtest.Serve(t, b.Grpc(t.Context(), cmd0, pdtest.Logging(t)))
+	conn := pdtest.Serve(t, b.grpc(t, pdtest.Logging(t)))
 
 	_, err := pdpb.NewBatchServiceClient(conn).Do(b.travels(ctx), pdpb.BatchRequest_builder{
 		Ops: []*pdpb.Op{

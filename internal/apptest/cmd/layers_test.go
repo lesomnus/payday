@@ -6,6 +6,7 @@ import (
 
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -77,6 +78,20 @@ func build(t *testing.T) (*built, context.Context) {
 	x.NoError(err)
 
 	return &built{Server: s, Tenant: tk, Holder: hk}, ctx
+}
+
+// grpc is this app's server, built.
+//
+// A helper because [cmd.Server.Grpc] answers with an error now -- a certificate
+// that cannot be read is a server that must not start -- and unpacking that at
+// twenty call sites would say the same thing twenty times.
+func (b *built) grpc(t *testing.T, opts ...grpc.ServerOption) *grpc.Server {
+	t.Helper()
+
+	g, err := b.Grpc(t.Context(), cmd0, opts...)
+	require.NoError(t, err)
+
+	return g
 }
 
 // as is a context carrying who a request is from, for a call made directly

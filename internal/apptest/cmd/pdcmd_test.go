@@ -38,7 +38,7 @@ import (
 // dialed is the app, reachable, with a connection a command can be handed.
 func (b *built) dialed(t *testing.T, ctx context.Context) *grpc.ClientConn {
 	t.Helper()
-	return pdtest.Serve(t, b.Grpc(ctx, cmd0, pdtest.Logging(t)))
+	return pdtest.Serve(t, b.grpc(t, pdtest.Logging(t)))
 }
 
 // rooted is a fresh command tree on `conn`.

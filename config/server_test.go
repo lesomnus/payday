@@ -1,10 +1,25 @@
 package config_test
 
 import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
+	"net"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/grpcx"
@@ -15,7 +30,14 @@ func TestServerConfig(t *testing.T) {
 		x := require.New(t)
 
 		c := config.ServerConfig{}
-		x.Empty(c.GrpcOptions())
+		vs, err := c.GrpcOptions()
+		x.NoError(err)
+
+		// One: the credentials, which are the insecure ones when nothing said
+		// anything -- the same server `grpc.NewServer` builds on its own, and
+		// passed unconditionally so that the branch which would decide cannot
+		// be wrong.
+		x.Len(vs, 1)
 
 		// And what a caller may reach for is off: an unwritten field is a
 		// deployment that did not ask, and neither of these is served to
@@ -35,8 +57,10 @@ func TestServerConfig(t *testing.T) {
 			},
 		}
 
-		// A size, a stream limit, the parameters and the policy.
-		x.Len(c.GrpcOptions(), 4)
+		// The credentials, a size, a stream limit, the parameters and the policy.
+		vs, err := c.GrpcOptions()
+		x.NoError(err)
+		x.Len(vs, 5)
 	})
 	t.Run("an address nobody gave is one somebody can reach", func(t *testing.T) {
 		x := require.New(t)
@@ -127,4 +151,88 @@ func TestHttpConfig(t *testing.T) {
 		is := config.HttpConfig{Origins: []string{"*"}}.Origin()
 		x.True(is("https://anywhere.at.all"))
 	})
+}
+
+// TestTLSIsActuallyServed is the whole of why `GrpcOptions` answers with an
+// error.
+//
+// `ServerConfig.TLS` was a block a deployment could write and nothing read: not
+// this function, not the template `pd new` writes, not payday's own test app. A
+// deployment that configured a certificate got a plaintext listener and no
+// complaint -- which is the direction nobody notices, because the port answers
+// and the calls work.
+func TestTLSIsActuallyServed(t *testing.T) {
+	t.Run("a certificate that cannot be read is a server that does not start", func(t *testing.T) {
+		x := require.New(t)
+
+		c := config.ServerConfig{TLS: config.TLSConfig{
+			CertFile: filepath.Join(t.TempDir(), "nowhere.pem"),
+			KeyFile:  filepath.Join(t.TempDir(), "nowhere.key"),
+		}}
+
+		_, err := c.GrpcOptions()
+		x.Error(err, "it used to answer with options that quietly served plaintext")
+		x.Contains(err.Error(), "tls")
+	})
+
+	t.Run("and one that can be read is served", func(t *testing.T) {
+		x := require.New(t)
+
+		dir := t.TempDir()
+		cert, key := filepath.Join(dir, "c.pem"), filepath.Join(dir, "k.pem")
+		writeCert(t, cert, key)
+
+		c := config.ServerConfig{TLS: config.TLSConfig{CertFile: cert, KeyFile: key}}
+
+		vs, err := c.GrpcOptions()
+		x.NoError(err)
+		x.Len(vs, 1)
+
+		// The server it builds speaks TLS, which is the thing a count of
+		// options cannot say. A plaintext dial gets nowhere.
+		g := grpc.NewServer(vs...)
+		t.Cleanup(g.Stop)
+
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		x.NoError(err)
+		go func() { _ = g.Serve(l) }()
+
+		conn, err := grpc.NewClient(l.Addr().String(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()))
+		x.NoError(err)
+		t.Cleanup(func() { conn.Close() })
+
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+		defer cancel()
+
+		err = conn.Invoke(ctx, "/nothing.Service/Nothing", &emptypb.Empty{}, &emptypb.Empty{})
+		x.Error(err, "a plaintext caller reached a TLS listener and was answered")
+		x.NotEqual(codes.Unimplemented, status.Code(err),
+			"Unimplemented would mean the handshake succeeded and the method was missing")
+	})
+}
+
+// writeCert puts a self-signed certificate and its key on disk.
+func writeCert(t *testing.T, certFile, keyFile string) {
+	t.Helper()
+	x := require.New(t)
+
+	k, err := rsa.GenerateKey(rand.Reader, 2048)
+	x.NoError(err)
+
+	tpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, tpl, tpl, &k.PublicKey, k)
+	x.NoError(err)
+
+	x.NoError(os.WriteFile(certFile,
+		pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600))
+	x.NoError(os.WriteFile(keyFile,
+		pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(k)}), 0o600))
 }

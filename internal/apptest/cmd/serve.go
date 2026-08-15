@@ -196,7 +196,7 @@ func (s *Server) Close() error { return s.Db.Close() }
 //
 // It is separate from [Server.Serve] so that a test can travel exactly this
 // and answer on a listener that is a channel; see pdtest.
-func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) *grpc.Server {
+func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) (*grpc.Server, error) {
 	// Who is calling comes first, since everything after it reads the frame.
 	// `Plain` believes what the caller writes, which is right for a sandbox
 	// and for tests and is not something to serve where anyone can reach it.
@@ -219,8 +219,17 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 		With(s.Watch.Interceptor()).
 		WithUnary(grpcx.ClosedUnary(c.Server.Closed()))
 
+	// A certificate that cannot be read is a server that must not start, which
+	// is why this answers with an error at all: `GrpcOptions` reads the files
+	// `server.tls` names, and a deployment that configured one and got a
+	// plaintext listener would not find out until somebody looked at a capture.
+	vs, err := c.Server.GrpcOptions()
+	if err != nil {
+		return nil, err
+	}
+
 	os := append(opts, chain.ServerOptions()...)
-	os = append(os, c.Server.GrpcOptions()...)
+	os = append(os, vs...)
 
 	g := grpc.NewServer(os...)
 	app.RegisterServer(g, s.Walled)
@@ -238,12 +247,15 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 		log.From(ctx).WarnContext(ctx, "no batch", slog.String("why", err.Error()))
 	}
 
-	return g
+	return g, nil
 }
 
 // Serve answers on `l` until the context is done.
 func (s *Server) Serve(ctx context.Context, c Config, l net.Listener) error {
-	g := s.Grpc(ctx, c)
+	g, err := s.Grpc(ctx, c)
+	if err != nil {
+		return err
+	}
 
 	stop, err := s.serveHttp(ctx, c, g)
 	if err != nil {

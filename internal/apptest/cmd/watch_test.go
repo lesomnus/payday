@@ -22,7 +22,7 @@ func (b *built) watching(t *testing.T, req *app.RobotWatchRequest) (app.Client, 
 	t.Helper()
 	x := require.New(t)
 
-	conn := pdtest.Serve(t, b.Grpc(t.Context(), cmd0, pdtest.Logging(t)))
+	conn := pdtest.Serve(t, b.grpc(t, pdtest.Logging(t)))
 	ctx, cancel := context.WithCancel(b.travels(t.Context()))
 	t.Cleanup(cancel)
 
@@ -162,7 +162,7 @@ func TestAWatchSaysWhichRowsItIsAbout(t *testing.T) {
 	x := require.New(t)
 	b, _ := build(t)
 
-	conn := pdtest.Serve(t, b.Grpc(t.Context(), cmd0, pdtest.Logging(t)))
+	conn := pdtest.Serve(t, b.grpc(t, pdtest.Logging(t)))
 	out, err := app.NewClient(conn).Robot().Watch(b.travels(t.Context()), app.RobotWatchRequest_builder{}.Build())
 	x.NoError(err)
 
@@ -191,7 +191,7 @@ func TestWatchIsNotToldAboutSomebodyElse(t *testing.T) {
 
 	// Naming a row the caller may not see is refused when the stream opens,
 	// with the same answer any other read of it gives.
-	conn := pdtest.Serve(t, b.Grpc(t.Context(), cmd0, pdtest.Logging(t)))
+	conn := pdtest.Serve(t, b.grpc(t, pdtest.Logging(t)))
 	out, err := app.NewClient(conn).Robot().Watch(b.travels(t.Context()), app.RobotWatchRequest_builder{
 		Filters: []*app.RobotFilter{
 			app.RobotFilter_builder{Ref: app.RobotRef_builder{Id: theirs.GetId()}.Build()}.Build(),

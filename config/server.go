@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"math"
 	"slices"
 	"time"
@@ -268,8 +269,36 @@ func (c ServerConfig) Closed() func(method string) bool {
 
 // GrpcOptions is what the configuration says about the server itself, as
 // opposed to what every call goes through, which is `grpcx`.
-func (c ServerConfig) GrpcOptions() []grpc.ServerOption {
-	opts := []grpc.ServerOption{}
+//
+// # Why it answers with an error
+//
+// Because of the first option it builds. Everything else here is a number that
+// was either given or not; TLS is files that have to be read, and a certificate
+// that cannot be read is a server that must not start.
+//
+// It did not always. `ServerConfig.TLS` was a block a deployment could write and
+// **nothing read it** -- not this function, not the template `pd new` writes,
+// not payday's own test app. A deployment that configured a certificate got a
+// plaintext listener and no complaint, which is the direction that is not
+// noticed: the port answers, the calls work, and the traffic is in the clear
+// until somebody looks at a capture.
+//
+// So the error is the point rather than a cost of the change. An app cannot
+// take the options without being handed the reason it has none.
+func (c ServerConfig) GrpcOptions() ([]grpc.ServerOption, error) {
+	// First, so that a certificate that cannot be read stops the server before
+	// anything else about it is decided.
+	//
+	// Unconditional: `Credentials` answers with insecure credentials when
+	// nothing said anything, which is what `grpc.NewServer` does by default --
+	// so passing it always is the same server, and the branch that would have
+	// decided whether to pass it is a branch that can be wrong.
+	creds, err := c.TLS.Credentials()
+	if err != nil {
+		return nil, fmt.Errorf("tls: %w", err)
+	}
+
+	opts := []grpc.ServerOption{grpc.Creds(creds)}
 	if v := c.MaxRecvMsgSize; v > 0 {
 		opts = append(opts, grpc.MaxRecvMsgSize(v))
 	}
@@ -297,7 +326,7 @@ func (c ServerConfig) GrpcOptions() []grpc.ServerOption {
 		}))
 	}
 
-	return opts
+	return opts, nil
 }
 
 // Guard is what a batch enforces per operation, read off the same fields the

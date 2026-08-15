@@ -69,7 +69,10 @@ func TestServes(t *testing.T) {
 	t.Cleanup(func() { s.Close() })
 	x.NoError(s.Ent.Schema.Create(ctx))
 
-	conn := pdtest.Serve(t, s.Grpc(ctx, c, pdtest.Logging(t)))
+	g, err := s.Grpc(ctx, c, pdtest.Logging(t))
+	x.NoError(err)
+
+	conn := pdtest.Serve(t, g)
 	client := app.NewClient(conn)
 
 	// Nobody vouched for this call, so the wall refuses it rather than serving

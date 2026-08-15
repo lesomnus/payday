@@ -46,7 +46,7 @@ func (b *built) browsing(t *testing.T) (*httptest.Server, *http.Client) {
 	// Installed before the chain is built, since that is what reads it.
 	b.Auth = sessions.Handler()
 
-	h, err := web.New(config.HttpConfig{AllowWeb: true}, b.Grpc(t.Context(), cmd0))
+	h, err := web.New(config.HttpConfig{AllowWeb: true}, b.grpc(t))
 	x.NoError(err)
 
 	// The app's half: what a form contains and what checking it means. Here it
