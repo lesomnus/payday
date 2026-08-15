@@ -84,16 +84,33 @@ payday's own sandbox, built from `internal/apptest` — eight entities:
 | \+ the generated servers | 37.8 MB | 6.6 MB |
 | the whole thing | 65.9 MB | **10.6 MB** |
 
-Two things in that table decide everything else about size.
+The second row reads as "the generated messages cost 20 MB", and that is the
+wrong conclusion. Taking it apart:
 
-**The runtime is 2.7% of it.** The rest is generated code and the reflection
-that comes with it — which is why a smaller Go is not the lever it looks like.
-See below.
+| | adds | at |
+| --- | ---: | ---: |
+| a `main` that prints | — | 1.8 MB |
+| `proto.Marshal` of a `Timestamp` | +5.7 MB | 7.5 MB |
+| `import _ "google.golang.org/grpc"` | **+11.6 MB** | 19.1 MB |
+| every message and service this app generates | +3.0 MB | 22.1 MB |
 
-**Importing the generated messages costs 20 MB**, and `google.golang.org/grpc`
-and `net/http` are already linked at that point: the generated `*_grpc.pb.go`
-imports gRPC, so the sandbox links a server it never serves from. That is not
-recoverable without changing what is generated.
+**The generated code is 3 MB of it.** 490 KB of Go across 85 messages —
+ten entities and, for each, its requests, its ref, its filter and its select.
+That is a sixfold expansion into wasm, which is what Go costs anywhere.
+
+**gRPC is 11.6 MB, and a blank import pays all of it.** Not `grpc.NewServer()`
+— the import. grpc-go's packages register codecs, resolvers and balancers into
+global tables from `init()`, so nothing in it is dead and the linker keeps the
+lot. The generated `*_grpc.pb.go` imports it for `ServiceRegistrar` and
+`ServiceDesc`, so **the sandbox carries a gRPC server it never serves from**:
+calls arrive over a message port.
+
+Nothing short of generating a second set of stubs recovers it, and a second set
+of stubs is a second implementation — see below. So it is a cost this takes
+knowingly, and it compresses like the code it is.
+
+**The Go runtime is 1.8 MB — 2.7%.** Which is the whole answer to making it
+smaller by using a smaller Go.
 
 The vite config `pd sandbox init` writes compresses on `vite build`, so a demo
 link is about 10 MB rather than 66. `npm run dev` reads the file off disk and
@@ -109,11 +126,12 @@ The build loop is not the problem either. On a 2022 laptop, changing one line:
 
 ### Why not TinyGo
 
-It is the obvious idea and the table above is why it is not taken. TinyGo's
+It is the obvious idea and the tables above are why it is not taken. TinyGo's
 size advantage is a smaller runtime, no reflection metadata, and harder dead
 code elimination. Here the runtime is 1.8 MB of 65.9, and the other 64 MB is
-generated protobuf, generated servers, and ent — all of which lean on exactly
-the reflection TinyGo does without.
+grpc-go, the protobuf runtime, ent and generated code — all of which lean on
+exactly the reflection TinyGo does without, and the largest single piece of
+which is a dependency's `init()` tables rather than anything payday wrote.
 
 Past that, it would not compile: `google.golang.org/protobuf` under
 `API_OPAQUE` depends on `protoimpl`'s unsafe field offsets, `grpc` needs `net`
