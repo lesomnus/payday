@@ -139,21 +139,47 @@ npm. So the client mints both identifiers up front and writes them into both
 operations:
 
 ```ts
-import { newId } from '@lesomnus/payday/pdid'
-import { TenantDomain, HolderDomain } from './gen/domains.js'
+import { create } from '@bufbuild/protobuf'
+import { anyPack } from '@bufbuild/protobuf/wkt'
+import { pdid } from '@lesomnus/payday'
 
-const tenant = newId(TenantDomain)
-const holder = newId(HolderDomain)
+import { RobotDomain, JointDomain } from './gen/domains.js'
+import { RobotAddRequestSchema, JointAddRequestSchema } from './gen/app/robot_svc_pb.js'
 
-await batch.do({ ops: [
-	op('/app.TenantService/Add', { id: tenant, alias: 'acme' }),
-	op('/app.HolderService/Add', { id: holder, tenant: { id: tenant }, alias: 'admin' }),
-]})
+const robot = pdid.newId(RobotDomain)
+const joint = pdid.newId(JointDomain)
+
+await c.batch.do({
+	ops: [
+		{
+			method: '/app.RobotService/Add',
+			request: anyPack(RobotAddRequestSchema, create(RobotAddRequestSchema, {
+				id: robot.bytes,
+				tenant: { key: { case: 'id', value: tenant.id } },
+				alias: 'arm-01',
+			})),
+		},
+		{
+			method: '/app.JointService/Add',
+			request: anyPack(JointAddRequestSchema, create(JointAddRequestSchema, {
+				id: joint.bytes,
+				robot: { key: { case: 'id', value: robot.bytes } },
+				alias: 'elbow',
+			})),
+		},
+	],
+})
 ```
 
 The domain constants come from `gen/domains.ts`, which `pd gen --ts` writes from
 the same schema the Go side reads — the two halves cannot drift into different
 numbers.
+
+`anyPack` writes the type URL, and `anypb` in Go resolves it: an `Op` carrying a
+message that is not what `method` takes is refused rather than coerced. That
+agreement is the one thing about a batch that only a call from TypeScript can
+demonstrate, so it has one — `internal/apptest/ts/src/client.test.ts`, which
+sends exactly this against the running server and reads the rows back.
 
 The server does not need to know it is in a batch.
 
