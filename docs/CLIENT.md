@@ -65,13 +65,65 @@ page ── Connect transport ── message port ── worker
                                               └ SQLite, as wasm
 ```
 
-It is about 65 MB and that is fine, because of what it is for:
+What it is for:
 
 - **A demo that needs no backend.** A link, and the app runs.
 - **Tests of the real stack** with no database to start.
 - **Proof that the runtime assumes nothing.** No file system, no listener, no
   network. CI builds `GOOS=js GOARCH=wasm go build ./...` for exactly this, and
   the sandbox test says the thing it builds actually runs.
+
+### What it costs, measured
+
+payday's own sandbox, built from `internal/apptest` — eight entities:
+
+| | raw | brotli |
+| --- | ---: | ---: |
+| the Go runtime alone | 1.8 MB | 0.5 MB |
+| \+ the generated messages | 22.1 MB | 3.9 MB |
+| \+ the generated servers | 37.8 MB | 6.6 MB |
+| the whole thing | 65.9 MB | **10.6 MB** |
+
+Two things in that table decide everything else about size.
+
+**The runtime is 2.7% of it.** The rest is generated code and the reflection
+that comes with it — which is why a smaller Go is not the lever it looks like.
+See below.
+
+**Importing the generated messages costs 20 MB**, and `google.golang.org/grpc`
+and `net/http` are already linked at that point: the generated `*_grpc.pb.go`
+imports gRPC, so the sandbox links a server it never serves from. That is not
+recoverable without changing what is generated.
+
+The vite config `pd sandbox init` writes compresses on `vite build`, so a demo
+link is about 10 MB rather than 66. `npm run dev` reads the file off disk and
+compresses nothing, because there is nothing to save.
+
+The build loop is not the problem either. On a 2022 laptop, changing one line:
+
+| | |
+| --- | --- |
+| nothing (cached) | 1.6 s |
+| `wasm/main.go` | 1.3–1.8 s |
+| something in payday's runtime | 2.5 s |
+
+### Why not TinyGo
+
+It is the obvious idea and the table above is why it is not taken. TinyGo's
+size advantage is a smaller runtime, no reflection metadata, and harder dead
+code elimination. Here the runtime is 1.8 MB of 65.9, and the other 64 MB is
+generated protobuf, generated servers, and ent — all of which lean on exactly
+the reflection TinyGo does without.
+
+Past that, it would not compile: `google.golang.org/protobuf` under
+`API_OPAQUE` depends on `protoimpl`'s unsafe field offsets, `grpc` needs `net`
+and `crypto/tls`, and `database/sql` reflects to scan a row.
+
+The design argument is the stronger one. **The sandbox is worth having because
+it is the same server.** A build needing a different protobuf runtime, a
+different SQL layer and no gRPC would be a second implementation, and the
+first thing a second implementation does is disagree with the first — which is
+the thing this exists to make impossible.
 
 That last one earns its minute. The first time the sandbox was ever loaded in a
 page, three things were wrong — no broker named, nothing seeded, no interceptors
@@ -85,9 +137,10 @@ $ go tool pd sandbox init .
 ```
 
 It writes `wasm/main.go` — the second entry point — and the page's half:
-`ts/src/sandbox.ts`, `ts/src/sandbox-worker.ts`, and the two vite settings
-below. Then it prints the build, which is not run for you because it fetches a
-module and writes 65 MB.
+`ts/src/sandbox.ts`, `ts/src/sandbox-worker.ts`, and a `ts/vite.config.ts`
+carrying the two settings the page needs plus the compression a demo build
+wants. Then it prints the build, which is not run for you because it fetches a
+module and writes tens of megabytes.
 
 **`pd new` does not write it, and that is a decision.** `wasm/main.go` imports
 `github.com/lesomnus/grpc-dgram`, which becomes a *direct* requirement of your

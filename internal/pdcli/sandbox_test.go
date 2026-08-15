@@ -179,4 +179,9 @@ func TestAnUntouchedViteConfigIsReplaced(t *testing.T) {
 
 	// The page still builds: what was there before is still there.
 	x.Contains(string(b), "@vitejs/plugin-react")
+
+	// And a demo build compresses. `pd doctor` does not check for this -- a
+	// missing compression is a bigger download and not a failure that hides
+	// its cause -- so this is the only thing that would notice it going.
+	x.Contains(string(b), "brotli()")
 }
