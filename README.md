@@ -122,7 +122,7 @@ app.
 | [`migrate`](migrate) · [`version`](version) | refusing a server whose schema or payday moved |
 | [`config`](config) · [`grpcx`](grpcx) · [`pderr`](pderr) | what an app was configured with, how it is served, how it refuses |
 | [`ts`](ts) | [`@lesomnus/payday`](https://www.npmjs.com/package/@lesomnus/payday) — the client half |
-| [`cmd/pd`](cmd/pd) | `new`, `gen`, `entity`, `doctor` |
+| [`cmd/pd`](cmd/pd) | `new`, `gen`, `entity`, `sandbox`, `doctor` |
 | [`internal/apptest`](internal/apptest) | the app payday is tried against |
 
 ```sh

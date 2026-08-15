@@ -236,5 +236,13 @@ func (n New) Steps() []string {
 		"# and the page, in another shell",
 		"go tool pd gen --ts .",
 		"cd ts && npm install && npm run dev",
+		"",
+		// Not written by `new`, and the reason is in `NewCmdSandboxInit`: it
+		// makes `github.com/lesomnus/grpc-dgram` a direct requirement of the
+		// app, which a backend-only one should not acquire by scaffolding. So
+		// it is named here instead, because the alternative to naming it is
+		// nobody finding it.
+		"# optional: the whole app in the page, with no backend to start",
+		"go tool pd sandbox init .",
 	)
 }

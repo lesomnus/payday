@@ -61,6 +61,10 @@
 		"./pderr": {
 			"types": "./dist/src/pderr/index.d.ts",
 			"import": "./dist/src/pderr/index.js"
+		},
+		"./sandbox": {
+			"types": "./dist/src/sandbox/index.d.ts",
+			"import": "./dist/src/sandbox/index.js"
 		}
 	},
 	"scripts": {
@@ -75,6 +79,7 @@
 		"@bufbuild/protobuf": "^2.12.1",
 		"@bufbuild/protoc-gen-es": "^2.13.0",
 		"@connectrpc/connect": "^2.1.2",
+		"@lesomnus/grpc-dgram": "^0.0.1",
 		"@types/react": "^19.2.2",
 		"typescript": "~5.9.3",
 		"vitest": "^4.1.10"
@@ -82,6 +87,7 @@
 	"peerDependencies": {
 		"@bufbuild/protobuf": "^2",
 		"@connectrpc/connect": "^2",
+		"@lesomnus/grpc-dgram": "^0.0.1",
 		"react": "^18 || ^19"
 	},
 	"peerDependenciesMeta": {
@@ -89,6 +95,9 @@
 			"optional": true
 		},
 		"@connectrpc/connect": {
+			"optional": true
+		},
+		"@lesomnus/grpc-dgram": {
 			"optional": true
 		},
 		"react": {

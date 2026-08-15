@@ -124,8 +124,128 @@ func Doctor(ctx context.Context, l Layout) []Finding {
 	vs = append(vs, doctorBuf(l)...)
 	vs = append(vs, doctorSchema(l)...)
 	vs = append(vs, doctorLayers(l)...)
+	vs = append(vs, doctorSandbox(ctx, l)...)
 
 	return vs
+}
+
+// doctorSandbox reads the page's half of `pd sandbox init`, for an app that has
+// one.
+//
+// Everything here fails in a way that does not name its cause, which is the
+// only test for whether it belongs on this list:
+//
+//   - no cross-origin isolation and `SharedArrayBuffer` does not exist, so
+//     SQLite in a Worker cannot cancel work. The symptom is "it works on the
+//     other dev server".
+//   - pre-bundled, and the worker URL `@lesomnus/grpc-dgram` builds resolves
+//     into `.vite/deps/` where there is nothing. The symptom is "the worker
+//     itself failed", which does not mention bundling.
+//   - the two worker imports split apart and the Go driver looks for a global
+//     installed in another realm. The symptom is the instance exiting before
+//     it publishes an entry point.
+//   - a `wasm_exec.js` that is not the one that built the module. It is the JS
+//     half of the Go runtime and is version-coupled to the compiler, so a copy
+//     that was right once goes wrong at the next toolchain bump -- silently,
+//     since nothing about it is checked at build time.
+//
+// None of it runs for an app with no sandbox, which is most of them.
+func doctorSandbox(ctx context.Context, l Layout) []Finding {
+	if _, err := os.Stat(l.Path(DirWasm, "main.go")); err != nil {
+		return nil
+	}
+
+	var vs []Finding
+
+	if b, err := os.ReadFile(l.Path("ts", "vite.config.ts")); err == nil {
+		if !bytes.Contains(b, []byte("Cross-Origin-Embedder-Policy")) {
+			vs = append(vs, Finding{
+				What: fmt.Sprintf("%s sets no cross-origin isolation, so SharedArrayBuffer does not exist and SQLite cannot run in a Worker",
+					l.Rel("ts", "vite.config.ts")),
+				Fix: `server: {
+    headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
+},`,
+			})
+		}
+
+		if !bytes.Contains(b, []byte("@lesomnus/grpc-dgram")) {
+			vs = append(vs, Finding{
+				What: fmt.Sprintf("%s lets @lesomnus/grpc-dgram be pre-bundled, and the worker URL it builds resolves into .vite/deps/ where there is nothing",
+					l.Rel("ts", "vite.config.ts")),
+				Fix: `optimizeDeps: { exclude: ['@lesomnus/grpc-dgram'] },`,
+			})
+		}
+	}
+
+	// One file, both imports. Two files is two realms, and the global one
+	// installs is not the one the other looks for.
+	w := l.Path("ts", "src", "sandbox-worker.ts")
+	b, err := os.ReadFile(w)
+	switch {
+	case err != nil:
+		vs = append(vs, Finding{
+			What: fmt.Sprintf("%s builds a wasm server and %s is not there to run it",
+				l.Rel(DirWasm), l.Rel("ts", "src", "sandbox-worker.ts")),
+			Fix: "import 'sqlite3-wasm-go'\nimport '@lesomnus/grpc-dgram/wasm/worker'",
+		})
+
+	case !bytes.Contains(b, []byte("sqlite3-wasm-go")),
+		!bytes.Contains(b, []byte("@lesomnus/grpc-dgram/wasm/worker")):
+		vs = append(vs, Finding{
+			What: fmt.Sprintf("%s does not import both halves, and they have to be in one file to be in one realm",
+				l.Rel("ts", "src", "sandbox-worker.ts")),
+			Fix: "import 'sqlite3-wasm-go'\nimport '@lesomnus/grpc-dgram/wasm/worker'",
+		})
+	}
+
+	vs = append(vs, doctorWasmExec(ctx, l)...)
+
+	return vs
+}
+
+// doctorWasmExec compares the copy the page serves with the one this toolchain
+// ships, which is the only thing that makes it right.
+//
+// It is not a version string being read: `wasm_exec.js` carries no version, and
+// what matters is that it is the same file the compiler that built the module
+// expects. So it is compared byte for byte against `$(go env GOROOT)`.
+func doctorWasmExec(ctx context.Context, l Layout) []Finding {
+	fix := `cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ` + l.Rel("ts", "public") + "/"
+
+	at := l.Path("ts", "public", "wasm_exec.js")
+	have, err := os.ReadFile(at)
+	if err != nil {
+		return []Finding{{
+			What: fmt.Sprintf("%s is not there, and it is the JS half of the Go runtime the module needs",
+				l.Rel("ts", "public", "wasm_exec.js")),
+			Fix: fix,
+		}}
+	}
+
+	out, err := exec.CommandContext(ctx, "go", "env", "GOROOT").Output()
+	if err != nil {
+		// Nothing to compare against. Not a finding: it is this check that
+		// failed, not the app.
+		return nil
+	}
+
+	want, err := os.ReadFile(filepath.Join(strings.TrimSpace(string(out)), "lib", "wasm", "wasm_exec.js"))
+	if err != nil {
+		return nil
+	}
+
+	if bytes.Equal(have, want) {
+		return nil
+	}
+
+	return []Finding{{
+		What: fmt.Sprintf("%s is not the one this Go ships, and it is version-coupled to the compiler that builds the module",
+			l.Rel("ts", "public", "wasm_exec.js")),
+		Fix: fix,
+	}}
 }
 
 // doctorLayers finds a layer that cannot be put in a transaction.

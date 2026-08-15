@@ -12,12 +12,7 @@
 // the front end does not start a backend, does not migrate anything, and does
 // not have to remember what state they left it in.
 //
-//	GOOS=js GOARCH=wasm go build -o web/app.wasm ./wasm
-//
-// It is very nearly what `pd sandbox init` writes, and deliberately so: the
-// template's copy is only parsed by a test -- compiling it would need a
-// generation and a module graph -- so this file is where it is actually built.
-// A change to one belongs in the other.
+//	GOOS=js GOARCH=wasm go build -o ts/public/app.wasm ./wasm
 //
 // # Why this is a second entry point and not a flag
 //
@@ -25,8 +20,8 @@
 // a network, and this file is what makes that a fact rather than an intention:
 // it is built for a platform where none of the three exist. `cmd` is the other
 // entry point, and the two assemble the same parts differently -- which is the
-// whole reason the wiring is left visible in an app rather than hidden behind a
-// Serve(cfg).
+// whole reason the wiring is left visible in this repository rather than hidden
+// behind a Serve(cfg).
 package main
 
 import (
@@ -46,8 +41,8 @@ import (
 	// inside wasm.
 	_ "github.com/lesomnus/payday/config/dbsqlite3wasm"
 
-	app "github.com/lesomnus/payday/internal/apptest"
-	"github.com/lesomnus/payday/internal/apptest/cmd"
+	app "{{.Pkg}}"
+	"{{.Module}}/cmd"
 )
 
 func main() {
@@ -64,11 +59,6 @@ func main() {
 		// answer has to be written rather than defaulted. Here it is right by
 		// construction: there is exactly one of this server and it is inside
 		// the page.
-		//
-		// It was missing until this file was first loaded in a browser, and
-		// nothing said so before then: the refusal happens at Build, which
-		// nothing in CI reached -- `GOOS=js GOARCH=wasm go build` compiles a
-		// main that is never run.
 		Watch: config.WatchConfig{Broker: config.BrokerMemory},
 	})
 	if err != nil {
@@ -90,17 +80,11 @@ func main() {
 	// everybody, which is the same answer a real deployment gives -- so a
 	// sandbox that seeded nothing would be one where the first thing anybody
 	// tries is refused, correctly, and there is no way round it from the page.
-	//
-	// This was missing until the page was first loaded in a browser. Nothing
-	// said so: the refusal is served rather than logged, and the only reader is
-	// whoever is looking at the screen.
 	if err := seed(ctx, s.Ungated); err != nil {
 		log.Fatal(err)
 	}
 
-	// A server that is not gRPC's, taking the same services. That it can be
-	// handed them at all is one widened signature upstream: RegisterServer
-	// takes a grpc.ServiceRegistrar rather than a *grpc.Server.
+	// A server that is not gRPC's, taking the same services.
 	gw := jsport.NewGateway()
 
 	// The same two interceptors the process serves with, because the stack
@@ -108,12 +92,9 @@ func main() {
 	// request that has none, so a server registered without these answers
 	// "who is asking?" to everything.
 	//
-	// This was missing until the page was first loaded in a browser, and it is
-	// the sharpest of the three things that were: the sandbox compiled, linked,
-	// started, and refused every call it was given.
-	//
 	// `Plain` believes what the caller writes, which is what a sandbox is --
-	// there is nobody else in the page to lie to.
+	// there is nobody else in the page to lie to. Replace it here and not in
+	// `cmd`: the two entry points are separate on purpose.
 	srv := drpc.NewServer(gw,
 		drpc.ChainUnaryInterceptors(
 			pdauth.InterceptorUnary(pdauth.Plain(), cmd.Resolver(s.Ungated), pdauth.PublicDefault),
@@ -135,8 +116,8 @@ func main() {
 
 // seed puts a tenant and somebody in it, so the page has an app to look at.
 //
-// The same two rows `custody init` writes, and for the same reason: the page
-// signs in as `@acme/admin` and there has to be an `@acme/admin` to be.
+// The same two rows `{{.Name}} init` writes, and for the same reason: the page
+// signs in as somebody, and there has to be a somebody to be.
 func seed(ctx context.Context, s app.Server) error {
 	t, err := s.Tenant().Add(ctx, app.TenantAddRequest_builder{
 		Alias: "acme",

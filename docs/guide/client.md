@@ -226,6 +226,19 @@ The transport is the only line that differs. Nothing above `store.ts` knows
 which one it got, and that is what makes the sandbox worth having rather than a
 demo that drifts.
 
+The sandbox is not written by `pd new` — it makes `grpc-dgram` a direct
+requirement of your app, which a backend-only one should not acquire by
+scaffolding. Ask for it when you want it:
+
+```sh
+$ go tool pd sandbox init .
+```
+
+Then a reload is a fresh server: new instance, new database, nothing left over,
+and no backend to start. See [CLIENT.md §2](../CLIENT.md#2-the-whole-app-in-a-page)
+for what it needs from the page, and run `pd doctor` — the four ways it goes
+wrong all fail without naming their cause.
+
 ---
 
 ## Where to go next

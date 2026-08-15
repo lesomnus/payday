@@ -24,6 +24,7 @@ func NewCmdRoot() *xli.Command {
 			NewCmdDoctor(),
 			NewCmdEntity(),
 			NewCmdNew(),
+			NewCmdSandbox(),
 		},
 
 		Handler: xli.RequireSubcommand(),
@@ -215,6 +216,64 @@ func NewCmdNew() *xli.Command {
 			// so a tidy first fails trying to fetch this app's own packages
 			// from a repository nobody has pushed.
 			for _, v := range n.Steps() {
+				cmd.Printf("    %s\n", v)
+			}
+
+			return nil
+		}),
+	}
+}
+
+// NewCmdSandbox is `pd sandbox`.
+func NewCmdSandbox() *xli.Command {
+	return &xli.Command{
+		Name:  "sandbox",
+		Brief: "run this app inside the page it serves",
+		Synop: "pd sandbox <command>",
+
+		Commands: []*xli.Command{NewCmdSandboxInit()},
+
+		Handler: xli.RequireSubcommand(),
+	}
+}
+
+// NewCmdSandboxInit is `pd sandbox init`.
+//
+// It is not part of `pd new`, and that is a decision rather than an omission.
+// The sandbox is only worth having to somebody building the page as well, and
+// it is not free to everybody else: `wasm/main.go` makes
+// `github.com/lesomnus/grpc-dgram` a direct requirement of the app, which is a
+// module payday itself does not depend on. `pd new` writing `ts/` to everybody
+// is not the same imposition -- an unused directory costs nothing, and an
+// unused module requirement is in `go.mod`, in the sums, and in every audit of
+// what this app depends on.
+//
+// So there is one path to a sandbox and it is this, which also means it cannot
+// rot the way a second one would: an app that started without a page and grew
+// one runs exactly what a new app would have run.
+func NewCmdSandboxInit() *xli.Command {
+	return &xli.Command{
+		Name:  "init",
+		Brief: "write the second entry point and the page's half of it",
+		Synop: "pd sandbox init [DIR]",
+
+		Args: arg.Args{
+			&arg.String{Name: "DIR", Brief: "the app; the working directory by default"},
+		},
+
+		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			l, err := discover(cmd)
+			if err != nil {
+				return err
+			}
+
+			vs, err := (Sandbox{Layout: l}).Init()
+			if err != nil {
+				return err
+			}
+
+			cmd.Printf("pd: the sandbox is in %s and %s\n\n", l.Rel(DirWasm), l.Rel("ts", "src"))
+			for _, v := range vs {
 				cmd.Printf("    %s\n", v)
 			}
 

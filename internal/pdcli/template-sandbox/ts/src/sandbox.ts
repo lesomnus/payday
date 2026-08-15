@@ -1,15 +1,16 @@
 /**
  * The whole app, in the page.
  *
- * Almost all of this is `@lesomnus/payday/sandbox` now, and what is left is the
- * two things payday cannot know: which services this app has, and where its
- * worker file is. That is the shape every payday app's sandbox has -- see
- * `pd sandbox init`, which writes the other half.
+ * Almost all of this is `@lesomnus/payday/sandbox`. What is left is the two
+ * things payday cannot know: which services this app has, and where this app's
+ * worker file is.
  *
- * The Go half is the same server the process runs: the same generated services,
- * the same stack, the same wall from the same schema. Two things differ and
- * both are one line in `wasm/main.go` -- the database is SQLite in a Worker
- * rather than a file, and calls arrive over a message port rather than HTTP/2.
+ * A reload is a fresh server: new instance, new database, nothing left over.
+ * Somebody working on the front end starts no backend, migrates nothing, and
+ * does not have to remember what state they left it in.
+ *
+ *     const sb = await start()
+ *     const t = await sb.app.tenant.get({ ref: { key: { case: 'alias', value: 'acme' } } })
  *
  * @module
  */
@@ -26,18 +27,11 @@ export interface Sandbox {
 	 * The transport underneath, for a page that wants to wrap it -- to say who
 	 * is calling, say.
 	 *
-	 * Handed on rather than left to be rebuilt from [Sandbox.sock], and that is
-	 * not a convenience. A page that called `createDrpcTransport` itself would
-	 * be using **its** copy of `@lesomnus/grpc-dgram` on a socket opened by the
-	 * one `@lesomnus/payday` resolved, and in this repository those are two
-	 * copies: payday's TypeScript is linked by path and a linked package brings
-	 * its own `node_modules`. What that costs is not a type error -- it is a
-	 * refusal arriving with no status, so `NotFound` reads as `Unknown`.
-	 *
-	 * A published payday has one copy, because `@lesomnus/grpc-dgram` is a peer
-	 * dependency. This is the seam that makes the linked case behave like the
-	 * published one, and it is worth having anyway: dialing again is a second
-	 * connection nobody asked for.
+	 * Wrap this rather than calling `createDrpcTransport` on [Sandbox.sock]
+	 * again. A second transport is a second connection nobody asked for, and if
+	 * `@lesomnus/grpc-dgram` ever resolves to two copies the socket and the
+	 * transport come from different ones -- which is not a type error, it is a
+	 * refusal arriving with no status.
 	 */
 	readonly transport: Instance['transport']
 

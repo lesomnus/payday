@@ -78,6 +78,59 @@ page, three things were wrong — no broker named, nothing seeded, no intercepto
 — and every one of them compiled, linked and started. **A `main` that is built
 and never run says nothing at all.**
 
+### Getting one
+
+```sh
+$ go tool pd sandbox init .
+```
+
+It writes `wasm/main.go` — the second entry point — and the page's half:
+`ts/src/sandbox.ts`, `ts/src/sandbox-worker.ts`, and the two vite settings
+below. Then it prints the build, which is not run for you because it fetches a
+module and writes 65 MB.
+
+**`pd new` does not write it, and that is a decision.** `wasm/main.go` imports
+`github.com/lesomnus/grpc-dgram`, which becomes a *direct* requirement of your
+app — a module payday itself does not depend on. An app that is only a server
+should not acquire one by scaffolding. (`pd new` writing `ts/` to everybody is
+not the same imposition: an unused directory costs nothing, and an unused
+module requirement is in `go.mod`, in the sums, and in every audit of what the
+app depends on.)
+
+So there is one path to a sandbox whenever you want one, which also means it
+cannot rot: an app that started without a page and grew one runs exactly what a
+new app would have run.
+
+`ts/vite.config.ts` already exists, so it is replaced only when it is still
+byte-for-byte what `pd new` wrote. Otherwise the two settings are printed for
+you to add — payday does not edit a file a person wrote.
+
+`pd doctor` checks all four of the things below for an app that has a sandbox,
+and says nothing to one that does not.
+
+### What the page needs from the app
+
+`@lesomnus/payday/sandbox` is the part that does not vary:
+
+```ts
+import { start } from '@lesomnus/payday/sandbox'
+
+const box = await start({ worker: new URL('./sandbox-worker.ts', import.meta.url) })
+const c = app(box.transport)          // the same `app()` the real server gets
+```
+
+It answers with a `Transport` and not a client, because payday cannot name your
+services — `client.ts` is what knows them, and it takes a `Transport` like any
+other. That is the whole reason a sandbox is worth having: the code that runs
+against it is the code that runs against the server.
+
+**Wrap `box.transport` rather than dialing `box.sock` again** if you need to add
+a header. A second transport is a second connection nobody asked for, and if
+`@lesomnus/grpc-dgram` ever resolves to two copies — payday's TypeScript linked
+by path, say — the socket and the transport come from different ones. That is
+not a type error. It is a refusal arriving with no status, so `NotFound` reads
+as `Unknown` and nothing else in the run looks wrong.
+
 ### What the sandbox is not
 
 It is not the local store. They get confused because both put data in the

@@ -16,17 +16,24 @@ say('SharedArrayBuffer:', typeof SharedArrayBuffer)
 
 try {
 	const { start } = await import('/src/sandbox.ts')
-	const { createDrpcTransport } = await import('@lesomnus/grpc-dgram/transport/connect')
 	const { app } = await import('/src/client.ts')
 
 	const sb = await start('/app.wasm')
 	say('served')
 
 	// A client that says who is calling. `start` builds one that does not, so
-	// this makes its own from the same socket -- which is what `sock` is on the
-	// Sandbox for. `Plain` believes what it is told, which is right here:
-	// there is nobody else in the page to lie to.
-	const raw = createDrpcTransport(sb.sock.dial())
+	// this wraps the transport it answered with -- which is what `transport` is
+	// on the Sandbox for. `Plain` believes what it is told, which is right
+	// here: there is nobody else in the page to lie to.
+	//
+	// Wrapping rather than dialing again, and it is not a tidiness. Calling
+	// `createDrpcTransport` here would use **this** page's copy of
+	// `@lesomnus/grpc-dgram` on a socket opened by the one `@lesomnus/payday`
+	// resolved, and in this repository those are two copies -- payday's
+	// TypeScript is linked by path. What that cost was a refusal arriving with
+	// no status: the wall's `NotFound` read as `Unknown`, and nothing else in
+	// the run looked wrong.
+	const raw = sb.transport
 	const who = (h) => new Headers({ ...Object.fromEntries(new Headers(h)), authorization: 'Plain @acme/admin' })
 	const c = app({
 		unary: (m, s, t, h, i, o) => raw.unary(m, s, t, who(h), i, o),
