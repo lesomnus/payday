@@ -195,13 +195,21 @@ The chain is built in `cmd/serve.go` and the order is readable there:
 
 ```go
 chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
-	WithUnary(auth.InterceptorUnary(auth.Plain(), Resolver(s.Ungated), auth.PublicDefault)).
-	WithStream(auth.InterceptorStream(auth.Plain(), Resolver(s.Ungated), auth.PublicDefault)).
+	WithUnary(auth.InterceptorUnary(h, Resolver(s.Ungated), auth.PublicDefault)).
+	WithStream(auth.InterceptorStream(h, Resolver(s.Ungated), auth.PublicDefault)).
 	WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant())).
-	With(gate.Interceptor(nil)).
+	With(gate.Interceptor(s.Policy)).
 	With(s.Watch.Interceptor()).
 	WithUnary(grpcx.ClosedUnary(c.Server.Closed()))
 ```
+
+`h` is `s.Auth` or `auth.Plain()` when there is none, and `s.Policy` is nil
+until a deployment sets one. Both are **fields on the server** rather than
+settings, for the same reason: a mistake in a YAML file must not be able to turn
+authentication off or widen what a caller sees. `s.Policy` also goes to
+`c.Server.Guard` further down, which is what applies it to the operations inside
+a batch; see [tenancy](../TENANCY.md) for why the admin path is a second binary
+rather than a flag.
 
 Who is calling comes first, because everything after it reads the frame.
 

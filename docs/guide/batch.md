@@ -45,7 +45,7 @@ operation by the name the caller used, and a batch is published as **one** event
 `cmd/serve.go` registers it:
 
 ```go
-if b, err := pd.Batch(s.Walled, s.Drv, c.Server.Guard(nil)); err == nil {
+if b, err := pd.Batch(s.Walled, s.Drv, c.Server.Guard(s.Policy)); err == nil {
 	pdpb.RegisterBatchServiceServer(g, b)
 } else {
 	log.From(ctx).WarnContext(ctx, "no batch", slog.String("why", err.Error()))
@@ -93,13 +93,19 @@ type Guard struct {
 ### Build it from the configuration, not by hand
 
 ```go
-c.Server.Guard(nil)
+c.Server.Guard(s.Policy)
 ```
 
 Two places deciding what is closed will eventually disagree, and **the direction
 they disagree in is the one where the batch allows more**. So the guard is read
 off the same `ServerConfig` the interceptors were built from, and there is no
 other supported way to make one.
+
+The policy is the one argument, because it is the one thing that is not in the
+configuration: it is a field on the server (`Server.Policy`), and it is the same
+value `gate.Interceptor` was given a few lines above. Passing `nil` here while
+the interceptor has one is the hole in the third row of the table, left open —
+the policy would authorise every call except the ones inside a batch.
 
 The generated `pd.Batch` refuses a guard nobody filled in — `guard.IsZero()`
 answers `batch.ErrNoGuard`. That is not a judgement about how open the

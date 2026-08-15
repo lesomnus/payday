@@ -196,8 +196,14 @@ would ask several times per request — a `Get` reads a row and then an edge, an
 `Apply` reads, writes and reads back.
 
 ```go
-chain = chain.With(gate.Interceptor(policy))   // behind auth, whose frame it reads the actor from
+chain = chain.With(gate.Interceptor(s.Policy))   // behind auth, whose frame it reads the actor from
 ```
+
+`Server.Policy` is where an app sets it, and `cmd/serve.go` hands the same value
+to `c.Server.Guard` as well — the interceptor covers the calls gRPC dispatches
+and the guard covers the operations inside a batch, which arrive as one method
+carrying many. A policy in only the first place authorises `BatchService/Do`
+rather than what it asks for; see [batch](batch.md#3-the-guard-and-why-it-is-refused-rather-than-defaulted).
 
 **A nil policy is not a missing piece.** Without one:
 
@@ -539,6 +545,9 @@ Before a deployment is reachable by anyone:
       and the ungated one is not the one being served.
 - [ ] `gate.Interceptor` is installed **behind** `auth.Interceptor` — it reads
       the actor.
+- [ ] If you inject a policy, it went to **both** `gate.Interceptor` and
+      `c.Server.Guard`. The second is the operations inside a batch, which are
+      not the method gRPC dispatched.
 - [ ] Credentials your issuer mints have a `Grant` you meant. The zero value
       allows nothing; `frame.Whole()` narrows nothing.
 - [ ] If you declared field 3, `pd.Grouped` is in the `bare.Scopes` beside the

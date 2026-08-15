@@ -200,6 +200,58 @@ func TestABatchCountsAsItsOperations(t *testing.T) {
 
 func slugOf(i int) string { return "arm-0" + string(rune('1'+i)) }
 
+// TestAPolicyAppliesToEachOperation is the fourth hole, and it was the one with
+// no test.
+//
+// The other three are checks against a method name and the guard applies them
+// itself. This one is a question asked of something the deployment injected,
+// and what it answers is not yes or no: `Where` hands back a scope, which has
+// to travel with the operation rather than be checked and dropped. So it is
+// both the easiest of the four to leave out and the only one that changes what
+// the operation sees.
+//
+// Left out, a batch would be authorised as `BatchService/Do` -- a method the
+// policy has never heard of and would have to have an opinion about -- and
+// every operation inside it would run as whatever that decided.
+func TestAPolicyAppliesToEachOperation(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	one := pdpb.BatchRequest_builder{
+		Ops: []*pdpb.Op{
+			op(t, app.RobotService_Add_FullMethodName, app.RobotAddRequest_builder{
+				Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+				Alias:  "arm-01",
+			}.Build()),
+		},
+	}.Build()
+
+	// The same batch under the guard the deployment has without a policy, so
+	// that what the policy refuses is read against a batch that goes through.
+	_, err := b.batched(t, closedGuard).Do(b.as(ctx), one)
+	x.NoError(err)
+
+	g := closedGuard
+	g.Policy = console{}
+
+	_, err = b.batched(t, g).Do(b.as(ctx), one)
+	x.Equal(codes.PermissionDenied, status.Code(err))
+	x.Contains(err.Error(), "reads and does not write")
+
+	// And it names the operation, which is the only thing that says the policy
+	// was asked about `RobotService/Add` rather than about `BatchService/Do`.
+	x.Contains(err.Error(), "ops[0]")
+	x.Contains(err.Error(), app.RobotService_Add_FullMethodName)
+
+	// One row, from the batch that was allowed, so the refused one wrote
+	// nothing. Which is worth reading back rather than inferring from the
+	// error: a refusal that arrived after the operation ran would answer
+	// exactly the same way.
+	n, err := b.Ent.Robot.Query().Count(t.Context())
+	x.NoError(err)
+	x.Equal(1, n)
+}
+
 // TestABatchWithoutRulesIsNotBuilt is the refusal that keeps the three above
 // from being something somebody has to remember.
 func TestABatchWithoutRulesIsNotBuilt(t *testing.T) {

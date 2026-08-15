@@ -1,6 +1,8 @@
 package pdcli_test
 
 import (
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -59,12 +61,50 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 	}
 }
 
+// TestTheTemplateIsGoThatParses, which is less than it sounds and more than
+// there was.
+//
+// Nothing compiles what `pd new` writes. Compiling it means a generation first
+// -- half the imports are packages `pd gen` has not written yet -- and that
+// means fetching a module graph, so the honest place for it is CI on a real
+// scaffold rather than a unit test that pretends to be fast.
+//
+// Parsing needs none of that and catches the mistake that actually happens:
+// somebody edits a `.tmpl` by hand, and the first person to find out is
+// whoever ran `pd new` and got a file that will not build. It does not catch a
+// wrong identifier or a missing import, so it is a floor and not a check.
+func TestTheTemplateIsGoThatParses(t *testing.T) {
+	x := require.New(t)
+
+	dir := filepath.Join(t.TempDir(), "app")
+	x.NoError((pdcli.New{Dir: dir, Module: "github.com/acme/thing"}).Write())
+
+	n := 0
+	x.NoError(filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || filepath.Ext(p) != ".go" {
+			return err
+		}
+
+		n++
+		_, err = parser.ParseFile(token.NewFileSet(), p, nil, parser.SkipObjectResolution)
+
+		return err
+	}))
+
+	// The count is here so that a template that stopped writing Go at all --
+	// a rename, a walk that lands somewhere else -- fails rather than passes
+	// with nothing to say.
+	x.NotZero(n)
+}
+
 // TestTheTemplateImportsWhatGenerationWrites.
 //
 // The template's TypeScript names generated modules by path, and nothing else
-// checks that those paths are the ones `pd gen --ts` produces: the Go half is
-// compiled by the slow test below, and the TypeScript half is not compiled by
-// anything -- it needs an `npm install` in a tree that has been generated.
+// checks that those paths are the ones `pd gen --ts` produces: neither half is
+// compiled here. The Go half is parsed rather than compiled -- see
+// [TestTheTemplateIsGoThatParses] for what that does and does not catch -- and
+// the TypeScript half is not read by anything, since it needs an `npm install`
+// in a tree that has been generated.
 //
 // So it was wrong, in four lines, from the first commit. `gen/` mirrors
 // `proto/`, and payday's entities are copied **into** the app's proto package

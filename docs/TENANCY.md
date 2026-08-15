@@ -82,14 +82,27 @@ left visible in an app rather than hidden behind a `Serve(cfg)`.
 Two `main`s rather than a flag, for the same reason: **a configuration mistake
 must not be able to turn the public server into the admin one.**
 
+What `pd new` writes has the seam already: `Server.Policy`, beside `Server.Auth`
+and set for the same reasons — the two questions are "who is calling" and "what
+that means here", and neither is a line in a YAML file that a mistake can widen.
+
 ```go
-// cmd/<app>        gate.Interceptor(nil)          own tenant only. There is no "all" answer
-// cmd/<app>-admin  gate.Interceptor(app.Hq{…})    and it refuses anyone who is not HQ
+// cmd/<app>        s.Policy = nil        own tenant only. There is no "all" answer
+// cmd/<app>-admin  s.Policy = app.Hq{…}  and it refuses anyone who is not HQ
 ```
+
+One field and **two** places it is installed, which is why it is a field rather
+than an argument to `gate.Interceptor` at the one call site: `Grpc` passes it to
+the interceptor, which covers the calls gRPC dispatches, and to
+`c.Server.Guard`, which covers the operations inside a batch. A batch arrives as
+one method carrying many, so a policy installed in only the first place
+authorises the batch instead of what it asks for.
 
 And the structural claim becomes a test: one test asserting that *the public
 stack does not return another tenant's row even to an HQ credential* is evidence
-there is no hole.
+there is no hole. `internal/apptest/cmd/policy_test.go` is the other half of it
+— the same app, the same database and the same caller, seeing one tenant with no
+policy and every tenant with one.
 
 ### What two deployments drag in
 
