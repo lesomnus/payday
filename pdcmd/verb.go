@@ -34,7 +34,7 @@ var verbs = []struct {
 // runner is what every built command closes over: where to send the call and
 // how to show the answer.
 type runner struct {
-	open Opener
+	conn Connector
 	opts Options
 }
 

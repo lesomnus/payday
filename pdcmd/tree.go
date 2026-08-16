@@ -66,7 +66,7 @@ func (o Options) def() string {
 //
 // The whole tree, which is the whole of what an app has to write:
 //
-//	t, err := pdcmd.New(open)
+//	t, err := pdcmd.New(to)
 //	root.Commands = append(root.Commands, t.Commands()...)
 //
 // One command of it, to mount somewhere else or to wrap:
@@ -108,26 +108,26 @@ type Tree struct {
 // [NewIn], which is not a workaround: a process with two apps has two servers
 // and wants two trees.
 //
-// `open` is asked when a command runs rather than now; see [Opener]. An app
+// `to` is asked when a command runs rather than now; see [Connector]. An app
 // that already holds a connection -- a test, an embedded server over `bufconn`
 // -- passes [Static].
-func New(open Opener, opts ...Options) (*Tree, error) {
+func New(to Connector, opts ...Options) (*Tree, error) {
 	pkg, err := solePackage()
 	if err != nil {
 		return nil, err
 	}
 
-	return NewIn(open, pkg, opts...), nil
+	return NewIn(to, pkg, opts...), nil
 }
 
 // NewIn builds the tree for the app whose proto package is `pkg`.
-func NewIn(open Opener, pkg protoreflect.FullName, opts ...Options) *Tree {
+func NewIn(to Connector, pkg protoreflect.FullName, opts ...Options) *Tree {
 	o := Options{}
 	if len(opts) > 0 {
 		o = opts[0]
 	}
 
-	r := &runner{open: open, opts: o}
+	r := &runner{conn: to, opts: o}
 
 	t := &Tree{
 		run:  r,

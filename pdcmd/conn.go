@@ -16,26 +16,27 @@ import (
 // front of it -- and which one a command should use is the deployment's
 // decision, not payday's. Nothing here dials, authenticates, or reads a
 // configuration file. The caller has already decided all three by the time
-// [Opener] is asked.
+// [Connector] is asked.
 //
 // It is also what makes an embedded server work unchanged: `bufconn` hands back
 // a `*grpc.ClientConn` like any other.
 type Conn = grpc.ClientConnInterface
 
-// Opener answers with the connection a command should use, and how to let it
+// Connector answers with the connection a command should use, and how to let it
 // go.
 //
-// # Why a function and not a connection
+// # Why this and not a connection
 //
 // Because of *when*. A command tree is built while an app is assembling its
 // commands -- before a flag has been parsed and before a configuration file has
-// been read -- and the address to dial is in that file. An app that took a
-// connection here would have to open one before it knew where to.
+// been read -- and the address to dial is in that file. An app that handed over
+// a connection would have to open one before it knew where to.
 //
 // `xli` reads configuration in a handler on the root, so by the time a leaf
-// runs the answer is there. This runs then. The shape is the one an app already
-// uses for everything else it needs late: `pdcmd.Load` puts the configuration
-// in place on the way down, and this reads it on the way to doing the work.
+// runs the answer is there. [Connector.Connect] runs then. The shape is the one
+// an app already uses for everything it needs late: `pdcmd.Load` puts the
+// configuration in place on the way down, and this reads it on the way to doing
+// the work.
 //
 // It also settles two things a stored connection cannot:
 //
@@ -46,20 +47,34 @@ type Conn = grpc.ClientConnInterface
 //     done. A connection stored in a tree belongs to whoever built the tree, and
 //     there is no moment that says when they are finished with it.
 //
-// The close may be nil, which is what [Static] answers: a connection somebody
-// else owns is not this package's to close.
-type Opener func(ctx context.Context) (Conn, func(), error)
+// # An interface rather than a function
+//
+// What an app writes here is not a callback. It is the two or three things this
+// deployment has decided -- which address, which credential, whether the server
+// is in this process at all -- and those want a name and a comment saying why.
+// A named type carries both to the place they are read; a function type carries
+// neither and every app spells the signature out again.
+type Connector interface {
+	// Connect answers with the connection, and with what to call when the
+	// command is done.
+	//
+	// The close may be nil, which is what [Static] answers: a connection
+	// somebody else owns is not this package's to close.
+	Connect(ctx context.Context) (Conn, func(), error)
+}
 
-// Static is the [Opener] for a connection that is already open, and it does not
-// close it.
+// Static is the [Connector] for a connection that is already open, and it does
+// not close it.
 //
 // It is right for a test and for an embedded deployment -- `bufconn` is dialed
 // before there is a command tree, and it lives as long as the process. It is
 // wrong for anything that reads an address out of a configuration file, which
-// is every deployment that connects to something: see [Opener].
-func Static(c Conn) Opener {
-	return func(context.Context) (Conn, func(), error) { return c, nil, nil }
-}
+// is every deployment that connects to something: see [Connector].
+func Static(c Conn) Connector { return static{c} }
+
+type static struct{ c Conn }
+
+func (s static) Connect(context.Context) (Conn, func(), error) { return s.c, nil, nil }
 
 type connKey struct{}
 
@@ -68,7 +83,7 @@ type connKey struct{}
 // It is exported for a command an app wrote itself and added to the tree with
 // [Tree.Add] or [Tree.Replace]. Such a command has to reach the same server the
 // generated ones do, and opening a second connection to do it would be a second
-// socket, a second credential to get right, and -- for an [Opener] that hands
+// socket, a second credential to get right, and -- for a [Connector] that hands
 // out an in-process server -- a second server.
 //
 // Chain [Tree.WithConn] in front of the command that reads this. Without it
@@ -113,7 +128,7 @@ func (r *runner) withConn() xli.Handler {
 				return next(ctx)
 			}
 
-			c, done, err := r.open(ctx)
+			c, done, err := r.conn.Connect(ctx)
 			if err != nil {
 				return err
 			}

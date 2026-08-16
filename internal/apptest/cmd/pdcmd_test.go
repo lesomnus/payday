@@ -704,7 +704,7 @@ func mustId(x *require.Assertions, b []byte) pdid.Id {
 	return v
 }
 
-// TestTheConnectionIsOpenedWhenACommandRuns is the whole reason [pdcmd.Opener]
+// TestTheConnectionIsOpenedWhenACommandRuns is the whole reason [pdcmd.Connector]
 // is a function.
 //
 // A tree is built while an app is assembling its commands, which is before a
@@ -718,12 +718,12 @@ func TestTheConnectionIsOpenedWhenACommandRuns(t *testing.T) {
 	conn := b.dialed(t, ctx)
 
 	opened, closed := 0, 0
-	open := func(context.Context) (pdcmd.Conn, func(), error) {
+	to := connectorFunc(func(context.Context) (pdcmd.Conn, func(), error) {
 		opened++
 		return conn, func() { closed++ }, nil
-	}
+	})
 
-	tree, err := pdcmd.New(open)
+	tree, err := pdcmd.New(to)
 	x.NoError(err)
 	x.Zero(opened, "building the tree opened a connection")
 
@@ -745,33 +745,33 @@ func TestPrintingHelpOpensNothing(t *testing.T) {
 	b, ctx := build(t)
 
 	opened := 0
-	open := func(context.Context) (pdcmd.Conn, func(), error) {
+	to := connectorFunc(func(context.Context) (pdcmd.Conn, func(), error) {
 		opened++
 		return nil, nil, errors.New("this deployment cannot reach the server")
-	}
+	})
 
-	tree, err := pdcmd.New(open)
+	tree, err := pdcmd.New(to)
 	x.NoError(err)
 
 	root := &xli.Command{Name: "app", Commands: tree.Commands()}
 	got := xlitest.Harness{Cmd: root, Ctx: b.travels(ctx)}.Run(t, "holder", "get", "--help")
 
-	// The usage message, and no refusal -- which is the assertion: an opener
-	// that cannot open anything is never asked.
+	// The usage message, and no refusal -- which is the assertion: a connector
+	// that cannot connect to anything is never asked.
 	x.NoError(got.Err)
 	x.Zero(opened)
 	x.Contains(got.Stdout, "get")
 }
 
-// TestAnOpenerThatCannotConnectIsTheCommandsAnswer, so that a bad address is
+// TestAConnectorThatCannotConnectIsTheCommandsAnswer, so that a bad address is
 // reported by the command somebody ran rather than by the app starting up.
-func TestAnOpenerThatCannotConnectIsTheCommandsAnswer(t *testing.T) {
+func TestAConnectorThatCannotConnectIsTheCommandsAnswer(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
-	tree, err := pdcmd.New(func(context.Context) (pdcmd.Conn, func(), error) {
+	tree, err := pdcmd.New(connectorFunc(func(context.Context) (pdcmd.Conn, func(), error) {
 		return nil, nil, errors.New("server.addr names nothing")
-	})
+	}))
 	x.NoError(err)
 
 	root := &xli.Command{Name: "app", Commands: tree.Commands()}
@@ -785,7 +785,7 @@ func TestAnOpenerThatCannotConnectIsTheCommandsAnswer(t *testing.T) {
 //
 // A command an app adds to the tree has to reach the same server the built ones
 // do. Opening its own would be a second socket, a second credential to get
-// right, and -- for an opener that hands out an in-process server -- a second
+// right, and -- for a connector that hands out an in-process server -- a second
 // server, which is a different database.
 func TestACommandOfTheAppsOwnGetsTheSameConnection(t *testing.T) {
 	x := require.New(t)
@@ -794,10 +794,10 @@ func TestACommandOfTheAppsOwnGetsTheSameConnection(t *testing.T) {
 	conn := b.dialed(t, ctx)
 
 	opened := 0
-	tree, err := pdcmd.New(func(context.Context) (pdcmd.Conn, func(), error) {
+	tree, err := pdcmd.New(connectorFunc(func(context.Context) (pdcmd.Conn, func(), error) {
 		opened++
 		return conn, nil, nil
-	})
+	}))
 	x.NoError(err)
 
 	var saw pdcmd.Conn
@@ -827,3 +827,14 @@ func TestACommandOfTheAppsOwnGetsTheSameConnection(t *testing.T) {
 	x.Same(conn, saw, "the app's own command reached a different connection")
 	x.Equal(1, opened, "it opened a second one")
 }
+
+// connectorFunc is a [pdcmd.Connector] written inline, which is a thing a test
+// wants and an app does not.
+//
+// payday ships no such adapter on purpose. What an app writes is not a callback
+// -- it is which address, which credential, and whether the server is in this
+// process at all -- and those want a name and a comment saying why. A test's
+// connector is none of that; it counts calls.
+type connectorFunc func(ctx context.Context) (pdcmd.Conn, func(), error)
+
+func (f connectorFunc) Connect(ctx context.Context) (pdcmd.Conn, func(), error) { return f(ctx) }

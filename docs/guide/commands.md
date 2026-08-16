@@ -5,7 +5,7 @@ fix a typo in an alias — and every app has written them by hand. `payday/pdcmd
 builds them from what is already in the binary:
 
 ```go
-t, err := pdcmd.New(open)
+t, err := pdcmd.New(to)
 if err != nil {
 	return err
 }
@@ -23,16 +23,22 @@ For what these commands are and why they are in `pdcmd` rather than in `pd`, see
 
 ## 1. The connection is yours, and it is opened late
 
-`pdcmd.New` takes an `Opener` — a function answering with a
+`pdcmd.New` takes a `Connector` — one method, answering with a
 `grpc.ClientConnInterface` and how to let it go. It does not dial, does not
 authenticate, and reads no configuration file.
+
+```go
+type Connector interface {
+	Connect(ctx context.Context) (Conn, func(), error)
+}
+```
 
 That is not an omission. **Where to connect, as whom, and what that credential
 may do are the three decisions that make an admin command safe or unsafe**, and
 they belong to the deployment. A package that made them for you would be making
 them the same way for every app.
 
-### Why a function and not a connection
+### Why this and not a connection
 
 Because of *when*. The tree is built while the app is assembling its commands —
 before a flag has been parsed and before the configuration file has been read —
@@ -40,26 +46,32 @@ and the address to dial is in that file. An app handing over a connection would
 have to open one before it knew where to.
 
 `xli` reads configuration in a handler on the root, so by the time a leaf runs
-the answer is there. The opener runs then:
+the answer is there. `Connect` runs then:
 
 ```go
-func openFor(c *Config) pdcmd.Opener {
-	return func(ctx context.Context) (pdcmd.Conn, func(), error) {
-		// c is filled in by now: `pdcmd.Load` ran on the root.
-		conn, err := grpc.NewClient(c.Server.Addr, grpc.WithTransportCredentials(creds))
-		if err != nil {
-			return nil, nil, err
-		}
+// remote is this deployment's data plane, over the wire.
+type remote struct{ c *Config }
 
-		return conn, func() { conn.Close() }, nil
+func (r remote) Connect(ctx context.Context) (pdcmd.Conn, func(), error) {
+	// r.c is filled in by now: `pdcmd.Load` ran on the root.
+	conn, err := grpc.NewClient(r.c.Server.Addr, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		return nil, nil, err
 	}
+
+	return conn, func() { conn.Close() }, nil
 }
 ```
+
+It is an interface rather than a function type because what goes in it is not a
+callback: it is which address, which credential, and whether the server is in
+this process at all. Those want a name and a comment saying why, carried to the
+place they are read. payday ships no `ConnectorFunc` for the same reason.
 
 Two more things follow from it, and neither is available to a stored
 connection:
 
-- **`--help` opens nothing.** The opener is asked only when a command is
+- **`--help` opens nothing.** The connector is asked only when a command is
   actually running. Printing usage or completing a word must not be able to
   hang on a server that is not there.
 - **Something closes it.** The second answer is called when the command is
@@ -75,7 +87,7 @@ return root.Run(as.Provide(ctx), os.Args[1:])
 ### When you already have one
 
 A test, or an embedded server over `bufconn`, has the connection before there is
-a tree and keeps it for the life of the process. `pdcmd.Static` is the opener
+a tree and keeps it for the life of the process. `pdcmd.Static` is the connector
 for that, and it closes nothing:
 
 ```go
@@ -85,8 +97,8 @@ t, err := pdcmd.New(pdcmd.Static(conn))
 ### A command of your own reaches the same one
 
 Chain `t.WithConn()` in front of it and read `pdcmd.MustConn(ctx)`. Opening its
-own would be a second socket, a second credential to get right, and — for an
-opener that hands out an in-process server — a second server, which is a
+own would be a second socket, a second credential to get right, and — for a
+connector that hands out an in-process server — a second server, which is a
 different database.
 
 ```go
@@ -240,7 +252,7 @@ An app's own format is not a lesser kind of format — it is the same one-method
 interface the built-in ones implement:
 
 ```go
-t, err := pdcmd.New(open, pdcmd.Options{
+t, err := pdcmd.New(to, pdcmd.Options{
 	Printers: map[string]pdcmd.Printer{
 		"csv": pdcmd.PrinterFunc(func(w io.Writer, m proto.Message) error {
 			for _, row := range pdcmd.Rows(m) {
@@ -393,8 +405,8 @@ registry. A connection cannot say which of them it speaks to.
 So the app says:
 
 ```go
-mine := pdcmd.NewIn(open, "hday.oasys")
-theirs := pdcmd.NewIn(openRoster, "roster")
+mine := pdcmd.NewIn(mineLocal{c}, "hday.oasys")
+theirs := pdcmd.NewIn(theirRoster{c}, "roster")
 ```
 
 Which is the right shape anyway: a process with two servers wants two trees.
