@@ -165,8 +165,14 @@ payday rather than by the app, precisely so this cannot be got wrong.
 Every entity in an app has to generate into the same Go package. Two packages
 and the ent schemas split, and the edges between them do not compile.
 
-`pd gen` refuses an app with two, and `Layout.ProtoPkg` refuses two proto
-packages for the same reason.
+`pd gen` refuses an app with two, naming both files.
+
+**Two *proto* packages are allowed**, and are a different question: one of them
+has to say `option (payday.app) = {};`, because that is what decides where
+payday's own entities are copied. Neither saying it is refused, and so is both.
+See [more than one proto package](guide/packages.md), which also covers two apps
+linked into one process — a case with a sharper failure, since a shared package
+is a duplicate path in the protobuf registry and a panic before `main`.
 
 ### One upstream sharp edge
 
