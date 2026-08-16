@@ -8,26 +8,11 @@ import (
 	"github.com/lesomnus/xli"
 	"github.com/lesomnus/xli/arg"
 	"github.com/lesomnus/xli/flg"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
 )
-
-// Conn is what the app hands over, and the whole of what these commands need.
-//
-// A `grpc.ClientConnInterface` and not a generated client, for the reason this
-// package exists at all: an app has more than one way in -- a dialed socket, an
-// in-process server over `bufconn`, an admin port with a different policy in
-// front of it -- and which one a command should use is the deployment's
-// decision, not payday's. Nothing here dials, authenticates, or reads a
-// configuration file. The caller has already decided all three by the time it
-// has one of these.
-//
-// It is also what makes an embedded server work unchanged: `bufconn` hands back
-// a `*grpc.ClientConn` like any other.
-type Conn = grpc.ClientConnInterface
 
 // call invokes one unary method and answers with the reply.
 //

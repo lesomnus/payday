@@ -76,7 +76,7 @@ func (t *Tree) Unary(method string) (*xli.Command, error) {
 		return nil, fmt.Errorf("pdcmd: %s: is a stream, which is not this shape", method)
 	}
 
-	r := &runner{conn: t.conn, opts: t.opts}
+	r := t.run
 
 	// A request that names a row takes the argument that names one. `setRef`
 	// reads the same field, so the two cannot disagree about which requests
@@ -99,7 +99,7 @@ func (t *Tree) Unary(method string) (*xli.Command, error) {
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
 		Args:  args,
 
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -116,6 +116,6 @@ func (t *Tree) Unary(method string) (*xli.Command, error) {
 			}
 
 			return next(ctx)
-		}),
+		})),
 	}, nil
 }

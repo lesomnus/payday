@@ -5,7 +5,7 @@ fix a typo in an alias — and every app has written them by hand. `payday/pdcmd
 builds them from what is already in the binary:
 
 ```go
-t, err := pdcmd.New(conn)
+t, err := pdcmd.New(open)
 if err != nil {
 	return err
 }
@@ -21,28 +21,85 @@ For what these commands are and why they are in `pdcmd` rather than in `pd`, see
 
 ---
 
-## 1. The connection is yours
+## 1. The connection is yours, and it is opened late
 
-`pdcmd.New` takes a `grpc.ClientConnInterface` and nothing else. It does not
-dial, does not authenticate, and reads no configuration file.
+`pdcmd.New` takes an `Opener` — a function answering with a
+`grpc.ClientConnInterface` and how to let it go. It does not dial, does not
+authenticate, and reads no configuration file.
 
 That is not an omission. **Where to connect, as whom, and what that credential
 may do are the three decisions that make an admin command safe or unsafe**, and
 they belong to the deployment. A package that made them for you would be making
 them the same way for every app.
 
-So the app opens the connection it means:
+### Why a function and not a connection
+
+Because of *when*. The tree is built while the app is assembling its commands —
+before a flag has been parsed and before the configuration file has been read —
+and the address to dial is in that file. An app handing over a connection would
+have to open one before it knew where to.
+
+`xli` reads configuration in a handler on the root, so by the time a leaf runs
+the answer is there. The opener runs then:
 
 ```go
-// A socket, with whatever credentials this deployment uses.
-conn, err := grpc.NewClient(c.Addr, grpc.WithTransportCredentials(creds))
+func openFor(c *Config) pdcmd.Opener {
+	return func(ctx context.Context) (pdcmd.Conn, func(), error) {
+		// c is filled in by now: `pdcmd.Load` ran on the root.
+		conn, err := grpc.NewClient(c.Server.Addr, grpc.WithTransportCredentials(creds))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return conn, func() { conn.Close() }, nil
+	}
+}
 ```
 
-and passes the credential on the context it runs with:
+Two more things follow from it, and neither is available to a stored
+connection:
+
+- **`--help` opens nothing.** The opener is asked only when a command is
+  actually running. Printing usage or completing a word must not be able to
+  hang on a server that is not there.
+- **Something closes it.** The second answer is called when the command is
+  done. A connection stored in a tree belongs to whoever built the tree, and
+  nothing says when they are finished with it.
+
+The credential rides on the context the root is run with:
 
 ```go
 return root.Run(as.Provide(ctx), os.Args[1:])
 ```
+
+### When you already have one
+
+A test, or an embedded server over `bufconn`, has the connection before there is
+a tree and keeps it for the life of the process. `pdcmd.Static` is the opener
+for that, and it closes nothing:
+
+```go
+t, err := pdcmd.New(pdcmd.Static(conn))
+```
+
+### A command of your own reaches the same one
+
+Chain `t.WithConn()` in front of it and read `pdcmd.MustConn(ctx)`. Opening its
+own would be a second socket, a second credential to get right, and — for an
+opener that hands out an in-process server — a second server, which is a
+different database.
+
+```go
+t.Add("robot/resend", &xli.Command{
+	Name: "resend",
+	Handler: xli.Chain(t.WithConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		c := app.NewRobotServiceClient(pdcmd.MustConn(ctx))
+		...
+	})),
+})
+```
+
+It is idempotent, so chaining it costs nothing where a parent already has it.
 
 One app can have several trees, and this is why. roster has an operator port and
 a data port with different policies in front of them; a tree per connection is a
@@ -183,7 +240,7 @@ An app's own format is not a lesser kind of format — it is the same one-method
 interface the built-in ones implement:
 
 ```go
-t, err := pdcmd.New(conn, pdcmd.Options{
+t, err := pdcmd.New(open, pdcmd.Options{
 	Printers: map[string]pdcmd.Printer{
 		"csv": pdcmd.PrinterFunc(func(w io.Writer, m proto.Message) error {
 			for _, row := range pdcmd.Rows(m) {
@@ -336,8 +393,8 @@ registry. A connection cannot say which of them it speaks to.
 So the app says:
 
 ```go
-mine := pdcmd.NewIn(conn, "hday.oasys")
-theirs := pdcmd.NewIn(rosterConn, "roster")
+mine := pdcmd.NewIn(open, "hday.oasys")
+theirs := pdcmd.NewIn(openRoster, "roster")
 ```
 
 Which is the right shape anyway: a process with two servers wants two trees.

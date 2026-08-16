@@ -49,7 +49,7 @@ func (b *built) dialed(t *testing.T, ctx context.Context) *grpc.ClientConn {
 func rooted(t *testing.T, conn *grpc.ClientConn, opts ...pdcmd.Options) *xli.Command {
 	t.Helper()
 
-	tree, err := pdcmd.New(conn, opts...)
+	tree, err := pdcmd.New(pdcmd.Static(conn), opts...)
 	require.NoError(t, err)
 
 	return &xli.Command{Name: "app", Commands: tree.Commands()}
@@ -66,7 +66,7 @@ func TestTheTreeIsWhatTheSchemaDeclared(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
-	tree, err := pdcmd.New(b.dialed(t, ctx))
+	tree, err := pdcmd.New(pdcmd.Static(b.dialed(t, ctx)))
 	x.NoError(err)
 
 	// Spelled out rather than asserted one `Nil` at a time, because a `Nil` on
@@ -347,7 +347,7 @@ func TestOneCommandCanBeReplaced(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
-	tree, err := pdcmd.New(b.dialed(t, ctx))
+	tree, err := pdcmd.New(pdcmd.Static(b.dialed(t, ctx)))
 	x.NoError(err)
 
 	x.NoError(tree.Replace("holder/erase", &xli.Command{
@@ -375,7 +375,7 @@ func TestReplacingWhatIsNotThereIsRefused(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
-	tree, err := pdcmd.New(b.dialed(t, ctx))
+	tree, err := pdcmd.New(pdcmd.Static(b.dialed(t, ctx)))
 	x.NoError(err)
 
 	x.Error(tree.Replace("holder/gett", &xli.Command{}))
@@ -387,7 +387,7 @@ func TestATreeCanBeNarrowed(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
-	tree, err := pdcmd.New(b.dialed(t, ctx))
+	tree, err := pdcmd.New(pdcmd.Static(b.dialed(t, ctx)))
 	x.NoError(err)
 
 	x.NoError(tree.Drop("holder/erase"))
@@ -582,7 +582,7 @@ func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 		}.Build())
 		x.NoError(err)
 
-		tree, err := pdcmd.New(conn)
+		tree, err := pdcmd.New(pdcmd.Static(conn))
 		x.NoError(err)
 		x.Nil(tree.Command("robot/move"), "the five verbs do not include it")
 
@@ -604,7 +604,7 @@ func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 	t.Run("and one payday generated but does not build", func(t *testing.T) {
 		x := require.New(t)
 
-		tree, err := pdcmd.New(conn)
+		tree, err := pdcmd.New(pdcmd.Static(conn))
 		x.NoError(err)
 		x.Nil(tree.Command("robot/apply"), "Apply is a general write and is not built")
 
@@ -626,7 +626,7 @@ func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 	t.Run("the reference argument is worked out from the request", func(t *testing.T) {
 		x := require.New(t)
 
-		tree, err := pdcmd.New(conn)
+		tree, err := pdcmd.New(pdcmd.Static(conn))
 		x.NoError(err)
 
 		// `HolderGetRequest` has a `ref`, so the command takes one.
@@ -643,7 +643,7 @@ func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 	t.Run("and what cannot be a command is refused while it is being wired", func(t *testing.T) {
 		x := require.New(t)
 
-		tree, err := pdcmd.New(conn)
+		tree, err := pdcmd.New(pdcmd.Static(conn))
 		x.NoError(err)
 
 		_, err = tree.Unary("app.RobotService.Watch")
@@ -672,7 +672,7 @@ func TestWhichAppThisConnectionSpeaksTo(t *testing.T) {
 	x.Equal([]protoreflect.FullName{"app"}, pdcmd.Packages(),
 		"one app is linked in, which is why New has something to guess with")
 
-	tree := pdcmd.NewIn(conn, "app")
+	tree := pdcmd.NewIn(pdcmd.Static(conn), "app")
 	x.NotNil(tree.Command("holder/get"))
 
 	got := xlitest.Harness{
@@ -684,7 +684,7 @@ func TestWhichAppThisConnectionSpeaksTo(t *testing.T) {
 
 	// A package with no entities builds an empty tree rather than failing, so
 	// that a caller naming the wrong one finds out from the tree it got.
-	x.Empty(pdcmd.NewIn(conn, "payday").Commands())
+	x.Empty(pdcmd.NewIn(pdcmd.Static(conn), "payday").Commands())
 }
 
 // mustId is a `bytes` identifier as the uuid a command line carries.
@@ -693,4 +693,128 @@ func mustId(x *require.Assertions, b []byte) pdid.Id {
 	x.NoError(err)
 
 	return v
+}
+
+// TestTheConnectionIsOpenedWhenACommandRuns is the whole reason [pdcmd.Opener]
+// is a function.
+//
+// A tree is built while an app is assembling its commands, which is before a
+// flag has been parsed and before a configuration file has been read -- and the
+// address to dial is in that file. So an app that had to hand over a connection
+// would have to open one before it knew where to.
+func TestTheConnectionIsOpenedWhenACommandRuns(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	conn := b.dialed(t, ctx)
+
+	opened, closed := 0, 0
+	open := func(context.Context) (pdcmd.Conn, func(), error) {
+		opened++
+		return conn, func() { closed++ }, nil
+	}
+
+	tree, err := pdcmd.New(open)
+	x.NoError(err)
+	x.Zero(opened, "building the tree opened a connection")
+
+	root := &xli.Command{Name: "app", Commands: tree.Commands()}
+	got := xlitest.Harness{Cmd: root, Ctx: b.travels(ctx)}.Run(t, "holder", "get", "@acme/admin")
+	x.NoError(got.Err)
+
+	x.Equal(1, opened)
+	x.Equal(1, closed, "what was opened for the command was not let go of")
+}
+
+// TestPrintingHelpOpensNothing.
+//
+// `--help` and a completion are what somebody types while working out what to
+// type next, and neither should be able to hang on a server that is not there.
+// It is `mode.Run` that says so; a tree holding a socket could not.
+func TestPrintingHelpOpensNothing(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	opened := 0
+	open := func(context.Context) (pdcmd.Conn, func(), error) {
+		opened++
+		return nil, nil, errors.New("this deployment cannot reach the server")
+	}
+
+	tree, err := pdcmd.New(open)
+	x.NoError(err)
+
+	root := &xli.Command{Name: "app", Commands: tree.Commands()}
+	got := xlitest.Harness{Cmd: root, Ctx: b.travels(ctx)}.Run(t, "holder", "get", "--help")
+
+	// The usage message, and no refusal -- which is the assertion: an opener
+	// that cannot open anything is never asked.
+	x.NoError(got.Err)
+	x.Zero(opened)
+	x.Contains(got.Stdout, "get")
+}
+
+// TestAnOpenerThatCannotConnectIsTheCommandsAnswer, so that a bad address is
+// reported by the command somebody ran rather than by the app starting up.
+func TestAnOpenerThatCannotConnectIsTheCommandsAnswer(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	tree, err := pdcmd.New(func(context.Context) (pdcmd.Conn, func(), error) {
+		return nil, nil, errors.New("server.addr names nothing")
+	})
+	x.NoError(err)
+
+	root := &xli.Command{Name: "app", Commands: tree.Commands()}
+	got := xlitest.Harness{Cmd: root, Ctx: b.travels(ctx)}.Run(t, "holder", "get", "@acme/admin")
+
+	x.Error(got.Err)
+	x.Contains(got.Err.Error(), "server.addr names nothing")
+}
+
+// TestACommandOfTheAppsOwnGetsTheSameConnection.
+//
+// A command an app adds to the tree has to reach the same server the built ones
+// do. Opening its own would be a second socket, a second credential to get
+// right, and -- for an opener that hands out an in-process server -- a second
+// server, which is a different database.
+func TestACommandOfTheAppsOwnGetsTheSameConnection(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	conn := b.dialed(t, ctx)
+
+	opened := 0
+	tree, err := pdcmd.New(func(context.Context) (pdcmd.Conn, func(), error) {
+		opened++
+		return conn, nil, nil
+	})
+	x.NoError(err)
+
+	var saw pdcmd.Conn
+	x.NoError(tree.Add("holder/count", &xli.Command{
+		Name:  "count",
+		Brief: "how many there are",
+		Handler: xli.Chain(tree.WithConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			saw = pdcmd.MustConn(ctx)
+
+			c := app.NewHolderServiceClient(saw)
+			vs, err := c.List(ctx, app.HolderListRequest_builder{}.Build())
+			if err != nil {
+				return err
+			}
+
+			cmd.Printf("%d\n", len(vs.GetItems()))
+
+			return next(ctx)
+		})),
+	}))
+
+	root := &xli.Command{Name: "app", Commands: tree.Commands()}
+	got := xlitest.Harness{Cmd: root, Ctx: b.travels(ctx)}.Run(t, "holder", "count")
+	x.NoError(got.Err)
+	x.Equal("1\n", got.Stdout)
+
+	x.Same(conn, saw, "the app's own command reached a different connection")
+	x.Equal(1, opened, "it opened a second one")
 }

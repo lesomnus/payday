@@ -66,7 +66,7 @@ func (o Options) def() string {
 //
 // The whole tree, which is the whole of what an app has to write:
 //
-//	t, err := pdcmd.New(conn)
+//	t, err := pdcmd.New(open)
 //	root.Commands = append(root.Commands, t.Commands()...)
 //
 // One command of it, to mount somewhere else or to wrap:
@@ -93,7 +93,7 @@ func (o Options) def() string {
 // that took the default. `Watch` is a stream, and a stream is not this shape.
 // Both are commands an app that wants them writes and mounts beside these.
 type Tree struct {
-	conn Conn
+	run  *runner
 	opts Options
 	pkg  protoreflect.FullName
 
@@ -107,30 +107,34 @@ type Tree struct {
 // cannot say which it speaks to -- see [Entities]. An app in that position uses
 // [NewIn], which is not a workaround: a process with two apps has two servers
 // and wants two trees.
-func New(c Conn, opts ...Options) (*Tree, error) {
+//
+// `open` is asked when a command runs rather than now; see [Opener]. An app
+// that already holds a connection -- a test, an embedded server over `bufconn`
+// -- passes [Static].
+func New(open Opener, opts ...Options) (*Tree, error) {
 	pkg, err := solePackage()
 	if err != nil {
 		return nil, err
 	}
 
-	return NewIn(c, pkg, opts...), nil
+	return NewIn(open, pkg, opts...), nil
 }
 
 // NewIn builds the tree for the app whose proto package is `pkg`.
-func NewIn(c Conn, pkg protoreflect.FullName, opts ...Options) *Tree {
+func NewIn(open Opener, pkg protoreflect.FullName, opts ...Options) *Tree {
 	o := Options{}
 	if len(opts) > 0 {
 		o = opts[0]
 	}
 
+	r := &runner{open: open, opts: o}
+
 	t := &Tree{
-		conn: c,
+		run:  r,
 		opts: o,
 		pkg:  pkg,
 		cmds: map[string]*xli.Command{},
 	}
-
-	r := &runner{conn: c, opts: o}
 
 	for _, e := range Entities(pkg) {
 		vs := xli.Commands{}
@@ -169,6 +173,26 @@ func NewIn(c Conn, pkg protoreflect.FullName, opts ...Options) *Tree {
 
 	return t
 }
+
+// WithConn opens the connection, puts it in the context and closes it when the
+// command is done.
+//
+// Every command this package builds already has it. It is exported for one an
+// app wrote itself: chain it in front, and [ConnFrom] answers with the same
+// connection the generated commands are using rather than a second one.
+//
+//	c := &xli.Command{
+//		Name:    "resend",
+//		Handler: xli.Chain(t.WithConn(), xli.OnRun(func(ctx context.Context, ...) error {
+//			cl := app.NewRobotServiceClient(pdcmd.MustConn(ctx))
+//			...
+//		})),
+//	}
+//	t.Add("robot/resend", c)
+//
+// It is idempotent, so chaining it on a command mounted under another that has
+// it costs nothing and opens nothing.
+func (t *Tree) WithConn() xli.Handler { return t.run.withConn() }
 
 // Commands is the tree, ready to be appended to an app's root.
 func (t *Tree) Commands() xli.Commands {

@@ -34,7 +34,7 @@ var verbs = []struct {
 // runner is what every built command closes over: where to send the call and
 // how to show the answer.
 type runner struct {
-	conn Conn
+	open Opener
 	opts Options
 }
 
@@ -46,7 +46,10 @@ func (r *runner) run(ctx context.Context, cmd *xli.Command, md protoreflect.Meth
 		return err
 	}
 
-	out, err := call(ctx, r.conn, md, in)
+	// From the context rather than from here, because [runner.withConn] put it
+	// there -- which is what lets a command an app wrote itself reach the same
+	// connection; see [Tree.WithConn].
+	out, err := call(ctx, MustConn(ctx), md, in)
 	if err != nil {
 		return err
 	}
@@ -93,7 +96,7 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -106,7 +109,7 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 			}
 
 			return next(ctx)
-		}),
+		})),
 	}
 }
 
@@ -130,7 +133,7 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 		},
 		Args: arg.Args{argRaw()},
 
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -154,7 +157,7 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 			}
 
 			return next(ctx)
-		}),
+		})),
 	}
 }
 
@@ -172,7 +175,7 @@ func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
 		Args:  arg.Args{&arg.String{Name: "NAME", Optional: true}, argRaw()},
 
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -204,7 +207,7 @@ func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 			}
 
 			return next(ctx)
-		}),
+		})),
 	}
 }
 
@@ -216,7 +219,7 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -229,7 +232,7 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 			}
 
 			return next(ctx)
-		}),
+		})),
 	}
 }
 
@@ -246,7 +249,7 @@ func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -259,7 +262,7 @@ func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 			}
 
 			return next(ctx)
-		}),
+		})),
 	}
 }
 
