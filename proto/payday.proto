@@ -3,6 +3,7 @@ edition = "2023";
 package payday;
 
 import "google/protobuf/descriptor.proto";
+import "payday/app.proto";
 import "payday/entity.proto";
 
 option go_package = "github.com/lesomnus/payday/pdpb";
@@ -17,4 +18,11 @@ extend google.protobuf.MessageOptions {
 // without either running into `orm`.
 extend google.protobuf.FieldOptions {
   Field field = 46101;
+}
+
+// And the file block, above that one. A file says at most one thing to payday
+// and it is which package the app's own entities live in -- see [App], and note
+// that an app with a single package says nothing at all.
+extend google.protobuf.FileOptions {
+  App app = 46201;
 }

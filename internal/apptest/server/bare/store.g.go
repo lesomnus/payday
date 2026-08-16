@@ -21,6 +21,7 @@ import (
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	grpc "google.golang.org/grpc"
@@ -327,6 +328,7 @@ type Scope interface {
 	JointScope(ctx context.Context) (predicate.Joint, error)
 	FleetScope(ctx context.Context) (predicate.Fleet, error)
 	ReadingScope(ctx context.Context) (predicate.Reading, error)
+	ThingScope(ctx context.Context) (predicate.Thing, error)
 }
 
 // Unscoped is a [Scope] that narrows nothing. Embed it and write out the
@@ -369,6 +371,9 @@ func (Unscoped) FleetScope(_ context.Context) (predicate.Fleet, error) {
 	return nil, nil
 }
 func (Unscoped) ReadingScope(_ context.Context) (predicate.Reading, error) {
+	return nil, nil
+}
+func (Unscoped) ThingScope(_ context.Context) (predicate.Thing, error) {
 	return nil, nil
 }
 
@@ -591,6 +596,26 @@ func (ss Scopes) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 	return reading.And(ps...), nil
 }
 
+func (ss Scopes) ThingScope(ctx context.Context) (predicate.Thing, error) {
+	ps := make([]predicate.Thing, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.ThingScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return thing.And(ps...), nil
+}
+
 // Minter decides the key a row is stored under. It is asked once per Add,
 // for an entity whose key is a uuid, and only for those.
 //
@@ -671,7 +696,7 @@ func (s Store) now() time.Time {
 // is rendered for that dialect, not just what this server writes.
 //
 // That set is also what a soft erasure needs, so this is the whole
-// check. Cell, Fleet, Holder, Joint and Robot free the names they held when a row
+// check. Cell, Fleet, Holder, Joint, Robot and Thing free the names they held when a row
 // is erased, which is a unique index covering only the rows that are
 // still there -- a partial index, and the dialects above are the ones
 // that have one. MySQL does not, and ent writes the annotation out for
@@ -719,3 +744,4 @@ func (s Server) Pairing() apptest.PairingServiceServer { return PairingServiceSe
 func (s Server) Joint() apptest.JointServiceServer     { return JointServiceServer{Store: s.Store} }
 func (s Server) Fleet() apptest.FleetServiceServer     { return FleetServiceServer{Store: s.Store} }
 func (s Server) Reading() apptest.ReadingServiceServer { return ReadingServiceServer{Store: s.Store} }
+func (s Server) Thing() apptest.ThingServiceServer     { return ThingServiceServer{Store: s.Store} }

@@ -35,3 +35,6 @@ type Robot func(*sql.Selector)
 
 // Tenant is the predicate function for tenant builders.
 type Tenant func(*sql.Selector)
+
+// Thing is the predicate function for thing builders.
+type Thing func(*sql.Selector)

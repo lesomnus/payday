@@ -566,3 +566,91 @@ func must[T any](v T, err error) T {
 
 	return v
 }
+
+// pkgFile writes one .proto of a named package, optionally claiming to be the
+// app's own.
+func pkgFile(t *testing.T, root, pkg, name string, own bool) {
+	t.Helper()
+
+	dir := filepath.Join(root, "proto", pkg)
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+
+	s := "edition = \"2023\";\n\npackage " + pkg + ";\n\noption go_package = \"example.com/app\";\n"
+	if own {
+		s += "option (payday.app) = {};\n"
+	}
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(s), 0o644))
+}
+
+// TestASecondPackageIsAllowedWhenOneSaysItIsTheApps.
+//
+// payday copies its own entities into the app's package, so it has to know
+// which one that is, and for one package it reads it. The refusal for two was
+// the whole of the answer, and it left no way to say what an app might
+// reasonably want: a shared word for the thing several services are about --
+// `hday.oasys.Robot` -- with everything one service keeps for itself in a
+// package of its own.
+//
+// `option (payday.app)` is that way, and the reason it is on the **file** is
+// that the file already declares the package. Nothing else has to agree with
+// anything.
+func TestASecondPackageIsAllowedWhenOneSaysItIsTheApps(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "example.com/app")
+	pkgFile(t, root, "acme", "widget.proto", true)
+	pkgFile(t, root, "hday.oasys", "robot.proto", false)
+
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+	x.Equal("acme", l.ProtoPkg, "the one that said so, not the one that sorts first")
+
+	// And that is where payday's own entities are copied to.
+	x.Equal(filepath.Join("proto", "acme", "payday"), l.DirPd())
+}
+
+// TestTwoPackagesAndNeitherSaysWhich is the refusal that was always there, and
+// it now says how to answer it rather than only that it cannot be answered.
+func TestTwoPackagesAndNeitherSaysWhich(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "example.com/app")
+	pkgFile(t, root, "acme", "widget.proto", false)
+	pkgFile(t, root, "hday.oasys", "robot.proto", false)
+
+	_, err := pdcli.Discover(root)
+	x.Error(err)
+	x.Contains(err.Error(), "option (payday.app)")
+	// Both, because which two disagreed is the thing a reader needs.
+	x.Contains(err.Error(), "acme")
+	x.Contains(err.Error(), "hday.oasys")
+}
+
+// TestTwoPackagesBothSayingSo, which is the one thing worse than neither: the
+// option exists to settle where the copies go, so two of it is two answers from
+// the mechanism meant to give one.
+func TestTwoPackagesBothSayingSo(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "example.com/app")
+	pkgFile(t, root, "acme", "widget.proto", true)
+	pkgFile(t, root, "hday.oasys", "robot.proto", true)
+
+	_, err := pdcli.Discover(root)
+	x.Error(err)
+	x.Contains(err.Error(), "two packages say they are this app's")
+}
+
+// TestOnePackageSaysNothing -- an app with one package is every app until it is
+// not, and it must not have to learn about any of this.
+func TestOnePackageSaysNothing(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "example.com/app")
+	pkgFile(t, root, "acme", "widget.proto", false)
+
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+	x.Equal("acme", l.ProtoPkg)
+}

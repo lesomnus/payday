@@ -1,0 +1,43 @@
+edition = "2023";
+
+package shared;
+
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// Thing is an entity in a package that is **not** the app's.
+//
+// It is here to prove that an app may have one. The reason to want it is that a
+// name can outlive the service holding it: a fleet of several apps may want one
+// word for the thing they are all about, so that the message a certificate or a
+// message bus names is the same name everywhere it is read, while everything
+// each app keeps for itself stays in a package of its own.
+//
+// What makes it legal is `option (payday.app)` over in `app/robot.proto`, which
+// says which package payday's own entities are copied into. Without it this
+// file is the second answer to that question and `pd gen` refuses -- see
+// [pdcli.Layout.ProtoPkg].
+//
+// Nothing else about it is special, and that is the point of the test: it is a
+// tenanted entity with a domain, and it generates like any other.
+message Thing {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+
+  string alias = 4;
+
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 13
+    global: {}
+  };
+}

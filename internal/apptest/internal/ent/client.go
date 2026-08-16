@@ -26,6 +26,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 )
 
 // Client is the client that holds all ent builders.
@@ -53,6 +54,8 @@ type Client struct {
 	Robot *RobotClient
 	// Tenant is the client for interacting with the Tenant builders.
 	Tenant *TenantClient
+	// Thing is the client for interacting with the Thing builders.
+	Thing *ThingClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -74,6 +77,7 @@ func (c *Client) init() {
 	c.Reading = NewReadingClient(c.config)
 	c.Robot = NewRobotClient(c.config)
 	c.Tenant = NewTenantClient(c.config)
+	c.Thing = NewThingClient(c.config)
 }
 
 type (
@@ -176,6 +180,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Reading: NewReadingClient(cfg),
 		Robot:   NewRobotClient(cfg),
 		Tenant:  NewTenantClient(cfg),
+		Thing:   NewThingClient(cfg),
 	}, nil
 }
 
@@ -205,6 +210,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Reading: NewReadingClient(cfg),
 		Robot:   NewRobotClient(cfg),
 		Tenant:  NewTenantClient(cfg),
+		Thing:   NewThingClient(cfg),
 	}, nil
 }
 
@@ -235,7 +241,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing, c.Reading,
-		c.Robot, c.Tenant,
+		c.Robot, c.Tenant, c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -246,7 +252,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing, c.Reading,
-		c.Robot, c.Tenant,
+		c.Robot, c.Tenant, c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -275,6 +281,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Robot.mutate(ctx, m)
 	case *TenantMutation:
 		return c.Tenant.mutate(ctx, m)
+	case *ThingMutation:
+		return c.Thing.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -1738,14 +1746,147 @@ func (c *TenantClient) mutate(ctx context.Context, m *TenantMutation) (Value, er
 	}
 }
 
+// ThingClient is a client for the Thing schema.
+type ThingClient struct {
+	config
+}
+
+// NewThingClient returns a client for the Thing from the given config.
+func NewThingClient(c config) *ThingClient {
+	return &ThingClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `thing.Hooks(f(g(h())))`.
+func (c *ThingClient) Use(hooks ...Hook) {
+	c.hooks.Thing = append(c.hooks.Thing, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `thing.Intercept(f(g(h())))`.
+func (c *ThingClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Thing = append(c.inters.Thing, interceptors...)
+}
+
+// Create returns a builder for creating a Thing entity.
+func (c *ThingClient) Create() *ThingCreate {
+	mutation := newThingMutation(c.config, OpCreate)
+	return &ThingCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Thing entities.
+func (c *ThingClient) CreateBulk(builders ...*ThingCreate) *ThingCreateBulk {
+	return &ThingCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ThingClient) MapCreateBulk(slice any, setFunc func(*ThingCreate, int)) *ThingCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ThingCreateBulk{err: fmt.Errorf("calling to ThingClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ThingCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ThingCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Thing.
+func (c *ThingClient) Update() *ThingUpdate {
+	mutation := newThingMutation(c.config, OpUpdate)
+	return &ThingUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ThingClient) UpdateOne(_m *Thing) *ThingUpdateOne {
+	mutation := newThingMutation(c.config, OpUpdateOne, withThing(_m))
+	return &ThingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ThingClient) UpdateOneID(id uuid.UUID) *ThingUpdateOne {
+	mutation := newThingMutation(c.config, OpUpdateOne, withThingID(id))
+	return &ThingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Thing.
+func (c *ThingClient) Delete() *ThingDelete {
+	mutation := newThingMutation(c.config, OpDelete)
+	return &ThingDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ThingClient) DeleteOne(_m *Thing) *ThingDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ThingClient) DeleteOneID(id uuid.UUID) *ThingDeleteOne {
+	builder := c.Delete().Where(thing.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ThingDeleteOne{builder}
+}
+
+// Query returns a query builder for Thing.
+func (c *ThingClient) Query() *ThingQuery {
+	return &ThingQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeThing},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Thing entity by its id.
+func (c *ThingClient) Get(ctx context.Context, id uuid.UUID) (*Thing, error) {
+	return c.Query().Where(thing.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ThingClient) GetX(ctx context.Context, id uuid.UUID) *Thing {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *ThingClient) Hooks() []Hook {
+	return c.hooks.Thing
+}
+
+// Interceptors returns the client interceptors.
+func (c *ThingClient) Interceptors() []Interceptor {
+	return c.inters.Thing
+}
+
+func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ThingCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ThingUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ThingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ThingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Thing mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot,
-		Tenant []ent.Hook
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Tenant,
+		Thing []ent.Hook
 	}
 	inters struct {
-		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot,
-		Tenant []ent.Interceptor
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Tenant,
+		Thing []ent.Interceptor
 	}
 )

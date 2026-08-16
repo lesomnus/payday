@@ -18,6 +18,7 @@ import { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, Rob
 import { HolderSchema } from './app/payday/holder_pb.js'
 import { OutboxSchema } from './app/payday/outbox_pb.js'
 import { TenantSchema } from './app/payday/tenant_pb.js'
+import { ThingSchema } from './shared/thing_pb.js'
 
 /** app.Audit, as the store holds it. */
 export const Audit = {
@@ -98,6 +99,13 @@ export const Tenant = {
 	version: "dateUpdated",
 } as const satisfies EntityDesc
 
+/** shared.Thing, as the store holds it. */
+export const Thing = {
+	typeName: "shared.Thing",
+	schema: ThingSchema,
+	domain: 13,
+} as const satisfies EntityDesc
+
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Tenant] as const
+export const entities = [Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Tenant, Thing] as const
 

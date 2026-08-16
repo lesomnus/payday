@@ -10,6 +10,11 @@ import "payday.proto";
 option features.field_presence = IMPLICIT;
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
+// This package is the app's own, which is where payday's entities are copied
+// to. It is said out loud because this app has a second package -- see
+// `shared/thing.proto` -- and payday will not guess between them.
+option (payday.app) = {};
+
 // Cell was added to answer one question: what does adding an entity cost?
 // Nothing below this line is Go, and nothing else in this app was touched.
 message Cell {

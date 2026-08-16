@@ -32,6 +32,8 @@ type Tx struct {
 	Robot *RobotClient
 	// Tenant is the client for interacting with the Tenant builders.
 	Tenant *TenantClient
+	// Thing is the client for interacting with the Thing builders.
+	Thing *ThingClient
 
 	// lazily loaded.
 	client     *Client
@@ -173,6 +175,7 @@ func (tx *Tx) init() {
 	tx.Reading = NewReadingClient(tx.config)
 	tx.Robot = NewRobotClient(tx.config)
 	tx.Tenant = NewTenantClient(tx.config)
+	tx.Thing = NewThingClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

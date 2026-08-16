@@ -42,6 +42,9 @@ export const RobotDomain = 7
 /** The domain identifiers of app.Tenant carry. */
 export const TenantDomain = 1
 
+/** The domain identifiers of shared.Thing carry. */
+export const ThingDomain = 13
+
 // Registered as this module is loaded, which is why importing it is the
 // whole of what an app does with it.
 pdid.register("app.Audit", AuditDomain, "audit")
@@ -54,4 +57,5 @@ pdid.register("app.Pairing", PairingDomain, "pairing")
 pdid.register("app.Reading", ReadingDomain, "reading")
 pdid.register("app.Robot", RobotDomain, "robot")
 pdid.register("app.Tenant", TenantDomain, "tenant")
+pdid.register("shared.Thing", ThingDomain, "thing")
 

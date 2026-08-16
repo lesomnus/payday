@@ -22,6 +22,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -92,6 +93,7 @@ func checkColumn(t, c string) error {
 			reading.Table: reading.ValidColumn,
 			robot.Table:   robot.ValidColumn,
 			tenant.Table:  tenant.ValidColumn,
+			thing.Table:   thing.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

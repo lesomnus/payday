@@ -299,6 +299,18 @@ var (
 		Columns:    TenantColumns,
 		PrimaryKey: []*schema.Column{TenantColumns[0]},
 	}
+	// ThingColumns holds the columns for the "thing" table.
+	ThingColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "alias", Type: field.TypeString},
+		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
+	}
+	// ThingTable holds the schema information for the "thing" table.
+	ThingTable = &schema.Table{
+		Name:       "thing",
+		Columns:    ThingColumns,
+		PrimaryKey: []*schema.Column{ThingColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AuditTable,
@@ -311,6 +323,7 @@ var (
 		ReadingTable,
 		RobotTable,
 		TenantTable,
+		ThingTable,
 	}
 )
 
@@ -352,5 +365,8 @@ func init() {
 	}
 	TenantTable.Annotation = &entsql.Annotation{
 		Table: "tenant",
+	}
+	ThingTable.Annotation = &entsql.Annotation{
+		Table: "thing",
 	}
 }

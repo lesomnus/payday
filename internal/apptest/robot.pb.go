@@ -1020,7 +1020,7 @@ const file_app_robot_proto_rawDesc = "" +
 	"\ttenant_id\x10\t\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x8a\xbb\x16!\b\vB\x02\n" +
 	"\x00\"\x19\n" +
-	"\frobot.tenant\x1a\ttenant_idB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\frobot.tenant\x1a\ttenant_idB6\xca\xc7\x16\x00Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_app_robot_proto_goTypes = []any{

@@ -86,6 +86,7 @@ const (
 	ReadingDomain pdid.Domain = 11 // "reading"
 	RobotDomain   pdid.Domain = 7  // "robot"
 	TenantDomain  pdid.Domain = 1  // "tenant"
+	ThingDomain   pdid.Domain = 13 // "thing"
 )
 
 func init() {
@@ -99,6 +100,7 @@ func init() {
 	pdid.Register("app.Reading", ReadingDomain, "reading")
 	pdid.Register("app.Robot", RobotDomain, "robot")
 	pdid.Register("app.Tenant", TenantDomain, "tenant")
+	pdid.Register("shared.Thing", ThingDomain, "thing")
 
 	pdid.RegisterTenant(TenantDomain)
 }
@@ -106,16 +108,17 @@ func init() {
 // Domains is the domain of each entity by the full name of its message,
 // which is the name a [Minter] is asked about.
 var Domains = map[string]pdid.Domain{
-	"app.Audit":   AuditDomain,
-	"app.Cell":    CellDomain,
-	"app.Fleet":   FleetDomain,
-	"app.Holder":  HolderDomain,
-	"app.Joint":   JointDomain,
-	"app.Outbox":  OutboxDomain,
-	"app.Pairing": PairingDomain,
-	"app.Reading": ReadingDomain,
-	"app.Robot":   RobotDomain,
-	"app.Tenant":  TenantDomain,
+	"app.Audit":    AuditDomain,
+	"app.Cell":     CellDomain,
+	"app.Fleet":    FleetDomain,
+	"app.Holder":   HolderDomain,
+	"app.Joint":    JointDomain,
+	"app.Outbox":   OutboxDomain,
+	"app.Pairing":  PairingDomain,
+	"app.Reading":  ReadingDomain,
+	"app.Robot":    RobotDomain,
+	"app.Tenant":   TenantDomain,
+	"shared.Thing": ThingDomain,
 }
 
 // Minter answers with the [bare.Minter] that gives every new row an
@@ -251,6 +254,11 @@ func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	return tenant.IDIn(vs...), nil
 }
 
+// ThingScope: declared `global`, so it is not behind the wall at all.
+func (wall) ThingScope(ctx context.Context) (predicate.Thing, error) {
+	return nil, nil
+}
+
 // Sets is which Cells a caller may see.
 //
 // `all` is how "every one of them" is said, and it is a second return
@@ -344,6 +352,11 @@ func (x grouped) RobotScope(ctx context.Context) (predicate.Robot, error) {
 
 // TenantScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) TenantScope(ctx context.Context) (predicate.Tenant, error) {
+	return nil, nil
+}
+
+// ThingScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) ThingScope(ctx context.Context) (predicate.Thing, error) {
 	return nil, nil
 }
 
@@ -2101,6 +2114,92 @@ func filterTenant(f *apptest.TenantFilter) (predicate.Tenant, error) {
 	}
 
 	return tenant.And(ps...), nil
+}
+
+type sinkThing struct {
+	apptest.ThingServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Thing() apptest.ThingServiceServer {
+	return sinkThing{s.Server.Thing(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// Add decides the name, and refuses one that was given and cannot be one.
+//
+// It goes through [Sink.WithNamer], which is unset in most deployments and
+// then means: fold what was given, and make a name up when nothing was --
+// for the reason `bare.Minter` makes a key up. An app whose rows have to
+// be named says so with `slug.Required`; see `slug.Names` for why that is
+// the way round it is.
+//
+// The request is copied rather than written to. It belongs to whoever
+// called, and for a call made in this process that is a message they may
+// still be holding -- a server that folded a caller's own field would be
+// changing a value they can read back.
+func (s sinkThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
+	// How many names to try. More than one only when the caller named
+	// nothing -- then the name is this server's and a collision is this
+	// server's to resolve. A name the caller gave is theirs, and quietly
+	// choosing a different one would write a row they did not ask for.
+	//
+	// And only when this Add opens its own transaction; see [Sink.joined].
+	tries := 1
+	if req.GetAlias() == "" && !s.joined {
+		tries = slug.Tries
+	}
+
+	for try := 0; ; try++ {
+		v, err := slug.NameWith(ctx, s.namer, "shared.Thing", req.GetAlias(), req)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+
+		// The request is copied rather than written to, and copied again on
+		// each try: it belongs to whoever called, and for a call made in this
+		// process that is a message they may still be holding.
+		r := proto.CloneOf(req)
+		r.SetAlias(v)
+
+		res, err := s.ThingServiceServer.Add(ctx, r)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			// Whatever it was, said in the words it was said in. Rewriting
+			// it into "no free name" would assert the one thing this cannot
+			// know -- a duplicate key is the same code -- and would say it
+			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
+}
+
+// Patch folds a name it was given, and says nothing about one it was not.
+//
+// The presence is the whole of the difference from [sinkThing.Add]: a patch
+// that does not mention the alias is not a patch setting it to the empty
+// string, and refusing one would make every patch of any other field carry
+// the name along.
+//
+// The namer is **not** asked here, and that is the second difference. It
+// decides the name of a row being made; a patch that cleared the alias is
+// a caller asking for something invalid, and answering that with an
+// invented name would hand them a row they did not ask for.
+func (s sinkThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*apptest.Thing, error) {
+	if !req.HasAlias() {
+		return s.ThingServiceServer.Patch(ctx, req)
+	}
+
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.ThingServiceServer.Patch(ctx, req)
 }
 
 // Gate is the layer that says what a caller may do with a request.
@@ -3879,6 +3978,71 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Reading().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ThingService_Add_FullMethodName:
+		v := &apptest.ThingAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Thing().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ThingService_Get_FullMethodName:
+		v := &apptest.ThingGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Thing().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ThingService_Patch_FullMethodName:
+		v := &apptest.ThingPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Thing().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ThingService_Apply_FullMethodName:
+		v := &apptest.ThingApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Thing().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ThingService_Erase_FullMethodName:
+		v := &apptest.ThingRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Thing().Erase(ctx, v)
 		if err != nil {
 			return nil, err
 		}

@@ -130,8 +130,44 @@ func Packages() []protoreflect.FullName {
 	return vs
 }
 
+// ownPackage is the package a file declared as the app's own, with
+// `option (payday.app)`.
+//
+// An app may hold entities in more than one package -- a shared name for the
+// thing several services are about, beside what one service keeps to itself --
+// and then the packages are not apps and counting them says nothing. The file
+// that says which is the app's is the same one `pd gen` reads at build time, so
+// the two cannot drift.
+//
+// Two of them is two apps genuinely linked into one process, which is what the
+// refusal below is for.
+func ownPackage() (protoreflect.FullName, bool) {
+	seen := map[protoreflect.FullName]bool{}
+
+	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		if proto.HasExtension(fd.Options(), pdpb.E_App) {
+			seen[fd.Package()] = true
+		}
+
+		return true
+	})
+	if len(seen) != 1 {
+		return "", false
+	}
+
+	for k := range seen {
+		return k, true
+	}
+
+	return "", false
+}
+
 // solePackage is the one package with entities, or a refusal naming them all.
 func solePackage() (protoreflect.FullName, error) {
+	if v, ok := ownPackage(); ok {
+		return v, nil
+	}
+
 	vs := Packages()
 	switch len(vs) {
 	case 1:

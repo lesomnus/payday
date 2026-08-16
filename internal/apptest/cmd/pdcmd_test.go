@@ -662,15 +662,24 @@ func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 // Two payday apps can share a process whenever their proto packages differ, and
 // kamino2 is such a process: it embeds roster, so two `Holder` entities are in
 // the registry at once and a connection cannot say which of them it reaches.
-// This app is not that -- it is one app -- so what is checked here is that the
-// answer is arrived at rather than assumed, and that naming the package works.
+//
+// **A package is not an app**, which is what this app is here to show: it holds
+// entities in two -- `app`, and `shared` for a name meant to be the same word in
+// more than one service -- and it is still one app, because `app/robot.proto`
+// says `option (payday.app)`. So `Packages` finds two and `New` is not stuck:
+// what it needs is the app's package, and one of them said so.
 func TestWhichAppThisConnectionSpeaksTo(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 	conn := b.dialed(t, ctx)
 
-	x.Equal([]protoreflect.FullName{"app"}, pdcmd.Packages(),
-		"one app is linked in, which is why New has something to guess with")
+	x.Equal([]protoreflect.FullName{"app", "shared"}, pdcmd.Packages(),
+		"both hold entities, which is what this lists")
+
+	// And New answers, rather than refusing for finding two.
+	guessed, err := pdcmd.New(pdcmd.Static(conn))
+	x.NoError(err)
+	x.NotNil(guessed.Command("holder/get"))
 
 	tree := pdcmd.NewIn(pdcmd.Static(conn), "app")
 	x.NotNil(tree.Command("holder/get"))

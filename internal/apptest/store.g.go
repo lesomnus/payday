@@ -36,6 +36,7 @@ type Server interface {
 	Joint() JointServiceServer
 	Fleet() FleetServiceServer
 	Reading() ReadingServiceServer
+	Thing() ThingServiceServer
 }
 
 // RegisterServer registers every service of `s` with `g`.
@@ -53,6 +54,7 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterJointServiceServer(g, s.Joint())
 	RegisterFleetServiceServer(g, s.Fleet())
 	RegisterReadingServiceServer(g, s.Reading())
+	RegisterThingServiceServer(g, s.Thing())
 }
 
 type UnimplementedServer struct {
@@ -66,6 +68,7 @@ type UnimplementedServer struct {
 	JointServer   JointServiceServer
 	FleetServer   FleetServiceServer
 	ReadingServer ReadingServiceServer
+	ThingServer   ThingServiceServer
 }
 
 func (UnimplementedServer) Audit() AuditServiceServer     { return UnimplementedAuditServiceServer{} }
@@ -78,6 +81,7 @@ func (UnimplementedServer) Pairing() PairingServiceServer { return Unimplemented
 func (UnimplementedServer) Joint() JointServiceServer     { return UnimplementedJointServiceServer{} }
 func (UnimplementedServer) Fleet() FleetServiceServer     { return UnimplementedFleetServiceServer{} }
 func (UnimplementedServer) Reading() ReadingServiceServer { return UnimplementedReadingServiceServer{} }
+func (UnimplementedServer) Thing() ThingServiceServer     { return UnimplementedThingServiceServer{} }
 
 type StaticServer struct {
 	AuditServer   AuditServiceServer
@@ -90,6 +94,7 @@ type StaticServer struct {
 	JointServer   JointServiceServer
 	FleetServer   FleetServiceServer
 	ReadingServer ReadingServiceServer
+	ThingServer   ThingServiceServer
 }
 
 func (s StaticServer) Audit() AuditServiceServer     { return s.AuditServer }
@@ -102,6 +107,7 @@ func (s StaticServer) Pairing() PairingServiceServer { return s.PairingServer }
 func (s StaticServer) Joint() JointServiceServer     { return s.JointServer }
 func (s StaticServer) Fleet() FleetServiceServer     { return s.FleetServer }
 func (s StaticServer) Reading() ReadingServiceServer { return s.ReadingServer }
+func (s StaticServer) Thing() ThingServiceServer     { return s.ThingServer }
 
 type Client interface {
 	Audit() AuditServiceClient
@@ -114,6 +120,7 @@ type Client interface {
 	Joint() JointServiceClient
 	Fleet() FleetServiceClient
 	Reading() ReadingServiceClient
+	Thing() ThingServiceClient
 }
 
 func NewClient(c *grpc.ClientConn) Client {
@@ -128,6 +135,7 @@ func NewClient(c *grpc.ClientConn) Client {
 		_Joint:   NewJointServiceClient(c),
 		_Fleet:   NewFleetServiceClient(c),
 		_Reading: NewReadingServiceClient(c),
+		_Thing:   NewThingServiceClient(c),
 	}
 }
 
@@ -142,6 +150,7 @@ type client struct {
 	_Joint   JointServiceClient
 	_Fleet   FleetServiceClient
 	_Reading ReadingServiceClient
+	_Thing   ThingServiceClient
 }
 
 func (c *client) Audit() AuditServiceClient     { return c._Audit }
@@ -154,6 +163,7 @@ func (c *client) Pairing() PairingServiceClient { return c._Pairing }
 func (c *client) Joint() JointServiceClient     { return c._Joint }
 func (c *client) Fleet() FleetServiceClient     { return c._Fleet }
 func (c *client) Reading() ReadingServiceClient { return c._Reading }
+func (c *client) Thing() ThingServiceClient     { return c._Thing }
 
 // Middleware is a server that delegates to another server.
 type Middleware interface {

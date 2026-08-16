@@ -23,6 +23,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 )
 
 const (
@@ -44,6 +45,7 @@ const (
 	TypeReading = "Reading"
 	TypeRobot   = "Robot"
 	TypeTenant  = "Tenant"
+	TypeThing   = "Thing"
 )
 
 // AuditMutation represents an operation that mutates the Audit nodes in the graph.
@@ -6564,4 +6566,412 @@ func (m *TenantMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *TenantMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Tenant edge %s", name)
+}
+
+// ThingMutation represents an operation that mutates the Thing nodes in the graph.
+type ThingMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	alias         *string
+	date_erased   *time.Time
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*Thing, error)
+	predicates    []predicate.Thing
+}
+
+var _ ent.Mutation = (*ThingMutation)(nil)
+
+// thingOption allows management of the mutation configuration using functional options.
+type thingOption func(*ThingMutation)
+
+// newThingMutation creates new mutation for the Thing entity.
+func newThingMutation(c config, op Op, opts ...thingOption) *ThingMutation {
+	m := &ThingMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeThing,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withThingID sets the ID field of the mutation.
+func withThingID(id uuid.UUID) thingOption {
+	return func(m *ThingMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Thing
+		)
+		m.oldValue = func(ctx context.Context) (*Thing, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Thing.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withThing sets the old Thing of the mutation.
+func withThing(node *Thing) thingOption {
+	return func(m *ThingMutation) {
+		m.oldValue = func(context.Context) (*Thing, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ThingMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ThingMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Thing entities.
+func (m *ThingMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ThingMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ThingMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Thing.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetAlias sets the "alias" field.
+func (m *ThingMutation) SetAlias(s string) {
+	m.alias = &s
+}
+
+// Alias returns the value of the "alias" field in the mutation.
+func (m *ThingMutation) Alias() (r string, exists bool) {
+	v := m.alias
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAlias returns the old "alias" field's value of the Thing entity.
+// If the Thing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ThingMutation) OldAlias(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAlias is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAlias requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAlias: %w", err)
+	}
+	return oldValue.Alias, nil
+}
+
+// ResetAlias resets all changes to the "alias" field.
+func (m *ThingMutation) ResetAlias() {
+	m.alias = nil
+}
+
+// SetDateErased sets the "date_erased" field.
+func (m *ThingMutation) SetDateErased(t time.Time) {
+	m.date_erased = &t
+}
+
+// DateErased returns the value of the "date_erased" field in the mutation.
+func (m *ThingMutation) DateErased() (r time.Time, exists bool) {
+	v := m.date_erased
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDateErased returns the old "date_erased" field's value of the Thing entity.
+// If the Thing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ThingMutation) OldDateErased(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDateErased is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDateErased requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateErased: %w", err)
+	}
+	return oldValue.DateErased, nil
+}
+
+// ClearDateErased clears the value of the "date_erased" field.
+func (m *ThingMutation) ClearDateErased() {
+	m.date_erased = nil
+	m.clearedFields[thing.FieldDateErased] = struct{}{}
+}
+
+// DateErasedCleared returns if the "date_erased" field was cleared in this mutation.
+func (m *ThingMutation) DateErasedCleared() bool {
+	_, ok := m.clearedFields[thing.FieldDateErased]
+	return ok
+}
+
+// ResetDateErased resets all changes to the "date_erased" field.
+func (m *ThingMutation) ResetDateErased() {
+	m.date_erased = nil
+	delete(m.clearedFields, thing.FieldDateErased)
+}
+
+// Where appends a list predicates to the ThingMutation builder.
+func (m *ThingMutation) Where(ps ...predicate.Thing) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ThingMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ThingMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Thing, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ThingMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ThingMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Thing).
+func (m *ThingMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ThingMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.alias != nil {
+		fields = append(fields, thing.FieldAlias)
+	}
+	if m.date_erased != nil {
+		fields = append(fields, thing.FieldDateErased)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ThingMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case thing.FieldAlias:
+		return m.Alias()
+	case thing.FieldDateErased:
+		return m.DateErased()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ThingMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case thing.FieldAlias:
+		return m.OldAlias(ctx)
+	case thing.FieldDateErased:
+		return m.OldDateErased(ctx)
+	}
+	return nil, fmt.Errorf("unknown Thing field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ThingMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case thing.FieldAlias:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAlias(v)
+		return nil
+	case thing.FieldDateErased:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDateErased(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Thing field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ThingMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ThingMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ThingMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Thing numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ThingMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(thing.FieldDateErased) {
+		fields = append(fields, thing.FieldDateErased)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ThingMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ThingMutation) ClearField(name string) error {
+	switch name {
+	case thing.FieldDateErased:
+		m.ClearDateErased()
+		return nil
+	}
+	return fmt.Errorf("unknown Thing nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ThingMutation) ResetField(name string) error {
+	switch name {
+	case thing.FieldAlias:
+		m.ResetAlias()
+		return nil
+	case thing.FieldDateErased:
+		m.ResetDateErased()
+		return nil
+	}
+	return fmt.Errorf("unknown Thing field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ThingMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ThingMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ThingMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ThingMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ThingMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ThingMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ThingMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Thing unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ThingMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Thing edge %s", name)
 }

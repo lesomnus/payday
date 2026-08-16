@@ -85,6 +85,11 @@ type Layout struct {
 	// reason as `go_package`: the copies have to say something, and there is no
 	// answer to "which one" that is not a guess.
 	//
+	// Unless the app answers it. `option (payday.app) = {};` on a file says that
+	// file's package is the app's, and then the others are its business -- a
+	// service that wants one shared word for the thing several services are
+	// about, `hday.oasys.Robot`, keeps the rest to itself. See [pdpb.App].
+	//
 	// # Two apps that share a boundary
 	//
 	// Setting this to the same package in both is how a family of apps says its
@@ -275,6 +280,13 @@ func (l Layout) Up() string {
 var goPkgAt = regexp.MustCompile(`(?m)^option go_package\s*=\s*"([^"]*)"`)
 
 var protoPkgAt = regexp.MustCompile(`(?m)^package\s+([^;\s]+)\s*;`)
+
+// protoAppAt is `option (payday.app) = …`, however it is spaced.
+//
+// Read with a pattern rather than by parsing, because this runs **before** the
+// schema is compiled: it is what decides where the files a compile needs are
+// copied to, so it cannot depend on the compile having happened.
+var protoAppAt = regexp.MustCompile(`(?m)^\s*option\s*\(\s*payday\.app\s*\)`)
 
 // ProtoPkgDefault is where payday's entities go in an app that has declared no
 // entity of its own yet, and is what `pd new` writes.
@@ -468,6 +480,11 @@ func SchemaDir() (string, error) {
 func readProtoPkg(l Layout) (string, error) {
 	var pkg, at string
 
+	// The one that said so, if any did, and the first pair that disagreed
+	// without anything having said so.
+	var declared, declaredAt string
+	var other, otherAt string
+
 	err := filepath.WalkDir(l.Path(DirProto), func(p string, d fs.DirEntry, err error) error {
 		switch {
 		case err != nil:
@@ -493,22 +510,45 @@ func readProtoPkg(l Layout) (string, error) {
 		}
 
 		v := string(m[1])
+
+		// The file says it is the app's own, which settles it however many
+		// other packages there turn out to be.
+		if protoAppAt.Match(b) {
+			if declared != "" && declared != v {
+				return fmt.Errorf("two packages say they are this app's:\n\n    %s\n      %s\n    %s\n      %s\n\n"+
+					"`option (payday.app)` answers where payday's own entities are copied to, "+
+					"and two answers is the thing it exists to prevent",
+					l.rel(declaredAt), declared, l.rel(p), v)
+			}
+
+			declared, declaredAt = v, p
+
+			return nil
+		}
+
 		switch {
 		case pkg == "":
 			pkg, at = v, p
-		case pkg != v:
-			return fmt.Errorf("this app declares two proto packages:\n\n    %s\n      %s\n    %s\n      %s\n\n"+
-				"It has to be one. payday's own entities -- the tenant, the holder, the trail, "+
-				"the queue -- are copied into it, so that a caller of this app says `%s.Tenant` "+
-				"rather than the name of the framework it was built with; and there is no answer "+
-				"to which of two it should be that is not a guess",
-				l.rel(at), pkg, l.rel(p), v, pkg)
+		case pkg != v && other == "":
+			other, otherAt = v, p
 		}
 
 		return nil
 	})
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return "", err
+	}
+	if declared != "" {
+		return declared, nil
+	}
+	if other != "" {
+		return "", fmt.Errorf("this app declares two proto packages and neither says which is its own:\n\n"+
+			"    %s\n      %s\n    %s\n      %s\n\n"+
+			"payday's own entities -- the tenant, the holder, the trail, the queue -- are copied "+
+			"into the app's package, so that a caller of this app says `%s.Tenant` rather than "+
+			"the name of the framework it was built with.\n\n"+
+			"Put `option (payday.app) = {};` in the package that is the app's own, and the rest "+
+			"are yours to arrange", l.rel(at), pkg, l.rel(otherAt), other, pkg)
 	}
 	if pkg == "" {
 		// A schema with no entities of its own yet, which is what `pd new`
