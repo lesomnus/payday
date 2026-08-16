@@ -158,6 +158,7 @@ type Robot struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Tenant      *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Thing       *Thing                 `protobuf:"bytes,30,opt,name=thing"`
 	xxx_hidden_Cell        *Cell                  `protobuf:"bytes,3,opt,name=cell"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
 	xxx_hidden_Secret      []byte                 `protobuf:"bytes,8,opt,name=secret"`
@@ -203,6 +204,13 @@ func (x *Robot) GetId() []byte {
 func (x *Robot) GetTenant() *Tenant {
 	if x != nil {
 		return x.xxx_hidden_Tenant
+	}
+	return nil
+}
+
+func (x *Robot) GetThing() *Thing {
+	if x != nil {
+		return x.xxx_hidden_Thing
 	}
 	return nil
 }
@@ -260,6 +268,10 @@ func (x *Robot) SetTenant(v *Tenant) {
 	x.xxx_hidden_Tenant = v
 }
 
+func (x *Robot) SetThing(v *Thing) {
+	x.xxx_hidden_Thing = v
+}
+
 func (x *Robot) SetCell(v *Cell) {
 	x.xxx_hidden_Cell = v
 }
@@ -294,6 +306,13 @@ func (x *Robot) HasTenant() bool {
 	return x.xxx_hidden_Tenant != nil
 }
 
+func (x *Robot) HasThing() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Thing != nil
+}
+
 func (x *Robot) HasCell() bool {
 	if x == nil {
 		return false
@@ -326,6 +345,10 @@ func (x *Robot) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
 
+func (x *Robot) ClearThing() {
+	x.xxx_hidden_Thing = nil
+}
+
 func (x *Robot) ClearCell() {
 	x.xxx_hidden_Cell = nil
 }
@@ -347,6 +370,9 @@ type Robot_builder struct {
 
 	Id     []byte
 	Tenant *Tenant
+	// An edge to an entity in **another package**, which is the shape a filter
+	// has to write a qualified name for.
+	Thing *Thing
 	// Field 3 is the app's, and this is what putting something there means: a set
 	// smaller than a tenant, and a second axis every read of this entity is
 	// narrowed by. payday fixes the number and the shape -- an edge, one of them,
@@ -396,6 +422,7 @@ func (b0 Robot_builder) Build() *Robot {
 	_, _ = b, x
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Tenant = b.Tenant
+	x.xxx_hidden_Thing = b.Thing
 	x.xxx_hidden_Cell = b.Cell
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_Secret = b.Secret
@@ -956,29 +983,30 @@ var File_app_robot_proto protoreflect.FileDescriptor
 
 const file_app_robot_proto_rawDesc = "" +
 	"\n" +
-	"\x0fapp/robot.proto\x12\x03app\x1a\x17app/payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xbc\x01\n" +
+	"\x0fapp/robot.proto\x12\x03app\x1a\x17app/payday/tenant.proto\x1a\x12shared/thing.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xbc\x01\n" +
 	"\x04Cell\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
-	"\"\x9e\x04\n" +
+	"\"\xd4\x04\n" +
 	"\x05Robot\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
-	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12%\n" +
+	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12+\n" +
+	"\x05thing\x18\x1e \x01(\v2\r.shared.ThingB\x06\xf2\x82\x16\x028\x01R\x05thing\x12%\n" +
 	"\x04cell\x18\x03 \x01(\v2\t.app.CellB\x06\xf2\x82\x16\x028\x01R\x04cell\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12%\n" +
 	"\x06secret\x18\b \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\b\x01R\x06secret\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
-	"dateErased:\x8e\x01\xca\xfc\x15G\x12\x02\x10\x01\x1a \x12\x04page\x1a\x10\n" +
+	"dateErased:\x97\x01\xca\xfc\x15G\x12\x02\x10\x01\x1a \x12\x04page\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a\x06\n" +
 	"\x02id\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
 	"\x05alias\x10\x04\x1a\n" +
 	"\n" +
-	"\x06tenant\x10\x020\x01\x8a\xbb\x16?\b\a29\n" +
+	"\x06tenant\x10\x020\x01\x8a\xbb\x16H\b\a2B\n" +
 	"\x10\n" +
 	"\x0e\n" +
 	"\fdate_created\n" +
@@ -987,7 +1015,8 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x02id\x12\b\n" +
 	"\x06tenant\x1a\x05\n" +
 	"\x03ref\x1a\b\n" +
-	"\x06tenant 2(d:\x00\"\xf6\x01\n" +
+	"\x06tenant\x1a\a\n" +
+	"\x05thing 2(d:\x00\"\xf6\x01\n" +
 	"\aPairing\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12&\n" +
 	"\x04lead\x18\x02 \x01(\v2\n" +
@@ -1032,28 +1061,30 @@ var file_app_robot_proto_goTypes = []any{
 	(*Reading)(nil),               // 5: app.Reading
 	(*Tenant)(nil),                // 6: app.Tenant
 	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*Thing)(nil),                 // 8: shared.Thing
 }
 var file_app_robot_proto_depIdxs = []int32{
 	6,  // 0: app.Cell.tenant:type_name -> app.Tenant
 	7,  // 1: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
 	6,  // 2: app.Robot.tenant:type_name -> app.Tenant
-	0,  // 3: app.Robot.cell:type_name -> app.Cell
-	7,  // 4: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
-	7,  // 5: app.Robot.date_created:type_name -> google.protobuf.Timestamp
-	7,  // 6: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
-	1,  // 7: app.Pairing.lead:type_name -> app.Robot
-	1,  // 8: app.Pairing.follow:type_name -> app.Robot
-	7,  // 9: app.Pairing.date_created:type_name -> google.protobuf.Timestamp
-	1,  // 10: app.Joint.robot:type_name -> app.Robot
-	7,  // 11: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
-	7,  // 12: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
-	1,  // 13: app.Reading.robot:type_name -> app.Robot
-	7,  // 14: app.Reading.date_created:type_name -> google.protobuf.Timestamp
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	8,  // 3: app.Robot.thing:type_name -> shared.Thing
+	0,  // 4: app.Robot.cell:type_name -> app.Cell
+	7,  // 5: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
+	7,  // 6: app.Robot.date_created:type_name -> google.protobuf.Timestamp
+	7,  // 7: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 8: app.Pairing.lead:type_name -> app.Robot
+	1,  // 9: app.Pairing.follow:type_name -> app.Robot
+	7,  // 10: app.Pairing.date_created:type_name -> google.protobuf.Timestamp
+	1,  // 11: app.Joint.robot:type_name -> app.Robot
+	7,  // 12: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
+	7,  // 13: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 14: app.Reading.robot:type_name -> app.Robot
+	7,  // 15: app.Reading.date_created:type_name -> google.protobuf.Timestamp
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_proto_init() }
@@ -1062,6 +1093,7 @@ func file_app_robot_proto_init() {
 		return
 	}
 	file_app_payday_tenant_proto_init()
+	file_shared_thing_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

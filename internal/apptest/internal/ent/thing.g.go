@@ -15,5 +15,6 @@ func (e *Thing) Proto() *apptest.Thing {
 	if e.DateErased != nil {
 		x.SetDateErased(timestamppb.New(*e.DateErased))
 	}
+	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	return x
 }

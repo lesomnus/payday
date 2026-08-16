@@ -148,7 +148,7 @@ message %sWatchItem {
 			if by.Edge != "" {
 				// The target's ref rather than its identifier, so that a caller
 				// names it the way they name it everywhere else.
-				b.WriteString(fmt.Sprintf("  %sRef %s = %d;\n", by.Target, by.Edge, i+1))
+				b.WriteString(fmt.Sprintf("  %sRef %s = %d;\n", inPkg(by.Target, pkg), by.Edge, i+1))
 				continue
 			}
 			b.WriteString(fmt.Sprintf("  %s %s = %d;\n", protoTypeOf(by.Type), by.Field, i+1))
@@ -169,6 +169,26 @@ edition = "2023";
 
 package %s;
 %s`, pkg, b.String())
+}
+
+// inPkg is how a target entity is named from inside `pkg`.
+//
+// Short when it is the same package, because that is what every generated file
+// has always said and a full name would be churn in every app at once. Full
+// when it is not -- an app may hold entities in more than one package, and a
+// filter that names `RobotRef` while the robot is in another one is a file that
+// does not compile.
+//
+// The comparison is on the package rather than on a prefix: `hday.oasys` is not
+// a prefix of `hday.khala` but `hday` is a prefix of both, and a prefix test
+// would shorten a name that has to stay long.
+func inPkg(fullname string, pkg string) string {
+	i := strings.LastIndex(fullname, ".")
+	if i < 0 || fullname[:i] != pkg {
+		return fullname
+	}
+
+	return fullname[i+1:]
 }
 
 // protoTypeOf is how a field is written in a filter.
@@ -340,6 +360,21 @@ import type { EntityDesc } from '@lesomnus/payday/store'
 }
 
 // lowerCamel is a proto field name as protobuf-es writes it in TypeScript.
+// goNameOf is the Go half of a message's full name.
+//
+// Two entities of one app with the same message name in different packages
+// would collide here, and nothing stops that yet -- it is the same collision an
+// app would get from naming two Go types alike, arriving from a place that
+// looks like it should have prevented it.
+func goNameOf(fullname string) string {
+	i := strings.LastIndex(fullname, ".")
+	if i < 0 {
+		return fullname
+	}
+
+	return fullname[i+1:]
+}
+
 func lowerCamel(v string) string {
 	out := &strings.Builder{}
 	up := false

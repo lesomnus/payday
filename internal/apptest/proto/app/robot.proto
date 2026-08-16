@@ -3,6 +3,7 @@ edition = "2023";
 package app;
 
 import "app/payday/tenant.proto";
+import "shared/thing.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
 import "payday.proto";
@@ -46,6 +47,10 @@ message Robot {
     default: ""
   }];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+
+  // An edge to an entity in **another package**, which is the shape a filter
+  // has to write a qualified name for.
+  shared.Thing thing = 30 [(orm.edge) = {nullable: true}];
 
   // Field 3 is the app's, and this is what putting something there means: a set
   // smaller than a tenant, and a second axis every read of this entity is
@@ -143,7 +148,10 @@ message Robot {
         {field: {name: "id"}}
       ]
       with: [{name: "tenant"}]
-      by: [{name: "ref"}, {name: "tenant"}]
+      // `thing` is an edge to an entity in **another package**, which is what
+      // makes this a test: the filter has to name `shared.ThingRef` and not
+      // `ThingRef`, which would not resolve from here.
+      by: [{name: "ref"}, {name: "tenant"}, {name: "thing"}]
       size: 50
       max: 100
     }

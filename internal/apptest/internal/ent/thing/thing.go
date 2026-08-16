@@ -15,6 +15,8 @@ const (
 	FieldAlias = "alias"
 	// FieldDateErased holds the string denoting the date_erased field in the database.
 	FieldDateErased = "date_erased"
+	// FieldDateCreated holds the string denoting the date_created field in the database.
+	FieldDateCreated = "date_created"
 	// Table holds the table name of the thing in the database.
 	Table = "thing"
 )
@@ -24,6 +26,7 @@ var Columns = []string{
 	FieldID,
 	FieldAlias,
 	FieldDateErased,
+	FieldDateCreated,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -52,4 +55,9 @@ func ByAlias(opts ...sql.OrderTermOption) OrderOption {
 // ByDateErased orders the results by the date_erased field.
 func ByDateErased(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateErased, opts...).ToFunc()
+}
+
+// ByDateCreated orders the results by the date_created field.
+func ByDateCreated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateCreated, opts...).ToFunc()
 }

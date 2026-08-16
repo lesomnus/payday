@@ -246,6 +246,7 @@ var (
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUUID},
+		{Name: "thing_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "cell_id", Type: field.TypeUUID, Nullable: true},
 	}
 	// RobotTable holds the schema information for the "robot" table.
@@ -261,8 +262,14 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "robot_cell_cell",
+				Symbol:     "robot_thing_thing",
 				Columns:    []*schema.Column{RobotColumns[7]},
+				RefColumns: []*schema.Column{ThingColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "robot_cell_cell",
+				Columns:    []*schema.Column{RobotColumns[8]},
 				RefColumns: []*schema.Column{CellColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -304,6 +311,7 @@ var (
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 	}
 	// ThingTable holds the schema information for the "thing" table.
 	ThingTable = &schema.Table{
@@ -359,7 +367,8 @@ func init() {
 		Table: "reading",
 	}
 	RobotTable.ForeignKeys[0].RefTable = TenantTable
-	RobotTable.ForeignKeys[1].RefTable = CellTable
+	RobotTable.ForeignKeys[1].RefTable = ThingTable
+	RobotTable.ForeignKeys[2].RefTable = CellTable
 	RobotTable.Annotation = &entsql.Annotation{
 		Table: "robot",
 	}

@@ -24,10 +24,14 @@ const (
 	FieldDateErased = "date_erased"
 	// FieldTenantID holds the string denoting the tenant_id field in the database.
 	FieldTenantID = "tenant_id"
+	// FieldThingID holds the string denoting the thing_id field in the database.
+	FieldThingID = "thing_id"
 	// FieldCellID holds the string denoting the cell_id field in the database.
 	FieldCellID = "cell_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
 	EdgeTenant = "tenant"
+	// EdgeThing holds the string denoting the thing edge name in mutations.
+	EdgeThing = "thing"
 	// EdgeCell holds the string denoting the cell edge name in mutations.
 	EdgeCell = "cell"
 	// Table holds the table name of the robot in the database.
@@ -39,6 +43,13 @@ const (
 	TenantInverseTable = "tenant"
 	// TenantColumn is the table column denoting the tenant relation/edge.
 	TenantColumn = "tenant_id"
+	// ThingTable is the table that holds the thing relation/edge.
+	ThingTable = "robot"
+	// ThingInverseTable is the table name for the Thing entity.
+	// It exists in this package in order to avoid circular dependency with the "thing" package.
+	ThingInverseTable = "thing"
+	// ThingColumn is the table column denoting the thing relation/edge.
+	ThingColumn = "thing_id"
 	// CellTable is the table that holds the cell relation/edge.
 	CellTable = "robot"
 	// CellInverseTable is the table name for the Cell entity.
@@ -57,6 +68,7 @@ var Columns = []string{
 	FieldDateCreated,
 	FieldDateErased,
 	FieldTenantID,
+	FieldThingID,
 	FieldCellID,
 }
 
@@ -103,6 +115,11 @@ func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
 }
 
+// ByThingID orders the results by the thing_id field.
+func ByThingID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThingID, opts...).ToFunc()
+}
+
 // ByCellID orders the results by the cell_id field.
 func ByCellID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCellID, opts...).ToFunc()
@@ -112,6 +129,13 @@ func ByCellID(opts ...sql.OrderTermOption) OrderOption {
 func ByTenantField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newTenantStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByThingField orders the results by thing field.
+func ByThingField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newThingStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -126,6 +150,13 @@ func newTenantStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TenantInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, false, TenantTable, TenantColumn),
+	)
+}
+func newThingStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ThingInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, false, ThingTable, ThingColumn),
 	)
 }
 func newCellStep() *sqlgraph.Step {

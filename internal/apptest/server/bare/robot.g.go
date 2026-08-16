@@ -509,7 +509,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	st := s
 	st.Db = tx.Db
 
-	ds := make([]func(v *apptest.Robot), 0, 2)
+	ds := make([]func(v *apptest.Robot), 0, 3)
 	q := st.Db.Robot.Create()
 	var k uuid.UUID
 	if req.HasId() {
@@ -531,6 +531,16 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		ds = append(ds, func(v *apptest.Robot) {
 			v.SetTenant(apptest.Tenant_builder{Id: k[:]}.Build())
 		})
+	}
+	if req.HasThing() {
+		if k, err := ThingGetKey(ctx, st.Db, req.GetThing()); err != nil {
+			return nil, err
+		} else {
+			q.SetThingID(k)
+			ds = append(ds, func(v *apptest.Robot) {
+				v.SetThing(apptest.Thing_builder{Id: k[:]}.Build())
+			})
+		}
 	}
 	if req.HasCell() {
 		if k, err := CellGetKey(ctx, st.Db, req.GetCell()); err != nil {
@@ -650,6 +660,11 @@ func RobotSelect(q *ent.RobotQuery, m *apptest.RobotSelect) {
 			TenantSelect(q, m.GetTenant())
 		})
 	}
+	if m.HasThing() {
+		q.WithThing(func(q *ent.ThingQuery) {
+			ThingSelect(q, m.GetThing())
+		})
+	}
 	if m.HasCell() {
 		q.WithCell(func(q *ent.CellQuery) {
 			CellSelect(q, m.GetCell())
@@ -662,6 +677,7 @@ func RobotSelectInit(q *ent.RobotQuery, m *apptest.RobotSelect) {
 		RobotSelect(q, m)
 	} else {
 		q.WithTenant(selectTenantKey)
+		q.WithThing(selectThingKey)
 		q.WithCell(selectCellKey)
 	}
 }
@@ -669,6 +685,12 @@ func RobotSelectInit(q *ent.RobotQuery, m *apptest.RobotSelect) {
 func (s RobotServiceServer) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
 	doc, err := ormpatch.FromPatchRequest(robotOrmEntity, req.ProtoReflect(), func(ed graph.Edge, ref protoreflect.Message) (protoreflect.Value, error) {
 		switch ed.Number() {
+		case 30:
+			k, err := ThingGetKey(ctx, s.Db, ref.Interface().(*apptest.ThingRef))
+			if err != nil {
+				return protoreflect.Value{}, err
+			}
+			return protoreflect.ValueOfBytes(k[:]), nil
 		case 3:
 			k, err := CellGetKey(ctx, s.Db, ref.Interface().(*apptest.CellRef))
 			if err != nil {
@@ -723,7 +745,7 @@ func RobotGetKey(ctx context.Context, db *ent.Client, ref *apptest.RobotRef) (uu
 var robotOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Robot")
 
 var robotPatchColumns = entpatch.Columns{
-	1: robot.FieldID, 2: robot.TenantColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 8: robot.FieldSecret, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
+	1: robot.FieldID, 2: robot.TenantColumn, 30: robot.ThingColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 8: robot.FieldSecret, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
 
 func (s RobotServiceServer) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
 	if !req.HasPatch() {

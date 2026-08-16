@@ -65,6 +65,11 @@ func DateErased(v time.Time) predicate.Thing {
 	return predicate.Thing(sql.FieldEQ(FieldDateErased, v))
 }
 
+// DateCreated applies equality check predicate on the "date_created" field. It's identical to DateCreatedEQ.
+func DateCreated(v time.Time) predicate.Thing {
+	return predicate.Thing(sql.FieldEQ(FieldDateCreated, v))
+}
+
 // AliasEQ applies the EQ predicate on the "alias" field.
 func AliasEQ(v string) predicate.Thing {
 	return predicate.Thing(sql.FieldEQ(FieldAlias, v))
@@ -178,6 +183,56 @@ func DateErasedIsNil() predicate.Thing {
 // DateErasedNotNil applies the NotNil predicate on the "date_erased" field.
 func DateErasedNotNil() predicate.Thing {
 	return predicate.Thing(sql.FieldNotNull(FieldDateErased))
+}
+
+// DateCreatedEQ applies the EQ predicate on the "date_created" field.
+func DateCreatedEQ(v time.Time) predicate.Thing {
+	return predicate.Thing(sql.FieldEQ(FieldDateCreated, v))
+}
+
+// DateCreatedNEQ applies the NEQ predicate on the "date_created" field.
+func DateCreatedNEQ(v time.Time) predicate.Thing {
+	return predicate.Thing(sql.FieldNEQ(FieldDateCreated, v))
+}
+
+// DateCreatedIn applies the In predicate on the "date_created" field.
+func DateCreatedIn(vs ...time.Time) predicate.Thing {
+	return predicate.Thing(sql.FieldIn(FieldDateCreated, vs...))
+}
+
+// DateCreatedNotIn applies the NotIn predicate on the "date_created" field.
+func DateCreatedNotIn(vs ...time.Time) predicate.Thing {
+	return predicate.Thing(sql.FieldNotIn(FieldDateCreated, vs...))
+}
+
+// DateCreatedGT applies the GT predicate on the "date_created" field.
+func DateCreatedGT(v time.Time) predicate.Thing {
+	return predicate.Thing(sql.FieldGT(FieldDateCreated, v))
+}
+
+// DateCreatedGTE applies the GTE predicate on the "date_created" field.
+func DateCreatedGTE(v time.Time) predicate.Thing {
+	return predicate.Thing(sql.FieldGTE(FieldDateCreated, v))
+}
+
+// DateCreatedLT applies the LT predicate on the "date_created" field.
+func DateCreatedLT(v time.Time) predicate.Thing {
+	return predicate.Thing(sql.FieldLT(FieldDateCreated, v))
+}
+
+// DateCreatedLTE applies the LTE predicate on the "date_created" field.
+func DateCreatedLTE(v time.Time) predicate.Thing {
+	return predicate.Thing(sql.FieldLTE(FieldDateCreated, v))
+}
+
+// DateCreatedIsNil applies the IsNil predicate on the "date_created" field.
+func DateCreatedIsNil() predicate.Thing {
+	return predicate.Thing(sql.FieldIsNull(FieldDateCreated))
+}
+
+// DateCreatedNotNil applies the NotNil predicate on the "date_created" field.
+func DateCreatedNotNil() predicate.Thing {
+	return predicate.Thing(sql.FieldNotNull(FieldDateCreated))
 }
 
 // And groups predicates with the AND operator between them.

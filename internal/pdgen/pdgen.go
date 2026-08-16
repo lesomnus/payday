@@ -880,13 +880,19 @@ type By struct {
 	Type ormpb.Type
 
 	// Edge is the edge compared, empty otherwise, and Target is the entity it
-	// points at.
+	// points at, by its **full** name.
 	//
 	// It is a column comparison like any other: an edge is a foreign key, so
 	// "in this tenant" is `WHERE tenant_id = ?` against an index and not a
 	// join. What the filter carries is the target's **ref** rather than its
 	// identifier, so a caller may name it the way they name it everywhere else
 	// -- by id, or by the alias they typed.
+	//
+	// Full rather than short because an app may hold entities in more than one
+	// package -- see `payday.App` -- and a filter naming `RobotRef` when the
+	// robot is in another one is a file that does not compile. Where to shorten
+	// it is the writer's to decide, since only the writer knows which file it
+	// is writing into.
 	Edge   string
 	Target string
 }
@@ -982,7 +988,7 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 
 			v.By = append(v.By, By{
 				Edge:   name,
-				Target: string(d.Target().FullName().Name()),
+				Target: string(d.Target().FullName()),
 			})
 
 			continue

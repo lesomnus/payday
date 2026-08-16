@@ -15,6 +15,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 )
 
 // RobotUpdate is the builder for updating Robot entities.
@@ -91,6 +92,26 @@ func (_u *RobotUpdate) ClearDateErased() *RobotUpdate {
 	return _u
 }
 
+// SetThingID sets the "thing_id" field.
+func (_u *RobotUpdate) SetThingID(v uuid.UUID) *RobotUpdate {
+	_u.mutation.SetThingID(v)
+	return _u
+}
+
+// SetNillableThingID sets the "thing_id" field if the given value is not nil.
+func (_u *RobotUpdate) SetNillableThingID(v *uuid.UUID) *RobotUpdate {
+	if v != nil {
+		_u.SetThingID(*v)
+	}
+	return _u
+}
+
+// ClearThingID clears the value of the "thing_id" field.
+func (_u *RobotUpdate) ClearThingID() *RobotUpdate {
+	_u.mutation.ClearThingID()
+	return _u
+}
+
 // SetCellID sets the "cell_id" field.
 func (_u *RobotUpdate) SetCellID(v uuid.UUID) *RobotUpdate {
 	_u.mutation.SetCellID(v)
@@ -111,6 +132,11 @@ func (_u *RobotUpdate) ClearCellID() *RobotUpdate {
 	return _u
 }
 
+// SetThing sets the "thing" edge to the Thing entity.
+func (_u *RobotUpdate) SetThing(v *Thing) *RobotUpdate {
+	return _u.SetThingID(v.ID)
+}
+
 // SetCell sets the "cell" edge to the Cell entity.
 func (_u *RobotUpdate) SetCell(v *Cell) *RobotUpdate {
 	return _u.SetCellID(v.ID)
@@ -119,6 +145,12 @@ func (_u *RobotUpdate) SetCell(v *Cell) *RobotUpdate {
 // Mutation returns the RobotMutation object of the builder.
 func (_u *RobotUpdate) Mutation() *RobotMutation {
 	return _u.mutation
+}
+
+// ClearThing clears the "thing" edge to the Thing entity.
+func (_u *RobotUpdate) ClearThing() *RobotUpdate {
+	_u.mutation.ClearThing()
+	return _u
 }
 
 // ClearCell clears the "cell" edge to the Cell entity.
@@ -200,6 +232,35 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(robot.FieldDateErased, field.TypeTime)
+	}
+	if _u.mutation.ThingCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.ThingTable,
+			Columns: []string{robot.ThingColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thing.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ThingIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.ThingTable,
+			Columns: []string{robot.ThingColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thing.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.CellCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -312,6 +373,26 @@ func (_u *RobotUpdateOne) ClearDateErased() *RobotUpdateOne {
 	return _u
 }
 
+// SetThingID sets the "thing_id" field.
+func (_u *RobotUpdateOne) SetThingID(v uuid.UUID) *RobotUpdateOne {
+	_u.mutation.SetThingID(v)
+	return _u
+}
+
+// SetNillableThingID sets the "thing_id" field if the given value is not nil.
+func (_u *RobotUpdateOne) SetNillableThingID(v *uuid.UUID) *RobotUpdateOne {
+	if v != nil {
+		_u.SetThingID(*v)
+	}
+	return _u
+}
+
+// ClearThingID clears the value of the "thing_id" field.
+func (_u *RobotUpdateOne) ClearThingID() *RobotUpdateOne {
+	_u.mutation.ClearThingID()
+	return _u
+}
+
 // SetCellID sets the "cell_id" field.
 func (_u *RobotUpdateOne) SetCellID(v uuid.UUID) *RobotUpdateOne {
 	_u.mutation.SetCellID(v)
@@ -332,6 +413,11 @@ func (_u *RobotUpdateOne) ClearCellID() *RobotUpdateOne {
 	return _u
 }
 
+// SetThing sets the "thing" edge to the Thing entity.
+func (_u *RobotUpdateOne) SetThing(v *Thing) *RobotUpdateOne {
+	return _u.SetThingID(v.ID)
+}
+
 // SetCell sets the "cell" edge to the Cell entity.
 func (_u *RobotUpdateOne) SetCell(v *Cell) *RobotUpdateOne {
 	return _u.SetCellID(v.ID)
@@ -340,6 +426,12 @@ func (_u *RobotUpdateOne) SetCell(v *Cell) *RobotUpdateOne {
 // Mutation returns the RobotMutation object of the builder.
 func (_u *RobotUpdateOne) Mutation() *RobotMutation {
 	return _u.mutation
+}
+
+// ClearThing clears the "thing" edge to the Thing entity.
+func (_u *RobotUpdateOne) ClearThing() *RobotUpdateOne {
+	_u.mutation.ClearThing()
+	return _u
 }
 
 // ClearCell clears the "cell" edge to the Cell entity.
@@ -451,6 +543,35 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(robot.FieldDateErased, field.TypeTime)
+	}
+	if _u.mutation.ThingCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.ThingTable,
+			Columns: []string{robot.ThingColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thing.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ThingIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.ThingTable,
+			Columns: []string{robot.ThingColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thing.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.CellCleared() {
 		edge := &sqlgraph.EdgeSpec{

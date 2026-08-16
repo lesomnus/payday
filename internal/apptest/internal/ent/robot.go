@@ -13,6 +13,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 )
 
 // Robot is the model entity for the Robot schema.
@@ -32,6 +33,8 @@ type Robot struct {
 	DateErased *time.Time `json:"date_erased,omitempty"`
 	// TenantID holds the value of the "tenant_id" field.
 	TenantID uuid.UUID `json:"tenant_id,omitempty"`
+	// ThingID holds the value of the "thing_id" field.
+	ThingID uuid.UUID `json:"thing_id,omitempty"`
 	// CellID holds the value of the "cell_id" field.
 	CellID uuid.UUID `json:"cell_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -44,11 +47,13 @@ type Robot struct {
 type RobotEdges struct {
 	// Tenant holds the value of the tenant edge.
 	Tenant *Tenant `json:"tenant,omitempty"`
+	// Thing holds the value of the thing edge.
+	Thing *Thing `json:"thing,omitempty"`
 	// Cell holds the value of the cell edge.
 	Cell *Cell `json:"cell,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // TenantOrErr returns the Tenant value or an error if the edge
@@ -62,12 +67,23 @@ func (e RobotEdges) TenantOrErr() (*Tenant, error) {
 	return nil, &NotLoadedError{edge: "tenant"}
 }
 
+// ThingOrErr returns the Thing value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RobotEdges) ThingOrErr() (*Thing, error) {
+	if e.Thing != nil {
+		return e.Thing, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: thing.Label}
+	}
+	return nil, &NotLoadedError{edge: "thing"}
+}
+
 // CellOrErr returns the Cell value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
 func (e RobotEdges) CellOrErr() (*Cell, error) {
 	if e.Cell != nil {
 		return e.Cell, nil
-	} else if e.loadedTypes[1] {
+	} else if e.loadedTypes[2] {
 		return nil, &NotFoundError{label: cell.Label}
 	}
 	return nil, &NotLoadedError{edge: "cell"}
@@ -84,7 +100,7 @@ func (*Robot) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case robot.FieldDateUpdated, robot.FieldDateCreated, robot.FieldDateErased:
 			values[i] = new(sql.NullTime)
-		case robot.FieldID, robot.FieldTenantID, robot.FieldCellID:
+		case robot.FieldID, robot.FieldTenantID, robot.FieldThingID, robot.FieldCellID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -144,6 +160,12 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.TenantID = *value
 			}
+		case robot.FieldThingID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field thing_id", values[i])
+			} else if value != nil {
+				_m.ThingID = *value
+			}
 		case robot.FieldCellID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field cell_id", values[i])
@@ -166,6 +188,11 @@ func (_m *Robot) Value(name string) (ent.Value, error) {
 // QueryTenant queries the "tenant" edge of the Robot entity.
 func (_m *Robot) QueryTenant() *TenantQuery {
 	return NewRobotClient(_m.config).QueryTenant(_m)
+}
+
+// QueryThing queries the "thing" edge of the Robot entity.
+func (_m *Robot) QueryThing() *ThingQuery {
+	return NewRobotClient(_m.config).QueryThing(_m)
 }
 
 // QueryCell queries the "cell" edge of the Robot entity.
@@ -215,6 +242,9 @@ func (_m *Robot) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("tenant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))
+	builder.WriteString(", ")
+	builder.WriteString("thing_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ThingID))
 	builder.WriteString(", ")
 	builder.WriteString("cell_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CellID))

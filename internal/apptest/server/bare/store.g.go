@@ -322,13 +322,13 @@ type Scope interface {
 	TenantScope(ctx context.Context) (predicate.Tenant, error)
 	HolderScope(ctx context.Context) (predicate.Holder, error)
 	OutboxScope(ctx context.Context) (predicate.Outbox, error)
+	ThingScope(ctx context.Context) (predicate.Thing, error)
 	CellScope(ctx context.Context) (predicate.Cell, error)
 	RobotScope(ctx context.Context) (predicate.Robot, error)
 	PairingScope(ctx context.Context) (predicate.Pairing, error)
 	JointScope(ctx context.Context) (predicate.Joint, error)
 	FleetScope(ctx context.Context) (predicate.Fleet, error)
 	ReadingScope(ctx context.Context) (predicate.Reading, error)
-	ThingScope(ctx context.Context) (predicate.Thing, error)
 }
 
 // Unscoped is a [Scope] that narrows nothing. Embed it and write out the
@@ -355,6 +355,9 @@ func (Unscoped) HolderScope(_ context.Context) (predicate.Holder, error) {
 func (Unscoped) OutboxScope(_ context.Context) (predicate.Outbox, error) {
 	return nil, nil
 }
+func (Unscoped) ThingScope(_ context.Context) (predicate.Thing, error) {
+	return nil, nil
+}
 func (Unscoped) CellScope(_ context.Context) (predicate.Cell, error) {
 	return nil, nil
 }
@@ -371,9 +374,6 @@ func (Unscoped) FleetScope(_ context.Context) (predicate.Fleet, error) {
 	return nil, nil
 }
 func (Unscoped) ReadingScope(_ context.Context) (predicate.Reading, error) {
-	return nil, nil
-}
-func (Unscoped) ThingScope(_ context.Context) (predicate.Thing, error) {
 	return nil, nil
 }
 
@@ -474,6 +474,26 @@ func (ss Scopes) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
 	}
 
 	return outbox.And(ps...), nil
+}
+
+func (ss Scopes) ThingScope(ctx context.Context) (predicate.Thing, error) {
+	ps := make([]predicate.Thing, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.ThingScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return thing.And(ps...), nil
 }
 
 func (ss Scopes) CellScope(ctx context.Context) (predicate.Cell, error) {
@@ -594,26 +614,6 @@ func (ss Scopes) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 	}
 
 	return reading.And(ps...), nil
-}
-
-func (ss Scopes) ThingScope(ctx context.Context) (predicate.Thing, error) {
-	ps := make([]predicate.Thing, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.ThingScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return thing.And(ps...), nil
 }
 
 // Minter decides the key a row is stored under. It is asked once per Add,
@@ -738,10 +738,10 @@ func (s Server) Audit() apptest.AuditServiceServer     { return AuditServiceServ
 func (s Server) Tenant() apptest.TenantServiceServer   { return TenantServiceServer{Store: s.Store} }
 func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceServer{Store: s.Store} }
 func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }
+func (s Server) Thing() apptest.ThingServiceServer     { return ThingServiceServer{Store: s.Store} }
 func (s Server) Cell() apptest.CellServiceServer       { return CellServiceServer{Store: s.Store} }
 func (s Server) Robot() apptest.RobotServiceServer     { return RobotServiceServer{Store: s.Store} }
 func (s Server) Pairing() apptest.PairingServiceServer { return PairingServiceServer{Store: s.Store} }
 func (s Server) Joint() apptest.JointServiceServer     { return JointServiceServer{Store: s.Store} }
 func (s Server) Fleet() apptest.FleetServiceServer     { return FleetServiceServer{Store: s.Store} }
 func (s Server) Reading() apptest.ReadingServiceServer { return ReadingServiceServer{Store: s.Store} }
-func (s Server) Thing() apptest.ThingServiceServer     { return ThingServiceServer{Store: s.Store} }

@@ -6,6 +6,7 @@ import "app/robot.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "patch/patch.proto";
+import "shared/thing_svc.g.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -156,6 +157,7 @@ message CellApplyRequest {
 message RobotAddRequest {
   bytes id = 1;
   TenantRef tenant = 2;
+  shared.ThingRef thing = 30;
   CellRef cell = 3;
   string alias = 4 [features.field_presence = IMPLICIT];
   bytes secret = 8;
@@ -182,6 +184,7 @@ message RobotRefBySlug {
 message RobotSelect {
   bool all = 1;
   TenantSelect tenant = 2;
+  shared.ThingSelect thing = 30;
   CellSelect cell = 3;
   bool alias = 4;
   bool secret = 8;
@@ -192,6 +195,12 @@ message RobotSelect {
 
 message RobotPatchRequest {
   RobotRef ref = 1;
+  shared.ThingRef thing = 60;
+  // Clear thing instead of writing it.
+  // It takes a field of its own because an unset value already means
+  // "leave it alone", so no value could have meant NULL. It wins
+  // outright: setting both this and thing clears.
+  bool thing_null = 61;
   CellRef cell = 6;
   // Clear cell instead of writing it.
   // It takes a field of its own because an unset value already means
@@ -254,6 +263,7 @@ message RobotListResponse {
 message RobotFilter {
   RobotRef ref = 1;
   TenantRef tenant = 2;
+  shared.ThingRef thing = 3;
 }
 
 message RobotWatchRequest {

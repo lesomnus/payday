@@ -105,6 +105,11 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 		q.SetID(v)
 	}
 	q.SetAlias(req.GetAlias())
+	if req.HasDateCreated() {
+		q.SetDateCreated(req.GetDateCreated().AsTime())
+	} else {
+		q.SetDateCreated(st.now())
+	}
 
 	u, err := q.Save(ctx)
 	if err != nil {
@@ -174,6 +179,9 @@ func ThingSelectedFields(m *apptest.ThingSelect) []string {
 	if m.GetDateErased() {
 		vs = append(vs, thing.FieldDateErased)
 	}
+	if m.GetDateCreated() {
+		vs = append(vs, thing.FieldDateCreated)
+	}
 
 	return vs
 }
@@ -239,7 +247,7 @@ func ThingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ThingRef) (uu
 var thingOrmEntity = ormpatch.MustEntityOf(apptest.File_shared_thing_proto, "Thing")
 
 var thingPatchColumns = entpatch.Columns{
-	1: thing.FieldID, 4: thing.FieldAlias, 14: thing.FieldDateErased}
+	1: thing.FieldID, 4: thing.FieldAlias, 14: thing.FieldDateErased, 15: thing.FieldDateCreated}
 
 func (s ThingServiceServer) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
 	if !req.HasPatch() {

@@ -24,6 +24,9 @@ func (Thing) Fields() []ent.Field {
 		field.Time("date_erased").
 			Nillable().
 			Optional(),
+		field.Time("date_created").
+			Immutable().
+			Optional(),
 	}
 }
 

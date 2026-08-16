@@ -505,7 +505,11 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 			g.P("			// would be a read, and a predicate is built without one, so")
 			g.P("			// it becomes a condition on the target instead. One hop,")
 			g.P("			// against whatever index that column has.")
-			g.P("			q, err := ", p.Bare.Ident(by.Target+"Pick"), "(w)")
+			// The **short** name here and the full one in the proto. Every
+			// entity of an app generates into one Go package however many
+			// proto packages it declares, so the identifier is `ThingPick`
+			// even when the message is `shared.Thing`.
+			g.P("			q, err := ", p.Bare.Ident(goNameOf(by.Target)+"Pick"), "(w)")
 			g.P("			if err != nil {")
 			g.P("				return nil, err")
 			g.P("			}")

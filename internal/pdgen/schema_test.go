@@ -1293,7 +1293,10 @@ func TestAFilterMayBeAboutAnEdge(t *testing.T) {
 	if !by[0].Ref {
 		t.Fatal("the first is not the ref")
 	}
-	if by[1].Edge != "tenant" || by[1].Target != "Tenant" {
+	// The **full** name, because an app may hold entities in more than one
+	// package and a filter naming the short one would not resolve from the
+	// file it is written into.
+	if by[1].Edge != "tenant" || by[1].Target != "test.Tenant" {
 		t.Fatalf("the second is %+v", by[1])
 	}
 }

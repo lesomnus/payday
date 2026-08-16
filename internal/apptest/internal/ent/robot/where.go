@@ -86,6 +86,11 @@ func TenantID(v uuid.UUID) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldTenantID, v))
 }
 
+// ThingID applies equality check predicate on the "thing_id" field. It's identical to ThingIDEQ.
+func ThingID(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldThingID, v))
+}
+
 // CellID applies equality check predicate on the "cell_id" field. It's identical to CellIDEQ.
 func CellID(v uuid.UUID) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldCellID, v))
@@ -366,6 +371,36 @@ func TenantIDNotIn(vs ...uuid.UUID) predicate.Robot {
 	return predicate.Robot(sql.FieldNotIn(FieldTenantID, vs...))
 }
 
+// ThingIDEQ applies the EQ predicate on the "thing_id" field.
+func ThingIDEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldThingID, v))
+}
+
+// ThingIDNEQ applies the NEQ predicate on the "thing_id" field.
+func ThingIDNEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldThingID, v))
+}
+
+// ThingIDIn applies the In predicate on the "thing_id" field.
+func ThingIDIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldThingID, vs...))
+}
+
+// ThingIDNotIn applies the NotIn predicate on the "thing_id" field.
+func ThingIDNotIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldThingID, vs...))
+}
+
+// ThingIDIsNil applies the IsNil predicate on the "thing_id" field.
+func ThingIDIsNil() predicate.Robot {
+	return predicate.Robot(sql.FieldIsNull(FieldThingID))
+}
+
+// ThingIDNotNil applies the NotNil predicate on the "thing_id" field.
+func ThingIDNotNil() predicate.Robot {
+	return predicate.Robot(sql.FieldNotNull(FieldThingID))
+}
+
 // CellIDEQ applies the EQ predicate on the "cell_id" field.
 func CellIDEQ(v uuid.UUID) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldCellID, v))
@@ -411,6 +446,29 @@ func HasTenant() predicate.Robot {
 func HasTenantWith(preds ...predicate.Tenant) predicate.Robot {
 	return predicate.Robot(func(s *sql.Selector) {
 		step := newTenantStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasThing applies the HasEdge predicate on the "thing" edge.
+func HasThing() predicate.Robot {
+	return predicate.Robot(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, ThingTable, ThingColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasThingWith applies the HasEdge predicate on the "thing" edge with a given conditions (other predicates).
+func HasThingWith(preds ...predicate.Thing) predicate.Robot {
+	return predicate.Robot(func(s *sql.Selector) {
+		step := newThingStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

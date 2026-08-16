@@ -14,6 +14,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 )
 
 // RobotCreate is the builder for creating a Robot entity.
@@ -75,6 +76,20 @@ func (_c *RobotCreate) SetTenantID(v uuid.UUID) *RobotCreate {
 	return _c
 }
 
+// SetThingID sets the "thing_id" field.
+func (_c *RobotCreate) SetThingID(v uuid.UUID) *RobotCreate {
+	_c.mutation.SetThingID(v)
+	return _c
+}
+
+// SetNillableThingID sets the "thing_id" field if the given value is not nil.
+func (_c *RobotCreate) SetNillableThingID(v *uuid.UUID) *RobotCreate {
+	if v != nil {
+		_c.SetThingID(*v)
+	}
+	return _c
+}
+
 // SetCellID sets the "cell_id" field.
 func (_c *RobotCreate) SetCellID(v uuid.UUID) *RobotCreate {
 	_c.mutation.SetCellID(v)
@@ -98,6 +113,11 @@ func (_c *RobotCreate) SetID(v uuid.UUID) *RobotCreate {
 // SetTenant sets the "tenant" edge to the Tenant entity.
 func (_c *RobotCreate) SetTenant(v *Tenant) *RobotCreate {
 	return _c.SetTenantID(v.ID)
+}
+
+// SetThing sets the "thing" edge to the Thing entity.
+func (_c *RobotCreate) SetThing(v *Thing) *RobotCreate {
+	return _c.SetThingID(v.ID)
 }
 
 // SetCell sets the "cell" edge to the Cell entity.
@@ -221,6 +241,23 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.TenantID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ThingIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   robot.ThingTable,
+			Columns: []string{robot.ThingColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thing.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ThingID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.CellIDs(); len(nodes) > 0 {

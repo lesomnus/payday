@@ -88,7 +88,7 @@ export const Robot = {
 	schema: RobotSchema,
 	domain: 7,
 	version: "dateUpdated",
-	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "cell", to: "app.Cell" }],
+	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "thing", to: "shared.Thing" }, { field: "cell", to: "app.Cell" }],
 } as const satisfies EntityDesc
 
 /** app.Tenant, as the store holds it. */

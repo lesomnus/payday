@@ -41,6 +41,20 @@ func (_c *ThingCreate) SetNillableDateErased(v *time.Time) *ThingCreate {
 	return _c
 }
 
+// SetDateCreated sets the "date_created" field.
+func (_c *ThingCreate) SetDateCreated(v time.Time) *ThingCreate {
+	_c.mutation.SetDateCreated(v)
+	return _c
+}
+
+// SetNillableDateCreated sets the "date_created" field if the given value is not nil.
+func (_c *ThingCreate) SetNillableDateCreated(v *time.Time) *ThingCreate {
+	if v != nil {
+		_c.SetDateCreated(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ThingCreate) SetID(v uuid.UUID) *ThingCreate {
 	_c.mutation.SetID(v)
@@ -126,6 +140,10 @@ func (_c *ThingCreate) createSpec() (*Thing, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DateErased(); ok {
 		_spec.SetField(thing.FieldDateErased, field.TypeTime, value)
 		_node.DateErased = &value
+	}
+	if value, ok := _c.mutation.DateCreated(); ok {
+		_spec.SetField(thing.FieldDateCreated, field.TypeTime, value)
+		_node.DateCreated = value
 	}
 	return _node, _spec
 }

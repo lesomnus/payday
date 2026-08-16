@@ -68,6 +68,8 @@ func (Robot) Fields() []ent.Field {
 			Optional(),
 		field.UUID("tenant_id", uuid.UUID{}).
 			Immutable(),
+		field.UUID("thing_id", uuid.UUID{}).
+			Optional(),
 		field.UUID("cell_id", uuid.UUID{}).
 			Optional(),
 	}
@@ -80,6 +82,9 @@ func (Robot) Edges() []ent.Edge {
 			Field("tenant_id").
 			Required().
 			Immutable(),
+		edge.To("thing", Thing.Type).
+			Unique().
+			Field("thing_id"),
 		edge.To("cell", Cell.Type).
 			Unique().
 			Field("cell_id"),

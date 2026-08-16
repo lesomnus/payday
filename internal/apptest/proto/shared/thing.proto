@@ -34,10 +34,18 @@ message Thing {
   string alias = 4;
 
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 
   option (orm.message) = {rpc: {crud: true}};
   option (payday.entity) = {
     domain: 13
     global: {}
+
+    list: {
+      order: [{field: {name: "date_created"}}, {field: {name: "id"}}]
+      by: [{name: "ref"}]
+      size: 20
+      max: 100
+    }
   };
 }

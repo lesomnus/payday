@@ -35,6 +35,13 @@ func (e *Robot) Proto() *apptest.Robot {
 		r.SetId(v[:])
 		x.SetTenant(r)
 	}
+	if v := e.Edges.Thing; v != nil {
+		x.SetThing(v.Proto())
+	} else if v := e.ThingID; v != *new(uuid.UUID) {
+		r := &apptest.Thing{}
+		r.SetId(v[:])
+		x.SetThing(r)
+	}
 	if v := e.Edges.Cell; v != nil {
 		x.SetCell(v.Proto())
 	} else if v := e.CellID; v != *new(uuid.UUID) {

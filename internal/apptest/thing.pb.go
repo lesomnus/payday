@@ -39,12 +39,13 @@ const (
 // Nothing else about it is special, and that is the point of the test: it is a
 // tenanted entity with a domain, and it generates like any other.
 type Thing struct {
-	state                 protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id         []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Alias      string                 `protobuf:"bytes,4,opt,name=alias"`
-	xxx_hidden_DateErased *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_DateErased  *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
+	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Thing) Reset() {
@@ -93,6 +94,13 @@ func (x *Thing) GetDateErased() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Thing) GetDateCreated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateCreated
+	}
+	return nil
+}
+
 func (x *Thing) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -108,6 +116,10 @@ func (x *Thing) SetDateErased(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateErased = v
 }
 
+func (x *Thing) SetDateCreated(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateCreated = v
+}
+
 func (x *Thing) HasDateErased() bool {
 	if x == nil {
 		return false
@@ -115,16 +127,28 @@ func (x *Thing) HasDateErased() bool {
 	return x.xxx_hidden_DateErased != nil
 }
 
+func (x *Thing) HasDateCreated() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateCreated != nil
+}
+
 func (x *Thing) ClearDateErased() {
 	x.xxx_hidden_DateErased = nil
+}
+
+func (x *Thing) ClearDateCreated() {
+	x.xxx_hidden_DateCreated = nil
 }
 
 type Thing_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id         []byte
-	Alias      string
-	DateErased *timestamppb.Timestamp
+	Id          []byte
+	Alias       string
+	DateErased  *timestamppb.Timestamp
+	DateCreated *timestamppb.Timestamp
 }
 
 func (b0 Thing_builder) Build() *Thing {
@@ -134,6 +158,7 @@ func (b0 Thing_builder) Build() *Thing {
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_DateErased = b.DateErased
+	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
 }
 
@@ -141,12 +166,20 @@ var File_shared_thing_proto protoreflect.FileDescriptor
 
 const file_shared_thing_proto_rawDesc = "" +
 	"\n" +
-	"\x12shared/thing.proto\x12\x06shared\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x92\x01\n" +
+	"\x12shared/thing.proto\x12\x06shared\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x83\x02\n" +
 	"\x05Thing\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
-	"dateErased:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\r*\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"dateErased\x12H\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:7\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16+\b\r2%\n" +
+	"\x10\n" +
+	"\x0e\n" +
+	"\fdate_created\n" +
+	"\x06\n" +
+	"\x04\n" +
+	"\x02id\x1a\x05\n" +
+	"\x03ref \x14(d*\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_shared_thing_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_shared_thing_proto_goTypes = []any{
@@ -155,11 +188,12 @@ var file_shared_thing_proto_goTypes = []any{
 }
 var file_shared_thing_proto_depIdxs = []int32{
 	1, // 0: shared.Thing.date_erased:type_name -> google.protobuf.Timestamp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 1: shared.Thing.date_created:type_name -> google.protobuf.Timestamp
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_shared_thing_proto_init() }

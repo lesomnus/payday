@@ -119,6 +119,9 @@ func (_u *ThingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(thing.FieldDateErased, field.TypeTime)
 	}
+	if _u.mutation.DateCreatedCleared() {
+		_spec.ClearField(thing.FieldDateCreated, field.TypeTime)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -260,6 +263,9 @@ func (_u *ThingUpdateOne) sqlSave(ctx context.Context) (_node *Thing, err error)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(thing.FieldDateErased, field.TypeTime)
+	}
+	if _u.mutation.DateCreatedCleared() {
+		_spec.ClearField(thing.FieldDateCreated, field.TypeTime)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Thing{config: _u.config}
