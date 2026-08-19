@@ -113,3 +113,56 @@ func TestASecretIsNotInTheTrail(t *testing.T) {
 	}
 	x.True(found, "no row carried a value, so the check above never looked at one")
 }
+
+// TestASecretIsNotStreamed is the read that cannot be narrowed by asking.
+//
+// A `WatchRequest` has no `select`, so an item carries the whole message and a
+// caller has nothing to leave a column out with. Until the `Secret` layer wrote
+// a `Watch` wrapper there was none, and a watchable entity that declared a
+// secret **streamed it** -- to anybody the wall let read the row, on the one
+// read where nobody had to ask.
+//
+// Both messages are checked, because they are produced by different code: the
+// first is the snapshot the stream opens with, and the second is a write
+// arriving. A wrapper on one and not the other would pass half this test.
+func TestASecretIsNotStreamed(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant[:]}.Build(),
+		Alias:  "arm-01",
+		Secret: []byte("hunter2"),
+	}.Build())
+	x.NoError(err)
+
+	c0, c, stop := b.watching(t, app.RobotWatchRequest_builder{
+		Filters: []*app.RobotFilter{
+			app.RobotFilter_builder{Ref: app.RobotRef_builder{Id: v.GetId()}.Build()}.Build(),
+		},
+	}.Build())
+	defer stop()
+
+	res := next(t, c)
+	x.Len(res.GetItems(), 1)
+	x.Equal("arm-01", res.GetItems()[0].GetValue().GetAlias(), "the rest of the row travels")
+	x.Empty(res.GetItems()[0].GetValue().GetSecret(), "the snapshot carried the secret")
+
+	_, err = c0.Robot().Patch(b.travels(ctx), app.RobotPatchRequest_builder{
+		Ref:         app.RobotRef_builder{Id: v.GetId()}.Build(),
+		Alias:       z.Ptr("renamed"),
+		DateUpdated: res.GetItems()[0].GetValue().GetDateUpdated(),
+	}.Build())
+	x.NoError(err)
+
+	res = next(t, c)
+	x.Len(res.GetItems(), 1)
+	x.Equal("renamed", res.GetItems()[0].GetValue().GetAlias())
+	x.Empty(res.GetItems()[0].GetValue().GetSecret(), "a write arriving carried the secret")
+
+	// And it is still in the database, which is the half that was never the
+	// problem.
+	row, err := b.Ent.Robot.Query().Only(ctx)
+	x.NoError(err)
+	x.Equal([]byte("hunter2"), row.Secret)
+}

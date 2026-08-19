@@ -30,6 +30,8 @@ type Tx struct {
 	Reading *ReadingClient
 	// Robot is the client for interacting with the Robot builders.
 	Robot *RobotClient
+	// Seal is the client for interacting with the Seal builders.
+	Seal *SealClient
 	// Tenant is the client for interacting with the Tenant builders.
 	Tenant *TenantClient
 	// Thing is the client for interacting with the Thing builders.
@@ -174,6 +176,7 @@ func (tx *Tx) init() {
 	tx.Pairing = NewPairingClient(tx.config)
 	tx.Reading = NewReadingClient(tx.config)
 	tx.Robot = NewRobotClient(tx.config)
+	tx.Seal = NewSealClient(tx.config)
 	tx.Tenant = NewTenantClient(tx.config)
 	tx.Thing = NewThingClient(tx.config)
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 )
@@ -52,6 +53,8 @@ type Client struct {
 	Reading *ReadingClient
 	// Robot is the client for interacting with the Robot builders.
 	Robot *RobotClient
+	// Seal is the client for interacting with the Seal builders.
+	Seal *SealClient
 	// Tenant is the client for interacting with the Tenant builders.
 	Tenant *TenantClient
 	// Thing is the client for interacting with the Thing builders.
@@ -76,6 +79,7 @@ func (c *Client) init() {
 	c.Pairing = NewPairingClient(c.config)
 	c.Reading = NewReadingClient(c.config)
 	c.Robot = NewRobotClient(c.config)
+	c.Seal = NewSealClient(c.config)
 	c.Tenant = NewTenantClient(c.config)
 	c.Thing = NewThingClient(c.config)
 }
@@ -179,6 +183,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Pairing: NewPairingClient(cfg),
 		Reading: NewReadingClient(cfg),
 		Robot:   NewRobotClient(cfg),
+		Seal:    NewSealClient(cfg),
 		Tenant:  NewTenantClient(cfg),
 		Thing:   NewThingClient(cfg),
 	}, nil
@@ -209,6 +214,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Pairing: NewPairingClient(cfg),
 		Reading: NewReadingClient(cfg),
 		Robot:   NewRobotClient(cfg),
+		Seal:    NewSealClient(cfg),
 		Tenant:  NewTenantClient(cfg),
 		Thing:   NewThingClient(cfg),
 	}, nil
@@ -241,7 +247,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing, c.Reading,
-		c.Robot, c.Tenant, c.Thing,
+		c.Robot, c.Seal, c.Tenant, c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -252,7 +258,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing, c.Reading,
-		c.Robot, c.Tenant, c.Thing,
+		c.Robot, c.Seal, c.Tenant, c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -279,6 +285,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Reading.mutate(ctx, m)
 	case *RobotMutation:
 		return c.Robot.mutate(ctx, m)
+	case *SealMutation:
+		return c.Seal.mutate(ctx, m)
 	case *TenantMutation:
 		return c.Tenant.mutate(ctx, m)
 	case *ThingMutation:
@@ -1629,6 +1637,139 @@ func (c *RobotClient) mutate(ctx context.Context, m *RobotMutation) (Value, erro
 	}
 }
 
+// SealClient is a client for the Seal schema.
+type SealClient struct {
+	config
+}
+
+// NewSealClient returns a client for the Seal from the given config.
+func NewSealClient(c config) *SealClient {
+	return &SealClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `seal.Hooks(f(g(h())))`.
+func (c *SealClient) Use(hooks ...Hook) {
+	c.hooks.Seal = append(c.hooks.Seal, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `seal.Intercept(f(g(h())))`.
+func (c *SealClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Seal = append(c.inters.Seal, interceptors...)
+}
+
+// Create returns a builder for creating a Seal entity.
+func (c *SealClient) Create() *SealCreate {
+	mutation := newSealMutation(c.config, OpCreate)
+	return &SealCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Seal entities.
+func (c *SealClient) CreateBulk(builders ...*SealCreate) *SealCreateBulk {
+	return &SealCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SealClient) MapCreateBulk(slice any, setFunc func(*SealCreate, int)) *SealCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SealCreateBulk{err: fmt.Errorf("calling to SealClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SealCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SealCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Seal.
+func (c *SealClient) Update() *SealUpdate {
+	mutation := newSealMutation(c.config, OpUpdate)
+	return &SealUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SealClient) UpdateOne(_m *Seal) *SealUpdateOne {
+	mutation := newSealMutation(c.config, OpUpdateOne, withSeal(_m))
+	return &SealUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SealClient) UpdateOneID(id uuid.UUID) *SealUpdateOne {
+	mutation := newSealMutation(c.config, OpUpdateOne, withSealID(id))
+	return &SealUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Seal.
+func (c *SealClient) Delete() *SealDelete {
+	mutation := newSealMutation(c.config, OpDelete)
+	return &SealDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SealClient) DeleteOne(_m *Seal) *SealDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SealClient) DeleteOneID(id uuid.UUID) *SealDeleteOne {
+	builder := c.Delete().Where(seal.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SealDeleteOne{builder}
+}
+
+// Query returns a query builder for Seal.
+func (c *SealClient) Query() *SealQuery {
+	return &SealQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSeal},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Seal entity by its id.
+func (c *SealClient) Get(ctx context.Context, id uuid.UUID) (*Seal, error) {
+	return c.Query().Where(seal.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SealClient) GetX(ctx context.Context, id uuid.UUID) *Seal {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *SealClient) Hooks() []Hook {
+	return c.hooks.Seal
+}
+
+// Interceptors returns the client interceptors.
+func (c *SealClient) Interceptors() []Interceptor {
+	return c.inters.Seal
+}
+
+func (c *SealClient) mutate(ctx context.Context, m *SealMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SealCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SealUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SealUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SealDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Seal mutation op: %q", m.Op())
+	}
+}
+
 // TenantClient is a client for the Tenant schema.
 type TenantClient struct {
 	config
@@ -1898,11 +2039,11 @@ func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, erro
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Tenant,
-		Thing []ent.Hook
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Seal,
+		Tenant, Thing []ent.Hook
 	}
 	inters struct {
-		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Tenant,
-		Thing []ent.Interceptor
+		Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Seal,
+		Tenant, Thing []ent.Interceptor
 	}
 )

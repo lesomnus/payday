@@ -86,6 +86,7 @@ const (
 	PairingDomain pdid.Domain = 12 // "pairing"
 	ReadingDomain pdid.Domain = 11 // "reading"
 	RobotDomain   pdid.Domain = 7  // "robot"
+	SealDomain    pdid.Domain = 14 // "seal"
 	TenantDomain  pdid.Domain = 1  // "tenant"
 	ThingDomain   pdid.Domain = 13 // "thing"
 )
@@ -100,6 +101,7 @@ func init() {
 	pdid.Register("app.Pairing", PairingDomain, "pairing")
 	pdid.Register("app.Reading", ReadingDomain, "reading")
 	pdid.Register("app.Robot", RobotDomain, "robot")
+	pdid.Register("app.Seal", SealDomain, "seal")
 	pdid.Register("app.Tenant", TenantDomain, "tenant")
 	pdid.Register("shared.Thing", ThingDomain, "thing")
 
@@ -118,6 +120,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Pairing":  PairingDomain,
 	"app.Reading":  ReadingDomain,
 	"app.Robot":    RobotDomain,
+	"app.Seal":     SealDomain,
 	"app.Tenant":   TenantDomain,
 	"shared.Thing": ThingDomain,
 }
@@ -245,6 +248,11 @@ func (wall) RobotScope(ctx context.Context) (predicate.Robot, error) {
 	return robot.TenantIDIn(vs...), nil
 }
 
+// SealScope: declared `global`, so it is not behind the wall at all.
+func (wall) SealScope(ctx context.Context) (predicate.Seal, error) {
+	return nil, nil
+}
+
 // TenantScope: a tenant is inside itself, which is what a tenant being a wall comes down to.
 func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	vs, all, err := frame.Narrow(ctx)
@@ -349,6 +357,11 @@ func (x grouped) RobotScope(ctx context.Context) (predicate.Robot, error) {
 	}
 
 	return robot.CellIDIn(vs...), nil
+}
+
+// SealScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) SealScope(ctx context.Context) (predicate.Seal, error) {
+	return nil, nil
 }
 
 // TenantScope: in no set -- it declared no field 3, so this narrows nothing.
@@ -1925,6 +1938,92 @@ func (s sinkRobot) watchRobotKeys(
 	return ks, nil
 }
 
+type sinkSeal struct {
+	apptest.SealServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Seal() apptest.SealServiceServer {
+	return sinkSeal{s.Server.Seal(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// Add decides the name, and refuses one that was given and cannot be one.
+//
+// It goes through [Sink.WithNamer], which is unset in most deployments and
+// then means: fold what was given, and make a name up when nothing was --
+// for the reason `bare.Minter` makes a key up. An app whose rows have to
+// be named says so with `slug.Required`; see `slug.Names` for why that is
+// the way round it is.
+//
+// The request is copied rather than written to. It belongs to whoever
+// called, and for a call made in this process that is a message they may
+// still be holding -- a server that folded a caller's own field would be
+// changing a value they can read back.
+func (s sinkSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
+	// How many names to try. More than one only when the caller named
+	// nothing -- then the name is this server's and a collision is this
+	// server's to resolve. A name the caller gave is theirs, and quietly
+	// choosing a different one would write a row they did not ask for.
+	//
+	// And only when this Add opens its own transaction; see [Sink.joined].
+	tries := 1
+	if req.GetAlias() == "" && !s.joined {
+		tries = slug.Tries
+	}
+
+	for try := 0; ; try++ {
+		v, err := slug.NameWith(ctx, s.namer, "app.Seal", req.GetAlias(), req)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+
+		// The request is copied rather than written to, and copied again on
+		// each try: it belongs to whoever called, and for a call made in this
+		// process that is a message they may still be holding.
+		r := proto.CloneOf(req)
+		r.SetAlias(v)
+
+		res, err := s.SealServiceServer.Add(ctx, r)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			// Whatever it was, said in the words it was said in. Rewriting
+			// it into "no free name" would assert the one thing this cannot
+			// know -- a duplicate key is the same code -- and would say it
+			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
+}
+
+// Patch folds a name it was given, and says nothing about one it was not.
+//
+// The presence is the whole of the difference from [sinkSeal.Add]: a patch
+// that does not mention the alias is not a patch setting it to the empty
+// string, and refusing one would make every patch of any other field carry
+// the name along.
+//
+// The namer is **not** asked here, and that is the second difference. It
+// decides the name of a row being made; a patch that cleared the alias is
+// a caller asking for something invalid, and answering that with an
+// invented name would hand them a row they did not ask for.
+func (s sinkSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
+	if !req.HasAlias() {
+		return s.SealServiceServer.Patch(ctx, req)
+	}
+
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.SealServiceServer.Patch(ctx, req)
+}
+
 type sinkTenant struct {
 	apptest.TenantServiceServer
 	store  bare.Store
@@ -3126,11 +3225,80 @@ func (s secretRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*
 	return v, err
 }
 
+func (s secretRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStreamingServer[apptest.RobotWatchResponse]) error {
+	return s.RobotServiceServer.Watch(req, secretRobotStream{out})
+}
+
+// secretRobotStream clears the secret on its way out.
+//
+// It wraps the stream rather than the response because the server below
+// sends whenever it has something, and there is no single place a
+// message passes through on the way back -- which is the difference
+// between a stream and a call.
+type secretRobotStream struct {
+	grpc.ServerStreamingServer[apptest.RobotWatchResponse]
+}
+
+func (s secretRobotStream) Send(v *apptest.RobotWatchResponse) error {
+	for _, w := range v.GetItems() {
+		hideRobot(w.GetValue())
+	}
+
+	return s.ServerStreamingServer.Send(v)
+}
+
 // hideRobot clears what this entity declared it never answers with.
 //
 // A nil row passes through, because an error is answered with one and the
 // caller of this is handing both on.
 func hideRobot(v *apptest.Robot) *apptest.Robot {
+	if v == nil {
+		return nil
+	}
+
+	v.SetSecret(nil)
+
+	return v
+}
+
+func (s Secret) Seal() apptest.SealServiceServer {
+	return secretSeal{s, s.Next().Seal()}
+}
+
+type secretSeal struct {
+	Secret
+	apptest.SealServiceServer
+}
+
+func (s secretSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
+	v, err := s.SealServiceServer.Add(ctx, req)
+
+	return hideSeal(v), err
+}
+
+func (s secretSeal) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {
+	v, err := s.SealServiceServer.Get(ctx, req)
+
+	return hideSeal(v), err
+}
+
+func (s secretSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
+	v, err := s.SealServiceServer.Patch(ctx, req)
+
+	return hideSeal(v), err
+}
+
+func (s secretSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
+	v, err := s.SealServiceServer.Apply(ctx, req)
+
+	return hideSeal(v), err
+}
+
+// hideSeal clears what this entity declared it never answers with.
+//
+// A nil row passes through, because an error is answered with one and the
+// caller of this is handing both on.
+func hideSeal(v *apptest.Seal) *apptest.Seal {
 	if v == nil {
 		return nil
 	}
@@ -4213,6 +4381,71 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Reading().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.SealService_Add_FullMethodName:
+		v := &apptest.SealAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Seal().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.SealService_Get_FullMethodName:
+		v := &apptest.SealGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Seal().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.SealService_Patch_FullMethodName:
+		v := &apptest.SealPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Seal().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.SealService_Apply_FullMethodName:
+		v := &apptest.SealApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Seal().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.SealService_Erase_FullMethodName:
+		v := &apptest.SealRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Seal().Erase(ctx, v)
 		if err != nil {
 			return nil, err
 		}

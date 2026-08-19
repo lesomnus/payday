@@ -760,20 +760,73 @@ func emitSecretOf(g *protogen.GeneratedFile, e *Entity, root protogen.GoImportPa
 		g.P("")
 	}
 
-	g.P("func (s ", lower, ") List(ctx ", pkgCtx.Ident("Context"),
-		", req *", root.Ident(name+"ListRequest"), ") (*", root.Ident(name+"ListResponse"), ", error) {")
-	g.P("	v, err := s.", name, "ServiceServer.List(ctx, req)")
-	g.P("	if v == nil {")
-	g.P("		return v, err")
-	g.P("	}")
-	g.P("")
-	g.P("	for _, w := range v.GetItems() {")
-	g.P("		hide", name, "(w)")
-	g.P("	}")
-	g.P("")
-	g.P("	return v, err")
-	g.P("}")
-	g.P("")
+	// Only if there is one. `List` was emitted unconditionally, which named
+	// `<E>ListRequest` and `s.<E>ServiceServer.List` for an entity that declared
+	// no list -- `pd gen` said nothing and `go build` failed inside a generated
+	// file nobody is allowed to edit.
+	if e.List != nil {
+		g.P("func (s ", lower, ") List(ctx ", pkgCtx.Ident("Context"),
+			", req *", root.Ident(name+"ListRequest"), ") (*", root.Ident(name+"ListResponse"), ", error) {")
+		g.P("	v, err := s.", name, "ServiceServer.List(ctx, req)")
+		g.P("	if v == nil {")
+		g.P("		return v, err")
+		g.P("	}")
+		g.P("")
+		g.P("	for _, w := range v.GetItems() {")
+		g.P("		hide", name, "(w)")
+		g.P("	}")
+		g.P("")
+		g.P("	return v, err")
+		g.P("}")
+		g.P("")
+	}
+
+	// And the stream, which is the one read that cannot be narrowed by asking.
+	//
+	// A `WatchRequest` has no `select`, so an item carries the whole message and
+	// a caller has no way to leave a column out. Without this wrapper a
+	// watchable entity that declared a secret **streamed the secret** -- to
+	// anybody the wall let read a row, on the one read where nothing had to ask
+	// for it.
+	//
+	// # Why it is hidden and not refused
+	//
+	// Refusing `watch:` on an entity with a `secret:` field was the other fix,
+	// and it is louder. It is also wrong, and the reason is what a watch is
+	// *for*: the first real subject of a sync channel is **this person's
+	// credentials changed, stop trusting what you were told**, and the row that
+	// changed is exactly the one holding a verifier. Refusing would make the
+	// one thing worth watching the one thing that cannot be watched.
+	//
+	// So it is hidden, which is what every other read of the same row already
+	// does. A stream that omits a column is not a surprise when `Get` omits it
+	// too, and the column is one the entity declared it never answers with.
+	if e.Watch {
+		g.P("func (s ", lower, ") Watch(req *", root.Ident(name+"WatchRequest"),
+			", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", root.Ident(name+"WatchResponse"), "]) error {")
+		g.P("	return s.", name, "ServiceServer.Watch(req, ", lower, "Stream{out})")
+		g.P("}")
+		g.P("")
+
+		g.P("// ", lower, "Stream clears the secret on its way out.")
+		g.P("//")
+		g.P("// It wraps the stream rather than the response because the server below")
+		g.P("// sends whenever it has something, and there is no single place a")
+		g.P("// message passes through on the way back -- which is the difference")
+		g.P("// between a stream and a call.")
+		g.P("type ", lower, "Stream struct {")
+		g.P("	", pkgGrpc.Ident("ServerStreamingServer"), "[", root.Ident(name+"WatchResponse"), "]")
+		g.P("}")
+		g.P("")
+		g.P("func (s ", lower, "Stream) Send(v *", root.Ident(name+"WatchResponse"), ") error {")
+		g.P("	for _, w := range v.GetItems() {")
+		g.P("		hide", name, "(w.GetValue())")
+		g.P("	}")
+		g.P("")
+		g.P("	return s.ServerStreamingServer.Send(v)")
+		g.P("}")
+		g.P("")
+	}
 
 	g.P("// hide", name, " clears what this entity declared it never answers with.")
 	g.P("//")

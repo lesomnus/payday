@@ -1,0 +1,50 @@
+edition = "2023";
+
+package app;
+
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// Seal is a secret with **no list**, and that is the whole of what it is for.
+//
+// The `Secret` layer used to emit its `List` wrapper unconditionally, naming
+// `SealListRequest` and `s.SealServiceServer.List` for an entity that declared
+// neither. `pd gen` succeeded and said nothing; `go build` failed inside a
+// generated file nobody is allowed to edit -- late, and in the one place a
+// person cannot fix it.
+//
+// So the test for it is that this package **compiles**. There is nothing to
+// assert and no test function to write: an entity of this shape existing is the
+// assertion, and it fails at the only moment the bug ever showed itself.
+//
+// Nothing else here is unusual. It is global rather than tenanted only because
+// that is one fewer edge for a message whose reason for existing is its own
+// absence of a list.
+message Seal {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+
+  string alias = 4;
+
+  // The field this entity is about. Written, and never answered with.
+  bytes secret = 8 [
+    (orm.field) = {type: TYPE_BYTES},
+    (payday.field) = {secret: true}
+  ];
+
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 14
+    global: {}
+  };
+}

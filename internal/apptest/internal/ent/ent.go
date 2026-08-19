@@ -21,6 +21,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 )
@@ -92,6 +93,7 @@ func checkColumn(t, c string) error {
 			pairing.Table: pairing.ValidColumn,
 			reading.Table: reading.ValidColumn,
 			robot.Table:   robot.ValidColumn,
+			seal.Table:    seal.ValidColumn,
 			tenant.Table:  tenant.ValidColumn,
 			thing.Table:   thing.ValidColumn,
 		})

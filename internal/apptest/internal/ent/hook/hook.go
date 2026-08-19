@@ -117,6 +117,18 @@ func (f RobotFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RobotMutation", m)
 }
 
+// The SealFunc type is an adapter to allow the use of ordinary
+// function as Seal mutator.
+type SealFunc func(context.Context, *ent.SealMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SealFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SealMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SealMutation", m)
+}
+
 // The TenantFunc type is an adapter to allow the use of ordinary
 // function as Tenant mutator.
 type TenantFunc func(context.Context, *ent.TenantMutation) (ent.Value, error)

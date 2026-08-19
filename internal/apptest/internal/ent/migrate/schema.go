@@ -290,6 +290,20 @@ var (
 			},
 		},
 	}
+	// SealColumns holds the columns for the "seal" table.
+	SealColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "alias", Type: field.TypeString},
+		{Name: "secret", Type: field.TypeBytes},
+		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+	}
+	// SealTable holds the schema information for the "seal" table.
+	SealTable = &schema.Table{
+		Name:       "seal",
+		Columns:    SealColumns,
+		PrimaryKey: []*schema.Column{SealColumns[0]},
+	}
 	// TenantColumns holds the columns for the "tenant" table.
 	TenantColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
@@ -330,6 +344,7 @@ var (
 		PairingTable,
 		ReadingTable,
 		RobotTable,
+		SealTable,
 		TenantTable,
 		ThingTable,
 	}
@@ -371,6 +386,9 @@ func init() {
 	RobotTable.ForeignKeys[2].RefTable = CellTable
 	RobotTable.Annotation = &entsql.Annotation{
 		Table: "robot",
+	}
+	SealTable.Annotation = &entsql.Annotation{
+		Table: "seal",
 	}
 	TenantTable.Annotation = &entsql.Annotation{
 		Table: "tenant",
