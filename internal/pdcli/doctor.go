@@ -123,6 +123,17 @@ func Doctor(ctx context.Context, l Layout) []Finding {
 
 	vs = append(vs, doctorBuf(l)...)
 	vs = append(vs, doctorSchema(l)...)
+
+	// The app's own entities, read the way the generator reads them. Last of
+	// the schema checks and first of the expensive ones: it is a `buf build`,
+	// and there is no point compiling a schema for an app that is missing the
+	// plugins to generate it.
+	//
+	// Skipped when anything above was fatal, because those are the reasons a
+	// build fails and a second message about it helps nobody.
+	if !fatal(vs) {
+		vs = append(vs, doctorEntities(ctx, l)...)
+	}
 	vs = append(vs, doctorLayers(l)...)
 	vs = append(vs, doctorSandbox(ctx, l)...)
 
@@ -480,13 +491,21 @@ func doctorBuf(l Layout) []Finding {
 	return vs
 }
 
-// doctorSchema reads the schema the way the generator does, so that everything
-// `pd gen` refuses is refused here too -- and reported all at once rather than
-// one per run.
+// doctorSchema checks the overlays against payday's shipped entities.
 //
-// It is the same reading and not a second one. What it cannot do is find a
-// **missing** overlay or a stale copy of payday's own entities, since those are
-// only visible by generating; `pd gen --check` is for that.
+// **It does not read the app's schema**, and its comment used to say it did --
+// *reads the schema the way the generator does, so that everything `pd gen`
+// refuses is refused here too*. It globbed filenames. An entity `pd gen`
+// refuses outright got a clean bill and exit 0, which is worse than not
+// checking: the sentence is what makes somebody trust the exit code.
+//
+// [doctorEntities] is the one that does read it. This is what is left over --
+// an overlay for something payday does not have, which is a file silently never
+// merged and so is invisible to a reading of what *was* merged.
+//
+// What neither can do is find a **missing** overlay or a stale copy of payday's
+// own entities, since those are only visible by generating; `pd gen --check` is
+// for that.
 func doctorSchema(l Layout) []Finding {
 	var vs []Finding
 
@@ -547,4 +566,15 @@ func goTools(ctx context.Context, dir string) (map[string]bool, error) {
 	}
 
 	return vs, nil
+}
+
+// fatal reports whether anything found so far stops a generation.
+func fatal(vs []Finding) bool {
+	for _, v := range vs {
+		if v.Fatal {
+			return true
+		}
+	}
+
+	return false
 }
