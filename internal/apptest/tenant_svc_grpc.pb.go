@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -41,7 +40,7 @@ type TenantServiceClient interface {
 	// Apply applies a patch document to an existing Tenant
 	Apply(ctx context.Context, in *TenantApplyRequest, opts ...grpc.CallOption) (*Tenant, error)
 	// Erase deletes a Tenant
-	Erase(ctx context.Context, in *TenantRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *TenantRef, opts ...grpc.CallOption) (*TenantEraseResponse, error)
 	// List reads Tenants a page at a time.
 	List(ctx context.Context, in *TenantListRequest, opts ...grpc.CallOption) (*TenantListResponse, error)
 }
@@ -94,9 +93,9 @@ func (c *tenantServiceClient) Apply(ctx context.Context, in *TenantApplyRequest,
 	return out, nil
 }
 
-func (c *tenantServiceClient) Erase(ctx context.Context, in *TenantRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *tenantServiceClient) Erase(ctx context.Context, in *TenantRef, opts ...grpc.CallOption) (*TenantEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(TenantEraseResponse)
 	err := c.cc.Invoke(ctx, TenantService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -127,7 +126,7 @@ type TenantServiceServer interface {
 	// Apply applies a patch document to an existing Tenant
 	Apply(context.Context, *TenantApplyRequest) (*Tenant, error)
 	// Erase deletes a Tenant
-	Erase(context.Context, *TenantRef) (*emptypb.Empty, error)
+	Erase(context.Context, *TenantRef) (*TenantEraseResponse, error)
 	// List reads Tenants a page at a time.
 	List(context.Context, *TenantListRequest) (*TenantListResponse, error)
 	mustEmbedUnimplementedTenantServiceServer()
@@ -152,7 +151,7 @@ func (UnimplementedTenantServiceServer) Patch(context.Context, *TenantPatchReque
 func (UnimplementedTenantServiceServer) Apply(context.Context, *TenantApplyRequest) (*Tenant, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedTenantServiceServer) Erase(context.Context, *TenantRef) (*emptypb.Empty, error) {
+func (UnimplementedTenantServiceServer) Erase(context.Context, *TenantRef) (*TenantEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedTenantServiceServer) List(context.Context, *TenantListRequest) (*TenantListResponse, error) {

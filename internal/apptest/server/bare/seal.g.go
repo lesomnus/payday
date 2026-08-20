@@ -18,7 +18,6 @@ import (
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type SealServiceServer struct {
@@ -325,6 +324,14 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 		}
 		q.Modify(mod)
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Seal already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Seal: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -358,7 +365,7 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 	return out, nil
 }
 
-func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*emptypb.Empty, error) {
+func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
 	p, err := SealPick(req)
 	if err != nil {
 		return nil, err
@@ -382,13 +389,13 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*em
 		v, err := st.Db.Seal.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.SealEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = seal.IDEQ(v)
+		p = seal.And(p, seal.IDEQ(v))
 	}
 
 	u := st.Db.Seal.Update().Where(p)
@@ -408,10 +415,31 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*em
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.SealEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
+// SealPick answers with the predicate this reference selects on,
+// among the rows that are still here.
+//
+// Erasure is part of the reference and not only part of a read's scope,
+// because a reference to a Seal is composed into the reference of
+// whatever names one: an index over an edge asks this for a predicate and
+// puts it inside `HasSealWith`, where no narrowing of a Seal
+// is ever applied. A child of an erased row would otherwise be readable by
+// naming its parent.
 func SealPick(req *apptest.SealRef) (predicate.Seal, error) {
+	p, err := pickSeal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return seal.And(seal.DateErasedIsNil(), p), nil
+}
+
+func pickSeal(req *apptest.SealRef) (predicate.Seal, error) {
 	switch req.WhichKey() {
 	case apptest.SealRef_Id_case:
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {

@@ -3,7 +3,6 @@ package app;
 
 import "app/payday/holder.proto";
 import "app/payday/tenant_svc.g.proto";
-import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "patch/patch.proto";
 
@@ -19,7 +18,7 @@ service HolderService {
   // Apply applies a patch document to an existing Holder
   rpc Apply(HolderApplyRequest) returns (Holder);
   // Erase deletes a Holder
-  rpc Erase(HolderRef) returns (google.protobuf.Empty);
+  rpc Erase(HolderRef) returns (HolderEraseResponse);
   // List reads Holders a page at a time.
   rpc List(HolderListRequest) returns (HolderListResponse);
   // Watch the Holders this caller may see, as they are now and as they change.
@@ -103,6 +102,15 @@ message HolderPatchRequest {
 message HolderApplyRequest {
   HolderRef ref = 1;
   patch.Patch patch = 2;
+}
+
+message HolderEraseResponse {
+  // Erased is whether this call is the one that erased the row.
+  //
+  // False for a row that was already gone, was never there, or is out
+  // of this caller's reach -- which are one answer on purpose, and the
+  // reason the RPC does not fail instead.
+  bool erased = 1;
 }
 
 message HolderListRequest {

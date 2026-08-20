@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -41,7 +40,7 @@ type AuditServiceClient interface {
 	// Apply applies a patch document to an existing Audit
 	Apply(ctx context.Context, in *AuditApplyRequest, opts ...grpc.CallOption) (*Audit, error)
 	// Erase deletes a Audit
-	Erase(ctx context.Context, in *AuditRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *AuditRef, opts ...grpc.CallOption) (*AuditEraseResponse, error)
 	// List reads Audits a page at a time.
 	List(ctx context.Context, in *AuditListRequest, opts ...grpc.CallOption) (*AuditListResponse, error)
 }
@@ -94,9 +93,9 @@ func (c *auditServiceClient) Apply(ctx context.Context, in *AuditApplyRequest, o
 	return out, nil
 }
 
-func (c *auditServiceClient) Erase(ctx context.Context, in *AuditRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *auditServiceClient) Erase(ctx context.Context, in *AuditRef, opts ...grpc.CallOption) (*AuditEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(AuditEraseResponse)
 	err := c.cc.Invoke(ctx, AuditService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -127,7 +126,7 @@ type AuditServiceServer interface {
 	// Apply applies a patch document to an existing Audit
 	Apply(context.Context, *AuditApplyRequest) (*Audit, error)
 	// Erase deletes a Audit
-	Erase(context.Context, *AuditRef) (*emptypb.Empty, error)
+	Erase(context.Context, *AuditRef) (*AuditEraseResponse, error)
 	// List reads Audits a page at a time.
 	List(context.Context, *AuditListRequest) (*AuditListResponse, error)
 	mustEmbedUnimplementedAuditServiceServer()
@@ -152,7 +151,7 @@ func (UnimplementedAuditServiceServer) Patch(context.Context, *AuditPatchRequest
 func (UnimplementedAuditServiceServer) Apply(context.Context, *AuditApplyRequest) (*Audit, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedAuditServiceServer) Erase(context.Context, *AuditRef) (*emptypb.Empty, error) {
+func (UnimplementedAuditServiceServer) Erase(context.Context, *AuditRef) (*AuditEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedAuditServiceServer) List(context.Context, *AuditListRequest) (*AuditListResponse, error) {

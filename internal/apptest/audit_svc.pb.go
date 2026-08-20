@@ -10,7 +10,6 @@ import (
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	unsafe "unsafe"
@@ -1380,6 +1379,86 @@ func (b0 AuditApplyRequest_builder) Build() *AuditApplyRequest {
 	return m0
 }
 
+type AuditEraseResponse struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Erased      bool                   `protobuf:"varint,1,opt,name=erased"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AuditEraseResponse) Reset() {
+	*x = AuditEraseResponse{}
+	mi := &file_app_payday_audit_svc_g_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuditEraseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuditEraseResponse) ProtoMessage() {}
+
+func (x *AuditEraseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_app_payday_audit_svc_g_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *AuditEraseResponse) GetErased() bool {
+	if x != nil {
+		return x.xxx_hidden_Erased
+	}
+	return false
+}
+
+func (x *AuditEraseResponse) SetErased(v bool) {
+	x.xxx_hidden_Erased = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *AuditEraseResponse) HasErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *AuditEraseResponse) ClearErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Erased = false
+}
+
+type AuditEraseResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Erased is whether this call is the one that erased the row.
+	//
+	// False for a row that was already gone, was never there, or is out
+	// of this caller's reach -- which are one answer on purpose, and the
+	// reason the RPC does not fail instead.
+	Erased *bool
+}
+
+func (b0 AuditEraseResponse_builder) Build() *AuditEraseResponse {
+	m0 := &AuditEraseResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Erased != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_Erased = *b.Erased
+	}
+	return m0
+}
+
 type AuditListRequest struct {
 	state              protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Filters *[]*AuditFilter        `protobuf:"bytes,1,rep,name=filters"`
@@ -1391,7 +1470,7 @@ type AuditListRequest struct {
 
 func (x *AuditListRequest) Reset() {
 	*x = AuditListRequest{}
-	mi := &file_app_payday_audit_svc_g_proto_msgTypes[6]
+	mi := &file_app_payday_audit_svc_g_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1403,7 +1482,7 @@ func (x *AuditListRequest) String() string {
 func (*AuditListRequest) ProtoMessage() {}
 
 func (x *AuditListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_audit_svc_g_proto_msgTypes[6]
+	mi := &file_app_payday_audit_svc_g_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1486,7 +1565,7 @@ type AuditListResponse struct {
 
 func (x *AuditListResponse) Reset() {
 	*x = AuditListResponse{}
-	mi := &file_app_payday_audit_svc_g_proto_msgTypes[7]
+	mi := &file_app_payday_audit_svc_g_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1498,7 +1577,7 @@ func (x *AuditListResponse) String() string {
 func (*AuditListResponse) ProtoMessage() {}
 
 func (x *AuditListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_audit_svc_g_proto_msgTypes[7]
+	mi := &file_app_payday_audit_svc_g_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1571,7 +1650,7 @@ type AuditFilter struct {
 
 func (x *AuditFilter) Reset() {
 	*x = AuditFilter{}
-	mi := &file_app_payday_audit_svc_g_proto_msgTypes[8]
+	mi := &file_app_payday_audit_svc_g_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1583,7 +1662,7 @@ func (x *AuditFilter) String() string {
 func (*AuditFilter) ProtoMessage() {}
 
 func (x *AuditFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_audit_svc_g_proto_msgTypes[8]
+	mi := &file_app_payday_audit_svc_g_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1770,7 +1849,7 @@ var File_app_payday_audit_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xa8\x03\n" +
+	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xa8\x03\n" +
 	"\x0fAuditAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\"\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x05\xaa\x01\x02\b\x02R\btenantId\x12 \n" +
@@ -1817,7 +1896,9 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x1acounterpart_tenant_id_null\x18% \x01(\bR\x17counterpartTenantIdNull\"X\n" +
 	"\x11AuditApplyRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"v\n" +
+	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +
+	"\x12AuditEraseResponse\x12\x16\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"v\n" +
 	"\x10AuditListRequest\x12*\n" +
 	"\afilters\x18\x01 \x03(\v2\x10.app.AuditFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
@@ -1831,7 +1912,7 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\bactor_id\x18\x02 \x01(\fR\aactorId\x12\x1b\n" +
 	"\ttenant_id\x18\x03 \x01(\fR\btenantId\x12&\n" +
 	"\x0factor_tenant_id\x18\x04 \x01(\fR\ractorTenantId\x122\n" +
-	"\x15counterpart_tenant_id\x18\x05 \x01(\fR\x13counterpartTenantId2\xa1\x02\n" +
+	"\x15counterpart_tenant_id\x18\x05 \x01(\fR\x13counterpartTenantId2\xa2\x02\n" +
 	"\fAuditService\x12'\n" +
 	"\x03Add\x12\x14.app.AuditAddRequest\x1a\n" +
 	".app.Audit\x12'\n" +
@@ -1840,11 +1921,11 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x05Patch\x12\x16.app.AuditPatchRequest\x1a\n" +
 	".app.Audit\x12+\n" +
 	"\x05Apply\x12\x16.app.AuditApplyRequest\x1a\n" +
-	".app.Audit\x12.\n" +
-	"\x05Erase\x12\r.app.AuditRef\x1a\x16.google.protobuf.Empty\x125\n" +
+	".app.Audit\x12/\n" +
+	"\x05Erase\x12\r.app.AuditRef\x1a\x17.app.AuditEraseResponse\x125\n" +
 	"\x04List\x12\x15.app.AuditListRequest\x1a\x16.app.AuditListResponseB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_payday_audit_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_app_payday_audit_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_app_payday_audit_svc_g_proto_goTypes = []any{
 	(*AuditAddRequest)(nil),       // 0: app.AuditAddRequest
 	(*AuditGetRequest)(nil),       // 1: app.AuditGetRequest
@@ -1852,35 +1933,35 @@ var file_app_payday_audit_svc_g_proto_goTypes = []any{
 	(*AuditSelect)(nil),           // 3: app.AuditSelect
 	(*AuditPatchRequest)(nil),     // 4: app.AuditPatchRequest
 	(*AuditApplyRequest)(nil),     // 5: app.AuditApplyRequest
-	(*AuditListRequest)(nil),      // 6: app.AuditListRequest
-	(*AuditListResponse)(nil),     // 7: app.AuditListResponse
-	(*AuditFilter)(nil),           // 8: app.AuditFilter
-	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
-	(*patchpb.Patch)(nil),         // 10: patch.Patch
-	(*Audit)(nil),                 // 11: app.Audit
-	(*emptypb.Empty)(nil),         // 12: google.protobuf.Empty
+	(*AuditEraseResponse)(nil),    // 6: app.AuditEraseResponse
+	(*AuditListRequest)(nil),      // 7: app.AuditListRequest
+	(*AuditListResponse)(nil),     // 8: app.AuditListResponse
+	(*AuditFilter)(nil),           // 9: app.AuditFilter
+	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
+	(*patchpb.Patch)(nil),         // 11: patch.Patch
+	(*Audit)(nil),                 // 12: app.Audit
 }
 var file_app_payday_audit_svc_g_proto_depIdxs = []int32{
-	9,  // 0: app.AuditAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	10, // 0: app.AuditAddRequest.date_created:type_name -> google.protobuf.Timestamp
 	2,  // 1: app.AuditGetRequest.ref:type_name -> app.AuditRef
 	3,  // 2: app.AuditGetRequest.select:type_name -> app.AuditSelect
 	2,  // 3: app.AuditPatchRequest.ref:type_name -> app.AuditRef
 	2,  // 4: app.AuditApplyRequest.ref:type_name -> app.AuditRef
-	10, // 5: app.AuditApplyRequest.patch:type_name -> patch.Patch
-	8,  // 6: app.AuditListRequest.filters:type_name -> app.AuditFilter
-	11, // 7: app.AuditListResponse.items:type_name -> app.Audit
+	11, // 5: app.AuditApplyRequest.patch:type_name -> patch.Patch
+	9,  // 6: app.AuditListRequest.filters:type_name -> app.AuditFilter
+	12, // 7: app.AuditListResponse.items:type_name -> app.Audit
 	0,  // 8: app.AuditService.Add:input_type -> app.AuditAddRequest
 	1,  // 9: app.AuditService.Get:input_type -> app.AuditGetRequest
 	4,  // 10: app.AuditService.Patch:input_type -> app.AuditPatchRequest
 	5,  // 11: app.AuditService.Apply:input_type -> app.AuditApplyRequest
 	2,  // 12: app.AuditService.Erase:input_type -> app.AuditRef
-	6,  // 13: app.AuditService.List:input_type -> app.AuditListRequest
-	11, // 14: app.AuditService.Add:output_type -> app.Audit
-	11, // 15: app.AuditService.Get:output_type -> app.Audit
-	11, // 16: app.AuditService.Patch:output_type -> app.Audit
-	11, // 17: app.AuditService.Apply:output_type -> app.Audit
-	12, // 18: app.AuditService.Erase:output_type -> google.protobuf.Empty
-	7,  // 19: app.AuditService.List:output_type -> app.AuditListResponse
+	7,  // 13: app.AuditService.List:input_type -> app.AuditListRequest
+	12, // 14: app.AuditService.Add:output_type -> app.Audit
+	12, // 15: app.AuditService.Get:output_type -> app.Audit
+	12, // 16: app.AuditService.Patch:output_type -> app.Audit
+	12, // 17: app.AuditService.Apply:output_type -> app.Audit
+	6,  // 18: app.AuditService.Erase:output_type -> app.AuditEraseResponse
+	8,  // 19: app.AuditService.List:output_type -> app.AuditListResponse
 	14, // [14:20] is the sub-list for method output_type
 	8,  // [8:14] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name
@@ -1903,7 +1984,7 @@ func file_app_payday_audit_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_payday_audit_svc_g_proto_rawDesc), len(file_app_payday_audit_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

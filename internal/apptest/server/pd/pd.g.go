@@ -48,7 +48,6 @@ import (
 	status "google.golang.org/grpc/status"
 	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	slog "log/slog"
 	slices "slices"
 	time "time"
@@ -2521,7 +2520,7 @@ func (s gateTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*ap
 
 // Erase is not served either, and it would take everything in the tenant
 // with it.
-func (s gateTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*emptypb.Empty, error) {
+func (s gateTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
 	return nil, gate.ErrDeployment("taken down")
 }
 
@@ -2816,7 +2815,7 @@ func (s auditService) Apply(ctx context.Context, req *apptest.AuditApplyRequest)
 	return nil, errTrail()
 }
 
-func (s auditService) Erase(ctx context.Context, req *apptest.AuditRef) (*emptypb.Empty, error) {
+func (s auditService) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
 	return nil, errTrail()
 }
 

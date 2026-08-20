@@ -18,7 +18,6 @@ import (
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type ThingServiceServer struct {
@@ -321,6 +320,14 @@ func (s ThingServiceServer) apply(ctx context.Context, ref *apptest.ThingRef, do
 		}
 		q.Modify(mod)
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Thing already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Thing: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -354,7 +361,7 @@ func (s ThingServiceServer) apply(ctx context.Context, ref *apptest.ThingRef, do
 	return out, nil
 }
 
-func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*emptypb.Empty, error) {
+func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*apptest.ThingEraseResponse, error) {
 	p, err := ThingPick(req)
 	if err != nil {
 		return nil, err
@@ -378,13 +385,13 @@ func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*
 		v, err := st.Db.Thing.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.ThingEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = thing.IDEQ(v)
+		p = thing.And(p, thing.IDEQ(v))
 	}
 
 	u := st.Db.Thing.Update().Where(p)
@@ -404,10 +411,31 @@ func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.ThingEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
+// ThingPick answers with the predicate this reference selects on,
+// among the rows that are still here.
+//
+// Erasure is part of the reference and not only part of a read's scope,
+// because a reference to a Thing is composed into the reference of
+// whatever names one: an index over an edge asks this for a predicate and
+// puts it inside `HasThingWith`, where no narrowing of a Thing
+// is ever applied. A child of an erased row would otherwise be readable by
+// naming its parent.
 func ThingPick(req *apptest.ThingRef) (predicate.Thing, error) {
+	p, err := pickThing(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return thing.And(thing.DateErasedIsNil(), p), nil
+}
+
+func pickThing(req *apptest.ThingRef) (predicate.Thing, error) {
 	switch req.WhichKey() {
 	case apptest.ThingRef_Id_case:
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {

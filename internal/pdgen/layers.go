@@ -141,7 +141,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("// Erase is not served either, and it would take everything in the tenant")
 	g.P("// with it.")
 	g.P("func (s gateTenant) Erase(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("TenantRef"),
-		") (*", pkgEmpty.Ident("Empty"), ", error) {")
+		") (*", root.Ident("TenantEraseResponse"), ", error) {")
 	g.P("	return nil, ", pkgGate.Ident("ErrDeployment"), "(\"taken down\")")
 	g.P("}")
 	g.P("")
@@ -386,7 +386,7 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 		g.P("")
 	}
 	g.P("func (s auditService) Erase(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("AuditRef"),
-		") (*", pkgEmpty.Ident("Empty"), ", error) {")
+		") (*", root.Ident("AuditEraseResponse"), ", error) {")
 	g.P("	return nil, errTrail()")
 	g.P("}")
 	g.P("")

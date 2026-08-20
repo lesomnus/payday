@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -41,7 +40,7 @@ type ThingServiceClient interface {
 	// Apply applies a patch document to an existing Thing
 	Apply(ctx context.Context, in *ThingApplyRequest, opts ...grpc.CallOption) (*Thing, error)
 	// Erase deletes a Thing
-	Erase(ctx context.Context, in *ThingRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *ThingRef, opts ...grpc.CallOption) (*ThingEraseResponse, error)
 	// List reads Things a page at a time.
 	List(ctx context.Context, in *ThingListRequest, opts ...grpc.CallOption) (*ThingListResponse, error)
 }
@@ -94,9 +93,9 @@ func (c *thingServiceClient) Apply(ctx context.Context, in *ThingApplyRequest, o
 	return out, nil
 }
 
-func (c *thingServiceClient) Erase(ctx context.Context, in *ThingRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *thingServiceClient) Erase(ctx context.Context, in *ThingRef, opts ...grpc.CallOption) (*ThingEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(ThingEraseResponse)
 	err := c.cc.Invoke(ctx, ThingService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -127,7 +126,7 @@ type ThingServiceServer interface {
 	// Apply applies a patch document to an existing Thing
 	Apply(context.Context, *ThingApplyRequest) (*Thing, error)
 	// Erase deletes a Thing
-	Erase(context.Context, *ThingRef) (*emptypb.Empty, error)
+	Erase(context.Context, *ThingRef) (*ThingEraseResponse, error)
 	// List reads Things a page at a time.
 	List(context.Context, *ThingListRequest) (*ThingListResponse, error)
 	mustEmbedUnimplementedThingServiceServer()
@@ -152,7 +151,7 @@ func (UnimplementedThingServiceServer) Patch(context.Context, *ThingPatchRequest
 func (UnimplementedThingServiceServer) Apply(context.Context, *ThingApplyRequest) (*Thing, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedThingServiceServer) Erase(context.Context, *ThingRef) (*emptypb.Empty, error) {
+func (UnimplementedThingServiceServer) Erase(context.Context, *ThingRef) (*ThingEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedThingServiceServer) List(context.Context, *ThingListRequest) (*ThingListResponse, error) {

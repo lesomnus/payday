@@ -18,7 +18,6 @@ import (
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type AuditServiceServer struct {
@@ -368,6 +367,14 @@ func (s AuditServiceServer) apply(ctx context.Context, ref *apptest.AuditRef, do
 		}
 		q.Modify(mod)
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Audit already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Audit: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -401,7 +408,7 @@ func (s AuditServiceServer) apply(ctx context.Context, ref *apptest.AuditRef, do
 	return out, nil
 }
 
-func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*emptypb.Empty, error) {
+func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
 	p, err := AuditPick(req)
 	if err != nil {
 		return nil, err
@@ -425,13 +432,13 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 		v, err := st.Db.Audit.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.AuditEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = audit.IDEQ(v)
+		p = audit.And(p, audit.IDEQ(v))
 	}
 
 	n, err := st.Db.Audit.Delete().Where(p).Exec(ctx)
@@ -449,7 +456,10 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.AuditEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
 func AuditPick(req *apptest.AuditRef) (predicate.Audit, error) {

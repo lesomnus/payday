@@ -25,7 +25,6 @@ import (
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type CellServiceServer struct {
@@ -339,6 +338,14 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 		}
 		q.Modify(mod)
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Cell already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Cell: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -372,7 +379,7 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 	return out, nil
 }
 
-func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*emptypb.Empty, error) {
+func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*apptest.CellEraseResponse, error) {
 	p, err := CellPick(req)
 	if err != nil {
 		return nil, err
@@ -396,13 +403,13 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*em
 		v, err := st.Db.Cell.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.CellEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = cell.IDEQ(v)
+		p = cell.And(p, cell.IDEQ(v))
 	}
 
 	u := st.Db.Cell.Update().Where(p)
@@ -422,10 +429,31 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*em
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.CellEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
+// CellPick answers with the predicate this reference selects on,
+// among the rows that are still here.
+//
+// Erasure is part of the reference and not only part of a read's scope,
+// because a reference to a Cell is composed into the reference of
+// whatever names one: an index over an edge asks this for a predicate and
+// puts it inside `HasCellWith`, where no narrowing of a Cell
+// is ever applied. A child of an erased row would otherwise be readable by
+// naming its parent.
 func CellPick(req *apptest.CellRef) (predicate.Cell, error) {
+	p, err := pickCell(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return cell.And(cell.DateErasedIsNil(), p), nil
+}
+
+func pickCell(req *apptest.CellRef) (predicate.Cell, error) {
 	switch req.WhichKey() {
 	case apptest.CellRef_Id_case:
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
@@ -822,6 +850,14 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 			q.SetDateUpdated(st.now())
 		}
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Robot already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Robot: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -855,7 +891,7 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 	return out, nil
 }
 
-func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*emptypb.Empty, error) {
+func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotEraseResponse, error) {
 	p, err := RobotPick(req)
 	if err != nil {
 		return nil, err
@@ -879,13 +915,13 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 		v, err := st.Db.Robot.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.RobotEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = robot.IDEQ(v)
+		p = robot.And(p, robot.IDEQ(v))
 	}
 
 	u := st.Db.Robot.Update().Where(p)
@@ -906,10 +942,31 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.RobotEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
+// RobotPick answers with the predicate this reference selects on,
+// among the rows that are still here.
+//
+// Erasure is part of the reference and not only part of a read's scope,
+// because a reference to a Robot is composed into the reference of
+// whatever names one: an index over an edge asks this for a predicate and
+// puts it inside `HasRobotWith`, where no narrowing of a Robot
+// is ever applied. A child of an erased row would otherwise be readable by
+// naming its parent.
 func RobotPick(req *apptest.RobotRef) (predicate.Robot, error) {
+	p, err := pickRobot(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return robot.And(robot.DateErasedIsNil(), p), nil
+}
+
+func pickRobot(req *apptest.RobotRef) (predicate.Robot, error) {
 	switch req.WhichKey() {
 	case apptest.RobotRef_Id_case:
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
@@ -1256,6 +1313,14 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 		}
 		q.Modify(mod)
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Pairing already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Pairing: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -1289,7 +1354,7 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 	return out, nil
 }
 
-func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef) (*emptypb.Empty, error) {
+func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef) (*apptest.PairingEraseResponse, error) {
 	p, err := PairingPick(req)
 	if err != nil {
 		return nil, err
@@ -1313,13 +1378,13 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 		v, err := st.Db.Pairing.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.PairingEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = pairing.IDEQ(v)
+		p = pairing.And(p, pairing.IDEQ(v))
 	}
 
 	n, err := st.Db.Pairing.Delete().Where(p).Exec(ctx)
@@ -1337,7 +1402,10 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.PairingEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
 func PairingPick(req *apptest.PairingRef) (predicate.Pairing, error) {
@@ -1668,6 +1736,14 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 		}
 		q.Modify(mod)
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Joint already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Joint: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -1701,7 +1777,7 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 	return out, nil
 }
 
-func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*emptypb.Empty, error) {
+func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.JointEraseResponse, error) {
 	p, err := JointPick(req)
 	if err != nil {
 		return nil, err
@@ -1725,13 +1801,13 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 		v, err := st.Db.Joint.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.JointEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = joint.IDEQ(v)
+		p = joint.And(p, joint.IDEQ(v))
 	}
 
 	u := st.Db.Joint.Update().Where(p)
@@ -1751,10 +1827,31 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.JointEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
+// JointPick answers with the predicate this reference selects on,
+// among the rows that are still here.
+//
+// Erasure is part of the reference and not only part of a read's scope,
+// because a reference to a Joint is composed into the reference of
+// whatever names one: an index over an edge asks this for a predicate and
+// puts it inside `HasJointWith`, where no narrowing of a Joint
+// is ever applied. A child of an erased row would otherwise be readable by
+// naming its parent.
 func JointPick(req *apptest.JointRef) (predicate.Joint, error) {
+	p, err := pickJoint(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return joint.And(joint.DateErasedIsNil(), p), nil
+}
+
+func pickJoint(req *apptest.JointRef) (predicate.Joint, error) {
 	switch req.WhichKey() {
 	case apptest.JointRef_Id_case:
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
@@ -2061,6 +2158,14 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 		}
 		q.Modify(mod)
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Fleet already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Fleet: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -2094,7 +2199,7 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 	return out, nil
 }
 
-func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*emptypb.Empty, error) {
+func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.FleetEraseResponse, error) {
 	p, err := FleetPick(req)
 	if err != nil {
 		return nil, err
@@ -2118,13 +2223,13 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 		v, err := st.Db.Fleet.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.FleetEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = fleet.IDEQ(v)
+		p = fleet.And(p, fleet.IDEQ(v))
 	}
 
 	u := st.Db.Fleet.Update().Where(p)
@@ -2144,10 +2249,31 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.FleetEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
+// FleetPick answers with the predicate this reference selects on,
+// among the rows that are still here.
+//
+// Erasure is part of the reference and not only part of a read's scope,
+// because a reference to a Fleet is composed into the reference of
+// whatever names one: an index over an edge asks this for a predicate and
+// puts it inside `HasFleetWith`, where no narrowing of a Fleet
+// is ever applied. A child of an erased row would otherwise be readable by
+// naming its parent.
 func FleetPick(req *apptest.FleetRef) (predicate.Fleet, error) {
+	p, err := pickFleet(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return fleet.And(fleet.DateErasedIsNil(), p), nil
+}
+
+func pickFleet(req *apptest.FleetRef) (predicate.Fleet, error) {
 	switch req.WhichKey() {
 	case apptest.FleetRef_Id_case:
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
@@ -2484,6 +2610,14 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 		}
 		q.Modify(mod)
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Reading already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Reading: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -2517,7 +2651,7 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 	return out, nil
 }
 
-func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef) (*emptypb.Empty, error) {
+func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
 	p, err := ReadingPick(req)
 	if err != nil {
 		return nil, err
@@ -2541,13 +2675,13 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 		v, err := st.Db.Reading.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.ReadingEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = reading.IDEQ(v)
+		p = reading.And(p, reading.IDEQ(v))
 	}
 
 	n, err := st.Db.Reading.Delete().Where(p).Exec(ctx)
@@ -2565,7 +2699,10 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.ReadingEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
 func ReadingPick(req *apptest.ReadingRef) (predicate.Reading, error) {

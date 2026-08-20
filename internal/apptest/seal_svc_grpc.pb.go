@@ -14,7 +14,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -43,7 +42,7 @@ type SealServiceClient interface {
 	// Apply applies a patch document to an existing Seal
 	Apply(ctx context.Context, in *SealApplyRequest, opts ...grpc.CallOption) (*Seal, error)
 	// Erase deletes a Seal
-	Erase(ctx context.Context, in *SealRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *SealRef, opts ...grpc.CallOption) (*SealEraseResponse, error)
 }
 
 type sealServiceClient struct {
@@ -94,9 +93,9 @@ func (c *sealServiceClient) Apply(ctx context.Context, in *SealApplyRequest, opt
 	return out, nil
 }
 
-func (c *sealServiceClient) Erase(ctx context.Context, in *SealRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *sealServiceClient) Erase(ctx context.Context, in *SealRef, opts ...grpc.CallOption) (*SealEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(SealEraseResponse)
 	err := c.cc.Invoke(ctx, SealService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -117,7 +116,7 @@ type SealServiceServer interface {
 	// Apply applies a patch document to an existing Seal
 	Apply(context.Context, *SealApplyRequest) (*Seal, error)
 	// Erase deletes a Seal
-	Erase(context.Context, *SealRef) (*emptypb.Empty, error)
+	Erase(context.Context, *SealRef) (*SealEraseResponse, error)
 	mustEmbedUnimplementedSealServiceServer()
 }
 
@@ -140,7 +139,7 @@ func (UnimplementedSealServiceServer) Patch(context.Context, *SealPatchRequest) 
 func (UnimplementedSealServiceServer) Apply(context.Context, *SealApplyRequest) (*Seal, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedSealServiceServer) Erase(context.Context, *SealRef) (*emptypb.Empty, error) {
+func (UnimplementedSealServiceServer) Erase(context.Context, *SealRef) (*SealEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedSealServiceServer) mustEmbedUnimplementedSealServiceServer() {}

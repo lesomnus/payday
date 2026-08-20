@@ -3,7 +3,6 @@ package app;
 
 import "app/payday/tenant_svc.g.proto";
 import "app/robot.proto";
-import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "patch/patch.proto";
 import "shared/thing_svc.g.proto";
@@ -20,7 +19,7 @@ service CellService {
   // Apply applies a patch document to an existing Cell
   rpc Apply(CellApplyRequest) returns (Cell);
   // Erase deletes a Cell
-  rpc Erase(CellRef) returns (google.protobuf.Empty);
+  rpc Erase(CellRef) returns (CellEraseResponse);
 }
 
 service RobotService {
@@ -33,7 +32,7 @@ service RobotService {
   // Apply applies a patch document to an existing Robot
   rpc Apply(RobotApplyRequest) returns (Robot);
   // Erase deletes a Robot
-  rpc Erase(RobotRef) returns (google.protobuf.Empty);
+  rpc Erase(RobotRef) returns (RobotEraseResponse);
   // List reads Robots a page at a time.
   rpc List(RobotListRequest) returns (RobotListResponse);
   // Watch the Robots this caller may see, as they are now and as they change.
@@ -78,7 +77,7 @@ service PairingService {
   // Apply applies a patch document to an existing Pairing
   rpc Apply(PairingApplyRequest) returns (Pairing);
   // Erase deletes a Pairing
-  rpc Erase(PairingRef) returns (google.protobuf.Empty);
+  rpc Erase(PairingRef) returns (PairingEraseResponse);
 }
 
 service JointService {
@@ -91,7 +90,7 @@ service JointService {
   // Apply applies a patch document to an existing Joint
   rpc Apply(JointApplyRequest) returns (Joint);
   // Erase deletes a Joint
-  rpc Erase(JointRef) returns (google.protobuf.Empty);
+  rpc Erase(JointRef) returns (JointEraseResponse);
 }
 
 service FleetService {
@@ -104,7 +103,7 @@ service FleetService {
   // Apply applies a patch document to an existing Fleet
   rpc Apply(FleetApplyRequest) returns (Fleet);
   // Erase deletes a Fleet
-  rpc Erase(FleetRef) returns (google.protobuf.Empty);
+  rpc Erase(FleetRef) returns (FleetEraseResponse);
 }
 
 service ReadingService {
@@ -117,7 +116,7 @@ service ReadingService {
   // Apply applies a patch document to an existing Reading
   rpc Apply(ReadingApplyRequest) returns (Reading);
   // Erase deletes a Reading
-  rpc Erase(ReadingRef) returns (google.protobuf.Empty);
+  rpc Erase(ReadingRef) returns (ReadingEraseResponse);
 }
 
 message CellAddRequest {
@@ -152,6 +151,15 @@ message CellPatchRequest {
 message CellApplyRequest {
   CellRef ref = 1;
   patch.Patch patch = 2;
+}
+
+message CellEraseResponse {
+  // Erased is whether this call is the one that erased the row.
+  //
+  // False for a row that was already gone, was never there, or is out
+  // of this caller's reach -- which are one answer on purpose, and the
+  // reason the RPC does not fail instead.
+  bool erased = 1;
 }
 
 message RobotAddRequest {
@@ -228,6 +236,15 @@ message RobotPatchRequest {
 message RobotApplyRequest {
   RobotRef ref = 1;
   patch.Patch patch = 2;
+}
+
+message RobotEraseResponse {
+  // Erased is whether this call is the one that erased the row.
+  //
+  // False for a row that was already gone, was never there, or is out
+  // of this caller's reach -- which are one answer on purpose, and the
+  // reason the RPC does not fail instead.
+  bool erased = 1;
 }
 
 message RobotListRequest {
@@ -363,6 +380,15 @@ message PairingApplyRequest {
   patch.Patch patch = 2;
 }
 
+message PairingEraseResponse {
+  // Erased is whether this call is the one that erased the row.
+  //
+  // False for a row that was already gone, was never there, or is out
+  // of this caller's reach -- which are one answer on purpose, and the
+  // reason the RPC does not fail instead.
+  bool erased = 1;
+}
+
 message JointAddRequest {
   bytes id = 1;
   RobotRef robot = 2;
@@ -397,6 +423,15 @@ message JointApplyRequest {
   patch.Patch patch = 2;
 }
 
+message JointEraseResponse {
+  // Erased is whether this call is the one that erased the row.
+  //
+  // False for a row that was already gone, was never there, or is out
+  // of this caller's reach -- which are one answer on purpose, and the
+  // reason the RPC does not fail instead.
+  bool erased = 1;
+}
+
 message FleetAddRequest {
   bytes id = 1;
   string alias = 4 [features.field_presence = IMPLICIT];
@@ -428,6 +463,15 @@ message FleetPatchRequest {
 message FleetApplyRequest {
   FleetRef ref = 1;
   patch.Patch patch = 2;
+}
+
+message FleetEraseResponse {
+  // Erased is whether this call is the one that erased the row.
+  //
+  // False for a row that was already gone, was never there, or is out
+  // of this caller's reach -- which are one answer on purpose, and the
+  // reason the RPC does not fail instead.
+  bool erased = 1;
 }
 
 message ReadingAddRequest {
@@ -466,4 +510,13 @@ message ReadingPatchRequest {
 message ReadingApplyRequest {
   ReadingRef ref = 1;
   patch.Patch patch = 2;
+}
+
+message ReadingEraseResponse {
+  // Erased is whether this call is the one that erased the row.
+  //
+  // False for a row that was already gone, was never there, or is out
+  // of this caller's reach -- which are one answer on purpose, and the
+  // reason the RPC does not fail instead.
+  bool erased = 1;
 }

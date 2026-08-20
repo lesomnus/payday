@@ -1,7 +1,6 @@
 edition = "2023";
 package shared;
 
-import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "patch/patch.proto";
 import "shared/thing.proto";
@@ -18,7 +17,7 @@ service ThingService {
   // Apply applies a patch document to an existing Thing
   rpc Apply(ThingApplyRequest) returns (Thing);
   // Erase deletes a Thing
-  rpc Erase(ThingRef) returns (google.protobuf.Empty);
+  rpc Erase(ThingRef) returns (ThingEraseResponse);
   // List reads Things a page at a time.
   rpc List(ThingListRequest) returns (ThingListResponse);
 }
@@ -55,6 +54,15 @@ message ThingPatchRequest {
 message ThingApplyRequest {
   ThingRef ref = 1;
   patch.Patch patch = 2;
+}
+
+message ThingEraseResponse {
+  // Erased is whether this call is the one that erased the row.
+  //
+  // False for a row that was already gone, was never there, or is out
+  // of this caller's reach -- which are one answer on purpose, and the
+  // reason the RPC does not fail instead.
+  bool erased = 1;
 }
 
 message ThingListRequest {

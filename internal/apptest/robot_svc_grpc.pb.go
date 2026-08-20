@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -40,7 +39,7 @@ type CellServiceClient interface {
 	// Apply applies a patch document to an existing Cell
 	Apply(ctx context.Context, in *CellApplyRequest, opts ...grpc.CallOption) (*Cell, error)
 	// Erase deletes a Cell
-	Erase(ctx context.Context, in *CellRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *CellRef, opts ...grpc.CallOption) (*CellEraseResponse, error)
 }
 
 type cellServiceClient struct {
@@ -91,9 +90,9 @@ func (c *cellServiceClient) Apply(ctx context.Context, in *CellApplyRequest, opt
 	return out, nil
 }
 
-func (c *cellServiceClient) Erase(ctx context.Context, in *CellRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *cellServiceClient) Erase(ctx context.Context, in *CellRef, opts ...grpc.CallOption) (*CellEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CellEraseResponse)
 	err := c.cc.Invoke(ctx, CellService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -114,7 +113,7 @@ type CellServiceServer interface {
 	// Apply applies a patch document to an existing Cell
 	Apply(context.Context, *CellApplyRequest) (*Cell, error)
 	// Erase deletes a Cell
-	Erase(context.Context, *CellRef) (*emptypb.Empty, error)
+	Erase(context.Context, *CellRef) (*CellEraseResponse, error)
 	mustEmbedUnimplementedCellServiceServer()
 }
 
@@ -137,7 +136,7 @@ func (UnimplementedCellServiceServer) Patch(context.Context, *CellPatchRequest) 
 func (UnimplementedCellServiceServer) Apply(context.Context, *CellApplyRequest) (*Cell, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedCellServiceServer) Erase(context.Context, *CellRef) (*emptypb.Empty, error) {
+func (UnimplementedCellServiceServer) Erase(context.Context, *CellRef) (*CellEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedCellServiceServer) mustEmbedUnimplementedCellServiceServer() {}
@@ -307,7 +306,7 @@ type RobotServiceClient interface {
 	// Apply applies a patch document to an existing Robot
 	Apply(ctx context.Context, in *RobotApplyRequest, opts ...grpc.CallOption) (*Robot, error)
 	// Erase deletes a Robot
-	Erase(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*RobotEraseResponse, error)
 	// List reads Robots a page at a time.
 	List(ctx context.Context, in *RobotListRequest, opts ...grpc.CallOption) (*RobotListResponse, error)
 	// Watch the Robots this caller may see, as they are now and as they change.
@@ -390,9 +389,9 @@ func (c *robotServiceClient) Apply(ctx context.Context, in *RobotApplyRequest, o
 	return out, nil
 }
 
-func (c *robotServiceClient) Erase(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *robotServiceClient) Erase(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*RobotEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(RobotEraseResponse)
 	err := c.cc.Invoke(ctx, RobotService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -452,7 +451,7 @@ type RobotServiceServer interface {
 	// Apply applies a patch document to an existing Robot
 	Apply(context.Context, *RobotApplyRequest) (*Robot, error)
 	// Erase deletes a Robot
-	Erase(context.Context, *RobotRef) (*emptypb.Empty, error)
+	Erase(context.Context, *RobotRef) (*RobotEraseResponse, error)
 	// List reads Robots a page at a time.
 	List(context.Context, *RobotListRequest) (*RobotListResponse, error)
 	// Watch the Robots this caller may see, as they are now and as they change.
@@ -507,7 +506,7 @@ func (UnimplementedRobotServiceServer) Patch(context.Context, *RobotPatchRequest
 func (UnimplementedRobotServiceServer) Apply(context.Context, *RobotApplyRequest) (*Robot, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedRobotServiceServer) Erase(context.Context, *RobotRef) (*emptypb.Empty, error) {
+func (UnimplementedRobotServiceServer) Erase(context.Context, *RobotRef) (*RobotEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedRobotServiceServer) List(context.Context, *RobotListRequest) (*RobotListResponse, error) {
@@ -744,7 +743,7 @@ type PairingServiceClient interface {
 	// Apply applies a patch document to an existing Pairing
 	Apply(ctx context.Context, in *PairingApplyRequest, opts ...grpc.CallOption) (*Pairing, error)
 	// Erase deletes a Pairing
-	Erase(ctx context.Context, in *PairingRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *PairingRef, opts ...grpc.CallOption) (*PairingEraseResponse, error)
 }
 
 type pairingServiceClient struct {
@@ -795,9 +794,9 @@ func (c *pairingServiceClient) Apply(ctx context.Context, in *PairingApplyReques
 	return out, nil
 }
 
-func (c *pairingServiceClient) Erase(ctx context.Context, in *PairingRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *pairingServiceClient) Erase(ctx context.Context, in *PairingRef, opts ...grpc.CallOption) (*PairingEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(PairingEraseResponse)
 	err := c.cc.Invoke(ctx, PairingService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -818,7 +817,7 @@ type PairingServiceServer interface {
 	// Apply applies a patch document to an existing Pairing
 	Apply(context.Context, *PairingApplyRequest) (*Pairing, error)
 	// Erase deletes a Pairing
-	Erase(context.Context, *PairingRef) (*emptypb.Empty, error)
+	Erase(context.Context, *PairingRef) (*PairingEraseResponse, error)
 	mustEmbedUnimplementedPairingServiceServer()
 }
 
@@ -841,7 +840,7 @@ func (UnimplementedPairingServiceServer) Patch(context.Context, *PairingPatchReq
 func (UnimplementedPairingServiceServer) Apply(context.Context, *PairingApplyRequest) (*Pairing, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedPairingServiceServer) Erase(context.Context, *PairingRef) (*emptypb.Empty, error) {
+func (UnimplementedPairingServiceServer) Erase(context.Context, *PairingRef) (*PairingEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedPairingServiceServer) mustEmbedUnimplementedPairingServiceServer() {}
@@ -1008,7 +1007,7 @@ type JointServiceClient interface {
 	// Apply applies a patch document to an existing Joint
 	Apply(ctx context.Context, in *JointApplyRequest, opts ...grpc.CallOption) (*Joint, error)
 	// Erase deletes a Joint
-	Erase(ctx context.Context, in *JointRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *JointRef, opts ...grpc.CallOption) (*JointEraseResponse, error)
 }
 
 type jointServiceClient struct {
@@ -1059,9 +1058,9 @@ func (c *jointServiceClient) Apply(ctx context.Context, in *JointApplyRequest, o
 	return out, nil
 }
 
-func (c *jointServiceClient) Erase(ctx context.Context, in *JointRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *jointServiceClient) Erase(ctx context.Context, in *JointRef, opts ...grpc.CallOption) (*JointEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(JointEraseResponse)
 	err := c.cc.Invoke(ctx, JointService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1082,7 +1081,7 @@ type JointServiceServer interface {
 	// Apply applies a patch document to an existing Joint
 	Apply(context.Context, *JointApplyRequest) (*Joint, error)
 	// Erase deletes a Joint
-	Erase(context.Context, *JointRef) (*emptypb.Empty, error)
+	Erase(context.Context, *JointRef) (*JointEraseResponse, error)
 	mustEmbedUnimplementedJointServiceServer()
 }
 
@@ -1105,7 +1104,7 @@ func (UnimplementedJointServiceServer) Patch(context.Context, *JointPatchRequest
 func (UnimplementedJointServiceServer) Apply(context.Context, *JointApplyRequest) (*Joint, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedJointServiceServer) Erase(context.Context, *JointRef) (*emptypb.Empty, error) {
+func (UnimplementedJointServiceServer) Erase(context.Context, *JointRef) (*JointEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedJointServiceServer) mustEmbedUnimplementedJointServiceServer() {}
@@ -1272,7 +1271,7 @@ type FleetServiceClient interface {
 	// Apply applies a patch document to an existing Fleet
 	Apply(ctx context.Context, in *FleetApplyRequest, opts ...grpc.CallOption) (*Fleet, error)
 	// Erase deletes a Fleet
-	Erase(ctx context.Context, in *FleetRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *FleetRef, opts ...grpc.CallOption) (*FleetEraseResponse, error)
 }
 
 type fleetServiceClient struct {
@@ -1323,9 +1322,9 @@ func (c *fleetServiceClient) Apply(ctx context.Context, in *FleetApplyRequest, o
 	return out, nil
 }
 
-func (c *fleetServiceClient) Erase(ctx context.Context, in *FleetRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *fleetServiceClient) Erase(ctx context.Context, in *FleetRef, opts ...grpc.CallOption) (*FleetEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(FleetEraseResponse)
 	err := c.cc.Invoke(ctx, FleetService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1346,7 +1345,7 @@ type FleetServiceServer interface {
 	// Apply applies a patch document to an existing Fleet
 	Apply(context.Context, *FleetApplyRequest) (*Fleet, error)
 	// Erase deletes a Fleet
-	Erase(context.Context, *FleetRef) (*emptypb.Empty, error)
+	Erase(context.Context, *FleetRef) (*FleetEraseResponse, error)
 	mustEmbedUnimplementedFleetServiceServer()
 }
 
@@ -1369,7 +1368,7 @@ func (UnimplementedFleetServiceServer) Patch(context.Context, *FleetPatchRequest
 func (UnimplementedFleetServiceServer) Apply(context.Context, *FleetApplyRequest) (*Fleet, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedFleetServiceServer) Erase(context.Context, *FleetRef) (*emptypb.Empty, error) {
+func (UnimplementedFleetServiceServer) Erase(context.Context, *FleetRef) (*FleetEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedFleetServiceServer) mustEmbedUnimplementedFleetServiceServer() {}
@@ -1536,7 +1535,7 @@ type ReadingServiceClient interface {
 	// Apply applies a patch document to an existing Reading
 	Apply(ctx context.Context, in *ReadingApplyRequest, opts ...grpc.CallOption) (*Reading, error)
 	// Erase deletes a Reading
-	Erase(ctx context.Context, in *ReadingRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *ReadingRef, opts ...grpc.CallOption) (*ReadingEraseResponse, error)
 }
 
 type readingServiceClient struct {
@@ -1587,9 +1586,9 @@ func (c *readingServiceClient) Apply(ctx context.Context, in *ReadingApplyReques
 	return out, nil
 }
 
-func (c *readingServiceClient) Erase(ctx context.Context, in *ReadingRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *readingServiceClient) Erase(ctx context.Context, in *ReadingRef, opts ...grpc.CallOption) (*ReadingEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(ReadingEraseResponse)
 	err := c.cc.Invoke(ctx, ReadingService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1610,7 +1609,7 @@ type ReadingServiceServer interface {
 	// Apply applies a patch document to an existing Reading
 	Apply(context.Context, *ReadingApplyRequest) (*Reading, error)
 	// Erase deletes a Reading
-	Erase(context.Context, *ReadingRef) (*emptypb.Empty, error)
+	Erase(context.Context, *ReadingRef) (*ReadingEraseResponse, error)
 	mustEmbedUnimplementedReadingServiceServer()
 }
 
@@ -1633,7 +1632,7 @@ func (UnimplementedReadingServiceServer) Patch(context.Context, *ReadingPatchReq
 func (UnimplementedReadingServiceServer) Apply(context.Context, *ReadingApplyRequest) (*Reading, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedReadingServiceServer) Erase(context.Context, *ReadingRef) (*emptypb.Empty, error) {
+func (UnimplementedReadingServiceServer) Erase(context.Context, *ReadingRef) (*ReadingEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedReadingServiceServer) mustEmbedUnimplementedReadingServiceServer() {}

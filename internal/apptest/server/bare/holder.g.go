@@ -18,7 +18,6 @@ import (
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type HolderServiceServer struct {
@@ -365,6 +364,14 @@ func (s HolderServiceServer) apply(ctx context.Context, ref *apptest.HolderRef, 
 			q.SetDateUpdated(st.now())
 		}
 		if n, err := q.Save(ctx); err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Errorf(codes.AlreadyExists, "Holder already exists: %s", err.Unwrap())
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Errorf(codes.NotFound, "Holder: referenced entity not found: %s", err.Unwrap())
+				}
+			}
 			return nil, err
 		} else if n == 0 {
 			return nil, func() error {
@@ -398,7 +405,7 @@ func (s HolderServiceServer) apply(ctx context.Context, ref *apptest.HolderRef, 
 	return out, nil
 }
 
-func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) (*emptypb.Empty, error) {
+func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
 	p, err := HolderPick(req)
 	if err != nil {
 		return nil, err
@@ -422,13 +429,13 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 		v, err := st.Db.Holder.Query().Where(p).OnlyID(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return &emptypb.Empty{}, nil
+				return &apptest.HolderEraseResponse{}, nil
 			}
 			return nil, err
 		}
 
 		k = v
-		p = holder.IDEQ(v)
+		p = holder.And(p, holder.IDEQ(v))
 	}
 
 	u := st.Db.Holder.Update().Where(p)
@@ -449,10 +456,31 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &emptypb.Empty{}, nil
+	res := &apptest.HolderEraseResponse{}
+	res.SetErased(n > 0)
+
+	return res, nil
 }
 
+// HolderPick answers with the predicate this reference selects on,
+// among the rows that are still here.
+//
+// Erasure is part of the reference and not only part of a read's scope,
+// because a reference to a Holder is composed into the reference of
+// whatever names one: an index over an edge asks this for a predicate and
+// puts it inside `HasHolderWith`, where no narrowing of a Holder
+// is ever applied. A child of an erased row would otherwise be readable by
+// naming its parent.
 func HolderPick(req *apptest.HolderRef) (predicate.Holder, error) {
+	p, err := pickHolder(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return holder.And(holder.DateErasedIsNil(), p), nil
+}
+
+func pickHolder(req *apptest.HolderRef) (predicate.Holder, error) {
 	switch req.WhichKey() {
 	case apptest.HolderRef_Id_case:
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {

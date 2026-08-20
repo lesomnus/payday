@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -42,7 +41,7 @@ type HolderServiceClient interface {
 	// Apply applies a patch document to an existing Holder
 	Apply(ctx context.Context, in *HolderApplyRequest, opts ...grpc.CallOption) (*Holder, error)
 	// Erase deletes a Holder
-	Erase(ctx context.Context, in *HolderRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Erase(ctx context.Context, in *HolderRef, opts ...grpc.CallOption) (*HolderEraseResponse, error)
 	// List reads Holders a page at a time.
 	List(ctx context.Context, in *HolderListRequest, opts ...grpc.CallOption) (*HolderListResponse, error)
 	// Watch the Holders this caller may see, as they are now and as they change.
@@ -107,9 +106,9 @@ func (c *holderServiceClient) Apply(ctx context.Context, in *HolderApplyRequest,
 	return out, nil
 }
 
-func (c *holderServiceClient) Erase(ctx context.Context, in *HolderRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *holderServiceClient) Erase(ctx context.Context, in *HolderRef, opts ...grpc.CallOption) (*HolderEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(HolderEraseResponse)
 	err := c.cc.Invoke(ctx, HolderService_Erase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -159,7 +158,7 @@ type HolderServiceServer interface {
 	// Apply applies a patch document to an existing Holder
 	Apply(context.Context, *HolderApplyRequest) (*Holder, error)
 	// Erase deletes a Holder
-	Erase(context.Context, *HolderRef) (*emptypb.Empty, error)
+	Erase(context.Context, *HolderRef) (*HolderEraseResponse, error)
 	// List reads Holders a page at a time.
 	List(context.Context, *HolderListRequest) (*HolderListResponse, error)
 	// Watch the Holders this caller may see, as they are now and as they change.
@@ -196,7 +195,7 @@ func (UnimplementedHolderServiceServer) Patch(context.Context, *HolderPatchReque
 func (UnimplementedHolderServiceServer) Apply(context.Context, *HolderApplyRequest) (*Holder, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
-func (UnimplementedHolderServiceServer) Erase(context.Context, *HolderRef) (*emptypb.Empty, error) {
+func (UnimplementedHolderServiceServer) Erase(context.Context, *HolderRef) (*HolderEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
 }
 func (UnimplementedHolderServiceServer) List(context.Context, *HolderListRequest) (*HolderListResponse, error) {
