@@ -74,6 +74,11 @@ func (w *Watch) Unary() grpc.UnaryServerInterceptor {
 }
 
 // Subscribe is what a Watch RPC listens on.
+//
+// The nil case answers with a channel nothing will ever send on, which is
+// honest only because nobody reaches it any more: [Stream] refuses a Watch
+// with no broker before it subscribes, and that is where the answer belongs.
+// See [ErrNoBroker] for what this shape used to do to a client.
 func (w *Watch) Subscribe() (<-chan Event, func()) {
 	if w.to == nil {
 		c := make(chan Event)

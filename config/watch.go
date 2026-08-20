@@ -2,6 +2,9 @@ package config
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/lesomnus/payday/watch"
@@ -49,8 +52,9 @@ const DefaultDrainEvery = time.Second
 // is left out?** This does, in the worst way available -- it goes wrong later,
 // elsewhere, and without an error.
 type WatchConfig struct {
-	// Broker is where events are published: [BrokerMemory], [BrokerNone], or
-	// nothing, which is refused.
+	// Broker is where events are published: [BrokerMemory], [BrokerNone], a
+	// name something registered with [RegisterBroker], or nothing, which is
+	// refused.
 	Broker string `yaml:"broker"`
 
 	// Outbox writes every change as a row inside the transaction that made it,
@@ -72,12 +76,64 @@ type WatchConfig struct {
 	DrainEvery time.Duration `yaml:"drain_every"`
 }
 
+// brokers holds what each registered name builds.
+//
+// `memory` is not in here: it is what payday ships and [WatchConfig.Build]
+// answers for it directly, the way an app that needs no other database still
+// gets its driver named. What this map is for is the one after that.
+var brokers = map[string]func() (watch.Broker, error){}
+
+// RegisterBroker records how to build the broker named `name`, so that a
+// deployment can select one payday does not ship by naming it.
+//
+// # Why this exists, and why it took a while to
+//
+// [watch.Broker] has always been an interface, and that was called the seam.
+// It was half of one. An app could **implement** a broker and could not
+// **select** it: `Build` was a closed switch over two names, so the only way to
+// use one was to bypass the configuration -- which is not a thing an app can do
+// without also bypassing every other decision `WatchConfig` makes, and is not
+// a thing a deployment can do at all.
+//
+// So the shape is [RegisterDriver]'s, for the same reason it is: a broker is a
+// client for something -- NATS, Redis, a Postgres LISTEN -- that has to be
+// linked in whether anything publishes to it or not, and payday importing every
+// one of them would put all of them in every binary. Each registration is a
+// package of its own, and an app blank imports the one it uses:
+//
+//	import _ "github.com/acme/thing/brokernats"
+//
+// The function is called once, when a server is built. A broker that cannot
+// reach whatever it publishes to answers with an error there rather than
+// panicking later, which is the same bargain [DbConfig.Open] makes.
+func RegisterBroker(name string, build func() (watch.Broker, error)) {
+	brokers[name] = build
+}
+
+// Brokers lists every name a deployment may write, in lexical order and
+// including the two payday ships.
+func Brokers() []string {
+	return slices.Sorted(maps.Keys(known()))
+}
+
+func known() map[string]struct{} {
+	vs := map[string]struct{}{BrokerMemory: {}, BrokerNone: {}}
+	for k := range brokers {
+		vs[k] = struct{}{}
+	}
+
+	return vs
+}
+
 // Build answers with the broker this deployment named, and refuses one that
 // named none.
 //
-// It answers nil for [BrokerNone], which is what a server with no Watch is
+// It answers nil for [BrokerNone], which is what a server with **no Watch** is
 // built with -- and not an error, because "no watchers here" is a thing to be
-// able to say.
+// able to say. What makes that mean something is [watch.Stream], which refuses
+// a subscriber outright rather than handing back a stream that never speaks;
+// before it did, `none` was the quietest setting available instead of the
+// loudest.
 func (c WatchConfig) Build() (watch.Broker, error) {
 	switch c.Broker {
 	case BrokerMemory:
@@ -93,11 +149,30 @@ func (c WatchConfig) Build() (watch.Broker, error) {
 				"against one never hears about a write that landed on another, and "+
 				"nothing anywhere reports it. `%s` if this deployment serves no Watch",
 			BrokerMemory, BrokerNone)
-
-	default:
-		return nil, fmt.Errorf("watch.broker: %q is not one payday has; it has %s and %s",
-			c.Broker, BrokerMemory, BrokerNone)
 	}
+
+	build, ok := brokers[c.Broker]
+	if !ok {
+		return nil, fmt.Errorf(
+			"watch.broker: %q is not one this binary has; it has %s.\n\n"+
+				"    a broker is linked in, like a database driver: import the package "+
+				"that registers this name, or see config.RegisterBroker to write one",
+			c.Broker, strings.Join(Brokers(), ", "))
+	}
+
+	b, err := build()
+	if err != nil {
+		return nil, fmt.Errorf("watch.broker: %s: %w", c.Broker, err)
+	}
+	if b == nil {
+		// A registration that answers with nothing is `none` under another
+		// name, which is a thing to have to write rather than to arrive at.
+		return nil, fmt.Errorf(
+			"watch.broker: %s: built no broker; say %s if that is what was meant",
+			c.Broker, BrokerNone)
+	}
+
+	return b, nil
 }
 
 // Every is [WatchConfig.DrainEvery] with the default filled in.

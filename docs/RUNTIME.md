@@ -232,7 +232,18 @@ because a reader cannot tell them apart.
 **Not built, and the reason is written where the seam is:**
 
 - **An external watch broker.** `watch.Broker`, `payday.Outbox` and `pd.Drain`
-  are the place for one; the implementations are `memory` and `none`.
+  are the place for one; the implementations payday ships are `memory` and
+  `none`. What was missing until recently was not the interface but the way to
+  **select** one: `config.RegisterBroker` is now the registry, in the shape
+  `config.RegisterDriver` already had and for the same reason -- a broker is a
+  client for something that has to be linked in, so it is a package of its own
+  and an app blank imports it.
+
+  Two things to know before writing one. `pd.Drain` publishes into the broker it
+  was given, so an outbox buys **durability** and not fan-out; two replicas
+  sharing a queue still need a broker that crosses them. And `broker: none`
+  refuses a `Watch` outright now -- `watch.ErrNoBroker` -- rather than handing
+  back a stream that sends a snapshot and then never speaks.
 - **Bidirectional `Watch`.** Multiplexing many subscriptions onto one stream
   changes the transport and not the fan-out, which is where the cost actually
   is.

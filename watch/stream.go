@@ -20,6 +20,26 @@ import (
 var ErrBehind = status.Error(codes.ResourceExhausted,
 	"this stream fell behind and was cut off; ask again and you will be given what is there now")
 
+// ErrNoBroker is a Watch asked of a deployment that publishes nowhere.
+//
+// # Why this is an error and used not to be
+//
+// `watch.broker: none` is documented as *serves no Watch at all*, and it did
+// not. [New] answers with a non-nil `*Watch` whichever broker it was given --
+// it has to, because [Watch.Note] still has to be callable -- so a generated
+// `if s.w == nil` guard never fired, and [Watch.Subscribe] handed back a
+// channel nothing would ever send on.
+//
+// What a client got was a snapshot and then silence, on a stream that stayed
+// open and looked healthy. Which made `none` **quieter than leaving Watch on**:
+// the setting somebody reaches for to turn a feature off was the one that hid
+// its absence best.
+//
+// Unimplemented rather than FailedPrecondition, and it is the same word the
+// generated guard uses: nobody may, and no credential or retry changes it.
+var ErrNoBroker = status.Error(codes.Unimplemented,
+	"this deployment publishes no changes, so there is nothing to watch")
+
 // Seen is which rows a stream has carried, so that one leaving the answer can
 // be said and one that was never in it is not news.
 //
@@ -49,6 +69,14 @@ func Stream(
 	snapshot func(sent Seen) error,
 	send func(ks map[pdid.Id]string, sent Seen) error,
 ) error {
+	// Before the subscription rather than after, so that a deployment with no
+	// broker refuses here instead of sending a snapshot it will never follow up
+	// on. A first message and then nothing is the shape a client cannot tell
+	// from a quiet system. See [ErrNoBroker].
+	if w == nil || w.Broker() == nil {
+		return ErrNoBroker
+	}
+
 	// First, and before anything is read. See above.
 	events, stop := w.Subscribe()
 	defer stop()

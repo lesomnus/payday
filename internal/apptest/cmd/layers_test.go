@@ -47,16 +47,23 @@ type built struct {
 
 func build(t *testing.T) (*built, context.Context) {
 	t.Helper()
+
+	// Named, because payday refuses to pick one. A test is one process, so the
+	// answer here is the easy one -- and having to write it is the point: the
+	// same line in a deployment of two replicas is a line somebody has to look
+	// at.
+	return buildWith(t, config.WatchConfig{Broker: config.BrokerMemory})
+}
+
+// buildWith is [build] for a test that is about the watch configuration itself.
+func buildWith(t *testing.T, w config.WatchConfig) (*built, context.Context) {
+	t.Helper()
 	x := require.New(t)
 	ctx := t.Context()
 
 	s, err := cmd.Build(ctx, cmd.Config{
-		Db: dbOf(t),
-		// Named, because payday refuses to pick one. A test is one process, so
-		// the answer here is the easy one -- and having to write it is the
-		// point: the same line in a deployment of two replicas is a line
-		// somebody has to look at.
-		Watch: config.WatchConfig{Broker: config.BrokerMemory},
+		Db:    dbOf(t),
+		Watch: w,
 	})
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })
