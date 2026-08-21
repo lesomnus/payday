@@ -217,12 +217,24 @@ Anywhere a command takes a `REF`:
 ```sh
 $ app holder get 019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
 $ app holder get @acme/alice
+$ app holder get @acme/alice#holder
 $ app tenant get @acme
 ```
 
 The tenant travels with the alias because an alias is unique inside one and
 names somebody else in every other. An entity that is not inside a tenant — a
 Tenant itself — takes `@alias` alone.
+
+The name is a [slug](../../slug), read by the same code that reads one out of
+a header or a certificate, so it behaves the same way everywhere: the parts
+fold the way the database folded them on the way in — `@ACME / Alice` names
+what `@acme/alice` names — and the optional `#kind` is an assertion, checked
+rather than obeyed. Both written forms carry one — a slug in its `#`, an
+identifier in its ninth byte — and the command is where the check runs,
+because the server cannot: it narrows to rows of its own entity, finds
+nothing, and answers a NotFound that is true and says nothing about the
+mistake. `holder get @acme/arm-01#robot` is refused with both kinds in the
+message, and so is `holder get` of a robot's identifier.
 
 `add` takes the same syntax for the name the new row is to have:
 
@@ -404,7 +416,9 @@ Two things it works out for itself:
   without takes only the trailing JSON. That is not a convention this package
   invented — it is the shape `pd gen` writes, and the shape
   `RobotMoveRequest` follows, because an RPC about a row names it the way
-  every other RPC names one.
+  every other RPC names one. What kind of thing the reference names comes from
+  the field's own type — the `ref` of `RobotMoveRequest` is a `RobotRef` — so
+  `robot move @acme/arm-07#holder` is refused the way it is on the five verbs.
 - **Whether it can be a command at all.** A stream is refused **while you are
   wiring it**, not when somebody runs it:
 

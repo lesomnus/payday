@@ -10,26 +10,81 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/lesomnus/payday/pdid"
+	"github.com/lesomnus/payday/slug"
 )
 
 // Ref is how a person names one row on a command line.
 //
-// Either an identifier, or an alias with the tenant it is unique inside. Both
-// are written the way they are written everywhere else in payday:
+// Either an identifier, or a [slug]:
 //
 //	019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
 //	@acme/alice
 //	@alice
+//	@acme/alice#holder
 //
 // The tenant is part of the name and not a flag, because an alias without one
 // names somebody in every tenant and nobody in particular. Where it may be left
 // off is where the entity is not inside a tenant -- a Tenant itself -- and
 // where the server can supply it, which is what an anchored credential does.
+//
+// The slug half is read by [slug.Parse] rather than by a second parser here,
+// so what a command accepts and what a header accepts are the same text going
+// wrong the same way: the parts are normalized the way the database normalized
+// them on the way in -- "@ACME / Alice" names what "@acme/alice" names -- and
+// the "#kind" is read as the assertion slug says it is. This package is where
+// the assertion gets *checked*: every command knows which entity it is about,
+// so [Ref.Expect] runs where slug's own readers have nothing to check against.
 type Ref struct {
 	Id pdid.Id
 
 	Tenant string
 	Alias  string
+
+	// Domain is what the writer said this names, and [pdid.Unknown] when they
+	// said nothing. It is a claim until [Ref.Expect] has been given something
+	// to check it against -- see [slug.Slug.Domain], which is where it came
+	// from.
+	Domain pdid.Domain
+}
+
+// Expect checks this reference against the kind of thing the command is about.
+//
+// Both written forms carry a kind, and both are claims. A slug says it out
+// loud with "#holder"; an identifier says it in its ninth byte, put there by
+// the mint. Checking them here is what turns a wrong-kind reference from a
+// silent not-found -- the server narrows to rows of its own entity, finds
+// nothing, and is right -- into a refusal that names the mistake.
+//
+// A reference that said nothing passes: `@acme/alice` on `holder get` claims
+// nothing, so there is nothing to check. And a `d` of [pdid.Unknown] checks
+// nothing, because it means the caller has no expectation to check against --
+// which is [Tree.Unary] wiring a method whose entity it could not resolve, not
+// an entity without a kind.
+func (r Ref) Expect(d pdid.Domain) error {
+	if d == pdid.Unknown {
+		return nil
+	}
+
+	if !r.Id.IsZero() {
+		if got := r.Id.Domain(); got != d {
+			return &pdid.DomainError{Want: d, Got: got}
+		}
+
+		return nil
+	}
+
+	if r.Domain != pdid.Unknown && r.Domain != d {
+		s, err := slug.New(r.Tenant, r.Alias, r.Domain)
+		if err != nil {
+			// A Ref built in code from parts that are not a slug. The check is
+			// still the answer; only the pretty-printed name is not available.
+			return &pdid.DomainError{Want: d, Got: r.Domain}
+		}
+
+		return &slug.DomainError{Slug: s, Want: d, Got: r.Domain}
+	}
+
+	return nil
 }
 
 // Fill writes this reference into a generated `XxxRef`.
@@ -128,8 +183,8 @@ func (RefParser) Parse(s string) (Ref, error) {
 		return Ref{}, errors.New("empty")
 	}
 
-	if !strings.HasPrefix(s, "@") {
-		// Not an alias, so it has to be an identifier -- and it is parsed here
+	if !slug.Is(s) {
+		// Not a slug, so it has to be an identifier -- and it is parsed here
 		// rather than passed along as bytes so that a mistyped uuid is refused
 		// by the command instead of by the server, which cannot say which
 		// argument it was.
@@ -141,29 +196,37 @@ func (RefParser) Parse(s string) (Ref, error) {
 		return Ref{Id: id}, nil
 	}
 
-	name := s[1:]
-	tenant, alias, ok := strings.Cut(name, "/")
-	if !ok {
-		return Ref{Alias: tenant}, nil
-	}
-	if tenant == "" || alias == "" {
-		return Ref{}, errors.New("expected @TENANT/ALIAS")
+	// The "@" is required here where [slug.Parse] leaves it optional, because
+	// this is the one field that takes both kinds of reference -- the mark is
+	// how the two are told apart, which is the job the slug package gave it.
+	v, err := slug.Parse(s)
+	if err != nil {
+		return Ref{}, err
 	}
 
-	return Ref{Tenant: tenant, Alias: alias}, nil
+	return Ref{Tenant: v.Tenant(), Alias: v.Alias(), Domain: v.Domain()}, nil
 }
 
 func (RefParser) ToString(v Ref) string {
 	if !v.Id.IsZero() {
 		return v.Id.String()
 	}
+
+	var b strings.Builder
+	b.WriteByte('@')
 	if v.Tenant != "" {
-		return fmt.Sprintf("@%s/%s", v.Tenant, v.Alias)
+		b.WriteString(v.Tenant)
+		b.WriteByte('/')
+	}
+	b.WriteString(v.Alias)
+	if v.Domain != pdid.Unknown {
+		b.WriteByte('#')
+		b.WriteString(v.Domain.String())
 	}
 
-	return "@" + v.Alias
+	return b.String()
 }
 
 func (RefParser) String() string {
-	return "ID|@[TENANT/]ALIAS"
+	return "ID|@[TENANT/]ALIAS[#KIND]"
 }

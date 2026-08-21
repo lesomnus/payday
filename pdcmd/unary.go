@@ -10,6 +10,8 @@ import (
 	"github.com/lesomnus/xli/flg"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+
+	"github.com/lesomnus/payday/pdid"
 )
 
 // Unary builds a command for any unary method, named in full.
@@ -83,9 +85,23 @@ func (t *Tree) Unary(method string) (*xli.Command, error) {
 	// A request that names a row takes the argument that names one. `setRef`
 	// reads the same field, so the two cannot disagree about which requests
 	// have one.
+	//
+	// The kind of thing the reference names comes from the field's own type:
+	// the `ref` of a request about a Robot is an `app.RobotRef`, and "the name
+	// of the entity, then Ref" is the same generated rule `setRef` reads field
+	// names by. An app whose type the registry cannot answer for -- a ref
+	// declared by hand, outside the generation -- gets no expectation, which
+	// [Ref.Expect] reads as nothing to check: the claim was still parsed, so a
+	// "#word" this app has no domain for is refused either way.
 	takesRef := false
+	expect := pdid.Unknown
 	if fd := md.Input().Fields().ByName("ref"); fd != nil && fd.Kind() == protoreflect.MessageKind {
 		takesRef = true
+
+		name := strings.TrimSuffix(string(fd.Message().FullName()), "Ref")
+		if d, ok := pdid.Lookup(name); ok {
+			expect = d
+		}
 	}
 
 	args := arg.Args{}
@@ -108,7 +124,11 @@ func (t *Tree) Unary(method string) (*xli.Command, error) {
 			}
 
 			if takesRef {
-				if err := setRef(in, arg.MustGet[Ref](cmd, "REF")); err != nil {
+				ref := arg.MustGet[Ref](cmd, "REF")
+				if err := ref.Expect(expect); err != nil {
+					return err
+				}
+				if err := setRef(in, ref); err != nil {
 					return err
 				}
 			}

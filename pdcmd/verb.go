@@ -253,7 +253,11 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 			if err != nil {
 				return err
 			}
-			if err := setRef(in, arg.MustGet[Ref](cmd, "REF")); err != nil {
+			ref := arg.MustGet[Ref](cmd, "REF")
+			if err := ref.Expect(e.Domain); err != nil {
+				return err
+			}
+			if err := setRef(in, ref); err != nil {
 				return err
 			}
 			if err := r.run(ctx, cmd, md, in); err != nil {
@@ -371,6 +375,9 @@ func cmdWatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 					if err != nil {
 						return fmt.Errorf("REF: %w", err)
 					}
+					if err := ref.Expect(e.Domain); err != nil {
+						return err
+					}
 					if err := setFilterRef(in, ref); err != nil {
 						return err
 					}
@@ -422,6 +429,9 @@ func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 					if err != nil {
 						return fmt.Errorf("NAME: %w", err)
 					}
+					if err := ref.Expect(e.Domain); err != nil {
+						return err
+					}
 					if err := setNew(in, ref); err != nil {
 						return err
 					}
@@ -450,7 +460,11 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 			if err != nil {
 				return err
 			}
-			if err := setRef(in, arg.MustGet[Ref](cmd, "REF")); err != nil {
+			ref := arg.MustGet[Ref](cmd, "REF")
+			if err := ref.Expect(e.Domain); err != nil {
+				return err
+			}
+			if err := setRef(in, ref); err != nil {
 				return err
 			}
 			if err := r.run(ctx, cmd, md, in); err != nil {
@@ -480,7 +494,11 @@ func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 			if err != nil {
 				return err
 			}
-			if err := setRef(in, arg.MustGet[Ref](cmd, "REF")); err != nil {
+			ref := arg.MustGet[Ref](cmd, "REF")
+			if err := ref.Expect(e.Domain); err != nil {
+				return err
+			}
+			if err := setRef(in, ref); err != nil {
 				return err
 			}
 			if err := r.run(ctx, cmd, md, in); err != nil {
