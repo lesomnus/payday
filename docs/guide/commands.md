@@ -126,30 +126,89 @@ credential the same call comes back `Unauthenticated`, from the server.
 
 ## 2. What you get, and what you do not
 
-Five verbs, and only where the schema declared them:
+Six verbs, and only where the schema declared them:
 
 | | |
 | --- | --- |
 | `get <REF>` | one row |
 | `ls` | a page, with `--size` and `--next` |
+| `watch [REF]` | the same rows, kept current — see [below](#watch-and-what-an-ending-means) |
 | `add [NAME]` | a new row |
 | `patch <REF>` | change one |
 | `erase <REF>` | remove one |
 
-`ls` exists only for an entity that declared `list:`. In payday's own test app
-four of nine entities have none, so `robot ls` is built and `cell ls` is not —
-and nobody decided that twice. The commands are read from the descriptors your
-`.pb.go` files register at init, so a verb exists exactly when the method does.
+`ls` exists only for an entity that declared `list:`, and `watch` only for one
+that declared `watch:`. In payday's own test app four of nine entities have no
+list, so `robot ls` is built and `cell ls` is not; `Tenant` has a list and no
+watch, so `tenant watch` is not there either — and nobody decided any of that
+twice. The commands are read from the descriptors your `.pb.go` files register
+at init, so a verb exists exactly when the method does.
 
-Two are deliberately absent:
+One is deliberately absent:
 
 - **`apply`** is one of payday's two general writes and is
   [closed at the transport](server.md#why-patch-and-apply-are-closed-at-the-transport)
   unless an app opts in. A command for it would fail on every app that took the
-  default.
-- **`watch`** is a stream, which is not this shape.
+  default, and an app that did opt in means something particular by it.
 
-Both can be mounted anyway — see [§5](#5-an-rpc-of-your-own).
+It can be mounted anyway — see [§5](#5-an-rpc-of-your-own).
+
+### `watch`, and what an ending means
+
+`watch` is `ls` kept current, and it is the only command here that does not end
+on its own:
+
+```sh
+$ app robot watch @acme/arm-01
+$ app robot watch -o table '{"filters":[{"ref":{"slug":{"alias":"arm-01","tenant":{"alias":"acme"}}}}]}'
+```
+
+**Every filter has to name a row.** A watch runs its filters again for every
+write that touches the entity, for as long as the stream is open, so one with no
+filters is the whole table forever — the one shape with no cap at all, and the
+one the server refuses. That is why the reference is an argument: naming a row
+on the line is the shortest request there is.
+
+The first message is what is already there. After that, one message per write,
+and a row that is **gone** — erased, or moved out of the filters this stream
+named — arrives with its identifier and nothing else. There is deliberately no
+way to tell those two apart; a stream that distinguished them would be telling
+you about rows that stopped being yours.
+
+```
+$ app robot watch -o table @acme/arm-01
+ACTION                        ALIAS    AGE   ID
+-                             arm-01   3d    019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
+/app.RobotService/Patch       arm-02   3d    019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
+/app.RobotService/Erase       -        -     019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
+```
+
+The identifier is a column here rather than an `-o wide` one, for the row that
+is gone: every other column is read through a value that is not there. The
+header is printed once for the whole stream rather than between every event.
+
+**It fails when the stream ends.** A watch has no backlog — a notification
+reaches whoever is listening and is then forgotten — so a stream that stopped
+and a stream where nothing is happening look exactly alike on the screen. A
+command that returned quietly would leave you reading an empty one and believing
+it, so this exits non-zero instead.
+
+`--retry` is the other answer. It reconnects and **takes the snapshot again**,
+which is the only thing that says what was missed; a reconnect that resumed
+without it would leave you holding a row that is wrong until the next write
+happens to correct it. Neither half is the default by accident: exiting is what
+a script needs, and reconnecting is what somebody watching one wants.
+
+```sh
+$ app robot watch --retry @acme/arm-01     # reconnection notices go to stderr
+```
+
+`--retry` is about the connection going, and only that. A request the server
+refused — a filter naming a row that is not there, a credential that may not
+read it — fails the same way it would without the flag, because asking again
+with the same words is a command that never stops and never works.
+
+---
 
 ### Naming a row
 

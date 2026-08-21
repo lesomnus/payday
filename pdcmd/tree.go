@@ -88,10 +88,15 @@ func (o Options) def() string {
 //
 // # What is not built
 //
-// `Apply` and `Watch`. `Apply` is one of payday's two general writes and is
-// closed unless an app opted in, so a command for it would fail on every app
-// that took the default. `Watch` is a stream, and a stream is not this shape.
-// Both are commands an app that wants them writes and mounts beside these.
+// `Apply`. It is one of payday's two general writes and is closed unless an app
+// opted in, so a command for it would fail on every app that took the default,
+// and an app that did opt in means something particular by it -- which is a
+// command it writes and mounts beside these.
+//
+// `Watch` **is** built, on the entities that declared one, the same way `ls` is
+// built only where there is a `List`. It was left out for a while as "a stream,
+// and a stream is not this shape"; what was actually missing was an opinion
+// about what a stream ending means, and [cmdWatch] is that opinion.
 type Tree struct {
 	run  *runner
 	opts Options
@@ -147,7 +152,10 @@ func NewIn(to Connector, pkg protoreflect.FullName, opts ...Options) *Tree {
 				// case and not an error.
 				continue
 			}
-			if md.IsStreamingClient() || md.IsStreamingServer() {
+			if md.IsStreamingClient() || md.IsStreamingServer() != v.stream {
+				// Not the shape this verb is; see `stream` on [verbs]. Nothing
+				// here takes a client stream at all -- there is no verb whose
+				// argument is a sequence.
 				continue
 			}
 
@@ -337,22 +345,36 @@ func indexOf(vs []string, v string) int {
 
 // printer is what `-o` asked for.
 func (r *runner) printer(cmd *xli.Command) (Printer, error) {
+	return r.printerAs(cmd, true)
+}
+
+// printerAs is [runner.printer] for one answer of several.
+//
+// `header` is false for every answer after the first of a stream, and the only
+// thing that reads it is a built-in table: a header between every event is a
+// table nobody can read down a column of, and one printed once is what `-o
+// table` means for a watch.
+//
+// A format an app supplied is handed back the same either way. What a stream
+// means for it is the app's, and a [Printer] that had to be told would be an
+// interface with two methods for what is one thing -- the reason it has one.
+func (r *runner) printerAs(cmd *xli.Command, header bool) (Printer, error) {
 	name, ok := flg.Find[string](cmd, "output")
 	if !ok || name == "" {
-		return r.byDefault(), nil
+		return r.byDefault(header), nil
 	}
 
 	if p, ok := r.opts.Printers[name]; ok {
 		return p, nil
 	}
 
-	return builtin(name)
+	return builtinAs(name, header)
 }
 
 // byDefault is the format when nothing was asked for, and the only place a
 // per-message renderer is consulted. See [Options.Renderers].
-func (r *runner) byDefault() Printer {
-	p, err := builtin(r.opts.def())
+func (r *runner) byDefault(header bool) Printer {
+	p, err := builtinAs(r.opts.def(), header)
 	if err != nil {
 		if v, ok := r.opts.Printers[r.opts.def()]; ok {
 			p = v
@@ -374,7 +396,11 @@ func (r *runner) byDefault() Printer {
 	})
 }
 
-func builtin(name string) (Printer, error) {
+func builtin(name string) (Printer, error) { return builtinAs(name, true) }
+
+// builtinAs is [builtin] told whether this is the first answer of several; only
+// the tables have anything to do with it.
+func builtinAs(name string, header bool) (Printer, error) {
 	switch {
 	case name == "pretty":
 		return Pretty, nil
@@ -387,9 +413,9 @@ func builtin(name string) (Printer, error) {
 	case name == "name":
 		return Name, nil
 	case name == "table":
-		return Table(false), nil
+		return table(false, header), nil
 	case name == "wide":
-		return Table(true), nil
+		return table(true, header), nil
 	case strings.HasPrefix(name, "template="):
 		return Template(strings.TrimPrefix(name, "template="))
 	}

@@ -19,7 +19,7 @@ import (
 //
 // # Why this exists
 //
-// The five verbs [Tree] builds are the ones every entity has. An operation that
+// The verbs [Tree] builds are the ones every entity has. An operation that
 // means something is not one of them: payday closes the general writes on
 // purpose, so "move this robot to another tenant" is an RPC an app declares in
 // an overlay and implements in a layer -- see the schema guide. Nothing can
@@ -73,7 +73,9 @@ func (t *Tree) Unary(method string) (*xli.Command, error) {
 		// Refused here rather than built and failing on the call, so that an
 		// app wiring a stream up finds out while it is wiring rather than when
 		// somebody runs it.
-		return nil, fmt.Errorf("pdcmd: %s: is a stream, which is not this shape", method)
+		return nil, fmt.Errorf("pdcmd: %s: is a stream, and this builds one call; "+
+			"a server stream is what `watch` is, and what it needed was an opinion "+
+			"about ending -- see cmdWatch", method)
 	}
 
 	r := t.run

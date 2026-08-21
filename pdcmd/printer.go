@@ -156,7 +156,16 @@ func Template(text string) (Printer, error) {
 // `wide` is kubectl's `priority`: the same table with the columns that are
 // worth having and not worth the width. Splitting them is what keeps the
 // default narrow enough to read in a terminal.
-func Table(wide bool) Printer {
+func Table(wide bool) Printer { return table(wide, true) }
+
+// table is [Table] told whether to show its header.
+//
+// Not a field on Table and not state it keeps, because a Printer is a value an
+// app may hold and reuse -- one that showed its header the first time it was
+// ever used would be a table with no header for every command after the first.
+// What knows this is the caller, which is the only thing that knows whether
+// this answer is one of several; see [runner.printerAs].
+func table(wide, header bool) Printer {
 	return PrinterFunc(func(w io.Writer, m proto.Message) error {
 		rows := Rows(m)
 		if len(rows) == 0 {
@@ -167,11 +176,13 @@ func Table(wide bool) Printer {
 		cols := columnsOf(rows[0].Descriptor(), wide)
 
 		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
-		hs := make([]string, len(cols))
-		for i, c := range cols {
-			hs[i] = c.head
+		if header {
+			hs := make([]string, len(cols))
+			for i, c := range cols {
+				hs[i] = c.head
+			}
+			fmt.Fprintln(tw, strings.Join(hs, "\t"))
 		}
-		fmt.Fprintln(tw, strings.Join(hs, "\t"))
 
 		for _, row := range rows {
 			vs := make([]string, len(cols))
@@ -220,6 +231,10 @@ type column struct {
 // screen. It is a column of its own so that `-o wide` still answers "which
 // row exactly", and `-o name` answers it without a table at all.
 func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
+	if vs := itemColumns(d, wide); vs != nil {
+		return vs
+	}
+
 	fs := d.Fields()
 	vs := []column{}
 
@@ -254,6 +269,79 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
 	}
 
 	return vs
+}
+
+// itemColumns is the table for what a watch sends, which is not a row.
+//
+// It is a row, what happened to it, and -- for one that is gone -- no row at
+// all. So the columns are the row's own, read through `value`, with the RPC
+// that changed it in front and the identifier at the end.
+//
+// **The identifier is not behind `-o wide` here**, which is the one place this
+// departs from [columnsOf], and the reason is the absent `value`: a row that
+// was erased or that moved out of the filters arrives with nothing but its id,
+// every column of it reads `-`, and a line with no id would be a line saying
+// only that something happened to something. The `-` itself is not written
+// here -- [columnsOf] already answers it for a field that is not set, and an
+// absent `value` makes every field of it absent.
+//
+// Recognised by its fields and not by its name, the way [Rows] recognises a
+// list response by `items`: what makes this shape is `id`, `value` and
+// `action` together, which is what `pd gen` writes and what a hand-written
+// stream of the same thing would have to write to mean the same.
+func itemColumns(d protoreflect.MessageDescriptor, wide bool) []column {
+	fs := d.Fields()
+
+	id := fs.ByName("id")
+	vd := fs.ByName("value")
+	ad := fs.ByName("action")
+	if id == nil || vd == nil || ad == nil {
+		return nil
+	}
+	if id.Kind() != protoreflect.BytesKind || id.IsList() {
+		return nil
+	}
+	if vd.Kind() != protoreflect.MessageKind || vd.IsList() {
+		return nil
+	}
+	if ad.Kind() != protoreflect.StringKind || ad.IsList() {
+		return nil
+	}
+
+	vs := []column{{head: "ACTION", read: func(m protoreflect.Message) string {
+		if !m.Has(ad) {
+			// The first message, which is not something anybody asked for --
+			// it is what was already there.
+			return "-"
+		}
+
+		return m.Get(ad).String()
+	}}}
+
+	for _, c := range columnsOf(vd.Message(), wide) {
+		if c.head == "ID" {
+			// The item names the row itself, and says so for one that is gone
+			// as well. Two ID columns would be the same uuid twice.
+			continue
+		}
+
+		read := c.read
+		vs = append(vs, column{head: c.head, read: func(m protoreflect.Message) string {
+			if !m.Has(vd) {
+				return "-"
+			}
+
+			return read(m.Get(vd).Message())
+		}})
+	}
+
+	return append(vs, column{head: "ID", read: func(m protoreflect.Message) string {
+		if !m.Has(id) {
+			return "-"
+		}
+
+		return uuidOf(m.Get(id).Bytes())
+	}})
 }
 
 // uuidOf prints an identifier the way a person writes one back.

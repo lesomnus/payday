@@ -406,8 +406,8 @@ The last two come ready-made from `payday/pdcmd` — `pdcmd.NewCmdConfig(Loader,
 and `pdcmd.NewCmdVersion()` — and the first two are written into your repository
 by `pd new`, because their bodies are the stack and the first row.
 
-The same package builds `get`, `ls`, `add`, `patch` and `erase` for every entity
-you have, from a connection you opened:
+The same package builds `get`, `ls`, `watch`, `add`, `patch` and `erase` for
+every entity you have, from a connection you opened:
 
 ```go
 t, err := pdcmd.New(conn)

@@ -84,16 +84,24 @@ func TestTheTreeIsWhatTheSchemaDeclared(t *testing.T) {
 		return vs
 	}
 
-	// `Watch` is a stream and is not this shape; `Apply` is one of payday's two
-	// general writes and is closed unless an app opts in. Neither is built, so
-	// neither appears here even though `Robot` has both.
-	x.Equal([]string{"get", "ls", "add", "patch", "erase"}, verbs("robot"),
-		"robot declared list:, so it has one")
+	// `Apply` is one of payday's two general writes and is closed unless an app
+	// opts in, so it is not built and does not appear here even though `Robot`
+	// has one.
+	x.Equal([]string{"get", "ls", "watch", "add", "patch", "erase"}, verbs("robot"),
+		"robot declared list: and watch:, so it has both")
 	x.Equal([]string{"get", "add", "patch", "erase"}, verbs("cell"),
 		"cell declared no list:, so there is no ls to call")
 
+	// `Tenant` is the one that says `watch` is read off the schema rather than
+	// added to everything that can be listed: it has a `List` and no `Watch`,
+	// because `watch:` is declared separately and it did not.
+	x.Equal([]string{"get", "ls", "add", "patch", "erase"}, verbs("tenant"),
+		"tenant declared list: and no watch:")
+
 	x.Nil(tree.Command("cell/ls"))
 	x.NotNil(tree.Command("robot/ls"))
+	x.Nil(tree.Command("tenant/watch"))
+	x.NotNil(tree.Command("robot/watch"))
 }
 
 // TestACommandTravelsTheWholeStack is the command doing the only thing it does.

@@ -8,6 +8,7 @@ import (
 	"github.com/lesomnus/xli"
 	"github.com/lesomnus/xli/arg"
 	"github.com/lesomnus/xli/flg"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -31,6 +32,34 @@ func call(ctx context.Context, c Conn, md protoreflect.MethodDescriptor, in prot
 	}
 
 	return out, nil
+}
+
+// open starts one server-streaming method and answers with the stream, the
+// request sent and nothing more to send.
+//
+// The counterpart of [call], and the difference is only that the reply is read
+// more than once: the same connection, the same name, the same message. Which
+// is why `pdcmd` builds a `Watch` command at all -- what a stream needed was an
+// opinion about ending, not a second way of making a call.
+func open(ctx context.Context, c Conn, md protoreflect.MethodDescriptor, in proto.Message) (grpc.ClientStream, error) {
+	name := fmt.Sprintf("/%s/%s", md.Parent().FullName(), md.Name())
+
+	s, err := c.NewStream(ctx, &grpc.StreamDesc{StreamName: string(md.Name()), ServerStreams: true}, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.SendMsg(in); err != nil {
+		return nil, err
+	}
+
+	// Said once and never again: a payday Watch takes its filters in the
+	// request and the stream is the answer, so a client that held the send half
+	// open would be holding it open for nothing.
+	if err := s.CloseSend(); err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
 func newMessage(d protoreflect.MessageDescriptor) (proto.Message, error) {
@@ -140,4 +169,39 @@ func setRef(in proto.Message, r Ref) error {
 	}
 
 	return r.Fill(m)
+}
+
+// setFilterRef names one row among the filters a watch takes.
+//
+// A watch takes `filters` and not a `ref`, because what it watches is what a
+// list would answer with -- so naming a single row is that list with one filter
+// in it, which is the same request written shorter rather than a second shape.
+//
+// Appended rather than assigned, so that a reference and a trailing protojson
+// carrying filters of its own are a union and not a contradiction. That is what
+// `proto.Merge` does to a repeated field anyway, and [fillRaw] runs after this.
+func setFilterRef(in proto.Message, r Ref) error {
+	m := in.ProtoReflect()
+
+	fd := m.Descriptor().Fields().ByName("filters")
+	if fd == nil || !fd.IsList() || fd.Kind() != protoreflect.MessageKind {
+		return fmt.Errorf("REF: %s takes no filters, so there is nowhere to name a row", m.Descriptor().FullName())
+	}
+
+	fs := m.Mutable(fd).List()
+	v := fs.NewElement().Message()
+
+	rd := v.Descriptor().Fields().ByName("ref")
+	if rd == nil || rd.Kind() != protoreflect.MessageKind {
+		return fmt.Errorf("REF: %s has no ref to name a row by", v.Descriptor().FullName())
+	}
+
+	ref := v.NewField(rd).Message()
+	if err := r.Fill(ref); err != nil {
+		return err
+	}
+	v.Set(rd, protoreflect.ValueOfMessage(ref))
+
+	fs.Append(protoreflect.ValueOfMessage(v))
+	return nil
 }

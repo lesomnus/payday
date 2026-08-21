@@ -21,8 +21,8 @@
 //
 // # The entity commands
 //
-// `get`, `ls`, `add`, `patch` and `erase`, for every entity the app has, are
-// the same kind of thing and are here for the same reason: they need a
+// `get`, `ls`, `watch`, `add`, `patch` and `erase`, for every entity the app
+// has, are the same kind of thing and are here for the same reason: they need a
 // connection to a running deployment, and which connection -- and who it is
 // authenticated as -- is the app's to decide. See [Tree].
 //
@@ -32,7 +32,8 @@
 // second copy of a list the binary already has. It also gets the hard part
 // right for free -- an entity has a `List` only if it declared `list:`, and a
 // tree built from the descriptors has `robot ls` and no `cell ls` without
-// anybody deciding that twice.
+// anybody deciding that twice. `watch` is the same rule read off `watch:`,
+// which is why `Tenant` has a list and no watch and nobody wrote that down.
 //
 // # What is not here
 //
