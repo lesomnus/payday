@@ -122,7 +122,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// the servers that do the writing, since every RPC that changes anything
 	// has to report itself from inside the transaction that changes it. The
 	// wall is a predicate and a predicate belongs in the WHERE.
-	b, err := c.Watch.Build()
+	b, err := c.Watch.Build(c.Db)
 	if err != nil {
 		db.Close()
 		return nil, err
