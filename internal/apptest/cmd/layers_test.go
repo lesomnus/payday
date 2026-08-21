@@ -58,11 +58,23 @@ func build(t *testing.T) (*built, context.Context) {
 // buildWith is [build] for a test that is about the watch configuration itself.
 func buildWith(t *testing.T, w config.WatchConfig) (*built, context.Context) {
 	t.Helper()
+
+	return buildOn(t, dbOf(t), w)
+}
+
+// buildOn is [buildWith] on a database somebody already has.
+//
+// Which is how a test gets **two replicas**: one process each, one database
+// between them, and nothing else connecting the two. Everything a second server
+// needs seeding is already there, so this skips it and answers with the tenant
+// and holder the first one made.
+func buildOn(t *testing.T, db config.DbConfig, w config.WatchConfig) (*built, context.Context) {
+	t.Helper()
 	x := require.New(t)
 	ctx := t.Context()
 
 	s, err := cmd.Build(ctx, cmd.Config{
-		Db:    dbOf(t),
+		Db:    db,
 		Watch: w,
 	})
 	x.NoError(err)
@@ -71,7 +83,15 @@ func buildWith(t *testing.T, w config.WatchConfig) (*built, context.Context) {
 
 	// Through the ungated server, which is the point: there is nobody to be
 	// inside a tenant before there is a tenant.
+	//
+	// The second server on one database finds it already there, which is what
+	// `Get` answers with rather than a second `Add` failing on the alias.
 	tenant, err := s.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "acme"}.Build())
+	if err != nil {
+		tenant, err = s.Ungated.Tenant().Get(ctx, app.TenantGetRequest_builder{
+			Ref: app.TenantRef_builder{Alias: z.Ptr("acme")}.Build(),
+		}.Build())
+	}
 	x.NoError(err)
 	tk, err := pdid.From(tenant.GetId())
 	x.NoError(err)
@@ -80,6 +100,16 @@ func buildWith(t *testing.T, w config.WatchConfig) (*built, context.Context) {
 		Tenant: app.TenantRef_builder{Id: tenant.GetId()}.Build(),
 		Alias:  "admin",
 	}.Build())
+	if err != nil {
+		// A second server on one database finds the seed already there. Listed
+		// rather than named, because a `Holder` is unique within a tenant and
+		// its reference says so in a shape a one-line lookup does not have.
+		vs, e := s.Ungated.Holder().List(ctx, app.HolderListRequest_builder{}.Build())
+		x.NoError(e)
+		x.NotEmpty(vs.GetItems())
+
+		holder, err = vs.GetItems()[0], nil
+	}
 	x.NoError(err)
 	hk, err := pdid.From(holder.GetId())
 	x.NoError(err)

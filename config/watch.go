@@ -57,6 +57,16 @@ type WatchConfig struct {
 	// refused.
 	Broker string `yaml:"broker"`
 
+	// Dsn is where the broker connects, for one that connects somewhere the
+	// app is not already.
+	//
+	// **Empty is the app's own database**, and for the broker most deployments
+	// will name that is not a fallback but the answer: a Postgres broker is
+	// `LISTEN`/`NOTIFY` on the rows' own database, which is why it needs no
+	// address and no second piece of infrastructure. A broker that is a message
+	// bus is told where it is here.
+	Dsn string `yaml:"dsn"`
+
 	// Outbox writes every change as a row inside the transaction that made it,
 	// for a loop to publish afterwards.
 	//
@@ -81,7 +91,7 @@ type WatchConfig struct {
 // `memory` is not in here: it is what payday ships and [WatchConfig.Build]
 // answers for it directly, the way an app that needs no other database still
 // gets its driver named. What this map is for is the one after that.
-var brokers = map[string]func() (watch.Broker, error){}
+var brokers = map[string]func(c WatchConfig, db DbConfig) (watch.Broker, error){}
 
 // RegisterBroker records how to build the broker named `name`, so that a
 // deployment can select one payday does not ship by naming it.
@@ -103,10 +113,18 @@ var brokers = map[string]func() (watch.Broker, error){}
 //
 //	import _ "github.com/acme/thing/brokernats"
 //
+// # What it is told
+//
+// Its own configuration, and **the database the app is on**. The second is
+// there because the first broker anybody writes rides that database: Postgres
+// answers `LISTEN`/`NOTIFY`, so an app already talking to one needs no second
+// piece of infrastructure to make its replicas hear each other. A broker that
+// connects somewhere else ignores it and reads [WatchConfig.Dsn].
+//
 // The function is called once, when a server is built. A broker that cannot
 // reach whatever it publishes to answers with an error there rather than
 // panicking later, which is the same bargain [DbConfig.Open] makes.
-func RegisterBroker(name string, build func() (watch.Broker, error)) {
+func RegisterBroker(name string, build func(c WatchConfig, db DbConfig) (watch.Broker, error)) {
 	brokers[name] = build
 }
 
@@ -134,7 +152,7 @@ func known() map[string]struct{} {
 // a subscriber outright rather than handing back a stream that never speaks;
 // before it did, `none` was the quietest setting available instead of the
 // loudest.
-func (c WatchConfig) Build() (watch.Broker, error) {
+func (c WatchConfig) Build(db DbConfig) (watch.Broker, error) {
 	switch c.Broker {
 	case BrokerMemory:
 		return watch.Memory(), nil
@@ -160,7 +178,7 @@ func (c WatchConfig) Build() (watch.Broker, error) {
 			c.Broker, strings.Join(Brokers(), ", "))
 	}
 
-	b, err := build()
+	b, err := build(c, db)
 	if err != nil {
 		return nil, fmt.Errorf("watch.broker: %s: %w", c.Broker, err)
 	}

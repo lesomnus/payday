@@ -110,7 +110,13 @@ func DriverFor(dialect string) (string, bool) {
 	return "", false
 }
 
-func (c DbConfig) dialect() (string, error) {
+// Speaks answers which SQL this database speaks: [DbConfig.Dialect] when it was
+// given, and otherwise what the driver was registered as speaking.
+//
+// Exported because a broker that rides the app's database is handed this config
+// and has to know whether it can -- `LISTEN` is PostgreSQL's, and a deployment
+// on SQLite needs a broker that is not the database. See [RegisterBroker].
+func (c DbConfig) Speaks() (string, error) {
 	if c.Dialect != "" {
 		return c.Dialect, nil
 	}
@@ -144,7 +150,7 @@ func (c DbConfig) dialect() (string, error) {
 //
 // The caller owns the connection and must close it.
 func (c DbConfig) Open(ctx context.Context) (*sql.DB, string, error) {
-	dialect, err := c.dialect()
+	dialect, err := c.Speaks()
 	if err != nil {
 		return nil, "", err
 	}

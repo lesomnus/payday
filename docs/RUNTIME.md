@@ -229,21 +229,34 @@ because a reader cannot tell them apart.
   `buf breaking` is what says so, at build time where there is enough
   information to tell a breaking change from a compatible one.
 
+**A watch that crosses replicas** is `config/brokerpg`: `watch.broker: postgres`,
+`LISTEN`/`NOTIFY` on the rows' own database. There is nothing to store — a
+notification reaches whoever is listening and is then forgotten — so an app
+already on Postgres needs no second piece of infrastructure, and the difference
+between one replica and several is a line of configuration.
+
+What travels is the identity of what changed and not the row: what a subscriber
+may see is decided per subscriber, by re-reading each row through their own
+narrowing, and putting content on a channel every replica reads would answer
+that question once, in the wrong place, for everybody.
+
+Two things to know beside it. `broker: none` refuses a `Watch` outright —
+`watch.ErrNoBroker` — rather than handing back a stream that sends a snapshot
+and then never speaks. And `pd.Drain` publishes into the broker it was given,
+so an outbox buys **durability** and not fan-out on its own: with `memory` a
+drained event still reaches one process, and with `postgres` it reaches all of
+them. The pair is what a deployment that can lose neither wants.
+
 **Not built, and the reason is written where the seam is:**
 
-- **An external watch broker.** `watch.Broker`, `payday.Outbox` and `pd.Drain`
-  are the place for one; the implementations payday ships are `memory` and
-  `none`. What was missing until recently was not the interface but the way to
-  **select** one: `config.RegisterBroker` is now the registry, in the shape
-  `config.RegisterDriver` already had and for the same reason -- a broker is a
-  client for something that has to be linked in, so it is a package of its own
-  and an app blank imports it.
+- **A watch broker that is a message bus.** `config.RegisterBroker` is the
+  registry, in the shape `config.RegisterDriver` has and for the same reason: a
+  broker is a client for something that has to be linked in, so it is a package
+  of its own and an app blank imports it. Writing one against NATS or Redis is
+  ordinary work nobody has needed yet.
 
-  Two things to know before writing one. `pd.Drain` publishes into the broker it
-  was given, so an outbox buys **durability** and not fan-out; two replicas
-  sharing a queue still need a broker that crosses them. And `broker: none`
-  refuses a `Watch` outright now -- `watch.ErrNoBroker` -- rather than handing
-  back a stream that sends a snapshot and then never speaks.
+  What **is** built is `postgres` — see below — which is the one that needs no
+  bus at all.
 - **Bidirectional `Watch`.** Multiplexing many subscriptions onto one stream
   changes the transport and not the fan-out, which is where the cost actually
   is.
