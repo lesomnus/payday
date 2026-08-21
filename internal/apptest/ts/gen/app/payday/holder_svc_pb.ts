@@ -8,8 +8,8 @@ import type { Holder, HolderSchema } from "./holder_pb.js";
 import { file_app_payday_holder } from "./holder_pb.js";
 import type { TenantRef, TenantSelect } from "./tenant_svc_pb.js";
 import { file_app_payday_tenant_svc_g } from "./tenant_svc_pb.js";
-import type { EmptySchema, Timestamp } from "@bufbuild/protobuf/wkt";
-import { file_google_protobuf_empty, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Patch } from "../../patch/patch_pb.js";
 import { file_patch_patch } from "../../patch/patch_pb.js";
 import type { Message } from "@bufbuild/protobuf";
@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/holder_svc.g.proto.
  */
 export const file_app_payday_holder_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("Ch1hcHAvcGF5ZGF5L2hvbGRlcl9zdmMuZy5wcm90bxIDYXBwIq4CChBIb2xkZXJBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYSFAoFYWxpYXMYBCABKAlCBaoBAggCEhMKBG5hbWUYBSABKAlCBaoBAggCEhMKBGRlc2MYBiABKAlCBaoBAggCEjEKBmxhYmVscxgHIAMoCzIhLmFwcC5Ib2xkZXJBZGRSZXF1ZXN0LkxhYmVsc0VudHJ5EjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoLaWRwX3N1YmplY3QYCCABKAlCBaoBAggCGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiUgoQSG9sZGVyR2V0UmVxdWVzdBIbCgNyZWYYASABKAsyDi5hcHAuSG9sZGVyUmVmEiEKBnNlbGVjdBgCIAEoCzIRLmFwcC5Ib2xkZXJTZWxlY3QiRgoJSG9sZGVyUmVmEgwKAmlkGAEgASgMSAASJAoEc2x1ZxgEIAEoCzIULmFwcC5Ib2xkZXJSZWZCeVNsdWdIAEIFCgNrZXkiQAoPSG9sZGVyUmVmQnlTbHVnEg0KBWFsaWFzGAQgASgJEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYizwEKDEhvbGRlclNlbGVjdBILCgNhbGwYASABKAgSIQoGdGVuYW50GAIgASgLMhEuYXBwLlRlbmFudFNlbGVjdBINCgVhbGlhcxgEIAEoCBIMCgRuYW1lGAUgASgIEgwKBGRlc2MYBiABKAgSDgoGbGFiZWxzGAcgASgIEhQKDGRhdGVfdXBkYXRlZBgNIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgSEwoLaWRwX3N1YmplY3QYCCABKAgiowIKEkhvbGRlclBhdGNoUmVxdWVzdBIbCgNyZWYYASABKAsyDi5hcHAuSG9sZGVyUmVmEg0KBWFsaWFzGAggASgJEgwKBG5hbWUYCiABKAkSDAoEZGVzYxgMIAEoCRIzCgZsYWJlbHMYDiADKAsyIy5hcHAuSG9sZGVyUGF0Y2hSZXF1ZXN0LkxhYmVsc0VudHJ5EjAKDGRhdGVfdXBkYXRlZBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV91cGRhdGVkX2ZvcmNlGBsgASgIEhMKC2lkcF9zdWJqZWN0GBAgASgJGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiTgoSSG9sZGVyQXBwbHlSZXF1ZXN0EhsKA3JlZhgBIAEoCzIOLmFwcC5Ib2xkZXJSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJiChFIb2xkZXJMaXN0UmVxdWVzdBIiCgdmaWx0ZXJzGAEgAygLMhEuYXBwLkhvbGRlckZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAIiRQoSSG9sZGVyTGlzdFJlc3BvbnNlEhoKBWl0ZW1zGAEgAygLMgsuYXBwLkhvbGRlchITCgRuZXh0GAIgASgJQgWqAQIIAiJLCgxIb2xkZXJGaWx0ZXISGwoDcmVmGAEgASgLMg4uYXBwLkhvbGRlclJlZhIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmIlYKEkhvbGRlcldhdGNoUmVxdWVzdBIiCgdmaWx0ZXJzGAEgAygLMhEuYXBwLkhvbGRlckZpbHRlchIcCg1za2lwX3NuYXBzaG90GAIgASgIQgWqAQIIAiI6ChNIb2xkZXJXYXRjaFJlc3BvbnNlEiMKBWl0ZW1zGAEgAygLMhQuYXBwLkhvbGRlcldhdGNoSXRlbSJQCg9Ib2xkZXJXYXRjaEl0ZW0SCgoCaWQYASABKAwSGgoFdmFsdWUYAiABKAsyCy5hcHAuSG9sZGVyEhUKBmFjdGlvbhgDIAEoCUIFqgECCAIy6wIKDUhvbGRlclNlcnZpY2USKQoDQWRkEhUuYXBwLkhvbGRlckFkZFJlcXVlc3QaCy5hcHAuSG9sZGVyEikKA0dldBIVLmFwcC5Ib2xkZXJHZXRSZXF1ZXN0GgsuYXBwLkhvbGRlchItCgVQYXRjaBIXLmFwcC5Ib2xkZXJQYXRjaFJlcXVlc3QaCy5hcHAuSG9sZGVyEi0KBUFwcGx5EhcuYXBwLkhvbGRlckFwcGx5UmVxdWVzdBoLLmFwcC5Ib2xkZXISLwoFRXJhc2USDi5hcHAuSG9sZGVyUmVmGhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5EjcKBExpc3QSFi5hcHAuSG9sZGVyTGlzdFJlcXVlc3QaFy5hcHAuSG9sZGVyTGlzdFJlc3BvbnNlEjwKBVdhdGNoEhcuYXBwLkhvbGRlcldhdGNoUmVxdWVzdBoYLmFwcC5Ib2xkZXJXYXRjaFJlc3BvbnNlMAFCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_holder, file_app_payday_tenant_svc_g, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch]);
+  fileDesc("Ch1hcHAvcGF5ZGF5L2hvbGRlcl9zdmMuZy5wcm90bxIDYXBwIq4CChBIb2xkZXJBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYSFAoFYWxpYXMYBCABKAlCBaoBAggCEhMKBG5hbWUYBSABKAlCBaoBAggCEhMKBGRlc2MYBiABKAlCBaoBAggCEjEKBmxhYmVscxgHIAMoCzIhLmFwcC5Ib2xkZXJBZGRSZXF1ZXN0LkxhYmVsc0VudHJ5EjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoLaWRwX3N1YmplY3QYCCABKAlCBaoBAggCGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiUgoQSG9sZGVyR2V0UmVxdWVzdBIbCgNyZWYYASABKAsyDi5hcHAuSG9sZGVyUmVmEiEKBnNlbGVjdBgCIAEoCzIRLmFwcC5Ib2xkZXJTZWxlY3QiRgoJSG9sZGVyUmVmEgwKAmlkGAEgASgMSAASJAoEc2x1ZxgEIAEoCzIULmFwcC5Ib2xkZXJSZWZCeVNsdWdIAEIFCgNrZXkiQAoPSG9sZGVyUmVmQnlTbHVnEg0KBWFsaWFzGAQgASgJEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYizwEKDEhvbGRlclNlbGVjdBILCgNhbGwYASABKAgSIQoGdGVuYW50GAIgASgLMhEuYXBwLlRlbmFudFNlbGVjdBINCgVhbGlhcxgEIAEoCBIMCgRuYW1lGAUgASgIEgwKBGRlc2MYBiABKAgSDgoGbGFiZWxzGAcgASgIEhQKDGRhdGVfdXBkYXRlZBgNIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgSEwoLaWRwX3N1YmplY3QYCCABKAgiowIKEkhvbGRlclBhdGNoUmVxdWVzdBIbCgNyZWYYASABKAsyDi5hcHAuSG9sZGVyUmVmEg0KBWFsaWFzGAggASgJEgwKBG5hbWUYCiABKAkSDAoEZGVzYxgMIAEoCRIzCgZsYWJlbHMYDiADKAsyIy5hcHAuSG9sZGVyUGF0Y2hSZXF1ZXN0LkxhYmVsc0VudHJ5EjAKDGRhdGVfdXBkYXRlZBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV91cGRhdGVkX2ZvcmNlGBsgASgIEhMKC2lkcF9zdWJqZWN0GBAgASgJGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiTgoSSG9sZGVyQXBwbHlSZXF1ZXN0EhsKA3JlZhgBIAEoCzIOLmFwcC5Ib2xkZXJSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIlChNIb2xkZXJFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCJiChFIb2xkZXJMaXN0UmVxdWVzdBIiCgdmaWx0ZXJzGAEgAygLMhEuYXBwLkhvbGRlckZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAIiRQoSSG9sZGVyTGlzdFJlc3BvbnNlEhoKBWl0ZW1zGAEgAygLMgsuYXBwLkhvbGRlchITCgRuZXh0GAIgASgJQgWqAQIIAiJLCgxIb2xkZXJGaWx0ZXISGwoDcmVmGAEgASgLMg4uYXBwLkhvbGRlclJlZhIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmIlYKEkhvbGRlcldhdGNoUmVxdWVzdBIiCgdmaWx0ZXJzGAEgAygLMhEuYXBwLkhvbGRlckZpbHRlchIcCg1za2lwX3NuYXBzaG90GAIgASgIQgWqAQIIAiI6ChNIb2xkZXJXYXRjaFJlc3BvbnNlEiMKBWl0ZW1zGAEgAygLMhQuYXBwLkhvbGRlcldhdGNoSXRlbSJQCg9Ib2xkZXJXYXRjaEl0ZW0SCgoCaWQYASABKAwSGgoFdmFsdWUYAiABKAsyCy5hcHAuSG9sZGVyEhUKBmFjdGlvbhgDIAEoCUIFqgECCAIy7QIKDUhvbGRlclNlcnZpY2USKQoDQWRkEhUuYXBwLkhvbGRlckFkZFJlcXVlc3QaCy5hcHAuSG9sZGVyEikKA0dldBIVLmFwcC5Ib2xkZXJHZXRSZXF1ZXN0GgsuYXBwLkhvbGRlchItCgVQYXRjaBIXLmFwcC5Ib2xkZXJQYXRjaFJlcXVlc3QaCy5hcHAuSG9sZGVyEi0KBUFwcGx5EhcuYXBwLkhvbGRlckFwcGx5UmVxdWVzdBoLLmFwcC5Ib2xkZXISMQoFRXJhc2USDi5hcHAuSG9sZGVyUmVmGhguYXBwLkhvbGRlckVyYXNlUmVzcG9uc2USNwoETGlzdBIWLmFwcC5Ib2xkZXJMaXN0UmVxdWVzdBoXLmFwcC5Ib2xkZXJMaXN0UmVzcG9uc2USPAoFV2F0Y2gSFy5hcHAuSG9sZGVyV2F0Y2hSZXF1ZXN0GhguYXBwLkhvbGRlcldhdGNoUmVzcG9uc2UwAUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_holder, file_app_payday_tenant_svc_g, file_google_protobuf_timestamp, file_patch_patch]);
 
 /**
  * @generated from message app.HolderAddRequest
@@ -296,6 +296,29 @@ export const HolderApplyRequestSchema: GenMessage<HolderApplyRequest> = /*@__PUR
   messageDesc(file_app_payday_holder_svc_g, 6);
 
 /**
+ * @generated from message app.HolderEraseResponse
+ */
+export type HolderEraseResponse = Message<"app.HolderEraseResponse"> & {
+  /**
+   * Erased is whether this call is the one that erased the row.
+   *
+   * False for a row that was already gone, was never there, or is out
+   * of this caller's reach -- which are one answer on purpose, and the
+   * reason the RPC does not fail instead.
+   *
+   * @generated from field: bool erased = 1;
+   */
+  erased: boolean;
+};
+
+/**
+ * Describes the message app.HolderEraseResponse.
+ * Use `create(HolderEraseResponseSchema)` to create a new message.
+ */
+export const HolderEraseResponseSchema: GenMessage<HolderEraseResponse> = /*@__PURE__*/
+  messageDesc(file_app_payday_holder_svc_g, 7);
+
+/**
  * @generated from message app.HolderListRequest
  */
 export type HolderListRequest = Message<"app.HolderListRequest"> & {
@@ -332,7 +355,7 @@ export type HolderListRequest = Message<"app.HolderListRequest"> & {
  * Use `create(HolderListRequestSchema)` to create a new message.
  */
 export const HolderListRequestSchema: GenMessage<HolderListRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 7);
+  messageDesc(file_app_payday_holder_svc_g, 8);
 
 /**
  * @generated from message app.HolderListResponse
@@ -362,7 +385,7 @@ export type HolderListResponse = Message<"app.HolderListResponse"> & {
  * Use `create(HolderListResponseSchema)` to create a new message.
  */
 export const HolderListResponseSchema: GenMessage<HolderListResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 8);
+  messageDesc(file_app_payday_holder_svc_g, 9);
 
 /**
  * @generated from message app.HolderFilter
@@ -384,7 +407,7 @@ export type HolderFilter = Message<"app.HolderFilter"> & {
  * Use `create(HolderFilterSchema)` to create a new message.
  */
 export const HolderFilterSchema: GenMessage<HolderFilter> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 9);
+  messageDesc(file_app_payday_holder_svc_g, 10);
 
 /**
  * @generated from message app.HolderWatchRequest
@@ -420,7 +443,7 @@ export type HolderWatchRequest = Message<"app.HolderWatchRequest"> & {
  * Use `create(HolderWatchRequestSchema)` to create a new message.
  */
 export const HolderWatchRequestSchema: GenMessage<HolderWatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 10);
+  messageDesc(file_app_payday_holder_svc_g, 11);
 
 /**
  * @generated from message app.HolderWatchResponse
@@ -439,7 +462,7 @@ export type HolderWatchResponse = Message<"app.HolderWatchResponse"> & {
  * Use `create(HolderWatchResponseSchema)` to create a new message.
  */
 export const HolderWatchResponseSchema: GenMessage<HolderWatchResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 11);
+  messageDesc(file_app_payday_holder_svc_g, 12);
 
 /**
  * @generated from message app.HolderWatchItem
@@ -486,7 +509,7 @@ export type HolderWatchItem = Message<"app.HolderWatchItem"> & {
  * Use `create(HolderWatchItemSchema)` to create a new message.
  */
 export const HolderWatchItemSchema: GenMessage<HolderWatchItem> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 12);
+  messageDesc(file_app_payday_holder_svc_g, 13);
 
 /**
  * @generated from service app.HolderService
@@ -540,7 +563,7 @@ export const HolderService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof HolderRefSchema;
-    output: typeof EmptySchema;
+    output: typeof HolderEraseResponseSchema;
   },
   /**
    * List reads Holders a page at a time.

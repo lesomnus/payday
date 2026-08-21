@@ -6,8 +6,8 @@ import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegen
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Audit, AuditSchema } from "./audit_pb.js";
 import { file_app_payday_audit } from "./audit_pb.js";
-import type { EmptySchema, Timestamp } from "@bufbuild/protobuf/wkt";
-import { file_google_protobuf_empty, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Patch } from "../../patch/patch_pb.js";
 import { file_patch_patch } from "../../patch/patch_pb.js";
 import type { Message } from "@bufbuild/protobuf";
@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/audit_svc.g.proto.
  */
 export const file_app_payday_audit_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChxhcHAvcGF5ZGF5L2F1ZGl0X3N2Yy5nLnByb3RvEgNhcHAitwIKD0F1ZGl0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIYCgl0ZW5hbnRfaWQYAiABKAxCBaoBAggCEhcKCGFjdG9yX2lkGAggASgMQgWqAQIIAhIXCgh0cmFjZV9pZBgJIAEoDEIFqgECCAISFQoGYWN0aW9uGAogASgJQgWqAQIIAhIYCglvYmplY3RfaWQYCyABKAxCBaoBAggCEhQKBXBhdGNoGAwgASgMQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh4KD2FjdG9yX3RlbmFudF9pZBgQIAEoDEIFqgECCAISFAoFdmFsdWUYESABKAxCBaoBAggCEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgSIAEoDCJPCg9BdWRpdEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkF1ZGl0UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5BdWRpdFNlbGVjdCIfCghBdWRpdFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSLgAQoLQXVkaXRTZWxlY3QSCwoDYWxsGAEgASgIEhEKCXRlbmFudF9pZBgCIAEoCBIQCghhY3Rvcl9pZBgIIAEoCBIQCgh0cmFjZV9pZBgJIAEoCBIOCgZhY3Rpb24YCiABKAgSEQoJb2JqZWN0X2lkGAsgASgIEg0KBXBhdGNoGAwgASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBIXCg9hY3Rvcl90ZW5hbnRfaWQYECABKAgSDQoFdmFsdWUYESABKAgSHQoVY291bnRlcnBhcnRfdGVuYW50X2lkGBIgASgIIoMCChFBdWRpdFBhdGNoUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSEQoJdGVuYW50X2lkGAQgASgMEhAKCGFjdG9yX2lkGBAgASgMEhAKCHRyYWNlX2lkGBIgASgMEg4KBmFjdGlvbhgUIAEoCRIRCglvYmplY3RfaWQYFiABKAwSDQoFcGF0Y2gYGCABKAwSFwoPYWN0b3JfdGVuYW50X2lkGCAgASgMEg0KBXZhbHVlGCIgASgMEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgkIAEoDBIiChpjb3VudGVycGFydF90ZW5hbnRfaWRfbnVsbBglIAEoCCJMChFBdWRpdEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJgChBBdWRpdExpc3RSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuQXVkaXRGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCIkMKEUF1ZGl0TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLkF1ZGl0EhMKBG5leHQYAiABKAlCBaoBAggCIn0KC0F1ZGl0RmlsdGVyEhEKCW9iamVjdF9pZBgBIAEoDBIQCghhY3Rvcl9pZBgCIAEoDBIRCgl0ZW5hbnRfaWQYAyABKAwSFwoPYWN0b3JfdGVuYW50X2lkGAQgASgMEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgFIAEoDDKhAgoMQXVkaXRTZXJ2aWNlEicKA0FkZBIULmFwcC5BdWRpdEFkZFJlcXVlc3QaCi5hcHAuQXVkaXQSJwoDR2V0EhQuYXBwLkF1ZGl0R2V0UmVxdWVzdBoKLmFwcC5BdWRpdBIrCgVQYXRjaBIWLmFwcC5BdWRpdFBhdGNoUmVxdWVzdBoKLmFwcC5BdWRpdBIrCgVBcHBseRIWLmFwcC5BdWRpdEFwcGx5UmVxdWVzdBoKLmFwcC5BdWRpdBIuCgVFcmFzZRINLmFwcC5BdWRpdFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRI1CgRMaXN0EhUuYXBwLkF1ZGl0TGlzdFJlcXVlc3QaFi5hcHAuQXVkaXRMaXN0UmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_audit, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch]);
+  fileDesc("ChxhcHAvcGF5ZGF5L2F1ZGl0X3N2Yy5nLnByb3RvEgNhcHAitwIKD0F1ZGl0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIYCgl0ZW5hbnRfaWQYAiABKAxCBaoBAggCEhcKCGFjdG9yX2lkGAggASgMQgWqAQIIAhIXCgh0cmFjZV9pZBgJIAEoDEIFqgECCAISFQoGYWN0aW9uGAogASgJQgWqAQIIAhIYCglvYmplY3RfaWQYCyABKAxCBaoBAggCEhQKBXBhdGNoGAwgASgMQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh4KD2FjdG9yX3RlbmFudF9pZBgQIAEoDEIFqgECCAISFAoFdmFsdWUYESABKAxCBaoBAggCEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgSIAEoDCJPCg9BdWRpdEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkF1ZGl0UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5BdWRpdFNlbGVjdCIfCghBdWRpdFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSLgAQoLQXVkaXRTZWxlY3QSCwoDYWxsGAEgASgIEhEKCXRlbmFudF9pZBgCIAEoCBIQCghhY3Rvcl9pZBgIIAEoCBIQCgh0cmFjZV9pZBgJIAEoCBIOCgZhY3Rpb24YCiABKAgSEQoJb2JqZWN0X2lkGAsgASgIEg0KBXBhdGNoGAwgASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBIXCg9hY3Rvcl90ZW5hbnRfaWQYECABKAgSDQoFdmFsdWUYESABKAgSHQoVY291bnRlcnBhcnRfdGVuYW50X2lkGBIgASgIIoMCChFBdWRpdFBhdGNoUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSEQoJdGVuYW50X2lkGAQgASgMEhAKCGFjdG9yX2lkGBAgASgMEhAKCHRyYWNlX2lkGBIgASgMEg4KBmFjdGlvbhgUIAEoCRIRCglvYmplY3RfaWQYFiABKAwSDQoFcGF0Y2gYGCABKAwSFwoPYWN0b3JfdGVuYW50X2lkGCAgASgMEg0KBXZhbHVlGCIgASgMEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgkIAEoDBIiChpjb3VudGVycGFydF90ZW5hbnRfaWRfbnVsbBglIAEoCCJMChFBdWRpdEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIkChJBdWRpdEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIImAKEEF1ZGl0TGlzdFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5BdWRpdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAIiQwoRQXVkaXRMaXN0UmVzcG9uc2USGQoFaXRlbXMYASADKAsyCi5hcHAuQXVkaXQSEwoEbmV4dBgCIAEoCUIFqgECCAIifQoLQXVkaXRGaWx0ZXISEQoJb2JqZWN0X2lkGAEgASgMEhAKCGFjdG9yX2lkGAIgASgMEhEKCXRlbmFudF9pZBgDIAEoDBIXCg9hY3Rvcl90ZW5hbnRfaWQYBCABKAwSHQoVY291bnRlcnBhcnRfdGVuYW50X2lkGAUgASgMMqICCgxBdWRpdFNlcnZpY2USJwoDQWRkEhQuYXBwLkF1ZGl0QWRkUmVxdWVzdBoKLmFwcC5BdWRpdBInCgNHZXQSFC5hcHAuQXVkaXRHZXRSZXF1ZXN0GgouYXBwLkF1ZGl0EisKBVBhdGNoEhYuYXBwLkF1ZGl0UGF0Y2hSZXF1ZXN0GgouYXBwLkF1ZGl0EisKBUFwcGx5EhYuYXBwLkF1ZGl0QXBwbHlSZXF1ZXN0GgouYXBwLkF1ZGl0Ei8KBUVyYXNlEg0uYXBwLkF1ZGl0UmVmGhcuYXBwLkF1ZGl0RXJhc2VSZXNwb25zZRI1CgRMaXN0EhUuYXBwLkF1ZGl0TGlzdFJlcXVlc3QaFi5hcHAuQXVkaXRMaXN0UmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_audit, file_google_protobuf_timestamp, file_patch_patch]);
 
 /**
  * @generated from message app.AuditAddRequest
@@ -292,6 +292,29 @@ export const AuditApplyRequestSchema: GenMessage<AuditApplyRequest> = /*@__PURE_
   messageDesc(file_app_payday_audit_svc_g, 5);
 
 /**
+ * @generated from message app.AuditEraseResponse
+ */
+export type AuditEraseResponse = Message<"app.AuditEraseResponse"> & {
+  /**
+   * Erased is whether this call is the one that erased the row.
+   *
+   * False for a row that was already gone, was never there, or is out
+   * of this caller's reach -- which are one answer on purpose, and the
+   * reason the RPC does not fail instead.
+   *
+   * @generated from field: bool erased = 1;
+   */
+  erased: boolean;
+};
+
+/**
+ * Describes the message app.AuditEraseResponse.
+ * Use `create(AuditEraseResponseSchema)` to create a new message.
+ */
+export const AuditEraseResponseSchema: GenMessage<AuditEraseResponse> = /*@__PURE__*/
+  messageDesc(file_app_payday_audit_svc_g, 6);
+
+/**
  * @generated from message app.AuditListRequest
  */
 export type AuditListRequest = Message<"app.AuditListRequest"> & {
@@ -328,7 +351,7 @@ export type AuditListRequest = Message<"app.AuditListRequest"> & {
  * Use `create(AuditListRequestSchema)` to create a new message.
  */
 export const AuditListRequestSchema: GenMessage<AuditListRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_audit_svc_g, 6);
+  messageDesc(file_app_payday_audit_svc_g, 7);
 
 /**
  * @generated from message app.AuditListResponse
@@ -358,7 +381,7 @@ export type AuditListResponse = Message<"app.AuditListResponse"> & {
  * Use `create(AuditListResponseSchema)` to create a new message.
  */
 export const AuditListResponseSchema: GenMessage<AuditListResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_audit_svc_g, 7);
+  messageDesc(file_app_payday_audit_svc_g, 8);
 
 /**
  * @generated from message app.AuditFilter
@@ -395,7 +418,7 @@ export type AuditFilter = Message<"app.AuditFilter"> & {
  * Use `create(AuditFilterSchema)` to create a new message.
  */
 export const AuditFilterSchema: GenMessage<AuditFilter> = /*@__PURE__*/
-  messageDesc(file_app_payday_audit_svc_g, 8);
+  messageDesc(file_app_payday_audit_svc_g, 9);
 
 /**
  * @generated from service app.AuditService
@@ -449,7 +472,7 @@ export const AuditService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof AuditRefSchema;
-    output: typeof EmptySchema;
+    output: typeof AuditEraseResponseSchema;
   },
   /**
    * List reads Audits a page at a time.

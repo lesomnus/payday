@@ -17,6 +17,7 @@ import { AuditSchema } from './app/payday/audit_pb.js'
 import { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, RobotSchema } from './app/robot_pb.js'
 import { HolderSchema } from './app/payday/holder_pb.js'
 import { OutboxSchema } from './app/payday/outbox_pb.js'
+import { SealSchema } from './app/seal_pb.js'
 import { TenantSchema } from './app/payday/tenant_pb.js'
 import { ThingSchema } from './shared/thing_pb.js'
 
@@ -91,6 +92,13 @@ export const Robot = {
 	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "thing", to: "shared.Thing" }, { field: "cell", to: "app.Cell" }],
 } as const satisfies EntityDesc
 
+/** app.Seal, as the store holds it. */
+export const Seal = {
+	typeName: "app.Seal",
+	schema: SealSchema,
+	domain: 14,
+} as const satisfies EntityDesc
+
 /** app.Tenant, as the store holds it. */
 export const Tenant = {
 	typeName: "app.Tenant",
@@ -107,5 +115,5 @@ export const Thing = {
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Tenant, Thing] as const
+export const entities = [Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot, Seal, Tenant, Thing] as const
 

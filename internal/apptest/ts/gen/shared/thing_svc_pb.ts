@@ -4,8 +4,8 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { EmptySchema, Timestamp } from "@bufbuild/protobuf/wkt";
-import { file_google_protobuf_empty, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Patch } from "../patch/patch_pb.js";
 import { file_patch_patch } from "../patch/patch_pb.js";
 import type { Thing, ThingSchema } from "./thing_pb.js";
@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file shared/thing_svc.g.proto.
  */
 export const file_shared_thing_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChhzaGFyZWQvdGhpbmdfc3ZjLmcucHJvdG8SBnNoYXJlZCJlCg9UaGluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSFAoFYWxpYXMYBCABKAlCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoPVGhpbmdHZXRSZXF1ZXN0Eh0KA3JlZhgBIAEoCzIQLnNoYXJlZC5UaGluZ1JlZhIjCgZzZWxlY3QYAiABKAsyEy5zaGFyZWQuVGhpbmdTZWxlY3QiHwoIVGhpbmdSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiVAoLVGhpbmdTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJBChFUaGluZ1BhdGNoUmVxdWVzdBIdCgNyZWYYASABKAsyEC5zaGFyZWQuVGhpbmdSZWYSDQoFYWxpYXMYCCABKAkiTwoRVGhpbmdBcHBseVJlcXVlc3QSHQoDcmVmGAEgASgLMhAuc2hhcmVkLlRoaW5nUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giYwoQVGhpbmdMaXN0UmVxdWVzdBIkCgdmaWx0ZXJzGAEgAygLMhMuc2hhcmVkLlRoaW5nRmlsdGVyEhMKBHNpemUYAiABKAVCBaoBAggCEhQKBWFmdGVyGAMgASgJQgWqAQIIAiJGChFUaGluZ0xpc3RSZXNwb25zZRIcCgVpdGVtcxgBIAMoCzINLnNoYXJlZC5UaGluZxITCgRuZXh0GAIgASgJQgWqAQIIAiIsCgtUaGluZ0ZpbHRlchIdCgNyZWYYASABKAsyEC5zaGFyZWQuVGhpbmdSZWYywgIKDFRoaW5nU2VydmljZRItCgNBZGQSFy5zaGFyZWQuVGhpbmdBZGRSZXF1ZXN0Gg0uc2hhcmVkLlRoaW5nEi0KA0dldBIXLnNoYXJlZC5UaGluZ0dldFJlcXVlc3QaDS5zaGFyZWQuVGhpbmcSMQoFUGF0Y2gSGS5zaGFyZWQuVGhpbmdQYXRjaFJlcXVlc3QaDS5zaGFyZWQuVGhpbmcSMQoFQXBwbHkSGS5zaGFyZWQuVGhpbmdBcHBseVJlcXVlc3QaDS5zaGFyZWQuVGhpbmcSMQoFRXJhc2USEC5zaGFyZWQuVGhpbmdSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSOwoETGlzdBIYLnNoYXJlZC5UaGluZ0xpc3RSZXF1ZXN0Ghkuc2hhcmVkLlRoaW5nTGlzdFJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch, file_shared_thing]);
+  fileDesc("ChhzaGFyZWQvdGhpbmdfc3ZjLmcucHJvdG8SBnNoYXJlZCJlCg9UaGluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSFAoFYWxpYXMYBCABKAlCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoPVGhpbmdHZXRSZXF1ZXN0Eh0KA3JlZhgBIAEoCzIQLnNoYXJlZC5UaGluZ1JlZhIjCgZzZWxlY3QYAiABKAsyEy5zaGFyZWQuVGhpbmdTZWxlY3QiHwoIVGhpbmdSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiVAoLVGhpbmdTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJBChFUaGluZ1BhdGNoUmVxdWVzdBIdCgNyZWYYASABKAsyEC5zaGFyZWQuVGhpbmdSZWYSDQoFYWxpYXMYCCABKAkiTwoRVGhpbmdBcHBseVJlcXVlc3QSHQoDcmVmGAEgASgLMhAuc2hhcmVkLlRoaW5nUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giJAoSVGhpbmdFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCJjChBUaGluZ0xpc3RSZXF1ZXN0EiQKB2ZpbHRlcnMYASADKAsyEy5zaGFyZWQuVGhpbmdGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCIkYKEVRoaW5nTGlzdFJlc3BvbnNlEhwKBWl0ZW1zGAEgAygLMg0uc2hhcmVkLlRoaW5nEhMKBG5leHQYAiABKAlCBaoBAggCIiwKC1RoaW5nRmlsdGVyEh0KA3JlZhgBIAEoCzIQLnNoYXJlZC5UaGluZ1JlZjLGAgoMVGhpbmdTZXJ2aWNlEi0KA0FkZBIXLnNoYXJlZC5UaGluZ0FkZFJlcXVlc3QaDS5zaGFyZWQuVGhpbmcSLQoDR2V0Ehcuc2hhcmVkLlRoaW5nR2V0UmVxdWVzdBoNLnNoYXJlZC5UaGluZxIxCgVQYXRjaBIZLnNoYXJlZC5UaGluZ1BhdGNoUmVxdWVzdBoNLnNoYXJlZC5UaGluZxIxCgVBcHBseRIZLnNoYXJlZC5UaGluZ0FwcGx5UmVxdWVzdBoNLnNoYXJlZC5UaGluZxI1CgVFcmFzZRIQLnNoYXJlZC5UaGluZ1JlZhoaLnNoYXJlZC5UaGluZ0VyYXNlUmVzcG9uc2USOwoETGlzdBIYLnNoYXJlZC5UaGluZ0xpc3RSZXF1ZXN0Ghkuc2hhcmVkLlRoaW5nTGlzdFJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_patch_patch, file_shared_thing]);
 
 /**
  * @generated from message shared.ThingAddRequest
@@ -167,6 +167,29 @@ export const ThingApplyRequestSchema: GenMessage<ThingApplyRequest> = /*@__PURE_
   messageDesc(file_shared_thing_svc_g, 5);
 
 /**
+ * @generated from message shared.ThingEraseResponse
+ */
+export type ThingEraseResponse = Message<"shared.ThingEraseResponse"> & {
+  /**
+   * Erased is whether this call is the one that erased the row.
+   *
+   * False for a row that was already gone, was never there, or is out
+   * of this caller's reach -- which are one answer on purpose, and the
+   * reason the RPC does not fail instead.
+   *
+   * @generated from field: bool erased = 1;
+   */
+  erased: boolean;
+};
+
+/**
+ * Describes the message shared.ThingEraseResponse.
+ * Use `create(ThingEraseResponseSchema)` to create a new message.
+ */
+export const ThingEraseResponseSchema: GenMessage<ThingEraseResponse> = /*@__PURE__*/
+  messageDesc(file_shared_thing_svc_g, 6);
+
+/**
  * @generated from message shared.ThingListRequest
  */
 export type ThingListRequest = Message<"shared.ThingListRequest"> & {
@@ -203,7 +226,7 @@ export type ThingListRequest = Message<"shared.ThingListRequest"> & {
  * Use `create(ThingListRequestSchema)` to create a new message.
  */
 export const ThingListRequestSchema: GenMessage<ThingListRequest> = /*@__PURE__*/
-  messageDesc(file_shared_thing_svc_g, 6);
+  messageDesc(file_shared_thing_svc_g, 7);
 
 /**
  * @generated from message shared.ThingListResponse
@@ -233,7 +256,7 @@ export type ThingListResponse = Message<"shared.ThingListResponse"> & {
  * Use `create(ThingListResponseSchema)` to create a new message.
  */
 export const ThingListResponseSchema: GenMessage<ThingListResponse> = /*@__PURE__*/
-  messageDesc(file_shared_thing_svc_g, 7);
+  messageDesc(file_shared_thing_svc_g, 8);
 
 /**
  * @generated from message shared.ThingFilter
@@ -250,7 +273,7 @@ export type ThingFilter = Message<"shared.ThingFilter"> & {
  * Use `create(ThingFilterSchema)` to create a new message.
  */
 export const ThingFilterSchema: GenMessage<ThingFilter> = /*@__PURE__*/
-  messageDesc(file_shared_thing_svc_g, 8);
+  messageDesc(file_shared_thing_svc_g, 9);
 
 /**
  * @generated from service shared.ThingService
@@ -304,7 +327,7 @@ export const ThingService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof ThingRefSchema;
-    output: typeof EmptySchema;
+    output: typeof ThingEraseResponseSchema;
   },
   /**
    * List reads Things a page at a time.

@@ -8,8 +8,8 @@ import type { TenantRef, TenantSelect } from "./payday/tenant_svc_pb.js";
 import { file_app_payday_tenant_svc_g } from "./payday/tenant_svc_pb.js";
 import type { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, Robot, RobotSchema } from "./robot_pb.js";
 import { file_app_robot } from "./robot_pb.js";
-import type { EmptySchema, Timestamp } from "@bufbuild/protobuf/wkt";
-import { file_google_protobuf_empty, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Patch } from "../patch/patch_pb.js";
 import { file_patch_patch } from "../patch/patch_pb.js";
 import type { ThingRef, ThingSelect } from "../shared/thing_svc_pb.js";
@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot_svc.g.proto.
  */
 export const file_app_robot_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCJSCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5ImAKCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiEKBnRlbmFudBgCIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gi0gEKD1JvYm90QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh8KBXRoaW5nGB4gASgLMhAuc2hhcmVkLlRoaW5nUmVmEhoKBGNlbGwYAyABKAsyDC5hcHAuQ2VsbFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAISDgoGc2VjcmV0GAggASgMEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiTwoPUm9ib3RHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QiRAoIUm9ib3RSZWYSDAoCaWQYASABKAxIABIjCgRzbHVnGAQgASgLMhMuYXBwLlJvYm90UmVmQnlTbHVnSABCBQoDa2V5Ij8KDlJvYm90UmVmQnlTbHVnEg0KBWFsaWFzGAQgASgJEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYi4AEKC1JvYm90U2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0EiIKBXRoaW5nGB4gASgLMhMuc2hhcmVkLlRoaW5nU2VsZWN0Eh0KBGNlbGwYAyABKAsyDy5hcHAuQ2VsbFNlbGVjdBINCgVhbGlhcxgEIAEoCBIOCgZzZWNyZXQYCCABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCCKAAgoRUm9ib3RQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEh8KBXRoaW5nGDwgASgLMhAuc2hhcmVkLlRoaW5nUmVmEhIKCnRoaW5nX251bGwYPSABKAgSGgoEY2VsbBgGIAEoCzIMLmFwcC5DZWxsUmVmEhEKCWNlbGxfbnVsbBgHIAEoCBINCgVhbGlhcxgIIAEoCRIOCgZzZWNyZXQYECABKAwSMAoMZGF0ZV91cGRhdGVkGBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkYXRlX3VwZGF0ZWRfZm9yY2UYGyABKAgiTAoRUm9ib3RBcHBseVJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giYAoQUm9ib3RMaXN0UmVxdWVzdBIhCgdmaWx0ZXJzGAEgAygLMhAuYXBwLlJvYm90RmlsdGVyEhMKBHNpemUYAiABKAVCBaoBAggCEhQKBWFmdGVyGAMgASgJQgWqAQIIAiJDChFSb2JvdExpc3RSZXNwb25zZRIZCgVpdGVtcxgBIAMoCzIKLmFwcC5Sb2JvdBITCgRuZXh0GAIgASgJQgWqAQIIAiJqCgtSb2JvdEZpbHRlchIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIfCgV0aGluZxgDIAEoCzIQLnNoYXJlZC5UaGluZ1JlZiJUChFSb2JvdFdhdGNoUmVxdWVzdBIhCgdmaWx0ZXJzGAEgAygLMhAuYXBwLlJvYm90RmlsdGVyEhwKDXNraXBfc25hcHNob3QYAiABKAhCBaoBAggCIjgKElJvYm90V2F0Y2hSZXNwb25zZRIiCgVpdGVtcxgBIAMoCzITLmFwcC5Sb2JvdFdhdGNoSXRlbSJOCg5Sb2JvdFdhdGNoSXRlbRIKCgJpZBgBIAEoDBIZCgV2YWx1ZRgCIAEoCzIKLmFwcC5Sb2JvdBIVCgZhY3Rpb24YAyABKAlCBaoBAggCIkgKEFJvYm90TW92ZVJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEhgKAnRvGAIgASgLMgwuYXBwLkNlbGxSZWYijQEKEVBhaXJpbmdBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhsKBGxlYWQYAiABKAsyDS5hcHAuUm9ib3RSZWYSHQoGZm9sbG93GAggASgLMg0uYXBwLlJvYm90UmVmEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoRUGFpcmluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlBhaXJpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlBhaXJpbmdTZWxlY3QiIQoKUGFpcmluZ1JlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJ0Cg1QYWlyaW5nU2VsZWN0EgsKA2FsbBgBIAEoCBIeCgRsZWFkGAIgASgLMhAuYXBwLlJvYm90U2VsZWN0EiAKBmZvbGxvdxgIIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgiMwoTUGFpcmluZ1BhdGNoUmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUGFpcmluZ1JlZiJQChNQYWlyaW5nQXBwbHlSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5QYWlyaW5nUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giUQoPSm9pbnRBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhwKBXJvYm90GAIgASgLMg0uYXBwLlJvYm90UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJPCg9Kb2ludEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5Kb2ludFNlbGVjdCIfCghKb2ludFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJfCgtKb2ludFNlbGVjdBILCgNhbGwYASABKAgSHwoFcm9ib3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRSm9pbnRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEg0KBWFsaWFzGAggASgJIkwKEUpvaW50QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIjMKD0ZsZWV0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPRmxlZXRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuRmxlZXRTZWxlY3QiMAoIRmxlZXRSZWYSDAoCaWQYASABKAxIABIPCgVhbGlhcxgEIAEoCUgAQgUKA2tleSI+CgtGbGVldFNlbGVjdBILCgNhbGwYASABKAgSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRRmxlZXRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkZsZWV0UmVmEg0KBWFsaWFzGAggASgJIkwKEUZsZWV0QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIqEBChFSZWFkaW5nQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIYCgl0ZW5hbnRfaWQYCSABKAxCBaoBAggCEhYKB2NlbHNpdXMYCCABKAFCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoRUmVhZGluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlJlYWRpbmdTZWxlY3QiIQoKUmVhZGluZ1JlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJ3Cg1SZWFkaW5nU2VsZWN0EgsKA2FsbBgBIAEoCBIfCgVyb2JvdBgCIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdBIRCgl0ZW5hbnRfaWQYCSABKAgSDwoHY2Vsc2l1cxgIIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgiVwoTUmVhZGluZ1BhdGNoUmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUmVhZGluZ1JlZhIRCgl0ZW5hbnRfaWQYEiABKAwSDwoHY2Vsc2l1cxgQIAEoASJQChNSZWFkaW5nQXBwbHlSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gy4AEKC0NlbGxTZXJ2aWNlEiUKA0FkZBITLmFwcC5DZWxsQWRkUmVxdWVzdBoJLmFwcC5DZWxsEiUKA0dldBITLmFwcC5DZWxsR2V0UmVxdWVzdBoJLmFwcC5DZWxsEikKBVBhdGNoEhUuYXBwLkNlbGxQYXRjaFJlcXVlc3QaCS5hcHAuQ2VsbBIpCgVBcHBseRIVLmFwcC5DZWxsQXBwbHlSZXF1ZXN0GgkuYXBwLkNlbGwSLQoFRXJhc2USDC5hcHAuQ2VsbFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eTKIAwoMUm9ib3RTZXJ2aWNlEicKA0FkZBIULmFwcC5Sb2JvdEFkZFJlcXVlc3QaCi5hcHAuUm9ib3QSJwoDR2V0EhQuYXBwLlJvYm90R2V0UmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVQYXRjaBIWLmFwcC5Sb2JvdFBhdGNoUmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVBcHBseRIWLmFwcC5Sb2JvdEFwcGx5UmVxdWVzdBoKLmFwcC5Sb2JvdBIuCgVFcmFzZRINLmFwcC5Sb2JvdFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRI1CgRMaXN0EhUuYXBwLlJvYm90TGlzdFJlcXVlc3QaFi5hcHAuUm9ib3RMaXN0UmVzcG9uc2USOgoFV2F0Y2gSFi5hcHAuUm9ib3RXYXRjaFJlcXVlc3QaFy5hcHAuUm9ib3RXYXRjaFJlc3BvbnNlMAESKQoETW92ZRIVLmFwcC5Sb2JvdE1vdmVSZXF1ZXN0GgouYXBwLlJvYm90Mv4BCg5QYWlyaW5nU2VydmljZRIrCgNBZGQSFi5hcHAuUGFpcmluZ0FkZFJlcXVlc3QaDC5hcHAuUGFpcmluZxIrCgNHZXQSFi5hcHAuUGFpcmluZ0dldFJlcXVlc3QaDC5hcHAuUGFpcmluZxIvCgVQYXRjaBIYLmFwcC5QYWlyaW5nUGF0Y2hSZXF1ZXN0GgwuYXBwLlBhaXJpbmcSLwoFQXBwbHkSGC5hcHAuUGFpcmluZ0FwcGx5UmVxdWVzdBoMLmFwcC5QYWlyaW5nEjAKBUVyYXNlEg8uYXBwLlBhaXJpbmdSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHky6gEKDEpvaW50U2VydmljZRInCgNBZGQSFC5hcHAuSm9pbnRBZGRSZXF1ZXN0GgouYXBwLkpvaW50EicKA0dldBIULmFwcC5Kb2ludEdldFJlcXVlc3QaCi5hcHAuSm9pbnQSKwoFUGF0Y2gSFi5hcHAuSm9pbnRQYXRjaFJlcXVlc3QaCi5hcHAuSm9pbnQSKwoFQXBwbHkSFi5hcHAuSm9pbnRBcHBseVJlcXVlc3QaCi5hcHAuSm9pbnQSLgoFRXJhc2USDS5hcHAuSm9pbnRSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHky6gEKDEZsZWV0U2VydmljZRInCgNBZGQSFC5hcHAuRmxlZXRBZGRSZXF1ZXN0GgouYXBwLkZsZWV0EicKA0dldBIULmFwcC5GbGVldEdldFJlcXVlc3QaCi5hcHAuRmxlZXQSKwoFUGF0Y2gSFi5hcHAuRmxlZXRQYXRjaFJlcXVlc3QaCi5hcHAuRmxlZXQSKwoFQXBwbHkSFi5hcHAuRmxlZXRBcHBseVJlcXVlc3QaCi5hcHAuRmxlZXQSLgoFRXJhc2USDS5hcHAuRmxlZXRSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHky/gEKDlJlYWRpbmdTZXJ2aWNlEisKA0FkZBIWLmFwcC5SZWFkaW5nQWRkUmVxdWVzdBoMLmFwcC5SZWFkaW5nEisKA0dldBIWLmFwcC5SZWFkaW5nR2V0UmVxdWVzdBoMLmFwcC5SZWFkaW5nEi8KBVBhdGNoEhguYXBwLlJlYWRpbmdQYXRjaFJlcXVlc3QaDC5hcHAuUmVhZGluZxIvCgVBcHBseRIYLmFwcC5SZWFkaW5nQXBwbHlSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSMAoFRXJhc2USDy5hcHAuUmVhZGluZ1JlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_tenant_svc_g, file_app_robot, file_google_protobuf_empty, file_google_protobuf_timestamp, file_patch_patch, file_shared_thing_svc_g]);
+  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCJSCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5ImAKCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiEKBnRlbmFudBgCIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giIwoRQ2VsbEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIItIBCg9Sb2JvdEFkZFJlcXVlc3QSCgoCaWQYASABKAwSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIfCgV0aGluZxgeIAEoCzIQLnNoYXJlZC5UaGluZ1JlZhIaCgRjZWxsGAMgASgLMgwuYXBwLkNlbGxSZWYSFAoFYWxpYXMYBCABKAlCBaoBAggCEg4KBnNlY3JldBgIIAEoDBIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIk8KD1JvYm90R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0IkQKCFJvYm90UmVmEgwKAmlkGAEgASgMSAASIwoEc2x1ZxgEIAEoCzITLmFwcC5Sb2JvdFJlZkJ5U2x1Z0gAQgUKA2tleSI/Cg5Sb2JvdFJlZkJ5U2x1ZxINCgVhbGlhcxgEIAEoCRIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmIuABCgtSb2JvdFNlbGVjdBILCgNhbGwYASABKAgSIQoGdGVuYW50GAIgASgLMhEuYXBwLlRlbmFudFNlbGVjdBIiCgV0aGluZxgeIAEoCzITLnNoYXJlZC5UaGluZ1NlbGVjdBIdCgRjZWxsGAMgASgLMg8uYXBwLkNlbGxTZWxlY3QSDQoFYWxpYXMYBCABKAgSDgoGc2VjcmV0GAggASgIEhQKDGRhdGVfdXBkYXRlZBgNIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgigAIKEVJvYm90UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIfCgV0aGluZxg8IAEoCzIQLnNoYXJlZC5UaGluZ1JlZhISCgp0aGluZ19udWxsGD0gASgIEhoKBGNlbGwYBiABKAsyDC5hcHAuQ2VsbFJlZhIRCgljZWxsX251bGwYByABKAgSDQoFYWxpYXMYCCABKAkSDgoGc2VjcmV0GBAgASgMEjAKDGRhdGVfdXBkYXRlZBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV91cGRhdGVkX2ZvcmNlGBsgASgIIkwKEVJvYm90QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiQKElJvYm90RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgiYAoQUm9ib3RMaXN0UmVxdWVzdBIhCgdmaWx0ZXJzGAEgAygLMhAuYXBwLlJvYm90RmlsdGVyEhMKBHNpemUYAiABKAVCBaoBAggCEhQKBWFmdGVyGAMgASgJQgWqAQIIAiJDChFSb2JvdExpc3RSZXNwb25zZRIZCgVpdGVtcxgBIAMoCzIKLmFwcC5Sb2JvdBITCgRuZXh0GAIgASgJQgWqAQIIAiJqCgtSb2JvdEZpbHRlchIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIfCgV0aGluZxgDIAEoCzIQLnNoYXJlZC5UaGluZ1JlZiJUChFSb2JvdFdhdGNoUmVxdWVzdBIhCgdmaWx0ZXJzGAEgAygLMhAuYXBwLlJvYm90RmlsdGVyEhwKDXNraXBfc25hcHNob3QYAiABKAhCBaoBAggCIjgKElJvYm90V2F0Y2hSZXNwb25zZRIiCgVpdGVtcxgBIAMoCzITLmFwcC5Sb2JvdFdhdGNoSXRlbSJOCg5Sb2JvdFdhdGNoSXRlbRIKCgJpZBgBIAEoDBIZCgV2YWx1ZRgCIAEoCzIKLmFwcC5Sb2JvdBIVCgZhY3Rpb24YAyABKAlCBaoBAggCIkgKEFJvYm90TW92ZVJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEhgKAnRvGAIgASgLMgwuYXBwLkNlbGxSZWYijQEKEVBhaXJpbmdBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhsKBGxlYWQYAiABKAsyDS5hcHAuUm9ib3RSZWYSHQoGZm9sbG93GAggASgLMg0uYXBwLlJvYm90UmVmEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoRUGFpcmluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlBhaXJpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlBhaXJpbmdTZWxlY3QiIQoKUGFpcmluZ1JlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJ0Cg1QYWlyaW5nU2VsZWN0EgsKA2FsbBgBIAEoCBIeCgRsZWFkGAIgASgLMhAuYXBwLlJvYm90U2VsZWN0EiAKBmZvbGxvdxgIIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgiMwoTUGFpcmluZ1BhdGNoUmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUGFpcmluZ1JlZiJQChNQYWlyaW5nQXBwbHlSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5QYWlyaW5nUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giJgoUUGFpcmluZ0VyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIIlEKD0pvaW50QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPSm9pbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuSm9pbnRTZWxlY3QiHwoISm9pbnRSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiXwoLSm9pbnRTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0Eg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIIj4KEUpvaW50UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhINCgVhbGlhcxgIIAEoCSJMChFKb2ludEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuSm9pbnRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIkChJKb2ludEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIIjMKD0ZsZWV0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPRmxlZXRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuRmxlZXRTZWxlY3QiMAoIRmxlZXRSZWYSDAoCaWQYASABKAxIABIPCgVhbGlhcxgEIAEoCUgAQgUKA2tleSI+CgtGbGVldFNlbGVjdBILCgNhbGwYASABKAgSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRRmxlZXRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkZsZWV0UmVmEg0KBWFsaWFzGAggASgJIkwKEUZsZWV0QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5GbGVldFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiQKEkZsZWV0RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgioQEKEVJlYWRpbmdBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhwKBXJvYm90GAIgASgLMg0uYXBwLlJvYm90UmVmEhgKCXRlbmFudF9pZBgJIAEoDEIFqgECCAISFgoHY2Vsc2l1cxgIIAEoAUIFqgECCAISMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJVChFSZWFkaW5nR2V0UmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUmVhZGluZ1JlZhIiCgZzZWxlY3QYAiABKAsyEi5hcHAuUmVhZGluZ1NlbGVjdCIhCgpSZWFkaW5nUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5IncKDVJlYWRpbmdTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0EhEKCXRlbmFudF9pZBgJIAEoCBIPCgdjZWxzaXVzGAggASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJXChNSZWFkaW5nUGF0Y2hSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEhEKCXRlbmFudF9pZBgSIAEoDBIPCgdjZWxzaXVzGBAgASgBIlAKE1JlYWRpbmdBcHBseVJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCImChRSZWFkaW5nRXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgy4AEKC0NlbGxTZXJ2aWNlEiUKA0FkZBITLmFwcC5DZWxsQWRkUmVxdWVzdBoJLmFwcC5DZWxsEiUKA0dldBITLmFwcC5DZWxsR2V0UmVxdWVzdBoJLmFwcC5DZWxsEikKBVBhdGNoEhUuYXBwLkNlbGxQYXRjaFJlcXVlc3QaCS5hcHAuQ2VsbBIpCgVBcHBseRIVLmFwcC5DZWxsQXBwbHlSZXF1ZXN0GgkuYXBwLkNlbGwSLQoFRXJhc2USDC5hcHAuQ2VsbFJlZhoWLmFwcC5DZWxsRXJhc2VSZXNwb25zZTKJAwoMUm9ib3RTZXJ2aWNlEicKA0FkZBIULmFwcC5Sb2JvdEFkZFJlcXVlc3QaCi5hcHAuUm9ib3QSJwoDR2V0EhQuYXBwLlJvYm90R2V0UmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVQYXRjaBIWLmFwcC5Sb2JvdFBhdGNoUmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVBcHBseRIWLmFwcC5Sb2JvdEFwcGx5UmVxdWVzdBoKLmFwcC5Sb2JvdBIvCgVFcmFzZRINLmFwcC5Sb2JvdFJlZhoXLmFwcC5Sb2JvdEVyYXNlUmVzcG9uc2USNQoETGlzdBIVLmFwcC5Sb2JvdExpc3RSZXF1ZXN0GhYuYXBwLlJvYm90TGlzdFJlc3BvbnNlEjoKBVdhdGNoEhYuYXBwLlJvYm90V2F0Y2hSZXF1ZXN0GhcuYXBwLlJvYm90V2F0Y2hSZXNwb25zZTABEikKBE1vdmUSFS5hcHAuUm9ib3RNb3ZlUmVxdWVzdBoKLmFwcC5Sb2JvdDKBAgoOUGFpcmluZ1NlcnZpY2USKwoDQWRkEhYuYXBwLlBhaXJpbmdBZGRSZXF1ZXN0GgwuYXBwLlBhaXJpbmcSKwoDR2V0EhYuYXBwLlBhaXJpbmdHZXRSZXF1ZXN0GgwuYXBwLlBhaXJpbmcSLwoFUGF0Y2gSGC5hcHAuUGFpcmluZ1BhdGNoUmVxdWVzdBoMLmFwcC5QYWlyaW5nEi8KBUFwcGx5EhguYXBwLlBhaXJpbmdBcHBseVJlcXVlc3QaDC5hcHAuUGFpcmluZxIzCgVFcmFzZRIPLmFwcC5QYWlyaW5nUmVmGhkuYXBwLlBhaXJpbmdFcmFzZVJlc3BvbnNlMusBCgxKb2ludFNlcnZpY2USJwoDQWRkEhQuYXBwLkpvaW50QWRkUmVxdWVzdBoKLmFwcC5Kb2ludBInCgNHZXQSFC5hcHAuSm9pbnRHZXRSZXF1ZXN0GgouYXBwLkpvaW50EisKBVBhdGNoEhYuYXBwLkpvaW50UGF0Y2hSZXF1ZXN0GgouYXBwLkpvaW50EisKBUFwcGx5EhYuYXBwLkpvaW50QXBwbHlSZXF1ZXN0GgouYXBwLkpvaW50Ei8KBUVyYXNlEg0uYXBwLkpvaW50UmVmGhcuYXBwLkpvaW50RXJhc2VSZXNwb25zZTLrAQoMRmxlZXRTZXJ2aWNlEicKA0FkZBIULmFwcC5GbGVldEFkZFJlcXVlc3QaCi5hcHAuRmxlZXQSJwoDR2V0EhQuYXBwLkZsZWV0R2V0UmVxdWVzdBoKLmFwcC5GbGVldBIrCgVQYXRjaBIWLmFwcC5GbGVldFBhdGNoUmVxdWVzdBoKLmFwcC5GbGVldBIrCgVBcHBseRIWLmFwcC5GbGVldEFwcGx5UmVxdWVzdBoKLmFwcC5GbGVldBIvCgVFcmFzZRINLmFwcC5GbGVldFJlZhoXLmFwcC5GbGVldEVyYXNlUmVzcG9uc2UygQIKDlJlYWRpbmdTZXJ2aWNlEisKA0FkZBIWLmFwcC5SZWFkaW5nQWRkUmVxdWVzdBoMLmFwcC5SZWFkaW5nEisKA0dldBIWLmFwcC5SZWFkaW5nR2V0UmVxdWVzdBoMLmFwcC5SZWFkaW5nEi8KBVBhdGNoEhguYXBwLlJlYWRpbmdQYXRjaFJlcXVlc3QaDC5hcHAuUmVhZGluZxIvCgVBcHBseRIYLmFwcC5SZWFkaW5nQXBwbHlSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSMwoFRXJhc2USDy5hcHAuUmVhZGluZ1JlZhoZLmFwcC5SZWFkaW5nRXJhc2VSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_tenant_svc_g, file_app_robot, file_google_protobuf_timestamp, file_patch_patch, file_shared_thing_svc_g]);
 
 /**
  * @generated from message app.CellAddRequest
@@ -171,6 +171,29 @@ export const CellApplyRequestSchema: GenMessage<CellApplyRequest> = /*@__PURE__*
   messageDesc(file_app_robot_svc_g, 5);
 
 /**
+ * @generated from message app.CellEraseResponse
+ */
+export type CellEraseResponse = Message<"app.CellEraseResponse"> & {
+  /**
+   * Erased is whether this call is the one that erased the row.
+   *
+   * False for a row that was already gone, was never there, or is out
+   * of this caller's reach -- which are one answer on purpose, and the
+   * reason the RPC does not fail instead.
+   *
+   * @generated from field: bool erased = 1;
+   */
+  erased: boolean;
+};
+
+/**
+ * Describes the message app.CellEraseResponse.
+ * Use `create(CellEraseResponseSchema)` to create a new message.
+ */
+export const CellEraseResponseSchema: GenMessage<CellEraseResponse> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 6);
+
+/**
  * @generated from message app.RobotAddRequest
  */
 export type RobotAddRequest = Message<"app.RobotAddRequest"> & {
@@ -215,7 +238,7 @@ export type RobotAddRequest = Message<"app.RobotAddRequest"> & {
  * Use `create(RobotAddRequestSchema)` to create a new message.
  */
 export const RobotAddRequestSchema: GenMessage<RobotAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 6);
+  messageDesc(file_app_robot_svc_g, 7);
 
 /**
  * @generated from message app.RobotGetRequest
@@ -237,7 +260,7 @@ export type RobotGetRequest = Message<"app.RobotGetRequest"> & {
  * Use `create(RobotGetRequestSchema)` to create a new message.
  */
 export const RobotGetRequestSchema: GenMessage<RobotGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 7);
+  messageDesc(file_app_robot_svc_g, 8);
 
 /**
  * @generated from message app.RobotRef
@@ -266,7 +289,7 @@ export type RobotRef = Message<"app.RobotRef"> & {
  * Use `create(RobotRefSchema)` to create a new message.
  */
 export const RobotRefSchema: GenMessage<RobotRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 8);
+  messageDesc(file_app_robot_svc_g, 9);
 
 /**
  * @generated from message app.RobotRefBySlug
@@ -288,7 +311,7 @@ export type RobotRefBySlug = Message<"app.RobotRefBySlug"> & {
  * Use `create(RobotRefBySlugSchema)` to create a new message.
  */
 export const RobotRefBySlugSchema: GenMessage<RobotRefBySlug> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 9);
+  messageDesc(file_app_robot_svc_g, 10);
 
 /**
  * @generated from message app.RobotSelect
@@ -345,7 +368,7 @@ export type RobotSelect = Message<"app.RobotSelect"> & {
  * Use `create(RobotSelectSchema)` to create a new message.
  */
 export const RobotSelectSchema: GenMessage<RobotSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 10);
+  messageDesc(file_app_robot_svc_g, 11);
 
 /**
  * @generated from message app.RobotPatchRequest
@@ -426,7 +449,7 @@ export type RobotPatchRequest = Message<"app.RobotPatchRequest"> & {
  * Use `create(RobotPatchRequestSchema)` to create a new message.
  */
 export const RobotPatchRequestSchema: GenMessage<RobotPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 11);
+  messageDesc(file_app_robot_svc_g, 12);
 
 /**
  * @generated from message app.RobotApplyRequest
@@ -448,7 +471,30 @@ export type RobotApplyRequest = Message<"app.RobotApplyRequest"> & {
  * Use `create(RobotApplyRequestSchema)` to create a new message.
  */
 export const RobotApplyRequestSchema: GenMessage<RobotApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 12);
+  messageDesc(file_app_robot_svc_g, 13);
+
+/**
+ * @generated from message app.RobotEraseResponse
+ */
+export type RobotEraseResponse = Message<"app.RobotEraseResponse"> & {
+  /**
+   * Erased is whether this call is the one that erased the row.
+   *
+   * False for a row that was already gone, was never there, or is out
+   * of this caller's reach -- which are one answer on purpose, and the
+   * reason the RPC does not fail instead.
+   *
+   * @generated from field: bool erased = 1;
+   */
+  erased: boolean;
+};
+
+/**
+ * Describes the message app.RobotEraseResponse.
+ * Use `create(RobotEraseResponseSchema)` to create a new message.
+ */
+export const RobotEraseResponseSchema: GenMessage<RobotEraseResponse> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 14);
 
 /**
  * @generated from message app.RobotListRequest
@@ -487,7 +533,7 @@ export type RobotListRequest = Message<"app.RobotListRequest"> & {
  * Use `create(RobotListRequestSchema)` to create a new message.
  */
 export const RobotListRequestSchema: GenMessage<RobotListRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 13);
+  messageDesc(file_app_robot_svc_g, 15);
 
 /**
  * @generated from message app.RobotListResponse
@@ -517,7 +563,7 @@ export type RobotListResponse = Message<"app.RobotListResponse"> & {
  * Use `create(RobotListResponseSchema)` to create a new message.
  */
 export const RobotListResponseSchema: GenMessage<RobotListResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 14);
+  messageDesc(file_app_robot_svc_g, 16);
 
 /**
  * @generated from message app.RobotFilter
@@ -544,7 +590,7 @@ export type RobotFilter = Message<"app.RobotFilter"> & {
  * Use `create(RobotFilterSchema)` to create a new message.
  */
 export const RobotFilterSchema: GenMessage<RobotFilter> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 15);
+  messageDesc(file_app_robot_svc_g, 17);
 
 /**
  * @generated from message app.RobotWatchRequest
@@ -580,7 +626,7 @@ export type RobotWatchRequest = Message<"app.RobotWatchRequest"> & {
  * Use `create(RobotWatchRequestSchema)` to create a new message.
  */
 export const RobotWatchRequestSchema: GenMessage<RobotWatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 16);
+  messageDesc(file_app_robot_svc_g, 18);
 
 /**
  * @generated from message app.RobotWatchResponse
@@ -599,7 +645,7 @@ export type RobotWatchResponse = Message<"app.RobotWatchResponse"> & {
  * Use `create(RobotWatchResponseSchema)` to create a new message.
  */
 export const RobotWatchResponseSchema: GenMessage<RobotWatchResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 17);
+  messageDesc(file_app_robot_svc_g, 19);
 
 /**
  * @generated from message app.RobotWatchItem
@@ -646,7 +692,7 @@ export type RobotWatchItem = Message<"app.RobotWatchItem"> & {
  * Use `create(RobotWatchItemSchema)` to create a new message.
  */
 export const RobotWatchItemSchema: GenMessage<RobotWatchItem> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 18);
+  messageDesc(file_app_robot_svc_g, 20);
 
 /**
  * @generated from message app.RobotMoveRequest
@@ -679,7 +725,7 @@ export type RobotMoveRequest = Message<"app.RobotMoveRequest"> & {
  * Use `create(RobotMoveRequestSchema)` to create a new message.
  */
 export const RobotMoveRequestSchema: GenMessage<RobotMoveRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 19);
+  messageDesc(file_app_robot_svc_g, 21);
 
 /**
  * @generated from message app.PairingAddRequest
@@ -711,7 +757,7 @@ export type PairingAddRequest = Message<"app.PairingAddRequest"> & {
  * Use `create(PairingAddRequestSchema)` to create a new message.
  */
 export const PairingAddRequestSchema: GenMessage<PairingAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 20);
+  messageDesc(file_app_robot_svc_g, 22);
 
 /**
  * @generated from message app.PairingGetRequest
@@ -733,7 +779,7 @@ export type PairingGetRequest = Message<"app.PairingGetRequest"> & {
  * Use `create(PairingGetRequestSchema)` to create a new message.
  */
 export const PairingGetRequestSchema: GenMessage<PairingGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 21);
+  messageDesc(file_app_robot_svc_g, 23);
 
 /**
  * @generated from message app.PairingRef
@@ -756,7 +802,7 @@ export type PairingRef = Message<"app.PairingRef"> & {
  * Use `create(PairingRefSchema)` to create a new message.
  */
 export const PairingRefSchema: GenMessage<PairingRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 22);
+  messageDesc(file_app_robot_svc_g, 24);
 
 /**
  * @generated from message app.PairingSelect
@@ -788,7 +834,7 @@ export type PairingSelect = Message<"app.PairingSelect"> & {
  * Use `create(PairingSelectSchema)` to create a new message.
  */
 export const PairingSelectSchema: GenMessage<PairingSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 23);
+  messageDesc(file_app_robot_svc_g, 25);
 
 /**
  * @generated from message app.PairingPatchRequest
@@ -805,7 +851,7 @@ export type PairingPatchRequest = Message<"app.PairingPatchRequest"> & {
  * Use `create(PairingPatchRequestSchema)` to create a new message.
  */
 export const PairingPatchRequestSchema: GenMessage<PairingPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 24);
+  messageDesc(file_app_robot_svc_g, 26);
 
 /**
  * @generated from message app.PairingApplyRequest
@@ -827,7 +873,30 @@ export type PairingApplyRequest = Message<"app.PairingApplyRequest"> & {
  * Use `create(PairingApplyRequestSchema)` to create a new message.
  */
 export const PairingApplyRequestSchema: GenMessage<PairingApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 25);
+  messageDesc(file_app_robot_svc_g, 27);
+
+/**
+ * @generated from message app.PairingEraseResponse
+ */
+export type PairingEraseResponse = Message<"app.PairingEraseResponse"> & {
+  /**
+   * Erased is whether this call is the one that erased the row.
+   *
+   * False for a row that was already gone, was never there, or is out
+   * of this caller's reach -- which are one answer on purpose, and the
+   * reason the RPC does not fail instead.
+   *
+   * @generated from field: bool erased = 1;
+   */
+  erased: boolean;
+};
+
+/**
+ * Describes the message app.PairingEraseResponse.
+ * Use `create(PairingEraseResponseSchema)` to create a new message.
+ */
+export const PairingEraseResponseSchema: GenMessage<PairingEraseResponse> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 28);
 
 /**
  * @generated from message app.JointAddRequest
@@ -854,7 +923,7 @@ export type JointAddRequest = Message<"app.JointAddRequest"> & {
  * Use `create(JointAddRequestSchema)` to create a new message.
  */
 export const JointAddRequestSchema: GenMessage<JointAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 26);
+  messageDesc(file_app_robot_svc_g, 29);
 
 /**
  * @generated from message app.JointGetRequest
@@ -876,7 +945,7 @@ export type JointGetRequest = Message<"app.JointGetRequest"> & {
  * Use `create(JointGetRequestSchema)` to create a new message.
  */
 export const JointGetRequestSchema: GenMessage<JointGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 27);
+  messageDesc(file_app_robot_svc_g, 30);
 
 /**
  * @generated from message app.JointRef
@@ -899,7 +968,7 @@ export type JointRef = Message<"app.JointRef"> & {
  * Use `create(JointRefSchema)` to create a new message.
  */
 export const JointRefSchema: GenMessage<JointRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 28);
+  messageDesc(file_app_robot_svc_g, 31);
 
 /**
  * @generated from message app.JointSelect
@@ -931,7 +1000,7 @@ export type JointSelect = Message<"app.JointSelect"> & {
  * Use `create(JointSelectSchema)` to create a new message.
  */
 export const JointSelectSchema: GenMessage<JointSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 29);
+  messageDesc(file_app_robot_svc_g, 32);
 
 /**
  * @generated from message app.JointPatchRequest
@@ -953,7 +1022,7 @@ export type JointPatchRequest = Message<"app.JointPatchRequest"> & {
  * Use `create(JointPatchRequestSchema)` to create a new message.
  */
 export const JointPatchRequestSchema: GenMessage<JointPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 30);
+  messageDesc(file_app_robot_svc_g, 33);
 
 /**
  * @generated from message app.JointApplyRequest
@@ -975,7 +1044,30 @@ export type JointApplyRequest = Message<"app.JointApplyRequest"> & {
  * Use `create(JointApplyRequestSchema)` to create a new message.
  */
 export const JointApplyRequestSchema: GenMessage<JointApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 31);
+  messageDesc(file_app_robot_svc_g, 34);
+
+/**
+ * @generated from message app.JointEraseResponse
+ */
+export type JointEraseResponse = Message<"app.JointEraseResponse"> & {
+  /**
+   * Erased is whether this call is the one that erased the row.
+   *
+   * False for a row that was already gone, was never there, or is out
+   * of this caller's reach -- which are one answer on purpose, and the
+   * reason the RPC does not fail instead.
+   *
+   * @generated from field: bool erased = 1;
+   */
+  erased: boolean;
+};
+
+/**
+ * Describes the message app.JointEraseResponse.
+ * Use `create(JointEraseResponseSchema)` to create a new message.
+ */
+export const JointEraseResponseSchema: GenMessage<JointEraseResponse> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 35);
 
 /**
  * @generated from message app.FleetAddRequest
@@ -997,7 +1089,7 @@ export type FleetAddRequest = Message<"app.FleetAddRequest"> & {
  * Use `create(FleetAddRequestSchema)` to create a new message.
  */
 export const FleetAddRequestSchema: GenMessage<FleetAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 32);
+  messageDesc(file_app_robot_svc_g, 36);
 
 /**
  * @generated from message app.FleetGetRequest
@@ -1019,7 +1111,7 @@ export type FleetGetRequest = Message<"app.FleetGetRequest"> & {
  * Use `create(FleetGetRequestSchema)` to create a new message.
  */
 export const FleetGetRequestSchema: GenMessage<FleetGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 33);
+  messageDesc(file_app_robot_svc_g, 37);
 
 /**
  * @generated from message app.FleetRef
@@ -1048,7 +1140,7 @@ export type FleetRef = Message<"app.FleetRef"> & {
  * Use `create(FleetRefSchema)` to create a new message.
  */
 export const FleetRefSchema: GenMessage<FleetRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 34);
+  messageDesc(file_app_robot_svc_g, 38);
 
 /**
  * @generated from message app.FleetSelect
@@ -1075,7 +1167,7 @@ export type FleetSelect = Message<"app.FleetSelect"> & {
  * Use `create(FleetSelectSchema)` to create a new message.
  */
 export const FleetSelectSchema: GenMessage<FleetSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 35);
+  messageDesc(file_app_robot_svc_g, 39);
 
 /**
  * @generated from message app.FleetPatchRequest
@@ -1097,7 +1189,7 @@ export type FleetPatchRequest = Message<"app.FleetPatchRequest"> & {
  * Use `create(FleetPatchRequestSchema)` to create a new message.
  */
 export const FleetPatchRequestSchema: GenMessage<FleetPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 36);
+  messageDesc(file_app_robot_svc_g, 40);
 
 /**
  * @generated from message app.FleetApplyRequest
@@ -1119,7 +1211,30 @@ export type FleetApplyRequest = Message<"app.FleetApplyRequest"> & {
  * Use `create(FleetApplyRequestSchema)` to create a new message.
  */
 export const FleetApplyRequestSchema: GenMessage<FleetApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 37);
+  messageDesc(file_app_robot_svc_g, 41);
+
+/**
+ * @generated from message app.FleetEraseResponse
+ */
+export type FleetEraseResponse = Message<"app.FleetEraseResponse"> & {
+  /**
+   * Erased is whether this call is the one that erased the row.
+   *
+   * False for a row that was already gone, was never there, or is out
+   * of this caller's reach -- which are one answer on purpose, and the
+   * reason the RPC does not fail instead.
+   *
+   * @generated from field: bool erased = 1;
+   */
+  erased: boolean;
+};
+
+/**
+ * Describes the message app.FleetEraseResponse.
+ * Use `create(FleetEraseResponseSchema)` to create a new message.
+ */
+export const FleetEraseResponseSchema: GenMessage<FleetEraseResponse> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 42);
 
 /**
  * @generated from message app.ReadingAddRequest
@@ -1156,7 +1271,7 @@ export type ReadingAddRequest = Message<"app.ReadingAddRequest"> & {
  * Use `create(ReadingAddRequestSchema)` to create a new message.
  */
 export const ReadingAddRequestSchema: GenMessage<ReadingAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 38);
+  messageDesc(file_app_robot_svc_g, 43);
 
 /**
  * @generated from message app.ReadingGetRequest
@@ -1178,7 +1293,7 @@ export type ReadingGetRequest = Message<"app.ReadingGetRequest"> & {
  * Use `create(ReadingGetRequestSchema)` to create a new message.
  */
 export const ReadingGetRequestSchema: GenMessage<ReadingGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 39);
+  messageDesc(file_app_robot_svc_g, 44);
 
 /**
  * @generated from message app.ReadingRef
@@ -1201,7 +1316,7 @@ export type ReadingRef = Message<"app.ReadingRef"> & {
  * Use `create(ReadingRefSchema)` to create a new message.
  */
 export const ReadingRefSchema: GenMessage<ReadingRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 40);
+  messageDesc(file_app_robot_svc_g, 45);
 
 /**
  * @generated from message app.ReadingSelect
@@ -1238,7 +1353,7 @@ export type ReadingSelect = Message<"app.ReadingSelect"> & {
  * Use `create(ReadingSelectSchema)` to create a new message.
  */
 export const ReadingSelectSchema: GenMessage<ReadingSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 41);
+  messageDesc(file_app_robot_svc_g, 46);
 
 /**
  * @generated from message app.ReadingPatchRequest
@@ -1265,7 +1380,7 @@ export type ReadingPatchRequest = Message<"app.ReadingPatchRequest"> & {
  * Use `create(ReadingPatchRequestSchema)` to create a new message.
  */
 export const ReadingPatchRequestSchema: GenMessage<ReadingPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 42);
+  messageDesc(file_app_robot_svc_g, 47);
 
 /**
  * @generated from message app.ReadingApplyRequest
@@ -1287,7 +1402,30 @@ export type ReadingApplyRequest = Message<"app.ReadingApplyRequest"> & {
  * Use `create(ReadingApplyRequestSchema)` to create a new message.
  */
 export const ReadingApplyRequestSchema: GenMessage<ReadingApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 43);
+  messageDesc(file_app_robot_svc_g, 48);
+
+/**
+ * @generated from message app.ReadingEraseResponse
+ */
+export type ReadingEraseResponse = Message<"app.ReadingEraseResponse"> & {
+  /**
+   * Erased is whether this call is the one that erased the row.
+   *
+   * False for a row that was already gone, was never there, or is out
+   * of this caller's reach -- which are one answer on purpose, and the
+   * reason the RPC does not fail instead.
+   *
+   * @generated from field: bool erased = 1;
+   */
+  erased: boolean;
+};
+
+/**
+ * Describes the message app.ReadingEraseResponse.
+ * Use `create(ReadingEraseResponseSchema)` to create a new message.
+ */
+export const ReadingEraseResponseSchema: GenMessage<ReadingEraseResponse> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 49);
 
 /**
  * @generated from service app.CellService
@@ -1341,7 +1479,7 @@ export const CellService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof CellRefSchema;
-    output: typeof EmptySchema;
+    output: typeof CellEraseResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_app_robot_svc_g, 0);
@@ -1398,7 +1536,7 @@ export const RobotService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof RobotRefSchema;
-    output: typeof EmptySchema;
+    output: typeof RobotEraseResponseSchema;
   },
   /**
    * List reads Robots a page at a time.
@@ -1511,7 +1649,7 @@ export const PairingService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof PairingRefSchema;
-    output: typeof EmptySchema;
+    output: typeof PairingEraseResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_app_robot_svc_g, 2);
@@ -1568,7 +1706,7 @@ export const JointService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof JointRefSchema;
-    output: typeof EmptySchema;
+    output: typeof JointEraseResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_app_robot_svc_g, 3);
@@ -1625,7 +1763,7 @@ export const FleetService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof FleetRefSchema;
-    output: typeof EmptySchema;
+    output: typeof FleetEraseResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_app_robot_svc_g, 4);
@@ -1682,7 +1820,7 @@ export const ReadingService: GenService<{
   erase: {
     methodKind: "unary";
     input: typeof ReadingRefSchema;
-    output: typeof EmptySchema;
+    output: typeof ReadingEraseResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_app_robot_svc_g, 5);
