@@ -89,6 +89,13 @@ outbox had been writing nil into since they were written. It stays opt-in
 because SQLite needs no server, and a suite nobody can run without one is a
 suite nobody runs.
 
+Which leaves knowing a DSN and having somewhere to get one, and that is enough
+friction that the answer arrives from CI rather than from a desk. payday's own
+[`scripts/with-postgres.sh`](../../scripts/with-postgres.sh) is that gap closed:
+it uses the database `PDTEST_POSTGRES` already names, or starts one on whatever
+Docker engine is reachable and takes it away afterwards. An app is welcome to
+copy it — there is nothing payday-specific in it.
+
 If your harness builds from your app's own configuration rather than from
 `sql.Open`, the two answers go straight in: `config.DbConfig{Driver: drv, Dsn: dsn}`.
 
