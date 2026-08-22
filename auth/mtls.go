@@ -23,7 +23,7 @@ const MethodMTLS = "mtls"
 //
 //	URI SAN     spiffe://example.com/@acme/admin   -> @acme/admin
 //	URI SAN     x:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
-//	URI SAN     urn:hday:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
+//	URI SAN     urn:fleet:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
 //	Common Name @acme/admin
 //
 // A certificate may carry **several** names, and they are told apart by the
@@ -156,10 +156,10 @@ var ErrAmbiguous = errors.New("cannot say who this certificate is for")
 //
 // `spiffe://host/a/b` and `https://host/a/b` both say `a/b`, because the scheme
 // is about who issues names and this app has one issuer. An opaque URI -- one
-// with no authority and no path, like `hday:0199c3f4-…`, where everything is in
-// `Opaque` -- says what is after the colon. Both forms reach [ParseName], which
-// is the same code a header goes through: a certificate names an actor either
-// way an actor is named.
+// with no authority and no path, like `fleet:0199c3f4-…`, where everything is
+// in `Opaque` -- says what is after the colon. Both forms reach [ParseName],
+// which is the same code a header goes through: a certificate names an actor
+// either way an actor is named.
 func certIdentity(cert *x509.Certificate) (Identity, bool, error) {
 	if len(cert.URIs) == 0 {
 		if v := cert.Subject.CommonName; v != "" {
@@ -250,9 +250,9 @@ func certIdentity(cert *x509.Certificate) (Identity, bool, error) {
 // its certificates in is the deployment's, and payday has no opinion to have
 // about it.
 //
-//	x:0199c3f4-...          -> 0199c3f4-...
-//	urn:hday:0199c3f4-...   -> 0199c3f4-...
-//	urn:uuid:0199c3f4-...   -> 0199c3f4-...
+//	x:0199c3f4-...           -> 0199c3f4-...
+//	urn:fleet:0199c3f4-...   -> 0199c3f4-...
+//	urn:uuid:0199c3f4-...    -> 0199c3f4-...
 //
 // The last one is worth knowing about: `uuid` is the one URN namespace that is
 // actually registered (RFC 4122), so a deployment that wanted a form nobody has

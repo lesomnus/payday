@@ -209,8 +209,9 @@ type Store interface {
 // **This is the seam.** payday has no idea what a login form contains -- a JSON
 // body, a form post, a username and a password, an authenticator response --
 // and it has no way to check any of them: the people are in the app's schema
-// and the secrets are wherever that app keeps them. In a deployment with roster
-// behind it this is one call to `VouchService.Verify` and nothing else.
+// and the secrets are wherever that app keeps them. In a deployment with an
+// identity store behind it this is one call to that store's `Verify` and
+// nothing else.
 //
 // What comes back needs [Session.Id] and [Session.TenantId] and may set
 // [Session.Grant] and [Session.Expires]. [Session.Key] is filled here; a value

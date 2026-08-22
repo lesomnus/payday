@@ -110,6 +110,7 @@ var (
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "idp_subject", Type: field.TypeString},
+		{Name: "profile", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"mysql": "json", "postgres": "jsonb"}},
 		{Name: "tenant_id", Type: field.TypeUUID},
 	}
 	// HolderTable holds the schema information for the "holder" table.
@@ -120,7 +121,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "holder_tenant_tenant",
-				Columns:    []*schema.Column{HolderColumns[9]},
+				Columns:    []*schema.Column{HolderColumns[10]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -129,7 +130,7 @@ var (
 			{
 				Name:    "holder_alias_tenant_id",
 				Unique:  true,
-				Columns: []*schema.Column{HolderColumns[1], HolderColumns[9]},
+				Columns: []*schema.Column{HolderColumns[1], HolderColumns[10]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "date_erased IS NULL",
 				},

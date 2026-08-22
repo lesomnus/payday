@@ -121,9 +121,11 @@ export interface QueryOpts {
 	 * Open the sibling `Watch` for as long as anybody is asking this, so the
 	 * rows it answered with stay current without anybody polling.
 	 *
-	 * On by default when the service has one and this query carries filters,
-	 * because the alternative is a screen that is quietly wrong and a timer
-	 * somebody has to tune.
+	 * On by default when the service has one and this query names at least
+	 * one filter, because the alternative is a screen that is quietly wrong
+	 * and a timer somebody has to tune. A filterless list is left unwatched:
+	 * the server refuses a watch over the whole table, so a page that wants
+	 * liveness says which rows it is about. `true` insists either way.
 	 */
 	readonly watch?: boolean
 }
@@ -216,10 +218,11 @@ export class Queries {
 	 * server's order against a partial copy, and being confidently wrong about
 	 * a page boundary. The re-read is a round trip and it is the true answer.
 	 *
-	 * A removal is the one write whose answer carries nothing, so it is read
-	 * from the request: `Erase` names a row, and a row erased is gone here at
-	 * once. Anything else that removes -- an app's own `Deactivate` -- says so
-	 * with `store.apply`.
+	 * A removal is the one write whose answer names no row -- `Erase` answers
+	 * with whether this call erased, not with what it erased -- so the subject
+	 * is read from the request: `Erase` names a row, and a row erased is gone
+	 * here at once. Anything else that removes -- an app's own `Deactivate` --
+	 * says so with `store.apply`.
 	 */
 	async call<I extends DescMessage, O extends DescMessage>(
 		method: DescMethodUnary<I, O>,
@@ -515,8 +518,19 @@ export class Queries {
 		if (m === undefined) return
 		if (v.opts.watch === false) return
 
+		// `[]` counts as no filters, and it is the shape that actually
+		// arrives: protobuf-es materializes the repeated field, so a
+		// filterless list carries `filters: []` and never leaves it out. The
+		// server refuses the watch either way -- a watch says which rows it
+		// is about, and one that says nothing is the whole table, for as long
+		// as it is open -- and the refusal would land in the reopen path
+		// below, which swallows it: a stream spent, the one retry spent
+		// re-reading, and a screen that is quietly not live anyway. A page
+		// that wants other people's writes live names a filter; `watch: true`
+		// still insists, for a server whose `Watch` takes the whole table.
 		const filters = (v.input as unknown as Record<string, unknown>)['filters']
-		if (filters === undefined && v.opts.watch !== true) return
+		const filterless = filters === undefined || (Array.isArray(filters) && filters.length === 0)
+		if (filterless && v.opts.watch !== true) return
 
 		const stop = new AbortController()
 		v.stop = stop
@@ -655,8 +669,9 @@ export class Queries {
 	 * erased is the row a removal names, and what entity it is of.
 	 *
 	 * By name, the way `Watch` is found: payday generates `Erase` on every
-	 * entity service, taking that entity's ref and answering with nothing. This
-	 * is payday's package and that is payday's shape.
+	 * entity service, taking that entity's ref and answering with whether this
+	 * call erased -- naming no row. This is payday's package and that is
+	 * payday's shape.
 	 *
 	 * The entity is read from a sibling -- `Add` and `Get` answer with it -- so
 	 * that a removal whose ref this cannot resolve still says *which* lists

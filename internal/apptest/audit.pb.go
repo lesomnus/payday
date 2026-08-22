@@ -327,7 +327,14 @@ type Audit_builder struct {
 	// when neither is true.
 	ActorTenantId []byte
 	// The row this happened to, marshaled, as it was when the event was over --
-	// and for an Erase, as it was the moment before.
+	// an Erase included. An entity erased softly keeps its row, so the value of
+	// its Erase is the whole of that row with the erase stamp on: everything of
+	// the moment before, plus what the erase wrote -- the stamp, and the version
+	// column beside it for an entity that carries one, since an erase is a write
+	// like any other. It is the stamped row rather than the pre-image because the
+	// recorder reads inside the erase's own transaction, where "before" no longer
+	// exists, and a copy taken earlier could be stale by the time the stamp
+	// lands.
 	//
 	// `patch` is the delta and this is the state, and the trail needs both for a
 	// reason each of them cannot answer alone. A patch says what changed and not
@@ -335,11 +342,14 @@ type Audit_builder struct {
 	// this the two events that matter most -- what was created, what was
 	// destroyed -- record nothing but their own names.
 	//
-	// Erase is the sharp one. An entity that is not softly erased loses its row
-	// for good, and then this is the **only** record that it ever held anything.
+	// The hard Erase is the one with nothing to read: the row is gone before the
+	// recorder runs, so the value is **empty** and the record is filed under the
+	// actor's tenant -- see `payday.Entity.Erase.hard`. What the row held is in
+	// the trail of the writes before it; the record of the destruction and the
+	// record of the contents are different rows.
 	//
-	// Which is also what it costs: the trail outlives what it names, so an erased
-	// row's contents live here afterwards. An app with an obligation to destroy
+	// Which is also what it costs: the trail outlives what it names, so a softly
+	// erased row's contents live on here. An app with an obligation to destroy
 	// data has to reckon with the trail, and the answer is a retention policy
 	// rather than an empty column.
 	Value []byte
@@ -380,10 +390,10 @@ type Audit_builder struct {
 	//
 	// Nullable is also what keeps the other writers working. The recorder is not
 	// the only one: an app that records something the servers cannot see --
-	// roster writes an operator's intent before the attempt, through ent, because
-	// every server refuses a write to the trail -- composes the row itself, and a
-	// column it must fill in is one it learns about from a runtime refusal on the
-	// day somebody upgrades.
+	// directory writes an operator's intent before the attempt, through ent,
+	// because every server refuses a write to the trail -- composes the row
+	// itself, and a column it must fill in is one it learns about from a runtime
+	// refusal on the day somebody upgrades.
 	CounterpartTenantId []byte
 }
 

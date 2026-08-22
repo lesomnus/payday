@@ -95,6 +95,24 @@ function settled(key: string): Promise<void> {
 	})
 }
 
+/**
+ * counting wraps the transport so a test can say **how many** calls the layer
+ * made, which its own answers cannot: a stream the server would refuse and a
+ * re-read that should not have happened both look like nothing from above.
+ */
+function counting(on: (kind: 'unary' | 'stream', method: string) => void): Transport {
+	return {
+		unary(method, ...rest) {
+			on('unary', method.name)
+			return transport.unary(method, ...rest)
+		},
+		stream(method, ...rest) {
+			on('stream', method.name)
+			return transport.stream(method, ...rest)
+		},
+	}
+}
+
 /** until waits for something to become true, or gives up loudly. */
 async function until(f: () => boolean, ms = 10_000): Promise<void> {
 	const end = Date.now() + ms
@@ -300,8 +318,9 @@ describe('a write lands where everything is reading', () => {
 
 		await queries.call(RobotService.method.erase, { key: { case: 'id', value: made.id } })
 
-		// The answer to an `Erase` is empty, so what says which row is gone is
-		// the request -- and it says it now rather than a round trip from now.
+		// The answer to an `Erase` says whether it erased and names no row, so
+		// what says which row is gone is the request -- and it says it now
+		// rather than a round trip from now.
 		expect(store.row(Robot.typeName, made.id)).toBeUndefined()
 		expect(queries.get(RobotService.method.list, req, { watch: false }).data?.items).toHaveLength(0)
 	})
@@ -326,5 +345,81 @@ describe('forget is how somebody says the world moved', () => {
 
 		queries.forget()
 		await until(has)
+	})
+})
+
+describe('a filterless list is not watched', () => {
+	it('opens no stream for { filters: [] }', { timeout: 30_000 }, async () => {
+		let streams = 0
+		const q = new Queries(
+			store,
+			counting((kind) => {
+				if (kind === 'stream') streams++
+			}),
+			entities,
+		)
+
+		// **Not** `{ watch: false }`, which is what every other list here says.
+		// The point is the default, over the shape a filterless page actually
+		// sends: protobuf-es materializes the repeated field, so `filters`
+		// arrives as `[]` and never as absent.
+		const req = { filters: [], size: 100 }
+		const e = q.get(RobotService.method.list, req)
+		await new Promise<void>((ok) => q.subscribe(e.key, () => ok()))
+		expect(q.get(RobotService.method.list, req).state).toBe('ok')
+
+		// The server would refuse this watch -- one that names no rows is the
+		// whole table -- and the reopen path swallows the refusal, so the only
+		// honest witness is the transport: no stream was asked for at all.
+		await new Promise((ok) => setTimeout(ok, 200))
+		expect(streams).toBe(0)
+
+		// A filter is the whole difference: the same list over one row opens
+		// its watch. Which is also what proves this counter counts.
+		const made = await add(named('nw'))
+		const f = q.get(RobotService.method.list, {
+			filters: [{ ref: { key: { case: 'id', value: made.id } } }],
+		})
+		await new Promise<void>((ok) => q.subscribe(f.key, () => ok()))
+		await until(() => streams === 1)
+	})
+})
+
+describe('a query nobody is drawing rests', () => {
+	it('is not revalidated at rest, and is read once when drawn again', { timeout: 30_000 }, async () => {
+		let lists = 0
+		const q = new Queries(
+			store,
+			counting((kind, method) => {
+				if (kind === 'unary' && method === 'List') lists++
+			}),
+			entities,
+		)
+
+		const req = { filters: [], size: 100 }
+		const e = q.get(RobotService.method.list, req, { watch: false })
+		const off = q.subscribe(e.key, () => {})
+		await until(() => q.get(RobotService.method.list, req, { watch: false }).state === 'ok')
+		expect(lists).toBe(1)
+
+		// The last listener lets go, which is a page navigating away. The
+		// answer stays; the reading stops.
+		off()
+
+		// A write that grows this list. Re-reading it now would be a call for
+		// a screen that is not there, so the write must not make one.
+		await q.call(RobotService.method.add, {
+			tenant: { key: { case: 'id', value: await tenantId() } },
+			alias: named('r'),
+		})
+		await new Promise((ok) => setTimeout(ok, 200))
+		expect(lists).toBe(1)
+
+		// Coming back is the moment to find out whether the held answer is
+		// still true -- once, not once per write that happened while away.
+		q.subscribe(e.key, () => {})
+		await until(() => lists === 2)
+		await new Promise((ok) => setTimeout(ok, 200))
+		expect(lists).toBe(2)
 	})
 })

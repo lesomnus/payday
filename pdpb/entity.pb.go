@@ -564,10 +564,19 @@ type Field_builder struct {
 	//
 	// # What it does
 	//
-	// It comes out of every response: the entity message a `Get` answers with,
-	// the one a `List` carries, the one an `Add` echoes back. It comes out of the
-	// `Select` message too, so there is not even a way to ask -- a caller reading
-	// the schema can see that this is not something the server hands out.
+	// A generated layer clears it on the way out: out of the entity message a
+	// `Get` answers with, out of every item of a `List`, out of the one an `Add`
+	// echoes back, and out of what a `Watch` streams -- which is the read nobody
+	// could have narrowed by asking, since a watch has no `Select`.
+	//
+	// The field itself stays in the generated types, and that is not payday's to
+	// change: the entity message and its `Select` come from the ORM's generators,
+	// upstream of anything here. So a caller may still ask for the column and is
+	// answered with nothing rather than refused -- `Select{All: true}` is how a
+	// row is ordinarily asked for, and an error there would make the common call
+	// the failing one. What it costs is that this is a line in a deployment's
+	// stack rather than a property of the message: leave the layer out and the
+	// value goes out with the row.
 	//
 	// The **write** side is untouched. It is still in `Add` and in `Patch`,
 	// because writing is the half that works: somebody sets a password, and
@@ -808,14 +817,18 @@ type Entity_Tenanted_builder struct {
 	//
 	// # What it adds to what is already refused
 	//
-	// The generated gate already reads every edge of an `Add` **through the
-	// wall**, so a caller cannot point a row at a row it cannot see. That is
-	// most of this, and it is free.
+	// The generated gate reads part of an `Add` **through the wall**: the first
+	// hop of the `via` path, and the field-3 set edge where an app declared
+	// one. Those are where the row itself lands, and they are free. Every other
+	// edge is read by nothing -- that a row points at another row is
+	// referential rather than tenancy, and asking it would be a read per edge
+	// on every write.
 	//
-	// What it does not cover is a caller who can see both: an operator whose
-	// scope is several tenants passes that check with one edge in each. This is
-	// that case, and the one where a deployment writes through a server the
-	// wall was never installed on.
+	// A second path to a tenant is one of those, so it is looked at by nothing
+	// until it is named here. And even the hop that is read is not a
+	// comparison: a caller who can see both tenants passes it with one edge in
+	// each -- an operator whose scope is several -- as does a deployment
+	// writing through a server the wall was never installed on.
 	//
 	// Each is a path like `via` -- an edge, or a dotted one. What is compared
 	// is the tenant each reaches.
@@ -955,8 +968,9 @@ type Entity_Erase_builder struct {
 	//
 	// Do not answer this by going to the database instead. A `DELETE` run
 	// outside the app skips the trail, the version and the `Watch` -- and a
-	// watch says a row is gone by not sending it, so a row removed behind the
-	// app's back is one every client that has it keeps forever.
+	// watch says a row is gone by sending its identifier with no value, which
+	// only a write through the app publishes, so a row removed behind the app's
+	// back is one every client that has it keeps forever.
 	Hard *Entity_Hard
 }
 

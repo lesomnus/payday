@@ -271,7 +271,7 @@ func TestRegistry(t *testing.T) {
 	// TestANumberTwoAppsMeanDifferentlyLosesItsName.
 	//
 	// A domain number is the app's to declare, so two apps linked into one
-	// process disagree about what 7 is -- custody's asset, roster's site. This
+	// process disagree about what 7 is -- one app's asset, another's site. This
 	// used to panic from an init, taking the process down before `main` over a
 	// display name, and it is how the first attempt to have one payday app call
 	// another ended.

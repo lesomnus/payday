@@ -30,10 +30,11 @@ const (
 // limit counts against it. An app that declared its own would be an app in
 // which none of those could be written once.
 //
-// **Fields 1..7 and 13..15 are payday's.** An app adds its own in 8..12 and
-// from 16, in a `tenant.ext.proto` beside this; `pd gen` refuses an overlay
-// that touches a number here, since the merge would take it silently and
-// `alias` would quietly become whatever the overlay said.
+// **Fields 1, 2, 4..7 and 13..15 are payday's, and 3 is not**: it is left for
+// the app's set edge, and payday will not spend it. An app adds its own in
+// 8..12 and from 16, in a `tenant.ext.proto` beside this; `pd gen` refuses an
+// overlay that touches a number here, since the merge would take it silently
+// and `alias` would quietly become whatever the overlay said.
 type Tenant struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`

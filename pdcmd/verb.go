@@ -303,9 +303,24 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 				}
 			}
 			if v, ok := flg.Find[string](cmd, "next"); ok && v != "" {
-				if fd := fs.ByName("next"); fd != nil {
-					m.Set(fd, protoreflect.ValueOfString(v))
+				// The flag keeps the answer's name -- the value in somebody's
+				// hand is the "next" of the page they just read -- while the
+				// generated request calls the same thing "after", for where it
+				// goes rather than where it came from. "next" is still tried,
+				// for a hand-written service that named the field the way the
+				// flag is named.
+				fd := fs.ByName("after")
+				if fd == nil {
+					fd = fs.ByName("next")
 				}
+				if fd == nil || fd.Kind() != protoreflect.StringKind {
+					// Refused rather than dropped: a --next that fell out
+					// silently would answer with the first page again, which
+					// reads as a one-page list and not as a mistake.
+					return fmt.Errorf("%s: has no cursor for --next to carry on from", m.Descriptor().FullName())
+				}
+
+				m.Set(fd, protoreflect.ValueOfString(v))
 			}
 
 			if err := r.run(ctx, cmd, md, in); err != nil {

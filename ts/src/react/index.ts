@@ -7,9 +7,11 @@
  * framework payday *required* would be the thing that makes full-stack
  * frameworks fail.
  *
- * So this is a binding and not a layer. It is `useSyncExternalStore` over
- * [Queries.subscribe], and the same file for Vue or Svelte is the same length
- * -- which is the point: an app that wants neither throws away thirty lines.
+ * So this is a binding and not a layer: five exports, and the
+ * `useSyncExternalStore` over [Queries.subscribe] under them is twenty lines.
+ * The same file for Vue or Svelte is the same length -- which is the point: an
+ * app that wants neither leaves this entry unimported and gives up nothing the
+ * store does.
  *
  * `react` is an **optional** peer dependency. Importing this entry is what
  * makes it required, and nothing else in the package reaches for it.

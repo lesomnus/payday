@@ -128,8 +128,9 @@ func TestGlobalIsNotBehindTheWall(t *testing.T) {
 	}
 }
 
-// TestNoFrameIsRefused is the decision go-app arrived at the hard way: a
-// request nobody vouched for is refused rather than served as everybody.
+// TestNoFrameIsRefused is a decision an earlier system arrived at the hard
+// way: a request nobody vouched for is refused rather than served as
+// everybody.
 //
 // The scope that means "everything" is not reachable by forgetting. What has
 // to go around the wall goes around it by being handed a server the wall was

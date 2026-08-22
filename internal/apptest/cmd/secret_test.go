@@ -76,9 +76,9 @@ func TestTheWriteHalfStillWorks(t *testing.T) {
 // but this one: a verifier in `value` is a second copy of it, in the one table
 // nothing erases, readable by anybody who may read the trail.
 //
-// Found by writing it against roster, where an argon2id hash sat in the trail
-// of a deployment whose `CredentialService` is unregistered and closed
-// precisely so that it could not be read.
+// Found by writing it against an identity store, where an argon2id hash sat in
+// the trail of a deployment whose `CredentialService` is unregistered and
+// closed precisely so that it could not be read.
 func TestASecretIsNotInTheTrail(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)

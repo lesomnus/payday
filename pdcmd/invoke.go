@@ -79,13 +79,13 @@ func newMessage(d protoreflect.MessageDescriptor) (proto.Message, error) {
 // cover what is written constantly (which row, what it is called) and anything
 // else is the request itself:
 //
-//	app robot add @arm-01 '{"cell":{"alias":"floor-2"}}'
+//	app robot add @arm-01 '{"cell":{"id":"01a0010f-fd1e-8f1b-a60a-44424d2ababd"}}'
 //	app robot patch @acme/arm-01 '{"alias":"arm-02"}'
 //	app robot add - < robot.json
 //
-// Taken from oasys, which found the same thing writing the same commands by
-// hand: the flexible half has to be the message, because the message is what
-// the server takes.
+// The same thing was found writing these commands by hand before anything
+// generated them: the flexible half has to be the message, because the message
+// is what the server takes.
 func argRaw() *arg.RestStrings {
 	return &arg.RestStrings{
 		Name:  "REQ",

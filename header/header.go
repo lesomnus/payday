@@ -20,10 +20,12 @@
 // entity somebody adds tomorrow. It is the same discipline the local store is
 // held to -- generate the declaration, implement the behaviour once.
 //
-// What generation does instead is make the read **safe**: a field called `name`
-// that is not a string, or `labels` that is not a map of strings, is refused,
-// because a reflective read of one would quietly see nothing at all. See
-// `pdgen`.
+// What generation does instead is make the read **safe**: `alias`, `name` and
+// `desc` are refused unless each is a string at the number the header reserves
+// for it, because a reflective read of one that is neither would quietly see
+// nothing at all. `labels` is the gap -- what that check compares is an `orm`
+// type, and a map has none -- so an entity that calls something else `labels`
+// reads as having none of them. See `pdgen`.
 //
 // # What it does not do
 //

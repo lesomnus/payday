@@ -57,10 +57,10 @@ func (o Options) def() string {
 // and print what came back. It reads no configuration file and holds no
 // credential.
 //
-// That is what lets one app have several trees: roster has an operator port and
-// a data port with different policies in front of them, and kamino2 reaches
-// roster over an in-process pipe while reaching itself over a socket. Each is a
-// connection, so each is a tree.
+// That is what lets one app have several trees: an app may put an operator port
+// and a data port behind different policies, and an app that embeds another
+// reaches the embedded one over an in-process pipe while reaching itself over a
+// socket. Each is a connection, so each is a tree.
 //
 // # Three ways in, and they are the same commands
 //
@@ -146,10 +146,10 @@ func NewIn(to Connector, pkg protoreflect.FullName, opts ...Options) *Tree {
 		for _, v := range verbs {
 			md := e.Method(v.method)
 			if md == nil {
-				// The verb this entity does not have. Four of payday's own nine
-				// test entities have no `List`, because `list:` is a thing an
-				// entity declares and most did not -- so this is the ordinary
-				// case and not an error.
+				// The verb this entity does not have. Seven of payday's own
+				// eleven test entities have no `List`, because `list:` is a
+				// thing an entity declares and most did not -- so this is the
+				// ordinary case and not an error.
 				continue
 			}
 			if md.IsStreamingClient() || md.IsStreamingServer() != v.stream {

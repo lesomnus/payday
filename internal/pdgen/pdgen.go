@@ -624,9 +624,9 @@ func (s *Schema) checkVia(v *Entity) error {
 // when the row is written; if any step of the path could be repointed
 // afterwards the column would go on saying where the row used to belong, and
 // the wall reads the column. Refusing the schema is cheaper than a check on
-// every write, and it costs nothing today: every tenancy path in payday,
-// roster and this repository's own test app already runs through immutable
-// edges. What it prevents is the next one that does not.
+// every write, and it costs nothing today: every tenancy path in payday, in
+// this repository's own test app and in the apps built on it already runs
+// through immutable edges. What it prevents is the next one that does not.
 func (s *Schema) checkStamp(v *Entity) error {
 	if v.Stamp == "" {
 		return nil
@@ -1033,9 +1033,9 @@ func field(e graph.Entity, name string) (graph.Field, bool) {
 //
 // It is the most valuable check here and the only one that is a warning rather
 // than a refusal. An order the database cannot walk is a full scan and a sort,
-// on the table a List is pointed at -- which is the one that grows. go-app
-// declared the index its trail is read by and wrote the reason in a comment
-// beside it; a comment is not something the next person reads.
+// on the table a List is pointed at -- which is the one that grows. An earlier
+// system declared the index its trail is read by and wrote the reason in a
+// comment beside it; a comment is not something the next person reads.
 //
 // A warning and not a refusal because a small table is a real thing. A hundred
 // rows of configuration do not need an index and refusing to generate for them
@@ -1123,9 +1123,9 @@ func Warnings(s *Schema) []string {
 var header = []struct {
 	Name string
 	Type ormpb.Type
-	// At is where payday's own entities put it. It is a convention rather than
-	// a rule -- see [Schema.checkHeader] for why one is refused and the other
-	// only mentioned.
+	// At is where payday's own entities put it, and where every entity is held
+	// to put it -- see [Schema.checkHeader] for why the number is part of the
+	// rule and not a convention.
 	At int
 }{
 	{"alias", ormpb.Type_TYPE_STRING, 4},
@@ -1136,17 +1136,19 @@ var header = []struct {
 // checkHeader refuses a header field that is not the kind a reader will look
 // for.
 //
-// # Why the type is refused and the number is not
+// # Why the type is refused
 //
 // A reflective read matches on the name and then on the kind, so a `name` that
 // is an int is a field that **silently reads as absent** -- a page falls back
 // to the alias, or to the identifier, and nothing anywhere says why. That is
 // the class payday refuses.
 //
-// A number that is not the conventional one costs nothing at all: the read does
-// not use numbers. It is worth mentioning because a schema that reads like its
-// neighbours is easier to hold in the head, and it is not worth refusing
-// because there is nothing to go wrong.
+// # Why the number is refused too
+//
+// The read does not use numbers, so a `name` at 9 costs nothing today. What
+// they buy is tomorrow: 4..7 are reserved so that payday can add a header field
+// later without every app having spent that number on something else, and a
+// reservation nothing enforces reserves nothing.
 //
 // # Why presence is not required
 //
@@ -1354,19 +1356,33 @@ func (s *Schema) checkErase() error {
 }
 
 // suggestErased is a field number that is free, for the message that tells an
-// entity to declare one. 14 is where payday's own Holder puts it.
+// entity to declare one. 14 is where payday's own Holder puts it, and where an
+// entity that has not spent it should put it too, so that the marker is in the
+// same place in every schema payday reads.
+//
+// Past 14 it counts up from 16 and not from the first hole anywhere, because
+// 13..15 are payday's on every entity it ships -- the version, this marker, the
+// creation stamp -- and a number suggested out of that range is a collision
+// scheduled for whenever the app grows into it.
+//
+// It is the first free number rather than a list of candidates, because a list
+// has to end somewhere and the entity that has spent every number on it is
+// answered with one of them anyway. The suggestion is a line to paste, and a
+// number the message names while the schema already uses it is worse than no
+// message at all: it reads as an answer and does not compile.
 func suggestErased(e graph.Entity) int {
 	taken := map[int]bool{}
 	for f := range e.Fields() {
 		taken[int(f.Number())] = true
 	}
-	for _, f := range []int{14, 16, 17, 18} {
+	if !taken[14] {
+		return 14
+	}
+	for f := 16; ; f++ {
 		if !taken[f] {
 			return f
 		}
 	}
-
-	return 14
 }
 
 // checkPresence refuses a field that has presence in the API and nowhere to
@@ -1460,8 +1476,10 @@ func (s *Schema) checkPresence(v *Entity) error {
 // # What is allowed
 //
 // Either alone works, so an existing schema is not rewritten to be read and a
-// small one is not made verbose. Both together is what is checked, and is what
-// `pd new` writes.
+// small one is not made verbose -- `pd new` itself writes name-only. Both
+// together is what is checked: resolved by the number, refused when the name
+// no longer agrees, which is the only form the quiet rename above is caught
+// in.
 func named(e graph.Entity, ref *ormpb.Ref, what string) (string, error) {
 	name, number := ref.GetName(), ref.GetNumber()
 	switch {

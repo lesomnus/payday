@@ -36,7 +36,7 @@ func NewCmdGen() *xli.Command {
 	return &xli.Command{
 		Name:  "gen",
 		Brief: "generate everything the schema says",
-		Synop: "pd gen [--check] [DIR]",
+		Synop: "pd gen [--check] [--ts] [DIR]",
 
 		Flags: flg.Flags{
 			&flg.Switch{
@@ -50,8 +50,9 @@ func NewCmdGen() *xli.Command {
 		},
 		Args: arg.Args{
 			&arg.String{
-				Name:  "DIR",
-				Brief: "the app; the working directory by default",
+				Name:     "DIR",
+				Brief:    "the app; the working directory by default",
+				Optional: true,
 			},
 		},
 
@@ -119,8 +120,9 @@ func NewCmdDoctor() *xli.Command {
 
 		Args: arg.Args{
 			&arg.String{
-				Name:  "DIR",
-				Brief: "the app; the working directory by default",
+				Name:     "DIR",
+				Brief:    "the app; the working directory by default",
+				Optional: true,
 			},
 		},
 
@@ -163,7 +165,7 @@ func NewCmdNew() *xli.Command {
 	return &xli.Command{
 		Name:  "new",
 		Brief: "write an app to start from",
-		Synop: "pd new MODULE [DIR]",
+		Synop: "pd new [--name NAME] [--setup] MODULE [DIR]",
 
 		Flags: flg.Flags{
 			&flg.String{
@@ -177,7 +179,7 @@ func NewCmdNew() *xli.Command {
 		},
 		Args: arg.Args{
 			&arg.String{Name: "MODULE", Brief: "the Go module path, e.g. github.com/acme/thing"},
-			&arg.String{Name: "DIR", Brief: "where to write it; named after the app by default"},
+			&arg.String{Name: "DIR", Brief: "where to write it; named after the app by default", Optional: true},
 		},
 
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
@@ -190,22 +192,17 @@ func NewCmdNew() *xli.Command {
 				return err
 			}
 
-			where := n.Dir
-			if where == "" {
-				where = n.Name
-			}
-
-			cmd.Printf("pd: %s is in %s\n\n", module, where)
+			cmd.Printf("pd: %s is in %s\n\n", module, n.Where())
 
 			if setup, _ := flg.Find[bool](cmd, "setup"); setup {
 				if err := n.Setup(ctx, cmd); err != nil {
 					return err
 				}
 
-				cmd.Printf("\n    cd %s\n", where)
+				cmd.Printf("\n    cd %s\n", n.Where())
 				cmd.Println("    go tool pd gen .")
 				cmd.Println("    go mod tidy")
-				cmd.Printf("    go run ./cmd/%s serve\n", n.Name)
+				cmd.Printf("    go run ./cmd/%s serve\n", n.Called())
 
 				return nil
 			}
@@ -258,7 +255,7 @@ func NewCmdSandboxInit() *xli.Command {
 		Synop: "pd sandbox init [DIR]",
 
 		Args: arg.Args{
-			&arg.String{Name: "DIR", Brief: "the app; the working directory by default"},
+			&arg.String{Name: "DIR", Brief: "the app; the working directory by default", Optional: true},
 		},
 
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
@@ -305,18 +302,32 @@ func NewCmdEntityAdd() *xli.Command {
 	return &xli.Command{
 		Name:  "add",
 		Brief: "write a new entity into the schema",
-		Synop: "pd entity add NAME (--tenanted|--tenant|--global) [--watch] [DIR]",
+		// Flags first, because that is the shape the parser takes: a flag
+		// written after an argument is refused. The tenancy group is bracketed
+		// for the same reason the scaffold assumes one -- saying nothing is
+		// behind the wall, not an omission.
+		//
+		// A synopsis is what may be written, so `--tenant` is not in it: the
+		// parser takes it and the scaffold refuses it, and offering it as one
+		// of the tenancies would be the help promising a schema `pd gen` will
+		// not accept.
+		Synop: "pd entity add [--tenanted|--global] [--watch] [--file FILE] NAME [DIR]",
 
 		Flags: flg.Flags{
 			&flg.Switch{Name: "tenanted", Brief: "its rows belong to a tenant, and the wall narrows every read"},
-			&flg.Switch{Name: "tenant", Brief: "it is the tenant itself"},
+			// Taken so that asking for it is answered. payday ships the tenant
+			// and copies it into every app, so there is no schema where a
+			// second one generates -- and `unknown flag` sends the same person
+			// to write `tenant: {}` by hand, which is the same refusal
+			// arriving later from a generator with nowhere to go next.
+			&flg.Switch{Name: "tenant", Brief: "refused: payday ships the tenant, and an app does not declare a second"},
 			&flg.Switch{Name: "global", Brief: "not behind the wall, and said on purpose"},
 			&flg.Switch{Name: "watch", Brief: "also a List and a Watch, with the version field a Watch needs"},
 			&flg.String{Name: "file", Brief: "the .proto to write into; one named after the entity by default"},
 		},
 		Args: arg.Args{
 			&arg.String{Name: "NAME", Brief: "the message, e.g. Robot"},
-			&arg.String{Name: "DIR", Brief: "the app; the working directory by default"},
+			&arg.String{Name: "DIR", Brief: "the app; the working directory by default", Optional: true},
 		},
 
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
@@ -345,7 +356,7 @@ func NewCmdEntityAdd() *xli.Command {
 			// The path `Add` actually wrote, rather than one rebuilt from the
 			// pieces it was given. Rebuilding it is what printed
 			// `proto/app/fleet.proto` for a file that went to
-			// `proto/hday.oasys/` -- a second answer to a question already
+			// `proto/telemetry/` -- a second answer to a question already
 			// answered, and the one a person reads.
 			where := p
 			if v, err := filepath.Rel(l.Work, p); err == nil {
@@ -373,7 +384,7 @@ func NewCmdEntityList() *xli.Command {
 		Synop: "pd entity list [DIR]",
 
 		Args: arg.Args{
-			&arg.String{Name: "DIR", Brief: "the app; the working directory by default"},
+			&arg.String{Name: "DIR", Brief: "the app; the working directory by default", Optional: true},
 		},
 
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {

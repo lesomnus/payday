@@ -3,8 +3,8 @@
 What payday is made of, and which of it you get by declaring something rather
 than by writing it.
 
-This is the map. The [guides](guide/) are how to use each part; the package
-comments are the detail. What is here is the shape of the whole, and the
+This is the map. The [guides](README.md#guides) are how to use each part; the
+package comments are the detail. What is here is the shape of the whole, and the
 decisions that gave it that shape.
 
 - [1. Three kinds of code](#1-three-kinds-of-code)
@@ -25,9 +25,9 @@ say one of their names cannot live in a library, so it is generated too.
 Everything else is a package you import.
 
 ```
-payday/…       a library. Knows nothing about your entities
-server/pd/     generated. Knows all of them
-server/core/   yours
+payday/…                   a library. Knows nothing about your entities
+server/bare/, server/pd/   generated. Know all of them
+server/core/               yours
 ```
 
 The third is the smallest, and that is the point. What is left for you to write
@@ -79,7 +79,7 @@ table is for finding the right one.
 | | |
 | --- | --- |
 | [`schema`](../schema) | payday's own entities, embedded, so an app's copies can be checked against them |
-| [`pdpb`](../pdpb) | the generated Go for `payday.entity` and `BatchService` |
+| [`pdpb`](../pdpb) | the generated Go for what a schema declares — `(payday.entity)`, `(payday.field)`, `(payday.app)` — and for the two services payday serves on an app's behalf: `BatchService`, and the `TokenService` that `auth.Remote` asks |
 
 ## 3. What is generated
 
@@ -90,8 +90,9 @@ in CI is what keeps that true.
 | --- | --- |
 | the messages and ent schema for Tenant, Holder, Audit, Outbox | they come out of the merged proto, with your added fields on them |
 | the domain constants and their registration | they come out of the schema's `(payday.entity).domain` |
+| one bare server per entity, straight onto `*ent.Client` | every statement it builds names a type of yours |
 | the `Sink` — minter, wall, recorders | a scope is `predicate.Robot`, which is your type |
-| the `Gate` and `Audit` layers | they overlay `app.Server`, which is generated |
+| the `Gate` and `Audit` layers, and `Secret` where a field declared one | they overlay `app.Server`, which is generated |
 | the per-entity wall predicates | `tenanted: {via: …}` becomes `predicate.Robot` |
 | `List` and `Watch` — request, response, RPC, implementation | the ent query builder is your type |
 | the batch dispatcher | it has to know every RPC the app has |
@@ -143,8 +144,9 @@ server instances, and order the interceptors.
 That last one is deliberately not `pd.Serve(cfg)`. The order of the stack and
 the existence of an ungated instance are the two most load-bearing facts about
 an app, and a framework that supplied them would be hiding the thing a reader
-most needs to see. **The wiring stays where it can be read; the runtime supplies
-the parts.**
+most needs to see. Both are then answerable by reading one file: which layer
+sees a call first, and who is handed the instance the wall was never installed
+on. **The wiring stays where it can be read; the runtime supplies the parts.**
 
 ## 5. How each rule is enforced
 
@@ -157,43 +159,31 @@ Everything payday enforces is placed as far left as it goes.
 
 | What | How |
 | --- | --- |
-| every entity declares a domain | generation failure |
-| domain numbers do not collide | generation failure |
-| an overlay does not touch a payday-owned field number | generation failure — adding only |
-| every entity says whether it is behind the wall | generation failure. Saying nothing means `tenanted:`, which is the loud way to be wrong |
-| the last key in `list.order` is the row key | generation failure |
-| an index covers `list.order` | generation failure |
-| `list.max` is set | generation failure |
-| a `watch:` entity has a version field | generation failure |
-| one `go_package` per app | `pd gen` refuses |
-| identifiers are domain-tagged UUIDs | the minter, on both the write and the read path |
-| a `Watch` with no filter | the generated implementation answers `InvalidArgument` |
+| what a schema is allowed to say | generation failure. The whole list is in [the schema guide](guide/schema.md#8-what-generation-refuses) — domains, erasure, tenancy that reaches a tenant, `list:`, `watch:`, overlays, one Go package |
+| every entity says whether it is behind the wall | saying nothing means `tenanted:`, which is the loud way to be wrong; see [TENANCY.md](TENANCY.md#2-the-default-is-the-loud-one) |
+| identifiers are domain-tagged UUIDs | the minter, in every generated `Add`: an identifier of another kind, or one this app did not make, is refused before a statement is built |
+| a `Watch` with no filter | the generated implementation answers `InvalidArgument` — a watch that says nothing is the whole table, for as long as it is open |
 | the watch broker is named | required config field — an unnamed one is right for one replica and silently wrong for two |
 | generated code and linked payday agree | `version.Same`, refused at `NewSink` |
-| the database is not behind the schema | `migrate.Check`, before serving |
+| the database is not behind the schema | `migrate.Check`, before anything is served on it |
 | the runtime assumes no file system | CI builds `GOOS=js GOARCH=wasm` |
-| every layer is an `enttx.Binder` | `pd doctor` finds one that is not |
-| a request with no frame | refused |
+| every layer is an `enttx.Binder` | `pd doctor` finds one that is not — a missing `WithDriver` is nothing until the first transaction |
+| a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
 | `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
 | the wire does not break | `buf breaking` in CI, against the published label and the branch |
+| an index covers `list.order` | a **warning** from `pd gen` and not a refusal: a hundred rows of configuration need no index, and refusing to generate for them would be insisting on a cost nobody is paying |
 
-Two of these deserve their reasoning spelled out.
-
-**Saying nothing means walled.** An entity that forgot to declare its tenancy is
-behind the wall. Get that wrong and every row vanishes and you know in minutes;
-get the other default wrong and every row is visible to everybody and nobody
-finds out. **An assumption should fail loudly, and the dangerous answer should
-be the one somebody had to write down.**
-
-**No superuser.** Going around the wall is being handed a server instance that
-never had one, which is a line of wiring a reader can find — not a claim that
-opens things up wherever it happens to be checked.
+One rule is in no row of that table, because what enforces it is an absence.
+**No superuser**: going around the wall is being handed a server instance that
+never had one, which is a line of wiring a reader can find. See [the two
+servers](guide/server.md#2-the-two-servers-and-why-there-are-two).
 
 ### And what is deliberately *not* enforced
 
 **Layer order.** A stack's value is that you can put anything anywhere. Ranking
-the layers would mean asking the framework where your own layer goes. A warning
-from `doctor` is enough.
+the layers would mean asking the framework where your own layer goes. What the
+order is stays readable instead: it is the argument list in `cmd/serve.go`, and
+the last builder given is the one a request meets first.
 
 ## 6. Background work
 
@@ -206,12 +196,23 @@ emits and every `Overlay`, `StaticServer` and `UnimplementedServer` carries —
 and then every layer inherits an empty `Spin` saying "nothing here", which is
 exactly the fact worth being able to see.
 
-**Capability is found, not declared.**
+**Capability is found, not declared.** Nothing is added to `Server`, `Run` walks
+a stack that was built and asks each layer, and a layer with no background work
+writes not one line.
 
-A `Spin` that returns kills the process: a sweep loop that stopped quietly is
-found days later. Whether it also fails readiness is separate, and the default
-is no — one dead loop should not pull the whole replica out of the load
-balancer.
+A `Spin` that **gives up** — answers an error — takes the process down: `Run`
+stops the rest, waits for them, and answers with the failure. That direction is
+chosen for one failure mode. A sweep that gave up quietly is found days later,
+by which time the table it was keeping small is why something else fell over.
+Answering nil is the opposite statement — a loop saying it is finished, which is
+not a failure and stops nothing else — so a pass that should be tolerated logs
+and answers nil.
+
+None of it touches a health check, and that is a decision rather than an
+omission: one dead loop should not pull a whole replica out of the load balancer
+while every request it was answering was fine. A deployment that wants otherwise
+says so where it reads `Run`'s error, which is one deployment deciding rather
+than payday deciding for all of them.
 
 ## 7. What payday does not do
 
@@ -255,7 +256,7 @@ them. The pair is what a deployment that can lose neither wants.
   of its own and an app blank imports it. Writing one against NATS or Redis is
   ordinary work nobody has needed yet.
 
-  What **is** built is `postgres` — see below — which is the one that needs no
+  What **is** built is `postgres` — above — which is the one that needs no
   bus at all.
 - **Bidirectional `Watch`.** Multiplexing many subscriptions onto one stream
   changes the transport and not the fan-out, which is where the cost actually
@@ -276,11 +277,14 @@ them. The pair is what a deployment that can lose neither wants.
 
 - **Checking a secret.** `authsession.Verify` is a function payday calls and
   never writes: the people are in the app's schema and their secrets are
-  wherever it keeps them. `github.com/lesomnus/roster` is a payday app that does
-  this part, and a deployment with one behind it fills the seam with a single
-  RPC.
+  wherever it keeps them. An identity store is itself a natural payday app — the
+  people are entities of its schema and their secrets are fields it never
+  answers with — and a deployment with one behind it fills the seam with a
+  single RPC.
 - **Client trace propagation.** From a click in the browser to a span on the
-  server. Mechanical, since drpc carries metadata, and worth doing.
+  server. Mechanical, since the page speaks Connect on both wires — HTTP in
+  production, a message port in the sandbox — and a Connect call's headers are
+  what the server reads as metadata. Worth doing.
 
 ## See also
 

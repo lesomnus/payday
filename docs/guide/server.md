@@ -51,10 +51,10 @@ stacked, err := app.Build(walled.WithWatch(w), pd.AuditBuild(), pd.GateBuild())
 last one given handles the request first**. `pd.GateBuild()` is last, which puts
 the gate outermost: nothing behind it has to ask again.
 
-That line is ten lines of wiring rather than `pd.Serve(cfg)`, and that is
-deliberate. The order of the stack is the most load-bearing fact about an app,
-and a framework that supplied it would be hiding the thing a reader most needs
-to see.
+That line is ten lines of wiring rather than `pd.Serve(cfg)` because the order of
+the stack and the existence of an ungated instance are the two most load-bearing
+facts about an app, and both should be answerable by reading one file; see
+[what you write](../RUNTIME.md#4-what-you-write).
 
 ## 2. The two servers, and why there are two
 
@@ -89,6 +89,9 @@ around the record of having done so.
 
 If you hand `Ungated` to something a caller can reach, you have removed the
 wall for every call it serves. That is the whole risk and it is a grep away.
+Which instance an admin path reaches is a question about how many binaries you
+run, and it is answered in
+[how many deployments](../TENANCY.md#3-how-many-deployments).
 
 ## 3. Writing a layer
 
@@ -171,9 +174,9 @@ And nothing catches it at compile time: `enttx.Rebind` asks at run time, so a
 layer without it is `ErrNotBindable` the first time somebody opens a transaction
 — a batch, or a multi-write RPC — which is not the day the layer was written.
 
-`pd doctor` looks for exactly this. The `var _` line above is what it prints in
-the fix, and it is worth keeping: it turns a signature that drifts later into a
-compile error.
+`pd doctor` looks for exactly this. The `enttx.Binder` line above is what it
+prints at the end of the fix, and it is worth keeping: it turns a signature that
+drifts later into a compile error rather than another refusal at run time.
 
 ### What belongs in a layer, and what does not
 
@@ -208,8 +211,8 @@ until a deployment sets one. Both are **fields on the server** rather than
 settings, for the same reason: a mistake in a YAML file must not be able to turn
 authentication off or widen what a caller sees. `s.Policy` also goes to
 `c.Server.Guard` further down, which is what applies it to the operations inside
-a batch; see [tenancy](../TENANCY.md) for why the admin path is a second binary
-rather than a flag.
+a batch rather than to the envelope that carries them; see
+[the guard](batch.md#3-the-guard-and-why-it-is-refused-rather-than-defaulted).
 
 Who is calling comes first, because everything after it reads the frame.
 
@@ -245,10 +248,15 @@ h, err := authoidc.New(ctx, authoidc.Config{
 `Audience` is required rather than optional: a verifier that skips it accepts a
 token minted for **any** relying party of the same issuer.
 
-What `auth` does **not** have is a way to issue a credential. Who may have one,
-and on what evidence, is a decision about an organisation — and logging somebody
-in is an HTTP endpoint besides, since an OIDC redirect is not an RPC. See
-[§9](#9-serving-a-browser).
+For a browser there is `auth/authsession`, the cookie half: a page has nowhere
+safe to keep a token, so what it holds is an opaque handle to a session this
+server keeps, and the same type both mints the cookie and reads it back. See
+[putting a login in front of an app](signing-in.md), and [§9](#9-serving-a-browser)
+for where its endpoint is mounted.
+
+What `auth` will not do is mint a credential somebody **else** verifies. That is
+being an identity provider, and payday is not one: a session key is opaque,
+means nothing anywhere else, and revoking it is a delete.
 
 ### Why `Patch` and `Apply` are closed at the transport
 
@@ -287,7 +295,8 @@ configuration read the other way round is one where a deployment sets a variable
 watches the file win, and has nothing to look at that says so.
 
 Inside the file, `${env:NAME}` is resolved before decoding, so a secret can be
-named in the file without being written in it.
+named in the file without being written in it. `${env:NAME:-default}` is the
+same with an answer for when nothing set it.
 
 Environment variable names come from the struct by reflection, so `server.addr`
 is `ACME_SERVER_ADDR` for an app whose loader was made with `config.For("acme")`.
@@ -304,7 +313,9 @@ watch:
 `watch.broker` is required, and naming `memory` explicitly is the point. The
 in-process broker is correct for one replica and **silently wrong** for two — a
 subscriber on one replica never hears about a write on another, and nothing
-fails. A required field makes that a thing somebody decided.
+fails. A required field makes that a thing somebody decided. `none` is the other
+answer, and it is loud: a deployment that names it refuses a subscriber outright
+rather than handing back a stream that never speaks.
 
 ## 6. Background work
 
@@ -316,16 +327,13 @@ type Spinner interface {
 }
 ```
 
-`spin.Run` walks what it is handed and runs the ones that implement it. Nothing
-declares that it has background work; the ones that do are found.
-
-The alternative — `Spin(ctx)` on the generated `Server` interface — would make
-every `Overlay` and every generated server carry an empty method saying "nothing
-here", and then "does this layer have background work" is no longer visible in
-the code.
-
-A `Spin` that returns kills the process. A sweep loop that stopped quietly is
-found days later.
+`spin.Run` walks what it is handed and runs the ones that implement it — in
+`cmd/serve.go` that is `s.Spin`, so something that spins without being a layer
+is passed the same way. Nothing declares that it has background work; the ones
+that do are found. An error from `Spin` takes the process down and nil stops
+nothing else, so a pass that should be tolerated logs and answers nil. Why it is
+found rather than declared, and why giving up is fatal, is in
+[background work](../RUNTIME.md#6-background-work).
 
 ## 7. The database
 
@@ -341,13 +349,26 @@ client := ent.NewClient(ent.Driver(drv))
 
 ### Migrations
 
-`migrate.Migrations` plans and applies them:
+`migrate.Migrations` is the directory of files beside what your app says about
+them — which database they were written for, and what shape they bring one to:
 
 ```go
 m := migrate.Migrations{Dir: dir, Dialect: s.Dialect, Tables: entmigrate.Tables}
+```
 
-files, err := m.Plan(ctx, dev, "add_robot_labels")  // writes SQL to review
-files, err := m.Apply(ctx, s.Db, s.Dialect)         // runs what is pending
+Planning turns a change of your ent schema into a file of SQL to review. `dev`
+is an empty database of the same kind, written to and emptied again, onto which
+the files already written are replayed to work out the state they arrive at:
+
+```go
+files, err := m.Plan(ctx, dev, "add_robot_labels")
+```
+
+Applying is the other command rather than the next step, and runs every file
+this database has not run yet, in order:
+
+```go
+files, err := m.Apply(ctx, s.Db, s.Dialect)
 ```
 
 Mounting these as commands is yours to do, and they belong on **your** binary
@@ -370,19 +391,16 @@ if c.Db.Migrate {
 }
 ```
 
-payday owns part of your schema, so a field added to a holder upstream arrives in
-`internal/ent` the next time you generate — and nothing about that is loud. It
-compiles, and the tests pass against a database the tests just created. The first
-sign of trouble is a column that is not there, in the one handler that reads it.
-
-`migrate.Check` asks whether the database is **not missing** anything, rather
-than whether it matches: columns and indexes it does not know about are left
-alone.
+payday owns part of your schema, so a field added upstream arrives in
+`internal/ent` the next time you generate and has no symptom until the one
+handler that reads it runs. This check is what turns that into a server that
+does not start; the other two moments it is caught at are in
+[the cost](../SCHEMA.md#the-cost).
 
 ## 8. The commands
 
-`pd` is the generator. It runs against a checkout and never has your app's
-types.
+`pd` works on a checkout. It never has your app's types and it never talks to a
+deployment.
 
 | | |
 | --- | --- |
@@ -390,7 +408,8 @@ types.
 | `pd gen [dir]` | regenerates everything from the schema. `--ts` for the client half |
 | `pd gen --check` | regenerates and fails if anything moved. This is the CI step |
 | `pd entity add <Name>` | a new entity, with a free domain number picked and the tenancy stated |
-| `pd doctor` | what would go wrong: missing tools, missing buf deps, an overlay for nothing, a layer that cannot be bound |
+| `pd sandbox init [dir]` | the second entry point and the page's half of it, so the app runs inside the page it serves — see [the whole app in a page](../CLIENT.md#2-the-whole-app-in-a-page) |
+| `pd doctor` | what would go wrong: missing tools, missing buf deps, an overlay for nothing, a layer that cannot be bound, a sandbox that will not run |
 
 The other commands are on **your** binary, because each needs something only
 your app can hand over:
@@ -407,12 +426,19 @@ and `pdcmd.NewCmdVersion()` — and the first two are written into your reposito
 by `pd new`, because their bodies are the stack and the first row.
 
 The same package builds `get`, `ls`, `watch`, `add`, `patch` and `erase` for
-every entity you have, from a connection you opened:
+every entity you have, against a deployment it is told how to reach:
 
 ```go
-t, err := pdcmd.New(conn)
+t, err := pdcmd.New(to)
 root.Commands = append(root.Commands, t.Commands()...)
 ```
+
+`to` is a `pdcmd.Connector` — which address, as whom — and it is asked when a
+command actually runs rather than when the tree is built, since the address is
+in a configuration file the root has not read yet. A connection you already hold
+is `pdcmd.Static(conn)`, which is what a test and an embedded server over
+`bufconn` pass. The whole of why is in
+[the connection is yours](commands.md#1-the-connection-is-yours-and-it-is-opened-late).
 
 They are here rather than in `pd` for the reason everything above is: they run
 against a deployment. See [Commands on your binary](commands.md), which also
@@ -427,31 +453,36 @@ $ go tool pd gen
 
 ## 9. Serving a browser
 
-gRPC is not a protocol a browser speaks — not a missing library, a thing the
-platform does not expose. `web.New` puts Connect and gRPC-Web in front of the
-**same** `*grpc.Server`:
+A browser cannot speak gRPC, so an app that serves a page opens a second
+listener, where `web.New` transcodes Connect and gRPC-Web into the **same**
+`*grpc.Server` that answers the socket — one stack with two ways in, not a
+second stack. Which transports those are, why these two, and what follows from
+one stack being behind both, is in
+[two transports, and why](../CLIENT.md#1-two-transports-and-why).
 
 ```go
 h, err := web.New(c.Server.Http, g)
 ```
 
-Same handlers, same interceptors, same wall. A call arrives as JSON over POST,
-is re-encoded as protobuf, and reaches the handler a gRPC client would have
-reached. There is no second door for a rule to be missing from.
-
-Nothing is opened unless `server.http.addr` is set.
-
-Whatever else you serve over HTTP goes on the same mux:
+Nothing is opened at all unless `server.http.addr` is set, and a page reaches an
+RPC only if `server.http.allow_web` is on. An address with the transcoding left
+off is not an error, because this listener is also where whatever else an app
+serves over HTTP goes, on the same mux:
 
 ```go
-h.Handle("/login", login(s.Ungated))
+h.Handle("POST /session", sessions.Serve(login))
 ```
 
 A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide with
 one — and `ServeMux` panics rather than shadowing if one somehow does.
 
-Logging in is the case payday left a seam for and cannot fill. `auth` reads a
-credential and does not issue one, and issuing is an HTTP endpoint.
+Logging in is the case this seam was left for, and most of it is payday's.
+`auth/authsession` is both halves of a browser credential: the endpoint that
+mints the cookie and the handler that reads it back, with the unguessable key,
+the cookie attributes, the expiry and the store supplied. What it takes from you
+is a `Verify` — what checking a secret means here — because who may have a
+credential, and on what evidence, is a decision about an organisation. See
+[putting a login in front of an app](signing-in.md).
 
 ## Where to go next
 
@@ -461,5 +492,7 @@ credential and does not issue one, and issuing is an HTTP endpoint.
   from it.
 - [Several writes at once](batch.md) — one transaction, and the four rules that
   have to be re-applied per operation.
+- [Putting a login in front of an app](signing-in.md) — the endpoint that mints
+  a cookie, and the handler that reads it back.
 - [Testing](testing.md) — the two seams that make an answer comparable.
 - [The runtime](../RUNTIME.md) — every package, and what shape the whole is.

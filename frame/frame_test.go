@@ -170,6 +170,18 @@ func TestGrant(t *testing.T) {
 		x.False(g.Allows("/app.RobotService/Erase"))
 	})
 
+	// What a pattern reaches is [frame.Covers]'s question, answered over
+	// there; this one is whether Allows asks it at all. As a membership test
+	// Allows passes every case above unchanged, and a stored
+	// "/app.RobotService/*" quietly allows nothing.
+	t.Run("an action may be a pattern", func(t *testing.T) {
+		x := require.New(t)
+
+		g := frame.Whole().To("/app.RobotService/*")
+		x.True(g.Allows("/app.RobotService/Get"))
+		x.False(g.Allows("/hq.RobotService/Get"))
+	})
+
 	t.Run("naming none allows none", func(t *testing.T) {
 		x := require.New(t)
 

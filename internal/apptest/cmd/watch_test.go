@@ -46,7 +46,11 @@ func (b *built) watching(t *testing.T, req *app.RobotWatchRequest) (app.Client, 
 }
 
 // next reads one message, or fails the test rather than hanging.
-func next(t *testing.T, c <-chan *app.RobotWatchResponse) *app.RobotWatchResponse {
+//
+// Generic over the response because a watch is not one entity's shape: the
+// tests below are mostly about Robot, and the one about Holder reads the same
+// way for the same reasons.
+func next[T any](t *testing.T, c <-chan *T) *T {
 	t.Helper()
 
 	select {
@@ -152,6 +156,69 @@ func TestARemovalIsSaidByAbsence(t *testing.T) {
 	x.Equal(vs[0].GetId(), res.GetItems()[0].GetId(), "one that is gone still has to be named")
 	x.Nil(res.GetItems()[0].GetValue(), "absence is how a removal is said")
 	x.Equal(app.RobotService_Erase_FullMethodName, res.GetItems()[0].GetAction())
+}
+
+// TestAnErasedHolderIsGoneOnTheStream is [TestARemovalIsSaidByAbsence] for the
+// entity payday itself declared watchable.
+//
+// `Holder` says `watch: {}` in payday's own schema -- an app could not, since
+// an overlay merges fields and not the entity option; see docs/MIGRATING.md.
+// The stream is what that bought: a holder is a credential's anchor, so its
+// goneness is news a client wants pushed rather than discovered when the next
+// call as that holder fails. Every other watch test exercises the app's own
+// entity, so this is the one place the generated `HolderService/Watch` is
+// actually opened.
+func TestAnErasedHolderIsGoneOnTheStream(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	// Somebody other than the watcher: erasing the credential this test calls
+	// with would make the erase the last call that works, which is a different
+	// story from the one the stream tells.
+	bob, err := b.Ungated.Holder().Add(ctx, app.HolderAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "bob",
+	}.Build())
+	x.NoError(err)
+
+	conn := pdtest.Serve(t, b.grpc(t, pdtest.Logging(t)))
+	wctx, cancel := context.WithCancel(b.travels(t.Context()))
+	defer cancel()
+
+	c0 := app.NewClient(conn)
+	out, err := c0.Holder().Watch(wctx, app.HolderWatchRequest_builder{
+		Filters: []*app.HolderFilter{
+			app.HolderFilter_builder{Ref: app.HolderRef_builder{Id: bob.GetId()}.Build()}.Build(),
+		},
+	}.Build())
+	x.NoError(err)
+
+	c := make(chan *app.HolderWatchResponse, 8)
+	go func() {
+		defer close(c)
+		for {
+			v, err := out.Recv()
+			if err != nil {
+				return
+			}
+			c <- v
+		}
+	}()
+
+	// The snapshot: the row as it is, which is the state the absence below
+	// replaces.
+	res := next(t, c)
+	x.Len(res.GetItems(), 1)
+	x.Equal("bob", res.GetItems()[0].GetValue().GetAlias())
+
+	_, err = c0.Holder().Erase(b.travels(ctx), app.HolderRef_builder{Id: bob.GetId()}.Build())
+	x.NoError(err)
+
+	res = next(t, c)
+	x.Len(res.GetItems(), 1)
+	x.Equal(bob.GetId(), res.GetItems()[0].GetId(), "one that is gone still has to be named")
+	x.Nil(res.GetItems()[0].GetValue(), "absence is how a removal is said")
+	x.Equal(app.HolderService_Erase_FullMethodName, res.GetItems()[0].GetAction())
 }
 
 // TestAWatchSaysWhichRowsItIsAbout is the one shape refused.

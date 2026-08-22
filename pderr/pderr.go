@@ -28,13 +28,21 @@
 //
 // # Paths compose, so the wrapping does too
 //
-// A field path is relative to the request, and a request is a tree. The
-// generated servers already work this way: `HolderPick` validates a
-// `HolderRefBySlug` by calling `TenantPick` on part of it, and what comes back
-// is a refusal about `alias` that belongs at `slug.tenant.alias`. [At] is that
-// step -- it moves everything an error carries underneath a name -- and it is
+// A field path is relative to the request, and a request is a tree. Whatever
+// validates one part of it knows the rule and cannot know where that part sat:
+// `slug` refuses "Arm 03" and names no field at all, because it was handed a
+// string and never saw the request. [At] is the step that says where the part
+// was -- it moves everything an error carries underneath a name -- and it is
 // the only way violations are meant to be built up, because doing it by hand is
 // how a path ends up naming a box that is not there.
+//
+// Each half saying only its own half is what lets the two compose, and it means
+// the path a form gets is as long as the wrapping that was done and no longer.
+// A refusal handed up untouched keeps its message and loses its box, which is
+// the case to watch at the edge of code that does not use this package: a
+// `status.Errorf` composing the path into the text leaves nothing beside the
+// message to place, so whoever handed the part over is the one who can put it
+// back.
 //
 // # What it will not do
 //

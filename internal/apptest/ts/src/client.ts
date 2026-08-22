@@ -35,6 +35,7 @@ import { HolderService } from '../gen/app/payday/holder_svc_pb.js'
 import { AuditService } from '../gen/app/payday/audit_svc_pb.js'
 import { RobotService } from '../gen/app/robot_svc_pb.js'
 import { JointService, FleetService, CellService } from '../gen/app/robot_svc_pb.js'
+import { ThingService } from '../gen/shared/thing_svc_pb.js'
 import { BatchService } from '@lesomnus/payday/pdpb'
 
 /**
@@ -55,6 +56,16 @@ export interface App {
 	readonly joint: Client<typeof JointService>
 	readonly fleet: Client<typeof FleetService>
 	readonly cell: Client<typeof CellService>
+
+	/**
+	 * `shared.Thing`, which is neither payday's nor this app's.
+	 *
+	 * It is one line, like every other service here, and that is the claim: a
+	 * package of its own changes which directory the descriptor is imported
+	 * from and nothing else -- not the transport, not the credential, not what
+	 * a call looks like.
+	 */
+	readonly thing: Client<typeof ThingService>
 
 	/**
 	 * Several writes as one transaction.
@@ -79,6 +90,8 @@ export function app(transport: Transport): App {
 		joint: createClient(JointService, transport),
 		fleet: createClient(FleetService, transport),
 		cell: createClient(CellService, transport),
+
+		thing: createClient(ThingService, transport),
 
 		batch: createClient(BatchService, transport),
 	}

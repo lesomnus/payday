@@ -1,12 +1,15 @@
 // Package pdtest is what a test of a payday app is given: assertions that know
-// about gRPC, and a connection that never leaves the process.
+// about gRPC, a connection that never leaves the process, and a database of
+// this test's own.
 //
 // It holds the half of a test harness that does not know what app it is for.
-// The other half -- an empty database, the server stack, who a test travels as
-// -- is the app's, because those are the things an app decides. What is here is
-// what every app would otherwise write again: a `require` that can say which
-// status code came back, a listener that is a channel rather than a port, and a
-// way to get what a server logged attached to the test that ran it.
+// The other half -- the schema inside that database, the server stack, who a
+// test travels as -- is the app's, because those are the things an app decides.
+// What is here is what every app would otherwise write again: a `require` that
+// can say which status code came back, a listener that is a channel rather than
+// a port, somewhere to put the rows that needs no server to be there -- see
+// [DB] -- and a way to get what a server logged attached to the test that ran
+// it.
 //
 // # Why an in-process connection rather than calling the server
 //

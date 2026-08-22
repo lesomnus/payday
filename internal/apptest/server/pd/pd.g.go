@@ -2877,15 +2877,35 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		TenantId:            tenant[:],
 		ActorTenantId:       v.Tenant.Bytes(),
 		ActorId:             v.Actor.Bytes(),
-		TraceId:             v.Trace,
+		TraceId:             notNull(v.Trace),
 		Action:              v.Action,
 		ObjectId:            v.Object.Bytes(),
-		Patch:               v.Patch,
-		Value:               value,
+		Patch:               notNull(v.Patch),
+		Value:               notNull(value),
 		CounterpartTenantId: v.CounterpartBytes(),
 	}.Build())
 
 	return err
+}
+
+// notNull is `v` as a column that says it always has bytes takes it.
+//
+// The two drivers disagree about exactly one value: a nil `[]byte` is SQL
+// NULL to pgx and an empty blob to SQLite's driver. So a nil bound to a NOT
+// NULL column is a write that passes on the database the tests run on and is
+// refused by the one the app is deployed on.
+//
+// Nothing is hidden by it. These columns are NOT NULL, so there is no nil for
+// them to mean: an empty `trace_id` is a call nobody traced, an empty `patch`
+// is a write that was not compiled from a document, an empty `value` is a row
+// that was not there to read. `counterpart_tenant_id` is nullable so that nil
+// can say there was no other party, and it does not come through here.
+func notNull(v []byte) []byte {
+	if v == nil {
+		return []byte{}
+	}
+
+	return v
 }
 
 // subject is the tenant of the row `key` names and the row itself, and the
@@ -2920,6 +2940,10 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		row, err := s.Cell().Get(ctx, apptest.CellGetRequest_builder{
 			Ref: apptest.CellRef_builder{Id: key.Bytes()}.Build(),
 		}.Build())
+		// Erased softly is still a row; see [erasedCell].
+		if status.Code(err) == codes.NotFound {
+			row, err = erasedCell(ctx, s, key)
+		}
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				return uuid.Nil, []byte{}, nil
@@ -2948,6 +2972,10 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		row, err := s.Holder().Get(ctx, apptest.HolderGetRequest_builder{
 			Ref: apptest.HolderRef_builder{Id: key.Bytes()}.Build(),
 		}.Build())
+		// Erased softly is still a row; see [erasedHolder].
+		if status.Code(err) == codes.NotFound {
+			row, err = erasedHolder(ctx, s, key)
+		}
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				return uuid.Nil, []byte{}, nil
@@ -2976,6 +3004,10 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		row, err := s.Joint().Get(ctx, apptest.JointGetRequest_builder{
 			Ref: apptest.JointRef_builder{Id: key.Bytes()}.Build(),
 		}.Build())
+		// Erased softly is still a row; see [erasedJoint].
+		if status.Code(err) == codes.NotFound {
+			row, err = erasedJoint(ctx, s, key)
+		}
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				return uuid.Nil, []byte{}, nil
@@ -3075,6 +3107,10 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		row, err := s.Robot().Get(ctx, apptest.RobotGetRequest_builder{
 			Ref: apptest.RobotRef_builder{Id: key.Bytes()}.Build(),
 		}.Build())
+		// Erased softly is still a row; see [erasedRobot].
+		if status.Code(err) == codes.NotFound {
+			row, err = erasedRobot(ctx, s, key)
+		}
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				return uuid.Nil, []byte{}, nil
@@ -3127,9 +3163,118 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 
 	}
 
-	// A domain nothing registered, which is an identifier from somewhere
-	// else. Nothing to read and nothing to say about it.
-	return uuid.Nil, nil, nil
+	// An entity with no tenant to file under: one declared `global: {}`,
+	// which the switch above skips, or a domain nothing registered, which
+	// is an identifier from somewhere else. Nothing to read either way.
+	return uuid.Nil, []byte{}, nil
+}
+
+// erasedCell is the row `key` names among the rows already erased, which no
+// bare read answers: erasure is part of every reference that server builds.
+// The recorder is the one caller that has to see past it -- the row it asks
+// about was erased by the very write it is recording, and a trail row built
+// blind was filed under the actor's tenant with an empty value, which the
+// tenant whose row was erased could not read.
+func erasedCell(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Cell, error) {
+	k, err := uuid.FromBytes(key.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	q := s.Db.Cell.Query().Where(cell.IDEQ(k), cell.DateErasedNotNil())
+	bare.CellSelectInit(q, nil)
+
+	v, err := q.Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "Cell not found")
+		}
+
+		return nil, err
+	}
+
+	return v.Proto(), nil
+}
+
+// erasedHolder is the row `key` names among the rows already erased, which no
+// bare read answers: erasure is part of every reference that server builds.
+// The recorder is the one caller that has to see past it -- the row it asks
+// about was erased by the very write it is recording, and a trail row built
+// blind was filed under the actor's tenant with an empty value, which the
+// tenant whose row was erased could not read.
+func erasedHolder(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Holder, error) {
+	k, err := uuid.FromBytes(key.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	q := s.Db.Holder.Query().Where(holder.IDEQ(k), holder.DateErasedNotNil())
+	bare.HolderSelectInit(q, nil)
+
+	v, err := q.Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "Holder not found")
+		}
+
+		return nil, err
+	}
+
+	return v.Proto(), nil
+}
+
+// erasedJoint is the row `key` names among the rows already erased, which no
+// bare read answers: erasure is part of every reference that server builds.
+// The recorder is the one caller that has to see past it -- the row it asks
+// about was erased by the very write it is recording, and a trail row built
+// blind was filed under the actor's tenant with an empty value, which the
+// tenant whose row was erased could not read.
+func erasedJoint(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Joint, error) {
+	k, err := uuid.FromBytes(key.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	q := s.Db.Joint.Query().Where(joint.IDEQ(k), joint.DateErasedNotNil())
+	bare.JointSelectInit(q, nil)
+
+	v, err := q.Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "Joint not found")
+		}
+
+		return nil, err
+	}
+
+	return v.Proto(), nil
+}
+
+// erasedRobot is the row `key` names among the rows already erased, which no
+// bare read answers: erasure is part of every reference that server builds.
+// The recorder is the one caller that has to see past it -- the row it asks
+// about was erased by the very write it is recording, and a trail row built
+// blind was filed under the actor's tenant with an empty value, which the
+// tenant whose row was erased could not read.
+func erasedRobot(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Robot, error) {
+	k, err := uuid.FromBytes(key.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	q := s.Db.Robot.Query().Where(robot.IDEQ(k), robot.DateErasedNotNil())
+	bare.RobotSelectInit(q, nil)
+
+	v, err := q.Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, status.Error(codes.NotFound, "Robot not found")
+		}
+
+		return nil, err
+	}
+
+	return v.Proto(), nil
 }
 
 var _ *patchpb.Patch
@@ -3657,7 +3802,16 @@ func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.Batc
 // that decoded into a different message would be a write the caller did not
 // ask for, and `Any` is checked by type URL so there is a right answer.
 func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, error) {
-	switch m := op.GetMethod(); m {
+	m := op.GetMethod()
+
+	// Under the operation's own name. The recorder fills in what the
+	// caller asked for by asking gRPC, and in here gRPC answers with the
+	// envelope -- `BatchService/Do`, for every operation of every batch --
+	// so without this the trail says a hundred different writes were all
+	// the same call.
+	ctx = batch.AsOp(ctx, m)
+
+	switch m {
 	case apptest.AuditService_Add_FullMethodName:
 		v := &apptest.AuditAddRequest{}
 		if err := op.GetRequest().UnmarshalTo(v); err != nil {

@@ -135,8 +135,9 @@ func main() {
 
 // seed puts a tenant and somebody in it, so the page has an app to look at.
 //
-// The same two rows `custody init` writes, and for the same reason: the page
-// signs in as `@acme/admin` and there has to be an `@acme/admin` to be.
+// The same two rows an app's own `init` command writes, and for the same
+// reason: the page signs in as `@acme/admin` and there has to be an
+// `@acme/admin` to be.
 func seed(ctx context.Context, s app.Server) error {
 	t, err := s.Tenant().Add(ctx, app.TenantAddRequest_builder{
 		Alias: "acme",

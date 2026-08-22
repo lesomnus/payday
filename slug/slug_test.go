@@ -306,10 +306,11 @@ func TestWithDomain(t *testing.T) {
 	t.Run("and the concatenation it replaced named another row entirely", func(t *testing.T) {
 		x := require.New(t)
 
-		// oasys: a[:i] + Slug(v.String()), where i is the index of the "#" or
-		// the end. This is what made it dangerous rather than merely ugly --
-		// "acme/adminrobot" is a well-formed slug that parses, names a
-		// different row, and says nothing about having been mangled.
+		// The concatenation it replaced: a[:i] + Slug(v.String()), where i is
+		// the index of the "#" or the end. This is what made it dangerous
+		// rather than merely ugly -- "acme/adminrobot" is a well-formed slug
+		// that parses, names a different row, and says nothing about having
+		// been mangled.
 		const a = "acme/admin"
 		i := strings.Index(a, "#")
 		if i < 0 {

@@ -1,10 +1,21 @@
+// The import rides the merge: an overlay is a fragment, and what it imports
+// is unioned into the generated file's imports, so a type an app declares in
+// a file of its own is reachable from a field added here.
+import "app/profile.proto";
+
 // What this app adds to payday's Holder.
 //
 // It is here to answer a question the design could only assert: is adding a
-// field to an entity payday owns something an app can actually do? Numbers
-// 8..12 and 16.. are the app's; payday keeps 1..7 and 13..15 and promises not
-// to grow past them.
+// field to an entity payday owns something an app can actually do? Numbers 3,
+// 8..12 and 16.. are the app's -- 3 held for the set edge -- and payday keeps
+// 1, 2, 4..7 and 13..15 and promises not to grow past them.
 message Holder {
   // The subject an external identity provider knows this holder by.
   string idp_subject = 8;
+
+  // The other kind of field an overlay can add: a message, stored as the
+  // canonical protobuf JSON in one jsonb column and replaced whole by a
+  // patch. Its existence pins the shape that once failed silently -- see
+  // [Profile] for what the failure was and what its two fields are for.
+  Profile profile = 9;
 }

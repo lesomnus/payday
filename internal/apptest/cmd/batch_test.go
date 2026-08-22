@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -20,6 +21,7 @@ import (
 	"github.com/lesomnus/payday/pdtest"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	entaudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
@@ -41,6 +43,26 @@ func (b *built) batched(t *testing.T, g batch.Guard) pdpb.BatchServiceServer {
 	require.NoError(t, err)
 
 	return v
+}
+
+// wrote is what a batch of Adds put up, by identifier, read off the batch's own
+// answers.
+//
+// The trail is asked with these rather than sliced off the end of it. Nothing
+// promises a query answers in the order rows went in -- SQLite happens to,
+// PostgreSQL is free not to -- and the trail's own key is no order to fall back
+// on: an audit row's identifier is minted at random, unlike the identifiers it
+// holds.
+func wrote(x *require.Assertions, res *pdpb.BatchResponse) []uuid.UUID {
+	ks := make([]uuid.UUID, len(res.GetResults()))
+	for i, v := range res.GetResults() {
+		r := &app.Robot{}
+		x.NoError(v.UnmarshalTo(r))
+
+		ks[i] = mustId(x, r.GetId()).Uuid()
+	}
+
+	return ks
 }
 
 // closedGuard is what a deployment that serves the general writes to nobody
@@ -398,7 +420,7 @@ func TestEveryOperationIsOnTheTrail(t *testing.T) {
 	before, err := b.Ent.Audit.Query().Count(ctx)
 	x.NoError(err)
 
-	_, err = b.batched(t, closedGuard).Do(b.as(ctx), pdpb.BatchRequest_builder{
+	res, err := b.batched(t, closedGuard).Do(b.as(ctx), pdpb.BatchRequest_builder{
 		Ops: []*pdpb.Op{
 			op(t, app.RobotService_Add_FullMethodName, app.RobotAddRequest_builder{
 				Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
@@ -415,6 +437,19 @@ func TestEveryOperationIsOnTheTrail(t *testing.T) {
 	after, err := b.Ent.Audit.Query().Count(ctx)
 	x.NoError(err)
 	x.Equal(before+2, after, "two writes, two lines of the trail")
+
+	// And they are the two, asked for by what they are about; see [wrote].
+	rows, err := b.Ent.Audit.Query().Where(entaudit.ObjectIDIn(wrote(x, res)...)).All(ctx)
+	x.NoError(err)
+	x.Len(rows, 2)
+
+	// Each under the operation's own name. Held here too, though this path
+	// alone could not vouch for it: called directly there is no transport, and
+	// an Add's fallback -- the leg that wrote -- spells the same name. The
+	// wire test is where the two come apart.
+	for _, row := range rows {
+		x.Equal(app.RobotService_Add_FullMethodName, row.Action)
+	}
 }
 
 // TestABatchIsOneEventOverTheWire is the claim the tests above cannot make,
@@ -432,12 +467,15 @@ func TestABatchIsOneEventOverTheWire(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
+	before, err := b.Ent.Audit.Query().Count(ctx)
+	x.NoError(err)
+
 	events, stop := b.Watch.Subscribe()
 	defer stop()
 
 	conn := pdtest.Serve(t, b.grpc(t, pdtest.Logging(t)))
 
-	_, err := pdpb.NewBatchServiceClient(conn).Do(b.travels(ctx), pdpb.BatchRequest_builder{
+	res, err := pdpb.NewBatchServiceClient(conn).Do(b.travels(ctx), pdpb.BatchRequest_builder{
 		Ops: []*pdpb.Op{
 			op(t, app.RobotService_Add_FullMethodName, app.RobotAddRequest_builder{
 				Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
@@ -458,5 +496,25 @@ func TestABatchIsOneEventOverTheWire(t *testing.T) {
 			"the event says what the caller asked for, which was a batch")
 	case <-time.After(3 * time.Second):
 		t.Fatal("nothing was published")
+	}
+
+	// And the trail is the other way around. The recorder asks gRPC what the
+	// caller asked for, and over the wire gRPC has an answer -- the batch --
+	// which is true of the envelope and false of every operation: the direct
+	// calls above cannot catch this, because without a transport the recorder
+	// falls back to the leg that wrote, which for an Add spells the same.
+	after, err := b.Ent.Audit.Query().Count(ctx)
+	x.NoError(err)
+	x.Equal(before+2, after,
+		"one row per operation and none for the envelope, which wrote nothing: "+
+			"the batch shows whole as the one event, not as a line of the trail")
+
+	rows, err := b.Ent.Audit.Query().Where(entaudit.ObjectIDIn(wrote(x, res)...)).All(ctx)
+	x.NoError(err)
+	x.Len(rows, 2)
+
+	for _, row := range rows {
+		x.Equal(app.RobotService_Add_FullMethodName, row.Action,
+			"filed under the operation's own name, not the batch's")
 	}
 }

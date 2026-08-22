@@ -37,9 +37,9 @@ export const file_payday_app: GenFile = /*@__PURE__*/
  *
  * Because a name can be worth more than the app that holds it. A fleet that
  * runs several services may want one word for the thing they are all about --
- * `hday.oasys.Robot` -- while everything each service keeps for itself stays in
- * a package of its own. The shared message is then the same name everywhere it
- * is read, and nothing else has to be.
+ * `fleet.Robot` -- while everything each service keeps for itself stays in a
+ * package of its own. The shared message is then the same name everywhere it is
+ * read, and nothing else has to be.
  *
  * This is presence and nothing else: a file either says it or does not. It is a
  * message rather than a `bool` so that something can be added to it later

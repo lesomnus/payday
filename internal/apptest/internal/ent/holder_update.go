@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 )
@@ -131,6 +132,18 @@ func (_u *HolderUpdate) SetNillableIdpSubject(v *string) *HolderUpdate {
 	return _u
 }
 
+// SetProfile sets the "profile" field.
+func (_u *HolderUpdate) SetProfile(v *apptest.Profile) *HolderUpdate {
+	_u.mutation.SetProfile(v)
+	return _u
+}
+
+// ClearProfile clears the value of the "profile" field.
+func (_u *HolderUpdate) ClearProfile() *HolderUpdate {
+	_u.mutation.ClearProfile()
+	return _u
+}
+
 // Mutation returns the HolderMutation object of the builder.
 func (_u *HolderUpdate) Mutation() *HolderMutation {
 	return _u.mutation
@@ -218,6 +231,16 @@ func (_u *HolderUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.IdpSubject(); ok {
 		_spec.SetField(holder.FieldIdpSubject, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Profile(); ok {
+		vv, err := holder.ValueScanner.Profile.Value(value)
+		if err != nil {
+			return 0, err
+		}
+		_spec.SetField(holder.FieldProfile, field.TypeString, vv)
+	}
+	if _u.mutation.ProfileCleared() {
+		_spec.ClearField(holder.FieldProfile, field.TypeString)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -343,6 +366,18 @@ func (_u *HolderUpdateOne) SetNillableIdpSubject(v *string) *HolderUpdateOne {
 	return _u
 }
 
+// SetProfile sets the "profile" field.
+func (_u *HolderUpdateOne) SetProfile(v *apptest.Profile) *HolderUpdateOne {
+	_u.mutation.SetProfile(v)
+	return _u
+}
+
+// ClearProfile clears the value of the "profile" field.
+func (_u *HolderUpdateOne) ClearProfile() *HolderUpdateOne {
+	_u.mutation.ClearProfile()
+	return _u
+}
+
 // Mutation returns the HolderMutation object of the builder.
 func (_u *HolderUpdateOne) Mutation() *HolderMutation {
 	return _u.mutation
@@ -460,6 +495,16 @@ func (_u *HolderUpdateOne) sqlSave(ctx context.Context) (_node *Holder, err erro
 	}
 	if value, ok := _u.mutation.IdpSubject(); ok {
 		_spec.SetField(holder.FieldIdpSubject, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Profile(); ok {
+		vv, err := holder.ValueScanner.Profile.Value(value)
+		if err != nil {
+			return nil, err
+		}
+		_spec.SetField(holder.FieldProfile, field.TypeString, vv)
+	}
+	if _u.mutation.ProfileCleared() {
+		_spec.ClearField(holder.FieldProfile, field.TypeString)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Holder{config: _u.config}

@@ -12,7 +12,7 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // the CRUD is generated, the general writes are closed, and an operation that
 // means something is a real RPC with a real rule. Until now nothing in this
 // repository demonstrated that -- the path was written up in the schema guide
-// and the only place it existed whole was custody.
+// and the only place it existed whole was an app built on payday elsewhere.
 //
 // It is an overlay rather than a file of its own because of the request below:
 // `RobotRef` and `CellRef` do not exist until the contract is generated, and an

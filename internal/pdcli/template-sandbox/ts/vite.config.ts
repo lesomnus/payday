@@ -26,11 +26,12 @@ const compress = promisify(brotliCompress)
  *
  * # Why quality 9
  *
- * Measured on payday's own sandbox, 65.9 MB of wasm:
+ * Measured on payday's own sandbox -- the whole app as `GOOS=js GOARCH=wasm go
+ * build ./wasm` leaves it, 67.8 MB, through this plugin's own brotli:
  *
- *	q5   11.0 MB    1.0s
- *	q9   10.6 MB    3.9s
- *	q11   9.1 MB  118.3s
+ *	q5   11.1 MB    1.2s
+ *	q9   10.7 MB    4.7s
+ *	q11   9.2 MB  131.5s
  *
  * The last one buys 1.5 MB for two minutes. That is a fine trade for an
  * artifact built once and downloaded many times, and a bad one for anything

@@ -11,9 +11,10 @@ it is generated rather than remembered.
   way, writing a layer, the interceptors, configuration, the commands.
 - [**The page**](docs/guide/client.md) — reads that keep themselves current,
   writes that need no invalidation rule, and what persists across a reload.
-- [**Commands on your binary**](docs/guide/commands.md) — `get`, `ls`, `add`,
-  `patch` and `erase` for every entity, from a connection you opened; the output
-  formats, and a command for an RPC of your own.
+- [**Commands on your binary**](docs/guide/commands.md) — `get`, `ls`, `watch`,
+  `add`, `patch` and `erase` for every entity, from a `Connector` that says how
+  to reach the deployment; the output formats, and a command for an RPC of your
+  own.
 - [docs/](docs/) — the rest: [batch](docs/guide/batch.md),
   [more than one proto package](docs/guide/packages.md),
   [refusals](docs/guide/errors.md), [signing somebody in](docs/guide/signing-in.md)

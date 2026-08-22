@@ -468,6 +468,37 @@ message PingRequest {
 	x.NoError(pdcli.CheckOverlayFile(p))
 }
 
+// TestAnEntityOverlayDoesNotChangeWhatTheFileIs is the same refusal on the
+// other merge.
+//
+// An entity overlay -- `proto/ext/payday/holder.ext.proto` -- is merged onto
+// the copy of payday's entity the same way a contract overlay is merged onto
+// the contract, so a file-level `features.` in one lands on the whole copied
+// entity: every field of every message payday put there. The line is even
+// easier to carry into this overlay than into a contract's, because the entity
+// file it is written against begins with one -- copying the head of
+// `holder.proto` to get started brings it along, and the merge would take it
+// without a word.
+func TestAnEntityOverlayDoesNotChangeWhatTheFileIs(t *testing.T) {
+	x := require.New(t)
+
+	l := genApp(t)
+
+	// The overlay apptest ships, with the one line an overlay must not say.
+	x.NoError(os.WriteFile(l.Path(pdcli.DirExt, "payday", "holder.ext.proto"), []byte(`option features.field_presence = IMPLICIT;
+
+message Holder {
+  string idp_subject = 8;
+}
+`), 0o644))
+
+	err := pdcli.Gen{Layout: l}.Run(t.Context())
+	x.Error(err)
+	x.ErrorContains(err, "holder.ext.proto")
+	x.ErrorContains(err, "features.")
+	x.ErrorContains(err, "Delete the line")
+}
+
 // TestALayerThatCannotBeBoundIsFound is the one that waits for a transaction.
 //
 // `enttx.Rebind` asks for the binder at run time -- `any(s).(Binder[S])` -- so a
@@ -589,8 +620,8 @@ func pkgFile(t *testing.T, root, pkg, name string, own bool) {
 // which one that is, and for one package it reads it. The refusal for two was
 // the whole of the answer, and it left no way to say what an app might
 // reasonably want: a shared word for the thing several services are about --
-// `hday.oasys.Robot` -- with everything one service keeps for itself in a
-// package of its own.
+// `fleet.Robot` -- with everything one service keeps for itself in a package of
+// its own.
 //
 // `option (payday.app)` is that way, and the reason it is on the **file** is
 // that the file already declares the package. Nothing else has to agree with
@@ -600,7 +631,7 @@ func TestASecondPackageIsAllowedWhenOneSaysItIsTheApps(t *testing.T) {
 
 	root := app(t, "example.com/app")
 	pkgFile(t, root, "acme", "widget.proto", true)
-	pkgFile(t, root, "hday.oasys", "robot.proto", false)
+	pkgFile(t, root, "fleet", "robot.proto", false)
 
 	l, err := pdcli.Discover(root)
 	x.NoError(err)
@@ -617,14 +648,14 @@ func TestTwoPackagesAndNeitherSaysWhich(t *testing.T) {
 
 	root := app(t, "example.com/app")
 	pkgFile(t, root, "acme", "widget.proto", false)
-	pkgFile(t, root, "hday.oasys", "robot.proto", false)
+	pkgFile(t, root, "fleet", "robot.proto", false)
 
 	_, err := pdcli.Discover(root)
 	x.Error(err)
 	x.Contains(err.Error(), "option (payday.app)")
 	// Both, because which two disagreed is the thing a reader needs.
 	x.Contains(err.Error(), "acme")
-	x.Contains(err.Error(), "hday.oasys")
+	x.Contains(err.Error(), "fleet")
 }
 
 // TestTwoPackagesBothSayingSo, which is the one thing worse than neither: the
@@ -635,7 +666,7 @@ func TestTwoPackagesBothSayingSo(t *testing.T) {
 
 	root := app(t, "example.com/app")
 	pkgFile(t, root, "acme", "widget.proto", true)
-	pkgFile(t, root, "hday.oasys", "robot.proto", true)
+	pkgFile(t, root, "fleet", "robot.proto", true)
 
 	_, err := pdcli.Discover(root)
 	x.Error(err)

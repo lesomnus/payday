@@ -1,6 +1,7 @@
 edition = "2023";
 package app;
 
+import "app/profile.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
 import "payday.proto";
@@ -15,9 +16,10 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // row the trail names on every line it writes. Like [Tenant] it is payday's
 // because everything that decides anything reads it.
 //
-// **Fields 1..7 and 13..15 are payday's**; an app adds its own in 8..12 and
-// from 16, in a `holder.ext.proto` beside this. Adding an email or the subject
-// an external identity provider knows them by is exactly what that is for.
+// **Fields 1, 2, 4..7 and 13..15 are payday's**; 3 is not -- it is left for
+// the app's set edge -- and an app adds its own in 8..12 and from 16, in a
+// `holder.ext.proto` beside this. Adding an email or the subject an external
+// identity provider knows them by is exactly what that is for.
 message Holder {
   bytes id = 1 [(orm.field) = {
     type: TYPE_UUID
@@ -131,4 +133,9 @@ message Holder {
   };
   // The subject an external identity provider knows this holder by.
   string idp_subject = 8;
+  // The other kind of field an overlay can add: a message, stored as the
+  // canonical protobuf JSON in one jsonb column and replaced whole by a
+  // patch. Its existence pins the shape that once failed silently -- see
+  // [Profile] for what the failure was and what its two fields are for.
+  Profile profile = 9;
 }

@@ -36,9 +36,10 @@ const root = createRoot(document.getElementById('root') as HTMLElement)
  *
  * `auth.Plain` reads `@tenant/holder` and takes the caller's word for it, which
  * is right for a sandbox and for tests and is **not** something to serve where
- * anyone can reach it. Putting a real one here means an endpoint that issues
- * one -- payday leaves the seam and cannot fill it, since issuing is HTTP and
- * `auth` only reads. See `serve.go`.
+ * anyone can reach it. A real one is a cookie this script cannot read rather
+ * than a string it keeps: `auth/authsession` is the endpoint that mints it and
+ * the handler that reads it back, and what this app supplies is what checking
+ * a secret means. See `serve.go`.
  */
 function credential(): string | null {
 	return localStorage.getItem('credential')

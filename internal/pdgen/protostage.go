@@ -179,9 +179,9 @@ package %s;
 // filter that names `RobotRef` while the robot is in another one is a file that
 // does not compile.
 //
-// The comparison is on the package rather than on a prefix: `hday.oasys` is not
-// a prefix of `hday.khala` but `hday` is a prefix of both, and a prefix test
-// would shorten a name that has to stay long.
+// The comparison is on the package rather than on a prefix: `acme.fleet` is
+// not a prefix of `acme.telemetry` but `acme` is a prefix of both, and a
+// prefix test would shorten a name that has to stay long.
 func inPkg(fullname string, pkg string) string {
 	i := strings.LastIndex(fullname, ".")
 	if i < 0 || fullname[:i] != pkg {

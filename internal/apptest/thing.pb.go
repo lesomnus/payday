@@ -36,8 +36,12 @@ const (
 // file is the second answer to that question and `pd gen` refuses -- see
 // [pdcli.Layout.ProtoPkg].
 //
-// Nothing else about it is special, and that is the point of the test: it is a
-// tenanted entity with a domain, and it generates like any other.
+// Nothing else about it is special, and that is the point of the test: the
+// package it is in is the whole subject, so it holds no more than an entity
+// needs to be one and it generates and serves like any other. It is **global**
+// -- outside the wall, written out because saying nothing would have put it
+// behind one -- and with no tenant over it there is no slug either: a row here
+// is named by its identifier alone.
 type Thing struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`

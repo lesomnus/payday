@@ -3,6 +3,8 @@ package pdgen_test
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 
@@ -41,18 +43,34 @@ func read(t *testing.T, src string) (*pdgen.Schema, error) {
 // own entities and so have to be declared where payday declares them.
 func readAs(t *testing.T, pkg string, src string) (*pdgen.Schema, error) {
 	t.Helper()
+	return readFiles(t, map[string]string{"test/schema.proto": inPkg(pkg, src)})
+}
 
-	const name = "test/schema.proto"
-	whole := "edition = \"2023\";\npackage " + pkg + ";\n" +
+// inPkg is the boilerplate above a schema: the edition, the imports, and the
+// package the schema is read as. One `go_package` however many files there
+// are, because that is the rule an app is under too -- see
+// docs/guide/packages.md.
+func inPkg(pkg, src string) string {
+	return "edition = \"2023\";\npackage " + pkg + ";\n" +
 		"import \"orm.proto\";\nimport \"payday.proto\";\n" +
 		"import \"google/protobuf/timestamp.proto\";\n" +
 		"option features.field_presence = IMPLICIT;\n" +
 		"option go_package = \"example.com/app\";\n" + src
+}
+
+// readFiles is [read] over several files at once, which is the only way to
+// hold entities in more than one proto package -- a package is a property of
+// a file. Every file given is a file to generate, which is what buf hands the
+// plugin for an app's own schema.
+func readFiles(t *testing.T, files map[string]string) (*pdgen.Schema, error) {
+	t.Helper()
+
+	names := slices.Sorted(maps.Keys(files))
 
 	c := protocompile.Compiler{
 		Resolver: protocompile.CompositeResolver{
 			&protocompile.SourceResolver{
-				Accessor: protocompile.SourceAccessorFromMap(map[string]string{name: whole}),
+				Accessor: protocompile.SourceAccessorFromMap(files),
 			},
 			protocompile.ResolverFunc(func(p string) (protocompile.SearchResult, error) {
 				fd, err := protoregistry.GlobalFiles.FindFileByPath(p)
@@ -66,13 +84,13 @@ func readAs(t *testing.T, pkg string, src string) (*pdgen.Schema, error) {
 		SourceInfoMode: protocompile.SourceInfoStandard,
 	}
 
-	fs, err := c.Compile(context.Background(), name)
+	fs, err := c.Compile(context.Background(), names...)
 	if err != nil {
 		t.Fatalf("compile the schema this test is about: %v", err)
 	}
 
 	// protogen is what the plugin sees, so the test sees it too.
-	req := &pluginpb.CodeGeneratorRequest{FileToGenerate: []string{name}}
+	req := &pluginpb.CodeGeneratorRequest{FileToGenerate: names}
 	seen := map[string]bool{}
 	var add func(fd protoreflect.FileDescriptor)
 	add = func(fd protoreflect.FileDescriptor) {
@@ -89,7 +107,9 @@ func readAs(t *testing.T, pkg string, src string) (*pdgen.Schema, error) {
 		}
 		req.ProtoFile = append(req.ProtoFile, rebuild(t, fd))
 	}
-	add(fs[0])
+	for _, f := range fs {
+		add(f)
+	}
 
 	p, err := protogen.Options{}.New(req)
 	if err != nil {
@@ -187,6 +207,58 @@ func TestReads(t *testing.T) {
 	}
 	if got := byName["Robot"].Via; len(got) != 1 || got[0] != "tenant" {
 		t.Errorf("Robot via: %v", got)
+	}
+}
+
+// TestAnEdgeMayCrossAProtoPackage pins what docs/guide/packages.md claims: an
+// entity in a package that is not the app's reaches the tenant "by an
+// ordinary edge". The test app's second package holds only a global entity
+// with no edges, so this is the one place the claim is provoked rather than
+// stated.
+func TestAnEdgeMayCrossAProtoPackage(t *testing.T) {
+	s, err := readFiles(t, map[string]string{
+		"test/schema.proto": inPkg("test", tenant),
+		"test/other.proto": inPkg("other", `
+import "test/schema.proto";
+message Gadget {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  test.Tenant tenant = 2 [(orm.edge) = {}];
+  string alias = 4;
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 7
+    tenanted: {via: "tenant"}
+    list: {order: [{field: {name: "id"}}], max: 100, by: [{name: "ref"}, {name: "tenant"}]}
+    erase: {hard: {}}
+  };
+}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if s.Tenant == nil || s.Tenant.FullName() != "test.Tenant" {
+		t.Fatalf("the tenant was not found across the boundary: %v", s.Tenant)
+	}
+
+	byName := map[protoreflect.FullName]*pdgen.Entity{}
+	for _, v := range s.Entities {
+		byName[v.FullName()] = v
+	}
+
+	// By full name, so that a harness quietly folding the two files into one
+	// package would read as the failure it is rather than as a pass.
+	v, ok := byName["other.Gadget"]
+	if !ok {
+		t.Fatalf("no other.Gadget among %d entities", len(s.Entities))
+	}
+	if got := v.Via; len(got) != 1 || got[0] != "tenant" {
+		t.Errorf("Gadget via: %v", got)
+	}
+	// The filter names its target in full, which is what makes it usable from
+	// a file in either package; see [By.Target].
+	if by := v.List.By; len(by) != 2 || by[1].Edge != "tenant" || by[1].Target != "test.Tenant" {
+		t.Errorf("Gadget by: %+v", by)
 	}
 }
 
@@ -383,6 +455,32 @@ message Holder {
 		}
 	})
 
+	t.Run("an overlay adding a field numbered 3 is accepted", func(t *testing.T) {
+		// 3 sits inside payday's block and is not payday's: no entity of
+		// payday's declares it, so the refusal -- which reads off what payday
+		// declared rather than off a range -- has nothing to hold it against,
+		// and what an overlay puts there is read as the set edge. That is the
+		// promise in docs/SCHEMA.md ("field 3 is yours"), pinned here so a
+		// tidy-up that widens the refusal to the whole 1..7 block cannot take
+		// the slot back quietly.
+		s, err := readAs(t, "payday", tenantOf("payday")+holder(`
+  Site site = 3 [(orm.edge) = {}];
+`)+`
+message Site {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  string alias = 4;
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}, erase: {hard: {}}};
+}`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if s.Set == nil || string(s.Set.FullName()) != "payday.Site" {
+			t.Fatalf("the overlay's 3 was not read as the set edge: %v", s.Set)
+		}
+	})
+
 	for _, tt := range []struct {
 		what string
 		body string
@@ -471,6 +569,43 @@ message Robot {
 		}
 	})
 
+	// A ref may carry a number as well as a name, and every schema in this
+	// repository writes name-only -- so the number half runs nowhere but here.
+	list := func(t *testing.T, s *pdgen.Schema) *pdgen.List {
+		t.Helper()
+		for _, v := range s.Entities {
+			if v.GoName() == "Robot" {
+				return v.List
+			}
+		}
+		t.Fatal("no Robot")
+		return nil
+	}
+
+	t.Run("a ref by number alone reads", func(t *testing.T) {
+		s, err := read(t, robot(`order: [{field: {number: 15}}, {field: {number: 1}}], max: 100, by: [{number: 4}]`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		l := list(t, s)
+		if o := l.Order; len(o) != 2 || o[0].Field != "date_created" || o[1].Field != "id" {
+			t.Fatalf("order: %+v", o)
+		}
+		if by := l.By; len(by) != 1 || by[0].Field != "alias" {
+			t.Fatalf("by: %+v", by)
+		}
+	})
+
+	t.Run("a ref whose name and number agree reads", func(t *testing.T) {
+		s, err := read(t, robot(`order: [{field: {name: "date_created", number: 15}}, {field: {name: "id", number: 1}}], max: 100`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if o := list(t, s).Order; len(o) != 2 || o[0].Field != "date_created" || o[1].Field != "id" {
+			t.Fatalf("order: %+v", o)
+		}
+	})
+
 	for _, tt := range []struct{ what, list, says string }{{
 		what: "an order that does not end in the key",
 		list: `order: [{field: {name: "date_created"}}], max: 100`,
@@ -495,6 +630,14 @@ message Robot {
 		what: "an edge to read along that is not there",
 		list: `order: [{field: {name: "id"}}], max: 100, with: [{name: "nope"}]`,
 		says: `no edge "nope"`,
+	}, {
+		what: "a ref whose name and number disagree",
+		list: `order: [{field: {name: "alias", number: 15}}, {field: {name: "id"}}], max: 100`,
+		says: `15 is "date_created" and this says "alias"`,
+	}, {
+		what: "a ref by a number that names nothing",
+		list: `order: [{field: {number: 9}}, {field: {name: "id"}}], max: 100`,
+		says: "has nothing at 9",
 	}} {
 		t.Run(tt.what+" is refused", func(t *testing.T) {
 			_, err := read(t, robot(tt.list))
@@ -1135,6 +1278,32 @@ message Robot {
 		}
 		if !strings.Contains(err.Error(), "erase") || !strings.Contains(err.Error(), "date_erased") {
 			t.Fatalf("said: %s", err)
+		}
+	})
+	// The refusal is a line to paste, so the number in it has to be one the
+	// entity can still spend. 14 taken and 16..18 after it is not an exotic
+	// schema -- 16 is where an app's own fields start -- and a number the
+	// message names that the schema already uses is a message worth less than
+	// none: it reads as an answer and does not compile.
+	t.Run("and the number it names is free", func(t *testing.T) {
+		for _, tc := range []struct {
+			what  string
+			spent string
+			want  string
+		}{
+			{"14, where payday's own put it", ``, "date_erased = 14 ["},
+			{"14 spent, so past payday's 13..15", `string a = 14;`, "date_erased = 16 ["},
+			{"and past whatever the app took there", `string a = 14; string b = 16; string c = 17; string d = 18;`, "date_erased = 19 ["},
+		} {
+			t.Run(tc.what, func(t *testing.T) {
+				_, err := read(t, robot(tc.spent, ``))
+				if err == nil {
+					t.Fatal("an entity that destroys rows without saying so was taken")
+				}
+				if !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("wanted %q; said: %s", tc.want, err)
+				}
+			})
 		}
 	})
 

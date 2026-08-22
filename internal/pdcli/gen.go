@@ -146,6 +146,16 @@ func (g Gen) entities(ctx context.Context) error {
 		var b []byte
 		if _, err := os.Stat(ext); err == nil {
 			g.say("  merge %s + %s", name, filepath.Base(ext))
+
+			// The same refusal the contract merge makes, because it is the
+			// same union: a file-level `features.` here lands on the whole
+			// copied entity, payday's own fields included. The line is even
+			// easier to carry into an entity overlay -- the entity file it is
+			// copied from starts with one.
+			if err := CheckOverlayFile(ext); err != nil {
+				return err
+			}
+
 			b, err = g.run(ctx, "go", "tool", "protobuf-merge", v, ext)
 			if err != nil {
 				return err
@@ -288,8 +298,8 @@ func (r run) merge(ctx context.Context) error {
 		// refuses in a heap of messages naming files nobody wrote.
 		//
 		// It is the app's entities that say it and everything generated that
-		// follows, which is the same rule the copies in `proto/payday/` are
-		// held to.
+		// follows, which is the same rule the copies in `proto/<pkg>/payday/`
+		// are held to.
 		b = goPackage.ReplaceAll(b, []byte(fmt.Sprintf("option go_package = %q;", r.Layout.GoPackage())))
 
 		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {

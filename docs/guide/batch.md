@@ -35,9 +35,28 @@ names a field and a value and the server has no rule about the pair. Every
 operation of a batch is a real RPC with its own validation, its own layers and
 its own audit. What a batch adds is that they commit together.
 
-The trail and `Watch` come out right for free: the recorder is told each
-operation by the name the caller used, and a batch is published as **one** event
-— which is correct, since a UI should see a transaction whole.
+The trail and `Watch` come out right, and they answer different questions. Each
+operation is filed on the trail under **its own** method name — the one the
+caller wrote in the `Op` — so a batch of N writes is N lines, and the envelope
+is none of them: `/payday.BatchService/Do` wrote no row and renames nothing. The
+batch shows whole in the other place, as **one** `Watch` event — which is
+correct, since a UI should see a transaction whole. That event's method is the
+batch, because a batch is what the caller asked for; each change inside it names
+the operation that made it.
+
+That is the publish this process makes, once the handler has answered. Where the
+outbox is on there is a second one and it is not whole: the queue takes a row
+per write — the call only ends after the commit, so no row written inside the
+transaction could hold the whole of one — so what the drainer publishes is an
+event per operation, each with its single change and the operation's method as
+the event's. Read the grouping off the immediate event; the queue never had it.
+
+The seam is `batch.AsOp`. The recorder below the write sites fills in what was
+asked for by asking gRPC, because the sites cannot know it — one call writes
+through several servers, and only the transport knows the name it all happened
+under. Inside a batch the transport's honest answer is the envelope, true of the
+wire and false of every operation, so the dispatcher hands each operation a
+context in which gRPC's answer is that operation.
 
 ## 2. Wiring it
 
@@ -103,9 +122,10 @@ other supported way to make one.
 
 The policy is the one argument, because it is the one thing that is not in the
 configuration: it is a field on the server (`Server.Policy`), and it is the same
-value `gate.Interceptor` was given a few lines above. Passing `nil` here while
-the interceptor has one is the hole in the third row of the table, left open —
-the policy would authorise every call except the ones inside a batch.
+value `gate.Interceptor` is given in
+[the server's chain](server.md#4-the-interceptors). Passing `nil` here while the
+interceptor has one is the hole in the third row of the table, left open — the
+policy would authorise every call except the ones inside a batch.
 
 The generated `pd.Batch` refuses a guard nobody filled in — `guard.IsZero()`
 answers `batch.ErrNoGuard`. That is not a judgement about how open the
@@ -133,18 +153,19 @@ second operation needs the first one's identifier.
 The usual answer is a placeholder language (`$0.id`), and placeholder languages
 grow.
 
-**payday does not need one.** The minter accepts an identifier the caller
-supplies and checks only that its domain is right, and `pdid` is published to
-npm. So the client mints both identifiers up front and writes them into both
-operations:
+**payday does not need one.** The minter takes the identifier a request supplies
+rather than replacing it: what it checks is that the identifier is one of
+payday's and that its domain is the entity's, not where it came from. And `pdid`
+mints one in TypeScript too, out of `@lesomnus/payday` — so the client mints
+both identifiers up front and writes them into both operations:
 
 ```ts
 import { create } from '@bufbuild/protobuf'
 import { anyPack } from '@bufbuild/protobuf/wkt'
 import { pdid } from '@lesomnus/payday'
 
-import { RobotDomain, JointDomain } from './gen/domains.js'
-import { RobotAddRequestSchema, JointAddRequestSchema } from './gen/app/robot_svc_pb.js'
+import { RobotDomain, JointDomain } from '../gen/domains.js'
+import { RobotAddRequestSchema, JointAddRequestSchema } from '../gen/app/robot_svc_pb.js'
 
 const robot = pdid.newId(RobotDomain)
 const joint = pdid.newId(JointDomain)
@@ -200,14 +221,15 @@ still write the RPC that means it. The doctrine narrowed; it did not disappear.
 ## 6. The name stays `payday.BatchService`
 
 Every other payday message is rewritten into your proto package — your app has
-`app.Tenant`, not `payday.Tenant`. `BatchService` is the exception, and
-deliberately: it is not a message describing your domain, it is a **transport**.
-Anything that speaks batch to any payday app speaks the same one, and a generic
-client should not need a per-app name for it.
+`app.Tenant`, not `payday.Tenant`. A batch keeps the framework's name
+deliberately, because it is not a message describing your domain but a
+**transport**: anything that speaks batch to any payday app speaks the same one,
+and a generic client should not need a per-app name for it. Which names survive
+the rewrite and why is [the generation contract](../SCHEMA.md#3-whose-names-these-are).
 
 ## Where to go next
 
 - [The server](server.md) — the stack a batch rebinds, and where the guard's
   configuration comes from.
-- [Permissions and the wall](permissions.md) — the four rules in their normal
-  home.
+- [Permissions and the wall](permissions.md) — the four rules as the transport
+  enforces them, when nothing is wrapping them.

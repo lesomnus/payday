@@ -125,6 +125,9 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 		q.SetDateCreated(st.now())
 	}
 	q.SetIdpSubject(req.GetIdpSubject())
+	if req.HasProfile() {
+		q.SetProfile(req.GetProfile())
+	}
 
 	u, err := q.Save(ctx)
 	if err != nil {
@@ -216,6 +219,9 @@ func HolderSelectedFields(m *apptest.HolderSelect) []string {
 	if m.GetIdpSubject() {
 		vs = append(vs, holder.FieldIdpSubject)
 	}
+	if m.GetProfile() {
+		vs = append(vs, holder.FieldProfile)
+	}
 
 	return vs
 }
@@ -287,7 +293,7 @@ func HolderGetKey(ctx context.Context, db *ent.Client, ref *apptest.HolderRef) (
 var holderOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_holder_proto, "Holder")
 
 var holderPatchColumns = entpatch.Columns{
-	1: holder.FieldID, 2: holder.TenantColumn, 4: holder.FieldAlias, 5: holder.FieldName, 6: holder.FieldDesc, 7: holder.FieldLabels, 13: holder.FieldDateUpdated, 14: holder.FieldDateErased, 15: holder.FieldDateCreated, 8: holder.FieldIdpSubject}
+	1: holder.FieldID, 2: holder.TenantColumn, 4: holder.FieldAlias, 5: holder.FieldName, 6: holder.FieldDesc, 7: holder.FieldLabels, 13: holder.FieldDateUpdated, 14: holder.FieldDateErased, 15: holder.FieldDateCreated, 8: holder.FieldIdpSubject, 9: holder.FieldProfile}
 
 func (s HolderServiceServer) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
 	if !req.HasPatch() {

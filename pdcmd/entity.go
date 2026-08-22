@@ -35,7 +35,7 @@ type Entity struct {
 //
 // The nil is the point of this whole type. Not every entity has every verb:
 // `List` is generated only where the schema declared `list:`, and in payday's
-// own test app four entities of nine have it. A command tree that assumed the
+// own test app four entities of eleven have it. A command tree that assumed the
 // verb would build `robot ls` for a service with no `List` and fail at the
 // call, naming a method the server is right to say it does not have.
 func (e Entity) Method(name string) protoreflect.MethodDescriptor {
@@ -52,9 +52,9 @@ func (e Entity) Method(name string) protoreflect.MethodDescriptor {
 //
 // Two payday apps can share a process -- that is the whole reason an app may
 // choose its own proto package -- and when they do, this registry holds both.
-// kamino2 is such a process: it embeds roster, so `roster.Holder` and
-// `hday.oasys.Holder` are both here, and a tree built from everything would
-// have two `holder` commands pointed at two different servers.
+// An app that embeds another is such a process: `directory.Holder` and
+// `fleet.Holder` are both here, and a tree built from everything would have two
+// `holder` commands pointed at two different servers.
 //
 // The connection cannot answer which is wanted: it is a `grpc.ClientConnInterface`
 // and knows nothing about schemas. So the caller says, and [New] guesses only

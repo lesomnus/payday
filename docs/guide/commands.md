@@ -113,11 +113,11 @@ t.Add("robot/resend", &xli.Command{
 
 It is idempotent, so chaining it costs nothing where a parent already has it.
 
-One app can have several trees, and this is why. roster has an operator port and
-a data port with different policies in front of them; a tree per connection is a
-command tree per policy. An in-process server over `bufconn` hands back a
-`*grpc.ClientConn` like any other, so an embedded deployment needs no different
-code.
+One app can have several trees, and this is why. A deployment that answers
+operators on one port and machines on another has two policies in front of one
+app, and a tree per connection is a command tree per policy. An in-process
+server over `bufconn` hands back a `*grpc.ClientConn` like any other, so an
+embedded deployment needs no different code.
 
 **The wall is untouched.** A command is a caller like any other: without a
 credential the same call comes back `Unauthenticated`, from the server.
@@ -138,11 +138,20 @@ Six verbs, and only where the schema declared them:
 | `erase <REF>` | remove one |
 
 `ls` exists only for an entity that declared `list:`, and `watch` only for one
-that declared `watch:`. In payday's own test app four of nine entities have no
-list, so `robot ls` is built and `cell ls` is not; `Tenant` has a list and no
-watch, so `tenant watch` is not there either — and nobody decided any of that
-twice. The commands are read from the descriptors your `.pb.go` files register
-at init, so a verb exists exactly when the method does.
+that declared `watch:`. In payday's own test app, seven of the eleven entities
+in the `app` package have no list, so `robot ls` is built and `cell ls` is not;
+`Tenant` has a list and no watch, so `tenant watch` is not there either — and
+nobody decided any of that twice. The commands are read from the descriptors
+your `.pb.go` files register at init, so a verb exists exactly when the method
+does.
+
+**Paging is a cursor and not a page number.** An `ls` with more to give answers
+with a `next`, printed under the rows by the default format, and `--next` hands
+it back: the page carries on from the last row of the one before. A request
+with no cursor field for the flag to write — a hand-written service that is a
+`List` in name only — is refused rather than sent, because a `--next` that fell
+out silently would answer the first page again, which reads as a one-page list
+and not as a mistake.
 
 One is deliberately absent:
 
@@ -170,17 +179,17 @@ one the server refuses. That is why the reference is an argument: naming a row
 on the line is the shortest request there is.
 
 The first message is what is already there. After that, one message per write,
-and a row that is **gone** — erased, or moved out of the filters this stream
-named — arrives with its identifier and nothing else. There is deliberately no
-way to tell those two apart; a stream that distinguished them would be telling
-you about rows that stopped being yours.
+and a row that is **gone** arrives with its identifier and nothing else. Erased
+and moved out of the filters this stream named are one thing to a watch, which
+is [the schema's rule](schema.md#6-watch--the-page-kept-current) rather than
+this command's.
 
 ```
 $ app robot watch -o table @acme/arm-01
 ACTION                        ALIAS    AGE   ID
--                             arm-01   3d    019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
-/app.RobotService/Patch       arm-02   3d    019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
-/app.RobotService/Erase       -        -     019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
+-                             arm-01   3d    019ff7c9-8a1e-8c3d-9f07-2b6c1f0a4d51
+/app.RobotService/Patch       arm-02   3d    019ff7c9-8a1e-8c3d-9f07-2b6c1f0a4d51
+/app.RobotService/Erase       -        -     019ff7c9-8a1e-8c3d-9f07-2b6c1f0a4d51
 ```
 
 The identifier is a column here rather than an `-o wide` one, for the row that
@@ -215,7 +224,7 @@ with the same words is a command that never stops and never works.
 Anywhere a command takes a `REF`:
 
 ```sh
-$ app holder get 019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
+$ app holder get 019ff7c9-8a1e-8c3d-9f02-2b6c1f0a4d51
 $ app holder get @acme/alice
 $ app holder get @acme/alice#holder
 $ app tenant get @acme
@@ -252,7 +261,7 @@ written constantly — which row, what it is called — and everything else the
 request can hold is protojson, merged over them:
 
 ```sh
-$ app robot add @acme/arm-01 '{"cell":{"alias":"floor-2"}}'
+$ app robot add @acme/arm-01 '{"cell":{"id":"01a0010f-fd1e-8f1b-a60a-44424d2ababd"}}'
 $ app robot patch @acme/arm-01 '{"alias":"arm-02"}'
 $ app holder add - < holder.json
 ```
@@ -260,6 +269,11 @@ $ app holder add - < holder.json
 The JSON wins where the two overlap, which is what makes it a complete escape
 hatch: any field a command sets can be overridden without the command growing a
 flag to unset it.
+
+The cell is named by identifier because that is the only way a `CellRef` can
+name one: what a reference may say is what the schema made unique, and `Cell`
+declares no unique index over its alias — see
+[`alias`](schema.md#4-alias--the-name-a-person-writes).
 
 ### Identifiers can be written as uuids
 
@@ -304,6 +318,7 @@ id           01a00104-e385-8595-…     ALIAS   NAME        AGE
 tenant       01a00104-e380-8aa9-…     admin   -           3d
 alias        bob                      bob     Bob Vance   2h
 name         Bob Vance
+date_updated 2026-08-14T16:04:52Z
 date_created 2026-08-14T16:04:52Z
 ```
 
@@ -361,9 +376,10 @@ the human-readable table and never the serialisations.
 
 ## 5. An RPC of your own
 
-The five verbs are the ones every entity has. An operation that *means*
-something is not one of them: payday closes the general writes on purpose, so
-"put this robot in another cell" is an RPC you
+The six verbs are the general ones: what an entity can be asked for without
+knowing what it is. An operation that *means* something is not one of them:
+payday closes the general writes on purpose, so "put this robot in another
+cell" is an RPC you
 [declare in an overlay](schema.md#an-rpc-of-your-own) and implement in
 [a layer](server.md#3-writing-a-layer).
 
@@ -401,7 +417,7 @@ if err := t.Add("robot/move", c); err != nil {
 ```
 
 ```sh
-$ app robot move @acme/arm-07 '{"to":{"alias":"floor-2"}}'
+$ app robot move @acme/arm-07 '{"to":{"id":"01a0010f-fd1e-8f1b-a60a-44424d2ababd"}}'
 ```
 
 **It does not care where the method came from.** A method you declared in an
@@ -418,16 +434,21 @@ Two things it works out for itself:
   `RobotMoveRequest` follows, because an RPC about a row names it the way
   every other RPC names one. What kind of thing the reference names comes from
   the field's own type — the `ref` of `RobotMoveRequest` is a `RobotRef` — so
-  `robot move @acme/arm-07#holder` is refused the way it is on the five verbs.
+  `robot move @acme/arm-07#holder` is refused the way it is on every verb that
+  takes one: five of the six, since `ls` takes none.
 - **Whether it can be a command at all.** A stream is refused **while you are
-  wiring it**, not when somebody runs it:
+  wiring it**, not when somebody runs it — and so is a name that is not there
+  at all:
 
   ```
-  pdcmd: app.RobotService.Watch: is a stream, which is not this shape
+  pdcmd: app.RobotService.Watch: is a stream, and this builds one call; a
+  server stream is what `watch` is, and what it needed was an opinion about
+  ending -- see cmdWatch
+
   pdcmd: app.RobotService.Nope: app.RobotService has no such method
   ```
 
-This is also how the two absent verbs are mounted, if your app wants them:
+This is also how the absent verb is mounted, if your app wants it:
 
 ```go
 c, _ := t.Unary("app.RobotService.Apply")
@@ -462,27 +483,30 @@ declare its own columns.
 
 ## 7. Two payday apps in one process
 
-`New` refuses when there is more than one, and names them:
+An app that embeds another is one binary with two payday apps in it: `dispatch`
+serves its own entities in the `fleet` package, and `directory`, the identity
+store it embeds, serves its own. `New` refuses there, and names them:
 
 ```
-pdcmd: 2 payday apps are in this process (hday.oasys, roster), so which one
-this connection speaks to has to be said: use NewIn
+pdcmd: 2 payday apps are in this process (directory, fleet), so which one this
+connection speaks to has to be said: use NewIn
 ```
 
-This is not an edge case. Two payday apps can share a process whenever their
-proto packages differ — which is
-[why an app may choose its own](../SCHEMA.md) — and kamino2 is such a process:
-it embeds roster, so `roster.Holder` and `hday.oasys.Holder` are both in the
-registry. A connection cannot say which of them it speaks to.
-
-So the app says:
+A connection cannot say which of them it speaks to: it is a
+`grpc.ClientConnInterface` and knows nothing about schemas. The proto package is
+what says — an app may choose its own, which is
+[whose names these are](../SCHEMA.md#3-whose-names-these-are) — so the app names
+it:
 
 ```go
-mine := pdcmd.NewIn(mineLocal{c}, "hday.oasys")
-theirs := pdcmd.NewIn(theirRoster{c}, "roster")
+mine   := pdcmd.NewIn(local{c}, "fleet")
+theirs := pdcmd.NewIn(embedded{c}, "directory")
 ```
 
 Which is the right shape anyway: a process with two servers wants two trees.
+
+That two apps *can* share a process, and what they share when they do, is
+[two apps in one process](packages.md#3-two-apps-in-one-process).
 
 ---
 
@@ -492,5 +516,7 @@ Which is the right shape anyway: a process with two servers wants two trees.
   [an RPC of your own](schema.md#an-rpc-of-your-own)
 - [The server](server.md) — the stack that answers these calls, and the rest of
   the commands on your binary
+- [More than one proto package](packages.md) — when a tree has to be told which
+  app it is for
 - [Permissions and the wall](permissions.md) — what a command may do, which is
   never this package's decision

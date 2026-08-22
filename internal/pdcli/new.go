@@ -44,20 +44,47 @@ type New struct {
 	Name string
 }
 
+// Called is the app's name: the one given, or the last segment of the module.
+//
+// It is a method because every use of [New] takes a value, so the defaults a
+// call applies are gone when it returns -- and a caller that filled them in
+// again for itself is a fourth copy of this rule that can disagree with the
+// three above it. `pd new` was such a caller, and told a person their app was
+// in "" because it looked at [New.Dir] and [New.Name] rather than at this.
+func (n New) Called() string {
+	if n.Name != "" {
+		return n.Name
+	}
+
+	return alias(path(n.Module))
+}
+
+// Where is the directory the app is written into.
+//
+// Answering for a [New] nobody filled in is the whole of what it is for, and
+// [New.Setup] is why that is worth more than a printed line: an `exec.Cmd` with
+// an empty `Dir` runs where the process is standing, so a `pd new --setup` told
+// only a module fetched the app's tools into whichever module the person
+// happened to be in -- writing tool directives into somebody else's go.mod and
+// leaving the app it had just written with none of them.
+func (n New) Where() string {
+	if n.Dir != "" {
+		return n.Dir
+	}
+
+	return n.Called()
+}
+
 // Write puts the app there.
 func (n New) Write() error {
 	if n.Module == "" {
 		return fmt.Errorf("say what module this is, e.g. github.com/acme/thing")
 	}
-	if n.Name == "" {
-		n.Name = alias(path(n.Module))
-	}
+	n.Name = n.Called()
 	if !nameOk.MatchString(n.Name) {
 		return fmt.Errorf("%q is not a name; it begins with a lowercase letter and holds lowercase letters, digits and single hyphens", n.Name)
 	}
-	if n.Dir == "" {
-		n.Dir = n.Name
-	}
+	n.Dir = n.Where()
 
 	// Refused rather than merged. Writing a template over a directory somebody
 	// already has is the one mistake here that cannot be undone by deleting
@@ -156,10 +183,7 @@ var Tools = tools
 // until the generated packages exist, and they cannot be generated until the
 // tools are there.
 func (n New) Setup(ctx context.Context, log io.Writer) error {
-	dir := n.Dir
-	if dir == "" {
-		dir = n.Name
-	}
+	dir := n.Where()
 
 	run := func(name string, args ...string) error {
 		if log != nil {
@@ -205,19 +229,7 @@ func (n New) Setup(ctx context.Context, log io.Writer) error {
 
 // Steps is what to type, for a `new` that did not set the app up itself.
 func (n New) Steps() []string {
-	// The same defaults [New.Write] applies, and applied again here because it
-	// takes a value: an app named after its module wrote `cmd/widget/` and then
-	// said to run `./cmd/`.
-	if n.Name == "" {
-		n.Name = alias(path(n.Module))
-	}
-
-	dir := n.Dir
-	if dir == "" {
-		dir = n.Name
-	}
-
-	vs := []string{"cd " + dir}
+	vs := []string{"cd " + n.Where()}
 	for _, t := range append([]string{cli}, tools...) {
 		vs = append(vs, "go get -tool "+t)
 	}
@@ -230,8 +242,8 @@ func (n New) Steps() []string {
 		"go tool pd gen .",
 		"go mod tidy",
 		"go build ./...",
-		"go run ./cmd/"+n.Name+" init",
-		"go run ./cmd/"+n.Name+" serve",
+		"go run ./cmd/"+n.Called()+" init",
+		"go run ./cmd/"+n.Called()+" serve",
 		"",
 		"# and the page, in another shell",
 		"go tool pd gen --ts .",

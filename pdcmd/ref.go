@@ -17,7 +17,7 @@ import (
 //
 // Either an identifier, or a [slug]:
 //
-//	019ff7c9-8a1e-7c3d-9f00-2b6c1f0a4d51
+//	019ff7c9-8a1e-8c3d-9f02-2b6c1f0a4d51
 //	@acme/alice
 //	@alice
 //	@acme/alice#holder

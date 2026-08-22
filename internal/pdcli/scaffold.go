@@ -40,11 +40,16 @@ type Entity struct {
 	// one named after the entity.
 	File string
 
-	// Tenanted, Tenant and Global are the three tenancies, and exactly one has
-	// to be chosen: see [Entity.Add].
+	// Tenanted and Global are the two an app chooses between, and saying
+	// neither is Tenanted: see [Entity.Add].
 	Tenanted bool
-	Tenant   bool
 	Global   bool
+
+	// Tenant is the third tenancy the schema has and the one no app writes,
+	// because payday ships the tenant. It is carried here rather than dropped
+	// at the command line so that somebody who asked for it is told why;
+	// [Entity.Add] refuses it.
+	Tenant bool
 
 	// Watch adds a `watch:` and the version field it needs.
 	Watch bool
@@ -56,7 +61,34 @@ func (e Entity) Add() (string, error) {
 		return "", fmt.Errorf("%q is not a message name; it begins with a capital and holds letters and digits", e.Name)
 	}
 
-	switch n := count(e.Tenanted, e.Tenant, e.Global); {
+	// Before the tenancy count, so that the answer to `--tenant` is the reason
+	// rather than a list of flags one of which is this one.
+	if e.Tenant {
+		// payday ships the tenant. `pd gen` copies `schema/payday/*.proto`
+		// into every app under the app's own package name, so `Tenant` is in
+		// this schema before the app has written a line of it -- and a second
+		// entity saying `tenant: {}` is refused by generation, reading a file
+		// this wrote and blaming the app for it.
+		//
+		// Unconditional rather than a search of the tree, because it is a fact
+		// about payday and not about the app: the copy is not optional, and
+		// the refusal spans the whole generation, a second proto package
+		// included. There is no app shape where it generates, so there is
+		// nothing to go looking for.
+		//
+		// The flag is kept and answered rather than removed, because `unknown
+		// flag` sends the same person to write `tenant: {}` by hand -- the
+		// same refused schema, arriving later from a generator and with
+		// nowhere to go next. What they wanted is one of the two below.
+		return "", fmt.Errorf(
+			"payday ships the tenant, and an app does not declare a second: a wall is made of one thing.\n\n"+
+				"It is copied into this app as %s. Fields of your own go on it through an overlay at %s, "+
+				"and an entity that *belongs* to a tenant is --tenanted",
+			filepath.ToSlash(filepath.Join(e.Layout.DirPd(), "tenant.proto")),
+			filepath.ToSlash(filepath.Join(DirExt, "payday", "tenant.ext.proto")))
+	}
+
+	switch n := count(e.Tenanted, e.Global); {
 	case n == 0:
 		// Behind the wall, which is what saying nothing means in the schema too.
 		// The two answers that are not the ordinary one are the ones written
@@ -65,7 +97,22 @@ func (e Entity) Add() (string, error) {
 		// other, and only the first is ever noticed.
 		e.Tenanted = true
 	case n > 1:
-		return "", fmt.Errorf("an entity is behind the wall or it is not; pick one of --tenanted, --tenant, --global")
+		return "", fmt.Errorf("an entity is behind the wall or it is not; pick one of --tenanted, --global")
+	}
+
+	// Before the directory is made, so that a refusal leaves nothing behind.
+	at, ships, err := e.held()
+	if err != nil {
+		return "", err
+	}
+	switch {
+	case ships:
+		// Named as payday's rather than by the path it will be copied to: in
+		// an app that has not generated yet there is no such file to open, and
+		// the thing to know is that this name is not the app's to take.
+		return "", fmt.Errorf("payday ships a message %s, and its entities are copied into this app's package", e.Name)
+	case at != "":
+		return "", fmt.Errorf("%s already holds a message %s", e.Layout.rel(at), e.Name)
 	}
 
 	// Beside this app's other entities, which is the directory named after its
@@ -95,10 +142,6 @@ func (e Entity) Add() (string, error) {
 	b, err := os.ReadFile(p)
 	switch {
 	case err == nil:
-		if regexp.MustCompile(`(?m)^message ` + regexp.QuoteMeta(e.Name) + `\s`).Match(b) {
-			return "", fmt.Errorf("%s already holds a message %s", name, e.Name)
-		}
-
 		b = append(b, '\n')
 		b = append(b, e.message(domain)...)
 
@@ -110,6 +153,85 @@ func (e Entity) Add() (string, error) {
 	}
 
 	return p, os.WriteFile(p, b, 0o644)
+}
+
+// held is the file already holding a message called [Entity.Name], and empty
+// if nothing holds one. The second answer says that file is payday's, which is
+// a different thing to tell somebody: it is not the app's to rename.
+//
+// The whole schema and not the one file about to be written into, because a
+// second message of one name collides wherever it is put. Inside a package
+// protoc refuses it outright; across an app's two packages the Go package is
+// still one, so it becomes a duplicate type instead -- and generation refuses
+// two entities written the same way before either of those gets a chance. A
+// check narrowed to one file misses all three and writes the file anyway.
+//
+// Every message and not only every entity. A request message in a service
+// overlay takes the name just as thoroughly, and nothing here has parsed the
+// schema well enough to tell one from the other.
+func (e Entity) held() (string, bool, error) {
+	at, ships := "", false
+	declared := regexp.MustCompile(`(?m)^message ` + regexp.QuoteMeta(e.Name) + `[\s{]`)
+
+	err := e.each(func(p string, own bool, b []byte) {
+		if at != "" || !declared.Match(b) {
+			return
+		}
+
+		at, ships = p, own
+	})
+
+	return at, ships, err
+}
+
+// protoDir is somewhere a name or a domain may already be spoken for.
+type protoDir struct {
+	at string
+
+	// own says payday ships these rather than the app having written them.
+	own bool
+}
+
+// each reads every .proto whose messages land in this app's proto package.
+//
+// The second directory is the half a person doing this by hand forgets, and it
+// is why both [Entity.free] and [Entity.held] go through here: payday's own
+// entities are copied into the app under the app's package name, so what they
+// hold is held here -- in an app that has never generated and has nothing on
+// disk to show for it.
+//
+// `own` says the file is payday's rather than the app's, which is a different
+// sentence to say about it: the app cannot edit it and did not write it.
+func (e Entity) each(fn func(p string, own bool, b []byte)) error {
+	dirs := []protoDir{{at: e.Layout.Path(DirProto)}}
+
+	// Best effort. A tree whose module graph cannot be asked still has its own
+	// schema to read, and half an answer beats refusing to scaffold anything.
+	if d, err := SchemaDir(); err == nil {
+		dirs = append(dirs, protoDir{at: d, own: true})
+	}
+
+	for _, d := range dirs {
+		err := filepath.WalkDir(d.at, func(p string, _ os.DirEntry, err error) error {
+			if err != nil || !strings.HasSuffix(p, ".proto") {
+				return nil
+			}
+
+			b, err := os.ReadFile(p)
+			if err != nil {
+				return err
+			}
+
+			fn(p, d.own, b)
+
+			return nil
+		})
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // free is a domain nothing else in this schema has.
@@ -126,33 +248,14 @@ func (e Entity) Add() (string, error) {
 func (e Entity) free() (int, error) {
 	taken := map[int]bool{}
 
-	dirs := []string{e.Layout.Path(DirProto)}
-	if d, err := SchemaDir(); err == nil {
-		dirs = append(dirs, d)
-	}
-
-	for _, dir := range dirs {
-		err := filepath.WalkDir(dir, func(p string, _ os.DirEntry, err error) error {
-			if err != nil || !strings.HasSuffix(p, ".proto") {
-				return nil
+	if err := e.each(func(_ string, _ bool, b []byte) {
+		for _, m := range domainAt.FindAllSubmatch(b, -1) {
+			if n, err := strconv.Atoi(string(m[1])); err == nil {
+				taken[n] = true
 			}
-
-			b, err := os.ReadFile(p)
-			if err != nil {
-				return err
-			}
-
-			for _, m := range domainAt.FindAllSubmatch(b, -1) {
-				if n, err := strconv.Atoi(string(m[1])); err == nil {
-					taken[n] = true
-				}
-			}
-
-			return nil
-		})
-		if err != nil && !os.IsNotExist(err) {
-			return 0, err
 		}
+	}); err != nil {
+		return 0, err
 	}
 
 	// One past the highest, rather than the lowest that is free, and starting
@@ -247,13 +350,21 @@ func (e Entity) message(domain int) string {
 	b.WriteString("  // https://github.com/lesomnus/payday/blob/main/docs/guide/permissions.md\n")
 	b.WriteString("\n  // TODO: this entity's own fields, in 8..12 and from 16.\n")
 
+	// Not behind a flag, because there is no entity that says nothing about
+	// erasure: generation refuses one holding neither an `erased:` field nor
+	// `erase: {hard: {}}`, and a scaffold whose output is refused is a scaffold
+	// whose first user reads a generated error. Which is the one that is
+	// written is the same choice made in the same direction as tenancy -- the
+	// answer that keeps the row is assumed, and the one that loses it has to be
+	// typed.
+	b.WriteString("\n  // Erased softly, which is what saying nothing about erasure means: the\n")
+	b.WriteString("  // row is stamped and stays, so it cannot be read or changed, its alias\n")
+	b.WriteString("  // comes free again, and the trail can still say what it held. Delete\n")
+	b.WriteString("  // this and say `erase: {hard: {}}` if losing the row is the point --\n")
+	b.WriteString("  // a table of readings cannot be one nothing may be removed from.\n")
+	b.WriteString("  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];\n")
+
 	if e.Watch {
-		b.WriteString("\n  // Erased softly, which is what saying nothing about erasure means: the\n")
-		b.WriteString("  // row is stamped and stays, so it cannot be read or changed, its alias\n")
-		b.WriteString("  // comes free again, and the trail can still say what it held. Delete\n")
-		b.WriteString("  // this and say `erase: {hard: {}}` if losing the row is the point --\n")
-		b.WriteString("  // a table of readings cannot be one nothing may be removed from.\n")
-		b.WriteString("  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];\n")
 		b.WriteString("\n  // Stamped on every write and refused to a patch document, so it is a\n")
 		b.WriteString("  // version and not a field. A `watch:` is refused without one: a watch\n")
 		b.WriteString("  // sends state, so two answers about one row have to be orderable or a\n")
@@ -285,8 +396,6 @@ func (e Entity) message(domain int) string {
 		b.WriteString("    // wall, by the edge called `tenant`. `global: {}` is the other\n")
 		b.WriteString("    // answer and it has to be written, because that is the one that\n")
 		b.WriteString("    // shows every row to everybody when it is wrong.\n")
-	case e.Tenant:
-		b.WriteString("    tenant: {}\n")
 	case e.Global:
 		b.WriteString("    global: {}\n")
 	}

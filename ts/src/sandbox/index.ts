@@ -26,8 +26,8 @@
  *
  * # What has to be true of the page
  *
- * Three things, and none of them is payday's to fix. `pd sandbox init` writes
- * what it can and `pd doctor` checks all three, because each fails in a way
+ * Four things, and none of them is payday's to fix. `pd sandbox init` writes
+ * what it can and `pd doctor` checks all four, because each fails in a way
  * that does not name its cause.
  *
  *   - **`Cross-Origin-Opener-Policy: same-origin` and
@@ -35,6 +35,13 @@
  *     cancels work with a `SharedArrayBuffer`, which does not exist without
  *     cross-origin isolation. The symptom is "it works on the other dev
  *     server".
+ *   - **`@lesomnus/grpc-dgram` is not pre-bundled.** The worker URL it builds
+ *     resolves relative to the module, and pre-bundling moves the module into
+ *     `.vite/deps/` where there is no worker to resolve to. The symptom is
+ *     "the worker itself failed", which does not mention bundling:
+ *
+ *         optimizeDeps: { exclude: ['@lesomnus/grpc-dgram'] },
+ *
  *   - **`wasm_exec.js` is the toolchain's.** It is the JS half of the Go
  *     runtime and is version-coupled to the compiler that built the module, so
  *     a vendored copy pins the wrong one:

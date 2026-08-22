@@ -58,8 +58,8 @@ func rooted(t *testing.T, conn *grpc.ClientConn, opts ...pdcmd.Options) *xli.Com
 // TestTheTreeIsWhatTheSchemaDeclared is the claim that makes this worth
 // generating nothing for.
 //
-// A tree of "every entity gets every verb" would be wrong on this app: four of
-// its nine entities have no `List`, because `list:` is a thing an entity
+// A tree of "every entity gets every verb" would be wrong on this app: seven of
+// its eleven entities have no `List`, because `list:` is a thing an entity
 // declares and most did not. So `robot ls` exists and `cell ls` does not, and
 // neither was written down anywhere.
 func TestTheTreeIsWhatTheSchemaDeclared(t *testing.T) {
@@ -321,6 +321,65 @@ func TestTheFormats(t *testing.T) {
 	})
 }
 
+// TestLsPagesWithNext is the round trip the two paging flags exist for: the
+// "next" of one answer, handed back, is the page after it.
+//
+// It is worth a test of its own because the halves have different names. The
+// answer calls the cursor "next" and the generated request calls it "after",
+// and a command that wrote the flag onto a field the request does not have
+// would drop it without a word: every page would be the first page, and the
+// first page again is exactly what an honest one-page list looks like.
+func TestLsPagesWithNext(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	b.sow(ctx, x, b.Tenant, 3, "arm-")
+
+	conn := b.dialed(t, ctx)
+	as := b.travels(ctx)
+
+	// `-o json` rather than the default, because the cursor is part of the
+	// answer and this reads it back the way a script paging through would.
+	page := func(next string) (string, string) {
+		t.Helper()
+
+		args := []string{"robot", "ls", "-o", "json", "--size", "1"}
+		if next != "" {
+			args = append(args, "--next", next)
+		}
+
+		got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, args...)
+		x.NoError(got.Err)
+
+		var res struct {
+			Items []struct {
+				Alias string `json:"alias"`
+			} `json:"items"`
+			Next string `json:"next"`
+		}
+		x.NoError(json.Unmarshal([]byte(got.Stdout), &res))
+		x.Len(res.Items, 1, "one at a time is what --size asked for")
+
+		return res.Items[0].Alias, res.Next
+	}
+
+	first, next := page("")
+	x.NotEmpty(next, "three rows and a page of one, so there is more")
+
+	seen := []string{first}
+	for next != "" {
+		alias, n := page(next)
+		x.NotContains(seen, alias, "a row repeated, so the cursor went nowhere")
+
+		seen = append(seen, alias)
+		next = n
+
+		x.LessOrEqual(len(seen), 3, "the cursor never ended")
+	}
+
+	x.Len(seen, 3, "read through, every row arrived once")
+}
+
 // TestAnAppCanAddAFormat: the escape hatch for output is the same interface the
 // built-in formats implement.
 func TestAnAppCanAddAFormat(t *testing.T) {
@@ -362,7 +421,7 @@ func TestOneCommandCanBeReplaced(t *testing.T) {
 		Brief: "refuse, because this deployment does not erase people",
 		Args:  arg.Args{&pdcmd.ArgRef{Name: "REF"}},
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			return errors.New("people are erased in roster, not here")
+			return errors.New("people are erased in the identity store, not here")
 		}),
 	}))
 
@@ -370,7 +429,7 @@ func TestOneCommandCanBeReplaced(t *testing.T) {
 	got := xlitest.Harness{Cmd: root, Ctx: b.travels(ctx)}.Run(t, "holder", "erase", "@acme/admin")
 
 	x.Error(got.Err)
-	x.Contains(got.Err.Error(), "people are erased in roster")
+	x.Contains(got.Err.Error(), "people are erased in the identity store")
 
 	// And the rest of the tree is untouched.
 	x.NotNil(tree.Command("holder/get"))
@@ -558,14 +617,13 @@ func TestAnIdentifierCanBeWrittenAsAUuid(t *testing.T) {
 	})
 }
 
-// TestAnRpcThisAppWroteGetsACommandToo is the case the five verbs do not cover.
+// TestAnRpcThisAppWroteGetsACommandToo is the case the six verbs do not cover.
 //
 // payday closes the general writes on purpose, so an operation that means
-// something -- custody's `AssetService.Transfer`, moving a row to another
-// tenant -- is an RPC the app declares in an overlay and implements in a layer.
-// Nothing can generate a command for it, because nothing knows what it means.
-// What can be shared is everything around it, which is what [pdcmd.Tree.Unary]
-// is.
+// something -- moving a row to another tenant, say -- is an RPC the app
+// declares in an overlay and implements in a layer. Nothing can generate a
+// command for it, because nothing knows what it means. What can be shared is
+// everything around it, which is what [pdcmd.Tree.Unary] is.
 //
 // It reaches a method by name and does not care where the method came from: an
 // overlay and `pd gen` write into the same `ServiceDescriptor`, merged before
@@ -592,7 +650,7 @@ func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 
 		tree, err := pdcmd.New(pdcmd.Static(conn))
 		x.NoError(err)
-		x.Nil(tree.Command("robot/move"), "the five verbs do not include it")
+		x.Nil(tree.Command("robot/move"), "the six verbs do not include it")
 
 		c, err := tree.Unary("app.RobotService.Move")
 		x.NoError(err)
@@ -668,7 +726,7 @@ func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 // TestWhichAppThisConnectionSpeaksTo covers the case an embedded server creates.
 //
 // Two payday apps can share a process whenever their proto packages differ, and
-// kamino2 is such a process: it embeds roster, so two `Holder` entities are in
+// an app that embeds another is such a process: two `Holder` entities are in
 // the registry at once and a connection cannot say which of them it reaches.
 //
 // **A package is not an app**, which is what this app is here to show: it holds
@@ -702,6 +760,44 @@ func TestWhichAppThisConnectionSpeaksTo(t *testing.T) {
 	// A package with no entities builds an empty tree rather than failing, so
 	// that a caller naming the wrong one finds out from the tree it got.
 	x.Empty(pdcmd.NewIn(pdcmd.Static(conn), "payday").Commands())
+}
+
+// TestSharedThingIsServedLikeAnyOtherEntity is the "serves" of the claim in
+// docs/guide/packages.md: `shared.Thing` generates, serves and reaches
+// TypeScript like any other entity.
+//
+// Generation is proven by the tree above holding a `shared` package at all;
+// this is the row actually going in and coming back out, through the same
+// server, the same chain and the same credential everything in `app` travels.
+// Driven through `NewIn` because that is how an embedded deployment would
+// reach the shared package by name rather than by guess.
+func TestSharedThingIsServedLikeAnyOtherEntity(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	conn := b.dialed(t, ctx)
+	as := b.travels(ctx)
+
+	// Fresh per run, for the reason on [rooted]: a command holds the values
+	// parsed into it.
+	sharedRoot := func() *xli.Command {
+		return &xli.Command{Name: "app", Commands: pdcmd.NewIn(pdcmd.Static(conn), "shared").Commands()}
+	}
+
+	// `-o name` because the answer this test needs is the identifier: `Thing`
+	// is named by identifier alone -- global, so no tenant to hang a slug on --
+	// and the uuid printed here is what the `get` below types back.
+	made := xlitest.Harness{Cmd: sharedRoot(), Ctx: as}.Run(t, "thing", "add", "-o", "name", "@gizmo")
+	x.NoError(made.Err)
+
+	id, err := pdid.Parse(strings.TrimSpace(made.Stdout))
+	x.NoError(err)
+	x.Equal(pd.ThingDomain, id.Domain(), "minted with the domain the shared schema declared")
+
+	got := xlitest.Harness{Cmd: sharedRoot(), Ctx: as}.Run(t, "thing", "get", id.String())
+	x.NoError(got.Err)
+	x.Contains(got.Stdout, "gizmo", "the row round-trips")
+	x.Contains(got.Stdout, id.String())
 }
 
 // mustId is a `bytes` identifier as the uuid a command line carries.

@@ -8,8 +8,8 @@
 //
 // It is the half of payday's doctrine that had no demonstration. "The general
 // writes are closed, so an operation that means something has to be declarable"
-// is written up in the schema guide and was only ever carried out in custody,
-// which is another repository. Everything else payday claims is proved here;
+// is written up in the schema guide and had only ever been carried out in an
+// app built on payday elsewhere. Everything else payday claims is proved here;
 // this was not, so `pd gen` merging an overlay that adds an **RPC** -- rather
 // than a field -- was a path nothing in this module took.
 //

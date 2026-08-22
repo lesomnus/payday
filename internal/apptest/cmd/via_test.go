@@ -36,7 +36,7 @@ import (
 // It is in this package rather than beside the other wall tests because only
 // this harness installs a recorder -- which is also why the defect survived.
 //
-// Found by roster, whose Team is on field 3 and reaches its tenant through it.
+// Found by an app whose `Team` is on field 3 and reaches its tenant through it.
 func TestARowThatNamesNoNextHopCanStillBeWritten(t *testing.T) {
 	x := require.New(t)
 	ctx := t.Context()

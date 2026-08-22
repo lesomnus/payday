@@ -54,7 +54,9 @@ Get that wrong and every row disappears, and you know within minutes. Get the
 other default wrong and every row is visible to everyone, and nobody finds out.
 
 **An assumption should fail loudly, and the dangerous answer should be the one
-somebody had to write down.** `global: {}` exists, and it has to be typed.
+somebody had to write down.** `global: {}` exists, and it has to be typed — so
+every entity outside the wall can be found by searching for it, and none of them
+got there by silence.
 
 ## 3. How many deployments
 
@@ -92,11 +94,11 @@ that means here", and neither is a line in a YAML file that a mistake can widen.
 ```
 
 One field and **two** places it is installed, which is why it is a field rather
-than an argument to `gate.Interceptor` at the one call site: `Grpc` passes it to
-the interceptor, which covers the calls gRPC dispatches, and to
-`c.Server.Guard`, which covers the operations inside a batch. A batch arrives as
-one method carrying many, so a policy installed in only the first place
-authorises the batch instead of what it asks for.
+than an argument at a call site: `Grpc` hands it to `gate.Interceptor`, which
+covers the calls gRPC dispatches, and to `c.Server.Guard`, which covers the
+operations inside a batch. What that guard enforces per operation, and why it is
+refused rather than defaulted, is in
+[the batch guide](guide/batch.md#3-the-guard-and-why-it-is-refused-rather-than-defaulted).
 
 And the structural claim becomes a test: one test asserting that *the public
 stack does not return another tenant's row even to an HQ credential* is evidence

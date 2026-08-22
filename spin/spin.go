@@ -29,8 +29,8 @@
 // stops the rest, waits for them, and answers with the failure; whatever called
 // it ends the process.
 //
-// go-app decided the other way -- log it and start it again after a wait -- and
-// that is the conservative half of the same trade: a database that blinked is
+// An earlier system decided the other way -- log it and start it again after a
+// wait -- and that is the conservative half of the same trade: a database that blinked is
 // not a reason to stop serving requests. payday keeps the loud half and leaves
 // the quiet one to the loop, which is the only thing that knows whether what
 // just failed was a blink or the schema having moved underneath it. A pass that

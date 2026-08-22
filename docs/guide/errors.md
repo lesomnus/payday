@@ -60,9 +60,48 @@ It moves everything the error carries underneath a name. This is the only way
 violations are meant to be built up — doing it by hand is how a path ends up
 naming a box that is not there.
 
-The generated servers already work this way. `HolderPick` validates a
-`HolderRefBySlug` by calling `TenantPick` on part of it, and the path comes out
-right without either of them knowing where they sit.
+The generated servers work this way for the fields they introduce. `slug` knows
+the rule an alias broke and names **no field**: it was handed a string, not a
+request, and which box that string came out of is not something it can see. The
+generated `Add` and `Patch` are the half that can, so both wrap what comes back:
+
+```go
+v, err := slug.ParseAlias(req.GetAlias())
+if err != nil {
+	return nil, pderr.At("alias", err)
+}
+```
+
+A patch carrying `Arm 03` is refused with a violation at `alias`; the same
+refusal, wrapped by a layer that held the slug somewhere else, lands at
+`tenant.alias` instead. Neither half had to know the shape of the whole request.
+
+### A `Pick` refusal carries its path in words
+
+`Sink` wraps a server the ORM generates — the `bare` package — and that one
+does not know `pderr`. A reference it cannot use is refused with the path
+written **into** the message:
+
+```
+rpc error: code = InvalidArgument desc = slug.tenant: rpc error: code = InvalidArgument desc = id: invalid UUID (got 3 bytes)
+```
+
+`Violations` finds nothing beside that — it is the parsing problem this page
+opens with, arriving from underneath. So a layer that hands a reference down
+says where the reference was on the way back up:
+
+```go
+pick, err := bare.RobotPick(ref)
+if err != nil {
+	return nil, pderr.At("lead", err)
+}
+```
+
+That is what the generated code does for every reference it reads a tenant
+through, and it is what a layer of yours does with one it validates. The box
+comes back at `lead`, while the half of the path the ORM wrote stays in the
+sentence: **a path is only as long as the wrapping that was done**. A refusal
+passed up untouched has not lost its message, but it has lost its box.
 
 ### `At` will not change what kind of error it is
 

@@ -75,28 +75,31 @@ What it is for:
 
 ### What it costs, measured
 
-payday's own sandbox, built from `internal/apptest` — eight entities:
+payday's own sandbox, built from `internal/apptest` — twelve entities, 114
+messages, Go 1.26. Each row below is a build of its own, and what it was built
+from is written down because that is what the numbers move with.
 
 | | raw | brotli |
 | --- | ---: | ---: |
 | the Go runtime alone | 1.8 MB | 0.5 MB |
-| \+ the generated messages | 22.1 MB | 3.9 MB |
-| \+ the generated servers | 37.8 MB | 6.6 MB |
-| the whole thing | 65.9 MB | **10.6 MB** |
+| \+ the generated messages | 22.5 MB | 3.8 MB |
+| \+ the generated servers | 38.4 MB | 6.4 MB |
+| the whole thing | 67.8 MB | **10.7 MB** |
 
-The second row reads as "the generated messages cost 20 MB", and that is the
+The second row reads as "the generated messages cost 21 MB", and that is the
 wrong conclusion. Taking it apart:
 
 | | adds | at |
 | --- | ---: | ---: |
 | a `main` that prints | — | 1.8 MB |
-| `proto.Marshal` of a `Timestamp` | +5.7 MB | 7.5 MB |
-| `import _ "google.golang.org/grpc"` | **+11.6 MB** | 19.1 MB |
-| every message and service this app generates | +3.0 MB | 22.1 MB |
+| `proto.Marshal` of a `Timestamp` | +5.8 MB | 7.5 MB |
+| `import _ "google.golang.org/grpc"` | **+11.6 MB** | 19.2 MB |
+| every message and service this app generates | +3.3 MB | 22.5 MB |
 
-**The generated code is 3 MB of it.** 490 KB of Go across 85 messages —
-ten entities and, for each, its requests, its ref, its filter and its select.
-That is a sixfold expansion into wasm, which is what Go costs anywhere.
+**The generated code is 3.3 MB of it.** It comes from 617 KB of `*.pb.go`: 114
+messages over twelve entities — each one's requests, its ref and its select, and
+a filter for the five that declare a list — plus the stubs that serve them. That
+is a fivefold expansion into wasm, which is what Go costs anywhere.
 
 **gRPC is 11.6 MB, and a blank import pays all of it.** Not `grpc.NewServer()`
 — the import. grpc-go's packages register codecs, resolvers and balancers into
@@ -109,11 +112,11 @@ Nothing short of generating a second set of stubs recovers it, and a second set
 of stubs is a second implementation — see below. So it is a cost this takes
 knowingly, and it compresses like the code it is.
 
-**The Go runtime is 1.8 MB — 2.7%.** Which is the whole answer to making it
+**The Go runtime is 1.8 MB — 2.6%.** Which is the whole answer to making it
 smaller by using a smaller Go.
 
 The vite config `pd sandbox init` writes compresses on `vite build`, so a demo
-link is about 10 MB rather than 66. `npm run dev` reads the file off disk and
+link is about 11 MB rather than 68. `npm run dev` reads the file off disk and
 compresses nothing, because there is nothing to save.
 
 The build loop is not the problem either. On a 2022 laptop, changing one line:
@@ -128,7 +131,7 @@ The build loop is not the problem either. On a 2022 laptop, changing one line:
 
 It is the obvious idea and the tables above are why it is not taken. TinyGo's
 size advantage is a smaller runtime, no reflection metadata, and harder dead
-code elimination. Here the runtime is 1.8 MB of 65.9, and the other 64 MB is
+code elimination. Here the runtime is 1.8 MB of 67.8, and the other 66 MB is
 grpc-go, the protobuf runtime, ent and generated code — all of which lean on
 exactly the reflection TinyGo does without, and the largest single piece of
 which is a dependency's `init()` tables rather than anything payday wrote.
@@ -143,7 +146,8 @@ different SQL layer and no gRPC would be a second implementation, and the
 first thing a second implementation does is disagree with the first — which is
 the thing this exists to make impossible.
 
-That last one earns its minute. The first time the sandbox was ever loaded in a
+The third reason a sandbox is worth having — proof that the runtime assumes
+nothing — earns its minute. The first time the sandbox was ever loaded in a
 page, three things were wrong — no broker named, nothing seeded, no interceptors
 — and every one of them compiled, linked and started. **A `main` that is built
 and never run says nothing at all.**
@@ -176,8 +180,20 @@ new app would have run.
 byte-for-byte what `pd new` wrote. Otherwise the two settings are printed for
 you to add — payday does not edit a file a person wrote.
 
-`pd doctor` checks all four of the things below for an app that has a sandbox,
-and says nothing to one that does not.
+`pd doctor` checks four things about a sandbox, and says nothing to an app that
+has none:
+
+- **cross-origin isolation** in `ts/vite.config.ts`, without which there is no
+  `SharedArrayBuffer` and SQLite cannot run in a Worker
+- **`@lesomnus/grpc-dgram` kept out of pre-bundling**, because the worker URL it
+  builds resolves into `.vite/deps/`, where there is nothing
+- **both worker imports in one file**, which is what puts them in one realm
+- **`ts/public/wasm_exec.js` byte-equal to the toolchain's**, since it is the JS
+  half of the Go runtime and is version-coupled to the compiler that built the
+  module
+
+Each of the four fails in a way that does not name its cause, which is why they
+are checked and not merely written down.
 
 ### What the page needs from the app
 
@@ -263,10 +279,21 @@ that row is immediately correct — with no round trip and no invalidation rule.
 What an answer cannot say is that a *set* changed, so the lists of whatever
 entity the write touched are re-read — and only the ones currently drawn, since
 an idle query re-reads when it wakes. Judging membership locally instead would
-mean evaluating the server's filter and ordering over a partial copy, which is
-confidently wrong at page boundaries.
+mean evaluating the server's filter and the server's order over a partial copy:
+a new row that belongs on page 3 of a list this side holds two pages of either
+appears where it should not or vanishes where it should be. The re-read is a
+round trip and it is the true answer.
 
-`Erase` answers with nothing, so its subject is read out of the **request**.
+`Erase` is the one write whose answer names no row — it says whether this call
+was the one that erased, never what it erased — so its subject is read out of
+the **request**.
+
+That is this side's own writes. Somebody else's arrive over the sibling `Watch`,
+which a query holds open for as long as it is drawn — and only when it named at
+least one filter, because a watch that says nothing is the whole table for as
+long as it is open, and the server refuses it. So a filterless list is a
+snapshot that revalidates, and a page that wants other people's writes live says
+which rows it is about.
 
 ### And an expiry
 
@@ -280,9 +307,12 @@ It is measured from **when this side last wrote it**, not from the server's
 
 ## 4. What is forced and what is not
 
-**Forced: the store.** Not React. The reactive layer is thirty lines of
-`useSyncExternalStore` in a separate entry point, and any framework with a
-subscribe-and-snapshot primitive can have the same thing.
+**Forced: the store.** Not React. The reactive layer is a separate entry point
+whose whole job is `useSyncExternalStore` over `Queries.subscribe` — the read
+binding itself is twenty-odd lines — and any framework with a
+subscribe-and-snapshot primitive can have the same file. `react` is an optional
+peer dependency: importing that entry is what makes it required, and nothing
+else in the package reaches for it.
 
 **The template's defaults are Vite and React**, and they are defaults. The
 boundary is one file.
@@ -293,10 +323,14 @@ boundary is one file.
   the worker is loaded that way
 - COOP/COEP headers if you want the sandbox, for `crossOriginIsolated`
 
-**The generated TypeScript is one plugin.** protobuf-es v2 emits service
-descriptors, and Connect's `createClient` takes them directly, so there is no
-per-service generated file to drift. The domain table is generated too — keeping
-two copies is exactly the drift `pdid` exists to prevent.
+**No client is generated per service.** protobuf-es v2 emits the service
+descriptor beside the messages and Connect's `createClient` takes one directly,
+so `client.ts` is a line a person wrote per service and there is nothing
+generated per service to drift away from it. What payday's own plugin adds to
+that pass is for the whole app rather than for any one service: the entity
+declarations the store reads, and the domain table — the same table the Go half
+has, from the same declaration, because a second copy written by hand is exactly
+the drift `pdid` exists to prevent.
 
 ## See also
 

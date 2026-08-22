@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
@@ -1847,6 +1848,7 @@ type HolderMutation struct {
 	date_erased   *time.Time
 	date_created  *time.Time
 	idp_subject   *string
+	profile       **apptest.Profile
 	clearedFields map[string]struct{}
 	tenant        *uuid.UUID
 	clearedtenant bool
@@ -2286,6 +2288,55 @@ func (m *HolderMutation) ResetIdpSubject() {
 	m.idp_subject = nil
 }
 
+// SetProfile sets the "profile" field.
+func (m *HolderMutation) SetProfile(a *apptest.Profile) {
+	m.profile = &a
+}
+
+// Profile returns the value of the "profile" field in the mutation.
+func (m *HolderMutation) Profile() (r *apptest.Profile, exists bool) {
+	v := m.profile
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProfile returns the old "profile" field's value of the Holder entity.
+// If the Holder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HolderMutation) OldProfile(ctx context.Context) (v *apptest.Profile, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProfile is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProfile requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProfile: %w", err)
+	}
+	return oldValue.Profile, nil
+}
+
+// ClearProfile clears the value of the "profile" field.
+func (m *HolderMutation) ClearProfile() {
+	m.profile = nil
+	m.clearedFields[holder.FieldProfile] = struct{}{}
+}
+
+// ProfileCleared returns if the "profile" field was cleared in this mutation.
+func (m *HolderMutation) ProfileCleared() bool {
+	_, ok := m.clearedFields[holder.FieldProfile]
+	return ok
+}
+
+// ResetProfile resets all changes to the "profile" field.
+func (m *HolderMutation) ResetProfile() {
+	m.profile = nil
+	delete(m.clearedFields, holder.FieldProfile)
+}
+
 // SetTenantID sets the "tenant_id" field.
 func (m *HolderMutation) SetTenantID(u uuid.UUID) {
 	m.tenant = &u
@@ -2383,7 +2434,7 @@ func (m *HolderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *HolderMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.alias != nil {
 		fields = append(fields, holder.FieldAlias)
 	}
@@ -2407,6 +2458,9 @@ func (m *HolderMutation) Fields() []string {
 	}
 	if m.idp_subject != nil {
 		fields = append(fields, holder.FieldIdpSubject)
+	}
+	if m.profile != nil {
+		fields = append(fields, holder.FieldProfile)
 	}
 	if m.tenant != nil {
 		fields = append(fields, holder.FieldTenantID)
@@ -2435,6 +2489,8 @@ func (m *HolderMutation) Field(name string) (ent.Value, bool) {
 		return m.DateCreated()
 	case holder.FieldIdpSubject:
 		return m.IdpSubject()
+	case holder.FieldProfile:
+		return m.Profile()
 	case holder.FieldTenantID:
 		return m.TenantID()
 	}
@@ -2462,6 +2518,8 @@ func (m *HolderMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldDateCreated(ctx)
 	case holder.FieldIdpSubject:
 		return m.OldIdpSubject(ctx)
+	case holder.FieldProfile:
+		return m.OldProfile(ctx)
 	case holder.FieldTenantID:
 		return m.OldTenantID(ctx)
 	}
@@ -2529,6 +2587,13 @@ func (m *HolderMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetIdpSubject(v)
 		return nil
+	case holder.FieldProfile:
+		v, ok := value.(*apptest.Profile)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProfile(v)
+		return nil
 	case holder.FieldTenantID:
 		v, ok := value.(uuid.UUID)
 		if !ok {
@@ -2575,6 +2640,9 @@ func (m *HolderMutation) ClearedFields() []string {
 	if m.FieldCleared(holder.FieldDateCreated) {
 		fields = append(fields, holder.FieldDateCreated)
 	}
+	if m.FieldCleared(holder.FieldProfile) {
+		fields = append(fields, holder.FieldProfile)
+	}
 	return fields
 }
 
@@ -2597,6 +2665,9 @@ func (m *HolderMutation) ClearField(name string) error {
 		return nil
 	case holder.FieldDateCreated:
 		m.ClearDateCreated()
+		return nil
+	case holder.FieldProfile:
+		m.ClearProfile()
 		return nil
 	}
 	return fmt.Errorf("unknown Holder nullable field %s", name)
@@ -2629,6 +2700,9 @@ func (m *HolderMutation) ResetField(name string) error {
 		return nil
 	case holder.FieldIdpSubject:
 		m.ResetIdpSubject()
+		return nil
+	case holder.FieldProfile:
+		m.ResetProfile()
 		return nil
 	case holder.FieldTenantID:
 		m.ResetTenantID()

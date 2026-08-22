@@ -57,7 +57,7 @@ func Remote(c pdpb.TokenServiceClient) TokenStore {
 			//
 			// So the split is by who the refusal is about, and only the store
 			// saying "I have no such row" is about the token. It is the same
-			// division roster's in-process store already makes.
+			// division an in-process store already makes.
 			if status.Code(err) == codes.NotFound {
 				return Identity{}, fmt.Errorf("introspect: %w", ErrUnknownToken)
 			}

@@ -2,7 +2,9 @@ package cmd_test
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"net"
 	"strings"
 	"sync"
 	"testing"
@@ -11,6 +13,8 @@ import (
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdtest"
@@ -269,6 +273,117 @@ func TestRetryReconnectsInsteadOfFailing(t *testing.T) {
 		x.Failf("the command ended", "with --retry, and the error was %v", err)
 	case <-time.After(200 * time.Millisecond):
 	}
+
+	x.NoError(w.stop())
+}
+
+// TestRetryAsksForTheSnapshotItSaidItDidNotNeed is the reconnect taking the
+// snapshot again, which TestRetryReconnectsInsteadOfFailing cannot see: its
+// server never comes back, so there is nothing there to answer one.
+//
+// The request says `skip_snapshot` -- "I know the current state" -- and after a
+// gap that is no longer true: whatever changed while the connection was down
+// was sent to nobody. So the reconnect has to ask for the snapshot whatever the
+// request said the first time, or the person watching holds a row that is
+// wrong until the next write happens to correct it, which may be never.
+func TestRetryAsksForTheSnapshotItSaidItDidNotNeed(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	vs := b.sow(ctx, x, b.Tenant, 1, "arm-")
+
+	// Served by hand rather than through [pdtest.Serve], because this test
+	// needs the one thing that helper does not give: a server that comes back.
+	// Stopping a gRPC server closes the listener it was serving on, so the
+	// second serving is a second listener, and the connection reaches
+	// whichever one the dialer holds now.
+	var mu sync.Mutex
+	l := bufconn.Listen(1 << 20)
+
+	serve := func() *grpc.Server {
+		g := b.grpc(t, pdtest.Logging(t))
+
+		mu.Lock()
+		cur := l
+		mu.Unlock()
+
+		go func() {
+			// A closed listener is how this ends, and is not a failure.
+			_ = g.Serve(cur)
+		}()
+		t.Cleanup(g.Stop)
+
+		return g
+	}
+
+	g := serve()
+
+	conn, err := grpc.NewClient(
+		"passthrough://bufconn",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			mu.Lock()
+			cur := l
+			mu.Unlock()
+
+			return cur.DialContext(ctx)
+		}),
+	)
+	x.NoError(err)
+	t.Cleanup(func() { conn.Close() })
+
+	// By identifier rather than `@acme/arm-a`, because the writes below rename
+	// the row: a filter that named the alias would name nothing on reconnect,
+	// and NotFound is a refusal `--retry` rightly does not retry.
+	k, err := pdid.From(vs[0].GetId())
+	x.NoError(err)
+
+	w := b.watchCmd(t, conn, "robot", "watch", "--retry", k.String(), `{"skip_snapshot":true}`)
+
+	// The stream says nothing until something changes, so something has to --
+	// and it has to be a change the subscription was there for, which is a race
+	// nothing outside the server can see. So the row is written again under a
+	// fresh alias until one shows up: an event published before the handler
+	// subscribed was sent to nobody, and no amount of waiting brings it.
+	c := app.NewClient(conn).Robot()
+	cur, last := vs[0], ""
+	for i := 0; last == ""; i++ {
+		x.Less(i, 25, "the stream never showed a write")
+
+		alias := fmt.Sprintf("arm-%c", 'b'+i)
+		v, err := c.Patch(b.travels(ctx), app.RobotPatchRequest_builder{
+			Ref:         app.RobotRef_builder{Id: cur.GetId()}.Build(),
+			Alias:       z.Ptr(alias),
+			DateUpdated: cur.GetDateUpdated(),
+		}.Build())
+		x.NoError(err)
+		cur = v
+
+		for end := time.Now().Add(250 * time.Millisecond); time.Now().Before(end); {
+			if strings.Contains(w.stdout(), alias) {
+				last = alias
+				break
+			}
+
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+
+	g.Stop()
+	w.until(t, w.stderr, "reconnecting")
+
+	// The server comes back, on a fresh listener the dialer will find.
+	mu.Lock()
+	l = bufconn.Listen(1 << 20)
+	mu.Unlock()
+	serve()
+
+	// The row again, and nothing has written since the stop: this is the
+	// snapshot, taken by a request whose first words were "skip it".
+	w.until(t, func() string {
+		_, rest, _ := strings.Cut(w.stdout(), last)
+		return rest
+	}, last)
 
 	x.NoError(w.stop())
 }

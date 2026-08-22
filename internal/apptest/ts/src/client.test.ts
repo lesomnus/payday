@@ -24,7 +24,7 @@ import { Store } from '@lesomnus/payday/store'
 
 import { app, type App } from './client.js'
 import { entities, Robot, Tenant } from '../gen/entities.js'
-import { RobotDomain, JointDomain, TenantDomain } from '../gen/domains.js'
+import { RobotDomain, JointDomain, TenantDomain, ThingDomain } from '../gen/domains.js'
 import { RobotSchema } from '../gen/app/robot_pb.js'
 import { RobotAddRequestSchema, JointAddRequestSchema } from '../gen/app/robot_svc_pb.js'
 
@@ -102,6 +102,29 @@ describe('the generated descriptors describe the same server', () => {
 		const id = pdid.from(tenant.id)
 		expect(id.domain).toBe(TenantDomain)
 		expect(pdid.domainName(id.domain)).toBe('tenant')
+	})
+
+	it('reaches an entity from a package of its own', async () => {
+		// The TypeScript half of what docs/guide/packages.md claims about
+		// `shared.Thing`: it generates, serves and is reached like any other
+		// entity. Generation is the file this imports; this is the row going
+		// in and coming back out of the same server every other call here
+		// travels to, over the same transport and the same credential.
+		//
+		// No tenant, because the entity says `global: {}` -- which is the only
+		// line of this that reads differently from a `robot.add`, and it is
+		// about being global rather than about being shared.
+		const made = await c.thing.add({ alias: 'gizmo' })
+		expect(made.alias).toBe('gizmo')
+
+		const got = await c.thing.get({ ref: { key: { case: 'id', value: made.id } } })
+		expect(got.alias).toBe('gizmo')
+
+		// And the identifier is read by the same layer 0 that reads the app's
+		// own, with the domain the shared schema declared: the rule about what
+		// an identifier is does not stop at a package boundary either.
+		expect(pdid.from(got.id).domain).toBe(ThingDomain)
+		expect(pdid.domainName(ThingDomain)).toBe('thing')
 	})
 
 	it('mints an identifier this side, and the server keeps it', async () => {

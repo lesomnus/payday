@@ -211,7 +211,7 @@ describe("saying what a slug names", () => {
 	});
 
 	it("and the concatenation it replaced named another row entirely", () => {
-		// oasys: a[:i] + Slug(v.String()), where i is the index of the "#" or the
+		// fleet: a[:i] + Slug(v.String()), where i is the index of the "#" or the
 		// end. This is what made it dangerous rather than merely ugly --
 		// "acme/adminrobot" is a well-formed slug that parses, names a different
 		// row, and says nothing about having been mangled.

@@ -55,9 +55,11 @@ func TestValidate(t *testing.T) {
 			{"a--b", "two hyphens together"},
 			{"-", "a hyphen alone"},
 
-			// The one rule taken from go-app rather than oasys: an underscore
-			// is legal in neither a DNS label nor a subdomain, and allowing it
-			// here would spend a door that costs nothing to keep shut.
+			// The one rule taken from an earlier system rather than from the
+			// form this came from: an underscore is legal in neither a DNS
+			// label nor a
+			// subdomain, and allowing it here would spend a door that costs
+			// nothing to keep shut.
 			{"a_b", "an underscore"},
 			{"_a", "a leading underscore"},
 
@@ -179,9 +181,9 @@ func TestRandomAlias(t *testing.T) {
 	t.Run("and the form this came from could not begin one with z", func(t *testing.T) {
 		x := require.New(t)
 
-		// oasys: vs[0] = Charset[int(v0)%('z'-'a')], over a 36-character
-		// charset. 'z'-'a' is 25, so the first character came out of the first
-		// 25 letters however the byte fell.
+		// The form this came from: vs[0] = Charset[int(v0)%('z'-'a')], over a
+		// 36-character charset. 'z'-'a' is 25, so the first character came out
+		// of the first 25 letters however the byte fell.
 		const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 		seen := map[byte]struct{}{}

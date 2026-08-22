@@ -43,9 +43,9 @@ import (
 //
 // Whether to take a reference argument: a request with a `ref` field takes one,
 // and a request without takes none. That is not a convention this package
-// invented -- it is the shape `pd gen` writes and the shape custody's
-// `AssetTransferRequest` follows, because an RPC about a row names it the way
-// every other RPC names one.
+// invented -- it is the shape `pd gen` writes and the shape a hand-written
+// `RobotMoveRequest` follows, because an RPC about a row names it the way every
+// other RPC names one.
 //
 // Everything else about the request is the trailing protojson, for the reason
 // on [argRaw]: a flag per field would be a second copy of the schema.

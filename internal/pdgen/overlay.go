@@ -127,7 +127,7 @@ func CheckOverlay(s *Schema) error {
 	sort.Strings(errs)
 	return fmt.Errorf(
 		"an overlay may add to one of payday's entities and may not change it.\n"+
-			"payday keeps 1..7 and 13..15; an app's own go in 8..12 and from 16.\n\n  %s",
+			"payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.\n\n  %s",
 		strings.Join(errs, "\n  "))
 }
 

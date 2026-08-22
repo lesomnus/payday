@@ -49,7 +49,9 @@ import (
 	"context"
 	"errors"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"github.com/lesomnus/payday/frame"
@@ -166,6 +168,88 @@ func (g Guard) Check(n int) error {
 	}
 
 	return nil
+}
+
+// AsOp answers with the context an operation is dispatched with: one in which
+// gRPC's own question -- what method is being served? -- answers with the
+// operation's method rather than the batch's.
+//
+// It exists for the trail. The recorder below the write sites fills in what
+// the caller asked for by asking gRPC, because the sites cannot know it: one
+// call writes through several servers, and only the transport knows which
+// name it all happened under. Inside the batch handler the transport's answer
+// is `BatchService/Do` -- true of the wire and false of every operation, so
+// left alone the trail files a hundred different writes under one envelope
+// and "who renamed this" answers with a method that renames nothing. The
+// operation is what the caller asked for; the envelope is only how it
+// travelled.
+func AsOp(ctx context.Context, method string) context.Context {
+	return grpc.NewContextWithServerTransportStream(ctx, opStream{
+		outer:  grpc.ServerTransportStreamFromContext(ctx),
+		method: method,
+	})
+}
+
+// opStream is a [grpc.ServerTransportStream] that answers with the
+// operation's method. That answer is the whole reason it exists; everything
+// else it is asked, it hands to the stream the batch itself arrived on.
+//
+// Everything it is *asked*, which is not everything gRPC offers. Two of its
+// helpers -- `grpc.SetSendCompressor` and `grpc.ClientSupportedCompressors` --
+// reach past the interface for the concrete `*transport.ServerStream`, and no
+// wrapper satisfies a type assertion: inside an operation the two answer
+// "failed to fetch the stream from the given context" rather than delegating.
+// Nothing here calls them and nothing generated does, and what they are about
+// is the wire call's anyway -- there is one response with one encoding, and a
+// batch of a hundred operations does not get a hundred of them to negotiate.
+//
+// Delegated rather than absorbed, because the batch is the only RPC on the
+// wire and so its metadata is the only place a header can reach the caller.
+// Absorbing would mean a handler that set one said nothing, silently -- the
+// generated handlers set none, so what is preserved here is the behaviour of
+// one somebody writes by hand. The cost of delegating is that every operation
+// writes into the one wire call's metadata, but that is not a cost of this
+// type: there is one wire call, and pretending each operation has its own
+// would be the lie.
+//
+// `outer` is nil for a handler called without a transport, which is what a
+// test calling `Do` directly is. A header then has nowhere to go, and the
+// delegating methods answer an error rather than dropping it -- the same
+// answer gRPC gives for a handler called this way without this type in the
+// middle.
+type opStream struct {
+	outer  grpc.ServerTransportStream
+	method string
+}
+
+// errNoTransport is metadata with no wire call to ride on.
+var errNoTransport = status.Error(codes.Internal,
+	"batch: there is no transport stream to carry it")
+
+func (s opStream) Method() string { return s.method }
+
+func (s opStream) SetHeader(md metadata.MD) error {
+	if s.outer == nil {
+		return errNoTransport
+	}
+
+	return s.outer.SetHeader(md)
+}
+
+func (s opStream) SendHeader(md metadata.MD) error {
+	if s.outer == nil {
+		return errNoTransport
+	}
+
+	return s.outer.SendHeader(md)
+}
+
+func (s opStream) SetTrailer(md metadata.MD) error {
+	if s.outer == nil {
+		return errNoTransport
+	}
+
+	return s.outer.SetTrailer(md)
 }
 
 // Failed says which operation of a batch refused, and why.

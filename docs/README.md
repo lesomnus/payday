@@ -12,11 +12,11 @@ comments, which are where the detail actually lives.
 | [Declaring an entity](guide/schema.md) | the options, the field numbers, `list:` and `watch:`, and everything generation refuses |
 | [The server](guide/server.md) | the stack, writing a layer, the interceptors, configuration, the commands |
 | [The page](guide/client.md) | reads that keep themselves current, writes that need no invalidation rule |
-| [Commands on your binary](guide/commands.md) | `get`/`ls`/`add`/`patch`/`erase` for every entity, the output formats, and a command for an RPC of your own |
+| [Commands on your binary](guide/commands.md) | `get`/`ls`/`watch`/`add`/`patch`/`erase` where the schema declared them, the output formats, and a command for an RPC of your own |
 | [Several writes at once](guide/batch.md) | one transaction, and the four rules re-applied per operation |
 | [More than one proto package](guide/packages.md) | `option (payday.app)`, and two apps linked into one process |
 | [Refusals](guide/errors.md) | a field-level error, from the server to a form field |
-| [Signing somebody in](guide/signing-in.md) | a session cookie, where it lives, and whether you need an identity provider at all |
+| [Putting a login in front of an app](guide/signing-in.md) | a session cookie, where it lives, and whether you need an identity provider at all |
 | [Testing](guide/testing.md) | the harness, the two seams, and golden files |
 
 ## References

@@ -86,8 +86,32 @@ jobs:
   # outbox had been writing nil into since they were written. Everything payday
   # generates is SQL; a suite that has only ever run on SQLite has not seen the
   # statements it will issue.
+  #
+  # Both modules, as `scripts/test.sh` covers both above. The app is where the
+  # generated SQL is issued; the root module is where the code that issues it
+  # lives, and two of its tests are ones no other job can fail -- `pdtest.DB`
+  # hands out a schema per test, which needs a server to mean anything, and
+  # `watch/watchpg` skips itself entirely without one. Both tests existed;
+  # neither had ever run.
+  #
+  # One job for the two rather than one each: the service, the checkout and the
+  # toolchain are the same, and steps are sequential where jobs are not. That
+  # matters more than it looks, because both modules exercise the broker over
+  # `LISTEN`/`NOTIFY` and that channel is scoped to a **database** -- two runs
+  # sharing this server would hear each other's writes and neither could tell.
+  # Two steps rather than one command, so a failure names the module.
+  #
+  # `scripts/with-postgres.sh` is this at a desk: it provides the database and
+  # runs the gate against it. Every nil this has caught was caught here rather
+  # than there, which is one push later than it had to be.
   postgres:
     runs-on: ubuntu-latest
+
+    # Once, for both steps. The service publishes its port on the runner and the
+    # steps run there, so the address is loopback rather than the service name.
+    env:
+      PDTEST_POSTGRES: postgres://app:app@127.0.0.1:5432/app?sslmode=disable
+
     services:
       postgres:
         image: postgres:17
@@ -110,10 +134,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - run: go test ./... -count=1
+      - name: payday
+        run: go test ./... -count=1
+      - name: the app it is tried against
+        run: go test ./... -count=1
         working-directory: internal/apptest
-        env:
-          PDTEST_POSTGRES: postgres://app:app@127.0.0.1:5432/app?sslmode=disable
 
   # A brand new app, generated and built.
   #

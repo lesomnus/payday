@@ -5,6 +5,8 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Profile } from "../profile_pb.js";
+import { file_app_profile } from "../profile_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../../orm_pb.js";
@@ -17,7 +19,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/holder.proto.
  */
 export const file_app_payday_holder: GenFile = /*@__PURE__*/
-  fileDesc("ChdhcHAvcGF5ZGF5L2hvbGRlci5wcm90bxIDYXBwIvYDCgZIb2xkZXISFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRIMCgRuYW1lGAUgASgJEgwKBGRlc2MYBiABKAkSJwoGbGFiZWxzGAcgAygLMhcuYXBwLkhvbGRlci5MYWJlbHNFbnRyeRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASEwoLaWRwX3N1YmplY3QYCCABKAkaLQoLTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ATpkyvwVJRICEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAGKuxY3CAIyLwoQCg4KDGRhdGVfY3JlYXRlZAoGCgQKAmlkGgUKA3JlZhoICgZ0ZW5hbnQgFChkOgBIAkIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
+  fileDesc("ChdhcHAvcGF5ZGF5L2hvbGRlci5wcm90bxIDYXBwIpUECgZIb2xkZXISFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRIMCgRuYW1lGAUgASgJEgwKBGRlc2MYBiABKAkSJwoGbGFiZWxzGAcgAygLMhcuYXBwLkhvbGRlci5MYWJlbHNFbnRyeRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASEwoLaWRwX3N1YmplY3QYCCABKAkSHQoHcHJvZmlsZRgJIAEoCzIMLmFwcC5Qcm9maWxlGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAE6ZMr8FSUSAhABGh8SBHNsdWcaCQoFYWxpYXMQBBoKCgZ0ZW5hbnQQAjABirsWNwgCMi8KEAoOCgxkYXRlX2NyZWF0ZWQKBgoECgJpZBoFCgNyZWYaCAoGdGVuYW50IBQoZDoASAJCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_app_profile, file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
 
 /**
  * Holder is who a request is from.
@@ -26,9 +28,10 @@ export const file_app_payday_holder: GenFile = /*@__PURE__*/
  * row the trail names on every line it writes. Like [Tenant] it is payday's
  * because everything that decides anything reads it.
  *
- * **Fields 1..7 and 13..15 are payday's**; an app adds its own in 8..12 and
- * from 16, in a `holder.ext.proto` beside this. Adding an email or the subject
- * an external identity provider knows them by is exactly what that is for.
+ * **Fields 1, 2, 4..7 and 13..15 are payday's**; 3 is not -- it is left for
+ * the app's set edge -- and an app adds its own in 8..12 and from 16, in a
+ * `holder.ext.proto` beside this. Adding an email or the subject an external
+ * identity provider knows them by is exactly what that is for.
  *
  * @generated from message app.Holder
  */
@@ -108,6 +111,16 @@ export type Holder = Message<"app.Holder"> & {
    * @generated from field: string idp_subject = 8;
    */
   idpSubject: string;
+
+  /**
+   * The other kind of field an overlay can add: a message, stored as the
+   * canonical protobuf JSON in one jsonb column and replaced whole by a
+   * patch. Its existence pins the shape that once failed silently -- see
+   * [Profile] for what the failure was and what its two fields are for.
+   *
+   * @generated from field: app.Profile profile = 9;
+   */
+  profile?: Profile | undefined;
 };
 
 /**

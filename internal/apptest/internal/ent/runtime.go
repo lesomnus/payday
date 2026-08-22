@@ -2,8 +2,21 @@
 
 package ent
 
+import (
+	"github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/schema"
+
+	"entgo.io/ent/schema/field"
+)
+
 // The init function reads all schema descriptors with runtime code
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	holderFields := schema.Holder{}.Fields()
+	_ = holderFields
+	// holderDescProfile is the schema descriptor for profile field.
+	holderDescProfile := holderFields[9].Descriptor()
+	holder.ValueScanner.Profile = holderDescProfile.ValueScanner.(field.TypeValueScanner[*apptest.Profile])
 }

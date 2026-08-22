@@ -250,6 +250,25 @@ func (brokenStore) Get(context.Context, string) (authsession.Session, error) {
 	return authsession.Session{}, errors.New("down")
 }
 
+// TestAStoreThatWouldNotTakeTheSessionIsNotARefusal.
+//
+// The credentials were right; the store is down. Told unauthorized, somebody
+// retypes a password that was fine, and a body that names the store's error
+// tells a stranger what is behind the endpoint.
+func TestAStoreThatWouldNotTakeTheSessionIsNotARefusal(t *testing.T) {
+	x := require.New(t)
+
+	s := authsession.New(brokenStore{})
+
+	w := httptest.NewRecorder()
+	s.Serve(who("019-abc", "019-acme")).
+		ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/session", nil))
+
+	x.Equal(http.StatusServiceUnavailable, w.Code)
+	x.Empty(w.Result().Cookies())
+	x.NotContains(w.Body.String(), "down")
+}
+
 // TestTheCookieAttributesAreTheOnesThatMatter.
 //
 // HttpOnly above all: without it a script reads the session, and the reason for

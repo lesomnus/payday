@@ -77,9 +77,10 @@ type Layout struct {
 	// learn the name of the framework it was built with to say who they are.
 	//
 	// So there is no setting to turn on. Whatever the app calls its package is
-	// where these land, and `payday.` survives on the wire in exactly one place:
-	// `payday.BatchService`, which is a transport and not a domain concept, and
-	// which a generic client finds by that name.
+	// where these land, and `payday.` survives on the wire only on the services
+	// that are transports rather than domain concepts -- `payday.BatchService`
+	// and `payday.TokenService`, which have nothing per-app in them and which a
+	// generic client finds by those names.
 	//
 	// **One** package, and an app that declares two is refused, for the same
 	// reason as `go_package`: the copies have to say something, and there is no
@@ -88,7 +89,7 @@ type Layout struct {
 	// Unless the app answers it. `option (payday.app) = {};` on a file says that
 	// file's package is the app's, and then the others are its business -- a
 	// service that wants one shared word for the thing several services are
-	// about, `hday.oasys.Robot`, keeps the rest to itself. See [pdpb.App].
+	// about, `fleet.Robot`, keeps the rest to itself. See [pdpb.App].
 	//
 	// # Two apps that share a boundary
 	//
@@ -229,8 +230,9 @@ func Discover(dir string) (Layout, error) {
 //
 // [Layout.ProtoPkg] already says payday's entities go into the app's namespace
 // rather than the other way round, and this is that sentence applied to the
-// **file** as well as to the package. `roster/payday/holder.proto` is roster's
-// copy; `app/payday/holder.proto` is whoever kept the default name.
+// **file** as well as to the package. `directory/payday/holder.proto` is the
+// identity store's copy; `app/payday/holder.proto` is whoever kept the default
+// name.
 //
 // The rule it leaves is one sentence: two payday apps can share a process when
 // their proto packages differ. Two that both took `app` cannot, and could not
@@ -295,7 +297,7 @@ const ProtoPkgDefault = "app"
 // readPkg is the one `go_package` the app's own entities declare, taken apart
 // into the import path and the package name after it.
 //
-// Only the app's: `proto/payday/` is written by the generation and says
+// Only the app's: `proto/<pkg>/payday/` is written by the generation and says
 // whatever it was last told, and `proto/ext/` is a fragment that may say
 // nothing at all.
 //
@@ -474,8 +476,8 @@ func SchemaDir() (string, error) {
 
 // readProtoPkg is the proto package the app's own entities declare.
 //
-// It walks what [readPkg] walks and skips what it skips: `proto/payday/` holds
-// the copies, whose package is the answer rather than a source of it, and
+// It walks what [readPkg] walks and skips what it skips: `proto/<pkg>/payday/`
+// holds the copies, whose package is the answer rather than a source of it, and
 // `proto/ext/` holds overlays, which are fragments.
 func readProtoPkg(l Layout) (string, error) {
 	var pkg, at string

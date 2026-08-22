@@ -131,46 +131,128 @@ func TestTenancyDefaultsToTheLoudAnswer(t *testing.T) {
 	x.NotContains(string(b), "\n    tenant: {}")
 	x.NotContains(string(b), "\n    tenanted:")
 
-	// And it is one of the three rather than several.
+	// And it is one of the two rather than both.
 	_, err = (pdcli.Entity{Layout: l, Name: "Robot", Tenanted: true, Global: true}).Add()
 	x.ErrorContains(err, "behind the wall or it is not")
 }
 
-// TestWhatIsWrittenIsWhatTheGeneratorWillTake.
+// TestTheTenantIsPaydaysAndNotTheAppsToDeclare.
 //
-// The scaffold's own output has to pass every refusal the generator has, or the
-// first thing somebody does with this command is read a generated error. The
-// pairs that matter are `watch:` needing a version field and needing `ref`
-// among the filters -- both of which were found by scaffolding one and running
-// `pd gen`.
-func TestWhatIsWrittenIsWhatTheGeneratorWillTake(t *testing.T) {
+// `--tenant` is the third tenancy the schema has and the one no app may
+// scaffold. payday ships the tenant and every generation copies it into the
+// app's own proto package, so an app declaring a second one writes a schema
+// that cannot generate -- and the scaffold offering it was the tool writing
+// something its own generator will not take.
+//
+// It is refused with the reason rather than dropped from the parser, because
+// `unknown flag` sends the same person to write `tenant: {}` by hand: the same
+// refused schema, arriving from a generator that can only say what is wrong and
+// not what was wanted. What was wanted is `--tenanted`, or fields on payday's
+// Tenant through an overlay, and both of those are in the refusal.
+func TestTheTenantIsPaydaysAndNotTheAppsToDeclare(t *testing.T) {
 	x := require.New(t)
 
 	root := app(t, "github.com/acme/thing")
 	l, err := pdcli.Discover(root)
 	x.NoError(err)
 
-	p, err := (pdcli.Entity{Layout: l, Name: "Robot", Tenanted: true, Watch: true}).Add()
-	x.NoError(err)
+	_, err = (pdcli.Entity{Layout: l, Name: "Org", Tenant: true}).Add()
+	x.ErrorContains(err, "payday ships the tenant")
 
-	b, err := os.ReadFile(p)
-	x.NoError(err)
-	src := string(b)
+	// Where the one it has is, and where a field of the app's own goes on it.
+	// A refusal that only says no leaves somebody to guess both.
+	x.ErrorContains(err, "proto/app/payday/tenant.proto")
+	x.ErrorContains(err, "proto/ext/payday/tenant.ext.proto")
+	x.ErrorContains(err, "--tenanted")
 
-	x.Contains(src, `date_updated = 13 [(orm.field) = {version: {}}]`, "a watch has nothing to order two answers by")
-	x.Contains(src, `by: [{name: "ref"}]`, "a watch has no way to name the rows it is about")
-	// Nothing about tenancy, which is the declaration -- behind the wall. What
-	// the scaffold writes out instead is why, since a reader who finds no
-	// tenancy line has to be able to tell "assumed" from "forgotten".
-	x.NotContains(src, `tenanted:`)
-	x.Contains(src, "Nothing about tenancy, which is the declaration")
-	x.Contains(src, `name: "page"`, "a list with no index scans the table")
-	x.Contains(src, `option go_package = "github.com/acme/thing"`)
+	// And nothing was written on the way to refusing.
+	_, err = os.Stat(filepath.Join(root, "proto", "app", "org.proto"))
+	x.True(os.IsNotExist(err), "a refused entity left a file behind")
 
-	// The tenant, where a generation puts it. payday's entities are copied
-	// **into** the app's proto package, so this is `app/payday/` even for an app
-	// that kept every default -- and `proto/payday/` is a path nothing writes.
-	x.Contains(src, `import "app/payday/tenant.proto";`)
+	// The fact the refusal rests on, provoked rather than asserted: a schema
+	// holding what `--tenant` would have written does not generate, and the
+	// generator is the one that says so.
+	t.Run("because a second one does not generate", func(t *testing.T) {
+		x := require.New(t)
+
+		l := genApp(t)
+
+		p, err := (pdcli.Entity{Layout: l, Name: "Org", Global: true}).Add()
+		x.NoError(err)
+
+		b, err := os.ReadFile(p)
+		x.NoError(err)
+		x.NoError(os.WriteFile(p, []byte(
+			strings.Replace(string(b), "\n    global: {}", "\n    tenant: {}", 1)), 0o644))
+
+		err = pdcli.Gen{Layout: l}.Run(t.Context())
+		x.ErrorContains(err, "app.Tenant and app.Org both say they are the tenant")
+	})
+}
+
+// TestANameAnotherFileHoldsIsRefused.
+//
+// A proto package is one namespace, so what makes a name taken is the schema
+// and not the file it is written in. A check that reads only the file about to
+// be appended to passes `--file fleet.proto` for a `Robot` that is already in
+// `robot.proto`, and what refuses it then is protoc, on a file this wrote.
+//
+// Three ways a name is taken and three trees, so that none of them rests on
+// another having run: the app's own second file, a message that is not an
+// entity at all, and one payday ships into every app.
+func TestANameAnotherFileHoldsIsRefused(t *testing.T) {
+	t.Run("in another file of the same package", func(t *testing.T) {
+		x := require.New(t)
+
+		root := app(t, "github.com/acme/thing")
+		l, err := pdcli.Discover(root)
+		x.NoError(err)
+
+		_, err = (pdcli.Entity{Layout: l, Name: "Robot", Tenanted: true}).Add()
+		x.NoError(err)
+
+		_, err = (pdcli.Entity{Layout: l, Name: "Robot", Tenanted: true, File: "fleet.proto"}).Add()
+		x.ErrorContains(err, "already holds a message Robot")
+
+		// Named, because "it is taken" without saying where is a thing to go
+		// looking for in a schema of thirty files.
+		x.ErrorContains(err, "proto/app/robot.proto")
+
+		_, err = os.Stat(filepath.Join(root, "proto", "app", "fleet.proto"))
+		x.True(os.IsNotExist(err), "a refused entity left a file behind")
+	})
+
+	// Every message and not only every entity: a request message written into a
+	// service overlay takes the name just as thoroughly, and a duplicate is a
+	// duplicate whether or not either of them is a row.
+	t.Run("including a message that is not an entity", func(t *testing.T) {
+		x := require.New(t)
+
+		root := app(t, "github.com/acme/thing")
+		l, err := pdcli.Discover(root)
+		x.NoError(err)
+
+		x.NoError(os.MkdirAll(filepath.Join(root, "proto", "ext", "app"), 0o755))
+		x.NoError(os.WriteFile(filepath.Join(root, "proto", "ext", "app", "robot_svc.ext.proto"),
+			[]byte("message RobotMoveRequest {\n  RobotRef ref = 1;\n}\n"), 0o644))
+
+		_, err = (pdcli.Entity{Layout: l, Name: "RobotMoveRequest", Tenanted: true}).Add()
+		x.ErrorContains(err, "already holds a message RobotMoveRequest")
+	})
+
+	// And one payday ships, in an app that has never generated: the copies are
+	// not on disk yet, so the only place the name can be seen to be taken is
+	// payday's own schema -- which is where every app's copy comes from.
+	t.Run("and one payday ships, before a first generation", func(t *testing.T) {
+		x := require.New(t)
+
+		root := app(t, "github.com/acme/other")
+		l, err := pdcli.Discover(root)
+		x.NoError(err)
+
+		_, err = (pdcli.Entity{Layout: l, Name: "Holder", Tenanted: true}).Add()
+		x.ErrorContains(err, "payday ships a message Holder")
+	})
 }
 
 // TestAnEntityIsWrittenInThisAppsPackage, and not in the one `pd new` happens to
@@ -189,35 +271,35 @@ func TestWhatIsWrittenIsWhatTheGeneratorWillTake(t *testing.T) {
 func TestAnEntityIsWrittenInThisAppsPackage(t *testing.T) {
 	x := require.New(t)
 
-	root := app(t, "hday.io/kamino")
+	root := app(t, "example.com/telemetry")
 
 	// An app at none of the defaults: a package of its own, and its messages
 	// under `api/` rather than at the module root.
-	dir := filepath.Join(root, "proto", "hday.oasys")
+	dir := filepath.Join(root, "proto", "telemetry")
 	x.NoError(os.MkdirAll(dir, 0o755))
 	x.NoError(os.WriteFile(filepath.Join(dir, "robot.proto"), []byte(
-		"edition = \"2023\";\n\npackage hday.oasys;\n\noption go_package = \"hday.io/kamino/api\";\n"), 0o644))
+		"edition = \"2023\";\n\npackage telemetry;\n\noption go_package = \"example.com/telemetry/api\";\n"), 0o644))
 
 	l, err := pdcli.Discover(root)
 	x.NoError(err)
-	x.Equal("hday.oasys", l.ProtoPkg)
+	x.Equal("telemetry", l.ProtoPkg)
 
 	p, err := (pdcli.Entity{Layout: l, Name: "Fleet", Tenanted: true}).Add()
 	x.NoError(err)
 
 	rel, err := filepath.Rel(root, p)
 	x.NoError(err)
-	x.Equal(filepath.Join("proto", "hday.oasys", "fleet.proto"), rel,
+	x.Equal(filepath.Join("proto", "telemetry", "fleet.proto"), rel,
 		"it went into a package this app does not have")
 
 	b, err := os.ReadFile(p)
 	x.NoError(err)
 	src := string(b)
 
-	x.Contains(src, "package hday.oasys;")
+	x.Contains(src, "package telemetry;")
 	x.NotContains(src, "package app;")
-	x.Contains(src, `option go_package = "hday.io/kamino/api"`)
-	x.Contains(src, `import "hday.oasys/payday/tenant.proto";`)
+	x.Contains(src, `option go_package = "example.com/telemetry/api"`)
+	x.Contains(src, `import "telemetry/payday/tenant.proto";`)
 
 	// And the domain is still one past the highest, which is the other half of
 	// what this command is for. Nothing here declares one, so it is the first.

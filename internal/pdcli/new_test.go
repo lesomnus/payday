@@ -214,6 +214,71 @@ func TestTheNameIsWrittenOnce(t *testing.T) {
 	x.NotContains(string(b), "apptest")
 }
 
+// TestWhereItWentIsAnswerableAfterwards.
+//
+// [pdcli.New] takes a value, so the defaults `Write` applies are gone when it
+// returns -- and every caller that needed to know where the app went filled
+// them in again for itself. One of them got it wrong in the direction nobody
+// tests: `pd new github.com/acme/widget`, with no DIR, wrote `widget/` and then
+// said the app was in "", because it read the empty fields rather than the
+// rule. So the rule is a method, and this is what says the method answers for
+// a `New` nobody filled in.
+func TestWhereItWentIsAnswerableAfterwards(t *testing.T) {
+	for _, tc := range []struct {
+		desc   string
+		n      pdcli.New
+		where  string
+		called string
+	}{
+		{
+			desc:   "nothing but a module",
+			n:      pdcli.New{Module: "github.com/acme/widget"},
+			where:  "widget",
+			called: "widget",
+		},
+		{
+			desc:   "a name of its own",
+			n:      pdcli.New{Module: "github.com/acme/thing", Name: "gizmo"},
+			where:  "gizmo",
+			called: "gizmo",
+		},
+		{
+			desc:   "a directory of its own",
+			n:      pdcli.New{Module: "github.com/acme/thing", Dir: "somewhere/else"},
+			where:  "somewhere/else",
+			called: "thing",
+		},
+		{
+			desc:   "folded, the way the name is everywhere else",
+			n:      pdcli.New{Module: "github.com/acme/Thing-Server"},
+			where:  "thing-server",
+			called: "thing-server",
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			x := require.New(t)
+			x.Equal(tc.where, tc.n.Where())
+			x.Equal(tc.called, tc.n.Called())
+		})
+	}
+
+	// And it is the directory `Write` really used, not a second opinion about
+	// it: the one thing a caller does with the answer is tell a person where to
+	// cd to.
+	t.Run("and it is where Write put it", func(t *testing.T) {
+		x := require.New(t)
+
+		root := t.TempDir()
+		t.Chdir(root)
+
+		n := pdcli.New{Module: "github.com/acme/widget"}
+		x.NoError(n.Write())
+
+		_, err := os.Stat(filepath.Join(root, n.Where(), "go.mod"))
+		x.NoError(err)
+	})
+}
+
 // TestWritingOverSomebodyElsesWorkIsRefused, which is the one mistake here that
 // deleting something does not undo.
 func TestWritingOverSomebodyElsesWorkIsRefused(t *testing.T) {

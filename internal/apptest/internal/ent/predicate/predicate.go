@@ -18,6 +18,17 @@ type Fleet func(*sql.Selector)
 // Holder is the predicate function for holder builders.
 type Holder func(*sql.Selector)
 
+// HolderOrErr calls the predicate only if the error is not nit.
+func HolderOrErr(p Holder, err error) Holder {
+	return func(s *sql.Selector) {
+		if err != nil {
+			s.AddError(err)
+			return
+		}
+		p(s)
+	}
+}
+
 // Joint is the predicate function for joint builders.
 type Joint func(*sql.Selector)
 

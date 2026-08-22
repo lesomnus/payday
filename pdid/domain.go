@@ -24,7 +24,7 @@ const Unknown Domain = 0
 // Generated code calls it from the same init as [Register], out of the entity
 // that declared `own: OWN_TENANT`. It is a separate call rather than a name to
 // look up because the name is not payday's to know: an app may put payday's
-// entities in its own proto package, and then the tenant is `hday.Tenant` or
+// entities in its own proto package, and then the tenant is `fleet.Tenant` or
 // whatever else it chose. What does not move is which entity is the wall.
 //
 // The number itself is still the schema's to declare.
@@ -125,7 +125,7 @@ func Register(entity string, d Domain, name string) {
 	//
 	// A domain number is the **app's** to declare. payday's own are the same
 	// everywhere by construction, but 7 is whatever each app numbered first:
-	// custody's asset, roster's site. So a process holding both has no single
+	// one app's asset, another's site. So a process holding both has no single
 	// answer to "what is 7 called", and it used to panic on the second app to
 	// register -- before `main`, taking the process down over a display name.
 	//

@@ -27,6 +27,23 @@ After anything that touches a schema, a generator, or `schema/payday/`:
 go tool pd gen --check --ts internal/apptest    # exit 0 or the commit is incomplete
 ```
 
+On the database an app is deployed on, whenever a change touches what gets
+written -- the trail, the outbox, a generated write path, a migration, anything
+to do with nullability or ordering:
+
+```sh
+./scripts/with-postgres.sh                       # the gate, on PostgreSQL
+./scripts/with-postgres.sh go test ./pdtest/...  # or anything narrower
+```
+
+It brings a database up on whatever Docker engine is reachable, or uses the one
+`PDTEST_POSTGRES` names. Not every change is worth the minute -- SQLite needs no
+server and that is what keeps the loop above fast -- but SQLite is permissive in
+exactly the directions a write goes wrong: no real types, NULLs sort the other
+way round, and a nil `[]byte` is an empty blob to it where pgx sends SQL NULL.
+Twice now that last one has reached main. The long version is on
+`pdtest.Postgres`.
+
 The TypeScript halves:
 
 ```sh
@@ -34,12 +51,16 @@ npm --prefix ts run check && npm --prefix ts test
 npm --prefix internal/apptest/ts run check && npm --prefix internal/apptest/ts test
 ```
 
-Two tests are opt-in because they are slow:
+Two are opt-in, one because it writes rather than checks and one because it is
+slow:
 
 ```sh
-PDTEST_UPDATE=1 go test ./...                        # rewrite golden files
+PDTEST_UPDATE=1 go test -C internal/apptest ./...    # rewrite golden files
 PDTEST_SANDBOX=1 npm --prefix internal/apptest/ts run test:sandbox
 ```
+
+`-C internal/apptest` because the golden files are the app's, and `./...` at the
+root does not reach it.
 
 `buf breaking` runs in CI against two baselines and both are worth running
 locally before changing a `.proto`:

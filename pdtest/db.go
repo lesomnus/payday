@@ -84,7 +84,7 @@ func pgSchema(tb testing.TB, dsn string) string {
 		// A second database in one test is a second database.
 		//
 		// Two apps in one process is the case: an integration test that stands
-		// roster up and points custody at it calls this twice, and without
+		// one app up and points another at it calls this twice, and without
 		// this both got one schema -- so the second call's `DROP SCHEMA`
 		// removed the first app's tables and every later read found nothing.
 		// It passed on SQLite, where each call is its own file, which is

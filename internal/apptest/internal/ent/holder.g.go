@@ -29,5 +29,8 @@ func (e *Holder) Proto() *apptest.Holder {
 	}
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	x.SetIdpSubject(e.IdpSubject)
+	if e.Profile != nil {
+		x.SetProfile(e.Profile)
+	}
 	return x
 }

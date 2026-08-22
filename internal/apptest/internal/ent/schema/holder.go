@@ -5,12 +5,15 @@ package schema
 
 import (
 	ent "entgo.io/ent"
+	dialect "entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/entsql"
 	schema "entgo.io/ent/schema"
 	edge "entgo.io/ent/schema/edge"
 	field "entgo.io/ent/schema/field"
 	index "entgo.io/ent/schema/index"
 	uuid "github.com/google/uuid"
+	apptest "github.com/lesomnus/payday/internal/apptest"
+	entpb "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpb"
 )
 
 type Holder struct {
@@ -35,6 +38,8 @@ func (Holder) Fields() []ent.Field {
 			Immutable().
 			Optional(),
 		field.String("idp_subject"),
+		field.String("profile").GoType(&apptest.Profile{}).ValueScanner(entpb.ValueScanner[*apptest.Profile]{}).SchemaType(map[string]string{dialect.Postgres: "jsonb", dialect.MySQL: "json"}).
+			Optional(),
 		field.UUID("tenant_id", uuid.UUID{}).
 			Immutable(),
 	}

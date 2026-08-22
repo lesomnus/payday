@@ -173,10 +173,12 @@ export const RobotSchema: GenMessage<Robot> = /*@__PURE__*/
  * holds two tenants on purpose, so there is no rule that they agree.
  *
  * This one names it, because a pairing across two tenants is not a thing this
- * app means. What that buys over the gate's own check is the caller who can see
- * both: an operator whose scope covers several tenants passes "may I read this"
- * with one robot in each, and the deployment writing through the server with no
- * wall passes it without being asked.
+ * app means. The gate reads the first hop of the `via` path through the wall --
+ * `lead`, here -- and never looks at `follow`, so nothing else compares the two
+ * at all. And where it does look it is not a comparison: an operator whose
+ * scope covers several tenants passes "may I read this" with one robot in each,
+ * and the deployment writing through the server with no wall passes it without
+ * being asked.
  *
  * @generated from message app.Pairing
  */

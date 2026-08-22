@@ -455,11 +455,13 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		TenantId:      tenant[:],")
 	g.P("		ActorTenantId: v.Tenant.Bytes(),")
 	g.P("		ActorId:       v.Actor.Bytes(),")
-	g.P("		TraceId:       v.Trace,")
+	// The three columns payday computes that are NOT NULL; see [emitNotNull]
+	// for why they are normalized here rather than where each is produced.
+	g.P("		TraceId:       notNull(v.Trace),")
 	g.P("		Action:        v.Action,")
 	g.P("		ObjectId:      v.Object.Bytes(),")
-	g.P("		Patch:         v.Patch,")
-	g.P("		Value:         value,")
+	g.P("		Patch:         notNull(v.Patch),")
+	g.P("		Value:         notNull(value),")
 	// Zero unless a layer said otherwise, which is nearly every write. It is
 	// the other tenant this one was about, and the wall on the trail counts
 	// it; see `audit.Concerning`.
@@ -470,10 +472,89 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("}")
 	g.P("")
 
+	emitNotNull(g)
 	emitSubject(g, s, p, root)
 
 	// Referenced only so that the import is kept when a schema has no patch.
 	g.P("var _ *", pkgPatchpb.Ident("Patch"))
+	g.P("")
+}
+
+// emitNotNull writes the one place a value passes through before the trail's
+// NOT NULL columns see it.
+//
+// # Why the assembly point and not the producers
+//
+// Four things compute one of these -- the trace, the patch document, the row
+// read back, and the answer for a row there is none of -- and every one of
+// them is a `[]byte` that can come out nil. Defending each is defending a
+// list, and a list is only as good as whoever adds the next entry to it. The
+// trace and the patch each carry their own "empty rather than nil, and here is
+// the trap"; the read for an entity with no tenant sits beside them and
+// answered nil, and every write to a global entity was refused by PostgreSQL
+// and taken by SQLite, where no test could see it.
+//
+// The builder below is where all four meet, and it is the last thing between
+// them and the column. A path added to `subject` is covered by having been
+// added, which is the difference between this and a fifth per-site fix.
+//
+// # Why not the runtime
+//
+// `payday/audit` is where the trail's decisions live, and two of these four
+// already answer empty there. It cannot hold this one: `value` is a row read
+// back through the app's own servers, and payday has no name for those types.
+// So a defense there reaches the two columns that have never been the bug and
+// not the one that has been it twice -- and a defense in two halves is the
+// list again, with two places to remember instead of four.
+//
+// # What it must not be given
+//
+// `counterpart_tenant_id`, which is why this is a call per column rather than
+// something applied to the request. That column is nullable on purpose -- nil
+// is how a row says there was no other party to the write -- and normalizing
+// it would put a zero identifier nobody holds in a column the wall reads. Nil
+// is taken away only where the column has left it no room to mean anything.
+func emitNotNull(g *protogen.GeneratedFile) {
+	g.P("// notNull is `v` as a column that says it always has bytes takes it.")
+	g.P("//")
+	g.P("// The two drivers disagree about exactly one value: a nil `[]byte` is SQL")
+	g.P("// NULL to pgx and an empty blob to SQLite's driver. So a nil bound to a NOT")
+	g.P("// NULL column is a write that passes on the database the tests run on and is")
+	g.P("// refused by the one the app is deployed on.")
+	g.P("//")
+	g.P("// Nothing is hidden by it. These columns are NOT NULL, so there is no nil for")
+	g.P("// them to mean: an empty `trace_id` is a call nobody traced, an empty `patch`")
+	g.P("// is a write that was not compiled from a document, an empty `value` is a row")
+	g.P("// that was not there to read. `counterpart_tenant_id` is nullable so that nil")
+	g.P("// can say there was no other party, and it does not come through here.")
+	g.P("func notNull(v []byte) []byte {")
+	g.P("	if v == nil {")
+	g.P("		return []byte{}")
+	g.P("	}")
+	g.P("")
+	g.P("	return v")
+	g.P("}")
+	g.P("")
+}
+
+// emitViaAbsent guards the first hop of a `via` path against not being there.
+//
+// The edge may be nullable, and payday asks for that: a schema gains field 3
+// after it already has rows, and a required edge could never be added to one.
+// So a row that names no next hop is a real row, and it has no tenant.
+//
+// Read without this guard, `GetId()` on the absent edge answers no bytes and
+// parsing them fails -- which made the **write** fail, with an Internal, from
+// inside the recorder. The row could not be created at all.
+//
+// The answer is the identifier that means "nothing to file it under", which the
+// caller already handles by falling back to the actor's own tenant. The row's
+// bytes go back either way: the trail can still say what happened even when it
+// cannot say whose.
+func emitViaAbsent(g *protogen.GeneratedFile, via string) {
+	g.P("		if !row.Has", camel(via), "() {")
+	g.P("			return ", pkgUuid.Ident("Nil"), ", b, nil")
+	g.P("		}")
 	g.P("")
 }
 
@@ -498,35 +579,27 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 // through another row. That is the price of a trail two parties can read, and
 // it is paid on the write path rather than on the read path.
 //
+// A soft Erase is one read more -- the bare Get misses the row it has just
+// stamped and the erased-inclusive read follows it -- and a soft Erase of an
+// entity that reaches its tenant through another row is one more again. An
+// ordinary write pays neither, since the retry is behind a NotFound and a live
+// row's Get does not miss; the one that does pay is the write whose `via`
+// parent is already erased, and it pays on the hop rather than on itself.
+//
 // # The Erase that took the row with it
 //
 // An entity erased hard has no row left by the time this runs -- the recorder
 // is called inside the transaction, after the delete. Then this answers with
 // the nil identifier and the caller falls back to the actor's tenant, which is
-// what the trail said for everything before this existed. An entity erased
-// softly has its row and answers normally, which is one more reason for soft to
-// be what an entity does unless it says otherwise.
-// emitViaAbsent guards the first hop of a `via` path against not being there.
+// what the trail said for everything before this existed.
 //
-// The edge may be nullable, and payday asks for that: a schema gains field 3
-// after it already has rows, and a required edge could never be added to one.
-// So a row that names no next hop is a real row, and it has no tenant.
-//
-// Read without this guard, `GetId()` on the absent edge answers no bytes and
-// parsing them fails -- which made the **write** fail, with an Internal, from
-// inside the recorder. The row could not be created at all.
-//
-// The answer is the identifier that means "nothing to file it under", which the
-// caller already handles by falling back to the actor's own tenant. The row's
-// bytes go back either way: the trail can still say what happened even when it
-// cannot say whose.
-func emitViaAbsent(g *protogen.GeneratedFile, via string) {
-	g.P("		if !row.Has", camel(via), "() {")
-	g.P("			return ", pkgUuid.Ident("Nil"), ", b, nil")
-	g.P("		}")
-	g.P("")
-}
-
+// An entity erased softly has its row, and for a while this said it "answers
+// normally". It did not: every read the bare server makes narrows to the rows
+// still here, so the row a soft Erase had just stamped was NotFound to the
+// record of that very erase, and the record took the hard path -- the actor's
+// tenant, an empty value -- which is precisely the row the erased side cannot
+// read. So a NotFound for a softly erased entity is retried past the erased
+// filter; see [emitErased] for the seam, and for the one that was rejected.
 func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	g.P("// subject is the tenant of the row `key` names and the row itself, and the")
 	g.P("// nil identifier when there is no such row any more.")
@@ -544,12 +617,28 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		g.P("		row, err := s.", v.GoName(), "().Get(ctx, ", root.Ident(v.GoName()+"GetRequest_builder"), "{")
 		g.P("			Ref: ", root.Ident(v.GoName()+"Ref_builder"), "{Id: key.Bytes()}.Build(),")
 		g.P("		}.Build())")
+		if !v.IsHard {
+			// Keyed off the entity's shape and not the action, because the
+			// action answers less. This server has no scope and runs inside
+			// the write's own transaction, on rows that write just touched,
+			// so for a soft entity a NotFound has one meaning: erased --
+			// stamped by the Erase this record is for, or sitting on the path
+			// a still-live row reaches its tenant through. The second is a
+			// write recorded through an erased parent, whose trail row
+			// belongs to that parent's tenant no less than an Erase's does,
+			// and no test of the action would have caught it.
+			g.P("		// Erased softly is still a row; see [erased", v.GoName(), "].")
+			g.P("		if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
+			g.P("			row, err = erased", v.GoName(), "(ctx, s, key)")
+			g.P("		}")
+		}
 		g.P("		if err != nil {")
 		g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
 		// Empty rather than nil: the trail's `value` is NOT NULL, and a nil
 		// `[]byte` is SQL NULL to pgx while the SQLite driver makes it an empty
-		// blob. A row that is already gone is the one case that reaches here,
-		// and it is exactly the case no SQLite test can fail on.
+		// blob. A row that is really gone is the one case that reaches here --
+		// erased hard, for a soft entity nothing at all -- and it is exactly
+		// the case no SQLite test can fail on.
 		g.P("				return ", pkgUuid.Ident("Nil"), ", []byte{}, nil")
 		g.P("			}")
 		g.P("")
@@ -630,9 +719,88 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 
 	g.P("	}")
 	g.P("")
-	g.P("	// A domain nothing registered, which is an identifier from somewhere")
-	g.P("	// else. Nothing to read and nothing to say about it.")
-	g.P("	return ", pkgUuid.Ident("Nil"), ", nil, nil")
+	g.P("	// An entity with no tenant to file under: one declared `global: {}`,")
+	g.P("	// which the switch above skips, or a domain nothing registered, which")
+	g.P("	// is an identifier from somewhere else. Nothing to read either way.")
+	//
+	// Empty rather than nil, for the reason the NotFound branch above says: a
+	// nil `[]byte` is SQL NULL to pgx and the trail's `value` is NOT NULL, so
+	// nil here is every write to a global entity failing on PostgreSQL and
+	// passing on SQLite. It is the same trap twice, which is why it is worth
+	// saying twice.
+	g.P("	return ", pkgUuid.Ident("Nil"), ", []byte{}, nil")
+	g.P("}")
+	g.P("")
+
+	for _, v := range s.Sorted() {
+		if v.IsGlobal || v.IsHard {
+			// Nothing behind the wall to file, or no row left to read; the
+			// caller's fallback is the whole of the answer for both.
+			continue
+		}
+
+		emitErased(g, v, p, root)
+	}
+}
+
+// emitErased writes the read [emitSubject]'s switch falls back to when the
+// bare one answers NotFound: the same row, among the ones already erased.
+//
+// # Why it reads ent rather than the bare server
+//
+// Every reference the bare server builds carries the erased filter. That is
+// upstream's code and upstream's rule, and the rule is right everywhere else:
+// an erased row is not a row a read answers with. The recorder is the one
+// caller for whom it is wrong -- the row it asks about was erased by the very
+// write it is recording -- and the bare API has no words for "and the erased
+// ones"; growing some for a single caller would put erased rows within reach
+// of every server built on it. So the recorder steps around the bare server to
+// ent, on the same transaction, through the Select the bare Get itself uses --
+// and keeps the erased filter, inverted: this read is only for rows the bare
+// one cannot see, so between the two every row is found exactly once, and a
+// row found by neither was erased hard.
+//
+// # Why not the pre-image
+//
+// The rejected seam was to read the row before the erase stamps it and hand
+// the copy down to the recorder. That read has nowhere honest to live: the pd
+// layers run before the erase's transaction exists, so the copy can be stale
+// by the time the stamp lands -- and an erase made below them, by a batch or
+// by an app calling the sink, would still file the broken row. Reading back
+// inside the transaction costs the stamp being in `value`, and that is not a
+// cost: the value's contract is the row as the event left it, and a soft
+// erase leaves the row stamped.
+func emitErased(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoImportPath) {
+	e := v.GoName()
+	entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+
+	g.P("// erased", e, " is the row `key` names among the rows already erased, which no")
+	g.P("// bare read answers: erasure is part of every reference that server builds.")
+	g.P("// The recorder is the one caller that has to see past it -- the row it asks")
+	g.P("// about was erased by the very write it is recording, and a trail row built")
+	g.P("// blind was filed under the actor's tenant with an empty value, which the")
+	g.P("// tenant whose row was erased could not read.")
+	g.P("func erased", e, "(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
+		", key ", pkgPdid.Ident("Id"), ") (*", root.Ident(e), ", error) {")
+	g.P("	k, err := ", pkgUuid.Ident("FromBytes"), "(key.Bytes())")
+	g.P("	if err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+	g.P("	q := s.Db.", e, ".Query().Where(", entPkg.Ident("IDEQ"), "(k), ",
+		entPkg.Ident(pascal(v.GetErasedField().Name())+"NotNil"), "())")
+	g.P("	", p.Bare.Ident(e+"SelectInit"), "(q, nil)")
+	g.P("")
+	g.P("	v, err := q.Only(ctx)")
+	g.P("	if err != nil {")
+	g.P("		if ", p.Ent.Ident("IsNotFound"), "(err) {")
+	g.P("			return nil, ", pkgStatus.Ident("Error"), "(", pkgCodes.Ident("NotFound"), ", \"", e, " not found\")")
+	g.P("		}")
+	g.P("")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+	g.P("	return v.Proto(), nil")
 	g.P("}")
 	g.P("")
 }

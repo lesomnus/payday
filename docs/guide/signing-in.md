@@ -31,8 +31,9 @@ func login(ctx context.Context, r *http.Request) (authsession.Session, error) {
 		return authsession.Session{}, err
 	}
 
-	// Whatever checking a secret means in this deployment.
-	v, err := roster.Verify(ctx, body.Tenant, body.Alias, body.Password)
+	// Whatever checking a secret means in this deployment. Here, an identity
+	// service the deployment already runs.
+	v, err := directory.Verify(ctx, body.Tenant, body.Alias, body.Password)
 	if err != nil || !v.GetOk() {
 		return authsession.Session{}, errors.New("no")
 	}
@@ -307,11 +308,12 @@ A deployment with a browser in front of it usually has services behind it:
 auth.Seq(sessions.Handler(), auth.MTLS())
 ```
 
-`Seq` takes the first handler that finds anything. A request with no cookie
-falls through to the certificate; a request with a cookie that names **nothing**
-does not — it is a credential that is there and wrong, and serving it as
-whatever the next handler makes of it would be answering a question nobody
-asked.
+`Seq` takes the first handler that finds anything, and one that finds something
+**wrong** — or that cannot tell — stops the search rather than falling through;
+the rule is [permissions §4](permissions.md#4-who-is-asking). For a cookie that
+means a request carrying none reaches the certificate, while one naming a
+session that has expired, been signed out, or lives in a store that is down
+does not.
 
 An app that also takes API tokens adds the third:
 

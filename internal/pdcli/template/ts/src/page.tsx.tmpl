@@ -87,8 +87,10 @@ function Add(props: { tenant: Uint8Array }): React.ReactNode {
 
 function Things(): React.ReactNode {
 	// No filters, so the server answers with the first page of what this caller
-	// may see -- and opens a `Watch` over the same question behind it, so a row
-	// somebody else changes arrives without anything here polling.
+	// may see -- and no `Watch` behind it, because a watch says which rows it
+	// is about and one that says nothing is the whole table. This page re-reads
+	// after its own writes; a page that wants other people's writes live names
+	// a filter.
 	const { state, data, error } = useQuery(ThingService.method.list, { filters: [] })
 
 	if (state === 'error') return <p className="bad">{String(error)}</p>
@@ -123,9 +125,11 @@ function Row(props: { thing: Thing }): React.ReactNode {
 				<button
 					disabled={erase.state === 'pending'}
 					onClick={() => {
-						// The answer to an `Erase` is empty, so what says which
-						// row is gone is the request -- and the row leaves every
-						// list drawing it before the round trip is over.
+						// The answer to an `Erase` says whether this call was
+						// the one that erased it and names no row, so what says
+						// which row is gone is the request -- and the row leaves
+						// every list drawing it now, rather than a round trip
+						// from now.
 						erase.call({ key: { case: 'id', value: props.thing.id } }).catch(() => {})
 					}}
 				>

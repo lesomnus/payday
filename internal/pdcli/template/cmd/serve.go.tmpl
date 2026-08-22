@@ -295,11 +295,13 @@ func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(
 	}
 
 	// Whatever this app serves over HTTP goes here, on the same mux and behind
-	// the same cross-origin answer. A login endpoint is the case payday left a
-	// seam for and cannot fill: `auth` reads a credential and does not issue
-	// one, and issuing is an HTTP endpoint.
+	// the same cross-origin answer. Signing a browser in is the one to expect,
+	// and `auth/authsession` is most of it: the endpoint, the cookie and its
+	// attributes, the expiry and the store it is kept in. What it takes from
+	// this app is a `Verify`, because the people are in this app's schema and
+	// what checking their secret means is this app's to say.
 	//
-	//	h.Handle("/login", login(s.Ungated))
+	//	h.Handle("POST /session", sessions.Serve(login))
 	//
 	// A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide
 	// with one -- and `ServeMux` panics rather than shadowing if one somehow

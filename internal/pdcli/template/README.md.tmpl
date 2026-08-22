@@ -167,9 +167,9 @@ takes the copy with it. `ts/src/store.ts` is the whole of that, and deleting two
 lines of it turns the mirror off.
 
 React is a **peer** dependency of payday and an optional one. `payday/store` and
-`payday/query` know nothing about it; `payday/react` is thirty lines of
-`useSyncExternalStore` over them, and the same file for Vue or Svelte is the
-same length.
+`payday/query` know nothing about it; `payday/react` is twenty lines of
+`useSyncExternalStore` over them under five exports, and the same file for Vue
+or Svelte is the same length.
 
 ## A browser
 
@@ -202,15 +202,17 @@ Whatever else this app serves over HTTP goes on the same mux, in `serve.go`:
 
 ```go
 h, err := web.New(c.Server.Http, g)
-h.Handle("/login", login(s.Ungated))
+h.Handle("POST /session", sessions.Serve(login))
 ```
 
-That is where a login endpoint lands, and the page needs one: `auth.Plain` takes
-the caller's word for who they are, which is right for a sandbox and for tests
-and is not something to serve where anyone can reach it. `auth` reads a
-credential and does not issue one — issuing is HTTP, and this is the HTTP. The
-cross-origin answer is over the whole mux, so a route added here is reachable
-from the same page the RPCs are.
+That is where signing a browser in lands, and the page needs it: `auth.Plain`
+takes the caller's word for who they are, which is right for a sandbox and for
+tests and is not something to serve where anyone can reach it.
+`auth/authsession` is the rest of it — the endpoint, the cookie and its
+attributes, the expiry and the store — and what it asks of this app is a
+`Verify`, since the people are in this app's schema and their secrets are
+wherever this app keeps them. The cross-origin answer is over the whole mux, so
+a route added here is reachable from the same page the RPCs are.
 
 `go tool pd gen --ts .` writes the messages and service descriptors into
 `ts/gen`, along with `entities.ts` — one declaration per entity, which is what

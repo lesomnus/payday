@@ -215,7 +215,16 @@ func emitDispatch(g *protogen.GeneratedFile, ops []batchOp, p Paths, root protog
 	g.P("// ask for, and `Any` is checked by type URL so there is a right answer.")
 	g.P("func dispatch(ctx ", pkgCtx.Ident("Context"), ", s ", root.Ident("Server"),
 		", op *", pkgPdpb.Ident("Op"), ") (*", pkgAnypb.Ident("Any"), ", error) {")
-	g.P("	switch m := op.GetMethod(); m {")
+	g.P("	m := op.GetMethod()")
+	g.P("")
+	g.P("	// Under the operation's own name. The recorder fills in what the")
+	g.P("	// caller asked for by asking gRPC, and in here gRPC answers with the")
+	g.P("	// envelope -- `BatchService/Do`, for every operation of every batch --")
+	g.P("	// so without this the trail says a hundred different writes were all")
+	g.P("	// the same call.")
+	g.P("	ctx = ", pkgBatch.Ident("AsOp"), "(ctx, m)")
+	g.P("")
+	g.P("	switch m {")
 
 	for _, op := range ops {
 		g.P("	case ", root.Ident(op.Const), ":")

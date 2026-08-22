@@ -7,11 +7,11 @@ import "strings"
 // A method is three parts and a pattern is the same three with any of them
 // written as `*`:
 //
-//	/roster.HolderService/Get     one method
-//	/roster.HolderService/*       one service
-//	/roster.*/*                   one package
-//	/roster.*/Get                 that method wherever it appears
-//	/*.*/*                        everything
+//	/app.HolderService/Get     one method
+//	/app.HolderService/*       one service
+//	/app.*/*                   one package
+//	/app.*/Get                 that method wherever it appears
+//	/*.*/*                     everything
 //
 // **A whole part or nothing.** `*Get*` is not a pattern, it is a part whose
 // name happens to contain asterisks, and it matches a method called exactly

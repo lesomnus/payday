@@ -166,10 +166,10 @@ func ownOf(fd protoreflect.FileDescriptor) (map[string]pdpb.Own, error) {
 //
 // It is what makes a field's type comparable across a rename. payday's Holder
 // points at `payday.Tenant` and an app that put these entities in its own
-// package points at `hday.Tenant` -- the same field, and by full name a
+// package points at `acme.Tenant` -- the same field, and by full name a
 // redeclaration of it. A map field is the sharper case, since its entry type is
 // synthesized from the message it is in: `payday.Tenant.LabelsEntry` against
-// `hday.Tenant.LabelsEntry`.
+// `acme.Tenant.LabelsEntry`.
 //
 // What is left alone is everything outside the package, `google.protobuf.Timestamp`
 // most of all -- those are the same name on both sides and have to stay

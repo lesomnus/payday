@@ -23,30 +23,31 @@ message Robot {
   Tenant        tenant = 2 [(orm.edge) = {immutable: true}];
   string        alias  = 4;
 
+  // Not about tenancy, and not optional either: every entity has to say what
+  // `Erase` does to a row, and carrying this field is how "softly" is said.
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+
   option (orm.message)   = {rpc: {crud: true}};
   option (payday.entity) = {domain: 7};
 }
 ```
 
-That is a walled entity. Every `Get`, `List`, `Watch`, `Patch`, `Apply` and
-`Erase` of a Robot carries a predicate narrowing it to the tenants the caller
-may see, and `Add` refuses a tenant the caller cannot see.
+That is a walled entity. Every `Get`, `Patch`, `Apply` and `Erase` of a Robot
+carries a predicate narrowing it to the tenants the caller may see, and `Add`
+refuses a tenant the caller cannot see. Add a `list:` and the `List` it
+generates is narrowed by the same predicate, as is the `Watch` a `watch:` builds
+on top of it.
 
 You wrote no Go for that, and there is no `wall.go` to keep up to date. An
 entity added to the schema tomorrow arrives with its wall already on.
 
-### Why silence means the walled answer
-
-Because the two ways of being wrong are not alike.
-
-- Assume a wall that is not there → **every row disappears**, the screen is
-  empty, and somebody says so within minutes.
-- Assume no wall that should be there → **every row is visible to everybody**,
-  nothing breaks, no test goes red, and the first signal is a caller reading
-  another tenant's data.
-
-So the dangerous answer is the one you have to write down. Entities outside the
-wall all say `global: {}`, and grepping for it finds every one of them.
+Silence means the walled answer because the two ways of being wrong are not
+alike: a wall assumed where there is none empties the screen and somebody says
+so within minutes, while a wall missing where there should be one breaks nothing
+and is first noticed by a caller reading another tenant's data. The whole of
+that argument is [TENANCY.md §2](../TENANCY.md#2-the-default-is-the-loud-one).
+What it costs you here is one line: entities outside the wall all say
+`global: {}`, and grepping for it finds every one of them.
 
 The default also cannot be silently wrong:
 
@@ -82,10 +83,11 @@ option (payday.entity) = {
 
 `tenanted: {field: …}` may name several columns, and then they are **OR**ed: the
 row is behind the wall of *any* tenant it names. That exists for exactly one
-reason — an audit row has both the tenant whose row changed and the tenant whose
-operator changed it, and both are parties to the record. It is not a way to
-share a row between two tenants; payday does not model that, because there is
-then no owner and no answer to who may erase it.
+reason, and the trail is it. An audit row names three tenants and every one of
+them is a party to the record — the tenant whose row changed, the tenant whose
+operator changed it, and, when a write was about two of them, the counterpart
+(§8). It is not a way to share a row between two tenants; payday does not model
+that, because there is then no owner and no answer to who may erase it.
 
 ---
 
@@ -116,8 +118,7 @@ match, so the answer is `NotFound`. That it exists is itself something not to
 say.
 
 `Add` has nothing to narrow: the row does not exist yet. So the generated `Gate`
-layer reads the first hop of the row's path to its tenant, *through the wall*,
-before letting the insert through:
+layer reads, *through the wall*, before letting the insert through:
 
 ```go
 func (s gateRobot) Add(ctx context.Context, req *RobotAddRequest) (*Robot, error) {
@@ -125,6 +126,10 @@ func (s gateRobot) Add(ctx context.Context, req *RobotAddRequest) (*Robot, error
 		if _, err := s.Gate.Next().Tenant().Get(ctx, /* … */); err != nil {
 			// NotFound, for the same reason as above
 		}
+	}
+
+	if ref := req.GetSite(); ref != nil {
+		// … and the same read, when the app declared a set at field 3; see §7
 	}
 
 	return s.RobotServiceServer.Add(ctx, req)
@@ -135,9 +140,30 @@ Without it, the identifier in `tenant` becomes a foreign key with nothing
 consulted: the row is invisible to whoever planted it and visible to whoever
 holds that tenant. That is the shape of the bug, not a mitigation of it.
 
-Ordinary edges are **not** checked. Pointing at somebody else's row is a
-referential-integrity question, not a tenancy one, and checking would cost a
-read per edge per write.
+### What the gate reads, and what it does not
+
+| edge on the new row | read by the gate |
+| --- | --- |
+| the **first hop** of the row's path to its tenant | **yes**, through the wall |
+| field 3, the set (§7) | **yes**, for the same reason one level down |
+| any other edge | **no** |
+
+The first hop is the `tenant` edge for the ordinary entity, and for one that
+reaches its tenant through another row it is that row. Reading it through the
+wall answers the whole path at once, however long the path is: a hop the caller
+may not see comes back `NotFound`, and the question was only ever "may this
+caller see the thing it says this row belongs to". Field 3 joins it because
+payday reads field 3 as an isolation boundary too, so an `Add` into a set the
+caller cannot see is the same bug one level down.
+
+Ordinary edges are **not** read. Pointing at somebody else's row is a
+referential-integrity question rather than a tenancy one, and asking it would
+cost a read per edge on every write.
+
+Which leaves the row with a **second** path to a tenant: the gate does not
+compare the two, and an entity that needs them to agree says so with `agrees:`,
+which is written up in
+[the schema guide](schema.md#agrees--when-a-second-edge-also-reaches-a-tenant).
 
 ---
 
@@ -160,10 +186,10 @@ credential ──[ auth.Handler ]──> Identity ──[ auth.Resolver ]──>
 | `auth.Bearer` | a token, exchanged for a name via a `TokenStore` you supply |
 
 `auth.Seq(a, b)` takes the first claim any of them finds. A handler that finds
-*nothing* is passed over; one that finds something **wrong** stops the search —
-so `Seq(Bearer(store), MTLS())` means "the token if there is one, otherwise the
-certificate", and never "the token, and if anything goes wrong, the
-certificate".
+*nothing* is passed over; one that finds something **wrong**, or that cannot
+tell, stops the search — so `Seq(Bearer(store), MTLS())` means "the token if
+there is one, otherwise the certificate", and never "the token, and if anything
+goes wrong, the certificate".
 
 **`auth.Resolver`** is **yours to write.** Looking up "who is `@acme/admin`" is
 a query against your own generated servers, whose types payday cannot name. It
@@ -200,10 +226,11 @@ chain = chain.With(gate.Interceptor(s.Policy))   // behind auth, whose frame it 
 ```
 
 `Server.Policy` is where an app sets it, and `cmd/serve.go` hands the same value
-to `c.Server.Guard` as well — the interceptor covers the calls gRPC dispatches
+to `c.Server.Guard` as well: the interceptor covers the calls gRPC dispatches
 and the guard covers the operations inside a batch, which arrive as one method
 carrying many. A policy in only the first place authorises `BatchService/Do`
-rather than what it asks for; see [batch](batch.md#3-the-guard-and-why-it-is-refused-rather-than-defaulted).
+rather than what it asks for; see
+[batch](batch.md#3-the-guard-and-why-it-is-refused-rather-than-defaulted).
 
 **A nil policy is not a missing piece.** Without one:
 
@@ -225,19 +252,11 @@ have thrown away.
 ### What the deployment does for itself
 
 Some work has to go around the wall — putting the first tenant in, before there
-is anyone to be inside one.
-
-That is **not a privilege anybody holds.** It is a *server instance* built
-without the wall installed:
-
-```go
-walled,  _ := pd.NewSink(db, bare.WithScope(pd.Wall()))   // what a caller reaches
-ungated, _ := pd.NewSink(db)                              // what the deployment works through
-```
-
-Going around the wall is then a line of wiring a reader can find, and a
-capability somebody can be handed and have taken away — rather than a rule that
-opens up whenever nobody is asking.
+is anyone to be inside one — and payday answers it with a **server instance
+built without the wall**, a thing somebody can be handed and have taken away,
+rather than with a privilege anybody holds; what each instance is for, and what
+the ungated one still keeps, is
+[the server guide](server.md#2-the-two-servers-and-why-there-are-two).
 
 ---
 
@@ -250,6 +269,7 @@ of it is another. `frame.Grant` is the second.
 frame.Whole()                                  // narrows nothing
 frame.Whole().In(tenantA)                      // this tenant only
 frame.Whole().To("/app.RobotService/Get")      // this method only
+frame.Whole().To("/app.RobotService/*")        // every method of that service
 frame.Whole().In(tenantA).Within(siteX)        // and this site only — see §7
 ```
 
@@ -257,6 +277,11 @@ Three axes, each narrowed or not. It is deliberately **not** a map of one to the
 other — "write here, read there" — because a permission set that varies per
 resource is a policy, and a policy is not something a credential should carry
 around.
+
+A method is written the way gRPC knows it, and any of its three parts may be
+`*`. **A whole part or nothing**: `/app.*/Get` is a pattern and `*Get*` is a
+method name that happens to contain asterisks, because a permission check
+nobody can evaluate by reading it is one nobody reviews.
 
 Two rules hold everywhere:
 
@@ -280,7 +305,8 @@ issues them and `auth` reads them.
 For an external identity provider that is [`auth/authoidc`](../../auth/authoidc):
 it verifies the token against the issuer's key set and hands the claims to your
 `Resolver`. For credentials a deployment issues itself, it is `auth.Bearer` over
-a `TokenStore` your app writes.
+a `TokenStore` your app writes, and for a browser it is a session cookie — see
+[putting a login in front of an app](signing-in.md).
 
 ---
 
@@ -299,7 +325,7 @@ message Robot {
 }
 ```
 
-`Site` is an ordinary entity of your app (`pd entity add Site --tenanted`).
+`Site` is an ordinary entity of your app (`pd entity add --tenanted Site`).
 Declaring the edge is the whole declaration — the number is what payday reads,
 not the name.
 
@@ -348,10 +374,18 @@ site-scoped keys that reach every site, with nothing anywhere saying so.
 ## 8. The audit trail
 
 Every write that changed something writes a trail row, **inside the transaction
-that changed it**, so the trail and the data hold or fall together. Nothing
-writes one by hand — the RPCs exist so a test can arrange one, and a deployment
-serves none of the ones that write. A trail somebody can edit is evidence of
-nothing.
+that changed it**, so the trail and the data hold or fall together — a write the
+recorder could not account for is undone with it. Nothing writes one by hand.
+The RPCs exist because the trail is an entity like any other and a test is
+plainer for having them, and the layer in front answers every one of them that
+writes with `Unimplemented`:
+
+```
+the trail is written by what happened, not by anybody asking
+```
+
+That layer is on both stacks, the ungated one included. A trail somebody can
+edit is evidence of nothing.
 
 What it records: who acted, which tenant held them, what changed, which tenant
 held *that*, the RPC the caller asked for, the patch, and the row as it was when
@@ -360,7 +394,25 @@ the event was over.
 It is filed under the **object's** tenant, not the actor's. A headquarters
 operator changing a customer's row leaves a record the customer can read, and
 the actor's tenant is a second column so headquarters can read it too — neither
-needs a scope wide enough to see the other.
+needs a scope wide enough to see the other. A write with two sides — a row
+moving from one tenant to another, filed under where it ended up — names the
+other party through `audit.Concerning`, and the wall counts that column as well.
+It is set server-side and is never a field of a request: a caller who could name
+it could grant a stranger a read.
+
+All three are **columns and not edges**, which is the one place in payday's own
+schema that is true. A trail row has to outlive the tenant it names, and an edge
+is a foreign key: it would mean either that a tenant can never be erased, or
+that erasing one erases the record of what was done in it.
+
+**A hard erase is the one exception to the filing.** The row is gone before the
+recorder runs, so there is no object tenant left to read: the record goes under
+the *actor's* tenant, which is the last thing known about it, and `value` is
+empty. A soft erase keeps its row, so its record is filed like every other write
+and `value` is the whole of that row with the erase stamp on — everything of the
+moment before, plus what the erase wrote: the stamp, and the version column
+beside it for an entity that carries one, since an erase is a write like any
+other.
 
 A field declared `secret` is **not** in it. The layer that clears those on the
 way out is in front of the sink and the recorder is behind it — deliberately, so
@@ -368,8 +420,8 @@ a row is recorded as it was written rather than as somebody was allowed to see
 it. That is right for every column but a verifier, which in the trail would be a
 second copy of itself, in the one table nothing erases.
 
-Reads go through `AuditService.List`, filtered by object, actor, object tenant
-or actor tenant.
+Reads go through `AuditService.List`, filtered by object, actor, object tenant,
+actor tenant, or counterpart tenant.
 
 ### What the trail is not
 
@@ -410,81 +462,33 @@ deployments want, and the delivery guarantee is yours to choose.
 
 ## 9. Erasure
 
-Every entity must say what `Erase` does to a row. Saying nothing is refused,
-because payday cannot add a field to your schema and the only way to say "soft"
-is to have one.
+Every entity has to say what `Erase` does to a row: a field marked `erased:` for
+soft, `erase: {hard: {}}` for hard, and silence is refused. The table and why it
+is a refusal are in
+[the schema guide](schema.md#erasure--required-one-way-or-the-other). What the
+choice costs *here* is the trail.
 
-| `erased:` field | `erase: {hard: {}}` | |
-| --- | --- | --- |
-| present | absent | soft |
-| absent | present | hard |
-| absent | absent | **refused** |
-| present | present | **refused** — the ORM runs soft and the schema says destroy |
-
-Soft is what you want almost always: the row is stamped and stays, so it cannot
-be read or changed, its alias comes free again, and the trail can still say what
-it held.
-
-Hard is a real answer for a table of things that arrive faster than anyone reads
-them. What it costs is that the trail cannot say what was lost.
-
-**Do not answer this by going to the database instead.** A `DELETE` run outside
-the app skips the trail, the version and the `Watch` — and a watch says a row is
-gone by *not sending it*, so a row deleted behind the app's back is one every
-client holding it holds forever. A declared hard erase is safer than the
-database.
+Soft keeps the row, so the erasure is filed under the tenant that held it and
+its `value` is that row as the erase left it — which is the bill as much as the
+benefit: the trail outlives what it names, so what a softly erased row held is
+still readable there, and an obligation to destroy data is answered by a
+retention policy rather than by the erase. Hard leaves nothing to read, so the
+record goes under the actor's tenant with an empty `value` (§8), and what the
+row held survives only in the trail of the writes before it.
 
 ---
 
 ## 10. Whose names these are
 
 `Tenant`, `Holder`, `Audit` and `Outbox` are payday's entities and they land in
-**your** proto package. `pd gen` copies the four files in and rewrites their
-`package` line to whatever your own schema declares, so a caller of your app
-says:
-
-```
-/app.TenantService/Get
-/app.HolderService/Add
-/app.RobotService/Get
-```
-
-There is no setting for this and it is not opt-in. A tenant and a holder are
-your customers and your people — domain concepts of the thing you are building —
-and somebody calling your API should not have to learn the name of the framework
-it was built with to say who they are.
-
-`payday.` survives on the wire in exactly one place:
-
-```
-/payday.BatchService/Do
-```
-
-That one is not a domain concept, it is a transport — several writes as one
-transaction, taking `Any` and taking no position on what is in it. It keeps the
-name on purpose, the way `grpc.health.v1.Health` does: it is a **shared
-contract**, so a client written once finds it in any payday app. Renaming it per
-app would cost that and buy nothing.
-
-The `(payday.entity)` option keeps its name too, and it never reaches a caller —
-it is a build-time annotation, like `import "orm.proto"` beside it.
-
-### Two apps that share a boundary
-
-If you build a second app that shares users and tenants with the first, you can
-give both the same proto package, and then `hday.Tenant` names one type across
-the family.
-
-Do that as a claim about the **schema**, not just the name. Two apps whose
-overlays differ and whose packages agree publish two different messages under one
-fully-qualified name, which is the one thing such a name exists to prevent — add
-`employee_number` to Holder in one of them and `hday.Holder` now means two things
-depending on which server you asked.
-
-What is shared without any of this is the **identifier**. A tenant is domain 1
-and a holder is domain 2 in every payday app, and a `pdid` is unique without
-coordination — so a row one app minted is nameable by the other already, with no
-agreement about packages at all. That is usually the thing you actually wanted.
+**your** proto package: `pd gen` copies the files in and rewrites their
+`package` line, so a caller of your app says `/app.TenantService/Get` beside
+`/app.RobotService/Get` and never has to learn the name of the framework to say
+who they are. Only the transports keep the `payday.` name, because a transport
+describes no domain and has nothing per app in it to rename. What the rewrite
+covers, which names survive it, and what two apps sharing a proto package are
+claiming about their schemas, is
+[the generation contract](../SCHEMA.md#3-whose-names-these-are).
 
 ---
 
@@ -552,6 +556,8 @@ Before a deployment is reachable by anyone:
       allows nothing; `frame.Whole()` narrows nothing.
 - [ ] If you declared field 3, `pd.Grouped` is in the `bare.Scopes` beside the
       wall.
+- [ ] An entity whose second edge must land in the same tenant as its first says
+      `agrees:`. The gate does not ask that question and cannot.
 
 ---
 
@@ -562,6 +568,7 @@ Before a deployment is reachable by anyone:
 | [schema.md](schema.md) | declaring the entity all of this is generated from |
 | [server.md](server.md) | the stack each of these rules sits in |
 | [client.md](client.md) | reads, writes and the store a page sees this through |
+| [signing-in.md](signing-in.md) | putting a login in front of it |
 | [TENANCY.md](../TENANCY.md) | the model behind the wall, and deploying per tenant |
 | [SCHEMA.md](../SCHEMA.md) | what the schema owns, field 3, identifiers, slugs |
 | [RUNTIME.md](../RUNTIME.md) | every package, and how each rule is enforced |

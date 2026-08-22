@@ -59,7 +59,7 @@ func TestASchemaMissingPaydaysOwnIsRefused(t *testing.T) {
 // So the schema below is in a package called something else entirely, and
 // everything still finds them.
 func TestPaydaysOwnEntitiesAreFoundByMarkerNotName(t *testing.T) {
-	s, err := readAs(t, "hday", ownAll(t))
+	s, err := readAs(t, "fleet", ownAll(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,10 +68,10 @@ func TestPaydaysOwnEntitiesAreFoundByMarkerNotName(t *testing.T) {
 		own  pdpb.Own
 		name string
 	}{
-		{pdpb.Own_OWN_TENANT, "hday.Tenant"},
-		{pdpb.Own_OWN_HOLDER, "hday.Holder"},
-		{pdpb.Own_OWN_AUDIT, "hday.Audit"},
-		{pdpb.Own_OWN_OUTBOX, "hday.Outbox"},
+		{pdpb.Own_OWN_TENANT, "fleet.Tenant"},
+		{pdpb.Own_OWN_HOLDER, "fleet.Holder"},
+		{pdpb.Own_OWN_AUDIT, "fleet.Audit"},
+		{pdpb.Own_OWN_OUTBOX, "fleet.Outbox"},
 	} {
 		v := s.Own(tc.own)
 		if v == nil {
@@ -100,7 +100,7 @@ func TestPaydaysOwnEntitiesAreFoundByMarkerNotName(t *testing.T) {
 // by its own declaration order -- the same failure the certificate reader
 // refuses for the same reason.
 func TestTwoEntitiesCannotClaimTheSameMarker(t *testing.T) {
-	_, err := readAs(t, "hday", ownAll(t)+entity("Impostor",
+	_, err := readAs(t, "fleet", ownAll(t)+entity("Impostor",
 		`domain: 20, own: OWN_TENANT, global: {}`))
 	if err == nil {
 		t.Fatal("two entities claimed to be the tenant")

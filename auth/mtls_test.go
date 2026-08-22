@@ -23,9 +23,9 @@ func init() {
 	// What generated code does: the entities by name, and separately which of
 	// them is the wall. The name is the app's -- these may be in its own proto
 	// package -- so the tenant is registered as a number and not looked up.
-	pdid.Register("hday.Tenant", domainTenant, "tenant")
-	pdid.Register("hday.Robot", domainRobot, "robot")
-	pdid.Register("hday.Cell", domainCell, "cell")
+	pdid.Register("fleet.Tenant", domainTenant, "tenant")
+	pdid.Register("fleet.Robot", domainRobot, "robot")
+	pdid.Register("fleet.Cell", domainCell, "cell")
 	pdid.RegisterTenant(domainTenant)
 }
 
@@ -61,7 +61,7 @@ func TestACertificateMayNameMoreThanOneThing(t *testing.T) {
 	t.Run("the caller and the tenant that holds them", func(t *testing.T) {
 		x := require.New(t)
 
-		v, ok, err := certIdentity(certOf(t, "hday:"+robot.String(), "hday:"+tenant.String()))
+		v, ok, err := certIdentity(certOf(t, "fleet:"+robot.String(), "fleet:"+tenant.String()))
 		x.NoError(err)
 		x.True(ok)
 		x.Equal(robot.String(), v.Id)
@@ -69,7 +69,7 @@ func TestACertificateMayNameMoreThanOneThing(t *testing.T) {
 
 		// And the other way round, because a test that tried one order would
 		// pass on an implementation that takes the first or the last.
-		v, ok, err = certIdentity(certOf(t, "hday:"+tenant.String(), "hday:"+robot.String()))
+		v, ok, err = certIdentity(certOf(t, "fleet:"+tenant.String(), "fleet:"+robot.String()))
 		x.NoError(err)
 		x.True(ok)
 		x.Equal(robot.String(), v.Id)
@@ -79,7 +79,7 @@ func TestACertificateMayNameMoreThanOneThing(t *testing.T) {
 	t.Run("the caller alone, which is the long-lived certificate", func(t *testing.T) {
 		x := require.New(t)
 
-		v, ok, err := certIdentity(certOf(t, "hday:"+robot.String()))
+		v, ok, err := certIdentity(certOf(t, "fleet:"+robot.String()))
 		x.NoError(err)
 		x.True(ok)
 		x.Equal(robot.String(), v.Id)
@@ -101,14 +101,14 @@ func TestACertificateMayNameMoreThanOneThing(t *testing.T) {
 // TestTheNamespaceInFrontOfTheNameIsNotRead.
 //
 // A URI SAN is a name inside somebody's namespace, and what this reads is the
-// name. The scheme was already ignored -- `hday:` above means nothing, and any
+// name. The scheme was already ignored -- `fleet:` above means nothing, and any
 // other word would have done -- so ignoring whatever else is in front of the
 // name is the same rule rather than a new liberty.
 //
 // It is here because of a real certificate. An app issuing device certificates
-// wrote `urn:hday:{uuid}`, which is the ordinary way to spell a name in a
+// wrote `urn:fleet:{uuid}`, which is the ordinary way to spell a name in a
 // namespace of one's own, and this refused every one of them: the opaque part
-// of that URI is `hday:{uuid}`, which is neither an identifier nor a name. Two
+// of that URI is `fleet:{uuid}`, which is neither an identifier nor a name. Two
 // systems that had independently agreed on UUIDv8 with a domain byte, and on a
 // certificate carrying both the caller and its tenant, could not read each
 // other over one colon.
@@ -118,9 +118,9 @@ func TestTheNamespaceInFrontOfTheNameIsNotRead(t *testing.T) {
 
 	for _, form := range []string{
 		// The scheme carries it, which is what payday's own examples write.
-		"hday:",
+		"fleet:",
 		// A namespace of one's own, and what an app was actually issuing.
-		"urn:hday:",
+		"urn:fleet:",
 		// The one URN namespace that is registered (RFC 4122), for a deployment
 		// that wants a form nobody has to be told about.
 		"urn:uuid:",
@@ -164,26 +164,26 @@ func TestACertificateThatAnswersOneQuestionTwiceIsRefused(t *testing.T) {
 	}{
 		{
 			"two callers of the same kind",
-			[]string{"hday:" + robot.String(), "hday:" + other.String()},
+			[]string{"fleet:" + robot.String(), "fleet:" + other.String()},
 			"nothing says which is calling",
 		},
 		{
 			"two tenants",
-			[]string{"hday:" + tenant.String(), "hday:" + elsewhere.String()},
+			[]string{"fleet:" + tenant.String(), "fleet:" + elsewhere.String()},
 			"names two tenants",
 		},
 		{
 			// Both say which tenant. Nothing here reads a row, so there is
 			// nothing to tell which of them is right.
 			"a name and an identifier that both say the tenant",
-			[]string{"spiffe://host/@acme/arm-01", "hday:" + tenant.String()},
+			[]string{"spiffe://host/@acme/arm-01", "fleet:" + tenant.String()},
 			"says which tenant twice",
 		},
 		{
 			// The tenant is who holds a caller. On its own it names one row in
 			// every tenant there is, which is the nobody a bare alias names.
 			"a tenant and nobody in it",
-			[]string{"hday:" + tenant.String()},
+			[]string{"fleet:" + tenant.String()},
 			"names a tenant and nobody in it",
 		},
 	} {
@@ -212,7 +212,7 @@ func TestANameWithNowhereToGoIsRefusedRatherThanDropped(t *testing.T) {
 
 	robot, cell := pdid.New(domainRobot), pdid.New(domainCell)
 
-	_, ok, err := certIdentity(certOf(t, "hday:"+robot.String(), "hday:"+cell.String()))
+	_, ok, err := certIdentity(certOf(t, "fleet:"+robot.String(), "fleet:"+cell.String()))
 	x.ErrorIs(err, ErrAmbiguous)
 	x.False(ok)
 
@@ -234,12 +234,12 @@ func TestAnUnreadableNameDoesNotFallThroughToTheCommonName(t *testing.T) {
 		uri  string
 	}{
 		// Opaque and not an identifier. The opaque form itself is readable --
-		// it is how `hday:<uuid>` is written -- so what is unreadable here is
+		// it is how `fleet:<uuid>` is written -- so what is unreadable here is
 		// what it says, not the shape it is in.
 		{"an opaque URI that is not a name", "urn:x:y"},
 
 		// A UUID, and not one of ours: no app ever wrote a row with it.
-		{"a UUID from somewhere else", "hday:f81d4fae-7dec-11d0-a765-00a0c91e6bf6"},
+		{"a UUID from somewhere else", "fleet:f81d4fae-7dec-11d0-a765-00a0c91e6bf6"},
 
 		// Nothing after the scheme at all.
 		{"a URI that says nothing", "https://host/"},

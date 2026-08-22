@@ -2,8 +2,10 @@ package cmd_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -19,6 +21,7 @@ import (
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
+	entaudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
@@ -318,6 +321,220 @@ func TestTheTrailIsFiledUnderWhatChanged(t *testing.T) {
 	x.Equal("theirs", got.GetAlias())
 }
 
+// TestTheTrailOfASoftEraseIsFiledUnderWhatWasErased.
+//
+// The record of an erasure is the one row the erased side cannot do without,
+// and it used to be the one row that side could not read: the recorder read
+// the row back through the bare server, whose every read narrows to the rows
+// still here, so the just-stamped row answered NotFound and the record took
+// the hard-erase path -- the actor's tenant, an empty value. The recorder
+// reads past the erased filter now, so the trail says whose row it was and
+// what it held, with the stamp on.
+func TestTheTrailOfASoftEraseIsFiledUnderWhatWasErased(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	// A headquarters shape: an operator held by one tenant, scoped to reach
+	// another, erasing the other's row.
+	hq, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "hq"}.Build())
+	x.NoError(err)
+	hk := must(pdid.From(hq.GetId()))
+
+	mine, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	op := frame.New(pdid.New(pd.HolderDomain), hk, frame.Whole()).WithScope(frame.Only(hk, b.Tenant))
+	_, err = b.Walled.Robot().Erase(frame.Into(ctx, op), app.RobotRef_builder{Id: mine.GetId()}.Build())
+	x.NoError(err)
+
+	vs, err := b.Ungated.Audit().List(ctx, app.AuditListRequest_builder{
+		Filters: []*app.AuditFilter{
+			app.AuditFilter_builder{ObjectId: mine.GetId()}.Build(),
+		},
+	}.Build())
+	x.NoError(err)
+
+	var row *app.Audit
+	for _, r := range vs.GetItems() {
+		if r.GetAction() == app.RobotService_Erase_FullMethodName {
+			row = r
+		}
+	}
+	x.NotNil(row, "the erase was not recorded")
+
+	x.Equal(b.Tenant.Bytes(), row.GetTenantId(), "the erasure was filed under the actor rather than the erased")
+	x.Equal(hk.Bytes(), row.GetActorTenantId())
+
+	// The value is the row as the erase left it: everything it held, with the
+	// stamp on -- the only account of what a row was at the moment it went.
+	var got app.Robot
+	x.NoError(proto.Unmarshal(row.GetValue(), &got))
+	x.Equal("arm-01", got.GetAlias())
+	x.True(got.HasDateErased(), "the value should be the row as the erase left it")
+}
+
+// TestTheTrailOfASoftEraseIsReadableByTheErased is the two-party property
+// holding for the write it matters most for.
+//
+// The wall on the trail is the OR of the two tenant columns, so filing the
+// erasure under the erased row's tenant is exactly what lets that tenant read
+// it -- through its own scope, wide enough to see nothing of the actor's.
+func TestTheTrailOfASoftEraseIsReadableByTheErased(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	hq, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "hq"}.Build())
+	x.NoError(err)
+	hk := must(pdid.From(hq.GetId()))
+
+	mine, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	op := frame.New(pdid.New(pd.HolderDomain), hk, frame.Whole()).WithScope(frame.Only(hk, b.Tenant))
+	_, err = b.Walled.Robot().Erase(frame.Into(ctx, op), app.RobotRef_builder{Id: mine.GetId()}.Build())
+	x.NoError(err)
+
+	// Read as the tenant whose row it was, through the wall.
+	vs, err := b.Walled.Audit().List(b.as(ctx), app.AuditListRequest_builder{
+		Filters: []*app.AuditFilter{
+			app.AuditFilter_builder{ObjectId: mine.GetId()}.Build(),
+		},
+	}.Build())
+	x.NoError(err)
+
+	var found bool
+	for _, r := range vs.GetItems() {
+		found = found || r.GetAction() == app.RobotService_Erase_FullMethodName
+	}
+	x.True(found, "the tenant whose row was erased cannot read the record of the erasure")
+}
+
+// TestTheTrailOfAHardEraseIsFiledUnderTheActor pins the fallback the soft fix
+// must not take with it.
+//
+// A hard erase leaves nothing to read -- the recorder runs inside the
+// transaction, after the delete -- so the record is filed under the actor's
+// tenant, the last thing known about it, and the value is empty. See
+// `payday.Entity.Erase.hard` for why that is the accepted cost.
+func TestTheTrailOfAHardEraseIsFiledUnderTheActor(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	hq, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "hq"}.Build())
+	x.NoError(err)
+	hk := must(pdid.From(hq.GetId()))
+
+	mine, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	v, err := b.Walled.Reading().Add(b.as(ctx), app.ReadingAddRequest_builder{
+		Robot: app.RobotRef_builder{Id: mine.GetId()}.Build(),
+	}.Build())
+	x.NoError(err)
+
+	op := frame.New(pdid.New(pd.HolderDomain), hk, frame.Whole()).WithScope(frame.Only(hk, b.Tenant))
+	_, err = b.Walled.Reading().Erase(frame.Into(ctx, op), app.ReadingRef_builder{Id: v.GetId()}.Build())
+	x.NoError(err)
+
+	vs, err := b.Ungated.Audit().List(ctx, app.AuditListRequest_builder{
+		Filters: []*app.AuditFilter{
+			app.AuditFilter_builder{ObjectId: v.GetId()}.Build(),
+		},
+	}.Build())
+	x.NoError(err)
+
+	var row *app.Audit
+	for _, r := range vs.GetItems() {
+		if r.GetAction() == app.ReadingService_Erase_FullMethodName {
+			row = r
+		}
+	}
+	x.NotNil(row, "the erase was not recorded")
+
+	x.Equal(hk.Bytes(), row.GetTenantId(), "a hard erase has nothing left to file under but the actor's own")
+	x.Empty(row.GetValue())
+}
+
+// TestTheTrailOfAWriteThroughAnErasedParentIsFiledUnderThatParent is the half
+// of the erased-inclusive read that no Erase reaches.
+//
+// The retry is keyed off the entity's shape rather than off the action, and
+// that is the whole of why this case exists: a Joint reaches its tenant
+// through a Robot, so an ordinary Patch of a live Joint reads a Robot that may
+// already be softly erased. A stamped Robot is still the row that says whose
+// the Joint is -- soft erasure makes a row unreadable, it does not make it
+// somebody else's -- so the record belongs to that tenant. Falling back to the
+// actor there loses the same thing the erase case loses, and loses it for a
+// write nobody would think to look at: the owner's trail says nothing was done
+// to their row.
+func TestTheTrailOfAWriteThroughAnErasedParentIsFiledUnderThatParent(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	hq, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "hq"}.Build())
+	x.NoError(err)
+	hk := must(pdid.From(hq.GetId()))
+
+	mine, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	j, err := b.Walled.Joint().Add(b.as(ctx), app.JointAddRequest_builder{
+		Robot: app.RobotRef_builder{Id: mine.GetId()}.Build(),
+		Alias: "elbow",
+	}.Build())
+	x.NoError(err)
+
+	op := frame.New(pdid.New(pd.HolderDomain), hk, frame.Whole()).WithScope(frame.Only(hk, b.Tenant))
+	_, err = b.Walled.Robot().Erase(frame.Into(ctx, op), app.RobotRef_builder{Id: mine.GetId()}.Build())
+	x.NoError(err)
+
+	// The Joint is untouched by that -- the wall reads the Robot's tenant and
+	// not its stamp -- so what follows is an ordinary write, and the only
+	// erased row anywhere near it is the one the tenant is read off.
+	_, err = b.Walled.Joint().Patch(frame.Into(ctx, op), app.JointPatchRequest_builder{
+		Ref:   app.JointRef_builder{Id: j.GetId()}.Build(),
+		Alias: z.Ptr("shoulder"),
+	}.Build())
+	x.NoError(err)
+
+	vs, err := b.Ungated.Audit().List(ctx, app.AuditListRequest_builder{
+		Filters: []*app.AuditFilter{
+			app.AuditFilter_builder{ObjectId: j.GetId()}.Build(),
+		},
+	}.Build())
+	x.NoError(err)
+
+	var row *app.Audit
+	for _, r := range vs.GetItems() {
+		if r.GetAction() == app.JointService_Patch_FullMethodName {
+			row = r
+		}
+	}
+	x.NotNil(row, "the patch was not recorded")
+
+	x.Equal(b.Tenant.Bytes(), row.GetTenantId(), "a write through a softly erased parent was filed under the actor")
+	x.Equal(hk.Bytes(), row.GetActorTenantId())
+
+	// And it is still the Joint that was recorded, stamp-free: the parent's
+	// erasure is not an event of the child's.
+	var got app.Joint
+	x.NoError(proto.Unmarshal(row.GetValue(), &got))
+	x.Equal("shoulder", got.GetAlias())
+	x.False(got.HasDateErased())
+}
+
 // TestTheTrailIsQueryable is what makes it a trail rather than a table.
 func TestTheTrailIsQueryable(t *testing.T) {
 	x := require.New(t)
@@ -399,6 +616,186 @@ func TestEveryWriteIsOnTheTrail(t *testing.T) {
 	x.NotNil(row.Patch)
 	x.Empty(row.Patch)
 }
+
+// TestTheTrailTakesNoNullFromPayday is the column's contract rather than the
+// row's meaning, and it is about the three the app never supplies:
+// `trace_id`, `patch` and `value` are NOT NULL, and payday computes all three.
+//
+// Every one of them is **empty** for some ordinary write -- a call nobody
+// traced, an Add that was not compiled from a document, a row that is not
+// there to be read back -- and empty is the one value the two databases
+// disagree about: pgx sends a nil `[]byte` as SQL NULL, and the SQLite driver
+// makes it an empty blob. So the assertion below is really the write
+// **succeeding**, and it can only fail on PostgreSQL: without `PDTEST_POSTGRES`
+// naming one it asserts a nil the driver has already taken away, and passes on
+// a tree where every one of these is nil.
+//
+// The writes are the ones that reach a path with no row behind it, which is
+// where every nil of this kind has come from so far: an entity declared
+// `global: {}` is not in `subject`'s switch at all, and an entity erased hard
+// has no row left by the time the recorder reads for one.
+func TestTheTrailTakesNoNullFromPayday(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	arm, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+	}.Build())
+	x.NoError(err)
+
+	for _, tc := range []struct {
+		what  string
+		write func(x *require.Assertions) []byte
+	}{
+		{
+			"an entity with no tenant to file it under",
+			func(x *require.Assertions) []byte {
+				v, err := b.Ungated.Fleet().Add(ctx, app.FleetAddRequest_builder{Alias: "east"}.Build())
+				x.NoError(err)
+
+				return v.GetId()
+			},
+		},
+		{
+			"an erase that took the row with it",
+			func(x *require.Assertions) []byte {
+				v, err := b.Ungated.Reading().Add(ctx, app.ReadingAddRequest_builder{
+					Robot:   app.RobotRef_builder{Id: arm.GetId()}.Build(),
+					Celsius: 21.5,
+				}.Build())
+				x.NoError(err)
+
+				_, err = b.Ungated.Reading().Erase(ctx, app.ReadingRef_builder{Id: v.GetId()}.Build())
+				x.NoError(err)
+
+				return v.GetId()
+			},
+		},
+	} {
+		t.Run(tc.what, func(t *testing.T) {
+			x := require.New(t)
+			k, err := uuid.FromBytes(tc.write(x))
+			x.NoError(err)
+
+			// Off the database rather than through a server: what is under
+			// test is what the column holds, and a read through the trail's
+			// own service would answer with a message that has no way to say
+			// the difference.
+			rows, err := b.Ent.Audit.Query().Where(entaudit.ObjectIDEQ(k)).All(ctx)
+			x.NoError(err)
+			x.NotEmpty(rows)
+
+			for _, row := range rows {
+				x.NotNil(row.TraceID, "trace_id")
+				x.NotNil(row.Patch, "patch")
+				x.NotNil(row.Value, "value")
+			}
+		})
+	}
+}
+
+// TestAWriteNothingCouldRecordIsUndone is [TestEveryWriteIsOnTheTrail] from the
+// side that makes it a fact about the database rather than about the order two
+// statements were issued in.
+//
+// A recorder is called from inside the transaction that makes the write, so a
+// refusal is not a write that happened beside a record that did not: it is no
+// write at all. That is the promise on `bare.Recorder`, and it is what
+// docs/guide/permissions.md is saying with "the trail and the data hold or
+// fall together".
+//
+// The trail recorder is kept ahead of the refusing one, in the order
+// `cmd.Build` writes them, because the stronger thing to show is the row it had
+// already written going too. A trail appended after the commit could not do
+// that: whichever of the two failed, what is left is a record of a write that
+// was undone or a write nothing accounts for.
+func TestAWriteNothingCouldRecordIsUndone(t *testing.T) {
+	b, ctx := build(t)
+
+	// A sink of its own rather than `b.Walled`, because a recorder is
+	// something a server is handed when it is built and this test is about
+	// which one. No wall on it: what is under test is a write nobody argued
+	// with, and narrowing reads would only make the counts below harder to
+	// read.
+	sink := func(t *testing.T, rec bare.Recorder) pd.Sink {
+		t.Helper()
+
+		s, err := pd.NewSink(b.Ent,
+			bare.WithMinter(pd.Minter()),
+			bare.WithRecorder(bare.Recorders{pd.Recorder(), rec}),
+		)
+		require.NoError(t, err)
+
+		return s
+	}
+
+	add := func(s pd.Sink, alias string) error {
+		_, err := s.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  alias,
+		}.Build())
+
+		return err
+	}
+
+	// Read off the database rather than through a server, so that a row hidden
+	// from a read and a row that is not there cannot be confused -- a soft
+	// erase is the shape that makes those two look alike, and a rollback is
+	// the claim that must not.
+	counts := func(x *require.Assertions, alias string) (int, int) {
+		rows, err := b.Ent.Robot.Query().Where(robot.AliasEQ(alias)).Count(ctx)
+		x.NoError(err)
+
+		trail, err := b.Ent.Audit.Query().Count(ctx)
+		x.NoError(err)
+
+		return rows, trail
+	}
+
+	t.Run("refused", func(t *testing.T) {
+		x := require.New(t)
+
+		_, before := counts(x, "arm-undone")
+
+		err := add(sink(t, answers{err: errors.New("the queue is down")}), "arm-undone")
+
+		// Internal whatever the recorder answered with, since keeping the
+		// trail is this server's job rather than anything the caller asked
+		// for; the words are kept so a log says which recorder gave up on
+		// what. See `record`.
+		x.Equal(codes.Internal, status.Code(err))
+		x.ErrorContains(err, "the queue is down")
+
+		rows, trail := counts(x, "arm-undone")
+		x.Zero(rows, "the write a recorder refused is in the database")
+		x.Equal(before, trail, "the trail row written before the refusal outlived the write it was about")
+	})
+
+	t.Run("and the same write, with a recorder that agrees", func(t *testing.T) {
+		x := require.New(t)
+
+		_, before := counts(x, "arm-01")
+
+		x.NoError(add(sink(t, answers{}), "arm-01"))
+
+		// Which is what says the subtest above is a rollback: the same sink,
+		// the same call, one recorder answering differently. A write that was
+		// never attempted -- refused by the wall, refused by the gate, dropped
+		// before the statement -- leaves the same empty table behind, and only
+		// this half tells the two apart.
+		rows, trail := counts(x, "arm-01")
+		x.Equal(1, rows)
+		x.Equal(before+1, trail)
+	})
+}
+
+// answers is a recorder that does nothing but answer, which is all a test of
+// the transaction wants from one: what it says when it is asked is the whole
+// of its behaviour, and the zero value is the recorder that agrees.
+type answers struct{ err error }
+
+func (r answers) Record(context.Context, bare.Server, bare.Change) error { return r.err }
 
 // TestTheTrailNamesWhatChangedByKind is what the domain byte bought.
 //

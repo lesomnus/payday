@@ -7,7 +7,7 @@ import (
 
 // TestAStalePinIsExplained.
 //
-// The failure is real and it happened: custody's buf.lock was pinned before
+// The failure is real and it happened: an app's buf.lock was pinned before
 // `erase:` and `own:` were pushed, so `pd gen` died on a file the app never
 // wrote, naming fields it had never heard of. Nothing in buf's message says the
 // word "pin", so the obvious readings -- a corrupt copy, a bad merge, a broken

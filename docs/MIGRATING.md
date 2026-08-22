@@ -3,6 +3,125 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A batch operation is on the trail under its own name
+
+**Applies if** you read the audit trail by `action` — a report, a retention
+rule, a filter on a dashboard — and something in your app writes through
+`payday.BatchService`. It applies as well to anything that groups writes by the
+watch event they arrived in, which the outbox answers differently; see below.
+
+The recorder does not know what the caller asked for, so it asks gRPC. Inside a
+batch, gRPC's answer is the envelope — `/payday.BatchService/Do`, for every
+operation of every batch — so a hundred different writes were filed as one
+action, and "who renamed this" answered with a method that renames nothing.
+
+Each operation is dispatched now in a context where gRPC answers with the
+operation's own method, which is the name the caller wrote into the op. A batch
+of two Adds is two rows whose `action` is `/app.RobotService/Add`, exactly what
+the same two calls made one at a time would leave. The envelope files no row of
+its own, because it writes nothing.
+
+**A watch hears it differently down the two publishing paths**, and an app with
+the outbox on has both. The in-process publish is one event per call — the
+interceptor, once the handler has answered — so the batch arrives **whole**:
+`Event.Method` is the batch, and each `Change.Method` inside it is the
+operation's. The queue is a row per write and the drainer publishes rows, so the
+same batch comes back out of it as one event per operation, each holding its
+single change and each carrying the operation's method as `Event.Method`. The
+grouping was never in the queue to hand on — a row is written inside the
+transaction, and the call it belongs to only ends after the commit — so a
+subscriber looking for the batch in `Event.Method` finds it on the immediate
+event and never on the drained one.
+
+**What to change.** A query or a retention rule matching
+`/payday.BatchService/Do` matches nothing written from here on — those rows sit
+under the operations' own methods now, beside the ones the same writes leave
+outside a batch. Rows already written keep the action they were written with;
+nothing rewrites the trail.
+
+The seam is [`batch.AsOp`](../batch/batch.go), which the generated dispatch
+calls once per operation, and which anything dispatching operations of its own
+calls the same way. The queue's half is `Drain` in the generated `server/pd`,
+which publishes a queued row at a time and has no call to group them by.
+
+## A soft erase is on the trail under the row it erased
+
+**Applies if** anything reads the trail for erasures, and especially if the
+tenant whose row was erased is one of the readers.
+
+`Audit.value` is the row as it was when the event was over, an Erase included,
+and `Audit.tenant_id` is whose row it was. A soft erase was the one write where
+neither held. The recorder reads the row back through the bare server, whose
+every read narrows to the rows still here, so the row the erase had just stamped
+answered NotFound and the record took the hard-erase path: the actor's tenant,
+an empty value. The wall on the trail is the OR of `tenant_id`,
+`actor_tenant_id` and `counterpart_tenant_id`, and an erase names the erased
+tenant in none of them — the first two were the actor's and the third is unset
+unless the operation said otherwise — so that made the record of an erasure the
+one row the erased side could not read.
+
+That read is retried past the erased filter now, inside the same transaction.
+A soft erase is filed under the **erased row's** tenant, and its value is the
+whole row with the stamp on — the only account of what a row held at the moment
+it went.
+
+**A hard erase is unchanged**, and is the exception on purpose: the recorder
+runs inside the transaction after the delete, so there is nothing left to read.
+It is filed under the actor's tenant with an empty value, which is the last
+thing known about it.
+
+**What to check.** Two things move. A reader that found erasures by an empty
+`value` finds only hard ones from here on. And a tenant reading its own history
+sees the erasures of its own rows, which it could not before — that is the
+point of the change, and it is a widening of what that tenant may read.
+
+## An overlay may not change what the file is
+
+**Applies if** an entity overlay of yours — `proto/ext/payday/holder.ext.proto`
+and the rest — carries a `features.` option at the top of the file, outside
+any message.
+
+The merge unions the file's options, so `option features.field_presence =
+IMPLICIT;` written there lands on the **whole** copied entity: every field of
+every message in it, payday's own included. What that costs is not obvious,
+which is why it is refused rather than documented. On a field something calls
+`Has` on, it stops the build, which is the lucky version; on a field nothing
+calls `Has` on, it changes only what "not set" means on the wire, and nothing
+says so.
+
+The same refusal already covered contract overlays
+(`proto/ext/<pkg>/*_svc.ext.proto`); it covers entity overlays now. The line is
+easier to carry into one of those: the entity file an overlay is written against
+begins with one, so copying its head to get started brings it along, and the
+merge used to take it without a word.
+
+**What to change.** Delete the line — `pd gen` refuses and names the file. An
+option that is about one message goes **inside** that message, which is where it
+is the app's to say and where generation leaves it alone.
+
+## `ls --next` carries on from where it says it does
+
+**Applies if** anything pages through a list with the commands `pdcmd` builds,
+or if you mounted a hand-written list RPC into the tree.
+
+The two halves have different names. An answer calls the cursor `next` and a
+generated list request calls the same thing `after`, for where it goes rather
+than where it came from — and the flag's value never reached the request at
+all, so every page was the first page. A first page repeated is exactly what an
+honest one-page list looks like, so nothing said so.
+
+`--next` writes `after` now, and falls back to `next` for a hand-written service
+that named the field the way the flag is named. A list request with neither is
+refused by name rather than dropped:
+
+```
+acme.ThingListRequest: has no cursor for --next to carry on from
+```
+
+**What to change.** Nothing, for a generated list. A hand-written list RPC
+needs a `string` field called `after` or `next` to page at all, and now says so
+instead of answering the first page again.
+
 ## A grant's methods are patterns, so `*` in one now means something
 
 **Applies if** anything you store and hand to `frame.Grant.To` — a role's
@@ -57,15 +176,14 @@ added next release would be covered by a grant made before it existed. See
 **Applies if** your schema has `import "payday/tenant.proto"` or any other
 `payday/*.proto`, which is every app generated before this.
 
-`pd gen` used to copy payday's entities to `proto/payday/`. Two apps in one
-process then both registered `payday/holder.proto`, and a protobuf registry is
-per process and keys files by path — so linking them panicked before `main`,
-with nothing to catch it. That is not hypothetical: it is what happened the
-first time one payday app imported another's generated client, and the importing
-app's own binary stopped starting.
-
-The copies land at `proto/<pkg>/payday/` now, so the path carries the app's
-proto package and no two apps collide.
+`pd gen` used to copy payday's entities to `proto/payday/`. A protobuf registry
+is per process and keys files by their path, so two apps that both did that
+registered one path twice and panicked before `main` — which is not
+hypothetical, it is what the first app to import another payday app's generated
+client did to its own binary. The copies land at `proto/<pkg>/payday/` now, so
+the path carries the app's proto package and no two apps collide.
+[Two apps in one process](guide/packages.md#3-two-apps-in-one-process) is that
+rule in full.
 
 **What to change**, in your hand-written schema and in your overlays:
 
@@ -84,19 +202,21 @@ go tool pd gen .
 Generated `*_svc.g.proto` are rewritten for you. If one is left holding the old
 import, delete it and generate again — a stale one is an input to the next run.
 
-**And check your proto package is your own.** `pd new` writes `package app;`,
-and two apps that both kept it cannot share a process whatever their file paths
-are — their messages are both `app.Holder`. Renaming it is one line per proto:
+**And check your proto package is your own.** The package name is the path on
+disk, so distinct packages are distinct paths — and two apps that both kept
+`pd new`'s `package app;` are distinct in neither, their messages being
+`app.Holder` on both sides. Renaming it is one line per proto:
 
 ```diff
 -package app;
-+package roster;
++package acme;
 ```
 
 `go_package` is separate and does not have to match.
 
 The rule this leaves: **two payday apps can share a process when their proto
-packages differ.** Two instances of the *same* app always could.
+packages differ**, and two instances of the *same* app always could — one binary
+links that app's files once, so nothing registers a path twice.
 
 ## `payday.Holder` is watchable, and has a list
 

@@ -18,8 +18,8 @@ import (
 	"github.com/lesomnus/payday/pdpb"
 )
 
-// tokens is an identity store on the other end of a socket: the half an
-// identity store like roster implements, with the row lookup replaced by a map.
+// tokens is an identity store on the other end of a socket: the half such a
+// store implements, with the row lookup replaced by a map.
 type tokens struct {
 	pdpb.UnimplementedTokenServiceServer
 

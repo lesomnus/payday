@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 )
@@ -83,6 +84,12 @@ func (_c *HolderCreate) SetNillableDateCreated(v *time.Time) *HolderCreate {
 // SetIdpSubject sets the "idp_subject" field.
 func (_c *HolderCreate) SetIdpSubject(v string) *HolderCreate {
 	_c.mutation.SetIdpSubject(v)
+	return _c
+}
+
+// SetProfile sets the "profile" field.
+func (_c *HolderCreate) SetProfile(v *apptest.Profile) *HolderCreate {
+	_c.mutation.SetProfile(v)
 	return _c
 }
 
@@ -165,7 +172,10 @@ func (_c *HolderCreate) sqlSave(ctx context.Context) (*Holder, error) {
 	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := _c.createSpec()
+	_node, _spec, err := _c.createSpec()
+	if err != nil {
+		return nil, err
+	}
 	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
@@ -184,7 +194,7 @@ func (_c *HolderCreate) sqlSave(ctx context.Context) (*Holder, error) {
 	return _node, nil
 }
 
-func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec) {
+func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec, error) {
 	var (
 		_node = &Holder{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(holder.Table, sqlgraph.NewFieldSpec(holder.FieldID, field.TypeUUID))
@@ -225,6 +235,14 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec) {
 		_spec.SetField(holder.FieldIdpSubject, field.TypeString, value)
 		_node.IdpSubject = value
 	}
+	if value, ok := _c.mutation.Profile(); ok {
+		vv, err := holder.ValueScanner.Profile.Value(value)
+		if err != nil {
+			return nil, nil, err
+		}
+		_spec.SetField(holder.FieldProfile, field.TypeString, vv)
+		_node.Profile = value
+	}
 	if nodes := _c.mutation.TenantIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -242,7 +260,7 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec) {
 		_node.TenantID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	return _node, _spec
+	return _node, _spec, nil
 }
 
 // HolderCreateBulk is the builder for creating many Holder entities in bulk.
@@ -273,7 +291,10 @@ func (_c *HolderCreateBulk) Save(ctx context.Context) ([]*Holder, error) {
 				}
 				builder.mutation = mutation
 				var err error
-				nodes[i], specs[i] = builder.createSpec()
+				nodes[i], specs[i], err = builder.createSpec()
+				if err != nil {
+					return nil, err
+				}
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
