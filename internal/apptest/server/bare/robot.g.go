@@ -17,6 +17,7 @@ import (
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	graph "github.com/protobuf-orm/protobuf-orm/graph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
@@ -690,11 +691,13 @@ func RobotSelect(q *ent.RobotQuery, m *apptest.RobotSelect) {
 	}
 	if m.HasThing() {
 		q.WithThing(func(q *ent.ThingQuery) {
+			q.Where(thing.DateErasedIsNil())
 			ThingSelect(q, m.GetThing())
 		})
 	}
 	if m.HasCell() {
 		q.WithCell(func(q *ent.CellQuery) {
+			q.Where(cell.DateErasedIsNil())
 			CellSelect(q, m.GetCell())
 		})
 	}
@@ -1173,11 +1176,13 @@ func PairingSelect(q *ent.PairingQuery, m *apptest.PairingSelect) {
 	}
 	if m.HasLead() {
 		q.WithLead(func(q *ent.RobotQuery) {
+			q.Where(robot.DateErasedIsNil())
 			RobotSelect(q, m.GetLead())
 		})
 	}
 	if m.HasFollow() {
 		q.WithFollow(func(q *ent.RobotQuery) {
+			q.Where(robot.DateErasedIsNil())
 			RobotSelect(q, m.GetFollow())
 		})
 	}
@@ -1602,6 +1607,7 @@ func JointSelect(q *ent.JointQuery, m *apptest.JointSelect) {
 	}
 	if m.HasRobot() {
 		q.WithRobot(func(q *ent.RobotQuery) {
+			q.Where(robot.DateErasedIsNil())
 			RobotSelect(q, m.GetRobot())
 		})
 	}
@@ -2476,6 +2482,7 @@ func ReadingSelect(q *ent.ReadingQuery, m *apptest.ReadingSelect) {
 	}
 	if m.HasRobot() {
 		q.WithRobot(func(q *ent.RobotQuery) {
+			q.Where(robot.DateErasedIsNil())
 			RobotSelect(q, m.GetRobot())
 		})
 	}
