@@ -230,21 +230,32 @@ func (p Policy) every() time.Duration {
 // the run in an archive's name is for.
 func Sweep(s Store, p Policy) spin.Func {
 	return spin.Every(p.every(), func(ctx context.Context) error {
-		// One pass per kind that was named, and one for everything else. Which
-		// is why [Store.Older] takes a [Kinds] rather than a domain: the
-		// default pass is *everything but these*, and a database can answer
-		// that in one query where a loop over the domains it has never heard of
-		// cannot.
-		named := p.Named()
-
-		for _, d := range named {
-			p.pass(ctx, s, Only(d), p.By[d], nameOf(d))
-		}
-
-		p.pass(ctx, s, Except(named...), p.Keep, "anything else")
+		p.Pass(ctx, s)
 
 		return nil
 	})
+}
+
+// Pass applies the policy once, which is what a tick of [Sweep] does and what
+// an operator running the command with no window of their own is asking for.
+//
+// Exported for that second caller, and it matters: a command that took its own
+// cutoff and nothing else would let `roster trail prune` destroy the very kind
+// the configuration says to keep forever, which is a footgun pointed at the one
+// thing this package exists to protect.
+//
+// One pass per kind that was named, and one for everything else. Which is why
+// [Store.Older] takes a [Kinds] rather than a domain: the default pass is
+// *everything but these*, and a database answers that in one query where a loop
+// over the domains it has never heard of cannot.
+func (p Policy) Pass(ctx context.Context, s Store) {
+	named := p.Named()
+
+	for _, d := range named {
+		p.pass(ctx, s, Only(d), p.By[d], nameOf(d))
+	}
+
+	p.pass(ctx, s, Except(named...), p.Keep, "anything else")
 }
 
 // pass is one kind's window and one kind's archive, and it logs rather than
