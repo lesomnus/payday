@@ -642,7 +642,7 @@ written out when it should have been left silent.
 ```
 Options:
        --tenanted        its rows belong to a tenant, and the wall narrows every read
-       --tenant          it is the tenant itself
+       --tenant          refused: payday ships the tenant, and an app does not declare a second
        --global          not behind the wall, and said on purpose
        --watch           also a List and a Watch, with the version field a Watch needs
        --file string     the .proto to write into; one named after the entity by default

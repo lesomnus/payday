@@ -55,11 +55,10 @@ func TestValidate(t *testing.T) {
 			{"a--b", "two hyphens together"},
 			{"-", "a hyphen alone"},
 
-			// The one rule taken from an earlier system rather than from the
-			// form this came from: an underscore is legal in neither a DNS
-			// label nor a
-			// subdomain, and allowing it here would spend a door that costs
-			// nothing to keep shut.
+			// The one rule taken from an earlier system rather than from
+			// the form this came from: an underscore is legal in neither a
+			// DNS label nor a subdomain, and allowing it here would spend a
+			// door that costs nothing to keep shut.
 			{"a_b", "an underscore"},
 			{"_a", "a leading underscore"},
 

@@ -3,6 +3,48 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A message-typed field is stored as protojson, and was storing nothing
+
+**Applies if** an entity of yours has a field whose type is a message you
+declared without `orm.message` — a value carried whole by the row that holds it,
+with no table and no service of its own. If none does, nothing here applies, and
+that is why this went unnoticed: payday's own reference app had no such field
+until it was given one.
+
+What was generated was an `encoding/json` column. Every message payday generates
+uses the protobuf opaque API, whose fields are all unexported — so
+`encoding/json` saw none of them, and every value round-tripped as `{}`. Written
+whole, read back empty, with no error on either side.
+
+It is `entpb.ValueScanner` now, which is protojson, in a `jsonb` column on
+PostgreSQL and `json` on MySQL.
+
+**What to do about the rows you have.** Nothing, almost certainly: they all hold
+`{}`, because that is what the bug wrote. What they do *not* hold is anything to
+migrate, so the column can be rewritten in place. If your app worked around this
+— storing the same value a second way, or reading it from somewhere else — that
+workaround is now the thing that disagrees with the column.
+
+**And the field names travel.** protojson writes `displayName` where the schema
+says `display_name`, so a SQL predicate reaching inside the column has to spell
+it that way, and renaming a field of such a message is a silent migration
+nothing checks.
+
+## A reconnecting watch takes the snapshot again, whatever it asked for first
+
+**Applies if** you run `<app> <entity> watch --retry` and set `skip_snapshot` on
+the request, or you wrote a client that does the same thing.
+
+`skip_snapshot` says *I know the current state*. After a gap that is no longer
+true: whatever changed while the connection was down was sent to nobody, and a
+watch has no backlog to catch up from. So a reconnect clears the flag and asks
+for the snapshot, which is the only thing that says what was missed.
+
+What changes for you is volume rather than correctness: a client that sized its
+buffers for a delta-only stream gets a full snapshot on every reconnect. The
+alternative is holding a row that is wrong until the next write happens to
+correct it, which may be never.
+
 ## A batch operation is on the trail under its own name
 
 **Applies if** you read the audit trail by `action` — a report, a retention

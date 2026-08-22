@@ -44,8 +44,9 @@ cd "${__root}"
 
 # The gate, because that is the thing worth running on a real database and it is
 # the one command that reaches both modules. `internal/apptest` is a module of
-# its own, and the root module -- pdtest's own tests among them -- is not in
-# CI's postgres job at all.
+# its own, so `go test ./...` at the root does not see it -- and the root module
+# holds tests, `pdtest`'s own among them, that only mean something against a
+# server. CI's postgres job runs both for the same reason; this is that, here.
 if [ $# -eq 0 ]; then
 	set -- ./scripts/test.sh
 fi

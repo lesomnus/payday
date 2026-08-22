@@ -56,7 +56,7 @@ slow:
 
 ```sh
 PDTEST_UPDATE=1 go test -C internal/apptest ./...    # rewrite golden files
-PDTEST_SANDBOX=1 npm --prefix internal/apptest/ts run test:sandbox
+npm --prefix internal/apptest/ts run test:sandbox      # the script sets PDTEST_SANDBOX
 ```
 
 `-C internal/apptest` because the golden files are the app's, and `./...` at the
@@ -86,8 +86,9 @@ buf breaking --against buf.build/payday/payday:dev
 | `internal/pdcli/` | the `pd` command, and `template/` is what `pd new` writes |
 | everything else at the root | a runtime package; the package comment is its documentation |
 
-Upstream generators are at `/workspaces/github.com/protobuf-orm/`, and the
-reference app is `/workspaces/github.com/lesomnus/custody`.
+Upstream generators are `github.com/protobuf-orm/protoc-gen-orm-service` and
+`protoc-gen-orm-ent`; `internal/apptest` is the app payday is tried against and
+is the one in this repository.
 
 ## Documentation
 

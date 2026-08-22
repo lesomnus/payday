@@ -136,6 +136,70 @@ func TestTenancyDefaultsToTheLoudAnswer(t *testing.T) {
 	x.ErrorContains(err, "behind the wall or it is not")
 }
 
+// TestWhatIsWrittenIsWhatTheGeneratorWillTake.
+//
+// A scaffold whose output is refused is a scaffold whose first user reads a
+// generated error about a file they did not write. That has happened twice --
+// an entity with no erasure declaration, and one declaring a second tenant --
+// so what the file holds is asserted here rather than left to whoever runs
+// `pd gen` next.
+//
+// Each of these is a refusal the generator makes, read as the line that avoids
+// it: a `watch:` with nothing to order two answers by, or no way to name the
+// rows it is about; a `list:` whose index does not end in the key, so a page
+// scans; an entity that says nothing at all about erasure. And two that are
+// not refusals but are wrong quietly -- the Go package, and the import that
+// reaches the tenant, which is `app/payday/` because generation copies
+// payday's entities **into** the app's own proto package.
+func TestWhatIsWrittenIsWhatTheGeneratorWillTake(t *testing.T) {
+	x := require.New(t)
+
+	root := app(t, "github.com/acme/thing")
+	l, err := pdcli.Discover(root)
+	x.NoError(err)
+
+	p, err := (pdcli.Entity{Layout: l, Name: "Robot", Tenanted: true, Watch: true}).Add()
+	x.NoError(err)
+
+	b, err := os.ReadFile(p)
+	x.NoError(err)
+	src := string(b)
+
+	x.Contains(src, `date_updated = 13 [(orm.field) = {version: {}}]`,
+		"a watch has nothing to order two answers by")
+	x.Contains(src, `by: [{name: "ref"}]`,
+		"a watch has no way to name the rows it is about")
+	x.Contains(src, `name: "page"`, "a list with no index scans the table")
+	x.Contains(src, `option go_package = "github.com/acme/thing"`)
+
+	// The tenant, where a generation puts it. payday's entities are copied
+	// **into** the app's proto package, so this is `app/payday/` even for an
+	// app that kept every default -- and `proto/payday/` is a path nothing
+	// writes.
+	x.Contains(src, `import "app/payday/tenant.proto";`)
+
+	// Nothing about tenancy, which is the declaration -- behind the wall. What
+	// the scaffold writes out instead is why, since a reader who finds no
+	// tenancy line has to be able to tell "assumed" from "forgotten".
+	x.NotContains(src, `tenanted:`)
+	x.Contains(src, "Nothing about tenancy, which is the declaration")
+
+	// And an erasure declaration, on every entity rather than only a watched
+	// one: generation refuses an entity holding neither an `erased:` field nor
+	// `erase: {hard: {}}`, so the scaffold cannot leave the question open.
+	x.Contains(src, `date_erased = 14 [(orm.field) = {erased: {}}]`)
+
+	// Which is true of the plainest entity there is, and that is the case the
+	// flag used to decide.
+	q, err := (pdcli.Entity{Layout: l, Name: "Widget"}).Add()
+	x.NoError(err)
+
+	w, err := os.ReadFile(q)
+	x.NoError(err)
+	x.Contains(string(w), `date_erased = 14 [(orm.field) = {erased: {}}]`,
+		"an entity that says nothing about erasure is one generation refuses")
+}
+
 // TestTheTenantIsPaydaysAndNotTheAppsToDeclare.
 //
 // `--tenant` is the third tenancy the schema has and the one no app may
