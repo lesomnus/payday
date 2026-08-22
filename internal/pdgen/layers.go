@@ -2,6 +2,7 @@ package pdgen
 
 import (
 	"strconv"
+	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
 
@@ -427,9 +428,17 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("// stop.")
 	g.P("func (recorder) Record(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
 		", c ", p.Bare.Ident("Change"), ") error {")
+	g.P("	// Which entity this is about, before anything decides what of the")
+	g.P("	// patch may be kept: a field declared `secret:` belongs to one entity,")
+	g.P("	// and the identifier's domain byte is the only thing that says which.")
+	g.P("	key, err := ", pkgAudit.Ident("Identifier"), "(c.Key)")
+	g.P("	if err != nil {")
+	g.P("		return err")
+	g.P("	}")
+	g.P("")
 	g.P("	var patch ", pkgProto.Ident("Message"))
-	g.P("	if c.Patch != nil {")
-	g.P("		patch = c.Patch")
+	g.P("	if v := hidden(key, c.Patch); v != nil {")
+	g.P("		patch = v")
 	g.P("	}")
 	g.P("")
 	g.P("	v, err := ", pkgAudit.Ident("Of"), "(ctx, c.Method, c.Key, patch)")
@@ -473,11 +482,141 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("")
 
 	emitNotNull(g)
+	emitHidden(g, s)
 	emitSubject(g, s, p, root)
 
 	// Referenced only so that the import is kept when a schema has no patch.
 	g.P("var _ *", pkgPatchpb.Ident("Patch"))
 	g.P("")
+}
+
+// emitHidden writes the patch document as the trail may hold it: without the
+// fields the schema said are never answered with.
+//
+// # The half of `secret:` that was not there
+//
+// `(payday.field).secret` clears a column on the way out of a read, and the
+// trail is the other way a row leaves: `hide<E>` is what keeps a verifier out
+// of `Audit.value`, which is the row as the write left it.
+//
+// `Audit.patch` is the same write from the other end -- the document it was
+// compiled from -- and nothing touched it. So the one RPC whose whole job is to
+// take a secret in and never hand one back wrote the argon2 string into the
+// trail in full, and the trail is **served**: `AuditService` is a generated
+// service like any other, and the wall files a credential's row under its
+// person's tenant. Anybody in that tenant whose role reaches the trail could
+// read the password hash of everybody in it.
+//
+// Which is the read `CredentialService` is unregistered to prevent, arriving
+// by the road nobody had looked down.
+//
+// # Entries and not values
+//
+// An entry is dropped rather than blanked. A patch is what the caller asked
+// for, and *asked for `secret` to become something* is a true and complete
+// record of the ask with the value taken out -- but there is no shape for it:
+// the value is a `oneof` and an entry carrying none is a document that no
+// longer applies. What the trail keeps instead is every other entry of the
+// same write, and `Audit.value` says what the row became.
+//
+// # By number, and only the first segment
+//
+// A path is a list of segments and the first is the entity's own field. A
+// deeper one is inside a message-valued field, and a message field cannot be
+// declared `secret` -- the declaration is on the column. Matching the first
+// segment by **number** rather than by name is the same choice `pdgen` makes
+// everywhere: a name is a label and the number is the field.
+func emitHidden(g *protogen.GeneratedFile, s *Schema) {
+	g.P("// hidden is `p` with the entries the schema said are never answered with")
+	g.P("// taken out, or nil when there is nothing to record.")
+	g.P("//")
+	g.P("// Which entity it is comes from the identifier, as everywhere else here: a")
+	g.P("// `pdid` carries its domain, so one switch answers it for every entity")
+	g.P("// there will ever be.")
+	g.P("func hidden(key ", pkgPdid.Ident("Id"), ", p *", pkgPatchpb.Ident("Patch"), ") *", pkgPatchpb.Ident("Patch"), " {")
+	g.P("	if p == nil {")
+	g.P("		return nil")
+	g.P("	}")
+	g.P("")
+	g.P("	var secret []uint32")
+	g.P("	switch key.Domain() {")
+
+	any := false
+	for _, v := range s.Sorted() {
+		if len(v.Secrets) == 0 {
+			continue
+		}
+
+		any = true
+
+		ns := make([]string, 0, len(v.SecretNumbers))
+		for _, n := range v.SecretNumbers {
+			ns = append(ns, strconv.FormatUint(uint64(n), 10))
+		}
+
+		g.P("	case ", v.GoName(), "Domain:")
+		g.P("		secret = []uint32{", strings.Join(ns, ", "), "}")
+	}
+
+	g.P("	}")
+	g.P("	if len(secret) == 0 {")
+	g.P("		// An entity that declared none, which is nearly all of them.")
+	g.P("		return p")
+	g.P("	}")
+	g.P("")
+	g.P("	kept := []*", pkgPatchpb.Ident("Entry"), "{}")
+	g.P("	for _, e := range p.GetDelta().GetEntries() {")
+	g.P("		// Two shapes, because an entry says where it applies in one of")
+	g.P("		// two ways: a `path`, which names one place, and `targets`,")
+	g.P("		// which is a list of selectors. A generated `Patch` writes the")
+	g.P("		// second even for one field, and reading only the first is how")
+	g.P("		// this looked like it worked while letting everything through.")
+	g.P("		if named(e.GetPath(), secret) {")
+	g.P("			continue")
+	g.P("		}")
+	g.P("")
+	g.P("		hit := false")
+	g.P("		for _, t := range e.GetTargets().GetSelectors() {")
+	g.P("			if ", pkgSlices.Ident("Contains"), "(secret, t.GetKey().GetField().GetNumber()) {")
+	g.P("				hit = true")
+	g.P("				break")
+	g.P("			}")
+	g.P("		}")
+	g.P("		if hit {")
+	g.P("			continue")
+	g.P("		}")
+	g.P("")
+	g.P("		kept = append(kept, e)")
+	g.P("	}")
+	g.P("	if len(kept) == len(p.GetDelta().GetEntries()) {")
+	g.P("		return p")
+	g.P("	}")
+	g.P("")
+	g.P("	// A copy, because the document is the caller's and the write below this")
+	g.P("	// is still going to apply it.")
+	g.P("	out := ", pkgProto.Ident("CloneOf"), "(p)")
+	g.P("	out.GetDelta().SetEntries(kept)")
+	g.P("")
+	g.P("	return out")
+	g.P("}")
+	g.P("")
+
+	g.P("// named is whether a path's first segment is one of `ns`.")
+	g.P("//")
+	g.P("// The first and no other: a deeper segment is inside a message-valued")
+	g.P("// field, and a message field cannot be declared `secret:` -- the")
+	g.P("// declaration is on the column.")
+	g.P("func named(p *", pkgPatchpb.Ident("Path"), ", ns []uint32) bool {")
+	g.P("	ss := p.GetSegments()")
+	g.P("	if len(ss) == 0 {")
+	g.P("		return false")
+	g.P("	}")
+	g.P("")
+	g.P("	return ", pkgSlices.Ident("Contains"), "(ns, ss[0].GetField().GetNumber())")
+	g.P("}")
+	g.P("")
+
+	_ = any
 }
 
 // emitNotNull writes the one place a value passes through before the trail's

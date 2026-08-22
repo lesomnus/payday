@@ -2849,9 +2849,17 @@ var _ bare.Recorder = recorder{}
 // and does not record; a recorder that recorded its own writes would not
 // stop.
 func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
+	// Which entity this is about, before anything decides what of the
+	// patch may be kept: a field declared `secret:` belongs to one entity,
+	// and the identifier's domain byte is the only thing that says which.
+	key, err := audit1.Identifier(c.Key)
+	if err != nil {
+		return err
+	}
+
 	var patch proto.Message
-	if c.Patch != nil {
-		patch = c.Patch
+	if v := hidden(key, c.Patch); v != nil {
+		patch = v
 	}
 
 	v, err := audit1.Of(ctx, c.Method, c.Key, patch)
@@ -2906,6 +2914,79 @@ func notNull(v []byte) []byte {
 	}
 
 	return v
+}
+
+// hidden is `p` with the entries the schema said are never answered with
+// taken out, or nil when there is nothing to record.
+//
+// Which entity it is comes from the identifier, as everywhere else here: a
+// `pdid` carries its domain, so one switch answers it for every entity
+// there will ever be.
+func hidden(key pdid.Id, p *patchpb.Patch) *patchpb.Patch {
+	if p == nil {
+		return nil
+	}
+
+	var secret []uint32
+	switch key.Domain() {
+	case RobotDomain:
+		secret = []uint32{8}
+	case SealDomain:
+		secret = []uint32{8}
+	}
+	if len(secret) == 0 {
+		// An entity that declared none, which is nearly all of them.
+		return p
+	}
+
+	kept := []*patchpb.Entry{}
+	for _, e := range p.GetDelta().GetEntries() {
+		// Two shapes, because an entry says where it applies in one of
+		// two ways: a `path`, which names one place, and `targets`,
+		// which is a list of selectors. A generated `Patch` writes the
+		// second even for one field, and reading only the first is how
+		// this looked like it worked while letting everything through.
+		if named(e.GetPath(), secret) {
+			continue
+		}
+
+		hit := false
+		for _, t := range e.GetTargets().GetSelectors() {
+			if slices.Contains(secret, t.GetKey().GetField().GetNumber()) {
+				hit = true
+				break
+			}
+		}
+		if hit {
+			continue
+		}
+
+		kept = append(kept, e)
+	}
+	if len(kept) == len(p.GetDelta().GetEntries()) {
+		return p
+	}
+
+	// A copy, because the document is the caller's and the write below this
+	// is still going to apply it.
+	out := proto.CloneOf(p)
+	out.GetDelta().SetEntries(kept)
+
+	return out
+}
+
+// named is whether a path's first segment is one of `ns`.
+//
+// The first and no other: a deeper segment is inside a message-valued
+// field, and a message field cannot be declared `secret:` -- the
+// declaration is on the column.
+func named(p *patchpb.Path, ns []uint32) bool {
+	ss := p.GetSegments()
+	if len(ss) == 0 {
+		return false
+	}
+
+	return slices.Contains(ns, ss[0].GetField().GetNumber())
 }
 
 // subject is the tenant of the row `key` names and the row itself, and the

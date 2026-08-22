@@ -146,7 +146,7 @@ func counterpart(ctx context.Context) pdid.Id {
 // it, so it is refused here rather than written as something that is not an
 // identifier.
 func Of(ctx context.Context, method string, key any, patch proto.Message) (Row, error) {
-	object, err := identifier(key)
+	object, err := Identifier(key)
 	if err != nil {
 		return Row{}, err
 	}
@@ -171,8 +171,14 @@ func Of(ctx context.Context, method string, key any, patch proto.Message) (Row, 
 	return v, nil
 }
 
-// identifier is the key of the row that changed, as the trail holds one.
-func identifier(key any) (pdid.Id, error) {
+// Identifier is the key of the row that changed, as the trail holds one.
+//
+// Exported because a recorder has to know **which entity** a change is about
+// before it decides what of the patch it may keep -- a field declared `secret:`
+// belongs to one entity, and the only thing that says which is the identifier's
+// own domain byte. [Of] answers that too, and one call later than the decision
+// has to be made.
+func Identifier(key any) (pdid.Id, error) {
 	switch v := key.(type) {
 	case pdid.Id:
 		return v, nil

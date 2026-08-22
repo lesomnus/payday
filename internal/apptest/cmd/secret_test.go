@@ -112,6 +112,48 @@ func TestASecretIsNotInTheTrail(t *testing.T) {
 		}
 	}
 	x.True(found, "no row carried a value, so the check above never looked at one")
+
+	// And the other column, which is the same write from the other end and was
+	// checked by nothing.
+	//
+	// `Audit.value` is the row as the write left it, and `hide<E>` is what keeps
+	// a verifier out of it. `Audit.patch` is the document the write was compiled
+	// from, and it carried whatever the request set -- so a `secret:` field
+	// written by an RPC that exists to take one in and never hand one back sat
+	// in the trail in full. The trail is a **served** entity: `AuditService` is
+	// generated like any other, and the wall files a row under the tenant it is
+	// about, so anybody there whose role reaches it could read the thing the
+	// declaration exists to hide.
+	//
+	// A patch is asserted separately from a value because a `Patch` produces
+	// both and an `Add` produces only the second: the write below is the one
+	// that has a document.
+	_, err = b.Walled.Robot().Patch(b.as(ctx), app.RobotPatchRequest_builder{
+		Ref:              app.RobotRef_builder{Id: v.GetId()}.Build(),
+		Secret:           secret,
+		DateUpdatedForce: z.Ptr(true),
+	}.Build())
+	x.NoError(err)
+
+	vs, err = b.Ent.Audit.Query().All(ctx)
+	x.NoError(err)
+
+	patched := false
+	for _, w := range vs {
+		if len(w.Patch) == 0 {
+			continue
+		}
+
+		patched = true
+		x.NotContains(string(w.Patch), string(secret),
+			"%s: the trail's patch holds the verifier", w.Action)
+	}
+	x.True(patched, "no row carried a patch, so the check above never looked at one")
+
+	// And what is left of that write is still a record: the entries naming
+	// anything else are kept, so dropping the secret one did not empty the
+	// document.
+	x.NotEmpty(vs, "nothing was recorded")
 }
 
 // TestASecretIsNotStreamed is the read that cannot be narrowed by asking.

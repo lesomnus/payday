@@ -42,6 +42,12 @@ type Entity struct {
 	// anything reads it: [Read] refuses an entity that has none.
 	Opts *pdpb.Entity
 
+	// SecretNumbers are the same fields by number, which is what a patch
+	// document names them by -- see the recorder's `hidden`. Kept beside the
+	// names rather than looked up again, so the two cannot come to disagree
+	// about which fields they are.
+	SecretNumbers []uint32
+
 	// Secrets are the fields declared `(payday.field).secret`: written, and
 	// never answered with. Empty for nearly every entity.
 	Secrets []string
@@ -234,20 +240,23 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 	// The fields this entity says are written and never answered with. See
 	// `EmitSecret`, and `payday.Field`.
 	var secrets []string
+	var secretNumbers []uint32
 	for prop := range e.Props() {
 		f, _ := proto.GetExtension(prop.Descriptor().Options(), pdpb.E_Field).(*pdpb.Field)
 		if f.GetSecret() {
 			secrets = append(secrets, prop.Name())
+			secretNumbers = append(secretNumbers, uint32(prop.Descriptor().Number()))
 		}
 	}
 
 	v := &Entity{
-		Entity:  e,
-		Opts:    opts,
-		Secrets: secrets,
-		Domain:  uint8(d),
-		Name:    opts.GetName(),
-		Own:     opts.GetOwn(),
+		Entity:        e,
+		Opts:          opts,
+		Secrets:       secrets,
+		SecretNumbers: secretNumbers,
+		Domain:        uint8(d),
+		Name:          opts.GetName(),
+		Own:           opts.GetOwn(),
 	}
 	if v.Name == "" {
 		v.Name = kebab(string(e.FullName().Name()))
