@@ -2884,6 +2884,8 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		tenant = uuid.UUID(v.Tenant)
 	}
 
+	domain := uint32(v.Object.Domain())
+
 	_, err = s.Audit().Add(ctx, apptest.AuditAddRequest_builder{
 		TenantId:            tenant[:],
 		ActorTenantId:       v.Tenant.Bytes(),
@@ -2891,7 +2893,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		TraceId:             notNull(v.Trace),
 		Action:              v.Action,
 		ObjectId:            v.Object.Bytes(),
-		Domain:              uint32(v.Object.Domain()),
+		Domain:              &domain,
 		Patch:               notNull(v.Patch),
 		Value:               notNull(value),
 		CounterpartTenantId: v.CounterpartBytes(),

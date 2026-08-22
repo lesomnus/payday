@@ -460,6 +460,12 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		tenant = ", pkgUuid.Ident("UUID"), "(v.Tenant)")
 	g.P("	}")
 	g.P("")
+	// A variable, because the field carries a default and so the builder takes
+	// a pointer -- *not given* and *given as zero* are different things to a
+	// request, and zero here is `pdid.Unknown`, which is a real answer. This
+	// write always knows, so it always says.
+	g.P("	domain := uint32(v.Object.Domain())")
+	g.P("")
 	g.P("	_, err = s.Audit().Add(ctx, ", root.Ident("AuditAddRequest_builder"), "{")
 	g.P("		TenantId:      tenant[:],")
 	g.P("		ActorTenantId: v.Tenant.Bytes(),")
@@ -473,7 +479,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	// this row about* and no index answers *which rows were about robots*. The
 	// second is the question a retention policy is made of; see the note on
 	// `domain` in payday's audit.proto.
-	g.P("		Domain:        uint32(v.Object.Domain()),")
+	g.P("		Domain:        &domain,")
 	g.P("		Patch:         notNull(v.Patch),")
 	g.P("		Value:         notNull(value),")
 	// Zero unless a layer said otherwise, which is nearly every write. It is
