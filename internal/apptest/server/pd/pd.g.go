@@ -3872,6 +3872,52 @@ func numbers(ds []pdid.Domain) []uint32 {
 	return out
 }
 
+// ForgetInTrail blanks the contents of every trail row about one of these
+// objects, and answers how many it changed.
+//
+// # What it takes out
+//
+// `value` and `patch`, which are the two columns that hold contents.
+// Everything else -- who acted, what they did, which object, when -- stays,
+// and stays on purpose: that is the record a trail exists to be, and it is
+// what a legal-obligation exemption is an exemption *for*. What is destroyed
+// is what the row said about somebody; what survives is that it happened.
+//
+// The actor is not touched. It is an identifier, and it is personal data only
+// because it **resolves** -- a property of the row it points at rather than of
+// this one. A caller that has destroyed the person's own record has already
+// made it a pseudonym reaching nothing, and blanking it here would destroy
+// *who did this*, which is the whole of what a trail is for.
+//
+// # And why payday offers it at all
+//
+// **Which** rows, and **when**, is the app's -- what it owes a person and
+// under what regime is not a thing a framework can know, which is why
+// `docs/RUNTIME.md` lists erasing a subject among the things payday does not
+// do. This is the other half: two columns of payday's own table, blanked for
+// a set the caller chose. There is no judgement in it, which is the same line
+// `internal/pdgen/outbox.go` draws about the drain.
+//
+// The archive is `trail.Forget`, and a caller that keeps one has to call both:
+// a mechanism that stopped at the database would destroy the copy an operator
+// can see and leave the copy on the disk beside it.
+func ForgetInTrail(ctx context.Context, db *ent.Client, objects []pdid.Id) (int, error) {
+	if len(objects) == 0 {
+		return 0, nil
+	}
+
+	ids := make([]uuid.UUID, len(objects))
+	for i, v := range objects {
+		ids[i] = v.Uuid()
+	}
+
+	return db.Audit.Update().
+		Where(audit.ObjectIDIn(ids...)).
+		SetValue([]byte{}).
+		SetPatch([]byte{}).
+		Save(ctx)
+}
+
 // ReadTrail is an archive read back as the messages it holds.
 //
 // The runtime hands over documents, because it has no `Audit` type to

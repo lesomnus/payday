@@ -1,9 +1,11 @@
 package cmd_test
 
 import (
+	"encoding/base64"
 	"testing"
 	"time"
 
+	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 
 	"github.com/lesomnus/payday/config"
@@ -11,6 +13,8 @@ import (
 	"github.com/lesomnus/payday/trail"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent"
+	entaudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
@@ -186,4 +190,147 @@ func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 			x.NotContains(v, ".robot.")
 		}
 	})
+}
+
+// TestOnePersonLeavesTheTrailWithoutTakingTheEventWithThem.
+//
+// The retention policy is about **age** and reaches everybody at once. A person
+// asking to be forgotten is about a **subject**, and the two need different
+// machinery: this is payday's half of the second one, which is two columns of
+// its own table blanked for a set the app chose.
+//
+// What has to survive is the event. Who acted, what they did, which object and
+// when are the record a trail exists to be, and are what a legal-obligation
+// exemption is an exemption *for*.
+func TestOnePersonLeavesTheTrailWithoutTakingTheEventWithThem(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "one",
+	}.Build())
+	x.NoError(err)
+
+	_, err = b.Ungated.Robot().Patch(ctx, app.RobotPatchRequest_builder{
+		Ref:              app.RobotRef_builder{Id: v.GetId()}.Build(),
+		Alias:            z.Ptr("a-name-worth-forgetting"),
+		DateUpdatedForce: z.Ptr(true),
+	}.Build())
+	x.NoError(err)
+
+	who := must(pdid.From(v.GetId()))
+
+	rows := func() []*ent.Audit {
+		vs, err := b.Ent.Audit.Query().Where(entaudit.ObjectIDEQ(who.Uuid())).All(ctx)
+		require.NoError(t, err)
+
+		return vs
+	}
+
+	was := rows()
+	x.Len(was, 2, "an Add and a Patch should both be on record")
+
+	had := false
+	for _, u := range was {
+		if len(u.Value) > 0 || len(u.Patch) > 0 {
+			had = true
+		}
+	}
+	x.True(had, "the trail carried no contents, so this proves nothing")
+
+	// Somebody else's row, which must not move.
+	other, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "two",
+	}.Build())
+	x.NoError(err)
+
+	n, err := pd.ForgetInTrail(ctx, b.Ent, []pdid.Id{who})
+	x.NoError(err)
+	x.Equal(len(was), n)
+
+	for _, u := range rows() {
+		x.Empty(u.Value, "the contents of a write about them survived")
+		x.Empty(u.Patch, "the document of a write about them survived")
+
+		// And the event did not.
+		x.NotEmpty(u.Action, "the record of what happened went with the contents")
+		x.Equal(who.Uuid(), u.ObjectID)
+		x.False(u.DateCreated.IsZero())
+	}
+
+	vs, err := b.Ent.Audit.Query().
+		Where(entaudit.ObjectIDEQ(must(pdid.From(other.GetId())).Uuid())).
+		All(ctx)
+	x.NoError(err)
+	x.NotEmpty(vs)
+	for _, u := range vs {
+		x.NotEmpty(u.Value, "somebody else's record was blanked")
+	}
+}
+
+// TestAnArchivedRowIsForgottenToo.
+//
+// A mechanism that stopped at the database would destroy the copy an operator
+// can see and leave the copy on the disk beside it. That is not a gap in a
+// retention policy; it is an answer that is wrong in the direction that matters.
+//
+// It is also the one act in this package that **edits** an archive -- `Purge`
+// destroys whole files and `Archive` only appends, precisely so that nothing
+// does. Written beside itself, synced, renamed over: a crash leaves the old file
+// or the new one and never half of either.
+func TestAnArchivedRowIsForgottenToo(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "one",
+	}.Build())
+	x.NoError(err)
+
+	who := must(pdid.From(v.GetId()))
+
+	dir := t.TempDir()
+	_, err = trail.Archive(ctx, pd.TrailStore(b.Ent), trail.Kinds{}, time.Now().Add(time.Hour), dir)
+	x.NoError(err)
+
+	files, err := trail.Files(dir)
+	x.NoError(err)
+	x.NotEmpty(files)
+
+	held := 0
+	x.NoError(pd.ReadTrail(files, func(u *app.Audit) error {
+		if string(u.GetObjectId()) == string(who.Bytes()) && len(u.GetValue()) > 0 {
+			held++
+		}
+
+		return nil
+	}))
+	x.NotZero(held, "the archive holds nothing about them, so this proves nothing")
+
+	// The object as protojson writes it, which is what the runtime matches on:
+	// it has no `Audit` type and reads the document as JSON.
+	n, err := trail.Forget(dir, []string{base64.StdEncoding.EncodeToString(who.Bytes())})
+	x.NoError(err)
+	x.NotZero(n)
+
+	left := 0
+	events := 0
+	x.NoError(pd.ReadTrail(files, func(u *app.Audit) error {
+		if string(u.GetObjectId()) != string(who.Bytes()) {
+			return nil
+		}
+
+		events++
+		if len(u.GetValue()) > 0 || len(u.GetPatch()) > 0 {
+			left++
+		}
+		x.NotEmpty(u.GetAction(), "the archived event went with the contents")
+
+		return nil
+	}))
+	x.Zero(left, "an archived row still holds what it said about them")
+	x.NotZero(events, "the archived events went as well as their contents")
 }

@@ -668,3 +668,193 @@ func partsOf(name string) (time.Time, string, bool) {
 
 	return at, vs[1], true
 }
+
+// Forget blanks the contents of every archived row about one of these objects,
+// and answers how many rows it changed.
+//
+// # Why the archive has to be reachable at all
+//
+// The retention policy above is about **age** and reaches everybody's rows at
+// once. A person asking to be forgotten is about a **subject**, and a mechanism
+// that stopped at the database would be one that destroyed the copy an operator
+// can see and left the copy on the disk beside it. That is not a retention
+// policy with a gap; it is an answer that is wrong in the direction that
+// matters.
+//
+// # What it blanks, and what it deliberately does not
+//
+// `value` and `patch`, which are the two columns that hold contents. Everything
+// else -- who acted, what they did, which object, when -- stays, and stays on
+// purpose: that is the record the trail exists to be, and it is what a
+// legal-obligation exemption is an exemption *for*. What is destroyed is what
+// the row said about somebody; what survives is that it happened.
+//
+// The actor is not touched. It is an identifier, and it is personal data only
+// because it **resolves** -- which is a property of the row it points at rather
+// than of this one. A caller that has destroyed the person's own record has
+// already made it a pseudonym that reaches nothing, and blanking it here would
+// destroy *who did this*, which is the whole of what a trail is for.
+//
+// # It rewrites files, which nothing else here does
+//
+// [Purge] destroys whole files and [Archive] only appends, precisely so that an
+// archive is never edited. This is the one act that edits one, and it is worth
+// being explicit that it is an exception rather than an oversight: the
+// alternative is a person's contents surviving in a place the deployment
+// controls, which is the thing they asked to end.
+//
+// Each file is rewritten beside itself, `fsync`ed, and renamed over the
+// original. A crash leaves either the old file or the new one, and never half
+// of either.
+func Forget(dir string, objects []string) (int, error) {
+	if len(objects) == 0 {
+		return 0, nil
+	}
+
+	of := make(map[string]bool, len(objects))
+	for _, v := range objects {
+		of[v] = true
+	}
+
+	paths, err := Files(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// A deployment that keeps no archive has nothing here to forget,
+			// which is an answer rather than a failure.
+			return 0, nil
+		}
+
+		return 0, err
+	}
+
+	n := 0
+	for _, path := range paths {
+		k, err := forget(path, of)
+		if err != nil {
+			return n, err
+		}
+
+		n += k
+	}
+
+	return n, nil
+}
+
+// forget rewrites one archive, and leaves it alone when nothing in it matched.
+func forget(path string, of map[string]bool) (int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+
+	z, err := gzip.NewReader(f)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", path, err)
+	}
+	defer z.Close()
+
+	buf := &bytes.Buffer{}
+	w := gzip.NewWriter(buf)
+
+	n := 0
+	s := bufio.NewScanner(z)
+	s.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
+	for s.Scan() {
+		line := bytes.TrimSpace(s.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+
+		out, hit, err := blanked(line, of)
+		if err != nil {
+			return n, fmt.Errorf("%s: %w", path, err)
+		}
+		if hit {
+			n++
+		}
+		if _, err := w.Write(append(out, '\n')); err != nil {
+			return n, err
+		}
+	}
+	if err := s.Err(); err != nil {
+		return n, err
+	}
+	if err := w.Close(); err != nil {
+		return n, err
+	}
+	if n == 0 {
+		// Nothing about these objects is in here, so there is nothing to gain
+		// by rewriting it -- and every rewrite is a chance to lose a file that
+		// was fine.
+		return 0, nil
+	}
+
+	return n, replace(path, buf.Bytes())
+}
+
+// blanked is one line with its contents taken out, if it is about one of them.
+//
+// Through generic JSON rather than the message, because this package has no
+// `Audit` type -- see the note on the package. `value`, `patch` and `objectId`
+// are the names protojson gives those fields, and they are payday's own
+// columns, so there is nothing here an app can move.
+func blanked(line []byte, of map[string]bool) ([]byte, bool, error) {
+	var v map[string]json.RawMessage
+	if err := json.Unmarshal(line, &v); err != nil {
+		return nil, false, err
+	}
+
+	var object string
+	if raw, ok := v["objectId"]; ok {
+		if err := json.Unmarshal(raw, &object); err != nil {
+			return nil, false, err
+		}
+	}
+	if object == "" || !of[object] {
+		return line, false, nil
+	}
+
+	delete(v, "value")
+	delete(v, "patch")
+
+	out, err := json.Marshal(v)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// Counted as a hit whether or not it had contents to lose. What is being
+	// answered is *how many rows about this person were reached*, which is what
+	// somebody wants to hear back; a row that was already empty is still one
+	// this pass is responsible for.
+	return out, true, nil
+}
+
+// replace puts `b` where `path` is, atomically.
+func replace(path string, b []byte) error {
+	tmp := path + ".forgetting"
+
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o640)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(b); err != nil {
+		f.Close()
+		os.Remove(tmp)
+
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		os.Remove(tmp)
+
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
+
+		return err
+	}
+
+	return os.Rename(tmp, path)
+}

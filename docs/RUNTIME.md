@@ -262,12 +262,20 @@ because a reader cannot tell them apart.
 
 **Decided against:**
 
-- **Erasing one person from the trail.** The retention policy above is about
-  **age** and reaches everybody's rows at once. A right-to-erasure request is
-  about a subject, and what it should blank — the contents of writes about them,
-  their identifier as an actor, or both — is decided by an app's obligations.
-  Blanking the actor destroys *who did this*, which is what a trail is for.
-  payday supplies the column that makes the query possible and stops there.
+- **Deciding when one person leaves the trail.** The retention policy above is
+  about **age** and reaches everybody's rows at once. A right-to-erasure request
+  is about a subject — *which* rows, and *when*, is what an app owes somebody
+  under a regime payday cannot know. What payday does supply is the half with no
+  judgement in it: `pd.ForgetInTrail` blanks `value` and `patch` for a set the
+  caller chose, and `trail.Forget` does the same to the archive, because a
+  mechanism that stopped at the database would destroy the copy an operator can
+  see and leave the copy on the disk beside it.
+
+  Everything else stays — who acted, what they did, which object, when. That is
+  the record a trail exists to be and what a legal-obligation exemption is an
+  exemption *for*. The **actor** is not touched: it is personal data only
+  because it resolves, which is a property of the row it points at, and blanking
+  it would destroy *who did this*.
 - **Files and blobs.** Not payday's concern. An app that needs them attaches
   something that does them.
 - **Jobs and schedules.** `spin` is a background loop a layer owns; a job queue
