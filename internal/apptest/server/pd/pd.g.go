@@ -3560,8 +3560,8 @@ func (r watchRecorder) Record(ctx context.Context, _ bare.Server, c bare.Change)
 	}
 
 	var doc []byte
-	if c.Patch != nil {
-		if b, err := proto.Marshal(c.Patch); err == nil {
+	if v := hidden(k, c.Patch); v != nil {
+		if b, err := proto.Marshal(v); err == nil {
 			doc = b
 		}
 	}
@@ -3627,8 +3627,8 @@ func (outboxRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) 
 	}
 
 	doc := []byte{}
-	if c.Patch != nil {
-		b, err := proto.Marshal(c.Patch)
+	if v := hidden(k, c.Patch); v != nil {
+		b, err := proto.Marshal(v)
 		if err != nil {
 			return err
 		}

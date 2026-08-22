@@ -75,9 +75,13 @@ func emitOutboxRecorder(g *protogen.GeneratedFile, p Paths) {
 	// NULL, and a nil `[]byte` is SQL NULL to pgx while the SQLite driver makes
 	// it an empty blob -- so a nil here is an insert that works in every test
 	// and fails on the database the app is deployed on.
+	// Through `hidden`, for the reason the watch recorder gives at length: the
+	// redactor F15 added is about the **document**, and this queue holds the
+	// same document. A row here is at rest in a table until something drains
+	// it, and what it is drained into is whatever broker a deployment names.
 	g.P("	doc := []byte{}")
-	g.P("	if c.Patch != nil {")
-	g.P("		b, err := ", pkgProto.Ident("Marshal"), "(c.Patch)")
+	g.P("	if v := hidden(k, c.Patch); v != nil {")
+	g.P("		b, err := ", pkgProto.Ident("Marshal"), "(v)")
 	g.P("		if err != nil {")
 	g.P("			return err")
 	g.P("		}")

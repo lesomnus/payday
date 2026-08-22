@@ -265,9 +265,21 @@ func EmitWatchRecorder(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("		return nil")
 	g.P("	}")
 	g.P("")
+	// Through `hidden`, which is the trail's redactor and is not the trail's
+	// alone. It was written for F15 -- a `secret:` column reached `Audit.patch`
+	// because the declaration only cleared `Audit.value` -- and the same
+	// document goes to two more places from this same `Change`. Fixing the one
+	// the finding named and leaving its two siblings marshalling the raw patch
+	// is fixing the instance rather than the defect.
+	//
+	// Nothing carries it off the box today: `watchpg` deliberately sends no
+	// patch, `memory` is this process, and a `WatchItem` holds the row re-read
+	// per subscriber rather than the document. The point is that none of those
+	// is a property of **this** line, and the first broker that does carry a
+	// patch would be carrying verifiers.
 	g.P("	var doc []byte")
-	g.P("	if c.Patch != nil {")
-	g.P("		if b, err := ", pkgProto.Ident("Marshal"), "(c.Patch); err == nil {")
+	g.P("	if v := hidden(k, c.Patch); v != nil {")
+	g.P("		if b, err := ", pkgProto.Ident("Marshal"), "(v); err == nil {")
 	g.P("			doc = b")
 	g.P("		}")
 	g.P("	}")
