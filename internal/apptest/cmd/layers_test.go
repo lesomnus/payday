@@ -1179,3 +1179,45 @@ func TestAnEdgeIsARead(t *testing.T) {
 		x.NoError(err, "the check refuses what it should allow")
 	})
 }
+
+// TestAnEdgeThatCanMoveIsAskedAgainWhenItDoes.
+//
+// `Add` is not the only door onto an edge. One that is not immutable can be
+// pointed somewhere else afterwards, and the read it opens is the same read: a
+// caller writes a row of their own with a harmless edge, then patches it onto a
+// row in another tenant.
+//
+// `/Patch` is closed at the transport in most deployments, and that is not a
+// reason to leave the check out. `AllowGeneralWrites` is one line of
+// configuration, an app's own command tree may build a server without the
+// interceptor, and a narrow write of an app's own is a second door onto the
+// same column.
+func TestAnEdgeThatCanMoveIsAskedAgainWhenItDoes(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	mine, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "mine",
+	}.Build())
+	x.NoError(err)
+
+	other, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "elsewhere"}.Build())
+	x.NoError(err)
+
+	theirs, err := b.Ungated.Cell().Add(ctx, app.CellAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: other.GetId()}.Build(),
+		Alias:  "not-yours",
+	}.Build())
+	x.NoError(err)
+
+	as := frame.Into(ctx, frame.New(b.Holder, b.Tenant, frame.Whole()).WithScope(frame.Only(b.Tenant)))
+
+	_, err = b.Walled.Robot().Patch(as, app.RobotPatchRequest_builder{
+		Ref:              app.RobotRef_builder{Id: mine.GetId()}.Build(),
+		Cell:             app.CellRef_builder{Id: theirs.GetId()}.Build(),
+		DateUpdatedForce: z.Ptr(true),
+	}.Build())
+	x.Equal(codes.NotFound, status.Code(err),
+		"an edge was moved onto a row in a tenant this caller cannot see")
+}

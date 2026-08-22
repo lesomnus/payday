@@ -2774,6 +2774,28 @@ func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 	return s.RobotServiceServer.Add(ctx, req)
 }
 
+// Patch refuses an edge moved onto a row this caller cannot see.
+//
+// The wall narrows the row being written and says nothing about what the
+// write points **at**. An edge is a read -- a `Select` walks it -- so one
+// moved out of the caller's scope is a way through the wall one hop later,
+// exactly as it would have been at `Add`.
+func (s gateRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
+	if ref := req.GetCell(); ref != nil {
+		if _, err := s.Gate.Next().Cell().Get(ctx, apptest.CellGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Cell")
+			}
+
+			return nil, err
+		}
+	}
+
+	return s.RobotServiceServer.Patch(ctx, req)
+}
+
 // Audit is the layer that refuses a trail row written by hand.
 //
 // The RPCs exist because the trail is an entity like any other and a test is

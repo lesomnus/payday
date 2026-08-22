@@ -332,7 +332,78 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 		g.P("	return s.", name, "ServiceServer.Add(ctx, req)")
 		g.P("}")
 		g.P("")
+
+		emitAdmitPatch(g, v, s, root)
 	}
+}
+
+// emitAdmitPatch asks the same question of a `Patch` that moves an edge.
+//
+// # Why an Add check is not enough
+//
+// Because an edge that is not immutable can be pointed somewhere else
+// afterwards, and the read it opens is the same read. A caller writes a row of
+// their own with no edge at all, or a harmless one, and then patches it onto a
+// row in another tenant.
+//
+// `/Patch` is closed at the transport by `grpcx.GeneralWrite` in most
+// deployments, and that is not a reason to leave this out. `AllowGeneralWrites`
+// is one line of configuration; an app's own command tree may build a server
+// without the interceptor; and an app that adds a narrow write of its own has a
+// second door onto the same column. This is the reading a rule about a **row**
+// keeps, rather than the one a rule about a *transport* keeps -- and it is the
+// same argument an app on this framework already wrote down about `Role.Patch`
+// and `ApiKey.Patch`, which ask their own question in the layer *precisely so
+// that the setting is a decision about the API rather than about who may become
+// the administrator*.
+//
+// # Only the ones that can move
+//
+// An immutable edge is refused by the write itself, so asking about it here
+// would be a read per Patch for an answer nothing can act on. The tenancy hop
+// and the second axis are almost always immutable for that reason, so what is
+// usually left is nothing at all and this emits no method.
+func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protogen.GoImportPath) {
+	moves := []struct {
+		at string
+		to *Entity
+	}{}
+
+	for e := range v.Edges() {
+		if e.IsImmutable() {
+			continue
+		}
+
+		to, ok := s.of(e.Target().FullName())
+		if !ok || to.IsGlobal {
+			continue
+		}
+
+		moves = append(moves, struct {
+			at string
+			to *Entity
+		}{e.Name(), to})
+	}
+	if len(moves) == 0 {
+		return
+	}
+
+	name := v.GoName()
+
+	g.P("// Patch refuses an edge moved onto a row this caller cannot see.")
+	g.P("//")
+	g.P("// The wall narrows the row being written and says nothing about what the")
+	g.P("// write points **at**. An edge is a read -- a `Select` walks it -- so one")
+	g.P("// moved out of the caller's scope is a way through the wall one hop later,")
+	g.P("// exactly as it would have been at `Add`.")
+	g.P("func (s gate", name, ") Patch(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"PatchRequest"),
+		") (*", root.Ident(name), ", error) {")
+	for _, m := range moves {
+		seen(g, root, m.at, m.to)
+	}
+	g.P("	return s.", name, "ServiceServer.Patch(ctx, req)")
+	g.P("}")
+	g.P("")
 }
 
 // seen writes the read that asks whether the caller may see what an edge names.
