@@ -2675,6 +2675,18 @@ func (s gatePairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*
 		}
 	}
 
+	if ref := req.GetFollow(); ref != nil {
+		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Robot")
+			}
+
+			return nil, err
+		}
+	}
+
 	return s.PairingServiceServer.Add(ctx, req)
 }
 

@@ -169,12 +169,16 @@ message Robot {
 // holds two tenants on purpose, so there is no rule that they agree.
 //
 // This one names it, because a pairing across two tenants is not a thing this
-// app means. The gate reads the first hop of the `via` path through the wall --
-// `lead`, here -- and never looks at `follow`, so nothing else compares the two
-// at all. And where it does look it is not a comparison: an operator whose
-// scope covers several tenants passes "may I read this" with one robot in each,
-// and the deployment writing through the server with no wall passes it without
-// being asked.
+// app means -- and `agrees:` is a **comparison**, which is what the gate is
+// not. The gate asks "may this caller see it" of every edge now, `follow`
+// included; that is not the same question. An operator whose scope covers
+// several tenants passes it with one robot in each, and the deployment writing
+// through the server with no wall passes it without being asked. Only `agrees:`
+// says the two are the same tenant.
+//
+// The sentence here used to be that the gate *never looks at `follow`*, which
+// was true and was a hole: an edge is a read, so one pointing out of the
+// caller's scope is a way through the wall a `Select` later. See `emitAdmit`.
 message Pairing {
   bytes id = 1 [(orm.field) = {
     type: TYPE_UUID

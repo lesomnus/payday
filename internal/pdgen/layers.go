@@ -222,15 +222,36 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 // says this row belongs to", and a read is how it is asked -- see the comment
 // on `gateHolder.Add` for why a comparison against the scope is not enough.
 //
-// It is exactly the wall's own invariant and nothing more: a row belongs to a
-// tenant the caller may see. An edge pointing at some *other* row in another
-// tenant is a different question -- referential, not tenancy -- and is not
-// asked here.
+// **Every** edge whose target is behind the wall, and not only the first hop.
+// That is a change, and the reasoning it replaces is worth keeping because it
+// was careful and wrong: *an edge pointing at some other row in another tenant
+// is a different question -- referential, not tenancy -- and is not asked
+// here.*
+//
+// What that missed is that an edge is a **read**. A `Select` walks it, and a
+// nested one walks further -- so a caller who may write a row of their own may
+// point an edge at a row in another tenant and then read it back through their
+// own. Demonstrated in an app on this framework: a caller allowed nothing but
+// `EmailService/Add` and `EmailService/Get` planted `Email.vouched_by` on an
+// identity of another tenant's and read back that identity's provider and
+// subject, then its holder's alias, name and description, then that holder's
+// tenant. One hop later the wall is not there.
+//
+// It is the same shape the generator already fixed once for **liveness** -- a
+// select reached an erased parent because nothing narrowed the nested read --
+// with *scope* substituted for *erased*. Fixing it at the write is not the only
+// place it could be fixed, and it is the place where the wall's own invariant
+// already lives.
 //
 // # What it costs
 //
-// One read per `Add`. Adds are not the path a server spends its time on, and
-// the alternative is a rule that holds for reads and not for writes.
+// A read per edge per `Add`, where it used to be one. Most entities have one or
+// two, and an `Add` is not the path a server spends its time on. The old
+// weighing dismissed this cost against a benefit it did not believe in; the
+// benefit has since been demonstrated, so the weighing changes.
+//
+// An edge to a **global** entity is not checked, because there is nothing to
+// see past: a global row belongs to no tenant and is readable by everybody.
 func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath) {
 	for _, v := range s.Sorted() {
 		// The tenant is refused outright above, the holder has its own written
@@ -281,11 +302,31 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 		// And the second axis, when the app declared one. It is an isolation
 		// boundary the same way the tenant is -- payday says so by reading
 		// field 3 as one -- so an Add into a set the caller cannot see is the
-		// same bug one level down. An ordinary edge is **not** checked: that a
-		// row points at another row somebody else holds is referential and not
-		// tenancy, and asking it would be a read per edge on every write.
+		// same bug one level down.
 		if v.Set != "" && s.Set != nil {
 			seen(g, root, v.Set, s.Set)
+		}
+
+		// And every other edge, for the reason at the top of this function: an
+		// edge is a read, so one pointing out of the caller's scope is a way
+		// through the wall one hop later.
+		//
+		// In declaration order, so that the generated file is stable, and
+		// skipping the two above rather than emitting them twice.
+		for e := range v.Edges() {
+			at := e.Name()
+			if at == hop || at == v.Set {
+				continue
+			}
+
+			target, ok := s.of(e.Target().FullName())
+			if !ok || target.IsGlobal {
+				// A target this schema does not describe, or one that belongs
+				// to no tenant. Neither has a wall to be on the wrong side of.
+				continue
+			}
+
+			seen(g, root, at, target)
 		}
 
 		g.P("	return s.", name, "ServiceServer.Add(ctx, req)")

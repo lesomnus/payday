@@ -1112,3 +1112,70 @@ func TestBothSidesOfAWriteAboutTwoTenantsReadIt(t *testing.T) {
 		}
 	}
 }
+
+// TestAnEdgeIsARead, which is why every one of them is checked at Add.
+//
+// The gate used to check the **first hop of the path to the tenant** and
+// nothing else, and said why: *an edge pointing at some other row in another
+// tenant is a different question -- referential, not tenancy.*
+//
+// It is not a different question, because an edge is a **read**. A `Select`
+// walks it and a nested one walks further, so a caller who may write a row of
+// their own may point an edge at a row in another tenant and then read that row
+// back through their own. One hop later the wall is not there.
+//
+// Found in an app on this framework: a caller allowed nothing but
+// `EmailService/Add` and `EmailService/Get` planted `Email.vouched_by` on
+// another tenant's identity and read back that identity's provider and subject,
+// then its holder's alias and name, then that holder's tenant.
+//
+// `Pairing.follow` is this schema's version and its own comment predicted it --
+// *the gate reads the first hop of the `via` path through the wall and never
+// looks at `follow`* -- which was true, and is what this now asserts is not.
+func TestAnEdgeIsARead(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	mine, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "mine",
+	}.Build())
+	x.NoError(err)
+
+	// A second tenant, and a robot in it this caller has no business with.
+	other, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "elsewhere"}.Build())
+	x.NoError(err)
+
+	theirs, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: other.GetId()}.Build(),
+		Alias:  "not-yours",
+	}.Build())
+	x.NoError(err)
+
+	// Everything a role can allow, so what refuses is the wall and not a
+	// permission.
+	as := frame.Into(ctx, frame.New(b.Holder, b.Tenant, frame.Whole()).WithScope(frame.Only(b.Tenant)))
+
+	_, err = b.Walled.Pairing().Add(as, app.PairingAddRequest_builder{
+		Lead:   app.RobotRef_builder{Id: mine.GetId()}.Build(),
+		Follow: app.RobotRef_builder{Id: theirs.GetId()}.Build(),
+	}.Build())
+	x.Equal(codes.NotFound, status.Code(err),
+		"an edge reached a row in a tenant this caller cannot see")
+
+	t.Run("and one inside the wall is fine", func(t *testing.T) {
+		x := require.New(t)
+
+		also, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  "also-mine",
+		}.Build())
+		x.NoError(err)
+
+		_, err = b.Walled.Pairing().Add(as, app.PairingAddRequest_builder{
+			Lead:   app.RobotRef_builder{Id: mine.GetId()}.Build(),
+			Follow: app.RobotRef_builder{Id: also.GetId()}.Build(),
+		}.Build())
+		x.NoError(err, "the check refuses what it should allow")
+	})
+}
