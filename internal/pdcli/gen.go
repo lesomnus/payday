@@ -245,6 +245,55 @@ func (r run) contracts(ctx context.Context) error {
 // now, so there is nothing to reconcile: what a contract imports is what is on
 // disk, before the merge and after it.
 func (r run) merge(ctx context.Context) error {
+	// Which overlays were actually used, so that one nothing reached can be
+	// named afterwards. See [run.unreached].
+	used := map[string]bool{}
+
+	if err := r.walk(ctx, used); err != nil {
+		return err
+	}
+
+	return r.unreached(used)
+}
+
+// unreached refuses a service overlay that nothing merged.
+//
+// The walk above is over the **contracts**, and it looks up an overlay beside
+// each one. So an overlay whose name matches no contract is never visited at
+// all: it generates cleanly, merges nothing, and the first sign is a method
+// that is not there. A typo in a filename is the likeliest cause, and it is
+// the one mistake here with no symptom until much later.
+//
+// `doctor` already says this about **entity** overlays, in almost these words.
+// This is the same sentence for the other kind, said where it costs nothing to
+// hear it -- at generation, rather than when somebody remembers to run doctor.
+func (r run) unreached(used map[string]bool) error {
+	root := r.Layout.Path(DirExt)
+	if _, err := os.Stat(root); err != nil {
+		return nil
+	}
+
+	return filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(p, "_svc.ext.proto") {
+			return err
+		}
+		if used[p] {
+			return nil
+		}
+
+		rel, err := filepath.Rel(root, p)
+		if err != nil {
+			return err
+		}
+
+		want := strings.TrimSuffix(rel, "_svc.ext.proto") + "_svc.g.proto"
+
+		return fmt.Errorf("%s extends a contract that does not exist, so it is never merged: "+
+			"nothing generates %s", r.Layout.Rel(DirExt, rel), want)
+	})
+}
+
+func (r run) walk(ctx context.Context, used map[string]bool) error {
 	return filepath.WalkDir(r.svc, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(p, "_svc.g.proto") {
 			return err
@@ -270,6 +319,8 @@ func (r run) merge(ctx context.Context) error {
 			if _, err := os.Stat(overlay); err != nil {
 				continue
 			}
+
+			used[overlay] = true
 
 			r.say("  merge %s + %s", rel, filepath.Base(overlay))
 

@@ -144,3 +144,40 @@ func TestAnEditedCopyIsCaughtByCheck(t *testing.T) {
 	x.NoError(err)
 	x.NotContains(string(b), edit)
 }
+
+// TestAnOverlayNothingMergesIsRefused.
+//
+// The merge walks the **contracts** and looks up an overlay beside each one, so
+// an overlay whose name matches no contract is never visited: it generates
+// cleanly, merges nothing, and the first sign is a method that is not there.
+// A typo in a filename is the likeliest cause, and it is the one mistake in
+// this directory with no symptom until much later.
+//
+// `doctor` already says this about **entity** overlays, in almost these words.
+// This is the same sentence for the other kind, and it is said at generation
+// rather than at doctor because that is where it costs nothing to hear.
+func TestAnOverlayNothingMergesIsRefused(t *testing.T) {
+	x := require.New(t)
+
+	l := genApp(t)
+
+	// Beside a real one, so what is being tested is the name and not the
+	// directory: `robot_svc.ext.proto` is merged and this is not.
+	at := filepath.Join(l.Path(pdcli.DirExt), "app", "robto_svc.ext.proto")
+
+	b, err := os.ReadFile(filepath.Join(l.Path(pdcli.DirExt), "app", "robot_svc.ext.proto"))
+	x.NoError(err)
+	x.NoError(os.WriteFile(at, b, 0o644))
+
+	err = pdcli.Gen{Layout: l}.Run(t.Context())
+	x.Error(err, "an overlay that reaches nothing generated quietly")
+	x.Contains(err.Error(), "robto_svc.ext.proto")
+	x.Contains(err.Error(), "never merged")
+
+	t.Run("and the one beside it still is", func(t *testing.T) {
+		x := require.New(t)
+
+		x.NoError(os.Remove(at))
+		x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
+	})
+}
