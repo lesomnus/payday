@@ -35,6 +35,7 @@ func (Audit) Fields() []ent.Field {
 		field.UUID("counterpart_tenant_id", uuid.UUID{}).
 			Nillable().
 			Optional(),
+		field.Uint32("domain"),
 	}
 }
 
@@ -44,6 +45,7 @@ func (Audit) Indexes() []ent.Index {
 		index.Fields("tenant_id", "date_created"),
 		index.Fields("actor_tenant_id", "date_created"),
 		index.Fields("counterpart_tenant_id", "date_created"),
+		index.Fields("domain", "date_created"),
 		index.Fields("actor_id", "date_created"),
 	}
 }

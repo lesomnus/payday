@@ -67,6 +67,8 @@ type AuditMutation struct {
 	actor_tenant_id       *uuid.UUID
 	value                 *[]byte
 	counterpart_tenant_id *uuid.UUID
+	domain                *uint32
+	adddomain             *int32
 	clearedFields         map[string]struct{}
 	done                  bool
 	oldValue              func(context.Context) (*Audit, error)
@@ -563,6 +565,62 @@ func (m *AuditMutation) ResetCounterpartTenantID() {
 	delete(m.clearedFields, audit.FieldCounterpartTenantID)
 }
 
+// SetDomain sets the "domain" field.
+func (m *AuditMutation) SetDomain(u uint32) {
+	m.domain = &u
+	m.adddomain = nil
+}
+
+// Domain returns the value of the "domain" field in the mutation.
+func (m *AuditMutation) Domain() (r uint32, exists bool) {
+	v := m.domain
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDomain returns the old "domain" field's value of the Audit entity.
+// If the Audit object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditMutation) OldDomain(ctx context.Context) (v uint32, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDomain is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDomain requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDomain: %w", err)
+	}
+	return oldValue.Domain, nil
+}
+
+// AddDomain adds u to the "domain" field.
+func (m *AuditMutation) AddDomain(u int32) {
+	if m.adddomain != nil {
+		*m.adddomain += u
+	} else {
+		m.adddomain = &u
+	}
+}
+
+// AddedDomain returns the value that was added to the "domain" field in this mutation.
+func (m *AuditMutation) AddedDomain() (r int32, exists bool) {
+	v := m.adddomain
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDomain resets all changes to the "domain" field.
+func (m *AuditMutation) ResetDomain() {
+	m.domain = nil
+	m.adddomain = nil
+}
+
 // Where appends a list predicates to the AuditMutation builder.
 func (m *AuditMutation) Where(ps ...predicate.Audit) {
 	m.predicates = append(m.predicates, ps...)
@@ -597,7 +655,7 @@ func (m *AuditMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AuditMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.tenant_id != nil {
 		fields = append(fields, audit.FieldTenantID)
 	}
@@ -628,6 +686,9 @@ func (m *AuditMutation) Fields() []string {
 	if m.counterpart_tenant_id != nil {
 		fields = append(fields, audit.FieldCounterpartTenantID)
 	}
+	if m.domain != nil {
+		fields = append(fields, audit.FieldDomain)
+	}
 	return fields
 }
 
@@ -656,6 +717,8 @@ func (m *AuditMutation) Field(name string) (ent.Value, bool) {
 		return m.Value()
 	case audit.FieldCounterpartTenantID:
 		return m.CounterpartTenantID()
+	case audit.FieldDomain:
+		return m.Domain()
 	}
 	return nil, false
 }
@@ -685,6 +748,8 @@ func (m *AuditMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldValue(ctx)
 	case audit.FieldCounterpartTenantID:
 		return m.OldCounterpartTenantID(ctx)
+	case audit.FieldDomain:
+		return m.OldDomain(ctx)
 	}
 	return nil, fmt.Errorf("unknown Audit field %s", name)
 }
@@ -764,6 +829,13 @@ func (m *AuditMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCounterpartTenantID(v)
 		return nil
+	case audit.FieldDomain:
+		v, ok := value.(uint32)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDomain(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Audit field %s", name)
 }
@@ -771,13 +843,21 @@ func (m *AuditMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *AuditMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.adddomain != nil {
+		fields = append(fields, audit.FieldDomain)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *AuditMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case audit.FieldDomain:
+		return m.AddedDomain()
+	}
 	return nil, false
 }
 
@@ -786,6 +866,13 @@ func (m *AuditMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *AuditMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case audit.FieldDomain:
+		v, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDomain(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Audit numeric field %s", name)
 }
@@ -857,6 +944,9 @@ func (m *AuditMutation) ResetField(name string) error {
 		return nil
 	case audit.FieldCounterpartTenantID:
 		m.ResetCounterpartTenantID()
+		return nil
+	case audit.FieldDomain:
+		m.ResetDomain()
 		return nil
 	}
 	return fmt.Errorf("unknown Audit field %s", name)

@@ -22,6 +22,7 @@ import (
 	"github.com/lesomnus/payday/migrate"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/spin"
+	"github.com/lesomnus/payday/trail"
 	"github.com/lesomnus/payday/watch"
 	"github.com/lesomnus/payday/web"
 
@@ -197,6 +198,26 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		// over, which is what keeps a server that has no background work from
 		// carrying an empty method saying so.
 		s.Spin = append(s.Spin, pd.Drain(client, b, c.Watch.Every()))
+	}
+
+	// And the trail's retention, which is the one loop here that is a
+	// **mechanism** rather than a tidy-up: nothing else applies a window, so an
+	// outage of it is a deployment keeping records it said it would not.
+	//
+	// The policy is resolved and checked **here**, where a refusal stops the
+	// process, rather than at the first pass a day later -- a `retain` with
+	// nowhere to put what leaves it is a configuration that works and destroys
+	// the evidence.
+	p, err := c.Audit.Policy()
+	if err != nil {
+		db.Close()
+
+		return nil, err
+	}
+	if p.On() {
+		log.From(ctx).InfoContext(ctx, "trail: retention", "policy", p.String())
+
+		s.Spin = append(s.Spin, trail.Sweep(pd.TrailStore(client), p))
 	}
 
 	return s, nil

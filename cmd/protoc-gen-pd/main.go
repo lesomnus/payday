@@ -203,6 +203,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitSecret(out, s, paths, root)
 	pdgen.EmitWatchRecorder(out, s, paths)
 	pdgen.EmitOutbox(out, s, paths)
+	pdgen.EmitTrail(out, s, paths, root)
 	pdgen.EmitBatch(out, s, paths, root, p.Files)
 
 	return nil

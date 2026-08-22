@@ -63,6 +63,7 @@ type Audit struct {
 	xxx_hidden_ActorTenantId       []byte                 `protobuf:"bytes,16,opt,name=actor_tenant_id,json=actorTenantId"`
 	xxx_hidden_Value               []byte                 `protobuf:"bytes,17,opt,name=value"`
 	xxx_hidden_CounterpartTenantId []byte                 `protobuf:"bytes,18,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
+	xxx_hidden_Domain              uint32                 `protobuf:"varint,19,opt,name=domain"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
 }
@@ -169,6 +170,13 @@ func (x *Audit) GetCounterpartTenantId() []byte {
 	return nil
 }
 
+func (x *Audit) GetDomain() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Domain
+	}
+	return 0
+}
+
 func (x *Audit) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -240,6 +248,10 @@ func (x *Audit) SetCounterpartTenantId(v []byte) {
 	x.xxx_hidden_CounterpartTenantId = v
 }
 
+func (x *Audit) SetDomain(v uint32) {
+	x.xxx_hidden_Domain = v
+}
+
 func (x *Audit) HasDateCreated() bool {
 	if x == nil {
 		return false
@@ -300,10 +312,14 @@ type Audit_builder struct {
 	// What changed, by its identifier. That is the whole of what "the history of
 	// this thing" is asked with.
 	//
-	// Which *kind* of thing it was is not a column, and with payday it does not
-	// need to be: an identifier carries its domain, so a row erased later still
-	// says what it used to be. That was the standing cost of naming a row by an
-	// identifier alone, and it is what `pdid` was for.
+	// Which *kind* of thing it was is carried here too, by the identifier: a
+	// `pdid` holds its domain, so a row erased later still says what it used to
+	// be. That was the standing cost of naming a row by an identifier alone, and
+	// it is what `pdid` was for.
+	//
+	// It is **also** a column now -- see `domain` below -- and this comment used
+	// to say it did not need to be. That was true of the question it was
+	// answering.
 	ObjectId []byte
 	// The patch document the write was compiled from, as it was marshaled, and
 	// empty for a write that was not one -- an Add or an Erase says everything it
@@ -352,6 +368,18 @@ type Audit_builder struct {
 	// erased row's contents live on here. An app with an obligation to destroy
 	// data has to reckon with the trail, and the answer is a retention policy
 	// rather than an empty column.
+	//
+	// There is one: `trail`, and `config.AuditConfig` is how a deployment names
+	// it. Two clocks -- how long a row stays in the database, and how long the
+	// record exists at all -- per kind of thing, because a deployment's
+	// obligations are not uniform across its entities and one clock forces the
+	// shorter of them onto everything. Empty is still forever, deliberately: a
+	// version upgrade is not the right thing to decide how long somebody's
+	// evidence lasts.
+	//
+	// What it does **not** answer is erasing one person from the trail. That is
+	// about a subject rather than about age, and what it should blank is a
+	// decision an app's obligations make and payday cannot.
 	Value []byte
 	// The **other** tenant this write was about, and unset for nearly every one.
 	//
@@ -395,6 +423,33 @@ type Audit_builder struct {
 	// itself, and a column it must fill in is one it learns about from a runtime
 	// refusal on the day somebody upgrades.
 	CounterpartTenantId []byte
+	// The kind of thing `object_id` names, as its domain number.
+	//
+	// # Why a column, when the identifier already says it
+	//
+	// Because those are two different questions, and only one of them is
+	// answered by a byte inside a `uuid`. *What kind was this row about* is
+	// answered by reading the row. *Which rows were about robots* is a query
+	// over a set, and no database indexes into byte nine of a `uuid` -- so the
+	// note on `object_id` above, which said a column was not needed, was right
+	// about the first question and silent about the second.
+	//
+	// The second question is what a **retention policy** is made of. A
+	// deployment's obligations are not uniform across its entities: what was
+	// done to a person is under a privacy regime and has to stop existing, and
+	// what a machine did is an operating record with the opposite requirement.
+	// One clock over the whole table forces the shorter of the two onto
+	// everything, and there is no honest global answer -- see the `trail`
+	// package, whose policy is per domain because of this field.
+	//
+	// # Zero is a real value
+	//
+	// A write with no object -- and any row written before this column existed --
+	// reads as `pdid.Unknown`, which no entity may be registered as. It is not a
+	// gap to be filled in: a policy names domains, an unnamed one falls to the
+	// deployment's default, and a row that says nothing about its kind is
+	// correctly one the default decides.
+	Domain uint32
 }
 
 func (b0 Audit_builder) Build() *Audit {
@@ -412,6 +467,7 @@ func (b0 Audit_builder) Build() *Audit {
 	x.xxx_hidden_ActorTenantId = b.ActorTenantId
 	x.xxx_hidden_Value = b.Value
 	x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
+	x.xxx_hidden_Domain = b.Domain
 	return m0
 }
 
@@ -419,7 +475,7 @@ var File_app_payday_audit_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xd5\x06\n" +
+	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x98\a\n" +
 	"\x05Audit\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
@@ -432,13 +488,17 @@ const file_app_payday_audit_proto_rawDesc = "" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12.\n" +
 	"\x0factor_tenant_id\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10@R\ractorTenantId\x12\x14\n" +
 	"\x05value\x18\x11 \x01(\fR\x05value\x12<\n" +
-	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\x13counterpartTenantId:\xaa\x03\xca\xfc\x15\xec\x01\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
+	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\x13counterpartTenantId\x12\x16\n" +
+	"\x06domain\x18\x13 \x01(\rR\x06domain:\xd5\x03\xca\xfc\x15\x97\x02\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
 	"\tobject_id\x10\v\x1a(\x12\x05trail\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a8\x12\x0fby_actor_tenant\x1a\x13\n" +
 	"\x0factor_tenant_id\x10\x10\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a=\x12\x0eby_counterpart\x1a\x19\n" +
 	"\x15counterpart_tenant_id\x10\x12\x1a\x10\n" +
+	"\fdate_created\x10\x0f\x1a)\x12\tby_domain\x1a\n" +
+	"\n" +
+	"\x06domain\x10\x13\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a*\x12\bby_actor\x1a\f\n" +
 	"\bactor_id\x10\b\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x8a\xbb\x16\xb4\x01\b\x032u\n" +

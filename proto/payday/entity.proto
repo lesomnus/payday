@@ -240,8 +240,13 @@ message Entity {
     //
     // It is a real answer and not a mistake to allow: a table of readings, of
     // events, of anything that arrives faster than anybody reads it, cannot be
-    // one nothing may ever be removed from -- and payday has no retention story
-    // to offer instead.
+    // one nothing may ever be removed from.
+    //
+    // The second half of that sentence used to be *and payday has no retention
+    // story to offer instead*. It has one now -- `trail`, named through
+    // `config.AuditConfig` -- and it is deliberately only about `Audit`: the
+    // trail is payday's own table, and what to do with an app's table of
+    // readings is the app's, which is what `hard:` is for.
     //
     // What it costs is what the trail then cannot say. `Audit.value` is read
     // off the row **after** the write, so for a row that is gone there is

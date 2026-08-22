@@ -105,6 +105,11 @@ func CounterpartTenantID(v uuid.UUID) predicate.Audit {
 	return predicate.Audit(sql.FieldEQ(FieldCounterpartTenantID, v))
 }
 
+// Domain applies equality check predicate on the "domain" field. It's identical to DomainEQ.
+func Domain(v uint32) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldDomain, v))
+}
+
 // TenantIDEQ applies the EQ predicate on the "tenant_id" field.
 func TenantIDEQ(v uuid.UUID) predicate.Audit {
 	return predicate.Audit(sql.FieldEQ(FieldTenantID, v))
@@ -548,6 +553,46 @@ func CounterpartTenantIDIsNil() predicate.Audit {
 // CounterpartTenantIDNotNil applies the NotNil predicate on the "counterpart_tenant_id" field.
 func CounterpartTenantIDNotNil() predicate.Audit {
 	return predicate.Audit(sql.FieldNotNull(FieldCounterpartTenantID))
+}
+
+// DomainEQ applies the EQ predicate on the "domain" field.
+func DomainEQ(v uint32) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldDomain, v))
+}
+
+// DomainNEQ applies the NEQ predicate on the "domain" field.
+func DomainNEQ(v uint32) predicate.Audit {
+	return predicate.Audit(sql.FieldNEQ(FieldDomain, v))
+}
+
+// DomainIn applies the In predicate on the "domain" field.
+func DomainIn(vs ...uint32) predicate.Audit {
+	return predicate.Audit(sql.FieldIn(FieldDomain, vs...))
+}
+
+// DomainNotIn applies the NotIn predicate on the "domain" field.
+func DomainNotIn(vs ...uint32) predicate.Audit {
+	return predicate.Audit(sql.FieldNotIn(FieldDomain, vs...))
+}
+
+// DomainGT applies the GT predicate on the "domain" field.
+func DomainGT(v uint32) predicate.Audit {
+	return predicate.Audit(sql.FieldGT(FieldDomain, v))
+}
+
+// DomainGTE applies the GTE predicate on the "domain" field.
+func DomainGTE(v uint32) predicate.Audit {
+	return predicate.Audit(sql.FieldGTE(FieldDomain, v))
+}
+
+// DomainLT applies the LT predicate on the "domain" field.
+func DomainLT(v uint32) predicate.Audit {
+	return predicate.Audit(sql.FieldLT(FieldDomain, v))
+}
+
+// DomainLTE applies the LTE predicate on the "domain" field.
+func DomainLTE(v uint32) predicate.Audit {
+	return predicate.Audit(sql.FieldLTE(FieldDomain, v))
 }
 
 // And groups predicates with the AND operator between them.

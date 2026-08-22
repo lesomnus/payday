@@ -72,6 +72,7 @@ table is for finding the right one.
 | [`migrate`](../migrate) | plans and applies versioned migrations, using the atlas packages ent already has |
 | [`version`](../version) | what build is running, read from what the toolchain already stamps |
 | [`pdcmd`](../pdcmd) | the commands every app has, ready to mount on your binary |
+| [`trail`](../trail) | how long the audit table keeps a row, per kind of thing, and where it goes when it leaves |
 | [`pdtest`](../pdtest) | the half of a test harness that does not know what app it is for |
 
 ### And the schema itself
@@ -214,6 +215,46 @@ while every request it was answering was fine. A deployment that wants otherwise
 says so where it reads `Run`'s error, which is one deployment deciding rather
 than payday deciding for all of them.
 
+### The trail's retention is one of them, and it is the loud one
+
+`trail.Sweep` is a `spin.Spinner` like the others and is not the same kind of
+loop. The sweeps an app writes collect rows that are already refused — an
+expired attempt is refused the moment it is presented — so an outage of one
+costs disk. **Nothing else applies a retention window**, so a deployment whose
+trail sweep has been failing for a month has been keeping records it told
+somebody it would not.
+
+Which is why the policy is refused where the process comes up rather than at the
+first pass: `config.AuditConfig.Policy()` returns an error, `Build` stops, and
+an operator finds out while they are watching. A `retain` with nowhere to put
+what leaves it is the configuration mistake worth being loudest about, because
+it *works* — the sweep runs, the table stops growing, every graph improves, and
+what it is doing is destroying the evidence.
+
+It is **per kind of thing**, keyed on `Audit.domain`. A deployment's obligations
+are not uniform across its entities: what was done to a person is under a
+privacy regime and eventually has to stop existing, and what a machine did is an
+operating record with the opposite requirement. One clock over the table forces
+the shorter of the two onto everything.
+
+```yaml
+audit:
+  profile: pipa
+  archive: /var/lib/app/audit
+  by:
+    robot:
+      profile: forever
+```
+
+`trail.Profiles` carries the sentence each number comes from — PCI-DSS 10.5.1,
+45 CFR 164.316(b)(2)(i), and so on — so a value in a configuration file is
+arguable rather than arbitrary. It is a starting point and **not** a compliance
+guarantee: what a deployment is obliged to keep depends on what it processes and
+for whom, and payday knows neither.
+
+Empty is forever, which is the only honest default. A version upgrade is not the
+right thing to decide how long somebody's evidence lasts.
+
 ## 7. What payday does not do
 
 Some of these are gaps and some are decisions. The difference is written down
@@ -221,6 +262,12 @@ because a reader cannot tell them apart.
 
 **Decided against:**
 
+- **Erasing one person from the trail.** The retention policy above is about
+  **age** and reaches everybody's rows at once. A right-to-erasure request is
+  about a subject, and what it should blank — the contents of writes about them,
+  their identifier as an actor, or both — is decided by an app's obligations.
+  Blanking the actor destroys *who did this*, which is what a trail is for.
+  payday supplies the column that makes the query possible and stops there.
 - **Files and blobs.** Not payday's concern. An app that needs them attaches
   something that does them.
 - **Jobs and schedules.** `spin` is a background loop a layer owns; a job queue

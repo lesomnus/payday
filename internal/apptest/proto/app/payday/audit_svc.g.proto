@@ -34,6 +34,7 @@ message AuditAddRequest {
   bytes actor_tenant_id = 16 [features.field_presence = IMPLICIT];
   bytes value = 17 [features.field_presence = IMPLICIT];
   bytes counterpart_tenant_id = 18;
+  uint32 domain = 19 [features.field_presence = IMPLICIT];
 }
 
 message AuditGetRequest {
@@ -59,6 +60,7 @@ message AuditSelect {
   bool actor_tenant_id = 16;
   bool value = 17;
   bool counterpart_tenant_id = 18;
+  bool domain = 19;
 }
 
 message AuditPatchRequest {
@@ -77,6 +79,7 @@ message AuditPatchRequest {
   // "leave it alone", so no value could have meant NULL. It wins
   // outright: setting both this and counterpart_tenant_id clears.
   bool counterpart_tenant_id_null = 37;
+  uint32 domain = 38;
 }
 
 message AuditApplyRequest {

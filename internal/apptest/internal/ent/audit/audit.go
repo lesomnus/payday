@@ -31,6 +31,8 @@ const (
 	FieldValue = "value"
 	// FieldCounterpartTenantID holds the string denoting the counterpart_tenant_id field in the database.
 	FieldCounterpartTenantID = "counterpart_tenant_id"
+	// FieldDomain holds the string denoting the domain field in the database.
+	FieldDomain = "domain"
 	// Table holds the table name of the audit in the database.
 	Table = "audit"
 )
@@ -48,6 +50,7 @@ var Columns = []string{
 	FieldActorTenantID,
 	FieldValue,
 	FieldCounterpartTenantID,
+	FieldDomain,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -101,4 +104,9 @@ func ByActorTenantID(opts ...sql.OrderTermOption) OrderOption {
 // ByCounterpartTenantID orders the results by the counterpart_tenant_id field.
 func ByCounterpartTenantID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCounterpartTenantID, opts...).ToFunc()
+}
+
+// ByDomain orders the results by the domain field.
+func ByDomain(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDomain, opts...).ToFunc()
 }

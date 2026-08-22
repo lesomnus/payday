@@ -137,6 +137,27 @@ func (_u *AuditUpdate) ClearCounterpartTenantID() *AuditUpdate {
 	return _u
 }
 
+// SetDomain sets the "domain" field.
+func (_u *AuditUpdate) SetDomain(v uint32) *AuditUpdate {
+	_u.mutation.ResetDomain()
+	_u.mutation.SetDomain(v)
+	return _u
+}
+
+// SetNillableDomain sets the "domain" field if the given value is not nil.
+func (_u *AuditUpdate) SetNillableDomain(v *uint32) *AuditUpdate {
+	if v != nil {
+		_u.SetDomain(*v)
+	}
+	return _u
+}
+
+// AddDomain adds value to the "domain" field.
+func (_u *AuditUpdate) AddDomain(v int32) *AuditUpdate {
+	_u.mutation.AddDomain(v)
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdate) Mutation() *AuditMutation {
 	return _u.mutation
@@ -216,6 +237,12 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.CounterpartTenantIDCleared() {
 		_spec.ClearField(audit.FieldCounterpartTenantID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.Domain(); ok {
+		_spec.SetField(audit.FieldDomain, field.TypeUint32, value)
+	}
+	if value, ok := _u.mutation.AddedDomain(); ok {
+		_spec.AddField(audit.FieldDomain, field.TypeUint32, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -347,6 +374,27 @@ func (_u *AuditUpdateOne) ClearCounterpartTenantID() *AuditUpdateOne {
 	return _u
 }
 
+// SetDomain sets the "domain" field.
+func (_u *AuditUpdateOne) SetDomain(v uint32) *AuditUpdateOne {
+	_u.mutation.ResetDomain()
+	_u.mutation.SetDomain(v)
+	return _u
+}
+
+// SetNillableDomain sets the "domain" field if the given value is not nil.
+func (_u *AuditUpdateOne) SetNillableDomain(v *uint32) *AuditUpdateOne {
+	if v != nil {
+		_u.SetDomain(*v)
+	}
+	return _u
+}
+
+// AddDomain adds value to the "domain" field.
+func (_u *AuditUpdateOne) AddDomain(v int32) *AuditUpdateOne {
+	_u.mutation.AddDomain(v)
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdateOne) Mutation() *AuditMutation {
 	return _u.mutation
@@ -456,6 +504,12 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 	}
 	if _u.mutation.CounterpartTenantIDCleared() {
 		_spec.ClearField(audit.FieldCounterpartTenantID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.Domain(); ok {
+		_spec.SetField(audit.FieldDomain, field.TypeUint32, value)
+	}
+	if value, ok := _u.mutation.AddedDomain(); ok {
+		_spec.AddField(audit.FieldDomain, field.TypeUint32, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Audit{config: _u.config}

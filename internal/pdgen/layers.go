@@ -469,6 +469,11 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		TraceId:       notNull(v.Trace),")
 	g.P("		Action:        v.Action,")
 	g.P("		ObjectId:      v.Object.Bytes(),")
+	// The kind, as a column, because a byte inside a `uuid` answers *what was
+	// this row about* and no index answers *which rows were about robots*. The
+	// second is the question a retention policy is made of; see the note on
+	// `domain` in payday's audit.proto.
+	g.P("		Domain:        uint32(v.Object.Domain()),")
 	g.P("		Patch:         notNull(v.Patch),")
 	g.P("		Value:         notNull(value),")
 	// Zero unless a layer said otherwise, which is nearly every write. It is

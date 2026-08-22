@@ -41,6 +41,14 @@ type Config struct {
 	Db     config.DbConfig     `yaml:"db"`
 	Otel   config.OtelConfig   `yaml:"otel"`
 	Watch  config.WatchConfig  `yaml:"watch"`
+
+	// How long the trail keeps a row, per kind of thing. Empty is forever,
+	// which is what this app is: nothing here is regulated and a test that
+	// swept its own trail would be a test fighting the harness.
+	//
+	// Here anyway, because a block payday ships and its own app does not
+	// compose is one nobody has checked composes.
+	Audit config.AuditConfig `yaml:"audit"`
 }
 
 // Cmd is this app's own command line: what payday supplies, plus whatever the

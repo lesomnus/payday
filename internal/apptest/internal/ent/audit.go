@@ -38,7 +38,9 @@ type Audit struct {
 	Value []byte `json:"value,omitempty"`
 	// CounterpartTenantID holds the value of the "counterpart_tenant_id" field.
 	CounterpartTenantID *uuid.UUID `json:"counterpart_tenant_id,omitempty"`
-	selectValues        sql.SelectValues
+	// Domain holds the value of the "domain" field.
+	Domain       uint32 `json:"domain,omitempty"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -50,6 +52,8 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case audit.FieldTraceID, audit.FieldPatch, audit.FieldValue:
 			values[i] = new([]byte)
+		case audit.FieldDomain:
+			values[i] = new(sql.NullInt64)
 		case audit.FieldAction:
 			values[i] = new(sql.NullString)
 		case audit.FieldDateCreated:
@@ -138,6 +142,12 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 				_m.CounterpartTenantID = new(uuid.UUID)
 				*_m.CounterpartTenantID = *value.S.(*uuid.UUID)
 			}
+		case audit.FieldDomain:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field domain", values[i])
+			} else if value.Valid {
+				_m.Domain = uint32(value.Int64)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -205,6 +215,9 @@ func (_m *Audit) String() string {
 		builder.WriteString("counterpart_tenant_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("domain=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Domain))
 	builder.WriteByte(')')
 	return builder.String()
 }

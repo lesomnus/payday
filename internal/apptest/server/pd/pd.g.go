@@ -13,6 +13,7 @@ import (
 	context "context"
 	dialect "entgo.io/ent/dialect"
 	sql "entgo.io/ent/dialect/sql"
+	fmt "fmt"
 	uuid "github.com/google/uuid"
 	log "github.com/lesomnus/otx/log"
 	audit1 "github.com/lesomnus/payday/audit"
@@ -38,6 +39,7 @@ import (
 	pdpb "github.com/lesomnus/payday/pdpb"
 	slug "github.com/lesomnus/payday/slug"
 	spin "github.com/lesomnus/payday/spin"
+	trail "github.com/lesomnus/payday/trail"
 	version "github.com/lesomnus/payday/version"
 	watch "github.com/lesomnus/payday/watch"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
@@ -46,6 +48,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	protojson "google.golang.org/protobuf/encoding/protojson"
 	proto "google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	slog "log/slog"
@@ -2888,6 +2891,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		TraceId:             notNull(v.Trace),
 		Action:              v.Action,
 		ObjectId:            v.Object.Bytes(),
+		Domain:              uint32(v.Object.Domain()),
 		Patch:               notNull(v.Patch),
 		Value:               notNull(value),
 		CounterpartTenantId: v.CounterpartBytes(),
@@ -3768,6 +3772,121 @@ func (d drain) once(ctx context.Context) (int, error) {
 	}
 
 	return len(vs), nil
+}
+
+// TrailStore is the audit table as [trail.Store] sees it.
+//
+// Handed to `trail.Sweep` beside a policy, and to whatever command an app
+// gives an operator:
+//
+//	s.Spin = append(s.Spin, trail.Sweep(pd.TrailStore(db), policy))
+func TrailStore(db *ent.Client) trail.Store {
+	return trailStore{db}
+}
+
+type trailStore struct{ db *ent.Client }
+
+var _ trail.Store = trailStore{}
+
+// of narrows to the kinds a pass is about.
+//
+// By the `domain` column and not by the domain byte inside `object_id`,
+// which carries the same fact and cannot be indexed: *what kind was this
+// row about* is answered by reading a row, and *which rows were about
+// robots* is a query over a set. The second is what a retention policy is
+// made of.
+func (s trailStore) of(k trail.Kinds) *ent.AuditQuery {
+	q := s.db.Audit.Query()
+	if len(k.Only) > 0 {
+		return q.Where(audit.DomainIn(numbers(k.Only)...))
+	}
+	if len(k.Except) > 0 {
+		return q.Where(audit.DomainNotIn(numbers(k.Except)...))
+	}
+
+	return q
+}
+
+func (s trailStore) Older(ctx context.Context, k trail.Kinds, at time.Time, limit int) (trail.Rows, error) {
+	vs, err := s.of(k).
+		Where(audit.DateCreatedLT(at)).
+		Order(ent.Asc(audit.FieldDateCreated, audit.FieldID)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(trail.Rows, 0, len(vs))
+	for _, v := range vs {
+		b, err := protojson.Marshal(v.Proto())
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, trail.Row{
+			Doc:     b,
+			Key:     v.ID,
+			Domain:  pdid.Domain(v.Domain),
+			Created: v.DateCreated,
+		})
+	}
+
+	return out, nil
+}
+
+func (s trailStore) Count(ctx context.Context, k trail.Kinds, at time.Time) (int, error) {
+	return s.of(k).Where(audit.DateCreatedLT(at)).Count(ctx)
+}
+
+// Forget removes exactly the rows these keys name.
+//
+// By identifier and not by the cutoff again, which is the whole of what
+// makes the archive trustworthy: a second query matches whatever is true
+// when it runs, and a row backdated by a clock that stepped is one it
+// removes and the file does not have.
+func (s trailStore) Forget(ctx context.Context, keys []any) (int, error) {
+	ids := make([]uuid.UUID, 0, len(keys))
+	for _, k := range keys {
+		v, ok := k.(uuid.UUID)
+		if !ok {
+			return 0, fmt.Errorf("trail: %T is not a key this store gave out", k)
+		}
+
+		ids = append(ids, v)
+	}
+
+	return s.db.Audit.Delete().Where(audit.IDIn(ids...)).Exec(ctx)
+}
+
+// numbers is what the column holds, which is a domain widened to what
+// protobuf has: there is no `uint8`.
+func numbers(ds []pdid.Domain) []uint32 {
+	out := make([]uint32, len(ds))
+	for i, d := range ds {
+		out[i] = uint32(d)
+	}
+
+	return out
+}
+
+// ReadTrail is an archive read back as the messages it holds.
+//
+// The runtime hands over documents, because it has no `Audit` type to
+// unmarshal into. This is the half that does.
+//
+// It opens no database, deliberately: what an archive is for is outliving
+// the deployment that wrote it, and a reader that needed the deployment
+// would be answering the question at the one moment nobody can.
+func ReadTrail(paths []string, fn func(*apptest.Audit) error) error {
+	return trail.Read(paths, func(doc []byte) error {
+		v := &apptest.Audit{}
+		if err := protojson.Unmarshal(doc, v); err != nil {
+			return err
+		}
+
+		return fn(v)
+	})
 }
 
 // Batch answers with the server that runs several writes as one
