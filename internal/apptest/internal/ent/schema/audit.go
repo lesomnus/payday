@@ -35,7 +35,8 @@ func (Audit) Fields() []ent.Field {
 		field.UUID("counterpart_tenant_id", uuid.UUID{}).
 			Nillable().
 			Optional(),
-		field.Uint32("domain"),
+		field.Uint32("domain").
+			Optional(),
 	}
 }
 

@@ -595,6 +595,16 @@ func DomainLTE(v uint32) predicate.Audit {
 	return predicate.Audit(sql.FieldLTE(FieldDomain, v))
 }
 
+// DomainIsNil applies the IsNil predicate on the "domain" field.
+func DomainIsNil() predicate.Audit {
+	return predicate.Audit(sql.FieldIsNull(FieldDomain))
+}
+
+// DomainNotNil applies the NotNil predicate on the "domain" field.
+func DomainNotNil() predicate.Audit {
+	return predicate.Audit(sql.FieldNotNull(FieldDomain))
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Audit) predicate.Audit {
 	return predicate.Audit(sql.AndPredicates(predicates...))

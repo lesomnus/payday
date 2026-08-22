@@ -615,10 +615,24 @@ func (m *AuditMutation) AddedDomain() (r int32, exists bool) {
 	return *v, true
 }
 
+// ClearDomain clears the value of the "domain" field.
+func (m *AuditMutation) ClearDomain() {
+	m.domain = nil
+	m.adddomain = nil
+	m.clearedFields[audit.FieldDomain] = struct{}{}
+}
+
+// DomainCleared returns if the "domain" field was cleared in this mutation.
+func (m *AuditMutation) DomainCleared() bool {
+	_, ok := m.clearedFields[audit.FieldDomain]
+	return ok
+}
+
 // ResetDomain resets all changes to the "domain" field.
 func (m *AuditMutation) ResetDomain() {
 	m.domain = nil
 	m.adddomain = nil
+	delete(m.clearedFields, audit.FieldDomain)
 }
 
 // Where appends a list predicates to the AuditMutation builder.
@@ -887,6 +901,9 @@ func (m *AuditMutation) ClearedFields() []string {
 	if m.FieldCleared(audit.FieldCounterpartTenantID) {
 		fields = append(fields, audit.FieldCounterpartTenantID)
 	}
+	if m.FieldCleared(audit.FieldDomain) {
+		fields = append(fields, audit.FieldDomain)
+	}
 	return fields
 }
 
@@ -906,6 +923,9 @@ func (m *AuditMutation) ClearField(name string) error {
 		return nil
 	case audit.FieldCounterpartTenantID:
 		m.ClearCounterpartTenantID()
+		return nil
+	case audit.FieldDomain:
+		m.ClearDomain()
 		return nil
 	}
 	return fmt.Errorf("unknown Audit nullable field %s", name)

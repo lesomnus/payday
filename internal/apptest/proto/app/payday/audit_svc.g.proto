@@ -34,7 +34,7 @@ message AuditAddRequest {
   bytes actor_tenant_id = 16 [features.field_presence = IMPLICIT];
   bytes value = 17 [features.field_presence = IMPLICIT];
   bytes counterpart_tenant_id = 18;
-  uint32 domain = 19 [features.field_presence = IMPLICIT];
+  uint32 domain = 19;
 }
 
 message AuditGetRequest {

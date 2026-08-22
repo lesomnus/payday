@@ -135,7 +135,11 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 			q.SetCounterpartTenantID(v)
 		}
 	}
-	q.SetDomain(req.GetDomain())
+	if req.HasDomain() {
+		q.SetDomain(req.GetDomain())
+	} else {
+		q.SetDomain(0)
+	}
 
 	u, err := q.Save(ctx)
 	if err != nil {

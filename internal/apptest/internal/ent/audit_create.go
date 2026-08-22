@@ -103,6 +103,14 @@ func (_c *AuditCreate) SetDomain(v uint32) *AuditCreate {
 	return _c
 }
 
+// SetNillableDomain sets the "domain" field if the given value is not nil.
+func (_c *AuditCreate) SetNillableDomain(v *uint32) *AuditCreate {
+	if v != nil {
+		_c.SetDomain(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *AuditCreate) SetID(v uuid.UUID) *AuditCreate {
 	_c.mutation.SetID(v)
@@ -166,9 +174,6 @@ func (_c *AuditCreate) check() error {
 	}
 	if _, ok := _c.mutation.Value(); !ok {
 		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "Audit.value"`)}
-	}
-	if _, ok := _c.mutation.Domain(); !ok {
-		return &ValidationError{Name: "domain", err: errors.New(`ent: missing required field "Audit.domain"`)}
 	}
 	return nil
 }

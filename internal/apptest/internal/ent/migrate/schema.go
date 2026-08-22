@@ -22,7 +22,7 @@ var (
 		{Name: "actor_tenant_id", Type: field.TypeUUID},
 		{Name: "value", Type: field.TypeBytes},
 		{Name: "counterpart_tenant_id", Type: field.TypeUUID, Nullable: true},
-		{Name: "domain", Type: field.TypeUint32},
+		{Name: "domain", Type: field.TypeUint32, Nullable: true},
 	}
 	// AuditTable holds the schema information for the "audit" table.
 	AuditTable = &schema.Table{

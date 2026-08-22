@@ -158,6 +158,12 @@ func (_u *AuditUpdate) AddDomain(v int32) *AuditUpdate {
 	return _u
 }
 
+// ClearDomain clears the value of the "domain" field.
+func (_u *AuditUpdate) ClearDomain() *AuditUpdate {
+	_u.mutation.ClearDomain()
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdate) Mutation() *AuditMutation {
 	return _u.mutation
@@ -243,6 +249,9 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedDomain(); ok {
 		_spec.AddField(audit.FieldDomain, field.TypeUint32, value)
+	}
+	if _u.mutation.DomainCleared() {
+		_spec.ClearField(audit.FieldDomain, field.TypeUint32)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -395,6 +404,12 @@ func (_u *AuditUpdateOne) AddDomain(v int32) *AuditUpdateOne {
 	return _u
 }
 
+// ClearDomain clears the value of the "domain" field.
+func (_u *AuditUpdateOne) ClearDomain() *AuditUpdateOne {
+	_u.mutation.ClearDomain()
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdateOne) Mutation() *AuditMutation {
 	return _u.mutation
@@ -510,6 +525,9 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 	}
 	if value, ok := _u.mutation.AddedDomain(); ok {
 		_spec.AddField(audit.FieldDomain, field.TypeUint32, value)
+	}
+	if _u.mutation.DomainCleared() {
+		_spec.ClearField(audit.FieldDomain, field.TypeUint32)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Audit{config: _u.config}

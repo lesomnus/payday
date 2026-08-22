@@ -234,14 +234,22 @@ message Audit {
   // everything, and there is no honest global answer -- see the `trail`
   // package, whose policy is per domain because of this field.
   //
-  // # Zero is a real value
+  // # Zero is a real value, and is defaulted for that reason
   //
   // A write with no object -- and any row written before this column existed --
   // reads as `pdid.Unknown`, which no entity may be registered as. It is not a
   // gap to be filled in: a policy names domains, an unnamed one falls to the
   // deployment's default, and a row that says nothing about its kind is
   // correctly one the default decides.
-  uint32 domain = 19;
+  //
+  // So it carries a default, for the reason `counterpart_tenant_id` below gives
+  // about itself: the recorder is not the only writer here. An app that records
+  // something the servers cannot see composes the row itself through ent, and a
+  // column it **must** fill in is one it learns about from a runtime refusal on
+  // the day somebody upgrades. That paragraph predicted this exactly, and the
+  // app this was written against hit it on the first run after the column
+  // existed.
+  uint32 domain = 19 [(orm.field) = {default: ""}];
 
   option (orm.message) = {
     rpc: {crud: true}

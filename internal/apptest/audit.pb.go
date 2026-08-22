@@ -442,13 +442,21 @@ type Audit_builder struct {
 	// everything, and there is no honest global answer -- see the `trail`
 	// package, whose policy is per domain because of this field.
 	//
-	// # Zero is a real value
+	// # Zero is a real value, and is defaulted for that reason
 	//
 	// A write with no object -- and any row written before this column existed --
 	// reads as `pdid.Unknown`, which no entity may be registered as. It is not a
 	// gap to be filled in: a policy names domains, an unnamed one falls to the
 	// deployment's default, and a row that says nothing about its kind is
 	// correctly one the default decides.
+	//
+	// So it carries a default, for the reason `counterpart_tenant_id` below gives
+	// about itself: the recorder is not the only writer here. An app that records
+	// something the servers cannot see composes the row itself through ent, and a
+	// column it **must** fill in is one it learns about from a runtime refusal on
+	// the day somebody upgrades. That paragraph predicted this exactly, and the
+	// app this was written against hit it on the first run after the column
+	// existed.
 	Domain uint32
 }
 
@@ -475,7 +483,7 @@ var File_app_payday_audit_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x98\a\n" +
+	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xa1\a\n" +
 	"\x05Audit\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
@@ -488,8 +496,8 @@ const file_app_payday_audit_proto_rawDesc = "" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12.\n" +
 	"\x0factor_tenant_id\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10@R\ractorTenantId\x12\x14\n" +
 	"\x05value\x18\x11 \x01(\fR\x05value\x12<\n" +
-	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\x13counterpartTenantId\x12\x16\n" +
-	"\x06domain\x18\x13 \x01(\rR\x06domain:\xd5\x03\xca\xfc\x15\x97\x02\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
+	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\x13counterpartTenantId\x12\x1f\n" +
+	"\x06domain\x18\x13 \x01(\rB\a\xea\x82\x16\x03\x82\x01\x00R\x06domain:\xd5\x03\xca\xfc\x15\x97\x02\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
 	"\tobject_id\x10\v\x1a(\x12\x05trail\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a8\x12\x0fby_actor_tenant\x1a\x13\n" +
