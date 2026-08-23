@@ -25,7 +25,7 @@ const (
 
 // Holder is who a request is from.
 //
-// It is the row `server/auth` reads to turn a credential into somebody, and the
+// It is the row `payday/auth` reads to turn a credential into somebody, and the
 // row the trail names on every line it writes. Like [Tenant] it is payday's
 // because everything that decides anything reads it.
 //
