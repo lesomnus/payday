@@ -50,23 +50,25 @@ jobs:
       - run: buf breaking --against '.git#ref=origin/main'
       - run: buf breaking --against buf.build/payday/payday:dev
 
-      # Both modules. `internal/apptest` is one of its own -- it owns the ent
-      # dependency payday does not -- so `go test ./...` at the root does not
-      # reach it, and it is where nearly every claim payday makes is actually
-      # demonstrated.
-      - run: ./scripts/test.sh
-
-      # The app payday is tried against, regenerated from its schema. Anything
-      # that moves is something a commit did not carry.
-      #
-      # `--ts` as well, so the TypeScript is held to the same rule. It needs the
-      # plugin, which is why the install comes first.
+      # Before the suite, because the suite ends by regenerating the app from
+      # its schema and the TypeScript half of that needs the plugin. A run
+      # without it is a run that says the generated code is fine having looked
+      # at two thirds of it.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm ci --prefix ts
       - run: npm ci --prefix internal/apptest/ts
-      - run: go tool pd gen --check --ts internal/apptest
+
+      # Both modules, and then the app regenerated from its schema -- anything
+      # that moves is something a commit did not carry. `internal/apptest` is a
+      # module of its own, so `go test ./...` at the root does not reach it, and
+      # it is where nearly every claim payday makes is actually demonstrated.
+      #
+      # One step rather than four, which is the point of the script: what CI
+      # runs and what a desk runs are the same command, so a green run here
+      # cannot mean something a green run there did not.
+      - run: ./scripts/test.sh
 
       # And that payday still builds for the browser, which is a promise about
       # the runtime -- no file system, no listener, no network assumed -- that
