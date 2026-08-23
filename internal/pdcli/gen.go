@@ -327,6 +327,9 @@ func (r run) walk(ctx context.Context, used map[string]bool) error {
 			if err := CheckOverlayFile(overlay); err != nil {
 				return err
 			}
+			if err := checkOverlayRpcs(b, overlay); err != nil {
+				return err
+			}
 
 			// protobuf-merge takes files, so what has been merged so far has to
 			// be one.
@@ -404,6 +407,65 @@ func CheckOverlayFile(p string) error {
 			"Delete the line. An overlay adds messages and RPCs; what the file **is** belongs "+
 			"to the contract, which is generated",
 		filepath.Base(p), strings.TrimSpace(string(b[m[0]:m[1]]))+" ...")
+}
+
+// rpcName finds the rpcs a proto file declares.
+var rpcName = regexp.MustCompile(`(?m)^\s*rpc\s+(\w+)\s*\(`)
+
+// checkOverlayRpcs refuses an overlay that redeclares an rpc already in the
+// contract.
+//
+// # Why nothing else does
+//
+// `protobuf-merge` matches rpcs by name and emits the **overlay's** request,
+// response and body, so a redeclaration wins silently -- and it wins in the
+// direction that matters, since the generated one is the one with the wall, the
+// trail and the narrowing behind it. Its `Strict` mode does not help: the
+// conflict kinds it can report cover fields and editions, and there is none for
+// an rpc at all.
+//
+// So an overlay that declares `rpc Get(...)` replaces the generated `Get`, the
+// file compiles, the tests that call it pass, and what is gone is whatever the
+// generator was putting behind that name. That is the "compiles perfectly and
+// is wrong" shape, which is the one thing a generator has to refuse rather than
+// document.
+//
+// # What it compares against
+//
+// The contract **as merged so far**, which is why this is here rather than in
+// [CheckOverlayFile]: the app's overlay is merged after payday's own, so by
+// this point `b` carries the crud rpcs and `List` and `Watch` both. An overlay
+// redeclaring any of them is caught by one rule.
+//
+// An app that genuinely wants a different `Get` has an answer already -- write
+// an rpc of its own with its own name, which is what an overlay is for.
+func checkOverlayRpcs(b []byte, overlay string) error {
+	v, err := os.ReadFile(overlay)
+	if err != nil {
+		return err
+	}
+
+	has := map[string]bool{}
+	for _, m := range rpcName.FindAllSubmatch(b, -1) {
+		has[string(m[1])] = true
+	}
+
+	for _, m := range rpcName.FindAllSubmatch(v, -1) {
+		name := string(m[1])
+		if !has[name] {
+			continue
+		}
+
+		return fmt.Errorf(
+			"%s: declares `rpc %s`, which the contract already has.\n\n"+
+				"The merge would take the overlay's word for it -- the request, the response "+
+				"and the body -- and the one it replaces is the one with the wall, the trail "+
+				"and the narrowing behind it. Nothing would say so.\n\n"+
+				"An overlay **adds**. If a different %s is wanted, give it its own name",
+			filepath.Base(overlay), name, name)
+	}
+
+	return nil
 }
 
 // code writes the messages, the stubs, the query helpers, the ent schema, the

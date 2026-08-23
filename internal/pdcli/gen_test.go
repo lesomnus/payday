@@ -181,3 +181,41 @@ func TestAnOverlayNothingMergesIsRefused(t *testing.T) {
 		x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
 	})
 }
+
+// TestAnOverlayThatRedeclaresAGeneratedRpcIsRefused.
+//
+// `protobuf-merge` matches rpcs by name and emits the **overlay's** request,
+// response and body, so a redeclaration wins -- and it wins in the direction
+// that matters, since the generated one is the one with the wall, the trail and
+// the narrowing behind it. Its `Strict` mode does not help: the conflict kinds
+// it reports cover fields and editions, and there is none for an rpc at all.
+//
+// An app's own file said the opposite in a comment, for months: *generation
+// refuses one that redeclares something payday generated.* It did not. This is
+// what makes that sentence true.
+func TestAnOverlayThatRedeclaresAGeneratedRpcIsRefused(t *testing.T) {
+	x := require.New(t)
+
+	l := genApp(t)
+
+	at := filepath.Join(l.Path(pdcli.DirExt), "app", "robot_svc.ext.proto")
+	b, err := os.ReadFile(at)
+	x.NoError(err)
+
+	// `Get` is the generator's, and the most valuable one to quietly replace:
+	// it is the read every narrowing hangs off.
+	const shadow = "\n\nservice RobotService {\n  rpc Get(RobotGetRequest) returns (Robot);\n}\n"
+	x.NoError(os.WriteFile(at, append(b, shadow...), 0o644))
+
+	err = pdcli.Gen{Layout: l}.Run(t.Context())
+	x.Error(err, "an overlay replaced a generated rpc quietly")
+	x.Contains(err.Error(), "rpc Get")
+	x.Contains(err.Error(), "An overlay **adds**")
+
+	t.Run("and one that only adds is fine", func(t *testing.T) {
+		x := require.New(t)
+
+		x.NoError(os.WriteFile(at, b, 0o644))
+		x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
+	})
+}
