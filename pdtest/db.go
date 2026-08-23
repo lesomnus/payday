@@ -57,12 +57,33 @@ const Postgres = "PDTEST_POSTGRES"
 // A schema rather than a database because it is fast enough to do per test, and
 // per test is what keeps a suite from depending on the order it runs in. A
 // shared server is the one thing SQLite never made anybody think about.
+//
+// # Why the SQLite half waits rather than refusing
+//
+// SQLite takes one writer at a time and, left alone, a connection that finds
+// the database busy **fails the query** instead of waiting for it. Which is
+// fine for a test that makes one call at a time and is not fine for any test
+// with a stream in it: a server-streaming handler reads while the test writes,
+// and the read comes back `database is locked` from a database that is working
+// perfectly.
+//
+// What that produces is the worst kind of failure -- one that appears in a
+// tenth of runs, in whichever test happens to overlap, and says nothing about
+// the code under test. `busy_timeout` makes the second connection wait, which
+// is what every other database does and what the PostgreSQL half already did.
+//
+// Five seconds because it is far longer than any contention a test creates and
+// far shorter than a suite's own patience, so a genuine deadlock still fails
+// rather than hanging until CI gives up.
 func DB(tb testing.TB) (string, string) {
 	tb.Helper()
 
 	dsn := os.Getenv(Postgres)
 	if dsn == "" {
-		return "sqlite3", memdb.TestDB(tb, url.Values{"_pragma": {"foreign_keys(1)"}})
+		return "sqlite3", memdb.TestDB(tb, url.Values{"_pragma": {
+			"foreign_keys(1)",
+			"busy_timeout(5000)",
+		}})
 	}
 
 	return "pgx", pgSchema(tb, dsn)
