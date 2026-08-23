@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/audit.proto.
  */
 export const file_app_payday_audit: GenFile = /*@__PURE__*/
-  fileDesc("ChZhcHAvcGF5ZGF5L2F1ZGl0LnByb3RvEgNhcHAi5AUKBUF1ZGl0EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIZCgl0ZW5hbnRfaWQYAiABKAxCBuqCFgIQQBIYCghhY3Rvcl9pZBgIIAEoDEIG6oIWAhBAEhAKCHRyYWNlX2lkGAkgASgMEg4KBmFjdGlvbhgKIAEoCRIZCglvYmplY3RfaWQYCyABKAxCBuqCFgIQQBINCgVwYXRjaBgMIAEoDBI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASHwoPYWN0b3JfdGVuYW50X2lkGBAgASgMQgbqghYCEEASDQoFdmFsdWUYESABKAwSJwoVY291bnRlcnBhcnRfdGVuYW50X2lkGBIgASgMQgjqghYEEEA4ATqqA8r8FewBEgIQARoXEgZvYmplY3QaDQoJb2JqZWN0X2lkEAsaKBIFdHJhaWwaDQoJdGVuYW50X2lkEAIaEAoMZGF0ZV9jcmVhdGVkEA8aOBIPYnlfYWN0b3JfdGVuYW50GhMKD2FjdG9yX3RlbmFudF9pZBAQGhAKDGRhdGVfY3JlYXRlZBAPGj0SDmJ5X2NvdW50ZXJwYXJ0GhkKFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBASGhAKDGRhdGVfY3JlYXRlZBAPGioSCGJ5X2FjdG9yGgwKCGFjdG9yX2lkEAgaEAoMZGF0ZV9jcmVhdGVkEA+Kuxa0AQgDMnUKEgoOCgxkYXRlX2NyZWF0ZWQQAQoICgQKAmlkEAEaCwoJb2JqZWN0X2lkGgoKCGFjdG9yX2lkGgsKCXRlbmFudF9pZBoRCg9hY3Rvcl90ZW5hbnRfaWQaFwoVY291bnRlcnBhcnRfdGVuYW50X2lkIDIoyAFCAgoASAMiMxIJdGVuYW50X2lkEg9hY3Rvcl90ZW5hbnRfaWQSFWNvdW50ZXJwYXJ0X3RlbmFudF9pZEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("ChZhcHAvcGF5ZGF5L2F1ZGl0LnByb3RvEgNhcHAiqAYKBUF1ZGl0EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIZCgl0ZW5hbnRfaWQYAiABKAxCBuqCFgIQQBIYCghhY3Rvcl9pZBgIIAEoDEIG6oIWAhBAEhAKCHRyYWNlX2lkGAkgASgMEg4KBmFjdGlvbhgKIAEoCRIZCglvYmplY3RfaWQYCyABKAxCBuqCFgIQQBINCgVwYXRjaBgMIAEoDBI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASHwoPYWN0b3JfdGVuYW50X2lkGBAgASgMQgbqghYCEEASDQoFdmFsdWUYESABKAwSJwoVY291bnRlcnBhcnRfdGVuYW50X2lkGBIgASgMQgjqghYEEEA4ARIXCgZkb21haW4YEyABKA1CB+qCFgOCAQA61QPK/BWXAhICEAEaFxIGb2JqZWN0Gg0KCW9iamVjdF9pZBALGigSBXRyYWlsGg0KCXRlbmFudF9pZBACGhAKDGRhdGVfY3JlYXRlZBAPGjgSD2J5X2FjdG9yX3RlbmFudBoTCg9hY3Rvcl90ZW5hbnRfaWQQEBoQCgxkYXRlX2NyZWF0ZWQQDxo9Eg5ieV9jb3VudGVycGFydBoZChVjb3VudGVycGFydF90ZW5hbnRfaWQQEhoQCgxkYXRlX2NyZWF0ZWQQDxopEglieV9kb21haW4aCgoGZG9tYWluEBMaEAoMZGF0ZV9jcmVhdGVkEA8aKhIIYnlfYWN0b3IaDAoIYWN0b3JfaWQQCBoQCgxkYXRlX2NyZWF0ZWQQD4q7FrQBCAMydQoSCg4KDGRhdGVfY3JlYXRlZBABCggKBAoCaWQQARoLCglvYmplY3RfaWQaCgoIYWN0b3JfaWQaCwoJdGVuYW50X2lkGhEKD2FjdG9yX3RlbmFudF9pZBoXChVjb3VudGVycGFydF90ZW5hbnRfaWQgMijIAUICCgBIAyIzEgl0ZW5hbnRfaWQSD2FjdG9yX3RlbmFudF9pZBIVY291bnRlcnBhcnRfdGVuYW50X2lkQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Audit is one write that happened, and who made it.
@@ -120,10 +120,14 @@ export type Audit = Message<"app.Audit"> & {
    * What changed, by its identifier. That is the whole of what "the history of
    * this thing" is asked with.
    *
-   * Which *kind* of thing it was is not a column, and with payday it does not
-   * need to be: an identifier carries its domain, so a row erased later still
-   * says what it used to be. That was the standing cost of naming a row by an
-   * identifier alone, and it is what `pdid` was for.
+   * Which *kind* of thing it was is carried here too, by the identifier: a
+   * `pdid` holds its domain, so a row erased later still says what it used to
+   * be. That was the standing cost of naming a row by an identifier alone, and
+   * it is what `pdid` was for.
+   *
+   * It is **also** a column now -- see `domain` below -- and this comment used
+   * to say it did not need to be. That was true of the question it was
+   * answering.
    *
    * @generated from field: bytes object_id = 11;
    */
@@ -192,6 +196,18 @@ export type Audit = Message<"app.Audit"> & {
    * data has to reckon with the trail, and the answer is a retention policy
    * rather than an empty column.
    *
+   * There is one: `trail`, and `config.AuditConfig` is how a deployment names
+   * it. Two clocks -- how long a row stays in the database, and how long the
+   * record exists at all -- per kind of thing, because a deployment's
+   * obligations are not uniform across its entities and one clock forces the
+   * shorter of them onto everything. Empty is still forever, deliberately: a
+   * version upgrade is not the right thing to decide how long somebody's
+   * evidence lasts.
+   *
+   * What it does **not** answer is erasing one person from the trail. That is
+   * about a subject rather than about age, and what it should blank is a
+   * decision an app's obligations make and payday cannot.
+   *
    * @generated from field: bytes value = 17;
    */
   value: Uint8Array;
@@ -242,6 +258,46 @@ export type Audit = Message<"app.Audit"> & {
    * @generated from field: bytes counterpart_tenant_id = 18;
    */
   counterpartTenantId: Uint8Array;
+
+  /**
+   * The kind of thing `object_id` names, as its domain number.
+   *
+   * # Why a column, when the identifier already says it
+   *
+   * Because those are two different questions, and only one of them is
+   * answered by a byte inside a `uuid`. *What kind was this row about* is
+   * answered by reading the row. *Which rows were about robots* is a query
+   * over a set, and no database indexes into byte nine of a `uuid` -- so the
+   * note on `object_id` above, which said a column was not needed, was right
+   * about the first question and silent about the second.
+   *
+   * The second question is what a **retention policy** is made of. A
+   * deployment's obligations are not uniform across its entities: what was
+   * done to a person is under a privacy regime and has to stop existing, and
+   * what a machine did is an operating record with the opposite requirement.
+   * One clock over the whole table forces the shorter of the two onto
+   * everything, and there is no honest global answer -- see the `trail`
+   * package, whose policy is per domain because of this field.
+   *
+   * # Zero is a real value, and is defaulted for that reason
+   *
+   * A write with no object -- and any row written before this column existed --
+   * reads as `pdid.Unknown`, which no entity may be registered as. It is not a
+   * gap to be filled in: a policy names domains, an unnamed one falls to the
+   * deployment's default, and a row that says nothing about its kind is
+   * correctly one the default decides.
+   *
+   * So it carries a default, for the reason `counterpart_tenant_id` below gives
+   * about itself: the recorder is not the only writer here. An app that records
+   * something the servers cannot see composes the row itself through ent, and a
+   * column it **must** fill in is one it learns about from a runtime refusal on
+   * the day somebody upgrades. That paragraph predicted this exactly, and the
+   * app this was written against hit it on the first run after the column
+   * existed.
+   *
+   * @generated from field: uint32 domain = 19;
+   */
+  domain: number;
 };
 
 /**

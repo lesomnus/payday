@@ -36,3 +36,24 @@ cd internal/apptest
 go build ./...
 go vet ./...
 go test "$@" ./...
+
+# And that the app's generated half is what its schema says.
+#
+# Here rather than only in CI, which is where it was and which is one push too
+# late. A generated file that was not regenerated **compiles perfectly and is
+# wrong**, so everything above passes while the thing this whole module exists
+# to demonstrate is a schema behind -- twice in one afternoon, both times found
+# by a red CI run after a green local one.
+#
+# `--ts` because that is what CI runs, and the check without it passes while
+# `ts/gen` is a schema behind. It needs the plugin, so a checkout with no
+# `node_modules` is told to install rather than told the TypeScript is fine.
+cd "${__root}"
+echo "== and its generated half"
+if [ ! -x internal/apptest/ts/node_modules/.bin/protoc-gen-es ]; then
+	echo "no protoc-gen-es, so the TypeScript half cannot be checked:" >&2
+	echo >&2
+	echo "    npm ci --prefix internal/apptest/ts" >&2
+	exit 1
+fi
+go tool pd gen --check --ts internal/apptest

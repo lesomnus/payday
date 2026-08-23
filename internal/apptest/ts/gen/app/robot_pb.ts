@@ -19,7 +19,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot.proto.
  */
 export const file_app_robot: GenFile = /*@__PURE__*/
-  fileDesc("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", [file_app_payday_tenant, file_shared_thing, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("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", [file_app_payday_tenant, file_shared_thing, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Cell was added to answer one question: what does adding an entity cost?
@@ -130,6 +130,24 @@ export type Robot = Message<"app.Robot"> & {
   secret: Uint8Array;
 
   /**
+   * When this robot was last attested, and null for never.
+   *
+   * Declared `stamped:`, which is the option this entity exists to try. An
+   * attestation is a fact the deployment establishes -- something checked a
+   * device and said so -- and a request that asserts one at creation is
+   * asserting the thing the column is *for*. The generated `Add` refuses it;
+   * `Patch` is untouched, because that is the road the stamp is written by.
+   *
+   * The gate is where the refusal lands, and that is exact: a stamp is not a
+   * permission and not a column nobody may touch, it is a fact a **request**
+   * may not assert -- so an app's own work, through a server the gate is not
+   * on, writes it without anybody having listed those callers.
+   *
+   * @generated from field: google.protobuf.Timestamp date_attested = 31;
+   */
+  dateAttested?: Timestamp | undefined;
+
+  /**
    * Stamped on every write and refused to a patch document, so it is a version
    * and not a field. It is here because this entity declares a `watch:`, and
    * the generator refuses one without it: a watch sends state, so a client
@@ -173,12 +191,16 @@ export const RobotSchema: GenMessage<Robot> = /*@__PURE__*/
  * holds two tenants on purpose, so there is no rule that they agree.
  *
  * This one names it, because a pairing across two tenants is not a thing this
- * app means. The gate reads the first hop of the `via` path through the wall --
- * `lead`, here -- and never looks at `follow`, so nothing else compares the two
- * at all. And where it does look it is not a comparison: an operator whose
- * scope covers several tenants passes "may I read this" with one robot in each,
- * and the deployment writing through the server with no wall passes it without
- * being asked.
+ * app means -- and `agrees:` is a **comparison**, which is what the gate is
+ * not. The gate asks "may this caller see it" of every edge now, `follow`
+ * included; that is not the same question. An operator whose scope covers
+ * several tenants passes it with one robot in each, and the deployment writing
+ * through the server with no wall passes it without being asked. Only `agrees:`
+ * says the two are the same tenant.
+ *
+ * The sentence here used to be that the gate *never looks at `follow`*, which
+ * was true and was a hole: an edge is a read, so one pointing out of the
+ * caller's scope is a way through the wall a `Select` later. See `emitAdmit`.
  *
  * @generated from message app.Pairing
  */
