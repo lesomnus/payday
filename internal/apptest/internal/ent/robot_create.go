@@ -36,6 +36,20 @@ func (_c *RobotCreate) SetSecret(v []byte) *RobotCreate {
 	return _c
 }
 
+// SetDateAttested sets the "date_attested" field.
+func (_c *RobotCreate) SetDateAttested(v time.Time) *RobotCreate {
+	_c.mutation.SetDateAttested(v)
+	return _c
+}
+
+// SetNillableDateAttested sets the "date_attested" field if the given value is not nil.
+func (_c *RobotCreate) SetNillableDateAttested(v *time.Time) *RobotCreate {
+	if v != nil {
+		_c.SetDateAttested(*v)
+	}
+	return _c
+}
+
 // SetDateUpdated sets the "date_updated" field.
 func (_c *RobotCreate) SetDateUpdated(v time.Time) *RobotCreate {
 	_c.mutation.SetDateUpdated(v)
@@ -213,6 +227,10 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Secret(); ok {
 		_spec.SetField(robot.FieldSecret, field.TypeBytes, value)
 		_node.Secret = value
+	}
+	if value, ok := _c.mutation.DateAttested(); ok {
+		_spec.SetField(robot.FieldDateAttested, field.TypeTime, value)
+		_node.DateAttested = &value
 	}
 	if value, ok := _c.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)

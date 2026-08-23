@@ -58,6 +58,26 @@ func (_u *RobotUpdate) ClearSecret() *RobotUpdate {
 	return _u
 }
 
+// SetDateAttested sets the "date_attested" field.
+func (_u *RobotUpdate) SetDateAttested(v time.Time) *RobotUpdate {
+	_u.mutation.SetDateAttested(v)
+	return _u
+}
+
+// SetNillableDateAttested sets the "date_attested" field if the given value is not nil.
+func (_u *RobotUpdate) SetNillableDateAttested(v *time.Time) *RobotUpdate {
+	if v != nil {
+		_u.SetDateAttested(*v)
+	}
+	return _u
+}
+
+// ClearDateAttested clears the value of the "date_attested" field.
+func (_u *RobotUpdate) ClearDateAttested() *RobotUpdate {
+	_u.mutation.ClearDateAttested()
+	return _u
+}
+
 // SetDateUpdated sets the "date_updated" field.
 func (_u *RobotUpdate) SetDateUpdated(v time.Time) *RobotUpdate {
 	_u.mutation.SetDateUpdated(v)
@@ -221,6 +241,12 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.SecretCleared() {
 		_spec.ClearField(robot.FieldSecret, field.TypeBytes)
 	}
+	if value, ok := _u.mutation.DateAttested(); ok {
+		_spec.SetField(robot.FieldDateAttested, field.TypeTime, value)
+	}
+	if _u.mutation.DateAttestedCleared() {
+		_spec.ClearField(robot.FieldDateAttested, field.TypeTime)
+	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
 	}
@@ -336,6 +362,26 @@ func (_u *RobotUpdateOne) SetSecret(v []byte) *RobotUpdateOne {
 // ClearSecret clears the value of the "secret" field.
 func (_u *RobotUpdateOne) ClearSecret() *RobotUpdateOne {
 	_u.mutation.ClearSecret()
+	return _u
+}
+
+// SetDateAttested sets the "date_attested" field.
+func (_u *RobotUpdateOne) SetDateAttested(v time.Time) *RobotUpdateOne {
+	_u.mutation.SetDateAttested(v)
+	return _u
+}
+
+// SetNillableDateAttested sets the "date_attested" field if the given value is not nil.
+func (_u *RobotUpdateOne) SetNillableDateAttested(v *time.Time) *RobotUpdateOne {
+	if v != nil {
+		_u.SetDateAttested(*v)
+	}
+	return _u
+}
+
+// ClearDateAttested clears the value of the "date_attested" field.
+func (_u *RobotUpdateOne) ClearDateAttested() *RobotUpdateOne {
+	_u.mutation.ClearDateAttested()
 	return _u
 }
 
@@ -531,6 +577,12 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	}
 	if _u.mutation.SecretCleared() {
 		_spec.ClearField(robot.FieldSecret, field.TypeBytes)
+	}
+	if value, ok := _u.mutation.DateAttested(); ok {
+		_spec.SetField(robot.FieldDateAttested, field.TypeTime, value)
+	}
+	if _u.mutation.DateAttestedCleared() {
+		_spec.ClearField(robot.FieldDateAttested, field.TypeTime)
 	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)

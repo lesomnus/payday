@@ -48,6 +48,11 @@ type Entity struct {
 	// about which fields they are.
 	SecretNumbers []uint32
 
+	// Stamped are the fields declared `(payday.field).stamped`: a fact the
+	// deployment establishes rather than one a request asserts, so the
+	// generated `Add` refuses one that sets them. See `payday.Field`.
+	Stamped []string
+
 	// Secrets are the fields declared `(payday.field).secret`: written, and
 	// never answered with. Empty for nearly every entity.
 	Secrets []string
@@ -241,11 +246,15 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 	// `EmitSecret`, and `payday.Field`.
 	var secrets []string
 	var secretNumbers []uint32
+	var stamped []string
 	for prop := range e.Props() {
 		f, _ := proto.GetExtension(prop.Descriptor().Options(), pdpb.E_Field).(*pdpb.Field)
 		if f.GetSecret() {
 			secrets = append(secrets, prop.Name())
 			secretNumbers = append(secretNumbers, uint32(prop.Descriptor().Number()))
+		}
+		if f.GetStamped() {
+			stamped = append(stamped, prop.Name())
 		}
 	}
 
@@ -254,6 +263,7 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		Opts:          opts,
 		Secrets:       secrets,
 		SecretNumbers: secretNumbers,
+		Stamped:       stamped,
 		Domain:        uint8(d),
 		Name:          opts.GetName(),
 		Own:           opts.GetOwn(),

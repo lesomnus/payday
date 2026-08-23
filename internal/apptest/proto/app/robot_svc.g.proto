@@ -169,6 +169,7 @@ message RobotAddRequest {
   CellRef cell = 3;
   string alias = 4 [features.field_presence = IMPLICIT];
   bytes secret = 8;
+  google.protobuf.Timestamp date_attested = 31;
   google.protobuf.Timestamp date_created = 15;
 }
 
@@ -196,6 +197,7 @@ message RobotSelect {
   CellSelect cell = 3;
   bool alias = 4;
   bool secret = 8;
+  bool date_attested = 31;
   bool date_updated = 13;
   bool date_created = 15;
   bool date_erased = 14;
@@ -217,6 +219,12 @@ message RobotPatchRequest {
   bool cell_null = 7;
   string alias = 8;
   bytes secret = 16;
+  google.protobuf.Timestamp date_attested = 62;
+  // Clear date_attested instead of writing it.
+  // It takes a field of its own because an unset value already means
+  // "leave it alone", so no value could have meant NULL. It wins
+  // outright: setting both this and date_attested clears.
+  bool date_attested_null = 63;
   // The version this update requires the stored date_updated to be.
   // It is a precondition, not a write: the update applies only if the row
   // still holds this value, and the server stamps the new version itself.

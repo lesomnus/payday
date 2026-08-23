@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/auth"
@@ -1220,4 +1221,72 @@ func TestAnEdgeThatCanMoveIsAskedAgainWhenItDoes(t *testing.T) {
 	}.Build())
 	x.Equal(codes.NotFound, status.Code(err),
 		"an edge was moved onto a row in a tenant this caller cannot see")
+}
+
+// TestAStampIsNotAssertedByARequest.
+//
+// `05792f6` in an app on this framework closed the same class with
+// `immutable: true`, and found the word does not reach: `immutable` takes a
+// field out of the **patch** request and leaves it in `Add`, and a stamp wants
+// the other way round -- nobody asserts it when the row is created, and
+// something writes it when the thing it records actually happens.
+//
+// So `payday.field.stamped` says it, and the gate is where it lands. That is
+// exact rather than convenient: a stamp is not a permission and not a column
+// nobody may touch, it is a fact a **request** may not assert -- and the gate
+// is the layer that exists because there is a request at all.
+func TestAStampIsNotAssertedByARequest(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	as := frame.Into(ctx, frame.New(b.Holder, b.Tenant, frame.Whole()).WithScope(frame.Only(b.Tenant)))
+
+	_, err := b.Walled.Robot().Add(as, app.RobotAddRequest_builder{
+		Tenant:       app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:        "asserted",
+		DateAttested: timestamppb.Now(),
+	}.Build())
+	x.Equal(codes.InvalidArgument, status.Code(err),
+		"a request asserted the fact the column exists to record")
+	x.Contains(status.Convert(err).Message(), "date_attested")
+
+	t.Run("and the same write without it is fine", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := b.Walled.Robot().Add(as, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  "not-asserted",
+		}.Build())
+		x.NoError(err)
+	})
+
+	t.Run("and the deployment's own work still stamps it", func(t *testing.T) {
+		x := require.New(t)
+
+		// Through a server the gate is not on, which is what `init`, a seed and
+		// the call that attests a device all are. Nobody had to list them.
+		_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant:       app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:        "attested-by-the-deployment",
+			DateAttested: timestamppb.Now(),
+		}.Build())
+		x.NoError(err)
+	})
+
+	t.Run("and a patch is the road it is written by", func(t *testing.T) {
+		x := require.New(t)
+
+		v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  "attested-later",
+		}.Build())
+		x.NoError(err)
+
+		_, err = b.Walled.Robot().Patch(as, app.RobotPatchRequest_builder{
+			Ref:              app.RobotRef_builder{Id: v.GetId()}.Build(),
+			DateAttested:     timestamppb.Now(),
+			DateUpdatedForce: z.Ptr(true),
+		}.Build())
+		x.NoError(err, "the stamp cannot be written at all, which is not what stamped means")
+	})
 }

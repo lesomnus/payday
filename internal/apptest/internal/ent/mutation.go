@@ -5284,6 +5284,7 @@ type RobotMutation struct {
 	id            *uuid.UUID
 	alias         *string
 	secret        *[]byte
+	date_attested *time.Time
 	date_updated  *time.Time
 	date_created  *time.Time
 	date_erased   *time.Time
@@ -5486,6 +5487,55 @@ func (m *RobotMutation) SecretCleared() bool {
 func (m *RobotMutation) ResetSecret() {
 	m.secret = nil
 	delete(m.clearedFields, robot.FieldSecret)
+}
+
+// SetDateAttested sets the "date_attested" field.
+func (m *RobotMutation) SetDateAttested(t time.Time) {
+	m.date_attested = &t
+}
+
+// DateAttested returns the value of the "date_attested" field in the mutation.
+func (m *RobotMutation) DateAttested() (r time.Time, exists bool) {
+	v := m.date_attested
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDateAttested returns the old "date_attested" field's value of the Robot entity.
+// If the Robot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RobotMutation) OldDateAttested(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDateAttested is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDateAttested requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateAttested: %w", err)
+	}
+	return oldValue.DateAttested, nil
+}
+
+// ClearDateAttested clears the value of the "date_attested" field.
+func (m *RobotMutation) ClearDateAttested() {
+	m.date_attested = nil
+	m.clearedFields[robot.FieldDateAttested] = struct{}{}
+}
+
+// DateAttestedCleared returns if the "date_attested" field was cleared in this mutation.
+func (m *RobotMutation) DateAttestedCleared() bool {
+	_, ok := m.clearedFields[robot.FieldDateAttested]
+	return ok
+}
+
+// ResetDateAttested resets all changes to the "date_attested" field.
+func (m *RobotMutation) ResetDateAttested() {
+	m.date_attested = nil
+	delete(m.clearedFields, robot.FieldDateAttested)
 }
 
 // SetDateUpdated sets the "date_updated" field.
@@ -5871,12 +5921,15 @@ func (m *RobotMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RobotMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.alias != nil {
 		fields = append(fields, robot.FieldAlias)
 	}
 	if m.secret != nil {
 		fields = append(fields, robot.FieldSecret)
+	}
+	if m.date_attested != nil {
+		fields = append(fields, robot.FieldDateAttested)
 	}
 	if m.date_updated != nil {
 		fields = append(fields, robot.FieldDateUpdated)
@@ -5908,6 +5961,8 @@ func (m *RobotMutation) Field(name string) (ent.Value, bool) {
 		return m.Alias()
 	case robot.FieldSecret:
 		return m.Secret()
+	case robot.FieldDateAttested:
+		return m.DateAttested()
 	case robot.FieldDateUpdated:
 		return m.DateUpdated()
 	case robot.FieldDateCreated:
@@ -5933,6 +5988,8 @@ func (m *RobotMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldAlias(ctx)
 	case robot.FieldSecret:
 		return m.OldSecret(ctx)
+	case robot.FieldDateAttested:
+		return m.OldDateAttested(ctx)
 	case robot.FieldDateUpdated:
 		return m.OldDateUpdated(ctx)
 	case robot.FieldDateCreated:
@@ -5967,6 +6024,13 @@ func (m *RobotMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSecret(v)
+		return nil
+	case robot.FieldDateAttested:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDateAttested(v)
 		return nil
 	case robot.FieldDateUpdated:
 		v, ok := value.(time.Time)
@@ -6043,6 +6107,9 @@ func (m *RobotMutation) ClearedFields() []string {
 	if m.FieldCleared(robot.FieldSecret) {
 		fields = append(fields, robot.FieldSecret)
 	}
+	if m.FieldCleared(robot.FieldDateAttested) {
+		fields = append(fields, robot.FieldDateAttested)
+	}
 	if m.FieldCleared(robot.FieldDateCreated) {
 		fields = append(fields, robot.FieldDateCreated)
 	}
@@ -6072,6 +6139,9 @@ func (m *RobotMutation) ClearField(name string) error {
 	case robot.FieldSecret:
 		m.ClearSecret()
 		return nil
+	case robot.FieldDateAttested:
+		m.ClearDateAttested()
+		return nil
 	case robot.FieldDateCreated:
 		m.ClearDateCreated()
 		return nil
@@ -6097,6 +6167,9 @@ func (m *RobotMutation) ResetField(name string) error {
 		return nil
 	case robot.FieldSecret:
 		m.ResetSecret()
+		return nil
+	case robot.FieldDateAttested:
+		m.ResetDateAttested()
 		return nil
 	case robot.FieldDateUpdated:
 		m.ResetDateUpdated()

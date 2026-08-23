@@ -155,18 +155,19 @@ func (b0 Cell_builder) Build() *Cell {
 // Robot is an ordinary entity: it belongs to a tenant, and is read only by
 // callers who may see that tenant.
 type Robot struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Tenant      *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
-	xxx_hidden_Thing       *Thing                 `protobuf:"bytes,30,opt,name=thing"`
-	xxx_hidden_Cell        *Cell                  `protobuf:"bytes,3,opt,name=cell"`
-	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
-	xxx_hidden_Secret      []byte                 `protobuf:"bytes,8,opt,name=secret"`
-	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
-	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
-	xxx_hidden_DateErased  *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id           []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Tenant       *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Thing        *Thing                 `protobuf:"bytes,30,opt,name=thing"`
+	xxx_hidden_Cell         *Cell                  `protobuf:"bytes,3,opt,name=cell"`
+	xxx_hidden_Alias        string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Secret       []byte                 `protobuf:"bytes,8,opt,name=secret"`
+	xxx_hidden_DateAttested *timestamppb.Timestamp `protobuf:"bytes,31,opt,name=date_attested,json=dateAttested"`
+	xxx_hidden_DateUpdated  *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
+	xxx_hidden_DateCreated  *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_DateErased   *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Robot) Reset() {
@@ -236,6 +237,13 @@ func (x *Robot) GetSecret() []byte {
 	return nil
 }
 
+func (x *Robot) GetDateAttested() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateAttested
+	}
+	return nil
+}
+
 func (x *Robot) GetDateUpdated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateUpdated
@@ -287,6 +295,10 @@ func (x *Robot) SetSecret(v []byte) {
 	x.xxx_hidden_Secret = v
 }
 
+func (x *Robot) SetDateAttested(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateAttested = v
+}
+
 func (x *Robot) SetDateUpdated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateUpdated = v
 }
@@ -320,6 +332,13 @@ func (x *Robot) HasCell() bool {
 	return x.xxx_hidden_Cell != nil
 }
 
+func (x *Robot) HasDateAttested() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateAttested != nil
+}
+
 func (x *Robot) HasDateUpdated() bool {
 	if x == nil {
 		return false
@@ -351,6 +370,10 @@ func (x *Robot) ClearThing() {
 
 func (x *Robot) ClearCell() {
 	x.xxx_hidden_Cell = nil
+}
+
+func (x *Robot) ClearDateAttested() {
+	x.xxx_hidden_DateAttested = nil
 }
 
 func (x *Robot) ClearDateUpdated() {
@@ -403,6 +426,19 @@ type Robot_builder struct {
 	// not on SQLite. Which is what happened: adding this field broke sixty-six
 	// tests that only ran on the permissive one.
 	Secret []byte
+	// When this robot was last attested, and null for never.
+	//
+	// Declared `stamped:`, which is the option this entity exists to try. An
+	// attestation is a fact the deployment establishes -- something checked a
+	// device and said so -- and a request that asserts one at creation is
+	// asserting the thing the column is *for*. The generated `Add` refuses it;
+	// `Patch` is untouched, because that is the road the stamp is written by.
+	//
+	// The gate is where the refusal lands, and that is exact: a stamp is not a
+	// permission and not a column nobody may touch, it is a fact a **request**
+	// may not assert -- so an app's own work, through a server the gate is not
+	// on, writes it without anybody having listed those callers.
+	DateAttested *timestamppb.Timestamp
 	// Stamped on every write and refused to a patch document, so it is a version
 	// and not a field. It is here because this entity declares a `watch:`, and
 	// the generator refuses one without it: a watch sends state, so a client
@@ -426,6 +462,7 @@ func (b0 Robot_builder) Build() *Robot {
 	x.xxx_hidden_Cell = b.Cell
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_Secret = b.Secret
+	x.xxx_hidden_DateAttested = b.DateAttested
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_DateErased = b.DateErased
@@ -996,14 +1033,15 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
-	"\"\xd4\x04\n" +
+	"\"\xa3\x05\n" +
 	"\x05Robot\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12+\n" +
 	"\x05thing\x18\x1e \x01(\v2\r.shared.ThingB\x06\xf2\x82\x16\x028\x01R\x05thing\x12%\n" +
 	"\x04cell\x18\x03 \x01(\v2\t.app.CellB\x06\xf2\x82\x16\x028\x01R\x04cell\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12%\n" +
-	"\x06secret\x18\b \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\b\x01R\x06secret\x12F\n" +
+	"\x06secret\x18\b \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\b\x01R\x06secret\x12M\n" +
+	"\rdate_attested\x18\x1f \x01(\v2\x1a.google.protobuf.TimestampB\f\xea\x82\x16\x028\x01\xaa\xc1\x16\x02\x10\x01R\fdateAttested\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
@@ -1075,22 +1113,23 @@ var file_app_robot_proto_depIdxs = []int32{
 	6,  // 2: app.Robot.tenant:type_name -> app.Tenant
 	8,  // 3: app.Robot.thing:type_name -> shared.Thing
 	0,  // 4: app.Robot.cell:type_name -> app.Cell
-	7,  // 5: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
-	7,  // 6: app.Robot.date_created:type_name -> google.protobuf.Timestamp
-	7,  // 7: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
-	1,  // 8: app.Pairing.lead:type_name -> app.Robot
-	1,  // 9: app.Pairing.follow:type_name -> app.Robot
-	7,  // 10: app.Pairing.date_created:type_name -> google.protobuf.Timestamp
-	1,  // 11: app.Joint.robot:type_name -> app.Robot
-	7,  // 12: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
-	7,  // 13: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
-	1,  // 14: app.Reading.robot:type_name -> app.Robot
-	7,  // 15: app.Reading.date_created:type_name -> google.protobuf.Timestamp
-	16, // [16:16] is the sub-list for method output_type
-	16, // [16:16] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	7,  // 5: app.Robot.date_attested:type_name -> google.protobuf.Timestamp
+	7,  // 6: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
+	7,  // 7: app.Robot.date_created:type_name -> google.protobuf.Timestamp
+	7,  // 8: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 9: app.Pairing.lead:type_name -> app.Robot
+	1,  // 10: app.Pairing.follow:type_name -> app.Robot
+	7,  // 11: app.Pairing.date_created:type_name -> google.protobuf.Timestamp
+	1,  // 12: app.Joint.robot:type_name -> app.Robot
+	7,  // 13: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
+	7,  // 14: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 15: app.Reading.robot:type_name -> app.Robot
+	7,  // 16: app.Reading.date_created:type_name -> google.protobuf.Timestamp
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_proto_init() }

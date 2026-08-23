@@ -2747,6 +2747,10 @@ func (s Gate) Robot() apptest.RobotServiceServer {
 // that a row exists is itself something a caller who may not see it
 // should not be told.
 func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+	if req.HasDateAttested() {
+		return nil, pderr.Invalidf("date_attested", "is established by this deployment and not asserted by a request")
+	}
+
 	if ref := req.GetTenant(); ref != nil {
 		if _, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
 			Ref: ref,

@@ -515,10 +515,11 @@ func (*entity_Global_) isEntity_Tenancy() {}
 // the app that happens to hold the field rather than beside the field. The next
 // app storing a verifier rediscovers the whole argument.
 type Field struct {
-	state             protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Secret bool                   `protobuf:"varint,1,opt,name=secret"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Secret  bool                   `protobuf:"varint,1,opt,name=secret"`
+	xxx_hidden_Stamped bool                   `protobuf:"varint,2,opt,name=stamped"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Field) Reset() {
@@ -553,8 +554,19 @@ func (x *Field) GetSecret() bool {
 	return false
 }
 
+func (x *Field) GetStamped() bool {
+	if x != nil {
+		return x.xxx_hidden_Stamped
+	}
+	return false
+}
+
 func (x *Field) SetSecret(v bool) {
 	x.xxx_hidden_Secret = v
+}
+
+func (x *Field) SetStamped(v bool) {
+	x.xxx_hidden_Stamped = v
 }
 
 type Field_builder struct {
@@ -601,6 +613,46 @@ type Field_builder struct {
 	// wire and not the database, and an app that wants a secret never loaded into
 	// a query it did not mean to write still has to write the query.
 	Secret bool
+	// Stamped marks a field a caller may not set when the row is created.
+	//
+	// # The gap it fills, which took two apps to notice
+	//
+	// A stamp is a fact the deployment establishes and not one a request asserts:
+	// when an address was checked, when a device was attested, when a review was
+	// signed off. The ORM has `immutable`, which takes a field out of the
+	// **patch** request and leaves it in `Add` -- exactly the wrong way round for
+	// this, because what a stamp wants is the opposite: nobody asserts it when
+	// the row is created, and something writes it when the thing it records
+	// actually happens.
+	//
+	// Without a word for that, an app is left refusing the field in a layer of
+	// its own. That works and it is invisible: it is a line in a stack rather
+	// than a property of the message, so the next app writes the same field and
+	// does not know to write the same refusal.
+	//
+	// # What it does
+	//
+	// The generated `Add` refuses a request that sets it, with `InvalidArgument`
+	// naming the field. `Patch` is untouched, because that is the road the stamp
+	// is written by -- a deployment's own call, through a server it holds, on the
+	// day the thing happened.
+	//
+	// # Why a refusal and not a removal
+	//
+	// The field could be taken out of `AddRequest` entirely, and that would be
+	// the stronger shape -- `05792f6`'s *the test asserts there is no field to
+	// try*. It is not available here: the request messages come from the ORM's
+	// generators, upstream of anything payday says, and `payday.field` is read
+	// after they are written. Refusing is what is reachable, and it is refused in
+	// the **generated** server rather than in an app's layer, which is the half
+	// that makes it a property of the schema again.
+	//
+	// # And what it deliberately does not decide
+	//
+	// Who may write it afterwards. That is a permission, and permissions are an
+	// app's: a stamp being server-set says the request cannot assert it, and says
+	// nothing about which of the deployment's own calls is allowed to.
+	Stamped bool
 }
 
 func (b0 Field_builder) Build() *Field {
@@ -608,6 +660,7 @@ func (b0 Field_builder) Build() *Field {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Secret = b.Secret
+	x.xxx_hidden_Stamped = b.Stamped
 	return m0
 }
 
@@ -957,8 +1010,13 @@ type Entity_Erase_builder struct {
 	//
 	// It is a real answer and not a mistake to allow: a table of readings, of
 	// events, of anything that arrives faster than anybody reads it, cannot be
-	// one nothing may ever be removed from -- and payday has no retention story
-	// to offer instead.
+	// one nothing may ever be removed from.
+	//
+	// The second half of that sentence used to be *and payday has no retention
+	// story to offer instead*. It has one now -- `trail`, named through
+	// `config.AuditConfig` -- and it is deliberately only about `Audit`: the
+	// trail is payday's own table, and what to do with an app's table of
+	// readings is the app's, which is what `hard:` is for.
 	//
 	// What it costs is what the trail then cannot say. `Audit.value` is read
 	// off the row **after** the write, so for a row that is gone there is
@@ -1387,9 +1445,10 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05Order\x12\x1e\n" +
 	"\x05field\x18\x01 \x01(\v2\b.orm.RefR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
-	"\atenancy\"\x1f\n" +
+	"\atenancy\"9\n" +
 	"\x05Field\x12\x16\n" +
-	"\x06secret\x18\x01 \x01(\bR\x06secret*Y\n" +
+	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
+	"\astamped\x18\x02 \x01(\bR\astamped*Y\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

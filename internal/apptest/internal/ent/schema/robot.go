@@ -59,6 +59,9 @@ func (Robot) Fields() []ent.Field {
 		field.String("alias"),
 		field.Bytes("secret").
 			Optional(),
+		field.Time("date_attested").
+			Nillable().
+			Optional(),
 		field.Time("date_updated"),
 		field.Time("date_created").
 			Immutable().

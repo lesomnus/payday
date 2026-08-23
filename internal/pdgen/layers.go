@@ -258,18 +258,25 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 		// out, and an entity that is not behind the wall has nothing to check.
 		// An entity that names its tenant with a column (`field:`) is refused a
 		// hand-written row by the audit layer.
-		if v.IsTenant || v.IsGlobal || len(v.Via) == 0 || v.Own == pdpb.Own_OWN_HOLDER {
-			continue
-		}
+		walled := !v.IsTenant && !v.IsGlobal && len(v.Via) > 0 && v.Own != pdpb.Own_OWN_HOLDER
 
-		hop := v.Via[0]
-		e, ok := edge(v.Entity, hop)
-		if !ok {
-			continue
-		}
+		var (
+			hop string
+			to  *Entity
+		)
+		if walled {
+			hop = v.Via[0]
 
-		to, ok := s.of(e.Target().FullName())
-		if !ok {
+			e, ok := edge(v.Entity, hop)
+			if !ok {
+				walled = false
+			} else if to, ok = s.of(e.Target().FullName()); !ok {
+				walled = false
+			}
+		}
+		if !walled && len(v.Stamped) == 0 {
+			// Nothing to say about this entity at all: it is not behind the
+			// wall, and it declares no stamp a request must not assert.
 			continue
 		}
 
@@ -284,26 +291,38 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 		g.P("}")
 		g.P("")
 
-		g.P("// Add refuses a ", name, " put into a ", to.GoName(), " this caller cannot see.")
-		g.P("//")
-		g.P("// The wall is a predicate and an Add has no query, so without this the")
-		g.P("// identifier in `", hop, "` becomes a foreign key with nothing consulted.")
-		g.P("// The row is then invisible to whoever planted it and visible to whoever")
-		g.P("// holds that ", to.GoName(), ", which is the shape of the bug rather than a")
-		g.P("// mitigation of it.")
-		g.P("//")
-		g.P("// NotFound rather than a refusal, for the reason on `gateHolder.Add`:")
-		g.P("// that a row exists is itself something a caller who may not see it")
-		g.P("// should not be told.")
+		if walled {
+			g.P("// Add refuses a ", name, " put into a ", to.GoName(), " this caller cannot see.")
+			g.P("//")
+			g.P("// The wall is a predicate and an Add has no query, so without this the")
+			g.P("// identifier in `", hop, "` becomes a foreign key with nothing consulted.")
+			g.P("// The row is then invisible to whoever planted it and visible to whoever")
+			g.P("// holds that ", to.GoName(), ", which is the shape of the bug rather than a")
+			g.P("// mitigation of it.")
+			g.P("//")
+			g.P("// NotFound rather than a refusal, for the reason on `gateHolder.Add`:")
+			g.P("// that a row exists is itself something a caller who may not see it")
+			g.P("// should not be told.")
+		} else {
+			g.P("// Add refuses a ", name, " whose request asserts a stamp.")
+		}
 		g.P("func (s gate", name, ") Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"AddRequest"),
 			") (*", root.Ident(name), ", error) {")
-		seen(g, root, hop, to)
+
+		// The stamps first, because they are a fact about the **request** and
+		// cost no read: a request that asserts one is malformed whether or not
+		// the rows it names are visible.
+		stamps(g, v)
+
+		if walled {
+			seen(g, root, hop, to)
+		}
 
 		// And the second axis, when the app declared one. It is an isolation
 		// boundary the same way the tenant is -- payday says so by reading
 		// field 3 as one -- so an Add into a set the caller cannot see is the
 		// same bug one level down.
-		if v.Set != "" && s.Set != nil {
+		if walled && v.Set != "" && s.Set != nil {
 			seen(g, root, v.Set, s.Set)
 		}
 
@@ -314,6 +333,10 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 		// In declaration order, so that the generated file is stable, and
 		// skipping the two above rather than emitting them twice.
 		for e := range v.Edges() {
+			if !walled {
+				break
+			}
+
 			at := e.Name()
 			if at == hop || at == v.Set {
 				continue
@@ -404,6 +427,29 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 	g.P("	return s.", name, "ServiceServer.Patch(ctx, req)")
 	g.P("}")
 	g.P("")
+}
+
+// stamps writes the refusal of a request that asserts what the deployment
+// establishes.
+//
+// It is here, in the gate, and that is the whole of what makes it right. A
+// stamp is not a permission and not a column a caller may never touch: it is a
+// fact somebody's **request** may not assert, and the gate is the layer that
+// exists because there is a request at all. An app's own work goes through a
+// server the gate is not on -- `init`, a seed, the call that writes the stamp
+// on the day the thing happened -- and is untouched, without anybody having to
+// list those callers.
+//
+// `Patch` is left alone for the same reason: that is the road the stamp is
+// written by.
+func stamps(g *protogen.GeneratedFile, v *Entity) {
+	for _, at := range v.Stamped {
+		g.P("	if req.Has", pascal(at), "() {")
+		g.P("		return nil, ", pkgPderr.Ident("Invalidf"), "(", strconv.Quote(at), ", ",
+			strconv.Quote("is established by this deployment and not asserted by a request"), ")")
+		g.P("	}")
+		g.P("")
+	}
 }
 
 // seen writes the read that asks whether the caller may see what an edge names.

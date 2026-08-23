@@ -291,6 +291,43 @@ without one will not compile — which is the reminder.
 `buf.build/payday/payday` needs a version of it that has this. Until then the
 compile says `unknown extension payday.field`.
 
+## A field can say a request may not assert it
+
+**Applies if** you have a stamp — when something was verified, attested,
+approved — that the deployment establishes rather than a caller.
+
+`(payday.field).stamped` refuses it in the generated `Add`:
+
+```proto
+google.protobuf.Timestamp date_verified = 9 [
+  (orm.field) = {nullable: true},
+  (payday.field) = {stamped: true}
+];
+```
+
+```
+InvalidArgument: date_verified: is established by this deployment and not
+asserted by a request
+```
+
+**`immutable:` is not this, and reaching for it is the mistake this exists to
+end.** `orm.field.immutable` takes a field out of the **patch** request and
+leaves it in `Add`, which is right for a tenancy stamp — set once, never moved —
+and exactly backwards for this: nobody asserts a verification when the row is
+created, and something writes it on the day the verification happens.
+
+The refusal lands in the **gate**, which is exact rather than convenient: a
+stamp is not a permission and not a column nobody may touch, it is a fact a
+*request* may not assert. So an app's own work through a server without the gate
+— `init`, a seed, the call that does the verifying — writes it without anybody
+having listed those callers. `Patch` is untouched, because that is the road the
+stamp is written by.
+
+Two apps found this the hard way before the option existed, each closing it in a
+layer of its own. A layer works and it is invisible: it is a line in a stack
+rather than a property of the message, so the next app declares the same field
+and does not know to write the same refusal.
+
 ## A field that lies about presence is refused
 
 **Applies if** your schema has a message field with no `nullable`, no `default`

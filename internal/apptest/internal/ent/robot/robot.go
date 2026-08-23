@@ -16,6 +16,8 @@ const (
 	FieldAlias = "alias"
 	// FieldSecret holds the string denoting the secret field in the database.
 	FieldSecret = "secret"
+	// FieldDateAttested holds the string denoting the date_attested field in the database.
+	FieldDateAttested = "date_attested"
 	// FieldDateUpdated holds the string denoting the date_updated field in the database.
 	FieldDateUpdated = "date_updated"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
@@ -64,6 +66,7 @@ var Columns = []string{
 	FieldID,
 	FieldAlias,
 	FieldSecret,
+	FieldDateAttested,
 	FieldDateUpdated,
 	FieldDateCreated,
 	FieldDateErased,
@@ -93,6 +96,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByAlias orders the results by the alias field.
 func ByAlias(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAlias, opts...).ToFunc()
+}
+
+// ByDateAttested orders the results by the date_attested field.
+func ByDateAttested(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateAttested, opts...).ToFunc()
 }
 
 // ByDateUpdated orders the results by the date_updated field.

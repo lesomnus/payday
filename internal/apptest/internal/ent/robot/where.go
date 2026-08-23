@@ -66,6 +66,11 @@ func Secret(v []byte) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldSecret, v))
 }
 
+// DateAttested applies equality check predicate on the "date_attested" field. It's identical to DateAttestedEQ.
+func DateAttested(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldDateAttested, v))
+}
+
 // DateUpdated applies equality check predicate on the "date_updated" field. It's identical to DateUpdatedEQ.
 func DateUpdated(v time.Time) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldDateUpdated, v))
@@ -209,6 +214,56 @@ func SecretIsNil() predicate.Robot {
 // SecretNotNil applies the NotNil predicate on the "secret" field.
 func SecretNotNil() predicate.Robot {
 	return predicate.Robot(sql.FieldNotNull(FieldSecret))
+}
+
+// DateAttestedEQ applies the EQ predicate on the "date_attested" field.
+func DateAttestedEQ(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldDateAttested, v))
+}
+
+// DateAttestedNEQ applies the NEQ predicate on the "date_attested" field.
+func DateAttestedNEQ(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldDateAttested, v))
+}
+
+// DateAttestedIn applies the In predicate on the "date_attested" field.
+func DateAttestedIn(vs ...time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldDateAttested, vs...))
+}
+
+// DateAttestedNotIn applies the NotIn predicate on the "date_attested" field.
+func DateAttestedNotIn(vs ...time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldDateAttested, vs...))
+}
+
+// DateAttestedGT applies the GT predicate on the "date_attested" field.
+func DateAttestedGT(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldGT(FieldDateAttested, v))
+}
+
+// DateAttestedGTE applies the GTE predicate on the "date_attested" field.
+func DateAttestedGTE(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldGTE(FieldDateAttested, v))
+}
+
+// DateAttestedLT applies the LT predicate on the "date_attested" field.
+func DateAttestedLT(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldLT(FieldDateAttested, v))
+}
+
+// DateAttestedLTE applies the LTE predicate on the "date_attested" field.
+func DateAttestedLTE(v time.Time) predicate.Robot {
+	return predicate.Robot(sql.FieldLTE(FieldDateAttested, v))
+}
+
+// DateAttestedIsNil applies the IsNil predicate on the "date_attested" field.
+func DateAttestedIsNil() predicate.Robot {
+	return predicate.Robot(sql.FieldIsNull(FieldDateAttested))
+}
+
+// DateAttestedNotNil applies the NotNil predicate on the "date_attested" field.
+func DateAttestedNotNil() predicate.Robot {
+	return predicate.Robot(sql.FieldNotNull(FieldDateAttested))
 }
 
 // DateUpdatedEQ applies the EQ predicate on the "date_updated" field.
