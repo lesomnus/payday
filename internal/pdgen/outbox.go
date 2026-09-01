@@ -209,7 +209,7 @@ func emitDrain(g *protogen.GeneratedFile, p Paths) {
 	g.P("		return 0, nil")
 	g.P("	}")
 	g.P("")
-	g.P("	ks := make([]", pkgUuid2.Ident("Uuid"), ", len(vs))")
+	g.P("	ks := make([]", pkgUuid2.Ident("UUID"), ", len(vs))")
 	g.P("	for i, v := range vs {")
 	g.P("		ks[i] = v.Id")
 	g.P("		d.b.Publish(ctx, ", pkgWatch.Ident("Event"), "{")

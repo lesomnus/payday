@@ -297,7 +297,7 @@ func EmitWatchRecorder(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("// keyBytes is a key as the sixteen bytes an identifier is.")
 	g.P("func keyBytes(v any) []byte {")
 	g.P("	switch u := v.(type) {")
-	g.P("	case ", pkgUuid2.Ident("Uuid"), ":")
+	g.P("	case ", pkgUuid2.Ident("UUID"), ":")
 	g.P("		return u[:]")
 	g.P("	case [16]byte:")
 	g.P("		return u[:]")

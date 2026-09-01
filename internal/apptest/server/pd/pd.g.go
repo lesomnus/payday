@@ -5089,7 +5089,7 @@ func (r watchRecorder) Record(ctx context.Context, _ bare.Server, c bare.Change)
 // keyBytes is a key as the sixteen bytes an identifier is.
 func keyBytes(v any) []byte {
 	switch u := v.(type) {
-	case uuid.Uuid:
+	case uuid.UUID:
 		return u[:]
 	case [16]byte:
 		return u[:]
@@ -5253,7 +5253,7 @@ func (d drain) once(ctx context.Context) (int, error) {
 		return 0, nil
 	}
 
-	ks := make([]uuid.Uuid, len(vs))
+	ks := make([]uuid.UUID, len(vs))
 	for i, v := range vs {
 		ks[i] = v.Id
 		d.b.Publish(ctx, watch.Event{
