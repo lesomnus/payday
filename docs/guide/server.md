@@ -231,6 +231,33 @@ Which is why authorization is not what this is for — it would be asked again
 about reads no client made. A timer, a counter and a log line are, and so is
 anything that wants the second column on purpose.
 
+The one payday's own test app wires is a log line, and it is written out in
+[`internal/apptest/cmd/slow.go`](../../internal/apptest/cmd/slow.go):
+
+```go
+func Slow(d time.Duration) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, next grpc.UnaryHandler) (any, error) {
+		at := time.Now()
+		v, err := next(ctx, req)
+
+		if took := time.Since(at); took >= d {
+			log.From(ctx).WarnContext(ctx, "slow",
+				slog.String("rpc.method", info.FullMethod),
+				slog.Duration("elapsed", took),
+			)
+		}
+
+		return v, err
+	}
+}
+```
+
+Nothing in it knows it is not on the wire; the same function could go to
+`grpcx.Chain` unchanged. What it gets by being here instead is the second
+column: on the wire one `Add` takes 40ms and the answer to what was slow is
+`Add`, while beneath the gate the tenant read and the write it guards are two
+lines with their own method names.
+
 ## 4. The interceptors
 
 The chain is built in `cmd/serve.go` and the order is readable there:

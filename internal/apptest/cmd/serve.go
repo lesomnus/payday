@@ -174,7 +174,18 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// `bare.Change.Method`, which carries the RPC gRPC dispatched for the whole
 	// request rather than the leg being written. So the trail answers "who
 	// moved this robot" with `Move` and not with the `Patch` it turned into.
-	stacked, err := app.Build(walled.WithWatch(w), core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())
+	//
+	// `pd.InterceptBuild` sits directly beneath the gate, which is where a
+	// diagnostic wants to be: the gate reads a tenant through the wall before
+	// it admits an `Add`, so from here that read and the write it guards are
+	// two calls with their own names rather than one `Add` on the wire. See
+	// [Slow].
+	stacked, err := app.Build(walled.WithWatch(w),
+		core.Build(),
+		pd.AuditBuild(),
+		pd.SecretBuild(),
+		pd.InterceptBuild([]grpc.UnaryServerInterceptor{Slow(slowCall)}, nil),
+		pd.GateBuild())
 	if err != nil {
 		db.Close()
 		return nil, err
