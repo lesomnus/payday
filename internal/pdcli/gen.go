@@ -610,10 +610,13 @@ func unsuffix(name string) string { return strings.Replace(name, "_svc.g", "_svc
 // reads those. It runs in the app's directory because that is where the module
 // ent is generating into begins.
 func (g Gen) entRuntime(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, "go", "tool", "ent", "generate", "./"+DirEnt+"/schema",
+	// The flags come first: ent's command line refuses one that follows an
+	// argument.
+	cmd := exec.CommandContext(ctx, "go", "tool", "ent", "generate",
 		"--target", "./"+DirEnt,
 		"--feature", "sql/modifier",
-		"--feature", "sql/versioned-migration")
+		"--feature", "sql/versioned-migration",
+		"./"+DirEnt+"/schema")
 	cmd.Dir = g.Out
 
 	var stderr bytes.Buffer
