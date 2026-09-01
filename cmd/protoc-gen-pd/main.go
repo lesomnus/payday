@@ -201,6 +201,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitGate(out, s, paths, root)
 	pdgen.EmitAudit(out, s, paths, root)
 	pdgen.EmitSecret(out, s, paths, root)
+	pdgen.EmitIntercept(out, s, paths, root, p.Files)
 	pdgen.EmitWatchRecorder(out, s, paths)
 	pdgen.EmitOutbox(out, s, paths)
 	pdgen.EmitTrail(out, s, paths, root)

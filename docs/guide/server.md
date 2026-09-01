@@ -192,6 +192,45 @@ Do not edit the generated `Gate`. It holds payday's own rule — the wall, and t
 rules about Tenant and Holder — and it is rewritten on every `pd gen`. Your
 authorization goes in front of it or into the `gate.Policy` you inject.
 
+### An interceptor between two layers
+
+A layer written by hand is a method per RPC of every entity, and the one
+nobody wrote is the one that does not run. When what you have is the same for
+every RPC — a timer, a counter, a log line — `pd.InterceptBuild` is that layer
+generated:
+
+```go
+stacked, err := app.Build(walled.WithWatch(w),
+	core.Build(),
+	pd.AuditBuild(),
+	pd.InterceptBuild([]grpc.UnaryServerInterceptor{mine}, nil),
+	pd.GateBuild())
+```
+
+They are `grpc.UnaryServerInterceptor` and `grpc.StreamServerInterceptor` —
+the same values `grpc.NewServer` takes, so one written for the wire runs here
+without being written twice. `FullMethod` is the same constant, and
+`info.Server` is the next server rather than the one gRPC registered, because
+that is what the call is being made on. Give it nothing and it builds nothing:
+the stack is what it would have been.
+
+**What it sees is every call that crosses that seam**, and that is not the same
+as every call that arrived on the wire. Layers call each other: the gate reads
+a tenant through the wall before it admits an `Add`, and the recorder reads
+back the row it just wrote. Stacked beneath either, this sees those reads too,
+under the method name of the read rather than of the call that provoked it.
+
+So where it goes is the decision:
+
+| | what it sees |
+| --- | --- |
+| in front of `GateBuild()` | what the caller asked for |
+| behind it | that, and what the app did about it |
+
+Which is why authorization is not what this is for — it would be asked again
+about reads no client made. A timer, a counter and a log line are, and so is
+anything that wants the second column on purpose.
+
 ## 4. The interceptors
 
 The chain is built in `cmd/serve.go` and the order is readable there:
