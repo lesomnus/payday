@@ -236,7 +236,7 @@ func SealGetKey(ctx context.Context, db *ent.Client, ref *apptest.SealRef) (uuid
 		return z, err
 	}
 
-	v, err := db.Seal.Query().Where(p).OnlyID(ctx)
+	v, err := db.Seal.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Seal not found")
@@ -386,7 +386,7 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Seal.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Seal.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.SealEraseResponse{}, nil

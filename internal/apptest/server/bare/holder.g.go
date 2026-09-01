@@ -279,7 +279,7 @@ func HolderGetKey(ctx context.Context, db *ent.Client, ref *apptest.HolderRef) (
 		return z, err
 	}
 
-	v, err := db.Holder.Query().Where(p).OnlyID(ctx)
+	v, err := db.Holder.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Holder not found")
@@ -432,7 +432,7 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Holder.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Holder.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.HolderEraseResponse{}, nil

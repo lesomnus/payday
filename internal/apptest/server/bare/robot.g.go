@@ -251,7 +251,7 @@ func CellGetKey(ctx context.Context, db *ent.Client, ref *apptest.CellRef) (uuid
 		return z, err
 	}
 
-	v, err := db.Cell.Query().Where(p).OnlyID(ctx)
+	v, err := db.Cell.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Cell not found")
@@ -401,7 +401,7 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Cell.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Cell.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.CellEraseResponse{}, nil
@@ -768,7 +768,7 @@ func RobotGetKey(ctx context.Context, db *ent.Client, ref *apptest.RobotRef) (uu
 		return z, err
 	}
 
-	v, err := db.Robot.Query().Where(p).OnlyID(ctx)
+	v, err := db.Robot.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Robot not found")
@@ -921,7 +921,7 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Robot.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Robot.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.RobotEraseResponse{}, nil
@@ -1236,7 +1236,7 @@ func PairingGetKey(ctx context.Context, db *ent.Client, ref *apptest.PairingRef)
 		return z, err
 	}
 
-	v, err := db.Pairing.Query().Where(p).OnlyID(ctx)
+	v, err := db.Pairing.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Pairing not found")
@@ -1386,7 +1386,7 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Pairing.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Pairing.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.PairingEraseResponse{}, nil
@@ -1660,7 +1660,7 @@ func JointGetKey(ctx context.Context, db *ent.Client, ref *apptest.JointRef) (uu
 		return z, err
 	}
 
-	v, err := db.Joint.Query().Where(p).OnlyID(ctx)
+	v, err := db.Joint.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Joint not found")
@@ -1810,7 +1810,7 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Joint.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Joint.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.JointEraseResponse{}, nil
@@ -2082,7 +2082,7 @@ func FleetGetKey(ctx context.Context, db *ent.Client, ref *apptest.FleetRef) (uu
 		return z, err
 	}
 
-	v, err := db.Fleet.Query().Where(p).OnlyID(ctx)
+	v, err := db.Fleet.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Fleet not found")
@@ -2232,7 +2232,7 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Fleet.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Fleet.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.FleetEraseResponse{}, nil
@@ -2535,7 +2535,7 @@ func ReadingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ReadingRef)
 		return z, err
 	}
 
-	v, err := db.Reading.Query().Where(p).OnlyID(ctx)
+	v, err := db.Reading.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Reading not found")
@@ -2685,7 +2685,7 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Reading.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Reading.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.ReadingEraseResponse{}, nil

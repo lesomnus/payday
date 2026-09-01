@@ -243,7 +243,7 @@ func TenantGetKey(ctx context.Context, db *ent.Client, ref *apptest.TenantRef) (
 		return z, err
 	}
 
-	v, err := db.Tenant.Query().Where(p).OnlyID(ctx)
+	v, err := db.Tenant.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Tenant not found")
@@ -396,7 +396,7 @@ func (s TenantServiceServer) Erase(ctx context.Context, req *apptest.TenantRef) 
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Tenant.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Tenant.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.TenantEraseResponse{}, nil

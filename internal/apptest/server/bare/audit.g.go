@@ -287,7 +287,7 @@ func AuditGetKey(ctx context.Context, db *ent.Client, ref *apptest.AuditRef) (uu
 		return z, err
 	}
 
-	v, err := db.Audit.Query().Where(p).OnlyID(ctx)
+	v, err := db.Audit.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Audit not found")
@@ -437,7 +437,7 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Audit.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Audit.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.AuditEraseResponse{}, nil

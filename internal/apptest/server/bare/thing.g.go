@@ -232,7 +232,7 @@ func ThingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ThingRef) (uu
 		return z, err
 	}
 
-	v, err := db.Thing.Query().Where(p).OnlyID(ctx)
+	v, err := db.Thing.Query().Where(p).OnlyId(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return z, status.Error(codes.NotFound, "Thing not found")
@@ -382,7 +382,7 @@ func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*
 
 	var k any
 	if s.Rec != nil {
-		v, err := st.Db.Thing.Query().Where(p).OnlyID(ctx)
+		v, err := st.Db.Thing.Query().Where(p).OnlyId(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.ThingEraseResponse{}, nil
