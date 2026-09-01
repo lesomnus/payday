@@ -242,6 +242,48 @@ func (c *Client) Close() error {
 	return c.driver.Close()
 }
 
+// Dialect is the name of the SQL this client speaks.
+//
+// Code that writes SQL of its own has to know which SQL it may write, and the
+// connection is what settles that. Asking the client keeps the answer from
+// being a second claim that can disagree with the one made when it was opened.
+func (c *Client) Dialect() string {
+	return c.driver.Dialect()
+}
+
+// Driver is what this client runs its queries through.
+//
+// It is what a transaction is begun on when several clients are to share one,
+// and what is handed back to [Client.WithDriver] afterwards.
+func (c *Client) Driver() dialect.Driver {
+	return c.driver
+}
+
+// WithDriver returns a client that runs through drv and is this one in every
+// other way.
+//
+// The hooks, the interceptors and the debug setting come along, which is the
+// point: a fresh client built from the driver reaches the same database and
+// quietly drops all three. It is what [Client.Tx] does to bind a client to a
+// transaction, spelled for a driver that came from elsewhere.
+func (c *Client) WithDriver(drv dialect.Driver) *Client {
+	cfg := c.config
+	cfg.driver = drv
+	client := &Client{config: cfg}
+	client.init()
+	return client
+}
+
+// InTx reports whether this client is already bound to a transaction of ent's
+// own, which is the one [Client.Tx] refuses to nest.
+//
+// It is the question Tx asks itself, so a caller can ask it first rather than
+// starting a transaction to find out.
+func (c *Client) InTx() bool {
+	_, ok := c.driver.(*txDriver)
+	return ok
+}
+
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
