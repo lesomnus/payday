@@ -3,6 +3,31 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## Every table is named after its entity, and none of them is pluralized
+
+**Applies if** you have a database. It is a rename of every table an app has.
+
+payday builds on a fork of ent, and the fork stopped putting entity names
+through an English inflector to decide what to call a table. `User` was `users`
+and is `user`; `Person` was `people` and is `person`; `Category` was
+`categories` and is `category`. The name is the `snake_case` of the entity now,
+so it can be worked out from the schema rather than looked up.
+
+Join tables of a plain many-to-many edge are unchanged -- they are named after
+the edge, not the type -- and so are index names, which were already built from
+the singular. Foreign key constraint symbols carry two table names and so move
+with them: `cards_users_card` is `card_user_card`.
+
+**What to change.** Nothing in your schema or your Go code: the generated
+constants follow, and `pd gen` writes them. The database is the work. `pd gen`
+plans the rename like any other schema change, and `migrate.Check` refuses to
+serve a database that does not match, so a deployment that has not run it will
+say so rather than read an empty table.
+
+Anything that names a table itself has to move by hand: raw SQL in your code,
+a view, a trigger, a dashboard query, an entry in this file. A query written
+against `roles` wants `role` now.
+
 ## A message-typed field is stored as protojson, and was storing nothing
 
 **Applies if** an entity of yours has a field whose type is a message you
@@ -181,7 +206,7 @@ answers on equality first.
 **What to check.** One query, against wherever you keep them:
 
 ```sql
-SELECT * FROM roles WHERE EXISTS (
+SELECT * FROM role WHERE EXISTS (
   SELECT 1 FROM json_each(methods) WHERE json_each.value LIKE '%*%'
 );
 ```
