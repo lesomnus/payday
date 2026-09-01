@@ -630,7 +630,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		ActorId:       v.Actor.Bytes(),")
 	// The three columns payday computes that are NOT NULL; see [emitNotNull]
 	// for why they are normalized here rather than where each is produced.
-	g.P("		TraceID:       notNull(v.Trace),")
+	g.P("		TraceId:       notNull(v.Trace),")
 	g.P("		Action:        v.Action,")
 	g.P("		ObjectId:      v.Object.Bytes(),")
 	// The kind, as a column, because a byte inside a `uuid` answers *what was

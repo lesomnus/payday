@@ -2928,7 +2928,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		TenantId:            tenant[:],
 		ActorTenantId:       v.Tenant.Bytes(),
 		ActorId:             v.Actor.Bytes(),
-		TraceID:             notNull(v.Trace),
+		TraceId:             notNull(v.Trace),
 		Action:              v.Action,
 		ObjectId:            v.Object.Bytes(),
 		Domain:              &domain,
