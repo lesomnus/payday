@@ -186,5 +186,5 @@ to the caller.
 ## See also
 
 - [guide/permissions.md](guide/permissions.md) — how to use all of this
-- [SCHEMA.md](SCHEMA.md) — how a path is declared
-- [RUNTIME.md](RUNTIME.md) — where each half is enforced
+- [schema.md](schema.md) — how a path is declared
+- [runtime.md](runtime.md) — where each half is enforced

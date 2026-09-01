@@ -223,4 +223,4 @@ mentions the other. The process catches it instead, and loudly.
 | --- | --- |
 | [schema.md](schema.md) | declaring an entity, and everything else generation refuses |
 | [commands.md](commands.md) | `pdcmd.NewIn`, and a command tree per connection |
-| [SCHEMA.md](../SCHEMA.md) | the generation contract: what payday owns, overlays, identifiers |
+| [schema.md](../schema.md) | the generation contract: what payday owns, overlays, identifiers |

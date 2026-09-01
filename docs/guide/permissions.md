@@ -45,7 +45,7 @@ Silence means the walled answer because the two ways of being wrong are not
 alike: a wall assumed where there is none empties the screen and somebody says
 so within minutes, while a wall missing where there should be one breaks nothing
 and is first noticed by a caller reading another tenant's data. The whole of
-that argument is [TENANCY.md §2](../TENANCY.md#2-the-default-is-the-loud-one).
+that argument is [tenancy.md §2](../tenancy.md#2-the-default-is-the-loud-one).
 What it costs you here is one line: entities outside the wall all say
 `global: {}`, and grepping for it finds every one of them.
 
@@ -488,7 +488,7 @@ who they are. Only the transports keep the `payday.` name, because a transport
 describes no domain and has nothing per app in it to rename. What the rewrite
 covers, which names survive it, and what two apps sharing a proto package are
 claiming about their schemas, is
-[the generation contract](../SCHEMA.md#3-whose-names-these-are).
+[the generation contract](../schema.md#3-whose-names-these-are).
 
 ---
 
@@ -569,6 +569,6 @@ Before a deployment is reachable by anyone:
 | [server.md](server.md) | the stack each of these rules sits in |
 | [client.md](client.md) | reads, writes and the store a page sees this through |
 | [signing-in.md](signing-in.md) | putting a login in front of it |
-| [TENANCY.md](../TENANCY.md) | the model behind the wall, and deploying per tenant |
-| [SCHEMA.md](../SCHEMA.md) | what the schema owns, field 3, identifiers, slugs |
-| [RUNTIME.md](../RUNTIME.md) | every package, and how each rule is enforced |
+| [tenancy.md](../tenancy.md) | the model behind the wall, and deploying per tenant |
+| [schema.md](../schema.md) | what the schema owns, field 3, identifiers, slugs |
+| [runtime.md](../runtime.md) | every package, and how each rule is enforced |

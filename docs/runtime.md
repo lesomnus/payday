@@ -3,7 +3,7 @@
 What payday is made of, and which of it you get by declaring something rather
 than by writing it.
 
-This is the map. The [guides](README.md#guides) are how to use each part; the
+This is the map. The [guides](readme.md#guides) are how to use each part; the
 package comments are the detail. What is here is the shape of the whole, and the
 decisions that gave it that shape.
 
@@ -161,7 +161,7 @@ Everything payday enforces is placed as far left as it goes.
 | What | How |
 | --- | --- |
 | what a schema is allowed to say | generation failure. The whole list is in [the schema guide](guide/schema.md#8-what-generation-refuses) — domains, erasure, tenancy that reaches a tenant, `list:`, `watch:`, overlays, one Go package |
-| every entity says whether it is behind the wall | saying nothing means `tenanted:`, which is the loud way to be wrong; see [TENANCY.md](TENANCY.md#2-the-default-is-the-loud-one) |
+| every entity says whether it is behind the wall | saying nothing means `tenanted:`, which is the loud way to be wrong; see [tenancy.md](tenancy.md#2-the-default-is-the-loud-one) |
 | identifiers are domain-tagged UUIDs | the minter, in every generated `Add`: an identifier of another kind, or one this app did not make, is refused before a statement is built |
 | a `Watch` with no filter | the generated implementation answers `InvalidArgument` — a watch that says nothing is the whole table, for as long as it is open |
 | the watch broker is named | required config field — an unnamed one is right for one replica and silently wrong for two |
@@ -344,6 +344,6 @@ them. The pair is what a deployment that can lose neither wants.
 ## See also
 
 - [guide/server.md](guide/server.md) — how to use all of this
-- [SCHEMA.md](SCHEMA.md) — what a declaration is allowed to say
-- [TENANCY.md](TENANCY.md) — the wall, in full
-- [CLIENT.md](CLIENT.md) — the browser half
+- [schema.md](schema.md) — what a declaration is allowed to say
+- [tenancy.md](tenancy.md) — the wall, in full
+- [client.md](client.md) — the browser half

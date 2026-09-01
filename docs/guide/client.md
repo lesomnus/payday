@@ -194,7 +194,7 @@ until the re-read lands.
 
 The lists are re-read rather than judged here because judging means evaluating
 the server's filter and the server's order over a partial copy, which goes
-confidently wrong at a page boundary. [CLIENT.md §3](../CLIENT.md#3-the-client-is-a-replica)
+confidently wrong at a page boundary. [client.md §3](../client.md#3-the-client-is-a-replica)
 works that through.
 
 For a run of writes that ends in one read you own:
@@ -222,7 +222,7 @@ own answers there too, under the same identity and beside the rows, so a
 reopened page draws the list it had on the first frame instead of a spinner for
 it. Why it is that way round, why rows alone would not be enough, and why the
 expiry clock runs from this side's write are
-[CLIENT.md §3](../CLIENT.md#3-the-client-is-a-replica).
+[client.md §3](../client.md#3-the-client-is-a-replica).
 
 `keep` is a week by default, counted from when this side last wrote the row, and
 `Infinity` turns expiry off.
@@ -274,7 +274,7 @@ $ go tool pd sandbox init .
 ```
 
 Then a reload is a fresh server: new instance, new database, nothing left over,
-and no backend to start. See [CLIENT.md §2](../CLIENT.md#2-the-whole-app-in-a-page)
+and no backend to start. See [client.md §2](../client.md#2-the-whole-app-in-a-page)
 for what it needs from the page, and run `pd doctor` — the four ways it goes
 wrong all fail without naming their cause.
 
@@ -287,4 +287,4 @@ wrong all fail without naming their cause.
 | [schema.md](schema.md) | declaring the entity all of this is generated from |
 | [permissions.md](permissions.md) | what the server does with these calls |
 | [errors.md](errors.md) | putting a refusal under the right form field |
-| [CLIENT.md](../CLIENT.md) | why the store is in memory, and why Connect over drpc |
+| [client.md](../client.md) | why the store is in memory, and why Connect over drpc |

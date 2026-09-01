@@ -460,7 +460,7 @@ message Holder {
 		// payday's declares it, so the refusal -- which reads off what payday
 		// declared rather than off a range -- has nothing to hold it against,
 		// and what an overlay puts there is read as the set edge. That is the
-		// promise in docs/SCHEMA.md ("field 3 is yours"), pinned here so a
+		// promise in docs/schema.md ("field 3 is yours"), pinned here so a
 		// tidy-up that widens the refusal to the whole 1..7 block cannot take
 		// the slot back quietly.
 		s, err := readAs(t, "payday", tenantOf("payday")+holder(`

@@ -19,9 +19,9 @@ it is generated rather than remembered.
   [more than one proto package](docs/guide/packages.md),
   [refusals](docs/guide/errors.md), [signing somebody in](docs/guide/signing-in.md)
   and [testing](docs/guide/testing.md), and the
-  references behind all of it — [the runtime](docs/RUNTIME.md),
-  [tenancy](docs/TENANCY.md), [the generation contract](docs/SCHEMA.md),
-  [the browser](docs/CLIENT.md).
+  references behind all of it — [the runtime](docs/runtime.md),
+  [tenancy](docs/tenancy.md), [the generation contract](docs/schema.md),
+  [the browser](docs/client.md).
 
 ```sh
 $ go get -tool github.com/lesomnus/payday/cmd/pd

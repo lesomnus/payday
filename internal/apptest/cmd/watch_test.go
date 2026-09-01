@@ -162,7 +162,7 @@ func TestARemovalIsSaidByAbsence(t *testing.T) {
 // entity payday itself declared watchable.
 //
 // `Holder` says `watch: {}` in payday's own schema -- an app could not, since
-// an overlay merges fields and not the entity option; see docs/MIGRATING.md.
+// an overlay merges fields and not the entity option; see docs/migrating.md.
 // The stream is what that bought: a holder is a credential's anchor, so its
 // goneness is news a client wants pushed rather than discovered when the next
 // call as that holder fails. Every other watch test exercises the app's own

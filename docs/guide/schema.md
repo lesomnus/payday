@@ -190,7 +190,7 @@ Silence means the walled answer because the two ways of being wrong are not
 alike: a wall assumed where there is none empties a screen and somebody says so,
 and a wall missing where there should be one breaks nothing and is first noticed
 by a caller reading another tenant's rows. The whole of that argument is
-[TENANCY.md §2](../TENANCY.md#2-the-default-is-the-loud-one); what an entity
+[tenancy.md §2](../tenancy.md#2-the-default-is-the-loud-one); what an entity
 that declares nothing gets for it is
 [permissions §1](permissions.md#1-what-you-get-by-saying-nothing).
 
@@ -541,7 +541,7 @@ payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go
 The check is there because the merge takes the overlay's word and says nothing
 about it. `int64 alias = 4` is a perfectly good message, so the app still
 **compiles** and what breaks does so at run time; the whole of that argument is
-[the generation contract §2](../SCHEMA.md#2-overlays-adding-never-overriding).
+[the generation contract §2](../schema.md#2-overlays-adding-never-overriding).
 
 One thing an overlay may not say is what the file **is**. A file-level
 `features.` option — `features.field_presence = IMPLICIT` copied down from the
@@ -691,5 +691,5 @@ the older payday wrote.
 | [server.md](server.md) | the stack that serves it |
 | [client.md](client.md) | what a page does with what this generates |
 | [testing.md](testing.md) | asserting that a declaration means what you thought |
-| [SCHEMA.md](../SCHEMA.md) | why payday owns these entities, and what it costs |
-| [RUNTIME.md](../RUNTIME.md) | what `List` and `Watch` generate, and what is refused |
+| [schema.md](../schema.md) | why payday owns these entities, and what it costs |
+| [runtime.md](../runtime.md) | what `List` and `Watch` generate, and what is refused |

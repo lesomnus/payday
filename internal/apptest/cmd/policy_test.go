@@ -20,7 +20,7 @@ import (
 // the seam for what payday does not decide, so every implementation there will
 // ever be belongs to an application.
 //
-// This one is the shape `docs/TENANCY.md` describes -- a second binary, on an
+// This one is the shape `docs/tenancy.md` describes -- a second binary, on an
 // address only an operator can reach, serving the same app with a different
 // answer to the same two questions. It reads every tenant and writes to none.
 //

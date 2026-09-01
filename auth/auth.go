@@ -32,7 +32,7 @@
 // # What this package cannot name
 //
 // payday owns the schema and the app owns the Go types that come out of it, so
-// the actor a credential names has no name here; see docs/SCHEMA.md. What is
+// the actor a credential names has no name here; see docs/schema.md. What is
 // left is what this package talks in, and it is deliberately little: an
 // [Identity] is a tenant alias, an actor alias, or an identifier, as text, and
 // a [frame.Frame] is two identifiers, a grant, and a row that nothing here
@@ -244,7 +244,7 @@ func Seq(hs ...Handler) Handler {
 //
 // It cannot be written here. Answering "who is @acme/admin" is a query against
 // the app's own generated servers, whose types payday cannot name, and there is
-// no type parameter that fixes that -- see docs/SCHEMA.md, "It is a contract,
+// no type parameter that fixes that -- see docs/schema.md, "It is a contract,
 // not a Go type". So payday says what the question is and what the answer must
 // hold, the app says how to find it, and [Interceptor] is what joins them.
 //

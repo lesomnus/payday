@@ -225,7 +225,7 @@ Every other payday message is rewritten into your proto package — your app has
 deliberately, because it is not a message describing your domain but a
 **transport**: anything that speaks batch to any payday app speaks the same one,
 and a generic client should not need a per-app name for it. Which names survive
-the rewrite and why is [the generation contract](../SCHEMA.md#3-whose-names-these-are).
+the rewrite and why is [the generation contract](../schema.md#3-whose-names-these-are).
 
 ## Where to go next
 

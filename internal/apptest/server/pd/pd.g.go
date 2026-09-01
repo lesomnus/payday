@@ -3931,7 +3931,7 @@ func numbers(ds []pdid.Domain) []uint32 {
 //
 // **Which** rows, and **when**, is the app's -- what it owes a person and
 // under what regime is not a thing a framework can know, which is why
-// `docs/RUNTIME.md` lists erasing a subject among the things payday does not
+// `docs/runtime.md` lists erasing a subject among the things payday does not
 // do. This is the other half: two columns of payday's own table, blanked for
 // a set the caller chose. There is no judgement in it, which is the same line
 // `internal/pdgen/outbox.go` draws about the drain.

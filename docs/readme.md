@@ -23,11 +23,11 @@ comments, which are where the detail actually lives.
 
 | | |
 | --- | --- |
-| [The runtime](RUNTIME.md) | every package, what is generated, and how each rule is enforced |
-| [Tenancy](TENANCY.md) | the model behind the wall, and the decisions around it |
-| [The generation contract](SCHEMA.md) | what payday owns, overlays, identifiers, slugs |
-| [Migrating](MIGRATING.md) | what an app has to change when payday does, newest first |
-| [The browser](CLIENT.md) | the transports, the sandbox, and the client replica |
+| [The runtime](runtime.md) | every package, what is generated, and how each rule is enforced |
+| [Tenancy](tenancy.md) | the model behind the wall, and the decisions around it |
+| [The generation contract](schema.md) | what payday owns, overlays, identifiers, slugs |
+| [Migrating](migrating.md) | what an app has to change when payday does, newest first |
+| [The browser](client.md) | the transports, the sandbox, and the client replica |
 
 ---
 

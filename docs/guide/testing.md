@@ -266,7 +266,7 @@ below it. Answering off the entity's name makes the setup order irrelevant.
 The key is `app.Tenant` and not `payday.Tenant`: `pd gen` copies payday's
 entities into your schema and rewrites their `package` line, so the name a
 minter is asked about is the app's. See
-[the generation contract §3](../SCHEMA.md#3-whose-names-these-are).
+[the generation contract §3](../schema.md#3-whose-names-these-are).
 
 ## 6. Golden files
 
@@ -375,7 +375,7 @@ That is the minute that buys the one thing neither half's own tests can say. The
 wasm build says the app still compiles for the browser; this says the binary it
 built actually runs, and that the two halves are the same program. Why that
 distinction is worth paying for, and what a sandbox costs measured, are in
-[the browser](../CLIENT.md#2-the-whole-app-in-a-page).
+[the browser](../client.md#2-the-whole-app-in-a-page).
 
 ## Where to go next
 
@@ -383,4 +383,4 @@ distinction is worth paying for, and what a sandbox costs measured, are in
 - [Permissions and the wall](permissions.md) — what the wall test above is
   asserting.
 - [Declaring an entity](schema.md) — where the minter and the wall come from.
-- [The browser](../CLIENT.md) — the client the TypeScript suite is about.
+- [The browser](../client.md) — the client the TypeScript suite is about.

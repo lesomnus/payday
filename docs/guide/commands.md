@@ -495,7 +495,7 @@ connection speaks to has to be said: use NewIn
 A connection cannot say which of them it speaks to: it is a
 `grpc.ClientConnInterface` and knows nothing about schemas. The proto package is
 what says — an app may choose its own, which is
-[whose names these are](../SCHEMA.md#3-whose-names-these-are) — so the app names
+[whose names these are](../schema.md#3-whose-names-these-are) — so the app names
 it:
 
 ```go

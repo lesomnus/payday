@@ -166,7 +166,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("//")
 	g.P("// **Which** rows, and **when**, is the app's -- what it owes a person and")
 	g.P("// under what regime is not a thing a framework can know, which is why")
-	g.P("// `docs/RUNTIME.md` lists erasing a subject among the things payday does not")
+	g.P("// `docs/runtime.md` lists erasing a subject among the things payday does not")
 	g.P("// do. This is the other half: two columns of payday's own table, blanked for")
 	g.P("// a set the caller chose. There is no judgement in it, which is the same line")
 	g.P("// `internal/pdgen/outbox.go` draws about the drain.")

@@ -54,7 +54,7 @@ the gate outermost: nothing behind it has to ask again.
 That line is ten lines of wiring rather than `pd.Serve(cfg)` because the order of
 the stack and the existence of an ungated instance are the two most load-bearing
 facts about an app, and both should be answerable by reading one file; see
-[what you write](../RUNTIME.md#4-what-you-write).
+[what you write](../runtime.md#4-what-you-write).
 
 ## 2. The two servers, and why there are two
 
@@ -91,7 +91,7 @@ If you hand `Ungated` to something a caller can reach, you have removed the
 wall for every call it serves. That is the whole risk and it is a grep away.
 Which instance an admin path reaches is a question about how many binaries you
 run, and it is answered in
-[how many deployments](../TENANCY.md#3-how-many-deployments).
+[how many deployments](../tenancy.md#3-how-many-deployments).
 
 ## 3. Writing a layer
 
@@ -333,7 +333,7 @@ is passed the same way. Nothing declares that it has background work; the ones
 that do are found. An error from `Spin` takes the process down and nil stops
 nothing else, so a pass that should be tolerated logs and answers nil. Why it is
 found rather than declared, and why giving up is fatal, is in
-[background work](../RUNTIME.md#6-background-work).
+[background work](../runtime.md#6-background-work).
 
 ## 7. The database
 
@@ -395,7 +395,7 @@ payday owns part of your schema, so a field added upstream arrives in
 `internal/ent` the next time you generate and has no symptom until the one
 handler that reads it runs. This check is what turns that into a server that
 does not start; the other two moments it is caught at are in
-[the cost](../SCHEMA.md#the-cost).
+[the cost](../schema.md#the-cost).
 
 ## 8. The commands
 
@@ -408,7 +408,7 @@ deployment.
 | `pd gen [dir]` | regenerates everything from the schema. `--ts` for the client half |
 | `pd gen --check` | regenerates and fails if anything moved. This is the CI step |
 | `pd entity add <Name>` | a new entity, with a free domain number picked and the tenancy stated |
-| `pd sandbox init [dir]` | the second entry point and the page's half of it, so the app runs inside the page it serves — see [the whole app in a page](../CLIENT.md#2-the-whole-app-in-a-page) |
+| `pd sandbox init [dir]` | the second entry point and the page's half of it, so the app runs inside the page it serves — see [the whole app in a page](../client.md#2-the-whole-app-in-a-page) |
 | `pd doctor` | what would go wrong: missing tools, missing buf deps, an overlay for nothing, a layer that cannot be bound, a sandbox that will not run |
 
 The other commands are on **your** binary, because each needs something only
@@ -458,7 +458,7 @@ listener, where `web.New` transcodes Connect and gRPC-Web into the **same**
 `*grpc.Server` that answers the socket — one stack with two ways in, not a
 second stack. Which transports those are, why these two, and what follows from
 one stack being behind both, is in
-[two transports, and why](../CLIENT.md#1-two-transports-and-why).
+[two transports, and why](../client.md#1-two-transports-and-why).
 
 ```go
 h, err := web.New(c.Server.Http, g)
@@ -495,4 +495,4 @@ credential, and on what evidence, is a decision about an organisation. See
 - [Putting a login in front of an app](signing-in.md) — the endpoint that mints
   a cookie, and the handler that reads it back.
 - [Testing](testing.md) — the two seams that make an answer comparable.
-- [The runtime](../RUNTIME.md) — every package, and what shape the whole is.
+- [The runtime](../runtime.md) — every package, and what shape the whole is.

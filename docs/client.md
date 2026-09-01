@@ -336,4 +336,4 @@ the drift `pdid` exists to prevent.
 
 - [guide/client.md](guide/client.md) — how to use the store and the query layer
 - [guide/errors.md](guide/errors.md) — a refusal, from the server to a form field
-- [RUNTIME.md](RUNTIME.md) — the server half
+- [runtime.md](runtime.md) — the server half

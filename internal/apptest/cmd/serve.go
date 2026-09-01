@@ -87,7 +87,7 @@ type Server struct {
 	// operator's path serves this app again with a policy that answers
 	// differently, on an address only an operator can reach, rather than
 	// putting a rule in here that says some row is special; see
-	// `docs/TENANCY.md`.
+	// `docs/tenancy.md`.
 	Policy gate.Policy
 
 	// Spin is whatever this deployment has to run besides answering requests.

@@ -407,5 +407,5 @@ the mistake.
 ## See also
 
 - [guide/schema.md](guide/schema.md) — how to declare an entity
-- [TENANCY.md](TENANCY.md) — what the tenancy declaration means
-- [RUNTIME.md](RUNTIME.md) — what is generated from all of this
+- [tenancy.md](tenancy.md) — what the tenancy declaration means
+- [runtime.md](runtime.md) — what is generated from all of this

@@ -99,7 +99,7 @@ type Entity struct {
 	// to -- and is empty for an entity that declared none.
 	//
 	// Field 3 is the app's, and the number is the declaration: there is no
-	// option to write. See [Schema.Set] and `docs/SCHEMA.md` for why the slot
+	// option to write. See [Schema.Set] and `docs/schema.md` for why the slot
 	// is a number rather than a name.
 	Set string
 
