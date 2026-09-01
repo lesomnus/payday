@@ -126,10 +126,10 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
 			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Cell already exists: %s", err.Unwrap())
+				return nil, status.Error(codes.AlreadyExists, "Cell already exists")
 			}
 			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Cell: referenced entity not found: %s", err.Unwrap())
+				return nil, status.Error(codes.NotFound, "Cell: referenced entity not found")
 			}
 		}
 		return nil, err
@@ -341,10 +341,10 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
-					return nil, status.Errorf(codes.AlreadyExists, "Cell already exists: %s", err.Unwrap())
+					return nil, status.Error(codes.AlreadyExists, "Cell already exists")
 				}
 				if sqlgraph.IsForeignKeyConstraintError(err) {
-					return nil, status.Errorf(codes.NotFound, "Cell: referenced entity not found: %s", err.Unwrap())
+					return nil, status.Error(codes.NotFound, "Cell: referenced entity not found")
 				}
 			}
 			return nil, err
@@ -601,10 +601,10 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
 			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Robot already exists: %s", err.Unwrap())
+				return nil, status.Error(codes.AlreadyExists, "Robot already exists")
 			}
 			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Robot: referenced entity not found: %s", err.Unwrap())
+				return nil, status.Error(codes.NotFound, "Robot: referenced entity not found")
 			}
 		}
 		return nil, err
@@ -861,10 +861,10 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
-					return nil, status.Errorf(codes.AlreadyExists, "Robot already exists: %s", err.Unwrap())
+					return nil, status.Error(codes.AlreadyExists, "Robot already exists")
 				}
 				if sqlgraph.IsForeignKeyConstraintError(err) {
-					return nil, status.Errorf(codes.NotFound, "Robot: referenced entity not found: %s", err.Unwrap())
+					return nil, status.Error(codes.NotFound, "Robot: referenced entity not found")
 				}
 			}
 			return nil, err
@@ -1106,10 +1106,10 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
 			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Pairing already exists: %s", err.Unwrap())
+				return nil, status.Error(codes.AlreadyExists, "Pairing already exists")
 			}
 			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Pairing: referenced entity not found: %s", err.Unwrap())
+				return nil, status.Error(codes.NotFound, "Pairing: referenced entity not found")
 			}
 		}
 		return nil, err
@@ -1326,10 +1326,10 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
-					return nil, status.Errorf(codes.AlreadyExists, "Pairing already exists: %s", err.Unwrap())
+					return nil, status.Error(codes.AlreadyExists, "Pairing already exists")
 				}
 				if sqlgraph.IsForeignKeyConstraintError(err) {
-					return nil, status.Errorf(codes.NotFound, "Pairing: referenced entity not found: %s", err.Unwrap())
+					return nil, status.Error(codes.NotFound, "Pairing: referenced entity not found")
 				}
 			}
 			return nil, err
@@ -1534,10 +1534,10 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
 			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Joint already exists: %s", err.Unwrap())
+				return nil, status.Error(codes.AlreadyExists, "Joint already exists")
 			}
 			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Joint: referenced entity not found: %s", err.Unwrap())
+				return nil, status.Error(codes.NotFound, "Joint: referenced entity not found")
 			}
 		}
 		return nil, err
@@ -1750,10 +1750,10 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
-					return nil, status.Errorf(codes.AlreadyExists, "Joint already exists: %s", err.Unwrap())
+					return nil, status.Error(codes.AlreadyExists, "Joint already exists")
 				}
 				if sqlgraph.IsForeignKeyConstraintError(err) {
-					return nil, status.Errorf(codes.NotFound, "Joint: referenced entity not found: %s", err.Unwrap())
+					return nil, status.Error(codes.NotFound, "Joint: referenced entity not found")
 				}
 			}
 			return nil, err
@@ -1967,10 +1967,10 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
 			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Fleet already exists: %s", err.Unwrap())
+				return nil, status.Error(codes.AlreadyExists, "Fleet already exists")
 			}
 			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Fleet: referenced entity not found: %s", err.Unwrap())
+				return nil, status.Error(codes.NotFound, "Fleet: referenced entity not found")
 			}
 		}
 		return nil, err
@@ -2172,10 +2172,10 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
-					return nil, status.Errorf(codes.AlreadyExists, "Fleet already exists: %s", err.Unwrap())
+					return nil, status.Error(codes.AlreadyExists, "Fleet already exists")
 				}
 				if sqlgraph.IsForeignKeyConstraintError(err) {
-					return nil, status.Errorf(codes.NotFound, "Fleet: referenced entity not found: %s", err.Unwrap())
+					return nil, status.Error(codes.NotFound, "Fleet: referenced entity not found")
 				}
 			}
 			return nil, err
@@ -2406,10 +2406,10 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
 			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Reading already exists: %s", err.Unwrap())
+				return nil, status.Error(codes.AlreadyExists, "Reading already exists")
 			}
 			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Reading: referenced entity not found: %s", err.Unwrap())
+				return nil, status.Error(codes.NotFound, "Reading: referenced entity not found")
 			}
 		}
 		return nil, err
@@ -2625,10 +2625,10 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
-					return nil, status.Errorf(codes.AlreadyExists, "Reading already exists: %s", err.Unwrap())
+					return nil, status.Error(codes.AlreadyExists, "Reading already exists")
 				}
 				if sqlgraph.IsForeignKeyConstraintError(err) {
-					return nil, status.Errorf(codes.NotFound, "Reading: referenced entity not found: %s", err.Unwrap())
+					return nil, status.Error(codes.NotFound, "Reading: referenced entity not found")
 				}
 			}
 			return nil, err

@@ -30,6 +30,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
+	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdpb"
 )
 
@@ -265,11 +266,8 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		SecretNumbers: secretNumbers,
 		Stamped:       stamped,
 		Domain:        uint8(d),
-		Name:          opts.GetName(),
+		Name:          pdid.Name(opts.GetName(), string(e.FullName().Name())),
 		Own:           opts.GetOwn(),
-	}
-	if v.Name == "" {
-		v.Name = kebab(string(e.FullName().Name()))
 	}
 
 	switch {
@@ -830,23 +828,6 @@ func suggestDomain(e graph.Entity) uint32 {
 	}
 
 	return h%255 + 1
-}
-
-// kebab is what a message name is written as when the schema did not say.
-func kebab(v string) string {
-	var b strings.Builder
-	for i, r := range v {
-		if r >= 'A' && r <= 'Z' {
-			if i > 0 {
-				b.WriteByte('-')
-			}
-			b.WriteRune(r - 'A' + 'a')
-			continue
-		}
-		b.WriteRune(r)
-	}
-
-	return b.String()
 }
 
 // Sorted answers with the entities by full name, for output that does not

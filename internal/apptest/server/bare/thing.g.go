@@ -114,10 +114,10 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
 			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Thing already exists: %s", err.Unwrap())
+				return nil, status.Error(codes.AlreadyExists, "Thing already exists")
 			}
 			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Thing: referenced entity not found: %s", err.Unwrap())
+				return nil, status.Error(codes.NotFound, "Thing: referenced entity not found")
 			}
 		}
 		return nil, err
@@ -322,10 +322,10 @@ func (s ThingServiceServer) apply(ctx context.Context, ref *apptest.ThingRef, do
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
-					return nil, status.Errorf(codes.AlreadyExists, "Thing already exists: %s", err.Unwrap())
+					return nil, status.Error(codes.AlreadyExists, "Thing already exists")
 				}
 				if sqlgraph.IsForeignKeyConstraintError(err) {
-					return nil, status.Errorf(codes.NotFound, "Thing: referenced entity not found: %s", err.Unwrap())
+					return nil, status.Error(codes.NotFound, "Thing: referenced entity not found")
 				}
 			}
 			return nil, err

@@ -20,7 +20,10 @@ import (
 // init, and the `(payday.entity)` option travels with them. What generation
 // would add is a second copy of a list the binary already has.
 type Entity struct {
-	// Name is what a person types: "robot" for `app.Robot`.
+	// Name is what a person types: "robot" for `app.Robot`, and whatever the
+	// schema declared where it declared one -- an entity that says
+	// `name: "key"` is `key` on the command line and `#key` in a slug, which
+	// is the point of saying it once. See [pdid.Name].
 	Name string
 
 	Domain  pdid.Domain
@@ -77,7 +80,11 @@ func Entities(pkg protoreflect.FullName) []Entity {
 			}
 
 			e := Entity{
-				Name:    strings.ToLower(string(m.Name())),
+				// What the schema said this is called, which is the same
+				// question the `#word` of a slug asks -- so it is the same
+				// answer, from [pdid.Name], rather than a second derivation
+				// that happens to agree on the entities anybody has tried.
+				Name:    pdid.Name(opts.GetName(), string(m.Name())),
 				Domain:  pdid.Domain(opts.GetDomain()),
 				Message: m,
 			}

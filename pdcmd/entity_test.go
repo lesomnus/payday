@@ -144,3 +144,99 @@ func TestNewRefusesToGuessBetweenTwoApps(t *testing.T) {
 	// a process with two apps wants two trees.
 	x.ErrorContains(twoApps.refusal, "use NewIn")
 }
+
+// registerNamed puts one package holding several entities into the registry,
+// each with the message name and the declared `name:` it is given. It is
+// [registerApp] for the question of what a thing is *called* rather than which
+// app it belongs to, so it takes the names rather than fixing them.
+func registerNamed(pkg, path string, vs []struct {
+	message  string
+	declared string
+	domain   uint32
+}) error {
+	ms := make([]*descriptorpb.DescriptorProto, 0, len(vs))
+	for _, v := range vs {
+		e := pdpb.Entity_builder{Domain: v.domain}.Build()
+		if v.declared != "" {
+			e.SetName(v.declared)
+		}
+
+		opts := &descriptorpb.MessageOptions{}
+		proto.SetExtension(opts, pdpb.E_Entity, e)
+
+		ms = append(ms, &descriptorpb.DescriptorProto{
+			Name:    proto.String(v.message),
+			Options: opts,
+		})
+	}
+
+	fd, err := protodesc.NewFile(&descriptorpb.FileDescriptorProto{
+		Name:        proto.String(path),
+		Package:     proto.String(pkg),
+		Syntax:      proto.String("proto3"),
+		MessageType: ms,
+	}, protoregistry.GlobalFiles)
+	if err != nil {
+		return err
+	}
+
+	return protoregistry.GlobalFiles.RegisterFile(fd)
+}
+
+// TestWhatAPersonTypesIsWhatTheSchemaSaid.
+//
+// The word a command group sits under and the `#word` of a slug are the same
+// question, and the schema answers it once -- `(payday.entity).name`, or the
+// message name in kebab-case when it says nothing. This walked the other way
+// round the whole time: it lowercased the message name and never read the
+// option, so an entity that declared `name: "key"` was still typed `sshkey`,
+// and one that declared nothing was `#ssh-key` in a slug and `sshkey` here.
+//
+// Both halves are asserted because they fail apart. `Robot` reads the same
+// under either rule, which is why nothing in payday's own app could catch this:
+// every entity it declares is one word.
+func TestWhatAPersonTypesIsWhatTheSchemaSaid(t *testing.T) {
+	x := require.New(t)
+
+	const pkg = "pdcmdtest.naming"
+	x.NoError(registerNamed(pkg, pkg+"/naming.proto", []struct {
+		message  string
+		declared string
+		domain   uint32
+	}{
+		{message: "SshKey", domain: 213},
+		{message: "Cabinet", declared: "shelf", domain: 214},
+		{message: "Robot", domain: 215},
+	}))
+
+	got := map[string]protoreflect.FullName{}
+	for _, e := range Entities(pkg) {
+		got[e.Name] = e.Message.FullName()
+	}
+
+	// Declared: the app said what it is called and that is what it is.
+	x.Equal(protoreflect.FullName(pkg+".Cabinet"), got["shelf"])
+	x.NotContains(got, "cabinet")
+
+	// Undeclared: kebab-case, which is what the option's own documentation
+	// promises and what the generator writes into `pdid.Register`.
+	x.Equal(protoreflect.FullName(pkg+".SshKey"), got["ssh-key"])
+	x.NotContains(got, "sshkey", "lowercasing the message name is the old rule")
+
+	// And the one-word case is unmoved, which is what makes this safe to
+	// change: every name payday's own app has reads the same either way.
+	x.Equal(protoreflect.FullName(pkg+".Robot"), got["robot"])
+
+	// The rule is [pdid.Name]'s and not a copy of it, so a slug and a command
+	// cannot drift: what a person types is what `#word` resolves.
+	for _, e := range Entities(pkg) {
+		x.Equal(e.Name, pdid.Name(nameOf(e.Message), string(e.Message.Name())))
+	}
+}
+
+// nameOf is the declared name of an entity, read back off the descriptor the
+// way [Entities] read it.
+func nameOf(m protoreflect.MessageDescriptor) string {
+	opts, _ := proto.GetExtension(m.Options(), pdpb.E_Entity).(*pdpb.Entity)
+	return opts.GetName()
+}

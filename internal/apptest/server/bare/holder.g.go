@@ -133,10 +133,10 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
 			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Holder already exists: %s", err.Unwrap())
+				return nil, status.Error(codes.AlreadyExists, "Holder already exists")
 			}
 			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Holder: referenced entity not found: %s", err.Unwrap())
+				return nil, status.Error(codes.NotFound, "Holder: referenced entity not found")
 			}
 		}
 		return nil, err
@@ -372,10 +372,10 @@ func (s HolderServiceServer) apply(ctx context.Context, ref *apptest.HolderRef, 
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
-					return nil, status.Errorf(codes.AlreadyExists, "Holder already exists: %s", err.Unwrap())
+					return nil, status.Error(codes.AlreadyExists, "Holder already exists")
 				}
 				if sqlgraph.IsForeignKeyConstraintError(err) {
-					return nil, status.Errorf(codes.NotFound, "Holder: referenced entity not found: %s", err.Unwrap())
+					return nil, status.Error(codes.NotFound, "Holder: referenced entity not found")
 				}
 			}
 			return nil, err

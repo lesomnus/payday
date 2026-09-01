@@ -3,6 +3,7 @@ package pdid
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -86,6 +87,43 @@ var registry = struct {
 	byName:   map[string]Domain{},
 	names:    map[Domain]string{},
 	shared:   map[Domain]bool{},
+}
+
+// Name is what a person writes an entity as: the word its schema declared, or
+// the message name in kebab-case when it declared none -- `Robot` is `robot`
+// and `SshKey` is `ssh-key`.
+//
+// It is the `#word` of a slug, the group a command sits under, and the third
+// argument [Register] is given, and those have to be one word rather than three
+// derivations that agree by accident. They did not: the generator read the
+// declaration and kebab-cased what it found, while `pdcmd` lowercased the
+// message name and never looked at the option at all -- so an app that wrote
+// `name: "key"` was still typing `sshkey`, and one that wrote nothing had a
+// `#ssh-key` in its slugs and a `sshkey` on its command line.
+//
+// Here rather than beside the option because the option's generated Go is
+// generated in whole, and because this package is where the name already means
+// something.
+func Name(declared string, message string) string {
+	if declared != "" {
+		return declared
+	}
+
+	var b strings.Builder
+	for i, r := range message {
+		if r >= 'A' && r <= 'Z' {
+			if i > 0 {
+				b.WriteByte('-')
+			}
+
+			b.WriteRune(r - 'A' + 'a')
+			continue
+		}
+
+		b.WriteRune(r)
+	}
+
+	return b.String()
 }
 
 // Register records what the schema declared: the message `entity` is of domain

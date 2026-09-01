@@ -145,10 +145,10 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
 			if sqlgraph.IsUniqueConstraintError(err) {
-				return nil, status.Errorf(codes.AlreadyExists, "Audit already exists: %s", err.Unwrap())
+				return nil, status.Error(codes.AlreadyExists, "Audit already exists")
 			}
 			if sqlgraph.IsForeignKeyConstraintError(err) {
-				return nil, status.Errorf(codes.NotFound, "Audit: referenced entity not found: %s", err.Unwrap())
+				return nil, status.Error(codes.NotFound, "Audit: referenced entity not found")
 			}
 		}
 		return nil, err
@@ -377,10 +377,10 @@ func (s AuditServiceServer) apply(ctx context.Context, ref *apptest.AuditRef, do
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
-					return nil, status.Errorf(codes.AlreadyExists, "Audit already exists: %s", err.Unwrap())
+					return nil, status.Error(codes.AlreadyExists, "Audit already exists")
 				}
 				if sqlgraph.IsForeignKeyConstraintError(err) {
-					return nil, status.Errorf(codes.NotFound, "Audit: referenced entity not found: %s", err.Unwrap())
+					return nil, status.Error(codes.NotFound, "Audit: referenced entity not found")
 				}
 			}
 			return nil, err

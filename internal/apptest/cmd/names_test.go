@@ -360,13 +360,13 @@ func TestANameThisServerChoseIsChosenAgainWhenItIsTaken(t *testing.T) {
 	x.Equal(2, n, "the second attempt was not made from a fresh name")
 }
 
-// TestItGivesUpAndSaysWhatTheDatabaseSaid.
+// TestItGivesUpAndPassesTheRefusalOn.
 //
 // The refusal is passed through rather than rewritten. Saying "no free name
 // after 3 tries" would assert the one thing this cannot know -- a duplicate key
 // is the same gRPC code -- and it would say it loudest exactly when it is
 // wrong.
-func TestItGivesUpAndSaysWhatTheDatabaseSaid(t *testing.T) {
+func TestItGivesUpAndPassesTheRefusalOn(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
@@ -381,7 +381,16 @@ func TestItGivesUpAndSaysWhatTheDatabaseSaid(t *testing.T) {
 		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
 	}.Build())
 	x.Equal(codes.AlreadyExists, status.Code(err))
-	x.Contains(err.Error(), "alias", "the caller is not told which constraint by this server, only by the one that refused")
+
+	// The refusal the write met, unchanged: the entity already has one of
+	// these. What is asserted is the absence of anything this layer would have
+	// had to invent -- a count of attempts, a sentence about names -- since
+	// inventing one is the failure the comment above is about.
+	msg := status.Convert(err).Message()
+	x.Contains(msg, "Robot already exists")
+	for _, invented := range []string{"tries", "attempt", "name"} {
+		x.NotContains(msg, invented)
+	}
 }
 
 // TestARetryCannotLaunderARealConflict is why this does not have to know what
@@ -412,14 +421,15 @@ func TestARetryCannotLaunderARealConflict(t *testing.T) {
 	}.Build())
 	x.Equal(codes.AlreadyExists, status.Code(err))
 
-	// It conflicted on the **key** and not on a name. Which is asserted the
-	// long way round because the message is the driver's, and the two spell it
-	// differently: SQLite names the column (`robot.id`), PostgreSQL names the
-	// constraint (`robot_pkey`). What both agree on is that `alias` is not in
-	// it -- and an alias conflict is the failure this test is about, since a
-	// retry that minted three fresh names would have produced one.
-	x.NotContains(err.Error(), "alias", "three fresh names turned a duplicate key into something else")
-	x.Regexp(`robot[._](id|pkey)`, err.Error())
+	// It conflicted on the **key** and not on a name, which is asserted by
+	// counting rather than by reading: a refusal says only that the entity
+	// already has one of these, and which constraint it was is the driver's
+	// business and stays there. What a laundered retry would have left behind
+	// is a second row -- three fresh names, one of them free -- so the count is
+	// the property itself rather than a proxy for it.
+	n, err := b.Ent.Robot.Query().Count(ctx)
+	x.NoError(err)
+	x.Equal(1, n, "a retry minted its way past a duplicate key")
 }
 
 // TestANameTheCallerGaveIsNotSwappedForAnother, which is the whole of why the
