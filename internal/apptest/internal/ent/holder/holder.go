@@ -122,11 +122,6 @@ func ByIdpSubject(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIdpSubject, opts...).ToFunc()
 }
 
-// ByProfile orders the results by the profile field.
-func ByProfile(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldProfile, opts...).ToFunc()
-}
-
 // ByTenantID orders the results by the tenant_id field.
 func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTenantID, opts...).ToFunc()

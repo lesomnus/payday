@@ -237,10 +237,13 @@ func (_u *HolderUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		if err != nil {
 			return 0, err
 		}
-		_spec.SetField(holder.FieldProfile, field.TypeString, vv)
+		if vv, err = field.JSONValue(vv); err != nil {
+			return 0, err
+		}
+		_spec.SetField(holder.FieldProfile, field.TypeJSON, vv)
 	}
 	if _u.mutation.ProfileCleared() {
-		_spec.ClearField(holder.FieldProfile, field.TypeString)
+		_spec.ClearField(holder.FieldProfile, field.TypeJSON)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -501,10 +504,13 @@ func (_u *HolderUpdateOne) sqlSave(ctx context.Context) (_node *Holder, err erro
 		if err != nil {
 			return nil, err
 		}
-		_spec.SetField(holder.FieldProfile, field.TypeString, vv)
+		if vv, err = field.JSONValue(vv); err != nil {
+			return nil, err
+		}
+		_spec.SetField(holder.FieldProfile, field.TypeJSON, vv)
 	}
 	if _u.mutation.ProfileCleared() {
-		_spec.ClearField(holder.FieldProfile, field.TypeString)
+		_spec.ClearField(holder.FieldProfile, field.TypeJSON)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Holder{config: _u.config}

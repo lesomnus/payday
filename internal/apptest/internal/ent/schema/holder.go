@@ -7,7 +7,6 @@ import (
 	uuid "github.com/google/uuid"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/protobuf-orm/ent"
-	dialect "github.com/protobuf-orm/ent/dialect"
 	entsql "github.com/protobuf-orm/ent/dialect/entsql"
 	schema "github.com/protobuf-orm/ent/schema"
 	edge "github.com/protobuf-orm/ent/schema/edge"
@@ -38,7 +37,7 @@ func (Holder) Fields() []ent.Field {
 			Immutable().
 			Optional(),
 		field.String("idp_subject"),
-		field.String("profile").GoType(&apptest.Profile{}).ValueScanner(entpb.ValueScanner[*apptest.Profile]{}).SchemaType(map[string]string{dialect.Postgres: "jsonb", dialect.MySQL: "json"}).
+		field.JSON("profile", &apptest.Profile{}).ValueScanner(entpb.ValueScanner[*apptest.Profile]{}).
 			Optional(),
 		field.UUID("tenant_id", uuid.UUID{}).
 			Immutable(),
