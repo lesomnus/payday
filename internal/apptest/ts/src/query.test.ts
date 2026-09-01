@@ -12,10 +12,6 @@
  * the server actually sends and the moment a subscriber is called.
  */
 
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
-import { dirname, resolve } from 'node:path'
-
 import { createGrpcTransport } from '@connectrpc/connect-node'
 import { createClient, type Transport } from '@connectrpc/connect'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -28,38 +24,17 @@ import { entities, Robot, Tenant } from '../gen/entities.js'
 import { RobotService } from '../gen/app/robot_svc_pb.js'
 import { TenantService } from '../gen/app/payday/tenant_svc_pb.js'
 import { RobotDomain } from '../gen/domains.js'
+import { start, type Server } from './testsrv.js'
 import type { Robot as RobotMsg } from '../gen/app/robot_pb.js'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const repo = resolve(here, '../../../..')
-
-let srv: ChildProcessWithoutNullStreams
+let srv: Server
 let transport: Transport
 
-function started(p: ChildProcessWithoutNullStreams): Promise<string> {
-	return new Promise((ok, no) => {
-		const t = setTimeout(() => no(new Error('the server printed no address')), 60_000)
-		let buf = ''
-
-		p.stdout.on('data', (b: Buffer) => {
-			buf += b.toString()
-			const i = buf.indexOf('\n')
-			if (i < 0) return
-
-			clearTimeout(t)
-			ok(buf.slice(0, i).trim())
-		})
-		p.on('error', no)
-		p.stderr.on('data', (b: Buffer) => process.stderr.write(b))
-	})
-}
-
 beforeAll(async () => {
-	srv = spawn('go', ['run', './internal/apptest/testsrv'], { cwd: repo })
-	const addr = await started(srv)
+	srv = await start()
 
 	transport = createGrpcTransport({
-		baseUrl: `http://${addr}`,
+		baseUrl: `http://${srv.addr}`,
 		interceptors: [
 			(next) => (req) => {
 				req.header.set('authorization', 'Plain @acme/admin')
@@ -70,7 +45,7 @@ beforeAll(async () => {
 }, 90_000)
 
 afterAll(() => {
-	srv?.kill()
+	srv?.stop()
 })
 
 let store: Store

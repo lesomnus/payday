@@ -7,10 +7,6 @@
  * and the only way to find that out is to send bytes.
  */
 
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
-import { dirname, resolve } from 'node:path'
-
 import { create } from '@bufbuild/protobuf'
 import { anyPack, anyUnpack } from '@bufbuild/protobuf/wkt'
 import { createGrpcTransport } from '@connectrpc/connect-node'
@@ -23,43 +19,21 @@ import * as pderr from '@lesomnus/payday/pderr'
 import { Store } from '@lesomnus/payday/store'
 
 import { app, type App } from './client.js'
+import { start, type Server } from './testsrv.js'
 import { entities, Robot, Tenant } from '../gen/entities.js'
 import { RobotDomain, JointDomain, TenantDomain, ThingDomain } from '../gen/domains.js'
 import { RobotSchema } from '../gen/app/robot_pb.js'
 import { RobotAddRequestSchema, JointAddRequestSchema } from '../gen/app/robot_svc_pb.js'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const repo = resolve(here, '../../../..')
-
-let srv: ChildProcessWithoutNullStreams
+let srv: Server
 let c: App
 
-/** started answers with the address the server printed, or gives up loudly. */
-function started(p: ChildProcessWithoutNullStreams): Promise<string> {
-	return new Promise((ok, no) => {
-		const t = setTimeout(() => no(new Error('the server printed no address')), 60_000)
-		let buf = ''
-
-		p.stdout.on('data', (b: Buffer) => {
-			buf += b.toString()
-			const i = buf.indexOf('\n')
-			if (i < 0) return
-
-			clearTimeout(t)
-			ok(buf.slice(0, i).trim())
-		})
-		p.on('error', no)
-		p.stderr.on('data', (b: Buffer) => process.stderr.write(b))
-	})
-}
-
 beforeAll(async () => {
-	srv = spawn('go', ['run', './internal/apptest/testsrv'], { cwd: repo })
-	const addr = await started(srv)
+	srv = await start()
 
 	c = app(
 		createGrpcTransport({
-			baseUrl: `http://${addr}`,
+			baseUrl: `http://${srv.addr}`,
 			// The credential, which `Plain` believes. It is what a test and a
 			// sandbox use and is not something to serve where anyone can reach
 			// it -- the point here is that a credential rides in metadata at all,
@@ -75,7 +49,7 @@ beforeAll(async () => {
 }, 90_000)
 
 afterAll(() => {
-	srv?.kill()
+	srv?.stop()
 })
 
 describe('the generated descriptors describe the same server', () => {

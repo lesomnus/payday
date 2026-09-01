@@ -15,4 +15,11 @@ import { defineConfig } from 'vitest/config'
  */
 export default defineConfig({
 	resolve: { dedupe: ['react', 'react-dom'] },
+
+	test: {
+		// The Go server the two server-backed files send bytes to, built once
+		// before any worker starts rather than by each of them under a
+		// deadline. See `src/testsrv.ts`.
+		globalSetup: ['./src/testsrv.ts'],
+	},
 })
