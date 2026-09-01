@@ -550,7 +550,7 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 func goTypeOf(g *protogen.GeneratedFile, t ormpb.Type) string {
 	switch t {
 	case ormpb.Type_TYPE_UUID:
-		return g.QualifiedGoIdent(pkgUuid2.Ident("Uuid"))
+		return g.QualifiedGoIdent(pkgUuid2.Ident("UUID"))
 	case ormpb.Type_TYPE_TIME:
 		return g.QualifiedGoIdent(pkgTime.Ident("Time"))
 	case ormpb.Type_TYPE_STRING:

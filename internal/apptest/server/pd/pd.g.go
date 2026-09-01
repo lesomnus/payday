@@ -542,7 +542,7 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.Uuid
+			at1 uuid.UUID
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
@@ -963,7 +963,7 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.Uuid
+			at1 uuid.UUID
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
@@ -1637,7 +1637,7 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.Uuid
+			at1 uuid.UUID
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
@@ -2174,7 +2174,7 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.Uuid
+			at1 uuid.UUID
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
@@ -2391,7 +2391,7 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.Uuid
+			at1 uuid.UUID
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
