@@ -119,13 +119,27 @@ describe("a name nobody chose", () => {
 		}
 	});
 
-	it("is not the same one twice", () => {
+	// The birthday bound is the point rather than a nuisance, and demanding
+	// none was this test being wrong about its own subject.
+	//
+	// Ten thousand draws from 23^7 collide about 1.5% of the time -- n^2/2N, or
+	// 1e8 over 6.8e9 -- so a test that asserted uniqueness failed about one run
+	// in seventy, and it did, here, after the Go twin had already been fixed
+	// for it. What is worth asserting is that the draws are wide and
+	// independent; uniqueness is the database's to enforce.
+	it("collides about as often as the arithmetic says", () => {
+		const n = 10000;
 		const seen = new Set<string>();
-		for (let i = 0; i < 10000; i++) {
+		let dups = 0;
+		for (let i = 0; i < n; i++) {
 			const v = randomAlias();
-			expect(seen.has(v), "made the same name twice").toBe(false);
+			if (seen.has(v)) dups++;
 			seen.add(v);
 		}
+
+		// One is expected about one run in seventy; three would mean the draws
+		// are not what they claim to be, and that is what this catches.
+		expect(dups, `the names are narrower than ${alphabet.length}^7`).toBeLessThan(3);
 	});
 
 	it("holds nothing that can be misread", () => {
