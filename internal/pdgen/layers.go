@@ -615,7 +615,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		// Nothing to file it under but the actor's own, which is what the")
 	g.P("		// trail said for every row before this. It is the honest fallback")
 	g.P("		// rather than a zero: a record nobody can read is not a record.")
-	g.P("		tenant = ", pkgUuid.Ident("Uuid"), "(v.Tenant)")
+	g.P("		tenant = ", pkgUuid.Ident("UUID"), "(v.Tenant)")
 	g.P("	}")
 	g.P("")
 	// A variable, because the field carries a default and so the builder takes
@@ -912,7 +912,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	g.P("// subject is the tenant of the row `key` names and the row itself, and the")
 	g.P("// nil identifier when there is no such row any more.")
 	g.P("func subject(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
-		", key ", pkgPdid.Ident("Id"), ") (", pkgUuid.Ident("Uuid"), ", []byte, error) {")
+		", key ", pkgPdid.Ident("Id"), ") (", pkgUuid.Ident("UUID"), ", []byte, error) {")
 	g.P("	switch key.Domain() {")
 
 	for _, v := range s.Sorted() {

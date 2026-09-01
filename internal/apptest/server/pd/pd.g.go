@@ -2919,7 +2919,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		// Nothing to file it under but the actor's own, which is what the
 		// trail said for every row before this. It is the honest fallback
 		// rather than a zero: a record nobody can read is not a record.
-		tenant = uuid.Uuid(v.Tenant)
+		tenant = uuid.UUID(v.Tenant)
 	}
 
 	domain := uint32(v.Object.Domain())
@@ -3035,7 +3035,7 @@ func named(p *patchpb.Path, ns []uint32) bool {
 
 // subject is the tenant of the row `key` names and the row itself, and the
 // nil identifier when there is no such row any more.
-func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.Uuid, []byte, error) {
+func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte, error) {
 	switch key.Domain() {
 	case AuditDomain:
 		row, err := s.Audit().Get(ctx, apptest.AuditGetRequest_builder{
@@ -5352,9 +5352,9 @@ func (s trailStore) Count(ctx context.Context, k trail.Kinds, at time.Time) (int
 // when it runs, and a row backdated by a clock that stepped is one it
 // removes and the file does not have.
 func (s trailStore) Forget(ctx context.Context, keys []any) (int, error) {
-	ids := make([]uuid.Uuid, 0, len(keys))
+	ids := make([]uuid.UUID, 0, len(keys))
 	for _, k := range keys {
-		v, ok := k.(uuid.Uuid)
+		v, ok := k.(uuid.UUID)
 		if !ok {
 			return 0, fmt.Errorf("trail: %T is not a key this store gave out", k)
 		}
@@ -5410,7 +5410,7 @@ func ForgetInTrail(ctx context.Context, db *ent.Client, objects []pdid.Id) (int,
 		return 0, nil
 	}
 
-	ids := make([]uuid.Uuid, len(objects))
+	ids := make([]uuid.UUID, len(objects))
 	for i, v := range objects {
 		ids[i] = v.Uuid()
 	}
