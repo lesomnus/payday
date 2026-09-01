@@ -225,7 +225,7 @@ func writeCert(t *testing.T, certFile, keyFile string) {
 		Subject:      pkix.Name{CommonName: "test"},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(time.Hour),
-		IpAddresses:  []net.Ip{net.ParseIp("127.0.0.1")},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
 	}
 
 	der, err := x509.CreateCertificate(rand.Reader, tpl, tpl, &k.PublicKey, k)

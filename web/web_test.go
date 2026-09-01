@@ -48,7 +48,7 @@ func call(t *testing.T, s *httptest.Server, f func(*http.Request)) *http.Respons
 	t.Helper()
 
 	r, err := http.NewRequest(http.MethodPost,
-		s.Url+"/grpc.health.v1.Health/Check", strings.NewReader(`{}`))
+		s.URL+"/grpc.health.v1.Health/Check", strings.NewReader(`{}`))
 	require.NoError(t, err)
 
 	r.Header.Set("Content-Type", "application/json")
@@ -133,7 +133,7 @@ func TestThePreflightSaysItTooBecauseThatIsWhatTheBrowserAsks(t *testing.T) {
 		Origins:  []string{"http://localhost:5173"},
 	})
 
-	r, err := http.NewRequest(http.MethodOptions, s.Url+"/grpc.health.v1.Health/Check", nil)
+	r, err := http.NewRequest(http.MethodOptions, s.URL+"/grpc.health.v1.Health/Check", nil)
 	x.NoError(err)
 	r.Header.Set("Origin", "http://localhost:5173")
 	r.Header.Set("Access-Control-Request-Method", "POST")
@@ -186,7 +186,7 @@ func TestAnAppMountsItsOwnRoutes(t *testing.T) {
 	s := httptest.NewServer(m)
 	defer s.Close()
 
-	res, err := http.Post(s.Url+"/session", "application/json", nil)
+	res, err := http.Post(s.URL+"/session", "application/json", nil)
 	x.NoError(err)
 	defer res.Body.Close()
 

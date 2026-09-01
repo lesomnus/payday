@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"

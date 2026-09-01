@@ -4,55 +4,80 @@ package fleet
 
 import (
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Id filters vertices based on their Id field.
 func Id(id uuid.UUID) predicate.Fleet {
-	return predicate.Fleet(sql.FieldEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.FleetOrErr(sql.FieldEQ(FieldId, vc), err)
 }
 
 // IdEQ applies the EQ predicate on the Id field.
 func IdEQ(id uuid.UUID) predicate.Fleet {
-	return predicate.Fleet(sql.FieldEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.FleetOrErr(sql.FieldEQ(FieldId, vc), err)
 }
 
 // IdNEQ applies the NEQ predicate on the Id field.
 func IdNEQ(id uuid.UUID) predicate.Fleet {
-	return predicate.Fleet(sql.FieldNEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.FleetOrErr(sql.FieldNEQ(FieldId, vc), err)
 }
 
 // IdIn applies the In predicate on the Id field.
 func IdIn(ids ...uuid.UUID) predicate.Fleet {
-	return predicate.Fleet(sql.FieldIn(FieldId, ids...))
+	var (
+		err error
+		vcs = make([]any, len(ids))
+	)
+	for i := range vcs {
+		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
+			break
+		}
+	}
+	return predicate.FleetOrErr(sql.FieldIn(FieldId, vcs...), err)
 }
 
 // IdNotIn applies the NotIn predicate on the Id field.
 func IdNotIn(ids ...uuid.UUID) predicate.Fleet {
-	return predicate.Fleet(sql.FieldNotIn(FieldId, ids...))
+	var (
+		err error
+		vcs = make([]any, len(ids))
+	)
+	for i := range vcs {
+		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
+			break
+		}
+	}
+	return predicate.FleetOrErr(sql.FieldNotIn(FieldId, vcs...), err)
 }
 
 // IdGT applies the GT predicate on the Id field.
 func IdGT(id uuid.UUID) predicate.Fleet {
-	return predicate.Fleet(sql.FieldGT(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.FleetOrErr(sql.FieldGT(FieldId, vc), err)
 }
 
 // IdGTE applies the GTE predicate on the Id field.
 func IdGTE(id uuid.UUID) predicate.Fleet {
-	return predicate.Fleet(sql.FieldGTE(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.FleetOrErr(sql.FieldGTE(FieldId, vc), err)
 }
 
 // IdLT applies the LT predicate on the Id field.
 func IdLT(id uuid.UUID) predicate.Fleet {
-	return predicate.Fleet(sql.FieldLT(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.FleetOrErr(sql.FieldLT(FieldId, vc), err)
 }
 
 // IdLTE applies the LTE predicate on the Id field.
 func IdLTE(id uuid.UUID) predicate.Fleet {
-	return predicate.Fleet(sql.FieldLTE(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.FleetOrErr(sql.FieldLTE(FieldId, vc), err)
 }
 
 // Alias applies equality check predicate on the "alias" field. It's identical to AliasEQ.

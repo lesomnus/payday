@@ -77,7 +77,7 @@ func (b *built) browsing(t *testing.T) (*httptest.Server, *http.Client) {
 func signedIn(t *testing.T, c *http.Client, srv *httptest.Server, id string) int {
 	t.Helper()
 
-	res, err := c.Post(srv.Url+"/session", "application/json",
+	res, err := c.Post(srv.URL+"/session", "application/json",
 		strings.NewReader(`{"id":"`+id+`"}`))
 	require.NoError(t, err)
 	defer res.Body.Close()
@@ -92,7 +92,7 @@ func calls(t *testing.T, c *http.Client, srv *httptest.Server, method, body stri
 	x := require.New(t)
 
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost,
-		srv.Url+method, strings.NewReader(body))
+		srv.URL+method, strings.NewReader(body))
 	x.NoError(err)
 
 	req.Header.Set("Content-Type", "application/json")
@@ -145,7 +145,7 @@ func TestSigningOutStopsTheNextCall(t *testing.T) {
 	code, _ := calls(t, c, srv, "/app.RobotService/List", `{}`)
 	x.Equal(http.StatusOK, code)
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodDelete, srv.Url+"/session", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodDelete, srv.URL+"/session", nil)
 	x.NoError(err)
 	res, err := c.Do(req)
 	x.NoError(err)

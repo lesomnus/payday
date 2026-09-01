@@ -64,7 +64,7 @@ func call(t *testing.T, srv *httptest.Server, method string, body string, as str
 	t.Helper()
 	x := require.New(t)
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.Url+method, strings.NewReader(body))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+method, strings.NewReader(body))
 	x.NoError(err)
 
 	req.Header.Set("Content-Type", "application/json")
@@ -210,7 +210,7 @@ func TestBothWiresABrowserCanSpeak(t *testing.T) {
 	frame = append(frame, msg...)
 
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost,
-		srv.Url+"/app.RobotService/List", bytes.NewReader(frame))
+		srv.URL+"/app.RobotService/List", bytes.NewReader(frame))
 	x.NoError(err)
 	req.Header.Set("Content-Type", "application/grpc-web+proto")
 	req.Header.Set(auth.Header, auth.PlainScheme+" @acme/admin")
@@ -262,7 +262,7 @@ func TestAnOriginNobodyNamedIsNotAnsweredFor(t *testing.T) {
 
 	preflight := func(origin string) *http.Response {
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions,
-			srv.Url+"/app.RobotService/List", nil)
+			srv.URL+"/app.RobotService/List", nil)
 		x.NoError(err)
 		req.Header.Set("Origin", origin)
 		req.Header.Set("Access-Control-Request-Method", http.MethodPost)
@@ -296,7 +296,7 @@ func TestTheAppsOwnRoutesGetTheSameAnswer(t *testing.T) {
 	srv := b.serving(t)
 
 	for _, path := range []string{"/app.RobotService/List", "/login"} {
-		req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions, srv.Url+path, nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions, srv.URL+path, nil)
 		x.NoError(err)
 		req.Header.Set("Origin", "http://localhost:5173")
 		req.Header.Set("Access-Control-Request-Method", http.MethodPost)
@@ -310,7 +310,7 @@ func TestTheAppsOwnRoutesGetTheSameAnswer(t *testing.T) {
 
 	// And that the route is actually served, so the check above is not agreeing
 	// with a 404.
-	res, err := http.Post(srv.Url+"/login", "application/json", strings.NewReader("{}"))
+	res, err := http.Post(srv.URL+"/login", "application/json", strings.NewReader("{}"))
 	x.NoError(err)
 	defer res.Body.Close()
 
@@ -339,7 +339,7 @@ func TestAnAddressWithNothingConfiguredIsStillAMux(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	res, err := http.Get(srv.Url + "/login")
+	res, err := http.Get(srv.URL + "/login")
 	x.NoError(err)
 	res.Body.Close()
 	x.Equal(http.StatusTeapot, res.StatusCode)
@@ -372,13 +372,13 @@ func TestTheBrowserPortCarriesGrpcToo(t *testing.T) {
 	// Cleartext would be HTTP/1.1, which is the whole reason this is its own
 	// listener; TLS is what makes it HTTP/2 without an upgrade dance.
 	srv := httptest.NewUnstartedServer(h)
-	srv.EnableHttp2 = true
-	srv.StartTls()
+	srv.EnableHTTP2 = true
+	srv.StartTLS()
 	defer srv.Close()
 
 	cc, err := grpc.NewClient(srv.Listener.Addr().String(),
 		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-			RootCAs: srv.Client().Transport.(*http.Transport).TlsClientConfig.RootCAs,
+			RootCAs: srv.Client().Transport.(*http.Transport).TLSClientConfig.RootCAs,
 		})))
 	x.NoError(err)
 	defer cc.Close()

@@ -105,7 +105,7 @@ func TestEnvNames(t *testing.T) {
 
 		vs := acme.EnvNames(&Config{})
 		x.Contains(vs, "ACME_SERVER_ADDR")
-		x.Contains(vs, "ACME_SERVER_Tls_CERT_FILE")
+		x.Contains(vs, "ACME_SERVER_TLS_CERT_FILE")
 		x.Contains(vs, "ACME_SERVER_KEEPALIVE_MAX_CONNECTION_AGE")
 		x.Contains(vs, "ACME_DB_DSN")
 	})

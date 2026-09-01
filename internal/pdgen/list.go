@@ -12,7 +12,7 @@ const (
 	pkgEntpage = protogen.GoImportPath("github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpage")
 	pkgEntsql  = protogen.GoImportPath("github.com/protobuf-orm/ent/dialect/sql")
 	pkgTime    = protogen.GoImportPath("time")
-	pkgUuid2   = protogen.GoImportPath("github.com/google/uuid")
+	pkgUuid2   = protogen.GoImportPath("uuid")
 )
 
 // EmitSink writes the innermost server: the one the generated CRUD servers make,
@@ -494,7 +494,7 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 			g.P("			// The **foreign key column** on this row, which is what an")
 			g.P("			// edge is. A subquery for a comparison against an indexed")
 			g.P("			// column is work nobody asked for.")
-			g.P("			k, err := ", pkgUuid2.Ident("FromBytes"), "(b)")
+			g.P("			k, err := ", pkgEntUuid.Ident("FromBytes"), "(b)")
 			g.P("			if err != nil {")
 			g.P("				return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"", by.Edge, ": %s\", err)")
 			g.P("			}")
@@ -526,7 +526,7 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 		g.P("	if f.Has", at, "() {")
 		switch by.Type {
 		case ormpb.Type_TYPE_UUID:
-			g.P("		k, err := ", pkgUuid2.Ident("FromBytes"), "(f.Get", at, "())")
+			g.P("		k, err := ", pkgEntUuid.Ident("FromBytes"), "(f.Get", at, "())")
 			g.P("		if err != nil {")
 			g.P("			return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"", by.Field, ": %s\", err)")
 			g.P("		}")

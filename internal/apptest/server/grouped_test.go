@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"uuid"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"

@@ -6,7 +6,6 @@ module github.com/lesomnus/payday/internal/apptest
 go 1.27.0
 
 require (
-	github.com/google/uuid v1.6.0
 	github.com/lesomnus/grpc-dgram v0.0.0-20260727054342-be775dcd6ec2
 	github.com/lesomnus/otx v0.0.0-20260807173743-977a5687d6ba
 	github.com/lesomnus/payday v0.0.0-20260901023457-72d006c78d10
@@ -14,9 +13,9 @@ require (
 	github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/ncruces/go-sqlite3 v0.35.3
-	github.com/protobuf-orm/ent v0.0.0-20260901221134-1d321ed5f02c
+	github.com/protobuf-orm/ent v0.0.0-20260901230746-4115dcfc4087
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29
-	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260901221219-a2f9385c7295
+	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260901232630-700411e09bed
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sync v0.22.0
 	google.golang.org/grpc v1.83.0
@@ -41,6 +40,7 @@ require (
 	github.com/go-openapi/inflect v1.0.0 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.24.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

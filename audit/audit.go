@@ -30,11 +30,11 @@ package audit
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"uuid"
 
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/pdid"

@@ -5,6 +5,6 @@ package runtime
 // The schema-stitching logic is generated in github.com/lesomnus/payday/internal/apptest/internal/ent/runtime.go
 
 const (
-	Version = "v0.0.0-20260901221134-1d321ed5f02c"              // Version of ent codegen.
-	Sum     = "h1:eNPkBBIOVBdbt/R996QvcV/irRPbAb7Wrz5iDc4y9PE=" // Sum of ent codegen.
+	Version = "v0.0.0-20260901230746-4115dcfc4087"              // Version of ent codegen.
+	Sum     = "h1:1RMN/oonuxWRHdLh1+aDqJsilqEDUp6Tds/ZixA2AkU=" // Sum of ent codegen.
 )

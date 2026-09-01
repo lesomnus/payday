@@ -611,7 +611,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("	if err != nil {")
 	g.P("		return err")
 	g.P("	}")
-	g.P("	if tenant == ", pkgUuid.Ident("Nil"), " {")
+	g.P("	if tenant == ", pkgUuid.Ident("Nil"), "()", " {")
 	g.P("		// Nothing to file it under but the actor's own, which is what the")
 	g.P("		// trail said for every row before this. It is the honest fallback")
 	g.P("		// rather than a zero: a record nobody can read is not a record.")
@@ -861,7 +861,7 @@ func emitNotNull(g *protogen.GeneratedFile) {
 // cannot say whose.
 func emitViaAbsent(g *protogen.GeneratedFile, via string) {
 	g.P("		if !row.Has", camel(via), "() {")
-	g.P("			return ", pkgUuid.Ident("Nil"), ", b, nil")
+	g.P("			return ", pkgUuid.Ident("Nil"), "()", ", b, nil")
 	g.P("		}")
 	g.P("")
 }
@@ -947,10 +947,10 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		// blob. A row that is really gone is the one case that reaches here --
 		// erased hard, for a soft entity nothing at all -- and it is exactly
 		// the case no SQLite test can fail on.
-		g.P("				return ", pkgUuid.Ident("Nil"), ", []byte{}, nil")
+		g.P("				return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
 		g.P("			}")
 		g.P("")
-		g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+		g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 		g.P("		}")
 		g.P("")
 		if len(v.Secrets) > 0 {
@@ -977,7 +977,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 
 		g.P("		b, err := ", pkgProto.Ident("Marshal"), "(row)")
 		g.P("		if err != nil {")
-		g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+		g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 		g.P("		}")
 		g.P("")
 
@@ -985,16 +985,16 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		case v.IsTenant:
 			// A tenant is its own, which is what a tenant being a wall comes
 			// down to.
-			g.P("		k, err := ", pkgUuid.Ident("FromBytes"), "(row.GetId())")
+			g.P("		k, err := ", pkgEntUuid.Ident("FromBytes"), "(row.GetId())")
 
 		case len(v.Columns) > 0:
 			// A row that names its tenant with a column. The trail is the only
 			// one, and it is never the subject of a write anybody records.
-			g.P("		k, err := ", pkgUuid.Ident("FromBytes"), "(row.Get", camel(v.Columns[0]), "())")
+			g.P("		k, err := ", pkgEntUuid.Ident("FromBytes"), "(row.Get", camel(v.Columns[0]), "())")
 
 		case len(v.Via) == 1:
 			emitViaAbsent(g, v.Via[0])
-			g.P("		k, err := ", pkgUuid.Ident("FromBytes"), "(row.Get", camel(v.Via[0]), "().GetId())")
+			g.P("		k, err := ", pkgEntUuid.Ident("FromBytes"), "(row.Get", camel(v.Via[0]), "().GetId())")
 
 		default:
 			// It reaches the tenant through another row, so the walk is a
@@ -1003,12 +1003,12 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 			emitViaAbsent(g, v.Via[0])
 			g.P("		up, err := ", pkgPdid.Ident("From"), "(row.Get", camel(v.Via[0]), "().GetId())")
 			g.P("		if err != nil {")
-			g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("		}")
 			g.P("")
 			g.P("		k, _, err := subject(ctx, s, up)")
 			g.P("		if err != nil {")
-			g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("		}")
 			g.P("")
 			g.P("		return k, b, nil")
@@ -1016,7 +1016,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 
 		if len(v.Via) <= 1 {
 			g.P("		if err != nil {")
-			g.P("			return ", pkgUuid.Ident("Nil"), ", nil, err")
+			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("		}")
 			g.P("")
 			g.P("		return k, b, nil")
@@ -1036,7 +1036,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	// nil here is every write to a global entity failing on PostgreSql and
 	// passing on SQLite. It is the same trap twice, which is why it is worth
 	// saying twice.
-	g.P("	return ", pkgUuid.Ident("Nil"), ", []byte{}, nil")
+	g.P("	return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
 	g.P("}")
 	g.P("")
 
@@ -1090,7 +1090,7 @@ func emitErased(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 	g.P("// tenant whose row was erased could not read.")
 	g.P("func erased", e, "(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
 		", key ", pkgPdid.Ident("Id"), ") (*", root.Ident(e), ", error) {")
-	g.P("	k, err := ", pkgUuid.Ident("FromBytes"), "(key.Bytes())")
+	g.P("	k, err := ", pkgEntUuid.Ident("FromBytes"), "(key.Bytes())")
 	g.P("	if err != nil {")
 	g.P("		return nil, err")
 	g.P("	}")

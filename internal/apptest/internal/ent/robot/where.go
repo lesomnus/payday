@@ -4,8 +4,8 @@ package robot
 
 import (
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/protobuf-orm/ent/dialect/sql"
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -13,47 +13,72 @@ import (
 
 // Id filters vertices based on their Id field.
 func Id(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.RobotOrErr(sql.FieldEQ(FieldId, vc), err)
 }
 
 // IdEQ applies the EQ predicate on the Id field.
 func IdEQ(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.RobotOrErr(sql.FieldEQ(FieldId, vc), err)
 }
 
 // IdNEQ applies the NEQ predicate on the Id field.
 func IdNEQ(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.RobotOrErr(sql.FieldNEQ(FieldId, vc), err)
 }
 
 // IdIn applies the In predicate on the Id field.
 func IdIn(ids ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldIn(FieldId, ids...))
+	var (
+		err error
+		vcs = make([]any, len(ids))
+	)
+	for i := range vcs {
+		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
+			break
+		}
+	}
+	return predicate.RobotOrErr(sql.FieldIn(FieldId, vcs...), err)
 }
 
 // IdNotIn applies the NotIn predicate on the Id field.
 func IdNotIn(ids ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNotIn(FieldId, ids...))
+	var (
+		err error
+		vcs = make([]any, len(ids))
+	)
+	for i := range vcs {
+		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
+			break
+		}
+	}
+	return predicate.RobotOrErr(sql.FieldNotIn(FieldId, vcs...), err)
 }
 
 // IdGT applies the GT predicate on the Id field.
 func IdGT(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldGT(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.RobotOrErr(sql.FieldGT(FieldId, vc), err)
 }
 
 // IdGTE applies the GTE predicate on the Id field.
 func IdGTE(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldGTE(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.RobotOrErr(sql.FieldGTE(FieldId, vc), err)
 }
 
 // IdLT applies the LT predicate on the Id field.
 func IdLT(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldLT(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.RobotOrErr(sql.FieldLT(FieldId, vc), err)
 }
 
 // IdLTE applies the LTE predicate on the Id field.
 func IdLTE(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldLTE(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.RobotOrErr(sql.FieldLTE(FieldId, vc), err)
 }
 
 // Alias applies equality check predicate on the "alias" field. It's identical to AliasEQ.
@@ -88,17 +113,20 @@ func DateErased(v time.Time) predicate.Robot {
 
 // TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
 func TenantId(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.RobotOrErr(sql.FieldEQ(FieldTenantId, vc), err)
 }
 
 // ThingId applies equality check predicate on the "thing_id" field. It's identical to ThingIdEQ.
 func ThingId(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldThingId, v))
+	vc, err := ValueScanner.ThingId.Value(v)
+	return predicate.RobotOrErr(sql.FieldEQ(FieldThingId, vc), err)
 }
 
 // CellId applies equality check predicate on the "cell_id" field. It's identical to CellIdEQ.
 func CellId(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldCellId, v))
+	vc, err := ValueScanner.CellId.Value(v)
+	return predicate.RobotOrErr(sql.FieldEQ(FieldCellId, vc), err)
 }
 
 // AliasEQ applies the EQ predicate on the "alias" field.
@@ -408,42 +436,82 @@ func DateErasedNotNil() predicate.Robot {
 
 // TenantIdEQ applies the EQ predicate on the "tenant_id" field.
 func TenantIdEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.RobotOrErr(sql.FieldEQ(FieldTenantId, vc), err)
 }
 
 // TenantIdNEQ applies the NEQ predicate on the "tenant_id" field.
 func TenantIdNEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNEQ(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.RobotOrErr(sql.FieldNEQ(FieldTenantId, vc), err)
 }
 
 // TenantIdIn applies the In predicate on the "tenant_id" field.
 func TenantIdIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldIn(FieldTenantId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.RobotOrErr(sql.FieldIn(FieldTenantId, v...), err)
 }
 
 // TenantIdNotIn applies the NotIn predicate on the "tenant_id" field.
 func TenantIdNotIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNotIn(FieldTenantId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.RobotOrErr(sql.FieldNotIn(FieldTenantId, v...), err)
 }
 
 // ThingIdEQ applies the EQ predicate on the "thing_id" field.
 func ThingIdEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldThingId, v))
+	vc, err := ValueScanner.ThingId.Value(v)
+	return predicate.RobotOrErr(sql.FieldEQ(FieldThingId, vc), err)
 }
 
 // ThingIdNEQ applies the NEQ predicate on the "thing_id" field.
 func ThingIdNEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNEQ(FieldThingId, v))
+	vc, err := ValueScanner.ThingId.Value(v)
+	return predicate.RobotOrErr(sql.FieldNEQ(FieldThingId, vc), err)
 }
 
 // ThingIdIn applies the In predicate on the "thing_id" field.
 func ThingIdIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldIn(FieldThingId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.ThingId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.RobotOrErr(sql.FieldIn(FieldThingId, v...), err)
 }
 
 // ThingIdNotIn applies the NotIn predicate on the "thing_id" field.
 func ThingIdNotIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNotIn(FieldThingId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.ThingId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.RobotOrErr(sql.FieldNotIn(FieldThingId, v...), err)
 }
 
 // ThingIdIsNil applies the IsNil predicate on the "thing_id" field.
@@ -458,22 +526,42 @@ func ThingIdNotNil() predicate.Robot {
 
 // CellIdEQ applies the EQ predicate on the "cell_id" field.
 func CellIdEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldCellId, v))
+	vc, err := ValueScanner.CellId.Value(v)
+	return predicate.RobotOrErr(sql.FieldEQ(FieldCellId, vc), err)
 }
 
 // CellIdNEQ applies the NEQ predicate on the "cell_id" field.
 func CellIdNEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNEQ(FieldCellId, v))
+	vc, err := ValueScanner.CellId.Value(v)
+	return predicate.RobotOrErr(sql.FieldNEQ(FieldCellId, vc), err)
 }
 
 // CellIdIn applies the In predicate on the "cell_id" field.
 func CellIdIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldIn(FieldCellId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.CellId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.RobotOrErr(sql.FieldIn(FieldCellId, v...), err)
 }
 
 // CellIdNotIn applies the NotIn predicate on the "cell_id" field.
 func CellIdNotIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNotIn(FieldCellId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.CellId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.RobotOrErr(sql.FieldNotIn(FieldCellId, v...), err)
 }
 
 // CellIdIsNil applies the IsNil predicate on the "cell_id" field.

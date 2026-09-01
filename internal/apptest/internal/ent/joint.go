@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/protobuf-orm/ent"
@@ -56,12 +56,14 @@ func (*Joint) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case joint.FieldId:
+			values[i] = joint.ValueScanner.Id.ScanValue()
 		case joint.FieldAlias:
 			values[i] = new(sql.NullString)
 		case joint.FieldDateErased:
 			values[i] = new(sql.NullTime)
-		case joint.FieldId, joint.FieldRobotId:
-			values[i] = new(uuid.UUID)
+		case joint.FieldRobotId:
+			values[i] = joint.ValueScanner.RobotId.ScanValue()
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -78,10 +80,10 @@ func (_m *Joint) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case joint.FieldId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field id", values[i])
-			} else if value != nil {
-				_m.Id = *value
+			if value, err := joint.ValueScanner.Id.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.Id = value
 			}
 		case joint.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -97,10 +99,10 @@ func (_m *Joint) assignValues(columns []string, values []any) error {
 				*_m.DateErased = value.Time
 			}
 		case joint.FieldRobotId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field robot_id", values[i])
-			} else if value != nil {
-				_m.RobotId = *value
+			if value, err := joint.ValueScanner.RobotId.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.RobotId = value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])

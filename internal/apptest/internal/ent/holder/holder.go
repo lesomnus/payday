@@ -3,6 +3,8 @@
 package holder
 
 import (
+	"uuid"
+
 	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/protobuf-orm/ent/dialect/sql"
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -75,7 +77,9 @@ func ValidColumn(column string) bool {
 var (
 	// ValueScanner of all Holder fields.
 	ValueScanner struct {
-		Profile field.TypeValueScanner[*apptest.Profile]
+		Profile  field.TypeValueScanner[*apptest.Profile]
+		TenantId field.TypeValueScanner[uuid.UUID]
+		Id       field.TypeValueScanner[uuid.UUID]
 	}
 )
 

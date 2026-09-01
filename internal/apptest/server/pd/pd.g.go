@@ -12,7 +12,6 @@ package pd
 import (
 	context "context"
 	fmt "fmt"
-	uuid "github.com/google/uuid"
 	log "github.com/lesomnus/otx/log"
 	audit1 "github.com/lesomnus/payday/audit"
 	batch "github.com/lesomnus/payday/batch"
@@ -45,6 +44,7 @@ import (
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	entpage "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpage"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
+	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -54,6 +54,7 @@ import (
 	slog "log/slog"
 	slices "slices"
 	time "time"
+	uuid "uuid"
 )
 
 // Payday is the payday `pd gen` was run from.
@@ -139,7 +140,7 @@ func Minter() bare.Minter {
 	) (uuid.UUID, error) {
 		d, found := Domains[entity]
 		if !found {
-			return uuid.Nil, pdid.NoDomain(entity)
+			return uuid.Nil(), pdid.NoDomain(entity)
 		}
 
 		return pdid.Mint(d, given, ok)
@@ -597,7 +598,7 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 	ps := make([]predicate.Audit, 0, 1)
 	if f.HasObjectId() {
-		k, err := uuid.FromBytes(f.GetObjectId())
+		k, err := entuuid.FromBytes(f.GetObjectId())
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "object_id: %s", err)
 		}
@@ -605,7 +606,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 		ps = append(ps, audit.ObjectIdEQ(k))
 	}
 	if f.HasActorId() {
-		k, err := uuid.FromBytes(f.GetActorId())
+		k, err := entuuid.FromBytes(f.GetActorId())
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
 		}
@@ -613,7 +614,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 		ps = append(ps, audit.ActorIdEQ(k))
 	}
 	if f.HasTenantId() {
-		k, err := uuid.FromBytes(f.GetTenantId())
+		k, err := entuuid.FromBytes(f.GetTenantId())
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
 		}
@@ -621,7 +622,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 		ps = append(ps, audit.TenantIdEQ(k))
 	}
 	if f.HasActorTenantId() {
-		k, err := uuid.FromBytes(f.GetActorTenantId())
+		k, err := entuuid.FromBytes(f.GetActorTenantId())
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
 		}
@@ -629,7 +630,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 		ps = append(ps, audit.ActorTenantIdEQ(k))
 	}
 	if f.HasCounterpartTenantId() {
-		k, err := uuid.FromBytes(f.GetCounterpartTenantId())
+		k, err := entuuid.FromBytes(f.GetCounterpartTenantId())
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
 		}
@@ -1031,7 +1032,7 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 			// The **foreign key column** on this row, which is what an
 			// edge is. A subquery for a comparison against an indexed
 			// column is work nobody asked for.
-			k, err := uuid.FromBytes(b)
+			k, err := entuuid.FromBytes(b)
 			if err != nil {
 				return nil, status.Errorf(codes.InvalidArgument, "tenant: %s", err)
 			}
@@ -1707,7 +1708,7 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 			// The **foreign key column** on this row, which is what an
 			// edge is. A subquery for a comparison against an indexed
 			// column is work nobody asked for.
-			k, err := uuid.FromBytes(b)
+			k, err := entuuid.FromBytes(b)
 			if err != nil {
 				return nil, status.Errorf(codes.InvalidArgument, "tenant: %s", err)
 			}
@@ -1732,7 +1733,7 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 			// The **foreign key column** on this row, which is what an
 			// edge is. A subquery for a comparison against an indexed
 			// column is work nobody asked for.
-			k, err := uuid.FromBytes(b)
+			k, err := entuuid.FromBytes(b)
 			if err != nil {
 				return nil, status.Errorf(codes.InvalidArgument, "thing: %s", err)
 			}
@@ -2915,7 +2916,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 	if err != nil {
 		return err
 	}
-	if tenant == uuid.Nil {
+	if tenant == uuid.Nil() {
 		// Nothing to file it under but the actor's own, which is what the
 		// trail said for every row before this. It is the honest fallback
 		// rather than a zero: a record nobody can read is not a record.
@@ -3043,20 +3044,20 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		}.Build())
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil, []byte{}, nil
+				return uuid.Nil(), []byte{}, nil
 			}
 
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		b, err := proto.Marshal(row)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
-		k, err := uuid.FromBytes(row.GetTenantId())
+		k, err := entuuid.FromBytes(row.GetTenantId())
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		return k, b, nil
@@ -3071,24 +3072,24 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		}
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil, []byte{}, nil
+				return uuid.Nil(), []byte{}, nil
 			}
 
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		b, err := proto.Marshal(row)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		if !row.HasTenant() {
-			return uuid.Nil, b, nil
+			return uuid.Nil(), b, nil
 		}
 
-		k, err := uuid.FromBytes(row.GetTenant().GetId())
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		return k, b, nil
@@ -3103,24 +3104,24 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		}
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil, []byte{}, nil
+				return uuid.Nil(), []byte{}, nil
 			}
 
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		b, err := proto.Marshal(row)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		if !row.HasTenant() {
-			return uuid.Nil, b, nil
+			return uuid.Nil(), b, nil
 		}
 
-		k, err := uuid.FromBytes(row.GetTenant().GetId())
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		return k, b, nil
@@ -3135,29 +3136,29 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		}
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil, []byte{}, nil
+				return uuid.Nil(), []byte{}, nil
 			}
 
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		b, err := proto.Marshal(row)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		if !row.HasRobot() {
-			return uuid.Nil, b, nil
+			return uuid.Nil(), b, nil
 		}
 
 		up, err := pdid.From(row.GetRobot().GetId())
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		k, _, err := subject(ctx, s, up)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		return k, b, nil
@@ -3168,29 +3169,29 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		}.Build())
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil, []byte{}, nil
+				return uuid.Nil(), []byte{}, nil
 			}
 
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		b, err := proto.Marshal(row)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		if !row.HasLead() {
-			return uuid.Nil, b, nil
+			return uuid.Nil(), b, nil
 		}
 
 		up, err := pdid.From(row.GetLead().GetId())
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		k, _, err := subject(ctx, s, up)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		return k, b, nil
@@ -3201,29 +3202,29 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		}.Build())
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil, []byte{}, nil
+				return uuid.Nil(), []byte{}, nil
 			}
 
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		b, err := proto.Marshal(row)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		if !row.HasRobot() {
-			return uuid.Nil, b, nil
+			return uuid.Nil(), b, nil
 		}
 
 		up, err := pdid.From(row.GetRobot().GetId())
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		k, _, err := subject(ctx, s, up)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		return k, b, nil
@@ -3238,26 +3239,26 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		}
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil, []byte{}, nil
+				return uuid.Nil(), []byte{}, nil
 			}
 
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		hideRobot(row)
 
 		b, err := proto.Marshal(row)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		if !row.HasTenant() {
-			return uuid.Nil, b, nil
+			return uuid.Nil(), b, nil
 		}
 
-		k, err := uuid.FromBytes(row.GetTenant().GetId())
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		return k, b, nil
@@ -3268,20 +3269,20 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		}.Build())
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil, []byte{}, nil
+				return uuid.Nil(), []byte{}, nil
 			}
 
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		b, err := proto.Marshal(row)
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
-		k, err := uuid.FromBytes(row.GetId())
+		k, err := entuuid.FromBytes(row.GetId())
 		if err != nil {
-			return uuid.Nil, nil, err
+			return uuid.Nil(), nil, err
 		}
 
 		return k, b, nil
@@ -3291,7 +3292,7 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 	// An entity with no tenant to file under: one declared `global: {}`,
 	// which the switch above skips, or a domain nothing registered, which
 	// is an identifier from somewhere else. Nothing to read either way.
-	return uuid.Nil, []byte{}, nil
+	return uuid.Nil(), []byte{}, nil
 }
 
 // erasedCell is the row `key` names among the rows already erased, which no
@@ -3301,7 +3302,7 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 // blind was filed under the actor's tenant with an empty value, which the
 // tenant whose row was erased could not read.
 func erasedCell(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Cell, error) {
-	k, err := uuid.FromBytes(key.Bytes())
+	k, err := entuuid.FromBytes(key.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -3328,7 +3329,7 @@ func erasedCell(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Cell,
 // blind was filed under the actor's tenant with an empty value, which the
 // tenant whose row was erased could not read.
 func erasedHolder(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Holder, error) {
-	k, err := uuid.FromBytes(key.Bytes())
+	k, err := entuuid.FromBytes(key.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -3355,7 +3356,7 @@ func erasedHolder(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Hol
 // blind was filed under the actor's tenant with an empty value, which the
 // tenant whose row was erased could not read.
 func erasedJoint(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Joint, error) {
-	k, err := uuid.FromBytes(key.Bytes())
+	k, err := entuuid.FromBytes(key.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -3382,7 +3383,7 @@ func erasedJoint(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Join
 // blind was filed under the actor's tenant with an empty value, which the
 // tenant whose row was erased could not read.
 func erasedRobot(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Robot, error) {
-	k, err := uuid.FromBytes(key.Bytes())
+	k, err := entuuid.FromBytes(key.Bytes())
 	if err != nil {
 		return nil, err
 	}

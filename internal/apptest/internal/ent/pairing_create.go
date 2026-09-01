@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -117,7 +117,10 @@ func (_c *PairingCreate) sqlSave(ctx context.Context) (*Pairing, error) {
 	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := _c.createSpec()
+	_node, _spec, err := _c.createSpec()
+	if err != nil {
+		return nil, err
+	}
 	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
@@ -125,10 +128,17 @@ func (_c *PairingCreate) sqlSave(ctx context.Context) (*Pairing, error) {
 		return nil, err
 	}
 	if _spec.Id.Value != nil {
-		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
-			_node.Id = *id
-		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
+		sv, ok := _spec.Id.Value.(field.ValueScanner)
+		if !ok {
+			sv = pairing.ValueScanner.Id.ScanValue()
+			if err := sv.Scan(_spec.Id.Value); err != nil {
+				return nil, err
+			}
+		}
+		if value, err := pairing.ValueScanner.Id.FromValue(sv); err != nil {
 			return nil, err
+		} else {
+			_node.Id = value
 		}
 	}
 	_c.mutation.id = &_node.Id
@@ -136,14 +146,18 @@ func (_c *PairingCreate) sqlSave(ctx context.Context) (*Pairing, error) {
 	return _node, nil
 }
 
-func (_c *PairingCreate) createSpec() (*Pairing, *sqlgraph.CreateSpec) {
+func (_c *PairingCreate) createSpec() (*Pairing, *sqlgraph.CreateSpec, error) {
 	var (
 		_node = &Pairing{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(pairing.Table, sqlgraph.NewFieldSpec(pairing.FieldId, field.TypeUuid))
 	)
 	if id, ok := _c.mutation.Id(); ok {
 		_node.Id = id
-		_spec.Id.Value = &id
+		vv, err := pairing.ValueScanner.Id.Value(id)
+		if err != nil {
+			return nil, nil, err
+		}
+		_spec.Id.Value = vv
 	}
 	if value, ok := _c.mutation.DateCreated(); ok {
 		_spec.SetField(pairing.FieldDateCreated, field.TypeTime, value)
@@ -161,7 +175,11 @@ func (_c *PairingCreate) createSpec() (*Pairing, *sqlgraph.CreateSpec) {
 			},
 		}
 		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
+			vv, err := robot.ValueScanner.Id.Value(k)
+			if err != nil {
+				return nil, nil, err
+			}
+			edge.Target.Nodes = append(edge.Target.Nodes, vv)
 		}
 		_node.LeadId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
@@ -178,12 +196,16 @@ func (_c *PairingCreate) createSpec() (*Pairing, *sqlgraph.CreateSpec) {
 			},
 		}
 		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
+			vv, err := robot.ValueScanner.Id.Value(k)
+			if err != nil {
+				return nil, nil, err
+			}
+			edge.Target.Nodes = append(edge.Target.Nodes, vv)
 		}
 		_node.FollowId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	return _node, _spec
+	return _node, _spec, nil
 }
 
 // PairingCreateBulk is the builder for creating many Pairing entities in bulk.
@@ -214,7 +236,10 @@ func (_c *PairingCreateBulk) Save(ctx context.Context) ([]*Pairing, error) {
 				}
 				builder.mutation = mutation
 				var err error
-				nodes[i], specs[i] = builder.createSpec()
+				nodes[i], specs[i], err = builder.createSpec()
+				if err != nil {
+					return nil, err
+				}
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
@@ -230,6 +255,20 @@ func (_c *PairingCreateBulk) Save(ctx context.Context) ([]*Pairing, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].Id
+				if specs[i].Id.Value != nil {
+					sv, ok := specs[i].Id.Value.(field.ValueScanner)
+					if !ok {
+						sv = pairing.ValueScanner.Id.ScanValue()
+						if err := sv.Scan(specs[i].Id.Value); err != nil {
+							return nil, err
+						}
+					}
+					if id, err := pairing.ValueScanner.Id.FromValue(sv); err != nil {
+						return nil, err
+					} else {
+						nodes[i].Id = id
+					}
+				}
 				mutation.done = true
 				return nodes[i], nil
 			})

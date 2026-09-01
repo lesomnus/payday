@@ -6,8 +6,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/protobuf-orm/ent"

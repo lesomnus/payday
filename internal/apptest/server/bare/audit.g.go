@@ -6,7 +6,6 @@ package bare
 import (
 	context "context"
 	errors "errors"
-	uuid "github.com/google/uuid"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
@@ -16,8 +15,10 @@ import (
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
+	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	uuid "uuid"
 )
 
 type AuditServiceServer struct {
@@ -88,7 +89,7 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	q := st.Db.Audit.Create()
 	var k uuid.UUID
 	if req.HasId() {
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
@@ -99,19 +100,19 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	} else {
 		q.SetId(v)
 	}
-	if v, err := uuid.FromBytes(req.GetTenantId()); err != nil {
+	if v, err := entuuid.FromBytes(req.GetTenantId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
 	} else {
 		q.SetTenantId(v)
 	}
-	if v, err := uuid.FromBytes(req.GetActorId()); err != nil {
+	if v, err := entuuid.FromBytes(req.GetActorId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
 	} else {
 		q.SetActorId(v)
 	}
 	q.SetTraceId(req.GetTraceId())
 	q.SetAction(req.GetAction())
-	if v, err := uuid.FromBytes(req.GetObjectId()); err != nil {
+	if v, err := entuuid.FromBytes(req.GetObjectId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "object_id: %s", err)
 	} else {
 		q.SetObjectId(v)
@@ -122,14 +123,14 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	} else {
 		q.SetDateCreated(st.now())
 	}
-	if v, err := uuid.FromBytes(req.GetActorTenantId()); err != nil {
+	if v, err := entuuid.FromBytes(req.GetActorTenantId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
 	} else {
 		q.SetActorTenantId(v)
 	}
 	q.SetValue(req.GetValue())
 	if req.HasCounterpartTenantId() {
-		if v, err := uuid.FromBytes(req.GetCounterpartTenantId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetCounterpartTenantId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
 		} else {
 			q.SetCounterpartTenantId(v)
@@ -275,7 +276,7 @@ func (s AuditServiceServer) Patch(ctx context.Context, req *apptest.AuditPatchRe
 func AuditGetKey(ctx context.Context, db *ent.Client, ref *apptest.AuditRef) (uuid.UUID, error) {
 	var z uuid.UUID
 	if ref.HasId() {
-		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(ref.GetId()); err != nil {
 			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return v, nil
@@ -473,7 +474,7 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 func AuditPick(req *apptest.AuditRef) (predicate.Audit, error) {
 	switch req.WhichKey() {
 	case apptest.AuditRef_Id_case:
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return audit.IdEQ(v), nil

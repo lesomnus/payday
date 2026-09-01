@@ -33,7 +33,7 @@ func TestTheSlowLogNamesTheCallThatWasSlow(t *testing.T) {
 	// Everything is slow at zero, so what is left to observe is which calls
 	// crossed and what they were called.
 	said := &bytes.Buffer{}
-	ctx = log.Into(ctx, slog.New(slog.NewJsonHandler(said, nil)))
+	ctx = log.Into(ctx, slog.New(slog.NewJSONHandler(said, nil)))
 
 	s := b.stack(t,
 		core.Build(),
@@ -70,7 +70,7 @@ func TestASlowLogSaysNothingAboutACallThatWasNot(t *testing.T) {
 	b, ctx := build(t)
 
 	said := &bytes.Buffer{}
-	ctx = log.Into(ctx, slog.New(slog.NewJsonHandler(said, nil)))
+	ctx = log.Into(ctx, slog.New(slog.NewJSONHandler(said, nil)))
 
 	s := b.stack(t,
 		core.Build(),

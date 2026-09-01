@@ -62,7 +62,7 @@ package pdid
 import (
 	"fmt"
 
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // Id is a Uuid that says what kind of thing it names.
@@ -70,15 +70,11 @@ type Id uuid.UUID
 
 // Nil is the identifier that names nothing, and so is the identifier nothing
 // may be stored under. Its domain is [Unknown].
-var Nil = Id(uuid.Nil)
+var Nil = Id(uuid.Nil())
 
 // New answers with a fresh identifier of the given domain.
-//
-// It panics if the source of randomness fails, which is what `uuid.Must` means
-// and is the right answer here: a process that cannot make an identifier cannot
-// serve a request either.
 func New(d Domain) Id {
-	v := uuid.Must(uuid.NewV7())
+	v := uuid.NewV7()
 
 	// The version, and only the version. The low nibble of this byte is the
 	// high half of v7's twelve-bit sequence counter, which is what orders
@@ -121,7 +117,10 @@ func (v Id) IsZero() bool { return v == Nil }
 // pass as whatever 3 was registered as. What the version and the variant say is
 // the only reason to believe the rest.
 func Of(v uuid.UUID) (Domain, bool) {
-	if v.Version() != 8 || v.Variant() != uuid.RFC4122 {
+	// RFC 9562 puts the version in the high nibble of byte 6 and the variant
+	// in the high bits of byte 8. The standard library reads out neither, and
+	// they are two shifts.
+	if v[6]>>4 != 8 || v[8]>>6 != 0b10 {
 		return Unknown, false
 	}
 
@@ -133,10 +132,10 @@ func Of(v uuid.UUID) (Domain, bool) {
 // It refuses bytes that are not an identifier of this shape, since a caller
 // that sends something else is naming a row this app never wrote.
 func From(b []byte) (Id, error) {
-	v, err := uuid.FromBytes(b)
-	if err != nil {
-		return Nil, err
+	if len(b) != len(Nil) {
+		return Nil, fmt.Errorf("%w: is %d bytes, want %d", ErrNotAnId, len(b), len(Nil))
 	}
+	v := uuid.UUID(b)
 	if _, ok := Of(v); !ok {
 		return Nil, fmt.Errorf("%w: %s", ErrNotAnId, v)
 	}

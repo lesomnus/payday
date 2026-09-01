@@ -91,7 +91,7 @@ func TestOtel(t *testing.T) {
 
 		// The same trace, and the caller's span is the parent of ours.
 		x.Equal(traceId, spans[0].SpanContext().TraceID().String())
-		x.Equal(spanId, spans[0].Parent().SpanId().String())
+		x.Equal(spanId, spans[0].Parent().SpanID().String())
 		x.True(spans[0].Parent().IsRemote())
 	})
 	t.Run("a call that says nothing starts a trace of its own", func(t *testing.T) {

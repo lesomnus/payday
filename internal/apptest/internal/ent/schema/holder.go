@@ -4,7 +4,6 @@
 package schema
 
 import (
-	uuid "github.com/google/uuid"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/protobuf-orm/ent"
 	entsql "github.com/protobuf-orm/ent/dialect/entsql"
@@ -21,7 +20,7 @@ type Holder struct {
 
 func (Holder) Fields() []ent.Field {
 	return []ent.Field{
-		field.Uuid("id", uuid.UUID{}).
+		field.Uuid("id").
 			Unique().
 			Immutable(),
 		field.String("alias"),
@@ -39,7 +38,7 @@ func (Holder) Fields() []ent.Field {
 		field.String("idp_subject"),
 		field.Json("profile", &apptest.Profile{}).ValueScanner(entpb.ValueScanner[*apptest.Profile]{}).
 			Optional(),
-		field.Uuid("tenant_id", uuid.UUID{}).
+		field.Uuid("tenant_id").
 			Immutable(),
 	}
 }

@@ -3,7 +3,10 @@
 package outbox
 
 import (
+	"uuid"
+
 	"github.com/protobuf-orm/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/schema/field"
 )
 
 const (
@@ -50,6 +53,16 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
+
+var (
+	// ValueScanner of all Outbox fields.
+	ValueScanner struct {
+		TenantId field.TypeValueScanner[uuid.UUID]
+		ActorId  field.TypeValueScanner[uuid.UUID]
+		ObjectId field.TypeValueScanner[uuid.UUID]
+		Id       field.TypeValueScanner[uuid.UUID]
+	}
+)
 
 // OrderOption defines the ordering options for the Outbox queries.
 type OrderOption func(*sql.Selector)

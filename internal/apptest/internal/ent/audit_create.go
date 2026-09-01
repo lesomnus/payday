@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	"github.com/protobuf-orm/ent/schema/field"
@@ -182,7 +182,10 @@ func (_c *AuditCreate) sqlSave(ctx context.Context) (*Audit, error) {
 	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := _c.createSpec()
+	_node, _spec, err := _c.createSpec()
+	if err != nil {
+		return nil, err
+	}
 	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
@@ -190,10 +193,17 @@ func (_c *AuditCreate) sqlSave(ctx context.Context) (*Audit, error) {
 		return nil, err
 	}
 	if _spec.Id.Value != nil {
-		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
-			_node.Id = *id
-		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
+		sv, ok := _spec.Id.Value.(field.ValueScanner)
+		if !ok {
+			sv = audit.ValueScanner.Id.ScanValue()
+			if err := sv.Scan(_spec.Id.Value); err != nil {
+				return nil, err
+			}
+		}
+		if value, err := audit.ValueScanner.Id.FromValue(sv); err != nil {
 			return nil, err
+		} else {
+			_node.Id = value
 		}
 	}
 	_c.mutation.id = &_node.Id
@@ -201,21 +211,33 @@ func (_c *AuditCreate) sqlSave(ctx context.Context) (*Audit, error) {
 	return _node, nil
 }
 
-func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec) {
+func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec, error) {
 	var (
 		_node = &Audit{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(audit.Table, sqlgraph.NewFieldSpec(audit.FieldId, field.TypeUuid))
 	)
 	if id, ok := _c.mutation.Id(); ok {
 		_node.Id = id
-		_spec.Id.Value = &id
+		vv, err := audit.ValueScanner.Id.Value(id)
+		if err != nil {
+			return nil, nil, err
+		}
+		_spec.Id.Value = vv
 	}
 	if value, ok := _c.mutation.TenantId(); ok {
-		_spec.SetField(audit.FieldTenantId, field.TypeUuid, value)
+		vv, err := audit.ValueScanner.TenantId.Value(value)
+		if err != nil {
+			return nil, nil, err
+		}
+		_spec.SetField(audit.FieldTenantId, field.TypeUuid, vv)
 		_node.TenantId = value
 	}
 	if value, ok := _c.mutation.ActorId(); ok {
-		_spec.SetField(audit.FieldActorId, field.TypeUuid, value)
+		vv, err := audit.ValueScanner.ActorId.Value(value)
+		if err != nil {
+			return nil, nil, err
+		}
+		_spec.SetField(audit.FieldActorId, field.TypeUuid, vv)
 		_node.ActorId = value
 	}
 	if value, ok := _c.mutation.TraceId(); ok {
@@ -227,7 +249,11 @@ func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec) {
 		_node.Action = value
 	}
 	if value, ok := _c.mutation.ObjectId(); ok {
-		_spec.SetField(audit.FieldObjectId, field.TypeUuid, value)
+		vv, err := audit.ValueScanner.ObjectId.Value(value)
+		if err != nil {
+			return nil, nil, err
+		}
+		_spec.SetField(audit.FieldObjectId, field.TypeUuid, vv)
 		_node.ObjectId = value
 	}
 	if value, ok := _c.mutation.Patch(); ok {
@@ -239,7 +265,11 @@ func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec) {
 		_node.DateCreated = value
 	}
 	if value, ok := _c.mutation.ActorTenantId(); ok {
-		_spec.SetField(audit.FieldActorTenantId, field.TypeUuid, value)
+		vv, err := audit.ValueScanner.ActorTenantId.Value(value)
+		if err != nil {
+			return nil, nil, err
+		}
+		_spec.SetField(audit.FieldActorTenantId, field.TypeUuid, vv)
 		_node.ActorTenantId = value
 	}
 	if value, ok := _c.mutation.Value(); ok {
@@ -247,14 +277,18 @@ func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec) {
 		_node.Value = value
 	}
 	if value, ok := _c.mutation.CounterpartTenantId(); ok {
-		_spec.SetField(audit.FieldCounterpartTenantId, field.TypeUuid, value)
+		vv, err := audit.ValueScanner.CounterpartTenantId.Value(value)
+		if err != nil {
+			return nil, nil, err
+		}
+		_spec.SetField(audit.FieldCounterpartTenantId, field.TypeUuid, vv)
 		_node.CounterpartTenantId = &value
 	}
 	if value, ok := _c.mutation.Domain(); ok {
 		_spec.SetField(audit.FieldDomain, field.TypeUint32, value)
 		_node.Domain = value
 	}
-	return _node, _spec
+	return _node, _spec, nil
 }
 
 // AuditCreateBulk is the builder for creating many Audit entities in bulk.
@@ -285,7 +319,10 @@ func (_c *AuditCreateBulk) Save(ctx context.Context) ([]*Audit, error) {
 				}
 				builder.mutation = mutation
 				var err error
-				nodes[i], specs[i] = builder.createSpec()
+				nodes[i], specs[i], err = builder.createSpec()
+				if err != nil {
+					return nil, err
+				}
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
@@ -301,6 +338,20 @@ func (_c *AuditCreateBulk) Save(ctx context.Context) ([]*Audit, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].Id
+				if specs[i].Id.Value != nil {
+					sv, ok := specs[i].Id.Value.(field.ValueScanner)
+					if !ok {
+						sv = audit.ValueScanner.Id.ScanValue()
+						if err := sv.Scan(specs[i].Id.Value); err != nil {
+							return nil, err
+						}
+					}
+					if id, err := audit.ValueScanner.Id.FromValue(sv); err != nil {
+						return nil, err
+					} else {
+						nodes[i].Id = id
+					}
+				}
 				mutation.done = true
 				return nodes[i], nil
 			})

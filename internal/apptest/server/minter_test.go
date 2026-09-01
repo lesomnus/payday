@@ -3,10 +3,10 @@ package server_test
 import (
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"uuid"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"

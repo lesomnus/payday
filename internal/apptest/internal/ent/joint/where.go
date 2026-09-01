@@ -4,8 +4,8 @@ package joint
 
 import (
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/protobuf-orm/ent/dialect/sql"
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -13,47 +13,72 @@ import (
 
 // Id filters vertices based on their Id field.
 func Id(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.JointOrErr(sql.FieldEQ(FieldId, vc), err)
 }
 
 // IdEQ applies the EQ predicate on the Id field.
 func IdEQ(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.JointOrErr(sql.FieldEQ(FieldId, vc), err)
 }
 
 // IdNEQ applies the NEQ predicate on the Id field.
 func IdNEQ(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldNEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.JointOrErr(sql.FieldNEQ(FieldId, vc), err)
 }
 
 // IdIn applies the In predicate on the Id field.
 func IdIn(ids ...uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldIn(FieldId, ids...))
+	var (
+		err error
+		vcs = make([]any, len(ids))
+	)
+	for i := range vcs {
+		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
+			break
+		}
+	}
+	return predicate.JointOrErr(sql.FieldIn(FieldId, vcs...), err)
 }
 
 // IdNotIn applies the NotIn predicate on the Id field.
 func IdNotIn(ids ...uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldNotIn(FieldId, ids...))
+	var (
+		err error
+		vcs = make([]any, len(ids))
+	)
+	for i := range vcs {
+		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
+			break
+		}
+	}
+	return predicate.JointOrErr(sql.FieldNotIn(FieldId, vcs...), err)
 }
 
 // IdGT applies the GT predicate on the Id field.
 func IdGT(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldGT(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.JointOrErr(sql.FieldGT(FieldId, vc), err)
 }
 
 // IdGTE applies the GTE predicate on the Id field.
 func IdGTE(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldGTE(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.JointOrErr(sql.FieldGTE(FieldId, vc), err)
 }
 
 // IdLT applies the LT predicate on the Id field.
 func IdLT(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldLT(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.JointOrErr(sql.FieldLT(FieldId, vc), err)
 }
 
 // IdLTE applies the LTE predicate on the Id field.
 func IdLTE(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldLTE(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.JointOrErr(sql.FieldLTE(FieldId, vc), err)
 }
 
 // Alias applies equality check predicate on the "alias" field. It's identical to AliasEQ.
@@ -68,7 +93,8 @@ func DateErased(v time.Time) predicate.Joint {
 
 // RobotId applies equality check predicate on the "robot_id" field. It's identical to RobotIdEQ.
 func RobotId(v uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldEQ(FieldRobotId, v))
+	vc, err := ValueScanner.RobotId.Value(v)
+	return predicate.JointOrErr(sql.FieldEQ(FieldRobotId, vc), err)
 }
 
 // AliasEQ applies the EQ predicate on the "alias" field.
@@ -188,22 +214,42 @@ func DateErasedNotNil() predicate.Joint {
 
 // RobotIdEQ applies the EQ predicate on the "robot_id" field.
 func RobotIdEQ(v uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldEQ(FieldRobotId, v))
+	vc, err := ValueScanner.RobotId.Value(v)
+	return predicate.JointOrErr(sql.FieldEQ(FieldRobotId, vc), err)
 }
 
 // RobotIdNEQ applies the NEQ predicate on the "robot_id" field.
 func RobotIdNEQ(v uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldNEQ(FieldRobotId, v))
+	vc, err := ValueScanner.RobotId.Value(v)
+	return predicate.JointOrErr(sql.FieldNEQ(FieldRobotId, vc), err)
 }
 
 // RobotIdIn applies the In predicate on the "robot_id" field.
 func RobotIdIn(vs ...uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldIn(FieldRobotId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.RobotId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.JointOrErr(sql.FieldIn(FieldRobotId, v...), err)
 }
 
 // RobotIdNotIn applies the NotIn predicate on the "robot_id" field.
 func RobotIdNotIn(vs ...uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldNotIn(FieldRobotId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.RobotId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.JointOrErr(sql.FieldNotIn(FieldRobotId, v...), err)
 }
 
 // RobotIdIsNil applies the IsNil predicate on the "robot_id" field.

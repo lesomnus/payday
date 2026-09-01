@@ -98,7 +98,7 @@ func TestASignInCanBeAnRpc(t *testing.T) {
 		t.Helper()
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-			srv.Url+"/payday.TokenService/Introspect", strings.NewReader(body))
+			srv.URL+"/payday.TokenService/Introspect", strings.NewReader(body))
 		x.NoError(err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Connect-Protocol-Version", "1")
@@ -114,7 +114,7 @@ func TestASignInCanBeAnRpc(t *testing.T) {
 	x.Equal(http.StatusOK, res.StatusCode)
 
 	// The browser has it, which is the half a page never sees.
-	cs := jar.Cookies(mustUrl(t, srv.Url))
+	cs := jar.Cookies(mustUrl(t, srv.URL))
 	x.Len(cs, 1, "the browser was not given a session")
 	x.Equal("pd_session", cs[0].Name)
 	x.NotEmpty(cs[0].Value)

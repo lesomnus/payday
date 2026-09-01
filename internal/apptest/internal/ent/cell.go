@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/protobuf-orm/ent"
@@ -56,12 +56,14 @@ func (*Cell) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case cell.FieldId:
+			values[i] = cell.ValueScanner.Id.ScanValue()
 		case cell.FieldAlias:
 			values[i] = new(sql.NullString)
 		case cell.FieldDateErased:
 			values[i] = new(sql.NullTime)
-		case cell.FieldId, cell.FieldTenantId:
-			values[i] = new(uuid.UUID)
+		case cell.FieldTenantId:
+			values[i] = cell.ValueScanner.TenantId.ScanValue()
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -78,10 +80,10 @@ func (_m *Cell) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case cell.FieldId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field id", values[i])
-			} else if value != nil {
-				_m.Id = *value
+			if value, err := cell.ValueScanner.Id.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.Id = value
 			}
 		case cell.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -97,10 +99,10 @@ func (_m *Cell) assignValues(columns []string, values []any) error {
 				*_m.DateErased = value.Time
 			}
 		case cell.FieldTenantId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
-			} else if value != nil {
-				_m.TenantId = *value
+			if value, err := cell.ValueScanner.TenantId.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.TenantId = value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])

@@ -4,65 +4,92 @@ package audit
 
 import (
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Id filters vertices based on their Id field.
 func Id(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldId, vc), err)
 }
 
 // IdEQ applies the EQ predicate on the Id field.
 func IdEQ(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldId, vc), err)
 }
 
 // IdNEQ applies the NEQ predicate on the Id field.
 func IdNEQ(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.AuditOrErr(sql.FieldNEQ(FieldId, vc), err)
 }
 
 // IdIn applies the In predicate on the Id field.
 func IdIn(ids ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldId, ids...))
+	var (
+		err error
+		vcs = make([]any, len(ids))
+	)
+	for i := range vcs {
+		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldIn(FieldId, vcs...), err)
 }
 
 // IdNotIn applies the NotIn predicate on the Id field.
 func IdNotIn(ids ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldId, ids...))
+	var (
+		err error
+		vcs = make([]any, len(ids))
+	)
+	for i := range vcs {
+		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldNotIn(FieldId, vcs...), err)
 }
 
 // IdGT applies the GT predicate on the Id field.
 func IdGT(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.AuditOrErr(sql.FieldGT(FieldId, vc), err)
 }
 
 // IdGTE applies the GTE predicate on the Id field.
 func IdGTE(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.AuditOrErr(sql.FieldGTE(FieldId, vc), err)
 }
 
 // IdLT applies the LT predicate on the Id field.
 func IdLT(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.AuditOrErr(sql.FieldLT(FieldId, vc), err)
 }
 
 // IdLTE applies the LTE predicate on the Id field.
 func IdLTE(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldId, id))
+	vc, err := ValueScanner.Id.Value(id)
+	return predicate.AuditOrErr(sql.FieldLTE(FieldId, vc), err)
 }
 
 // TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
 func TenantId(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldTenantId, vc), err)
 }
 
 // ActorId applies equality check predicate on the "actor_id" field. It's identical to ActorIdEQ.
 func ActorId(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldActorId, v))
+	vc, err := ValueScanner.ActorId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldActorId, vc), err)
 }
 
 // TraceId applies equality check predicate on the "trace_id" field. It's identical to TraceIdEQ.
@@ -77,7 +104,8 @@ func Action(v string) predicate.Audit {
 
 // ObjectId applies equality check predicate on the "object_id" field. It's identical to ObjectIdEQ.
 func ObjectId(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldObjectId, v))
+	vc, err := ValueScanner.ObjectId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldObjectId, vc), err)
 }
 
 // Patch applies equality check predicate on the "patch" field. It's identical to PatchEQ.
@@ -92,7 +120,8 @@ func DateCreated(v time.Time) predicate.Audit {
 
 // ActorTenantId applies equality check predicate on the "actor_tenant_id" field. It's identical to ActorTenantIdEQ.
 func ActorTenantId(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldActorTenantId, v))
+	vc, err := ValueScanner.ActorTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldActorTenantId, vc), err)
 }
 
 // Value applies equality check predicate on the "value" field. It's identical to ValueEQ.
@@ -102,7 +131,8 @@ func Value(v []byte) predicate.Audit {
 
 // CounterpartTenantId applies equality check predicate on the "counterpart_tenant_id" field. It's identical to CounterpartTenantIdEQ.
 func CounterpartTenantId(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldCounterpartTenantId, v))
+	vc, err := ValueScanner.CounterpartTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldCounterpartTenantId, vc), err)
 }
 
 // Domain applies equality check predicate on the "domain" field. It's identical to DomainEQ.
@@ -112,82 +142,130 @@ func Domain(v uint32) predicate.Audit {
 
 // TenantIdEQ applies the EQ predicate on the "tenant_id" field.
 func TenantIdEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldTenantId, vc), err)
 }
 
 // TenantIdNEQ applies the NEQ predicate on the "tenant_id" field.
 func TenantIdNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldNEQ(FieldTenantId, vc), err)
 }
 
 // TenantIdIn applies the In predicate on the "tenant_id" field.
 func TenantIdIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldTenantId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldIn(FieldTenantId, v...), err)
 }
 
 // TenantIdNotIn applies the NotIn predicate on the "tenant_id" field.
 func TenantIdNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldTenantId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldNotIn(FieldTenantId, v...), err)
 }
 
 // TenantIdGT applies the GT predicate on the "tenant_id" field.
 func TenantIdGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGT(FieldTenantId, vc), err)
 }
 
 // TenantIdGTE applies the GTE predicate on the "tenant_id" field.
 func TenantIdGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGTE(FieldTenantId, vc), err)
 }
 
 // TenantIdLT applies the LT predicate on the "tenant_id" field.
 func TenantIdLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLT(FieldTenantId, vc), err)
 }
 
 // TenantIdLTE applies the LTE predicate on the "tenant_id" field.
 func TenantIdLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldTenantId, v))
+	vc, err := ValueScanner.TenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLTE(FieldTenantId, vc), err)
 }
 
 // ActorIdEQ applies the EQ predicate on the "actor_id" field.
 func ActorIdEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldActorId, v))
+	vc, err := ValueScanner.ActorId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldActorId, vc), err)
 }
 
 // ActorIdNEQ applies the NEQ predicate on the "actor_id" field.
 func ActorIdNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldActorId, v))
+	vc, err := ValueScanner.ActorId.Value(v)
+	return predicate.AuditOrErr(sql.FieldNEQ(FieldActorId, vc), err)
 }
 
 // ActorIdIn applies the In predicate on the "actor_id" field.
 func ActorIdIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldActorId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.ActorId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldIn(FieldActorId, v...), err)
 }
 
 // ActorIdNotIn applies the NotIn predicate on the "actor_id" field.
 func ActorIdNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldActorId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.ActorId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldNotIn(FieldActorId, v...), err)
 }
 
 // ActorIdGT applies the GT predicate on the "actor_id" field.
 func ActorIdGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldActorId, v))
+	vc, err := ValueScanner.ActorId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGT(FieldActorId, vc), err)
 }
 
 // ActorIdGTE applies the GTE predicate on the "actor_id" field.
 func ActorIdGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldActorId, v))
+	vc, err := ValueScanner.ActorId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGTE(FieldActorId, vc), err)
 }
 
 // ActorIdLT applies the LT predicate on the "actor_id" field.
 func ActorIdLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldActorId, v))
+	vc, err := ValueScanner.ActorId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLT(FieldActorId, vc), err)
 }
 
 // ActorIdLTE applies the LTE predicate on the "actor_id" field.
 func ActorIdLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldActorId, v))
+	vc, err := ValueScanner.ActorId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLTE(FieldActorId, vc), err)
 }
 
 // TraceIdEQ applies the EQ predicate on the "trace_id" field.
@@ -297,42 +375,66 @@ func ActionContainsFold(v string) predicate.Audit {
 
 // ObjectIdEQ applies the EQ predicate on the "object_id" field.
 func ObjectIdEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldObjectId, v))
+	vc, err := ValueScanner.ObjectId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldObjectId, vc), err)
 }
 
 // ObjectIdNEQ applies the NEQ predicate on the "object_id" field.
 func ObjectIdNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldObjectId, v))
+	vc, err := ValueScanner.ObjectId.Value(v)
+	return predicate.AuditOrErr(sql.FieldNEQ(FieldObjectId, vc), err)
 }
 
 // ObjectIdIn applies the In predicate on the "object_id" field.
 func ObjectIdIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldObjectId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.ObjectId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldIn(FieldObjectId, v...), err)
 }
 
 // ObjectIdNotIn applies the NotIn predicate on the "object_id" field.
 func ObjectIdNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldObjectId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.ObjectId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldNotIn(FieldObjectId, v...), err)
 }
 
 // ObjectIdGT applies the GT predicate on the "object_id" field.
 func ObjectIdGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldObjectId, v))
+	vc, err := ValueScanner.ObjectId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGT(FieldObjectId, vc), err)
 }
 
 // ObjectIdGTE applies the GTE predicate on the "object_id" field.
 func ObjectIdGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldObjectId, v))
+	vc, err := ValueScanner.ObjectId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGTE(FieldObjectId, vc), err)
 }
 
 // ObjectIdLT applies the LT predicate on the "object_id" field.
 func ObjectIdLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldObjectId, v))
+	vc, err := ValueScanner.ObjectId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLT(FieldObjectId, vc), err)
 }
 
 // ObjectIdLTE applies the LTE predicate on the "object_id" field.
 func ObjectIdLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldObjectId, v))
+	vc, err := ValueScanner.ObjectId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLTE(FieldObjectId, vc), err)
 }
 
 // PatchEQ applies the EQ predicate on the "patch" field.
@@ -427,42 +529,66 @@ func DateCreatedNotNil() predicate.Audit {
 
 // ActorTenantIdEQ applies the EQ predicate on the "actor_tenant_id" field.
 func ActorTenantIdEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldActorTenantId, v))
+	vc, err := ValueScanner.ActorTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldActorTenantId, vc), err)
 }
 
 // ActorTenantIdNEQ applies the NEQ predicate on the "actor_tenant_id" field.
 func ActorTenantIdNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldActorTenantId, v))
+	vc, err := ValueScanner.ActorTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldNEQ(FieldActorTenantId, vc), err)
 }
 
 // ActorTenantIdIn applies the In predicate on the "actor_tenant_id" field.
 func ActorTenantIdIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldActorTenantId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.ActorTenantId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldIn(FieldActorTenantId, v...), err)
 }
 
 // ActorTenantIdNotIn applies the NotIn predicate on the "actor_tenant_id" field.
 func ActorTenantIdNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldActorTenantId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.ActorTenantId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldNotIn(FieldActorTenantId, v...), err)
 }
 
 // ActorTenantIdGT applies the GT predicate on the "actor_tenant_id" field.
 func ActorTenantIdGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldActorTenantId, v))
+	vc, err := ValueScanner.ActorTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGT(FieldActorTenantId, vc), err)
 }
 
 // ActorTenantIdGTE applies the GTE predicate on the "actor_tenant_id" field.
 func ActorTenantIdGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldActorTenantId, v))
+	vc, err := ValueScanner.ActorTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGTE(FieldActorTenantId, vc), err)
 }
 
 // ActorTenantIdLT applies the LT predicate on the "actor_tenant_id" field.
 func ActorTenantIdLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldActorTenantId, v))
+	vc, err := ValueScanner.ActorTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLT(FieldActorTenantId, vc), err)
 }
 
 // ActorTenantIdLTE applies the LTE predicate on the "actor_tenant_id" field.
 func ActorTenantIdLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldActorTenantId, v))
+	vc, err := ValueScanner.ActorTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLTE(FieldActorTenantId, vc), err)
 }
 
 // ValueEQ applies the EQ predicate on the "value" field.
@@ -507,42 +633,66 @@ func ValueLTE(v []byte) predicate.Audit {
 
 // CounterpartTenantIdEQ applies the EQ predicate on the "counterpart_tenant_id" field.
 func CounterpartTenantIdEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldCounterpartTenantId, v))
+	vc, err := ValueScanner.CounterpartTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldEQ(FieldCounterpartTenantId, vc), err)
 }
 
 // CounterpartTenantIdNEQ applies the NEQ predicate on the "counterpart_tenant_id" field.
 func CounterpartTenantIdNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldCounterpartTenantId, v))
+	vc, err := ValueScanner.CounterpartTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldNEQ(FieldCounterpartTenantId, vc), err)
 }
 
 // CounterpartTenantIdIn applies the In predicate on the "counterpart_tenant_id" field.
 func CounterpartTenantIdIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldCounterpartTenantId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.CounterpartTenantId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldIn(FieldCounterpartTenantId, v...), err)
 }
 
 // CounterpartTenantIdNotIn applies the NotIn predicate on the "counterpart_tenant_id" field.
 func CounterpartTenantIdNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldCounterpartTenantId, vs...))
+	var (
+		err error
+		v   = make([]any, len(vs))
+	)
+	for i := range v {
+		if v[i], err = ValueScanner.CounterpartTenantId.Value(vs[i]); err != nil {
+			break
+		}
+	}
+	return predicate.AuditOrErr(sql.FieldNotIn(FieldCounterpartTenantId, v...), err)
 }
 
 // CounterpartTenantIdGT applies the GT predicate on the "counterpart_tenant_id" field.
 func CounterpartTenantIdGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldCounterpartTenantId, v))
+	vc, err := ValueScanner.CounterpartTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGT(FieldCounterpartTenantId, vc), err)
 }
 
 // CounterpartTenantIdGTE applies the GTE predicate on the "counterpart_tenant_id" field.
 func CounterpartTenantIdGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldCounterpartTenantId, v))
+	vc, err := ValueScanner.CounterpartTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldGTE(FieldCounterpartTenantId, vc), err)
 }
 
 // CounterpartTenantIdLT applies the LT predicate on the "counterpart_tenant_id" field.
 func CounterpartTenantIdLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldCounterpartTenantId, v))
+	vc, err := ValueScanner.CounterpartTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLT(FieldCounterpartTenantId, vc), err)
 }
 
 // CounterpartTenantIdLTE applies the LTE predicate on the "counterpart_tenant_id" field.
 func CounterpartTenantIdLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldCounterpartTenantId, v))
+	vc, err := ValueScanner.CounterpartTenantId.Value(v)
+	return predicate.AuditOrErr(sql.FieldLTE(FieldCounterpartTenantId, vc), err)
 }
 
 // CounterpartTenantIdIsNil applies the IsNil predicate on the "counterpart_tenant_id" field.

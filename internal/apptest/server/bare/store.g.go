@@ -6,7 +6,6 @@ import (
 	context "context"
 	errors "errors"
 	fmt "fmt"
-	uuid "github.com/google/uuid"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
@@ -29,6 +28,7 @@ import (
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	time "time"
+	uuid "uuid"
 )
 
 // Store is what every server of this package runs with: the client its

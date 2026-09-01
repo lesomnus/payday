@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	"github.com/protobuf-orm/ent"
 	"github.com/protobuf-orm/ent/dialect/sql"
@@ -30,12 +30,12 @@ func (*Fleet) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case fleet.FieldId:
+			values[i] = fleet.ValueScanner.Id.ScanValue()
 		case fleet.FieldAlias:
 			values[i] = new(sql.NullString)
 		case fleet.FieldDateErased:
 			values[i] = new(sql.NullTime)
-		case fleet.FieldId:
-			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -52,10 +52,10 @@ func (_m *Fleet) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case fleet.FieldId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field id", values[i])
-			} else if value != nil {
-				_m.Id = *value
+			if value, err := fleet.ValueScanner.Id.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.Id = value
 			}
 		case fleet.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {

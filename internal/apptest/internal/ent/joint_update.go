@@ -232,7 +232,11 @@ func (_u *JointUpdateOne) sqlSave(ctx context.Context) (_node *Joint, err error)
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Joint.id" for update`)}
 	}
-	_spec.Node.Id.Value = id
+	vv, err := joint.ValueScanner.Id.Value(id)
+	if err != nil {
+		return nil, err
+	}
+	_spec.Node.Id.Value = vv
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, joint.FieldId)

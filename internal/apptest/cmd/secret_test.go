@@ -3,8 +3,8 @@ package cmd_test
 import (
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/z"
+	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	"github.com/stretchr/testify/require"
 
 	app "github.com/lesomnus/payday/internal/apptest"
@@ -93,7 +93,7 @@ func TestASecretIsNotInTheTrail(t *testing.T) {
 	x.NoError(err)
 
 	// It really was stored -- otherwise this passes because nothing was written.
-	k, err := uuid.FromBytes(v.GetId())
+	k, err := entuuid.FromBytes(v.GetId())
 	x.NoError(err)
 
 	row, err := b.Ent.Robot.Get(ctx, k)

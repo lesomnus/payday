@@ -6,7 +6,6 @@ package bare
 import (
 	context "context"
 	errors "errors"
-	uuid "github.com/google/uuid"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
@@ -16,8 +15,10 @@ import (
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
+	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	uuid "uuid"
 )
 
 type ThingServiceServer struct {
@@ -92,7 +93,7 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 	q := st.Db.Thing.Create()
 	var k uuid.UUID
 	if req.HasId() {
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
@@ -220,7 +221,7 @@ func (s ThingServiceServer) Patch(ctx context.Context, req *apptest.ThingPatchRe
 func ThingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ThingRef) (uuid.UUID, error) {
 	var z uuid.UUID
 	if ref.HasId() {
-		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(ref.GetId()); err != nil {
 			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return v, nil
@@ -438,7 +439,7 @@ func ThingPick(req *apptest.ThingRef) (predicate.Thing, error) {
 func pickThing(req *apptest.ThingRef) (predicate.Thing, error) {
 	switch req.WhichKey() {
 	case apptest.ThingRef_Id_case:
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return thing.IdEQ(v), nil

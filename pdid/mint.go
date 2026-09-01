@@ -3,9 +3,9 @@ package pdid
 import (
 	"fmt"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"uuid"
 )
 
 // Mint answers with the key a row is to be stored under.
@@ -29,16 +29,16 @@ func Mint(d Domain, given uuid.UUID, ok bool) (uuid.UUID, error) {
 	if !ok {
 		return New(d).Uuid(), nil
 	}
-	if given == uuid.Nil {
-		return uuid.Nil, &NobodyError{}
+	if given == uuid.Nil() {
+		return uuid.Nil(), &NobodyError{}
 	}
 
 	got, is := Of(given)
 	if !is {
-		return uuid.Nil, &ShapeError{Id: given}
+		return uuid.Nil(), &ShapeError{Id: given}
 	}
 	if got != d {
-		return uuid.Nil, &DomainError{Want: d, Got: got}
+		return uuid.Nil(), &DomainError{Want: d, Got: got}
 	}
 
 	return given, nil

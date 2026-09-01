@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"uuid"
 
 	"github.com/lesomnus/payday/batch"
 	"github.com/lesomnus/payday/frame"

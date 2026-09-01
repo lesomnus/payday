@@ -4,9 +4,9 @@
 package ent
 
 import (
-	uuid "github.com/google/uuid"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	uuid "uuid"
 )
 
 func (e *Cell) Proto() *apptest.Cell {

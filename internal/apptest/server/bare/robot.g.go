@@ -6,7 +6,6 @@ package bare
 import (
 	context "context"
 	errors "errors"
-	uuid "github.com/google/uuid"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
@@ -23,9 +22,11 @@ import (
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
+	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	uuid "uuid"
 )
 
 type CellServiceServer struct {
@@ -101,7 +102,7 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	q := st.Db.Cell.Create()
 	var k uuid.UUID
 	if req.HasId() {
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
@@ -239,7 +240,7 @@ func (s CellServiceServer) Patch(ctx context.Context, req *apptest.CellPatchRequ
 func CellGetKey(ctx context.Context, db *ent.Client, ref *apptest.CellRef) (uuid.UUID, error) {
 	var z uuid.UUID
 	if ref.HasId() {
-		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(ref.GetId()); err != nil {
 			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return v, nil
@@ -457,7 +458,7 @@ func CellPick(req *apptest.CellRef) (predicate.Cell, error) {
 func pickCell(req *apptest.CellRef) (predicate.Cell, error) {
 	switch req.WhichKey() {
 	case apptest.CellRef_Id_case:
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return cell.IdEQ(v), nil
@@ -542,7 +543,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	q := st.Db.Robot.Create()
 	var k uuid.UUID
 	if req.HasId() {
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
@@ -756,7 +757,7 @@ func (s RobotServiceServer) Patch(ctx context.Context, req *apptest.RobotPatchRe
 func RobotGetKey(ctx context.Context, db *ent.Client, ref *apptest.RobotRef) (uuid.UUID, error) {
 	var z uuid.UUID
 	if ref.HasId() {
-		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(ref.GetId()); err != nil {
 			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return v, nil
@@ -978,7 +979,7 @@ func RobotPick(req *apptest.RobotRef) (predicate.Robot, error) {
 func pickRobot(req *apptest.RobotRef) (predicate.Robot, error) {
 	switch req.WhichKey() {
 	case apptest.RobotRef_Id_case:
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return robot.IdEQ(v), nil
@@ -1069,7 +1070,7 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 	q := st.Db.Pairing.Create()
 	var k uuid.UUID
 	if req.HasId() {
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
@@ -1224,7 +1225,7 @@ func (s PairingServiceServer) Patch(ctx context.Context, req *apptest.PairingPat
 func PairingGetKey(ctx context.Context, db *ent.Client, ref *apptest.PairingRef) (uuid.UUID, error) {
 	var z uuid.UUID
 	if ref.HasId() {
-		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(ref.GetId()); err != nil {
 			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return v, nil
@@ -1422,7 +1423,7 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 func PairingPick(req *apptest.PairingRef) (predicate.Pairing, error) {
 	switch req.WhichKey() {
 	case apptest.PairingRef_Id_case:
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return pairing.IdEQ(v), nil
@@ -1507,7 +1508,7 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	q := st.Db.Joint.Create()
 	var k uuid.UUID
 	if req.HasId() {
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
@@ -1648,7 +1649,7 @@ func (s JointServiceServer) Patch(ctx context.Context, req *apptest.JointPatchRe
 func JointGetKey(ctx context.Context, db *ent.Client, ref *apptest.JointRef) (uuid.UUID, error) {
 	var z uuid.UUID
 	if ref.HasId() {
-		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(ref.GetId()); err != nil {
 			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return v, nil
@@ -1866,7 +1867,7 @@ func JointPick(req *apptest.JointRef) (predicate.Joint, error) {
 func pickJoint(req *apptest.JointRef) (predicate.Joint, error) {
 	switch req.WhichKey() {
 	case apptest.JointRef_Id_case:
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return joint.IdEQ(v), nil
@@ -1950,7 +1951,7 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	q := st.Db.Fleet.Create()
 	var k uuid.UUID
 	if req.HasId() {
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
@@ -2070,7 +2071,7 @@ func (s FleetServiceServer) Patch(ctx context.Context, req *apptest.FleetPatchRe
 func FleetGetKey(ctx context.Context, db *ent.Client, ref *apptest.FleetRef) (uuid.UUID, error) {
 	var z uuid.UUID
 	if ref.HasId() {
-		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(ref.GetId()); err != nil {
 			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return v, nil
@@ -2288,7 +2289,7 @@ func FleetPick(req *apptest.FleetRef) (predicate.Fleet, error) {
 func pickFleet(req *apptest.FleetRef) (predicate.Fleet, error) {
 	switch req.WhichKey() {
 	case apptest.FleetRef_Id_case:
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return fleet.IdEQ(v), nil
@@ -2371,7 +2372,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	q := st.Db.Reading.Create()
 	var k uuid.UUID
 	if req.HasId() {
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
@@ -2390,7 +2391,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 			v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
 		})
 	}
-	if v, err := uuid.FromBytes(req.GetTenantId()); err != nil {
+	if v, err := entuuid.FromBytes(req.GetTenantId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
 	} else {
 		q.SetTenantId(v)
@@ -2523,7 +2524,7 @@ func (s ReadingServiceServer) Patch(ctx context.Context, req *apptest.ReadingPat
 func ReadingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ReadingRef) (uuid.UUID, error) {
 	var z uuid.UUID
 	if ref.HasId() {
-		if v, err := uuid.FromBytes(ref.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(ref.GetId()); err != nil {
 			return z, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return v, nil
@@ -2721,7 +2722,7 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 func ReadingPick(req *apptest.ReadingRef) (predicate.Reading, error) {
 	switch req.WhichKey() {
 	case apptest.ReadingRef_Id_case:
-		if v, err := uuid.FromBytes(req.GetId()); err != nil {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			return reading.IdEQ(v), nil

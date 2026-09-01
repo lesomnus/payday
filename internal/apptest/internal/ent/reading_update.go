@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/protobuf-orm/ent/dialect/sql"
@@ -123,7 +123,11 @@ func (_u *ReadingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 	}
 	if value, ok := _u.mutation.TenantId(); ok {
-		_spec.SetField(reading.FieldTenantId, field.TypeUuid, value)
+		vv, err := reading.ValueScanner.TenantId.Value(value)
+		if err != nil {
+			return 0, err
+		}
+		_spec.SetField(reading.FieldTenantId, field.TypeUuid, vv)
 	}
 	if value, ok := _u.mutation.Celsius(); ok {
 		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)
@@ -259,7 +263,11 @@ func (_u *ReadingUpdateOne) sqlSave(ctx context.Context) (_node *Reading, err er
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Reading.id" for update`)}
 	}
-	_spec.Node.Id.Value = id
+	vv, err := reading.ValueScanner.Id.Value(id)
+	if err != nil {
+		return nil, err
+	}
+	_spec.Node.Id.Value = vv
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, reading.FieldId)
@@ -280,7 +288,11 @@ func (_u *ReadingUpdateOne) sqlSave(ctx context.Context) (_node *Reading, err er
 		}
 	}
 	if value, ok := _u.mutation.TenantId(); ok {
-		_spec.SetField(reading.FieldTenantId, field.TypeUuid, value)
+		vv, err := reading.ValueScanner.TenantId.Value(value)
+		if err != nil {
+			return nil, err
+		}
+		_spec.SetField(reading.FieldTenantId, field.TypeUuid, vv)
 	}
 	if value, ok := _u.mutation.Celsius(); ok {
 		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)

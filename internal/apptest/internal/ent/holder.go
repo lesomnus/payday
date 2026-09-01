@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
@@ -72,16 +72,18 @@ func (*Holder) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case holder.FieldId:
+			values[i] = holder.ValueScanner.Id.ScanValue()
 		case holder.FieldLabels:
 			values[i] = new([]byte)
 		case holder.FieldAlias, holder.FieldName, holder.FieldDesc, holder.FieldIdpSubject:
 			values[i] = new(sql.NullString)
 		case holder.FieldDateUpdated, holder.FieldDateErased, holder.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case holder.FieldId, holder.FieldTenantId:
-			values[i] = new(uuid.UUID)
 		case holder.FieldProfile:
 			values[i] = holder.ValueScanner.Profile.ScanValue()
+		case holder.FieldTenantId:
+			values[i] = holder.ValueScanner.TenantId.ScanValue()
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -98,10 +100,10 @@ func (_m *Holder) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case holder.FieldId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field id", values[i])
-			} else if value != nil {
-				_m.Id = *value
+			if value, err := holder.ValueScanner.Id.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.Id = value
 			}
 		case holder.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -161,10 +163,10 @@ func (_m *Holder) assignValues(columns []string, values []any) error {
 				_m.Profile = value
 			}
 		case holder.FieldTenantId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
-			} else if value != nil {
-				_m.TenantId = *value
+			if value, err := holder.ValueScanner.TenantId.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.TenantId = value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])

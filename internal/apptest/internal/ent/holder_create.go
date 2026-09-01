@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
@@ -183,10 +183,17 @@ func (_c *HolderCreate) sqlSave(ctx context.Context) (*Holder, error) {
 		return nil, err
 	}
 	if _spec.Id.Value != nil {
-		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
-			_node.Id = *id
-		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
+		sv, ok := _spec.Id.Value.(field.ValueScanner)
+		if !ok {
+			sv = holder.ValueScanner.Id.ScanValue()
+			if err := sv.Scan(_spec.Id.Value); err != nil {
+				return nil, err
+			}
+		}
+		if value, err := holder.ValueScanner.Id.FromValue(sv); err != nil {
 			return nil, err
+		} else {
+			_node.Id = value
 		}
 	}
 	_c.mutation.id = &_node.Id
@@ -201,7 +208,11 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec, error) {
 	)
 	if id, ok := _c.mutation.Id(); ok {
 		_node.Id = id
-		_spec.Id.Value = &id
+		vv, err := holder.ValueScanner.Id.Value(id)
+		if err != nil {
+			return nil, nil, err
+		}
+		_spec.Id.Value = vv
 	}
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(holder.FieldAlias, field.TypeString, value)
@@ -258,7 +269,11 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec, error) {
 			},
 		}
 		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
+			vv, err := tenant.ValueScanner.Id.Value(k)
+			if err != nil {
+				return nil, nil, err
+			}
+			edge.Target.Nodes = append(edge.Target.Nodes, vv)
 		}
 		_node.TenantId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
@@ -313,6 +328,20 @@ func (_c *HolderCreateBulk) Save(ctx context.Context) ([]*Holder, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].Id
+				if specs[i].Id.Value != nil {
+					sv, ok := specs[i].Id.Value.(field.ValueScanner)
+					if !ok {
+						sv = holder.ValueScanner.Id.ScanValue()
+						if err := sv.Scan(specs[i].Id.Value); err != nil {
+							return nil, err
+						}
+					}
+					if id, err := holder.ValueScanner.Id.FromValue(sv); err != nil {
+						return nil, err
+					} else {
+						nodes[i].Id = id
+					}
+				}
 				mutation.done = true
 				return nodes[i], nil
 			})

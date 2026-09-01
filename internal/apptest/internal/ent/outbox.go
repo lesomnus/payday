@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	"github.com/protobuf-orm/ent"
 	"github.com/protobuf-orm/ent/dialect/sql"
@@ -40,14 +40,20 @@ func (*Outbox) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case outbox.FieldId:
+			values[i] = outbox.ValueScanner.Id.ScanValue()
 		case outbox.FieldPatch:
 			values[i] = new([]byte)
 		case outbox.FieldMethod, outbox.FieldBy:
 			values[i] = new(sql.NullString)
 		case outbox.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case outbox.FieldId, outbox.FieldTenantId, outbox.FieldActorId, outbox.FieldObjectId:
-			values[i] = new(uuid.UUID)
+		case outbox.FieldTenantId:
+			values[i] = outbox.ValueScanner.TenantId.ScanValue()
+		case outbox.FieldActorId:
+			values[i] = outbox.ValueScanner.ActorId.ScanValue()
+		case outbox.FieldObjectId:
+			values[i] = outbox.ValueScanner.ObjectId.ScanValue()
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -64,22 +70,22 @@ func (_m *Outbox) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case outbox.FieldId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field id", values[i])
-			} else if value != nil {
-				_m.Id = *value
+			if value, err := outbox.ValueScanner.Id.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.Id = value
 			}
 		case outbox.FieldTenantId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
-			} else if value != nil {
-				_m.TenantId = *value
+			if value, err := outbox.ValueScanner.TenantId.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.TenantId = value
 			}
 		case outbox.FieldActorId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field actor_id", values[i])
-			} else if value != nil {
-				_m.ActorId = *value
+			if value, err := outbox.ValueScanner.ActorId.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.ActorId = value
 			}
 		case outbox.FieldMethod:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -94,10 +100,10 @@ func (_m *Outbox) assignValues(columns []string, values []any) error {
 				_m.By = value.String
 			}
 		case outbox.FieldObjectId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field object_id", values[i])
-			} else if value != nil {
-				_m.ObjectId = *value
+			if value, err := outbox.ValueScanner.ObjectId.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.ObjectId = value
 			}
 		case outbox.FieldPatch:
 			if value, ok := values[i].(*[]byte); !ok {

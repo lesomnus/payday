@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"uuid"
 
 	"github.com/lesomnus/payday/pdid"
 )
@@ -48,8 +48,8 @@ func TestNew(t *testing.T) {
 		x := require.New(t)
 
 		v := pdid.New(Holder).Uuid()
-		x.Equal(uuid.Version(8), v.Version())
-		x.Equal(uuid.RFC4122, v.Variant())
+		x.Equal(byte(8), v[6]>>4, "version")
+		x.Equal(byte(0b10), v[8]>>6, "variant")
 	})
 
 	t.Run("the domain is the last two digits of the fourth group", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestNewIsOrdered(t *testing.T) {
 	t.Run("and would not if the version were written as a byte", func(t *testing.T) {
 		vs := make([]uuid.UUID, n)
 		for i := range vs {
-			v := uuid.Must(uuid.NewV7())
+			v := uuid.NewV7()
 			v[6] = 0x80 // the naive way: the counter's high nibble goes with it
 			v[9] = byte(Robot)
 			vs[i] = v
@@ -133,9 +133,9 @@ func TestOf(t *testing.T) {
 		x := require.New(t)
 
 		for _, v := range []uuid.UUID{
-			uuid.New(),              // v4
-			uuid.Must(uuid.NewV7()), // v7
-			uuid.Nil,                // nothing
+			uuid.New(),   // v4
+			uuid.NewV7(), // v7
+			uuid.Nil(),   // nothing
 			uuid.MustParse("00000000-0000-8000-0000-000000000000"), // v8, wrong variant
 		} {
 			d, ok := pdid.Of(v)
@@ -184,7 +184,7 @@ func TestMint(t *testing.T) {
 	t.Run("makes one when the request named none", func(t *testing.T) {
 		x := require.New(t)
 
-		k, err := pdid.Mint(Robot, uuid.Nil, false)
+		k, err := pdid.Mint(Robot, uuid.Nil(), false)
 		x.NoError(err)
 
 		d, ok := pdid.Of(k)
@@ -226,7 +226,7 @@ func TestMint(t *testing.T) {
 	t.Run("refuses the one that names nobody", func(t *testing.T) {
 		x := require.New(t)
 
-		_, err := pdid.Mint(Robot, uuid.Nil, true)
+		_, err := pdid.Mint(Robot, uuid.Nil(), true)
 		x.Error(err)
 		x.Equal(codes.InvalidArgument, status.Code(err))
 

@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/lesomnus/payday/pdcmd"
 	"github.com/lesomnus/payday/pdid"
@@ -480,7 +480,7 @@ func TestATreeCanBeNarrowed(t *testing.T) {
 func TestAnIdentifierIsWhatTheSchemaSaysItIs(t *testing.T) {
 	x := require.New(t)
 
-	u, err := pdid.Mint(pd.AuditDomain, uuid.Nil, false)
+	u, err := pdid.Mint(pd.AuditDomain, uuid.Nil(), false)
 	x.NoError(err)
 	id := pdid.Id(u)
 
@@ -489,7 +489,7 @@ func TestAnIdentifierIsWhatTheSchemaSaysItIs(t *testing.T) {
 	var b strings.Builder
 	x.NoError(pdcmd.Pretty.Print(&b, app.Audit_builder{
 		Id:      id.Bytes(),
-		TraceID: trace,
+		TraceId: trace,
 		Action:  "Add",
 	}.Build()))
 
@@ -550,7 +550,7 @@ func TestThereAreTwoJsons(t *testing.T) {
 		var s strings.Builder
 		x.NoError(pdcmd.Json.Print(&s, app.Audit_builder{
 			Id:      b.Holder.Bytes(),
-			TraceID: []byte{0xde, 0xad, 0xbe, 0xef, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+			TraceId: []byte{0xde, 0xad, 0xbe, 0xef, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
 		}.Build()))
 
 		var v map[string]any

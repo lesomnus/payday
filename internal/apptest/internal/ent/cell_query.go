@@ -6,8 +6,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
@@ -209,8 +209,13 @@ func (_q *CellQuery) Ids(ctx context.Context) (ids []uuid.UUID, err error) {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIds)
-	if err = _q.Select(cell.FieldId).Scan(ctx, &ids); err != nil {
+	var nodes []*Cell
+	if nodes, err = _q.Select(cell.FieldId).All(ctx); err != nil {
 		return nil, err
+	}
+	ids = make([]uuid.UUID, len(nodes))
+	for i := range nodes {
+		ids[i] = nodes[i].Id
 	}
 	return ids, nil
 }

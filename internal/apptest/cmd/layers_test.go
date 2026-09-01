@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/z"
+	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -676,7 +676,7 @@ func TestTheTrailTakesNoNullFromPayday(t *testing.T) {
 	} {
 		t.Run(tc.what, func(t *testing.T) {
 			x := require.New(t)
-			k, err := uuid.FromBytes(tc.write(x))
+			k, err := entuuid.FromBytes(tc.write(x))
 			x.NoError(err)
 
 			// Off the database rather than through a server: what is under
@@ -688,7 +688,7 @@ func TestTheTrailTakesNoNullFromPayday(t *testing.T) {
 			x.NotEmpty(rows)
 
 			for _, row := range rows {
-				x.NotNil(row.TraceID, "trace_id")
+				x.NotNil(row.TraceId, "trace_id")
 				x.NotNil(row.Patch, "patch")
 				x.NotNil(row.Value, "value")
 			}

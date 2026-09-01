@@ -4,7 +4,6 @@
 package schema
 
 import (
-	uuid "github.com/google/uuid"
 	ent "github.com/protobuf-orm/ent"
 	entsql "github.com/protobuf-orm/ent/dialect/entsql"
 	schema "github.com/protobuf-orm/ent/schema"
@@ -18,14 +17,14 @@ type Outbox struct {
 
 func (Outbox) Fields() []ent.Field {
 	return []ent.Field{
-		field.Uuid("id", uuid.UUID{}).
+		field.Uuid("id").
 			Unique().
 			Immutable(),
-		field.Uuid("tenant_id", uuid.UUID{}),
-		field.Uuid("actor_id", uuid.UUID{}),
+		field.Uuid("tenant_id"),
+		field.Uuid("actor_id"),
 		field.String("method"),
 		field.String("by"),
-		field.Uuid("object_id", uuid.UUID{}),
+		field.Uuid("object_id"),
 		field.Bytes("patch"),
 		field.Time("date_created").
 			Immutable().

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	"github.com/protobuf-orm/ent"
 	"github.com/protobuf-orm/ent/dialect/sql"
@@ -34,14 +34,14 @@ func (*Seal) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case seal.FieldId:
+			values[i] = seal.ValueScanner.Id.ScanValue()
 		case seal.FieldSecret:
 			values[i] = new([]byte)
 		case seal.FieldAlias:
 			values[i] = new(sql.NullString)
 		case seal.FieldDateErased, seal.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case seal.FieldId:
-			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -58,10 +58,10 @@ func (_m *Seal) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case seal.FieldId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field id", values[i])
-			} else if value != nil {
-				_m.Id = *value
+			if value, err := seal.ValueScanner.Id.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.Id = value
 			}
 		case seal.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/protobuf-orm/ent"
@@ -58,12 +58,16 @@ func (*Reading) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case reading.FieldId:
+			values[i] = reading.ValueScanner.Id.ScanValue()
 		case reading.FieldCelsius:
 			values[i] = new(sql.NullFloat64)
 		case reading.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case reading.FieldId, reading.FieldTenantId, reading.FieldRobotId:
-			values[i] = new(uuid.UUID)
+		case reading.FieldTenantId:
+			values[i] = reading.ValueScanner.TenantId.ScanValue()
+		case reading.FieldRobotId:
+			values[i] = reading.ValueScanner.RobotId.ScanValue()
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -80,16 +84,16 @@ func (_m *Reading) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case reading.FieldId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field id", values[i])
-			} else if value != nil {
-				_m.Id = *value
+			if value, err := reading.ValueScanner.Id.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.Id = value
 			}
 		case reading.FieldTenantId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
-			} else if value != nil {
-				_m.TenantId = *value
+			if value, err := reading.ValueScanner.TenantId.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.TenantId = value
 			}
 		case reading.FieldCelsius:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -104,10 +108,10 @@ func (_m *Reading) assignValues(columns []string, values []any) error {
 				_m.DateCreated = value.Time
 			}
 		case reading.FieldRobotId:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field robot_id", values[i])
-			} else if value != nil {
-				_m.RobotId = *value
+			if value, err := reading.ValueScanner.RobotId.FromValue(values[i]); err != nil {
+				return err
+			} else {
+				_m.RobotId = value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])

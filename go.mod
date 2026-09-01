@@ -10,7 +10,6 @@ require (
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/goccy/go-yaml v1.19.2
-	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/lesomnus/mkot v0.0.0-20260801183340-9c83100aa7c2
 	github.com/lesomnus/mkot/mkotx v0.0.0-20260801183340-9c83100aa7c2
@@ -21,8 +20,8 @@ require (
 	github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/ncruces/go-sqlite3 v0.35.3
-	github.com/protobuf-orm/ent v0.0.0-20260901221134-1d321ed5f02c
-	github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29
+	github.com/protobuf-orm/ent v0.0.0-20260901230746-4115dcfc4087
+	github.com/protobuf-orm/protobuf-orm v0.0.0-20260901231226-61630a70f09e
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/log v0.20.0
@@ -50,6 +49,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/inflect v1.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.24.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
@@ -62,7 +62,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df // indirect
-	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260901221219-a2f9385c7295 // indirect
+	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260901232630-700411e09bed // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260814204207-b3aac775fe3e // indirect
 	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260820235114-efff3accbfe1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
