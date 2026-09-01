@@ -115,7 +115,7 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
 		return nil, err
 	} else {
-		q.SetTenantID(k)
+		q.SetTenantId(k)
 		ds = append(ds, func(v *apptest.Cell) {
 			v.SetTenant(apptest.Tenant_builder{Id: k[:]}.Build())
 		})
@@ -556,7 +556,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
 		return nil, err
 	} else {
-		q.SetTenantID(k)
+		q.SetTenantId(k)
 		ds = append(ds, func(v *apptest.Robot) {
 			v.SetTenant(apptest.Tenant_builder{Id: k[:]}.Build())
 		})
@@ -565,7 +565,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		if k, err := ThingGetKey(ctx, st.Db, req.GetThing()); err != nil {
 			return nil, err
 		} else {
-			q.SetThingID(k)
+			q.SetThingId(k)
 			ds = append(ds, func(v *apptest.Robot) {
 				v.SetThing(apptest.Thing_builder{Id: k[:]}.Build())
 			})
@@ -575,7 +575,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		if k, err := CellGetKey(ctx, st.Db, req.GetCell()); err != nil {
 			return nil, err
 		} else {
-			q.SetCellID(k)
+			q.SetCellId(k)
 			ds = append(ds, func(v *apptest.Robot) {
 				v.SetCell(apptest.Cell_builder{Id: k[:]}.Build())
 			})
@@ -1083,7 +1083,7 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 	if k, err := RobotGetKey(ctx, st.Db, req.GetLead()); err != nil {
 		return nil, err
 	} else {
-		q.SetLeadID(k)
+		q.SetLeadId(k)
 		ds = append(ds, func(v *apptest.Pairing) {
 			v.SetLead(apptest.Robot_builder{Id: k[:]}.Build())
 		})
@@ -1091,7 +1091,7 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 	if k, err := RobotGetKey(ctx, st.Db, req.GetFollow()); err != nil {
 		return nil, err
 	} else {
-		q.SetFollowID(k)
+		q.SetFollowId(k)
 		ds = append(ds, func(v *apptest.Pairing) {
 			v.SetFollow(apptest.Robot_builder{Id: k[:]}.Build())
 		})
@@ -1522,7 +1522,7 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 		if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
 			return nil, err
 		} else {
-			q.SetRobotID(k)
+			q.SetRobotId(k)
 			ds = append(ds, func(v *apptest.Joint) {
 				v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
 			})
@@ -2385,7 +2385,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
 		return nil, err
 	} else {
-		q.SetRobotID(k)
+		q.SetRobotId(k)
 		ds = append(ds, func(v *apptest.Reading) {
 			v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
 		})

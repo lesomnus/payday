@@ -111,8 +111,8 @@ github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df h1:BLz
 github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df/go.mod h1:BUd72lrno943ObVibUbiF5fXPwJlTNJk4zUeZ8htwmY=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29 h1:yLrMWcjBT70hljInsE7zssdIZ8pwvotprlUGsLEs4ms=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29/go.mod h1:jMdK+un3aGD6fB5zl3rBg0OMahe7vP5Dpfxe6Sws7mM=
-github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260901215757-529b9e6aa9b5 h1:/4wwo+oA+DfEq92Lp96kJ06yRVRvk4mvTtxSKiw1V10=
-github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260901215757-529b9e6aa9b5/go.mod h1:AUtb9+TCtaWitp6e/zipZVTY50e1PwiM51oR1QanzJY=
+github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260901220038-47ead0a6013f h1:ZdROBwdYhoCFys26IXDX8qixQtcV4YK+KDdOj22GDeQ=
+github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260901220038-47ead0a6013f/go.mod h1:AUtb9+TCtaWitp6e/zipZVTY50e1PwiM51oR1QanzJY=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260814204207-b3aac775fe3e h1:+Qdm1VcxUB+YTKWGQyHnL/2IN3VkNmCaVCh4m/XbxZ0=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260814204207-b3aac775fe3e/go.mod h1:EUiEHkmQI53u+32lC+9OiiECSY2xJ1hrgHk7Km9yn20=
 github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260820235114-efff3accbfe1 h1:ysLcXhAQfditIClN2bpgLWU4EfCl6RYyO18CTvtAXg0=

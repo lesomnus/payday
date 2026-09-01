@@ -107,7 +107,7 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
 		return nil, err
 	} else {
-		q.SetTenantID(k)
+		q.SetTenantId(k)
 		ds = append(ds, func(v *apptest.Holder) {
 			v.SetTenant(apptest.Tenant_builder{Id: k[:]}.Build())
 		})

@@ -16,7 +16,7 @@ require (
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/protobuf-orm/ent v0.0.0-20260901214045-4965c66b728e
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29
-	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260901215757-529b9e6aa9b5
+	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260901220038-47ead0a6013f
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sync v0.22.0
 	google.golang.org/grpc v1.83.0
