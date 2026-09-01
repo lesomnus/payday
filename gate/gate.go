@@ -113,7 +113,7 @@ type Call struct {
 	// the assertion; see [frame.Frame.Row].
 	Row any
 
-	// Action is the RPC gRPC dispatched, by the name it knows it by.
+	// Action is the Rpc gRpc dispatched, by the name it knows it by.
 	Action string
 }
 

@@ -62,10 +62,10 @@ func (_u *PairingUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PairingUpdate) check() error {
-	if _u.mutation.LeadCleared() && len(_u.mutation.LeadIDs()) > 0 {
+	if _u.mutation.LeadCleared() && len(_u.mutation.LeadIds()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Pairing.lead"`)
 	}
-	if _u.mutation.FollowCleared() && len(_u.mutation.FollowIDs()) > 0 {
+	if _u.mutation.FollowCleared() && len(_u.mutation.FollowIds()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Pairing.follow"`)
 	}
 	return nil
@@ -81,7 +81,7 @@ func (_u *PairingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(pairing.Table, pairing.Columns, sqlgraph.NewFieldSpec(pairing.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewUpdateSpec(pairing.Table, pairing.Columns, sqlgraph.NewFieldSpec(pairing.FieldId, field.TypeUuid))
 	if ps := _u.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -161,10 +161,10 @@ func (_u *PairingUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PairingUpdateOne) check() error {
-	if _u.mutation.LeadCleared() && len(_u.mutation.LeadIDs()) > 0 {
+	if _u.mutation.LeadCleared() && len(_u.mutation.LeadIds()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Pairing.lead"`)
 	}
-	if _u.mutation.FollowCleared() && len(_u.mutation.FollowIDs()) > 0 {
+	if _u.mutation.FollowCleared() && len(_u.mutation.FollowIds()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Pairing.follow"`)
 	}
 	return nil
@@ -180,20 +180,20 @@ func (_u *PairingUpdateOne) sqlSave(ctx context.Context) (_node *Pairing, err er
 	if err := _u.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(pairing.Table, pairing.Columns, sqlgraph.NewFieldSpec(pairing.FieldID, field.TypeUUID))
-	id, ok := _u.mutation.ID()
+	_spec := sqlgraph.NewUpdateSpec(pairing.Table, pairing.Columns, sqlgraph.NewFieldSpec(pairing.FieldId, field.TypeUuid))
+	id, ok := _u.mutation.Id()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Pairing.id" for update`)}
 	}
-	_spec.Node.ID.Value = id
+	_spec.Node.Id.Value = id
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, pairing.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, pairing.FieldId)
 		for _, f := range fields {
 			if !pairing.ValidColumn(f) {
 				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 			}
-			if f != pairing.FieldID {
+			if f != pairing.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, f)
 			}
 		}

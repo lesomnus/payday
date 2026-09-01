@@ -10,64 +10,64 @@ import (
 	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
-// ID filters vertices based on their ID field.
-func ID(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldID, id))
+// Id filters vertices based on their Id field.
+func Id(id uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldId, id))
 }
 
-// IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldID, id))
+// IdEQ applies the EQ predicate on the Id field.
+func IdEQ(id uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldId, id))
 }
 
-// IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldID, id))
+// IdNEQ applies the NEQ predicate on the Id field.
+func IdNEQ(id uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNEQ(FieldId, id))
 }
 
-// IDIn applies the In predicate on the ID field.
-func IDIn(ids ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldID, ids...))
+// IdIn applies the In predicate on the Id field.
+func IdIn(ids ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldIn(FieldId, ids...))
 }
 
-// IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldID, ids...))
+// IdNotIn applies the NotIn predicate on the Id field.
+func IdNotIn(ids ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNotIn(FieldId, ids...))
 }
 
-// IDGT applies the GT predicate on the ID field.
-func IDGT(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldID, id))
+// IdGT applies the GT predicate on the Id field.
+func IdGT(id uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGT(FieldId, id))
 }
 
-// IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldID, id))
+// IdGTE applies the GTE predicate on the Id field.
+func IdGTE(id uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGTE(FieldId, id))
 }
 
-// IDLT applies the LT predicate on the ID field.
-func IDLT(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldID, id))
+// IdLT applies the LT predicate on the Id field.
+func IdLT(id uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLT(FieldId, id))
 }
 
-// IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldID, id))
+// IdLTE applies the LTE predicate on the Id field.
+func IdLTE(id uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLTE(FieldId, id))
 }
 
-// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
-func TenantID(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldTenantID, v))
+// TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
+func TenantId(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldTenantId, v))
 }
 
-// ActorID applies equality check predicate on the "actor_id" field. It's identical to ActorIDEQ.
-func ActorID(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldActorID, v))
+// ActorId applies equality check predicate on the "actor_id" field. It's identical to ActorIdEQ.
+func ActorId(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldActorId, v))
 }
 
-// TraceID applies equality check predicate on the "trace_id" field. It's identical to TraceIDEQ.
-func TraceID(v []byte) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldTraceID, v))
+// TraceId applies equality check predicate on the "trace_id" field. It's identical to TraceIdEQ.
+func TraceId(v []byte) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldTraceId, v))
 }
 
 // Action applies equality check predicate on the "action" field. It's identical to ActionEQ.
@@ -75,9 +75,9 @@ func Action(v string) predicate.Audit {
 	return predicate.Audit(sql.FieldEQ(FieldAction, v))
 }
 
-// ObjectID applies equality check predicate on the "object_id" field. It's identical to ObjectIDEQ.
-func ObjectID(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldObjectID, v))
+// ObjectId applies equality check predicate on the "object_id" field. It's identical to ObjectIdEQ.
+func ObjectId(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldObjectId, v))
 }
 
 // Patch applies equality check predicate on the "patch" field. It's identical to PatchEQ.
@@ -90,9 +90,9 @@ func DateCreated(v time.Time) predicate.Audit {
 	return predicate.Audit(sql.FieldEQ(FieldDateCreated, v))
 }
 
-// ActorTenantID applies equality check predicate on the "actor_tenant_id" field. It's identical to ActorTenantIDEQ.
-func ActorTenantID(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldActorTenantID, v))
+// ActorTenantId applies equality check predicate on the "actor_tenant_id" field. It's identical to ActorTenantIdEQ.
+func ActorTenantId(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldActorTenantId, v))
 }
 
 // Value applies equality check predicate on the "value" field. It's identical to ValueEQ.
@@ -100,9 +100,9 @@ func Value(v []byte) predicate.Audit {
 	return predicate.Audit(sql.FieldEQ(FieldValue, v))
 }
 
-// CounterpartTenantID applies equality check predicate on the "counterpart_tenant_id" field. It's identical to CounterpartTenantIDEQ.
-func CounterpartTenantID(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldCounterpartTenantID, v))
+// CounterpartTenantId applies equality check predicate on the "counterpart_tenant_id" field. It's identical to CounterpartTenantIdEQ.
+func CounterpartTenantId(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldCounterpartTenantId, v))
 }
 
 // Domain applies equality check predicate on the "domain" field. It's identical to DomainEQ.
@@ -110,124 +110,124 @@ func Domain(v uint32) predicate.Audit {
 	return predicate.Audit(sql.FieldEQ(FieldDomain, v))
 }
 
-// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
-func TenantIDEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldTenantID, v))
+// TenantIdEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIdEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldTenantId, v))
 }
 
-// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
-func TenantIDNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldTenantID, v))
+// TenantIdNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIdNEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNEQ(FieldTenantId, v))
 }
 
-// TenantIDIn applies the In predicate on the "tenant_id" field.
-func TenantIDIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldTenantID, vs...))
+// TenantIdIn applies the In predicate on the "tenant_id" field.
+func TenantIdIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldIn(FieldTenantId, vs...))
 }
 
-// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
-func TenantIDNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldTenantID, vs...))
+// TenantIdNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIdNotIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNotIn(FieldTenantId, vs...))
 }
 
-// TenantIDGT applies the GT predicate on the "tenant_id" field.
-func TenantIDGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldTenantID, v))
+// TenantIdGT applies the GT predicate on the "tenant_id" field.
+func TenantIdGT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGT(FieldTenantId, v))
 }
 
-// TenantIDGTE applies the GTE predicate on the "tenant_id" field.
-func TenantIDGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldTenantID, v))
+// TenantIdGTE applies the GTE predicate on the "tenant_id" field.
+func TenantIdGTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGTE(FieldTenantId, v))
 }
 
-// TenantIDLT applies the LT predicate on the "tenant_id" field.
-func TenantIDLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldTenantID, v))
+// TenantIdLT applies the LT predicate on the "tenant_id" field.
+func TenantIdLT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLT(FieldTenantId, v))
 }
 
-// TenantIDLTE applies the LTE predicate on the "tenant_id" field.
-func TenantIDLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldTenantID, v))
+// TenantIdLTE applies the LTE predicate on the "tenant_id" field.
+func TenantIdLTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLTE(FieldTenantId, v))
 }
 
-// ActorIDEQ applies the EQ predicate on the "actor_id" field.
-func ActorIDEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldActorID, v))
+// ActorIdEQ applies the EQ predicate on the "actor_id" field.
+func ActorIdEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldActorId, v))
 }
 
-// ActorIDNEQ applies the NEQ predicate on the "actor_id" field.
-func ActorIDNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldActorID, v))
+// ActorIdNEQ applies the NEQ predicate on the "actor_id" field.
+func ActorIdNEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNEQ(FieldActorId, v))
 }
 
-// ActorIDIn applies the In predicate on the "actor_id" field.
-func ActorIDIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldActorID, vs...))
+// ActorIdIn applies the In predicate on the "actor_id" field.
+func ActorIdIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldIn(FieldActorId, vs...))
 }
 
-// ActorIDNotIn applies the NotIn predicate on the "actor_id" field.
-func ActorIDNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldActorID, vs...))
+// ActorIdNotIn applies the NotIn predicate on the "actor_id" field.
+func ActorIdNotIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNotIn(FieldActorId, vs...))
 }
 
-// ActorIDGT applies the GT predicate on the "actor_id" field.
-func ActorIDGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldActorID, v))
+// ActorIdGT applies the GT predicate on the "actor_id" field.
+func ActorIdGT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGT(FieldActorId, v))
 }
 
-// ActorIDGTE applies the GTE predicate on the "actor_id" field.
-func ActorIDGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldActorID, v))
+// ActorIdGTE applies the GTE predicate on the "actor_id" field.
+func ActorIdGTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGTE(FieldActorId, v))
 }
 
-// ActorIDLT applies the LT predicate on the "actor_id" field.
-func ActorIDLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldActorID, v))
+// ActorIdLT applies the LT predicate on the "actor_id" field.
+func ActorIdLT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLT(FieldActorId, v))
 }
 
-// ActorIDLTE applies the LTE predicate on the "actor_id" field.
-func ActorIDLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldActorID, v))
+// ActorIdLTE applies the LTE predicate on the "actor_id" field.
+func ActorIdLTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLTE(FieldActorId, v))
 }
 
-// TraceIDEQ applies the EQ predicate on the "trace_id" field.
-func TraceIDEQ(v []byte) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldTraceID, v))
+// TraceIdEQ applies the EQ predicate on the "trace_id" field.
+func TraceIdEQ(v []byte) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldTraceId, v))
 }
 
-// TraceIDNEQ applies the NEQ predicate on the "trace_id" field.
-func TraceIDNEQ(v []byte) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldTraceID, v))
+// TraceIdNEQ applies the NEQ predicate on the "trace_id" field.
+func TraceIdNEQ(v []byte) predicate.Audit {
+	return predicate.Audit(sql.FieldNEQ(FieldTraceId, v))
 }
 
-// TraceIDIn applies the In predicate on the "trace_id" field.
-func TraceIDIn(vs ...[]byte) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldTraceID, vs...))
+// TraceIdIn applies the In predicate on the "trace_id" field.
+func TraceIdIn(vs ...[]byte) predicate.Audit {
+	return predicate.Audit(sql.FieldIn(FieldTraceId, vs...))
 }
 
-// TraceIDNotIn applies the NotIn predicate on the "trace_id" field.
-func TraceIDNotIn(vs ...[]byte) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldTraceID, vs...))
+// TraceIdNotIn applies the NotIn predicate on the "trace_id" field.
+func TraceIdNotIn(vs ...[]byte) predicate.Audit {
+	return predicate.Audit(sql.FieldNotIn(FieldTraceId, vs...))
 }
 
-// TraceIDGT applies the GT predicate on the "trace_id" field.
-func TraceIDGT(v []byte) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldTraceID, v))
+// TraceIdGT applies the GT predicate on the "trace_id" field.
+func TraceIdGT(v []byte) predicate.Audit {
+	return predicate.Audit(sql.FieldGT(FieldTraceId, v))
 }
 
-// TraceIDGTE applies the GTE predicate on the "trace_id" field.
-func TraceIDGTE(v []byte) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldTraceID, v))
+// TraceIdGTE applies the GTE predicate on the "trace_id" field.
+func TraceIdGTE(v []byte) predicate.Audit {
+	return predicate.Audit(sql.FieldGTE(FieldTraceId, v))
 }
 
-// TraceIDLT applies the LT predicate on the "trace_id" field.
-func TraceIDLT(v []byte) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldTraceID, v))
+// TraceIdLT applies the LT predicate on the "trace_id" field.
+func TraceIdLT(v []byte) predicate.Audit {
+	return predicate.Audit(sql.FieldLT(FieldTraceId, v))
 }
 
-// TraceIDLTE applies the LTE predicate on the "trace_id" field.
-func TraceIDLTE(v []byte) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldTraceID, v))
+// TraceIdLTE applies the LTE predicate on the "trace_id" field.
+func TraceIdLTE(v []byte) predicate.Audit {
+	return predicate.Audit(sql.FieldLTE(FieldTraceId, v))
 }
 
 // ActionEQ applies the EQ predicate on the "action" field.
@@ -295,44 +295,44 @@ func ActionContainsFold(v string) predicate.Audit {
 	return predicate.Audit(sql.FieldContainsFold(FieldAction, v))
 }
 
-// ObjectIDEQ applies the EQ predicate on the "object_id" field.
-func ObjectIDEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldObjectID, v))
+// ObjectIdEQ applies the EQ predicate on the "object_id" field.
+func ObjectIdEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldObjectId, v))
 }
 
-// ObjectIDNEQ applies the NEQ predicate on the "object_id" field.
-func ObjectIDNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldObjectID, v))
+// ObjectIdNEQ applies the NEQ predicate on the "object_id" field.
+func ObjectIdNEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNEQ(FieldObjectId, v))
 }
 
-// ObjectIDIn applies the In predicate on the "object_id" field.
-func ObjectIDIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldObjectID, vs...))
+// ObjectIdIn applies the In predicate on the "object_id" field.
+func ObjectIdIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldIn(FieldObjectId, vs...))
 }
 
-// ObjectIDNotIn applies the NotIn predicate on the "object_id" field.
-func ObjectIDNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldObjectID, vs...))
+// ObjectIdNotIn applies the NotIn predicate on the "object_id" field.
+func ObjectIdNotIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNotIn(FieldObjectId, vs...))
 }
 
-// ObjectIDGT applies the GT predicate on the "object_id" field.
-func ObjectIDGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldObjectID, v))
+// ObjectIdGT applies the GT predicate on the "object_id" field.
+func ObjectIdGT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGT(FieldObjectId, v))
 }
 
-// ObjectIDGTE applies the GTE predicate on the "object_id" field.
-func ObjectIDGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldObjectID, v))
+// ObjectIdGTE applies the GTE predicate on the "object_id" field.
+func ObjectIdGTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGTE(FieldObjectId, v))
 }
 
-// ObjectIDLT applies the LT predicate on the "object_id" field.
-func ObjectIDLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldObjectID, v))
+// ObjectIdLT applies the LT predicate on the "object_id" field.
+func ObjectIdLT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLT(FieldObjectId, v))
 }
 
-// ObjectIDLTE applies the LTE predicate on the "object_id" field.
-func ObjectIDLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldObjectID, v))
+// ObjectIdLTE applies the LTE predicate on the "object_id" field.
+func ObjectIdLTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLTE(FieldObjectId, v))
 }
 
 // PatchEQ applies the EQ predicate on the "patch" field.
@@ -425,44 +425,44 @@ func DateCreatedNotNil() predicate.Audit {
 	return predicate.Audit(sql.FieldNotNull(FieldDateCreated))
 }
 
-// ActorTenantIDEQ applies the EQ predicate on the "actor_tenant_id" field.
-func ActorTenantIDEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldActorTenantID, v))
+// ActorTenantIdEQ applies the EQ predicate on the "actor_tenant_id" field.
+func ActorTenantIdEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldActorTenantId, v))
 }
 
-// ActorTenantIDNEQ applies the NEQ predicate on the "actor_tenant_id" field.
-func ActorTenantIDNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldActorTenantID, v))
+// ActorTenantIdNEQ applies the NEQ predicate on the "actor_tenant_id" field.
+func ActorTenantIdNEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNEQ(FieldActorTenantId, v))
 }
 
-// ActorTenantIDIn applies the In predicate on the "actor_tenant_id" field.
-func ActorTenantIDIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldActorTenantID, vs...))
+// ActorTenantIdIn applies the In predicate on the "actor_tenant_id" field.
+func ActorTenantIdIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldIn(FieldActorTenantId, vs...))
 }
 
-// ActorTenantIDNotIn applies the NotIn predicate on the "actor_tenant_id" field.
-func ActorTenantIDNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldActorTenantID, vs...))
+// ActorTenantIdNotIn applies the NotIn predicate on the "actor_tenant_id" field.
+func ActorTenantIdNotIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNotIn(FieldActorTenantId, vs...))
 }
 
-// ActorTenantIDGT applies the GT predicate on the "actor_tenant_id" field.
-func ActorTenantIDGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldActorTenantID, v))
+// ActorTenantIdGT applies the GT predicate on the "actor_tenant_id" field.
+func ActorTenantIdGT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGT(FieldActorTenantId, v))
 }
 
-// ActorTenantIDGTE applies the GTE predicate on the "actor_tenant_id" field.
-func ActorTenantIDGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldActorTenantID, v))
+// ActorTenantIdGTE applies the GTE predicate on the "actor_tenant_id" field.
+func ActorTenantIdGTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGTE(FieldActorTenantId, v))
 }
 
-// ActorTenantIDLT applies the LT predicate on the "actor_tenant_id" field.
-func ActorTenantIDLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldActorTenantID, v))
+// ActorTenantIdLT applies the LT predicate on the "actor_tenant_id" field.
+func ActorTenantIdLT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLT(FieldActorTenantId, v))
 }
 
-// ActorTenantIDLTE applies the LTE predicate on the "actor_tenant_id" field.
-func ActorTenantIDLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldActorTenantID, v))
+// ActorTenantIdLTE applies the LTE predicate on the "actor_tenant_id" field.
+func ActorTenantIdLTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLTE(FieldActorTenantId, v))
 }
 
 // ValueEQ applies the EQ predicate on the "value" field.
@@ -505,54 +505,54 @@ func ValueLTE(v []byte) predicate.Audit {
 	return predicate.Audit(sql.FieldLTE(FieldValue, v))
 }
 
-// CounterpartTenantIDEQ applies the EQ predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldEQ(FieldCounterpartTenantID, v))
+// CounterpartTenantIdEQ applies the EQ predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldEQ(FieldCounterpartTenantId, v))
 }
 
-// CounterpartTenantIDNEQ applies the NEQ predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDNEQ(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNEQ(FieldCounterpartTenantID, v))
+// CounterpartTenantIdNEQ applies the NEQ predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdNEQ(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNEQ(FieldCounterpartTenantId, v))
 }
 
-// CounterpartTenantIDIn applies the In predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldIn(FieldCounterpartTenantID, vs...))
+// CounterpartTenantIdIn applies the In predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldIn(FieldCounterpartTenantId, vs...))
 }
 
-// CounterpartTenantIDNotIn applies the NotIn predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDNotIn(vs ...uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldNotIn(FieldCounterpartTenantID, vs...))
+// CounterpartTenantIdNotIn applies the NotIn predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdNotIn(vs ...uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldNotIn(FieldCounterpartTenantId, vs...))
 }
 
-// CounterpartTenantIDGT applies the GT predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDGT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGT(FieldCounterpartTenantID, v))
+// CounterpartTenantIdGT applies the GT predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdGT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGT(FieldCounterpartTenantId, v))
 }
 
-// CounterpartTenantIDGTE applies the GTE predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDGTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldGTE(FieldCounterpartTenantID, v))
+// CounterpartTenantIdGTE applies the GTE predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdGTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldGTE(FieldCounterpartTenantId, v))
 }
 
-// CounterpartTenantIDLT applies the LT predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDLT(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLT(FieldCounterpartTenantID, v))
+// CounterpartTenantIdLT applies the LT predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdLT(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLT(FieldCounterpartTenantId, v))
 }
 
-// CounterpartTenantIDLTE applies the LTE predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDLTE(v uuid.UUID) predicate.Audit {
-	return predicate.Audit(sql.FieldLTE(FieldCounterpartTenantID, v))
+// CounterpartTenantIdLTE applies the LTE predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdLTE(v uuid.UUID) predicate.Audit {
+	return predicate.Audit(sql.FieldLTE(FieldCounterpartTenantId, v))
 }
 
-// CounterpartTenantIDIsNil applies the IsNil predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDIsNil() predicate.Audit {
-	return predicate.Audit(sql.FieldIsNull(FieldCounterpartTenantID))
+// CounterpartTenantIdIsNil applies the IsNil predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdIsNil() predicate.Audit {
+	return predicate.Audit(sql.FieldIsNull(FieldCounterpartTenantId))
 }
 
-// CounterpartTenantIDNotNil applies the NotNil predicate on the "counterpart_tenant_id" field.
-func CounterpartTenantIDNotNil() predicate.Audit {
-	return predicate.Audit(sql.FieldNotNull(FieldCounterpartTenantID))
+// CounterpartTenantIdNotNil applies the NotNil predicate on the "counterpart_tenant_id" field.
+func CounterpartTenantIdNotNil() predicate.Audit {
+	return predicate.Audit(sql.FieldNotNull(FieldCounterpartTenantId))
 }
 
 // DomainEQ applies the EQ predicate on the "domain" field.

@@ -84,59 +84,59 @@ func (_c *RobotCreate) SetNillableDateErased(v *time.Time) *RobotCreate {
 	return _c
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_c *RobotCreate) SetTenantID(v uuid.UUID) *RobotCreate {
-	_c.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_c *RobotCreate) SetTenantId(v uuid.UUID) *RobotCreate {
+	_c.mutation.SetTenantId(v)
 	return _c
 }
 
-// SetThingID sets the "thing_id" field.
-func (_c *RobotCreate) SetThingID(v uuid.UUID) *RobotCreate {
-	_c.mutation.SetThingID(v)
+// SetThingId sets the "thing_id" field.
+func (_c *RobotCreate) SetThingId(v uuid.UUID) *RobotCreate {
+	_c.mutation.SetThingId(v)
 	return _c
 }
 
-// SetNillableThingID sets the "thing_id" field if the given value is not nil.
-func (_c *RobotCreate) SetNillableThingID(v *uuid.UUID) *RobotCreate {
+// SetNillableThingId sets the "thing_id" field if the given value is not nil.
+func (_c *RobotCreate) SetNillableThingId(v *uuid.UUID) *RobotCreate {
 	if v != nil {
-		_c.SetThingID(*v)
+		_c.SetThingId(*v)
 	}
 	return _c
 }
 
-// SetCellID sets the "cell_id" field.
-func (_c *RobotCreate) SetCellID(v uuid.UUID) *RobotCreate {
-	_c.mutation.SetCellID(v)
+// SetCellId sets the "cell_id" field.
+func (_c *RobotCreate) SetCellId(v uuid.UUID) *RobotCreate {
+	_c.mutation.SetCellId(v)
 	return _c
 }
 
-// SetNillableCellID sets the "cell_id" field if the given value is not nil.
-func (_c *RobotCreate) SetNillableCellID(v *uuid.UUID) *RobotCreate {
+// SetNillableCellId sets the "cell_id" field if the given value is not nil.
+func (_c *RobotCreate) SetNillableCellId(v *uuid.UUID) *RobotCreate {
 	if v != nil {
-		_c.SetCellID(*v)
+		_c.SetCellId(*v)
 	}
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *RobotCreate) SetID(v uuid.UUID) *RobotCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *RobotCreate) SetId(v uuid.UUID) *RobotCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
 // SetTenant sets the "tenant" edge to the Tenant entity.
 func (_c *RobotCreate) SetTenant(v *Tenant) *RobotCreate {
-	return _c.SetTenantID(v.ID)
+	return _c.SetTenantId(v.Id)
 }
 
 // SetThing sets the "thing" edge to the Thing entity.
 func (_c *RobotCreate) SetThing(v *Thing) *RobotCreate {
-	return _c.SetThingID(v.ID)
+	return _c.SetThingId(v.Id)
 }
 
 // SetCell sets the "cell" edge to the Cell entity.
 func (_c *RobotCreate) SetCell(v *Cell) *RobotCreate {
-	return _c.SetCellID(v.ID)
+	return _c.SetCellId(v.Id)
 }
 
 // Mutation returns the RobotMutation object of the builder.
@@ -179,10 +179,10 @@ func (_c *RobotCreate) check() error {
 	if _, ok := _c.mutation.DateUpdated(); !ok {
 		return &ValidationError{Name: "date_updated", err: errors.New(`ent: missing required field "Robot.date_updated"`)}
 	}
-	if _, ok := _c.mutation.TenantID(); !ok {
+	if _, ok := _c.mutation.TenantId(); !ok {
 		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Robot.tenant_id"`)}
 	}
-	if len(_c.mutation.TenantIDs()) == 0 {
+	if len(_c.mutation.TenantIds()) == 0 {
 		return &ValidationError{Name: "tenant", err: errors.New(`ent: missing required edge "Robot.tenant"`)}
 	}
 	return nil
@@ -199,14 +199,14 @@ func (_c *RobotCreate) sqlSave(ctx context.Context) (*Robot, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -214,11 +214,11 @@ func (_c *RobotCreate) sqlSave(ctx context.Context) (*Robot, error) {
 func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Robot{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(robot.Table, sqlgraph.NewFieldSpec(robot.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(robot.Table, sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(robot.FieldAlias, field.TypeString, value)
@@ -244,7 +244,7 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 		_spec.SetField(robot.FieldDateErased, field.TypeTime, value)
 		_node.DateErased = &value
 	}
-	if nodes := _c.mutation.TenantIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.TenantIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -252,16 +252,16 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 			Columns: []string{robot.TenantColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tenant.FieldID, field.TypeUUID),
+				IdSpec: sqlgraph.NewFieldSpec(tenant.FieldId, field.TypeUuid),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.TenantID = nodes[0]
+		_node.TenantId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.ThingIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ThingIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -269,16 +269,16 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 			Columns: []string{robot.ThingColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(thing.FieldID, field.TypeUUID),
+				IdSpec: sqlgraph.NewFieldSpec(thing.FieldId, field.TypeUuid),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.ThingID = nodes[0]
+		_node.ThingId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.CellIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.CellIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -286,13 +286,13 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 			Columns: []string{robot.CellColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(cell.FieldID, field.TypeUUID),
+				IdSpec: sqlgraph.NewFieldSpec(cell.FieldId, field.TypeUuid),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.CellID = nodes[0]
+		_node.CellId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -341,7 +341,7 @@ func (_c *RobotCreateBulk) Save(ctx context.Context) ([]*Robot, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

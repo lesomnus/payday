@@ -42,13 +42,13 @@ func (m *Mutation) Predicates() []predicate.Outbox {
 	return m.predicates
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (m *Mutation) SetTenantID(u uuid.UUID) {
+// SetTenantId sets the "tenant_id" field.
+func (m *Mutation) SetTenantId(u uuid.UUID) {
 	m.tenant_id = &u
 }
 
-// TenantID returns the value of the "tenant_id" field in the mutation.
-func (m *Mutation) TenantID() (r uuid.UUID, exists bool) {
+// TenantId returns the value of the "tenant_id" field in the mutation.
+func (m *Mutation) TenantId() (r uuid.UUID, exists bool) {
 	v := m.tenant_id
 	if v == nil {
 		return
@@ -56,18 +56,18 @@ func (m *Mutation) TenantID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetTenantID resets all changes to the "tenant_id" field.
-func (m *Mutation) ResetTenantID() {
+// ResetTenantId resets all changes to the "tenant_id" field.
+func (m *Mutation) ResetTenantId() {
 	m.tenant_id = nil
 }
 
-// SetActorID sets the "actor_id" field.
-func (m *Mutation) SetActorID(u uuid.UUID) {
+// SetActorId sets the "actor_id" field.
+func (m *Mutation) SetActorId(u uuid.UUID) {
 	m.actor_id = &u
 }
 
-// ActorID returns the value of the "actor_id" field in the mutation.
-func (m *Mutation) ActorID() (r uuid.UUID, exists bool) {
+// ActorId returns the value of the "actor_id" field in the mutation.
+func (m *Mutation) ActorId() (r uuid.UUID, exists bool) {
 	v := m.actor_id
 	if v == nil {
 		return
@@ -75,8 +75,8 @@ func (m *Mutation) ActorID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetActorID resets all changes to the "actor_id" field.
-func (m *Mutation) ResetActorID() {
+// ResetActorId resets all changes to the "actor_id" field.
+func (m *Mutation) ResetActorId() {
 	m.actor_id = nil
 }
 
@@ -118,13 +118,13 @@ func (m *Mutation) ResetBy() {
 	m.by = nil
 }
 
-// SetObjectID sets the "object_id" field.
-func (m *Mutation) SetObjectID(u uuid.UUID) {
+// SetObjectId sets the "object_id" field.
+func (m *Mutation) SetObjectId(u uuid.UUID) {
 	m.object_id = &u
 }
 
-// ObjectID returns the value of the "object_id" field in the mutation.
-func (m *Mutation) ObjectID() (r uuid.UUID, exists bool) {
+// ObjectId returns the value of the "object_id" field in the mutation.
+func (m *Mutation) ObjectId() (r uuid.UUID, exists bool) {
 	v := m.object_id
 	if v == nil {
 		return
@@ -132,8 +132,8 @@ func (m *Mutation) ObjectID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetObjectID resets all changes to the "object_id" field.
-func (m *Mutation) ResetObjectID() {
+// ResetObjectId resets all changes to the "object_id" field.
+func (m *Mutation) ResetObjectId() {
 	m.object_id = nil
 }
 
@@ -224,10 +224,10 @@ func (m *Mutation) Type() string {
 func (m *Mutation) Fields() []string {
 	fields := make([]string, 0, 7)
 	if m.tenant_id != nil {
-		fields = append(fields, FieldTenantID)
+		fields = append(fields, FieldTenantId)
 	}
 	if m.actor_id != nil {
-		fields = append(fields, FieldActorID)
+		fields = append(fields, FieldActorId)
 	}
 	if m.method != nil {
 		fields = append(fields, FieldMethod)
@@ -236,7 +236,7 @@ func (m *Mutation) Fields() []string {
 		fields = append(fields, FieldBy)
 	}
 	if m.object_id != nil {
-		fields = append(fields, FieldObjectID)
+		fields = append(fields, FieldObjectId)
 	}
 	if m.patch != nil {
 		fields = append(fields, FieldPatch)
@@ -252,16 +252,16 @@ func (m *Mutation) Fields() []string {
 // schema.
 func (m *Mutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case FieldTenantID:
-		return m.TenantID()
-	case FieldActorID:
-		return m.ActorID()
+	case FieldTenantId:
+		return m.TenantId()
+	case FieldActorId:
+		return m.ActorId()
 	case FieldMethod:
 		return m.Method()
 	case FieldBy:
 		return m.By()
-	case FieldObjectID:
-		return m.ObjectID()
+	case FieldObjectId:
+		return m.ObjectId()
 	case FieldPatch:
 		return m.Patch()
 	case FieldDateCreated:
@@ -282,19 +282,19 @@ func (m *Mutation) OldField(ctx context.Context, name string) (ent.Value, error)
 // type.
 func (m *Mutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case FieldTenantID:
+	case FieldTenantId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTenantID(v)
+		m.SetTenantId(v)
 		return nil
-	case FieldActorID:
+	case FieldActorId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetActorID(v)
+		m.SetActorId(v)
 		return nil
 	case FieldMethod:
 		v, ok := value.(string)
@@ -310,12 +310,12 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetBy(v)
 		return nil
-	case FieldObjectID:
+	case FieldObjectId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetObjectID(v)
+		m.SetObjectId(v)
 		return nil
 	case FieldPatch:
 		v, ok := value.([]byte)
@@ -389,11 +389,11 @@ func (m *Mutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *Mutation) ResetField(name string) error {
 	switch name {
-	case FieldTenantID:
-		m.ResetTenantID()
+	case FieldTenantId:
+		m.ResetTenantId()
 		return nil
-	case FieldActorID:
-		m.ResetActorID()
+	case FieldActorId:
+		m.ResetActorId()
 		return nil
 	case FieldMethod:
 		m.ResetMethod()
@@ -401,8 +401,8 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldBy:
 		m.ResetBy()
 		return nil
-	case FieldObjectID:
-		m.ResetObjectID()
+	case FieldObjectId:
+		m.ResetObjectId()
 		return nil
 	case FieldPatch:
 		m.ResetPatch()
@@ -420,9 +420,9 @@ func (m *Mutation) AddedEdges() []string {
 	return edges
 }
 
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// AddedIds returns all Ids (to other nodes) that were added for the given edge
 // name in this mutation.
-func (m *Mutation) AddedIDs(name string) []ent.Value {
+func (m *Mutation) AddedIds(name string) []ent.Value {
 	return nil
 }
 
@@ -432,9 +432,9 @@ func (m *Mutation) RemovedEdges() []string {
 	return edges
 }
 
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// RemovedIds returns all Ids (to other nodes) that were removed for the edge with
 // the given name in this mutation.
-func (m *Mutation) RemovedIDs(name string) []ent.Value {
+func (m *Mutation) RemovedIds(name string) []ent.Value {
 	return nil
 }
 

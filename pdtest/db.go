@@ -33,11 +33,11 @@ import (
 //
 // Because SQLite is not the database anybody deploys on, and it is permissive
 // in the directions that hide mistakes. It has no real types, so a column takes
-// whatever is handed to it; it sorts NULLs the other way round from PostgreSQL,
+// whatever is handed to it; it sorts NULLs the other way round from PostgreSql,
 // which is a paging bug rather than a failure; its partial indexes, its
 // uniqueness and its transactions all differ.
 //
-// Everything payday generates is SQL. A suite that only ever runs on SQLite is
+// Everything payday generates is Sql. A suite that only ever runs on SQLite is
 // one that has never seen the statements it will actually issue.
 //
 // It is opt-in because SQLite needs no server, and a suite nobody can run
@@ -51,7 +51,7 @@ const Postgres = "PDTEST_POSTGRES"
 //
 // Without [Postgres] in the environment that is an in-memory SQLite database of
 // this test's own, which is what it has always been. With it, it is a **schema
-// of its own** inside the named PostgreSQL: created here, dropped when the test
+// of its own** inside the named PostgreSql: created here, dropped when the test
 // ends, and named after the test so that a leak says which one leaked.
 //
 // A schema rather than a database because it is fast enough to do per test, and
@@ -70,7 +70,7 @@ const Postgres = "PDTEST_POSTGRES"
 // What that produces is the worst kind of failure -- one that appears in a
 // tenth of runs, in whichever test happens to overlap, and says nothing about
 // the code under test. `busy_timeout` makes the second connection wait, which
-// is what every other database does and what the PostgreSQL half already did.
+// is what every other database does and what the PostgreSql half already did.
 //
 // Five seconds because it is far longer than any contention a test creates and
 // far shorter than a suite's own patience, so a genuine deadlock still fails
@@ -150,7 +150,7 @@ func pgSchema(tb testing.TB, dsn string) string {
 	return u.String()
 }
 
-// schemaName is a test's name as an identifier PostgreSQL will take.
+// schemaName is a test's name as an identifier PostgreSql will take.
 //
 // Truncated to 63 bytes, which is its limit -- silently, if nobody does it
 // here: a longer name is cut by the server and two tests whose names agree for

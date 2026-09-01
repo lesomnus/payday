@@ -20,7 +20,7 @@ import (
 // outside the interceptors installed after it.
 //
 // The same handler puts the service and the method on the logger the call is
-// served with, so what a handler writes of its own accord says which RPC it was
+// served with, so what a handler writes of its own accord says which Rpc it was
 // written under without being told.
 func Log(ctx context.Context) grpc.ServerOption {
 	return grpc.StatsHandler(logHandler(ctx))

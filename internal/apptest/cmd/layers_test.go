@@ -34,7 +34,7 @@ import (
 //
 // Except the general writes, which are open here and closed everywhere else.
 // They are how the servers write and not how a caller asks -- an app writes the
-// RPC it means and implements it with one -- but this app has no such RPC yet,
+// Rpc it means and implements it with one -- but this app has no such Rpc yet,
 // and a test that could not change a row could not say what a Watch does when
 // one changes.
 var cmd0 = cmd.Config{
@@ -583,8 +583,8 @@ func TestTheTrailIsNotWrittenByHand(t *testing.T) {
 
 // TestEveryWriteIsOnTheTrail is the half the layer does not do.
 //
-// Nothing lists the RPCs. The generated servers call the recorder from inside
-// the transaction that makes the write, so an RPC added to the schema is on the
+// Nothing lists the Rpcs. The generated servers call the recorder from inside
+// the transaction that makes the write, so an Rpc added to the schema is on the
 // trail without anybody remembering to put it there.
 func TestEveryWriteIsOnTheTrail(t *testing.T) {
 	x := require.New(t)
@@ -604,11 +604,11 @@ func TestEveryWriteIsOnTheTrail(t *testing.T) {
 	x.Len(rows, before+1)
 
 	row := rows[len(rows)-1]
-	x.Equal(b.Holder.Uuid(), row.ActorID, "who did it")
-	x.Equal(b.Tenant.Uuid(), row.TenantID, "on behalf of whom")
-	x.Equal(v.GetId(), row.ObjectID[:], "and to which row")
+	x.Equal(b.Holder.Uuid(), row.ActorId, "who did it")
+	x.Equal(b.Tenant.Uuid(), row.TenantId, "on behalf of whom")
+	x.Equal(v.GetId(), row.ObjectId[:], "and to which row")
 
-	// The action is what the caller asked for, by the name gRPC knows it by.
+	// The action is what the caller asked for, by the name gRpc knows it by.
 	x.Equal(app.RobotService_Add_FullMethodName, row.Action)
 
 	// An Add says everything it did in the action and the object, so there is
@@ -625,9 +625,9 @@ func TestEveryWriteIsOnTheTrail(t *testing.T) {
 // Every one of them is **empty** for some ordinary write -- a call nobody
 // traced, an Add that was not compiled from a document, a row that is not
 // there to be read back -- and empty is the one value the two databases
-// disagree about: pgx sends a nil `[]byte` as SQL NULL, and the SQLite driver
+// disagree about: pgx sends a nil `[]byte` as Sql NULL, and the SQLite driver
 // makes it an empty blob. So the assertion below is really the write
-// **succeeding**, and it can only fail on PostgreSQL: without `PDTEST_POSTGRES`
+// **succeeding**, and it can only fail on PostgreSql: without `PDTEST_POSTGRES`
 // naming one it asserts a nil the driver has already taken away, and passes on
 // a tree where every one of these is nil.
 //
@@ -683,7 +683,7 @@ func TestTheTrailTakesNoNullFromPayday(t *testing.T) {
 			// test is what the column holds, and a read through the trail's
 			// own service would answer with a message that has no way to say
 			// the difference.
-			rows, err := b.Ent.Audit.Query().Where(entaudit.ObjectIDEQ(k)).All(ctx)
+			rows, err := b.Ent.Audit.Query().Where(entaudit.ObjectIdEQ(k)).All(ctx)
 			x.NoError(err)
 			x.NotEmpty(rows)
 
@@ -842,7 +842,7 @@ func TestTheTrailNamesWhatChangedByKind(t *testing.T) {
 		}
 
 		erased = true
-		x.Equal(pd.ReadingDomain, pdid.Id(row.ObjectID).Domain(),
+		x.Equal(pd.ReadingDomain, pdid.Id(row.ObjectId).Domain(),
 			"the identifier still says what it named")
 	}
 	x.True(erased, "the erase was not recorded")
@@ -896,7 +896,7 @@ func must[T any](v T, err error) T {
 // TestTheWallReadsTheKeyRatherThanWalkingToIt is the wall's shape, and it is
 // tested by what it hides rather than by what it renders.
 //
-// `HasTenantWith(tenant.IDIn(vs))` and `<foreign key> IN vs` answer the same
+// `HasTenantWith(tenant.IdIn(vs))` and `<foreign key> IN vs` answer the same
 // question, and they answer it the same way **because the key is a foreign
 // key**: a row cannot hold the identifier of a tenant that is not there. The
 // integrity constraint is not the cost of the join, it is what makes the join

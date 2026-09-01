@@ -9,47 +9,47 @@ import (
 const (
 	// Label holds the string label denoting the audit type in the database.
 	Label = "audit"
-	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
-	// FieldTenantID holds the string denoting the tenant_id field in the database.
-	FieldTenantID = "tenant_id"
-	// FieldActorID holds the string denoting the actor_id field in the database.
-	FieldActorID = "actor_id"
-	// FieldTraceID holds the string denoting the trace_id field in the database.
-	FieldTraceID = "trace_id"
+	// FieldId holds the string denoting the id field in the database.
+	FieldId = "id"
+	// FieldTenantId holds the string denoting the tenant_id field in the database.
+	FieldTenantId = "tenant_id"
+	// FieldActorId holds the string denoting the actor_id field in the database.
+	FieldActorId = "actor_id"
+	// FieldTraceId holds the string denoting the trace_id field in the database.
+	FieldTraceId = "trace_id"
 	// FieldAction holds the string denoting the action field in the database.
 	FieldAction = "action"
-	// FieldObjectID holds the string denoting the object_id field in the database.
-	FieldObjectID = "object_id"
+	// FieldObjectId holds the string denoting the object_id field in the database.
+	FieldObjectId = "object_id"
 	// FieldPatch holds the string denoting the patch field in the database.
 	FieldPatch = "patch"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
 	FieldDateCreated = "date_created"
-	// FieldActorTenantID holds the string denoting the actor_tenant_id field in the database.
-	FieldActorTenantID = "actor_tenant_id"
+	// FieldActorTenantId holds the string denoting the actor_tenant_id field in the database.
+	FieldActorTenantId = "actor_tenant_id"
 	// FieldValue holds the string denoting the value field in the database.
 	FieldValue = "value"
-	// FieldCounterpartTenantID holds the string denoting the counterpart_tenant_id field in the database.
-	FieldCounterpartTenantID = "counterpart_tenant_id"
+	// FieldCounterpartTenantId holds the string denoting the counterpart_tenant_id field in the database.
+	FieldCounterpartTenantId = "counterpart_tenant_id"
 	// FieldDomain holds the string denoting the domain field in the database.
 	FieldDomain = "domain"
 	// Table holds the table name of the audit in the database.
 	Table = "audit"
 )
 
-// Columns holds all SQL columns for audit fields.
+// Columns holds all Sql columns for audit fields.
 var Columns = []string{
-	FieldID,
-	FieldTenantID,
-	FieldActorID,
-	FieldTraceID,
+	FieldId,
+	FieldTenantId,
+	FieldActorId,
+	FieldTraceId,
 	FieldAction,
-	FieldObjectID,
+	FieldObjectId,
 	FieldPatch,
 	FieldDateCreated,
-	FieldActorTenantID,
+	FieldActorTenantId,
 	FieldValue,
-	FieldCounterpartTenantID,
+	FieldCounterpartTenantId,
 	FieldDomain,
 }
 
@@ -66,19 +66,19 @@ func ValidColumn(column string) bool {
 // OrderOption defines the ordering options for the Audit queries.
 type OrderOption func(*sql.Selector)
 
-// ByID orders the results by the id field.
-func ByID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldID, opts...).ToFunc()
+// ById orders the results by the id field.
+func ById(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldId, opts...).ToFunc()
 }
 
-// ByTenantID orders the results by the tenant_id field.
-func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+// ByTenantId orders the results by the tenant_id field.
+func ByTenantId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantId, opts...).ToFunc()
 }
 
-// ByActorID orders the results by the actor_id field.
-func ByActorID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldActorID, opts...).ToFunc()
+// ByActorId orders the results by the actor_id field.
+func ByActorId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldActorId, opts...).ToFunc()
 }
 
 // ByAction orders the results by the action field.
@@ -86,9 +86,9 @@ func ByAction(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAction, opts...).ToFunc()
 }
 
-// ByObjectID orders the results by the object_id field.
-func ByObjectID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldObjectID, opts...).ToFunc()
+// ByObjectId orders the results by the object_id field.
+func ByObjectId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldObjectId, opts...).ToFunc()
 }
 
 // ByDateCreated orders the results by the date_created field.
@@ -96,14 +96,14 @@ func ByDateCreated(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateCreated, opts...).ToFunc()
 }
 
-// ByActorTenantID orders the results by the actor_tenant_id field.
-func ByActorTenantID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldActorTenantID, opts...).ToFunc()
+// ByActorTenantId orders the results by the actor_tenant_id field.
+func ByActorTenantId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldActorTenantId, opts...).ToFunc()
 }
 
-// ByCounterpartTenantID orders the results by the counterpart_tenant_id field.
-func ByCounterpartTenantID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCounterpartTenantID, opts...).ToFunc()
+// ByCounterpartTenantId orders the results by the counterpart_tenant_id field.
+func ByCounterpartTenantId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCounterpartTenantId, opts...).ToFunc()
 }
 
 // ByDomain orders the results by the domain field.

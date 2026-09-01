@@ -21,7 +21,7 @@ import (
 	"github.com/lesomnus/payday/web"
 )
 
-// signer is a sign-in served as an **RPC**, which is what [Sessions.Mint] is
+// signer is a sign-in served as an **Rpc**, which is what [Sessions.Mint] is
 // for.
 //
 // It borrows `TokenService` rather than declaring one, because what is being
@@ -66,8 +66,8 @@ func (s signer) Introspect(ctx context.Context, req *pdpb.TokenIntrospectRequest
 
 // TestASignInCanBeAnRpc is why [Sessions.Mint] is exported.
 //
-// It sounds as though it should not work -- a cookie is an HTTP response header
-// and a gRPC handler has no response writer -- and it does: `set-cookie` as
+// It sounds as though it should not work -- a cookie is an Http response header
+// and a gRpc handler has no response writer -- and it does: `set-cookie` as
 // response metadata reaches the browser through the transcoder, and the cookie
 // it sends back arrives as request metadata, which is where
 // [Sessions.Handler] already reads one.
@@ -98,7 +98,7 @@ func TestASignInCanBeAnRpc(t *testing.T) {
 		t.Helper()
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-			srv.URL+"/payday.TokenService/Introspect", strings.NewReader(body))
+			srv.Url+"/payday.TokenService/Introspect", strings.NewReader(body))
 		x.NoError(err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Connect-Protocol-Version", "1")
@@ -114,7 +114,7 @@ func TestASignInCanBeAnRpc(t *testing.T) {
 	x.Equal(http.StatusOK, res.StatusCode)
 
 	// The browser has it, which is the half a page never sees.
-	cs := jar.Cookies(mustURL(t, srv.URL))
+	cs := jar.Cookies(mustUrl(t, srv.Url))
 	x.Len(cs, 1, "the browser was not given a session")
 	x.Equal("pd_session", cs[0].Name)
 	x.NotEmpty(cs[0].Value)
@@ -146,7 +146,7 @@ func errorsIsNoCredential(err error) bool {
 	return err != nil && err == auth.ErrNoCredential
 }
 
-func mustURL(t *testing.T, v string) *url.URL {
+func mustUrl(t *testing.T, v string) *url.URL {
 	t.Helper()
 
 	u, err := url.Parse(v)

@@ -27,7 +27,7 @@ import (
 // that accepts a Printer accepts all of them and one written here is not a
 // lesser kind of format than the built-in ones.
 //
-// The message is the RPC's answer and not a row: a `Get` hands over the entity,
+// The message is the Rpc's answer and not a row: a `Get` hands over the entity,
 // a `List` hands over the response that holds them. A printer that wants rows
 // asks [Rows] for them, which is what [Table] does.
 type Printer interface {
@@ -62,14 +62,14 @@ var ProtoText Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	return err
 })
 
-// ProtoJSON is protojson, indented.
+// ProtoJson is protojson, indented.
 //
 // It costs nothing to support -- every message this app has is a protobuf, so
 // the encoder is already linked in -- and it is the format anything downstream
 // of a shell can read. `EmitUnpopulated` is off: a field that was not set reads
 // as absent rather than as a zero somebody might act on, which matters most for
 // the `bytes` identifiers, where an empty one is not a valid id.
-var ProtoJSON Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
+var ProtoJson Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	b, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(m)
 	if err != nil {
 		return err
@@ -97,12 +97,12 @@ var Name Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	return nil
 })
 
-// Template renders with `text/template` over the message decoded as JSON.
+// Template renders with `text/template` over the message decoded as Json.
 //
-// Over the decoded JSON rather than over the protobuf message, so that the
+// Over the decoded Json rather than over the protobuf message, so that the
 // names in a template are the names in `-o json` -- `{{.alias}}`, not
 // `{{.Alias}}` or a `protoreflect` call. A person writing a template has the
-// JSON in front of them, and a template that does not agree with it would be a
+// Json in front of them, and a template that does not agree with it would be a
 // second naming to learn.
 func Template(text string) (Printer, error) {
 	t, err := template.New("").Parse(text)
@@ -256,7 +256,7 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
 	add("ALIAS", "alias", func(v protoreflect.Value) string { return v.String() })
 	add("NAME", "name", func(v protoreflect.Value) string { return v.String() })
 	if wide {
-		add("ID", "id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
+		add("Id", "id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
 		add("TENANT", "tenant_id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
 	}
 	add("AGE", "date_created", func(v protoreflect.Value) string { return age(v) })
@@ -265,7 +265,7 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
 		// Nothing the field-number rule reserves, which is a legitimate entity
 		// -- `Reading` in apptest has no alias and no name. The identifier is
 		// the one thing every entity has, so a table of it is still a table.
-		add("ID", "id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
+		add("Id", "id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
 	}
 
 	return vs
@@ -274,7 +274,7 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
 // itemColumns is the table for what a watch sends, which is not a row.
 //
 // It is a row, what happened to it, and -- for one that is gone -- no row at
-// all. So the columns are the row's own, read through `value`, with the RPC
+// all. So the columns are the row's own, read through `value`, with the Rpc
 // that changed it in front and the identifier at the end.
 //
 // **The identifier is not behind `-o wide` here**, which is the one place this
@@ -319,9 +319,9 @@ func itemColumns(d protoreflect.MessageDescriptor, wide bool) []column {
 	}}}
 
 	for _, c := range columnsOf(vd.Message(), wide) {
-		if c.head == "ID" {
+		if c.head == "Id" {
 			// The item names the row itself, and says so for one that is gone
-			// as well. Two ID columns would be the same uuid twice.
+			// as well. Two Id columns would be the same uuid twice.
 			continue
 		}
 
@@ -335,7 +335,7 @@ func itemColumns(d protoreflect.MessageDescriptor, wide bool) []column {
 		}})
 	}
 
-	return append(vs, column{head: "ID", read: func(m protoreflect.Message) string {
+	return append(vs, column{head: "Id", read: func(m protoreflect.Message) string {
 		if !m.Has(id) {
 			return "-"
 		}

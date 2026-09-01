@@ -61,9 +61,9 @@ func (_c *SealCreate) SetNillableDateCreated(v *time.Time) *SealCreate {
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *SealCreate) SetID(v uuid.UUID) *SealCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *SealCreate) SetId(v uuid.UUID) *SealCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
@@ -121,14 +121,14 @@ func (_c *SealCreate) sqlSave(ctx context.Context) (*Seal, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -136,11 +136,11 @@ func (_c *SealCreate) sqlSave(ctx context.Context) (*Seal, error) {
 func (_c *SealCreate) createSpec() (*Seal, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Seal{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(seal.Table, sqlgraph.NewFieldSpec(seal.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(seal.Table, sqlgraph.NewFieldSpec(seal.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(seal.FieldAlias, field.TypeString, value)
@@ -204,7 +204,7 @@ func (_c *SealCreateBulk) Save(ctx context.Context) ([]*Seal, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

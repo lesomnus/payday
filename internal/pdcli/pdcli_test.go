@@ -414,7 +414,7 @@ func TestAnOverlayForNothingIsFound(t *testing.T) {
 // The merge unions the file's options, so a `features.field_presence = IMPLICIT`
 // copied out of the entity file lands on the **whole contract** -- every field
 // of every message in it, including the ones the generator wrote. It was found
-// by writing the first hand-written RPC in an app: it took `HasId` off an Add
+// by writing the first hand-written Rpc in an app: it took `HasId` off an Add
 // request and stopped the build, which is the lucky version. On a field nothing
 // calls `Has` on it would change only what "not set" means on the wire.
 func TestAnOverlayDoesNotChangeWhatTheFileIs(t *testing.T) {
@@ -504,7 +504,7 @@ message Holder {
 // `enttx.Rebind` asks for the binder at run time -- `any(s).(Binder[S])` -- so a
 // layer with no `WithDriver` is not a compile error anywhere. It is
 // `ErrNotBindable` the first time somebody opens a transaction, which is a batch
-// or a multi-write RPC, and which is not the day the layer was written.
+// or a multi-write Rpc, and which is not the day the layer was written.
 //
 // Embedding `Overlay` does not give it. `Overlay` embeds the generated `Server`
 // interface and `WithDriver` is deliberately not one of its methods: a promoted

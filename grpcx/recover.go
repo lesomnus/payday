@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Recover keeps a panicking handler from ending the process. gRPC does not
+// Recover keeps a panicking handler from ending the process. gRpc does not
 // recover on its own, so without it a single bad request takes every other
 // connection down with it.
 func Recover() []grpc.ServerOption {

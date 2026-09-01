@@ -18,21 +18,21 @@ type Audit struct {
 
 func (Audit) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
+		field.Uuid("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
-		field.UUID("tenant_id", uuid.UUID{}),
-		field.UUID("actor_id", uuid.UUID{}),
+		field.Uuid("tenant_id", uuid.UUID{}),
+		field.Uuid("actor_id", uuid.UUID{}),
 		field.Bytes("trace_id"),
 		field.String("action"),
-		field.UUID("object_id", uuid.UUID{}),
+		field.Uuid("object_id", uuid.UUID{}),
 		field.Bytes("patch"),
 		field.Time("date_created").
 			Immutable().
 			Optional(),
-		field.UUID("actor_tenant_id", uuid.UUID{}),
+		field.Uuid("actor_tenant_id", uuid.UUID{}),
 		field.Bytes("value"),
-		field.UUID("counterpart_tenant_id", uuid.UUID{}).
+		field.Uuid("counterpart_tenant_id", uuid.UUID{}).
 			Nillable().
 			Optional(),
 		field.Uint32("domain").

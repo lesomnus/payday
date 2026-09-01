@@ -10,14 +10,14 @@ import (
 const (
 	// Label holds the string label denoting the cell type in the database.
 	Label = "cell"
-	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
+	// FieldId holds the string denoting the id field in the database.
+	FieldId = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
 	// FieldDateErased holds the string denoting the date_erased field in the database.
 	FieldDateErased = "date_erased"
-	// FieldTenantID holds the string denoting the tenant_id field in the database.
-	FieldTenantID = "tenant_id"
+	// FieldTenantId holds the string denoting the tenant_id field in the database.
+	FieldTenantId = "tenant_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
 	EdgeTenant = "tenant"
 	// Table holds the table name of the cell in the database.
@@ -31,12 +31,12 @@ const (
 	TenantColumn = "tenant_id"
 )
 
-// Columns holds all SQL columns for cell fields.
+// Columns holds all Sql columns for cell fields.
 var Columns = []string{
-	FieldID,
+	FieldId,
 	FieldAlias,
 	FieldDateErased,
-	FieldTenantID,
+	FieldTenantId,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -52,9 +52,9 @@ func ValidColumn(column string) bool {
 // OrderOption defines the ordering options for the Cell queries.
 type OrderOption func(*sql.Selector)
 
-// ByID orders the results by the id field.
-func ByID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldID, opts...).ToFunc()
+// ById orders the results by the id field.
+func ById(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldId, opts...).ToFunc()
 }
 
 // ByAlias orders the results by the alias field.
@@ -67,9 +67,9 @@ func ByDateErased(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateErased, opts...).ToFunc()
 }
 
-// ByTenantID orders the results by the tenant_id field.
-func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+// ByTenantId orders the results by the tenant_id field.
+func ByTenantId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantId, opts...).ToFunc()
 }
 
 // ByTenantField orders the results by tenant field.
@@ -80,8 +80,8 @@ func ByTenantField(field string, opts ...sql.OrderTermOption) OrderOption {
 }
 func newTenantStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(TenantInverseTable, FieldID),
+		sqlgraph.From(Table, FieldId),
+		sqlgraph.To(TenantInverseTable, FieldId),
 		sqlgraph.Edge(sqlgraph.M2O, false, TenantTable, TenantColumn),
 	)
 }

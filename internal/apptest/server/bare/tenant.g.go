@@ -97,7 +97,7 @@ func (s TenantServiceServer) Add(ctx context.Context, req *apptest.TenantAddRequ
 	if v, err := mint(ctx, s.Mint, "app.Tenant", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	q.SetAlias(req.GetAlias())
 	q.SetName(req.GetName())
@@ -127,7 +127,7 @@ func (s TenantServiceServer) Add(ctx context.Context, req *apptest.TenantAddRequ
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.TenantService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (s TenantServiceServer) Get(ctx context.Context, req *apptest.TenantGetRequ
 }
 
 func selectTenantKey(q *ent.TenantQuery) {
-	q.Select(tenant.FieldID)
+	q.Select(tenant.FieldId)
 }
 
 func TenantSelectedFields(m *apptest.TenantSelect) []string {
@@ -172,7 +172,7 @@ func TenantSelectedFields(m *apptest.TenantSelect) []string {
 
 	vs := make([]string, 0, len(tenant.Columns))
 	{
-		vs = append(vs, tenant.FieldID)
+		vs = append(vs, tenant.FieldId)
 	}
 	if m.GetAlias() {
 		vs = append(vs, tenant.FieldAlias)
@@ -257,7 +257,7 @@ func TenantGetKey(ctx context.Context, db *ent.Client, ref *apptest.TenantRef) (
 var tenantOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_tenant_proto, "Tenant")
 
 var tenantPatchColumns = entpatch.Columns{
-	1: tenant.FieldID, 4: tenant.FieldAlias, 5: tenant.FieldName, 6: tenant.FieldDesc, 7: tenant.FieldLabels, 13: tenant.FieldDateUpdated, 15: tenant.FieldDateCreated}
+	1: tenant.FieldId, 4: tenant.FieldAlias, 5: tenant.FieldName, 6: tenant.FieldDesc, 7: tenant.FieldLabels, 13: tenant.FieldDateUpdated, 15: tenant.FieldDateCreated}
 
 func (s TenantServiceServer) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
 	if !req.HasPatch() {
@@ -302,7 +302,7 @@ func (s TenantServiceServer) apply(ctx context.Context, ref *apptest.TenantRef, 
 	}
 	at := &apptest.TenantRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, tenant.IDEQ(k))
+	p, err := s.narrow(ctx, tenant.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +405,7 @@ func (s TenantServiceServer) Erase(ctx context.Context, req *apptest.TenantRef) 
 		}
 
 		k = v
-		p = tenant.And(p, tenant.IDEQ(v))
+		p = tenant.And(p, tenant.IdEQ(v))
 	}
 
 	n, err := st.Db.Tenant.Delete().Where(p).Exec(ctx)
@@ -435,7 +435,7 @@ func TenantPick(req *apptest.TenantRef) (predicate.Tenant, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return tenant.IDEQ(v), nil
+			return tenant.IdEQ(v), nil
 		}
 	case apptest.TenantRef_Alias_case:
 		return tenant.AliasEQ(req.GetAlias()), nil

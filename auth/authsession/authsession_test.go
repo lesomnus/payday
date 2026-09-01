@@ -40,7 +40,7 @@ func signIn(t *testing.T, s *authsession.Sessions, v authsession.Verify) *http.C
 }
 
 // carrying is a call that arrived with these cookies, the way one does: as
-// metadata, because a browser cannot speak gRPC and `web` translated it.
+// metadata, because a browser cannot speak gRpc and `web` translated it.
 func carrying(cs ...*http.Cookie) context.Context {
 	line := ""
 	for i, c := range cs {
@@ -280,7 +280,7 @@ func TestTheCookieAttributesAreTheOnesThatMatter(t *testing.T) {
 	c := signIn(t, s, who("019-abc", "019-acme"))
 
 	x.True(c.HttpOnly, "a script can read the session")
-	x.True(c.Secure, "the session travels over plain HTTP")
+	x.True(c.Secure, "the session travels over plain Http")
 	x.Equal(http.SameSiteLaxMode, c.SameSite, "a cross-site POST carries the session")
 	x.Equal("/", c.Path)
 	x.Equal(authsession.DefaultCookie, c.Name)
@@ -288,7 +288,7 @@ func TestTheCookieAttributesAreTheOnesThatMatter(t *testing.T) {
 
 // TestInsecureSaysSoByChangingTheName.
 //
-// A browser will not store a `__Host-` cookie over plain HTTP, so the prefix
+// A browser will not store a `__Host-` cookie over plain Http, so the prefix
 // has to go -- which means a deployment that left this on has a cookie by a
 // different name, and that is at least something a person can see.
 func TestInsecureSaysSoByChangingTheName(t *testing.T) {

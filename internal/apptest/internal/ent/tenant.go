@@ -17,8 +17,8 @@ import (
 // Tenant is the model entity for the Tenant schema.
 type Tenant struct {
 	config `json:"-"`
-	// ID of the ent.
-	ID uuid.UUID `json:"id,omitempty"`
+	// Id of the ent.
+	Id uuid.UUID `json:"id,omitempty"`
 	// Alias holds the value of the "alias" field.
 	Alias string `json:"alias,omitempty"`
 	// Name holds the value of the "name" field.
@@ -45,7 +45,7 @@ func (*Tenant) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case tenant.FieldDateUpdated, tenant.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case tenant.FieldID:
+		case tenant.FieldId:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -62,11 +62,11 @@ func (_m *Tenant) assignValues(columns []string, values []any) error {
 	}
 	for i := range columns {
 		switch columns[i] {
-		case tenant.FieldID:
+		case tenant.FieldId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				_m.ID = *value
+				_m.Id = *value
 			}
 		case tenant.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -141,7 +141,7 @@ func (_m *Tenant) Unwrap() *Tenant {
 func (_m *Tenant) String() string {
 	var builder strings.Builder
 	builder.WriteString("Tenant(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.Id))
 	builder.WriteString("alias=")
 	builder.WriteString(_m.Alias)
 	builder.WriteString(", ")

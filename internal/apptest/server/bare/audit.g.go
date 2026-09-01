@@ -97,24 +97,24 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	if v, err := mint(ctx, s.Mint, "app.Audit", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	if v, err := uuid.FromBytes(req.GetTenantId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
 	} else {
-		q.SetTenantID(v)
+		q.SetTenantId(v)
 	}
 	if v, err := uuid.FromBytes(req.GetActorId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
 	} else {
-		q.SetActorID(v)
+		q.SetActorId(v)
 	}
-	q.SetTraceID(req.GetTraceId())
+	q.SetTraceId(req.GetTraceId())
 	q.SetAction(req.GetAction())
 	if v, err := uuid.FromBytes(req.GetObjectId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "object_id: %s", err)
 	} else {
-		q.SetObjectID(v)
+		q.SetObjectId(v)
 	}
 	q.SetPatch(req.GetPatch())
 	if req.HasDateCreated() {
@@ -125,14 +125,14 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	if v, err := uuid.FromBytes(req.GetActorTenantId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
 	} else {
-		q.SetActorTenantID(v)
+		q.SetActorTenantId(v)
 	}
 	q.SetValue(req.GetValue())
 	if req.HasCounterpartTenantId() {
 		if v, err := uuid.FromBytes(req.GetCounterpartTenantId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
 		} else {
-			q.SetCounterpartTenantID(v)
+			q.SetCounterpartTenantId(v)
 		}
 	}
 	if req.HasDomain() {
@@ -156,7 +156,7 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.AuditService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (s AuditServiceServer) Get(ctx context.Context, req *apptest.AuditGetReques
 }
 
 func selectAuditKey(q *ent.AuditQuery) {
-	q.Select(audit.FieldID)
+	q.Select(audit.FieldId)
 }
 
 func AuditSelectedFields(m *apptest.AuditSelect) []string {
@@ -201,22 +201,22 @@ func AuditSelectedFields(m *apptest.AuditSelect) []string {
 
 	vs := make([]string, 0, len(audit.Columns))
 	{
-		vs = append(vs, audit.FieldID)
+		vs = append(vs, audit.FieldId)
 	}
 	if m.GetTenantId() {
-		vs = append(vs, audit.FieldTenantID)
+		vs = append(vs, audit.FieldTenantId)
 	}
 	if m.GetActorId() {
-		vs = append(vs, audit.FieldActorID)
+		vs = append(vs, audit.FieldActorId)
 	}
 	if m.GetTraceId() {
-		vs = append(vs, audit.FieldTraceID)
+		vs = append(vs, audit.FieldTraceId)
 	}
 	if m.GetAction() {
 		vs = append(vs, audit.FieldAction)
 	}
 	if m.GetObjectId() {
-		vs = append(vs, audit.FieldObjectID)
+		vs = append(vs, audit.FieldObjectId)
 	}
 	if m.GetPatch() {
 		vs = append(vs, audit.FieldPatch)
@@ -225,13 +225,13 @@ func AuditSelectedFields(m *apptest.AuditSelect) []string {
 		vs = append(vs, audit.FieldDateCreated)
 	}
 	if m.GetActorTenantId() {
-		vs = append(vs, audit.FieldActorTenantID)
+		vs = append(vs, audit.FieldActorTenantId)
 	}
 	if m.GetValue() {
 		vs = append(vs, audit.FieldValue)
 	}
 	if m.GetCounterpartTenantId() {
-		vs = append(vs, audit.FieldCounterpartTenantID)
+		vs = append(vs, audit.FieldCounterpartTenantId)
 	}
 	if m.GetDomain() {
 		vs = append(vs, audit.FieldDomain)
@@ -301,7 +301,7 @@ func AuditGetKey(ctx context.Context, db *ent.Client, ref *apptest.AuditRef) (uu
 var auditOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_audit_proto, "Audit")
 
 var auditPatchColumns = entpatch.Columns{
-	1: audit.FieldID, 2: audit.FieldTenantID, 8: audit.FieldActorID, 9: audit.FieldTraceID, 10: audit.FieldAction, 11: audit.FieldObjectID, 12: audit.FieldPatch, 15: audit.FieldDateCreated, 16: audit.FieldActorTenantID, 17: audit.FieldValue, 18: audit.FieldCounterpartTenantID, 19: audit.FieldDomain}
+	1: audit.FieldId, 2: audit.FieldTenantId, 8: audit.FieldActorId, 9: audit.FieldTraceId, 10: audit.FieldAction, 11: audit.FieldObjectId, 12: audit.FieldPatch, 15: audit.FieldDateCreated, 16: audit.FieldActorTenantId, 17: audit.FieldValue, 18: audit.FieldCounterpartTenantId, 19: audit.FieldDomain}
 
 func (s AuditServiceServer) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
 	if !req.HasPatch() {
@@ -346,7 +346,7 @@ func (s AuditServiceServer) apply(ctx context.Context, ref *apptest.AuditRef, do
 	}
 	at := &apptest.AuditRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, audit.IDEQ(k))
+	p, err := s.narrow(ctx, audit.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +446,7 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 		}
 
 		k = v
-		p = audit.And(p, audit.IDEQ(v))
+		p = audit.And(p, audit.IdEQ(v))
 	}
 
 	n, err := st.Db.Audit.Delete().Where(p).Exec(ctx)
@@ -476,7 +476,7 @@ func AuditPick(req *apptest.AuditRef) (predicate.Audit, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return audit.IDEQ(v), nil
+			return audit.IdEQ(v), nil
 		}
 	case apptest.AuditRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Audit")

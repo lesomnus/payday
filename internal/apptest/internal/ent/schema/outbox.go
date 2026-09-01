@@ -18,14 +18,14 @@ type Outbox struct {
 
 func (Outbox) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
+		field.Uuid("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
-		field.UUID("tenant_id", uuid.UUID{}),
-		field.UUID("actor_id", uuid.UUID{}),
+		field.Uuid("tenant_id", uuid.UUID{}),
+		field.Uuid("actor_id", uuid.UUID{}),
 		field.String("method"),
 		field.String("by"),
-		field.UUID("object_id", uuid.UUID{}),
+		field.Uuid("object_id", uuid.UUID{}),
 		field.Bytes("patch"),
 		field.Time("date_created").
 			Immutable().

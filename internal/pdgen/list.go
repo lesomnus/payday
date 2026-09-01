@@ -70,7 +70,7 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	// is set by [Sink.WithDriver] because that is the only way it happens.")
 	g.P("	//")
 	g.P("	// What it is read for is the retry in Add. A constraint violation ends")
-	g.P("	// the transaction it happened in -- PostgreSQL refuses everything after")
+	g.P("	// the transaction it happened in -- PostgreSql refuses everything after")
 	g.P("	// one until it is rolled back -- so a second attempt inside a")
 	g.P("	// transaction this server did not open would fail for a reason that has")
 	g.P("	// nothing to do with names, and would take the caller's other writes")
@@ -482,7 +482,7 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 		// Two names for one field, and they are not the same word. The
 		// filter is a protobuf message, so its accessor is whatever
 		// protoc-gen-go called it -- `GetObjectId`. The predicate is ent's,
-		// and ent capitalises an initialism -- `ObjectIDEQ`. They agree on
+		// and ent capitalises an initialism -- `ObjectIdEQ`. They agree on
 		// every field that does not end in one, which is why this was one
 		// variable until a filter on `object_id` was declared.
 		if by.Edge != "" {
@@ -499,7 +499,7 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 			g.P("				return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"", by.Edge, ": %s\", err)")
 			g.P("			}")
 			g.P("")
-			g.P("			ps = append(ps, ", entPkg.Ident(pascal(by.Edge)+"IDEQ"), "(k))")
+			g.P("			ps = append(ps, ", entPkg.Ident(pascal(by.Edge)+"IdEQ"), "(k))")
 			g.P("		} else {")
 			g.P("			// Named some other way -- an alias, a slug. Resolving it")
 			g.P("			// would be a read, and a predicate is built without one, so")
@@ -550,7 +550,7 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 func goTypeOf(g *protogen.GeneratedFile, t ormpb.Type) string {
 	switch t {
 	case ormpb.Type_TYPE_UUID:
-		return g.QualifiedGoIdent(pkgUuid2.Ident("UUID"))
+		return g.QualifiedGoIdent(pkgUuid2.Ident("Uuid"))
 	case ormpb.Type_TYPE_TIME:
 		return g.QualifiedGoIdent(pkgTime.Ident("Time"))
 	case ormpb.Type_TYPE_STRING:
@@ -715,7 +715,7 @@ func emitTenantAt(g *protogen.GeneratedFile, v *Entity, path []string, p Paths, 
 		q += ".Query" + camel(step) + "()"
 	}
 
-	g.P("	k, err := ", q, ".OnlyID(ctx)")
+	g.P("	k, err := ", q, ".OnlyId(ctx)")
 	g.P("	if err != nil {")
 	g.P("		// Not there, or more than one -- both are the reference being wrong,")
 	g.P("		// and both are the caller's to fix.")

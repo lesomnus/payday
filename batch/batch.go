@@ -2,21 +2,21 @@
 //
 // # Why this does not undo the doctrine
 //
-// payday's position is that a server exposes the RPC it *means* rather than a
+// payday's position is that a server exposes the Rpc it *means* rather than a
 // general write, which is why `Patch` and `Apply` are closed by default. A
 // batch looks like the opposite of that and is not, and the difference is worth
 // being exact about: what the doctrine is against is an **untyped** write --
 // one where the caller names a field and a value and the server has no rule
-// about the pair. Every operation of a batch is a real RPC with its own
+// about the pair. Every operation of a batch is a real Rpc with its own
 // validation, its own layers and its own audit. What a batch adds is that they
 // hold or fall together.
 //
-// It is a server RPC and not a client convenience, so anything that speaks to
+// It is a server Rpc and not a client convenience, so anything that speaks to
 // this server has it -- a browser, a CLI, another service.
 //
 // # The hard part, which is this package
 //
-// payday enforces four things by looking at the method gRPC dispatched. A batch
+// payday enforces four things by looking at the method gRpc dispatched. A batch
 // arrives as **one** method carrying many, so every one of them is enforced
 // against `BatchService/Do` and none against what is actually being asked for:
 //
@@ -30,7 +30,7 @@
 // token allows one method wraps any method they like in a batch and it is
 // allowed, silently, with a trail that says it was. That is not a gap to close
 // later: it is the whole security model with a hole in it, and the hole is
-// exactly as wide as the batch RPC is useful.
+// exactly as wide as the batch Rpc is useful.
 //
 // [Guard] is those four as functions, applied per operation. Every one of them
 // was already a function or was made one -- `gate.Decide` says in its own
@@ -75,7 +75,7 @@ const MaxOps = 128
 // somebody reading the wiring and noticing what is *not* there.
 var ErrNoGuard = errors.New(
 	"batch: a Guard is required. Every rule payday enforces by method name is " +
-		"enforced against the batch RPC and not against what it carries, so a " +
+		"enforced against the batch Rpc and not against what it carries, so a " +
 		"batch without one is a way past all of them")
 
 // Guard is what the transport enforces by method name, as functions.
@@ -171,11 +171,11 @@ func (g Guard) Check(n int) error {
 }
 
 // AsOp answers with the context an operation is dispatched with: one in which
-// gRPC's own question -- what method is being served? -- answers with the
+// gRpc's own question -- what method is being served? -- answers with the
 // operation's method rather than the batch's.
 //
 // It exists for the trail. The recorder below the write sites fills in what
-// the caller asked for by asking gRPC, because the sites cannot know it: one
+// the caller asked for by asking gRpc, because the sites cannot know it: one
 // call writes through several servers, and only the transport knows which
 // name it all happened under. Inside the batch handler the transport's answer
 // is `BatchService/Do` -- true of the wire and false of every operation, so
@@ -194,7 +194,7 @@ func AsOp(ctx context.Context, method string) context.Context {
 // operation's method. That answer is the whole reason it exists; everything
 // else it is asked, it hands to the stream the batch itself arrived on.
 //
-// Everything it is *asked*, which is not everything gRPC offers. Two of its
+// Everything it is *asked*, which is not everything gRpc offers. Two of its
 // helpers -- `grpc.SetSendCompressor` and `grpc.ClientSupportedCompressors` --
 // reach past the interface for the concrete `*transport.ServerStream`, and no
 // wrapper satisfies a type assertion: inside an operation the two answer
@@ -203,7 +203,7 @@ func AsOp(ctx context.Context, method string) context.Context {
 // is the wire call's anyway -- there is one response with one encoding, and a
 // batch of a hundred operations does not get a hundred of them to negotiate.
 //
-// Delegated rather than absorbed, because the batch is the only RPC on the
+// Delegated rather than absorbed, because the batch is the only Rpc on the
 // wire and so its metadata is the only place a header can reach the caller.
 // Absorbing would mean a handler that set one said nothing, silently -- the
 // generated handlers set none, so what is preserved here is the behaviour of
@@ -215,7 +215,7 @@ func AsOp(ctx context.Context, method string) context.Context {
 // `outer` is nil for a handler called without a transport, which is what a
 // test calling `Do` directly is. A header then has nowhere to go, and the
 // delegating methods answer an error rather than dropping it -- the same
-// answer gRPC gives for a handler called this way without this type in the
+// answer gRpc gives for a handler called this way without this type in the
 // middle.
 type opStream struct {
 	outer  grpc.ServerTransportStream
@@ -264,7 +264,7 @@ func Failed(i int, method string, err error) error {
 	return status.Errorf(s.Code(), "ops[%d] %s: %s", i, method, s.Message())
 }
 
-// ErrNoMethod is an operation naming an RPC this server does not have.
+// ErrNoMethod is an operation naming an Rpc this server does not have.
 func ErrNoMethod(method string) error {
 	return status.Errorf(codes.Unimplemented, "%s: no such method", method)
 }

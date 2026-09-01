@@ -74,8 +74,8 @@ func (_q *HolderQuery) QueryTenant() *TenantQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(holder.Table, holder.FieldID, selector),
-			sqlgraph.To(tenant.Table, tenant.FieldID),
+			sqlgraph.From(holder.Table, holder.FieldId, selector),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, holder.TenantTable, holder.TenantColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -106,11 +106,11 @@ func (_q *HolderQuery) FirstX(ctx context.Context) *Holder {
 	return node
 }
 
-// FirstID returns the first Holder ID from the query.
-// Returns a *NotFoundError when no Holder ID was found.
-func (_q *HolderQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstId returns the first Holder Id from the query.
+// Returns a *NotFoundError when no Holder Id was found.
+func (_q *HolderQuery) FirstId(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
-	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
+	if ids, err = _q.Limit(1).Ids(setContextOp(ctx, _q.ctx, ent.OpQueryFirstId)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -120,9 +120,9 @@ func (_q *HolderQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	return ids[0], nil
 }
 
-// FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *HolderQuery) FirstIDX(ctx context.Context) uuid.UUID {
-	id, err := _q.FirstID(ctx)
+// FirstIdX is like FirstId, but panics if an error occurs.
+func (_q *HolderQuery) FirstIdX(ctx context.Context) uuid.UUID {
+	id, err := _q.FirstId(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -156,12 +156,12 @@ func (_q *HolderQuery) OnlyX(ctx context.Context) *Holder {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Holder ID in the query.
-// Returns a *NotSingularError when more than one Holder ID is found.
+// OnlyId is like Only, but returns the only Holder Id in the query.
+// Returns a *NotSingularError when more than one Holder Id is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *HolderQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *HolderQuery) OnlyId(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
-	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
+	if ids, err = _q.Limit(2).Ids(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyId)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -175,9 +175,9 @@ func (_q *HolderQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	return
 }
 
-// OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *HolderQuery) OnlyIDX(ctx context.Context) uuid.UUID {
-	id, err := _q.OnlyID(ctx)
+// OnlyIdX is like OnlyId, but panics if an error occurs.
+func (_q *HolderQuery) OnlyIdX(ctx context.Context) uuid.UUID {
+	id, err := _q.OnlyId(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -203,21 +203,21 @@ func (_q *HolderQuery) AllX(ctx context.Context) []*Holder {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Holder IDs.
-func (_q *HolderQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// Ids executes the query and returns a list of Holder Ids.
+func (_q *HolderQuery) Ids(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
-	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(holder.FieldID).Scan(ctx, &ids); err != nil {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIds)
+	if err = _q.Select(holder.FieldId).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
-// IDsX is like IDs, but panics if an error occurs.
-func (_q *HolderQuery) IDsX(ctx context.Context) []uuid.UUID {
-	ids, err := _q.IDs(ctx)
+// IdsX is like Ids, but panics if an error occurs.
+func (_q *HolderQuery) IdsX(ctx context.Context) []uuid.UUID {
+	ids, err := _q.Ids(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -245,7 +245,7 @@ func (_q *HolderQuery) CountX(ctx context.Context) int {
 // Exist returns true if the query has elements in the graph.
 func (_q *HolderQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
-	switch _, err := _q.FirstID(ctx); {
+	switch _, err := _q.FirstId(ctx); {
 	case IsNotFound(err):
 		return false, nil
 	case err != nil:
@@ -411,7 +411,7 @@ func (_q *HolderQuery) loadTenant(ctx context.Context, query *TenantQuery, nodes
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Holder)
 	for i := range nodes {
-		fk := nodes[i].TenantID
+		fk := nodes[i].TenantId
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -420,15 +420,15 @@ func (_q *HolderQuery) loadTenant(ctx context.Context, query *TenantQuery, nodes
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(tenant.IDIn(ids...))
+	query.Where(tenant.IdIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		nodes, ok := nodeids[n.Id]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "tenant_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "tenant_id" returned %v`, n.Id)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -450,7 +450,7 @@ func (_q *HolderQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (_q *HolderQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(holder.Table, holder.Columns, sqlgraph.NewFieldSpec(holder.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewQuerySpec(holder.Table, holder.Columns, sqlgraph.NewFieldSpec(holder.FieldId, field.TypeUuid))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -459,14 +459,14 @@ func (_q *HolderQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, holder.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, holder.FieldId)
 		for i := range fields {
-			if fields[i] != holder.FieldID {
+			if fields[i] != holder.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
 		if _q.withTenant != nil {
-			_spec.Node.AddColumnOnce(holder.FieldTenantID)
+			_spec.Node.AddColumnOnce(holder.FieldTenantId)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

@@ -11,10 +11,10 @@ import (
 
 func (e *Cell) Proto() *apptest.Cell {
 	x := &apptest.Cell{}
-	x.SetId(e.ID[:])
+	x.SetId(e.Id[:])
 	if v := e.Edges.Tenant; v != nil {
 		x.SetTenant(v.Proto())
-	} else if v := e.TenantID; v != *new(uuid.UUID) {
+	} else if v := e.TenantId; v != *new(uuid.UUID) {
 		r := &apptest.Tenant{}
 		r.SetId(v[:])
 		x.SetTenant(r)
@@ -27,24 +27,24 @@ func (e *Cell) Proto() *apptest.Cell {
 }
 func (e *Robot) Proto() *apptest.Robot {
 	x := &apptest.Robot{}
-	x.SetId(e.ID[:])
+	x.SetId(e.Id[:])
 	if v := e.Edges.Tenant; v != nil {
 		x.SetTenant(v.Proto())
-	} else if v := e.TenantID; v != *new(uuid.UUID) {
+	} else if v := e.TenantId; v != *new(uuid.UUID) {
 		r := &apptest.Tenant{}
 		r.SetId(v[:])
 		x.SetTenant(r)
 	}
 	if v := e.Edges.Thing; v != nil {
 		x.SetThing(v.Proto())
-	} else if v := e.ThingID; v != *new(uuid.UUID) {
+	} else if v := e.ThingId; v != *new(uuid.UUID) {
 		r := &apptest.Thing{}
 		r.SetId(v[:])
 		x.SetThing(r)
 	}
 	if v := e.Edges.Cell; v != nil {
 		x.SetCell(v.Proto())
-	} else if v := e.CellID; v != *new(uuid.UUID) {
+	} else if v := e.CellId; v != *new(uuid.UUID) {
 		r := &apptest.Cell{}
 		r.SetId(v[:])
 		x.SetCell(r)
@@ -63,17 +63,17 @@ func (e *Robot) Proto() *apptest.Robot {
 }
 func (e *Pairing) Proto() *apptest.Pairing {
 	x := &apptest.Pairing{}
-	x.SetId(e.ID[:])
+	x.SetId(e.Id[:])
 	if v := e.Edges.Lead; v != nil {
 		x.SetLead(v.Proto())
-	} else if v := e.LeadID; v != *new(uuid.UUID) {
+	} else if v := e.LeadId; v != *new(uuid.UUID) {
 		r := &apptest.Robot{}
 		r.SetId(v[:])
 		x.SetLead(r)
 	}
 	if v := e.Edges.Follow; v != nil {
 		x.SetFollow(v.Proto())
-	} else if v := e.FollowID; v != *new(uuid.UUID) {
+	} else if v := e.FollowId; v != *new(uuid.UUID) {
 		r := &apptest.Robot{}
 		r.SetId(v[:])
 		x.SetFollow(r)
@@ -83,10 +83,10 @@ func (e *Pairing) Proto() *apptest.Pairing {
 }
 func (e *Joint) Proto() *apptest.Joint {
 	x := &apptest.Joint{}
-	x.SetId(e.ID[:])
+	x.SetId(e.Id[:])
 	if v := e.Edges.Robot; v != nil {
 		x.SetRobot(v.Proto())
-	} else if v := e.RobotID; v != *new(uuid.UUID) {
+	} else if v := e.RobotId; v != *new(uuid.UUID) {
 		r := &apptest.Robot{}
 		r.SetId(v[:])
 		x.SetRobot(r)
@@ -99,7 +99,7 @@ func (e *Joint) Proto() *apptest.Joint {
 }
 func (e *Fleet) Proto() *apptest.Fleet {
 	x := &apptest.Fleet{}
-	x.SetId(e.ID[:])
+	x.SetId(e.Id[:])
 	x.SetAlias(e.Alias)
 	if e.DateErased != nil {
 		x.SetDateErased(timestamppb.New(*e.DateErased))
@@ -108,15 +108,15 @@ func (e *Fleet) Proto() *apptest.Fleet {
 }
 func (e *Reading) Proto() *apptest.Reading {
 	x := &apptest.Reading{}
-	x.SetId(e.ID[:])
+	x.SetId(e.Id[:])
 	if v := e.Edges.Robot; v != nil {
 		x.SetRobot(v.Proto())
-	} else if v := e.RobotID; v != *new(uuid.UUID) {
+	} else if v := e.RobotId; v != *new(uuid.UUID) {
 		r := &apptest.Robot{}
 		r.SetId(v[:])
 		x.SetRobot(r)
 	}
-	x.SetTenantId(e.TenantID[:])
+	x.SetTenantId(e.TenantId[:])
 	x.SetCelsius(e.Celsius)
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	return x

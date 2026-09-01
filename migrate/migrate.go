@@ -1,7 +1,7 @@
 // Package migrate plans and applies the versioned migrations of a database.
 //
 // The ent schema is the one description of what the database should look like;
-// planning turns a change of it into a file of SQL statements that brings a
+// planning turns a change of it into a file of Sql statements that brings a
 // database from the shape it has to the shape it should have. The files are
 // kept in the app's repository, reviewed like any other code, and applied in
 // order.
@@ -12,7 +12,7 @@
 //
 // # What the files are written for is the app's to say
 //
-// A migration is SQL and SQL is not the same everywhere, so a directory of
+// A migration is Sql and Sql is not the same everywhere, so a directory of
 // migration files is written for one database and not for the others -- even
 // though the app itself runs on any database ent speaks. Which one that is was
 // a constant in this package when this was one app's own code. A framework
@@ -72,9 +72,9 @@ type Migrations struct {
 	// Dialect is the database the files are written for, by the names ent knows
 	// them by -- `dialect.Postgres`, `dialect.SQLite`.
 	//
-	// Nothing defaults it. A default would be a guess about SQL somebody else
+	// Nothing defaults it. A default would be a guess about Sql somebody else
 	// wrote, and the whole point of this field is that only the app knows which
-	// SQL that was.
+	// Sql that was.
 	Dialect string
 
 	// Tables is the shape the migrations bring a database to: `migrate.Tables`
@@ -83,7 +83,7 @@ type Migrations struct {
 	// It arrives as a value and not as an import because it is the one thing
 	// here that generated code owns, and payday does not know the name of the
 	// package it is generated into. Only [Migrations.Plan] reads it -- applying
-	// runs SQL that was already written and needs no schema.
+	// runs Sql that was already written and needs no schema.
 	Tables []*entschema.Table
 }
 
@@ -295,7 +295,7 @@ var ErrBehind = errors.New("the database is behind the migrations this binary ca
 // one impossible to skip:
 //
 //	pd gen                      # the schema moved
-//	<app> migrate plan <name>   # write what that means as SQL, and read it
+//	<app> migrate plan <name>   # write what that means as Sql, and read it
 //	<app> migrate apply         # run it
 //
 // Called before serving, a deployment that ran the first and forgot the rest
@@ -401,7 +401,7 @@ func Check(ctx context.Context, db *sql.DB, dialect string, tables []*entschema.
 	return fmt.Errorf("%w:\n\n  %s", ErrDrift, strings.Join(statements(fs), "\n  "))
 }
 
-// statements is the SQL of a plan, without the comments atlas writes around it.
+// statements is the Sql of a plan, without the comments atlas writes around it.
 //
 // The message is what somebody reads at three in the morning, and what they
 // need from it is which change was not applied -- not a header saying which

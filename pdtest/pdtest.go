@@ -1,5 +1,5 @@
 // Package pdtest is what a test of a payday app is given: assertions that know
-// about gRPC, a connection that never leaves the process, and a database of
+// about gRpc, a connection that never leaves the process, and a database of
 // this test's own.
 //
 // It holds the half of a test harness that does not know what app it is for.
@@ -35,7 +35,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 )
 
-// X is what a test asserts with: a [require.Assertions] that knows about gRPC.
+// X is what a test asserts with: a [require.Assertions] that knows about gRpc.
 type X struct {
 	tb testing.TB
 	*require.Assertions
@@ -47,7 +47,7 @@ func NewX(tb testing.TB) *X {
 
 func (x *X) TB() testing.TB { return x.tb }
 
-// ErrCode asserts that `err` is a gRPC error of the given code.
+// ErrCode asserts that `err` is a gRpc error of the given code.
 //
 // It reports both codes by name and the error beside them, because the number
 // alone is the least useful part: a test that expected NotFound and got

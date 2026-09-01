@@ -84,7 +84,7 @@ func LimitStream(l Limiter, by func(ctx context.Context, method string) string) 
 // Allow is the check the two interceptors are made of, as a function.
 //
 // It is exported because a batch of calls inside one call has to count each of
-// them: a batch is one method to gRPC, so an interceptor charges a caller once
+// them: a batch is one method to gRpc, so an interceptor charges a caller once
 // for a thousand operations. What a batch does with this is call it per
 // operation, which is what makes the limit mean the same thing on both roads.
 func Allow(ctx context.Context, l Limiter, by func(ctx context.Context, method string) string, method string) error {
@@ -92,7 +92,7 @@ func Allow(ctx context.Context, l Limiter, by func(ctx context.Context, method s
 	//
 	// The guard is here and not only in [Limit] because the bare interceptors
 	// are the shape everything else takes them in -- a chain assembled for a
-	// server that is not gRPC's, a batch applying them per operation -- and
+	// server that is not gRpc's, a batch applying them per operation -- and
 	// those reach this without going past that constructor. It used to be in
 	// the constructor alone, and calling LimitUnary(nil, ...) directly was a
 	// panic on the first request.
@@ -117,7 +117,7 @@ func Allow(ctx context.Context, l Limiter, by func(ctx context.Context, method s
 
 // errLimited is ResourceExhausted, which is what the status codes have for a
 // caller that is asking for more than there is to give, and it carries how long
-// to wait as [errdetails.RetryInfo] -- the way the API conventions say it, and
+// to wait as [errdetails.RetryInfo] -- the way the Api conventions say it, and
 // the way a generated client reads it whatever it was configured with.
 //
 // Note that it says nothing about *which* limit was reached or how much of it
@@ -126,7 +126,7 @@ func Allow(ctx context.Context, l Limiter, by func(ctx context.Context, method s
 // An app whose limits are part of what it sells says the opposite, and says it
 // in a header.
 //
-// A client that has a gRPC retry policy would also honour a `grpc-retry-
+// A client that has a gRpc retry policy would also honour a `grpc-retry-
 // pushback-ms` trailer, which is the same number said where the transport
 // rather than the application reads it. It is not set here because this app
 // does not know that its clients retry, and a pushback nobody reads is a

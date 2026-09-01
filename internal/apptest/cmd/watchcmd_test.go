@@ -165,7 +165,7 @@ func TestWatchIsTheSnapshotAndThenWhatHappens(t *testing.T) {
 
 	got := w.until(t, w.stdout, "arm-z")
 
-	// The RPC that changed it, by the name gRPC knows it by.
+	// The Rpc that changed it, by the name gRpc knows it by.
 	x.Contains(got, "Patch")
 
 	// One header for the stream and not one between every event, which is what
@@ -294,7 +294,7 @@ func TestRetryAsksForTheSnapshotItSaidItDidNotNeed(t *testing.T) {
 
 	// Served by hand rather than through [pdtest.Serve], because this test
 	// needs the one thing that helper does not give: a server that comes back.
-	// Stopping a gRPC server closes the listener it was serving on, so the
+	// Stopping a gRpc server closes the listener it was serving on, so the
 	// second serving is a second listener, and the connection reaches
 	// whichever one the dialer holds now.
 	var mu sync.Mutex

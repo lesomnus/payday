@@ -189,7 +189,7 @@ func (s Sandbox) vite() (bool, string, error) {
     },
 
 The first is because pre-bundling rewrites the module into `+"`.vite/deps/`"+`,
-where the worker URL it builds resolves to nothing. The second is because
+where the worker Url it builds resolves to nothing. The second is because
 SQLite in a Worker needs a SharedArrayBuffer, which does not exist without
 cross-origin isolation. `+"`pd doctor`"+` checks for both.`, s.Layout.Rel("ts", "vite.config.ts")), nil
 }
@@ -197,7 +197,7 @@ cross-origin isolation. `+"`pd doctor`"+` checks for both.`, s.Layout.Rel("ts", 
 // steps is what to type once the files are there.
 //
 // The build is not run here for the reason [New.Setup] is a flag: it fetches a
-// module and writes 65MB, and `pd sandbox init` should be able to write a tree
+// module and writes 65Mb, and `pd sandbox init` should be able to write a tree
 // without doing either.
 func (s Sandbox) steps(viteWhy string) []string {
 	vs := []string{

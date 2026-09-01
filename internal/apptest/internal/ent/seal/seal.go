@@ -9,8 +9,8 @@ import (
 const (
 	// Label holds the string label denoting the seal type in the database.
 	Label = "seal"
-	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
+	// FieldId holds the string denoting the id field in the database.
+	FieldId = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
 	// FieldSecret holds the string denoting the secret field in the database.
@@ -23,9 +23,9 @@ const (
 	Table = "seal"
 )
 
-// Columns holds all SQL columns for seal fields.
+// Columns holds all Sql columns for seal fields.
 var Columns = []string{
-	FieldID,
+	FieldId,
 	FieldAlias,
 	FieldSecret,
 	FieldDateErased,
@@ -45,9 +45,9 @@ func ValidColumn(column string) bool {
 // OrderOption defines the ordering options for the Seal queries.
 type OrderOption func(*sql.Selector)
 
-// ByID orders the results by the id field.
-func ByID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldID, opts...).ToFunc()
+// ById orders the results by the id field.
+func ById(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldId, opts...).ToFunc()
 }
 
 // ByAlias orders the results by the alias field.

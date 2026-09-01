@@ -102,7 +102,7 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 	if v, err := mint(ctx, s.Mint, "app.Holder", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.HolderService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (s HolderServiceServer) Get(ctx context.Context, req *apptest.HolderGetRequ
 }
 
 func selectHolderKey(q *ent.HolderQuery) {
-	q.Select(holder.FieldID)
+	q.Select(holder.FieldId)
 }
 
 func HolderSelectedFields(m *apptest.HolderSelect) []string {
@@ -193,7 +193,7 @@ func HolderSelectedFields(m *apptest.HolderSelect) []string {
 
 	vs := make([]string, 0, len(holder.Columns))
 	{
-		vs = append(vs, holder.FieldID)
+		vs = append(vs, holder.FieldId)
 	}
 	if m.GetAlias() {
 		vs = append(vs, holder.FieldAlias)
@@ -293,7 +293,7 @@ func HolderGetKey(ctx context.Context, db *ent.Client, ref *apptest.HolderRef) (
 var holderOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_holder_proto, "Holder")
 
 var holderPatchColumns = entpatch.Columns{
-	1: holder.FieldID, 2: holder.TenantColumn, 4: holder.FieldAlias, 5: holder.FieldName, 6: holder.FieldDesc, 7: holder.FieldLabels, 13: holder.FieldDateUpdated, 14: holder.FieldDateErased, 15: holder.FieldDateCreated, 8: holder.FieldIdpSubject, 9: holder.FieldProfile}
+	1: holder.FieldId, 2: holder.TenantColumn, 4: holder.FieldAlias, 5: holder.FieldName, 6: holder.FieldDesc, 7: holder.FieldLabels, 13: holder.FieldDateUpdated, 14: holder.FieldDateErased, 15: holder.FieldDateCreated, 8: holder.FieldIdpSubject, 9: holder.FieldProfile}
 
 func (s HolderServiceServer) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
 	if !req.HasPatch() {
@@ -338,7 +338,7 @@ func (s HolderServiceServer) apply(ctx context.Context, ref *apptest.HolderRef, 
 	}
 	at := &apptest.HolderRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, holder.IDEQ(k))
+	p, err := s.narrow(ctx, holder.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +441,7 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 		}
 
 		k = v
-		p = holder.And(p, holder.IDEQ(v))
+		p = holder.And(p, holder.IdEQ(v))
 	}
 
 	u := st.Db.Holder.Update().Where(p)
@@ -492,7 +492,7 @@ func pickHolder(req *apptest.HolderRef) (predicate.Holder, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return holder.IDEQ(v), nil
+			return holder.IdEQ(v), nil
 		}
 	case apptest.HolderRef_Slug_case:
 		k := req.GetSlug()

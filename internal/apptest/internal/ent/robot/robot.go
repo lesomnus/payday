@@ -10,8 +10,8 @@ import (
 const (
 	// Label holds the string label denoting the robot type in the database.
 	Label = "robot"
-	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
+	// FieldId holds the string denoting the id field in the database.
+	FieldId = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
 	// FieldSecret holds the string denoting the secret field in the database.
@@ -24,12 +24,12 @@ const (
 	FieldDateCreated = "date_created"
 	// FieldDateErased holds the string denoting the date_erased field in the database.
 	FieldDateErased = "date_erased"
-	// FieldTenantID holds the string denoting the tenant_id field in the database.
-	FieldTenantID = "tenant_id"
-	// FieldThingID holds the string denoting the thing_id field in the database.
-	FieldThingID = "thing_id"
-	// FieldCellID holds the string denoting the cell_id field in the database.
-	FieldCellID = "cell_id"
+	// FieldTenantId holds the string denoting the tenant_id field in the database.
+	FieldTenantId = "tenant_id"
+	// FieldThingId holds the string denoting the thing_id field in the database.
+	FieldThingId = "thing_id"
+	// FieldCellId holds the string denoting the cell_id field in the database.
+	FieldCellId = "cell_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
 	EdgeTenant = "tenant"
 	// EdgeThing holds the string denoting the thing edge name in mutations.
@@ -61,18 +61,18 @@ const (
 	CellColumn = "cell_id"
 )
 
-// Columns holds all SQL columns for robot fields.
+// Columns holds all Sql columns for robot fields.
 var Columns = []string{
-	FieldID,
+	FieldId,
 	FieldAlias,
 	FieldSecret,
 	FieldDateAttested,
 	FieldDateUpdated,
 	FieldDateCreated,
 	FieldDateErased,
-	FieldTenantID,
-	FieldThingID,
-	FieldCellID,
+	FieldTenantId,
+	FieldThingId,
+	FieldCellId,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -88,9 +88,9 @@ func ValidColumn(column string) bool {
 // OrderOption defines the ordering options for the Robot queries.
 type OrderOption func(*sql.Selector)
 
-// ByID orders the results by the id field.
-func ByID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldID, opts...).ToFunc()
+// ById orders the results by the id field.
+func ById(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldId, opts...).ToFunc()
 }
 
 // ByAlias orders the results by the alias field.
@@ -118,19 +118,19 @@ func ByDateErased(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateErased, opts...).ToFunc()
 }
 
-// ByTenantID orders the results by the tenant_id field.
-func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+// ByTenantId orders the results by the tenant_id field.
+func ByTenantId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantId, opts...).ToFunc()
 }
 
-// ByThingID orders the results by the thing_id field.
-func ByThingID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldThingID, opts...).ToFunc()
+// ByThingId orders the results by the thing_id field.
+func ByThingId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThingId, opts...).ToFunc()
 }
 
-// ByCellID orders the results by the cell_id field.
-func ByCellID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCellID, opts...).ToFunc()
+// ByCellId orders the results by the cell_id field.
+func ByCellId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCellId, opts...).ToFunc()
 }
 
 // ByTenantField orders the results by tenant field.
@@ -155,22 +155,22 @@ func ByCellField(field string, opts ...sql.OrderTermOption) OrderOption {
 }
 func newTenantStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(TenantInverseTable, FieldID),
+		sqlgraph.From(Table, FieldId),
+		sqlgraph.To(TenantInverseTable, FieldId),
 		sqlgraph.Edge(sqlgraph.M2O, false, TenantTable, TenantColumn),
 	)
 }
 func newThingStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(ThingInverseTable, FieldID),
+		sqlgraph.From(Table, FieldId),
+		sqlgraph.To(ThingInverseTable, FieldId),
 		sqlgraph.Edge(sqlgraph.M2O, false, ThingTable, ThingColumn),
 	)
 }
 func newCellStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(CellInverseTable, FieldID),
+		sqlgraph.From(Table, FieldId),
+		sqlgraph.To(CellInverseTable, FieldId),
 		sqlgraph.Edge(sqlgraph.M2O, false, CellTable, CellColumn),
 	)
 }

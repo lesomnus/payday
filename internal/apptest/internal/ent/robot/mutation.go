@@ -213,13 +213,13 @@ func (m *Mutation) ResetDateErased() {
 	delete(m.clearedFields, FieldDateErased)
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (m *Mutation) SetTenantID(u uuid.UUID) {
+// SetTenantId sets the "tenant_id" field.
+func (m *Mutation) SetTenantId(u uuid.UUID) {
 	m.tenant = &u
 }
 
-// TenantID returns the value of the "tenant_id" field in the mutation.
-func (m *Mutation) TenantID() (r uuid.UUID, exists bool) {
+// TenantId returns the value of the "tenant_id" field in the mutation.
+func (m *Mutation) TenantId() (r uuid.UUID, exists bool) {
 	v := m.tenant
 	if v == nil {
 		return
@@ -227,18 +227,18 @@ func (m *Mutation) TenantID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetTenantID resets all changes to the "tenant_id" field.
-func (m *Mutation) ResetTenantID() {
+// ResetTenantId resets all changes to the "tenant_id" field.
+func (m *Mutation) ResetTenantId() {
 	m.tenant = nil
 }
 
-// SetThingID sets the "thing_id" field.
-func (m *Mutation) SetThingID(u uuid.UUID) {
+// SetThingId sets the "thing_id" field.
+func (m *Mutation) SetThingId(u uuid.UUID) {
 	m.thing = &u
 }
 
-// ThingID returns the value of the "thing_id" field in the mutation.
-func (m *Mutation) ThingID() (r uuid.UUID, exists bool) {
+// ThingId returns the value of the "thing_id" field in the mutation.
+func (m *Mutation) ThingId() (r uuid.UUID, exists bool) {
 	v := m.thing
 	if v == nil {
 		return
@@ -246,31 +246,31 @@ func (m *Mutation) ThingID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ClearThingID clears the value of the "thing_id" field.
-func (m *Mutation) ClearThingID() {
+// ClearThingId clears the value of the "thing_id" field.
+func (m *Mutation) ClearThingId() {
 	m.thing = nil
-	m.clearedFields[FieldThingID] = struct{}{}
+	m.clearedFields[FieldThingId] = struct{}{}
 }
 
-// ThingIDCleared returns if the "thing_id" field was cleared in this mutation.
-func (m *Mutation) ThingIDCleared() bool {
-	_, ok := m.clearedFields[FieldThingID]
+// ThingIdCleared returns if the "thing_id" field was cleared in this mutation.
+func (m *Mutation) ThingIdCleared() bool {
+	_, ok := m.clearedFields[FieldThingId]
 	return ok
 }
 
-// ResetThingID resets all changes to the "thing_id" field.
-func (m *Mutation) ResetThingID() {
+// ResetThingId resets all changes to the "thing_id" field.
+func (m *Mutation) ResetThingId() {
 	m.thing = nil
-	delete(m.clearedFields, FieldThingID)
+	delete(m.clearedFields, FieldThingId)
 }
 
-// SetCellID sets the "cell_id" field.
-func (m *Mutation) SetCellID(u uuid.UUID) {
+// SetCellId sets the "cell_id" field.
+func (m *Mutation) SetCellId(u uuid.UUID) {
 	m.cell = &u
 }
 
-// CellID returns the value of the "cell_id" field in the mutation.
-func (m *Mutation) CellID() (r uuid.UUID, exists bool) {
+// CellId returns the value of the "cell_id" field in the mutation.
+func (m *Mutation) CellId() (r uuid.UUID, exists bool) {
 	v := m.cell
 	if v == nil {
 		return
@@ -278,28 +278,28 @@ func (m *Mutation) CellID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ClearCellID clears the value of the "cell_id" field.
-func (m *Mutation) ClearCellID() {
+// ClearCellId clears the value of the "cell_id" field.
+func (m *Mutation) ClearCellId() {
 	m.cell = nil
-	m.clearedFields[FieldCellID] = struct{}{}
+	m.clearedFields[FieldCellId] = struct{}{}
 }
 
-// CellIDCleared returns if the "cell_id" field was cleared in this mutation.
-func (m *Mutation) CellIDCleared() bool {
-	_, ok := m.clearedFields[FieldCellID]
+// CellIdCleared returns if the "cell_id" field was cleared in this mutation.
+func (m *Mutation) CellIdCleared() bool {
+	_, ok := m.clearedFields[FieldCellId]
 	return ok
 }
 
-// ResetCellID resets all changes to the "cell_id" field.
-func (m *Mutation) ResetCellID() {
+// ResetCellId resets all changes to the "cell_id" field.
+func (m *Mutation) ResetCellId() {
 	m.cell = nil
-	delete(m.clearedFields, FieldCellID)
+	delete(m.clearedFields, FieldCellId)
 }
 
 // ClearTenant clears the "tenant" edge to the Tenant entity.
 func (m *Mutation) ClearTenant() {
 	m.clearedtenant = true
-	m.clearedFields[FieldTenantID] = struct{}{}
+	m.clearedFields[FieldTenantId] = struct{}{}
 }
 
 // TenantCleared reports if the "tenant" edge to the Tenant entity was cleared.
@@ -307,10 +307,10 @@ func (m *Mutation) TenantCleared() bool {
 	return m.clearedtenant
 }
 
-// TenantIDs returns the "tenant" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// TenantID instead. It exists only for internal usage by the builders.
-func (m *Mutation) TenantIDs() (ids []uuid.UUID) {
+// TenantIds returns the "tenant" edge Ids in the mutation.
+// Note that Ids always returns len(Ids) <= 1 for unique edges, and you should use
+// TenantId instead. It exists only for internal usage by the builders.
+func (m *Mutation) TenantIds() (ids []uuid.UUID) {
 	if id := m.tenant; id != nil {
 		ids = append(ids, *id)
 	}
@@ -326,18 +326,18 @@ func (m *Mutation) ResetTenant() {
 // ClearThing clears the "thing" edge to the Thing entity.
 func (m *Mutation) ClearThing() {
 	m.clearedthing = true
-	m.clearedFields[FieldThingID] = struct{}{}
+	m.clearedFields[FieldThingId] = struct{}{}
 }
 
 // ThingCleared reports if the "thing" edge to the Thing entity was cleared.
 func (m *Mutation) ThingCleared() bool {
-	return m.ThingIDCleared() || m.clearedthing
+	return m.ThingIdCleared() || m.clearedthing
 }
 
-// ThingIDs returns the "thing" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// ThingID instead. It exists only for internal usage by the builders.
-func (m *Mutation) ThingIDs() (ids []uuid.UUID) {
+// ThingIds returns the "thing" edge Ids in the mutation.
+// Note that Ids always returns len(Ids) <= 1 for unique edges, and you should use
+// ThingId instead. It exists only for internal usage by the builders.
+func (m *Mutation) ThingIds() (ids []uuid.UUID) {
 	if id := m.thing; id != nil {
 		ids = append(ids, *id)
 	}
@@ -353,18 +353,18 @@ func (m *Mutation) ResetThing() {
 // ClearCell clears the "cell" edge to the Cell entity.
 func (m *Mutation) ClearCell() {
 	m.clearedcell = true
-	m.clearedFields[FieldCellID] = struct{}{}
+	m.clearedFields[FieldCellId] = struct{}{}
 }
 
 // CellCleared reports if the "cell" edge to the Cell entity was cleared.
 func (m *Mutation) CellCleared() bool {
-	return m.CellIDCleared() || m.clearedcell
+	return m.CellIdCleared() || m.clearedcell
 }
 
-// CellIDs returns the "cell" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// CellID instead. It exists only for internal usage by the builders.
-func (m *Mutation) CellIDs() (ids []uuid.UUID) {
+// CellIds returns the "cell" edge Ids in the mutation.
+// Note that Ids always returns len(Ids) <= 1 for unique edges, and you should use
+// CellId instead. It exists only for internal usage by the builders.
+func (m *Mutation) CellIds() (ids []uuid.UUID) {
 	if id := m.cell; id != nil {
 		ids = append(ids, *id)
 	}
@@ -431,13 +431,13 @@ func (m *Mutation) Fields() []string {
 		fields = append(fields, FieldDateErased)
 	}
 	if m.tenant != nil {
-		fields = append(fields, FieldTenantID)
+		fields = append(fields, FieldTenantId)
 	}
 	if m.thing != nil {
-		fields = append(fields, FieldThingID)
+		fields = append(fields, FieldThingId)
 	}
 	if m.cell != nil {
-		fields = append(fields, FieldCellID)
+		fields = append(fields, FieldCellId)
 	}
 	return fields
 }
@@ -459,12 +459,12 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.DateCreated()
 	case FieldDateErased:
 		return m.DateErased()
-	case FieldTenantID:
-		return m.TenantID()
-	case FieldThingID:
-		return m.ThingID()
-	case FieldCellID:
-		return m.CellID()
+	case FieldTenantId:
+		return m.TenantId()
+	case FieldThingId:
+		return m.ThingId()
+	case FieldCellId:
+		return m.CellId()
 	}
 	return nil, false
 }
@@ -523,26 +523,26 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDateErased(v)
 		return nil
-	case FieldTenantID:
+	case FieldTenantId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTenantID(v)
+		m.SetTenantId(v)
 		return nil
-	case FieldThingID:
+	case FieldThingId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetThingID(v)
+		m.SetThingId(v)
 		return nil
-	case FieldCellID:
+	case FieldCellId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetCellID(v)
+		m.SetCellId(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Robot field %s", name)
@@ -586,11 +586,11 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldDateErased) {
 		fields = append(fields, FieldDateErased)
 	}
-	if m.FieldCleared(FieldThingID) {
-		fields = append(fields, FieldThingID)
+	if m.FieldCleared(FieldThingId) {
+		fields = append(fields, FieldThingId)
 	}
-	if m.FieldCleared(FieldCellID) {
-		fields = append(fields, FieldCellID)
+	if m.FieldCleared(FieldCellId) {
+		fields = append(fields, FieldCellId)
 	}
 	return fields
 }
@@ -618,11 +618,11 @@ func (m *Mutation) ClearField(name string) error {
 	case FieldDateErased:
 		m.ClearDateErased()
 		return nil
-	case FieldThingID:
-		m.ClearThingID()
+	case FieldThingId:
+		m.ClearThingId()
 		return nil
-	case FieldCellID:
-		m.ClearCellID()
+	case FieldCellId:
+		m.ClearCellId()
 		return nil
 	}
 	return fmt.Errorf("unknown Robot nullable field %s", name)
@@ -650,14 +650,14 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldDateErased:
 		m.ResetDateErased()
 		return nil
-	case FieldTenantID:
-		m.ResetTenantID()
+	case FieldTenantId:
+		m.ResetTenantId()
 		return nil
-	case FieldThingID:
-		m.ResetThingID()
+	case FieldThingId:
+		m.ResetThingId()
 		return nil
-	case FieldCellID:
-		m.ResetCellID()
+	case FieldCellId:
+		m.ResetCellId()
 		return nil
 	}
 	return fmt.Errorf("unknown Robot field %s", name)
@@ -678,9 +678,9 @@ func (m *Mutation) AddedEdges() []string {
 	return edges
 }
 
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// AddedIds returns all Ids (to other nodes) that were added for the given edge
 // name in this mutation.
-func (m *Mutation) AddedIDs(name string) []ent.Value {
+func (m *Mutation) AddedIds(name string) []ent.Value {
 	switch name {
 	case EdgeTenant:
 		if id := m.tenant; id != nil {
@@ -704,9 +704,9 @@ func (m *Mutation) RemovedEdges() []string {
 	return edges
 }
 
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// RemovedIds returns all Ids (to other nodes) that were removed for the edge with
 // the given name in this mutation.
-func (m *Mutation) RemovedIDs(name string) []ent.Value {
+func (m *Mutation) RemovedIds(name string) []ent.Value {
 	return nil
 }
 

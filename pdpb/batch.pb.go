@@ -154,7 +154,7 @@ func (x *Op) ClearRequest() {
 type Op_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	// The RPC, by the name gRPC knows it by: "/app.RobotService/Add".
+	// The Rpc, by the name gRpc knows it by: "/app.RobotService/Add".
 	Method string
 	// The request, packed. Its type has to be what `method` takes -- an `Any`
 	// carrying anything else is refused rather than coerced, since a request that
@@ -225,7 +225,7 @@ type BatchResponse_builder struct {
 	// There is no per-operation error here and that is not an omission: the whole
 	// batch is one transaction, so an operation that refused means none of them
 	// happened, and there is nothing to report per operation because there is
-	// nothing to report. The refusal is the RPC's error, and it says which
+	// nothing to report. The refusal is the Rpc's error, and it says which
 	// operation it was about.
 	Results []*anypb.Any
 }

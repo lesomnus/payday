@@ -71,7 +71,7 @@ func newMessage(d protoreflect.MessageDescriptor) (proto.Message, error) {
 }
 
 // argRaw is the trailing protojson, and the reason these commands are not a
-// smaller version of the API.
+// smaller version of the Api.
 //
 // A generated `Add` request has every field of the entity on it, and a command
 // with a flag per field would be a second schema to keep in step -- one that
@@ -95,7 +95,7 @@ func argRaw() *arg.RestStrings {
 
 // fillRaw merges the trailing protojson over what the typed arguments set.
 //
-// Merged **over**, so the JSON wins where they overlap. That order is the one
+// Merged **over**, so the Json wins where they overlap. That order is the one
 // that can be explained in a sentence -- what you spelled out beats what was
 // inferred -- and it is what makes the raw form a complete escape hatch: any
 // field the command sets can be overridden without the command growing a flag
@@ -112,7 +112,7 @@ func fillRaw(cmd *xli.Command, in proto.Message, first ...string) error {
 
 	// `--in` decides how strictly the request is read; both readings are
 	// protojson and the lenient one only adds identifiers written as uuids. See
-	// [unmarshalJSON].
+	// [unmarshalJson].
 	strict := false
 	if v, ok := flg.Find[string](cmd, "in"); ok && v != "" {
 		switch v {
@@ -140,7 +140,7 @@ func fillRaw(cmd *xli.Command, in proto.Message, first ...string) error {
 			b = []byte(v)
 		}
 
-		if err := unmarshalJSON(b, raw, strict); err != nil {
+		if err := unmarshalJson(b, raw, strict); err != nil {
 			return fmt.Errorf("REQ: %w", err)
 		}
 	}

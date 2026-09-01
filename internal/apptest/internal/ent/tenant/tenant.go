@@ -9,8 +9,8 @@ import (
 const (
 	// Label holds the string label denoting the tenant type in the database.
 	Label = "tenant"
-	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
+	// FieldId holds the string denoting the id field in the database.
+	FieldId = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
 	// FieldName holds the string denoting the name field in the database.
@@ -27,9 +27,9 @@ const (
 	Table = "tenant"
 )
 
-// Columns holds all SQL columns for tenant fields.
+// Columns holds all Sql columns for tenant fields.
 var Columns = []string{
-	FieldID,
+	FieldId,
 	FieldAlias,
 	FieldName,
 	FieldDesc,
@@ -51,9 +51,9 @@ func ValidColumn(column string) bool {
 // OrderOption defines the ordering options for the Tenant queries.
 type OrderOption func(*sql.Selector)
 
-// ByID orders the results by the id field.
-func ByID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldID, opts...).ToFunc()
+// ById orders the results by the id field.
+func ById(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldId, opts...).ToFunc()
 }
 
 // ByAlias orders the results by the alias field.

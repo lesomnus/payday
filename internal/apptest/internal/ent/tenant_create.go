@@ -65,9 +65,9 @@ func (_c *TenantCreate) SetNillableDateCreated(v *time.Time) *TenantCreate {
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *TenantCreate) SetID(v uuid.UUID) *TenantCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *TenantCreate) SetId(v uuid.UUID) *TenantCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
@@ -131,14 +131,14 @@ func (_c *TenantCreate) sqlSave(ctx context.Context) (*Tenant, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -146,11 +146,11 @@ func (_c *TenantCreate) sqlSave(ctx context.Context) (*Tenant, error) {
 func (_c *TenantCreate) createSpec() (*Tenant, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Tenant{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(tenant.Table, sqlgraph.NewFieldSpec(tenant.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(tenant.Table, sqlgraph.NewFieldSpec(tenant.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(tenant.FieldAlias, field.TypeString, value)
@@ -165,7 +165,7 @@ func (_c *TenantCreate) createSpec() (*Tenant, *sqlgraph.CreateSpec) {
 		_node.Desc = value
 	}
 	if value, ok := _c.mutation.Labels(); ok {
-		_spec.SetField(tenant.FieldLabels, field.TypeJSON, value)
+		_spec.SetField(tenant.FieldLabels, field.TypeJson, value)
 		_node.Labels = value
 	}
 	if value, ok := _c.mutation.DateUpdated(); ok {
@@ -222,7 +222,7 @@ func (_c *TenantCreateBulk) Save(ctx context.Context) ([]*Tenant, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

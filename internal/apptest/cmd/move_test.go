@@ -10,13 +10,13 @@ import (
 	app "github.com/lesomnus/payday/internal/apptest"
 )
 
-// Move is the RPC this app declared, and the thing nothing here demonstrated
+// Move is the Rpc this app declared, and the thing nothing here demonstrated
 // until it existed.
 //
 // payday generates the CRUD and closes the general writes, so an operation that
-// means something is an RPC declared in `proto/ext/app/robot_svc.ext.proto` and
+// means something is an Rpc declared in `proto/ext/app/robot_svc.ext.proto` and
 // answered in `server/core`. The claim is that the two halves meet: an overlay
-// that adds an **RPC** rather than a field is merged into the generated
+// that adds an **Rpc** rather than a field is merged into the generated
 // contract, and a layer that answers it stacks with the wall, the gate and the
 // trail rather than beside them.
 func TestMove(t *testing.T) {
@@ -89,14 +89,14 @@ func TestMove(t *testing.T) {
 	})
 }
 
-// TestMoveIsOnTheTrail is the claim that makes a hand-written RPC worth
+// TestMoveIsOnTheTrail is the claim that makes a hand-written Rpc worth
 // declaring rather than reaching for `Patch`.
 //
 // The trail records the operation **somebody asked for** and not the leg it
 // turned into. `Move` issues a `Patch` below itself, so a trail that recorded
 // the leg would answer "who moved this robot" with a method the caller has
-// never heard of. `bare.Change.Method` is what avoids that: it carries the RPC
-// gRPC dispatched, for the whole request rather than for one leg of it.
+// never heard of. `bare.Change.Method` is what avoids that: it carries the Rpc
+// gRpc dispatched, for the whole request rather than for one leg of it.
 //
 // So this has to travel a connection. Called directly against the server the
 // trail says `Patch`, correctly -- nothing dispatched anything, and the leg is

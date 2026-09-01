@@ -43,12 +43,12 @@ func served(t *testing.T, c config.HttpConfig) (*httptest.Server, *metadata.MD) 
 	return s, seen
 }
 
-// call is what a page makes: a Connect POST with a JSON body.
+// call is what a page makes: a Connect POST with a Json body.
 func call(t *testing.T, s *httptest.Server, f func(*http.Request)) *http.Response {
 	t.Helper()
 
 	r, err := http.NewRequest(http.MethodPost,
-		s.URL+"/grpc.health.v1.Health/Check", strings.NewReader(`{}`))
+		s.Url+"/grpc.health.v1.Health/Check", strings.NewReader(`{}`))
 	require.NoError(t, err)
 
 	r.Header.Set("Content-Type", "application/json")
@@ -66,7 +66,7 @@ func call(t *testing.T, s *httptest.Server, f func(*http.Request)) *http.Respons
 
 // TestACookieReachesTheInterceptor is what `auth/authsession` rests on.
 //
-// A browser cannot speak gRPC, so its call comes through the transcoder, and a
+// A browser cannot speak gRpc, so its call comes through the transcoder, and a
 // session cookie is only useful if it survives that hop -- as `cookie`, in the
 // ordinary metadata an [auth.Handler] reads. Nothing in payday would fail to
 // compile if it did not; every request would simply be anonymous.
@@ -133,7 +133,7 @@ func TestThePreflightSaysItTooBecauseThatIsWhatTheBrowserAsks(t *testing.T) {
 		Origins:  []string{"http://localhost:5173"},
 	})
 
-	r, err := http.NewRequest(http.MethodOptions, s.URL+"/grpc.health.v1.Health/Check", nil)
+	r, err := http.NewRequest(http.MethodOptions, s.Url+"/grpc.health.v1.Health/Check", nil)
 	x.NoError(err)
 	r.Header.Set("Origin", "http://localhost:5173")
 	r.Header.Set("Access-Control-Request-Method", "POST")
@@ -167,7 +167,7 @@ func TestAnOriginNobodyNamedGetsNothing(t *testing.T) {
 
 // TestAnAppMountsItsOwnRoutes, which is where a sign-in endpoint goes.
 //
-// A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide
+// A gRpc path is `/<service>/<method>`, so an ordinary route cannot collide
 // with one -- and this asserts the transcoder mounted at `/` does not swallow
 // it.
 func TestAnAppMountsItsOwnRoutes(t *testing.T) {
@@ -186,7 +186,7 @@ func TestAnAppMountsItsOwnRoutes(t *testing.T) {
 	s := httptest.NewServer(m)
 	defer s.Close()
 
-	res, err := http.Post(s.URL+"/session", "application/json", nil)
+	res, err := http.Post(s.Url+"/session", "application/json", nil)
 	x.NoError(err)
 	defer res.Body.Close()
 

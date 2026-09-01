@@ -404,12 +404,12 @@ type Grant_builder struct {
 	// `any_set`.
 	AnySet bool
 	Sets   [][]byte
-	// The methods, by the name gRPC knows them by: "/app.RobotService/Get".
+	// The methods, by the name gRpc knows them by: "/app.RobotService/Get".
 	//
 	// Opaque to whoever stores them. They are the **calling** app's method names,
 	// which the identity store has no way to check and should not try to -- it
 	// would need every app's service descriptors, and a token would stop working
-	// the day an app added an RPC the store had not heard of.
+	// the day an app added an Rpc the store had not heard of.
 	//
 	// What makes that safe is that a grant only ever takes away. The calling app
 	// decides what the actor may do, as it always did, and this narrows the

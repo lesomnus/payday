@@ -10,14 +10,14 @@ import (
 const (
 	// Label holds the string label denoting the pairing type in the database.
 	Label = "pairing"
-	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
+	// FieldId holds the string denoting the id field in the database.
+	FieldId = "id"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
 	FieldDateCreated = "date_created"
-	// FieldLeadID holds the string denoting the lead_id field in the database.
-	FieldLeadID = "lead_id"
-	// FieldFollowID holds the string denoting the follow_id field in the database.
-	FieldFollowID = "follow_id"
+	// FieldLeadId holds the string denoting the lead_id field in the database.
+	FieldLeadId = "lead_id"
+	// FieldFollowId holds the string denoting the follow_id field in the database.
+	FieldFollowId = "follow_id"
 	// EdgeLead holds the string denoting the lead edge name in mutations.
 	EdgeLead = "lead"
 	// EdgeFollow holds the string denoting the follow edge name in mutations.
@@ -40,12 +40,12 @@ const (
 	FollowColumn = "follow_id"
 )
 
-// Columns holds all SQL columns for pairing fields.
+// Columns holds all Sql columns for pairing fields.
 var Columns = []string{
-	FieldID,
+	FieldId,
 	FieldDateCreated,
-	FieldLeadID,
-	FieldFollowID,
+	FieldLeadId,
+	FieldFollowId,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -61,9 +61,9 @@ func ValidColumn(column string) bool {
 // OrderOption defines the ordering options for the Pairing queries.
 type OrderOption func(*sql.Selector)
 
-// ByID orders the results by the id field.
-func ByID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldID, opts...).ToFunc()
+// ById orders the results by the id field.
+func ById(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldId, opts...).ToFunc()
 }
 
 // ByDateCreated orders the results by the date_created field.
@@ -71,14 +71,14 @@ func ByDateCreated(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateCreated, opts...).ToFunc()
 }
 
-// ByLeadID orders the results by the lead_id field.
-func ByLeadID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLeadID, opts...).ToFunc()
+// ByLeadId orders the results by the lead_id field.
+func ByLeadId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLeadId, opts...).ToFunc()
 }
 
-// ByFollowID orders the results by the follow_id field.
-func ByFollowID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldFollowID, opts...).ToFunc()
+// ByFollowId orders the results by the follow_id field.
+func ByFollowId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFollowId, opts...).ToFunc()
 }
 
 // ByLeadField orders the results by lead field.
@@ -96,15 +96,15 @@ func ByFollowField(field string, opts ...sql.OrderTermOption) OrderOption {
 }
 func newLeadStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(LeadInverseTable, FieldID),
+		sqlgraph.From(Table, FieldId),
+		sqlgraph.To(LeadInverseTable, FieldId),
 		sqlgraph.Edge(sqlgraph.M2O, false, LeadTable, LeadColumn),
 	)
 }
 func newFollowStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(FollowInverseTable, FieldID),
+		sqlgraph.From(Table, FieldId),
+		sqlgraph.To(FollowInverseTable, FieldId),
 		sqlgraph.Edge(sqlgraph.M2O, false, FollowTable, FollowColumn),
 	)
 }

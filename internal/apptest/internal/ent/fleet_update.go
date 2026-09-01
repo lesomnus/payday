@@ -102,7 +102,7 @@ func (_u *FleetUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *FleetUpd
 }
 
 func (_u *FleetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(fleet.Table, fleet.Columns, sqlgraph.NewFieldSpec(fleet.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewUpdateSpec(fleet.Table, fleet.Columns, sqlgraph.NewFieldSpec(fleet.FieldId, field.TypeUuid))
 	if ps := _u.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -227,20 +227,20 @@ func (_u *FleetUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Fleet
 }
 
 func (_u *FleetUpdateOne) sqlSave(ctx context.Context) (_node *Fleet, err error) {
-	_spec := sqlgraph.NewUpdateSpec(fleet.Table, fleet.Columns, sqlgraph.NewFieldSpec(fleet.FieldID, field.TypeUUID))
-	id, ok := _u.mutation.ID()
+	_spec := sqlgraph.NewUpdateSpec(fleet.Table, fleet.Columns, sqlgraph.NewFieldSpec(fleet.FieldId, field.TypeUuid))
+	id, ok := _u.mutation.Id()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Fleet.id" for update`)}
 	}
-	_spec.Node.ID.Value = id
+	_spec.Node.Id.Value = id
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, fleet.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, fleet.FieldId)
 		for _, f := range fields {
 			if !fleet.ValidColumn(f) {
 				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 			}
-			if f != fleet.FieldID {
+			if f != fleet.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, f)
 			}
 		}

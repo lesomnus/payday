@@ -82,11 +82,11 @@ func (_q *AuditQuery) FirstX(ctx context.Context) *Audit {
 	return node
 }
 
-// FirstID returns the first Audit ID from the query.
-// Returns a *NotFoundError when no Audit ID was found.
-func (_q *AuditQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstId returns the first Audit Id from the query.
+// Returns a *NotFoundError when no Audit Id was found.
+func (_q *AuditQuery) FirstId(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
-	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
+	if ids, err = _q.Limit(1).Ids(setContextOp(ctx, _q.ctx, ent.OpQueryFirstId)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -96,9 +96,9 @@ func (_q *AuditQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	return ids[0], nil
 }
 
-// FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *AuditQuery) FirstIDX(ctx context.Context) uuid.UUID {
-	id, err := _q.FirstID(ctx)
+// FirstIdX is like FirstId, but panics if an error occurs.
+func (_q *AuditQuery) FirstIdX(ctx context.Context) uuid.UUID {
+	id, err := _q.FirstId(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -132,12 +132,12 @@ func (_q *AuditQuery) OnlyX(ctx context.Context) *Audit {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Audit ID in the query.
-// Returns a *NotSingularError when more than one Audit ID is found.
+// OnlyId is like Only, but returns the only Audit Id in the query.
+// Returns a *NotSingularError when more than one Audit Id is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *AuditQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *AuditQuery) OnlyId(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
-	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
+	if ids, err = _q.Limit(2).Ids(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyId)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -151,9 +151,9 @@ func (_q *AuditQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	return
 }
 
-// OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *AuditQuery) OnlyIDX(ctx context.Context) uuid.UUID {
-	id, err := _q.OnlyID(ctx)
+// OnlyIdX is like OnlyId, but panics if an error occurs.
+func (_q *AuditQuery) OnlyIdX(ctx context.Context) uuid.UUID {
+	id, err := _q.OnlyId(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -179,21 +179,21 @@ func (_q *AuditQuery) AllX(ctx context.Context) []*Audit {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Audit IDs.
-func (_q *AuditQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// Ids executes the query and returns a list of Audit Ids.
+func (_q *AuditQuery) Ids(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
-	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(audit.FieldID).Scan(ctx, &ids); err != nil {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIds)
+	if err = _q.Select(audit.FieldId).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
-// IDsX is like IDs, but panics if an error occurs.
-func (_q *AuditQuery) IDsX(ctx context.Context) []uuid.UUID {
-	ids, err := _q.IDs(ctx)
+// IdsX is like Ids, but panics if an error occurs.
+func (_q *AuditQuery) IdsX(ctx context.Context) []uuid.UUID {
+	ids, err := _q.Ids(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -221,7 +221,7 @@ func (_q *AuditQuery) CountX(ctx context.Context) int {
 // Exist returns true if the query has elements in the graph.
 func (_q *AuditQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
-	switch _, err := _q.FirstID(ctx); {
+	switch _, err := _q.FirstId(ctx); {
 	case IsNotFound(err):
 		return false, nil
 	case err != nil:
@@ -265,12 +265,12 @@ func (_q *AuditQuery) Clone() *AuditQuery {
 // Example:
 //
 //	var v []struct {
-//		TenantID uuid.UUID `json:"tenant_id,omitempty"`
+//		TenantId uuid.UUID `json:"tenant_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Audit.Query().
-//		GroupBy(audit.FieldTenantID).
+//		GroupBy(audit.FieldTenantId).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *AuditQuery) GroupBy(field string, fields ...string) *AuditGroupBy {
@@ -288,11 +288,11 @@ func (_q *AuditQuery) GroupBy(field string, fields ...string) *AuditGroupBy {
 // Example:
 //
 //	var v []struct {
-//		TenantID uuid.UUID `json:"tenant_id,omitempty"`
+//		TenantId uuid.UUID `json:"tenant_id,omitempty"`
 //	}
 //
 //	client.Audit.Query().
-//		Select(audit.FieldTenantID).
+//		Select(audit.FieldTenantId).
 //		Scan(ctx, &v)
 func (_q *AuditQuery) Select(fields ...string) *AuditSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -374,7 +374,7 @@ func (_q *AuditQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (_q *AuditQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(audit.Table, audit.Columns, sqlgraph.NewFieldSpec(audit.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewQuerySpec(audit.Table, audit.Columns, sqlgraph.NewFieldSpec(audit.FieldId, field.TypeUuid))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -383,9 +383,9 @@ func (_q *AuditQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, audit.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, audit.FieldId)
 		for i := range fields {
-			if fields[i] != audit.FieldID {
+			if fields[i] != audit.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}

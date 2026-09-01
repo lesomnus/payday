@@ -17,7 +17,7 @@ import (
 //
 // `Reading` is the entity it is declared on, and the one it is for: readings
 // arrive faster than anybody reads them, so the wall on that table is the read
-// that runs most. Without a stamp it is `HasRobotWith(robot.TenantIDIn(...))`,
+// that runs most. Without a stamp it is `HasRobotWith(robot.TenantIdIn(...))`,
 // a correlated subquery; with one it is the comparison a direct edge gets.
 
 func TestAStampIsWrittenByTheServer(t *testing.T) {

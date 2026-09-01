@@ -145,7 +145,7 @@ func Driver(driver dialect.Driver) Option {
 // Optional parameters can be added for configuring the client.
 func Open(driverName, dataSourceName string, options ...Option) (*Client, error) {
 	switch driverName {
-	case dialect.MySQL, dialect.Postgres, dialect.SQLite:
+	case dialect.MySql, dialect.Postgres, dialect.SQLite:
 		drv, err := sql.Open(driverName, dataSourceName)
 		if err != nil {
 			return nil, err
@@ -242,9 +242,9 @@ func (c *Client) Close() error {
 	return c.driver.Close()
 }
 
-// Dialect is the name of the SQL this client speaks.
+// Dialect is the name of the Sql this client speaks.
 //
-// Code that writes SQL of its own has to know which SQL it may write, and the
+// Code that writes Sql of its own has to know which Sql it may write, and the
 // connection is what settles that. Asking the client keeps the answer from
 // being a second claim that can disagree with the one made when it was opened.
 func (c *Client) Dialect() string {
@@ -398,9 +398,9 @@ func (c *AuditClient) UpdateOne(_m *Audit) *AuditUpdateOne {
 	return &AuditUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *AuditClient) UpdateOneID(id uuid.UUID) *AuditUpdateOne {
-	mutation := newAuditMutation(c.config, OpUpdateOne, withAuditID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *AuditClient) UpdateOneId(id uuid.UUID) *AuditUpdateOne {
+	mutation := newAuditMutation(c.config, OpUpdateOne, withAuditId(id))
 	return &AuditUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -412,12 +412,12 @@ func (c *AuditClient) Delete() *AuditDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *AuditClient) DeleteOne(_m *Audit) *AuditDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *AuditClient) DeleteOneID(id uuid.UUID) *AuditDeleteOne {
-	builder := c.Delete().Where(audit.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *AuditClient) DeleteOneId(id uuid.UUID) *AuditDeleteOne {
+	builder := c.Delete().Where(audit.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &AuditDeleteOne{builder}
@@ -434,7 +434,7 @@ func (c *AuditClient) Query() *AuditQuery {
 
 // Get returns a Audit entity by its id.
 func (c *AuditClient) Get(ctx context.Context, id uuid.UUID) (*Audit, error) {
-	return c.Query().Where(audit.ID(id)).Only(ctx)
+	return c.Query().Where(audit.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -531,9 +531,9 @@ func (c *CellClient) UpdateOne(_m *Cell) *CellUpdateOne {
 	return &CellUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *CellClient) UpdateOneID(id uuid.UUID) *CellUpdateOne {
-	mutation := newCellMutation(c.config, OpUpdateOne, withCellID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *CellClient) UpdateOneId(id uuid.UUID) *CellUpdateOne {
+	mutation := newCellMutation(c.config, OpUpdateOne, withCellId(id))
 	return &CellUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -545,12 +545,12 @@ func (c *CellClient) Delete() *CellDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *CellClient) DeleteOne(_m *Cell) *CellDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *CellClient) DeleteOneID(id uuid.UUID) *CellDeleteOne {
-	builder := c.Delete().Where(cell.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *CellClient) DeleteOneId(id uuid.UUID) *CellDeleteOne {
+	builder := c.Delete().Where(cell.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &CellDeleteOne{builder}
@@ -567,7 +567,7 @@ func (c *CellClient) Query() *CellQuery {
 
 // Get returns a Cell entity by its id.
 func (c *CellClient) Get(ctx context.Context, id uuid.UUID) (*Cell, error) {
-	return c.Query().Where(cell.ID(id)).Only(ctx)
+	return c.Query().Where(cell.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -583,10 +583,10 @@ func (c *CellClient) GetX(ctx context.Context, id uuid.UUID) *Cell {
 func (c *CellClient) QueryTenant(_m *Cell) *TenantQuery {
 	query := (&TenantClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
+		id := _m.Id
 		step := sqlgraph.NewStep(
-			sqlgraph.From(cell.Table, cell.FieldID, id),
-			sqlgraph.To(tenant.Table, tenant.FieldID),
+			sqlgraph.From(cell.Table, cell.FieldId, id),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, cell.TenantTable, cell.TenantColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -680,9 +680,9 @@ func (c *FleetClient) UpdateOne(_m *Fleet) *FleetUpdateOne {
 	return &FleetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *FleetClient) UpdateOneID(id uuid.UUID) *FleetUpdateOne {
-	mutation := newFleetMutation(c.config, OpUpdateOne, withFleetID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *FleetClient) UpdateOneId(id uuid.UUID) *FleetUpdateOne {
+	mutation := newFleetMutation(c.config, OpUpdateOne, withFleetId(id))
 	return &FleetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -694,12 +694,12 @@ func (c *FleetClient) Delete() *FleetDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *FleetClient) DeleteOne(_m *Fleet) *FleetDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *FleetClient) DeleteOneID(id uuid.UUID) *FleetDeleteOne {
-	builder := c.Delete().Where(fleet.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *FleetClient) DeleteOneId(id uuid.UUID) *FleetDeleteOne {
+	builder := c.Delete().Where(fleet.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &FleetDeleteOne{builder}
@@ -716,7 +716,7 @@ func (c *FleetClient) Query() *FleetQuery {
 
 // Get returns a Fleet entity by its id.
 func (c *FleetClient) Get(ctx context.Context, id uuid.UUID) (*Fleet, error) {
-	return c.Query().Where(fleet.ID(id)).Only(ctx)
+	return c.Query().Where(fleet.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -813,9 +813,9 @@ func (c *HolderClient) UpdateOne(_m *Holder) *HolderUpdateOne {
 	return &HolderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *HolderClient) UpdateOneID(id uuid.UUID) *HolderUpdateOne {
-	mutation := newHolderMutation(c.config, OpUpdateOne, withHolderID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *HolderClient) UpdateOneId(id uuid.UUID) *HolderUpdateOne {
+	mutation := newHolderMutation(c.config, OpUpdateOne, withHolderId(id))
 	return &HolderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -827,12 +827,12 @@ func (c *HolderClient) Delete() *HolderDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *HolderClient) DeleteOne(_m *Holder) *HolderDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *HolderClient) DeleteOneID(id uuid.UUID) *HolderDeleteOne {
-	builder := c.Delete().Where(holder.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *HolderClient) DeleteOneId(id uuid.UUID) *HolderDeleteOne {
+	builder := c.Delete().Where(holder.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &HolderDeleteOne{builder}
@@ -849,7 +849,7 @@ func (c *HolderClient) Query() *HolderQuery {
 
 // Get returns a Holder entity by its id.
 func (c *HolderClient) Get(ctx context.Context, id uuid.UUID) (*Holder, error) {
-	return c.Query().Where(holder.ID(id)).Only(ctx)
+	return c.Query().Where(holder.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -865,10 +865,10 @@ func (c *HolderClient) GetX(ctx context.Context, id uuid.UUID) *Holder {
 func (c *HolderClient) QueryTenant(_m *Holder) *TenantQuery {
 	query := (&TenantClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
+		id := _m.Id
 		step := sqlgraph.NewStep(
-			sqlgraph.From(holder.Table, holder.FieldID, id),
-			sqlgraph.To(tenant.Table, tenant.FieldID),
+			sqlgraph.From(holder.Table, holder.FieldId, id),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, holder.TenantTable, holder.TenantColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -962,9 +962,9 @@ func (c *JointClient) UpdateOne(_m *Joint) *JointUpdateOne {
 	return &JointUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *JointClient) UpdateOneID(id uuid.UUID) *JointUpdateOne {
-	mutation := newJointMutation(c.config, OpUpdateOne, withJointID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *JointClient) UpdateOneId(id uuid.UUID) *JointUpdateOne {
+	mutation := newJointMutation(c.config, OpUpdateOne, withJointId(id))
 	return &JointUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -976,12 +976,12 @@ func (c *JointClient) Delete() *JointDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *JointClient) DeleteOne(_m *Joint) *JointDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *JointClient) DeleteOneID(id uuid.UUID) *JointDeleteOne {
-	builder := c.Delete().Where(joint.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *JointClient) DeleteOneId(id uuid.UUID) *JointDeleteOne {
+	builder := c.Delete().Where(joint.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &JointDeleteOne{builder}
@@ -998,7 +998,7 @@ func (c *JointClient) Query() *JointQuery {
 
 // Get returns a Joint entity by its id.
 func (c *JointClient) Get(ctx context.Context, id uuid.UUID) (*Joint, error) {
-	return c.Query().Where(joint.ID(id)).Only(ctx)
+	return c.Query().Where(joint.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -1014,10 +1014,10 @@ func (c *JointClient) GetX(ctx context.Context, id uuid.UUID) *Joint {
 func (c *JointClient) QueryRobot(_m *Joint) *RobotQuery {
 	query := (&RobotClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
+		id := _m.Id
 		step := sqlgraph.NewStep(
-			sqlgraph.From(joint.Table, joint.FieldID, id),
-			sqlgraph.To(robot.Table, robot.FieldID),
+			sqlgraph.From(joint.Table, joint.FieldId, id),
+			sqlgraph.To(robot.Table, robot.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, joint.RobotTable, joint.RobotColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -1111,9 +1111,9 @@ func (c *OutboxClient) UpdateOne(_m *Outbox) *OutboxUpdateOne {
 	return &OutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *OutboxClient) UpdateOneID(id uuid.UUID) *OutboxUpdateOne {
-	mutation := newOutboxMutation(c.config, OpUpdateOne, withOutboxID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *OutboxClient) UpdateOneId(id uuid.UUID) *OutboxUpdateOne {
+	mutation := newOutboxMutation(c.config, OpUpdateOne, withOutboxId(id))
 	return &OutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1125,12 +1125,12 @@ func (c *OutboxClient) Delete() *OutboxDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *OutboxClient) DeleteOne(_m *Outbox) *OutboxDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *OutboxClient) DeleteOneID(id uuid.UUID) *OutboxDeleteOne {
-	builder := c.Delete().Where(outbox.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *OutboxClient) DeleteOneId(id uuid.UUID) *OutboxDeleteOne {
+	builder := c.Delete().Where(outbox.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &OutboxDeleteOne{builder}
@@ -1147,7 +1147,7 @@ func (c *OutboxClient) Query() *OutboxQuery {
 
 // Get returns a Outbox entity by its id.
 func (c *OutboxClient) Get(ctx context.Context, id uuid.UUID) (*Outbox, error) {
-	return c.Query().Where(outbox.ID(id)).Only(ctx)
+	return c.Query().Where(outbox.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -1244,9 +1244,9 @@ func (c *PairingClient) UpdateOne(_m *Pairing) *PairingUpdateOne {
 	return &PairingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *PairingClient) UpdateOneID(id uuid.UUID) *PairingUpdateOne {
-	mutation := newPairingMutation(c.config, OpUpdateOne, withPairingID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *PairingClient) UpdateOneId(id uuid.UUID) *PairingUpdateOne {
+	mutation := newPairingMutation(c.config, OpUpdateOne, withPairingId(id))
 	return &PairingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1258,12 +1258,12 @@ func (c *PairingClient) Delete() *PairingDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *PairingClient) DeleteOne(_m *Pairing) *PairingDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *PairingClient) DeleteOneID(id uuid.UUID) *PairingDeleteOne {
-	builder := c.Delete().Where(pairing.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *PairingClient) DeleteOneId(id uuid.UUID) *PairingDeleteOne {
+	builder := c.Delete().Where(pairing.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &PairingDeleteOne{builder}
@@ -1280,7 +1280,7 @@ func (c *PairingClient) Query() *PairingQuery {
 
 // Get returns a Pairing entity by its id.
 func (c *PairingClient) Get(ctx context.Context, id uuid.UUID) (*Pairing, error) {
-	return c.Query().Where(pairing.ID(id)).Only(ctx)
+	return c.Query().Where(pairing.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -1296,10 +1296,10 @@ func (c *PairingClient) GetX(ctx context.Context, id uuid.UUID) *Pairing {
 func (c *PairingClient) QueryLead(_m *Pairing) *RobotQuery {
 	query := (&RobotClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
+		id := _m.Id
 		step := sqlgraph.NewStep(
-			sqlgraph.From(pairing.Table, pairing.FieldID, id),
-			sqlgraph.To(robot.Table, robot.FieldID),
+			sqlgraph.From(pairing.Table, pairing.FieldId, id),
+			sqlgraph.To(robot.Table, robot.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, pairing.LeadTable, pairing.LeadColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -1312,10 +1312,10 @@ func (c *PairingClient) QueryLead(_m *Pairing) *RobotQuery {
 func (c *PairingClient) QueryFollow(_m *Pairing) *RobotQuery {
 	query := (&RobotClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
+		id := _m.Id
 		step := sqlgraph.NewStep(
-			sqlgraph.From(pairing.Table, pairing.FieldID, id),
-			sqlgraph.To(robot.Table, robot.FieldID),
+			sqlgraph.From(pairing.Table, pairing.FieldId, id),
+			sqlgraph.To(robot.Table, robot.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, pairing.FollowTable, pairing.FollowColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -1409,9 +1409,9 @@ func (c *ReadingClient) UpdateOne(_m *Reading) *ReadingUpdateOne {
 	return &ReadingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *ReadingClient) UpdateOneID(id uuid.UUID) *ReadingUpdateOne {
-	mutation := newReadingMutation(c.config, OpUpdateOne, withReadingID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *ReadingClient) UpdateOneId(id uuid.UUID) *ReadingUpdateOne {
+	mutation := newReadingMutation(c.config, OpUpdateOne, withReadingId(id))
 	return &ReadingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1423,12 +1423,12 @@ func (c *ReadingClient) Delete() *ReadingDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *ReadingClient) DeleteOne(_m *Reading) *ReadingDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *ReadingClient) DeleteOneID(id uuid.UUID) *ReadingDeleteOne {
-	builder := c.Delete().Where(reading.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *ReadingClient) DeleteOneId(id uuid.UUID) *ReadingDeleteOne {
+	builder := c.Delete().Where(reading.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &ReadingDeleteOne{builder}
@@ -1445,7 +1445,7 @@ func (c *ReadingClient) Query() *ReadingQuery {
 
 // Get returns a Reading entity by its id.
 func (c *ReadingClient) Get(ctx context.Context, id uuid.UUID) (*Reading, error) {
-	return c.Query().Where(reading.ID(id)).Only(ctx)
+	return c.Query().Where(reading.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -1461,10 +1461,10 @@ func (c *ReadingClient) GetX(ctx context.Context, id uuid.UUID) *Reading {
 func (c *ReadingClient) QueryRobot(_m *Reading) *RobotQuery {
 	query := (&RobotClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
+		id := _m.Id
 		step := sqlgraph.NewStep(
-			sqlgraph.From(reading.Table, reading.FieldID, id),
-			sqlgraph.To(robot.Table, robot.FieldID),
+			sqlgraph.From(reading.Table, reading.FieldId, id),
+			sqlgraph.To(robot.Table, robot.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, reading.RobotTable, reading.RobotColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -1558,9 +1558,9 @@ func (c *RobotClient) UpdateOne(_m *Robot) *RobotUpdateOne {
 	return &RobotUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *RobotClient) UpdateOneID(id uuid.UUID) *RobotUpdateOne {
-	mutation := newRobotMutation(c.config, OpUpdateOne, withRobotID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *RobotClient) UpdateOneId(id uuid.UUID) *RobotUpdateOne {
+	mutation := newRobotMutation(c.config, OpUpdateOne, withRobotId(id))
 	return &RobotUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1572,12 +1572,12 @@ func (c *RobotClient) Delete() *RobotDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *RobotClient) DeleteOne(_m *Robot) *RobotDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *RobotClient) DeleteOneID(id uuid.UUID) *RobotDeleteOne {
-	builder := c.Delete().Where(robot.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *RobotClient) DeleteOneId(id uuid.UUID) *RobotDeleteOne {
+	builder := c.Delete().Where(robot.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &RobotDeleteOne{builder}
@@ -1594,7 +1594,7 @@ func (c *RobotClient) Query() *RobotQuery {
 
 // Get returns a Robot entity by its id.
 func (c *RobotClient) Get(ctx context.Context, id uuid.UUID) (*Robot, error) {
-	return c.Query().Where(robot.ID(id)).Only(ctx)
+	return c.Query().Where(robot.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -1610,10 +1610,10 @@ func (c *RobotClient) GetX(ctx context.Context, id uuid.UUID) *Robot {
 func (c *RobotClient) QueryTenant(_m *Robot) *TenantQuery {
 	query := (&TenantClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
+		id := _m.Id
 		step := sqlgraph.NewStep(
-			sqlgraph.From(robot.Table, robot.FieldID, id),
-			sqlgraph.To(tenant.Table, tenant.FieldID),
+			sqlgraph.From(robot.Table, robot.FieldId, id),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, robot.TenantTable, robot.TenantColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -1626,10 +1626,10 @@ func (c *RobotClient) QueryTenant(_m *Robot) *TenantQuery {
 func (c *RobotClient) QueryThing(_m *Robot) *ThingQuery {
 	query := (&ThingClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
+		id := _m.Id
 		step := sqlgraph.NewStep(
-			sqlgraph.From(robot.Table, robot.FieldID, id),
-			sqlgraph.To(thing.Table, thing.FieldID),
+			sqlgraph.From(robot.Table, robot.FieldId, id),
+			sqlgraph.To(thing.Table, thing.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, robot.ThingTable, robot.ThingColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -1642,10 +1642,10 @@ func (c *RobotClient) QueryThing(_m *Robot) *ThingQuery {
 func (c *RobotClient) QueryCell(_m *Robot) *CellQuery {
 	query := (&CellClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
+		id := _m.Id
 		step := sqlgraph.NewStep(
-			sqlgraph.From(robot.Table, robot.FieldID, id),
-			sqlgraph.To(cell.Table, cell.FieldID),
+			sqlgraph.From(robot.Table, robot.FieldId, id),
+			sqlgraph.To(cell.Table, cell.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, robot.CellTable, robot.CellColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -1739,9 +1739,9 @@ func (c *SealClient) UpdateOne(_m *Seal) *SealUpdateOne {
 	return &SealUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *SealClient) UpdateOneID(id uuid.UUID) *SealUpdateOne {
-	mutation := newSealMutation(c.config, OpUpdateOne, withSealID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *SealClient) UpdateOneId(id uuid.UUID) *SealUpdateOne {
+	mutation := newSealMutation(c.config, OpUpdateOne, withSealId(id))
 	return &SealUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1753,12 +1753,12 @@ func (c *SealClient) Delete() *SealDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *SealClient) DeleteOne(_m *Seal) *SealDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *SealClient) DeleteOneID(id uuid.UUID) *SealDeleteOne {
-	builder := c.Delete().Where(seal.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *SealClient) DeleteOneId(id uuid.UUID) *SealDeleteOne {
+	builder := c.Delete().Where(seal.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &SealDeleteOne{builder}
@@ -1775,7 +1775,7 @@ func (c *SealClient) Query() *SealQuery {
 
 // Get returns a Seal entity by its id.
 func (c *SealClient) Get(ctx context.Context, id uuid.UUID) (*Seal, error) {
-	return c.Query().Where(seal.ID(id)).Only(ctx)
+	return c.Query().Where(seal.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -1872,9 +1872,9 @@ func (c *TenantClient) UpdateOne(_m *Tenant) *TenantUpdateOne {
 	return &TenantUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *TenantClient) UpdateOneID(id uuid.UUID) *TenantUpdateOne {
-	mutation := newTenantMutation(c.config, OpUpdateOne, withTenantID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *TenantClient) UpdateOneId(id uuid.UUID) *TenantUpdateOne {
+	mutation := newTenantMutation(c.config, OpUpdateOne, withTenantId(id))
 	return &TenantUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1886,12 +1886,12 @@ func (c *TenantClient) Delete() *TenantDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *TenantClient) DeleteOne(_m *Tenant) *TenantDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *TenantClient) DeleteOneID(id uuid.UUID) *TenantDeleteOne {
-	builder := c.Delete().Where(tenant.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *TenantClient) DeleteOneId(id uuid.UUID) *TenantDeleteOne {
+	builder := c.Delete().Where(tenant.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &TenantDeleteOne{builder}
@@ -1908,7 +1908,7 @@ func (c *TenantClient) Query() *TenantQuery {
 
 // Get returns a Tenant entity by its id.
 func (c *TenantClient) Get(ctx context.Context, id uuid.UUID) (*Tenant, error) {
-	return c.Query().Where(tenant.ID(id)).Only(ctx)
+	return c.Query().Where(tenant.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
@@ -2005,9 +2005,9 @@ func (c *ThingClient) UpdateOne(_m *Thing) *ThingUpdateOne {
 	return &ThingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// UpdateOneID returns an update builder for the given id.
-func (c *ThingClient) UpdateOneID(id uuid.UUID) *ThingUpdateOne {
-	mutation := newThingMutation(c.config, OpUpdateOne, withThingID(id))
+// UpdateOneId returns an update builder for the given id.
+func (c *ThingClient) UpdateOneId(id uuid.UUID) *ThingUpdateOne {
+	mutation := newThingMutation(c.config, OpUpdateOne, withThingId(id))
 	return &ThingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -2019,12 +2019,12 @@ func (c *ThingClient) Delete() *ThingDelete {
 
 // DeleteOne returns a builder for deleting the given entity.
 func (c *ThingClient) DeleteOne(_m *Thing) *ThingDeleteOne {
-	return c.DeleteOneID(_m.ID)
+	return c.DeleteOneId(_m.Id)
 }
 
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *ThingClient) DeleteOneID(id uuid.UUID) *ThingDeleteOne {
-	builder := c.Delete().Where(thing.ID(id))
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *ThingClient) DeleteOneId(id uuid.UUID) *ThingDeleteOne {
+	builder := c.Delete().Where(thing.Id(id))
 	builder.mutation.id = &id
 	builder.mutation.SetOp(OpDeleteOne)
 	return &ThingDeleteOne{builder}
@@ -2041,7 +2041,7 @@ func (c *ThingClient) Query() *ThingQuery {
 
 // Get returns a Thing entity by its id.
 func (c *ThingClient) Get(ctx context.Context, id uuid.UUID) (*Thing, error) {
-	return c.Query().Where(thing.ID(id)).Only(ctx)
+	return c.Query().Where(thing.Id(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.

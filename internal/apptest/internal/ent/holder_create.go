@@ -93,21 +93,21 @@ func (_c *HolderCreate) SetProfile(v *apptest.Profile) *HolderCreate {
 	return _c
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_c *HolderCreate) SetTenantID(v uuid.UUID) *HolderCreate {
-	_c.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_c *HolderCreate) SetTenantId(v uuid.UUID) *HolderCreate {
+	_c.mutation.SetTenantId(v)
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *HolderCreate) SetID(v uuid.UUID) *HolderCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *HolderCreate) SetId(v uuid.UUID) *HolderCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
 // SetTenant sets the "tenant" edge to the Tenant entity.
 func (_c *HolderCreate) SetTenant(v *Tenant) *HolderCreate {
-	return _c.SetTenantID(v.ID)
+	return _c.SetTenantId(v.Id)
 }
 
 // Mutation returns the HolderMutation object of the builder.
@@ -159,10 +159,10 @@ func (_c *HolderCreate) check() error {
 	if _, ok := _c.mutation.IdpSubject(); !ok {
 		return &ValidationError{Name: "idp_subject", err: errors.New(`ent: missing required field "Holder.idp_subject"`)}
 	}
-	if _, ok := _c.mutation.TenantID(); !ok {
+	if _, ok := _c.mutation.TenantId(); !ok {
 		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Holder.tenant_id"`)}
 	}
-	if len(_c.mutation.TenantIDs()) == 0 {
+	if len(_c.mutation.TenantIds()) == 0 {
 		return &ValidationError{Name: "tenant", err: errors.New(`ent: missing required edge "Holder.tenant"`)}
 	}
 	return nil
@@ -182,14 +182,14 @@ func (_c *HolderCreate) sqlSave(ctx context.Context) (*Holder, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -197,11 +197,11 @@ func (_c *HolderCreate) sqlSave(ctx context.Context) (*Holder, error) {
 func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec, error) {
 	var (
 		_node = &Holder{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(holder.Table, sqlgraph.NewFieldSpec(holder.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(holder.Table, sqlgraph.NewFieldSpec(holder.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(holder.FieldAlias, field.TypeString, value)
@@ -216,7 +216,7 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec, error) {
 		_node.Desc = value
 	}
 	if value, ok := _c.mutation.Labels(); ok {
-		_spec.SetField(holder.FieldLabels, field.TypeJSON, value)
+		_spec.SetField(holder.FieldLabels, field.TypeJson, value)
 		_node.Labels = value
 	}
 	if value, ok := _c.mutation.DateUpdated(); ok {
@@ -240,13 +240,13 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if vv, err = field.JSONValue(vv); err != nil {
+		if vv, err = field.JsonValue(vv); err != nil {
 			return nil, nil, err
 		}
-		_spec.SetField(holder.FieldProfile, field.TypeJSON, vv)
+		_spec.SetField(holder.FieldProfile, field.TypeJson, vv)
 		_node.Profile = value
 	}
-	if nodes := _c.mutation.TenantIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.TenantIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -254,13 +254,13 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec, error) {
 			Columns: []string{holder.TenantColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tenant.FieldID, field.TypeUUID),
+				IdSpec: sqlgraph.NewFieldSpec(tenant.FieldId, field.TypeUuid),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.TenantID = nodes[0]
+		_node.TenantId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec, nil
@@ -312,7 +312,7 @@ func (_c *HolderCreateBulk) Save(ctx context.Context) ([]*Holder, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

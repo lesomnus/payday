@@ -28,7 +28,7 @@ const (
 func emitWatch(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoImportPath) {
 	e := v.GoName()
 
-	g.P("// ", e, "Service is the prefix of every RPC of that service, which is how a")
+	g.P("// ", e, "Service is the prefix of every Rpc of that service, which is how a")
 	g.P("// change is known to be about a ", e, ". A service is named for the entity it")
 	g.P("// is about, so the name carries it.")
 	g.P("var ", e, "Service = ", pkgWatch.Ident("ServiceOf"), "(", root.Ident(e+"Service_Get_FullMethodName"), ")")
@@ -297,7 +297,7 @@ func EmitWatchRecorder(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("// keyBytes is a key as the sixteen bytes an identifier is.")
 	g.P("func keyBytes(v any) []byte {")
 	g.P("	switch u := v.(type) {")
-	g.P("	case ", pkgUuid2.Ident("UUID"), ":")
+	g.P("	case ", pkgUuid2.Ident("Uuid"), ":")
 	g.P("		return u[:]")
 	g.P("	case [16]byte:")
 	g.P("		return u[:]")

@@ -151,7 +151,7 @@ func TestNoFrameIsRefused(t *testing.T) {
 
 // TestScopeOfNothingSeesNothing is what an empty list has to mean.
 //
-// `IDIn()` with nothing renders as WHERE FALSE. Read the other way round --
+// `IdIn()` with nothing renders as WHERE FALSE. Read the other way round --
 // "no tenants, so nothing to narrow by" -- a scope would open up as it ran out,
 // and the caller who may see the least would see the most.
 func TestScopeOfNothingSeesNothing(t *testing.T) {

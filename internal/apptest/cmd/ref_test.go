@@ -107,7 +107,7 @@ func TestTheKindIsCheckedOnEveryVerbThatTakesOne(t *testing.T) {
 // [pdcmd.Tree.Unary] has no Entity to read a domain from, so it resolves one
 // from the `ref` field's own type -- `app.RobotRef` is the generated name of a
 // reference to `app.Robot`, and the registry answers for that. This is the
-// test that says an RPC an app declared in an overlay refuses a wrong-kind
+// test that says an Rpc an app declared in an overlay refuses a wrong-kind
 // reference the same way the five verbs do.
 func TestTheKindReachesACommandTheAppWiredItself(t *testing.T) {
 	x := require.New(t)

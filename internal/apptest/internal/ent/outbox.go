@@ -16,18 +16,18 @@ import (
 // Outbox is the model entity for the Outbox schema.
 type Outbox struct {
 	config `json:"-"`
-	// ID of the ent.
-	ID uuid.UUID `json:"id,omitempty"`
-	// TenantID holds the value of the "tenant_id" field.
-	TenantID uuid.UUID `json:"tenant_id,omitempty"`
-	// ActorID holds the value of the "actor_id" field.
-	ActorID uuid.UUID `json:"actor_id,omitempty"`
+	// Id of the ent.
+	Id uuid.UUID `json:"id,omitempty"`
+	// TenantId holds the value of the "tenant_id" field.
+	TenantId uuid.UUID `json:"tenant_id,omitempty"`
+	// ActorId holds the value of the "actor_id" field.
+	ActorId uuid.UUID `json:"actor_id,omitempty"`
 	// Method holds the value of the "method" field.
 	Method string `json:"method,omitempty"`
 	// By holds the value of the "by" field.
 	By string `json:"by,omitempty"`
-	// ObjectID holds the value of the "object_id" field.
-	ObjectID uuid.UUID `json:"object_id,omitempty"`
+	// ObjectId holds the value of the "object_id" field.
+	ObjectId uuid.UUID `json:"object_id,omitempty"`
 	// Patch holds the value of the "patch" field.
 	Patch []byte `json:"patch,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
@@ -46,7 +46,7 @@ func (*Outbox) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case outbox.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case outbox.FieldID, outbox.FieldTenantID, outbox.FieldActorID, outbox.FieldObjectID:
+		case outbox.FieldId, outbox.FieldTenantId, outbox.FieldActorId, outbox.FieldObjectId:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -63,23 +63,23 @@ func (_m *Outbox) assignValues(columns []string, values []any) error {
 	}
 	for i := range columns {
 		switch columns[i] {
-		case outbox.FieldID:
+		case outbox.FieldId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				_m.ID = *value
+				_m.Id = *value
 			}
-		case outbox.FieldTenantID:
+		case outbox.FieldTenantId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
 			} else if value != nil {
-				_m.TenantID = *value
+				_m.TenantId = *value
 			}
-		case outbox.FieldActorID:
+		case outbox.FieldActorId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field actor_id", values[i])
 			} else if value != nil {
-				_m.ActorID = *value
+				_m.ActorId = *value
 			}
 		case outbox.FieldMethod:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -93,11 +93,11 @@ func (_m *Outbox) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.By = value.String
 			}
-		case outbox.FieldObjectID:
+		case outbox.FieldObjectId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field object_id", values[i])
 			} else if value != nil {
-				_m.ObjectID = *value
+				_m.ObjectId = *value
 			}
 		case outbox.FieldPatch:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -146,12 +146,12 @@ func (_m *Outbox) Unwrap() *Outbox {
 func (_m *Outbox) String() string {
 	var builder strings.Builder
 	builder.WriteString("Outbox(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.Id))
 	builder.WriteString("tenant_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))
+	builder.WriteString(fmt.Sprintf("%v", _m.TenantId))
 	builder.WriteString(", ")
 	builder.WriteString("actor_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ActorID))
+	builder.WriteString(fmt.Sprintf("%v", _m.ActorId))
 	builder.WriteString(", ")
 	builder.WriteString("method=")
 	builder.WriteString(_m.Method)
@@ -160,7 +160,7 @@ func (_m *Outbox) String() string {
 	builder.WriteString(_m.By)
 	builder.WriteString(", ")
 	builder.WriteString("object_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ObjectID))
+	builder.WriteString(fmt.Sprintf("%v", _m.ObjectId))
 	builder.WriteString(", ")
 	builder.WriteString("patch=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Patch))

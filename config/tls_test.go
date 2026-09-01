@@ -53,11 +53,11 @@ func keypair(t *testing.T) (cert string, key string) {
 	return cert, key
 }
 
-func TestTLSConfig(t *testing.T) {
+func TestTlsConfig(t *testing.T) {
 	t.Run("nothing said is a connection anybody may open", func(t *testing.T) {
 		x := require.New(t)
 
-		c := config.TLSConfig{}
+		c := config.TlsConfig{}
 		x.False(c.Active())
 
 		// Insecure credentials rather than nothing, so the wiring hands the
@@ -66,11 +66,11 @@ func TestTLSConfig(t *testing.T) {
 		x.NoError(err)
 		x.NotNil(v)
 	})
-	t.Run("a certificate and its key are TLS", func(t *testing.T) {
+	t.Run("a certificate and its key are Tls", func(t *testing.T) {
 		x := require.New(t)
 
 		cert, key := keypair(t)
-		c := config.TLSConfig{CertFile: cert, KeyFile: key}
+		c := config.TlsConfig{CertFile: cert, KeyFile: key}
 		x.True(c.Active())
 
 		v, err := c.Credentials()
@@ -81,22 +81,22 @@ func TestTLSConfig(t *testing.T) {
 		x := require.New(t)
 
 		cert, _ := keypair(t)
-		_, err := config.TLSConfig{CertFile: cert}.Credentials()
+		_, err := config.TlsConfig{CertFile: cert}.Credentials()
 		x.ErrorContains(err, "key_file")
 	})
 
-	// The template this came from did not count a client CA bundle as TLS
+	// The template this came from did not count a client CA bundle as Tls
 	// being on. A configuration holding only that one is exactly what a server
 	// meant to read who is calling out of a client certificate looks like, and
 	// it would have been served over a connection with no handshake at all --
 	// no certificate presented, none verified, and the method that reads them
 	// answering "nobody said anything" for the life of the process, with
-	// mutual TLS written down in the file the whole time.
-	t.Run("a bundle to check callers against is TLS, and half-configured is refused", func(t *testing.T) {
+	// mutual Tls written down in the file the whole time.
+	t.Run("a bundle to check callers against is Tls, and half-configured is refused", func(t *testing.T) {
 		x := require.New(t)
 
 		cert, _ := keypair(t)
-		c := config.TLSConfig{ClientCAFile: cert}
+		c := config.TlsConfig{ClientCAFile: cert}
 		x.True(c.Active())
 
 		_, err := c.Credentials()
@@ -108,23 +108,23 @@ func TestTLSConfig(t *testing.T) {
 		cert, key := keypair(t)
 		bundle := write(t, t.TempDir(), "ca.pem", "this is not a certificate\n")
 
-		_, err := config.TLSConfig{CertFile: cert, KeyFile: key, ClientCAFile: bundle}.Credentials()
+		_, err := config.TlsConfig{CertFile: cert, KeyFile: key, ClientCAFile: bundle}.Credentials()
 		x.ErrorContains(err, "no certificates found")
 	})
 	t.Run("a bundle nobody wrote is refused", func(t *testing.T) {
 		x := require.New(t)
 
 		cert, key := keypair(t)
-		_, err := config.TLSConfig{CertFile: cert, KeyFile: key, ClientCAFile: "nowhere.pem"}.Credentials()
+		_, err := config.TlsConfig{CertFile: cert, KeyFile: key, ClientCAFile: "nowhere.pem"}.Credentials()
 		x.ErrorContains(err, "read client ca")
 	})
 }
 
 // TestTheSameTlsServesEveryListener.
 //
-// `Credentials` is gRPC's shape and not every listener a payday app opens is a
-// gRPC one -- a transcoder, a sign-in, a port robots present certificates to.
-// Without a `*tls.Config` of its own, the app builds the mutual-TLS setup a
+// `Credentials` is gRpc's shape and not every listener a payday app opens is a
+// gRpc one -- a transcoder, a sign-in, a port robots present certificates to.
+// Without a `*tls.Config` of its own, the app builds the mutual-Tls setup a
 // second time by hand, and the second one is where the client CA is forgotten.
 func TestTheSameTlsServesEveryListener(t *testing.T) {
 	cert, key := keypair(t)
@@ -132,7 +132,7 @@ func TestTheSameTlsServesEveryListener(t *testing.T) {
 	t.Run("nothing said is nothing to serve with", func(t *testing.T) {
 		x := require.New(t)
 
-		got, err := config.TLSConfig{}.Server()
+		got, err := config.TlsConfig{}.Server()
 		x.NoError(err)
 		x.Nil(got, "a plaintext listener has to be able to tell")
 	})
@@ -140,7 +140,7 @@ func TestTheSameTlsServesEveryListener(t *testing.T) {
 	t.Run("a certificate and a client ca", func(t *testing.T) {
 		x := require.New(t)
 
-		got, err := config.TLSConfig{
+		got, err := config.TlsConfig{
 			CertFile:     cert,
 			KeyFile:      key,
 			ClientCAFile: cert,
@@ -155,7 +155,7 @@ func TestTheSameTlsServesEveryListener(t *testing.T) {
 	t.Run("and a caller that may arrive without one", func(t *testing.T) {
 		x := require.New(t)
 
-		got, err := config.TLSConfig{
+		got, err := config.TlsConfig{
 			CertFile:           cert,
 			KeyFile:            key,
 			ClientCAFile:       cert,
@@ -168,7 +168,7 @@ func TestTheSameTlsServesEveryListener(t *testing.T) {
 	t.Run("half a key pair is refused", func(t *testing.T) {
 		x := require.New(t)
 
-		_, err := config.TLSConfig{CertFile: cert}.Server()
+		_, err := config.TlsConfig{CertFile: cert}.Server()
 		x.Error(err)
 	})
 }

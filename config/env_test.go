@@ -105,7 +105,7 @@ func TestEnvNames(t *testing.T) {
 
 		vs := acme.EnvNames(&Config{})
 		x.Contains(vs, "ACME_SERVER_ADDR")
-		x.Contains(vs, "ACME_SERVER_TLS_CERT_FILE")
+		x.Contains(vs, "ACME_SERVER_Tls_CERT_FILE")
 		x.Contains(vs, "ACME_SERVER_KEEPALIVE_MAX_CONNECTION_AGE")
 		x.Contains(vs, "ACME_DB_DSN")
 	})
@@ -211,11 +211,11 @@ func TestOverrideFromEnv(t *testing.T) {
 
 		v := Root{}
 		unknown, err := acme.OverrideFromEnv(&v, []string{
-			"ACME_HIDDEN=no",
+			"ACME_HIdDEN=no",
 			"ACME_SECRET=no",
 		})
 		x.NoError(err)
-		x.Equal([]string{"ACME_HIDDEN", "ACME_SECRET"}, unknown)
+		x.Equal([]string{"ACME_HIdDEN", "ACME_SECRET"}, unknown)
 		x.Empty(v.Hidden)
 	})
 	t.Run("a name nothing answers to is reported", func(t *testing.T) {

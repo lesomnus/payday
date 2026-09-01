@@ -16,28 +16,28 @@ import (
 // Audit is the model entity for the Audit schema.
 type Audit struct {
 	config `json:"-"`
-	// ID of the ent.
-	ID uuid.UUID `json:"id,omitempty"`
-	// TenantID holds the value of the "tenant_id" field.
-	TenantID uuid.UUID `json:"tenant_id,omitempty"`
-	// ActorID holds the value of the "actor_id" field.
-	ActorID uuid.UUID `json:"actor_id,omitempty"`
-	// TraceID holds the value of the "trace_id" field.
-	TraceID []byte `json:"trace_id,omitempty"`
+	// Id of the ent.
+	Id uuid.UUID `json:"id,omitempty"`
+	// TenantId holds the value of the "tenant_id" field.
+	TenantId uuid.UUID `json:"tenant_id,omitempty"`
+	// ActorId holds the value of the "actor_id" field.
+	ActorId uuid.UUID `json:"actor_id,omitempty"`
+	// TraceId holds the value of the "trace_id" field.
+	TraceId []byte `json:"trace_id,omitempty"`
 	// Action holds the value of the "action" field.
 	Action string `json:"action,omitempty"`
-	// ObjectID holds the value of the "object_id" field.
-	ObjectID uuid.UUID `json:"object_id,omitempty"`
+	// ObjectId holds the value of the "object_id" field.
+	ObjectId uuid.UUID `json:"object_id,omitempty"`
 	// Patch holds the value of the "patch" field.
 	Patch []byte `json:"patch,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
-	// ActorTenantID holds the value of the "actor_tenant_id" field.
-	ActorTenantID uuid.UUID `json:"actor_tenant_id,omitempty"`
+	// ActorTenantId holds the value of the "actor_tenant_id" field.
+	ActorTenantId uuid.UUID `json:"actor_tenant_id,omitempty"`
 	// Value holds the value of the "value" field.
 	Value []byte `json:"value,omitempty"`
-	// CounterpartTenantID holds the value of the "counterpart_tenant_id" field.
-	CounterpartTenantID *uuid.UUID `json:"counterpart_tenant_id,omitempty"`
+	// CounterpartTenantId holds the value of the "counterpart_tenant_id" field.
+	CounterpartTenantId *uuid.UUID `json:"counterpart_tenant_id,omitempty"`
 	// Domain holds the value of the "domain" field.
 	Domain       uint32 `json:"domain,omitempty"`
 	selectValues sql.SelectValues
@@ -48,9 +48,9 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case audit.FieldCounterpartTenantID:
+		case audit.FieldCounterpartTenantId:
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
-		case audit.FieldTraceID, audit.FieldPatch, audit.FieldValue:
+		case audit.FieldTraceId, audit.FieldPatch, audit.FieldValue:
 			values[i] = new([]byte)
 		case audit.FieldDomain:
 			values[i] = new(sql.NullInt64)
@@ -58,7 +58,7 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case audit.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case audit.FieldID, audit.FieldTenantID, audit.FieldActorID, audit.FieldObjectID, audit.FieldActorTenantID:
+		case audit.FieldId, audit.FieldTenantId, audit.FieldActorId, audit.FieldObjectId, audit.FieldActorTenantId:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -75,29 +75,29 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 	}
 	for i := range columns {
 		switch columns[i] {
-		case audit.FieldID:
+		case audit.FieldId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				_m.ID = *value
+				_m.Id = *value
 			}
-		case audit.FieldTenantID:
+		case audit.FieldTenantId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
 			} else if value != nil {
-				_m.TenantID = *value
+				_m.TenantId = *value
 			}
-		case audit.FieldActorID:
+		case audit.FieldActorId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field actor_id", values[i])
 			} else if value != nil {
-				_m.ActorID = *value
+				_m.ActorId = *value
 			}
-		case audit.FieldTraceID:
+		case audit.FieldTraceId:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field trace_id", values[i])
 			} else if value != nil {
-				_m.TraceID = *value
+				_m.TraceId = *value
 			}
 		case audit.FieldAction:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -105,11 +105,11 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Action = value.String
 			}
-		case audit.FieldObjectID:
+		case audit.FieldObjectId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field object_id", values[i])
 			} else if value != nil {
-				_m.ObjectID = *value
+				_m.ObjectId = *value
 			}
 		case audit.FieldPatch:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -123,11 +123,11 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DateCreated = value.Time
 			}
-		case audit.FieldActorTenantID:
+		case audit.FieldActorTenantId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field actor_tenant_id", values[i])
 			} else if value != nil {
-				_m.ActorTenantID = *value
+				_m.ActorTenantId = *value
 			}
 		case audit.FieldValue:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -135,12 +135,12 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.Value = *value
 			}
-		case audit.FieldCounterpartTenantID:
+		case audit.FieldCounterpartTenantId:
 			if value, ok := values[i].(*sql.NullScanner); !ok {
 				return fmt.Errorf("unexpected type %T for field counterpart_tenant_id", values[i])
 			} else if value.Valid {
-				_m.CounterpartTenantID = new(uuid.UUID)
-				*_m.CounterpartTenantID = *value.S.(*uuid.UUID)
+				_m.CounterpartTenantId = new(uuid.UUID)
+				*_m.CounterpartTenantId = *value.S.(*uuid.UUID)
 			}
 		case audit.FieldDomain:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -183,21 +183,21 @@ func (_m *Audit) Unwrap() *Audit {
 func (_m *Audit) String() string {
 	var builder strings.Builder
 	builder.WriteString("Audit(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.Id))
 	builder.WriteString("tenant_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))
+	builder.WriteString(fmt.Sprintf("%v", _m.TenantId))
 	builder.WriteString(", ")
 	builder.WriteString("actor_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ActorID))
+	builder.WriteString(fmt.Sprintf("%v", _m.ActorId))
 	builder.WriteString(", ")
 	builder.WriteString("trace_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TraceID))
+	builder.WriteString(fmt.Sprintf("%v", _m.TraceId))
 	builder.WriteString(", ")
 	builder.WriteString("action=")
 	builder.WriteString(_m.Action)
 	builder.WriteString(", ")
 	builder.WriteString("object_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ObjectID))
+	builder.WriteString(fmt.Sprintf("%v", _m.ObjectId))
 	builder.WriteString(", ")
 	builder.WriteString("patch=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Patch))
@@ -206,12 +206,12 @@ func (_m *Audit) String() string {
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("actor_tenant_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ActorTenantID))
+	builder.WriteString(fmt.Sprintf("%v", _m.ActorTenantId))
 	builder.WriteString(", ")
 	builder.WriteString("value=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Value))
 	builder.WriteString(", ")
-	if v := _m.CounterpartTenantID; v != nil {
+	if v := _m.CounterpartTenantId; v != nil {
 		builder.WriteString("counterpart_tenant_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}

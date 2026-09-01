@@ -40,7 +40,7 @@ func (_d *SealDelete) ExecX(ctx context.Context) int {
 }
 
 func (_d *SealDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(seal.Table, sqlgraph.NewFieldSpec(seal.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewDeleteSpec(seal.Table, sqlgraph.NewFieldSpec(seal.FieldId, field.TypeUuid))
 	if ps := _d.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

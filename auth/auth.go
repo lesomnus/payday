@@ -11,7 +11,7 @@
 // name comes from.
 //
 //	Plain   the caller writes it in a header, and is believed
-//	MTLS    the certificate the connection was made with carries it
+//	MTls    the certificate the connection was made with carries it
 //	Bearer  the token carries nothing, and is exchanged for a name
 //
 // The first two read a name that is already there, so they are pure functions
@@ -58,7 +58,7 @@
 // says "every tenant" held by somebody who may see one still sees one.
 //
 // Only [Bearer] can carry one, because only a token has anywhere to put one. A
-// header and a certificate name somebody and stop, so [Plain] and [MTLS]
+// header and a certificate name somebody and stop, so [Plain] and [MTls]
 // answer [frame.Whole] and say so.
 //
 // What issues such a token, and who decided what it should be narrowed to, is
@@ -140,7 +140,7 @@ type Identity struct {
 	// Text like the rest, and this is the one field where that costs
 	// something: it was parsed here and whatever resolves it parses it again.
 	// It is kept anyway, because what a resolver does with it is build a query
-	// -- against a UUID column, against a request field of bytes -- so the
+	// -- against a Uuid column, against a request field of bytes -- so the
 	// parsed value is not the shape either end holds, and one currency for the
 	// three ways a credential can name somebody is worth more than the one
 	// call it would save.
@@ -218,7 +218,7 @@ func (f HandlerFunc) Handle(ctx context.Context) (Identity, error) {
 // handler that finds nothing is passed over; one that finds something wrong,
 // or that cannot tell, stops the search.
 //
-// That is what makes a fallback safe. `Seq(Bearer(store), MTLS())` means "the
+// That is what makes a fallback safe. `Seq(Bearer(store), MTls())` means "the
 // token if there is one, otherwise the certificate" -- not "the token, and if
 // anything at all goes wrong, the certificate". A token that is expired, or
 // one this server cannot check right now, must not quietly become a different

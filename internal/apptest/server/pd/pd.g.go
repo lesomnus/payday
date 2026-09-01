@@ -176,7 +176,7 @@ func (wall) AuditScope(ctx context.Context) (predicate.Audit, error) {
 		return nil, err
 	}
 
-	return audit.Or(audit.TenantIDIn(vs...), audit.ActorTenantIDIn(vs...), audit.CounterpartTenantIDIn(vs...)), nil
+	return audit.Or(audit.TenantIdIn(vs...), audit.ActorTenantIdIn(vs...), audit.CounterpartTenantIdIn(vs...)), nil
 }
 
 // CellScope: a row belongs to the tenant its "tenant" reaches.
@@ -186,7 +186,7 @@ func (wall) CellScope(ctx context.Context) (predicate.Cell, error) {
 		return nil, err
 	}
 
-	return cell.TenantIDIn(vs...), nil
+	return cell.TenantIdIn(vs...), nil
 }
 
 // FleetScope: declared `global`, so it is not behind the wall at all.
@@ -201,7 +201,7 @@ func (wall) HolderScope(ctx context.Context) (predicate.Holder, error) {
 		return nil, err
 	}
 
-	return holder.TenantIDIn(vs...), nil
+	return holder.TenantIdIn(vs...), nil
 }
 
 // JointScope: a row belongs to the tenant its "robot.tenant" reaches.
@@ -211,7 +211,7 @@ func (wall) JointScope(ctx context.Context) (predicate.Joint, error) {
 		return nil, err
 	}
 
-	return joint.HasRobotWith(robot.TenantIDIn(vs...)), nil
+	return joint.HasRobotWith(robot.TenantIdIn(vs...)), nil
 }
 
 // OutboxScope: declared `global`, so it is not behind the wall at all.
@@ -226,7 +226,7 @@ func (wall) PairingScope(ctx context.Context) (predicate.Pairing, error) {
 		return nil, err
 	}
 
-	return pairing.HasLeadWith(robot.TenantIDIn(vs...)), nil
+	return pairing.HasLeadWith(robot.TenantIdIn(vs...)), nil
 }
 
 // ReadingScope: a row belongs to the tenant its "robot.tenant" reaches, read off "tenant_id" -- which the
@@ -237,7 +237,7 @@ func (wall) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 		return nil, err
 	}
 
-	return reading.TenantIDIn(vs...), nil
+	return reading.TenantIdIn(vs...), nil
 }
 
 // RobotScope: a row belongs to the tenant its "tenant" reaches.
@@ -247,7 +247,7 @@ func (wall) RobotScope(ctx context.Context) (predicate.Robot, error) {
 		return nil, err
 	}
 
-	return robot.TenantIDIn(vs...), nil
+	return robot.TenantIdIn(vs...), nil
 }
 
 // SealScope: declared `global`, so it is not behind the wall at all.
@@ -262,7 +262,7 @@ func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 		return nil, err
 	}
 
-	return tenant.IDIn(vs...), nil
+	return tenant.IdIn(vs...), nil
 }
 
 // ThingScope: declared `global`, so it is not behind the wall at all.
@@ -318,7 +318,7 @@ func (x grouped) CellScope(ctx context.Context) (predicate.Cell, error) {
 		return nil, err
 	}
 
-	return cell.IDIn(vs...), nil
+	return cell.IdIn(vs...), nil
 }
 
 // FleetScope: in no set -- it declared no field 3, so this narrows nothing.
@@ -358,7 +358,7 @@ func (x grouped) RobotScope(ctx context.Context) (predicate.Robot, error) {
 		return nil, err
 	}
 
-	return robot.CellIDIn(vs...), nil
+	return robot.CellIdIn(vs...), nil
 }
 
 // SealScope: in no set -- it declared no field 3, so this narrows nothing.
@@ -403,7 +403,7 @@ type Sink struct {
 	// is set by [Sink.WithDriver] because that is the only way it happens.
 	//
 	// What it is read for is the retry in Add. A constraint violation ends
-	// the transaction it happened in -- PostgreSQL refuses everything after
+	// the transaction it happened in -- PostgreSql refuses everything after
 	// one until it is rolled back -- so a second attempt inside a
 	// transaction this server did not open would fail for a reason that has
 	// nothing to do with names, and would take the caller's other writes
@@ -488,7 +488,7 @@ func (s Sink) Audit() apptest.AuditServiceServer {
 // one request are stamped a moment apart at best.
 var orderAudit = []entpage.Order{
 	{Column: audit.FieldDateCreated, Desc: true},
-	{Column: audit.FieldID, Desc: true},
+	{Column: audit.FieldId, Desc: true},
 }
 
 const (
@@ -542,7 +542,7 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.UUID
+			at1 uuid.Uuid
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
@@ -562,7 +562,7 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := entpage.Size(int(req.GetSize()), AuditPageSize, AuditPageLimit)
-	us, err := q.Order(audit.ByDateCreated(sql.OrderDesc()), audit.ByID(sql.OrderDesc())).Limit(size + 1).All(ctx)
+	us, err := q.Order(audit.ByDateCreated(sql.OrderDesc()), audit.ById(sql.OrderDesc())).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -580,7 +580,7 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 	res := apptest.AuditListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.ID)
+		next, err := entpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
@@ -602,7 +602,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "object_id: %s", err)
 		}
 
-		ps = append(ps, audit.ObjectIDEQ(k))
+		ps = append(ps, audit.ObjectIdEQ(k))
 	}
 	if f.HasActorId() {
 		k, err := uuid.FromBytes(f.GetActorId())
@@ -610,7 +610,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
 		}
 
-		ps = append(ps, audit.ActorIDEQ(k))
+		ps = append(ps, audit.ActorIdEQ(k))
 	}
 	if f.HasTenantId() {
 		k, err := uuid.FromBytes(f.GetTenantId())
@@ -618,7 +618,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
 		}
 
-		ps = append(ps, audit.TenantIDEQ(k))
+		ps = append(ps, audit.TenantIdEQ(k))
 	}
 	if f.HasActorTenantId() {
 		k, err := uuid.FromBytes(f.GetActorTenantId())
@@ -626,7 +626,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
 		}
 
-		ps = append(ps, audit.ActorTenantIDEQ(k))
+		ps = append(ps, audit.ActorTenantIdEQ(k))
 	}
 	if f.HasCounterpartTenantId() {
 		k, err := uuid.FromBytes(f.GetCounterpartTenantId())
@@ -634,7 +634,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
 		}
 
-		ps = append(ps, audit.CounterpartTenantIDEQ(k))
+		ps = append(ps, audit.CounterpartTenantIdEQ(k))
 	}
 	if len(ps) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
@@ -909,7 +909,7 @@ func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) 
 // one request are stamped a moment apart at best.
 var orderHolder = []entpage.Order{
 	{Column: holder.FieldDateCreated, Desc: false},
-	{Column: holder.FieldID, Desc: false},
+	{Column: holder.FieldId, Desc: false},
 }
 
 const (
@@ -963,7 +963,7 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.UUID
+			at1 uuid.Uuid
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
@@ -983,7 +983,7 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := entpage.Size(int(req.GetSize()), HolderPageSize, HolderPageLimit)
-	us, err := q.Order(holder.ByDateCreated(), holder.ByID()).Limit(size + 1).All(ctx)
+	us, err := q.Order(holder.ByDateCreated(), holder.ById()).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1001,7 +1001,7 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 	res := apptest.HolderListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.ID)
+		next, err := entpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
@@ -1036,7 +1036,7 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 				return nil, status.Errorf(codes.InvalidArgument, "tenant: %s", err)
 			}
 
-			ps = append(ps, holder.TenantIDEQ(k))
+			ps = append(ps, holder.TenantIdEQ(k))
 		} else {
 			// Named some other way -- an alias, a slug. Resolving it
 			// would be a read, and a predicate is built without one, so
@@ -1057,7 +1057,7 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 	return holder.And(ps...), nil
 }
 
-// HolderService is the prefix of every RPC of that service, which is how a
+// HolderService is the prefix of every Rpc of that service, which is how a
 // change is known to be about a Holder. A service is named for the entity it
 // is about, so the name carries it.
 var HolderService = watch.ServiceOf(apptest.HolderService_Get_FullMethodName)
@@ -1349,7 +1349,7 @@ func (s sinkPairing) tenantAtLeadTenant(ctx context.Context, ref *apptest.RobotR
 		return nil, pderr.At("lead", err)
 	}
 
-	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyID(ctx)
+	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyId(ctx)
 	if err != nil {
 		// Not there, or more than one -- both are the reference being wrong,
 		// and both are the caller's to fix.
@@ -1371,7 +1371,7 @@ func (s sinkPairing) tenantAtFollowTenant(ctx context.Context, ref *apptest.Robo
 		return nil, pderr.At("follow", err)
 	}
 
-	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyID(ctx)
+	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyId(ctx)
 	if err != nil {
 		// Not there, or more than one -- both are the reference being wrong,
 		// and both are the caller's to fix.
@@ -1447,7 +1447,7 @@ func (s sinkReading) tenantAtRobotTenant(ctx context.Context, ref *apptest.Robot
 		return nil, pderr.At("robot", err)
 	}
 
-	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyID(ctx)
+	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyId(ctx)
 	if err != nil {
 		// Not there, or more than one -- both are the reference being wrong,
 		// and both are the caller's to fix.
@@ -1583,7 +1583,7 @@ func (s sinkRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*
 // one request are stamped a moment apart at best.
 var orderRobot = []entpage.Order{
 	{Column: robot.FieldDateCreated, Desc: false},
-	{Column: robot.FieldID, Desc: false},
+	{Column: robot.FieldId, Desc: false},
 }
 
 const (
@@ -1637,7 +1637,7 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.UUID
+			at1 uuid.Uuid
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
@@ -1659,7 +1659,7 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := entpage.Size(int(req.GetSize()), RobotPageSize, RobotPageLimit)
-	us, err := q.Order(robot.ByDateCreated(), robot.ByID()).Limit(size + 1).All(ctx)
+	us, err := q.Order(robot.ByDateCreated(), robot.ById()).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1677,7 +1677,7 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 	res := apptest.RobotListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.ID)
+		next, err := entpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
@@ -1712,7 +1712,7 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 				return nil, status.Errorf(codes.InvalidArgument, "tenant: %s", err)
 			}
 
-			ps = append(ps, robot.TenantIDEQ(k))
+			ps = append(ps, robot.TenantIdEQ(k))
 		} else {
 			// Named some other way -- an alias, a slug. Resolving it
 			// would be a read, and a predicate is built without one, so
@@ -1737,7 +1737,7 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 				return nil, status.Errorf(codes.InvalidArgument, "thing: %s", err)
 			}
 
-			ps = append(ps, robot.ThingIDEQ(k))
+			ps = append(ps, robot.ThingIdEQ(k))
 		} else {
 			// Named some other way -- an alias, a slug. Resolving it
 			// would be a read, and a predicate is built without one, so
@@ -1758,7 +1758,7 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 	return robot.And(ps...), nil
 }
 
-// RobotService is the prefix of every RPC of that service, which is how a
+// RobotService is the prefix of every Rpc of that service, which is how a
 // change is known to be about a Robot. A service is named for the entity it
 // is about, so the name carries it.
 var RobotService = watch.ServiceOf(apptest.RobotService_Get_FullMethodName)
@@ -2120,7 +2120,7 @@ func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) 
 // one request are stamped a moment apart at best.
 var orderTenant = []entpage.Order{
 	{Column: tenant.FieldDateCreated, Desc: false},
-	{Column: tenant.FieldID, Desc: false},
+	{Column: tenant.FieldId, Desc: false},
 }
 
 const (
@@ -2174,7 +2174,7 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.UUID
+			at1 uuid.Uuid
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
@@ -2194,7 +2194,7 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := entpage.Size(int(req.GetSize()), TenantPageSize, TenantPageLimit)
-	us, err := q.Order(tenant.ByDateCreated(), tenant.ByID()).Limit(size + 1).All(ctx)
+	us, err := q.Order(tenant.ByDateCreated(), tenant.ById()).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2212,7 +2212,7 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 	res := apptest.TenantListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.ID)
+		next, err := entpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
@@ -2337,7 +2337,7 @@ func (s sinkThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*
 // one request are stamped a moment apart at best.
 var orderThing = []entpage.Order{
 	{Column: thing.FieldDateCreated, Desc: false},
-	{Column: thing.FieldID, Desc: false},
+	{Column: thing.FieldId, Desc: false},
 }
 
 const (
@@ -2391,7 +2391,7 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 	if v := req.GetAfter(); v != "" {
 		var (
 			at0 time.Time
-			at1 uuid.UUID
+			at1 uuid.Uuid
 		)
 		if err := entpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
@@ -2411,7 +2411,7 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := entpage.Size(int(req.GetSize()), ThingPageSize, ThingPageLimit)
-	us, err := q.Order(thing.ByDateCreated(), thing.ByID()).Limit(size + 1).All(ctx)
+	us, err := q.Order(thing.ByDateCreated(), thing.ById()).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2429,7 +2429,7 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 	res := apptest.ThingListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.ID)
+		next, err := entpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
@@ -2802,7 +2802,7 @@ func (s gateRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*
 
 // Audit is the layer that refuses a trail row written by hand.
 //
-// The RPCs exist because the trail is an entity like any other and a test is
+// The Rpcs exist because the trail is an entity like any other and a test is
 // far plainer for having them. A deployment serves none of the ones that
 // write: a trail somebody can edit is evidence of nothing.
 type Audit struct {
@@ -2870,9 +2870,9 @@ func errTrail() error {
 // Recorder writes one row of the trail for every write the generated
 // servers make.
 //
-// It is not a layer and it does not override an RPC. The servers call it
+// It is not a layer and it does not override an Rpc. The servers call it
 // from inside the transaction that makes the write, so the row and the
-// record of it hold or fall together -- and so every RPC that changes
+// record of it hold or fall together -- and so every Rpc that changes
 // anything is on the trail without anybody having listed them.
 //
 //	sink, err := bare.NewServer(db, bare.WithRecorder(pd.Recorder()))
@@ -2919,7 +2919,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		// Nothing to file it under but the actor's own, which is what the
 		// trail said for every row before this. It is the honest fallback
 		// rather than a zero: a record nobody can read is not a record.
-		tenant = uuid.UUID(v.Tenant)
+		tenant = uuid.Uuid(v.Tenant)
 	}
 
 	domain := uint32(v.Object.Domain())
@@ -2928,7 +2928,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		TenantId:            tenant[:],
 		ActorTenantId:       v.Tenant.Bytes(),
 		ActorId:             v.Actor.Bytes(),
-		TraceId:             notNull(v.Trace),
+		TraceID:             notNull(v.Trace),
 		Action:              v.Action,
 		ObjectId:            v.Object.Bytes(),
 		Domain:              &domain,
@@ -2942,7 +2942,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 
 // notNull is `v` as a column that says it always has bytes takes it.
 //
-// The two drivers disagree about exactly one value: a nil `[]byte` is SQL
+// The two drivers disagree about exactly one value: a nil `[]byte` is Sql
 // NULL to pgx and an empty blob to SQLite's driver. So a nil bound to a NOT
 // NULL column is a write that passes on the database the tests run on and is
 // refused by the one the app is deployed on.
@@ -3035,7 +3035,7 @@ func named(p *patchpb.Path, ns []uint32) bool {
 
 // subject is the tenant of the row `key` names and the row itself, and the
 // nil identifier when there is no such row any more.
-func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte, error) {
+func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.Uuid, []byte, error) {
 	switch key.Domain() {
 	case AuditDomain:
 		row, err := s.Audit().Get(ctx, apptest.AuditGetRequest_builder{
@@ -3306,7 +3306,7 @@ func erasedCell(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Cell,
 		return nil, err
 	}
 
-	q := s.Db.Cell.Query().Where(cell.IDEQ(k), cell.DateErasedNotNil())
+	q := s.Db.Cell.Query().Where(cell.IdEQ(k), cell.DateErasedNotNil())
 	bare.CellSelectInit(q, nil)
 
 	v, err := q.Only(ctx)
@@ -3333,7 +3333,7 @@ func erasedHolder(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Hol
 		return nil, err
 	}
 
-	q := s.Db.Holder.Query().Where(holder.IDEQ(k), holder.DateErasedNotNil())
+	q := s.Db.Holder.Query().Where(holder.IdEQ(k), holder.DateErasedNotNil())
 	bare.HolderSelectInit(q, nil)
 
 	v, err := q.Only(ctx)
@@ -3360,7 +3360,7 @@ func erasedJoint(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Join
 		return nil, err
 	}
 
-	q := s.Db.Joint.Query().Where(joint.IDEQ(k), joint.DateErasedNotNil())
+	q := s.Db.Joint.Query().Where(joint.IdEQ(k), joint.DateErasedNotNil())
 	bare.JointSelectInit(q, nil)
 
 	v, err := q.Only(ctx)
@@ -3387,7 +3387,7 @@ func erasedRobot(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Robo
 		return nil, err
 	}
 
-	q := s.Db.Robot.Query().Where(robot.IDEQ(k), robot.DateErasedNotNil())
+	q := s.Db.Robot.Query().Where(robot.IdEQ(k), robot.DateErasedNotNil())
 	bare.RobotSelectInit(q, nil)
 
 	v, err := q.Only(ctx)
@@ -3577,7 +3577,7 @@ func hideSeal(v *apptest.Seal) *apptest.Seal {
 	return v
 }
 
-// Intercept is the layer that runs gRPC interceptors between two layers.
+// Intercept is the layer that runs gRpc interceptors between two layers.
 //
 // They are `grpc.UnaryServerInterceptor` and `grpc.StreamServerInterceptor`,
 // the same values a deployment hands `grpc.NewServer`, so one written for
@@ -3594,7 +3594,7 @@ func hideSeal(v *apptest.Seal) *apptest.Seal {
 // is stacked is what decides whether it sees what the caller asked for or
 // what the app did about it.
 //
-// `info.Server` is the next server rather than the one gRPC registered,
+// `info.Server` is the next server rather than the one gRpc registered,
 // because that is what this call is actually being made on. `FullMethod`
 // is the same constant the wire uses.
 type Intercept struct {
@@ -5089,7 +5089,7 @@ func (r watchRecorder) Record(ctx context.Context, _ bare.Server, c bare.Change)
 // keyBytes is a key as the sixteen bytes an identifier is.
 func keyBytes(v any) []byte {
 	switch u := v.(type) {
-	case uuid.UUID:
+	case uuid.Uuid:
 		return u[:]
 	case [16]byte:
 		return u[:]
@@ -5126,7 +5126,7 @@ var _ bare.Recorder = outboxRecorder{}
 // lose exactly the one it was written to keep.
 //
 // It writes through `s.Db`, which is the client this transaction is running
-// on, and not through a server: there are no RPCs on this entity, on
+// on, and not through a server: there are no Rpcs on this entity, on
 // purpose -- see the note in payday's outbox.proto.
 func (outboxRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
 	k, err := pdid.From(keyBytes(c.Key))
@@ -5153,12 +5153,12 @@ func (outboxRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) 
 	}
 
 	return s.Db.Outbox.Create().
-		SetID(pdid.New(OutboxDomain).Uuid()).
-		SetTenantID(tenant.Uuid()).
-		SetActorID(actor.Uuid()).
+		SetId(pdid.New(OutboxDomain).Uuid()).
+		SetTenantId(tenant.Uuid()).
+		SetActorId(actor.Uuid()).
 		SetMethod(c.Method).
 		SetBy(c.By).
-		SetObjectID(k.Uuid()).
+		SetObjectId(k.Uuid()).
 		SetPatch(doc).
 		Exec(ctx)
 }
@@ -5243,7 +5243,7 @@ func (d drain) once(ctx context.Context) (int, error) {
 	// carries the millisecond it was minted and a sequence within it, so the
 	// key **is** the order and there is no column to keep in step.
 	vs, err := d.db.Outbox.Query().
-		Order(outbox.ByID()).
+		Order(outbox.ById()).
 		Limit(DrainSize).
 		All(ctx)
 	if err != nil {
@@ -5253,17 +5253,17 @@ func (d drain) once(ctx context.Context) (int, error) {
 		return 0, nil
 	}
 
-	ks := make([]uuid.UUID, len(vs))
+	ks := make([]uuid.Uuid, len(vs))
 	for i, v := range vs {
-		ks[i] = v.ID
+		ks[i] = v.Id
 		d.b.Publish(ctx, watch.Event{
-			Actor:  pdid.Id(v.ActorID),
-			Tenant: pdid.Id(v.TenantID),
+			Actor:  pdid.Id(v.ActorId),
+			Tenant: pdid.Id(v.TenantId),
 			Method: v.Method,
 			Changes: []watch.Change{{
 				Method: v.Method,
 				By:     v.By,
-				Key:    pdid.Id(v.ObjectID),
+				Key:    pdid.Id(v.ObjectId),
 				Patch:  v.Patch,
 			}},
 		})
@@ -5272,7 +5272,7 @@ func (d drain) once(ctx context.Context) (int, error) {
 	// And only then. A row deleted before it was published is an event that
 	// nothing will ever say again.
 	if _, err := d.db.Outbox.Delete().
-		Where(outbox.IDIn(ks...)).
+		Where(outbox.IdIn(ks...)).
 		Exec(ctx); err != nil {
 		return 0, err
 	}
@@ -5316,7 +5316,7 @@ func (s trailStore) of(k trail.Kinds) *ent.AuditQuery {
 func (s trailStore) Older(ctx context.Context, k trail.Kinds, at time.Time, limit int) (trail.Rows, error) {
 	vs, err := s.of(k).
 		Where(audit.DateCreatedLT(at)).
-		Order(ent.Asc(audit.FieldDateCreated, audit.FieldID)).
+		Order(ent.Asc(audit.FieldDateCreated, audit.FieldId)).
 		Limit(limit).
 		All(ctx)
 	if err != nil {
@@ -5332,7 +5332,7 @@ func (s trailStore) Older(ctx context.Context, k trail.Kinds, at time.Time, limi
 
 		out = append(out, trail.Row{
 			Doc:     b,
-			Key:     v.ID,
+			Key:     v.Id,
 			Domain:  pdid.Domain(v.Domain),
 			Created: v.DateCreated,
 		})
@@ -5352,9 +5352,9 @@ func (s trailStore) Count(ctx context.Context, k trail.Kinds, at time.Time) (int
 // when it runs, and a row backdated by a clock that stepped is one it
 // removes and the file does not have.
 func (s trailStore) Forget(ctx context.Context, keys []any) (int, error) {
-	ids := make([]uuid.UUID, 0, len(keys))
+	ids := make([]uuid.Uuid, 0, len(keys))
 	for _, k := range keys {
-		v, ok := k.(uuid.UUID)
+		v, ok := k.(uuid.Uuid)
 		if !ok {
 			return 0, fmt.Errorf("trail: %T is not a key this store gave out", k)
 		}
@@ -5362,7 +5362,7 @@ func (s trailStore) Forget(ctx context.Context, keys []any) (int, error) {
 		ids = append(ids, v)
 	}
 
-	return s.db.Audit.Delete().Where(audit.IDIn(ids...)).Exec(ctx)
+	return s.db.Audit.Delete().Where(audit.IdIn(ids...)).Exec(ctx)
 }
 
 // numbers is what the column holds, which is a domain widened to what
@@ -5410,13 +5410,13 @@ func ForgetInTrail(ctx context.Context, db *ent.Client, objects []pdid.Id) (int,
 		return 0, nil
 	}
 
-	ids := make([]uuid.UUID, len(objects))
+	ids := make([]uuid.Uuid, len(objects))
 	for i, v := range objects {
 		ids[i] = v.Uuid()
 	}
 
 	return db.Audit.Update().
-		Where(audit.ObjectIDIn(ids...)).
+		Where(audit.ObjectIdIn(ids...)).
 		SetValue([]byte{}).
 		SetPatch([]byte{}).
 		Save(ctx)
@@ -5552,12 +5552,12 @@ func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.Batc
 // The request is unpacked into exactly the message the method takes, and an
 // `Any` carrying anything else is refused rather than coerced -- a request
 // that decoded into a different message would be a write the caller did not
-// ask for, and `Any` is checked by type URL so there is a right answer.
+// ask for, and `Any` is checked by type Url so there is a right answer.
 func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, error) {
 	m := op.GetMethod()
 
 	// Under the operation's own name. The recorder fills in what the
-	// caller asked for by asking gRPC, and in here gRPC answers with the
+	// caller asked for by asking gRpc, and in here gRpc answers with the
 	// envelope -- `BatchService/Do`, for every operation of every batch --
 	// so without this the trail says a hundred different writes were all
 	// the same call.
@@ -6358,7 +6358,7 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		return anypb.New(res)
 
 	default:
-		// Including every RPC written by hand: those live on a service of
+		// Including every Rpc written by hand: those live on a service of
 		// their own and `Server` has no accessor for one, so there is nothing
 		// here to call. Unimplemented says exactly that.
 		return nil, batch.ErrNoMethod(m)

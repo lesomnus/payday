@@ -72,13 +72,13 @@ func (m *Mutation) ResetDateCreated() {
 	delete(m.clearedFields, FieldDateCreated)
 }
 
-// SetLeadID sets the "lead_id" field.
-func (m *Mutation) SetLeadID(u uuid.UUID) {
+// SetLeadId sets the "lead_id" field.
+func (m *Mutation) SetLeadId(u uuid.UUID) {
 	m.lead = &u
 }
 
-// LeadID returns the value of the "lead_id" field in the mutation.
-func (m *Mutation) LeadID() (r uuid.UUID, exists bool) {
+// LeadId returns the value of the "lead_id" field in the mutation.
+func (m *Mutation) LeadId() (r uuid.UUID, exists bool) {
 	v := m.lead
 	if v == nil {
 		return
@@ -86,18 +86,18 @@ func (m *Mutation) LeadID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetLeadID resets all changes to the "lead_id" field.
-func (m *Mutation) ResetLeadID() {
+// ResetLeadId resets all changes to the "lead_id" field.
+func (m *Mutation) ResetLeadId() {
 	m.lead = nil
 }
 
-// SetFollowID sets the "follow_id" field.
-func (m *Mutation) SetFollowID(u uuid.UUID) {
+// SetFollowId sets the "follow_id" field.
+func (m *Mutation) SetFollowId(u uuid.UUID) {
 	m.follow = &u
 }
 
-// FollowID returns the value of the "follow_id" field in the mutation.
-func (m *Mutation) FollowID() (r uuid.UUID, exists bool) {
+// FollowId returns the value of the "follow_id" field in the mutation.
+func (m *Mutation) FollowId() (r uuid.UUID, exists bool) {
 	v := m.follow
 	if v == nil {
 		return
@@ -105,15 +105,15 @@ func (m *Mutation) FollowID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetFollowID resets all changes to the "follow_id" field.
-func (m *Mutation) ResetFollowID() {
+// ResetFollowId resets all changes to the "follow_id" field.
+func (m *Mutation) ResetFollowId() {
 	m.follow = nil
 }
 
 // ClearLead clears the "lead" edge to the Robot entity.
 func (m *Mutation) ClearLead() {
 	m.clearedlead = true
-	m.clearedFields[FieldLeadID] = struct{}{}
+	m.clearedFields[FieldLeadId] = struct{}{}
 }
 
 // LeadCleared reports if the "lead" edge to the Robot entity was cleared.
@@ -121,10 +121,10 @@ func (m *Mutation) LeadCleared() bool {
 	return m.clearedlead
 }
 
-// LeadIDs returns the "lead" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// LeadID instead. It exists only for internal usage by the builders.
-func (m *Mutation) LeadIDs() (ids []uuid.UUID) {
+// LeadIds returns the "lead" edge Ids in the mutation.
+// Note that Ids always returns len(Ids) <= 1 for unique edges, and you should use
+// LeadId instead. It exists only for internal usage by the builders.
+func (m *Mutation) LeadIds() (ids []uuid.UUID) {
 	if id := m.lead; id != nil {
 		ids = append(ids, *id)
 	}
@@ -140,7 +140,7 @@ func (m *Mutation) ResetLead() {
 // ClearFollow clears the "follow" edge to the Robot entity.
 func (m *Mutation) ClearFollow() {
 	m.clearedfollow = true
-	m.clearedFields[FieldFollowID] = struct{}{}
+	m.clearedFields[FieldFollowId] = struct{}{}
 }
 
 // FollowCleared reports if the "follow" edge to the Robot entity was cleared.
@@ -148,10 +148,10 @@ func (m *Mutation) FollowCleared() bool {
 	return m.clearedfollow
 }
 
-// FollowIDs returns the "follow" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// FollowID instead. It exists only for internal usage by the builders.
-func (m *Mutation) FollowIDs() (ids []uuid.UUID) {
+// FollowIds returns the "follow" edge Ids in the mutation.
+// Note that Ids always returns len(Ids) <= 1 for unique edges, and you should use
+// FollowId instead. It exists only for internal usage by the builders.
+func (m *Mutation) FollowIds() (ids []uuid.UUID) {
 	if id := m.follow; id != nil {
 		ids = append(ids, *id)
 	}
@@ -203,10 +203,10 @@ func (m *Mutation) Fields() []string {
 		fields = append(fields, FieldDateCreated)
 	}
 	if m.lead != nil {
-		fields = append(fields, FieldLeadID)
+		fields = append(fields, FieldLeadId)
 	}
 	if m.follow != nil {
-		fields = append(fields, FieldFollowID)
+		fields = append(fields, FieldFollowId)
 	}
 	return fields
 }
@@ -218,10 +218,10 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case FieldDateCreated:
 		return m.DateCreated()
-	case FieldLeadID:
-		return m.LeadID()
-	case FieldFollowID:
-		return m.FollowID()
+	case FieldLeadId:
+		return m.LeadId()
+	case FieldFollowId:
+		return m.FollowId()
 	}
 	return nil, false
 }
@@ -245,19 +245,19 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDateCreated(v)
 		return nil
-	case FieldLeadID:
+	case FieldLeadId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetLeadID(v)
+		m.SetLeadId(v)
 		return nil
-	case FieldFollowID:
+	case FieldFollowId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetFollowID(v)
+		m.SetFollowId(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Pairing field %s", name)
@@ -320,11 +320,11 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldDateCreated:
 		m.ResetDateCreated()
 		return nil
-	case FieldLeadID:
-		m.ResetLeadID()
+	case FieldLeadId:
+		m.ResetLeadId()
 		return nil
-	case FieldFollowID:
-		m.ResetFollowID()
+	case FieldFollowId:
+		m.ResetFollowId()
 		return nil
 	}
 	return fmt.Errorf("unknown Pairing field %s", name)
@@ -342,9 +342,9 @@ func (m *Mutation) AddedEdges() []string {
 	return edges
 }
 
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// AddedIds returns all Ids (to other nodes) that were added for the given edge
 // name in this mutation.
-func (m *Mutation) AddedIDs(name string) []ent.Value {
+func (m *Mutation) AddedIds(name string) []ent.Value {
 	switch name {
 	case EdgeLead:
 		if id := m.lead; id != nil {
@@ -364,9 +364,9 @@ func (m *Mutation) RemovedEdges() []string {
 	return edges
 }
 
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// RemovedIds returns all Ids (to other nodes) that were removed for the edge with
 // the given name in this mutation.
-func (m *Mutation) RemovedIDs(name string) []ent.Value {
+func (m *Mutation) RemovedIds(name string) []ent.Value {
 	return nil
 }
 

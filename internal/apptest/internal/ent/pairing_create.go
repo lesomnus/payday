@@ -36,32 +36,32 @@ func (_c *PairingCreate) SetNillableDateCreated(v *time.Time) *PairingCreate {
 	return _c
 }
 
-// SetLeadID sets the "lead_id" field.
-func (_c *PairingCreate) SetLeadID(v uuid.UUID) *PairingCreate {
-	_c.mutation.SetLeadID(v)
+// SetLeadId sets the "lead_id" field.
+func (_c *PairingCreate) SetLeadId(v uuid.UUID) *PairingCreate {
+	_c.mutation.SetLeadId(v)
 	return _c
 }
 
-// SetFollowID sets the "follow_id" field.
-func (_c *PairingCreate) SetFollowID(v uuid.UUID) *PairingCreate {
-	_c.mutation.SetFollowID(v)
+// SetFollowId sets the "follow_id" field.
+func (_c *PairingCreate) SetFollowId(v uuid.UUID) *PairingCreate {
+	_c.mutation.SetFollowId(v)
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *PairingCreate) SetID(v uuid.UUID) *PairingCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *PairingCreate) SetId(v uuid.UUID) *PairingCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
 // SetLead sets the "lead" edge to the Robot entity.
 func (_c *PairingCreate) SetLead(v *Robot) *PairingCreate {
-	return _c.SetLeadID(v.ID)
+	return _c.SetLeadId(v.Id)
 }
 
 // SetFollow sets the "follow" edge to the Robot entity.
 func (_c *PairingCreate) SetFollow(v *Robot) *PairingCreate {
-	return _c.SetFollowID(v.ID)
+	return _c.SetFollowId(v.Id)
 }
 
 // Mutation returns the PairingMutation object of the builder.
@@ -98,16 +98,16 @@ func (_c *PairingCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *PairingCreate) check() error {
-	if _, ok := _c.mutation.LeadID(); !ok {
+	if _, ok := _c.mutation.LeadId(); !ok {
 		return &ValidationError{Name: "lead_id", err: errors.New(`ent: missing required field "Pairing.lead_id"`)}
 	}
-	if _, ok := _c.mutation.FollowID(); !ok {
+	if _, ok := _c.mutation.FollowId(); !ok {
 		return &ValidationError{Name: "follow_id", err: errors.New(`ent: missing required field "Pairing.follow_id"`)}
 	}
-	if len(_c.mutation.LeadIDs()) == 0 {
+	if len(_c.mutation.LeadIds()) == 0 {
 		return &ValidationError{Name: "lead", err: errors.New(`ent: missing required edge "Pairing.lead"`)}
 	}
-	if len(_c.mutation.FollowIDs()) == 0 {
+	if len(_c.mutation.FollowIds()) == 0 {
 		return &ValidationError{Name: "follow", err: errors.New(`ent: missing required edge "Pairing.follow"`)}
 	}
 	return nil
@@ -124,14 +124,14 @@ func (_c *PairingCreate) sqlSave(ctx context.Context) (*Pairing, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -139,17 +139,17 @@ func (_c *PairingCreate) sqlSave(ctx context.Context) (*Pairing, error) {
 func (_c *PairingCreate) createSpec() (*Pairing, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Pairing{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(pairing.Table, sqlgraph.NewFieldSpec(pairing.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(pairing.Table, sqlgraph.NewFieldSpec(pairing.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
 	if value, ok := _c.mutation.DateCreated(); ok {
 		_spec.SetField(pairing.FieldDateCreated, field.TypeTime, value)
 		_node.DateCreated = value
 	}
-	if nodes := _c.mutation.LeadIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.LeadIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -157,16 +157,16 @@ func (_c *PairingCreate) createSpec() (*Pairing, *sqlgraph.CreateSpec) {
 			Columns: []string{pairing.LeadColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(robot.FieldID, field.TypeUUID),
+				IdSpec: sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.LeadID = nodes[0]
+		_node.LeadId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.FollowIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.FollowIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -174,13 +174,13 @@ func (_c *PairingCreate) createSpec() (*Pairing, *sqlgraph.CreateSpec) {
 			Columns: []string{pairing.FollowColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(robot.FieldID, field.TypeUUID),
+				IdSpec: sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.FollowID = nodes[0]
+		_node.FollowId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -229,7 +229,7 @@ func (_c *PairingCreateBulk) Save(ctx context.Context) ([]*Pairing, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

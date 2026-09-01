@@ -78,8 +78,8 @@ func (_q *RobotQuery) QueryTenant() *TenantQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(robot.Table, robot.FieldID, selector),
-			sqlgraph.To(tenant.Table, tenant.FieldID),
+			sqlgraph.From(robot.Table, robot.FieldId, selector),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, robot.TenantTable, robot.TenantColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -100,8 +100,8 @@ func (_q *RobotQuery) QueryThing() *ThingQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(robot.Table, robot.FieldID, selector),
-			sqlgraph.To(thing.Table, thing.FieldID),
+			sqlgraph.From(robot.Table, robot.FieldId, selector),
+			sqlgraph.To(thing.Table, thing.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, robot.ThingTable, robot.ThingColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -122,8 +122,8 @@ func (_q *RobotQuery) QueryCell() *CellQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(robot.Table, robot.FieldID, selector),
-			sqlgraph.To(cell.Table, cell.FieldID),
+			sqlgraph.From(robot.Table, robot.FieldId, selector),
+			sqlgraph.To(cell.Table, cell.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, robot.CellTable, robot.CellColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -154,11 +154,11 @@ func (_q *RobotQuery) FirstX(ctx context.Context) *Robot {
 	return node
 }
 
-// FirstID returns the first Robot ID from the query.
-// Returns a *NotFoundError when no Robot ID was found.
-func (_q *RobotQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstId returns the first Robot Id from the query.
+// Returns a *NotFoundError when no Robot Id was found.
+func (_q *RobotQuery) FirstId(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
-	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
+	if ids, err = _q.Limit(1).Ids(setContextOp(ctx, _q.ctx, ent.OpQueryFirstId)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -168,9 +168,9 @@ func (_q *RobotQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	return ids[0], nil
 }
 
-// FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *RobotQuery) FirstIDX(ctx context.Context) uuid.UUID {
-	id, err := _q.FirstID(ctx)
+// FirstIdX is like FirstId, but panics if an error occurs.
+func (_q *RobotQuery) FirstIdX(ctx context.Context) uuid.UUID {
+	id, err := _q.FirstId(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -204,12 +204,12 @@ func (_q *RobotQuery) OnlyX(ctx context.Context) *Robot {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Robot ID in the query.
-// Returns a *NotSingularError when more than one Robot ID is found.
+// OnlyId is like Only, but returns the only Robot Id in the query.
+// Returns a *NotSingularError when more than one Robot Id is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *RobotQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *RobotQuery) OnlyId(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
-	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
+	if ids, err = _q.Limit(2).Ids(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyId)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -223,9 +223,9 @@ func (_q *RobotQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	return
 }
 
-// OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *RobotQuery) OnlyIDX(ctx context.Context) uuid.UUID {
-	id, err := _q.OnlyID(ctx)
+// OnlyIdX is like OnlyId, but panics if an error occurs.
+func (_q *RobotQuery) OnlyIdX(ctx context.Context) uuid.UUID {
+	id, err := _q.OnlyId(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -251,21 +251,21 @@ func (_q *RobotQuery) AllX(ctx context.Context) []*Robot {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Robot IDs.
-func (_q *RobotQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// Ids executes the query and returns a list of Robot Ids.
+func (_q *RobotQuery) Ids(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
-	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(robot.FieldID).Scan(ctx, &ids); err != nil {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIds)
+	if err = _q.Select(robot.FieldId).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
-// IDsX is like IDs, but panics if an error occurs.
-func (_q *RobotQuery) IDsX(ctx context.Context) []uuid.UUID {
-	ids, err := _q.IDs(ctx)
+// IdsX is like Ids, but panics if an error occurs.
+func (_q *RobotQuery) IdsX(ctx context.Context) []uuid.UUID {
+	ids, err := _q.Ids(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -293,7 +293,7 @@ func (_q *RobotQuery) CountX(ctx context.Context) int {
 // Exist returns true if the query has elements in the graph.
 func (_q *RobotQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
-	switch _, err := _q.FirstID(ctx); {
+	switch _, err := _q.FirstId(ctx); {
 	case IsNotFound(err):
 		return false, nil
 	case err != nil:
@@ -497,7 +497,7 @@ func (_q *RobotQuery) loadTenant(ctx context.Context, query *TenantQuery, nodes 
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Robot)
 	for i := range nodes {
-		fk := nodes[i].TenantID
+		fk := nodes[i].TenantId
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -506,15 +506,15 @@ func (_q *RobotQuery) loadTenant(ctx context.Context, query *TenantQuery, nodes 
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(tenant.IDIn(ids...))
+	query.Where(tenant.IdIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		nodes, ok := nodeids[n.Id]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "tenant_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "tenant_id" returned %v`, n.Id)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -526,7 +526,7 @@ func (_q *RobotQuery) loadThing(ctx context.Context, query *ThingQuery, nodes []
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Robot)
 	for i := range nodes {
-		fk := nodes[i].ThingID
+		fk := nodes[i].ThingId
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -535,15 +535,15 @@ func (_q *RobotQuery) loadThing(ctx context.Context, query *ThingQuery, nodes []
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(thing.IDIn(ids...))
+	query.Where(thing.IdIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		nodes, ok := nodeids[n.Id]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "thing_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "thing_id" returned %v`, n.Id)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -555,7 +555,7 @@ func (_q *RobotQuery) loadCell(ctx context.Context, query *CellQuery, nodes []*R
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Robot)
 	for i := range nodes {
-		fk := nodes[i].CellID
+		fk := nodes[i].CellId
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -564,15 +564,15 @@ func (_q *RobotQuery) loadCell(ctx context.Context, query *CellQuery, nodes []*R
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(cell.IDIn(ids...))
+	query.Where(cell.IdIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		nodes, ok := nodeids[n.Id]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "cell_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "cell_id" returned %v`, n.Id)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -594,7 +594,7 @@ func (_q *RobotQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (_q *RobotQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(robot.Table, robot.Columns, sqlgraph.NewFieldSpec(robot.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewQuerySpec(robot.Table, robot.Columns, sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -603,20 +603,20 @@ func (_q *RobotQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, robot.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, robot.FieldId)
 		for i := range fields {
-			if fields[i] != robot.FieldID {
+			if fields[i] != robot.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
 		if _q.withTenant != nil {
-			_spec.Node.AddColumnOnce(robot.FieldTenantID)
+			_spec.Node.AddColumnOnce(robot.FieldTenantId)
 		}
 		if _q.withThing != nil {
-			_spec.Node.AddColumnOnce(robot.FieldThingID)
+			_spec.Node.AddColumnOnce(robot.FieldThingId)
 		}
 		if _q.withCell != nil {
-			_spec.Node.AddColumnOnce(robot.FieldCellID)
+			_spec.Node.AddColumnOnce(robot.FieldCellId)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

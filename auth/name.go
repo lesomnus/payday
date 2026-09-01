@@ -30,9 +30,9 @@ import (
 //
 // The form this came from wrote `acme/admin`, with no mark, and told the two
 // apart by looking at them: a "/" meant a name, and anything else was tried as
-// a UUID and then as hex. That is guessing from the shape of what was written,
+// a Uuid and then as hex. That is guessing from the shape of what was written,
 // and [slug] holds the reason the shape cannot be trusted -- an alias is
-// lowercase letters, digits and hyphens, and so is a UUID, so
+// lowercase letters, digits and hyphens, and so is a Uuid, so
 // "abcd1234-2a10-8abc-8a03-9f2e1c4d5b6a" is a legal alias. That the
 // identifiers this app makes happen to begin with a digit today is an accident
 // of the clock and not a rule anybody wrote down.
@@ -50,8 +50,8 @@ func ParseName(v string) (Identity, error) {
 		return parseSlug(v)
 	}
 
-	// An identifier, written either as a UUID or as the bytes of one. Both go
-	// through [pdid.Parse], which refuses a UUID that is not one of ours --
+	// An identifier, written either as a Uuid or as the bytes of one. Both go
+	// through [pdid.Parse], which refuses a Uuid that is not one of ours --
 	// and a caller naming one of those is naming a row this app never wrote.
 	if id, err := pdid.Parse(v); err == nil {
 		return Identity{Id: id.String()}, nil

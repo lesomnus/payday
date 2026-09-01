@@ -123,7 +123,7 @@ func TestAnErrorThatSaysNothingStillLandsOnABox(t *testing.T) {
 //
 // A code is what a caller acts on. Wrapping everything that comes back in an
 // InvalidArgument would tell a caller to go and fix a field over a row that is
-// not there or an RPC that is not implemented -- and it would do it silently,
+// not there or an Rpc that is not implemented -- and it would do it silently,
 // because the message would still read correctly.
 func TestSomebodyElsesRefusalIsNotAboutAField(t *testing.T) {
 	x := require.New(t)
@@ -140,7 +140,7 @@ func TestSomebodyElsesRefusalIsNotAboutAField(t *testing.T) {
 	}
 }
 
-// TestAnErrorWithNothingToPlaceIsNotAFailure is the answer a UI gets for every
+// TestAnErrorWithNothingToPlaceIsNotAFailure is the answer a Ui gets for every
 // refusal that was never about a form.
 func TestAnErrorWithNothingToPlaceIsNotAFailure(t *testing.T) {
 	x := require.New(t)
@@ -162,7 +162,7 @@ func TestRefusingWithoutSayingWhyIsABug(t *testing.T) {
 // TestANameThatIsNotOneSaysWhyAndNotWhere is `slug` carrying its own rule and
 // declining to guess the rest.
 //
-// A package below gRPC knows the rule and cannot know the request. It says the
+// A package below gRpc knows the rule and cannot know the request. It says the
 // first and leaves the second to whoever had the message, which is what makes
 // the two compose instead of each being half right.
 func TestANameThatIsNotOneSaysWhyAndNotWhere(t *testing.T) {

@@ -108,7 +108,7 @@ func (_u *SealUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SealUpdat
 }
 
 func (_u *SealUpdate) sqlSave(ctx context.Context) (_node int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(seal.Table, seal.Columns, sqlgraph.NewFieldSpec(seal.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewUpdateSpec(seal.Table, seal.Columns, sqlgraph.NewFieldSpec(seal.FieldId, field.TypeUuid))
 	if ps := _u.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -245,20 +245,20 @@ func (_u *SealUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SealUp
 }
 
 func (_u *SealUpdateOne) sqlSave(ctx context.Context) (_node *Seal, err error) {
-	_spec := sqlgraph.NewUpdateSpec(seal.Table, seal.Columns, sqlgraph.NewFieldSpec(seal.FieldID, field.TypeUUID))
-	id, ok := _u.mutation.ID()
+	_spec := sqlgraph.NewUpdateSpec(seal.Table, seal.Columns, sqlgraph.NewFieldSpec(seal.FieldId, field.TypeUuid))
+	id, ok := _u.mutation.Id()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Seal.id" for update`)}
 	}
-	_spec.Node.ID.Value = id
+	_spec.Node.Id.Value = id
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, seal.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, seal.FieldId)
 		for _, f := range fields {
 			if !seal.ValidColumn(f) {
 				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 			}
-			if f != seal.FieldID {
+			if f != seal.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, f)
 			}
 		}

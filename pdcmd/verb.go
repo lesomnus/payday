@@ -491,7 +491,7 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 	}
 }
 
-// cmdErase takes a reference and nothing else, which is what the RPC takes.
+// cmdErase takes a reference and nothing else, which is what the Rpc takes.
 //
 // It still accepts the trailing protojson, so that the shape of these commands
 // is one shape. There is nothing useful to put in it here, and a command that

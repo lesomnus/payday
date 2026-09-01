@@ -11,54 +11,54 @@ import (
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 )
 
-// ID filters vertices based on their ID field.
-func ID(id uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldEQ(FieldID, id))
+// Id filters vertices based on their Id field.
+func Id(id uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldId, id))
 }
 
-// IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldEQ(FieldID, id))
+// IdEQ applies the EQ predicate on the Id field.
+func IdEQ(id uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldId, id))
 }
 
-// IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldNEQ(FieldID, id))
+// IdNEQ applies the NEQ predicate on the Id field.
+func IdNEQ(id uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNEQ(FieldId, id))
 }
 
-// IDIn applies the In predicate on the ID field.
-func IDIn(ids ...uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldIn(FieldID, ids...))
+// IdIn applies the In predicate on the Id field.
+func IdIn(ids ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldIn(FieldId, ids...))
 }
 
-// IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldNotIn(FieldID, ids...))
+// IdNotIn applies the NotIn predicate on the Id field.
+func IdNotIn(ids ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNotIn(FieldId, ids...))
 }
 
-// IDGT applies the GT predicate on the ID field.
-func IDGT(id uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldGT(FieldID, id))
+// IdGT applies the GT predicate on the Id field.
+func IdGT(id uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldGT(FieldId, id))
 }
 
-// IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldGTE(FieldID, id))
+// IdGTE applies the GTE predicate on the Id field.
+func IdGTE(id uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldGTE(FieldId, id))
 }
 
-// IDLT applies the LT predicate on the ID field.
-func IDLT(id uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldLT(FieldID, id))
+// IdLT applies the LT predicate on the Id field.
+func IdLT(id uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldLT(FieldId, id))
 }
 
-// IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldLTE(FieldID, id))
+// IdLTE applies the LTE predicate on the Id field.
+func IdLTE(id uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldLTE(FieldId, id))
 }
 
-// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
-func TenantID(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldEQ(FieldTenantID, v))
+// TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
+func TenantId(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldTenantId, v))
 }
 
 // Celsius applies equality check predicate on the "celsius" field. It's identical to CelsiusEQ.
@@ -71,49 +71,49 @@ func DateCreated(v time.Time) predicate.Reading {
 	return predicate.Reading(sql.FieldEQ(FieldDateCreated, v))
 }
 
-// RobotID applies equality check predicate on the "robot_id" field. It's identical to RobotIDEQ.
-func RobotID(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldEQ(FieldRobotID, v))
+// RobotId applies equality check predicate on the "robot_id" field. It's identical to RobotIdEQ.
+func RobotId(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldRobotId, v))
 }
 
-// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
-func TenantIDEQ(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldEQ(FieldTenantID, v))
+// TenantIdEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIdEQ(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldTenantId, v))
 }
 
-// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
-func TenantIDNEQ(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldNEQ(FieldTenantID, v))
+// TenantIdNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIdNEQ(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNEQ(FieldTenantId, v))
 }
 
-// TenantIDIn applies the In predicate on the "tenant_id" field.
-func TenantIDIn(vs ...uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldIn(FieldTenantID, vs...))
+// TenantIdIn applies the In predicate on the "tenant_id" field.
+func TenantIdIn(vs ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldIn(FieldTenantId, vs...))
 }
 
-// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
-func TenantIDNotIn(vs ...uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldNotIn(FieldTenantID, vs...))
+// TenantIdNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIdNotIn(vs ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNotIn(FieldTenantId, vs...))
 }
 
-// TenantIDGT applies the GT predicate on the "tenant_id" field.
-func TenantIDGT(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldGT(FieldTenantID, v))
+// TenantIdGT applies the GT predicate on the "tenant_id" field.
+func TenantIdGT(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldGT(FieldTenantId, v))
 }
 
-// TenantIDGTE applies the GTE predicate on the "tenant_id" field.
-func TenantIDGTE(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldGTE(FieldTenantID, v))
+// TenantIdGTE applies the GTE predicate on the "tenant_id" field.
+func TenantIdGTE(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldGTE(FieldTenantId, v))
 }
 
-// TenantIDLT applies the LT predicate on the "tenant_id" field.
-func TenantIDLT(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldLT(FieldTenantID, v))
+// TenantIdLT applies the LT predicate on the "tenant_id" field.
+func TenantIdLT(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldLT(FieldTenantId, v))
 }
 
-// TenantIDLTE applies the LTE predicate on the "tenant_id" field.
-func TenantIDLTE(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldLTE(FieldTenantID, v))
+// TenantIdLTE applies the LTE predicate on the "tenant_id" field.
+func TenantIdLTE(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldLTE(FieldTenantId, v))
 }
 
 // CelsiusEQ applies the EQ predicate on the "celsius" field.
@@ -206,31 +206,31 @@ func DateCreatedNotNil() predicate.Reading {
 	return predicate.Reading(sql.FieldNotNull(FieldDateCreated))
 }
 
-// RobotIDEQ applies the EQ predicate on the "robot_id" field.
-func RobotIDEQ(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldEQ(FieldRobotID, v))
+// RobotIdEQ applies the EQ predicate on the "robot_id" field.
+func RobotIdEQ(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldEQ(FieldRobotId, v))
 }
 
-// RobotIDNEQ applies the NEQ predicate on the "robot_id" field.
-func RobotIDNEQ(v uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldNEQ(FieldRobotID, v))
+// RobotIdNEQ applies the NEQ predicate on the "robot_id" field.
+func RobotIdNEQ(v uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNEQ(FieldRobotId, v))
 }
 
-// RobotIDIn applies the In predicate on the "robot_id" field.
-func RobotIDIn(vs ...uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldIn(FieldRobotID, vs...))
+// RobotIdIn applies the In predicate on the "robot_id" field.
+func RobotIdIn(vs ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldIn(FieldRobotId, vs...))
 }
 
-// RobotIDNotIn applies the NotIn predicate on the "robot_id" field.
-func RobotIDNotIn(vs ...uuid.UUID) predicate.Reading {
-	return predicate.Reading(sql.FieldNotIn(FieldRobotID, vs...))
+// RobotIdNotIn applies the NotIn predicate on the "robot_id" field.
+func RobotIdNotIn(vs ...uuid.UUID) predicate.Reading {
+	return predicate.Reading(sql.FieldNotIn(FieldRobotId, vs...))
 }
 
 // HasRobot applies the HasEdge predicate on the "robot" edge.
 func HasRobot() predicate.Reading {
 	return predicate.Reading(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
+			sqlgraph.From(Table, FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, RobotTable, RobotColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)

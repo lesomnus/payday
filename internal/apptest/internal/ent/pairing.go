@@ -17,14 +17,14 @@ import (
 // Pairing is the model entity for the Pairing schema.
 type Pairing struct {
 	config `json:"-"`
-	// ID of the ent.
-	ID uuid.UUID `json:"id,omitempty"`
+	// Id of the ent.
+	Id uuid.UUID `json:"id,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
-	// LeadID holds the value of the "lead_id" field.
-	LeadID uuid.UUID `json:"lead_id,omitempty"`
-	// FollowID holds the value of the "follow_id" field.
-	FollowID uuid.UUID `json:"follow_id,omitempty"`
+	// LeadId holds the value of the "lead_id" field.
+	LeadId uuid.UUID `json:"lead_id,omitempty"`
+	// FollowId holds the value of the "follow_id" field.
+	FollowId uuid.UUID `json:"follow_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the PairingQuery when eager-loading is set.
 	Edges        PairingEdges `json:"edges"`
@@ -71,7 +71,7 @@ func (*Pairing) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case pairing.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case pairing.FieldID, pairing.FieldLeadID, pairing.FieldFollowID:
+		case pairing.FieldId, pairing.FieldLeadId, pairing.FieldFollowId:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -88,11 +88,11 @@ func (_m *Pairing) assignValues(columns []string, values []any) error {
 	}
 	for i := range columns {
 		switch columns[i] {
-		case pairing.FieldID:
+		case pairing.FieldId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				_m.ID = *value
+				_m.Id = *value
 			}
 		case pairing.FieldDateCreated:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -100,17 +100,17 @@ func (_m *Pairing) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DateCreated = value.Time
 			}
-		case pairing.FieldLeadID:
+		case pairing.FieldLeadId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field lead_id", values[i])
 			} else if value != nil {
-				_m.LeadID = *value
+				_m.LeadId = *value
 			}
-		case pairing.FieldFollowID:
+		case pairing.FieldFollowId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field follow_id", values[i])
 			} else if value != nil {
-				_m.FollowID = *value
+				_m.FollowId = *value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -157,15 +157,15 @@ func (_m *Pairing) Unwrap() *Pairing {
 func (_m *Pairing) String() string {
 	var builder strings.Builder
 	builder.WriteString("Pairing(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.Id))
 	builder.WriteString("date_created=")
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("lead_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LeadID))
+	builder.WriteString(fmt.Sprintf("%v", _m.LeadId))
 	builder.WriteString(", ")
 	builder.WriteString("follow_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.FollowID))
+	builder.WriteString(fmt.Sprintf("%v", _m.FollowId))
 	builder.WriteByte(')')
 	return builder.String()
 }

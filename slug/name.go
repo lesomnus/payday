@@ -123,7 +123,7 @@ func (names) Name(_ context.Context, _ string, given string, _ proto.Message) (s
 // making a name up for it.
 //
 // It is for an entity whose name is the point: a tenant, a project, anything a
-// person writes in a URL or says out loud. The thing it buys is not safety --
+// person writes in a Url or says out loud. The thing it buys is not safety --
 // see [Names] -- it is **feedback**: a client that dropped the field is told
 // so, instead of writing a row that has to be found and renamed.
 //
@@ -201,8 +201,8 @@ func NameWith(ctx context.Context, n Namer, entity string, given string, req pro
 // # Why it does not need to know what collided
 //
 // It cannot: a collision on the name and a collision on the key are the same
-// gRPC code, and telling them apart means reading the driver's own words --
-// text on SQLite, a struct field on PostgreSQL. A table of those is a table
+// gRpc code, and telling them apart means reading the driver's own words --
+// text on SQLite, a struct field on PostgreSql. A table of those is a table
 // that is wrong on the next driver.
 //
 // It does not have to. **A retry changes only the name**, so it can only ever

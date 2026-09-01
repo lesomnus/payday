@@ -40,7 +40,7 @@ func (_d *OutboxDelete) ExecX(ctx context.Context) int {
 }
 
 func (_d *OutboxDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(outbox.Table, sqlgraph.NewFieldSpec(outbox.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewDeleteSpec(outbox.Table, sqlgraph.NewFieldSpec(outbox.FieldId, field.TypeUuid))
 	if ps := _d.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

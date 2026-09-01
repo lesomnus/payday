@@ -100,7 +100,7 @@ func EmitDomains(g *protogen.GeneratedFile, s *Schema) {
 		// Which of them is the wall, said as a number rather than as a name,
 		// because the name is the app's: these entities may be in the app's own
 		// proto package. What reads it is the runtime that has to recognise a
-		// tenant and cannot name its Go type -- `auth.MTLS`, sorting the names
+		// tenant and cannot name its Go type -- `auth.MTls`, sorting the names
 		// a certificate carries.
 		g.P("")
 		g.P("	", pkgPdid.Ident("RegisterTenant"), "(", t.GoName(), "Domain)")
@@ -308,10 +308,10 @@ func EmitGrouped(g *protogen.GeneratedFile, s *Schema, p Paths) {
 		if v.IsSet {
 			// From inside the set there is exactly one, the same way a tenant
 			// is its own wall.
-			g.P("	return ", at.Ident("IDIn"), "(vs...), nil")
+			g.P("	return ", at.Ident("IdIn"), "(vs...), nil")
 		} else {
 			// The foreign key rather than a traversal; see [collapse].
-			g.P("	return ", at.Ident(pascal(v.Set)+"IDIn"), "(vs...), nil")
+			g.P("	return ", at.Ident(pascal(v.Set)+"IdIn"), "(vs...), nil")
 		}
 
 		g.P("}")
@@ -335,7 +335,7 @@ func whySet(v *Entity, s *Schema) string {
 // walk out along the edges the schema named until it reaches one.
 func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) string {
 	tenantIn := fmt.Sprintf("%s(vs...)",
-		g.QualifiedGoIdent((p.Ent + "/" + protogen.GoImportPath(s.Tenant.EntPkg())).Ident("IDIn")))
+		g.QualifiedGoIdent((p.Ent + "/" + protogen.GoImportPath(s.Tenant.EntPkg())).Ident("IdIn")))
 
 	if v.IsTenant {
 		// From inside a tenant there is exactly one, which is what a tenant
@@ -346,7 +346,7 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 	if len(v.Columns) > 0 {
 		// A row that names its tenant without holding an edge to it. The
 		// predicate is on this entity's own column, so there is nothing to
-		// walk: `audit.TenantIDIn(vs...)`.
+		// walk: `audit.TenantIdIn(vs...)`.
 		//
 		// Several columns is OR, and it is the trail: one write has a tenant
 		// whose row changed and a tenant whose actor made it, and the record is
@@ -406,7 +406,7 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 // collapse is the last hop of a `via`, read off the foreign key rather than
 // walked.
 //
-// `HasTenantWith(tenant.IDIn(vs...))` and `tenant_id IN vs` answer the same
+// `HasTenantWith(tenant.IdIn(vs...))` and `tenant_id IN vs` answer the same
 // question, and they answer it the same way **because the key is a foreign
 // key**: a row cannot hold the identifier of a tenant that is not there.
 // Without that guarantee the two differ, which is worth saying out loud -- the
@@ -422,12 +422,12 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 // `s.C(<Edge>Column)` -- with a startup check that the column really was on the
 // table being read from, because a wall that narrows to the wrong rows says
 // nothing. ent generates the predicate now: the edge is bound to a field, so
-// `<Edge>IDIn` exists exactly when the key is on that table, and there is no
+// `<Edge>IdIn` exists exactly when the key is on that table, and there is no
 // assumption left to check.
 func collapse(g *protogen.GeneratedFile, at graph.Entity, name string, p Paths) string {
 	pkg := p.Ent + "/" + protogen.GoImportPath(strings.ToLower(string(at.FullName().Name())))
 
-	return fmt.Sprintf("%s(vs...)", g.QualifiedGoIdent(pkg.Ident(pascal(name)+"IDIn")))
+	return fmt.Sprintf("%s(vs...)", g.QualifiedGoIdent(pkg.Ident(pascal(name)+"IdIn")))
 }
 
 // why is the one-line reason a reader of the generated file gets, so that it
@@ -456,7 +456,7 @@ func why(v *Entity, s *Schema) string {
 //
 // The initialisms are ent's own list and not a style preference: a predicate is
 // looked up by the name ent generated, so `tenant_id` has to come out
-// `TenantID` and not `TenantId` or nothing compiles.
+// `TenantId` and not `TenantId` or nothing compiles.
 func pascal(v string) string {
 	var b strings.Builder
 	for _, part := range strings.Split(v, "_") {
@@ -481,7 +481,7 @@ func pascal(v string) string {
 // camel is a proto field name as **protoc-gen-go** writes it in Go.
 //
 // It is [pascal] without the initialisms, and the difference is the whole
-// reason it exists: ent writes `object_id` as `ObjectID` and protobuf-go writes
+// reason it exists: ent writes `object_id` as `ObjectId` and protobuf-go writes
 // it as `ObjectId`, so a generated line that reaches for a message accessor and
 // one that reaches for a predicate cannot share a name.
 func camel(v string) string {
@@ -499,10 +499,10 @@ func camel(v string) string {
 }
 
 var initialisms = map[string]string{
-	"id":   "ID",
-	"ids":  "IDs",
-	"url":  "URL",
-	"uri":  "URI",
-	"uuid": "UUID",
-	"ip":   "IP",
+	"id":   "Id",
+	"ids":  "Ids",
+	"url":  "Url",
+	"uri":  "Uri",
+	"uuid": "Uuid",
+	"ip":   "Ip",
 }

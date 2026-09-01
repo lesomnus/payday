@@ -14,12 +14,12 @@ import (
 	"github.com/lesomnus/payday/pdid"
 )
 
-// JSON is protojson with the identifiers written the way a person writes them.
+// Json is protojson with the identifiers written the way a person writes them.
 //
-// # Why there are two JSONs
+// # Why there are two Jsons
 //
 // protojson encodes `bytes` as base64, and every payday identifier is a `bytes`
-// field, so [ProtoJSON] answers:
+// field, so [ProtoJson] answers:
 //
 //	"id":  "AaABD/0ejxumAkRCTSq6vQ=="
 //
@@ -48,7 +48,7 @@ import (
 // alphabetically, which is why this walks the descriptor rather than handing a
 // decoded map back to the encoder. `id` first and the timestamps last is the
 // order the message is written in and the order somebody reads it in.
-var JSON Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
+var Json Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	b, err := jsonOf(m.ProtoReflect(), "")
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ var JSON Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 // jsonOf renders one message, in schema order, with uuids for identifiers.
 //
 // It marshals with protojson first and re-emits, rather than encoding from
-// scratch. protojson holds every rule about how a protobuf becomes JSON --
+// scratch. protojson holds every rule about how a protobuf becomes Json --
 // 64-bit integers are strings, a `Timestamp` is RFC 3339, an enum is its name,
 // a `FieldMask` is a comma-joined path list -- and an encoder written here would
 // be a second, worse copy of all of it that drifts on the next well-known type
@@ -85,7 +85,7 @@ func jsonOf(m protoreflect.Message, indent string) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// emit writes `v` as a JSON object, taking its key order from `d`.
+// emit writes `v` as a Json object, taking its key order from `d`.
 func emit(b *bytes.Buffer, v map[string]any, d protoreflect.MessageDescriptor, indent string) error {
 	inner := indent + "  "
 
@@ -96,7 +96,7 @@ func emit(b *bytes.Buffer, v map[string]any, d protoreflect.MessageDescriptor, i
 	for i := range fs.Len() {
 		fd := fs.Get(i)
 
-		// protojson writes the JSON name; the proto name is accepted as well,
+		// protojson writes the Json name; the proto name is accepted as well,
 		// so both are looked for. A field that is not in the map was not set.
 		x, ok := v[fd.JSONName()]
 		if !ok {
@@ -182,7 +182,7 @@ func emitOne(b *bytes.Buffer, x any, fd protoreflect.FieldDescriptor, indent str
 	return nil
 }
 
-// unmarshalJSON reads a request, accepting an identifier written either way.
+// unmarshalJson reads a request, accepting an identifier written either way.
 //
 // # Why this is not a second parser
 //
@@ -191,17 +191,17 @@ func emitOne(b *bytes.Buffer, x any, fd protoreflect.FieldDescriptor, indent str
 // request. That is the round trip broken in the middle: this app prints an
 // identifier one way and refuses to be told it that way.
 //
-// So the JSON is walked before protojson sees it, and a string standing where
+// So the Json is walked before protojson sees it, and a string standing where
 // the schema declared `type: TYPE_UUID` is re-encoded as base64. Only there:
 // nothing else in the document is touched, and a `bytes` field payday did not
 // put there still means base64.
 //
 // # Why protojson cannot be left to work it out
 //
-// It does not refuse a uuid, which was the surprise. protojson accepts URL-safe
+// It does not refuse a uuid, which was the surprise. protojson accepts Url-safe
 // base64 as well as standard, and `-` is in that alphabet, so
 // `01a0010f-fd1e-8f1b-a602-44424d2ababd` decodes -- to 27 bytes of nothing. What
-// comes back is `id: invalid UUID (got 27 bytes)` from the server, which is a
+// comes back is `id: invalid Uuid (got 27 bytes)` from the server, which is a
 // true statement about a value nobody wrote.
 //
 // So the substitution has to happen before protojson sees the document, which
@@ -217,7 +217,7 @@ func emitOne(b *bytes.Buffer, x any, fd protoreflect.FieldDescriptor, indent str
 // That is why the lenient reading is the default. `--in protojson` turns it off
 // for a caller that wants what protojson accepts and nothing more; it is a
 // stricter contract rather than a different one.
-func unmarshalJSON(b []byte, m proto.Message, strict bool) error {
+func unmarshalJson(b []byte, m proto.Message, strict bool) error {
 	if strict {
 		return protojson.Unmarshal(b, m)
 	}

@@ -19,7 +19,7 @@ import (
 )
 
 // open returns an empty SQLite database that lives in memory. The migrations an
-// app ships are likely PostgreSQL, but the machinery is the same, and this is
+// app ships are likely PostgreSql, but the machinery is the same, and this is
 // the one database a test can have all to itself.
 func open(t *testing.T) *sql.DB {
 	t.Helper()
@@ -41,12 +41,12 @@ func open(t *testing.T) *sql.DB {
 // one would not be able to say that.
 func schema() []*entschema.Table {
 	tenant := []*entschema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString, Unique: true},
 	}
 	holder := []*entschema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
-		{Name: "holder_tenant", Type: field.TypeUUID},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "holder_tenant", Type: field.TypeUuid},
 	}
 
 	tenants := &entschema.Table{
@@ -233,7 +233,7 @@ func TestDialect(t *testing.T) {
 	dir, err := migrate.OpenDir(t.TempDir())
 	require.NoError(t, err)
 
-	// The files here say they are PostgreSQL; the database below speaks SQLite.
+	// The files here say they are PostgreSql; the database below speaks SQLite.
 	m := migrate.Migrations{
 		Dir:     dir,
 		Dialect: dialect.Postgres,

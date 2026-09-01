@@ -228,5 +228,5 @@ func (RefParser) ToString(v Ref) string {
 }
 
 func (RefParser) String() string {
-	return "ID|@[TENANT/]ALIAS[#KIND]"
+	return "Id|@[TENANT/]ALIAS[#KIND]"
 }

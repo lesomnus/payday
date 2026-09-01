@@ -55,7 +55,7 @@ type Seen map[pdid.Id]bool
 // easier to write correctly three times and then wrongly the fourth -- which is
 // exactly the kind of thing worth generating a caller for rather than a copy.
 //
-//   - `service` is the prefix of the RPCs whose writes this stream is about.
+//   - `service` is the prefix of the Rpcs whose writes this stream is about.
 //   - `snapshot` sends what matches now, and may be nil for an entity that has
 //     nothing to snapshot.
 //   - `send` reads the rows the keys name and sends what it should.
@@ -101,7 +101,7 @@ func Stream(
 }
 
 // Next waits for changes to an entity and answers with the rows they name, each
-// once, with the RPC that last touched it.
+// once, with the Rpc that last touched it.
 //
 // Everything already queued is taken and not just the first of it. A row that
 // changed three times while a stream was busy is one row to read, and reading
@@ -113,8 +113,8 @@ func Next(ctx context.Context, events <-chan Event, service string) (map[pdid.Id
 	take := func(v Event) {
 		for _, c := range v.Changes {
 			// The service is named for the entity it is about, so the name of
-			// the RPC that made the write says which entity this was. It is
-			// `By` and never `Method`: an RPC written by hand is dispatched
+			// the Rpc that made the write says which entity this was. It is
+			// `By` and never `Method`: an Rpc written by hand is dispatched
 			// under its own name and could be about anything.
 			if !strings.HasPrefix(c.By, service) {
 				continue
@@ -160,10 +160,10 @@ func Next(ctx context.Context, events <-chan Event, service string) (map[pdid.Id
 	}
 }
 
-// ServiceOf is the prefix of every RPC of one service, taken from the name of
+// ServiceOf is the prefix of every Rpc of one service, taken from the name of
 // one of them.
 //
-// A change says which RPC made it, and a service is named for the entity it is
+// A change says which Rpc made it, and a service is named for the entity it is
 // about, so the prefix is what tells a stream whether a write is its business.
 func ServiceOf(fullMethod string) string {
 	i := strings.LastIndex(fullMethod, "/")

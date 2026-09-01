@@ -77,7 +77,7 @@ func (g Grant) Within(vs ...pdid.Id) Grant {
 	return g
 }
 
-// To narrows a Grant to the given methods, by the name gRPC knows them by --
+// To narrows a Grant to the given methods, by the name gRpc knows them by --
 // "/app.RobotService/Get". Naming none allows none.
 func (g Grant) To(vs ...string) Grant {
 	g.anyAction = false
@@ -120,7 +120,7 @@ func (g Grant) SetIds() []pdid.Id { return g.sets }
 // interceptor does not read.
 func (g Grant) AnyAction() bool { return g.anyAction }
 
-// Actions is what this narrows to, by the name gRPC knows a method by.
+// Actions is what this narrows to, by the name gRpc knows a method by.
 //
 // The slice is this Grant's own and writing to it changes what the Grant
 // allows. It is handed over rather than cloned to match [Grant.TenantIds] and

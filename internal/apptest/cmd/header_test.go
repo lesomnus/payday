@@ -36,7 +36,7 @@ func TestTheTrailCanSayWhatTheThingWasCalled(t *testing.T) {
 	x.NoError(err)
 
 	row := rows[len(rows)-1]
-	k := pdid.Id(row.ObjectID)
+	k := pdid.Id(row.ObjectId)
 	x.Equal(pd.RobotDomain, k.Domain(), "the identifier says which kind")
 
 	// And which one, by reading it back through whichever service that domain
@@ -101,7 +101,7 @@ func TestAnEntityThatHasNoneOfItSaysSo(t *testing.T) {
 	x.NotEmpty(rows)
 
 	got, err := b.Walled.Audit().Get(b.as(ctx), app.AuditGetRequest_builder{
-		Ref: app.AuditRef_builder{Id: rows[len(rows)-1].ID[:]}.Build(),
+		Ref: app.AuditRef_builder{Id: rows[len(rows)-1].Id[:]}.Build(),
 	}.Build())
 	x.NoError(err)
 

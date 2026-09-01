@@ -10,14 +10,14 @@ import (
 const (
 	// Label holds the string label denoting the joint type in the database.
 	Label = "joint"
-	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
+	// FieldId holds the string denoting the id field in the database.
+	FieldId = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
 	// FieldDateErased holds the string denoting the date_erased field in the database.
 	FieldDateErased = "date_erased"
-	// FieldRobotID holds the string denoting the robot_id field in the database.
-	FieldRobotID = "robot_id"
+	// FieldRobotId holds the string denoting the robot_id field in the database.
+	FieldRobotId = "robot_id"
 	// EdgeRobot holds the string denoting the robot edge name in mutations.
 	EdgeRobot = "robot"
 	// Table holds the table name of the joint in the database.
@@ -31,12 +31,12 @@ const (
 	RobotColumn = "robot_id"
 )
 
-// Columns holds all SQL columns for joint fields.
+// Columns holds all Sql columns for joint fields.
 var Columns = []string{
-	FieldID,
+	FieldId,
 	FieldAlias,
 	FieldDateErased,
-	FieldRobotID,
+	FieldRobotId,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -52,9 +52,9 @@ func ValidColumn(column string) bool {
 // OrderOption defines the ordering options for the Joint queries.
 type OrderOption func(*sql.Selector)
 
-// ByID orders the results by the id field.
-func ByID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldID, opts...).ToFunc()
+// ById orders the results by the id field.
+func ById(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldId, opts...).ToFunc()
 }
 
 // ByAlias orders the results by the alias field.
@@ -67,9 +67,9 @@ func ByDateErased(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateErased, opts...).ToFunc()
 }
 
-// ByRobotID orders the results by the robot_id field.
-func ByRobotID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldRobotID, opts...).ToFunc()
+// ByRobotId orders the results by the robot_id field.
+func ByRobotId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRobotId, opts...).ToFunc()
 }
 
 // ByRobotField orders the results by robot field.
@@ -80,8 +80,8 @@ func ByRobotField(field string, opts ...sql.OrderTermOption) OrderOption {
 }
 func newRobotStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(RobotInverseTable, FieldID),
+		sqlgraph.From(Table, FieldId),
+		sqlgraph.To(RobotInverseTable, FieldId),
 		sqlgraph.Edge(sqlgraph.M2O, false, RobotTable, RobotColumn),
 	)
 }

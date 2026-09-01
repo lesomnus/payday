@@ -11,49 +11,49 @@ import (
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 )
 
-// ID filters vertices based on their ID field.
-func ID(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldEQ(FieldID, id))
+// Id filters vertices based on their Id field.
+func Id(id uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldEQ(FieldId, id))
 }
 
-// IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldEQ(FieldID, id))
+// IdEQ applies the EQ predicate on the Id field.
+func IdEQ(id uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldEQ(FieldId, id))
 }
 
-// IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldNEQ(FieldID, id))
+// IdNEQ applies the NEQ predicate on the Id field.
+func IdNEQ(id uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldNEQ(FieldId, id))
 }
 
-// IDIn applies the In predicate on the ID field.
-func IDIn(ids ...uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldIn(FieldID, ids...))
+// IdIn applies the In predicate on the Id field.
+func IdIn(ids ...uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldIn(FieldId, ids...))
 }
 
-// IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldNotIn(FieldID, ids...))
+// IdNotIn applies the NotIn predicate on the Id field.
+func IdNotIn(ids ...uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldNotIn(FieldId, ids...))
 }
 
-// IDGT applies the GT predicate on the ID field.
-func IDGT(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldGT(FieldID, id))
+// IdGT applies the GT predicate on the Id field.
+func IdGT(id uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldGT(FieldId, id))
 }
 
-// IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldGTE(FieldID, id))
+// IdGTE applies the GTE predicate on the Id field.
+func IdGTE(id uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldGTE(FieldId, id))
 }
 
-// IDLT applies the LT predicate on the ID field.
-func IDLT(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldLT(FieldID, id))
+// IdLT applies the LT predicate on the Id field.
+func IdLT(id uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldLT(FieldId, id))
 }
 
-// IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldLTE(FieldID, id))
+// IdLTE applies the LTE predicate on the Id field.
+func IdLTE(id uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldLTE(FieldId, id))
 }
 
 // Alias applies equality check predicate on the "alias" field. It's identical to AliasEQ.
@@ -66,9 +66,9 @@ func DateErased(v time.Time) predicate.Joint {
 	return predicate.Joint(sql.FieldEQ(FieldDateErased, v))
 }
 
-// RobotID applies equality check predicate on the "robot_id" field. It's identical to RobotIDEQ.
-func RobotID(v uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldEQ(FieldRobotID, v))
+// RobotId applies equality check predicate on the "robot_id" field. It's identical to RobotIdEQ.
+func RobotId(v uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldEQ(FieldRobotId, v))
 }
 
 // AliasEQ applies the EQ predicate on the "alias" field.
@@ -186,41 +186,41 @@ func DateErasedNotNil() predicate.Joint {
 	return predicate.Joint(sql.FieldNotNull(FieldDateErased))
 }
 
-// RobotIDEQ applies the EQ predicate on the "robot_id" field.
-func RobotIDEQ(v uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldEQ(FieldRobotID, v))
+// RobotIdEQ applies the EQ predicate on the "robot_id" field.
+func RobotIdEQ(v uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldEQ(FieldRobotId, v))
 }
 
-// RobotIDNEQ applies the NEQ predicate on the "robot_id" field.
-func RobotIDNEQ(v uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldNEQ(FieldRobotID, v))
+// RobotIdNEQ applies the NEQ predicate on the "robot_id" field.
+func RobotIdNEQ(v uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldNEQ(FieldRobotId, v))
 }
 
-// RobotIDIn applies the In predicate on the "robot_id" field.
-func RobotIDIn(vs ...uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldIn(FieldRobotID, vs...))
+// RobotIdIn applies the In predicate on the "robot_id" field.
+func RobotIdIn(vs ...uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldIn(FieldRobotId, vs...))
 }
 
-// RobotIDNotIn applies the NotIn predicate on the "robot_id" field.
-func RobotIDNotIn(vs ...uuid.UUID) predicate.Joint {
-	return predicate.Joint(sql.FieldNotIn(FieldRobotID, vs...))
+// RobotIdNotIn applies the NotIn predicate on the "robot_id" field.
+func RobotIdNotIn(vs ...uuid.UUID) predicate.Joint {
+	return predicate.Joint(sql.FieldNotIn(FieldRobotId, vs...))
 }
 
-// RobotIDIsNil applies the IsNil predicate on the "robot_id" field.
-func RobotIDIsNil() predicate.Joint {
-	return predicate.Joint(sql.FieldIsNull(FieldRobotID))
+// RobotIdIsNil applies the IsNil predicate on the "robot_id" field.
+func RobotIdIsNil() predicate.Joint {
+	return predicate.Joint(sql.FieldIsNull(FieldRobotId))
 }
 
-// RobotIDNotNil applies the NotNil predicate on the "robot_id" field.
-func RobotIDNotNil() predicate.Joint {
-	return predicate.Joint(sql.FieldNotNull(FieldRobotID))
+// RobotIdNotNil applies the NotNil predicate on the "robot_id" field.
+func RobotIdNotNil() predicate.Joint {
+	return predicate.Joint(sql.FieldNotNull(FieldRobotId))
 }
 
 // HasRobot applies the HasEdge predicate on the "robot" edge.
 func HasRobot() predicate.Joint {
 	return predicate.Joint(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
+			sqlgraph.From(Table, FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, RobotTable, RobotColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)

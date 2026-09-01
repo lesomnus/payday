@@ -15,16 +15,16 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.64.0 or later.
+// Requires gRpc-Go v1.64.0 or later.
 const _ = grpc.SupportPackageIsVersion9
 
 const (
 	BatchService_Do_FullMethodName = "/payday.BatchService/Do"
 )
 
-// BatchServiceClient is the client API for BatchService service.
+// BatchServiceClient is the client Api for BatchService service.
 //
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+// For semantics around ctx use and closing/ending streaming Rpcs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // BatchService runs several writes as one transaction.
 //
@@ -37,7 +37,7 @@ const (
 // A caller finds out what may go in an `Op` from the rest of this server's
 // reflection listing. What it may **not** hold is anything the server closed,
 // anything the credential is not for, and anything the policy refuses -- all of
-// which are checked per operation rather than against this RPC; see
+// which are checked per operation rather than against this Rpc; see
 // `payday/batch`.
 type BatchServiceClient interface {
 	Do(ctx context.Context, in *BatchRequest, opts ...grpc.CallOption) (*BatchResponse, error)
@@ -61,7 +61,7 @@ func (c *batchServiceClient) Do(ctx context.Context, in *BatchRequest, opts ...g
 	return out, nil
 }
 
-// BatchServiceServer is the server API for BatchService service.
+// BatchServiceServer is the server Api for BatchService service.
 // All implementations must embed UnimplementedBatchServiceServer
 // for forward compatibility.
 //
@@ -76,7 +76,7 @@ func (c *batchServiceClient) Do(ctx context.Context, in *BatchRequest, opts ...g
 // A caller finds out what may go in an `Op` from the rest of this server's
 // reflection listing. What it may **not** hold is anything the server closed,
 // anything the credential is not for, and anything the policy refuses -- all of
-// which are checked per operation rather than against this RPC; see
+// which are checked per operation rather than against this Rpc; see
 // `payday/batch`.
 type BatchServiceServer interface {
 	Do(context.Context, *BatchRequest) (*BatchResponse, error)

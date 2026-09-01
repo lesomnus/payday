@@ -41,14 +41,14 @@ func New(t *testing.T) *App {
 	x := require.New(t)
 
 	// The database this suite runs on, which is SQLite unless somebody named
-	// another; see [pdtest.DB]. Everything payday generates is SQL, so a suite
+	// another; see [pdtest.DB]. Everything payday generates is Sql, so a suite
 	// that only ever ran on SQLite has never seen the statements it will issue.
 	drv, dsn := pdtest.DB(t)
 	db, err := sql.Open(drv, dsn)
 	x.NoError(err)
 
 	// One connection, because an in-memory SQLite database belongs to the
-	// connection that opened it. PostgreSQL has no such rule and pooling is the
+	// connection that opened it. PostgreSql has no such rule and pooling is the
 	// point of it there.
 	dia := dialect.Postgres
 	if drv == "sqlite3" {

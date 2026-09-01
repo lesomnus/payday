@@ -74,8 +74,8 @@ func (_q *ReadingQuery) QueryRobot() *RobotQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(reading.Table, reading.FieldID, selector),
-			sqlgraph.To(robot.Table, robot.FieldID),
+			sqlgraph.From(reading.Table, reading.FieldId, selector),
+			sqlgraph.To(robot.Table, robot.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, reading.RobotTable, reading.RobotColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -106,11 +106,11 @@ func (_q *ReadingQuery) FirstX(ctx context.Context) *Reading {
 	return node
 }
 
-// FirstID returns the first Reading ID from the query.
-// Returns a *NotFoundError when no Reading ID was found.
-func (_q *ReadingQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstId returns the first Reading Id from the query.
+// Returns a *NotFoundError when no Reading Id was found.
+func (_q *ReadingQuery) FirstId(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
-	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
+	if ids, err = _q.Limit(1).Ids(setContextOp(ctx, _q.ctx, ent.OpQueryFirstId)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -120,9 +120,9 @@ func (_q *ReadingQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	return ids[0], nil
 }
 
-// FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *ReadingQuery) FirstIDX(ctx context.Context) uuid.UUID {
-	id, err := _q.FirstID(ctx)
+// FirstIdX is like FirstId, but panics if an error occurs.
+func (_q *ReadingQuery) FirstIdX(ctx context.Context) uuid.UUID {
+	id, err := _q.FirstId(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -156,12 +156,12 @@ func (_q *ReadingQuery) OnlyX(ctx context.Context) *Reading {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Reading ID in the query.
-// Returns a *NotSingularError when more than one Reading ID is found.
+// OnlyId is like Only, but returns the only Reading Id in the query.
+// Returns a *NotSingularError when more than one Reading Id is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *ReadingQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *ReadingQuery) OnlyId(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
-	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
+	if ids, err = _q.Limit(2).Ids(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyId)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -175,9 +175,9 @@ func (_q *ReadingQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	return
 }
 
-// OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *ReadingQuery) OnlyIDX(ctx context.Context) uuid.UUID {
-	id, err := _q.OnlyID(ctx)
+// OnlyIdX is like OnlyId, but panics if an error occurs.
+func (_q *ReadingQuery) OnlyIdX(ctx context.Context) uuid.UUID {
+	id, err := _q.OnlyId(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -203,21 +203,21 @@ func (_q *ReadingQuery) AllX(ctx context.Context) []*Reading {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Reading IDs.
-func (_q *ReadingQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// Ids executes the query and returns a list of Reading Ids.
+func (_q *ReadingQuery) Ids(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
-	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(reading.FieldID).Scan(ctx, &ids); err != nil {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIds)
+	if err = _q.Select(reading.FieldId).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
-// IDsX is like IDs, but panics if an error occurs.
-func (_q *ReadingQuery) IDsX(ctx context.Context) []uuid.UUID {
-	ids, err := _q.IDs(ctx)
+// IdsX is like Ids, but panics if an error occurs.
+func (_q *ReadingQuery) IdsX(ctx context.Context) []uuid.UUID {
+	ids, err := _q.Ids(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -245,7 +245,7 @@ func (_q *ReadingQuery) CountX(ctx context.Context) int {
 // Exist returns true if the query has elements in the graph.
 func (_q *ReadingQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
-	switch _, err := _q.FirstID(ctx); {
+	switch _, err := _q.FirstId(ctx); {
 	case IsNotFound(err):
 		return false, nil
 	case err != nil:
@@ -301,12 +301,12 @@ func (_q *ReadingQuery) WithRobot(opts ...func(*RobotQuery)) *ReadingQuery {
 // Example:
 //
 //	var v []struct {
-//		TenantID uuid.UUID `json:"tenant_id,omitempty"`
+//		TenantId uuid.UUID `json:"tenant_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Reading.Query().
-//		GroupBy(reading.FieldTenantID).
+//		GroupBy(reading.FieldTenantId).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *ReadingQuery) GroupBy(field string, fields ...string) *ReadingGroupBy {
@@ -324,11 +324,11 @@ func (_q *ReadingQuery) GroupBy(field string, fields ...string) *ReadingGroupBy 
 // Example:
 //
 //	var v []struct {
-//		TenantID uuid.UUID `json:"tenant_id,omitempty"`
+//		TenantId uuid.UUID `json:"tenant_id,omitempty"`
 //	}
 //
 //	client.Reading.Query().
-//		Select(reading.FieldTenantID).
+//		Select(reading.FieldTenantId).
 //		Scan(ctx, &v)
 func (_q *ReadingQuery) Select(fields ...string) *ReadingSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -411,7 +411,7 @@ func (_q *ReadingQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes 
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Reading)
 	for i := range nodes {
-		fk := nodes[i].RobotID
+		fk := nodes[i].RobotId
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -420,15 +420,15 @@ func (_q *ReadingQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes 
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(robot.IDIn(ids...))
+	query.Where(robot.IdIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		nodes, ok := nodeids[n.Id]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "robot_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "robot_id" returned %v`, n.Id)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -450,7 +450,7 @@ func (_q *ReadingQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (_q *ReadingQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(reading.Table, reading.Columns, sqlgraph.NewFieldSpec(reading.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewQuerySpec(reading.Table, reading.Columns, sqlgraph.NewFieldSpec(reading.FieldId, field.TypeUuid))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -459,14 +459,14 @@ func (_q *ReadingQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, reading.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, reading.FieldId)
 		for i := range fields {
-			if fields[i] != reading.FieldID {
+			if fields[i] != reading.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
 		if _q.withRobot != nil {
-			_spec.Node.AddColumnOnce(reading.FieldRobotID)
+			_spec.Node.AddColumnOnce(reading.FieldRobotId)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

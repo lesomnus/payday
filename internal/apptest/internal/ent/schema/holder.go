@@ -21,13 +21,13 @@ type Holder struct {
 
 func (Holder) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
+		field.Uuid("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
 		field.String("alias"),
 		field.String("name"),
 		field.String("desc"),
-		field.JSON("labels", map[string]string{}).
+		field.Json("labels", map[string]string{}).
 			Optional(),
 		field.Time("date_updated"),
 		field.Time("date_erased").
@@ -37,9 +37,9 @@ func (Holder) Fields() []ent.Field {
 			Immutable().
 			Optional(),
 		field.String("idp_subject"),
-		field.JSON("profile", &apptest.Profile{}).ValueScanner(entpb.ValueScanner[*apptest.Profile]{}).
+		field.Json("profile", &apptest.Profile{}).ValueScanner(entpb.ValueScanner[*apptest.Profile]{}).
 			Optional(),
-		field.UUID("tenant_id", uuid.UUID{}).
+		field.Uuid("tenant_id", uuid.UUID{}).
 			Immutable(),
 	}
 }

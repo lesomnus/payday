@@ -15,21 +15,21 @@ import (
 	"github.com/lesomnus/payday/pdid"
 )
 
-// MethodMTLS is what [MTLS] calls itself.
-const MethodMTLS = "mtls"
+// MethodMTls is what [MTls] calls itself.
+const MethodMTls = "mtls"
 
-// MTLS reads who the caller is from the certificate the connection was made
+// MTls reads who the caller is from the certificate the connection was made
 // with.
 //
-//	URI SAN     spiffe://example.com/@acme/admin   -> @acme/admin
-//	URI SAN     x:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
-//	URI SAN     urn:fleet:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
+//	Uri SAN     spiffe://example.com/@acme/admin   -> @acme/admin
+//	Uri SAN     x:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
+//	Uri SAN     urn:fleet:0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
 //	Common Name @acme/admin
 //
 // A certificate may carry **several** names, and they are told apart by the
 // domain byte rather than by their order; see [certIdentity].
 //
-// It checks nothing, and that is right: by the time a request arrives, the TLS
+// It checks nothing, and that is right: by the time a request arrives, the Tls
 // layer has already verified the chain against the certificate authorities the
 // server was configured with, and a connection whose certificate did not check
 // out never became a connection. What is left is to read the name.
@@ -40,20 +40,20 @@ const MethodMTLS = "mtls"
 // `tls.RequestClientCert`, where anyone may send anything. Reading the
 // verified chain is what makes the difference not matter.
 //
-// A URI SAN is preferred over the Common Name because it is the place a name
+// A Uri SAN is preferred over the Common Name because it is the place a name
 // belongs -- a CN is a display string that happens to be usable -- but the CN
 // is read too, since that is where a name usually is.
 //
 // The "@" is read here for the same reason it is read in a header, and by the
 // same code: a certificate names an actor either way an actor is named, and
 // [ParseName] holds why the two cannot be told apart by looking. It is a legal
-// character in the path of a URI and in a Common Name, so nothing about
+// character in the path of a Uri and in a Common Name, so nothing about
 // issuing the certificate changes.
 //
 // There is no Provider counterpart. A certificate is presented when the
 // connection is made, not written into a request, so the other half of this is
-// `grpc.WithTransportCredentials` and a TLS configuration.
-func MTLS() Handler {
+// `grpc.WithTransportCredentials` and a Tls configuration.
+func MTls() Handler {
 	return HandlerFunc(func(ctx context.Context) (Identity, error) {
 		cert, err := peerCert(ctx)
 		if err != nil {
@@ -66,7 +66,7 @@ func MTLS() Handler {
 			// and it stops the search: falling through to another handler would
 			// serve the request as somebody, which is the whole of what this
 			// refuses to guess at.
-			return Identity{}, fmt.Errorf("%s: %w", MethodMTLS, err)
+			return Identity{}, fmt.Errorf("%s: %w", MethodMTls, err)
 		}
 		if !ok {
 			// A verified certificate that names nobody this app knows about is
@@ -78,7 +78,7 @@ func MTLS() Handler {
 		// A certificate has nowhere to carry an attenuation, so it narrows
 		// nothing and says so rather than leaving the zero Grant, which allows
 		// nothing at all.
-		id.Method, id.Grant = MethodMTLS, frame.Whole()
+		id.Method, id.Grant = MethodMTls, frame.Whole()
 
 		return id, nil
 	})
@@ -93,7 +93,7 @@ func peerCert(ctx context.Context) (*x509.Certificate, error) {
 
 	info, ok := p.AuthInfo.(credentials.TLSInfo)
 	if !ok {
-		// Not TLS at all, so there is no certificate to read.
+		// Not Tls at all, so there is no certificate to read.
 		return nil, ErrNoCredential
 	}
 
@@ -119,7 +119,7 @@ var ErrAmbiguous = errors.New("cannot say who this certificate is for")
 // # Several names is structure, not ambiguity
 //
 // A certificate for a device says more than one thing about it: which device,
-// and which tenant holds it. Those are two URI SANs, and the form this came
+// and which tenant holds it. Those are two Uri SANs, and the form this came
 // from refused the certificate outright -- it counted them and called two an
 // ambiguity.
 //
@@ -147,7 +147,7 @@ var ErrAmbiguous = errors.New("cannot say who this certificate is for")
 //
 // # And it does not fall through to the Common Name
 //
-// Only when there was no URI SAN at all. A certificate that carries one this
+// Only when there was no Uri SAN at all. A certificate that carries one this
 // cannot read is a certificate that meant to say something, and answering with
 // a Common Name that happens to be there is answering a question that was not
 // asked -- which is how a name nobody manages any more comes back to life.
@@ -155,7 +155,7 @@ var ErrAmbiguous = errors.New("cannot say who this certificate is for")
 // # The scheme is not read
 //
 // `spiffe://host/a/b` and `https://host/a/b` both say `a/b`, because the scheme
-// is about who issues names and this app has one issuer. An opaque URI -- one
+// is about who issues names and this app has one issuer. An opaque Uri -- one
 // with no authority and no path, like `fleet:0199c3f4-…`, where everything is
 // in `Opaque` -- says what is after the colon. Both forms reach [ParseName],
 // which is the same code a header goes through: a certificate names an actor
@@ -238,12 +238,12 @@ func certIdentity(cert *x509.Certificate) (Identity, bool, error) {
 	return who, true, nil
 }
 
-// sanValue is what a URI SAN says, whichever of the two shapes it is written
+// sanValue is what a Uri SAN says, whichever of the two shapes it is written
 // in.
 //
 // # The namespace in front of the name is not read
 //
-// A URI SAN is a name inside somebody's namespace, and payday reads the name.
+// A Uri SAN is a name inside somebody's namespace, and payday reads the name.
 // It already ignored the **scheme** -- `x:` in the example above means nothing,
 // and any other scheme would have done -- so this ignores whatever else is in
 // front of the name for the same reason: which namespace a deployment issues
@@ -259,7 +259,7 @@ func certIdentity(cert *x509.Certificate) (Identity, bool, error) {
 // to be told about would write that.
 //
 // It is safe to cut at the last colon because nothing payday accepts contains
-// one. An identifier is a UUID and a name is `@tenant/alias`, whose alias is
+// one. An identifier is a Uuid and a name is `@tenant/alias`, whose alias is
 // lowercase letters, digits and single hyphens -- see [ParseName]. A value with
 // a colon in it was never a name this could read, so cutting cannot turn a
 // refusal into an acceptance of something else.

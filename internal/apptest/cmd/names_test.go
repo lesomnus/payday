@@ -364,7 +364,7 @@ func TestANameThisServerChoseIsChosenAgainWhenItIsTaken(t *testing.T) {
 //
 // The refusal is passed through rather than rewritten. Saying "no free name
 // after 3 tries" would assert the one thing this cannot know -- a duplicate key
-// is the same gRPC code -- and it would say it loudest exactly when it is
+// is the same gRpc code -- and it would say it loudest exactly when it is
 // wrong.
 func TestItGivesUpAndPassesTheRefusalOn(t *testing.T) {
 	x := require.New(t)

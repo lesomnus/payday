@@ -30,7 +30,7 @@ type Options struct {
 	// Renderers is a format for one message type, used only when the person did
 	// not ask for a format.
 	//
-	// Only then, and this is worth being exact about: `-o json` means JSON, and
+	// Only then, and this is worth being exact about: `-o json` means Json, and
 	// a renderer that changed what `-o json` produced would make a script's
 	// output depend on which app it ran against. kubectl draws the same line --
 	// its typed print handlers shape the human-readable table and never the
@@ -407,9 +407,9 @@ func builtinAs(name string, header bool) (Printer, error) {
 	case name == "prototext":
 		return ProtoText, nil
 	case name == "protojson":
-		return ProtoJSON, nil
+		return ProtoJson, nil
 	case name == "json":
-		return JSON, nil
+		return Json, nil
 	case name == "name":
 		return Name, nil
 	case name == "table":

@@ -8,7 +8,7 @@
 //	arm-01               the tenant comes from who is asking
 //
 // A slug is what a person writes: an authorization header, a key in a config
-// file, a URI in a certificate, a line in a log, an argument to the CLI. The
+// file, a Uri in a certificate, a line in a log, an argument to the CLI. The
 // wire does not carry one -- a reference there is a structured message that the
 // server already holds as a type, and reading text back into it on every
 // request would be parsing what nothing had to serialize.
@@ -17,7 +17,7 @@
 //
 // It is not decoration. A field that has to take "an identifier or a name" can
 // be handed both, and the two written forms overlap: an alias is lowercase
-// letters, digits and hyphens, and so is a UUID.
+// letters, digits and hyphens, and so is a Uuid.
 // "abcd1234-2a10-8abc-8a03-9f2e1c4d5b6a" breaks none of the rules in
 // [Validate]. That the identifiers this app makes happen to begin with a zero
 // digit today is an accident of the clock -- a millisecond timestamp will not
@@ -267,7 +267,7 @@ func (v Slug) Expect(d pdid.Domain) (Slug, error) {
 }
 
 // MarshalText makes a slug readable by anything that reads text: a YAML key, a
-// JSON field, a flag. Those are where slugs live, so the alternative is every
+// Json field, a flag. Those are where slugs live, so the alternative is every
 // one of those places knowing to call [Parse] -- and the one that forgets holds
 // a string that was never checked.
 func (v Slug) MarshalText() ([]byte, error) {

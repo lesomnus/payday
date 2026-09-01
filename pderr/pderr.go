@@ -9,19 +9,19 @@
 // except by parsing it, which means the message becomes a wire format nobody
 // declared and every rewording of it breaks a page. So the field path travels
 // beside the message rather than inside it, in the `google.rpc.BadRequest` that
-// is already in the dependency tree and already understood by every gRPC
+// is already in the dependency tree and already understood by every gRpc
 // tool -- [Violation] here, `errdetails.BadRequest_FieldViolation` on the wire.
 //
 // # The message is for whoever is reading the code
 //
 // Not for whoever is filling in the form. payday does not carry a language, a
 // tone or a set of translations, and a framework that starts writing sentences
-// for end users has taken all three on. What the UI matches against is the code
+// for end users has taken all three on. What the Ui matches against is the code
 // and the field path; the words it shows are the app's, from a table the app
 // owns.
 //
 // That is why there is no `Message` for humans here and no locale anywhere. It
-// also means a violation whose field path a UI does not recognise falls back to
+// also means a violation whose field path a Ui does not recognise falls back to
 // the app's general wording rather than leaking developer prose onto a page --
 // which is a thing to get right in the app, and not something this package can
 // prevent.
@@ -89,7 +89,7 @@ func (v Violation) String() string {
 // The message is the violations joined, so a caller that only ever prints the
 // error sees what it would have seen from a `status.Errorf` written by hand.
 // Nothing is lost by not looking, which is what keeps this worth using at
-// sites that have no UI in mind.
+// sites that have no Ui in mind.
 func Invalid(vs ...Violation) error {
 	if len(vs) == 0 {
 		// A refusal that does not say what was wrong with anything. It is a bug
@@ -174,7 +174,7 @@ func join(field string, sub string) string {
 // does not say.
 //
 // Nil for an error that carries nothing is the whole of the answer a caller
-// needs: a UI with no violations to place has a message and a code, which is
+// needs: a Ui with no violations to place has a message and a code, which is
 // what it had before any of this, and it renders whatever it renders for a
 // refusal it cannot place.
 //

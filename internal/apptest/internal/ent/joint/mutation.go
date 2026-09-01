@@ -90,13 +90,13 @@ func (m *Mutation) ResetDateErased() {
 	delete(m.clearedFields, FieldDateErased)
 }
 
-// SetRobotID sets the "robot_id" field.
-func (m *Mutation) SetRobotID(u uuid.UUID) {
+// SetRobotId sets the "robot_id" field.
+func (m *Mutation) SetRobotId(u uuid.UUID) {
 	m.robot = &u
 }
 
-// RobotID returns the value of the "robot_id" field in the mutation.
-func (m *Mutation) RobotID() (r uuid.UUID, exists bool) {
+// RobotId returns the value of the "robot_id" field in the mutation.
+func (m *Mutation) RobotId() (r uuid.UUID, exists bool) {
 	v := m.robot
 	if v == nil {
 		return
@@ -104,39 +104,39 @@ func (m *Mutation) RobotID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ClearRobotID clears the value of the "robot_id" field.
-func (m *Mutation) ClearRobotID() {
+// ClearRobotId clears the value of the "robot_id" field.
+func (m *Mutation) ClearRobotId() {
 	m.robot = nil
-	m.clearedFields[FieldRobotID] = struct{}{}
+	m.clearedFields[FieldRobotId] = struct{}{}
 }
 
-// RobotIDCleared returns if the "robot_id" field was cleared in this mutation.
-func (m *Mutation) RobotIDCleared() bool {
-	_, ok := m.clearedFields[FieldRobotID]
+// RobotIdCleared returns if the "robot_id" field was cleared in this mutation.
+func (m *Mutation) RobotIdCleared() bool {
+	_, ok := m.clearedFields[FieldRobotId]
 	return ok
 }
 
-// ResetRobotID resets all changes to the "robot_id" field.
-func (m *Mutation) ResetRobotID() {
+// ResetRobotId resets all changes to the "robot_id" field.
+func (m *Mutation) ResetRobotId() {
 	m.robot = nil
-	delete(m.clearedFields, FieldRobotID)
+	delete(m.clearedFields, FieldRobotId)
 }
 
 // ClearRobot clears the "robot" edge to the Robot entity.
 func (m *Mutation) ClearRobot() {
 	m.clearedrobot = true
-	m.clearedFields[FieldRobotID] = struct{}{}
+	m.clearedFields[FieldRobotId] = struct{}{}
 }
 
 // RobotCleared reports if the "robot" edge to the Robot entity was cleared.
 func (m *Mutation) RobotCleared() bool {
-	return m.RobotIDCleared() || m.clearedrobot
+	return m.RobotIdCleared() || m.clearedrobot
 }
 
-// RobotIDs returns the "robot" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// RobotID instead. It exists only for internal usage by the builders.
-func (m *Mutation) RobotIDs() (ids []uuid.UUID) {
+// RobotIds returns the "robot" edge Ids in the mutation.
+// Note that Ids always returns len(Ids) <= 1 for unique edges, and you should use
+// RobotId instead. It exists only for internal usage by the builders.
+func (m *Mutation) RobotIds() (ids []uuid.UUID) {
 	if id := m.robot; id != nil {
 		ids = append(ids, *id)
 	}
@@ -191,7 +191,7 @@ func (m *Mutation) Fields() []string {
 		fields = append(fields, FieldDateErased)
 	}
 	if m.robot != nil {
-		fields = append(fields, FieldRobotID)
+		fields = append(fields, FieldRobotId)
 	}
 	return fields
 }
@@ -205,8 +205,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.Alias()
 	case FieldDateErased:
 		return m.DateErased()
-	case FieldRobotID:
-		return m.RobotID()
+	case FieldRobotId:
+		return m.RobotId()
 	}
 	return nil, false
 }
@@ -237,12 +237,12 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDateErased(v)
 		return nil
-	case FieldRobotID:
+	case FieldRobotId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetRobotID(v)
+		m.SetRobotId(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Joint field %s", name)
@@ -277,8 +277,8 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldDateErased) {
 		fields = append(fields, FieldDateErased)
 	}
-	if m.FieldCleared(FieldRobotID) {
-		fields = append(fields, FieldRobotID)
+	if m.FieldCleared(FieldRobotId) {
+		fields = append(fields, FieldRobotId)
 	}
 	return fields
 }
@@ -297,8 +297,8 @@ func (m *Mutation) ClearField(name string) error {
 	case FieldDateErased:
 		m.ClearDateErased()
 		return nil
-	case FieldRobotID:
-		m.ClearRobotID()
+	case FieldRobotId:
+		m.ClearRobotId()
 		return nil
 	}
 	return fmt.Errorf("unknown Joint nullable field %s", name)
@@ -314,8 +314,8 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldDateErased:
 		m.ResetDateErased()
 		return nil
-	case FieldRobotID:
-		m.ResetRobotID()
+	case FieldRobotId:
+		m.ResetRobotId()
 		return nil
 	}
 	return fmt.Errorf("unknown Joint field %s", name)
@@ -330,9 +330,9 @@ func (m *Mutation) AddedEdges() []string {
 	return edges
 }
 
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// AddedIds returns all Ids (to other nodes) that were added for the given edge
 // name in this mutation.
-func (m *Mutation) AddedIDs(name string) []ent.Value {
+func (m *Mutation) AddedIds(name string) []ent.Value {
 	switch name {
 	case EdgeRobot:
 		if id := m.robot; id != nil {
@@ -348,9 +348,9 @@ func (m *Mutation) RemovedEdges() []string {
 	return edges
 }
 
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// RemovedIds returns all Ids (to other nodes) that were removed for the edge with
 // the given name in this mutation.
-func (m *Mutation) RemovedIDs(name string) []ent.Value {
+func (m *Mutation) RemovedIds(name string) []ent.Value {
 	return nil
 }
 

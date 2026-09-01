@@ -41,9 +41,9 @@ func (_c *FleetCreate) SetNillableDateErased(v *time.Time) *FleetCreate {
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *FleetCreate) SetID(v uuid.UUID) *FleetCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *FleetCreate) SetId(v uuid.UUID) *FleetCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
@@ -98,14 +98,14 @@ func (_c *FleetCreate) sqlSave(ctx context.Context) (*Fleet, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -113,11 +113,11 @@ func (_c *FleetCreate) sqlSave(ctx context.Context) (*Fleet, error) {
 func (_c *FleetCreate) createSpec() (*Fleet, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Fleet{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(fleet.Table, sqlgraph.NewFieldSpec(fleet.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(fleet.Table, sqlgraph.NewFieldSpec(fleet.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(fleet.FieldAlias, field.TypeString, value)
@@ -173,7 +173,7 @@ func (_c *FleetCreateBulk) Save(ctx context.Context) ([]*Fleet, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

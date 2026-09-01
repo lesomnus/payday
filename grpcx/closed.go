@@ -13,9 +13,9 @@ import (
 //
 // It is a transport rule and not a layer of the server stack, and the
 // difference is the whole point: what it closes is what a *caller* may ask
-// for, and everything behind it goes on working. An RPC written by hand can
-// still be implemented with the RPC that is closed -- which is exactly what
-// the general write is for. See the README, "The general write is not an API".
+// for, and everything behind it goes on working. An Rpc written by hand can
+// still be implemented with the Rpc that is closed -- which is exactly what
+// the general write is for. See the README, "The general write is not an Api".
 func Closed(is func(method string) bool) []grpc.ServerOption {
 	if is == nil {
 		return nil
@@ -67,7 +67,7 @@ func ErrClosed(method string) error {
 //
 // `Patch` takes a field per property and `Apply` takes a patch document, and
 // between them they can write anything the schema has. That is what makes them
-// useful to a server and wrong as an API: what a caller may change, and under
+// useful to a server and wrong as an Api: what a caller may change, and under
 // what conditions, is not something a general write can be told.
 func GeneralWrite(method string) bool {
 	return strings.HasSuffix(method, "/Patch") || strings.HasSuffix(method, "/Apply")

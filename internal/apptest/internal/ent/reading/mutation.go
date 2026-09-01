@@ -41,13 +41,13 @@ func (m *Mutation) Predicates() []predicate.Reading {
 	return m.predicates
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (m *Mutation) SetTenantID(u uuid.UUID) {
+// SetTenantId sets the "tenant_id" field.
+func (m *Mutation) SetTenantId(u uuid.UUID) {
 	m.tenant_id = &u
 }
 
-// TenantID returns the value of the "tenant_id" field in the mutation.
-func (m *Mutation) TenantID() (r uuid.UUID, exists bool) {
+// TenantId returns the value of the "tenant_id" field in the mutation.
+func (m *Mutation) TenantId() (r uuid.UUID, exists bool) {
 	v := m.tenant_id
 	if v == nil {
 		return
@@ -55,8 +55,8 @@ func (m *Mutation) TenantID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetTenantID resets all changes to the "tenant_id" field.
-func (m *Mutation) ResetTenantID() {
+// ResetTenantId resets all changes to the "tenant_id" field.
+func (m *Mutation) ResetTenantId() {
 	m.tenant_id = nil
 }
 
@@ -131,13 +131,13 @@ func (m *Mutation) ResetDateCreated() {
 	delete(m.clearedFields, FieldDateCreated)
 }
 
-// SetRobotID sets the "robot_id" field.
-func (m *Mutation) SetRobotID(u uuid.UUID) {
+// SetRobotId sets the "robot_id" field.
+func (m *Mutation) SetRobotId(u uuid.UUID) {
 	m.robot = &u
 }
 
-// RobotID returns the value of the "robot_id" field in the mutation.
-func (m *Mutation) RobotID() (r uuid.UUID, exists bool) {
+// RobotId returns the value of the "robot_id" field in the mutation.
+func (m *Mutation) RobotId() (r uuid.UUID, exists bool) {
 	v := m.robot
 	if v == nil {
 		return
@@ -145,15 +145,15 @@ func (m *Mutation) RobotID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetRobotID resets all changes to the "robot_id" field.
-func (m *Mutation) ResetRobotID() {
+// ResetRobotId resets all changes to the "robot_id" field.
+func (m *Mutation) ResetRobotId() {
 	m.robot = nil
 }
 
 // ClearRobot clears the "robot" edge to the Robot entity.
 func (m *Mutation) ClearRobot() {
 	m.clearedrobot = true
-	m.clearedFields[FieldRobotID] = struct{}{}
+	m.clearedFields[FieldRobotId] = struct{}{}
 }
 
 // RobotCleared reports if the "robot" edge to the Robot entity was cleared.
@@ -161,10 +161,10 @@ func (m *Mutation) RobotCleared() bool {
 	return m.clearedrobot
 }
 
-// RobotIDs returns the "robot" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// RobotID instead. It exists only for internal usage by the builders.
-func (m *Mutation) RobotIDs() (ids []uuid.UUID) {
+// RobotIds returns the "robot" edge Ids in the mutation.
+// Note that Ids always returns len(Ids) <= 1 for unique edges, and you should use
+// RobotId instead. It exists only for internal usage by the builders.
+func (m *Mutation) RobotIds() (ids []uuid.UUID) {
 	if id := m.robot; id != nil {
 		ids = append(ids, *id)
 	}
@@ -213,7 +213,7 @@ func (m *Mutation) Type() string {
 func (m *Mutation) Fields() []string {
 	fields := make([]string, 0, 4)
 	if m.tenant_id != nil {
-		fields = append(fields, FieldTenantID)
+		fields = append(fields, FieldTenantId)
 	}
 	if m.celsius != nil {
 		fields = append(fields, FieldCelsius)
@@ -222,7 +222,7 @@ func (m *Mutation) Fields() []string {
 		fields = append(fields, FieldDateCreated)
 	}
 	if m.robot != nil {
-		fields = append(fields, FieldRobotID)
+		fields = append(fields, FieldRobotId)
 	}
 	return fields
 }
@@ -232,14 +232,14 @@ func (m *Mutation) Fields() []string {
 // schema.
 func (m *Mutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case FieldTenantID:
-		return m.TenantID()
+	case FieldTenantId:
+		return m.TenantId()
 	case FieldCelsius:
 		return m.Celsius()
 	case FieldDateCreated:
 		return m.DateCreated()
-	case FieldRobotID:
-		return m.RobotID()
+	case FieldRobotId:
+		return m.RobotId()
 	}
 	return nil, false
 }
@@ -256,12 +256,12 @@ func (m *Mutation) OldField(ctx context.Context, name string) (ent.Value, error)
 // type.
 func (m *Mutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case FieldTenantID:
+	case FieldTenantId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTenantID(v)
+		m.SetTenantId(v)
 		return nil
 	case FieldCelsius:
 		v, ok := value.(float64)
@@ -277,12 +277,12 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDateCreated(v)
 		return nil
-	case FieldRobotID:
+	case FieldRobotId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetRobotID(v)
+		m.SetRobotId(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Reading field %s", name)
@@ -357,8 +357,8 @@ func (m *Mutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *Mutation) ResetField(name string) error {
 	switch name {
-	case FieldTenantID:
-		m.ResetTenantID()
+	case FieldTenantId:
+		m.ResetTenantId()
 		return nil
 	case FieldCelsius:
 		m.ResetCelsius()
@@ -366,8 +366,8 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldDateCreated:
 		m.ResetDateCreated()
 		return nil
-	case FieldRobotID:
-		m.ResetRobotID()
+	case FieldRobotId:
+		m.ResetRobotId()
 		return nil
 	}
 	return fmt.Errorf("unknown Reading field %s", name)
@@ -382,9 +382,9 @@ func (m *Mutation) AddedEdges() []string {
 	return edges
 }
 
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// AddedIds returns all Ids (to other nodes) that were added for the given edge
 // name in this mutation.
-func (m *Mutation) AddedIDs(name string) []ent.Value {
+func (m *Mutation) AddedIds(name string) []ent.Value {
 	switch name {
 	case EdgeRobot:
 		if id := m.robot; id != nil {
@@ -400,9 +400,9 @@ func (m *Mutation) RemovedEdges() []string {
 	return edges
 }
 
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// RemovedIds returns all Ids (to other nodes) that were removed for the edge with
 // the given name in this mutation.
-func (m *Mutation) RemovedIDs(name string) []ent.Value {
+func (m *Mutation) RemovedIds(name string) []ent.Value {
 	return nil
 }
 

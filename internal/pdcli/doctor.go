@@ -149,7 +149,7 @@ func Doctor(ctx context.Context, l Layout) []Finding {
 //   - no cross-origin isolation and `SharedArrayBuffer` does not exist, so
 //     SQLite in a Worker cannot cancel work. The symptom is "it works on the
 //     other dev server".
-//   - pre-bundled, and the worker URL `@lesomnus/grpc-dgram` builds resolves
+//   - pre-bundled, and the worker Url `@lesomnus/grpc-dgram` builds resolves
 //     into `.vite/deps/` where there is nothing. The symptom is "the worker
 //     itself failed", which does not mention bundling.
 //   - the two worker imports split apart and the Go driver looks for a global
@@ -184,7 +184,7 @@ func doctorSandbox(ctx context.Context, l Layout) []Finding {
 
 		if !bytes.Contains(b, []byte("@lesomnus/grpc-dgram")) {
 			vs = append(vs, Finding{
-				What: fmt.Sprintf("%s lets @lesomnus/grpc-dgram be pre-bundled, and the worker URL it builds resolves into .vite/deps/ where there is nothing",
+				What: fmt.Sprintf("%s lets @lesomnus/grpc-dgram be pre-bundled, and the worker Url it builds resolves into .vite/deps/ where there is nothing",
 					l.Rel("ts", "vite.config.ts")),
 				Fix: `optimizeDeps: { exclude: ['@lesomnus/grpc-dgram'] },`,
 			})
@@ -264,7 +264,7 @@ func doctorWasmExec(ctx context.Context, l Layout) []Finding {
 // `enttx.Rebind` asks for the [enttx.Binder] at run time -- `any(s).(Binder[S])`
 // -- so a layer that does not answer `WithDriver` is not a compile error
 // anywhere. It is `ErrNotBindable` the first time somebody opens a transaction,
-// which is a batch or a multi-write RPC, which is not the day the layer was
+// which is a batch or a multi-write Rpc, which is not the day the layer was
 // written.
 //
 // Embedding `Overlay` does not give it: `Overlay` embeds the generated `Server`

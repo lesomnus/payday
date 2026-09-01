@@ -377,7 +377,7 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 // keeps, rather than the one a rule about a *transport* keeps -- and it is the
 // same argument an app on this framework already wrote down about `Role.Patch`
 // and `ApiKey.Patch`, which ask their own question in the layer *precisely so
-// that the setting is a decision about the API rather than about who may become
+// that the setting is a decision about the Api rather than about who may become
 // the administrator*.
 //
 // # Only the ones that can move
@@ -478,7 +478,7 @@ func seen(g *protogen.GeneratedFile, root protogen.GoImportPath, edge string, to
 //
 // The two do not look alike and that is the design. The recorder is not a layer
 // at all: it is handed to the generated servers and called from inside the
-// transaction that makes a write, so every RPC that changes anything is on the
+// transaction that makes a write, so every Rpc that changes anything is on the
 // trail without anybody having listed them. The layer is here because a trail a
 // deployment can edit is evidence of nothing.
 func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
@@ -489,7 +489,7 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 
 	g.P("// Audit is the layer that refuses a trail row written by hand.")
 	g.P("//")
-	g.P("// The RPCs exist because the trail is an entity like any other and a test is")
+	g.P("// The Rpcs exist because the trail is an entity like any other and a test is")
 	g.P("// far plainer for having them. A deployment serves none of the ones that")
 	g.P("// write: a trail somebody can edit is evidence of nothing.")
 	g.P("type Audit struct {")
@@ -565,9 +565,9 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("// Recorder writes one row of the trail for every write the generated")
 	g.P("// servers make.")
 	g.P("//")
-	g.P("// It is not a layer and it does not override an RPC. The servers call it")
+	g.P("// It is not a layer and it does not override an Rpc. The servers call it")
 	g.P("// from inside the transaction that makes the write, so the row and the")
-	g.P("// record of it hold or fall together -- and so every RPC that changes")
+	g.P("// record of it hold or fall together -- and so every Rpc that changes")
 	g.P("// anything is on the trail without anybody having listed them.")
 	g.P("//")
 	g.P("//	sink, err := bare.NewServer(db, bare.WithRecorder(pd.Recorder()))")
@@ -615,7 +615,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		// Nothing to file it under but the actor's own, which is what the")
 	g.P("		// trail said for every row before this. It is the honest fallback")
 	g.P("		// rather than a zero: a record nobody can read is not a record.")
-	g.P("		tenant = ", pkgUuid.Ident("UUID"), "(v.Tenant)")
+	g.P("		tenant = ", pkgUuid.Ident("Uuid"), "(v.Tenant)")
 	g.P("	}")
 	g.P("")
 	// A variable, because the field carries a default and so the builder takes
@@ -630,7 +630,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		ActorId:       v.Actor.Bytes(),")
 	// The three columns payday computes that are NOT NULL; see [emitNotNull]
 	// for why they are normalized here rather than where each is produced.
-	g.P("		TraceId:       notNull(v.Trace),")
+	g.P("		TraceID:       notNull(v.Trace),")
 	g.P("		Action:        v.Action,")
 	g.P("		ObjectId:      v.Object.Bytes(),")
 	// The kind, as a column, because a byte inside a `uuid` answers *what was
@@ -669,7 +669,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 // of `Audit.value`, which is the row as the write left it.
 //
 // `Audit.patch` is the same write from the other end -- the document it was
-// compiled from -- and nothing touched it. So the one RPC whose whole job is to
+// compiled from -- and nothing touched it. So the one Rpc whose whole job is to
 // take a secret in and never hand one back wrote the argon2 string into the
 // trail in full, and the trail is **served**: `AuditService` is a generated
 // service like any other, and the wall files a credential's row under its
@@ -799,7 +799,7 @@ func emitHidden(g *protogen.GeneratedFile, s *Schema) {
 // list, and a list is only as good as whoever adds the next entry to it. The
 // trace and the patch each carry their own "empty rather than nil, and here is
 // the trap"; the read for an entity with no tenant sits beside them and
-// answered nil, and every write to a global entity was refused by PostgreSQL
+// answered nil, and every write to a global entity was refused by PostgreSql
 // and taken by SQLite, where no test could see it.
 //
 // The builder below is where all four meet, and it is the last thing between
@@ -825,7 +825,7 @@ func emitHidden(g *protogen.GeneratedFile, s *Schema) {
 func emitNotNull(g *protogen.GeneratedFile) {
 	g.P("// notNull is `v` as a column that says it always has bytes takes it.")
 	g.P("//")
-	g.P("// The two drivers disagree about exactly one value: a nil `[]byte` is SQL")
+	g.P("// The two drivers disagree about exactly one value: a nil `[]byte` is Sql")
 	g.P("// NULL to pgx and an empty blob to SQLite's driver. So a nil bound to a NOT")
 	g.P("// NULL column is a write that passes on the database the tests run on and is")
 	g.P("// refused by the one the app is deployed on.")
@@ -912,7 +912,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	g.P("// subject is the tenant of the row `key` names and the row itself, and the")
 	g.P("// nil identifier when there is no such row any more.")
 	g.P("func subject(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
-		", key ", pkgPdid.Ident("Id"), ") (", pkgUuid.Ident("UUID"), ", []byte, error) {")
+		", key ", pkgPdid.Ident("Id"), ") (", pkgUuid.Ident("Uuid"), ", []byte, error) {")
 	g.P("	switch key.Domain() {")
 
 	for _, v := range s.Sorted() {
@@ -943,7 +943,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		g.P("		if err != nil {")
 		g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
 		// Empty rather than nil: the trail's `value` is NOT NULL, and a nil
-		// `[]byte` is SQL NULL to pgx while the SQLite driver makes it an empty
+		// `[]byte` is Sql NULL to pgx while the SQLite driver makes it an empty
 		// blob. A row that is really gone is the one case that reaches here --
 		// erased hard, for a soft entity nothing at all -- and it is exactly
 		// the case no SQLite test can fail on.
@@ -1032,8 +1032,8 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	g.P("	// is an identifier from somewhere else. Nothing to read either way.")
 	//
 	// Empty rather than nil, for the reason the NotFound branch above says: a
-	// nil `[]byte` is SQL NULL to pgx and the trail's `value` is NOT NULL, so
-	// nil here is every write to a global entity failing on PostgreSQL and
+	// nil `[]byte` is Sql NULL to pgx and the trail's `value` is NOT NULL, so
+	// nil here is every write to a global entity failing on PostgreSql and
 	// passing on SQLite. It is the same trap twice, which is why it is worth
 	// saying twice.
 	g.P("	return ", pkgUuid.Ident("Nil"), ", []byte{}, nil")
@@ -1060,7 +1060,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 // upstream's code and upstream's rule, and the rule is right everywhere else:
 // an erased row is not a row a read answers with. The recorder is the one
 // caller for whom it is wrong -- the row it asks about was erased by the very
-// write it is recording -- and the bare API has no words for "and the erased
+// write it is recording -- and the bare Api has no words for "and the erased
 // ones"; growing some for a single caller would put erased rows within reach
 // of every server built on it. So the recorder steps around the bare server to
 // ent, on the same transaction, through the Select the bare Get itself uses --
@@ -1095,7 +1095,7 @@ func emitErased(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 	g.P("		return nil, err")
 	g.P("	}")
 	g.P("")
-	g.P("	q := s.Db.", e, ".Query().Where(", entPkg.Ident("IDEQ"), "(k), ",
+	g.P("	q := s.Db.", e, ".Query().Where(", entPkg.Ident("IdEQ"), "(k), ",
 		entPkg.Ident(pascal(v.GetErasedField().Name())+"NotNil"), "())")
 	g.P("	", p.Bare.Ident(e+"SelectInit"), "(q, nil)")
 	g.P("")
@@ -1117,7 +1117,7 @@ func emitErased(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 //
 // # What it is for
 //
-// A password hash and an API key hash are written and never answered with, and
+// A password hash and an Api key hash are written and never answered with, and
 // until `(payday.field).secret` existed there was nowhere to say so. Apps said
 // it at **registration** instead -- leaving the generated service off the
 // server -- which works, is checkable, and is said in the app that happens to

@@ -66,7 +66,7 @@ func TestLimit(t *testing.T) {
 
 		_, err := limited(t, &stubLimiter{retry: 250 * time.Millisecond}, by("tenant:acme"))
 
-		// As RetryInfo, which is what the API conventions say and what a
+		// As RetryInfo, which is what the Api conventions say and what a
 		// generated client reads however it was configured. A refusal a client
 		// cannot time is a client that asks again at once.
 		s, ok := status.FromError(err)

@@ -21,15 +21,15 @@ type OutboxCreate struct {
 	hooks    []Hook
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_c *OutboxCreate) SetTenantID(v uuid.UUID) *OutboxCreate {
-	_c.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_c *OutboxCreate) SetTenantId(v uuid.UUID) *OutboxCreate {
+	_c.mutation.SetTenantId(v)
 	return _c
 }
 
-// SetActorID sets the "actor_id" field.
-func (_c *OutboxCreate) SetActorID(v uuid.UUID) *OutboxCreate {
-	_c.mutation.SetActorID(v)
+// SetActorId sets the "actor_id" field.
+func (_c *OutboxCreate) SetActorId(v uuid.UUID) *OutboxCreate {
+	_c.mutation.SetActorId(v)
 	return _c
 }
 
@@ -45,9 +45,9 @@ func (_c *OutboxCreate) SetBy(v string) *OutboxCreate {
 	return _c
 }
 
-// SetObjectID sets the "object_id" field.
-func (_c *OutboxCreate) SetObjectID(v uuid.UUID) *OutboxCreate {
-	_c.mutation.SetObjectID(v)
+// SetObjectId sets the "object_id" field.
+func (_c *OutboxCreate) SetObjectId(v uuid.UUID) *OutboxCreate {
+	_c.mutation.SetObjectId(v)
 	return _c
 }
 
@@ -71,9 +71,9 @@ func (_c *OutboxCreate) SetNillableDateCreated(v *time.Time) *OutboxCreate {
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *OutboxCreate) SetID(v uuid.UUID) *OutboxCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *OutboxCreate) SetId(v uuid.UUID) *OutboxCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
@@ -111,10 +111,10 @@ func (_c *OutboxCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *OutboxCreate) check() error {
-	if _, ok := _c.mutation.TenantID(); !ok {
+	if _, ok := _c.mutation.TenantId(); !ok {
 		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Outbox.tenant_id"`)}
 	}
-	if _, ok := _c.mutation.ActorID(); !ok {
+	if _, ok := _c.mutation.ActorId(); !ok {
 		return &ValidationError{Name: "actor_id", err: errors.New(`ent: missing required field "Outbox.actor_id"`)}
 	}
 	if _, ok := _c.mutation.Method(); !ok {
@@ -123,7 +123,7 @@ func (_c *OutboxCreate) check() error {
 	if _, ok := _c.mutation.By(); !ok {
 		return &ValidationError{Name: "by", err: errors.New(`ent: missing required field "Outbox.by"`)}
 	}
-	if _, ok := _c.mutation.ObjectID(); !ok {
+	if _, ok := _c.mutation.ObjectId(); !ok {
 		return &ValidationError{Name: "object_id", err: errors.New(`ent: missing required field "Outbox.object_id"`)}
 	}
 	if _, ok := _c.mutation.Patch(); !ok {
@@ -143,14 +143,14 @@ func (_c *OutboxCreate) sqlSave(ctx context.Context) (*Outbox, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -158,19 +158,19 @@ func (_c *OutboxCreate) sqlSave(ctx context.Context) (*Outbox, error) {
 func (_c *OutboxCreate) createSpec() (*Outbox, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Outbox{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(outbox.Table, sqlgraph.NewFieldSpec(outbox.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(outbox.Table, sqlgraph.NewFieldSpec(outbox.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
-	if value, ok := _c.mutation.TenantID(); ok {
-		_spec.SetField(outbox.FieldTenantID, field.TypeUUID, value)
-		_node.TenantID = value
+	if value, ok := _c.mutation.TenantId(); ok {
+		_spec.SetField(outbox.FieldTenantId, field.TypeUuid, value)
+		_node.TenantId = value
 	}
-	if value, ok := _c.mutation.ActorID(); ok {
-		_spec.SetField(outbox.FieldActorID, field.TypeUUID, value)
-		_node.ActorID = value
+	if value, ok := _c.mutation.ActorId(); ok {
+		_spec.SetField(outbox.FieldActorId, field.TypeUuid, value)
+		_node.ActorId = value
 	}
 	if value, ok := _c.mutation.Method(); ok {
 		_spec.SetField(outbox.FieldMethod, field.TypeString, value)
@@ -180,9 +180,9 @@ func (_c *OutboxCreate) createSpec() (*Outbox, *sqlgraph.CreateSpec) {
 		_spec.SetField(outbox.FieldBy, field.TypeString, value)
 		_node.By = value
 	}
-	if value, ok := _c.mutation.ObjectID(); ok {
-		_spec.SetField(outbox.FieldObjectID, field.TypeUUID, value)
-		_node.ObjectID = value
+	if value, ok := _c.mutation.ObjectId(); ok {
+		_spec.SetField(outbox.FieldObjectId, field.TypeUuid, value)
+		_node.ObjectId = value
 	}
 	if value, ok := _c.mutation.Patch(); ok {
 		_spec.SetField(outbox.FieldPatch, field.TypeBytes, value)
@@ -238,7 +238,7 @@ func (_c *OutboxCreateBulk) Save(ctx context.Context) ([]*Outbox, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

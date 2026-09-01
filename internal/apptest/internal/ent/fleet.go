@@ -16,8 +16,8 @@ import (
 // Fleet is the model entity for the Fleet schema.
 type Fleet struct {
 	config `json:"-"`
-	// ID of the ent.
-	ID uuid.UUID `json:"id,omitempty"`
+	// Id of the ent.
+	Id uuid.UUID `json:"id,omitempty"`
 	// Alias holds the value of the "alias" field.
 	Alias string `json:"alias,omitempty"`
 	// DateErased holds the value of the "date_erased" field.
@@ -34,7 +34,7 @@ func (*Fleet) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case fleet.FieldDateErased:
 			values[i] = new(sql.NullTime)
-		case fleet.FieldID:
+		case fleet.FieldId:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -51,11 +51,11 @@ func (_m *Fleet) assignValues(columns []string, values []any) error {
 	}
 	for i := range columns {
 		switch columns[i] {
-		case fleet.FieldID:
+		case fleet.FieldId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				_m.ID = *value
+				_m.Id = *value
 			}
 		case fleet.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -105,7 +105,7 @@ func (_m *Fleet) Unwrap() *Fleet {
 func (_m *Fleet) String() string {
 	var builder strings.Builder
 	builder.WriteString("Fleet(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.Id))
 	builder.WriteString("alias=")
 	builder.WriteString(_m.Alias)
 	builder.WriteString(", ")

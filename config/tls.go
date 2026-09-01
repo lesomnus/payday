@@ -13,9 +13,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type TLSConfig struct {
-	// Enabled turns on TLS. It is implied by anything else in this block being
-	// written down, so it is only worth saying to turn TLS on for a server
+type TlsConfig struct {
+	// Enabled turns on Tls. It is implied by anything else in this block being
+	// written down, so it is only worth saying to turn Tls on for a server
 	// whose certificate is named somewhere else.
 	Enabled bool `yaml:"enabled"`
 
@@ -25,7 +25,7 @@ type TLSConfig struct {
 	KeyFile string `yaml:"key_file"`
 
 	// ClientCAFile is the path to a PEM-encoded CA bundle used to verify
-	// client certificates. Setting it enables mutual TLS.
+	// client certificates. Setting it enables mutual Tls.
 	ClientCAFile string `yaml:"client_ca_file"`
 
 	// ClientCertOptional lets a caller connect without a certificate. One that
@@ -40,18 +40,18 @@ type TLSConfig struct {
 	ClientCertOptional bool `yaml:"client_cert_optional"`
 }
 
-// Active reports whether TLS should be used for the server.
+// Active reports whether Tls should be used for the server.
 //
 // A client CA bundle counts, and that is not obvious: it names nothing the
 // server presents, so a configuration holding only that one looks like a
-// configuration that said nothing about TLS. It is not -- there is no way to
+// configuration that said nothing about Tls. It is not -- there is no way to
 // verify a client certificate over a connection that has no handshake, so a
 // server told to check them and nothing else is a server that would answer
 // "nobody said anything" about every caller, for its whole life, with mutual
-// TLS written down in its file. Counting it here turns that into
-// [TLSConfig.Credentials] refusing to build, which is a server that does not
+// Tls written down in its file. Counting it here turns that into
+// [TlsConfig.Credentials] refusing to build, which is a server that does not
 // start.
-func (c TLSConfig) Active() bool {
+func (c TlsConfig) Active() bool {
 	return c.Enabled || c.CertFile != "" || c.KeyFile != "" || c.ClientCAFile != ""
 }
 
@@ -61,17 +61,17 @@ func (c TLSConfig) Active() bool {
 // from having to ask twice: `if cfg == nil` is a plaintext listener, and
 // everything else is the handshake this block described.
 //
-// It is separate from [TLSConfig.Credentials] because not every listener an app
-// opens is a gRPC one. A payday app that serves HTTP as well -- a transcoder, a
+// It is separate from [TlsConfig.Credentials] because not every listener an app
+// opens is a gRpc one. A payday app that serves Http as well -- a transcoder, a
 // sign-in, a port robots present certificates to -- would otherwise build the
-// same mutual-TLS setup a second time by hand, and the second one is where the
+// same mutual-Tls setup a second time by hand, and the second one is where the
 // client CA is forgotten.
-func (c TLSConfig) Server() (*tls.Config, error) {
+func (c TlsConfig) Server() (*tls.Config, error) {
 	if !c.Active() {
 		return nil, nil
 	}
 	if c.CertFile == "" || c.KeyFile == "" {
-		return nil, fmt.Errorf("both cert_file and key_file must be set to enable TLS")
+		return nil, fmt.Errorf("both cert_file and key_file must be set to enable Tls")
 	}
 
 	cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
@@ -84,7 +84,7 @@ func (c TLSConfig) Server() (*tls.Config, error) {
 		MinVersion:   tls.VersionTLS12,
 	}
 
-	// Enable mutual TLS when a client CA bundle is provided.
+	// Enable mutual Tls when a client CA bundle is provided.
 	if c.ClientCAFile != "" {
 		pem, err := os.ReadFile(c.ClientCAFile)
 		if err != nil {
@@ -105,10 +105,10 @@ func (c TLSConfig) Server() (*tls.Config, error) {
 	return cfg, nil
 }
 
-// Credentials builds gRPC transport credentials from the TLS configuration.
-// It returns insecure credentials when TLS is not configured, so the caller
+// Credentials builds gRpc transport credentials from the Tls configuration.
+// It returns insecure credentials when Tls is not configured, so the caller
 // can pass the result to grpc.Creds unconditionally.
-func (c TLSConfig) Credentials() (credentials.TransportCredentials, error) {
+func (c TlsConfig) Credentials() (credentials.TransportCredentials, error) {
 	cfg, err := c.Server()
 	if err != nil {
 		return nil, err
@@ -120,8 +120,8 @@ func (c TLSConfig) Credentials() (credentials.TransportCredentials, error) {
 	return credentials.NewTLS(cfg), nil
 }
 
-// DialConfig is TLS for a connection this app **makes**, which is the other
-// half of [TLSConfig] and a different shape.
+// DialConfig is Tls for a connection this app **makes**, which is the other
+// half of [TlsConfig] and a different shape.
 //
 // A server proves who it is and decides whether to ask the same of a caller. A
 // client checks that proof and decides whether to offer one. So the fields are
@@ -132,7 +132,7 @@ func (c TLSConfig) Credentials() (credentials.TransportCredentials, error) {
 //
 // Nothing written down is a plaintext connection, which is right for a service
 // reaching another one over a loopback in a checkout and wrong the moment
-// either of them moves. Whatever a client sends on that connection -- an API
+// either of them moves. Whatever a client sends on that connection -- an Api
 // key, a token, a password on its way to be checked -- is readable by anything
 // between them.
 //
@@ -140,31 +140,31 @@ func (c TLSConfig) Credentials() (credentials.TransportCredentials, error) {
 // be run until certificates exist is an app nobody runs. What it is not is
 // quiet -- see [DialConfig.Credentials].
 type DialConfig struct {
-	// Enabled turns TLS on with the system roots, which is what a public
+	// Enabled turns Tls on with the system roots, which is what a public
 	// certificate authority needs and all it needs.
 	Enabled bool `yaml:"enabled"`
 
 	// CAFile is a PEM bundle to verify the server against, instead of the
-	// system roots. It is what a private CA needs, and naming it turns TLS on.
+	// system roots. It is what a private CA needs, and naming it turns Tls on.
 	CAFile string `yaml:"ca_file"`
 
 	// CertFile and KeyFile are the certificate this client presents, for a
-	// server that asks. Naming them turns TLS on.
+	// server that asks. Naming them turns Tls on.
 	CertFile string `yaml:"cert_file"`
 	KeyFile  string `yaml:"key_file"`
 
 	// ServerName is the name to verify the server's certificate against, when
-	// it is not the one in the address -- a connection made to a pod's IP, or
+	// it is not the one in the address -- a connection made to a pod's Ip, or
 	// through a tunnel.
 	//
 	// It is **not** a way to skip verification. There is deliberately no field
 	// for that: a client that does not check the certificate is a client that
 	// cannot tell the server from whoever answered, which is the whole of what
-	// TLS was for.
+	// Tls was for.
 	ServerName string `yaml:"server_name"`
 }
 
-// Active reports whether this connection should use TLS.
+// Active reports whether this connection should use Tls.
 func (c DialConfig) Active() bool {
 	return c.Enabled || c.CAFile != "" || c.CertFile != "" || c.KeyFile != ""
 }
@@ -174,13 +174,13 @@ func (c DialConfig) Active() bool {
 // without asking.
 //
 // The plaintext case warns, once per process, for the reason [auth.Plain] does:
-// the way it goes wrong is silence. A deployment sending an API key over a
+// the way it goes wrong is silence. A deployment sending an Api key over a
 // cleartext connection between two machines has given the key away, and nothing
 // about it looks unusual -- it connects, it answers, the tests pass.
 func (c DialConfig) Credentials() (credentials.TransportCredentials, error) {
 	if !c.Active() {
 		plainDialSaid.Do(func() {
-			slog.Warn("config: dialling without TLS; anything sent on this connection " +
+			slog.Warn("config: dialling without Tls; anything sent on this connection " +
 				"is readable by whatever is between here and there")
 		})
 

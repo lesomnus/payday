@@ -7,7 +7,7 @@
 //
 // # Why it is its own package
 //
-// Verifying a JWT means fetching a key set over HTTP and tracking its
+// Verifying a JWT means fetching a key set over Http and tracking its
 // rotation, and that is a dependency an app authenticating by certificate has
 // no reason to carry. `config/dbpgx` is here for the same reason: a thing you
 // import when you have decided to use it.
@@ -15,7 +15,7 @@
 // # What it does not do
 //
 // Anything about logging in. Whoever issued the token asked for a password, ran
-// an OIDC dance, checked a second factor, and decided the answer -- and none of
+// an OIdC dance, checked a second factor, and decided the answer -- and none of
 // that has a right answer a framework can pick. What arrives here is the
 // conclusion, signed.
 //
@@ -68,7 +68,7 @@ const Method = "oidc"
 type Claims func(ctx context.Context, t *oidc.IDToken) (auth.Identity, error)
 
 // Subject is the [Claims] that reads `sub` as the actor's identifier, which is
-// what an IdP holding the app's own user IDs looks like.
+// what an IdP holding the app's own user Ids looks like.
 //
 //	{"sub": "0199c3f4-2a10-8002-...", "exp": 1893456000}
 //
@@ -132,7 +132,7 @@ var ErrNoAudience = errors.New("authoidc: no audience; a token for any relying p
 //		Audience: "widget",
 //	})
 //	...
-//	chain.WithUnary(auth.InterceptorUnary(auth.Seq(h, auth.MTLS()), Resolver(s.Ungated), auth.PublicDefault))
+//	chain.WithUnary(auth.InterceptorUnary(auth.Seq(h, auth.MTls()), Resolver(s.Ungated), auth.PublicDefault))
 func New(ctx context.Context, c Config) (auth.Handler, error) {
 	if c.Audience == "" {
 		return nil, ErrNoAudience

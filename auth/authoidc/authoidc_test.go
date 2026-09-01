@@ -61,7 +61,7 @@ func (p *idp) mint(t *testing.T, claims map[string]any) string {
 // handler is this provider's tokens read as identities.
 //
 // A static key set rather than discovery: what is under test is the reading and
-// the refusing, and an HTTP round trip to a fake well-known endpoint would only
+// the refusing, and an Http round trip to a fake well-known endpoint would only
 // be testing `oidc.NewProvider`.
 func (p *idp) handler(claims authoidc.Claims) auth.Handler {
 	ks := &oidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&p.key.PublicKey}}

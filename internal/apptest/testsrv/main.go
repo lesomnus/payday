@@ -43,8 +43,8 @@ func run() error {
 	c := cmd.Config{
 		// The general writes, open here and closed everywhere else. They are
 		// how the servers write and not how a caller asks -- an app writes the
-		// RPC it means and implements it with one -- but this app has no such
-		// RPC, and a test that could not change a row could not say what a
+		// Rpc it means and implements it with one -- but this app has no such
+		// Rpc, and a test that could not change a row could not say what a
 		// `Watch` does when one changes, nor what a store does when a row it is
 		// drawing moves under it. The Go tests open them for the same reason.
 		Server: config.ServerConfig{AllowGeneralWrites: true},

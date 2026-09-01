@@ -10,7 +10,7 @@ import (
 
 func (e *Seal) Proto() *apptest.Seal {
 	x := &apptest.Seal{}
-	x.SetId(e.ID[:])
+	x.SetId(e.Id[:])
 	x.SetAlias(e.Alias)
 	x.SetSecret(e.Secret)
 	if e.DateErased != nil {

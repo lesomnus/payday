@@ -12,7 +12,7 @@ import (
 // empty string for a schema that declared none.
 //
 // It has to be a proto and it has to be written before anything else runs: a
-// `List` is an RPC, and an RPC has to exist in the contract before the messages,
+// `List` is an Rpc, and an Rpc has to exist in the contract before the messages,
 // the stubs and the servers are generated from it. So this is a second pass of
 // the same plugin, run beside `protoc-gen-orm-service`, and what it writes is
 // merged the same way an app's own hand-written overlay is.
@@ -128,8 +128,8 @@ message %sWatchItem {
   // never matched is not news.
   %s value = 2;
 
-  // The RPC that changed it, by the name gRPC knows it by. It is what the
-  // caller of *that* RPC asked for and not the write it became, so an RPC
+  // The Rpc that changed it, by the name gRpc knows it by. It is what the
+  // caller of *that* Rpc asked for and not the write it became, so an Rpc
   // written by hand is here under its own name.
   //
   // Empty in the first message, which is not something anybody asked for -- it

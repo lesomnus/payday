@@ -110,7 +110,7 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	if v, err := mint(ctx, s.Mint, "app.Cell", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.CellService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (s CellServiceServer) Get(ctx context.Context, req *apptest.CellGetRequest)
 }
 
 func selectCellKey(q *ent.CellQuery) {
-	q.Select(cell.FieldID)
+	q.Select(cell.FieldId)
 }
 
 func CellSelectedFields(m *apptest.CellSelect) []string {
@@ -186,7 +186,7 @@ func CellSelectedFields(m *apptest.CellSelect) []string {
 
 	vs := make([]string, 0, len(cell.Columns))
 	{
-		vs = append(vs, cell.FieldID)
+		vs = append(vs, cell.FieldId)
 	}
 	if m.GetAlias() {
 		vs = append(vs, cell.FieldAlias)
@@ -265,7 +265,7 @@ func CellGetKey(ctx context.Context, db *ent.Client, ref *apptest.CellRef) (uuid
 var cellOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Cell")
 
 var cellPatchColumns = entpatch.Columns{
-	1: cell.FieldID, 2: cell.TenantColumn, 4: cell.FieldAlias, 14: cell.FieldDateErased}
+	1: cell.FieldId, 2: cell.TenantColumn, 4: cell.FieldAlias, 14: cell.FieldDateErased}
 
 func (s CellServiceServer) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
 	if !req.HasPatch() {
@@ -310,7 +310,7 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 	}
 	at := &apptest.CellRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, cell.IDEQ(k))
+	p, err := s.narrow(ctx, cell.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +410,7 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 		}
 
 		k = v
-		p = cell.And(p, cell.IDEQ(v))
+		p = cell.And(p, cell.IdEQ(v))
 	}
 
 	u := st.Db.Cell.Update().Where(p)
@@ -460,7 +460,7 @@ func pickCell(req *apptest.CellRef) (predicate.Cell, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return cell.IDEQ(v), nil
+			return cell.IdEQ(v), nil
 		}
 	case apptest.CellRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Cell")
@@ -551,7 +551,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	if v, err := mint(ctx, s.Mint, "app.Robot", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
 		return nil, err
@@ -612,7 +612,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.RobotService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -651,7 +651,7 @@ func (s RobotServiceServer) Get(ctx context.Context, req *apptest.RobotGetReques
 }
 
 func selectRobotKey(q *ent.RobotQuery) {
-	q.Select(robot.FieldID)
+	q.Select(robot.FieldId)
 }
 
 func RobotSelectedFields(m *apptest.RobotSelect) []string {
@@ -661,7 +661,7 @@ func RobotSelectedFields(m *apptest.RobotSelect) []string {
 
 	vs := make([]string, 0, len(robot.Columns))
 	{
-		vs = append(vs, robot.FieldID)
+		vs = append(vs, robot.FieldId)
 	}
 	if m.GetAlias() {
 		vs = append(vs, robot.FieldAlias)
@@ -782,7 +782,7 @@ func RobotGetKey(ctx context.Context, db *ent.Client, ref *apptest.RobotRef) (uu
 var robotOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Robot")
 
 var robotPatchColumns = entpatch.Columns{
-	1: robot.FieldID, 2: robot.TenantColumn, 30: robot.ThingColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 8: robot.FieldSecret, 31: robot.FieldDateAttested, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
+	1: robot.FieldId, 2: robot.TenantColumn, 30: robot.ThingColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 8: robot.FieldSecret, 31: robot.FieldDateAttested, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
 
 func (s RobotServiceServer) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
 	if !req.HasPatch() {
@@ -827,7 +827,7 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 	}
 	at := &apptest.RobotRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, robot.IDEQ(k))
+	p, err := s.narrow(ctx, robot.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -930,7 +930,7 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 		}
 
 		k = v
-		p = robot.And(p, robot.IDEQ(v))
+		p = robot.And(p, robot.IdEQ(v))
 	}
 
 	u := st.Db.Robot.Update().Where(p)
@@ -981,7 +981,7 @@ func pickRobot(req *apptest.RobotRef) (predicate.Robot, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return robot.IDEQ(v), nil
+			return robot.IdEQ(v), nil
 		}
 	case apptest.RobotRef_Slug_case:
 		k := req.GetSlug()
@@ -1078,7 +1078,7 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 	if v, err := mint(ctx, s.Mint, "app.Pairing", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	if k, err := RobotGetKey(ctx, st.Db, req.GetLead()); err != nil {
 		return nil, err
@@ -1117,7 +1117,7 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.PairingService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -1156,7 +1156,7 @@ func (s PairingServiceServer) Get(ctx context.Context, req *apptest.PairingGetRe
 }
 
 func selectPairingKey(q *ent.PairingQuery) {
-	q.Select(pairing.FieldID)
+	q.Select(pairing.FieldId)
 }
 
 func PairingSelectedFields(m *apptest.PairingSelect) []string {
@@ -1166,7 +1166,7 @@ func PairingSelectedFields(m *apptest.PairingSelect) []string {
 
 	vs := make([]string, 0, len(pairing.Columns))
 	{
-		vs = append(vs, pairing.FieldID)
+		vs = append(vs, pairing.FieldId)
 	}
 	if m.GetDateCreated() {
 		vs = append(vs, pairing.FieldDateCreated)
@@ -1250,7 +1250,7 @@ func PairingGetKey(ctx context.Context, db *ent.Client, ref *apptest.PairingRef)
 var pairingOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Pairing")
 
 var pairingPatchColumns = entpatch.Columns{
-	1: pairing.FieldID, 2: pairing.LeadColumn, 8: pairing.FollowColumn, 15: pairing.FieldDateCreated}
+	1: pairing.FieldId, 2: pairing.LeadColumn, 8: pairing.FollowColumn, 15: pairing.FieldDateCreated}
 
 func (s PairingServiceServer) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
 	if !req.HasPatch() {
@@ -1295,7 +1295,7 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 	}
 	at := &apptest.PairingRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, pairing.IDEQ(k))
+	p, err := s.narrow(ctx, pairing.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -1395,7 +1395,7 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 		}
 
 		k = v
-		p = pairing.And(p, pairing.IDEQ(v))
+		p = pairing.And(p, pairing.IdEQ(v))
 	}
 
 	n, err := st.Db.Pairing.Delete().Where(p).Exec(ctx)
@@ -1425,7 +1425,7 @@ func PairingPick(req *apptest.PairingRef) (predicate.Pairing, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return pairing.IDEQ(v), nil
+			return pairing.IdEQ(v), nil
 		}
 	case apptest.PairingRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Pairing")
@@ -1516,7 +1516,7 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	if v, err := mint(ctx, s.Mint, "app.Joint", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	if req.HasRobot() {
 		if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
@@ -1545,7 +1545,7 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.JointService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -1584,7 +1584,7 @@ func (s JointServiceServer) Get(ctx context.Context, req *apptest.JointGetReques
 }
 
 func selectJointKey(q *ent.JointQuery) {
-	q.Select(joint.FieldID)
+	q.Select(joint.FieldId)
 }
 
 func JointSelectedFields(m *apptest.JointSelect) []string {
@@ -1594,7 +1594,7 @@ func JointSelectedFields(m *apptest.JointSelect) []string {
 
 	vs := make([]string, 0, len(joint.Columns))
 	{
-		vs = append(vs, joint.FieldID)
+		vs = append(vs, joint.FieldId)
 	}
 	if m.GetAlias() {
 		vs = append(vs, joint.FieldAlias)
@@ -1674,7 +1674,7 @@ func JointGetKey(ctx context.Context, db *ent.Client, ref *apptest.JointRef) (uu
 var jointOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Joint")
 
 var jointPatchColumns = entpatch.Columns{
-	1: joint.FieldID, 2: joint.RobotColumn, 4: joint.FieldAlias, 14: joint.FieldDateErased}
+	1: joint.FieldId, 2: joint.RobotColumn, 4: joint.FieldAlias, 14: joint.FieldDateErased}
 
 func (s JointServiceServer) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
 	if !req.HasPatch() {
@@ -1719,7 +1719,7 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 	}
 	at := &apptest.JointRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, joint.IDEQ(k))
+	p, err := s.narrow(ctx, joint.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -1819,7 +1819,7 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 		}
 
 		k = v
-		p = joint.And(p, joint.IDEQ(v))
+		p = joint.And(p, joint.IdEQ(v))
 	}
 
 	u := st.Db.Joint.Update().Where(p)
@@ -1869,7 +1869,7 @@ func pickJoint(req *apptest.JointRef) (predicate.Joint, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return joint.IDEQ(v), nil
+			return joint.IdEQ(v), nil
 		}
 	case apptest.JointRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Joint")
@@ -1959,7 +1959,7 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	if v, err := mint(ctx, s.Mint, "app.Fleet", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	q.SetAlias(req.GetAlias())
 
@@ -1978,7 +1978,7 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.FleetService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -2013,7 +2013,7 @@ func (s FleetServiceServer) Get(ctx context.Context, req *apptest.FleetGetReques
 }
 
 func selectFleetKey(q *ent.FleetQuery) {
-	q.Select(fleet.FieldID)
+	q.Select(fleet.FieldId)
 }
 
 func FleetSelectedFields(m *apptest.FleetSelect) []string {
@@ -2023,7 +2023,7 @@ func FleetSelectedFields(m *apptest.FleetSelect) []string {
 
 	vs := make([]string, 0, len(fleet.Columns))
 	{
-		vs = append(vs, fleet.FieldID)
+		vs = append(vs, fleet.FieldId)
 	}
 	if m.GetAlias() {
 		vs = append(vs, fleet.FieldAlias)
@@ -2096,7 +2096,7 @@ func FleetGetKey(ctx context.Context, db *ent.Client, ref *apptest.FleetRef) (uu
 var fleetOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Fleet")
 
 var fleetPatchColumns = entpatch.Columns{
-	1: fleet.FieldID, 4: fleet.FieldAlias, 14: fleet.FieldDateErased}
+	1: fleet.FieldId, 4: fleet.FieldAlias, 14: fleet.FieldDateErased}
 
 func (s FleetServiceServer) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
 	if !req.HasPatch() {
@@ -2141,7 +2141,7 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 	}
 	at := &apptest.FleetRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, fleet.IDEQ(k))
+	p, err := s.narrow(ctx, fleet.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -2241,7 +2241,7 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 		}
 
 		k = v
-		p = fleet.And(p, fleet.IDEQ(v))
+		p = fleet.And(p, fleet.IdEQ(v))
 	}
 
 	u := st.Db.Fleet.Update().Where(p)
@@ -2291,7 +2291,7 @@ func pickFleet(req *apptest.FleetRef) (predicate.Fleet, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return fleet.IDEQ(v), nil
+			return fleet.IdEQ(v), nil
 		}
 	case apptest.FleetRef_Alias_case:
 		return fleet.AliasEQ(req.GetAlias()), nil
@@ -2380,7 +2380,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	if v, err := mint(ctx, s.Mint, "app.Reading", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
 		return nil, err
@@ -2393,7 +2393,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	if v, err := uuid.FromBytes(req.GetTenantId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
 	} else {
-		q.SetTenantID(v)
+		q.SetTenantId(v)
 	}
 	q.SetCelsius(req.GetCelsius())
 	if req.HasDateCreated() {
@@ -2417,7 +2417,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.ReadingService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -2456,7 +2456,7 @@ func (s ReadingServiceServer) Get(ctx context.Context, req *apptest.ReadingGetRe
 }
 
 func selectReadingKey(q *ent.ReadingQuery) {
-	q.Select(reading.FieldID)
+	q.Select(reading.FieldId)
 }
 
 func ReadingSelectedFields(m *apptest.ReadingSelect) []string {
@@ -2466,10 +2466,10 @@ func ReadingSelectedFields(m *apptest.ReadingSelect) []string {
 
 	vs := make([]string, 0, len(reading.Columns))
 	{
-		vs = append(vs, reading.FieldID)
+		vs = append(vs, reading.FieldId)
 	}
 	if m.GetTenantId() {
-		vs = append(vs, reading.FieldTenantID)
+		vs = append(vs, reading.FieldTenantId)
 	}
 	if m.GetCelsius() {
 		vs = append(vs, reading.FieldCelsius)
@@ -2549,7 +2549,7 @@ func ReadingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ReadingRef)
 var readingOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Reading")
 
 var readingPatchColumns = entpatch.Columns{
-	1: reading.FieldID, 2: reading.RobotColumn, 9: reading.FieldTenantID, 8: reading.FieldCelsius, 15: reading.FieldDateCreated}
+	1: reading.FieldId, 2: reading.RobotColumn, 9: reading.FieldTenantId, 8: reading.FieldCelsius, 15: reading.FieldDateCreated}
 
 func (s ReadingServiceServer) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
 	if !req.HasPatch() {
@@ -2594,7 +2594,7 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 	}
 	at := &apptest.ReadingRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, reading.IDEQ(k))
+	p, err := s.narrow(ctx, reading.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -2694,7 +2694,7 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 		}
 
 		k = v
-		p = reading.And(p, reading.IDEQ(v))
+		p = reading.And(p, reading.IdEQ(v))
 	}
 
 	n, err := st.Db.Reading.Delete().Where(p).Exec(ctx)
@@ -2724,7 +2724,7 @@ func ReadingPick(req *apptest.ReadingRef) (predicate.Reading, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return reading.IDEQ(v), nil
+			return reading.IdEQ(v), nil
 		}
 	case apptest.ReadingRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Reading")

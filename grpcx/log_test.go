@@ -24,7 +24,7 @@ const echoMethod = "/grpcx.test.Echo/Echo"
 var echo = grpc.ServiceDesc{
 	ServiceName: "grpcx.test.Echo",
 	// Anything implements it, and nothing is registered as the implementation
-	// anyway -- gRPC only checks this against a non-nil one.
+	// anyway -- gRpc only checks this against a non-nil one.
 	HandlerType: (*any)(nil),
 	Methods: []grpc.MethodDesc{{
 		MethodName: "Echo",
@@ -79,7 +79,7 @@ func TestLog(t *testing.T) {
 
 		wait(t, func() bool { return len(h.Records()) == 2 })
 
-		// Both say which RPC they were about, and they say it because the
+		// Both say which Rpc they were about, and they say it because the
 		// handler put it on the logger every line of the call is written with
 		// -- so a handler that logs on its own says it too, without being told.
 		for _, r := range h.Records() {

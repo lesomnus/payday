@@ -53,7 +53,7 @@ func (t Tenants) Ids() []pdid.Id { return t.ids }
 // Uuids is what a query narrows by.
 //
 // An empty answer is not the same as no narrowing, and the difference is the
-// whole safety of this: `IDIn()` with nothing renders as `WHERE FALSE`, so a
+// whole safety of this: `IdIn()` with nothing renders as `WHERE FALSE`, so a
 // caller who may see no tenant sees no rows. Read the other way round it would
 // be a scope that opened up as it ran out.
 func (t Tenants) Uuids() []uuid.UUID {

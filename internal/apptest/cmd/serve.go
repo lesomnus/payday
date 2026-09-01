@@ -78,7 +78,7 @@ type Server struct {
 	//
 	// A field beside [Server.Auth] because they are the pair -- who is calling,
 	// and what that means here -- and because the two places it has to be
-	// installed are not one place. `gate.Interceptor` covers the calls gRPC
+	// installed are not one place. `gate.Interceptor` covers the calls gRpc
 	// dispatches; `c.Server.Guard` covers the operations inside a batch, which
 	// arrive as one method carrying many and would otherwise be authorised as
 	// the batch rather than as themselves.
@@ -119,7 +119,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	//
 	// Two things are said to it rather than to the stack, and for the same
 	// reason -- both are about the statement that runs. The trail is kept by
-	// the servers that do the writing, since every RPC that changes anything
+	// the servers that do the writing, since every Rpc that changes anything
 	// has to report itself from inside the transaction that changes it. The
 	// wall is a predicate and a predicate belongs in the WHERE.
 	b, err := c.Watch.Build(c.Db)
@@ -171,7 +171,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// issues goes to the servers below rather than back through them.
 	//
 	// What puts a `Move` on the trail is not this position -- it is
-	// `bare.Change.Method`, which carries the RPC gRPC dispatched for the whole
+	// `bare.Change.Method`, which carries the Rpc gRpc dispatched for the whole
 	// request rather than the leg being written. So the trail answers "who
 	// moved this robot" with `Move` and not with the `Patch` it turned into.
 	//
@@ -285,7 +285,7 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 
 	// The batch, with the same rules the chain above enforces -- read off the
 	// same configuration rather than written out again, which is the only way
-	// the two stay in step. What they enforce by looking at the method gRPC
+	// the two stay in step. What they enforce by looking at the method gRpc
 	// dispatched, this enforces per operation.
 	if b, err := pd.Batch(s.Walled, s.Drv, c.Server.Guard(s.Policy)); err == nil {
 		pdpb.RegisterBatchServiceServer(g, b)
@@ -320,11 +320,11 @@ func (s *Server) Serve(ctx context.Context, c Config, l net.Listener) error {
 	return g.Serve(l)
 }
 
-// serveHttp is the second listener, for whatever cannot speak gRPC -- which is
+// serveHttp is the second listener, for whatever cannot speak gRpc -- which is
 // every browser. Nothing is opened unless the configuration named an address.
 //
-// It is the **same** `g`: a page reaches the handlers a gRPC client reaches,
-// through the interceptors a gRPC client goes through, behind the same wall.
+// It is the **same** `g`: a page reaches the handlers a gRpc client reaches,
+// through the interceptors a gRpc client goes through, behind the same wall.
 // There is no second stack here for a rule to be missing from.
 func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(), error) {
 	if !c.Server.Http.Serves() {
@@ -336,14 +336,14 @@ func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(
 		return nil, err
 	}
 
-	// Whatever this app serves over HTTP goes here, on the same mux and behind
+	// Whatever this app serves over Http goes here, on the same mux and behind
 	// the same cross-origin answer. A login endpoint is the case payday left a
 	// seam for and cannot fill: `auth` reads a credential and does not issue
-	// one, and issuing is an HTTP endpoint.
+	// one, and issuing is an Http endpoint.
 	//
 	//	h.Handle("/login", login(s.Ungated))
 	//
-	// A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide
+	// A gRpc path is `/<service>/<method>`, so an ordinary route cannot collide
 	// with one -- and `ServeMux` panics rather than shadowing if one somehow
 	// does.
 

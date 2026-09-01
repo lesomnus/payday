@@ -344,7 +344,7 @@ func (e Entity) message(domain int) string {
 	b.WriteString("  // rest empty.\n")
 	b.WriteString("\n  // 3 is yours, and payday will not spend it. It is where a set smaller\n")
 	b.WriteString("  // than a tenant goes -- a site, a cell, a region -- so that a reader\n")
-	// A full URL rather than a repository path: this lands in somebody else's
+	// A full Url rather than a repository path: this lands in somebody else's
 	// repository, where `docs/` is theirs and not payday's.
 	b.WriteString("  // with no type for this row can still find it.\n")
 	b.WriteString("  // https://github.com/lesomnus/payday/blob/main/docs/guide/permissions.md\n")

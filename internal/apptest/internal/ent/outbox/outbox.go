@@ -9,18 +9,18 @@ import (
 const (
 	// Label holds the string label denoting the outbox type in the database.
 	Label = "outbox"
-	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
-	// FieldTenantID holds the string denoting the tenant_id field in the database.
-	FieldTenantID = "tenant_id"
-	// FieldActorID holds the string denoting the actor_id field in the database.
-	FieldActorID = "actor_id"
+	// FieldId holds the string denoting the id field in the database.
+	FieldId = "id"
+	// FieldTenantId holds the string denoting the tenant_id field in the database.
+	FieldTenantId = "tenant_id"
+	// FieldActorId holds the string denoting the actor_id field in the database.
+	FieldActorId = "actor_id"
 	// FieldMethod holds the string denoting the method field in the database.
 	FieldMethod = "method"
 	// FieldBy holds the string denoting the by field in the database.
 	FieldBy = "by"
-	// FieldObjectID holds the string denoting the object_id field in the database.
-	FieldObjectID = "object_id"
+	// FieldObjectId holds the string denoting the object_id field in the database.
+	FieldObjectId = "object_id"
 	// FieldPatch holds the string denoting the patch field in the database.
 	FieldPatch = "patch"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
@@ -29,14 +29,14 @@ const (
 	Table = "outbox"
 )
 
-// Columns holds all SQL columns for outbox fields.
+// Columns holds all Sql columns for outbox fields.
 var Columns = []string{
-	FieldID,
-	FieldTenantID,
-	FieldActorID,
+	FieldId,
+	FieldTenantId,
+	FieldActorId,
 	FieldMethod,
 	FieldBy,
-	FieldObjectID,
+	FieldObjectId,
 	FieldPatch,
 	FieldDateCreated,
 }
@@ -54,19 +54,19 @@ func ValidColumn(column string) bool {
 // OrderOption defines the ordering options for the Outbox queries.
 type OrderOption func(*sql.Selector)
 
-// ByID orders the results by the id field.
-func ByID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldID, opts...).ToFunc()
+// ById orders the results by the id field.
+func ById(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldId, opts...).ToFunc()
 }
 
-// ByTenantID orders the results by the tenant_id field.
-func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+// ByTenantId orders the results by the tenant_id field.
+func ByTenantId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantId, opts...).ToFunc()
 }
 
-// ByActorID orders the results by the actor_id field.
-func ByActorID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldActorID, opts...).ToFunc()
+// ByActorId orders the results by the actor_id field.
+func ByActorId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldActorId, opts...).ToFunc()
 }
 
 // ByMethod orders the results by the method field.
@@ -79,9 +79,9 @@ func ByBy(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBy, opts...).ToFunc()
 }
 
-// ByObjectID orders the results by the object_id field.
-func ByObjectID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldObjectID, opts...).ToFunc()
+// ByObjectId orders the results by the object_id field.
+func ByObjectId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldObjectId, opts...).ToFunc()
 }
 
 // ByDateCreated orders the results by the date_created field.

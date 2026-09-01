@@ -40,7 +40,7 @@ func (_d *RobotDelete) ExecX(ctx context.Context) int {
 }
 
 func (_d *RobotDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(robot.Table, sqlgraph.NewFieldSpec(robot.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewDeleteSpec(robot.Table, sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid))
 	if ps := _d.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

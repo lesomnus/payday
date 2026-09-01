@@ -10,7 +10,7 @@ const (
 	pkgAnypb = protogen.GoImportPath("google.golang.org/protobuf/types/known/anypb")
 )
 
-// EmitBatch writes the dispatcher: the switch from a method name to the RPC of
+// EmitBatch writes the dispatcher: the switch from a method name to the Rpc of
 // this app's servers that answers it.
 //
 // It is the one part of a batch that has to be generated, and it is the one
@@ -20,7 +20,7 @@ const (
 // because a rule that is generated into an app is a rule an app can end up with
 // an old copy of.
 //
-// What it dispatches is the entity services, which is what `Server` has. An RPC
+// What it dispatches is the entity services, which is what `Server` has. An Rpc
 // somebody wrote by hand lives on a service of its own and is not reachable
 // through that interface, so it is not batchable -- said out loud because the
 // alternative is somebody finding out from an Unimplemented.
@@ -147,7 +147,7 @@ func EmitBatch(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	emitDispatch(g, ops, p, root)
 }
 
-// batchOp is one RPC a batch can carry.
+// batchOp is one Rpc a batch can carry.
 type batchOp struct {
 	// Entity is the accessor on `Server`, e.g. "Robot".
 	Entity string
@@ -160,10 +160,10 @@ type batchOp struct {
 	In string
 }
 
-// batchOps is every RPC of every entity service, taken from the contracts
+// batchOps is every Rpc of every entity service, taken from the contracts
 // rather than from a list.
 //
-// It reads the service definitions, so an RPC payday adds to a contract -- a
+// It reads the service definitions, so an Rpc payday adds to a contract -- a
 // `List`, and whatever comes after it -- is batchable without anybody having
 // come back here. What it leaves out is the streaming ones, which have no
 // single request and no single answer and so are not an operation.
@@ -212,13 +212,13 @@ func emitDispatch(g *protogen.GeneratedFile, ops []batchOp, p Paths, root protog
 	g.P("// The request is unpacked into exactly the message the method takes, and an")
 	g.P("// `Any` carrying anything else is refused rather than coerced -- a request")
 	g.P("// that decoded into a different message would be a write the caller did not")
-	g.P("// ask for, and `Any` is checked by type URL so there is a right answer.")
+	g.P("// ask for, and `Any` is checked by type Url so there is a right answer.")
 	g.P("func dispatch(ctx ", pkgCtx.Ident("Context"), ", s ", root.Ident("Server"),
 		", op *", pkgPdpb.Ident("Op"), ") (*", pkgAnypb.Ident("Any"), ", error) {")
 	g.P("	m := op.GetMethod()")
 	g.P("")
 	g.P("	// Under the operation's own name. The recorder fills in what the")
-	g.P("	// caller asked for by asking gRPC, and in here gRPC answers with the")
+	g.P("	// caller asked for by asking gRpc, and in here gRpc answers with the")
 	g.P("	// envelope -- `BatchService/Do`, for every operation of every batch --")
 	g.P("	// so without this the trail says a hundred different writes were all")
 	g.P("	// the same call.")
@@ -243,7 +243,7 @@ func emitDispatch(g *protogen.GeneratedFile, ops []batchOp, p Paths, root protog
 	}
 
 	g.P("	default:")
-	g.P("		// Including every RPC written by hand: those live on a service of")
+	g.P("		// Including every Rpc written by hand: those live on a service of")
 	g.P("		// their own and `Server` has no accessor for one, so there is nothing")
 	g.P("		// here to call. Unimplemented says exactly that.")
 	g.P("		return nil, ", pkgBatch.Ident("ErrNoMethod"), "(m)")

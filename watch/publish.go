@@ -73,7 +73,7 @@ func (w *Watch) Unary() grpc.UnaryServerInterceptor {
 	}
 }
 
-// Subscribe is what a Watch RPC listens on.
+// Subscribe is what a Watch Rpc listens on.
 //
 // The nil case answers with a channel nothing will ever send on, which is
 // honest only because nobody reaches it any more: [Stream] refuses a Watch

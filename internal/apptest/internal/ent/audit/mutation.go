@@ -47,13 +47,13 @@ func (m *Mutation) Predicates() []predicate.Audit {
 	return m.predicates
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (m *Mutation) SetTenantID(u uuid.UUID) {
+// SetTenantId sets the "tenant_id" field.
+func (m *Mutation) SetTenantId(u uuid.UUID) {
 	m.tenant_id = &u
 }
 
-// TenantID returns the value of the "tenant_id" field in the mutation.
-func (m *Mutation) TenantID() (r uuid.UUID, exists bool) {
+// TenantId returns the value of the "tenant_id" field in the mutation.
+func (m *Mutation) TenantId() (r uuid.UUID, exists bool) {
 	v := m.tenant_id
 	if v == nil {
 		return
@@ -61,18 +61,18 @@ func (m *Mutation) TenantID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetTenantID resets all changes to the "tenant_id" field.
-func (m *Mutation) ResetTenantID() {
+// ResetTenantId resets all changes to the "tenant_id" field.
+func (m *Mutation) ResetTenantId() {
 	m.tenant_id = nil
 }
 
-// SetActorID sets the "actor_id" field.
-func (m *Mutation) SetActorID(u uuid.UUID) {
+// SetActorId sets the "actor_id" field.
+func (m *Mutation) SetActorId(u uuid.UUID) {
 	m.actor_id = &u
 }
 
-// ActorID returns the value of the "actor_id" field in the mutation.
-func (m *Mutation) ActorID() (r uuid.UUID, exists bool) {
+// ActorId returns the value of the "actor_id" field in the mutation.
+func (m *Mutation) ActorId() (r uuid.UUID, exists bool) {
 	v := m.actor_id
 	if v == nil {
 		return
@@ -80,18 +80,18 @@ func (m *Mutation) ActorID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetActorID resets all changes to the "actor_id" field.
-func (m *Mutation) ResetActorID() {
+// ResetActorId resets all changes to the "actor_id" field.
+func (m *Mutation) ResetActorId() {
 	m.actor_id = nil
 }
 
-// SetTraceID sets the "trace_id" field.
-func (m *Mutation) SetTraceID(b []byte) {
+// SetTraceId sets the "trace_id" field.
+func (m *Mutation) SetTraceId(b []byte) {
 	m.trace_id = &b
 }
 
-// TraceID returns the value of the "trace_id" field in the mutation.
-func (m *Mutation) TraceID() (r []byte, exists bool) {
+// TraceId returns the value of the "trace_id" field in the mutation.
+func (m *Mutation) TraceId() (r []byte, exists bool) {
 	v := m.trace_id
 	if v == nil {
 		return
@@ -99,8 +99,8 @@ func (m *Mutation) TraceID() (r []byte, exists bool) {
 	return *v, true
 }
 
-// ResetTraceID resets all changes to the "trace_id" field.
-func (m *Mutation) ResetTraceID() {
+// ResetTraceId resets all changes to the "trace_id" field.
+func (m *Mutation) ResetTraceId() {
 	m.trace_id = nil
 }
 
@@ -123,13 +123,13 @@ func (m *Mutation) ResetAction() {
 	m.action = nil
 }
 
-// SetObjectID sets the "object_id" field.
-func (m *Mutation) SetObjectID(u uuid.UUID) {
+// SetObjectId sets the "object_id" field.
+func (m *Mutation) SetObjectId(u uuid.UUID) {
 	m.object_id = &u
 }
 
-// ObjectID returns the value of the "object_id" field in the mutation.
-func (m *Mutation) ObjectID() (r uuid.UUID, exists bool) {
+// ObjectId returns the value of the "object_id" field in the mutation.
+func (m *Mutation) ObjectId() (r uuid.UUID, exists bool) {
 	v := m.object_id
 	if v == nil {
 		return
@@ -137,8 +137,8 @@ func (m *Mutation) ObjectID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetObjectID resets all changes to the "object_id" field.
-func (m *Mutation) ResetObjectID() {
+// ResetObjectId resets all changes to the "object_id" field.
+func (m *Mutation) ResetObjectId() {
 	m.object_id = nil
 }
 
@@ -193,13 +193,13 @@ func (m *Mutation) ResetDateCreated() {
 	delete(m.clearedFields, FieldDateCreated)
 }
 
-// SetActorTenantID sets the "actor_tenant_id" field.
-func (m *Mutation) SetActorTenantID(u uuid.UUID) {
+// SetActorTenantId sets the "actor_tenant_id" field.
+func (m *Mutation) SetActorTenantId(u uuid.UUID) {
 	m.actor_tenant_id = &u
 }
 
-// ActorTenantID returns the value of the "actor_tenant_id" field in the mutation.
-func (m *Mutation) ActorTenantID() (r uuid.UUID, exists bool) {
+// ActorTenantId returns the value of the "actor_tenant_id" field in the mutation.
+func (m *Mutation) ActorTenantId() (r uuid.UUID, exists bool) {
 	v := m.actor_tenant_id
 	if v == nil {
 		return
@@ -207,8 +207,8 @@ func (m *Mutation) ActorTenantID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ResetActorTenantID resets all changes to the "actor_tenant_id" field.
-func (m *Mutation) ResetActorTenantID() {
+// ResetActorTenantId resets all changes to the "actor_tenant_id" field.
+func (m *Mutation) ResetActorTenantId() {
 	m.actor_tenant_id = nil
 }
 
@@ -231,13 +231,13 @@ func (m *Mutation) ResetValue() {
 	m.value = nil
 }
 
-// SetCounterpartTenantID sets the "counterpart_tenant_id" field.
-func (m *Mutation) SetCounterpartTenantID(u uuid.UUID) {
+// SetCounterpartTenantId sets the "counterpart_tenant_id" field.
+func (m *Mutation) SetCounterpartTenantId(u uuid.UUID) {
 	m.counterpart_tenant_id = &u
 }
 
-// CounterpartTenantID returns the value of the "counterpart_tenant_id" field in the mutation.
-func (m *Mutation) CounterpartTenantID() (r uuid.UUID, exists bool) {
+// CounterpartTenantId returns the value of the "counterpart_tenant_id" field in the mutation.
+func (m *Mutation) CounterpartTenantId() (r uuid.UUID, exists bool) {
 	v := m.counterpart_tenant_id
 	if v == nil {
 		return
@@ -245,22 +245,22 @@ func (m *Mutation) CounterpartTenantID() (r uuid.UUID, exists bool) {
 	return *v, true
 }
 
-// ClearCounterpartTenantID clears the value of the "counterpart_tenant_id" field.
-func (m *Mutation) ClearCounterpartTenantID() {
+// ClearCounterpartTenantId clears the value of the "counterpart_tenant_id" field.
+func (m *Mutation) ClearCounterpartTenantId() {
 	m.counterpart_tenant_id = nil
-	m.clearedFields[FieldCounterpartTenantID] = struct{}{}
+	m.clearedFields[FieldCounterpartTenantId] = struct{}{}
 }
 
-// CounterpartTenantIDCleared returns if the "counterpart_tenant_id" field was cleared in this mutation.
-func (m *Mutation) CounterpartTenantIDCleared() bool {
-	_, ok := m.clearedFields[FieldCounterpartTenantID]
+// CounterpartTenantIdCleared returns if the "counterpart_tenant_id" field was cleared in this mutation.
+func (m *Mutation) CounterpartTenantIdCleared() bool {
+	_, ok := m.clearedFields[FieldCounterpartTenantId]
 	return ok
 }
 
-// ResetCounterpartTenantID resets all changes to the "counterpart_tenant_id" field.
-func (m *Mutation) ResetCounterpartTenantID() {
+// ResetCounterpartTenantId resets all changes to the "counterpart_tenant_id" field.
+func (m *Mutation) ResetCounterpartTenantId() {
 	m.counterpart_tenant_id = nil
-	delete(m.clearedFields, FieldCounterpartTenantID)
+	delete(m.clearedFields, FieldCounterpartTenantId)
 }
 
 // SetDomain sets the "domain" field.
@@ -352,19 +352,19 @@ func (m *Mutation) Type() string {
 func (m *Mutation) Fields() []string {
 	fields := make([]string, 0, 11)
 	if m.tenant_id != nil {
-		fields = append(fields, FieldTenantID)
+		fields = append(fields, FieldTenantId)
 	}
 	if m.actor_id != nil {
-		fields = append(fields, FieldActorID)
+		fields = append(fields, FieldActorId)
 	}
 	if m.trace_id != nil {
-		fields = append(fields, FieldTraceID)
+		fields = append(fields, FieldTraceId)
 	}
 	if m.action != nil {
 		fields = append(fields, FieldAction)
 	}
 	if m.object_id != nil {
-		fields = append(fields, FieldObjectID)
+		fields = append(fields, FieldObjectId)
 	}
 	if m.patch != nil {
 		fields = append(fields, FieldPatch)
@@ -373,13 +373,13 @@ func (m *Mutation) Fields() []string {
 		fields = append(fields, FieldDateCreated)
 	}
 	if m.actor_tenant_id != nil {
-		fields = append(fields, FieldActorTenantID)
+		fields = append(fields, FieldActorTenantId)
 	}
 	if m.value != nil {
 		fields = append(fields, FieldValue)
 	}
 	if m.counterpart_tenant_id != nil {
-		fields = append(fields, FieldCounterpartTenantID)
+		fields = append(fields, FieldCounterpartTenantId)
 	}
 	if m.domain != nil {
 		fields = append(fields, FieldDomain)
@@ -392,26 +392,26 @@ func (m *Mutation) Fields() []string {
 // schema.
 func (m *Mutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case FieldTenantID:
-		return m.TenantID()
-	case FieldActorID:
-		return m.ActorID()
-	case FieldTraceID:
-		return m.TraceID()
+	case FieldTenantId:
+		return m.TenantId()
+	case FieldActorId:
+		return m.ActorId()
+	case FieldTraceId:
+		return m.TraceId()
 	case FieldAction:
 		return m.Action()
-	case FieldObjectID:
-		return m.ObjectID()
+	case FieldObjectId:
+		return m.ObjectId()
 	case FieldPatch:
 		return m.Patch()
 	case FieldDateCreated:
 		return m.DateCreated()
-	case FieldActorTenantID:
-		return m.ActorTenantID()
+	case FieldActorTenantId:
+		return m.ActorTenantId()
 	case FieldValue:
 		return m.Value()
-	case FieldCounterpartTenantID:
-		return m.CounterpartTenantID()
+	case FieldCounterpartTenantId:
+		return m.CounterpartTenantId()
 	case FieldDomain:
 		return m.Domain()
 	}
@@ -430,26 +430,26 @@ func (m *Mutation) OldField(ctx context.Context, name string) (ent.Value, error)
 // type.
 func (m *Mutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case FieldTenantID:
+	case FieldTenantId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTenantID(v)
+		m.SetTenantId(v)
 		return nil
-	case FieldActorID:
+	case FieldActorId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetActorID(v)
+		m.SetActorId(v)
 		return nil
-	case FieldTraceID:
+	case FieldTraceId:
 		v, ok := value.([]byte)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTraceID(v)
+		m.SetTraceId(v)
 		return nil
 	case FieldAction:
 		v, ok := value.(string)
@@ -458,12 +458,12 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAction(v)
 		return nil
-	case FieldObjectID:
+	case FieldObjectId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetObjectID(v)
+		m.SetObjectId(v)
 		return nil
 	case FieldPatch:
 		v, ok := value.([]byte)
@@ -479,12 +479,12 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDateCreated(v)
 		return nil
-	case FieldActorTenantID:
+	case FieldActorTenantId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetActorTenantID(v)
+		m.SetActorTenantId(v)
 		return nil
 	case FieldValue:
 		v, ok := value.([]byte)
@@ -493,12 +493,12 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetValue(v)
 		return nil
-	case FieldCounterpartTenantID:
+	case FieldCounterpartTenantId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetCounterpartTenantID(v)
+		m.SetCounterpartTenantId(v)
 		return nil
 	case FieldDomain:
 		v, ok := value.(uint32)
@@ -555,8 +555,8 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldDateCreated) {
 		fields = append(fields, FieldDateCreated)
 	}
-	if m.FieldCleared(FieldCounterpartTenantID) {
-		fields = append(fields, FieldCounterpartTenantID)
+	if m.FieldCleared(FieldCounterpartTenantId) {
+		fields = append(fields, FieldCounterpartTenantId)
 	}
 	if m.FieldCleared(FieldDomain) {
 		fields = append(fields, FieldDomain)
@@ -578,8 +578,8 @@ func (m *Mutation) ClearField(name string) error {
 	case FieldDateCreated:
 		m.ClearDateCreated()
 		return nil
-	case FieldCounterpartTenantID:
-		m.ClearCounterpartTenantID()
+	case FieldCounterpartTenantId:
+		m.ClearCounterpartTenantId()
 		return nil
 	case FieldDomain:
 		m.ClearDomain()
@@ -592,20 +592,20 @@ func (m *Mutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *Mutation) ResetField(name string) error {
 	switch name {
-	case FieldTenantID:
-		m.ResetTenantID()
+	case FieldTenantId:
+		m.ResetTenantId()
 		return nil
-	case FieldActorID:
-		m.ResetActorID()
+	case FieldActorId:
+		m.ResetActorId()
 		return nil
-	case FieldTraceID:
-		m.ResetTraceID()
+	case FieldTraceId:
+		m.ResetTraceId()
 		return nil
 	case FieldAction:
 		m.ResetAction()
 		return nil
-	case FieldObjectID:
-		m.ResetObjectID()
+	case FieldObjectId:
+		m.ResetObjectId()
 		return nil
 	case FieldPatch:
 		m.ResetPatch()
@@ -613,14 +613,14 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldDateCreated:
 		m.ResetDateCreated()
 		return nil
-	case FieldActorTenantID:
-		m.ResetActorTenantID()
+	case FieldActorTenantId:
+		m.ResetActorTenantId()
 		return nil
 	case FieldValue:
 		m.ResetValue()
 		return nil
-	case FieldCounterpartTenantID:
-		m.ResetCounterpartTenantID()
+	case FieldCounterpartTenantId:
+		m.ResetCounterpartTenantId()
 		return nil
 	case FieldDomain:
 		m.ResetDomain()
@@ -635,9 +635,9 @@ func (m *Mutation) AddedEdges() []string {
 	return edges
 }
 
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// AddedIds returns all Ids (to other nodes) that were added for the given edge
 // name in this mutation.
-func (m *Mutation) AddedIDs(name string) []ent.Value {
+func (m *Mutation) AddedIds(name string) []ent.Value {
 	return nil
 }
 
@@ -647,9 +647,9 @@ func (m *Mutation) RemovedEdges() []string {
 	return edges
 }
 
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// RemovedIds returns all Ids (to other nodes) that were removed for the edge with
 // the given name in this mutation.
-func (m *Mutation) RemovedIDs(name string) []ent.Value {
+func (m *Mutation) RemovedIds(name string) []ent.Value {
 	return nil
 }
 

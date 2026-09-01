@@ -42,21 +42,21 @@ func (_c *CellCreate) SetNillableDateErased(v *time.Time) *CellCreate {
 	return _c
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_c *CellCreate) SetTenantID(v uuid.UUID) *CellCreate {
-	_c.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_c *CellCreate) SetTenantId(v uuid.UUID) *CellCreate {
+	_c.mutation.SetTenantId(v)
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *CellCreate) SetID(v uuid.UUID) *CellCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *CellCreate) SetId(v uuid.UUID) *CellCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
 // SetTenant sets the "tenant" edge to the Tenant entity.
 func (_c *CellCreate) SetTenant(v *Tenant) *CellCreate {
-	return _c.SetTenantID(v.ID)
+	return _c.SetTenantId(v.Id)
 }
 
 // Mutation returns the CellMutation object of the builder.
@@ -96,10 +96,10 @@ func (_c *CellCreate) check() error {
 	if _, ok := _c.mutation.Alias(); !ok {
 		return &ValidationError{Name: "alias", err: errors.New(`ent: missing required field "Cell.alias"`)}
 	}
-	if _, ok := _c.mutation.TenantID(); !ok {
+	if _, ok := _c.mutation.TenantId(); !ok {
 		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Cell.tenant_id"`)}
 	}
-	if len(_c.mutation.TenantIDs()) == 0 {
+	if len(_c.mutation.TenantIds()) == 0 {
 		return &ValidationError{Name: "tenant", err: errors.New(`ent: missing required edge "Cell.tenant"`)}
 	}
 	return nil
@@ -116,14 +116,14 @@ func (_c *CellCreate) sqlSave(ctx context.Context) (*Cell, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -131,11 +131,11 @@ func (_c *CellCreate) sqlSave(ctx context.Context) (*Cell, error) {
 func (_c *CellCreate) createSpec() (*Cell, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Cell{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(cell.Table, sqlgraph.NewFieldSpec(cell.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(cell.Table, sqlgraph.NewFieldSpec(cell.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(cell.FieldAlias, field.TypeString, value)
@@ -145,7 +145,7 @@ func (_c *CellCreate) createSpec() (*Cell, *sqlgraph.CreateSpec) {
 		_spec.SetField(cell.FieldDateErased, field.TypeTime, value)
 		_node.DateErased = &value
 	}
-	if nodes := _c.mutation.TenantIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.TenantIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -153,13 +153,13 @@ func (_c *CellCreate) createSpec() (*Cell, *sqlgraph.CreateSpec) {
 			Columns: []string{cell.TenantColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tenant.FieldID, field.TypeUUID),
+				IdSpec: sqlgraph.NewFieldSpec(tenant.FieldId, field.TypeUuid),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.TenantID = nodes[0]
+		_node.TenantId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -208,7 +208,7 @@ func (_c *CellCreateBulk) Save(ctx context.Context) ([]*Cell, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

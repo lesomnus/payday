@@ -61,7 +61,7 @@ func (e *DomainError) GRPCStatus() *status.Status {
 	return status.New(codes.InvalidArgument, e.Error())
 }
 
-// ShapeError is sixteen bytes that are a UUID but not one of ours, so nothing
+// ShapeError is sixteen bytes that are a Uuid but not one of ours, so nothing
 // can be said about what they name.
 type ShapeError struct {
 	Id uuid.UUID

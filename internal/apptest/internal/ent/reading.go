@@ -17,16 +17,16 @@ import (
 // Reading is the model entity for the Reading schema.
 type Reading struct {
 	config `json:"-"`
-	// ID of the ent.
-	ID uuid.UUID `json:"id,omitempty"`
-	// TenantID holds the value of the "tenant_id" field.
-	TenantID uuid.UUID `json:"tenant_id,omitempty"`
+	// Id of the ent.
+	Id uuid.UUID `json:"id,omitempty"`
+	// TenantId holds the value of the "tenant_id" field.
+	TenantId uuid.UUID `json:"tenant_id,omitempty"`
 	// Celsius holds the value of the "celsius" field.
 	Celsius float64 `json:"celsius,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
-	// RobotID holds the value of the "robot_id" field.
-	RobotID uuid.UUID `json:"robot_id,omitempty"`
+	// RobotId holds the value of the "robot_id" field.
+	RobotId uuid.UUID `json:"robot_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ReadingQuery when eager-loading is set.
 	Edges        ReadingEdges `json:"edges"`
@@ -62,7 +62,7 @@ func (*Reading) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case reading.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case reading.FieldID, reading.FieldTenantID, reading.FieldRobotID:
+		case reading.FieldId, reading.FieldTenantId, reading.FieldRobotId:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -79,17 +79,17 @@ func (_m *Reading) assignValues(columns []string, values []any) error {
 	}
 	for i := range columns {
 		switch columns[i] {
-		case reading.FieldID:
+		case reading.FieldId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				_m.ID = *value
+				_m.Id = *value
 			}
-		case reading.FieldTenantID:
+		case reading.FieldTenantId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
 			} else if value != nil {
-				_m.TenantID = *value
+				_m.TenantId = *value
 			}
 		case reading.FieldCelsius:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -103,11 +103,11 @@ func (_m *Reading) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DateCreated = value.Time
 			}
-		case reading.FieldRobotID:
+		case reading.FieldRobotId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field robot_id", values[i])
 			} else if value != nil {
-				_m.RobotID = *value
+				_m.RobotId = *value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -149,9 +149,9 @@ func (_m *Reading) Unwrap() *Reading {
 func (_m *Reading) String() string {
 	var builder strings.Builder
 	builder.WriteString("Reading(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.Id))
 	builder.WriteString("tenant_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TenantID))
+	builder.WriteString(fmt.Sprintf("%v", _m.TenantId))
 	builder.WriteString(", ")
 	builder.WriteString("celsius=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Celsius))
@@ -160,7 +160,7 @@ func (_m *Reading) String() string {
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("robot_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.RobotID))
+	builder.WriteString(fmt.Sprintf("%v", _m.RobotId))
 	builder.WriteByte(')')
 	return builder.String()
 }

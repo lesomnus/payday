@@ -17,14 +17,14 @@ import (
 // Joint is the model entity for the Joint schema.
 type Joint struct {
 	config `json:"-"`
-	// ID of the ent.
-	ID uuid.UUID `json:"id,omitempty"`
+	// Id of the ent.
+	Id uuid.UUID `json:"id,omitempty"`
 	// Alias holds the value of the "alias" field.
 	Alias string `json:"alias,omitempty"`
 	// DateErased holds the value of the "date_erased" field.
 	DateErased *time.Time `json:"date_erased,omitempty"`
-	// RobotID holds the value of the "robot_id" field.
-	RobotID uuid.UUID `json:"robot_id,omitempty"`
+	// RobotId holds the value of the "robot_id" field.
+	RobotId uuid.UUID `json:"robot_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the JointQuery when eager-loading is set.
 	Edges        JointEdges `json:"edges"`
@@ -60,7 +60,7 @@ func (*Joint) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case joint.FieldDateErased:
 			values[i] = new(sql.NullTime)
-		case joint.FieldID, joint.FieldRobotID:
+		case joint.FieldId, joint.FieldRobotId:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -77,11 +77,11 @@ func (_m *Joint) assignValues(columns []string, values []any) error {
 	}
 	for i := range columns {
 		switch columns[i] {
-		case joint.FieldID:
+		case joint.FieldId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				_m.ID = *value
+				_m.Id = *value
 			}
 		case joint.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -96,11 +96,11 @@ func (_m *Joint) assignValues(columns []string, values []any) error {
 				_m.DateErased = new(time.Time)
 				*_m.DateErased = value.Time
 			}
-		case joint.FieldRobotID:
+		case joint.FieldRobotId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field robot_id", values[i])
 			} else if value != nil {
-				_m.RobotID = *value
+				_m.RobotId = *value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -142,7 +142,7 @@ func (_m *Joint) Unwrap() *Joint {
 func (_m *Joint) String() string {
 	var builder strings.Builder
 	builder.WriteString("Joint(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.Id))
 	builder.WriteString("alias=")
 	builder.WriteString(_m.Alias)
 	builder.WriteString(", ")
@@ -152,7 +152,7 @@ func (_m *Joint) String() string {
 	}
 	builder.WriteString(", ")
 	builder.WriteString("robot_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.RobotID))
+	builder.WriteString(fmt.Sprintf("%v", _m.RobotId))
 	builder.WriteByte(')')
 	return builder.String()
 }

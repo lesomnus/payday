@@ -15,16 +15,16 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.64.0 or later.
+// Requires gRpc-Go v1.64.0 or later.
 const _ = grpc.SupportPackageIsVersion9
 
 const (
 	TokenService_Introspect_FullMethodName = "/payday.TokenService/Introspect"
 )
 
-// TokenServiceClient is the client API for TokenService service.
+// TokenServiceClient is the client Api for TokenService service.
 //
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+// For semantics around ctx use and closing/ending streaming Rpcs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // TokenService says who an opaque token stands for.
 //
@@ -49,7 +49,7 @@ const (
 //
 // The bearer of the token has no other credential -- that is what they are
 // presenting -- but they are not who is calling. The caller is a product app
-// holding its own credential, and this RPC is behind that app's authentication
+// holding its own credential, and this Rpc is behind that app's authentication
 // like anything else. Serving it open would let anybody test tokens against the
 // store as fast as they could send them.
 //
@@ -97,7 +97,7 @@ func (c *tokenServiceClient) Introspect(ctx context.Context, in *TokenIntrospect
 	return out, nil
 }
 
-// TokenServiceServer is the server API for TokenService service.
+// TokenServiceServer is the server Api for TokenService service.
 // All implementations must embed UnimplementedTokenServiceServer
 // for forward compatibility.
 //
@@ -124,7 +124,7 @@ func (c *tokenServiceClient) Introspect(ctx context.Context, in *TokenIntrospect
 //
 // The bearer of the token has no other credential -- that is what they are
 // presenting -- but they are not who is calling. The caller is a product app
-// holding its own credential, and this RPC is behind that app's authentication
+// holding its own credential, and this Rpc is behind that app's authentication
 // like anything else. Serving it open would let anybody test tokens against the
 // store as fast as they could send them.
 //

@@ -10,18 +10,18 @@ import (
 
 func (e *Audit) Proto() *apptest.Audit {
 	x := &apptest.Audit{}
-	x.SetId(e.ID[:])
-	x.SetTenantId(e.TenantID[:])
-	x.SetActorId(e.ActorID[:])
-	x.SetTraceId(e.TraceID)
+	x.SetId(e.Id[:])
+	x.SetTenantId(e.TenantId[:])
+	x.SetActorId(e.ActorId[:])
+	x.SetTraceId(e.TraceId)
 	x.SetAction(e.Action)
-	x.SetObjectId(e.ObjectID[:])
+	x.SetObjectId(e.ObjectId[:])
 	x.SetPatch(e.Patch)
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
-	x.SetActorTenantId(e.ActorTenantID[:])
+	x.SetActorTenantId(e.ActorTenantId[:])
 	x.SetValue(e.Value)
-	if e.CounterpartTenantID != nil {
-		x.SetCounterpartTenantId(e.CounterpartTenantID[:])
+	if e.CounterpartTenantId != nil {
+		x.SetCounterpartTenantId(e.CounterpartTenantId[:])
 	}
 	x.SetDomain(e.Domain)
 	return x

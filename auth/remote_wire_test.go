@@ -43,7 +43,7 @@ func (s *tokens) Introspect(ctx context.Context, req *pdpb.TokenIntrospectReques
 	return auth.Introspection(v)
 }
 
-// dial runs `s` on a real gRPC server over an in-memory socket and answers with
+// dial runs `s` on a real gRpc server over an in-memory socket and answers with
 // a client for it.
 //
 // A socket rather than the client interface stubbed out, because what is being

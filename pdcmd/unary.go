@@ -23,7 +23,7 @@ import (
 //
 // The verbs [Tree] builds are the ones every entity has. An operation that
 // means something is not one of them: payday closes the general writes on
-// purpose, so "move this robot to another tenant" is an RPC an app declares in
+// purpose, so "move this robot to another tenant" is an Rpc an app declares in
 // an overlay and implements in a layer -- see the schema guide. Nothing can
 // generate a command for it, because nothing knows what it means.
 //
@@ -35,7 +35,7 @@ import (
 //
 // A method declared in an overlay and a method `pd gen` wrote land in the same
 // place -- one `ServiceDescriptor`, merged before generation -- so this reaches
-// both by name and there is no second path for a hand-written RPC. That is the
+// both by name and there is no second path for a hand-written Rpc. That is the
 // same property [Tree] relies on to know that `Robot` has a `List` and `Cell`
 // does not.
 //
@@ -44,8 +44,8 @@ import (
 // Whether to take a reference argument: a request with a `ref` field takes one,
 // and a request without takes none. That is not a convention this package
 // invented -- it is the shape `pd gen` writes and the shape a hand-written
-// `RobotMoveRequest` follows, because an RPC about a row names it the way every
-// other RPC names one.
+// `RobotMoveRequest` follows, because an Rpc about a row names it the way every
+// other Rpc names one.
 //
 // Everything else about the request is the trailing protojson, for the reason
 // on [argRaw]: a flag per field would be a second copy of the schema.

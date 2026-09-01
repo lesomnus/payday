@@ -12,11 +12,11 @@ import (
 )
 
 var (
-	// WithGlobalUniqueID sets the universal ids options to the migration.
+	// WithGlobalUniqueId sets the universal ids options to the migration.
 	// If this option is enabled, ent migration will allocate a 1<<32 range
 	// for the ids of each entity (table).
 	// Note that this option cannot be applied on tables that already exist.
-	WithGlobalUniqueID = schema.WithGlobalUniqueID
+	WithGlobalUniqueId = schema.WithGlobalUniqueId
 	// WithDropColumn sets the drop column option to the migration.
 	// If this option is enabled, ent migration will drop old columns
 	// that were used for both fields and edges. This defaults to false.
@@ -32,7 +32,7 @@ var (
 	WithForeignKeys = schema.WithForeignKeys
 )
 
-// Schema is the API for creating, migrating and dropping a schema.
+// Schema is the Api for creating, migrating and dropping a schema.
 type Schema struct {
 	drv dialect.Driver
 }

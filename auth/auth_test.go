@@ -107,22 +107,22 @@ func TestPlain(t *testing.T) {
 	x.NotErrorIs(err, auth.ErrNoCredential)
 }
 
-func TestMTLS(t *testing.T) {
+func TestMTls(t *testing.T) {
 	t.Run("the name is read from the verified chain", func(t *testing.T) {
 		x := require.New(t)
 
-		v, err := auth.MTLS().Handle(verified(certOf("@acme/admin")))
+		v, err := auth.MTls().Handle(verified(certOf("@acme/admin")))
 		x.NoError(err)
-		x.Equal(auth.MethodMTLS, v.Method)
+		x.Equal(auth.MethodMTls, v.Method)
 		x.Equal("acme", v.Tenant)
 		x.Equal("admin", v.Alias)
 		x.True(v.Grant.IsWhole())
 	})
 
-	t.Run("a URI is preferred over the common name", func(t *testing.T) {
+	t.Run("a Uri is preferred over the common name", func(t *testing.T) {
 		x := require.New(t)
 
-		v, err := auth.MTLS().Handle(verified(certOf("@hooli/erlich", "spiffe://example.com/@acme/admin")))
+		v, err := auth.MTls().Handle(verified(certOf("@hooli/erlich", "spiffe://example.com/@acme/admin")))
 		x.NoError(err)
 		x.Equal("acme", v.Tenant)
 		x.Equal("admin", v.Alias)
@@ -133,28 +133,28 @@ func TestMTLS(t *testing.T) {
 	t.Run("a certificate nobody verified says nothing", func(t *testing.T) {
 		x := require.New(t)
 
-		_, err := auth.MTLS().Handle(presented(certOf("@acme/admin")))
+		_, err := auth.MTls().Handle(presented(certOf("@acme/admin")))
 		x.ErrorIs(err, auth.ErrNoCredential)
 	})
 
-	t.Run("no connection, no TLS, no name", func(t *testing.T) {
+	t.Run("no connection, no Tls, no name", func(t *testing.T) {
 		x := require.New(t)
 
-		_, err := auth.MTLS().Handle(context.Background())
+		_, err := auth.MTls().Handle(context.Background())
 		x.ErrorIs(err, auth.ErrNoCredential)
 
-		_, err = auth.MTLS().Handle(peer.NewContext(context.Background(), &peer.Peer{}))
+		_, err = auth.MTls().Handle(peer.NewContext(context.Background(), &peer.Peer{}))
 		x.ErrorIs(err, auth.ErrNoCredential)
 
 		// Verified, and carrying no name at all: another handler may know them.
-		_, err = auth.MTLS().Handle(verified(certOf("")))
+		_, err = auth.MTls().Handle(verified(certOf("")))
 		x.ErrorIs(err, auth.ErrNoCredential)
 	})
 
 	t.Run("a name that is not one is wrong rather than absent", func(t *testing.T) {
 		x := require.New(t)
 
-		_, err := auth.MTLS().Handle(verified(certOf("Acme Corporation, Inc.")))
+		_, err := auth.MTls().Handle(verified(certOf("Acme Corporation, Inc.")))
 		x.Error(err)
 		x.NotErrorIs(err, auth.ErrNoCredential)
 	})
@@ -345,7 +345,7 @@ func TestSeq(t *testing.T) {
 	// The stack the configuration builds for `methods: [bearer, mtls]`, on a
 	// connection that has a certificate.
 	fallback := func(store auth.TokenStore) auth.Handler {
-		return auth.Seq(auth.Bearer(store), auth.MTLS())
+		return auth.Seq(auth.Bearer(store), auth.MTls())
 	}
 	with := func(header string) context.Context {
 		ctx := verified(cert)
@@ -373,7 +373,7 @@ func TestSeq(t *testing.T) {
 
 		v, err := fallback(good).Handle(with(""))
 		x.NoError(err)
-		x.Equal(auth.MethodMTLS, v.Method)
+		x.Equal(auth.MethodMTls, v.Method)
 		x.Equal("@hooli/erlich", v.Name())
 	})
 
@@ -401,7 +401,7 @@ func TestSeq(t *testing.T) {
 	t.Run("nothing at all is nothing said", func(t *testing.T) {
 		x := require.New(t)
 
-		_, err := auth.Seq(auth.Bearer(good), auth.MTLS()).Handle(incoming())
+		_, err := auth.Seq(auth.Bearer(good), auth.MTls()).Handle(incoming())
 		x.ErrorIs(err, auth.ErrNoCredential)
 
 		// And no handler at all is the same.
@@ -450,7 +450,7 @@ func TestName(t *testing.T) {
 	})
 
 	// The bytes of an identifier are what something dumping them writes, and
-	// they name the same row as the UUID does.
+	// they name the same row as the Uuid does.
 	t.Run("an identifier is read whichever way it was spelled", func(t *testing.T) {
 		x := require.New(t)
 
@@ -469,7 +469,7 @@ func TestName(t *testing.T) {
 		x.Error(err)
 	})
 
-	t.Run("a UUID that is not one of ours names a row this app never wrote", func(t *testing.T) {
+	t.Run("a Uuid that is not one of ours names a row this app never wrote", func(t *testing.T) {
 		x := require.New(t)
 
 		// A v4, which says nothing about what kind of thing it names.

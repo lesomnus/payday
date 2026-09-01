@@ -11,49 +11,49 @@ import (
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 )
 
-// ID filters vertices based on their ID field.
-func ID(id uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldEQ(FieldID, id))
+// Id filters vertices based on their Id field.
+func Id(id uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldEQ(FieldId, id))
 }
 
-// IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldEQ(FieldID, id))
+// IdEQ applies the EQ predicate on the Id field.
+func IdEQ(id uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldEQ(FieldId, id))
 }
 
-// IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldNEQ(FieldID, id))
+// IdNEQ applies the NEQ predicate on the Id field.
+func IdNEQ(id uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldNEQ(FieldId, id))
 }
 
-// IDIn applies the In predicate on the ID field.
-func IDIn(ids ...uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldIn(FieldID, ids...))
+// IdIn applies the In predicate on the Id field.
+func IdIn(ids ...uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldIn(FieldId, ids...))
 }
 
-// IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldNotIn(FieldID, ids...))
+// IdNotIn applies the NotIn predicate on the Id field.
+func IdNotIn(ids ...uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldNotIn(FieldId, ids...))
 }
 
-// IDGT applies the GT predicate on the ID field.
-func IDGT(id uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldGT(FieldID, id))
+// IdGT applies the GT predicate on the Id field.
+func IdGT(id uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldGT(FieldId, id))
 }
 
-// IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldGTE(FieldID, id))
+// IdGTE applies the GTE predicate on the Id field.
+func IdGTE(id uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldGTE(FieldId, id))
 }
 
-// IDLT applies the LT predicate on the ID field.
-func IDLT(id uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldLT(FieldID, id))
+// IdLT applies the LT predicate on the Id field.
+func IdLT(id uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldLT(FieldId, id))
 }
 
-// IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldLTE(FieldID, id))
+// IdLTE applies the LTE predicate on the Id field.
+func IdLTE(id uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldLTE(FieldId, id))
 }
 
 // DateCreated applies equality check predicate on the "date_created" field. It's identical to DateCreatedEQ.
@@ -61,14 +61,14 @@ func DateCreated(v time.Time) predicate.Pairing {
 	return predicate.Pairing(sql.FieldEQ(FieldDateCreated, v))
 }
 
-// LeadID applies equality check predicate on the "lead_id" field. It's identical to LeadIDEQ.
-func LeadID(v uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldEQ(FieldLeadID, v))
+// LeadId applies equality check predicate on the "lead_id" field. It's identical to LeadIdEQ.
+func LeadId(v uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldEQ(FieldLeadId, v))
 }
 
-// FollowID applies equality check predicate on the "follow_id" field. It's identical to FollowIDEQ.
-func FollowID(v uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldEQ(FieldFollowID, v))
+// FollowId applies equality check predicate on the "follow_id" field. It's identical to FollowIdEQ.
+func FollowId(v uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldEQ(FieldFollowId, v))
 }
 
 // DateCreatedEQ applies the EQ predicate on the "date_created" field.
@@ -121,51 +121,51 @@ func DateCreatedNotNil() predicate.Pairing {
 	return predicate.Pairing(sql.FieldNotNull(FieldDateCreated))
 }
 
-// LeadIDEQ applies the EQ predicate on the "lead_id" field.
-func LeadIDEQ(v uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldEQ(FieldLeadID, v))
+// LeadIdEQ applies the EQ predicate on the "lead_id" field.
+func LeadIdEQ(v uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldEQ(FieldLeadId, v))
 }
 
-// LeadIDNEQ applies the NEQ predicate on the "lead_id" field.
-func LeadIDNEQ(v uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldNEQ(FieldLeadID, v))
+// LeadIdNEQ applies the NEQ predicate on the "lead_id" field.
+func LeadIdNEQ(v uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldNEQ(FieldLeadId, v))
 }
 
-// LeadIDIn applies the In predicate on the "lead_id" field.
-func LeadIDIn(vs ...uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldIn(FieldLeadID, vs...))
+// LeadIdIn applies the In predicate on the "lead_id" field.
+func LeadIdIn(vs ...uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldIn(FieldLeadId, vs...))
 }
 
-// LeadIDNotIn applies the NotIn predicate on the "lead_id" field.
-func LeadIDNotIn(vs ...uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldNotIn(FieldLeadID, vs...))
+// LeadIdNotIn applies the NotIn predicate on the "lead_id" field.
+func LeadIdNotIn(vs ...uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldNotIn(FieldLeadId, vs...))
 }
 
-// FollowIDEQ applies the EQ predicate on the "follow_id" field.
-func FollowIDEQ(v uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldEQ(FieldFollowID, v))
+// FollowIdEQ applies the EQ predicate on the "follow_id" field.
+func FollowIdEQ(v uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldEQ(FieldFollowId, v))
 }
 
-// FollowIDNEQ applies the NEQ predicate on the "follow_id" field.
-func FollowIDNEQ(v uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldNEQ(FieldFollowID, v))
+// FollowIdNEQ applies the NEQ predicate on the "follow_id" field.
+func FollowIdNEQ(v uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldNEQ(FieldFollowId, v))
 }
 
-// FollowIDIn applies the In predicate on the "follow_id" field.
-func FollowIDIn(vs ...uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldIn(FieldFollowID, vs...))
+// FollowIdIn applies the In predicate on the "follow_id" field.
+func FollowIdIn(vs ...uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldIn(FieldFollowId, vs...))
 }
 
-// FollowIDNotIn applies the NotIn predicate on the "follow_id" field.
-func FollowIDNotIn(vs ...uuid.UUID) predicate.Pairing {
-	return predicate.Pairing(sql.FieldNotIn(FieldFollowID, vs...))
+// FollowIdNotIn applies the NotIn predicate on the "follow_id" field.
+func FollowIdNotIn(vs ...uuid.UUID) predicate.Pairing {
+	return predicate.Pairing(sql.FieldNotIn(FieldFollowId, vs...))
 }
 
 // HasLead applies the HasEdge predicate on the "lead" edge.
 func HasLead() predicate.Pairing {
 	return predicate.Pairing(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
+			sqlgraph.From(Table, FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, LeadTable, LeadColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
@@ -188,7 +188,7 @@ func HasLeadWith(preds ...predicate.Robot) predicate.Pairing {
 func HasFollow() predicate.Pairing {
 	return predicate.Pairing(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
+			sqlgraph.From(Table, FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, FollowTable, FollowColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)

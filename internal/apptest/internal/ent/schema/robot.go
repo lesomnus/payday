@@ -19,14 +19,14 @@ type Cell struct {
 
 func (Cell) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
+		field.Uuid("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
 		field.String("alias"),
 		field.Time("date_erased").
 			Nillable().
 			Optional(),
-		field.UUID("tenant_id", uuid.UUID{}).
+		field.Uuid("tenant_id", uuid.UUID{}).
 			Immutable(),
 	}
 }
@@ -53,7 +53,7 @@ type Robot struct {
 
 func (Robot) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
+		field.Uuid("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
 		field.String("alias"),
@@ -69,11 +69,11 @@ func (Robot) Fields() []ent.Field {
 		field.Time("date_erased").
 			Nillable().
 			Optional(),
-		field.UUID("tenant_id", uuid.UUID{}).
+		field.Uuid("tenant_id", uuid.UUID{}).
 			Immutable(),
-		field.UUID("thing_id", uuid.UUID{}).
+		field.Uuid("thing_id", uuid.UUID{}).
 			Optional(),
-		field.UUID("cell_id", uuid.UUID{}).
+		field.Uuid("cell_id", uuid.UUID{}).
 			Optional(),
 	}
 }
@@ -116,15 +116,15 @@ type Pairing struct {
 
 func (Pairing) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
+		field.Uuid("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
 		field.Time("date_created").
 			Immutable().
 			Optional(),
-		field.UUID("lead_id", uuid.UUID{}).
+		field.Uuid("lead_id", uuid.UUID{}).
 			Immutable(),
-		field.UUID("follow_id", uuid.UUID{}).
+		field.Uuid("follow_id", uuid.UUID{}).
 			Immutable(),
 	}
 }
@@ -156,14 +156,14 @@ type Joint struct {
 
 func (Joint) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
+		field.Uuid("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
 		field.String("alias"),
 		field.Time("date_erased").
 			Nillable().
 			Optional(),
-		field.UUID("robot_id", uuid.UUID{}).
+		field.Uuid("robot_id", uuid.UUID{}).
 			Optional().
 			Immutable(),
 	}
@@ -190,7 +190,7 @@ type Fleet struct {
 
 func (Fleet) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
+		field.Uuid("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
 		field.String("alias"),
@@ -220,15 +220,15 @@ type Reading struct {
 
 func (Reading) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
+		field.Uuid("id", uuid.UUID{}).
 			Unique().
 			Immutable(),
-		field.UUID("tenant_id", uuid.UUID{}),
+		field.Uuid("tenant_id", uuid.UUID{}),
 		field.Float("celsius"),
 		field.Time("date_created").
 			Immutable().
 			Optional(),
-		field.UUID("robot_id", uuid.UUID{}).
+		field.Uuid("robot_id", uuid.UUID{}).
 			Immutable(),
 	}
 }

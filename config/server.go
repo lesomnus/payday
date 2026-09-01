@@ -23,21 +23,21 @@ import (
 const DefaultAddr = ":50051"
 
 type ServerConfig struct {
-	// Addr is the address the gRPC server listens on, e.g. ":50051". Nothing
+	// Addr is the address the gRpc server listens on, e.g. ":50051". Nothing
 	// written down is [DefaultAddr]; see [ServerConfig.ListenAddr].
 	Addr string `yaml:"addr"`
 
-	TLS TLSConfig `yaml:"tls"`
+	Tls TlsConfig `yaml:"tls"`
 
 	// MaxRecvMsgSize is the largest message the server accepts, in bytes.
-	// Zero leaves gRPC's own limit, which is 4 MiB.
+	// Zero leaves gRpc's own limit, which is 4 MiB.
 	MaxRecvMsgSize int `yaml:"max_recv_msg_size"`
 	// MaxSendMsgSize is the largest message the server sends, in bytes. Zero
-	// leaves gRPC's own limit, which is no limit at all.
+	// leaves gRpc's own limit, which is no limit at all.
 	MaxSendMsgSize int `yaml:"max_send_msg_size"`
 
 	// MaxConcurrentStreams is how many calls one connection may have in flight
-	// at a time. Zero leaves gRPC's own limit.
+	// at a time. Zero leaves gRpc's own limit.
 	MaxConcurrentStreams uint32 `yaml:"max_concurrent_streams"`
 
 	// Timeout is how long a call that arrived without a deadline of its own is
@@ -54,7 +54,7 @@ type ServerConfig struct {
 	// and the like ask the server what it offers without holding the protobuf
 	// definitions.
 	//
-	// Handy, and a listing of every RPC there is. What is unwritten is off, so
+	// Handy, and a listing of every Rpc there is. What is unwritten is off, so
 	// a deployment that trimmed its file down to what it meant does not serve
 	// it by having forgotten to say no.
 	AllowReflection bool `yaml:"allow_reflection"`
@@ -64,13 +64,13 @@ type ServerConfig struct {
 	// is a lock held against every other writer.
 	MaxBatchOps int `yaml:"max_batch_ops"`
 
-	// AllowGeneralWrites serves `Patch` and `Apply`, the two RPCs every
+	// AllowGeneralWrites serves `Patch` and `Apply`, the two Rpcs every
 	// generated service has that can write anything the schema holds. It is
 	// **off** unless it is turned on, and turning it on is a decision about the
-	// API rather than about a deployment: what a caller may change, and under
+	// Api rather than about a deployment: what a caller may change, and under
 	// what conditions, is not something a general write can be told.
 	//
-	// It closes them at the transport and not in the server stack, so an RPC
+	// It closes them at the transport and not in the server stack, so an Rpc
 	// written by hand goes on being implemented with them. That is what they
 	// are for.
 	AllowGeneralWrites bool `yaml:"allow_general_writes"`
@@ -83,10 +83,10 @@ type ServerConfig struct {
 }
 
 // HttpConfig is the second listener: what an app serves to something that
-// cannot speak gRPC.
+// cannot speak gRpc.
 //
-// It is a listener of its own and not the same port, because gRPC served
-// through `net/http` gives up the transport gRPC brings. Nothing is served at
+// It is a listener of its own and not the same port, because gRpc served
+// through `net/http` gives up the transport gRpc brings. Nothing is served at
 // all unless an address is written down.
 type HttpConfig struct {
 	// Addr is the address to listen on, e.g. ":8080". Nothing written down is
@@ -98,26 +98,26 @@ type HttpConfig struct {
 	//
 	// An address with neither of the switches below turned on is **not** an
 	// error, and that is a deliberate reversal: this listener is also where an
-	// app puts whatever it serves over HTTP -- a login endpoint, an OIDC
+	// app puts whatever it serves over Http -- a login endpoint, an OIdC
 	// callback -- and payday has no way to know it has routes. A deployment
-	// that serves those and no browser RPCs is a real one. What that costs is
+	// that serves those and no browser Rpcs is a real one. What that costs is
 	// that an address with genuinely nothing behind it answers 404 instead of
 	// being refused at startup.
 	Addr string `yaml:"addr"`
 
 	// AllowWeb translates the protocols a browser can speak -- Connect and
-	// gRPC-Web -- into the gRPC server, so a page reaches the same handlers,
+	// gRpc-Web -- into the gRpc server, so a page reaches the same handlers,
 	// the same interceptors and the same wall as anything else. See `web`.
 	//
-	// It is what a UI needs and it is not only for one: a Connect call is a
-	// POST with a JSON body, so it is also the endpoint anything that has an
-	// HTTP client and no protobuf can reach.
+	// It is what a Ui needs and it is not only for one: a Connect call is a
+	// POST with a Json body, so it is also the endpoint anything that has an
+	// Http client and no protobuf can reach.
 	AllowWeb bool `yaml:"allow_web"`
 
 	// Origins are the origins a browser may call from. Nothing written down is
 	// none, which is not "nothing works": a page served from this same origin
 	// makes no cross-origin request and needs no answer from here. What it
-	// means is that a UI somewhere else -- which is every `npm run dev` -- has
+	// means is that a Ui somewhere else -- which is every `npm run dev` -- has
 	// to be named.
 	//
 	// `["*"]` is every page on the internet, which is a thing to mean rather
@@ -205,7 +205,7 @@ func (c ServerConfig) Limiter() grpcx.Limiter {
 }
 
 // KeepaliveConfig is when a connection is hung up on and when it is asked
-// whether it is still there. Every duration is left to gRPC if it is zero.
+// whether it is still there. Every duration is left to gRpc if it is zero.
 type KeepaliveConfig struct {
 	// MaxConnectionIdle closes a connection that has had no call for this
 	// long.
@@ -273,10 +273,10 @@ func (c ServerConfig) Closed() func(method string) bool {
 // # Why it answers with an error
 //
 // Because of the first option it builds. Everything else here is a number that
-// was either given or not; TLS is files that have to be read, and a certificate
+// was either given or not; Tls is files that have to be read, and a certificate
 // that cannot be read is a server that must not start.
 //
-// It did not always. `ServerConfig.TLS` was a block a deployment could write and
+// It did not always. `ServerConfig.Tls` was a block a deployment could write and
 // **nothing read it** -- not this function, not the template `pd new` writes,
 // not payday's own test app. A deployment that configured a certificate got a
 // plaintext listener and no complaint, which is the direction that is not
@@ -293,7 +293,7 @@ func (c ServerConfig) GrpcOptions() ([]grpc.ServerOption, error) {
 	// nothing said anything, which is what `grpc.NewServer` does by default --
 	// so passing it always is the same server, and the branch that would have
 	// decided whether to pass it is a branch that can be wrong.
-	creds, err := c.TLS.Credentials()
+	creds, err := c.Tls.Credentials()
 	if err != nil {
 		return nil, fmt.Errorf("tls: %w", err)
 	}

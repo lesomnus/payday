@@ -17,14 +17,14 @@ import (
 // `proto/ext/payday/holder.ext.proto` and `proto/app/profile.proto` -- and the
 // reason it exists is that nothing here had such a field before. Which is
 // exactly why the failure lasted: a message field became an `encoding/json`
-// column, every message payday generates uses the opaque API and so has no
+// column, every message payday generates uses the opaque Api and so has no
 // exported fields at all, and every value round-tripped as `{}`. No error, no
 // failing build, and an `Add` that answered with what it had been handed -- so
 // it looked stored until somebody read it back, which nothing here did.
 //
 // The three tests below are the three claims the schema docs make about such a
 // field: it comes back, a patch replaces it whole, and it is stored as protobuf
-// JSON -- whose *names* are the storage.
+// Json -- whose *names* are the storage.
 
 // TestAMessageFieldComesBack is the one the historical bug would have failed.
 func TestAMessageFieldComesBack(t *testing.T) {
@@ -104,7 +104,7 @@ func TestAPatchReplacesAMessageWhole(t *testing.T) {
 // It cannot be filtered or indexed through payday: there is no generated
 // predicate for a field of it and no `List` filter, because it is one value to
 // the database. ent's `sqljson` is the way down to the column anyway, and what
-// this pins is the **spelling**: the column holds canonical protobuf JSON, so
+// this pins is the **spelling**: the column holds canonical protobuf Json, so
 // the path is `howMany` and not the `how_many` the schema is written in.
 //
 // Which is the same cost stated twice. Renaming a field of a message stored

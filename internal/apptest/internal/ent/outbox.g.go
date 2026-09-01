@@ -10,12 +10,12 @@ import (
 
 func (e *Outbox) Proto() *apptest.Outbox {
 	x := &apptest.Outbox{}
-	x.SetId(e.ID[:])
-	x.SetTenantId(e.TenantID[:])
-	x.SetActorId(e.ActorID[:])
+	x.SetId(e.Id[:])
+	x.SetTenantId(e.TenantId[:])
+	x.SetActorId(e.ActorId[:])
 	x.SetMethod(e.Method)
 	x.SetBy(e.By)
-	x.SetObjectId(e.ObjectID[:])
+	x.SetObjectId(e.ObjectId[:])
 	x.SetPatch(e.Patch)
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	return x

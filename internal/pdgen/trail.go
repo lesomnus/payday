@@ -77,7 +77,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("	vs, err := s.of(k).")
 	g.P("		Where(", entPkg.Ident("DateCreatedLT"), "(at)).")
 	g.P("		Order(", p.Ent.Ident("Asc"), "(", entPkg.Ident("FieldDateCreated"),
-		", ", entPkg.Ident("FieldID"), ")).")
+		", ", entPkg.Ident("FieldId"), ")).")
 	g.P("		Limit(limit).")
 	g.P("		All(ctx)")
 	g.P("	if err != nil {")
@@ -96,7 +96,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("")
 	g.P("		out = append(out, ", pkgTrail.Ident("Row"), "{")
 	g.P("			Doc:     b,")
-	g.P("			Key:     v.ID,")
+	g.P("			Key:     v.Id,")
 	g.P("			Domain:  ", pkgPdid.Ident("Domain"), "(v.Domain),")
 	g.P("			Created: v.DateCreated,")
 	g.P("		})")
@@ -119,9 +119,9 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("// when it runs, and a row backdated by a clock that stepped is one it")
 	g.P("// removes and the file does not have.")
 	g.P("func (s trailStore) Forget(ctx ", pkgCtx.Ident("Context"), ", keys []any) (int, error) {")
-	g.P("	ids := make([]", pkgUuid.Ident("UUID"), ", 0, len(keys))")
+	g.P("	ids := make([]", pkgUuid.Ident("Uuid"), ", 0, len(keys))")
 	g.P("	for _, k := range keys {")
-	g.P("		v, ok := k.(", pkgUuid.Ident("UUID"), ")")
+	g.P("		v, ok := k.(", pkgUuid.Ident("Uuid"), ")")
 	g.P("		if !ok {")
 	g.P("			return 0, ", pkgFmt.Ident("Errorf"), "(\"trail: %T is not a key this store gave out\", k)")
 	g.P("		}")
@@ -129,7 +129,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		ids = append(ids, v)")
 	g.P("	}")
 	g.P("")
-	g.P("	return s.db.", e, ".Delete().Where(", entPkg.Ident("IDIn"), "(ids...)).Exec(ctx)")
+	g.P("	return s.db.", e, ".Delete().Where(", entPkg.Ident("IdIn"), "(ids...)).Exec(ctx)")
 	g.P("}")
 	g.P("")
 
@@ -180,16 +180,16 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		return 0, nil")
 	g.P("	}")
 	g.P("")
-	g.P("	ids := make([]", pkgUuid.Ident("UUID"), ", len(objects))")
+	g.P("	ids := make([]", pkgUuid.Ident("Uuid"), ", len(objects))")
 	g.P("	for i, v := range objects {")
 	g.P("		ids[i] = v.Uuid()")
 	g.P("	}")
 	g.P("")
 	// Empty and not nil, for the reason the recorder's `notNull` gives: nil is
-	// SQL NULL, which a NOT NULL column refuses on Postgres and accepts on
+	// Sql NULL, which a NOT NULL column refuses on Postgres and accepts on
 	// SQLite.
 	g.P("	return db.", e, ".Update().")
-	g.P("		Where(", entPkg.Ident("ObjectIDIn"), "(ids...)).")
+	g.P("		Where(", entPkg.Ident("ObjectIdIn"), "(ids...)).")
 	g.P("		SetValue([]byte{}).")
 	g.P("		SetPatch([]byte{}).")
 	g.P("		Save(ctx)")

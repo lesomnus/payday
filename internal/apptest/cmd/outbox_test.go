@@ -104,11 +104,11 @@ func TestAnEventIsWrittenWithTheWriteItIsAbout(t *testing.T) {
 	x.Len(rows, 1, "one write, one row")
 
 	row := rows[0]
-	x.Equal(v.GetId(), row.ObjectID[:], "which row changed")
+	x.Equal(v.GetId(), row.ObjectId[:], "which row changed")
 	x.Equal(app.RobotService_Add_FullMethodName, row.Method, "what the caller asked for")
 	x.Equal(app.RobotService_Add_FullMethodName, row.By, "and what actually wrote")
-	x.Equal(b.Tenant.Uuid(), row.TenantID)
-	x.Equal(b.Holder.Uuid(), row.ActorID)
+	x.Equal(b.Tenant.Uuid(), row.TenantId)
+	x.Equal(b.Holder.Uuid(), row.ActorId)
 }
 
 // TestAQueuedEventIsPublishedAfterwards is the other half: something picks the

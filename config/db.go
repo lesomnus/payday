@@ -10,7 +10,7 @@ import (
 	"github.com/lesomnus/z"
 )
 
-// The SQL dialects a driver may speak.
+// The Sql dialects a driver may speak.
 //
 // They are the names ent and Atlas know them by, written out here rather than
 // taken from `github.com/protobuf-orm/ent/dialect` so that nothing in payday depends on ent --
@@ -18,7 +18,7 @@ import (
 // three libraries that already agree on them, so writing them down costs a
 // constant and buys a package boundary.
 const (
-	DialectMySQL    = "mysql"
+	DialectMySql    = "mysql"
 	DialectPostgres = "postgres"
 	DialectSQLite   = "sqlite3"
 )
@@ -31,7 +31,7 @@ type DbConfig struct {
 	// app actually linked in.
 	Driver string `yaml:"driver"`
 
-	// Dialect is the SQL dialect spoken to the database, one of [DialectMySQL],
+	// Dialect is the Sql dialect spoken to the database, one of [DialectMySql],
 	// [DialectPostgres] or [DialectSQLite]. It is derived from Driver if it is
 	// empty, which works for every driver registered with [RegisterDriver].
 	Dialect string `yaml:"dialect"`
@@ -70,7 +70,7 @@ type DbConfig struct {
 	Migrate bool `yaml:"migrate"`
 }
 
-// dialects holds the SQL dialect each known database/sql driver speaks.
+// dialects holds the Sql dialect each known database/sql driver speaks.
 var dialects = map[string]string{}
 
 // RegisterDriver records that the driver named `driver` speaks `dialect`, so
@@ -78,8 +78,8 @@ var dialects = map[string]string{}
 //
 // A driver is a package that has to be linked in whether anything opens a
 // connection with it or not, which is why payday does not import any: an app
-// that runs on PostgreSQL would otherwise carry a SQLite engine compiled to
-// Wasm in its binary, and one that runs on SQLite would carry a PostgreSQL
+// that runs on PostgreSql would otherwise carry a SQLite engine compiled to
+// Wasm in its binary, and one that runs on SQLite would carry a PostgreSql
 // client. So each registration is a package of its own -- see `config/dbpgx`
 // and `config/dbsqlite3` -- and an app blank imports the ones it uses:
 //
@@ -110,11 +110,11 @@ func DriverFor(dialect string) (string, bool) {
 	return "", false
 }
 
-// Speaks answers which SQL this database speaks: [DbConfig.Dialect] when it was
+// Speaks answers which Sql this database speaks: [DbConfig.Dialect] when it was
 // given, and otherwise what the driver was registered as speaking.
 //
 // Exported because a broker that rides the app's database is handed this config
-// and has to know whether it can -- `LISTEN` is PostgreSQL's, and a deployment
+// and has to know whether it can -- `LISTEN` is PostgreSql's, and a deployment
 // on SQLite needs a broker that is not the database. See [RegisterBroker].
 func (c DbConfig) Speaks() (string, error) {
 	if c.Dialect != "" {
@@ -146,7 +146,7 @@ func (c DbConfig) Speaks() (string, error) {
 //
 // The dialect is answered as well as the connection because it is not on the
 // connection: `database/sql` knows the driver's name and nothing about what it
-// speaks, and the migrations, which are SQL and not ent, need to be told.
+// speaks, and the migrations, which are Sql and not ent, need to be told.
 //
 // The caller owns the connection and must close it.
 func (c DbConfig) Open(ctx context.Context) (*sql.DB, string, error) {

@@ -9,8 +9,8 @@ import (
 const (
 	// Label holds the string label denoting the thing type in the database.
 	Label = "thing"
-	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
+	// FieldId holds the string denoting the id field in the database.
+	FieldId = "id"
 	// FieldAlias holds the string denoting the alias field in the database.
 	FieldAlias = "alias"
 	// FieldDateErased holds the string denoting the date_erased field in the database.
@@ -21,9 +21,9 @@ const (
 	Table = "thing"
 )
 
-// Columns holds all SQL columns for thing fields.
+// Columns holds all Sql columns for thing fields.
 var Columns = []string{
-	FieldID,
+	FieldId,
 	FieldAlias,
 	FieldDateErased,
 	FieldDateCreated,
@@ -42,9 +42,9 @@ func ValidColumn(column string) bool {
 // OrderOption defines the ordering options for the Thing queries.
 type OrderOption func(*sql.Selector)
 
-// ByID orders the results by the id field.
-func ByID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldID, opts...).ToFunc()
+// ById orders the results by the id field.
+func ById(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldId, opts...).ToFunc()
 }
 
 // ByAlias orders the results by the alias field.

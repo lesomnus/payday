@@ -29,37 +29,37 @@ func (_u *AuditUpdate) Where(ps ...predicate.Audit) *AuditUpdate {
 	return _u
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_u *AuditUpdate) SetTenantID(v uuid.UUID) *AuditUpdate {
-	_u.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_u *AuditUpdate) SetTenantId(v uuid.UUID) *AuditUpdate {
+	_u.mutation.SetTenantId(v)
 	return _u
 }
 
-// SetNillableTenantID sets the "tenant_id" field if the given value is not nil.
-func (_u *AuditUpdate) SetNillableTenantID(v *uuid.UUID) *AuditUpdate {
+// SetNillableTenantId sets the "tenant_id" field if the given value is not nil.
+func (_u *AuditUpdate) SetNillableTenantId(v *uuid.UUID) *AuditUpdate {
 	if v != nil {
-		_u.SetTenantID(*v)
+		_u.SetTenantId(*v)
 	}
 	return _u
 }
 
-// SetActorID sets the "actor_id" field.
-func (_u *AuditUpdate) SetActorID(v uuid.UUID) *AuditUpdate {
-	_u.mutation.SetActorID(v)
+// SetActorId sets the "actor_id" field.
+func (_u *AuditUpdate) SetActorId(v uuid.UUID) *AuditUpdate {
+	_u.mutation.SetActorId(v)
 	return _u
 }
 
-// SetNillableActorID sets the "actor_id" field if the given value is not nil.
-func (_u *AuditUpdate) SetNillableActorID(v *uuid.UUID) *AuditUpdate {
+// SetNillableActorId sets the "actor_id" field if the given value is not nil.
+func (_u *AuditUpdate) SetNillableActorId(v *uuid.UUID) *AuditUpdate {
 	if v != nil {
-		_u.SetActorID(*v)
+		_u.SetActorId(*v)
 	}
 	return _u
 }
 
-// SetTraceID sets the "trace_id" field.
-func (_u *AuditUpdate) SetTraceID(v []byte) *AuditUpdate {
-	_u.mutation.SetTraceID(v)
+// SetTraceId sets the "trace_id" field.
+func (_u *AuditUpdate) SetTraceId(v []byte) *AuditUpdate {
+	_u.mutation.SetTraceId(v)
 	return _u
 }
 
@@ -77,16 +77,16 @@ func (_u *AuditUpdate) SetNillableAction(v *string) *AuditUpdate {
 	return _u
 }
 
-// SetObjectID sets the "object_id" field.
-func (_u *AuditUpdate) SetObjectID(v uuid.UUID) *AuditUpdate {
-	_u.mutation.SetObjectID(v)
+// SetObjectId sets the "object_id" field.
+func (_u *AuditUpdate) SetObjectId(v uuid.UUID) *AuditUpdate {
+	_u.mutation.SetObjectId(v)
 	return _u
 }
 
-// SetNillableObjectID sets the "object_id" field if the given value is not nil.
-func (_u *AuditUpdate) SetNillableObjectID(v *uuid.UUID) *AuditUpdate {
+// SetNillableObjectId sets the "object_id" field if the given value is not nil.
+func (_u *AuditUpdate) SetNillableObjectId(v *uuid.UUID) *AuditUpdate {
 	if v != nil {
-		_u.SetObjectID(*v)
+		_u.SetObjectId(*v)
 	}
 	return _u
 }
@@ -97,16 +97,16 @@ func (_u *AuditUpdate) SetPatch(v []byte) *AuditUpdate {
 	return _u
 }
 
-// SetActorTenantID sets the "actor_tenant_id" field.
-func (_u *AuditUpdate) SetActorTenantID(v uuid.UUID) *AuditUpdate {
-	_u.mutation.SetActorTenantID(v)
+// SetActorTenantId sets the "actor_tenant_id" field.
+func (_u *AuditUpdate) SetActorTenantId(v uuid.UUID) *AuditUpdate {
+	_u.mutation.SetActorTenantId(v)
 	return _u
 }
 
-// SetNillableActorTenantID sets the "actor_tenant_id" field if the given value is not nil.
-func (_u *AuditUpdate) SetNillableActorTenantID(v *uuid.UUID) *AuditUpdate {
+// SetNillableActorTenantId sets the "actor_tenant_id" field if the given value is not nil.
+func (_u *AuditUpdate) SetNillableActorTenantId(v *uuid.UUID) *AuditUpdate {
 	if v != nil {
-		_u.SetActorTenantID(*v)
+		_u.SetActorTenantId(*v)
 	}
 	return _u
 }
@@ -117,23 +117,23 @@ func (_u *AuditUpdate) SetValue(v []byte) *AuditUpdate {
 	return _u
 }
 
-// SetCounterpartTenantID sets the "counterpart_tenant_id" field.
-func (_u *AuditUpdate) SetCounterpartTenantID(v uuid.UUID) *AuditUpdate {
-	_u.mutation.SetCounterpartTenantID(v)
+// SetCounterpartTenantId sets the "counterpart_tenant_id" field.
+func (_u *AuditUpdate) SetCounterpartTenantId(v uuid.UUID) *AuditUpdate {
+	_u.mutation.SetCounterpartTenantId(v)
 	return _u
 }
 
-// SetNillableCounterpartTenantID sets the "counterpart_tenant_id" field if the given value is not nil.
-func (_u *AuditUpdate) SetNillableCounterpartTenantID(v *uuid.UUID) *AuditUpdate {
+// SetNillableCounterpartTenantId sets the "counterpart_tenant_id" field if the given value is not nil.
+func (_u *AuditUpdate) SetNillableCounterpartTenantId(v *uuid.UUID) *AuditUpdate {
 	if v != nil {
-		_u.SetCounterpartTenantID(*v)
+		_u.SetCounterpartTenantId(*v)
 	}
 	return _u
 }
 
-// ClearCounterpartTenantID clears the value of the "counterpart_tenant_id" field.
-func (_u *AuditUpdate) ClearCounterpartTenantID() *AuditUpdate {
-	_u.mutation.ClearCounterpartTenantID()
+// ClearCounterpartTenantId clears the value of the "counterpart_tenant_id" field.
+func (_u *AuditUpdate) ClearCounterpartTenantId() *AuditUpdate {
+	_u.mutation.ClearCounterpartTenantId()
 	return _u
 }
 
@@ -203,7 +203,7 @@ func (_u *AuditUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *AuditUpd
 }
 
 func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(audit.Table, audit.Columns, sqlgraph.NewFieldSpec(audit.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewUpdateSpec(audit.Table, audit.Columns, sqlgraph.NewFieldSpec(audit.FieldId, field.TypeUuid))
 	if ps := _u.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -211,20 +211,20 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.TenantID(); ok {
-		_spec.SetField(audit.FieldTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.TenantId(); ok {
+		_spec.SetField(audit.FieldTenantId, field.TypeUuid, value)
 	}
-	if value, ok := _u.mutation.ActorID(); ok {
-		_spec.SetField(audit.FieldActorID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ActorId(); ok {
+		_spec.SetField(audit.FieldActorId, field.TypeUuid, value)
 	}
-	if value, ok := _u.mutation.TraceID(); ok {
-		_spec.SetField(audit.FieldTraceID, field.TypeBytes, value)
+	if value, ok := _u.mutation.TraceId(); ok {
+		_spec.SetField(audit.FieldTraceId, field.TypeBytes, value)
 	}
 	if value, ok := _u.mutation.Action(); ok {
 		_spec.SetField(audit.FieldAction, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ObjectID(); ok {
-		_spec.SetField(audit.FieldObjectID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ObjectId(); ok {
+		_spec.SetField(audit.FieldObjectId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Patch(); ok {
 		_spec.SetField(audit.FieldPatch, field.TypeBytes, value)
@@ -232,17 +232,17 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(audit.FieldDateCreated, field.TypeTime)
 	}
-	if value, ok := _u.mutation.ActorTenantID(); ok {
-		_spec.SetField(audit.FieldActorTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ActorTenantId(); ok {
+		_spec.SetField(audit.FieldActorTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
 	}
-	if value, ok := _u.mutation.CounterpartTenantID(); ok {
-		_spec.SetField(audit.FieldCounterpartTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.CounterpartTenantId(); ok {
+		_spec.SetField(audit.FieldCounterpartTenantId, field.TypeUuid, value)
 	}
-	if _u.mutation.CounterpartTenantIDCleared() {
-		_spec.ClearField(audit.FieldCounterpartTenantID, field.TypeUUID)
+	if _u.mutation.CounterpartTenantIdCleared() {
+		_spec.ClearField(audit.FieldCounterpartTenantId, field.TypeUuid)
 	}
 	if value, ok := _u.mutation.Domain(); ok {
 		_spec.SetField(audit.FieldDomain, field.TypeUint32, value)
@@ -275,37 +275,37 @@ type AuditUpdateOne struct {
 	modifiers []func(*sql.UpdateBuilder)
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_u *AuditUpdateOne) SetTenantID(v uuid.UUID) *AuditUpdateOne {
-	_u.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_u *AuditUpdateOne) SetTenantId(v uuid.UUID) *AuditUpdateOne {
+	_u.mutation.SetTenantId(v)
 	return _u
 }
 
-// SetNillableTenantID sets the "tenant_id" field if the given value is not nil.
-func (_u *AuditUpdateOne) SetNillableTenantID(v *uuid.UUID) *AuditUpdateOne {
+// SetNillableTenantId sets the "tenant_id" field if the given value is not nil.
+func (_u *AuditUpdateOne) SetNillableTenantId(v *uuid.UUID) *AuditUpdateOne {
 	if v != nil {
-		_u.SetTenantID(*v)
+		_u.SetTenantId(*v)
 	}
 	return _u
 }
 
-// SetActorID sets the "actor_id" field.
-func (_u *AuditUpdateOne) SetActorID(v uuid.UUID) *AuditUpdateOne {
-	_u.mutation.SetActorID(v)
+// SetActorId sets the "actor_id" field.
+func (_u *AuditUpdateOne) SetActorId(v uuid.UUID) *AuditUpdateOne {
+	_u.mutation.SetActorId(v)
 	return _u
 }
 
-// SetNillableActorID sets the "actor_id" field if the given value is not nil.
-func (_u *AuditUpdateOne) SetNillableActorID(v *uuid.UUID) *AuditUpdateOne {
+// SetNillableActorId sets the "actor_id" field if the given value is not nil.
+func (_u *AuditUpdateOne) SetNillableActorId(v *uuid.UUID) *AuditUpdateOne {
 	if v != nil {
-		_u.SetActorID(*v)
+		_u.SetActorId(*v)
 	}
 	return _u
 }
 
-// SetTraceID sets the "trace_id" field.
-func (_u *AuditUpdateOne) SetTraceID(v []byte) *AuditUpdateOne {
-	_u.mutation.SetTraceID(v)
+// SetTraceId sets the "trace_id" field.
+func (_u *AuditUpdateOne) SetTraceId(v []byte) *AuditUpdateOne {
+	_u.mutation.SetTraceId(v)
 	return _u
 }
 
@@ -323,16 +323,16 @@ func (_u *AuditUpdateOne) SetNillableAction(v *string) *AuditUpdateOne {
 	return _u
 }
 
-// SetObjectID sets the "object_id" field.
-func (_u *AuditUpdateOne) SetObjectID(v uuid.UUID) *AuditUpdateOne {
-	_u.mutation.SetObjectID(v)
+// SetObjectId sets the "object_id" field.
+func (_u *AuditUpdateOne) SetObjectId(v uuid.UUID) *AuditUpdateOne {
+	_u.mutation.SetObjectId(v)
 	return _u
 }
 
-// SetNillableObjectID sets the "object_id" field if the given value is not nil.
-func (_u *AuditUpdateOne) SetNillableObjectID(v *uuid.UUID) *AuditUpdateOne {
+// SetNillableObjectId sets the "object_id" field if the given value is not nil.
+func (_u *AuditUpdateOne) SetNillableObjectId(v *uuid.UUID) *AuditUpdateOne {
 	if v != nil {
-		_u.SetObjectID(*v)
+		_u.SetObjectId(*v)
 	}
 	return _u
 }
@@ -343,16 +343,16 @@ func (_u *AuditUpdateOne) SetPatch(v []byte) *AuditUpdateOne {
 	return _u
 }
 
-// SetActorTenantID sets the "actor_tenant_id" field.
-func (_u *AuditUpdateOne) SetActorTenantID(v uuid.UUID) *AuditUpdateOne {
-	_u.mutation.SetActorTenantID(v)
+// SetActorTenantId sets the "actor_tenant_id" field.
+func (_u *AuditUpdateOne) SetActorTenantId(v uuid.UUID) *AuditUpdateOne {
+	_u.mutation.SetActorTenantId(v)
 	return _u
 }
 
-// SetNillableActorTenantID sets the "actor_tenant_id" field if the given value is not nil.
-func (_u *AuditUpdateOne) SetNillableActorTenantID(v *uuid.UUID) *AuditUpdateOne {
+// SetNillableActorTenantId sets the "actor_tenant_id" field if the given value is not nil.
+func (_u *AuditUpdateOne) SetNillableActorTenantId(v *uuid.UUID) *AuditUpdateOne {
 	if v != nil {
-		_u.SetActorTenantID(*v)
+		_u.SetActorTenantId(*v)
 	}
 	return _u
 }
@@ -363,23 +363,23 @@ func (_u *AuditUpdateOne) SetValue(v []byte) *AuditUpdateOne {
 	return _u
 }
 
-// SetCounterpartTenantID sets the "counterpart_tenant_id" field.
-func (_u *AuditUpdateOne) SetCounterpartTenantID(v uuid.UUID) *AuditUpdateOne {
-	_u.mutation.SetCounterpartTenantID(v)
+// SetCounterpartTenantId sets the "counterpart_tenant_id" field.
+func (_u *AuditUpdateOne) SetCounterpartTenantId(v uuid.UUID) *AuditUpdateOne {
+	_u.mutation.SetCounterpartTenantId(v)
 	return _u
 }
 
-// SetNillableCounterpartTenantID sets the "counterpart_tenant_id" field if the given value is not nil.
-func (_u *AuditUpdateOne) SetNillableCounterpartTenantID(v *uuid.UUID) *AuditUpdateOne {
+// SetNillableCounterpartTenantId sets the "counterpart_tenant_id" field if the given value is not nil.
+func (_u *AuditUpdateOne) SetNillableCounterpartTenantId(v *uuid.UUID) *AuditUpdateOne {
 	if v != nil {
-		_u.SetCounterpartTenantID(*v)
+		_u.SetCounterpartTenantId(*v)
 	}
 	return _u
 }
 
-// ClearCounterpartTenantID clears the value of the "counterpart_tenant_id" field.
-func (_u *AuditUpdateOne) ClearCounterpartTenantID() *AuditUpdateOne {
-	_u.mutation.ClearCounterpartTenantID()
+// ClearCounterpartTenantId clears the value of the "counterpart_tenant_id" field.
+func (_u *AuditUpdateOne) ClearCounterpartTenantId() *AuditUpdateOne {
+	_u.mutation.ClearCounterpartTenantId()
 	return _u
 }
 
@@ -462,20 +462,20 @@ func (_u *AuditUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Audit
 }
 
 func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error) {
-	_spec := sqlgraph.NewUpdateSpec(audit.Table, audit.Columns, sqlgraph.NewFieldSpec(audit.FieldID, field.TypeUUID))
-	id, ok := _u.mutation.ID()
+	_spec := sqlgraph.NewUpdateSpec(audit.Table, audit.Columns, sqlgraph.NewFieldSpec(audit.FieldId, field.TypeUuid))
+	id, ok := _u.mutation.Id()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Audit.id" for update`)}
 	}
-	_spec.Node.ID.Value = id
+	_spec.Node.Id.Value = id
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, audit.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, audit.FieldId)
 		for _, f := range fields {
 			if !audit.ValidColumn(f) {
 				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 			}
-			if f != audit.FieldID {
+			if f != audit.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, f)
 			}
 		}
@@ -487,20 +487,20 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 			}
 		}
 	}
-	if value, ok := _u.mutation.TenantID(); ok {
-		_spec.SetField(audit.FieldTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.TenantId(); ok {
+		_spec.SetField(audit.FieldTenantId, field.TypeUuid, value)
 	}
-	if value, ok := _u.mutation.ActorID(); ok {
-		_spec.SetField(audit.FieldActorID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ActorId(); ok {
+		_spec.SetField(audit.FieldActorId, field.TypeUuid, value)
 	}
-	if value, ok := _u.mutation.TraceID(); ok {
-		_spec.SetField(audit.FieldTraceID, field.TypeBytes, value)
+	if value, ok := _u.mutation.TraceId(); ok {
+		_spec.SetField(audit.FieldTraceId, field.TypeBytes, value)
 	}
 	if value, ok := _u.mutation.Action(); ok {
 		_spec.SetField(audit.FieldAction, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ObjectID(); ok {
-		_spec.SetField(audit.FieldObjectID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ObjectId(); ok {
+		_spec.SetField(audit.FieldObjectId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Patch(); ok {
 		_spec.SetField(audit.FieldPatch, field.TypeBytes, value)
@@ -508,17 +508,17 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(audit.FieldDateCreated, field.TypeTime)
 	}
-	if value, ok := _u.mutation.ActorTenantID(); ok {
-		_spec.SetField(audit.FieldActorTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ActorTenantId(); ok {
+		_spec.SetField(audit.FieldActorTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
 	}
-	if value, ok := _u.mutation.CounterpartTenantID(); ok {
-		_spec.SetField(audit.FieldCounterpartTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.CounterpartTenantId(); ok {
+		_spec.SetField(audit.FieldCounterpartTenantId, field.TypeUuid, value)
 	}
-	if _u.mutation.CounterpartTenantIDCleared() {
-		_spec.ClearField(audit.FieldCounterpartTenantID, field.TypeUUID)
+	if _u.mutation.CounterpartTenantIdCleared() {
+		_spec.ClearField(audit.FieldCounterpartTenantId, field.TypeUuid)
 	}
 	if value, ok := _u.mutation.Domain(); ok {
 		_spec.SetField(audit.FieldDomain, field.TypeUint32, value)

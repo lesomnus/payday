@@ -50,7 +50,7 @@ func (b *built) batched(t *testing.T, g batch.Guard) pdpb.BatchServiceServer {
 //
 // The trail is asked with these rather than sliced off the end of it. Nothing
 // promises a query answers in the order rows went in -- SQLite happens to,
-// PostgreSQL is free not to -- and the trail's own key is no order to fall back
+// PostgreSql is free not to -- and the trail's own key is no order to fall back
 // on: an audit row's identifier is minted at random, unlike the identifiers it
 // holds.
 func wrote(x *require.Assertions, res *pdpb.BatchResponse) []uuid.UUID {
@@ -126,7 +126,7 @@ func TestOneOperationRefusingUndoesTheRest(t *testing.T) {
 // TestWhatIsClosedIsClosedInsideABatch is the first of the four holes.
 //
 // `Patch` and `Apply` are unreachable because an interceptor looks at the
-// method gRPC dispatched. A batch is one method carrying many, so without this
+// method gRpc dispatched. A batch is one method carrying many, so without this
 // the two are reachable by wrapping them -- which is not a gap to fix later, it
 // is the entire reason `Closed` exists, undone.
 func TestWhatIsClosedIsClosedInsideABatch(t *testing.T) {
@@ -163,7 +163,7 @@ func TestWhatIsClosedIsClosedInsideABatch(t *testing.T) {
 // them.
 //
 // A token attenuated to two methods is the shape of every scoped credential
-// there is. If a batch is checked as one method, that token reaches every RPC
+// there is. If a batch is checked as one method, that token reaches every Rpc
 // this server has -- and the trail records that it was allowed.
 func TestACredentialIsNotWidenedByABatch(t *testing.T) {
 	x := require.New(t)
@@ -317,7 +317,7 @@ func TestTheWallStillNarrowsInsideABatch(t *testing.T) {
 
 // TestABatchNeedsNoPlaceholderLanguage is the decision from §3.3 paying off.
 //
-// The classic difficulty of a batch API is "make a tenant, then a holder inside
+// The classic difficulty of a batch Api is "make a tenant, then a holder inside
 // it" -- the second operation needs the first one's identifier, and the usual
 // answer is a mini-language of `$0.id` references. Mini-languages grow.
 //
@@ -386,7 +386,7 @@ func TestABatchIsBounded(t *testing.T) {
 }
 
 // TestAnOperationNamingSomethingElseIsRefused: an `Any` is checked by its type
-// URL, so a request that decoded into a different message -- which would be a
+// Url, so a request that decoded into a different message -- which would be a
 // write the caller did not ask for -- has an answer rather than a coercion.
 func TestAnOperationNamingSomethingElseIsRefused(t *testing.T) {
 	x := require.New(t)
@@ -439,7 +439,7 @@ func TestEveryOperationIsOnTheTrail(t *testing.T) {
 	x.Equal(before+2, after, "two writes, two lines of the trail")
 
 	// And they are the two, asked for by what they are about; see [wrote].
-	rows, err := b.Ent.Audit.Query().Where(entaudit.ObjectIDIn(wrote(x, res)...)).All(ctx)
+	rows, err := b.Ent.Audit.Query().Where(entaudit.ObjectIdIn(wrote(x, res)...)).All(ctx)
 	x.NoError(err)
 	x.Len(rows, 2)
 
@@ -458,7 +458,7 @@ func TestEveryOperationIsOnTheTrail(t *testing.T) {
 // The watch recorder remembers into the context and the interceptor publishes
 // once the handler has answered -- which for a batch is after the commit. So
 // what a subscriber gets is one event holding every change, which is what a
-// batch was: a UI sees the transaction rather than the pieces of it.
+// batch was: a Ui sees the transaction rather than the pieces of it.
 //
 // It also proves the wiring. `Grpc` registers the batch beside everything else,
 // and a batch nobody registered is a set of guarantees about a service that is
@@ -498,8 +498,8 @@ func TestABatchIsOneEventOverTheWire(t *testing.T) {
 		t.Fatal("nothing was published")
 	}
 
-	// And the trail is the other way around. The recorder asks gRPC what the
-	// caller asked for, and over the wire gRPC has an answer -- the batch --
+	// And the trail is the other way around. The recorder asks gRpc what the
+	// caller asked for, and over the wire gRpc has an answer -- the batch --
 	// which is true of the envelope and false of every operation: the direct
 	// calls above cannot catch this, because without a transport the recorder
 	// falls back to the leg that wrote, which for an Add spells the same.
@@ -509,7 +509,7 @@ func TestABatchIsOneEventOverTheWire(t *testing.T) {
 		"one row per operation and none for the envelope, which wrote nothing: "+
 			"the batch shows whole as the one event, not as a line of the trail")
 
-	rows, err := b.Ent.Audit.Query().Where(entaudit.ObjectIDIn(wrote(x, res)...)).All(ctx)
+	rows, err := b.Ent.Audit.Query().Where(entaudit.ObjectIdIn(wrote(x, res)...)).All(ctx)
 	x.NoError(err)
 	x.Len(rows, 2)
 

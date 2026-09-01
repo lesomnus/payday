@@ -35,7 +35,7 @@ func TestTenants(t *testing.T) {
 		x.False(z.All())
 		x.Empty(z.Uuids())
 
-		// This is the whole safety of it. `IDIn()` with an empty list renders
+		// This is the whole safety of it. `IdIn()` with an empty list renders
 		// as WHERE FALSE, so a caller who may see nothing sees no rows. A
 		// scope that reported "nothing to narrow by" here would open up as it
 		// ran out.
@@ -254,7 +254,7 @@ func TestNarrowSet(t *testing.T) {
 		{"both, and they agree", only(north, south), frame.Whole().Within(south), false, []uuid.UUID{south.Uuid()}},
 		{"both, and they do not", only(north), frame.Whole().Within(south), false, []uuid.UUID{}},
 
-		// An empty list is not "no narrowing". `IDIn()` renders as
+		// An empty list is not "no narrowing". `IdIn()` renders as
 		// `WHERE FALSE`, so a credential made for no set reads no rows -- read
 		// the other way round it would open up as it ran out.
 		{"a credential for no set at all", only(north), frame.Whole().Within(), false, []uuid.UUID{}},

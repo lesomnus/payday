@@ -101,7 +101,7 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 	if v, err := mint(ctx, s.Mint, "shared.Thing", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	q.SetAlias(req.GetAlias())
 	if req.HasDateCreated() {
@@ -125,7 +125,7 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.ThingService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (s ThingServiceServer) Get(ctx context.Context, req *apptest.ThingGetReques
 }
 
 func selectThingKey(q *ent.ThingQuery) {
-	q.Select(thing.FieldID)
+	q.Select(thing.FieldId)
 }
 
 func ThingSelectedFields(m *apptest.ThingSelect) []string {
@@ -170,7 +170,7 @@ func ThingSelectedFields(m *apptest.ThingSelect) []string {
 
 	vs := make([]string, 0, len(thing.Columns))
 	{
-		vs = append(vs, thing.FieldID)
+		vs = append(vs, thing.FieldId)
 	}
 	if m.GetAlias() {
 		vs = append(vs, thing.FieldAlias)
@@ -246,7 +246,7 @@ func ThingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ThingRef) (uu
 var thingOrmEntity = ormpatch.MustEntityOf(apptest.File_shared_thing_proto, "Thing")
 
 var thingPatchColumns = entpatch.Columns{
-	1: thing.FieldID, 4: thing.FieldAlias, 14: thing.FieldDateErased, 15: thing.FieldDateCreated}
+	1: thing.FieldId, 4: thing.FieldAlias, 14: thing.FieldDateErased, 15: thing.FieldDateCreated}
 
 func (s ThingServiceServer) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
 	if !req.HasPatch() {
@@ -291,7 +291,7 @@ func (s ThingServiceServer) apply(ctx context.Context, ref *apptest.ThingRef, do
 	}
 	at := &apptest.ThingRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, thing.IDEQ(k))
+	p, err := s.narrow(ctx, thing.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +391,7 @@ func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*
 		}
 
 		k = v
-		p = thing.And(p, thing.IDEQ(v))
+		p = thing.And(p, thing.IdEQ(v))
 	}
 
 	u := st.Db.Thing.Update().Where(p)
@@ -441,7 +441,7 @@ func pickThing(req *apptest.ThingRef) (predicate.Thing, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return thing.IDEQ(v), nil
+			return thing.IdEQ(v), nil
 		}
 	case apptest.ThingRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Thing")

@@ -11,49 +11,49 @@ import (
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 )
 
-// ID filters vertices based on their ID field.
-func ID(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldID, id))
+// Id filters vertices based on their Id field.
+func Id(id uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldId, id))
 }
 
-// IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldID, id))
+// IdEQ applies the EQ predicate on the Id field.
+func IdEQ(id uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldId, id))
 }
 
-// IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNEQ(FieldID, id))
+// IdNEQ applies the NEQ predicate on the Id field.
+func IdNEQ(id uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldId, id))
 }
 
-// IDIn applies the In predicate on the ID field.
-func IDIn(ids ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldIn(FieldID, ids...))
+// IdIn applies the In predicate on the Id field.
+func IdIn(ids ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldId, ids...))
 }
 
-// IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNotIn(FieldID, ids...))
+// IdNotIn applies the NotIn predicate on the Id field.
+func IdNotIn(ids ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldId, ids...))
 }
 
-// IDGT applies the GT predicate on the ID field.
-func IDGT(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldGT(FieldID, id))
+// IdGT applies the GT predicate on the Id field.
+func IdGT(id uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldGT(FieldId, id))
 }
 
-// IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldGTE(FieldID, id))
+// IdGTE applies the GTE predicate on the Id field.
+func IdGTE(id uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldGTE(FieldId, id))
 }
 
-// IDLT applies the LT predicate on the ID field.
-func IDLT(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldLT(FieldID, id))
+// IdLT applies the LT predicate on the Id field.
+func IdLT(id uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldLT(FieldId, id))
 }
 
-// IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldLTE(FieldID, id))
+// IdLTE applies the LTE predicate on the Id field.
+func IdLTE(id uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldLTE(FieldId, id))
 }
 
 // Alias applies equality check predicate on the "alias" field. It's identical to AliasEQ.
@@ -86,19 +86,19 @@ func DateErased(v time.Time) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldDateErased, v))
 }
 
-// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
-func TenantID(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldTenantID, v))
+// TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
+func TenantId(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldTenantId, v))
 }
 
-// ThingID applies equality check predicate on the "thing_id" field. It's identical to ThingIDEQ.
-func ThingID(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldThingID, v))
+// ThingId applies equality check predicate on the "thing_id" field. It's identical to ThingIdEQ.
+func ThingId(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldThingId, v))
 }
 
-// CellID applies equality check predicate on the "cell_id" field. It's identical to CellIDEQ.
-func CellID(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldCellID, v))
+// CellId applies equality check predicate on the "cell_id" field. It's identical to CellIdEQ.
+func CellId(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldCellId, v))
 }
 
 // AliasEQ applies the EQ predicate on the "alias" field.
@@ -406,91 +406,91 @@ func DateErasedNotNil() predicate.Robot {
 	return predicate.Robot(sql.FieldNotNull(FieldDateErased))
 }
 
-// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
-func TenantIDEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldTenantID, v))
+// TenantIdEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIdEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldTenantId, v))
 }
 
-// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
-func TenantIDNEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNEQ(FieldTenantID, v))
+// TenantIdNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIdNEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldTenantId, v))
 }
 
-// TenantIDIn applies the In predicate on the "tenant_id" field.
-func TenantIDIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldIn(FieldTenantID, vs...))
+// TenantIdIn applies the In predicate on the "tenant_id" field.
+func TenantIdIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldTenantId, vs...))
 }
 
-// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
-func TenantIDNotIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNotIn(FieldTenantID, vs...))
+// TenantIdNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIdNotIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldTenantId, vs...))
 }
 
-// ThingIDEQ applies the EQ predicate on the "thing_id" field.
-func ThingIDEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldThingID, v))
+// ThingIdEQ applies the EQ predicate on the "thing_id" field.
+func ThingIdEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldThingId, v))
 }
 
-// ThingIDNEQ applies the NEQ predicate on the "thing_id" field.
-func ThingIDNEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNEQ(FieldThingID, v))
+// ThingIdNEQ applies the NEQ predicate on the "thing_id" field.
+func ThingIdNEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldThingId, v))
 }
 
-// ThingIDIn applies the In predicate on the "thing_id" field.
-func ThingIDIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldIn(FieldThingID, vs...))
+// ThingIdIn applies the In predicate on the "thing_id" field.
+func ThingIdIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldThingId, vs...))
 }
 
-// ThingIDNotIn applies the NotIn predicate on the "thing_id" field.
-func ThingIDNotIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNotIn(FieldThingID, vs...))
+// ThingIdNotIn applies the NotIn predicate on the "thing_id" field.
+func ThingIdNotIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldThingId, vs...))
 }
 
-// ThingIDIsNil applies the IsNil predicate on the "thing_id" field.
-func ThingIDIsNil() predicate.Robot {
-	return predicate.Robot(sql.FieldIsNull(FieldThingID))
+// ThingIdIsNil applies the IsNil predicate on the "thing_id" field.
+func ThingIdIsNil() predicate.Robot {
+	return predicate.Robot(sql.FieldIsNull(FieldThingId))
 }
 
-// ThingIDNotNil applies the NotNil predicate on the "thing_id" field.
-func ThingIDNotNil() predicate.Robot {
-	return predicate.Robot(sql.FieldNotNull(FieldThingID))
+// ThingIdNotNil applies the NotNil predicate on the "thing_id" field.
+func ThingIdNotNil() predicate.Robot {
+	return predicate.Robot(sql.FieldNotNull(FieldThingId))
 }
 
-// CellIDEQ applies the EQ predicate on the "cell_id" field.
-func CellIDEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldEQ(FieldCellID, v))
+// CellIdEQ applies the EQ predicate on the "cell_id" field.
+func CellIdEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldCellId, v))
 }
 
-// CellIDNEQ applies the NEQ predicate on the "cell_id" field.
-func CellIDNEQ(v uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNEQ(FieldCellID, v))
+// CellIdNEQ applies the NEQ predicate on the "cell_id" field.
+func CellIdNEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldCellId, v))
 }
 
-// CellIDIn applies the In predicate on the "cell_id" field.
-func CellIDIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldIn(FieldCellID, vs...))
+// CellIdIn applies the In predicate on the "cell_id" field.
+func CellIdIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldCellId, vs...))
 }
 
-// CellIDNotIn applies the NotIn predicate on the "cell_id" field.
-func CellIDNotIn(vs ...uuid.UUID) predicate.Robot {
-	return predicate.Robot(sql.FieldNotIn(FieldCellID, vs...))
+// CellIdNotIn applies the NotIn predicate on the "cell_id" field.
+func CellIdNotIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldCellId, vs...))
 }
 
-// CellIDIsNil applies the IsNil predicate on the "cell_id" field.
-func CellIDIsNil() predicate.Robot {
-	return predicate.Robot(sql.FieldIsNull(FieldCellID))
+// CellIdIsNil applies the IsNil predicate on the "cell_id" field.
+func CellIdIsNil() predicate.Robot {
+	return predicate.Robot(sql.FieldIsNull(FieldCellId))
 }
 
-// CellIDNotNil applies the NotNil predicate on the "cell_id" field.
-func CellIDNotNil() predicate.Robot {
-	return predicate.Robot(sql.FieldNotNull(FieldCellID))
+// CellIdNotNil applies the NotNil predicate on the "cell_id" field.
+func CellIdNotNil() predicate.Robot {
+	return predicate.Robot(sql.FieldNotNull(FieldCellId))
 }
 
 // HasTenant applies the HasEdge predicate on the "tenant" edge.
 func HasTenant() predicate.Robot {
 	return predicate.Robot(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
+			sqlgraph.From(Table, FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, TenantTable, TenantColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
@@ -513,7 +513,7 @@ func HasTenantWith(preds ...predicate.Tenant) predicate.Robot {
 func HasThing() predicate.Robot {
 	return predicate.Robot(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
+			sqlgraph.From(Table, FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, ThingTable, ThingColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
@@ -536,7 +536,7 @@ func HasThingWith(preds ...predicate.Thing) predicate.Robot {
 func HasCell() predicate.Robot {
 	return predicate.Robot(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
+			sqlgraph.From(Table, FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, CellTable, CellColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)

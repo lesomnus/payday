@@ -29,16 +29,16 @@ func (_u *ReadingUpdate) Where(ps ...predicate.Reading) *ReadingUpdate {
 	return _u
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_u *ReadingUpdate) SetTenantID(v uuid.UUID) *ReadingUpdate {
-	_u.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_u *ReadingUpdate) SetTenantId(v uuid.UUID) *ReadingUpdate {
+	_u.mutation.SetTenantId(v)
 	return _u
 }
 
-// SetNillableTenantID sets the "tenant_id" field if the given value is not nil.
-func (_u *ReadingUpdate) SetNillableTenantID(v *uuid.UUID) *ReadingUpdate {
+// SetNillableTenantId sets the "tenant_id" field if the given value is not nil.
+func (_u *ReadingUpdate) SetNillableTenantId(v *uuid.UUID) *ReadingUpdate {
 	if v != nil {
-		_u.SetTenantID(*v)
+		_u.SetTenantId(*v)
 	}
 	return _u
 }
@@ -98,7 +98,7 @@ func (_u *ReadingUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ReadingUpdate) check() error {
-	if _u.mutation.RobotCleared() && len(_u.mutation.RobotIDs()) > 0 {
+	if _u.mutation.RobotCleared() && len(_u.mutation.RobotIds()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Reading.robot"`)
 	}
 	return nil
@@ -114,7 +114,7 @@ func (_u *ReadingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(reading.Table, reading.Columns, sqlgraph.NewFieldSpec(reading.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewUpdateSpec(reading.Table, reading.Columns, sqlgraph.NewFieldSpec(reading.FieldId, field.TypeUuid))
 	if ps := _u.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -122,8 +122,8 @@ func (_u *ReadingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.TenantID(); ok {
-		_spec.SetField(reading.FieldTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.TenantId(); ok {
+		_spec.SetField(reading.FieldTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Celsius(); ok {
 		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)
@@ -156,16 +156,16 @@ type ReadingUpdateOne struct {
 	modifiers []func(*sql.UpdateBuilder)
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_u *ReadingUpdateOne) SetTenantID(v uuid.UUID) *ReadingUpdateOne {
-	_u.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_u *ReadingUpdateOne) SetTenantId(v uuid.UUID) *ReadingUpdateOne {
+	_u.mutation.SetTenantId(v)
 	return _u
 }
 
-// SetNillableTenantID sets the "tenant_id" field if the given value is not nil.
-func (_u *ReadingUpdateOne) SetNillableTenantID(v *uuid.UUID) *ReadingUpdateOne {
+// SetNillableTenantId sets the "tenant_id" field if the given value is not nil.
+func (_u *ReadingUpdateOne) SetNillableTenantId(v *uuid.UUID) *ReadingUpdateOne {
 	if v != nil {
-		_u.SetTenantID(*v)
+		_u.SetTenantId(*v)
 	}
 	return _u
 }
@@ -238,7 +238,7 @@ func (_u *ReadingUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ReadingUpdateOne) check() error {
-	if _u.mutation.RobotCleared() && len(_u.mutation.RobotIDs()) > 0 {
+	if _u.mutation.RobotCleared() && len(_u.mutation.RobotIds()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Reading.robot"`)
 	}
 	return nil
@@ -254,20 +254,20 @@ func (_u *ReadingUpdateOne) sqlSave(ctx context.Context) (_node *Reading, err er
 	if err := _u.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(reading.Table, reading.Columns, sqlgraph.NewFieldSpec(reading.FieldID, field.TypeUUID))
-	id, ok := _u.mutation.ID()
+	_spec := sqlgraph.NewUpdateSpec(reading.Table, reading.Columns, sqlgraph.NewFieldSpec(reading.FieldId, field.TypeUuid))
+	id, ok := _u.mutation.Id()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Reading.id" for update`)}
 	}
-	_spec.Node.ID.Value = id
+	_spec.Node.Id.Value = id
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, reading.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, reading.FieldId)
 		for _, f := range fields {
 			if !reading.ValidColumn(f) {
 				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 			}
-			if f != reading.FieldID {
+			if f != reading.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, f)
 			}
 		}
@@ -279,8 +279,8 @@ func (_u *ReadingUpdateOne) sqlSave(ctx context.Context) (_node *Reading, err er
 			}
 		}
 	}
-	if value, ok := _u.mutation.TenantID(); ok {
-		_spec.SetField(reading.FieldTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.TenantId(); ok {
+		_spec.SetField(reading.FieldTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Celsius(); ok {
 		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)

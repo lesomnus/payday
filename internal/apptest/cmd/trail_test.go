@@ -222,7 +222,7 @@ func TestOnePersonLeavesTheTrailWithoutTakingTheEventWithThem(t *testing.T) {
 	who := must(pdid.From(v.GetId()))
 
 	rows := func() []*ent.Audit {
-		vs, err := b.Ent.Audit.Query().Where(entaudit.ObjectIDEQ(who.Uuid())).All(ctx)
+		vs, err := b.Ent.Audit.Query().Where(entaudit.ObjectIdEQ(who.Uuid())).All(ctx)
 		require.NoError(t, err)
 
 		return vs
@@ -256,12 +256,12 @@ func TestOnePersonLeavesTheTrailWithoutTakingTheEventWithThem(t *testing.T) {
 
 		// And the event did not.
 		x.NotEmpty(u.Action, "the record of what happened went with the contents")
-		x.Equal(who.Uuid(), u.ObjectID)
+		x.Equal(who.Uuid(), u.ObjectId)
 		x.False(u.DateCreated.IsZero())
 	}
 
 	vs, err := b.Ent.Audit.Query().
-		Where(entaudit.ObjectIDEQ(must(pdid.From(other.GetId())).Uuid())).
+		Where(entaudit.ObjectIdEQ(must(pdid.From(other.GetId())).Uuid())).
 		All(ctx)
 	x.NoError(err)
 	x.NotEmpty(vs)
@@ -311,7 +311,7 @@ func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 	x.NotZero(held, "the archive holds nothing about them, so this proves nothing")
 
 	// The object as protojson writes it, which is what the runtime matches on:
-	// it has no `Audit` type and reads the document as JSON.
+	// it has no `Audit` type and reads the document as Json.
 	n, err := trail.Forget(dir, []string{base64.StdEncoding.EncodeToString(who.Bytes())})
 	x.NoError(err)
 	x.NotZero(n)

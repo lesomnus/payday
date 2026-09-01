@@ -1,8 +1,8 @@
 // Package pdid is the identifier every row of a payday app is named by.
 //
-// It is a UUID, and it carries one byte saying what kind of thing it names.
+// It is a Uuid, and it carries one byte saying what kind of thing it names.
 // That byte is the whole of what this package adds, and it buys three things
-// that a plain UUID cannot:
+// that a plain Uuid cannot:
 //
 //   - **A reference can be checked before the database is.** A Holder's
 //     identifier handed to something that wants a Tenant's is refused at the
@@ -42,7 +42,7 @@
 // the version is written into the high nibble and the rest is left alone.
 //
 // The domain sits at byte 9, which is the second half of the fourth group when
-// a UUID is written out. It reads without counting:
+// a Uuid is written out. It reads without counting:
 //
 //	0199c3f4-2a10-8abc-8a03-9f2e1c4d5b6a
 //	                    ^^ domain
@@ -65,7 +65,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Id is a UUID that says what kind of thing it names.
+// Id is a Uuid that says what kind of thing it names.
 type Id uuid.UUID
 
 // Nil is the identifier that names nothing, and so is the identifier nothing
@@ -90,7 +90,7 @@ func New(d Domain) Id {
 	return Id(v)
 }
 
-// Uuid answers with this identifier as a plain UUID, which is what the database
+// Uuid answers with this identifier as a plain Uuid, which is what the database
 // and the wire hold.
 func (v Id) Uuid() uuid.UUID { return uuid.UUID(v) }
 
@@ -115,8 +115,8 @@ func (v Id) IsZero() bool { return v == Nil }
 // Of answers with the domain `v` names, and whether `v` is an identifier of
 // this shape at all.
 //
-// The check is the point. Every sixteen bytes can be read as a UUID and every
-// UUID has a ninth byte, so without it any identifier would be taken to be
+// The check is the point. Every sixteen bytes can be read as a Uuid and every
+// Uuid has a ninth byte, so without it any identifier would be taken to be
 // making a claim about itself -- a v4 whose ninth byte happens to be 3 would
 // pass as whatever 3 was registered as. What the version and the variant say is
 // the only reason to believe the rest.

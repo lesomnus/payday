@@ -76,11 +76,11 @@ func TestOtel(t *testing.T) {
 
 		// What a caller that is already tracing sends along.
 		const (
-			traceID = "4bf92f3577b34da6a3ce929d0e0e4736"
-			spanID  = "00f067aa0ba902b7"
+			traceId = "4bf92f3577b34da6a3ce929d0e0e4736"
+			spanId  = "00f067aa0ba902b7"
 		)
 		ctx := metadata.AppendToOutgoingContext(t.Context(),
-			"traceparent", "00-"+traceID+"-"+spanID+"-01",
+			"traceparent", "00-"+traceId+"-"+spanId+"-01",
 		)
 
 		_, err := c.Check(ctx, &grpc_health_v1.HealthCheckRequest{})
@@ -90,8 +90,8 @@ func TestOtel(t *testing.T) {
 		x.Len(spans, 1)
 
 		// The same trace, and the caller's span is the parent of ours.
-		x.Equal(traceID, spans[0].SpanContext().TraceID().String())
-		x.Equal(spanID, spans[0].Parent().SpanID().String())
+		x.Equal(traceId, spans[0].SpanContext().TraceID().String())
+		x.Equal(spanId, spans[0].Parent().SpanId().String())
 		x.True(spans[0].Parent().IsRemote())
 	})
 	t.Run("a call that says nothing starts a trace of its own", func(t *testing.T) {

@@ -42,29 +42,29 @@ func (_c *JointCreate) SetNillableDateErased(v *time.Time) *JointCreate {
 	return _c
 }
 
-// SetRobotID sets the "robot_id" field.
-func (_c *JointCreate) SetRobotID(v uuid.UUID) *JointCreate {
-	_c.mutation.SetRobotID(v)
+// SetRobotId sets the "robot_id" field.
+func (_c *JointCreate) SetRobotId(v uuid.UUID) *JointCreate {
+	_c.mutation.SetRobotId(v)
 	return _c
 }
 
-// SetNillableRobotID sets the "robot_id" field if the given value is not nil.
-func (_c *JointCreate) SetNillableRobotID(v *uuid.UUID) *JointCreate {
+// SetNillableRobotId sets the "robot_id" field if the given value is not nil.
+func (_c *JointCreate) SetNillableRobotId(v *uuid.UUID) *JointCreate {
 	if v != nil {
-		_c.SetRobotID(*v)
+		_c.SetRobotId(*v)
 	}
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *JointCreate) SetID(v uuid.UUID) *JointCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *JointCreate) SetId(v uuid.UUID) *JointCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
 // SetRobot sets the "robot" edge to the Robot entity.
 func (_c *JointCreate) SetRobot(v *Robot) *JointCreate {
-	return _c.SetRobotID(v.ID)
+	return _c.SetRobotId(v.Id)
 }
 
 // Mutation returns the JointMutation object of the builder.
@@ -118,14 +118,14 @@ func (_c *JointCreate) sqlSave(ctx context.Context) (*Joint, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -133,11 +133,11 @@ func (_c *JointCreate) sqlSave(ctx context.Context) (*Joint, error) {
 func (_c *JointCreate) createSpec() (*Joint, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Joint{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(joint.Table, sqlgraph.NewFieldSpec(joint.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(joint.Table, sqlgraph.NewFieldSpec(joint.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(joint.FieldAlias, field.TypeString, value)
@@ -147,7 +147,7 @@ func (_c *JointCreate) createSpec() (*Joint, *sqlgraph.CreateSpec) {
 		_spec.SetField(joint.FieldDateErased, field.TypeTime, value)
 		_node.DateErased = &value
 	}
-	if nodes := _c.mutation.RobotIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.RobotIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -155,13 +155,13 @@ func (_c *JointCreate) createSpec() (*Joint, *sqlgraph.CreateSpec) {
 			Columns: []string{joint.RobotColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(robot.FieldID, field.TypeUUID),
+				IdSpec: sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.RobotID = nodes[0]
+		_node.RobotId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -210,7 +210,7 @@ func (_c *JointCreateBulk) Save(ctx context.Context) ([]*Joint, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

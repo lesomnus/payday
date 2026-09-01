@@ -11,17 +11,17 @@ import (
 var (
 	// AuditColumns holds the columns for the "audit" table.
 	AuditColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
-		{Name: "tenant_id", Type: field.TypeUUID},
-		{Name: "actor_id", Type: field.TypeUUID},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+		{Name: "actor_id", Type: field.TypeUuid},
 		{Name: "trace_id", Type: field.TypeBytes},
 		{Name: "action", Type: field.TypeString},
-		{Name: "object_id", Type: field.TypeUUID},
+		{Name: "object_id", Type: field.TypeUuid},
 		{Name: "patch", Type: field.TypeBytes},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
-		{Name: "actor_tenant_id", Type: field.TypeUUID},
+		{Name: "actor_tenant_id", Type: field.TypeUuid},
 		{Name: "value", Type: field.TypeBytes},
-		{Name: "counterpart_tenant_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "counterpart_tenant_id", Type: field.TypeUuid, Nullable: true},
 		{Name: "domain", Type: field.TypeUint32, Nullable: true},
 	}
 	// AuditTable holds the schema information for the "audit" table.
@@ -64,10 +64,10 @@ var (
 	}
 	// CellColumns holds the columns for the "cell" table.
 	CellColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
-		{Name: "tenant_id", Type: field.TypeUUID},
+		{Name: "tenant_id", Type: field.TypeUuid},
 	}
 	// CellTable holds the schema information for the "cell" table.
 	CellTable = &schema.Table{
@@ -85,7 +85,7 @@ var (
 	}
 	// FleetColumns holds the columns for the "fleet" table.
 	FleetColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 	}
@@ -107,17 +107,17 @@ var (
 	}
 	// HolderColumns holds the columns for the "holder" table.
 	HolderColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
 		{Name: "desc", Type: field.TypeString},
-		{Name: "labels", Type: field.TypeJSON, Nullable: true},
+		{Name: "labels", Type: field.TypeJson, Nullable: true},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "idp_subject", Type: field.TypeString},
-		{Name: "profile", Type: field.TypeJSON, Nullable: true},
-		{Name: "tenant_id", Type: field.TypeUUID},
+		{Name: "profile", Type: field.TypeJson, Nullable: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
 	}
 	// HolderTable holds the schema information for the "holder" table.
 	HolderTable = &schema.Table{
@@ -145,10 +145,10 @@ var (
 	}
 	// JointColumns holds the columns for the "joint" table.
 	JointColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
-		{Name: "robot_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "robot_id", Type: field.TypeUuid, Nullable: true},
 	}
 	// JointTable holds the schema information for the "joint" table.
 	JointTable = &schema.Table{
@@ -166,12 +166,12 @@ var (
 	}
 	// OutboxColumns holds the columns for the "outbox" table.
 	OutboxColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
-		{Name: "tenant_id", Type: field.TypeUUID},
-		{Name: "actor_id", Type: field.TypeUUID},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+		{Name: "actor_id", Type: field.TypeUuid},
 		{Name: "method", Type: field.TypeString},
 		{Name: "by", Type: field.TypeString},
-		{Name: "object_id", Type: field.TypeUUID},
+		{Name: "object_id", Type: field.TypeUuid},
 		{Name: "patch", Type: field.TypeBytes},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 	}
@@ -190,10 +190,10 @@ var (
 	}
 	// PairingColumns holds the columns for the "pairing" table.
 	PairingColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
-		{Name: "lead_id", Type: field.TypeUUID},
-		{Name: "follow_id", Type: field.TypeUUID},
+		{Name: "lead_id", Type: field.TypeUuid},
+		{Name: "follow_id", Type: field.TypeUuid},
 	}
 	// PairingTable holds the schema information for the "pairing" table.
 	PairingTable = &schema.Table{
@@ -217,11 +217,11 @@ var (
 	}
 	// ReadingColumns holds the columns for the "reading" table.
 	ReadingColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
-		{Name: "tenant_id", Type: field.TypeUUID},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
 		{Name: "celsius", Type: field.TypeFloat64},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
-		{Name: "robot_id", Type: field.TypeUUID},
+		{Name: "robot_id", Type: field.TypeUuid},
 	}
 	// ReadingTable holds the schema information for the "reading" table.
 	ReadingTable = &schema.Table{
@@ -246,16 +246,16 @@ var (
 	}
 	// RobotColumns holds the columns for the "robot" table.
 	RobotColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "secret", Type: field.TypeBytes, Nullable: true},
 		{Name: "date_attested", Type: field.TypeTime, Nullable: true},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
-		{Name: "tenant_id", Type: field.TypeUUID},
-		{Name: "thing_id", Type: field.TypeUUID, Nullable: true},
-		{Name: "cell_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+		{Name: "thing_id", Type: field.TypeUuid, Nullable: true},
+		{Name: "cell_id", Type: field.TypeUuid, Nullable: true},
 	}
 	// RobotTable holds the schema information for the "robot" table.
 	RobotTable = &schema.Table{
@@ -300,7 +300,7 @@ var (
 	}
 	// SealColumns holds the columns for the "seal" table.
 	SealColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "secret", Type: field.TypeBytes},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
@@ -314,11 +314,11 @@ var (
 	}
 	// TenantColumns holds the columns for the "tenant" table.
 	TenantColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString, Unique: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "desc", Type: field.TypeString},
-		{Name: "labels", Type: field.TypeJSON, Nullable: true},
+		{Name: "labels", Type: field.TypeJson, Nullable: true},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 	}
@@ -330,7 +330,7 @@ var (
 	}
 	// ThingColumns holds the columns for the "thing" table.
 	ThingColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},

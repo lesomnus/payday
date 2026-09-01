@@ -110,7 +110,7 @@ func TestTheSandboxIsGoThatParsesAndNamesThisApp(t *testing.T) {
 	x.Contains(string(w), "@lesomnus/grpc-dgram/wasm/worker")
 
 	// What is left to type. The wasm build is not run here for the reason
-	// `pd new` does not run `go mod tidy`: it fetches a module and writes 65MB.
+	// `pd new` does not run `go mod tidy`: it fetches a module and writes 65Mb.
 	joined := strings.Join(steps, "\n")
 	x.Contains(joined, "GOOS=js GOARCH=wasm go build")
 	x.Contains(joined, "wasm_exec.js")

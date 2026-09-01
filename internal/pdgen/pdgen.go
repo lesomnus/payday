@@ -376,7 +376,7 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 			//
 			// It is refused rather than added silently, because `by:` is the
 			// list of things a caller may filter on and quietly putting one
-			// more in it is the generator deciding what an API offers.
+			// more in it is the generator deciding what an Api offers.
 			return nil, fmt.Errorf(
 				"watch: needs `ref` among the list's `by:`, and this one has %s.\n\n"+
 					"    list: {by: [{name: \"ref\"}%s]}\n\n"+
@@ -671,7 +671,7 @@ func (s *Schema) checkStamp(v *Entity) error {
 	// And an index it leads, or the wall is a scan.
 	//
 	// This is the rule that makes the feature honest rather than merely
-	// compiling. What a stamp replaces is `HasHolderWith(holder.TenantIDIn(...))`
+	// compiling. What a stamp replaces is `HasHolderWith(holder.TenantIdIn(...))`
 	// -- a semi-join over two indexed columns -- and `tenant_id IN (...)` on an
 	// unindexed column is not faster than that, it is a sequential scan of the
 	// table the wall is read from most.
@@ -978,11 +978,11 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 		if d, ok := edge(e.Entity, name); ok {
 			// An edge, which is a foreign key and therefore a column. A filter
 			// on one costs an indexed comparison, which is what makes "everyone
-			// in this tenant" a declaration rather than a hand-written RPC.
+			// in this tenant" a declaration rather than a hand-written Rpc.
 			if d.IsList() {
 				return fmt.Errorf(
 					"list: by: %q is a one-to-many edge, and there is no column on this row "+
-						"to compare -- which is a join, and a join wants an RPC somebody wrote",
+						"to compare -- which is a join, and a join wants an Rpc somebody wrote",
 					name)
 			}
 
@@ -1002,7 +1002,7 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 		if protoTypeOf(f.Type()) == "" {
 			return fmt.Errorf(
 				"list: by: %q is %s, and a filter compares for equality -- which is not "+
-					"something this generator writes for that. An RPC somebody wrote can",
+					"something this generator writes for that. An Rpc somebody wrote can",
 				name, f.Type())
 		}
 		v.By = append(v.By, By{Field: name, Type: f.Type()})
@@ -1385,14 +1385,14 @@ func suggestErased(e graph.Entity) int {
 	}
 }
 
-// checkPresence refuses a field that has presence in the API and nowhere to
+// checkPresence refuses a field that has presence in the Api and nowhere to
 // keep it.
 //
 // # What goes wrong
 //
 // A message field -- a `google.protobuf.Timestamp`, a nested message -- with no
 // `nullable`, no `default` and no marker generates a **NOT NULL** column. The
-// API generated beside it still has `HasXxx()`, because a message field has
+// Api generated beside it still has `HasXxx()`, because a message field has
 // presence in proto whatever the column does.
 //
 // So the two disagree, and the caller is the one told the lie: they ask whether
@@ -1446,7 +1446,7 @@ func (s *Schema) checkPresence(v *Entity) error {
 		}
 
 		return fmt.Errorf(
-			"%s.%s: this field has presence in the API -- `Has%s()` -- and a NOT NULL "+
+			"%s.%s: this field has presence in the Api -- `Has%s()` -- and a NOT NULL "+
 				"column to keep it in, so a caller who never set it is told it is set\n\n"+
 				"    say which one you meant:\n"+
 				"      [(orm.field) = {nullable: true}]  the value may be absent\n"+

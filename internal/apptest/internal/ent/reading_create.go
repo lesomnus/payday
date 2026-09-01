@@ -22,9 +22,9 @@ type ReadingCreate struct {
 	hooks    []Hook
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_c *ReadingCreate) SetTenantID(v uuid.UUID) *ReadingCreate {
-	_c.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_c *ReadingCreate) SetTenantId(v uuid.UUID) *ReadingCreate {
+	_c.mutation.SetTenantId(v)
 	return _c
 }
 
@@ -48,21 +48,21 @@ func (_c *ReadingCreate) SetNillableDateCreated(v *time.Time) *ReadingCreate {
 	return _c
 }
 
-// SetRobotID sets the "robot_id" field.
-func (_c *ReadingCreate) SetRobotID(v uuid.UUID) *ReadingCreate {
-	_c.mutation.SetRobotID(v)
+// SetRobotId sets the "robot_id" field.
+func (_c *ReadingCreate) SetRobotId(v uuid.UUID) *ReadingCreate {
+	_c.mutation.SetRobotId(v)
 	return _c
 }
 
-// SetID sets the "id" field.
-func (_c *ReadingCreate) SetID(v uuid.UUID) *ReadingCreate {
-	_c.mutation.SetID(v)
+// SetId sets the "id" field.
+func (_c *ReadingCreate) SetId(v uuid.UUID) *ReadingCreate {
+	_c.mutation.SetId(v)
 	return _c
 }
 
 // SetRobot sets the "robot" edge to the Robot entity.
 func (_c *ReadingCreate) SetRobot(v *Robot) *ReadingCreate {
-	return _c.SetRobotID(v.ID)
+	return _c.SetRobotId(v.Id)
 }
 
 // Mutation returns the ReadingMutation object of the builder.
@@ -99,16 +99,16 @@ func (_c *ReadingCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *ReadingCreate) check() error {
-	if _, ok := _c.mutation.TenantID(); !ok {
+	if _, ok := _c.mutation.TenantId(); !ok {
 		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Reading.tenant_id"`)}
 	}
 	if _, ok := _c.mutation.Celsius(); !ok {
 		return &ValidationError{Name: "celsius", err: errors.New(`ent: missing required field "Reading.celsius"`)}
 	}
-	if _, ok := _c.mutation.RobotID(); !ok {
+	if _, ok := _c.mutation.RobotId(); !ok {
 		return &ValidationError{Name: "robot_id", err: errors.New(`ent: missing required field "Reading.robot_id"`)}
 	}
-	if len(_c.mutation.RobotIDs()) == 0 {
+	if len(_c.mutation.RobotIds()) == 0 {
 		return &ValidationError{Name: "robot", err: errors.New(`ent: missing required edge "Reading.robot"`)}
 	}
 	return nil
@@ -125,14 +125,14 @@ func (_c *ReadingCreate) sqlSave(ctx context.Context) (*Reading, error) {
 		}
 		return nil, err
 	}
-	if _spec.ID.Value != nil {
-		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
-			_node.ID = *id
-		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+	if _spec.Id.Value != nil {
+		if id, ok := _spec.Id.Value.(*uuid.UUID); ok {
+			_node.Id = *id
+		} else if err := _node.Id.Scan(_spec.Id.Value); err != nil {
 			return nil, err
 		}
 	}
-	_c.mutation.id = &_node.ID
+	_c.mutation.id = &_node.Id
 	_c.mutation.done = true
 	return _node, nil
 }
@@ -140,15 +140,15 @@ func (_c *ReadingCreate) sqlSave(ctx context.Context) (*Reading, error) {
 func (_c *ReadingCreate) createSpec() (*Reading, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Reading{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(reading.Table, sqlgraph.NewFieldSpec(reading.FieldID, field.TypeUUID))
+		_spec = sqlgraph.NewCreateSpec(reading.Table, sqlgraph.NewFieldSpec(reading.FieldId, field.TypeUuid))
 	)
-	if id, ok := _c.mutation.ID(); ok {
-		_node.ID = id
-		_spec.ID.Value = &id
+	if id, ok := _c.mutation.Id(); ok {
+		_node.Id = id
+		_spec.Id.Value = &id
 	}
-	if value, ok := _c.mutation.TenantID(); ok {
-		_spec.SetField(reading.FieldTenantID, field.TypeUUID, value)
-		_node.TenantID = value
+	if value, ok := _c.mutation.TenantId(); ok {
+		_spec.SetField(reading.FieldTenantId, field.TypeUuid, value)
+		_node.TenantId = value
 	}
 	if value, ok := _c.mutation.Celsius(); ok {
 		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)
@@ -158,7 +158,7 @@ func (_c *ReadingCreate) createSpec() (*Reading, *sqlgraph.CreateSpec) {
 		_spec.SetField(reading.FieldDateCreated, field.TypeTime, value)
 		_node.DateCreated = value
 	}
-	if nodes := _c.mutation.RobotIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.RobotIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
@@ -166,13 +166,13 @@ func (_c *ReadingCreate) createSpec() (*Reading, *sqlgraph.CreateSpec) {
 			Columns: []string{reading.RobotColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(robot.FieldID, field.TypeUUID),
+				IdSpec: sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.RobotID = nodes[0]
+		_node.RobotId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -221,7 +221,7 @@ func (_c *ReadingCreateBulk) Save(ctx context.Context) ([]*Reading, error) {
 				if err != nil {
 					return nil, err
 				}
-				mutation.id = &nodes[i].ID
+				mutation.id = &nodes[i].Id
 				mutation.done = true
 				return nodes[i], nil
 			})

@@ -40,7 +40,7 @@ func (_d *PairingDelete) ExecX(ctx context.Context) int {
 }
 
 func (_d *PairingDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(pairing.Table, sqlgraph.NewFieldSpec(pairing.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewDeleteSpec(pairing.Table, sqlgraph.NewFieldSpec(pairing.FieldId, field.TypeUuid))
 	if ps := _d.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

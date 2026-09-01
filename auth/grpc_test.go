@@ -194,7 +194,7 @@ func TestInterceptor(t *testing.T) {
 	t.Run("a credential that is wrong does not become the next one", func(t *testing.T) {
 		x := require.New(t)
 
-		h := auth.Seq(auth.Bearer(auth.NewMemTokenStore()), auth.MTLS())
+		h := auth.Seq(auth.Bearer(auth.NewMemTokenStore()), auth.MTls())
 		ctx := metadata.NewIncomingContext(verified(certOf("@hooli/erlich")), metadata.Pairs("authorization", "Bearer nope"))
 
 		_, err := serve(h, known(), nil, ctx, getMethod)

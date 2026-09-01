@@ -23,7 +23,7 @@ func (o *outer) SendHeader(metadata.MD) error   { return nil }
 func (o *outer) SetTrailer(metadata.MD) error   { return nil }
 
 // TestAsOpAnswersWithTheOperation is the contract: inside the batch handler,
-// gRPC's answer to "what method is being served" is the envelope's, and the
+// gRpc's answer to "what method is being served" is the envelope's, and the
 // recorder below the write sites has no other way to ask.
 func TestAsOpAnswersWithTheOperation(t *testing.T) {
 	x := require.New(t)

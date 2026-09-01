@@ -10,7 +10,7 @@ import (
 
 func (e *Thing) Proto() *apptest.Thing {
 	x := &apptest.Thing{}
-	x.SetId(e.ID[:])
+	x.SetId(e.Id[:])
 	x.SetAlias(e.Alias)
 	if e.DateErased != nil {
 		x.SetDateErased(timestamppb.New(*e.DateErased))

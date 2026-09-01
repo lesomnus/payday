@@ -223,7 +223,7 @@ func TestTheRawRequestIsMergedOverTheArguments(t *testing.T) {
 		Run(t, "holder", "add", "@acme/bob", `{"name":"Bob"}`)
 	x.NoError(got.Err)
 	x.Contains(got.Stdout, "bob")
-	x.Contains(got.Stdout, "Bob", "the field no argument names came from the JSON")
+	x.Contains(got.Stdout, "Bob", "the field no argument names came from the Json")
 
 	// And it wins where the two overlap, which is what makes it an escape
 	// hatch rather than a second way to say the same thing.
@@ -261,7 +261,7 @@ func TestTheFormats(t *testing.T) {
 		return xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, args...)
 	}
 
-	t.Run("json is JSON", func(t *testing.T) {
+	t.Run("json is Json", func(t *testing.T) {
 		x := require.New(t)
 
 		got := run(t, "holder", "get", "-o", "json", "@acme/admin")
@@ -269,8 +269,8 @@ func TestTheFormats(t *testing.T) {
 		x.Contains(got.Stdout, `"alias"`)
 		x.Contains(got.Stdout, `"admin"`)
 
-		// Which of the two JSONs this is, and how they differ, is
-		// TestThereAreTwoJSONs.
+		// Which of the two Jsons this is, and how they differ, is
+		// TestThereAreTwoJsons.
 	})
 
 	t.Run("name is the identifier and nothing else", func(t *testing.T) {
@@ -291,7 +291,7 @@ func TestTheFormats(t *testing.T) {
 		x.GreaterOrEqual(len(lines), 2)
 		x.Contains(lines[0], "ALIAS")
 		x.Contains(lines[0], "AGE")
-		x.NotContains(lines[0], "ID", "the identifier is wide, so a terminal shows the readable columns")
+		x.NotContains(lines[0], "Id", "the identifier is wide, so a terminal shows the readable columns")
 		x.Contains(got.Stdout, "admin")
 	})
 
@@ -300,7 +300,7 @@ func TestTheFormats(t *testing.T) {
 
 		got := run(t, "holder", "ls", "-o", "wide")
 		x.NoError(got.Err)
-		x.Contains(got.Stdout, "ID")
+		x.Contains(got.Stdout, "Id")
 		x.Contains(got.Stdout, b.Holder.String())
 	})
 
@@ -489,7 +489,7 @@ func TestAnIdentifierIsWhatTheSchemaSaysItIs(t *testing.T) {
 	var b strings.Builder
 	x.NoError(pdcmd.Pretty.Print(&b, app.Audit_builder{
 		Id:      id.Bytes(),
-		TraceId: trace,
+		TraceID: trace,
 		Action:  "Add",
 	}.Build()))
 
@@ -499,13 +499,13 @@ func TestAnIdentifierIsWhatTheSchemaSaysItIs(t *testing.T) {
 	x.Contains(got, "(16 bytes)", "what a bytes field payday did not put there is worth saying")
 }
 
-// TestThereAreTwoJSONs, and which one somebody gets is which one they asked for.
+// TestThereAreTwoJsons, and which one somebody gets is which one they asked for.
 //
 // protojson is right about `bytes` and useless to a person: every payday
 // identifier is one, so `-o protojson` answers base64 that has to be decoded
 // before it means anything. Rewriting it in place would break the property that
 // makes `-o protojson` worth having -- that a script can feed it back.
-func TestThereAreTwoJSONs(t *testing.T) {
+func TestThereAreTwoJsons(t *testing.T) {
 	b, ctx := build(t)
 	conn := b.dialed(t, ctx)
 	as := b.travels(ctx)
@@ -534,7 +534,7 @@ func TestThereAreTwoJSONs(t *testing.T) {
 		x.NoError(got.Err)
 
 		var v map[string]any
-		x.NoError(json.Unmarshal([]byte(got.Stdout), &v), "still JSON")
+		x.NoError(json.Unmarshal([]byte(got.Stdout), &v), "still Json")
 		x.Equal(b.Holder.String(), v["id"])
 		x.Equal(b.Tenant.String(), v["tenant"].(map[string]any)["id"], "and inside a nested entity")
 
@@ -548,9 +548,9 @@ func TestThereAreTwoJSONs(t *testing.T) {
 		x := require.New(t)
 
 		var s strings.Builder
-		x.NoError(pdcmd.JSON.Print(&s, app.Audit_builder{
+		x.NoError(pdcmd.Json.Print(&s, app.Audit_builder{
 			Id:      b.Holder.Bytes(),
-			TraceId: []byte{0xde, 0xad, 0xbe, 0xef, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
+			TraceID: []byte{0xde, 0xad, 0xbe, 0xef, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
 		}.Build()))
 
 		var v map[string]any
@@ -595,7 +595,7 @@ func TestAnIdentifierCanBeWrittenAsAUuid(t *testing.T) {
 	})
 
 	// This is what the lenient reading is actually for, and it is not what it
-	// looked like. protojson does not refuse a uuid: it accepts URL-safe base64
+	// looked like. protojson does not refuse a uuid: it accepts Url-safe base64
 	// as well as standard, `-` is in that alphabet, and a uuid string decodes
 	// to 27 bytes of nothing. The refusal comes later, from the server, about a
 	// value nobody wrote.
@@ -620,7 +620,7 @@ func TestAnIdentifierCanBeWrittenAsAUuid(t *testing.T) {
 // TestAnRpcThisAppWroteGetsACommandToo is the case the six verbs do not cover.
 //
 // payday closes the general writes on purpose, so an operation that means
-// something -- moving a row to another tenant, say -- is an RPC the app
+// something -- moving a row to another tenant, say -- is an Rpc the app
 // declares in an overlay and implements in a layer. Nothing can generate a
 // command for it, because nothing knows what it means. What can be shared is
 // everything around it, which is what [pdcmd.Tree.Unary] is.
@@ -635,7 +635,7 @@ func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 	conn := b.dialed(t, ctx)
 	as := b.travels(ctx)
 
-	t.Run("the RPC this app declared", func(t *testing.T) {
+	t.Run("the Rpc this app declared", func(t *testing.T) {
 		x := require.New(t)
 
 		tenant := app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build()

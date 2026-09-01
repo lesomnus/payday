@@ -26,7 +26,7 @@ import (
 )
 
 func TestServerConfig(t *testing.T) {
-	t.Run("nothing said is nothing given, so gRPC keeps its own", func(t *testing.T) {
+	t.Run("nothing said is nothing given, so gRpc keeps its own", func(t *testing.T) {
 		x := require.New(t)
 
 		c := config.ServerConfig{}
@@ -153,19 +153,19 @@ func TestHttpConfig(t *testing.T) {
 	})
 }
 
-// TestTLSIsActuallyServed is the whole of why `GrpcOptions` answers with an
+// TestTlsIsActuallyServed is the whole of why `GrpcOptions` answers with an
 // error.
 //
-// `ServerConfig.TLS` was a block a deployment could write and nothing read: not
+// `ServerConfig.Tls` was a block a deployment could write and nothing read: not
 // this function, not the template `pd new` writes, not payday's own test app. A
 // deployment that configured a certificate got a plaintext listener and no
 // complaint -- which is the direction nobody notices, because the port answers
 // and the calls work.
-func TestTLSIsActuallyServed(t *testing.T) {
+func TestTlsIsActuallyServed(t *testing.T) {
 	t.Run("a certificate that cannot be read is a server that does not start", func(t *testing.T) {
 		x := require.New(t)
 
-		c := config.ServerConfig{TLS: config.TLSConfig{
+		c := config.ServerConfig{Tls: config.TlsConfig{
 			CertFile: filepath.Join(t.TempDir(), "nowhere.pem"),
 			KeyFile:  filepath.Join(t.TempDir(), "nowhere.key"),
 		}}
@@ -182,13 +182,13 @@ func TestTLSIsActuallyServed(t *testing.T) {
 		cert, key := filepath.Join(dir, "c.pem"), filepath.Join(dir, "k.pem")
 		writeCert(t, cert, key)
 
-		c := config.ServerConfig{TLS: config.TLSConfig{CertFile: cert, KeyFile: key}}
+		c := config.ServerConfig{Tls: config.TlsConfig{CertFile: cert, KeyFile: key}}
 
 		vs, err := c.GrpcOptions()
 		x.NoError(err)
 		x.Len(vs, 1)
 
-		// The server it builds speaks TLS, which is the thing a count of
+		// The server it builds speaks Tls, which is the thing a count of
 		// options cannot say. A plaintext dial gets nowhere.
 		g := grpc.NewServer(vs...)
 		t.Cleanup(g.Stop)
@@ -206,7 +206,7 @@ func TestTLSIsActuallyServed(t *testing.T) {
 		defer cancel()
 
 		err = conn.Invoke(ctx, "/nothing.Service/Nothing", &emptypb.Empty{}, &emptypb.Empty{})
-		x.Error(err, "a plaintext caller reached a TLS listener and was answered")
+		x.Error(err, "a plaintext caller reached a Tls listener and was answered")
 		x.NotEqual(codes.Unimplemented, status.Code(err),
 			"Unimplemented would mean the handshake succeeded and the method was missing")
 	})
@@ -225,7 +225,7 @@ func writeCert(t *testing.T, certFile, keyFile string) {
 		Subject:      pkix.Name{CommonName: "test"},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(time.Hour),
-		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+		IpAddresses:  []net.Ip{net.ParseIp("127.0.0.1")},
 	}
 
 	der, err := x509.CreateCertificate(rand.Reader, tpl, tpl, &k.PublicKey, k)

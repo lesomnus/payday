@@ -10,59 +10,59 @@ import (
 	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
-// ID filters vertices based on their ID field.
-func ID(id uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldEQ(FieldID, id))
+// Id filters vertices based on their Id field.
+func Id(id uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldEQ(FieldId, id))
 }
 
-// IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldEQ(FieldID, id))
+// IdEQ applies the EQ predicate on the Id field.
+func IdEQ(id uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldEQ(FieldId, id))
 }
 
-// IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldNEQ(FieldID, id))
+// IdNEQ applies the NEQ predicate on the Id field.
+func IdNEQ(id uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldNEQ(FieldId, id))
 }
 
-// IDIn applies the In predicate on the ID field.
-func IDIn(ids ...uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldIn(FieldID, ids...))
+// IdIn applies the In predicate on the Id field.
+func IdIn(ids ...uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldIn(FieldId, ids...))
 }
 
-// IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldNotIn(FieldID, ids...))
+// IdNotIn applies the NotIn predicate on the Id field.
+func IdNotIn(ids ...uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldNotIn(FieldId, ids...))
 }
 
-// IDGT applies the GT predicate on the ID field.
-func IDGT(id uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldGT(FieldID, id))
+// IdGT applies the GT predicate on the Id field.
+func IdGT(id uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldGT(FieldId, id))
 }
 
-// IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldGTE(FieldID, id))
+// IdGTE applies the GTE predicate on the Id field.
+func IdGTE(id uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldGTE(FieldId, id))
 }
 
-// IDLT applies the LT predicate on the ID field.
-func IDLT(id uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldLT(FieldID, id))
+// IdLT applies the LT predicate on the Id field.
+func IdLT(id uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldLT(FieldId, id))
 }
 
-// IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldLTE(FieldID, id))
+// IdLTE applies the LTE predicate on the Id field.
+func IdLTE(id uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldLTE(FieldId, id))
 }
 
-// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
-func TenantID(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldEQ(FieldTenantID, v))
+// TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
+func TenantId(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldEQ(FieldTenantId, v))
 }
 
-// ActorID applies equality check predicate on the "actor_id" field. It's identical to ActorIDEQ.
-func ActorID(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldEQ(FieldActorID, v))
+// ActorId applies equality check predicate on the "actor_id" field. It's identical to ActorIdEQ.
+func ActorId(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldEQ(FieldActorId, v))
 }
 
 // Method applies equality check predicate on the "method" field. It's identical to MethodEQ.
@@ -75,9 +75,9 @@ func By(v string) predicate.Outbox {
 	return predicate.Outbox(sql.FieldEQ(FieldBy, v))
 }
 
-// ObjectID applies equality check predicate on the "object_id" field. It's identical to ObjectIDEQ.
-func ObjectID(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldEQ(FieldObjectID, v))
+// ObjectId applies equality check predicate on the "object_id" field. It's identical to ObjectIdEQ.
+func ObjectId(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldEQ(FieldObjectId, v))
 }
 
 // Patch applies equality check predicate on the "patch" field. It's identical to PatchEQ.
@@ -90,84 +90,84 @@ func DateCreated(v time.Time) predicate.Outbox {
 	return predicate.Outbox(sql.FieldEQ(FieldDateCreated, v))
 }
 
-// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
-func TenantIDEQ(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldEQ(FieldTenantID, v))
+// TenantIdEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIdEQ(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldEQ(FieldTenantId, v))
 }
 
-// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
-func TenantIDNEQ(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldNEQ(FieldTenantID, v))
+// TenantIdNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIdNEQ(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldNEQ(FieldTenantId, v))
 }
 
-// TenantIDIn applies the In predicate on the "tenant_id" field.
-func TenantIDIn(vs ...uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldIn(FieldTenantID, vs...))
+// TenantIdIn applies the In predicate on the "tenant_id" field.
+func TenantIdIn(vs ...uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldIn(FieldTenantId, vs...))
 }
 
-// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
-func TenantIDNotIn(vs ...uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldNotIn(FieldTenantID, vs...))
+// TenantIdNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIdNotIn(vs ...uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldNotIn(FieldTenantId, vs...))
 }
 
-// TenantIDGT applies the GT predicate on the "tenant_id" field.
-func TenantIDGT(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldGT(FieldTenantID, v))
+// TenantIdGT applies the GT predicate on the "tenant_id" field.
+func TenantIdGT(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldGT(FieldTenantId, v))
 }
 
-// TenantIDGTE applies the GTE predicate on the "tenant_id" field.
-func TenantIDGTE(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldGTE(FieldTenantID, v))
+// TenantIdGTE applies the GTE predicate on the "tenant_id" field.
+func TenantIdGTE(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldGTE(FieldTenantId, v))
 }
 
-// TenantIDLT applies the LT predicate on the "tenant_id" field.
-func TenantIDLT(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldLT(FieldTenantID, v))
+// TenantIdLT applies the LT predicate on the "tenant_id" field.
+func TenantIdLT(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldLT(FieldTenantId, v))
 }
 
-// TenantIDLTE applies the LTE predicate on the "tenant_id" field.
-func TenantIDLTE(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldLTE(FieldTenantID, v))
+// TenantIdLTE applies the LTE predicate on the "tenant_id" field.
+func TenantIdLTE(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldLTE(FieldTenantId, v))
 }
 
-// ActorIDEQ applies the EQ predicate on the "actor_id" field.
-func ActorIDEQ(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldEQ(FieldActorID, v))
+// ActorIdEQ applies the EQ predicate on the "actor_id" field.
+func ActorIdEQ(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldEQ(FieldActorId, v))
 }
 
-// ActorIDNEQ applies the NEQ predicate on the "actor_id" field.
-func ActorIDNEQ(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldNEQ(FieldActorID, v))
+// ActorIdNEQ applies the NEQ predicate on the "actor_id" field.
+func ActorIdNEQ(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldNEQ(FieldActorId, v))
 }
 
-// ActorIDIn applies the In predicate on the "actor_id" field.
-func ActorIDIn(vs ...uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldIn(FieldActorID, vs...))
+// ActorIdIn applies the In predicate on the "actor_id" field.
+func ActorIdIn(vs ...uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldIn(FieldActorId, vs...))
 }
 
-// ActorIDNotIn applies the NotIn predicate on the "actor_id" field.
-func ActorIDNotIn(vs ...uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldNotIn(FieldActorID, vs...))
+// ActorIdNotIn applies the NotIn predicate on the "actor_id" field.
+func ActorIdNotIn(vs ...uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldNotIn(FieldActorId, vs...))
 }
 
-// ActorIDGT applies the GT predicate on the "actor_id" field.
-func ActorIDGT(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldGT(FieldActorID, v))
+// ActorIdGT applies the GT predicate on the "actor_id" field.
+func ActorIdGT(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldGT(FieldActorId, v))
 }
 
-// ActorIDGTE applies the GTE predicate on the "actor_id" field.
-func ActorIDGTE(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldGTE(FieldActorID, v))
+// ActorIdGTE applies the GTE predicate on the "actor_id" field.
+func ActorIdGTE(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldGTE(FieldActorId, v))
 }
 
-// ActorIDLT applies the LT predicate on the "actor_id" field.
-func ActorIDLT(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldLT(FieldActorID, v))
+// ActorIdLT applies the LT predicate on the "actor_id" field.
+func ActorIdLT(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldLT(FieldActorId, v))
 }
 
-// ActorIDLTE applies the LTE predicate on the "actor_id" field.
-func ActorIDLTE(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldLTE(FieldActorID, v))
+// ActorIdLTE applies the LTE predicate on the "actor_id" field.
+func ActorIdLTE(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldLTE(FieldActorId, v))
 }
 
 // MethodEQ applies the EQ predicate on the "method" field.
@@ -300,44 +300,44 @@ func ByContainsFold(v string) predicate.Outbox {
 	return predicate.Outbox(sql.FieldContainsFold(FieldBy, v))
 }
 
-// ObjectIDEQ applies the EQ predicate on the "object_id" field.
-func ObjectIDEQ(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldEQ(FieldObjectID, v))
+// ObjectIdEQ applies the EQ predicate on the "object_id" field.
+func ObjectIdEQ(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldEQ(FieldObjectId, v))
 }
 
-// ObjectIDNEQ applies the NEQ predicate on the "object_id" field.
-func ObjectIDNEQ(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldNEQ(FieldObjectID, v))
+// ObjectIdNEQ applies the NEQ predicate on the "object_id" field.
+func ObjectIdNEQ(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldNEQ(FieldObjectId, v))
 }
 
-// ObjectIDIn applies the In predicate on the "object_id" field.
-func ObjectIDIn(vs ...uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldIn(FieldObjectID, vs...))
+// ObjectIdIn applies the In predicate on the "object_id" field.
+func ObjectIdIn(vs ...uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldIn(FieldObjectId, vs...))
 }
 
-// ObjectIDNotIn applies the NotIn predicate on the "object_id" field.
-func ObjectIDNotIn(vs ...uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldNotIn(FieldObjectID, vs...))
+// ObjectIdNotIn applies the NotIn predicate on the "object_id" field.
+func ObjectIdNotIn(vs ...uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldNotIn(FieldObjectId, vs...))
 }
 
-// ObjectIDGT applies the GT predicate on the "object_id" field.
-func ObjectIDGT(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldGT(FieldObjectID, v))
+// ObjectIdGT applies the GT predicate on the "object_id" field.
+func ObjectIdGT(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldGT(FieldObjectId, v))
 }
 
-// ObjectIDGTE applies the GTE predicate on the "object_id" field.
-func ObjectIDGTE(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldGTE(FieldObjectID, v))
+// ObjectIdGTE applies the GTE predicate on the "object_id" field.
+func ObjectIdGTE(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldGTE(FieldObjectId, v))
 }
 
-// ObjectIDLT applies the LT predicate on the "object_id" field.
-func ObjectIDLT(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldLT(FieldObjectID, v))
+// ObjectIdLT applies the LT predicate on the "object_id" field.
+func ObjectIdLT(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldLT(FieldObjectId, v))
 }
 
-// ObjectIDLTE applies the LTE predicate on the "object_id" field.
-func ObjectIDLTE(v uuid.UUID) predicate.Outbox {
-	return predicate.Outbox(sql.FieldLTE(FieldObjectID, v))
+// ObjectIdLTE applies the LTE predicate on the "object_id" field.
+func ObjectIdLTE(v uuid.UUID) predicate.Outbox {
+	return predicate.Outbox(sql.FieldLTE(FieldObjectId, v))
 }
 
 // PatchEQ applies the EQ predicate on the "patch" field.

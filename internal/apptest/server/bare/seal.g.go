@@ -101,7 +101,7 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 	if v, err := mint(ctx, s.Mint, "app.Seal", k, req.HasId()); err != nil {
 		return nil, err
 	} else {
-		q.SetID(v)
+		q.SetId(v)
 	}
 	q.SetAlias(req.GetAlias())
 	q.SetSecret(req.GetSecret())
@@ -126,7 +126,7 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:  apptest.SealService_Add_FullMethodName,
-		Key: u.ID,
+		Key: u.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func (s SealServiceServer) Get(ctx context.Context, req *apptest.SealGetRequest)
 }
 
 func selectSealKey(q *ent.SealQuery) {
-	q.Select(seal.FieldID)
+	q.Select(seal.FieldId)
 }
 
 func SealSelectedFields(m *apptest.SealSelect) []string {
@@ -171,7 +171,7 @@ func SealSelectedFields(m *apptest.SealSelect) []string {
 
 	vs := make([]string, 0, len(seal.Columns))
 	{
-		vs = append(vs, seal.FieldID)
+		vs = append(vs, seal.FieldId)
 	}
 	if m.GetAlias() {
 		vs = append(vs, seal.FieldAlias)
@@ -250,7 +250,7 @@ func SealGetKey(ctx context.Context, db *ent.Client, ref *apptest.SealRef) (uuid
 var sealOrmEntity = ormpatch.MustEntityOf(apptest.File_app_seal_proto, "Seal")
 
 var sealPatchColumns = entpatch.Columns{
-	1: seal.FieldID, 4: seal.FieldAlias, 8: seal.FieldSecret, 14: seal.FieldDateErased, 15: seal.FieldDateCreated}
+	1: seal.FieldId, 4: seal.FieldAlias, 8: seal.FieldSecret, 14: seal.FieldDateErased, 15: seal.FieldDateCreated}
 
 func (s SealServiceServer) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
 	if !req.HasPatch() {
@@ -295,7 +295,7 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 	}
 	at := &apptest.SealRef{}
 	at.SetId(k[:])
-	p, err := s.narrow(ctx, seal.IDEQ(k))
+	p, err := s.narrow(ctx, seal.IdEQ(k))
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +395,7 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 		}
 
 		k = v
-		p = seal.And(p, seal.IDEQ(v))
+		p = seal.And(p, seal.IdEQ(v))
 	}
 
 	u := st.Db.Seal.Update().Where(p)
@@ -445,7 +445,7 @@ func pickSeal(req *apptest.SealRef) (predicate.Seal, error) {
 		if v, err := uuid.FromBytes(req.GetId()); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
-			return seal.IDEQ(v), nil
+			return seal.IdEQ(v), nil
 		}
 	case apptest.SealRef_Key_not_set_case:
 		return nil, status.Errorf(codes.InvalidArgument, "key not set: Seal")

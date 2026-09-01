@@ -29,30 +29,30 @@ func (_u *OutboxUpdate) Where(ps ...predicate.Outbox) *OutboxUpdate {
 	return _u
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_u *OutboxUpdate) SetTenantID(v uuid.UUID) *OutboxUpdate {
-	_u.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_u *OutboxUpdate) SetTenantId(v uuid.UUID) *OutboxUpdate {
+	_u.mutation.SetTenantId(v)
 	return _u
 }
 
-// SetNillableTenantID sets the "tenant_id" field if the given value is not nil.
-func (_u *OutboxUpdate) SetNillableTenantID(v *uuid.UUID) *OutboxUpdate {
+// SetNillableTenantId sets the "tenant_id" field if the given value is not nil.
+func (_u *OutboxUpdate) SetNillableTenantId(v *uuid.UUID) *OutboxUpdate {
 	if v != nil {
-		_u.SetTenantID(*v)
+		_u.SetTenantId(*v)
 	}
 	return _u
 }
 
-// SetActorID sets the "actor_id" field.
-func (_u *OutboxUpdate) SetActorID(v uuid.UUID) *OutboxUpdate {
-	_u.mutation.SetActorID(v)
+// SetActorId sets the "actor_id" field.
+func (_u *OutboxUpdate) SetActorId(v uuid.UUID) *OutboxUpdate {
+	_u.mutation.SetActorId(v)
 	return _u
 }
 
-// SetNillableActorID sets the "actor_id" field if the given value is not nil.
-func (_u *OutboxUpdate) SetNillableActorID(v *uuid.UUID) *OutboxUpdate {
+// SetNillableActorId sets the "actor_id" field if the given value is not nil.
+func (_u *OutboxUpdate) SetNillableActorId(v *uuid.UUID) *OutboxUpdate {
 	if v != nil {
-		_u.SetActorID(*v)
+		_u.SetActorId(*v)
 	}
 	return _u
 }
@@ -85,16 +85,16 @@ func (_u *OutboxUpdate) SetNillableBy(v *string) *OutboxUpdate {
 	return _u
 }
 
-// SetObjectID sets the "object_id" field.
-func (_u *OutboxUpdate) SetObjectID(v uuid.UUID) *OutboxUpdate {
-	_u.mutation.SetObjectID(v)
+// SetObjectId sets the "object_id" field.
+func (_u *OutboxUpdate) SetObjectId(v uuid.UUID) *OutboxUpdate {
+	_u.mutation.SetObjectId(v)
 	return _u
 }
 
-// SetNillableObjectID sets the "object_id" field if the given value is not nil.
-func (_u *OutboxUpdate) SetNillableObjectID(v *uuid.UUID) *OutboxUpdate {
+// SetNillableObjectId sets the "object_id" field if the given value is not nil.
+func (_u *OutboxUpdate) SetNillableObjectId(v *uuid.UUID) *OutboxUpdate {
 	if v != nil {
-		_u.SetObjectID(*v)
+		_u.SetObjectId(*v)
 	}
 	return _u
 }
@@ -144,7 +144,7 @@ func (_u *OutboxUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *OutboxU
 }
 
 func (_u *OutboxUpdate) sqlSave(ctx context.Context) (_node int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(outbox.Table, outbox.Columns, sqlgraph.NewFieldSpec(outbox.FieldID, field.TypeUUID))
+	_spec := sqlgraph.NewUpdateSpec(outbox.Table, outbox.Columns, sqlgraph.NewFieldSpec(outbox.FieldId, field.TypeUuid))
 	if ps := _u.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -152,11 +152,11 @@ func (_u *OutboxUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.TenantID(); ok {
-		_spec.SetField(outbox.FieldTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.TenantId(); ok {
+		_spec.SetField(outbox.FieldTenantId, field.TypeUuid, value)
 	}
-	if value, ok := _u.mutation.ActorID(); ok {
-		_spec.SetField(outbox.FieldActorID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ActorId(); ok {
+		_spec.SetField(outbox.FieldActorId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Method(); ok {
 		_spec.SetField(outbox.FieldMethod, field.TypeString, value)
@@ -164,8 +164,8 @@ func (_u *OutboxUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.By(); ok {
 		_spec.SetField(outbox.FieldBy, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ObjectID(); ok {
-		_spec.SetField(outbox.FieldObjectID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ObjectId(); ok {
+		_spec.SetField(outbox.FieldObjectId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Patch(); ok {
 		_spec.SetField(outbox.FieldPatch, field.TypeBytes, value)
@@ -195,30 +195,30 @@ type OutboxUpdateOne struct {
 	modifiers []func(*sql.UpdateBuilder)
 }
 
-// SetTenantID sets the "tenant_id" field.
-func (_u *OutboxUpdateOne) SetTenantID(v uuid.UUID) *OutboxUpdateOne {
-	_u.mutation.SetTenantID(v)
+// SetTenantId sets the "tenant_id" field.
+func (_u *OutboxUpdateOne) SetTenantId(v uuid.UUID) *OutboxUpdateOne {
+	_u.mutation.SetTenantId(v)
 	return _u
 }
 
-// SetNillableTenantID sets the "tenant_id" field if the given value is not nil.
-func (_u *OutboxUpdateOne) SetNillableTenantID(v *uuid.UUID) *OutboxUpdateOne {
+// SetNillableTenantId sets the "tenant_id" field if the given value is not nil.
+func (_u *OutboxUpdateOne) SetNillableTenantId(v *uuid.UUID) *OutboxUpdateOne {
 	if v != nil {
-		_u.SetTenantID(*v)
+		_u.SetTenantId(*v)
 	}
 	return _u
 }
 
-// SetActorID sets the "actor_id" field.
-func (_u *OutboxUpdateOne) SetActorID(v uuid.UUID) *OutboxUpdateOne {
-	_u.mutation.SetActorID(v)
+// SetActorId sets the "actor_id" field.
+func (_u *OutboxUpdateOne) SetActorId(v uuid.UUID) *OutboxUpdateOne {
+	_u.mutation.SetActorId(v)
 	return _u
 }
 
-// SetNillableActorID sets the "actor_id" field if the given value is not nil.
-func (_u *OutboxUpdateOne) SetNillableActorID(v *uuid.UUID) *OutboxUpdateOne {
+// SetNillableActorId sets the "actor_id" field if the given value is not nil.
+func (_u *OutboxUpdateOne) SetNillableActorId(v *uuid.UUID) *OutboxUpdateOne {
 	if v != nil {
-		_u.SetActorID(*v)
+		_u.SetActorId(*v)
 	}
 	return _u
 }
@@ -251,16 +251,16 @@ func (_u *OutboxUpdateOne) SetNillableBy(v *string) *OutboxUpdateOne {
 	return _u
 }
 
-// SetObjectID sets the "object_id" field.
-func (_u *OutboxUpdateOne) SetObjectID(v uuid.UUID) *OutboxUpdateOne {
-	_u.mutation.SetObjectID(v)
+// SetObjectId sets the "object_id" field.
+func (_u *OutboxUpdateOne) SetObjectId(v uuid.UUID) *OutboxUpdateOne {
+	_u.mutation.SetObjectId(v)
 	return _u
 }
 
-// SetNillableObjectID sets the "object_id" field if the given value is not nil.
-func (_u *OutboxUpdateOne) SetNillableObjectID(v *uuid.UUID) *OutboxUpdateOne {
+// SetNillableObjectId sets the "object_id" field if the given value is not nil.
+func (_u *OutboxUpdateOne) SetNillableObjectId(v *uuid.UUID) *OutboxUpdateOne {
 	if v != nil {
-		_u.SetObjectID(*v)
+		_u.SetObjectId(*v)
 	}
 	return _u
 }
@@ -323,20 +323,20 @@ func (_u *OutboxUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *Outb
 }
 
 func (_u *OutboxUpdateOne) sqlSave(ctx context.Context) (_node *Outbox, err error) {
-	_spec := sqlgraph.NewUpdateSpec(outbox.Table, outbox.Columns, sqlgraph.NewFieldSpec(outbox.FieldID, field.TypeUUID))
-	id, ok := _u.mutation.ID()
+	_spec := sqlgraph.NewUpdateSpec(outbox.Table, outbox.Columns, sqlgraph.NewFieldSpec(outbox.FieldId, field.TypeUuid))
+	id, ok := _u.mutation.Id()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Outbox.id" for update`)}
 	}
-	_spec.Node.ID.Value = id
+	_spec.Node.Id.Value = id
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, outbox.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, outbox.FieldId)
 		for _, f := range fields {
 			if !outbox.ValidColumn(f) {
 				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 			}
-			if f != outbox.FieldID {
+			if f != outbox.FieldId {
 				_spec.Node.Columns = append(_spec.Node.Columns, f)
 			}
 		}
@@ -348,11 +348,11 @@ func (_u *OutboxUpdateOne) sqlSave(ctx context.Context) (_node *Outbox, err erro
 			}
 		}
 	}
-	if value, ok := _u.mutation.TenantID(); ok {
-		_spec.SetField(outbox.FieldTenantID, field.TypeUUID, value)
+	if value, ok := _u.mutation.TenantId(); ok {
+		_spec.SetField(outbox.FieldTenantId, field.TypeUuid, value)
 	}
-	if value, ok := _u.mutation.ActorID(); ok {
-		_spec.SetField(outbox.FieldActorID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ActorId(); ok {
+		_spec.SetField(outbox.FieldActorId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Method(); ok {
 		_spec.SetField(outbox.FieldMethod, field.TypeString, value)
@@ -360,8 +360,8 @@ func (_u *OutboxUpdateOne) sqlSave(ctx context.Context) (_node *Outbox, err erro
 	if value, ok := _u.mutation.By(); ok {
 		_spec.SetField(outbox.FieldBy, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ObjectID(); ok {
-		_spec.SetField(outbox.FieldObjectID, field.TypeUUID, value)
+	if value, ok := _u.mutation.ObjectId(); ok {
+		_spec.SetField(outbox.FieldObjectId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Patch(); ok {
 		_spec.SetField(outbox.FieldPatch, field.TypeBytes, value)
