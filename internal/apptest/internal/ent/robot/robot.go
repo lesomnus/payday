@@ -61,7 +61,7 @@ const (
 	CellColumn = "cell_id"
 )
 
-// Columns holds all Sql columns for robot fields.
+// Columns holds all SQL columns for robot fields.
 var Columns = []string{
 	FieldId,
 	FieldAlias,

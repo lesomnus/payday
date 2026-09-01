@@ -79,7 +79,7 @@ func TestLog(t *testing.T) {
 
 		wait(t, func() bool { return len(h.Records()) == 2 })
 
-		// Both say which Rpc they were about, and they say it because the
+		// Both say which RPC they were about, and they say it because the
 		// handler put it on the logger every line of the call is written with
 		// -- so a handler that logs on its own says it too, without being told.
 		for _, r := range h.Records() {

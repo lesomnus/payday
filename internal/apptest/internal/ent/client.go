@@ -244,7 +244,7 @@ func (c *Client) Close() error {
 
 // Dialect is the name of the Sql this client speaks.
 //
-// Code that writes Sql of its own has to know which Sql it may write, and the
+// Code that writes SQL of its own has to know which SQL it may write, and the
 // connection is what settles that. Asking the client keeps the answer from
 // being a second claim that can disagree with the one made when it was opened.
 func (c *Client) Dialect() string {

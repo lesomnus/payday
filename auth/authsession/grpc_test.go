@@ -66,7 +66,7 @@ func (s signer) Introspect(ctx context.Context, req *pdpb.TokenIntrospectRequest
 
 // TestASignInCanBeAnRpc is why [Sessions.Mint] is exported.
 //
-// It sounds as though it should not work -- a cookie is an Http response header
+// It sounds as though it should not work -- a cookie is an HTTP response header
 // and a gRpc handler has no response writer -- and it does: `set-cookie` as
 // response metadata reaches the browser through the transcoder, and the cookie
 // it sends back arrives as request metadata, which is where

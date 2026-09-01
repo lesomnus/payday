@@ -61,7 +61,7 @@ var Json Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 // jsonOf renders one message, in schema order, with uuids for identifiers.
 //
 // It marshals with protojson first and re-emits, rather than encoding from
-// scratch. protojson holds every rule about how a protobuf becomes Json --
+// scratch. protojson holds every rule about how a protobuf becomes JSON --
 // 64-bit integers are strings, a `Timestamp` is RFC 3339, an enum is its name,
 // a `FieldMask` is a comma-joined path list -- and an encoder written here would
 // be a second, worse copy of all of it that drifts on the next well-known type
@@ -96,7 +96,7 @@ func emit(b *bytes.Buffer, v map[string]any, d protoreflect.MessageDescriptor, i
 	for i := range fs.Len() {
 		fd := fs.Get(i)
 
-		// protojson writes the Json name; the proto name is accepted as well,
+		// protojson writes the JSON name; the proto name is accepted as well,
 		// so both are looked for. A field that is not in the map was not set.
 		x, ok := v[fd.JSONName()]
 		if !ok {
@@ -191,14 +191,14 @@ func emitOne(b *bytes.Buffer, x any, fd protoreflect.FieldDescriptor, indent str
 // request. That is the round trip broken in the middle: this app prints an
 // identifier one way and refuses to be told it that way.
 //
-// So the Json is walked before protojson sees it, and a string standing where
+// So the JSON is walked before protojson sees it, and a string standing where
 // the schema declared `type: TYPE_UUID` is re-encoded as base64. Only there:
 // nothing else in the document is touched, and a `bytes` field payday did not
 // put there still means base64.
 //
 // # Why protojson cannot be left to work it out
 //
-// It does not refuse a uuid, which was the surprise. protojson accepts Url-safe
+// It does not refuse a uuid, which was the surprise. protojson accepts URL-safe
 // base64 as well as standard, and `-` is in that alphabet, so
 // `01a0010f-fd1e-8f1b-a602-44424d2ababd` decodes -- to 27 bytes of nothing. What
 // comes back is `id: invalid Uuid (got 27 bytes)` from the server, which is a

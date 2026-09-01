@@ -180,7 +180,7 @@ func TestRoundTrip(t *testing.T) {
 func TestIs(t *testing.T) {
 	x := require.New(t)
 
-	// The whole reason the mark exists: a Uuid and an alias cannot be told
+	// The whole reason the mark exists: a UUID and an alias cannot be told
 	// apart by looking at them, so something has to say.
 	const id = "abcd1234-2a10-8abc-8a03-9f2e1c4d5b6a"
 	x.NoError(slug.Validate(id), "the overlap this guards is gone; re-read the package comment")

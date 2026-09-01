@@ -32,7 +32,7 @@ type Gen struct {
 // another.
 //
 // The order is the part worth reading and the reason this is not four commands
-// in a README. A `List` is an Rpc: it has to be in the service contract before
+// in a README. A `List` is an RPC: it has to be in the service contract before
 // the messages, the stubs, the ent schema and the servers are generated from
 // that contract. So the declarations are read twice -- once to write the
 // contract, once to write the code -- and a generation that ran the second pass
@@ -241,7 +241,7 @@ func (r run) contracts(ctx context.Context) error {
 // way through -- and that is not only cosmetic. It used to be renamed to
 // `_svc.proto` on the way out, which meant a contract and an overlay referred
 // to the same file by two names until that line ran, and the merge kept both
-// imports. The first hand-written Rpc in any app hit it. There is no rename
+// imports. The first hand-written RPC in any app hit it. There is no rename
 // now, so there is nothing to reconcile: what a contract imports is what is on
 // disk, before the merge and after it.
 func (r run) merge(ctx context.Context) error {

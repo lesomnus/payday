@@ -14,7 +14,7 @@
 //
 // # What travels, and what deliberately does not
 //
-// The identity of what changed: the Rpc, and for each write the entity's method
+// The identity of what changed: the RPC, and for each write the entity's method
 // and the row's key. Not the row.
 //
 // That is not a size compromise, though it helps. What a subscriber may see is
@@ -312,7 +312,7 @@ func (b *broker) wait(ctx context.Context) {
 
 // wire is one notification.
 //
-// Json because a notification is a **string** and this one is read by a person
+// JSON because a notification is a **string** and this one is read by a person
 // as often as by a program: `LISTEN payday_watch` in psql is how somebody finds
 // out whether the thing they just did published anything.
 type wire struct {

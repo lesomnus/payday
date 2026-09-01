@@ -404,7 +404,7 @@ type Entity_builder struct {
 	Global *Entity_Global
 	// -- end of xxx_hidden_Tenancy
 	// List says this entity answers a List, and how. Nothing said is no List
-	// Rpc at all.
+	// RPC at all.
 	List *Entity_List
 	// Watch says this entity answers a Watch, which is the List it declared over
 	// and over: the same filters, run again for every write that touches the
@@ -509,7 +509,7 @@ func (*entity_Global_) isEntity_Tenancy() {}
 // Field is what payday adds to one field of an entity.
 //
 // There was nothing here for a long time and the absence had a cost. A password
-// hash and an Api key hash are both **written and never read**, and no schema
+// hash and an API key hash are both **written and never read**, and no schema
 // could say so -- so an app said it at registration instead, by leaving the
 // generated service off its server. That works, is checkable, and is said in
 // the app that happens to hold the field rather than beside the field. The next
@@ -1091,7 +1091,7 @@ func (b0 Entity_Hard_builder) Build() *Entity_Hard {
 // another" costs no second query. So it is generated.
 //
 // The half that is the domain is the filter, and only what can be *declared*
-// is generated: equality on a field or a reference. Anything else is an Rpc
+// is generated: equality on a field or a reference. Anything else is an RPC
 // somebody writes, which is where a rule with a reason belongs anyway.
 type Entity_List struct {
 	state              protoimpl.MessageState `protogen:"opaque.v1"`
@@ -1227,7 +1227,7 @@ type Entity_List_builder struct {
 	// the same reason: there is no column on this row to compare, and that
 	// genuinely is a join.
 	//
-	// A filter that cannot be written this way is an Rpc somebody writes. That
+	// A filter that cannot be written this way is an RPC somebody writes. That
 	// is not a limitation being apologised for: a rule about what a caller may
 	// ask has a reason, and a reason belongs beside the code that acts on it
 	// rather than in a declaration that can only carry the number.

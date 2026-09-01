@@ -8,7 +8,7 @@ import (
 type interceptRpc struct {
 	// Entity is the accessor on `Server`, e.g. "Robot".
 	Entity string
-	// Rpc is the method, e.g. "Add".
+	// RPC is the method, e.g. "Add".
 	Rpc string
 	// Const is the generated full-method constant, e.g.
 	// "RobotService_Add_FullMethodName".
@@ -21,7 +21,7 @@ type interceptRpc struct {
 }
 
 // interceptRpcs is every Rpc of every entity service, taken from the contracts
-// rather than from a list, so an Rpc an overlay adds is wrapped without
+// rather than from a list, so an RPC an overlay adds is wrapped without
 // anybody coming back here.
 //
 // This is [batchOps] over again with the streaming ones kept: a batch has no
@@ -74,8 +74,8 @@ func interceptRpcs(s *Schema, files []*protogen.File) []interceptRpc {
 // # Why it is generated rather than written
 //
 // Because a layer is an interface with a method per entity and a method per
-// Rpc under that, so an interceptor written by hand is one wrapper per Rpc of
-// every entity, and the Rpc nobody wrapped is the one that is not intercepted.
+// RPC under that, so an interceptor written by hand is one wrapper per RPC of
+// every entity, and the RPC nobody wrapped is the one that is not intercepted.
 // It is the same reason the wall is generated: what is missing compiles.
 //
 // # What it sees, which is not what a gRpc interceptor sees
@@ -183,7 +183,7 @@ func EmitIntercept(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 
 	emitChain(g)
 
-	// One wrapper per entity, holding every Rpc of its service.
+	// One wrapper per entity, holding every RPC of its service.
 	by := map[string][]interceptRpc{}
 	var order []string
 	for _, v := range vs {

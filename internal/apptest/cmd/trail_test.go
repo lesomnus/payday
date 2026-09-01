@@ -311,7 +311,7 @@ func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 	x.NotZero(held, "the archive holds nothing about them, so this proves nothing")
 
 	// The object as protojson writes it, which is what the runtime matches on:
-	// it has no `Audit` type and reads the document as Json.
+	// it has no `Audit` type and reads the document as JSON.
 	n, err := trail.Forget(dir, []string{base64.StdEncoding.EncodeToString(who.Bytes())})
 	x.NoError(err)
 	x.NotZero(n)

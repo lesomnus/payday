@@ -14,7 +14,7 @@ import (
 
 // AliasMaxLen is the longest an alias can be.
 //
-// Sixty-three is the length of a Dns label, and that is the point: an alias
+// Sixty-three is the length of a DNS label, and that is the point: an alias
 // that fits one can be a hostname, a subdomain, a Kubernetes name, a certificate
 // SAN. None of that is needed today and all of it is cheap to keep, whereas a
 // limit raised later cannot be lowered -- by then rows are named.
@@ -48,7 +48,7 @@ var ErrAlias = errors.New("not an alias")
 // Beginning with a letter is so that a name a person reads does not look like a
 // number they can count with. The hyphen is the only joiner -- an underscore
 // was allowed by one of the two, and allowing it closes the door on
-// [AliasMaxLen]'s reason, since no Dns label may hold one.
+// [AliasMaxLen]'s reason, since no DNS label may hold one.
 var aliasPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
 
 // Validate reports whether `v` is an alias, and which rule it broke if not.

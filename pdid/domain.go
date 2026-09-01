@@ -55,7 +55,7 @@ func TenantDomain() (Domain, bool) {
 }
 
 var (
-	// ErrNotAnId is what bytes that are a Uuid but not one of ours are.
+	// ErrNotAnId is what bytes that are a UUID but not one of ours are.
 	ErrNotAnId = errors.New("not a payday identifier")
 
 	// ErrDomain is what an identifier of the wrong kind is. It is a request

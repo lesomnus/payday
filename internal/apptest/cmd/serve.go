@@ -119,7 +119,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	//
 	// Two things are said to it rather than to the stack, and for the same
 	// reason -- both are about the statement that runs. The trail is kept by
-	// the servers that do the writing, since every Rpc that changes anything
+	// the servers that do the writing, since every RPC that changes anything
 	// has to report itself from inside the transaction that changes it. The
 	// wall is a predicate and a predicate belongs in the WHERE.
 	b, err := c.Watch.Build(c.Db)
@@ -171,7 +171,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// issues goes to the servers below rather than back through them.
 	//
 	// What puts a `Move` on the trail is not this position -- it is
-	// `bare.Change.Method`, which carries the Rpc gRpc dispatched for the whole
+	// `bare.Change.Method`, which carries the RPC gRpc dispatched for the whole
 	// request rather than the leg being written. So the trail answers "who
 	// moved this robot" with `Move` and not with the `Patch` it turned into.
 	//
@@ -336,10 +336,10 @@ func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(
 		return nil, err
 	}
 
-	// Whatever this app serves over Http goes here, on the same mux and behind
+	// Whatever this app serves over HTTP goes here, on the same mux and behind
 	// the same cross-origin answer. A login endpoint is the case payday left a
 	// seam for and cannot fill: `auth` reads a credential and does not issue
-	// one, and issuing is an Http endpoint.
+	// one, and issuing is an HTTP endpoint.
 	//
 	//	h.Handle("/login", login(s.Ungated))
 	//

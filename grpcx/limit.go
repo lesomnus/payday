@@ -117,7 +117,7 @@ func Allow(ctx context.Context, l Limiter, by func(ctx context.Context, method s
 
 // errLimited is ResourceExhausted, which is what the status codes have for a
 // caller that is asking for more than there is to give, and it carries how long
-// to wait as [errdetails.RetryInfo] -- the way the Api conventions say it, and
+// to wait as [errdetails.RetryInfo] -- the way the API conventions say it, and
 // the way a generated client reads it whatever it was configured with.
 //
 // Note that it says nothing about *which* limit was reached or how much of it

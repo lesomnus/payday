@@ -37,7 +37,7 @@ const (
 	Table = "audit"
 )
 
-// Columns holds all Sql columns for audit fields.
+// Columns holds all SQL columns for audit fields.
 var Columns = []string{
 	FieldId,
 	FieldTenantId,

@@ -13,7 +13,7 @@ import (
 // callers for the same chain:
 //
 //   - **A server that is not gRpc's.** A page runs the whole app compiled to
-//     wasm and speaks a datagram protocol to the browser rather than Http/2.
+//     wasm and speaks a datagram protocol to the browser rather than HTTP/2.
 //     That server takes the same `grpc.UnaryServerInterceptor` and the same
 //     `stats.Handler` -- it is only the option wrapper that differs.
 //   - **A batch of calls inside one call.** Whatever refuses a method, counts

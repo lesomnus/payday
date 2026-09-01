@@ -14,8 +14,8 @@ import (
 )
 
 type TlsConfig struct {
-	// Enabled turns on Tls. It is implied by anything else in this block being
-	// written down, so it is only worth saying to turn Tls on for a server
+	// Enabled turns on TLS. It is implied by anything else in this block being
+	// written down, so it is only worth saying to turn TLS on for a server
 	// whose certificate is named somewhere else.
 	Enabled bool `yaml:"enabled"`
 
@@ -25,7 +25,7 @@ type TlsConfig struct {
 	KeyFile string `yaml:"key_file"`
 
 	// ClientCAFile is the path to a PEM-encoded CA bundle used to verify
-	// client certificates. Setting it enables mutual Tls.
+	// client certificates. Setting it enables mutual TLS.
 	ClientCAFile string `yaml:"client_ca_file"`
 
 	// ClientCertOptional lets a caller connect without a certificate. One that
@@ -44,11 +44,11 @@ type TlsConfig struct {
 //
 // A client CA bundle counts, and that is not obvious: it names nothing the
 // server presents, so a configuration holding only that one looks like a
-// configuration that said nothing about Tls. It is not -- there is no way to
+// configuration that said nothing about TLS. It is not -- there is no way to
 // verify a client certificate over a connection that has no handshake, so a
 // server told to check them and nothing else is a server that would answer
 // "nobody said anything" about every caller, for its whole life, with mutual
-// Tls written down in its file. Counting it here turns that into
+// TLS written down in its file. Counting it here turns that into
 // [TlsConfig.Credentials] refusing to build, which is a server that does not
 // start.
 func (c TlsConfig) Active() bool {
@@ -62,9 +62,9 @@ func (c TlsConfig) Active() bool {
 // everything else is the handshake this block described.
 //
 // It is separate from [TlsConfig.Credentials] because not every listener an app
-// opens is a gRpc one. A payday app that serves Http as well -- a transcoder, a
+// opens is a gRpc one. A payday app that serves HTTP as well -- a transcoder, a
 // sign-in, a port robots present certificates to -- would otherwise build the
-// same mutual-Tls setup a second time by hand, and the second one is where the
+// same mutual-TLS setup a second time by hand, and the second one is where the
 // client CA is forgotten.
 func (c TlsConfig) Server() (*tls.Config, error) {
 	if !c.Active() {
@@ -84,7 +84,7 @@ func (c TlsConfig) Server() (*tls.Config, error) {
 		MinVersion:   tls.VersionTLS12,
 	}
 
-	// Enable mutual Tls when a client CA bundle is provided.
+	// Enable mutual TLS when a client CA bundle is provided.
 	if c.ClientCAFile != "" {
 		pem, err := os.ReadFile(c.ClientCAFile)
 		if err != nil {
@@ -106,7 +106,7 @@ func (c TlsConfig) Server() (*tls.Config, error) {
 }
 
 // Credentials builds gRpc transport credentials from the Tls configuration.
-// It returns insecure credentials when Tls is not configured, so the caller
+// It returns insecure credentials when TLS is not configured, so the caller
 // can pass the result to grpc.Creds unconditionally.
 func (c TlsConfig) Credentials() (credentials.TransportCredentials, error) {
 	cfg, err := c.Server()
@@ -132,7 +132,7 @@ func (c TlsConfig) Credentials() (credentials.TransportCredentials, error) {
 //
 // Nothing written down is a plaintext connection, which is right for a service
 // reaching another one over a loopback in a checkout and wrong the moment
-// either of them moves. Whatever a client sends on that connection -- an Api
+// either of them moves. Whatever a client sends on that connection -- an API
 // key, a token, a password on its way to be checked -- is readable by anything
 // between them.
 //
@@ -140,27 +140,27 @@ func (c TlsConfig) Credentials() (credentials.TransportCredentials, error) {
 // be run until certificates exist is an app nobody runs. What it is not is
 // quiet -- see [DialConfig.Credentials].
 type DialConfig struct {
-	// Enabled turns Tls on with the system roots, which is what a public
+	// Enabled turns TLS on with the system roots, which is what a public
 	// certificate authority needs and all it needs.
 	Enabled bool `yaml:"enabled"`
 
 	// CAFile is a PEM bundle to verify the server against, instead of the
-	// system roots. It is what a private CA needs, and naming it turns Tls on.
+	// system roots. It is what a private CA needs, and naming it turns TLS on.
 	CAFile string `yaml:"ca_file"`
 
 	// CertFile and KeyFile are the certificate this client presents, for a
-	// server that asks. Naming them turns Tls on.
+	// server that asks. Naming them turns TLS on.
 	CertFile string `yaml:"cert_file"`
 	KeyFile  string `yaml:"key_file"`
 
 	// ServerName is the name to verify the server's certificate against, when
-	// it is not the one in the address -- a connection made to a pod's Ip, or
+	// it is not the one in the address -- a connection made to a pod's IP, or
 	// through a tunnel.
 	//
 	// It is **not** a way to skip verification. There is deliberately no field
 	// for that: a client that does not check the certificate is a client that
 	// cannot tell the server from whoever answered, which is the whole of what
-	// Tls was for.
+	// TLS was for.
 	ServerName string `yaml:"server_name"`
 }
 
@@ -174,7 +174,7 @@ func (c DialConfig) Active() bool {
 // without asking.
 //
 // The plaintext case warns, once per process, for the reason [auth.Plain] does:
-// the way it goes wrong is silence. A deployment sending an Api key over a
+// the way it goes wrong is silence. A deployment sending an API key over a
 // cleartext connection between two machines has given the key away, and nothing
 // about it looks unusual -- it connects, it answers, the tests pass.
 func (c DialConfig) Credentials() (credentials.TransportCredentials, error) {

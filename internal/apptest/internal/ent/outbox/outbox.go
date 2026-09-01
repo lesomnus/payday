@@ -29,7 +29,7 @@ const (
 	Table = "outbox"
 )
 
-// Columns holds all Sql columns for outbox fields.
+// Columns holds all SQL columns for outbox fields.
 var Columns = []string{
 	FieldId,
 	FieldTenantId,

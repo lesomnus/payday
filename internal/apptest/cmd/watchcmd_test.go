@@ -165,7 +165,7 @@ func TestWatchIsTheSnapshotAndThenWhatHappens(t *testing.T) {
 
 	got := w.until(t, w.stdout, "arm-z")
 
-	// The Rpc that changed it, by the name gRpc knows it by.
+	// The RPC that changed it, by the name gRpc knows it by.
 	x.Contains(got, "Patch")
 
 	// One header for the stream and not one between every event, which is what

@@ -182,7 +182,7 @@ func TestListReadsTheEdgesItWasToldTo(t *testing.T) {
 }
 
 // TestAFilterOnAnEdgeIsAColumn, which is what makes "everyone in this tenant" a
-// declaration rather than a hand-written Rpc.
+// declaration rather than a hand-written RPC.
 //
 // An edge is a foreign key, so this is `WHERE tenant_id = ?` against an index.
 // It was refused until it was tried -- `by:` looked only at fields, and the

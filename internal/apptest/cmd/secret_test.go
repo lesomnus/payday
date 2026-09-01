@@ -13,7 +13,7 @@ import (
 // A field declared `(payday.field).secret` does not come back.
 //
 // Until the option existed there was nowhere in a schema to say that a
-// verifier -- a password hash, an Api key hash -- is written and never
+// verifier -- a password hash, an API key hash -- is written and never
 // answered with. Apps said it at registration instead, by leaving a whole
 // generated service off their server: a heavier hammer, said in the app that
 // happens to hold the field rather than beside the field.
@@ -119,7 +119,7 @@ func TestASecretIsNotInTheTrail(t *testing.T) {
 	// `Audit.value` is the row as the write left it, and `hide<E>` is what keeps
 	// a verifier out of it. `Audit.patch` is the document the write was compiled
 	// from, and it carried whatever the request set -- so a `secret:` field
-	// written by an Rpc that exists to take one in and never hand one back sat
+	// written by an RPC that exists to take one in and never hand one back sat
 	// in the trail in full. The trail is a **served** entity: `AuditService` is
 	// generated like any other, and the wall files a row under the tenant it is
 	// about, so anybody there whose role reaches it could read the thing the

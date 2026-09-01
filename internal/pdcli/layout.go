@@ -226,7 +226,7 @@ func Discover(dir string) (Layout, error) {
 // and keys files by their path, so two apps that both copied
 // `payday/holder.proto` panic on the second one to register -- before `main`,
 // with no way to catch it. Which is not a hypothetical: it is what happened the
-// first time an app tried to call another one's Api.
+// first time an app tried to call another one's API.
 //
 // [Layout.ProtoPkg] already says payday's entities go into the app's namespace
 // rather than the other way round, and this is that sentence applied to the

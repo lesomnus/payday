@@ -40,7 +40,7 @@ const (
 	FollowColumn = "follow_id"
 )
 
-// Columns holds all Sql columns for pairing fields.
+// Columns holds all SQL columns for pairing fields.
 var Columns = []string{
 	FieldId,
 	FieldDateCreated,

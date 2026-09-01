@@ -31,7 +31,7 @@ func TestValidate(t *testing.T) {
 			{"z", "the last letter, which a generator once could not produce"},
 			{strings.Repeat("a", slug.AliasMaxLen), "exactly the limit"},
 
-			// The reason the "@" exists. This is a Uuid and it breaks none of
+			// The reason the "@" exists. This is a UUID and it breaks none of
 			// the rules, so nothing about the shape of a string says which of
 			// the two kinds of reference it is.
 			{"abcd1234-2a10-8abc-8a03-9f2e1c4d5b6a", "a Uuid beginning with a hex letter"},
@@ -57,7 +57,7 @@ func TestValidate(t *testing.T) {
 
 			// The one rule taken from an earlier system rather than from
 			// the form this came from: an underscore is legal in neither a
-			// Dns label nor a subdomain, and allowing it here would spend a
+			// DNS label nor a subdomain, and allowing it here would spend a
 			// door that costs nothing to keep shut.
 			{"a_b", "an underscore"},
 			{"_a", "a leading underscore"},

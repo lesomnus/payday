@@ -37,7 +37,7 @@ const (
 // A caller finds out what may go in an `Op` from the rest of this server's
 // reflection listing. What it may **not** hold is anything the server closed,
 // anything the credential is not for, and anything the policy refuses -- all of
-// which are checked per operation rather than against this Rpc; see
+// which are checked per operation rather than against this RPC; see
 // `payday/batch`.
 type BatchServiceClient interface {
 	Do(ctx context.Context, in *BatchRequest, opts ...grpc.CallOption) (*BatchResponse, error)
@@ -76,7 +76,7 @@ func (c *batchServiceClient) Do(ctx context.Context, in *BatchRequest, opts ...g
 // A caller finds out what may go in an `Op` from the rest of this server's
 // reflection listing. What it may **not** hold is anything the server closed,
 // anything the credential is not for, and anything the policy refuses -- all of
-// which are checked per operation rather than against this Rpc; see
+// which are checked per operation rather than against this RPC; see
 // `payday/batch`.
 type BatchServiceServer interface {
 	Do(context.Context, *BatchRequest) (*BatchResponse, error)

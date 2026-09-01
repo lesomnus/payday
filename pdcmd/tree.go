@@ -30,7 +30,7 @@ type Options struct {
 	// Renderers is a format for one message type, used only when the person did
 	// not ask for a format.
 	//
-	// Only then, and this is worth being exact about: `-o json` means Json, and
+	// Only then, and this is worth being exact about: `-o json` means JSON, and
 	// a renderer that changed what `-o json` produced would make a script's
 	// output depend on which app it ran against. kubectl draws the same line --
 	// its typed print handlers shape the human-readable table and never the

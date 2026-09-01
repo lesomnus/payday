@@ -72,7 +72,7 @@ func emitOutboxRecorder(g *protogen.GeneratedFile, p Paths) {
 	g.P("	}")
 	g.P("")
 	// Empty rather than nil, and that is not a style choice. This column is NOT
-	// NULL, and a nil `[]byte` is Sql NULL to pgx while the SQLite driver makes
+	// NULL, and a nil `[]byte` is SQL NULL to pgx while the SQLite driver makes
 	// it an empty blob -- so a nil here is an insert that works in every test
 	// and fails on the database the app is deployed on.
 	// Through `hidden`, for the reason the watch recorder gives at length: the

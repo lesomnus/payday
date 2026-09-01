@@ -186,7 +186,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("	}")
 	g.P("")
 	// Empty and not nil, for the reason the recorder's `notNull` gives: nil is
-	// Sql NULL, which a NOT NULL column refuses on Postgres and accepts on
+	// SQL NULL, which a NOT NULL column refuses on Postgres and accepts on
 	// SQLite.
 	g.P("	return db.", e, ".Update().")
 	g.P("		Where(", entPkg.Ident("ObjectIdIn"), "(ids...)).")

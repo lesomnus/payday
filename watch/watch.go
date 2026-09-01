@@ -49,7 +49,7 @@ import (
 // -- and anything a deployment plugs into [Broker] -- does not name an app's
 // types. The generated recorder converts.
 type Change struct {
-	// Method is the Rpc the caller asked for, and By is the Rpc of the
+	// Method is the RPC the caller asked for, and By is the RPC of the
 	// generated server that actually wrote. They answer different questions: a
 	// trail is read by somebody asking what was asked for, and anything acting
 	// on the row itself -- a cache to drop, a stream to feed -- has to know
@@ -77,7 +77,7 @@ type Event struct {
 	Actor  pdid.Id
 	Tenant pdid.Id
 
-	// Method is the Rpc gRpc dispatched, which is what the caller asked for.
+	// Method is the RPC gRpc dispatched, which is what the caller asked for.
 	// What each write actually did is in [Event.Changes].
 	Method string
 

@@ -20,7 +20,7 @@ const (
 // because a rule that is generated into an app is a rule an app can end up with
 // an old copy of.
 //
-// What it dispatches is the entity services, which is what `Server` has. An Rpc
+// What it dispatches is the entity services, which is what `Server` has. An RPC
 // somebody wrote by hand lives on a service of its own and is not reachable
 // through that interface, so it is not batchable -- said out loud because the
 // alternative is somebody finding out from an Unimplemented.
@@ -151,7 +151,7 @@ func EmitBatch(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 type batchOp struct {
 	// Entity is the accessor on `Server`, e.g. "Robot".
 	Entity string
-	// Rpc is the method, e.g. "Add".
+	// RPC is the method, e.g. "Add".
 	Rpc string
 	// Const is the generated full-method constant, e.g.
 	// "RobotService_Add_FullMethodName".
@@ -163,7 +163,7 @@ type batchOp struct {
 // batchOps is every Rpc of every entity service, taken from the contracts
 // rather than from a list.
 //
-// It reads the service definitions, so an Rpc payday adds to a contract -- a
+// It reads the service definitions, so an RPC payday adds to a contract -- a
 // `List`, and whatever comes after it -- is batchable without anybody having
 // come back here. What it leaves out is the streaming ones, which have no
 // single request and no single answer and so are not an operation.

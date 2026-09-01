@@ -377,7 +377,7 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 // keeps, rather than the one a rule about a *transport* keeps -- and it is the
 // same argument an app on this framework already wrote down about `Role.Patch`
 // and `ApiKey.Patch`, which ask their own question in the layer *precisely so
-// that the setting is a decision about the Api rather than about who may become
+// that the setting is a decision about the API rather than about who may become
 // the administrator*.
 //
 // # Only the ones that can move
@@ -478,7 +478,7 @@ func seen(g *protogen.GeneratedFile, root protogen.GoImportPath, edge string, to
 //
 // The two do not look alike and that is the design. The recorder is not a layer
 // at all: it is handed to the generated servers and called from inside the
-// transaction that makes a write, so every Rpc that changes anything is on the
+// transaction that makes a write, so every RPC that changes anything is on the
 // trail without anybody having listed them. The layer is here because a trail a
 // deployment can edit is evidence of nothing.
 func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
@@ -669,7 +669,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 // of `Audit.value`, which is the row as the write left it.
 //
 // `Audit.patch` is the same write from the other end -- the document it was
-// compiled from -- and nothing touched it. So the one Rpc whose whole job is to
+// compiled from -- and nothing touched it. So the one RPC whose whole job is to
 // take a secret in and never hand one back wrote the argon2 string into the
 // trail in full, and the trail is **served**: `AuditService` is a generated
 // service like any other, and the wall files a credential's row under its
@@ -943,7 +943,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		g.P("		if err != nil {")
 		g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
 		// Empty rather than nil: the trail's `value` is NOT NULL, and a nil
-		// `[]byte` is Sql NULL to pgx while the SQLite driver makes it an empty
+		// `[]byte` is SQL NULL to pgx while the SQLite driver makes it an empty
 		// blob. A row that is really gone is the one case that reaches here --
 		// erased hard, for a soft entity nothing at all -- and it is exactly
 		// the case no SQLite test can fail on.
@@ -1032,7 +1032,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	g.P("	// is an identifier from somewhere else. Nothing to read either way.")
 	//
 	// Empty rather than nil, for the reason the NotFound branch above says: a
-	// nil `[]byte` is Sql NULL to pgx and the trail's `value` is NOT NULL, so
+	// nil `[]byte` is SQL NULL to pgx and the trail's `value` is NOT NULL, so
 	// nil here is every write to a global entity failing on PostgreSql and
 	// passing on SQLite. It is the same trap twice, which is why it is worth
 	// saying twice.
@@ -1060,7 +1060,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 // upstream's code and upstream's rule, and the rule is right everywhere else:
 // an erased row is not a row a read answers with. The recorder is the one
 // caller for whom it is wrong -- the row it asks about was erased by the very
-// write it is recording -- and the bare Api has no words for "and the erased
+// write it is recording -- and the bare API has no words for "and the erased
 // ones"; growing some for a single caller would put erased rows within reach
 // of every server built on it. So the recorder steps around the bare server to
 // ent, on the same transaction, through the Select the bare Get itself uses --
@@ -1117,7 +1117,7 @@ func emitErased(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 //
 // # What it is for
 //
-// A password hash and an Api key hash are written and never answered with, and
+// A password hash and an API key hash are written and never answered with, and
 // until `(payday.field).secret` existed there was nowhere to say so. Apps said
 // it at **registration** instead -- leaving the generated service off the
 // server -- which works, is checkable, and is said in the app that happens to

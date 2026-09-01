@@ -31,7 +31,7 @@ const (
 	RobotColumn = "robot_id"
 )
 
-// Columns holds all Sql columns for joint fields.
+// Columns holds all SQL columns for joint fields.
 var Columns = []string{
 	FieldId,
 	FieldAlias,

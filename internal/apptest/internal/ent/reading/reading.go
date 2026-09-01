@@ -33,7 +33,7 @@ const (
 	RobotColumn = "robot_id"
 )
 
-// Columns holds all Sql columns for reading fields.
+// Columns holds all SQL columns for reading fields.
 var Columns = []string{
 	FieldId,
 	FieldTenantId,

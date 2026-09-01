@@ -77,7 +77,7 @@ var ErrExpired = errors.New("the credential this stream was opened with has expi
 // Watch is until somebody hangs up. Without this, a token with a ten-minute
 // life is a stream that runs for a week.
 //
-// It matters more with a browser than it looks. Over Http/2 a credential rides
+// It matters more with a browser than it looks. Over HTTP/2 a credential rides
 // in per-call metadata; over a WebSocket the browser puts the cookie on the
 // handshake and never again, so **identity is per connection rather than per
 // call** and there is no next call to refuse.
@@ -167,8 +167,8 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 						"this credential names a tenant that does not hold the actor it names")
 				}
 
-				// Who called what, for every Rpc there is -- the reads that
-				// leave no other trace included. Which Rpc is not said here:
+				// Who called what, for every RPC there is -- the reads that
+				// leave no other trace included. Which RPC is not said here:
 				// `grpcx.Log` puts the service and the method on the logger
 				// every line of a call is written with, so this one carries
 				// them without asking, as does everything a handler writes.

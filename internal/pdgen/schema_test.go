@@ -788,7 +788,7 @@ func TestAListWithoutAWatchNeedsNoVersion(t *testing.T) {
 //
 // It is refused rather than added silently: `by:` is the list of things a
 // caller may filter on, and quietly putting one more in it is the generator
-// deciding what an Api offers.
+// deciding what an API offers.
 func TestAWatchWithNothingToNameARowByIsRefused(t *testing.T) {
 	_, err := read(t, `
 		message Tenant {
@@ -1332,10 +1332,10 @@ message Robot {
 	})
 }
 
-// A field that has presence in the Api and nowhere to keep it.
+// A field that has presence in the API and nowhere to keep it.
 //
 // A message field with no `nullable`, no `default` and no marker generates a
-// NOT NULL column while the Api beside it still has `Has…`, because a message
+// NOT NULL column while the API beside it still has `Has…`, because a message
 // field has presence in proto whatever the column does. So a caller asks
 // whether a value is set, is told yes, and reads a zero somebody wrote because
 // the column would not take null -- a row saying a thing happened at the
@@ -1437,7 +1437,7 @@ message Thing {
 //
 // "Everyone in this tenant", "every team in this site" -- the common filters,
 // and each is `WHERE <fk>_id = ?` against an index rather than a join. That it
-// was refused made those a hand-written Rpc apiece, for what a WHERE clause
+// was refused made those a hand-written RPC apiece, for what a WHERE clause
 // does.
 //
 // What the filter carries is the target's **ref**, so a caller names it the way

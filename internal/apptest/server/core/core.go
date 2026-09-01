@@ -10,7 +10,7 @@
 // writes are closed, so an operation that means something has to be declarable"
 // is written up in the schema guide and had only ever been carried out in an
 // app built on payday elsewhere. Everything else payday claims is proved here;
-// this was not, so `pd gen` merging an overlay that adds an **Rpc** -- rather
+// this was not, so `pd gen` merging an overlay that adds an **RPC** -- rather
 // than a field -- was a path nothing in this module took.
 //
 // It is a layer in the same sense every other one is: a `struct{ app.Overlay }`
@@ -20,7 +20,7 @@
 // listed it.
 //
 // What the trail says it was is `Move`, not the `Patch` below. That is
-// `bare.Change.Method`, which carries the Rpc gRpc dispatched for the whole
+// `bare.Change.Method`, which carries the RPC gRpc dispatched for the whole
 // request rather than the leg being written -- so an operation written by hand
 // answers "who did this" with the name the caller used. Called directly against
 // the server, with nothing dispatched, the trail says `Patch`, which is the

@@ -168,7 +168,7 @@ func TestParse(t *testing.T) {
 	x.NoError(err)
 	x.Equal(v, u)
 
-	// A v4 is a perfectly good Uuid and is refused anyway: the domain would be
+	// A v4 is a perfectly good UUID and is refused anyway: the domain would be
 	// whatever its ninth byte happened to be.
 	_, err = pdid.Parse(uuid.New().String())
 	x.ErrorIs(err, pdid.ErrNotAnId)

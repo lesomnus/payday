@@ -163,7 +163,7 @@ func TestWhatIsClosedIsClosedInsideABatch(t *testing.T) {
 // them.
 //
 // A token attenuated to two methods is the shape of every scoped credential
-// there is. If a batch is checked as one method, that token reaches every Rpc
+// there is. If a batch is checked as one method, that token reaches every RPC
 // this server has -- and the trail records that it was allowed.
 func TestACredentialIsNotWidenedByABatch(t *testing.T) {
 	x := require.New(t)
@@ -317,7 +317,7 @@ func TestTheWallStillNarrowsInsideABatch(t *testing.T) {
 
 // TestABatchNeedsNoPlaceholderLanguage is the decision from §3.3 paying off.
 //
-// The classic difficulty of a batch Api is "make a tenant, then a holder inside
+// The classic difficulty of a batch API is "make a tenant, then a holder inside
 // it" -- the second operation needs the first one's identifier, and the usual
 // answer is a mini-language of `$0.id` references. Mini-languages grow.
 //
@@ -386,7 +386,7 @@ func TestABatchIsBounded(t *testing.T) {
 }
 
 // TestAnOperationNamingSomethingElseIsRefused: an `Any` is checked by its type
-// Url, so a request that decoded into a different message -- which would be a
+// URL, so a request that decoded into a different message -- which would be a
 // write the caller did not ask for -- has an answer rather than a coercion.
 func TestAnOperationNamingSomethingElseIsRefused(t *testing.T) {
 	x := require.New(t)
@@ -458,7 +458,7 @@ func TestEveryOperationIsOnTheTrail(t *testing.T) {
 // The watch recorder remembers into the context and the interceptor publishes
 // once the handler has answered -- which for a batch is after the commit. So
 // what a subscriber gets is one event holding every change, which is what a
-// batch was: a Ui sees the transaction rather than the pieces of it.
+// batch was: a UI sees the transaction rather than the pieces of it.
 //
 // It also proves the wiring. `Grpc` registers the batch beside everything else,
 // and a batch nobody registered is a set of guarantees about a service that is

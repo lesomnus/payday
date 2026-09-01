@@ -188,7 +188,7 @@ func TestTlsIsActuallyServed(t *testing.T) {
 		x.NoError(err)
 		x.Len(vs, 1)
 
-		// The server it builds speaks Tls, which is the thing a count of
+		// The server it builds speaks TLS, which is the thing a count of
 		// options cannot say. A plaintext dial gets nowhere.
 		g := grpc.NewServer(vs...)
 		t.Cleanup(g.Stop)

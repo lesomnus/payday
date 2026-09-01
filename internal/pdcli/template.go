@@ -24,7 +24,7 @@ import (
 //     the messages; without it they follow the messages and `internal/ent`
 //     becomes `api/internal/ent`.
 //   - `API_OPAQUE`. The generated servers build requests with the `_builder`
-//     form and read them with `Has`/`Get`; the open Api has neither.
+//     form and read them with `Has`/`Get`; the open API has neither.
 //
 // A page of instructions gets each of these right the first time and wrong the
 // third.
@@ -43,7 +43,7 @@ func Templates(l Layout, out string) []string {
 
 // tmplContracts is the pass that writes the service contracts.
 //
-// It runs `protoc-gen-pd` as well, because a `List` is an Rpc and has to be in
+// It runs `protoc-gen-pd` as well, because a `List` is an RPC and has to be in
 // the contract before anything is generated from the contract.
 //
 // `svc` and `pd` are the two halves, and they are scratch directories rather

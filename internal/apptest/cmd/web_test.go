@@ -28,7 +28,7 @@ import (
 // rather than against a description of it.
 //
 // A page cannot speak gRpc -- it is not a missing library, it is frames the
-// platform does not let anything write -- so a Ui in front of a payday app
+// platform does not let anything write -- so a UI in front of a payday app
 // reaches `web`, which answers the protocols a browser does speak and hands the
 // call to the same handlers. What is worth checking is that "the same" is true:
 // the wall, the credential and the errors are the ones a gRpc client gets.
@@ -46,7 +46,7 @@ func (b *built) serving(t *testing.T) *httptest.Server {
 	x.NoError(err)
 
 	// The app's own, which is the half payday cannot fill: `auth` reads a
-	// credential and does not issue one, and issuing is an Http endpoint.
+	// credential and does not issue one, and issuing is an HTTP endpoint.
 	h.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"token":"nope"}`)
@@ -161,7 +161,7 @@ func TestAPageIsBehindTheSameWall(t *testing.T) {
 
 // TestBothWiresABrowserCanSpeak.
 //
-// Connect is the one worth reaching for -- a POST with a Json body, which a
+// Connect is the one worth reaching for -- a POST with a JSON body, which a
 // `curl` reproduces exactly -- and gRpc-Web is served as well, because it is
 // what infrastructure that only understands gRpc framing wants and because
 // somebody's client library will speak it.
@@ -183,7 +183,7 @@ func TestBothWiresABrowserCanSpeak(t *testing.T) {
 
 	srv := b.serving(t)
 
-	// Connect, in Json, which is what the pages in front of a payday app use.
+	// Connect, in JSON, which is what the pages in front of a payday app use.
 	code, body := call(t, srv, "/app.RobotService/List",
 		`{"filters":[{"ref":{"slug":{"alias":"arm-01","tenant":{"alias":"acme"}}}}]}`, "@acme/admin")
 	x.Equal(http.StatusOK, code, body)
@@ -225,7 +225,7 @@ func TestBothWiresABrowserCanSpeak(t *testing.T) {
 	x.Equal(http.StatusOK, res.StatusCode, string(out))
 	x.Contains(res.Header.Get("Content-Type"), "grpc-web")
 
-	// The alias is in there as protobuf rather than as Json, which is the whole
+	// The alias is in there as protobuf rather than as JSON, which is the whole
 	// point of asking for this wire.
 	x.Contains(string(out), "arm-01")
 	x.NotContains(string(out), `"alias"`)
@@ -286,7 +286,7 @@ func TestAnOriginNobodyNamedIsNotAnsweredFor(t *testing.T) {
 // on the mux rather than on the transcoder.
 //
 // With it on the transcoder alone, an app mounts `/login` and finds that **only
-// that route** is refused by the browser while every Rpc works -- and nothing a
+// that route** is refused by the browser while every RPC works -- and nothing a
 // reader can see tells the two apart. This is the assertion that arrangement
 // would fail.
 func TestTheAppsOwnRoutesGetTheSameAnswer(t *testing.T) {
@@ -323,7 +323,7 @@ func TestTheAppsOwnRoutesGetTheSameAnswer(t *testing.T) {
 // TestAnAddressWithNothingConfiguredIsStillAMux.
 //
 // It used to be refused, and that was right only while payday owned the whole
-// mux. This listener is also where an app puts what it serves over Http, and
+// mux. This listener is also where an app puts what it serves over HTTP, and
 // payday has no way to know it has routes -- a deployment serving a login
 // endpoint and no browser Rpcs is a real one.
 func TestAnAddressWithNothingConfiguredIsStillAMux(t *testing.T) {
@@ -348,13 +348,13 @@ func TestAnAddressWithNothingConfiguredIsStillAMux(t *testing.T) {
 // TestTheBrowserPortCarriesGrpcToo.
 //
 // The two listeners are a decision about the transport gRpc brings -- Go's
-// Http/2 server is not grpc-go's, and grpc-go says so about its own `ServeHTTP`
-// -- and **not** about what is reachable where. Under Tls this one takes Http/2
+// HTTP/2 server is not grpc-go's, and grpc-go says so about its own `ServeHTTP`
+// -- and **not** about what is reachable where. Under TLS this one takes HTTP/2
 // by ALPN and the transcoder takes gRpc as an incoming protocol like any other,
 // so a `grpcurl` reaches it.
 //
 // Worth pinning because it is the sort of thing that gets asserted from memory:
-// somebody reads "a browser cannot speak cleartext Http/2" and concludes the
+// somebody reads "a browser cannot speak cleartext HTTP/2" and concludes the
 // port is browsers-only.
 func TestTheBrowserPortCarriesGrpcToo(t *testing.T) {
 	x := require.New(t)
@@ -369,8 +369,8 @@ func TestTheBrowserPortCarriesGrpcToo(t *testing.T) {
 	h, err := web.New(config.HttpConfig{AllowWeb: true}, b.grpc(t))
 	x.NoError(err)
 
-	// Cleartext would be Http/1.1, which is the whole reason this is its own
-	// listener; Tls is what makes it Http/2 without an upgrade dance.
+	// Cleartext would be HTTP/1.1, which is the whole reason this is its own
+	// listener; TLS is what makes it HTTP/2 without an upgrade dance.
 	srv := httptest.NewUnstartedServer(h)
 	srv.EnableHttp2 = true
 	srv.StartTls()

@@ -450,7 +450,7 @@ func TestName(t *testing.T) {
 	})
 
 	// The bytes of an identifier are what something dumping them writes, and
-	// they name the same row as the Uuid does.
+	// they name the same row as the UUID does.
 	t.Run("an identifier is read whichever way it was spelled", func(t *testing.T) {
 		x := require.New(t)
 

@@ -4,7 +4,7 @@
 //
 // The **recorder** is not a layer of the stack at all. It is handed to the
 // generated servers, which call it from inside the transaction that makes a
-// write -- so every Rpc that changes anything is on the trail without anybody
+// write -- so every RPC that changes anything is on the trail without anybody
 // having listed them, and one added later is on it without anybody remembering
 // to. A layer in front cannot do this: `Patch` and `Apply` are two Rpcs and one
 // write, and they become one *below* anything that can be stacked on top.
@@ -53,11 +53,11 @@ type Row struct {
 	Actor  pdid.Id
 
 	// Trace is the trace the request belonged to, empty if it was not traced.
-	// Sixteen bytes as OpenTelemetry spells one, which is not a Uuid however
+	// Sixteen bytes as OpenTelemetry spells one, which is not a UUID however
 	// alike they look.
 	Trace []byte
 
-	// Action is the Rpc the caller asked for.
+	// Action is the RPC the caller asked for.
 	Action string
 
 	// Object is the row that changed.
@@ -138,7 +138,7 @@ func counterpart(ctx context.Context) pdid.Id {
 //
 // `method` is what the **caller** asked for and not the leg of it that wrote.
 // One call writes through several servers -- adding a tenant writes the holder
-// that comes with it -- and an Rpc written by hand ends in an Apply nobody
+// that comes with it -- and an RPC written by hand ends in an Apply nobody
 // called by that name. "Who renamed this" has to answer with Rename.
 //
 // `key` is the row as the server holds it, which for payday is always a uuid:

@@ -288,7 +288,7 @@ func TestTheCookieAttributesAreTheOnesThatMatter(t *testing.T) {
 
 // TestInsecureSaysSoByChangingTheName.
 //
-// A browser will not store a `__Host-` cookie over plain Http, so the prefix
+// A browser will not store a `__Host-` cookie over plain HTTP, so the prefix
 // has to go -- which means a deployment that left this on has a cookie by a
 // different name, and that is at least something a person can see.
 func TestInsecureSaysSoByChangingTheName(t *testing.T) {

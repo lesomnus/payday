@@ -23,7 +23,7 @@ const (
 	Table = "seal"
 )
 
-// Columns holds all Sql columns for seal fields.
+// Columns holds all SQL columns for seal fields.
 var Columns = []string{
 	FieldId,
 	FieldAlias,

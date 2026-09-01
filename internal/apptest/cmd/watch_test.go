@@ -124,14 +124,14 @@ func TestWatchSendsStateAndNotADelta(t *testing.T) {
 	x.Equal("renamed", res.GetItems()[0].GetValue().GetAlias())
 	x.Equal(b.Tenant.Bytes(), res.GetItems()[0].GetValue().GetTenant().GetId())
 
-	// And what the caller of that Rpc asked for, by the name gRpc knows it by.
+	// And what the caller of that RPC asked for, by the name gRpc knows it by.
 	x.Equal(app.RobotService_Patch_FullMethodName, res.GetItems()[0].GetAction())
 }
 
 // TestARemovalIsSaidByAbsence is the whole of how a removal is said.
 //
 // There is no flag and no tombstone. The row is named, the value is absent, and
-// the Rpc that did it says what happened -- a client that read the Api docs
+// the RPC that did it says what happened -- a client that read the API docs
 // knows what `Erase` means, and would know what `Deactivate` meant too.
 func TestARemovalIsSaidByAbsence(t *testing.T) {
 	x := require.New(t)

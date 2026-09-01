@@ -2,28 +2,28 @@
 //
 // gRpc is not a protocol a browser speaks. There is no way to write the frames
 // from a page -- not a library that is missing, a thing the platform does not
-// expose -- so a Ui in front of a payday app needs something in between, and
+// expose -- so a UI in front of a payday app needs something in between, and
 // this is it: the **same** gRpc server, the same interceptors, the same wall,
 // answering Connect and gRpc-Web as well.
 //
 // It is a translation and not a second implementation of anything. A call
-// arrives as Json over POST, is re-encoded as protobuf, and is handed to the
+// arrives as JSON over POST, is re-encoded as protobuf, and is handed to the
 // handler that a gRpc client would have reached; what comes back goes the other
 // way. So a screen and a `grpcurl` are talking to one server, and there is no
 // second door for a rule to be missing from.
 //
 // # A second listener, and why
 //
-// gRpc is Http/2 and a browser will not speak cleartext Http/2, so this is its
+// gRpc is HTTP/2 and a browser will not speak cleartext HTTP/2, so this is its
 // own address rather than the same one. [config.HttpConfig] is where it is
 // said, and nothing is served at all unless an address is written down: an app
-// with no Ui has no reason to open a port.
+// with no UI has no reason to open a port.
 //
-// **Under Tls this listener carries native gRpc as well**, and that is worth
-// knowing rather than guessing at: Http/2 arrives by ALPN, the transcoder takes
+// **Under TLS this listener carries native gRpc as well**, and that is worth
+// knowing rather than guessing at: HTTP/2 arrives by ALPN, the transcoder takes
 // gRpc as an incoming protocol like any other, and a `grpcurl` reaches it. So
 // the two listeners are a decision about the transport gRpc brings -- Go's
-// Http/2 server is not grpc-go's, and grpc-go says so about its own
+// HTTP/2 server is not grpc-go's, and grpc-go says so about its own
 // `ServeHTTP` -- and not about what is reachable where.
 //
 // # What it is not
@@ -50,7 +50,7 @@ import (
 )
 
 // Mux is the second listener: what the configuration asked for, plus whatever
-// the app serves over Http, with the cross-origin answer over all of it.
+// the app serves over HTTP, with the cross-origin answer over all of it.
 //
 // It embeds [http.ServeMux], so an app adds a route the way it adds one to
 // anything -- `h.Handle("/login", ...)`. payday does not invent a router; what
@@ -61,7 +61,7 @@ import (
 //
 // It used to be on the transcoder alone, and that is the arrangement where an
 // app mounts `/login` and finds that **only that route** is refused by the
-// browser while every Rpc works. The two are not told apart by anything a
+// browser while every RPC works. The two are not told apart by anything a
 // reader can see, so the answer covers everything on this listener.
 //
 // # What it does not decide
@@ -115,7 +115,7 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) { m.h.ServeHTTP(
 //   - the target protocol is gRpc, because that is the only one grpc-go knows.
 //     Without it the transcoder hands a Connect request to a handler that reads
 //     it as gRpc, and the frames do not line up.
-//   - the target codec is protobuf, for the same reason. Without it a Json body
+//   - the target codec is protobuf, for the same reason. Without it a JSON body
 //     is passed through to a handler that unmarshals it as protobuf, and the
 //     error says the wire format is invalid -- which is true, and says nothing
 //     about the option that caused it.
@@ -148,7 +148,7 @@ func Transcode(s *grpc.Server) (http.Handler, error) {
 //
 // `is` decides which origins, and nil is none -- which is not "nothing works":
 // a page served from the same origin as this listener makes no cross-origin
-// request and needs no header from here. What it means is that a Ui on a
+// request and needs no header from here. What it means is that a UI on a
 // **different** origin, which is every `npm run dev`, has to be named.
 //
 // The header lists are `connectrpc.com/cors`'s rather than written out, with

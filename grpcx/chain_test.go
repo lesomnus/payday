@@ -98,7 +98,7 @@ func TestChain(t *testing.T) {
 // through has to be reachable as functions, not only as the options one
 // particular server constructor takes.
 //
-// A server compiled into a page speaks a datagram protocol rather than Http/2
+// A server compiled into a page speaks a datagram protocol rather than HTTP/2
 // and takes the same `grpc.UnaryServerInterceptor`; a batch of calls inside one
 // call has to apply them per operation. Neither can be handed
 // `[]grpc.ServerOption`.

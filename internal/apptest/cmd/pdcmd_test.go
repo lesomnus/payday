@@ -595,7 +595,7 @@ func TestAnIdentifierCanBeWrittenAsAUuid(t *testing.T) {
 	})
 
 	// This is what the lenient reading is actually for, and it is not what it
-	// looked like. protojson does not refuse a uuid: it accepts Url-safe base64
+	// looked like. protojson does not refuse a uuid: it accepts URL-safe base64
 	// as well as standard, `-` is in that alphabet, and a uuid string decodes
 	// to 27 bytes of nothing. The refusal comes later, from the server, about a
 	// value nobody wrote.
@@ -620,7 +620,7 @@ func TestAnIdentifierCanBeWrittenAsAUuid(t *testing.T) {
 // TestAnRpcThisAppWroteGetsACommandToo is the case the six verbs do not cover.
 //
 // payday closes the general writes on purpose, so an operation that means
-// something -- moving a row to another tenant, say -- is an Rpc the app
+// something -- moving a row to another tenant, say -- is an RPC the app
 // declares in an overlay and implements in a layer. Nothing can generate a
 // command for it, because nothing knows what it means. What can be shared is
 // everything around it, which is what [pdcmd.Tree.Unary] is.

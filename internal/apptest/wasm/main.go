@@ -5,7 +5,7 @@
 // It is the same server the process runs: the same generated services, the same
 // stack, the same wall generated from the same schema. Two things differ, and
 // both are one line -- the database is SQLite in a Web Worker instead of a file
-// or a socket, and calls arrive over a message port instead of Http/2.
+// or a socket, and calls arrive over a message port instead of HTTP/2.
 //
 // What that buys is why it exists at all. A browser reload restarts the whole
 // server: new instance, new database, nothing left over. Somebody working on

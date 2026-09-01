@@ -34,7 +34,7 @@ import (
 //
 // Except the general writes, which are open here and closed everywhere else.
 // They are how the servers write and not how a caller asks -- an app writes the
-// Rpc it means and implements it with one -- but this app has no such Rpc yet,
+// RPC it means and implements it with one -- but this app has no such RPC yet,
 // and a test that could not change a row could not say what a Watch does when
 // one changes.
 var cmd0 = cmd.Config{
@@ -584,7 +584,7 @@ func TestTheTrailIsNotWrittenByHand(t *testing.T) {
 // TestEveryWriteIsOnTheTrail is the half the layer does not do.
 //
 // Nothing lists the Rpcs. The generated servers call the recorder from inside
-// the transaction that makes the write, so an Rpc added to the schema is on the
+// the transaction that makes the write, so an RPC added to the schema is on the
 // trail without anybody remembering to put it there.
 func TestEveryWriteIsOnTheTrail(t *testing.T) {
 	x := require.New(t)
@@ -625,7 +625,7 @@ func TestEveryWriteIsOnTheTrail(t *testing.T) {
 // Every one of them is **empty** for some ordinary write -- a call nobody
 // traced, an Add that was not compiled from a document, a row that is not
 // there to be read back -- and empty is the one value the two databases
-// disagree about: pgx sends a nil `[]byte` as Sql NULL, and the SQLite driver
+// disagree about: pgx sends a nil `[]byte` as SQL NULL, and the SQLite driver
 // makes it an empty blob. So the assertion below is really the write
 // **succeeding**, and it can only fail on PostgreSql: without `PDTEST_POSTGRES`
 // naming one it asserts a nil the driver has already taken away, and passes on

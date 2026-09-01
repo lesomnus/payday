@@ -7,7 +7,7 @@
 //
 // # Why it is its own package
 //
-// Verifying a JWT means fetching a key set over Http and tracking its
+// Verifying a JWT means fetching a key set over HTTP and tracking its
 // rotation, and that is a dependency an app authenticating by certificate has
 // no reason to carry. `config/dbpgx` is here for the same reason: a thing you
 // import when you have decided to use it.

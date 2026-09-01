@@ -40,7 +40,7 @@
 // Go type upstream at all. What travels between the two halves is the
 // protojson document, which is the archive's format anyway.
 //
-// # And why none of it is an Rpc
+// # And why none of it is an RPC
 //
 // The generated layer in front of `AuditService` refuses every write -- *"the
 // trail is written by what happened, not by anybody asking"*. What a trail is
@@ -521,7 +521,7 @@ func read(path string, seen map[string]bool, fn func([]byte) error) error {
 // head is the two fields this package reads out of a document it cannot
 // otherwise interpret.
 //
-// protojson writes `bytes` as base64, which is a Json string, so ordinary Json
+// protojson writes `bytes` as base64, which is a JSON string, so ordinary JSON
 // reaches it without a descriptor. That is one of the reasons the archive is
 // protojson and not the wire format: the half of payday that owns the files can
 // still tell whether it has seen a row, without a Go type it does not have.
@@ -795,7 +795,7 @@ func forget(path string, of map[string]bool) (int, error) {
 
 // blanked is one line with its contents taken out, if it is about one of them.
 //
-// Through generic Json rather than the message, because this package has no
+// Through generic JSON rather than the message, because this package has no
 // `Audit` type -- see the note on the package. `value`, `patch` and `objectId`
 // are the names protojson gives those fields, and they are payday's own
 // columns, so there is nothing here an app can move.

@@ -49,7 +49,7 @@ const (
 //
 // The bearer of the token has no other credential -- that is what they are
 // presenting -- but they are not who is calling. The caller is a product app
-// holding its own credential, and this Rpc is behind that app's authentication
+// holding its own credential, and this RPC is behind that app's authentication
 // like anything else. Serving it open would let anybody test tokens against the
 // store as fast as they could send them.
 //
@@ -124,7 +124,7 @@ func (c *tokenServiceClient) Introspect(ctx context.Context, in *TokenIntrospect
 //
 // The bearer of the token has no other credential -- that is what they are
 // presenting -- but they are not who is calling. The caller is a product app
-// holding its own credential, and this Rpc is behind that app's authentication
+// holding its own credential, and this RPC is behind that app's authentication
 // like anything else. Serving it open would let anybody test tokens against the
 // store as fast as they could send them.
 //

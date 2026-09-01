@@ -4,7 +4,7 @@
 //
 // A browser cannot hold a credential the way a service can. There is no
 // keychain to read a certificate from and nowhere safe to keep a token: script
-// that can read one is script that can send it somewhere else, and an Xss
+// that can read one is script that can send it somewhere else, and an XSS
 // becomes a permanent theft rather than a bad afternoon. What a browser has is
 // a cookie the script cannot read, which is a **handle** to state the server
 // keeps.
@@ -82,10 +82,10 @@ const Method = "session"
 //
 // The prefix is not decoration: a browser refuses to store a `__Host-` cookie
 // unless it is Secure, has no Domain and is pathed at `/`, and it refuses one
-// set over plain Http. So a deployment that gets the attributes wrong finds out
+// set over plain HTTP. So a deployment that gets the attributes wrong finds out
 // at once rather than serving sessions that a subdomain can also write.
 //
-// It is dropped by [Insecure], which has to serve over Http and could not use
+// It is dropped by [Insecure], which has to serve over HTTP and could not use
 // this name if it wanted to.
 const (
 	DefaultCookie  = "__Host-pd_session"
@@ -206,7 +206,7 @@ type Store interface {
 
 // Verify answers who somebody is, from whatever the request carries.
 //
-// **This is the seam.** payday has no idea what a login form contains -- a Json
+// **This is the seam.** payday has no idea what a login form contains -- a JSON
 // body, a form post, a username and a password, an authenticator response --
 // and it has no way to check any of them: the people are in the app's schema
 // and the secrets are wherever that app keeps them. In a deployment with an
@@ -263,7 +263,7 @@ func WithPath(p string) Option { return func(s *Sessions) { s.path = p } }
 
 // WithSameSite overrides the cross-site rule, which is `Lax` by default.
 //
-// `Lax` is what makes this resistant to CSRF without a token: every Rpc payday
+// `Lax` is what makes this resistant to CSRF without a token: every RPC payday
 // serves is a POST, and a cross-site POST carries no `Lax` cookie. What `Lax`
 // still allows is a top-level GET navigation, which is what keeps a link in an
 // email from landing the user signed out.
@@ -277,11 +277,11 @@ func WithSameSite(v http.SameSite) Option { return func(s *Sessions) { s.sameSit
 //
 // It says so in the log, once per process, for the reason [auth.Plain] does:
 // the way this goes wrong is silence. A session cookie without `Secure` is one
-// that a browser will send over plain Http, which is one that anybody between
+// that a browser will send over plain HTTP, which is one that anybody between
 // here and there can read and then be.
 //
 // It also drops the `__Host-` prefix, since a browser will not store one over
-// Http -- so a deployment that turns this on and forgets to turn it off has a
+// HTTP -- so a deployment that turns this on and forgets to turn it off has a
 // cookie by a different name, which is at least visible.
 func Insecure() Option {
 	return func(s *Sessions) {
@@ -332,7 +332,7 @@ func New(store Store, opts ...Option) *Sessions {
 // none.
 //
 // Exported because a sign-out has to read it and a sign-out is not necessarily
-// an Http handler: [Sessions.End] takes the key, and something has to get it
+// an HTTP handler: [Sessions.End] takes the key, and something has to get it
 // out of the metadata a gRpc handler was called with. [Sessions.Handler] does
 // the same thing on the way in and now does it through here, so there is one
 // answer to "which cookie is ours" rather than two that agree today.
@@ -489,7 +489,7 @@ var ErrNobody = errors.New("authsession: this session names nobody")
 //
 // # Why this is not only [Sessions.Serve]
 //
-// Because a sign-in is not necessarily an Http handler. It looked like one
+// Because a sign-in is not necessarily an HTTP handler. It looked like one
 // while payday served exactly one shape of it, and a deployment that defines
 // its own `AuthService` -- so that every language gets the same sign-in from
 // generated code, rather than one language reading a document -- needs these
@@ -501,7 +501,7 @@ var ErrNobody = errors.New("authsession: this session names nobody")
 // by running it.
 //
 // The caller owns the answer. `Serve` maps a refusal to 401 and a store that
-// would not take it to 503; an Rpc maps them to whatever its own contract says.
+// would not take it to 503; an RPC maps them to whatever its own contract says.
 //
 // `v` is what a [Verify] answered with, and this fills the rest: the key, and
 // whichever of the two clocks it left unset.

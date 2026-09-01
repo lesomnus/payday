@@ -54,7 +54,7 @@ type ServerConfig struct {
 	// and the like ask the server what it offers without holding the protobuf
 	// definitions.
 	//
-	// Handy, and a listing of every Rpc there is. What is unwritten is off, so
+	// Handy, and a listing of every RPC there is. What is unwritten is off, so
 	// a deployment that trimmed its file down to what it meant does not serve
 	// it by having forgotten to say no.
 	AllowReflection bool `yaml:"allow_reflection"`
@@ -67,10 +67,10 @@ type ServerConfig struct {
 	// AllowGeneralWrites serves `Patch` and `Apply`, the two Rpcs every
 	// generated service has that can write anything the schema holds. It is
 	// **off** unless it is turned on, and turning it on is a decision about the
-	// Api rather than about a deployment: what a caller may change, and under
+	// API rather than about a deployment: what a caller may change, and under
 	// what conditions, is not something a general write can be told.
 	//
-	// It closes them at the transport and not in the server stack, so an Rpc
+	// It closes them at the transport and not in the server stack, so an RPC
 	// written by hand goes on being implemented with them. That is what they
 	// are for.
 	AllowGeneralWrites bool `yaml:"allow_general_writes"`
@@ -98,7 +98,7 @@ type HttpConfig struct {
 	//
 	// An address with neither of the switches below turned on is **not** an
 	// error, and that is a deliberate reversal: this listener is also where an
-	// app puts whatever it serves over Http -- a login endpoint, an OIdC
+	// app puts whatever it serves over HTTP -- a login endpoint, an OIdC
 	// callback -- and payday has no way to know it has routes. A deployment
 	// that serves those and no browser Rpcs is a real one. What that costs is
 	// that an address with genuinely nothing behind it answers 404 instead of
@@ -109,15 +109,15 @@ type HttpConfig struct {
 	// gRpc-Web -- into the gRpc server, so a page reaches the same handlers,
 	// the same interceptors and the same wall as anything else. See `web`.
 	//
-	// It is what a Ui needs and it is not only for one: a Connect call is a
-	// POST with a Json body, so it is also the endpoint anything that has an
-	// Http client and no protobuf can reach.
+	// It is what a UI needs and it is not only for one: a Connect call is a
+	// POST with a JSON body, so it is also the endpoint anything that has an
+	// HTTP client and no protobuf can reach.
 	AllowWeb bool `yaml:"allow_web"`
 
 	// Origins are the origins a browser may call from. Nothing written down is
 	// none, which is not "nothing works": a page served from this same origin
 	// makes no cross-origin request and needs no answer from here. What it
-	// means is that a Ui somewhere else -- which is every `npm run dev` -- has
+	// means is that a UI somewhere else -- which is every `npm run dev` -- has
 	// to be named.
 	//
 	// `["*"]` is every page on the internet, which is a thing to mean rather
@@ -273,7 +273,7 @@ func (c ServerConfig) Closed() func(method string) bool {
 // # Why it answers with an error
 //
 // Because of the first option it builds. Everything else here is a number that
-// was either given or not; Tls is files that have to be read, and a certificate
+// was either given or not; TLS is files that have to be read, and a certificate
 // that cannot be read is a server that must not start.
 //
 // It did not always. `ServerConfig.Tls` was a block a deployment could write and

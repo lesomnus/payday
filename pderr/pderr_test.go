@@ -123,7 +123,7 @@ func TestAnErrorThatSaysNothingStillLandsOnABox(t *testing.T) {
 //
 // A code is what a caller acts on. Wrapping everything that comes back in an
 // InvalidArgument would tell a caller to go and fix a field over a row that is
-// not there or an Rpc that is not implemented -- and it would do it silently,
+// not there or an RPC that is not implemented -- and it would do it silently,
 // because the message would still read correctly.
 func TestSomebodyElsesRefusalIsNotAboutAField(t *testing.T) {
 	x := require.New(t)

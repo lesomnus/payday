@@ -37,7 +37,7 @@ import (
 // which is a paging bug rather than a failure; its partial indexes, its
 // uniqueness and its transactions all differ.
 //
-// Everything payday generates is Sql. A suite that only ever runs on SQLite is
+// Everything payday generates is SQL. A suite that only ever runs on SQLite is
 // one that has never seen the statements it will actually issue.
 //
 // It is opt-in because SQLite needs no server, and a suite nobody can run

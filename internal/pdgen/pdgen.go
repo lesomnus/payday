@@ -376,7 +376,7 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 			//
 			// It is refused rather than added silently, because `by:` is the
 			// list of things a caller may filter on and quietly putting one
-			// more in it is the generator deciding what an Api offers.
+			// more in it is the generator deciding what an API offers.
 			return nil, fmt.Errorf(
 				"watch: needs `ref` among the list's `by:`, and this one has %s.\n\n"+
 					"    list: {by: [{name: \"ref\"}%s]}\n\n"+
@@ -978,7 +978,7 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 		if d, ok := edge(e.Entity, name); ok {
 			// An edge, which is a foreign key and therefore a column. A filter
 			// on one costs an indexed comparison, which is what makes "everyone
-			// in this tenant" a declaration rather than a hand-written Rpc.
+			// in this tenant" a declaration rather than a hand-written RPC.
 			if d.IsList() {
 				return fmt.Errorf(
 					"list: by: %q is a one-to-many edge, and there is no column on this row "+
@@ -1392,7 +1392,7 @@ func suggestErased(e graph.Entity) int {
 //
 // A message field -- a `google.protobuf.Timestamp`, a nested message -- with no
 // `nullable`, no `default` and no marker generates a **NOT NULL** column. The
-// Api generated beside it still has `HasXxx()`, because a message field has
+// API generated beside it still has `HasXxx()`, because a message field has
 // presence in proto whatever the column does.
 //
 // So the two disagree, and the caller is the one told the lie: they ask whether

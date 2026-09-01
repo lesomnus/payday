@@ -41,7 +41,7 @@ func New(t *testing.T) *App {
 	x := require.New(t)
 
 	// The database this suite runs on, which is SQLite unless somebody named
-	// another; see [pdtest.DB]. Everything payday generates is Sql, so a suite
+	// another; see [pdtest.DB]. Everything payday generates is SQL, so a suite
 	// that only ever ran on SQLite has never seen the statements it will issue.
 	drv, dsn := pdtest.DB(t)
 	db, err := sql.Open(drv, dsn)

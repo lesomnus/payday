@@ -19,7 +19,7 @@ const (
 	Table = "fleet"
 )
 
-// Columns holds all Sql columns for fleet fields.
+// Columns holds all SQL columns for fleet fields.
 var Columns = []string{
 	FieldId,
 	FieldAlias,

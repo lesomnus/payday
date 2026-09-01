@@ -39,7 +39,7 @@ func (b *built) browsing(t *testing.T) (*httptest.Server, *http.Client) {
 	t.Helper()
 	x := require.New(t)
 
-	// Over plain Http, which is what `httptest` serves -- a browser refuses a
+	// Over plain HTTP, which is what `httptest` serves -- a browser refuses a
 	// `__Host-` cookie there, and so does `http.Client`.
 	sessions := authsession.New(authsession.NewMemStore(), authsession.Insecure())
 

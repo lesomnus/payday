@@ -10,7 +10,7 @@ import (
 	"github.com/lesomnus/z"
 )
 
-// The Sql dialects a driver may speak.
+// The SQL dialects a driver may speak.
 //
 // They are the names ent and Atlas know them by, written out here rather than
 // taken from `github.com/protobuf-orm/ent/dialect` so that nothing in payday depends on ent --
@@ -31,7 +31,7 @@ type DbConfig struct {
 	// app actually linked in.
 	Driver string `yaml:"driver"`
 
-	// Dialect is the Sql dialect spoken to the database, one of [DialectMySql],
+	// Dialect is the SQL dialect spoken to the database, one of [DialectMySql],
 	// [DialectPostgres] or [DialectSQLite]. It is derived from Driver if it is
 	// empty, which works for every driver registered with [RegisterDriver].
 	Dialect string `yaml:"dialect"`
@@ -146,7 +146,7 @@ func (c DbConfig) Speaks() (string, error) {
 //
 // The dialect is answered as well as the connection because it is not on the
 // connection: `database/sql` knows the driver's name and nothing about what it
-// speaks, and the migrations, which are Sql and not ent, need to be told.
+// speaks, and the migrations, which are SQL and not ent, need to be told.
 //
 // The caller owns the connection and must close it.
 func (c DbConfig) Open(ctx context.Context) (*sql.DB, string, error) {

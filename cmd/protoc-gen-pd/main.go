@@ -53,7 +53,7 @@ type opts struct {
 	Out  string
 	Name string
 
-	// Stage says which pass this is. A List is an Rpc, so it has to be in the
+	// Stage says which pass this is. A List is an RPC, so it has to be in the
 	// contract before the messages and the servers are generated from it --
 	// which means this plugin runs twice: once beside protoc-gen-orm-service
 	// writing proto, and once with the rest writing Go.

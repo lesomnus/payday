@@ -27,7 +27,7 @@ import (
 // that accepts a Printer accepts all of them and one written here is not a
 // lesser kind of format than the built-in ones.
 //
-// The message is the Rpc's answer and not a row: a `Get` hands over the entity,
+// The message is the RPC's answer and not a row: a `Get` hands over the entity,
 // a `List` hands over the response that holds them. A printer that wants rows
 // asks [Rows] for them, which is what [Table] does.
 type Printer interface {
@@ -99,10 +99,10 @@ var Name Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 
 // Template renders with `text/template` over the message decoded as Json.
 //
-// Over the decoded Json rather than over the protobuf message, so that the
+// Over the decoded JSON rather than over the protobuf message, so that the
 // names in a template are the names in `-o json` -- `{{.alias}}`, not
 // `{{.Alias}}` or a `protoreflect` call. A person writing a template has the
-// Json in front of them, and a template that does not agree with it would be a
+// JSON in front of them, and a template that does not agree with it would be a
 // second naming to learn.
 func Template(text string) (Printer, error) {
 	t, err := template.New("").Parse(text)
@@ -274,7 +274,7 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
 // itemColumns is the table for what a watch sends, which is not a row.
 //
 // It is a row, what happened to it, and -- for one that is gone -- no row at
-// all. So the columns are the row's own, read through `value`, with the Rpc
+// all. So the columns are the row's own, read through `value`, with the RPC
 // that changed it in front and the identifier at the end.
 //
 // **The identifier is not behind `-o wide` here**, which is the one place this

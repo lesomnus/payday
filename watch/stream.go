@@ -101,7 +101,7 @@ func Stream(
 }
 
 // Next waits for changes to an entity and answers with the rows they name, each
-// once, with the Rpc that last touched it.
+// once, with the RPC that last touched it.
 //
 // Everything already queued is taken and not just the first of it. A row that
 // changed three times while a stream was busy is one row to read, and reading
@@ -113,8 +113,8 @@ func Next(ctx context.Context, events <-chan Event, service string) (map[pdid.Id
 	take := func(v Event) {
 		for _, c := range v.Changes {
 			// The service is named for the entity it is about, so the name of
-			// the Rpc that made the write says which entity this was. It is
-			// `By` and never `Method`: an Rpc written by hand is dispatched
+			// the RPC that made the write says which entity this was. It is
+			// `By` and never `Method`: an RPC written by hand is dispatched
 			// under its own name and could be about anything.
 			if !strings.HasPrefix(c.By, service) {
 				continue
@@ -163,7 +163,7 @@ func Next(ctx context.Context, events <-chan Event, service string) (map[pdid.Id
 // ServiceOf is the prefix of every Rpc of one service, taken from the name of
 // one of them.
 //
-// A change says which Rpc made it, and a service is named for the entity it is
+// A change says which RPC made it, and a service is named for the entity it is
 // about, so the prefix is what tells a stream whether a write is its business.
 func ServiceOf(fullMethod string) string {
 	i := strings.LastIndex(fullMethod, "/")

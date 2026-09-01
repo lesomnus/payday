@@ -27,7 +27,7 @@ const (
 	Table = "tenant"
 )
 
-// Columns holds all Sql columns for tenant fields.
+// Columns holds all SQL columns for tenant fields.
 var Columns = []string{
 	FieldId,
 	FieldAlias,

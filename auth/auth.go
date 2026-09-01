@@ -140,7 +140,7 @@ type Identity struct {
 	// Text like the rest, and this is the one field where that costs
 	// something: it was parsed here and whatever resolves it parses it again.
 	// It is kept anyway, because what a resolver does with it is build a query
-	// -- against a Uuid column, against a request field of bytes -- so the
+	// -- against a UUID column, against a request field of bytes -- so the
 	// parsed value is not the shape either end holds, and one currency for the
 	// three ways a credential can name somebody is worth more than the one
 	// call it would save.

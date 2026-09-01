@@ -85,13 +85,13 @@ func TestTlsConfig(t *testing.T) {
 		x.ErrorContains(err, "key_file")
 	})
 
-	// The template this came from did not count a client CA bundle as Tls
+	// The template this came from did not count a client CA bundle as TLS
 	// being on. A configuration holding only that one is exactly what a server
 	// meant to read who is calling out of a client certificate looks like, and
 	// it would have been served over a connection with no handshake at all --
 	// no certificate presented, none verified, and the method that reads them
 	// answering "nobody said anything" for the life of the process, with
-	// mutual Tls written down in the file the whole time.
+	// mutual TLS written down in the file the whole time.
 	t.Run("a bundle to check callers against is Tls, and half-configured is refused", func(t *testing.T) {
 		x := require.New(t)
 
@@ -124,7 +124,7 @@ func TestTlsConfig(t *testing.T) {
 //
 // `Credentials` is gRpc's shape and not every listener a payday app opens is a
 // gRpc one -- a transcoder, a sign-in, a port robots present certificates to.
-// Without a `*tls.Config` of its own, the app builds the mutual-Tls setup a
+// Without a `*tls.Config` of its own, the app builds the mutual-TLS setup a
 // second time by hand, and the second one is where the client CA is forgotten.
 func TestTheSameTlsServesEveryListener(t *testing.T) {
 	cert, key := keypair(t)

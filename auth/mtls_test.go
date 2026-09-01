@@ -46,7 +46,7 @@ func certOf(t *testing.T, vs ...string) *x509.Certificate {
 
 // TestACertificateMayNameMoreThanOneThing.
 //
-// The form this came from counted Uri SANs and refused two, which refused every
+// The form this came from counted URI SANs and refused two, which refused every
 // certificate that says both which device is calling and which tenant holds it
 // -- the ordinary shape for a device credential, and the one payday's own
 // identifiers were designed to make readable.
@@ -100,7 +100,7 @@ func TestACertificateMayNameMoreThanOneThing(t *testing.T) {
 
 // TestTheNamespaceInFrontOfTheNameIsNotRead.
 //
-// A Uri SAN is a name inside somebody's namespace, and what this reads is the
+// A URI SAN is a name inside somebody's namespace, and what this reads is the
 // name. The scheme was already ignored -- `fleet:` above means nothing, and any
 // other word would have done -- so ignoring whatever else is in front of the
 // name is the same rule rather than a new liberty.
@@ -108,7 +108,7 @@ func TestACertificateMayNameMoreThanOneThing(t *testing.T) {
 // It is here because of a real certificate. An app issuing device certificates
 // wrote `urn:fleet:{uuid}`, which is the ordinary way to spell a name in a
 // namespace of one's own, and this refused every one of them: the opaque part
-// of that Uri is `fleet:{uuid}`, which is neither an identifier nor a name. Two
+// of that URI is `fleet:{uuid}`, which is neither an identifier nor a name. Two
 // systems that had independently agreed on UUIDv8 with a domain byte, and on a
 // certificate carrying both the caller and its tenant, could not read each
 // other over one colon.
@@ -224,7 +224,7 @@ func TestANameWithNowhereToGoIsRefusedRatherThanDropped(t *testing.T) {
 
 // TestAnUnreadableNameDoesNotFallThroughToTheCommonName.
 //
-// A certificate that carries a Uri SAN meant to say something with it, and
+// A certificate that carries a URI SAN meant to say something with it, and
 // answering with a Common Name that happens to be there answers a question
 // nobody asked -- which is how a name nobody manages any more comes back to
 // life.
@@ -238,7 +238,7 @@ func TestAnUnreadableNameDoesNotFallThroughToTheCommonName(t *testing.T) {
 		// what it says, not the shape it is in.
 		{"an opaque Uri that is not a name", "urn:x:y"},
 
-		// A Uuid, and not one of ours: no app ever wrote a row with it.
+		// A UUID, and not one of ours: no app ever wrote a row with it.
 		{"a Uuid from somewhere else", "fleet:f81d4fae-7dec-11d0-a765-00a0c91e6bf6"},
 
 		// Nothing after the scheme at all.

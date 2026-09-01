@@ -123,7 +123,7 @@ func (names) Name(_ context.Context, _ string, given string, _ proto.Message) (s
 // making a name up for it.
 //
 // It is for an entity whose name is the point: a tenant, a project, anything a
-// person writes in a Url or says out loud. The thing it buys is not safety --
+// person writes in a URL or says out loud. The thing it buys is not safety --
 // see [Names] -- it is **feedback**: a client that dropped the field is told
 // so, instead of writing a row that has to be found and renamed.
 //
