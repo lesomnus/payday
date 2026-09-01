@@ -3,6 +3,33 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A UUID is the standard library's
+
+`uuid.UUID` now comes from Go 1.27's `uuid` package rather than from
+`github.com/google/uuid`. An app that names the type does so from the new
+import path, and drops the dependency.
+
+Nothing moves in the database or on the wire: both write a UUID out in the
+canonical form, and a UUID has always crossed the wire as sixteen bytes.
+
+What the standard library does not have, `entuuid` does:
+
+| was | is |
+| --- | --- |
+| `uuid.FromBytes(b)` | `entuuid.FromBytes(b)` |
+| `uuid.Nil` | `uuid.Nil()` |
+| `uuid.NewString()` | `uuid.New().String()` |
+| `uuid.Must(uuid.NewV7())` | `uuid.NewV7()` |
+| `v.Version()`, `v.Variant()` | `v[6]>>4`, `v[8]>>6` |
+
+`entuuid` is `github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid`, which
+a generated server already depends on. Its `FromBytes` is the one that matters:
+a UUID arrives as protobuf `bytes`, where nothing enforces the length.
+
+A predicate written by hand against a UUID column binds `entuuid.Value(u)`
+rather than `u`. Generated code and ent's own predicates convert on their own;
+raw `sql.EQ` does not, and a `uuid.UUID` says nothing to a driver.
+
 ## Every table is named after its entity, and none of them is pluralized
 
 **Applies if** you have a database. It is a rename of every table an app has.
