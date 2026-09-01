@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Joint is the model entity for the Joint schema.
@@ -157,5 +157,5 @@ func (_m *Joint) String() string {
 	return builder.String()
 }
 
-// Joints is a parsable slice of Joint.
-type Joints []*Joint
+// JointList is a parsable slice of Joint.
+type JointList []*Joint

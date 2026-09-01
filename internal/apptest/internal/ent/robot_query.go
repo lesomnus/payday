@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"math"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
-	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
+	"github.com/protobuf-orm/ent/schema/field"
 )
 
 // RobotQuery is the builder for querying Robot entities.
@@ -232,7 +232,7 @@ func (_q *RobotQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// All executes the query and returns a list of Robots.
+// All executes the query and returns a list of Robot entities.
 func (_q *RobotQuery) All(ctx context.Context) ([]*Robot, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {

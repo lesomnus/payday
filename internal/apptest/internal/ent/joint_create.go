@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"time"
 
-	"entgo.io/ent/dialect/sql/sqlgraph"
-	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
+	"github.com/protobuf-orm/ent/schema/field"
 )
 
 // JointCreate is the builder for creating a Joint entity.

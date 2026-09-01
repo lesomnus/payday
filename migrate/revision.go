@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"ariga.io/atlas/sql/migrate"
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/dialect"
+	entsql "github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // RevisionTable is where a database records which migrations were applied to

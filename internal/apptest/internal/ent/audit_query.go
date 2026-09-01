@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"math"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
-	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
+	"github.com/protobuf-orm/ent/schema/field"
 )
 
 // AuditQuery is the builder for querying Audit entities.
@@ -160,7 +160,7 @@ func (_q *AuditQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// All executes the query and returns a list of Audits.
+// All executes the query and returns a list of Audit entities.
 func (_q *AuditQuery) All(ctx context.Context) ([]*Audit, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {

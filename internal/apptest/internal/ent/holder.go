@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Holder is the model entity for the Holder schema.
@@ -242,5 +242,5 @@ func (_m *Holder) String() string {
 	return builder.String()
 }
 
-// Holders is a parsable slice of Holder.
-type Holders []*Holder
+// HolderList is a parsable slice of Holder.
+type HolderList []*Holder

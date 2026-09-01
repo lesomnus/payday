@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Tenant is the model entity for the Tenant schema.
@@ -163,5 +163,5 @@ func (_m *Tenant) String() string {
 	return builder.String()
 }
 
-// Tenants is a parsable slice of Tenant.
-type Tenants []*Tenant
+// TenantList is a parsable slice of Tenant.
+type TenantList []*Tenant

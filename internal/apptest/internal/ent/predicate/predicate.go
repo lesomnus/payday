@@ -3,7 +3,7 @@
 package predicate
 
 import (
-	"entgo.io/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Audit is the predicate function for audit builders.

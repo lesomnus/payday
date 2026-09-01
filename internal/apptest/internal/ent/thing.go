@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Thing is the model entity for the Thing schema.
@@ -128,5 +128,5 @@ func (_m *Thing) String() string {
 	return builder.String()
 }
 
-// Things is a parsable slice of Thing.
-type Things []*Thing
+// ThingList is a parsable slice of Thing.
+type ThingList []*Thing

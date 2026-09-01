@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Seal is the model entity for the Seal schema.
@@ -141,5 +141,5 @@ func (_m *Seal) String() string {
 	return builder.String()
 }
 
-// Seals is a parsable slice of Seal.
-type Seals []*Seal
+// SealList is a parsable slice of Seal.
+type SealList []*Seal

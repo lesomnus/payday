@@ -9,8 +9,8 @@ import (
 	// required by schema hooks.
 	_ "github.com/lesomnus/payday/internal/apptest/internal/ent/runtime"
 
-	"entgo.io/ent/dialect/sql/schema"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/migrate"
+	"github.com/protobuf-orm/ent/dialect/sql/schema"
 )
 
 type (

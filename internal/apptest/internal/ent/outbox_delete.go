@@ -5,11 +5,11 @@ package ent
 import (
 	"context"
 
-	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
-	"entgo.io/ent/schema/field"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	"github.com/protobuf-orm/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
+	"github.com/protobuf-orm/ent/schema/field"
 )
 
 // OutboxDelete is the builder for deleting a Outbox entity.
@@ -41,7 +41,7 @@ func (_d *OutboxDelete) ExecX(ctx context.Context) int {
 
 func (_d *OutboxDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(outbox.Table, sqlgraph.NewFieldSpec(outbox.FieldID, field.TypeUUID))
-	if ps := _d.mutation.predicates; len(ps) > 0 {
+	if ps := _d.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)

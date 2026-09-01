@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"time"
 
-	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
-	"entgo.io/ent/schema/field"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	"github.com/protobuf-orm/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
+	"github.com/protobuf-orm/ent/schema/field"
 )
 
 // SealUpdate is the builder for updating Seal entities.
@@ -109,7 +109,7 @@ func (_u *SealUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SealUpdat
 
 func (_u *SealUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(seal.Table, seal.Columns, sqlgraph.NewFieldSpec(seal.FieldID, field.TypeUUID))
-	if ps := _u.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -263,7 +263,7 @@ func (_u *SealUpdateOne) sqlSave(ctx context.Context) (_node *Seal, err error) {
 			}
 		}
 	}
-	if ps := _u.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.Predicates(); len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)

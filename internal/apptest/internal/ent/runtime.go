@@ -7,7 +7,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/schema"
 
-	"entgo.io/ent/schema/field"
+	"github.com/protobuf-orm/ent/schema/field"
 )
 
 // The init function reads all schema descriptors with runtime code

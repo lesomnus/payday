@@ -4,7 +4,6 @@ package bare
 
 import (
 	context "context"
-	dialect "entgo.io/ent/dialect"
 	errors "errors"
 	fmt "fmt"
 	uuid "github.com/google/uuid"
@@ -24,6 +23,7 @@ import (
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	dialect "github.com/protobuf-orm/ent/dialect"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"

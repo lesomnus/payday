@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Pairing is the model entity for the Pairing schema.
@@ -170,5 +170,5 @@ func (_m *Pairing) String() string {
 	return builder.String()
 }
 
-// Pairings is a parsable slice of Pairing.
-type Pairings []*Pairing
+// PairingList is a parsable slice of Pairing.
+type PairingList []*Pairing

@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
-	entschema "entgo.io/ent/dialect/sql/schema"
-	"entgo.io/ent/schema/field"
 	"github.com/ncruces/go-sqlite3/driver"
 	"github.com/ncruces/go-sqlite3/vfs/memdb"
+	"github.com/protobuf-orm/ent/dialect"
+	entsql "github.com/protobuf-orm/ent/dialect/sql"
+	entschema "github.com/protobuf-orm/ent/dialect/sql/schema"
+	"github.com/protobuf-orm/ent/schema/field"
 	"github.com/stretchr/testify/require"
 
 	"github.com/lesomnus/payday/migrate"

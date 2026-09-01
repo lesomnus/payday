@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"math"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
-	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
+	"github.com/protobuf-orm/ent/schema/field"
 )
 
 // OutboxQuery is the builder for querying Outbox entities.
@@ -160,7 +160,7 @@ func (_q *OutboxQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// All executes the query and returns a list of Outboxes.
+// All executes the query and returns a list of Outbox entities.
 func (_q *OutboxQuery) All(ctx context.Context) ([]*Outbox, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {

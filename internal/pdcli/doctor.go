@@ -61,7 +61,7 @@ var tools = []string{
 	"github.com/protobuf-orm/protoc-gen-orm-go",
 	"github.com/protobuf-orm/protoc-gen-orm-ent",
 	"github.com/lesomnus/payday/cmd/protoc-gen-pd",
-	"entgo.io/ent/cmd/ent",
+	"github.com/protobuf-orm/ent/cmd/ent",
 }
 
 // deps are the buf modules an app's schema imports.

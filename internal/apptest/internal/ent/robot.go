@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Robot is the model entity for the Robot schema.
@@ -266,5 +266,5 @@ func (_m *Robot) String() string {
 	return builder.String()
 }
 
-// Robots is a parsable slice of Robot.
-type Robots []*Robot
+// RobotList is a parsable slice of Robot.
+type RobotList []*Robot

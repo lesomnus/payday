@@ -11,8 +11,6 @@ package pd
 
 import (
 	context "context"
-	dialect "entgo.io/ent/dialect"
-	sql "entgo.io/ent/dialect/sql"
 	fmt "fmt"
 	uuid "github.com/google/uuid"
 	log "github.com/lesomnus/otx/log"
@@ -43,6 +41,8 @@ import (
 	version "github.com/lesomnus/payday/version"
 	watch "github.com/lesomnus/payday/watch"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	dialect "github.com/protobuf-orm/ent/dialect"
+	sql "github.com/protobuf-orm/ent/dialect/sql"
 	entpage "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpage"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	grpc "google.golang.org/grpc"

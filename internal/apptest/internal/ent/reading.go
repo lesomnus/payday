@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Reading is the model entity for the Reading schema.
@@ -165,5 +165,5 @@ func (_m *Reading) String() string {
 	return builder.String()
 }
 
-// Readings is a parsable slice of Reading.
-type Readings []*Reading
+// ReadingList is a parsable slice of Reading.
+type ReadingList []*Reading

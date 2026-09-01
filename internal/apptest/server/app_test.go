@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/dialect"
+	entsql "github.com/protobuf-orm/ent/dialect/sql"
 	"github.com/stretchr/testify/require"
 
 	app "github.com/lesomnus/payday/internal/apptest"

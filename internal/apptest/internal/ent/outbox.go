@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Outbox is the model entity for the Outbox schema.
@@ -171,5 +171,5 @@ func (_m *Outbox) String() string {
 	return builder.String()
 }
 
-// Outboxes is a parsable slice of Outbox.
-type Outboxes []*Outbox
+// OutboxList is a parsable slice of Outbox.
+type OutboxList []*Outbox

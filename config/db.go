@@ -13,7 +13,7 @@ import (
 // The SQL dialects a driver may speak.
 //
 // They are the names ent and Atlas know them by, written out here rather than
-// taken from `entgo.io/ent/dialect` so that nothing in payday depends on ent --
+// taken from `github.com/protobuf-orm/ent/dialect` so that nothing in payday depends on ent --
 // see [DbConfig.Open] for why that matters. They are strings on a wire between
 // three libraries that already agree on them, so writing them down costs a
 // constant and buys a package boundary.

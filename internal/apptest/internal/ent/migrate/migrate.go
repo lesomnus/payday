@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 
-	"entgo.io/ent/dialect"
-	"entgo.io/ent/dialect/sql/schema"
+	"github.com/protobuf-orm/ent/dialect"
+	"github.com/protobuf-orm/ent/dialect/sql/schema"
 )
 
 var (

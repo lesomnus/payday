@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Fleet is the model entity for the Fleet schema.
@@ -117,5 +117,5 @@ func (_m *Fleet) String() string {
 	return builder.String()
 }
 
-// Fleets is a parsable slice of Fleet.
-type Fleets []*Fleet
+// FleetList is a parsable slice of Fleet.
+type FleetList []*Fleet

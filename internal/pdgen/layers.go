@@ -13,7 +13,7 @@ const (
 	pkgGate    = protogen.GoImportPath("github.com/lesomnus/payday/gate")
 	pkgAudit   = protogen.GoImportPath("github.com/lesomnus/payday/audit")
 	pkgEnttx   = protogen.GoImportPath("github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx")
-	pkgDialect = protogen.GoImportPath("entgo.io/ent/dialect")
+	pkgDialect = protogen.GoImportPath("github.com/protobuf-orm/ent/dialect")
 	pkgEmpty   = protogen.GoImportPath("google.golang.org/protobuf/types/known/emptypb")
 	pkgProto   = protogen.GoImportPath("google.golang.org/protobuf/proto")
 	pkgPatchpb = protogen.GoImportPath("github.com/lesomnus/protobuf-patch/patchpb")

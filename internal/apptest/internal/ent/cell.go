@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Cell is the model entity for the Cell schema.
@@ -157,5 +157,5 @@ func (_m *Cell) String() string {
 	return builder.String()
 }
 
-// Cells is a parsable slice of Cell.
-type Cells []*Cell
+// CellList is a parsable slice of Cell.
+type CellList []*Cell

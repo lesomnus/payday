@@ -5,7 +5,6 @@ package bare
 
 import (
 	context "context"
-	sqlgraph "entgo.io/ent/dialect/sql/sqlgraph"
 	errors "errors"
 	uuid "github.com/google/uuid"
 	apptest "github.com/lesomnus/payday/internal/apptest"
@@ -19,6 +18,7 @@ import (
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	graph "github.com/protobuf-orm/protobuf-orm/graph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"

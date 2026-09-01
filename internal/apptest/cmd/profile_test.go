@@ -3,8 +3,8 @@ package cmd_test
 import (
 	"testing"
 
-	entsql "entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqljson"
+	entsql "github.com/protobuf-orm/ent/dialect/sql"
+	"github.com/protobuf-orm/ent/dialect/sql/sqljson"
 	"github.com/stretchr/testify/require"
 
 	app "github.com/lesomnus/payday/internal/apptest"

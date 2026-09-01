@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"entgo.io/ent"
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
+	"github.com/protobuf-orm/ent"
+	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
 // Audit is the model entity for the Audit schema.
@@ -222,5 +222,5 @@ func (_m *Audit) String() string {
 	return builder.String()
 }
 
-// Audits is a parsable slice of Audit.
-type Audits []*Audit
+// AuditList is a parsable slice of Audit.
+type AuditList []*Audit

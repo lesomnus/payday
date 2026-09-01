@@ -38,9 +38,9 @@ import (
 	"ariga.io/atlas/sql/migrate"
 	atpostgres "ariga.io/atlas/sql/postgres"
 	atsqlite "ariga.io/atlas/sql/sqlite"
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
-	entschema "entgo.io/ent/dialect/sql/schema"
+	"github.com/protobuf-orm/ent/dialect"
+	entsql "github.com/protobuf-orm/ent/dialect/sql"
+	entschema "github.com/protobuf-orm/ent/dialect/sql/schema"
 )
 
 // DefaultDir is where the migration files are kept. It is what the template

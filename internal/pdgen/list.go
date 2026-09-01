@@ -10,7 +10,7 @@ import (
 
 const (
 	pkgEntpage = protogen.GoImportPath("github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpage")
-	pkgEntsql  = protogen.GoImportPath("entgo.io/ent/dialect/sql")
+	pkgEntsql  = protogen.GoImportPath("github.com/protobuf-orm/ent/dialect/sql")
 	pkgTime    = protogen.GoImportPath("time")
 	pkgUuid2   = protogen.GoImportPath("github.com/google/uuid")
 )
