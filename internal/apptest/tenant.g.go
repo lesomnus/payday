@@ -4,7 +4,6 @@ package apptest
 
 import (
 	bytes "bytes"
-	protojson "google.golang.org/protobuf/encoding/protojson"
 )
 
 func (x *TenantRef) Pick() *TenantGetRequest {
@@ -44,9 +43,6 @@ func (x *TenantGetRequest) WithSelect(f func(s *TenantSelect)) *TenantGetRequest
 	f(x.GetSelect())
 	return x
 }
-
-func (x *Tenant) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Tenant) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
 
 func TenantById(v []byte) *TenantRef {
 	x := &TenantRef{}

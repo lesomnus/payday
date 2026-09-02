@@ -4,7 +4,6 @@ package apptest
 
 import (
 	bytes "bytes"
-	protojson "google.golang.org/protobuf/encoding/protojson"
 )
 
 func (x *HolderRef) Pick() *HolderGetRequest {
@@ -50,9 +49,6 @@ func (x *HolderGetRequest) WithSelect(f func(s *HolderSelect)) *HolderGetRequest
 	f(x.GetSelect())
 	return x
 }
-
-func (x *Holder) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Holder) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
 
 func HolderById(v []byte) *HolderRef {
 	x := &HolderRef{}

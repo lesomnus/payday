@@ -4,7 +4,6 @@ package apptest
 
 import (
 	bytes "bytes"
-	protojson "google.golang.org/protobuf/encoding/protojson"
 )
 
 func (x *AuditRef) Pick() *AuditGetRequest {
@@ -39,9 +38,6 @@ func (x *AuditGetRequest) WithSelect(f func(s *AuditSelect)) *AuditGetRequest {
 	f(x.GetSelect())
 	return x
 }
-
-func (x *Audit) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Audit) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
 
 func AuditById(v []byte) *AuditRef {
 	x := &AuditRef{}

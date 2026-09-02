@@ -4,7 +4,6 @@ package apptest
 
 import (
 	bytes "bytes"
-	protojson "google.golang.org/protobuf/encoding/protojson"
 )
 
 func (x *CellRef) Pick() *CellGetRequest {
@@ -39,9 +38,6 @@ func (x *CellGetRequest) WithSelect(f func(s *CellSelect)) *CellGetRequest {
 	f(x.GetSelect())
 	return x
 }
-
-func (x *Cell) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Cell) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
 
 func CellById(v []byte) *CellRef {
 	x := &CellRef{}
@@ -97,9 +93,6 @@ func (x *RobotGetRequest) WithSelect(f func(s *RobotSelect)) *RobotGetRequest {
 	return x
 }
 
-func (x *Robot) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Robot) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
-
 func RobotById(v []byte) *RobotRef {
 	x := &RobotRef{}
 	x.SetId(v)
@@ -154,9 +147,6 @@ func (x *PairingGetRequest) WithSelect(f func(s *PairingSelect)) *PairingGetRequ
 	return x
 }
 
-func (x *Pairing) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Pairing) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
-
 func PairingById(v []byte) *PairingRef {
 	x := &PairingRef{}
 	x.SetId(v)
@@ -199,9 +189,6 @@ func (x *JointGetRequest) WithSelect(f func(s *JointSelect)) *JointGetRequest {
 	f(x.GetSelect())
 	return x
 }
-
-func (x *Joint) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Joint) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
 
 func JointById(v []byte) *JointRef {
 	x := &JointRef{}
@@ -250,9 +237,6 @@ func (x *FleetGetRequest) WithSelect(f func(s *FleetSelect)) *FleetGetRequest {
 	f(x.GetSelect())
 	return x
 }
-
-func (x *Fleet) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Fleet) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
 
 func FleetById(v []byte) *FleetRef {
 	x := &FleetRef{}
@@ -306,9 +290,6 @@ func (x *ReadingGetRequest) WithSelect(f func(s *ReadingSelect)) *ReadingGetRequ
 	f(x.GetSelect())
 	return x
 }
-
-func (x *Reading) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Reading) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
 
 func ReadingById(v []byte) *ReadingRef {
 	x := &ReadingRef{}

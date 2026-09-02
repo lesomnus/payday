@@ -4,7 +4,6 @@ package apptest
 
 import (
 	bytes "bytes"
-	protojson "google.golang.org/protobuf/encoding/protojson"
 )
 
 func (x *SealRef) Pick() *SealGetRequest {
@@ -39,9 +38,6 @@ func (x *SealGetRequest) WithSelect(f func(s *SealSelect)) *SealGetRequest {
 	f(x.GetSelect())
 	return x
 }
-
-func (x *Seal) MarshalJSON() ([]byte, error) { return protojson.Marshal(x) }
-func (x *Seal) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, x) }
 
 func SealById(v []byte) *SealRef {
 	x := &SealRef{}
