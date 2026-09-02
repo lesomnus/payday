@@ -111,6 +111,8 @@ github.com/protobuf-orm/ent v0.0.0-20260902013732-9b0c180f3456 h1:aK1IN5iT54OabH
 github.com/protobuf-orm/ent v0.0.0-20260902013732-9b0c180f3456/go.mod h1:EE8o+t0Y4xtH8DRH/shGerAb2mPQJ0A1TqWT5LU7pZQ=
 github.com/protobuf-orm/ent v0.0.0-20260902014421-84763acd732b h1:KBBwa07jdFTJmfhNyHv+cPfVlDodT9jvMwtR18Picb0=
 github.com/protobuf-orm/ent v0.0.0-20260902014421-84763acd732b/go.mod h1:EE8o+t0Y4xtH8DRH/shGerAb2mPQJ0A1TqWT5LU7pZQ=
+github.com/protobuf-orm/ent v0.0.0-20260902021457-d292c11295cb h1:xAIVjQ3ARw9wVIYxVwPuPzCnFT1TS51Urin1rT9jsG0=
+github.com/protobuf-orm/ent v0.0.0-20260902021457-d292c11295cb/go.mod h1:EE8o+t0Y4xtH8DRH/shGerAb2mPQJ0A1TqWT5LU7pZQ=
 github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df h1:BLzNAaAtxGAqYhrJfYHrUWVUWlBmBIZb/RrJ7UL8H4Q=
 github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df/go.mod h1:BUd72lrno943ObVibUbiF5fXPwJlTNJk4zUeZ8htwmY=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260901231226-61630a70f09e h1:XeBB1ORc/3ancbIo0iBCM5farV+IuQrA+9YSr/w+lkE=

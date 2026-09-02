@@ -20,7 +20,7 @@ require (
 	github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/ncruces/go-sqlite3 v0.35.3
-	github.com/protobuf-orm/ent v0.0.0-20260902014421-84763acd732b
+	github.com/protobuf-orm/ent v0.0.0-20260902021457-d292c11295cb
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260901231226-61630a70f09e
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.45.0
