@@ -96,7 +96,7 @@ func TestMove(t *testing.T) {
 // turned into. `Move` issues a `Patch` below itself, so a trail that recorded
 // the leg would answer "who moved this robot" with a method the caller has
 // never heard of. `bare.Change.Method` is what avoids that: it carries the RPC
-// gRpc dispatched, for the whole request rather than for one leg of it.
+// gRPC dispatched, for the whole request rather than for one leg of it.
 //
 // So this has to travel a connection. Called directly against the server the
 // trail says `Patch`, correctly -- nothing dispatched anything, and the leg is

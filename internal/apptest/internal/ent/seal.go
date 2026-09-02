@@ -34,14 +34,14 @@ func (*Seal) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case seal.FieldId:
-			values[i] = seal.ValueScanner.Id.ScanValue()
 		case seal.FieldSecret:
 			values[i] = new([]byte)
 		case seal.FieldAlias:
 			values[i] = new(sql.NullString)
 		case seal.FieldDateErased, seal.FieldDateCreated:
 			values[i] = new(sql.NullTime)
+		case seal.FieldId:
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -58,10 +58,10 @@ func (_m *Seal) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case seal.FieldId:
-			if value, err := seal.ValueScanner.Id.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.Id = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value != nil {
+				_m.Id = *value
 			}
 		case seal.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -74,6 +74,9 @@ func (_m *Seal) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field secret", values[i])
 			} else if value != nil {
 				_m.Secret = *value
+				if _m.Secret == nil {
+					_m.Secret = []byte{}
+				}
 			}
 		case seal.FieldDateErased:
 			if value, ok := values[i].(*sql.NullTime); !ok {

@@ -1,4 +1,4 @@
-// Package watchpg is a [watch.Broker] over PostgreSql's `LISTEN`/`NOTIFY`.
+// Package watchpg is a [watch.Broker] over PostgreSQL's `LISTEN`/`NOTIFY`.
 //
 // # Why this one first
 //
@@ -61,7 +61,7 @@ import (
 // same reason and gets the same separation for free.
 const Channel = "payday_watch"
 
-// Payload is the most PostgreSql will carry in one notification.
+// Payload is the most PostgreSQL will carry in one notification.
 //
 // 8000 bytes is the server's limit and it is not configurable. A call that
 // changed more rows than fit is sent as several notifications, which a
@@ -423,7 +423,7 @@ func Dialect(v string) error {
 		return nil
 	}
 
-	return fmt.Errorf("watchpg: this listens on PostgreSql and the database is %s;"+
+	return fmt.Errorf("watchpg: this listens on PostgreSQL and the database is %s;"+
 		" a deployment on %s has no broker in this binary and needs one that is not the database",
 		v, strings.ToLower(v))
 }

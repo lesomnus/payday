@@ -12,84 +12,57 @@ import (
 
 // Id filters vertices based on their Id field.
 func Id(id uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.OutboxOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Outbox(sql.FieldEQ(FieldId, id))
 }
 
 // IdEQ applies the EQ predicate on the Id field.
 func IdEQ(id uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.OutboxOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Outbox(sql.FieldEQ(FieldId, id))
 }
 
 // IdNEQ applies the NEQ predicate on the Id field.
 func IdNEQ(id uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.OutboxOrErr(sql.FieldNEQ(FieldId, vc), err)
+	return predicate.Outbox(sql.FieldNEQ(FieldId, id))
 }
 
 // IdIn applies the In predicate on the Id field.
 func IdIn(ids ...uuid.UUID) predicate.Outbox {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.OutboxOrErr(sql.FieldIn(FieldId, vcs...), err)
+	return predicate.Outbox(sql.FieldIn(FieldId, ids...))
 }
 
 // IdNotIn applies the NotIn predicate on the Id field.
 func IdNotIn(ids ...uuid.UUID) predicate.Outbox {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.OutboxOrErr(sql.FieldNotIn(FieldId, vcs...), err)
+	return predicate.Outbox(sql.FieldNotIn(FieldId, ids...))
 }
 
 // IdGT applies the GT predicate on the Id field.
 func IdGT(id uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.OutboxOrErr(sql.FieldGT(FieldId, vc), err)
+	return predicate.Outbox(sql.FieldGT(FieldId, id))
 }
 
 // IdGTE applies the GTE predicate on the Id field.
 func IdGTE(id uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.OutboxOrErr(sql.FieldGTE(FieldId, vc), err)
+	return predicate.Outbox(sql.FieldGTE(FieldId, id))
 }
 
 // IdLT applies the LT predicate on the Id field.
 func IdLT(id uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.OutboxOrErr(sql.FieldLT(FieldId, vc), err)
+	return predicate.Outbox(sql.FieldLT(FieldId, id))
 }
 
 // IdLTE applies the LTE predicate on the Id field.
 func IdLTE(id uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.OutboxOrErr(sql.FieldLTE(FieldId, vc), err)
+	return predicate.Outbox(sql.FieldLTE(FieldId, id))
 }
 
 // TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
 func TenantId(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldEQ(FieldTenantId, vc), err)
+	return predicate.Outbox(sql.FieldEQ(FieldTenantId, v))
 }
 
 // ActorId applies equality check predicate on the "actor_id" field. It's identical to ActorIdEQ.
 func ActorId(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ActorId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldEQ(FieldActorId, vc), err)
+	return predicate.Outbox(sql.FieldEQ(FieldActorId, v))
 }
 
 // Method applies equality check predicate on the "method" field. It's identical to MethodEQ.
@@ -104,8 +77,7 @@ func By(v string) predicate.Outbox {
 
 // ObjectId applies equality check predicate on the "object_id" field. It's identical to ObjectIdEQ.
 func ObjectId(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ObjectId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldEQ(FieldObjectId, vc), err)
+	return predicate.Outbox(sql.FieldEQ(FieldObjectId, v))
 }
 
 // Patch applies equality check predicate on the "patch" field. It's identical to PatchEQ.
@@ -120,130 +92,82 @@ func DateCreated(v time.Time) predicate.Outbox {
 
 // TenantIdEQ applies the EQ predicate on the "tenant_id" field.
 func TenantIdEQ(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldEQ(FieldTenantId, vc), err)
+	return predicate.Outbox(sql.FieldEQ(FieldTenantId, v))
 }
 
 // TenantIdNEQ applies the NEQ predicate on the "tenant_id" field.
 func TenantIdNEQ(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldNEQ(FieldTenantId, vc), err)
+	return predicate.Outbox(sql.FieldNEQ(FieldTenantId, v))
 }
 
 // TenantIdIn applies the In predicate on the "tenant_id" field.
 func TenantIdIn(vs ...uuid.UUID) predicate.Outbox {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.OutboxOrErr(sql.FieldIn(FieldTenantId, v...), err)
+	return predicate.Outbox(sql.FieldIn(FieldTenantId, vs...))
 }
 
 // TenantIdNotIn applies the NotIn predicate on the "tenant_id" field.
 func TenantIdNotIn(vs ...uuid.UUID) predicate.Outbox {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.OutboxOrErr(sql.FieldNotIn(FieldTenantId, v...), err)
+	return predicate.Outbox(sql.FieldNotIn(FieldTenantId, vs...))
 }
 
 // TenantIdGT applies the GT predicate on the "tenant_id" field.
 func TenantIdGT(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldGT(FieldTenantId, vc), err)
+	return predicate.Outbox(sql.FieldGT(FieldTenantId, v))
 }
 
 // TenantIdGTE applies the GTE predicate on the "tenant_id" field.
 func TenantIdGTE(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldGTE(FieldTenantId, vc), err)
+	return predicate.Outbox(sql.FieldGTE(FieldTenantId, v))
 }
 
 // TenantIdLT applies the LT predicate on the "tenant_id" field.
 func TenantIdLT(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldLT(FieldTenantId, vc), err)
+	return predicate.Outbox(sql.FieldLT(FieldTenantId, v))
 }
 
 // TenantIdLTE applies the LTE predicate on the "tenant_id" field.
 func TenantIdLTE(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldLTE(FieldTenantId, vc), err)
+	return predicate.Outbox(sql.FieldLTE(FieldTenantId, v))
 }
 
 // ActorIdEQ applies the EQ predicate on the "actor_id" field.
 func ActorIdEQ(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ActorId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldEQ(FieldActorId, vc), err)
+	return predicate.Outbox(sql.FieldEQ(FieldActorId, v))
 }
 
 // ActorIdNEQ applies the NEQ predicate on the "actor_id" field.
 func ActorIdNEQ(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ActorId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldNEQ(FieldActorId, vc), err)
+	return predicate.Outbox(sql.FieldNEQ(FieldActorId, v))
 }
 
 // ActorIdIn applies the In predicate on the "actor_id" field.
 func ActorIdIn(vs ...uuid.UUID) predicate.Outbox {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.ActorId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.OutboxOrErr(sql.FieldIn(FieldActorId, v...), err)
+	return predicate.Outbox(sql.FieldIn(FieldActorId, vs...))
 }
 
 // ActorIdNotIn applies the NotIn predicate on the "actor_id" field.
 func ActorIdNotIn(vs ...uuid.UUID) predicate.Outbox {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.ActorId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.OutboxOrErr(sql.FieldNotIn(FieldActorId, v...), err)
+	return predicate.Outbox(sql.FieldNotIn(FieldActorId, vs...))
 }
 
 // ActorIdGT applies the GT predicate on the "actor_id" field.
 func ActorIdGT(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ActorId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldGT(FieldActorId, vc), err)
+	return predicate.Outbox(sql.FieldGT(FieldActorId, v))
 }
 
 // ActorIdGTE applies the GTE predicate on the "actor_id" field.
 func ActorIdGTE(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ActorId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldGTE(FieldActorId, vc), err)
+	return predicate.Outbox(sql.FieldGTE(FieldActorId, v))
 }
 
 // ActorIdLT applies the LT predicate on the "actor_id" field.
 func ActorIdLT(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ActorId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldLT(FieldActorId, vc), err)
+	return predicate.Outbox(sql.FieldLT(FieldActorId, v))
 }
 
 // ActorIdLTE applies the LTE predicate on the "actor_id" field.
 func ActorIdLTE(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ActorId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldLTE(FieldActorId, vc), err)
+	return predicate.Outbox(sql.FieldLTE(FieldActorId, v))
 }
 
 // MethodEQ applies the EQ predicate on the "method" field.
@@ -378,66 +302,42 @@ func ByContainsFold(v string) predicate.Outbox {
 
 // ObjectIdEQ applies the EQ predicate on the "object_id" field.
 func ObjectIdEQ(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ObjectId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldEQ(FieldObjectId, vc), err)
+	return predicate.Outbox(sql.FieldEQ(FieldObjectId, v))
 }
 
 // ObjectIdNEQ applies the NEQ predicate on the "object_id" field.
 func ObjectIdNEQ(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ObjectId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldNEQ(FieldObjectId, vc), err)
+	return predicate.Outbox(sql.FieldNEQ(FieldObjectId, v))
 }
 
 // ObjectIdIn applies the In predicate on the "object_id" field.
 func ObjectIdIn(vs ...uuid.UUID) predicate.Outbox {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.ObjectId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.OutboxOrErr(sql.FieldIn(FieldObjectId, v...), err)
+	return predicate.Outbox(sql.FieldIn(FieldObjectId, vs...))
 }
 
 // ObjectIdNotIn applies the NotIn predicate on the "object_id" field.
 func ObjectIdNotIn(vs ...uuid.UUID) predicate.Outbox {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.ObjectId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.OutboxOrErr(sql.FieldNotIn(FieldObjectId, v...), err)
+	return predicate.Outbox(sql.FieldNotIn(FieldObjectId, vs...))
 }
 
 // ObjectIdGT applies the GT predicate on the "object_id" field.
 func ObjectIdGT(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ObjectId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldGT(FieldObjectId, vc), err)
+	return predicate.Outbox(sql.FieldGT(FieldObjectId, v))
 }
 
 // ObjectIdGTE applies the GTE predicate on the "object_id" field.
 func ObjectIdGTE(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ObjectId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldGTE(FieldObjectId, vc), err)
+	return predicate.Outbox(sql.FieldGTE(FieldObjectId, v))
 }
 
 // ObjectIdLT applies the LT predicate on the "object_id" field.
 func ObjectIdLT(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ObjectId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldLT(FieldObjectId, vc), err)
+	return predicate.Outbox(sql.FieldLT(FieldObjectId, v))
 }
 
 // ObjectIdLTE applies the LTE predicate on the "object_id" field.
 func ObjectIdLTE(v uuid.UUID) predicate.Outbox {
-	vc, err := ValueScanner.ObjectId.Value(v)
-	return predicate.OutboxOrErr(sql.FieldLTE(FieldObjectId, vc), err)
+	return predicate.Outbox(sql.FieldLTE(FieldObjectId, v))
 }
 
 // PatchEQ applies the EQ predicate on the "patch" field.

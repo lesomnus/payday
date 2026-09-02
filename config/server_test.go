@@ -26,7 +26,7 @@ import (
 )
 
 func TestServerConfig(t *testing.T) {
-	t.Run("nothing said is nothing given, so gRpc keeps its own", func(t *testing.T) {
+	t.Run("nothing said is nothing given, so gRPC keeps its own", func(t *testing.T) {
 		x := require.New(t)
 
 		c := config.ServerConfig{}

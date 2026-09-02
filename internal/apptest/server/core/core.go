@@ -20,7 +20,7 @@
 // listed it.
 //
 // What the trail says it was is `Move`, not the `Patch` below. That is
-// `bare.Change.Method`, which carries the RPC gRpc dispatched for the whole
+// `bare.Change.Method`, which carries the RPC gRPC dispatched for the whole
 // request rather than the leg being written -- so an operation written by hand
 // answers "who did this" with the name the caller used. Called directly against
 // the server, with nothing dispatched, the trail says `Patch`, which is the

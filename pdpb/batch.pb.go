@@ -154,7 +154,7 @@ func (x *Op) ClearRequest() {
 type Op_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	// The RPC, by the name gRpc knows it by: "/app.RobotService/Add".
+	// The RPC, by the name gRPC knows it by: "/app.RobotService/Add".
 	Method string
 	// The request, packed. Its type has to be what `method` takes -- an `Any`
 	// carrying anything else is refused rather than coerced, since a request that

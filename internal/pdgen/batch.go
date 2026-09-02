@@ -218,7 +218,7 @@ func emitDispatch(g *protogen.GeneratedFile, ops []batchOp, p Paths, root protog
 	g.P("	m := op.GetMethod()")
 	g.P("")
 	g.P("	// Under the operation's own name. The recorder fills in what the")
-	g.P("	// caller asked for by asking gRpc, and in here gRpc answers with the")
+	g.P("	// caller asked for by asking gRPC, and in here gRPC answers with the")
 	g.P("	// envelope -- `BatchService/Do`, for every operation of every batch --")
 	g.P("	// so without this the trail says a hundred different writes were all")
 	g.P("	// the same call.")

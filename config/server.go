@@ -23,21 +23,21 @@ import (
 const DefaultAddr = ":50051"
 
 type ServerConfig struct {
-	// Addr is the address the gRpc server listens on, e.g. ":50051". Nothing
+	// Addr is the address the gRPC server listens on, e.g. ":50051". Nothing
 	// written down is [DefaultAddr]; see [ServerConfig.ListenAddr].
 	Addr string `yaml:"addr"`
 
 	Tls TlsConfig `yaml:"tls"`
 
 	// MaxRecvMsgSize is the largest message the server accepts, in bytes.
-	// Zero leaves gRpc's own limit, which is 4 MiB.
+	// Zero leaves gRPC's own limit, which is 4 MiB.
 	MaxRecvMsgSize int `yaml:"max_recv_msg_size"`
 	// MaxSendMsgSize is the largest message the server sends, in bytes. Zero
-	// leaves gRpc's own limit, which is no limit at all.
+	// leaves gRPC's own limit, which is no limit at all.
 	MaxSendMsgSize int `yaml:"max_send_msg_size"`
 
 	// MaxConcurrentStreams is how many calls one connection may have in flight
-	// at a time. Zero leaves gRpc's own limit.
+	// at a time. Zero leaves gRPC's own limit.
 	MaxConcurrentStreams uint32 `yaml:"max_concurrent_streams"`
 
 	// Timeout is how long a call that arrived without a deadline of its own is
@@ -83,10 +83,10 @@ type ServerConfig struct {
 }
 
 // HttpConfig is the second listener: what an app serves to something that
-// cannot speak gRpc.
+// cannot speak gRPC.
 //
-// It is a listener of its own and not the same port, because gRpc served
-// through `net/http` gives up the transport gRpc brings. Nothing is served at
+// It is a listener of its own and not the same port, because gRPC served
+// through `net/http` gives up the transport gRPC brings. Nothing is served at
 // all unless an address is written down.
 type HttpConfig struct {
 	// Addr is the address to listen on, e.g. ":8080". Nothing written down is
@@ -106,7 +106,7 @@ type HttpConfig struct {
 	Addr string `yaml:"addr"`
 
 	// AllowWeb translates the protocols a browser can speak -- Connect and
-	// gRpc-Web -- into the gRpc server, so a page reaches the same handlers,
+	// gRPC-Web -- into the gRPC server, so a page reaches the same handlers,
 	// the same interceptors and the same wall as anything else. See `web`.
 	//
 	// It is what a UI needs and it is not only for one: a Connect call is a
@@ -205,7 +205,7 @@ func (c ServerConfig) Limiter() grpcx.Limiter {
 }
 
 // KeepaliveConfig is when a connection is hung up on and when it is asked
-// whether it is still there. Every duration is left to gRpc if it is zero.
+// whether it is still there. Every duration is left to gRPC if it is zero.
 type KeepaliveConfig struct {
 	// MaxConnectionIdle closes a connection that has had no call for this
 	// long.

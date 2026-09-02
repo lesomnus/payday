@@ -12,72 +12,47 @@ import (
 
 // Id filters vertices based on their Id field.
 func Id(id uuid.UUID) predicate.Seal {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.SealOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Seal(sql.FieldEQ(FieldId, id))
 }
 
 // IdEQ applies the EQ predicate on the Id field.
 func IdEQ(id uuid.UUID) predicate.Seal {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.SealOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Seal(sql.FieldEQ(FieldId, id))
 }
 
 // IdNEQ applies the NEQ predicate on the Id field.
 func IdNEQ(id uuid.UUID) predicate.Seal {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.SealOrErr(sql.FieldNEQ(FieldId, vc), err)
+	return predicate.Seal(sql.FieldNEQ(FieldId, id))
 }
 
 // IdIn applies the In predicate on the Id field.
 func IdIn(ids ...uuid.UUID) predicate.Seal {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.SealOrErr(sql.FieldIn(FieldId, vcs...), err)
+	return predicate.Seal(sql.FieldIn(FieldId, ids...))
 }
 
 // IdNotIn applies the NotIn predicate on the Id field.
 func IdNotIn(ids ...uuid.UUID) predicate.Seal {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.SealOrErr(sql.FieldNotIn(FieldId, vcs...), err)
+	return predicate.Seal(sql.FieldNotIn(FieldId, ids...))
 }
 
 // IdGT applies the GT predicate on the Id field.
 func IdGT(id uuid.UUID) predicate.Seal {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.SealOrErr(sql.FieldGT(FieldId, vc), err)
+	return predicate.Seal(sql.FieldGT(FieldId, id))
 }
 
 // IdGTE applies the GTE predicate on the Id field.
 func IdGTE(id uuid.UUID) predicate.Seal {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.SealOrErr(sql.FieldGTE(FieldId, vc), err)
+	return predicate.Seal(sql.FieldGTE(FieldId, id))
 }
 
 // IdLT applies the LT predicate on the Id field.
 func IdLT(id uuid.UUID) predicate.Seal {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.SealOrErr(sql.FieldLT(FieldId, vc), err)
+	return predicate.Seal(sql.FieldLT(FieldId, id))
 }
 
 // IdLTE applies the LTE predicate on the Id field.
 func IdLTE(id uuid.UUID) predicate.Seal {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.SealOrErr(sql.FieldLTE(FieldId, vc), err)
+	return predicate.Seal(sql.FieldLTE(FieldId, id))
 }
 
 // Alias applies equality check predicate on the "alias" field. It's identical to AliasEQ.

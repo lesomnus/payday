@@ -40,7 +40,7 @@ func signIn(t *testing.T, s *authsession.Sessions, v authsession.Verify) *http.C
 }
 
 // carrying is a call that arrived with these cookies, the way one does: as
-// metadata, because a browser cannot speak gRpc and `web` translated it.
+// metadata, because a browser cannot speak gRPC and `web` translated it.
 func carrying(cs ...*http.Cookie) context.Context {
 	line := ""
 	for i, c := range cs {

@@ -96,20 +96,16 @@ func (*Robot) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case robot.FieldId:
-			values[i] = robot.ValueScanner.Id.ScanValue()
 		case robot.FieldSecret:
 			values[i] = new([]byte)
 		case robot.FieldAlias:
 			values[i] = new(sql.NullString)
 		case robot.FieldDateAttested, robot.FieldDateUpdated, robot.FieldDateCreated, robot.FieldDateErased:
 			values[i] = new(sql.NullTime)
-		case robot.FieldTenantId:
-			values[i] = robot.ValueScanner.TenantId.ScanValue()
-		case robot.FieldThingId:
-			values[i] = robot.ValueScanner.ThingId.ScanValue()
-		case robot.FieldCellId:
-			values[i] = robot.ValueScanner.CellId.ScanValue()
+		case robot.FieldThingId, robot.FieldCellId:
+			values[i] = new(sql.Null[uuid.UUID])
+		case robot.FieldId, robot.FieldTenantId:
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -126,10 +122,10 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case robot.FieldId:
-			if value, err := robot.ValueScanner.Id.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.Id = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value != nil {
+				_m.Id = *value
 			}
 		case robot.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -170,22 +166,22 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 				*_m.DateErased = value.Time
 			}
 		case robot.FieldTenantId:
-			if value, err := robot.ValueScanner.TenantId.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.TenantId = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value != nil {
+				_m.TenantId = *value
 			}
 		case robot.FieldThingId:
-			if value, err := robot.ValueScanner.ThingId.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.ThingId = value
+			if value, ok := values[i].(*sql.Null[uuid.UUID]); !ok {
+				return fmt.Errorf("unexpected type %T for field thing_id", values[i])
+			} else if value.Valid {
+				_m.ThingId = value.V
 			}
 		case robot.FieldCellId:
-			if value, err := robot.ValueScanner.CellId.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.CellId = value
+			if value, ok := values[i].(*sql.Null[uuid.UUID]); !ok {
+				return fmt.Errorf("unexpected type %T for field cell_id", values[i])
+			} else if value.Valid {
+				_m.CellId = value.V
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])

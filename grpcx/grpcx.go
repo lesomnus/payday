@@ -72,7 +72,7 @@ func Serving(ctx context.Context, opts ...Option) Chain {
 // Otel traces and measures the calls with the providers held by `ctx`, and
 // hands what `ctx` carries to every call.
 //
-// The second half is what makes the first half reachable. gRpc builds the
+// The second half is what makes the first half reachable. gRPC builds the
 // context of a call out of a background one, so without this a handler is
 // served with nothing of what the app was started with and everything it logs
 // or measures goes nowhere.
@@ -87,7 +87,7 @@ func Otel(ctx context.Context) grpc.ServerOption {
 
 // Seed puts something into the context of every call before anything else runs.
 //
-// It is a stats handler because that is the only place gRpc lets one do so, and
+// It is a stats handler because that is the only place gRPC lets one do so, and
 // the difference is not academic: an interceptor runs behind the handlers that
 // read the context as a call arrives and is answered -- the log among them --
 // so what an interceptor puts there is not something they ever see.

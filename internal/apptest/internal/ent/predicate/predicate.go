@@ -9,44 +9,11 @@ import (
 // Audit is the predicate function for audit builders.
 type Audit func(*sql.Selector)
 
-// AuditOrErr calls the predicate only if the error is not nit.
-func AuditOrErr(p Audit, err error) Audit {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
-
 // Cell is the predicate function for cell builders.
 type Cell func(*sql.Selector)
 
-// CellOrErr calls the predicate only if the error is not nit.
-func CellOrErr(p Cell, err error) Cell {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
-
 // Fleet is the predicate function for fleet builders.
 type Fleet func(*sql.Selector)
-
-// FleetOrErr calls the predicate only if the error is not nit.
-func FleetOrErr(p Fleet, err error) Fleet {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
 
 // Holder is the predicate function for holder builders.
 type Holder func(*sql.Selector)
@@ -65,111 +32,23 @@ func HolderOrErr(p Holder, err error) Holder {
 // Joint is the predicate function for joint builders.
 type Joint func(*sql.Selector)
 
-// JointOrErr calls the predicate only if the error is not nit.
-func JointOrErr(p Joint, err error) Joint {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
-
 // Outbox is the predicate function for outbox builders.
 type Outbox func(*sql.Selector)
-
-// OutboxOrErr calls the predicate only if the error is not nit.
-func OutboxOrErr(p Outbox, err error) Outbox {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
 
 // Pairing is the predicate function for pairing builders.
 type Pairing func(*sql.Selector)
 
-// PairingOrErr calls the predicate only if the error is not nit.
-func PairingOrErr(p Pairing, err error) Pairing {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
-
 // Reading is the predicate function for reading builders.
 type Reading func(*sql.Selector)
-
-// ReadingOrErr calls the predicate only if the error is not nit.
-func ReadingOrErr(p Reading, err error) Reading {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
 
 // Robot is the predicate function for robot builders.
 type Robot func(*sql.Selector)
 
-// RobotOrErr calls the predicate only if the error is not nit.
-func RobotOrErr(p Robot, err error) Robot {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
-
 // Seal is the predicate function for seal builders.
 type Seal func(*sql.Selector)
-
-// SealOrErr calls the predicate only if the error is not nit.
-func SealOrErr(p Seal, err error) Seal {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
 
 // Tenant is the predicate function for tenant builders.
 type Tenant func(*sql.Selector)
 
-// TenantOrErr calls the predicate only if the error is not nit.
-func TenantOrErr(p Tenant, err error) Tenant {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}
-
 // Thing is the predicate function for thing builders.
 type Thing func(*sql.Selector)
-
-// ThingOrErr calls the predicate only if the error is not nit.
-func ThingOrErr(p Thing, err error) Thing {
-	return func(s *sql.Selector) {
-		if err != nil {
-			s.AddError(err)
-			return
-		}
-		p(s)
-	}
-}

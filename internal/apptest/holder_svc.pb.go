@@ -2022,7 +2022,7 @@ type HolderWatchItem_builder struct {
 	// It is only ever said about a row this stream has already carried. One that
 	// never matched is not news.
 	Value *Holder
-	// The RPC that changed it, by the name gRpc knows it by. It is what the
+	// The RPC that changed it, by the name gRPC knows it by. It is what the
 	// caller of *that* RPC asked for and not the write it became, so an RPC
 	// written by hand is here under its own name.
 	//

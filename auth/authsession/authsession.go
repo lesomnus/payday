@@ -325,7 +325,7 @@ func New(store Store, opts ...Option) *Sessions {
 //
 //	auth.Seq(authsession.New(store).Handler(), auth.MTls())
 //
-// The cookie arrives as ordinary gRpc metadata. A browser cannot speak gRpc, so
+// The cookie arrives as ordinary gRPC metadata. A browser cannot speak gRPC, so
 // its call came through `web`'s transcoder, and headers travel across that as
 // metadata -- `cookie` among them.
 // KeyOf is the session a `cookie` header names, and empty for one that names
@@ -333,7 +333,7 @@ func New(store Store, opts ...Option) *Sessions {
 //
 // Exported because a sign-out has to read it and a sign-out is not necessarily
 // an HTTP handler: [Sessions.End] takes the key, and something has to get it
-// out of the metadata a gRpc handler was called with. [Sessions.Handler] does
+// out of the metadata a gRPC handler was called with. [Sessions.Handler] does
 // the same thing on the way in and now does it through here, so there is one
 // answer to "which cookie is ours" rather than two that agree today.
 //
@@ -496,7 +496,7 @@ var ErrNobody = errors.New("authsession: this session names nobody")
 // three lines and none of the request handling around them.
 //
 // It works over a transcoder, which is worth saying because it sounds as though
-// it should not: a gRpc handler sets `set-cookie` as response metadata and
+// it should not: a gRPC handler sets `set-cookie` as response metadata and
 // `web.Transcode` hands it to the browser as a header like any other. Confirmed
 // by running it.
 //

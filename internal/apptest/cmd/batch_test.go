@@ -50,7 +50,7 @@ func (b *built) batched(t *testing.T, g batch.Guard) pdpb.BatchServiceServer {
 //
 // The trail is asked with these rather than sliced off the end of it. Nothing
 // promises a query answers in the order rows went in -- SQLite happens to,
-// PostgreSql is free not to -- and the trail's own key is no order to fall back
+// PostgreSQL is free not to -- and the trail's own key is no order to fall back
 // on: an audit row's identifier is minted at random, unlike the identifiers it
 // holds.
 func wrote(x *require.Assertions, res *pdpb.BatchResponse) []uuid.UUID {
@@ -126,7 +126,7 @@ func TestOneOperationRefusingUndoesTheRest(t *testing.T) {
 // TestWhatIsClosedIsClosedInsideABatch is the first of the four holes.
 //
 // `Patch` and `Apply` are unreachable because an interceptor looks at the
-// method gRpc dispatched. A batch is one method carrying many, so without this
+// method gRPC dispatched. A batch is one method carrying many, so without this
 // the two are reachable by wrapping them -- which is not a gap to fix later, it
 // is the entire reason `Closed` exists, undone.
 func TestWhatIsClosedIsClosedInsideABatch(t *testing.T) {
@@ -498,8 +498,8 @@ func TestABatchIsOneEventOverTheWire(t *testing.T) {
 		t.Fatal("nothing was published")
 	}
 
-	// And the trail is the other way around. The recorder asks gRpc what the
-	// caller asked for, and over the wire gRpc has an answer -- the batch --
+	// And the trail is the other way around. The recorder asks gRPC what the
+	// caller asked for, and over the wire gRPC has an answer -- the batch --
 	// which is true of the envelope and false of every operation: the direct
 	// calls above cannot catch this, because without a transport the recorder
 	// falls back to the leg that wrote, which for an Add spells the same.

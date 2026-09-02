@@ -153,18 +153,10 @@ func (_u *OutboxUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 	}
 	if value, ok := _u.mutation.TenantId(); ok {
-		vv, err := outbox.ValueScanner.TenantId.Value(value)
-		if err != nil {
-			return 0, err
-		}
-		_spec.SetField(outbox.FieldTenantId, field.TypeUuid, vv)
+		_spec.SetField(outbox.FieldTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.ActorId(); ok {
-		vv, err := outbox.ValueScanner.ActorId.Value(value)
-		if err != nil {
-			return 0, err
-		}
-		_spec.SetField(outbox.FieldActorId, field.TypeUuid, vv)
+		_spec.SetField(outbox.FieldActorId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Method(); ok {
 		_spec.SetField(outbox.FieldMethod, field.TypeString, value)
@@ -173,11 +165,7 @@ func (_u *OutboxUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.SetField(outbox.FieldBy, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.ObjectId(); ok {
-		vv, err := outbox.ValueScanner.ObjectId.Value(value)
-		if err != nil {
-			return 0, err
-		}
-		_spec.SetField(outbox.FieldObjectId, field.TypeUuid, vv)
+		_spec.SetField(outbox.FieldObjectId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Patch(); ok {
 		_spec.SetField(outbox.FieldPatch, field.TypeBytes, value)
@@ -340,11 +328,7 @@ func (_u *OutboxUpdateOne) sqlSave(ctx context.Context) (_node *Outbox, err erro
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Outbox.id" for update`)}
 	}
-	vv, err := outbox.ValueScanner.Id.Value(id)
-	if err != nil {
-		return nil, err
-	}
-	_spec.Node.Id.Value = vv
+	_spec.Node.Id.Value = id
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, outbox.FieldId)
@@ -365,18 +349,10 @@ func (_u *OutboxUpdateOne) sqlSave(ctx context.Context) (_node *Outbox, err erro
 		}
 	}
 	if value, ok := _u.mutation.TenantId(); ok {
-		vv, err := outbox.ValueScanner.TenantId.Value(value)
-		if err != nil {
-			return nil, err
-		}
-		_spec.SetField(outbox.FieldTenantId, field.TypeUuid, vv)
+		_spec.SetField(outbox.FieldTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.ActorId(); ok {
-		vv, err := outbox.ValueScanner.ActorId.Value(value)
-		if err != nil {
-			return nil, err
-		}
-		_spec.SetField(outbox.FieldActorId, field.TypeUuid, vv)
+		_spec.SetField(outbox.FieldActorId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Method(); ok {
 		_spec.SetField(outbox.FieldMethod, field.TypeString, value)
@@ -385,11 +361,7 @@ func (_u *OutboxUpdateOne) sqlSave(ctx context.Context) (_node *Outbox, err erro
 		_spec.SetField(outbox.FieldBy, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.ObjectId(); ok {
-		vv, err := outbox.ValueScanner.ObjectId.Value(value)
-		if err != nil {
-			return nil, err
-		}
-		_spec.SetField(outbox.FieldObjectId, field.TypeUuid, vv)
+		_spec.SetField(outbox.FieldObjectId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Patch(); ok {
 		_spec.SetField(outbox.FieldPatch, field.TypeBytes, value)

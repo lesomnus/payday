@@ -68,7 +68,7 @@ func interceptRpcs(s *Schema, files []*protogen.File) []interceptRpc {
 	return vs
 }
 
-// EmitIntercept writes the layer that runs gRpc interceptors between two
+// EmitIntercept writes the layer that runs gRPC interceptors between two
 // layers of the stack.
 //
 // # Why it is generated rather than written
@@ -78,9 +78,9 @@ func interceptRpcs(s *Schema, files []*protogen.File) []interceptRpc {
 // every entity, and the RPC nobody wrapped is the one that is not intercepted.
 // It is the same reason the wall is generated: what is missing compiles.
 //
-// # What it sees, which is not what a gRpc interceptor sees
+// # What it sees, which is not what a gRPC interceptor sees
 //
-// A gRpc interceptor runs once per call that arrived on the wire. This one
+// A gRPC interceptor runs once per call that arrived on the wire. This one
 // runs once per call **that crosses this seam**, and layers call each other:
 // the gate reads a tenant through the wall before it lets an `Add` through,
 // and the recorder reads back the row it has just written. Both are ordinary
@@ -99,7 +99,7 @@ func EmitIntercept(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 		return
 	}
 
-	g.P("// Intercept is the layer that runs gRpc interceptors between two layers.")
+	g.P("// Intercept is the layer that runs gRPC interceptors between two layers.")
 	g.P("//")
 	g.P("// They are `grpc.UnaryServerInterceptor` and `grpc.StreamServerInterceptor`,")
 	g.P("// the same values a deployment hands `grpc.NewServer`, so one written for")
@@ -116,7 +116,7 @@ func EmitIntercept(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 	g.P("// is stacked is what decides whether it sees what the caller asked for or")
 	g.P("// what the app did about it.")
 	g.P("//")
-	g.P("// `info.Server` is the next server rather than the one gRpc registered,")
+	g.P("// `info.Server` is the next server rather than the one gRPC registered,")
 	g.P("// because that is what this call is actually being made on. `FullMethod`")
 	g.P("// is the same constant the wire uses.")
 	g.P("type Intercept struct {")

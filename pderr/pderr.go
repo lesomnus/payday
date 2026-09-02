@@ -9,7 +9,7 @@
 // except by parsing it, which means the message becomes a wire format nobody
 // declared and every rewording of it breaks a page. So the field path travels
 // beside the message rather than inside it, in the `google.rpc.BadRequest` that
-// is already in the dependency tree and already understood by every gRpc
+// is already in the dependency tree and already understood by every gRPC
 // tool -- [Violation] here, `errdetails.BadRequest_FieldViolation` on the wire.
 //
 // # The message is for whoever is reading the code

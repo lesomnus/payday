@@ -12,12 +12,12 @@ import (
 // `grpc.NewServer` wants and nothing else does, and payday has two other
 // callers for the same chain:
 //
-//   - **A server that is not gRpc's.** A page runs the whole app compiled to
+//   - **A server that is not gRPC's.** A page runs the whole app compiled to
 //     wasm and speaks a datagram protocol to the browser rather than HTTP/2.
 //     That server takes the same `grpc.UnaryServerInterceptor` and the same
 //     `stats.Handler` -- it is only the option wrapper that differs.
 //   - **A batch of calls inside one call.** Whatever refuses a method, counts
-//     it, or decides what its caller may see is keyed on the method gRpc
+//     it, or decides what its caller may see is keyed on the method gRPC
 //     dispatched, and a batch arrives as one method carrying many. Applying
 //     those per operation means calling them as functions, which is only
 //     possible if they are functions.

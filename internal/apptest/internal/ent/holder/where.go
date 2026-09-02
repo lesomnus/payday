@@ -13,72 +13,47 @@ import (
 
 // Id filters vertices based on their Id field.
 func Id(id uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.HolderOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Holder(sql.FieldEQ(FieldId, id))
 }
 
 // IdEQ applies the EQ predicate on the Id field.
 func IdEQ(id uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.HolderOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Holder(sql.FieldEQ(FieldId, id))
 }
 
 // IdNEQ applies the NEQ predicate on the Id field.
 func IdNEQ(id uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.HolderOrErr(sql.FieldNEQ(FieldId, vc), err)
+	return predicate.Holder(sql.FieldNEQ(FieldId, id))
 }
 
 // IdIn applies the In predicate on the Id field.
 func IdIn(ids ...uuid.UUID) predicate.Holder {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.HolderOrErr(sql.FieldIn(FieldId, vcs...), err)
+	return predicate.Holder(sql.FieldIn(FieldId, ids...))
 }
 
 // IdNotIn applies the NotIn predicate on the Id field.
 func IdNotIn(ids ...uuid.UUID) predicate.Holder {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.HolderOrErr(sql.FieldNotIn(FieldId, vcs...), err)
+	return predicate.Holder(sql.FieldNotIn(FieldId, ids...))
 }
 
 // IdGT applies the GT predicate on the Id field.
 func IdGT(id uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.HolderOrErr(sql.FieldGT(FieldId, vc), err)
+	return predicate.Holder(sql.FieldGT(FieldId, id))
 }
 
 // IdGTE applies the GTE predicate on the Id field.
 func IdGTE(id uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.HolderOrErr(sql.FieldGTE(FieldId, vc), err)
+	return predicate.Holder(sql.FieldGTE(FieldId, id))
 }
 
 // IdLT applies the LT predicate on the Id field.
 func IdLT(id uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.HolderOrErr(sql.FieldLT(FieldId, vc), err)
+	return predicate.Holder(sql.FieldLT(FieldId, id))
 }
 
 // IdLTE applies the LTE predicate on the Id field.
 func IdLTE(id uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.HolderOrErr(sql.FieldLTE(FieldId, vc), err)
+	return predicate.Holder(sql.FieldLTE(FieldId, id))
 }
 
 // Alias applies equality check predicate on the "alias" field. It's identical to AliasEQ.
@@ -118,8 +93,7 @@ func IdpSubject(v string) predicate.Holder {
 
 // TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
 func TenantId(v uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.HolderOrErr(sql.FieldEQ(FieldTenantId, vc), err)
+	return predicate.Holder(sql.FieldEQ(FieldTenantId, v))
 }
 
 // AliasEQ applies the EQ predicate on the "alias" field.
@@ -544,42 +518,22 @@ func ProfileNotNil() predicate.Holder {
 
 // TenantIdEQ applies the EQ predicate on the "tenant_id" field.
 func TenantIdEQ(v uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.HolderOrErr(sql.FieldEQ(FieldTenantId, vc), err)
+	return predicate.Holder(sql.FieldEQ(FieldTenantId, v))
 }
 
 // TenantIdNEQ applies the NEQ predicate on the "tenant_id" field.
 func TenantIdNEQ(v uuid.UUID) predicate.Holder {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.HolderOrErr(sql.FieldNEQ(FieldTenantId, vc), err)
+	return predicate.Holder(sql.FieldNEQ(FieldTenantId, v))
 }
 
 // TenantIdIn applies the In predicate on the "tenant_id" field.
 func TenantIdIn(vs ...uuid.UUID) predicate.Holder {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.HolderOrErr(sql.FieldIn(FieldTenantId, v...), err)
+	return predicate.Holder(sql.FieldIn(FieldTenantId, vs...))
 }
 
 // TenantIdNotIn applies the NotIn predicate on the "tenant_id" field.
 func TenantIdNotIn(vs ...uuid.UUID) predicate.Holder {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.HolderOrErr(sql.FieldNotIn(FieldTenantId, v...), err)
+	return predicate.Holder(sql.FieldNotIn(FieldTenantId, vs...))
 }
 
 // HasTenant applies the HasEdge predicate on the "tenant" edge.

@@ -29,7 +29,7 @@ func TestDrivers(t *testing.T) {
 		x := require.New(t)
 
 		// Which is a real answer rather than a mistake: an app that runs on
-		// PostgreSql only has nothing that speaks MySql, and the command that
+		// PostgreSQL only has nothing that speaks MySql, and the command that
 		// asked can say so.
 		_, ok := config.DriverFor("nonesuch")
 		x.False(ok)

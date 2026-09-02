@@ -69,14 +69,10 @@ func (*Pairing) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case pairing.FieldId:
-			values[i] = pairing.ValueScanner.Id.ScanValue()
 		case pairing.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case pairing.FieldLeadId:
-			values[i] = pairing.ValueScanner.LeadId.ScanValue()
-		case pairing.FieldFollowId:
-			values[i] = pairing.ValueScanner.FollowId.ScanValue()
+		case pairing.FieldId, pairing.FieldLeadId, pairing.FieldFollowId:
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -93,10 +89,10 @@ func (_m *Pairing) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case pairing.FieldId:
-			if value, err := pairing.ValueScanner.Id.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.Id = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value != nil {
+				_m.Id = *value
 			}
 		case pairing.FieldDateCreated:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -105,16 +101,16 @@ func (_m *Pairing) assignValues(columns []string, values []any) error {
 				_m.DateCreated = value.Time
 			}
 		case pairing.FieldLeadId:
-			if value, err := pairing.ValueScanner.LeadId.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.LeadId = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field lead_id", values[i])
+			} else if value != nil {
+				_m.LeadId = *value
 			}
 		case pairing.FieldFollowId:
-			if value, err := pairing.ValueScanner.FollowId.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.FollowId = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field follow_id", values[i])
+			} else if value != nil {
+				_m.FollowId = *value
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])

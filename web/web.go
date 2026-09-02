@@ -1,28 +1,28 @@
 // Package web is the app on a port a browser can reach.
 //
-// gRpc is not a protocol a browser speaks. There is no way to write the frames
+// gRPC is not a protocol a browser speaks. There is no way to write the frames
 // from a page -- not a library that is missing, a thing the platform does not
 // expose -- so a UI in front of a payday app needs something in between, and
-// this is it: the **same** gRpc server, the same interceptors, the same wall,
-// answering Connect and gRpc-Web as well.
+// this is it: the **same** gRPC server, the same interceptors, the same wall,
+// answering Connect and gRPC-Web as well.
 //
 // It is a translation and not a second implementation of anything. A call
 // arrives as JSON over POST, is re-encoded as protobuf, and is handed to the
-// handler that a gRpc client would have reached; what comes back goes the other
+// handler that a gRPC client would have reached; what comes back goes the other
 // way. So a screen and a `grpcurl` are talking to one server, and there is no
 // second door for a rule to be missing from.
 //
 // # A second listener, and why
 //
-// gRpc is HTTP/2 and a browser will not speak cleartext HTTP/2, so this is its
+// gRPC is HTTP/2 and a browser will not speak cleartext HTTP/2, so this is its
 // own address rather than the same one. [config.HttpConfig] is where it is
 // said, and nothing is served at all unless an address is written down: an app
 // with no UI has no reason to open a port.
 //
-// **Under TLS this listener carries native gRpc as well**, and that is worth
+// **Under TLS this listener carries native gRPC as well**, and that is worth
 // knowing rather than guessing at: HTTP/2 arrives by ALPN, the transcoder takes
-// gRpc as an incoming protocol like any other, and a `grpcurl` reaches it. So
-// the two listeners are a decision about the transport gRpc brings -- Go's
+// gRPC as an incoming protocol like any other, and a `grpcurl` reaches it. So
+// the two listeners are a decision about the transport gRPC brings -- Go's
 // HTTP/2 server is not grpc-go's, and grpc-go says so about its own
 // `ServeHTTP` -- and not about what is reachable where.
 //
@@ -108,13 +108,13 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) { m.h.ServeHTTP(
 // Transcode is every service registered on `s`, answering the protocols a
 // browser can speak.
 //
-// The two options are the whole of what makes this work against a gRpc server
+// The two options are the whole of what makes this work against a gRPC server
 // rather than a Connect one, and each of them fails in its own way when it is
 // left out:
 //
-//   - the target protocol is gRpc, because that is the only one grpc-go knows.
+//   - the target protocol is gRPC, because that is the only one grpc-go knows.
 //     Without it the transcoder hands a Connect request to a handler that reads
-//     it as gRpc, and the frames do not line up.
+//     it as gRPC, and the frames do not line up.
 //   - the target codec is protobuf, for the same reason. Without it a JSON body
 //     is passed through to a handler that unmarshals it as protobuf, and the
 //     error says the wire format is invalid -- which is true, and says nothing

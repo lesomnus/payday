@@ -39,14 +39,14 @@ func (*Tenant) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case tenant.FieldId:
-			values[i] = tenant.ValueScanner.Id.ScanValue()
 		case tenant.FieldLabels:
 			values[i] = new([]byte)
 		case tenant.FieldAlias, tenant.FieldName, tenant.FieldDesc:
 			values[i] = new(sql.NullString)
 		case tenant.FieldDateUpdated, tenant.FieldDateCreated:
 			values[i] = new(sql.NullTime)
+		case tenant.FieldId:
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -63,10 +63,10 @@ func (_m *Tenant) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case tenant.FieldId:
-			if value, err := tenant.ValueScanner.Id.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.Id = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value != nil {
+				_m.Id = *value
 			}
 		case tenant.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {

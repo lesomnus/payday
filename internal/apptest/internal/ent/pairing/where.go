@@ -13,72 +13,47 @@ import (
 
 // Id filters vertices based on their Id field.
 func Id(id uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.PairingOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Pairing(sql.FieldEQ(FieldId, id))
 }
 
 // IdEQ applies the EQ predicate on the Id field.
 func IdEQ(id uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.PairingOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Pairing(sql.FieldEQ(FieldId, id))
 }
 
 // IdNEQ applies the NEQ predicate on the Id field.
 func IdNEQ(id uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.PairingOrErr(sql.FieldNEQ(FieldId, vc), err)
+	return predicate.Pairing(sql.FieldNEQ(FieldId, id))
 }
 
 // IdIn applies the In predicate on the Id field.
 func IdIn(ids ...uuid.UUID) predicate.Pairing {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.PairingOrErr(sql.FieldIn(FieldId, vcs...), err)
+	return predicate.Pairing(sql.FieldIn(FieldId, ids...))
 }
 
 // IdNotIn applies the NotIn predicate on the Id field.
 func IdNotIn(ids ...uuid.UUID) predicate.Pairing {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.PairingOrErr(sql.FieldNotIn(FieldId, vcs...), err)
+	return predicate.Pairing(sql.FieldNotIn(FieldId, ids...))
 }
 
 // IdGT applies the GT predicate on the Id field.
 func IdGT(id uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.PairingOrErr(sql.FieldGT(FieldId, vc), err)
+	return predicate.Pairing(sql.FieldGT(FieldId, id))
 }
 
 // IdGTE applies the GTE predicate on the Id field.
 func IdGTE(id uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.PairingOrErr(sql.FieldGTE(FieldId, vc), err)
+	return predicate.Pairing(sql.FieldGTE(FieldId, id))
 }
 
 // IdLT applies the LT predicate on the Id field.
 func IdLT(id uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.PairingOrErr(sql.FieldLT(FieldId, vc), err)
+	return predicate.Pairing(sql.FieldLT(FieldId, id))
 }
 
 // IdLTE applies the LTE predicate on the Id field.
 func IdLTE(id uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.PairingOrErr(sql.FieldLTE(FieldId, vc), err)
+	return predicate.Pairing(sql.FieldLTE(FieldId, id))
 }
 
 // DateCreated applies equality check predicate on the "date_created" field. It's identical to DateCreatedEQ.
@@ -88,14 +63,12 @@ func DateCreated(v time.Time) predicate.Pairing {
 
 // LeadId applies equality check predicate on the "lead_id" field. It's identical to LeadIdEQ.
 func LeadId(v uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.LeadId.Value(v)
-	return predicate.PairingOrErr(sql.FieldEQ(FieldLeadId, vc), err)
+	return predicate.Pairing(sql.FieldEQ(FieldLeadId, v))
 }
 
 // FollowId applies equality check predicate on the "follow_id" field. It's identical to FollowIdEQ.
 func FollowId(v uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.FollowId.Value(v)
-	return predicate.PairingOrErr(sql.FieldEQ(FieldFollowId, vc), err)
+	return predicate.Pairing(sql.FieldEQ(FieldFollowId, v))
 }
 
 // DateCreatedEQ applies the EQ predicate on the "date_created" field.
@@ -150,82 +123,42 @@ func DateCreatedNotNil() predicate.Pairing {
 
 // LeadIdEQ applies the EQ predicate on the "lead_id" field.
 func LeadIdEQ(v uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.LeadId.Value(v)
-	return predicate.PairingOrErr(sql.FieldEQ(FieldLeadId, vc), err)
+	return predicate.Pairing(sql.FieldEQ(FieldLeadId, v))
 }
 
 // LeadIdNEQ applies the NEQ predicate on the "lead_id" field.
 func LeadIdNEQ(v uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.LeadId.Value(v)
-	return predicate.PairingOrErr(sql.FieldNEQ(FieldLeadId, vc), err)
+	return predicate.Pairing(sql.FieldNEQ(FieldLeadId, v))
 }
 
 // LeadIdIn applies the In predicate on the "lead_id" field.
 func LeadIdIn(vs ...uuid.UUID) predicate.Pairing {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.LeadId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.PairingOrErr(sql.FieldIn(FieldLeadId, v...), err)
+	return predicate.Pairing(sql.FieldIn(FieldLeadId, vs...))
 }
 
 // LeadIdNotIn applies the NotIn predicate on the "lead_id" field.
 func LeadIdNotIn(vs ...uuid.UUID) predicate.Pairing {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.LeadId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.PairingOrErr(sql.FieldNotIn(FieldLeadId, v...), err)
+	return predicate.Pairing(sql.FieldNotIn(FieldLeadId, vs...))
 }
 
 // FollowIdEQ applies the EQ predicate on the "follow_id" field.
 func FollowIdEQ(v uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.FollowId.Value(v)
-	return predicate.PairingOrErr(sql.FieldEQ(FieldFollowId, vc), err)
+	return predicate.Pairing(sql.FieldEQ(FieldFollowId, v))
 }
 
 // FollowIdNEQ applies the NEQ predicate on the "follow_id" field.
 func FollowIdNEQ(v uuid.UUID) predicate.Pairing {
-	vc, err := ValueScanner.FollowId.Value(v)
-	return predicate.PairingOrErr(sql.FieldNEQ(FieldFollowId, vc), err)
+	return predicate.Pairing(sql.FieldNEQ(FieldFollowId, v))
 }
 
 // FollowIdIn applies the In predicate on the "follow_id" field.
 func FollowIdIn(vs ...uuid.UUID) predicate.Pairing {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.FollowId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.PairingOrErr(sql.FieldIn(FieldFollowId, v...), err)
+	return predicate.Pairing(sql.FieldIn(FieldFollowId, vs...))
 }
 
 // FollowIdNotIn applies the NotIn predicate on the "follow_id" field.
 func FollowIdNotIn(vs ...uuid.UUID) predicate.Pairing {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.FollowId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.PairingOrErr(sql.FieldNotIn(FieldFollowId, v...), err)
+	return predicate.Pairing(sql.FieldNotIn(FieldFollowId, vs...))
 }
 
 // HasLead applies the HasEdge predicate on the "lead" edge.

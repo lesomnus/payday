@@ -62,7 +62,7 @@ func (c TlsConfig) Active() bool {
 // everything else is the handshake this block described.
 //
 // It is separate from [TlsConfig.Credentials] because not every listener an app
-// opens is a gRpc one. A payday app that serves HTTP as well -- a transcoder, a
+// opens is a gRPC one. A payday app that serves HTTP as well -- a transcoder, a
 // sign-in, a port robots present certificates to -- would otherwise build the
 // same mutual-TLS setup a second time by hand, and the second one is where the
 // client CA is forgotten.
@@ -105,7 +105,7 @@ func (c TlsConfig) Server() (*tls.Config, error) {
 	return cfg, nil
 }
 
-// Credentials builds gRpc transport credentials from the Tls configuration.
+// Credentials builds gRPC transport credentials from the Tls configuration.
 // It returns insecure credentials when TLS is not configured, so the caller
 // can pass the result to grpc.Creds unconditionally.
 func (c TlsConfig) Credentials() (credentials.TransportCredentials, error) {

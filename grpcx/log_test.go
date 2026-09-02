@@ -24,7 +24,7 @@ const echoMethod = "/grpcx.test.Echo/Echo"
 var echo = grpc.ServiceDesc{
 	ServiceName: "grpcx.test.Echo",
 	// Anything implements it, and nothing is registered as the implementation
-	// anyway -- gRpc only checks this against a non-nil one.
+	// anyway -- gRPC only checks this against a non-nil one.
 	HandlerType: (*any)(nil),
 	Methods: []grpc.MethodDesc{{
 		MethodName: "Echo",

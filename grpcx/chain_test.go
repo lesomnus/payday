@@ -45,7 +45,7 @@ func TestChain(t *testing.T) {
 			WithUnary(mark("second")).
 			WithUnary(mark("third"))
 
-		// The chain is run by gRpc, so it is assembled here the way gRpc does.
+		// The chain is run by gRPC, so it is assembled here the way gRPC does.
 		var run grpc.UnaryHandler = func(context.Context, any) (any, error) { return nil, nil }
 		for i := len(c.Unary) - 1; i >= 0; i-- {
 			next, at := run, c.Unary[i]
@@ -70,7 +70,7 @@ func TestChain(t *testing.T) {
 		x.Len(b.Unary, 2)
 	})
 
-	t.Run("becomes the options a gRpc server takes", func(t *testing.T) {
+	t.Run("becomes the options a gRPC server takes", func(t *testing.T) {
 		x := require.New(t)
 
 		c := grpcx.Chain{

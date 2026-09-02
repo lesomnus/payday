@@ -16,7 +16,7 @@
 //
 // # The hard part, which is this package
 //
-// payday enforces four things by looking at the method gRpc dispatched. A batch
+// payday enforces four things by looking at the method gRPC dispatched. A batch
 // arrives as **one** method carrying many, so every one of them is enforced
 // against `BatchService/Do` and none against what is actually being asked for:
 //
@@ -171,11 +171,11 @@ func (g Guard) Check(n int) error {
 }
 
 // AsOp answers with the context an operation is dispatched with: one in which
-// gRpc's own question -- what method is being served? -- answers with the
+// gRPC's own question -- what method is being served? -- answers with the
 // operation's method rather than the batch's.
 //
 // It exists for the trail. The recorder below the write sites fills in what
-// the caller asked for by asking gRpc, because the sites cannot know it: one
+// the caller asked for by asking gRPC, because the sites cannot know it: one
 // call writes through several servers, and only the transport knows which
 // name it all happened under. Inside the batch handler the transport's answer
 // is `BatchService/Do` -- true of the wire and false of every operation, so
@@ -194,7 +194,7 @@ func AsOp(ctx context.Context, method string) context.Context {
 // operation's method. That answer is the whole reason it exists; everything
 // else it is asked, it hands to the stream the batch itself arrived on.
 //
-// Everything it is *asked*, which is not everything gRpc offers. Two of its
+// Everything it is *asked*, which is not everything gRPC offers. Two of its
 // helpers -- `grpc.SetSendCompressor` and `grpc.ClientSupportedCompressors` --
 // reach past the interface for the concrete `*transport.ServerStream`, and no
 // wrapper satisfies a type assertion: inside an operation the two answer
@@ -215,7 +215,7 @@ func AsOp(ctx context.Context, method string) context.Context {
 // `outer` is nil for a handler called without a transport, which is what a
 // test calling `Do` directly is. A header then has nowhere to go, and the
 // delegating methods answer an error rather than dropping it -- the same
-// answer gRpc gives for a handler called this way without this type in the
+// answer gRPC gives for a handler called this way without this type in the
 // middle.
 type opStream struct {
 	outer  grpc.ServerTransportStream

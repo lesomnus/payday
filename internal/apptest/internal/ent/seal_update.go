@@ -250,11 +250,7 @@ func (_u *SealUpdateOne) sqlSave(ctx context.Context) (_node *Seal, err error) {
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Seal.id" for update`)}
 	}
-	vv, err := seal.ValueScanner.Id.Value(id)
-	if err != nil {
-		return nil, err
-	}
-	_spec.Node.Id.Value = vv
+	_spec.Node.Id.Value = id
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, seal.FieldId)

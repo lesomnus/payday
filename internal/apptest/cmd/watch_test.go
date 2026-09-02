@@ -124,7 +124,7 @@ func TestWatchSendsStateAndNotADelta(t *testing.T) {
 	x.Equal("renamed", res.GetItems()[0].GetValue().GetAlias())
 	x.Equal(b.Tenant.Bytes(), res.GetItems()[0].GetValue().GetTenant().GetId())
 
-	// And what the caller of that RPC asked for, by the name gRpc knows it by.
+	// And what the caller of that RPC asked for, by the name gRPC knows it by.
 	x.Equal(app.RobotService_Patch_FullMethodName, res.GetItems()[0].GetAction())
 }
 

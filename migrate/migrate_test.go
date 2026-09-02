@@ -19,7 +19,7 @@ import (
 )
 
 // open returns an empty SQLite database that lives in memory. The migrations an
-// app ships are likely PostgreSql, but the machinery is the same, and this is
+// app ships are likely PostgreSQL, but the machinery is the same, and this is
 // the one database a test can have all to itself.
 func open(t *testing.T) *sql.DB {
 	t.Helper()
@@ -233,7 +233,7 @@ func TestDialect(t *testing.T) {
 	dir, err := migrate.OpenDir(t.TempDir())
 	require.NoError(t, err)
 
-	// The files here say they are PostgreSql; the database below speaks SQLite.
+	// The files here say they are PostgreSQL; the database below speaks SQLite.
 	m := migrate.Migrations{
 		Dir:     dir,
 		Dialect: dialect.Postgres,

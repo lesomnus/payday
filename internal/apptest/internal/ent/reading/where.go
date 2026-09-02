@@ -13,78 +13,52 @@ import (
 
 // Id filters vertices based on their Id field.
 func Id(id uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.ReadingOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Reading(sql.FieldEQ(FieldId, id))
 }
 
 // IdEQ applies the EQ predicate on the Id field.
 func IdEQ(id uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.ReadingOrErr(sql.FieldEQ(FieldId, vc), err)
+	return predicate.Reading(sql.FieldEQ(FieldId, id))
 }
 
 // IdNEQ applies the NEQ predicate on the Id field.
 func IdNEQ(id uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.ReadingOrErr(sql.FieldNEQ(FieldId, vc), err)
+	return predicate.Reading(sql.FieldNEQ(FieldId, id))
 }
 
 // IdIn applies the In predicate on the Id field.
 func IdIn(ids ...uuid.UUID) predicate.Reading {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.ReadingOrErr(sql.FieldIn(FieldId, vcs...), err)
+	return predicate.Reading(sql.FieldIn(FieldId, ids...))
 }
 
 // IdNotIn applies the NotIn predicate on the Id field.
 func IdNotIn(ids ...uuid.UUID) predicate.Reading {
-	var (
-		err error
-		vcs = make([]any, len(ids))
-	)
-	for i := range vcs {
-		if vcs[i], err = ValueScanner.Id.Value(ids[i]); err != nil {
-			break
-		}
-	}
-	return predicate.ReadingOrErr(sql.FieldNotIn(FieldId, vcs...), err)
+	return predicate.Reading(sql.FieldNotIn(FieldId, ids...))
 }
 
 // IdGT applies the GT predicate on the Id field.
 func IdGT(id uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.ReadingOrErr(sql.FieldGT(FieldId, vc), err)
+	return predicate.Reading(sql.FieldGT(FieldId, id))
 }
 
 // IdGTE applies the GTE predicate on the Id field.
 func IdGTE(id uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.ReadingOrErr(sql.FieldGTE(FieldId, vc), err)
+	return predicate.Reading(sql.FieldGTE(FieldId, id))
 }
 
 // IdLT applies the LT predicate on the Id field.
 func IdLT(id uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.ReadingOrErr(sql.FieldLT(FieldId, vc), err)
+	return predicate.Reading(sql.FieldLT(FieldId, id))
 }
 
 // IdLTE applies the LTE predicate on the Id field.
 func IdLTE(id uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.Id.Value(id)
-	return predicate.ReadingOrErr(sql.FieldLTE(FieldId, vc), err)
+	return predicate.Reading(sql.FieldLTE(FieldId, id))
 }
 
 // TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
 func TenantId(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldEQ(FieldTenantId, vc), err)
+	return predicate.Reading(sql.FieldEQ(FieldTenantId, v))
 }
 
 // Celsius applies equality check predicate on the "celsius" field. It's identical to CelsiusEQ.
@@ -99,72 +73,47 @@ func DateCreated(v time.Time) predicate.Reading {
 
 // RobotId applies equality check predicate on the "robot_id" field. It's identical to RobotIdEQ.
 func RobotId(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.RobotId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldEQ(FieldRobotId, vc), err)
+	return predicate.Reading(sql.FieldEQ(FieldRobotId, v))
 }
 
 // TenantIdEQ applies the EQ predicate on the "tenant_id" field.
 func TenantIdEQ(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldEQ(FieldTenantId, vc), err)
+	return predicate.Reading(sql.FieldEQ(FieldTenantId, v))
 }
 
 // TenantIdNEQ applies the NEQ predicate on the "tenant_id" field.
 func TenantIdNEQ(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldNEQ(FieldTenantId, vc), err)
+	return predicate.Reading(sql.FieldNEQ(FieldTenantId, v))
 }
 
 // TenantIdIn applies the In predicate on the "tenant_id" field.
 func TenantIdIn(vs ...uuid.UUID) predicate.Reading {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.ReadingOrErr(sql.FieldIn(FieldTenantId, v...), err)
+	return predicate.Reading(sql.FieldIn(FieldTenantId, vs...))
 }
 
 // TenantIdNotIn applies the NotIn predicate on the "tenant_id" field.
 func TenantIdNotIn(vs ...uuid.UUID) predicate.Reading {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.TenantId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.ReadingOrErr(sql.FieldNotIn(FieldTenantId, v...), err)
+	return predicate.Reading(sql.FieldNotIn(FieldTenantId, vs...))
 }
 
 // TenantIdGT applies the GT predicate on the "tenant_id" field.
 func TenantIdGT(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldGT(FieldTenantId, vc), err)
+	return predicate.Reading(sql.FieldGT(FieldTenantId, v))
 }
 
 // TenantIdGTE applies the GTE predicate on the "tenant_id" field.
 func TenantIdGTE(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldGTE(FieldTenantId, vc), err)
+	return predicate.Reading(sql.FieldGTE(FieldTenantId, v))
 }
 
 // TenantIdLT applies the LT predicate on the "tenant_id" field.
 func TenantIdLT(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldLT(FieldTenantId, vc), err)
+	return predicate.Reading(sql.FieldLT(FieldTenantId, v))
 }
 
 // TenantIdLTE applies the LTE predicate on the "tenant_id" field.
 func TenantIdLTE(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.TenantId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldLTE(FieldTenantId, vc), err)
+	return predicate.Reading(sql.FieldLTE(FieldTenantId, v))
 }
 
 // CelsiusEQ applies the EQ predicate on the "celsius" field.
@@ -259,42 +208,22 @@ func DateCreatedNotNil() predicate.Reading {
 
 // RobotIdEQ applies the EQ predicate on the "robot_id" field.
 func RobotIdEQ(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.RobotId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldEQ(FieldRobotId, vc), err)
+	return predicate.Reading(sql.FieldEQ(FieldRobotId, v))
 }
 
 // RobotIdNEQ applies the NEQ predicate on the "robot_id" field.
 func RobotIdNEQ(v uuid.UUID) predicate.Reading {
-	vc, err := ValueScanner.RobotId.Value(v)
-	return predicate.ReadingOrErr(sql.FieldNEQ(FieldRobotId, vc), err)
+	return predicate.Reading(sql.FieldNEQ(FieldRobotId, v))
 }
 
 // RobotIdIn applies the In predicate on the "robot_id" field.
 func RobotIdIn(vs ...uuid.UUID) predicate.Reading {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.RobotId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.ReadingOrErr(sql.FieldIn(FieldRobotId, v...), err)
+	return predicate.Reading(sql.FieldIn(FieldRobotId, vs...))
 }
 
 // RobotIdNotIn applies the NotIn predicate on the "robot_id" field.
 func RobotIdNotIn(vs ...uuid.UUID) predicate.Reading {
-	var (
-		err error
-		v   = make([]any, len(vs))
-	)
-	for i := range v {
-		if v[i], err = ValueScanner.RobotId.Value(vs[i]); err != nil {
-			break
-		}
-	}
-	return predicate.ReadingOrErr(sql.FieldNotIn(FieldRobotId, v...), err)
+	return predicate.Reading(sql.FieldNotIn(FieldRobotId, vs...))
 }
 
 // HasRobot applies the HasEdge predicate on the "robot" edge.

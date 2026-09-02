@@ -404,7 +404,7 @@ type Grant_builder struct {
 	// `any_set`.
 	AnySet bool
 	Sets   [][]byte
-	// The methods, by the name gRpc knows them by: "/app.RobotService/Get".
+	// The methods, by the name gRPC knows them by: "/app.RobotService/Get".
 	//
 	// Opaque to whoever stores them. They are the **calling** app's method names,
 	// which the identity store has no way to check and should not try to -- it

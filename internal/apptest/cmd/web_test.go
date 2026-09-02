@@ -27,11 +27,11 @@ import (
 // The browser half, checked the way the TypeScript half is: against the server
 // rather than against a description of it.
 //
-// A page cannot speak gRpc -- it is not a missing library, it is frames the
+// A page cannot speak gRPC -- it is not a missing library, it is frames the
 // platform does not let anything write -- so a UI in front of a payday app
 // reaches `web`, which answers the protocols a browser does speak and hands the
 // call to the same handlers. What is worth checking is that "the same" is true:
-// the wall, the credential and the errors are the ones a gRpc client gets.
+// the wall, the credential and the errors are the ones a gRPC client gets.
 
 // serving is the app on an Http handler, the way a deployment with an address
 // in `server.http` serves it.
@@ -86,7 +86,7 @@ func call(t *testing.T, srv *httptest.Server, method string, body string, as str
 // TestAPageReachesTheSameServer, which is the whole claim.
 //
 // It is not a second implementation of anything: the request is re-encoded as
-// protobuf and handed to the handler a gRpc client would have reached, so it
+// protobuf and handed to the handler a gRPC client would have reached, so it
 // goes through the same interceptors, the same credential handling and the same
 // wall.
 func TestAPageReachesTheSameServer(t *testing.T) {
@@ -162,8 +162,8 @@ func TestAPageIsBehindTheSameWall(t *testing.T) {
 // TestBothWiresABrowserCanSpeak.
 //
 // Connect is the one worth reaching for -- a POST with a JSON body, which a
-// `curl` reproduces exactly -- and gRpc-Web is served as well, because it is
-// what infrastructure that only understands gRpc framing wants and because
+// `curl` reproduces exactly -- and gRPC-Web is served as well, because it is
+// what infrastructure that only understands gRPC framing wants and because
 // somebody's client library will speak it.
 //
 // The frame is written out here rather than left to a library: one byte of
@@ -189,7 +189,7 @@ func TestBothWiresABrowserCanSpeak(t *testing.T) {
 	x.Equal(http.StatusOK, code, body)
 	x.Contains(body, "arm-01")
 
-	// And gRpc-Web, in protobuf.
+	// And gRPC-Web, in protobuf.
 	msg, err := proto.Marshal(app.RobotListRequest_builder{
 		Filters: []*app.RobotFilter{
 			app.RobotFilter_builder{
@@ -233,7 +233,7 @@ func TestBothWiresABrowserCanSpeak(t *testing.T) {
 
 // TestAPageIsToldWhatIsWrongInItsOwnTerms.
 //
-// A gRpc status is a Connect error with the same code in it, so the client
+// A gRPC status is a Connect error with the same code in it, so the client
 // library a page uses reads the same `NotFound` that a Go client reads. Nothing
 // here translates errors: they are the handler's, carried over.
 func TestAPageIsToldWhatIsWrongInItsOwnTerms(t *testing.T) {
@@ -347,10 +347,10 @@ func TestAnAddressWithNothingConfiguredIsStillAMux(t *testing.T) {
 
 // TestTheBrowserPortCarriesGrpcToo.
 //
-// The two listeners are a decision about the transport gRpc brings -- Go's
+// The two listeners are a decision about the transport gRPC brings -- Go's
 // HTTP/2 server is not grpc-go's, and grpc-go says so about its own `ServeHTTP`
 // -- and **not** about what is reachable where. Under TLS this one takes HTTP/2
-// by ALPN and the transcoder takes gRpc as an incoming protocol like any other,
+// by ALPN and the transcoder takes gRPC as an incoming protocol like any other,
 // so a `grpcurl` reaches it.
 //
 // Worth pinning because it is the sort of thing that gets asserted from memory:

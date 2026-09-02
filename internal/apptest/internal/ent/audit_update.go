@@ -212,18 +212,10 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 	}
 	if value, ok := _u.mutation.TenantId(); ok {
-		vv, err := audit.ValueScanner.TenantId.Value(value)
-		if err != nil {
-			return 0, err
-		}
-		_spec.SetField(audit.FieldTenantId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.ActorId(); ok {
-		vv, err := audit.ValueScanner.ActorId.Value(value)
-		if err != nil {
-			return 0, err
-		}
-		_spec.SetField(audit.FieldActorId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldActorId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.TraceId(); ok {
 		_spec.SetField(audit.FieldTraceId, field.TypeBytes, value)
@@ -232,11 +224,7 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.SetField(audit.FieldAction, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.ObjectId(); ok {
-		vv, err := audit.ValueScanner.ObjectId.Value(value)
-		if err != nil {
-			return 0, err
-		}
-		_spec.SetField(audit.FieldObjectId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldObjectId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Patch(); ok {
 		_spec.SetField(audit.FieldPatch, field.TypeBytes, value)
@@ -245,21 +233,13 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.ClearField(audit.FieldDateCreated, field.TypeTime)
 	}
 	if value, ok := _u.mutation.ActorTenantId(); ok {
-		vv, err := audit.ValueScanner.ActorTenantId.Value(value)
-		if err != nil {
-			return 0, err
-		}
-		_spec.SetField(audit.FieldActorTenantId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldActorTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
 	}
 	if value, ok := _u.mutation.CounterpartTenantId(); ok {
-		vv, err := audit.ValueScanner.CounterpartTenantId.Value(value)
-		if err != nil {
-			return 0, err
-		}
-		_spec.SetField(audit.FieldCounterpartTenantId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldCounterpartTenantId, field.TypeUuid, value)
 	}
 	if _u.mutation.CounterpartTenantIdCleared() {
 		_spec.ClearField(audit.FieldCounterpartTenantId, field.TypeUuid)
@@ -487,11 +467,7 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Audit.id" for update`)}
 	}
-	vv, err := audit.ValueScanner.Id.Value(id)
-	if err != nil {
-		return nil, err
-	}
-	_spec.Node.Id.Value = vv
+	_spec.Node.Id.Value = id
 	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, audit.FieldId)
@@ -512,18 +488,10 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 		}
 	}
 	if value, ok := _u.mutation.TenantId(); ok {
-		vv, err := audit.ValueScanner.TenantId.Value(value)
-		if err != nil {
-			return nil, err
-		}
-		_spec.SetField(audit.FieldTenantId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.ActorId(); ok {
-		vv, err := audit.ValueScanner.ActorId.Value(value)
-		if err != nil {
-			return nil, err
-		}
-		_spec.SetField(audit.FieldActorId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldActorId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.TraceId(); ok {
 		_spec.SetField(audit.FieldTraceId, field.TypeBytes, value)
@@ -532,11 +500,7 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 		_spec.SetField(audit.FieldAction, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.ObjectId(); ok {
-		vv, err := audit.ValueScanner.ObjectId.Value(value)
-		if err != nil {
-			return nil, err
-		}
-		_spec.SetField(audit.FieldObjectId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldObjectId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Patch(); ok {
 		_spec.SetField(audit.FieldPatch, field.TypeBytes, value)
@@ -545,21 +509,13 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 		_spec.ClearField(audit.FieldDateCreated, field.TypeTime)
 	}
 	if value, ok := _u.mutation.ActorTenantId(); ok {
-		vv, err := audit.ValueScanner.ActorTenantId.Value(value)
-		if err != nil {
-			return nil, err
-		}
-		_spec.SetField(audit.FieldActorTenantId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldActorTenantId, field.TypeUuid, value)
 	}
 	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(audit.FieldValue, field.TypeBytes, value)
 	}
 	if value, ok := _u.mutation.CounterpartTenantId(); ok {
-		vv, err := audit.ValueScanner.CounterpartTenantId.Value(value)
-		if err != nil {
-			return nil, err
-		}
-		_spec.SetField(audit.FieldCounterpartTenantId, field.TypeUuid, vv)
+		_spec.SetField(audit.FieldCounterpartTenantId, field.TypeUuid, value)
 	}
 	if _u.mutation.CounterpartTenantIdCleared() {
 		_spec.ClearField(audit.FieldCounterpartTenantId, field.TypeUuid)

@@ -201,8 +201,8 @@ func NameWith(ctx context.Context, n Namer, entity string, given string, req pro
 // # Why it does not need to know what collided
 //
 // It cannot: a collision on the name and a collision on the key are the same
-// gRpc code, and telling them apart means reading the driver's own words --
-// text on SQLite, a struct field on PostgreSql. A table of those is a table
+// gRPC code, and telling them apart means reading the driver's own words --
+// text on SQLite, a struct field on PostgreSQL. A table of those is a table
 // that is wrong on the next driver.
 //
 // It does not have to. **A retry changes only the name**, so it can only ever

@@ -70,7 +70,7 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	// is set by [Sink.WithDriver] because that is the only way it happens.")
 	g.P("	//")
 	g.P("	// What it is read for is the retry in Add. A constraint violation ends")
-	g.P("	// the transaction it happened in -- PostgreSql refuses everything after")
+	g.P("	// the transaction it happened in -- PostgreSQL refuses everything after")
 	g.P("	// one until it is rolled back -- so a second attempt inside a")
 	g.P("	// transaction this server did not open would fail for a reason that has")
 	g.P("	// nothing to do with names, and would take the caller's other writes")

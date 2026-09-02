@@ -158,7 +158,7 @@ func TestAReadIsNotNews(t *testing.T) {
 
 // TestACallThatChangedTooMuchArrivesInPieces.
 //
-// PostgreSql will not carry more than 8000 bytes in one notification and that
+// PostgreSQL will not carry more than 8000 bytes in one notification and that
 // is not configurable, so a call that wrote more rows than fit becomes several
 // -- which a subscriber cannot tell from several calls, since `watch.Next`
 // gathers keys until there is nothing queued.

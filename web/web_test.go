@@ -66,7 +66,7 @@ func call(t *testing.T, s *httptest.Server, f func(*http.Request)) *http.Respons
 
 // TestACookieReachesTheInterceptor is what `auth/authsession` rests on.
 //
-// A browser cannot speak gRpc, so its call comes through the transcoder, and a
+// A browser cannot speak gRPC, so its call comes through the transcoder, and a
 // session cookie is only useful if it survives that hop -- as `cookie`, in the
 // ordinary metadata an [auth.Handler] reads. Nothing in payday would fail to
 // compile if it did not; every request would simply be anonymous.
@@ -167,7 +167,7 @@ func TestAnOriginNobodyNamedGetsNothing(t *testing.T) {
 
 // TestAnAppMountsItsOwnRoutes, which is where a sign-in endpoint goes.
 //
-// A gRpc path is `/<service>/<method>`, so an ordinary route cannot collide
+// A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide
 // with one -- and this asserts the transcoder mounted at `/` does not swallow
 // it.
 func TestAnAppMountsItsOwnRoutes(t *testing.T) {

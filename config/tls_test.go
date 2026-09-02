@@ -122,8 +122,8 @@ func TestTlsConfig(t *testing.T) {
 
 // TestTheSameTlsServesEveryListener.
 //
-// `Credentials` is gRpc's shape and not every listener a payday app opens is a
-// gRpc one -- a transcoder, a sign-in, a port robots present certificates to.
+// `Credentials` is gRPC's shape and not every listener a payday app opens is a
+// gRPC one -- a transcoder, a sign-in, a port robots present certificates to.
 // Without a `*tls.Config` of its own, the app builds the mutual-TLS setup a
 // second time by hand, and the second one is where the client CA is forgotten.
 func TestTheSameTlsServesEveryListener(t *testing.T) {

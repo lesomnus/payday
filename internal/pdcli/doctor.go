@@ -560,12 +560,35 @@ func goTools(ctx context.Context, dir string) (map[string]bool, error) {
 
 	vs := map[string]bool{}
 	for _, line := range strings.Split(stdout.String(), "\n") {
-		if v := strings.TrimSpace(line); v != "" {
+		if v := toolPath(line); v != "" {
 			vs[v] = true
 		}
 	}
 
 	return vs, nil
+}
+
+// toolPath is the import path a line of `go tool` names, and empty for a line
+// that names none.
+//
+// The command answers with the name a tool is invoked by and, for one that
+// comes from a module, the path it comes from in parentheses:
+//
+//	vet
+//	ent (github.com/protobuf-orm/ent/cmd/ent)
+//
+// It has not always: the parenthesised half arrived with a Go release, and
+// reading the whole line as a path meant every generator an app declared read
+// as missing. The builtins have no path and are not what is being looked for,
+// so a line without one answers empty rather than with its own name.
+func toolPath(line string) string {
+	v := strings.TrimSpace(line)
+	i := strings.IndexByte(v, '(')
+	if i < 0 || !strings.HasSuffix(v, ")") {
+		return ""
+	}
+
+	return strings.TrimSpace(v[i+1 : len(v)-1])
 }
 
 // fatal reports whether anything found so far stops a generation.

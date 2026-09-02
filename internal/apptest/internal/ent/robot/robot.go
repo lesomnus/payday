@@ -3,11 +3,8 @@
 package robot
 
 import (
-	"uuid"
-
 	"github.com/protobuf-orm/ent/dialect/sql"
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
-	"github.com/protobuf-orm/ent/schema/field"
 )
 
 const (
@@ -87,16 +84,6 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
-
-var (
-	// ValueScanner of all Robot fields.
-	ValueScanner struct {
-		TenantId field.TypeValueScanner[uuid.UUID]
-		ThingId  field.TypeValueScanner[uuid.UUID]
-		CellId   field.TypeValueScanner[uuid.UUID]
-		Id       field.TypeValueScanner[uuid.UUID]
-	}
-)
 
 // OrderOption defines the ordering options for the Robot queries.
 type OrderOption func(*sql.Selector)

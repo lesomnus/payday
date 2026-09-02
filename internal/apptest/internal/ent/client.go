@@ -583,12 +583,7 @@ func (c *CellClient) GetX(ctx context.Context, id uuid.UUID) *Cell {
 func (c *CellClient) QueryTenant(_m *Cell) *TenantQuery {
 	query := (&TenantClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := any(_m.Id)
-		vv, err := cell.ValueScanner.Id.Value(_m.Id)
-		if err != nil {
-			return nil, err
-		}
-		id = vv
+		id := _m.Id
 		step := sqlgraph.NewStep(
 			sqlgraph.From(cell.Table, cell.FieldId, id),
 			sqlgraph.To(tenant.Table, tenant.FieldId),
@@ -870,12 +865,7 @@ func (c *HolderClient) GetX(ctx context.Context, id uuid.UUID) *Holder {
 func (c *HolderClient) QueryTenant(_m *Holder) *TenantQuery {
 	query := (&TenantClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := any(_m.Id)
-		vv, err := holder.ValueScanner.Id.Value(_m.Id)
-		if err != nil {
-			return nil, err
-		}
-		id = vv
+		id := _m.Id
 		step := sqlgraph.NewStep(
 			sqlgraph.From(holder.Table, holder.FieldId, id),
 			sqlgraph.To(tenant.Table, tenant.FieldId),
@@ -1024,12 +1014,7 @@ func (c *JointClient) GetX(ctx context.Context, id uuid.UUID) *Joint {
 func (c *JointClient) QueryRobot(_m *Joint) *RobotQuery {
 	query := (&RobotClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := any(_m.Id)
-		vv, err := joint.ValueScanner.Id.Value(_m.Id)
-		if err != nil {
-			return nil, err
-		}
-		id = vv
+		id := _m.Id
 		step := sqlgraph.NewStep(
 			sqlgraph.From(joint.Table, joint.FieldId, id),
 			sqlgraph.To(robot.Table, robot.FieldId),
@@ -1311,12 +1296,7 @@ func (c *PairingClient) GetX(ctx context.Context, id uuid.UUID) *Pairing {
 func (c *PairingClient) QueryLead(_m *Pairing) *RobotQuery {
 	query := (&RobotClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := any(_m.Id)
-		vv, err := pairing.ValueScanner.Id.Value(_m.Id)
-		if err != nil {
-			return nil, err
-		}
-		id = vv
+		id := _m.Id
 		step := sqlgraph.NewStep(
 			sqlgraph.From(pairing.Table, pairing.FieldId, id),
 			sqlgraph.To(robot.Table, robot.FieldId),
@@ -1332,12 +1312,7 @@ func (c *PairingClient) QueryLead(_m *Pairing) *RobotQuery {
 func (c *PairingClient) QueryFollow(_m *Pairing) *RobotQuery {
 	query := (&RobotClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := any(_m.Id)
-		vv, err := pairing.ValueScanner.Id.Value(_m.Id)
-		if err != nil {
-			return nil, err
-		}
-		id = vv
+		id := _m.Id
 		step := sqlgraph.NewStep(
 			sqlgraph.From(pairing.Table, pairing.FieldId, id),
 			sqlgraph.To(robot.Table, robot.FieldId),
@@ -1486,12 +1461,7 @@ func (c *ReadingClient) GetX(ctx context.Context, id uuid.UUID) *Reading {
 func (c *ReadingClient) QueryRobot(_m *Reading) *RobotQuery {
 	query := (&RobotClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := any(_m.Id)
-		vv, err := reading.ValueScanner.Id.Value(_m.Id)
-		if err != nil {
-			return nil, err
-		}
-		id = vv
+		id := _m.Id
 		step := sqlgraph.NewStep(
 			sqlgraph.From(reading.Table, reading.FieldId, id),
 			sqlgraph.To(robot.Table, robot.FieldId),
@@ -1640,12 +1610,7 @@ func (c *RobotClient) GetX(ctx context.Context, id uuid.UUID) *Robot {
 func (c *RobotClient) QueryTenant(_m *Robot) *TenantQuery {
 	query := (&TenantClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := any(_m.Id)
-		vv, err := robot.ValueScanner.Id.Value(_m.Id)
-		if err != nil {
-			return nil, err
-		}
-		id = vv
+		id := _m.Id
 		step := sqlgraph.NewStep(
 			sqlgraph.From(robot.Table, robot.FieldId, id),
 			sqlgraph.To(tenant.Table, tenant.FieldId),
@@ -1661,12 +1626,7 @@ func (c *RobotClient) QueryTenant(_m *Robot) *TenantQuery {
 func (c *RobotClient) QueryThing(_m *Robot) *ThingQuery {
 	query := (&ThingClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := any(_m.Id)
-		vv, err := robot.ValueScanner.Id.Value(_m.Id)
-		if err != nil {
-			return nil, err
-		}
-		id = vv
+		id := _m.Id
 		step := sqlgraph.NewStep(
 			sqlgraph.From(robot.Table, robot.FieldId, id),
 			sqlgraph.To(thing.Table, thing.FieldId),
@@ -1682,12 +1642,7 @@ func (c *RobotClient) QueryThing(_m *Robot) *ThingQuery {
 func (c *RobotClient) QueryCell(_m *Robot) *CellQuery {
 	query := (&CellClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := any(_m.Id)
-		vv, err := robot.ValueScanner.Id.Value(_m.Id)
-		if err != nil {
-			return nil, err
-		}
-		id = vv
+		id := _m.Id
 		step := sqlgraph.NewStep(
 			sqlgraph.From(robot.Table, robot.FieldId, id),
 			sqlgraph.To(cell.Table, cell.FieldId),

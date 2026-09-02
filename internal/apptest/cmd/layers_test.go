@@ -608,7 +608,7 @@ func TestEveryWriteIsOnTheTrail(t *testing.T) {
 	x.Equal(b.Tenant.Uuid(), row.TenantId, "on behalf of whom")
 	x.Equal(v.GetId(), row.ObjectId[:], "and to which row")
 
-	// The action is what the caller asked for, by the name gRpc knows it by.
+	// The action is what the caller asked for, by the name gRPC knows it by.
 	x.Equal(app.RobotService_Add_FullMethodName, row.Action)
 
 	// An Add says everything it did in the action and the object, so there is
@@ -627,7 +627,7 @@ func TestEveryWriteIsOnTheTrail(t *testing.T) {
 // there to be read back -- and empty is the one value the two databases
 // disagree about: pgx sends a nil `[]byte` as SQL NULL, and the SQLite driver
 // makes it an empty blob. So the assertion below is really the write
-// **succeeding**, and it can only fail on PostgreSql: without `PDTEST_POSTGRES`
+// **succeeding**, and it can only fail on PostgreSQL: without `PDTEST_POSTGRES`
 // naming one it asserts a nil the driver has already taken away, and passes on
 // a tree where every one of these is nil.
 //

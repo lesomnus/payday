@@ -2,7 +2,7 @@
 //
 // It is a package rather than a line in `config` for the reason `dbpgx` is one:
 // importing it links a database client in, and an app that publishes somewhere
-// else should not carry one. So an app that runs on PostgreSql says so once,
+// else should not carry one. So an app that runs on PostgreSQL says so once,
 // where it says what else it is built out of:
 //
 //	import _ "github.com/lesomnus/payday/config/brokerpg"

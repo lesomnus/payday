@@ -98,7 +98,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// A server that is not gRpc's, taking the same services. That it can be
+	// A server that is not gRPC's, taking the same services. That it can be
 	// handed them at all is one widened signature upstream: RegisterServer
 	// takes a grpc.ServiceRegistrar rather than a *grpc.Server.
 	gw := jsport.NewGateway()

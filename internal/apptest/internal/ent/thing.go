@@ -32,12 +32,12 @@ func (*Thing) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case thing.FieldId:
-			values[i] = thing.ValueScanner.Id.ScanValue()
 		case thing.FieldAlias:
 			values[i] = new(sql.NullString)
 		case thing.FieldDateErased, thing.FieldDateCreated:
 			values[i] = new(sql.NullTime)
+		case thing.FieldId:
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -54,10 +54,10 @@ func (_m *Thing) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case thing.FieldId:
-			if value, err := thing.ValueScanner.Id.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.Id = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value != nil {
+				_m.Id = *value
 			}
 		case thing.FieldAlias:
 			if value, ok := values[i].(*sql.NullString); !ok {

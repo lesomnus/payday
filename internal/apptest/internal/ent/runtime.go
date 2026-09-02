@@ -3,22 +3,9 @@
 package ent
 
 import (
-	"uuid"
-
 	"github.com/lesomnus/payday/internal/apptest"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/schema"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 
 	"github.com/protobuf-orm/ent/schema/field"
 )
@@ -27,61 +14,9 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
-	auditFields := schema.Audit{}.Fields()
-	_ = auditFields
-	audit.ValueScanner.TenantId = field.TextValueScannerOf[uuid.UUID]()
-	audit.ValueScanner.ActorId = field.TextValueScannerOf[uuid.UUID]()
-	audit.ValueScanner.ObjectId = field.TextValueScannerOf[uuid.UUID]()
-	audit.ValueScanner.ActorTenantId = field.TextValueScannerOf[uuid.UUID]()
-	audit.ValueScanner.CounterpartTenantId = field.TextValueScannerOf[uuid.UUID]()
-	audit.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	cellFields := schema.Cell{}.Fields()
-	_ = cellFields
-	cell.ValueScanner.TenantId = field.TextValueScannerOf[uuid.UUID]()
-	cell.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	fleetFields := schema.Fleet{}.Fields()
-	_ = fleetFields
-	fleet.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
 	holderFields := schema.Holder{}.Fields()
 	_ = holderFields
 	// holderDescProfile is the schema descriptor for profile field.
 	holderDescProfile := holderFields[9].Descriptor()
 	holder.ValueScanner.Profile = holderDescProfile.ValueScanner.(field.TypeValueScanner[*apptest.Profile])
-	holder.ValueScanner.TenantId = field.TextValueScannerOf[uuid.UUID]()
-	holder.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	jointFields := schema.Joint{}.Fields()
-	_ = jointFields
-	joint.ValueScanner.RobotId = field.TextValueScannerOf[uuid.UUID]()
-	joint.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	outboxFields := schema.Outbox{}.Fields()
-	_ = outboxFields
-	outbox.ValueScanner.TenantId = field.TextValueScannerOf[uuid.UUID]()
-	outbox.ValueScanner.ActorId = field.TextValueScannerOf[uuid.UUID]()
-	outbox.ValueScanner.ObjectId = field.TextValueScannerOf[uuid.UUID]()
-	outbox.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	pairingFields := schema.Pairing{}.Fields()
-	_ = pairingFields
-	pairing.ValueScanner.LeadId = field.TextValueScannerOf[uuid.UUID]()
-	pairing.ValueScanner.FollowId = field.TextValueScannerOf[uuid.UUID]()
-	pairing.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	readingFields := schema.Reading{}.Fields()
-	_ = readingFields
-	reading.ValueScanner.TenantId = field.TextValueScannerOf[uuid.UUID]()
-	reading.ValueScanner.RobotId = field.TextValueScannerOf[uuid.UUID]()
-	reading.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	robotFields := schema.Robot{}.Fields()
-	_ = robotFields
-	robot.ValueScanner.TenantId = field.TextValueScannerOf[uuid.UUID]()
-	robot.ValueScanner.ThingId = field.TextValueScannerOf[uuid.UUID]()
-	robot.ValueScanner.CellId = field.TextValueScannerOf[uuid.UUID]()
-	robot.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	sealFields := schema.Seal{}.Fields()
-	_ = sealFields
-	seal.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	tenantFields := schema.Tenant{}.Fields()
-	_ = tenantFields
-	tenant.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
-	thingFields := schema.Thing{}.Fields()
-	_ = thingFields
-	thing.ValueScanner.Id = field.TextValueScannerOf[uuid.UUID]()
 }

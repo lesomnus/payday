@@ -58,7 +58,7 @@ func Stream(p Policy) grpc.StreamServerInterceptor {
 // is served with.
 //
 // It is exported because a batch of calls inside one call has to apply it per
-// operation: what a caller may see is keyed on the method gRpc dispatched, and
+// operation: what a caller may see is keyed on the method gRPC dispatched, and
 // a batch arrives as one method carrying many. An interceptor cannot be called
 // from inside a handler; a function can.
 func Decide(ctx context.Context, p Policy, method string) (context.Context, error) {

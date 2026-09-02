@@ -799,7 +799,7 @@ func emitHidden(g *protogen.GeneratedFile, s *Schema) {
 // list, and a list is only as good as whoever adds the next entry to it. The
 // trace and the patch each carry their own "empty rather than nil, and here is
 // the trap"; the read for an entity with no tenant sits beside them and
-// answered nil, and every write to a global entity was refused by PostgreSql
+// answered nil, and every write to a global entity was refused by PostgreSQL
 // and taken by SQLite, where no test could see it.
 //
 // The builder below is where all four meet, and it is the last thing between
@@ -1033,7 +1033,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	//
 	// Empty rather than nil, for the reason the NotFound branch above says: a
 	// nil `[]byte` is SQL NULL to pgx and the trail's `value` is NOT NULL, so
-	// nil here is every write to a global entity failing on PostgreSql and
+	// nil here is every write to a global entity failing on PostgreSQL and
 	// passing on SQLite. It is the same trap twice, which is why it is worth
 	// saying twice.
 	g.P("	return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")

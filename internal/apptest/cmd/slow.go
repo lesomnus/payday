@@ -21,7 +21,7 @@ const slowCall = 250 * time.Millisecond
 // at. Answering nothing but what the call answered, it is a diagnostic and
 // never a refusal.
 //
-// # It is an ordinary gRpc interceptor
+// # It is an ordinary gRPC interceptor
 //
 // The type is `grpc.UnaryServerInterceptor` -- what `grpc.NewServer` takes --
 // and nothing here knows it is not on the wire. `pd.InterceptBuild` is what

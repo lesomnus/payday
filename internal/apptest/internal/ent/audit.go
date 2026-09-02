@@ -11,7 +11,6 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/protobuf-orm/ent"
 	"github.com/protobuf-orm/ent/dialect/sql"
-	"github.com/protobuf-orm/ent/schema/field"
 )
 
 // Audit is the model entity for the Audit schema.
@@ -49,8 +48,6 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case audit.FieldId:
-			values[i] = audit.ValueScanner.Id.ScanValue()
 		case audit.FieldTraceId, audit.FieldPatch, audit.FieldValue:
 			values[i] = new([]byte)
 		case audit.FieldDomain:
@@ -59,16 +56,10 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case audit.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case audit.FieldTenantId:
-			values[i] = audit.ValueScanner.TenantId.ScanValue()
-		case audit.FieldActorId:
-			values[i] = audit.ValueScanner.ActorId.ScanValue()
-		case audit.FieldObjectId:
-			values[i] = audit.ValueScanner.ObjectId.ScanValue()
-		case audit.FieldActorTenantId:
-			values[i] = audit.ValueScanner.ActorTenantId.ScanValue()
 		case audit.FieldCounterpartTenantId:
-			values[i] = audit.ValueScanner.CounterpartTenantId.ScanValue()
+			values[i] = new(sql.Null[uuid.UUID])
+		case audit.FieldId, audit.FieldTenantId, audit.FieldActorId, audit.FieldObjectId, audit.FieldActorTenantId:
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -85,28 +76,31 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case audit.FieldId:
-			if value, err := audit.ValueScanner.Id.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.Id = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value != nil {
+				_m.Id = *value
 			}
 		case audit.FieldTenantId:
-			if value, err := audit.ValueScanner.TenantId.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.TenantId = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value != nil {
+				_m.TenantId = *value
 			}
 		case audit.FieldActorId:
-			if value, err := audit.ValueScanner.ActorId.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.ActorId = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field actor_id", values[i])
+			} else if value != nil {
+				_m.ActorId = *value
 			}
 		case audit.FieldTraceId:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field trace_id", values[i])
 			} else if value != nil {
 				_m.TraceId = *value
+				if _m.TraceId == nil {
+					_m.TraceId = []byte{}
+				}
 			}
 		case audit.FieldAction:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -115,16 +109,19 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 				_m.Action = value.String
 			}
 		case audit.FieldObjectId:
-			if value, err := audit.ValueScanner.ObjectId.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.ObjectId = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field object_id", values[i])
+			} else if value != nil {
+				_m.ObjectId = *value
 			}
 		case audit.FieldPatch:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field patch", values[i])
 			} else if value != nil {
 				_m.Patch = *value
+				if _m.Patch == nil {
+					_m.Patch = []byte{}
+				}
 			}
 		case audit.FieldDateCreated:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -133,22 +130,26 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 				_m.DateCreated = value.Time
 			}
 		case audit.FieldActorTenantId:
-			if value, err := audit.ValueScanner.ActorTenantId.FromValue(values[i]); err != nil {
-				return err
-			} else {
-				_m.ActorTenantId = value
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field actor_tenant_id", values[i])
+			} else if value != nil {
+				_m.ActorTenantId = *value
 			}
 		case audit.FieldValue:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field value", values[i])
 			} else if value != nil {
 				_m.Value = *value
+				if _m.Value == nil {
+					_m.Value = []byte{}
+				}
 			}
 		case audit.FieldCounterpartTenantId:
-			if value, err := field.NillableFromValue(audit.ValueScanner.CounterpartTenantId, values[i]); err != nil {
-				return err
-			} else {
-				_m.CounterpartTenantId = value
+			if value, ok := values[i].(*sql.Null[uuid.UUID]); !ok {
+				return fmt.Errorf("unexpected type %T for field counterpart_tenant_id", values[i])
+			} else if value.Valid {
+				_m.CounterpartTenantId = new(uuid.UUID)
+				*_m.CounterpartTenantId = value.V
 			}
 		case audit.FieldDomain:
 			if value, ok := values[i].(*sql.NullInt64); !ok {

@@ -31,7 +31,7 @@ func Logger(tb testing.TB) *slog.Logger {
 // the log of the test.
 //
 // It has to be a stats handler and it has to be **first**. A stats handler is
-// the only thing gRpc lets put something into the context of a call before
+// the only thing gRPC lets put something into the context of a call before
 // anything else runs, and what reads a logger out of that context -- the record
 // of a call arriving and being answered -- is a stats handler too. An
 // interceptor would be installed behind them, and what an interceptor puts in

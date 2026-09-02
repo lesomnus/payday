@@ -48,7 +48,7 @@ func New(t *testing.T) *App {
 	x.NoError(err)
 
 	// One connection, because an in-memory SQLite database belongs to the
-	// connection that opened it. PostgreSql has no such rule and pooling is the
+	// connection that opened it. PostgreSQL has no such rule and pooling is the
 	// point of it there.
 	dia := dialect.Postgres
 	if drv == "sqlite3" {

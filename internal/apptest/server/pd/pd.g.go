@@ -404,7 +404,7 @@ type Sink struct {
 	// is set by [Sink.WithDriver] because that is the only way it happens.
 	//
 	// What it is read for is the retry in Add. A constraint violation ends
-	// the transaction it happened in -- PostgreSql refuses everything after
+	// the transaction it happened in -- PostgreSQL refuses everything after
 	// one until it is rolled back -- so a second attempt inside a
 	// transaction this server did not open would fail for a reason that has
 	// nothing to do with names, and would take the caller's other writes
@@ -3578,7 +3578,7 @@ func hideSeal(v *apptest.Seal) *apptest.Seal {
 	return v
 }
 
-// Intercept is the layer that runs gRpc interceptors between two layers.
+// Intercept is the layer that runs gRPC interceptors between two layers.
 //
 // They are `grpc.UnaryServerInterceptor` and `grpc.StreamServerInterceptor`,
 // the same values a deployment hands `grpc.NewServer`, so one written for
@@ -3595,7 +3595,7 @@ func hideSeal(v *apptest.Seal) *apptest.Seal {
 // is stacked is what decides whether it sees what the caller asked for or
 // what the app did about it.
 //
-// `info.Server` is the next server rather than the one gRpc registered,
+// `info.Server` is the next server rather than the one gRPC registered,
 // because that is what this call is actually being made on. `FullMethod`
 // is the same constant the wire uses.
 type Intercept struct {
@@ -5558,7 +5558,7 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 	m := op.GetMethod()
 
 	// Under the operation's own name. The recorder fills in what the
-	// caller asked for by asking gRpc, and in here gRpc answers with the
+	// caller asked for by asking gRPC, and in here gRPC answers with the
 	// envelope -- `BatchService/Do`, for every operation of every batch --
 	// so without this the trail says a hundred different writes were all
 	// the same call.

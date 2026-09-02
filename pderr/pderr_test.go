@@ -162,7 +162,7 @@ func TestRefusingWithoutSayingWhyIsABug(t *testing.T) {
 // TestANameThatIsNotOneSaysWhyAndNotWhere is `slug` carrying its own rule and
 // declining to guess the rest.
 //
-// A package below gRpc knows the rule and cannot know the request. It says the
+// A package below gRPC knows the rule and cannot know the request. It says the
 // first and leaves the second to whoever had the message, which is what makes
 // the two compose instead of each being half right.
 func TestANameThatIsNotOneSaysWhyAndNotWhere(t *testing.T) {

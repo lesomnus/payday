@@ -77,7 +77,7 @@ type Event struct {
 	Actor  pdid.Id
 	Tenant pdid.Id
 
-	// Method is the RPC gRpc dispatched, which is what the caller asked for.
+	// Method is the RPC gRPC dispatched, which is what the caller asked for.
 	// What each write actually did is in [Event.Changes].
 	Method string
 

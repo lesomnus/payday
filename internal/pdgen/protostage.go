@@ -128,7 +128,7 @@ message %sWatchItem {
   // never matched is not news.
   %s value = 2;
 
-  // The RPC that changed it, by the name gRpc knows it by. It is what the
+  // The RPC that changed it, by the name gRPC knows it by. It is what the
   // caller of *that* RPC asked for and not the write it became, so an RPC
   // written by hand is here under its own name.
   //

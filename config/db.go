@@ -78,8 +78,8 @@ var dialects = map[string]string{}
 //
 // A driver is a package that has to be linked in whether anything opens a
 // connection with it or not, which is why payday does not import any: an app
-// that runs on PostgreSql would otherwise carry a SQLite engine compiled to
-// Wasm in its binary, and one that runs on SQLite would carry a PostgreSql
+// that runs on PostgreSQL would otherwise carry a SQLite engine compiled to
+// Wasm in its binary, and one that runs on SQLite would carry a PostgreSQL
 // client. So each registration is a package of its own -- see `config/dbpgx`
 // and `config/dbsqlite3` -- and an app blank imports the ones it uses:
 //
@@ -114,7 +114,7 @@ func DriverFor(dialect string) (string, bool) {
 // given, and otherwise what the driver was registered as speaking.
 //
 // Exported because a broker that rides the app's database is handed this config
-// and has to know whether it can -- `LISTEN` is PostgreSql's, and a deployment
+// and has to know whether it can -- `LISTEN` is PostgreSQL's, and a deployment
 // on SQLite needs a broker that is not the database. See [RegisterBroker].
 func (c DbConfig) Speaks() (string, error) {
 	if c.Dialect != "" {
