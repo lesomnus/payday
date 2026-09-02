@@ -9,8 +9,10 @@ how to tell whether it applies to you.
 `github.com/google/uuid`. An app that names the type does so from the new
 import path, and drops the dependency.
 
-Nothing moves in the database or on the wire: both write a UUID out in the
-canonical form, and a UUID has always crossed the wire as sixteen bytes.
+Nothing moves in the database or on the wire. `database/sql` writes a
+`uuid.UUID` out in the canonical form and reads one back, the way it has always
+done a `time.Time`, which is the same text `github.com/google/uuid` wrote for
+itself; and a UUID has always crossed the wire as sixteen bytes.
 
 What the standard library does not have, `entuuid` does:
 
@@ -26,9 +28,10 @@ What the standard library does not have, `entuuid` does:
 a generated server already depends on. Its `FromBytes` is the one that matters:
 a UUID arrives as protobuf `bytes`, where nothing enforces the length.
 
-A predicate written by hand against a UUID column binds `entuuid.Value(u)`
-rather than `u`. Generated code and ent's own predicates convert on their own;
-raw `sql.EQ` does not, and a `uuid.UUID` says nothing to a driver.
+A predicate written by hand against a UUID column binds the `uuid.UUID`; there
+is nothing to convert. The one place that still wants a `driver.Valuer` is
+`entql`, which asks for one at the call rather than at the bind:
+`driver.DefaultParameterConverter.ConvertValue` is what to wrap it in.
 
 ## Every table is named after its entity, and none of them is pluralized
 
