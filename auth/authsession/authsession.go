@@ -24,9 +24,14 @@
 // opaque, means nothing anywhere else, and is a row in a store this server owns
 // -- closer to a row number than to a claim. Revoking it is a delete.
 //
-// It is also why there is no signing key here, no expiry a client can read and
-// no claims. Everything about a session is on the server, which is what makes
-// "sign this person out everywhere, now" a thing that works.
+// It is also why there are no claims here and nothing a client can read. With
+// a [Store], everything about a session is on the server, which is what makes
+// "sign this person out everywhere, now" a thing that works. With [Sealed]
+// the session rides in the cookie under a key only this server holds -- still
+// nothing anybody else can verify, still not a token -- and what it gives up
+// is exactly that sentence: nothing on the server can end a sealed session
+// before its clock does. An app that seals one holds something inside it that
+// *can* be ended elsewhere; see [Session.Held].
 //
 // # What payday supplies and what the app does
 //
@@ -49,6 +54,13 @@
 // balancer feels. It is the same trap `watch`'s memory broker carries and it is
 // named here for the same reason: the failure looks like a flaky login rather
 // than like a missing decision.
+//
+// A table or a cache is the ordinary answer for more than one replica. The
+// other is [Sealed]: no store at all, the session encrypted into the cookie
+// under a key every replica holds. Right for an app whose sessions are
+// handles to something that is revoked somewhere else anyway -- a front door
+// holding a delegation an identity store can end -- and wrong for one where
+// the session **is** the thing to revoke.
 //
 // # Cross-origin
 //
@@ -161,6 +173,20 @@ type Session struct {
 	// written before this had and what an app that only wants the cap gets by
 	// saying `WithIdle(0)`.
 	Idle time.Time
+
+	// Held is what the app keeps for this browser beside who it is: a token it
+	// acts with on their behalf, a continuation it is half way through. Opaque
+	// here, small, and the app's to name.
+	//
+	// It exists because a session that lives in the cookie ([Sealed]) has
+	// nowhere else to put such a thing, and an app that kept it in a map of
+	// its own would have two answers to how many replicas it runs. It is not a
+	// place to keep a copy of anything about the person -- that is read on
+	// every request, so it cannot go stale -- and a store that has nowhere to
+	// put it refuses a session that carries one with [ErrCannotHold], rather
+	// than dropping it and serving a session the app believes is holding
+	// something.
+	Held map[string]string
 }
 
 // Dead reports whether this session has stopped working at `at`, by either
@@ -197,11 +223,34 @@ func (v Session) Until() time.Time {
 // The methods take a context because a real one is a table or a cache and both
 // can be slow. Get answers [ErrNoSession] for a key it does not hold, and a
 // store may forget a session at any time -- expiry is checked here rather than
-// trusted to it.
+// trusted to it. Put is given [Session.Held] and either keeps it or answers
+// [ErrCannotHold].
 type Store interface {
 	Put(ctx context.Context, v Session) error
 	Get(ctx context.Context, key string) (Session, error)
 	Del(ctx context.Context, key string) error
+}
+
+// ErrCannotHold is a store with nowhere to put [Session.Held].
+var ErrCannotHold = errors.New("authsession: this store cannot hold anything beside a session")
+
+// Sealer is a [Store] that chooses the key, because the key carries the
+// session: [Sealed] is the one there is.
+//
+// The contract with the browser is the same either way -- [Sessions.Mint]
+// hands out a key and [Sessions.Handler] turns it back into a session. What
+// differs is who makes the key. A store is handed a random one and remembers
+// what it names; a sealer is asked for one, and answers with the session
+// itself, encrypted, so that reading it back is opening it rather than looking
+// it up. Put and Del then have nothing to do.
+//
+// A sealed session has one clock. The idle deadline moves by being written
+// back to a store, and a cookie already in a browser cannot be written back to
+// -- so [Sessions.Mint] leaves [Session.Idle] empty for a sealer, and the
+// absolute expiry is the whole of it.
+type Sealer interface {
+	Store
+	Seal(v Session) (key string, err error)
 }
 
 // Verify answers who somebody is, from whatever the request carries.
@@ -369,32 +418,10 @@ func (s *Sessions) Handler() auth.Handler {
 			return auth.Identity{}, auth.ErrNoCredential
 		}
 
-		v, err := s.store.Get(ctx, key)
+		v, err := s.Read(ctx, key)
 		if err != nil {
-			if errors.Is(err, ErrNoSession) {
-				// A cookie that is there and names nothing is a credential that
-				// is wrong, which `auth` is explicit is not the same as none:
-				// falling through would serve somebody with a dead session as
-				// whatever the next handler makes of them.
-				return auth.Identity{}, fmt.Errorf("%w", ErrNoSession)
-			}
-
-			// The store is the thing that could not be reached, and that is not
-			// the caller's fault. Told unauthenticated, a browser throws away a
-			// perfectly good cookie and sends the user to sign in again against
-			// the store that is already down.
-			return auth.Identity{}, fmt.Errorf("%w: %w", auth.ErrUnavailable, err)
+			return auth.Identity{}, err
 		}
-
-		// Both clocks are checked here rather than trusted to the store, because
-		// a store is a cache as often as it is a table and "it will have
-		// expired it" is not a thing this can know.
-		now := time.Now()
-		if v.Dead(now) {
-			return auth.Identity{}, fmt.Errorf("%w", ErrNoSession)
-		}
-
-		v = s.used(ctx, v, now)
 
 		return auth.Identity{
 			Method:   Method,
@@ -411,6 +438,43 @@ func (s *Sessions) Handler() auth.Handler {
 			Expires: v.Until(),
 		}, nil
 	})
+}
+
+// Read is the session a key names, alive, with its idle clock moved if it was
+// time to -- what [Sessions.Handler] does between the cookie and the identity,
+// for an app that has the cookie's value and wants the session rather than the
+// identity: one holding something in [Session.Held].
+//
+// [ErrNoSession] for a key that names nothing, is expired, or is not one; a
+// store that could not be reached is [auth.ErrUnavailable], which is not the
+// caller's fault and must not read as a bad cookie.
+func (s *Sessions) Read(ctx context.Context, key string) (Session, error) {
+	v, err := s.store.Get(ctx, key)
+	if err != nil {
+		if errors.Is(err, ErrNoSession) {
+			// A cookie that is there and names nothing is a credential that
+			// is wrong, which `auth` is explicit is not the same as none:
+			// falling through would serve somebody with a dead session as
+			// whatever the next handler makes of them.
+			return Session{}, fmt.Errorf("%w", ErrNoSession)
+		}
+
+		// The store is the thing that could not be reached, and that is not
+		// the caller's fault. Told unauthenticated, a browser throws away a
+		// perfectly good cookie and sends the user to sign in again against
+		// the store that is already down.
+		return Session{}, fmt.Errorf("%w: %w", auth.ErrUnavailable, err)
+	}
+
+	// Both clocks are checked here rather than trusted to the store, because
+	// a store is a cache as often as it is a table and "it will have
+	// expired it" is not a thing this can know.
+	now := time.Now()
+	if v.Dead(now) {
+		return Session{}, fmt.Errorf("%w", ErrNoSession)
+	}
+
+	return s.used(ctx, v, now), nil
 }
 
 // used moves the idle deadline forward, rarely.
@@ -510,13 +574,6 @@ func (s *Sessions) Mint(ctx context.Context, v Session) (Session, *http.Cookie, 
 		return Session{}, nil, ErrNobody
 	}
 
-	k, err := key()
-	if err != nil {
-		return Session{}, nil, fmt.Errorf("authsession: %w", err)
-	}
-
-	v.Key = k
-
 	now := time.Now()
 	if v.Expires.IsZero() {
 		v.Expires = now.Add(s.lifetime)
@@ -527,6 +584,22 @@ func (s *Sessions) Mint(ctx context.Context, v Session) (Session, *http.Cookie, 
 			v.Idle = v.Expires
 		}
 	}
+
+	// The clocks before the key, because a [Sealer]'s key is the session and
+	// has to carry them. A sealer gets one clock; see [Sealer].
+	var k string
+	var err error
+	if sl, ok := s.store.(Sealer); ok {
+		v.Idle = time.Time{}
+		k, err = sl.Seal(v)
+	} else {
+		k, err = key()
+	}
+	if err != nil {
+		return Session{}, nil, fmt.Errorf("authsession: %w", err)
+	}
+
+	v.Key = k
 
 	if err := s.store.Put(ctx, v); err != nil {
 		return Session{}, nil, fmt.Errorf("authsession: %w", err)

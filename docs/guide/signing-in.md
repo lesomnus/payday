@@ -212,6 +212,31 @@ A store may forget a session whenever it likes. Expiry is checked by the handler
 regardless, so a cache with a TTL is a legitimate store and a table you never
 sweep is too.
 
+### Or in the cookie
+
+`authsession.NewSealed(key)` is a store with nothing to store: the session is
+encrypted into the cookie under a key every replica holds, and reading it back
+is opening it. The contract with the browser does not change — a key goes out
+at sign-in and comes back on every call — only who makes the key does, which
+is why it is a `Store` that also answers `Seal`.
+
+```go
+sessions := authsession.New(sealed)   // sealed, _ := authsession.NewSealed(key, older...)
+```
+
+What it gives up is the sentence the package comment leans on: nothing on the
+server can end a sealed session before its clock does. `End` clears the cookie
+in that browser and nothing else, and there is one clock rather than two,
+since an idle deadline moves by being written back to a store. So it is right
+for an app whose session is a **handle to something ended elsewhere** — a front
+door holding a delegation an identity store can revoke — and wrong for one
+where the session is the thing to revoke. The handle rides in `Session.Held`,
+which every store either keeps or refuses with `ErrCannotHold`; `Sessions.Read`
+is how the app gets it back from a cookie's value.
+
+The first key seals and every key opens, which is rotation: put the new one
+first, keep the old ones until what they sealed has expired, then drop them.
+
 ## Serving over plain HTTP
 
 The cookie is `Secure` and named `__Host-pd_session`, which a browser refuses to
