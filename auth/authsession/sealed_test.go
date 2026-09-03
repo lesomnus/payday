@@ -188,3 +188,37 @@ func TestNewSealedRefusesAKeyOfTheWrongSize(t *testing.T) {
 	_, err = authsession.NewSealed(aKey(t), []byte("short"))
 	x.Error(err, "a bad key behind a good one was let through")
 }
+
+// TestTakeAnswersADeadSessionOnceForTheSignOut: what a browser held is
+// answered even after the session died here, so the app can end it where it
+// lives -- and then it is gone.
+func TestTakeAnswersADeadSessionOnceForTheSignOut(t *testing.T) {
+	x := require.New(t)
+	ctx := context.Background()
+
+	s := authsession.New(authsession.NewMemStore())
+	v, _, err := s.Mint(ctx, authsession.Session{
+		Id:      "a-person",
+		Held:    map[string]string{"token": "rd_x"},
+		Expires: time.Now().Add(-time.Second),
+	})
+	x.NoError(err)
+
+	_, err = s.Read(ctx, v.Key)
+	x.ErrorIs(err, authsession.ErrNoSession, "a dead session answered a call")
+
+	got, err := s.Take(ctx, v.Key)
+	x.NoError(err, "a dead session was not answered to the sign-out that has to end what it held")
+	x.Equal("rd_x", got.Held["token"])
+
+	_, err = s.Take(ctx, v.Key)
+	x.ErrorIs(err, authsession.ErrNoSession, "taken twice")
+
+	// Sealed: nothing to delete, so a take is a read that ignores the clock.
+	sealed := authsession.New(sealedWith(t, aKey(t)))
+	v, _, err = sealed.Mint(ctx, authsession.Session{Id: "a-person", Held: map[string]string{"token": "rd_y"}, Expires: time.Now().Add(-time.Second)})
+	x.NoError(err)
+	got, err = sealed.Take(ctx, v.Key)
+	x.NoError(err)
+	x.Equal("rd_y", got.Held["token"])
+}

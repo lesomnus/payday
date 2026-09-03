@@ -477,6 +477,34 @@ func (s *Sessions) Read(ctx context.Context, key string) (Session, error) {
 	return s.used(ctx, v, now), nil
 }
 
+// Take is the session a key names, dead or alive, and its end -- what a
+// sign-out reads before it ends what the session held.
+//
+// Dead or alive on purpose. An app that holds something for a browser in
+// [Session.Held] -- a delegation it acts with -- has to end that thing when the
+// browser signs out, and a session that expired here first is exactly the one
+// whose delegation is otherwise left to run out on its own. [Sessions.Read]
+// answers for a call, where an expired session is no session; this answers for
+// the sign-out, where it is the last thing to clean up after.
+//
+// [ErrNoSession] for a key that names nothing; a store that could not be
+// reached is [auth.ErrUnavailable]. Either way the caller goes on to
+// [Sessions.End], which clears the cookie whatever the store said.
+func (s *Sessions) Take(ctx context.Context, key string) (Session, error) {
+	v, err := s.store.Get(ctx, key)
+	if err != nil {
+		if errors.Is(err, ErrNoSession) {
+			return Session{}, fmt.Errorf("%w", ErrNoSession)
+		}
+
+		return Session{}, fmt.Errorf("%w: %w", auth.ErrUnavailable, err)
+	}
+
+	_ = s.store.Del(ctx, key)
+
+	return v, nil
+}
+
 // used moves the idle deadline forward, rarely.
 //
 // **Not on every request.** An idle timeout written every time somebody clicks
