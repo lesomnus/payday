@@ -5519,7 +5519,7 @@ func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.Batc
 		cs[i] = c
 	}
 
-	drv, tx, err := enttx.Begin(ctx, b.drv)
+	drv, tx, err := dialect.BeginTx(ctx, b.drv)
 	if err != nil {
 		return nil, err
 	}

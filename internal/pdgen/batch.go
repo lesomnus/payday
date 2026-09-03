@@ -114,7 +114,7 @@ func EmitBatch(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		cs[i] = c")
 	g.P("	}")
 	g.P("")
-	g.P("	drv, tx, err := ", pkgEnttx.Ident("Begin"), "(ctx, b.drv)")
+	g.P("	drv, tx, err := ", pkgDialect.Ident("BeginTx"), "(ctx, b.drv)")
 	g.P("	if err != nil {")
 	g.P("		return nil, err")
 	g.P("	}")

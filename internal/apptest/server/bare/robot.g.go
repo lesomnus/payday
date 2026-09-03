@@ -17,11 +17,11 @@ import (
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	ent1 "github.com/protobuf-orm/ent"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	graph "github.com/protobuf-orm/protobuf-orm/graph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
-	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -89,7 +89,7 @@ func (s CellServiceServer) narrow(ctx context.Context, p predicate.Cell) (predic
 }
 
 func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +296,7 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +391,7 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 		return nil, err
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -530,7 +530,7 @@ func (s RobotServiceServer) narrow(ctx context.Context, p predicate.Robot) (pred
 }
 
 func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -813,7 +813,7 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
 	if err != nil {
 		return nil, err
 	}
@@ -911,7 +911,7 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 		return nil, err
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1057,7 +1057,7 @@ func (s PairingServiceServer) narrow(ctx context.Context, p predicate.Pairing) (
 }
 
 func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1281,7 +1281,7 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1376,7 +1376,7 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 		return nil, err
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1495,7 +1495,7 @@ func (s JointServiceServer) narrow(ctx context.Context, p predicate.Joint) (pred
 }
 
 func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1705,7 +1705,7 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1800,7 +1800,7 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 		return nil, err
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1939,7 +1939,7 @@ func (s FleetServiceServer) narrow(ctx context.Context, p predicate.Fleet) (pred
 }
 
 func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2127,7 +2127,7 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2222,7 +2222,7 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 		return nil, err
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2359,7 +2359,7 @@ func (s ReadingServiceServer) narrow(ctx context.Context, p predicate.Reading) (
 }
 
 func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2580,7 +2580,7 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2675,7 +2675,7 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 		return nil, err
 	}
 
-	tx, err := enttx.Join[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
 		return nil, err
 	}

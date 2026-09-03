@@ -212,6 +212,10 @@ func newTx(ctx context.Context, drv dialect.Driver) (*txDriver, error) {
 	return &txDriver{tx: tx, drv: drv}, nil
 }
 
+// InTx says this driver is a transaction, which is what [dialect.InTx] asks a
+// driver through however many wrappers.
+func (*txDriver) InTx() bool { return true }
+
 // Tx returns the transaction wrapper (txDriver) to avoid Commit or Rollback calls
 // from the internal builders. Should be called only by the internal builders.
 func (tx *txDriver) Tx(context.Context) (dialect.Tx, error) { return tx, nil }

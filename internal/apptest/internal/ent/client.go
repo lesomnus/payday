@@ -274,14 +274,18 @@ func (c *Client) WithDriver(drv dialect.Driver) *Client {
 	return client
 }
 
-// InTx reports whether this client is already bound to a transaction of ent's
-// own, which is the one [Client.Tx] refuses to nest.
+// InTx reports whether this client is already bound to a transaction, which is
+// the one [Client.Tx] refuses to nest.
 //
 // It is the question Tx asks itself, so a caller can ask it first rather than
 // starting a transaction to find out.
+//
+// Any transaction, not only one this package began: a stack sharing one begun
+// with [dialect.BeginTx] is inside it as much as a client handed out by
+// [Client.Tx] is, and a caller deciding whether to start one has the same
+// answer either way.
 func (c *Client) InTx() bool {
-	_, ok := c.driver.(*txDriver)
-	return ok
+	return dialect.InTx(c.driver)
 }
 
 // Use adds the mutation hooks to all the entity clients.
