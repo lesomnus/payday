@@ -99,12 +99,12 @@ github.com/ncruces/julianday v1.0.0/go.mod h1:Dusn2KvZrrovOMJuOt0TNXL6tB7U2E8kvz
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/protobuf-orm/ent v0.0.0-20260903235335-78a935fbe882 h1:amx6yozSLhwlLp0eowkQWkCGifuztdzTfOBLUMVbEkA=
-github.com/protobuf-orm/ent v0.0.0-20260903235335-78a935fbe882/go.mod h1:EE8o+t0Y4xtH8DRH/shGerAb2mPQJ0A1TqWT5LU7pZQ=
+github.com/protobuf-orm/ent v0.0.0-20260904000821-85579932411a h1:988uEh0cYRiwmfh0iqVG4U/MRz8iPambTrgJCGem9og=
+github.com/protobuf-orm/ent v0.0.0-20260904000821-85579932411a/go.mod h1:EE8o+t0Y4xtH8DRH/shGerAb2mPQJ0A1TqWT5LU7pZQ=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29 h1:yLrMWcjBT70hljInsE7zssdIZ8pwvotprlUGsLEs4ms=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29/go.mod h1:jMdK+un3aGD6fB5zl3rBg0OMahe7vP5Dpfxe6Sws7mM=
-github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260903235536-caf3963268a0 h1:tobxT1mzSDfIl1HrYL2KyzMDlbq+JrJEroWrSIu28iE=
-github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260903235536-caf3963268a0/go.mod h1:UnufpU1w5+1sItD25YNyyg919rKKymoDwSYn9/677+M=
+github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260904001054-2dd449cab3ac h1:kLB2qTJnlayuP0nyHATzLq9oT7ESEdfmtE/YgnDiE0Q=
+github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260904001054-2dd449cab3ac/go.mod h1:u1v5HtIvE70tsMcodbgQrzPp2j1cmMcu4UMzNXJ89X0=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260814204207-b3aac775fe3e h1:+Qdm1VcxUB+YTKWGQyHnL/2IN3VkNmCaVCh4m/XbxZ0=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260814204207-b3aac775fe3e/go.mod h1:EUiEHkmQI53u+32lC+9OiiECSY2xJ1hrgHk7Km9yn20=
 github.com/rogpeppe/go-internal v1.16.0 h1:O9DK+vNMDVGLr2BeZqmpLeMjiMNkuXfcqntWbZV6S5g=
