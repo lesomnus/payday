@@ -19,7 +19,6 @@ import (
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
-	"github.com/lesomnus/payday/migrate"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/spin"
 	"github.com/lesomnus/payday/trail"
@@ -32,6 +31,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
 	"github.com/lesomnus/payday/internal/apptest/server/core"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
+	entschema "github.com/protobuf-orm/ent/dialect/sql/schema"
 )
 
 // Server is a built app: the database it runs on and the two stacks it answers
@@ -400,7 +400,7 @@ func NewCmdServe(c *Config) *xli.Command {
 				if err := s.Ent.Schema.Create(ctx); err != nil {
 					return err
 				}
-			} else if err := migrate.Check(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+			} else if err := entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
 				return err
 			}
 

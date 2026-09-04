@@ -42,7 +42,7 @@ import (
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
-	entpage "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpage"
+	sqlpage "github.com/protobuf-orm/ent/dialect/sql/sqlpage"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	grpc "google.golang.org/grpc"
@@ -487,7 +487,7 @@ func (s Sink) Audit() apptest.AuditServiceServer {
 // tell apart two rows equal in every column of the order, so the page after
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
-var orderAudit = []entpage.Order{
+var orderAudit = []sqlpage.Order{
 	{Column: audit.FieldDateCreated, Desc: true},
 	{Column: audit.FieldId, Desc: true},
 }
@@ -545,11 +545,11 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 			at0 time.Time
 			at1 uuid.UUID
 		)
-		if err := entpage.Decode(v, &at0, &at1); err != nil {
+		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
 
-		p, err := entpage.After(orderAudit, []any{at0, at1})
+		p, err := sqlpage.After(orderAudit, []any{at0, at1})
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -562,7 +562,7 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 	// the answer is built; it was only ever asked for to see whether it was
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
-	size := entpage.Size(int(req.GetSize()), AuditPageSize, AuditPageLimit)
+	size := sqlpage.Size(int(req.GetSize()), AuditPageSize, AuditPageLimit)
 	us, err := q.Order(audit.ByDateCreated(sql.OrderDesc()), audit.ById(sql.OrderDesc())).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
@@ -581,7 +581,7 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 	res := apptest.AuditListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.Id)
+		next, err := sqlpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
@@ -908,7 +908,7 @@ func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) 
 // tell apart two rows equal in every column of the order, so the page after
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
-var orderHolder = []entpage.Order{
+var orderHolder = []sqlpage.Order{
 	{Column: holder.FieldDateCreated, Desc: false},
 	{Column: holder.FieldId, Desc: false},
 }
@@ -966,11 +966,11 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 			at0 time.Time
 			at1 uuid.UUID
 		)
-		if err := entpage.Decode(v, &at0, &at1); err != nil {
+		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
 
-		p, err := entpage.After(orderHolder, []any{at0, at1})
+		p, err := sqlpage.After(orderHolder, []any{at0, at1})
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -983,7 +983,7 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 	// the answer is built; it was only ever asked for to see whether it was
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
-	size := entpage.Size(int(req.GetSize()), HolderPageSize, HolderPageLimit)
+	size := sqlpage.Size(int(req.GetSize()), HolderPageSize, HolderPageLimit)
 	us, err := q.Order(holder.ByDateCreated(), holder.ById()).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
@@ -1002,7 +1002,7 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 	res := apptest.HolderListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.Id)
+		next, err := sqlpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
@@ -1582,7 +1582,7 @@ func (s sinkRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*
 // tell apart two rows equal in every column of the order, so the page after
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
-var orderRobot = []entpage.Order{
+var orderRobot = []sqlpage.Order{
 	{Column: robot.FieldDateCreated, Desc: false},
 	{Column: robot.FieldId, Desc: false},
 }
@@ -1640,11 +1640,11 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 			at0 time.Time
 			at1 uuid.UUID
 		)
-		if err := entpage.Decode(v, &at0, &at1); err != nil {
+		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
 
-		p, err := entpage.After(orderRobot, []any{at0, at1})
+		p, err := sqlpage.After(orderRobot, []any{at0, at1})
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -1659,7 +1659,7 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 	// the answer is built; it was only ever asked for to see whether it was
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
-	size := entpage.Size(int(req.GetSize()), RobotPageSize, RobotPageLimit)
+	size := sqlpage.Size(int(req.GetSize()), RobotPageSize, RobotPageLimit)
 	us, err := q.Order(robot.ByDateCreated(), robot.ById()).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
@@ -1678,7 +1678,7 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 	res := apptest.RobotListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.Id)
+		next, err := sqlpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
@@ -2119,7 +2119,7 @@ func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) 
 // tell apart two rows equal in every column of the order, so the page after
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
-var orderTenant = []entpage.Order{
+var orderTenant = []sqlpage.Order{
 	{Column: tenant.FieldDateCreated, Desc: false},
 	{Column: tenant.FieldId, Desc: false},
 }
@@ -2177,11 +2177,11 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 			at0 time.Time
 			at1 uuid.UUID
 		)
-		if err := entpage.Decode(v, &at0, &at1); err != nil {
+		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
 
-		p, err := entpage.After(orderTenant, []any{at0, at1})
+		p, err := sqlpage.After(orderTenant, []any{at0, at1})
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -2194,7 +2194,7 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 	// the answer is built; it was only ever asked for to see whether it was
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
-	size := entpage.Size(int(req.GetSize()), TenantPageSize, TenantPageLimit)
+	size := sqlpage.Size(int(req.GetSize()), TenantPageSize, TenantPageLimit)
 	us, err := q.Order(tenant.ByDateCreated(), tenant.ById()).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
@@ -2213,7 +2213,7 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 	res := apptest.TenantListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.Id)
+		next, err := sqlpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
@@ -2336,7 +2336,7 @@ func (s sinkThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*
 // tell apart two rows equal in every column of the order, so the page after
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
-var orderThing = []entpage.Order{
+var orderThing = []sqlpage.Order{
 	{Column: thing.FieldDateCreated, Desc: false},
 	{Column: thing.FieldId, Desc: false},
 }
@@ -2394,11 +2394,11 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 			at0 time.Time
 			at1 uuid.UUID
 		)
-		if err := entpage.Decode(v, &at0, &at1); err != nil {
+		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
 
-		p, err := entpage.After(orderThing, []any{at0, at1})
+		p, err := sqlpage.After(orderThing, []any{at0, at1})
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -2411,7 +2411,7 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 	// the answer is built; it was only ever asked for to see whether it was
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
-	size := entpage.Size(int(req.GetSize()), ThingPageSize, ThingPageLimit)
+	size := sqlpage.Size(int(req.GetSize()), ThingPageSize, ThingPageLimit)
 	us, err := q.Order(thing.ByDateCreated(), thing.ById()).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
@@ -2430,7 +2430,7 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 	res := apptest.ThingListResponse_builder{Items: items}.Build()
 	if more {
 		last := us[len(us)-1]
-		next, err := entpage.Encode(last.DateCreated, last.Id)
+		next, err := sqlpage.Encode(last.DateCreated, last.Id)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}

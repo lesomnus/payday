@@ -3,7 +3,6 @@ module github.com/lesomnus/payday
 go 1.27.0
 
 require (
-	ariga.io/atlas v1.3.0
 	connectrpc.com/cors v0.1.0
 	connectrpc.com/vanguard v0.4.0
 	github.com/bufbuild/protocompile v0.14.2-0.20260605203730-cd7c3c124e10
@@ -20,7 +19,6 @@ require (
 	github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/ncruces/go-sqlite3 v0.35.3
-	github.com/protobuf-orm/ent v0.0.0-20260904000821-85579932411a
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260901231226-61630a70f09e
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.45.0
@@ -36,6 +34,7 @@ require (
 )
 
 require (
+	ariga.io/atlas v1.3.0 // indirect
 	connectrpc.com/connect v1.19.1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
@@ -61,9 +60,9 @@ require (
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/protobuf-orm/ent v0.0.0-20260904022402-7714d7267878 // indirect
 	github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df // indirect
-	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260904001054-2dd449cab3ac // indirect
-	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260904001054-2dd449cab3ac // indirect
+	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260904022510-9ae3928a6ee4 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260902050928-f009a17817c6 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260901155246-12064a5a7fa8 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

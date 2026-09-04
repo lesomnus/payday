@@ -60,7 +60,7 @@ type DbConfig struct {
 	// It is a switch between two behaviours and not between one and nothing.
 	// Off -- the default -- the app looks at the database before it serves and
 	// refuses one that is not the shape its schema describes; see
-	// [payday/migrate.Check]. So the answer to leaving this alone is a server
+	// [schema.Check]. So the answer to leaving this alone is a server
 	// that does not start, rather than one that starts and fails per request in
 	// whichever handler first touches the column that moved.
 	//
