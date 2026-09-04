@@ -48,6 +48,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/goccy/go-yaml"
 	"github.com/lesomnus/xli"
@@ -80,8 +81,14 @@ import (
 //
 // A variable that starts with the app's prefix and that no field answers to is
 // **reported**, because that is what a typo looks like and the alternative is a
-// deployment that set something and was not served by it.
-func Load[T any](l config.Loader, v *T) xli.Handler {
+// deployment that set something and was not served by it -- unless the app
+// said it reads such names itself, with [Reads].
+func Load[T any](l config.Loader, v *T, opts ...LoadOption) xli.Handler {
+	var o loadOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	return xli.On(mode.Run, func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 		// Read off the command rather than from a variable the flag was told
 		// to write, because when that variable is written is the flag
@@ -92,12 +99,50 @@ func Load[T any](l config.Loader, v *T) xli.Handler {
 		if err != nil {
 			return err
 		}
-		for _, name := range from.Unknown {
+		for _, name := range unread(l, from.Unknown, o.reads) {
 			fmt.Fprintf(cmd.ErrWriter, "%s: %s is set and nothing reads it\n", l.Name(), name)
 		}
 
 		return next(ctx)
 	})
+}
+
+// LoadOption is what [Load] may be told beyond the loader and the struct.
+type LoadOption func(*loadOptions)
+
+type loadOptions struct {
+	reads []string
+}
+
+// Reads says the app reads names under these prefixes itself, so a variable
+// there is not a typo.
+//
+// The prefixes are what follows the app's own: `Reads("ACCOUNT_KEY_")` for an
+// app called `roster` is every `ROSTER_ACCOUNT_KEY_*`. [config.Loaded.Unknown]
+// is answered with rather than refused for exactly this -- a secret an app
+// takes from the environment because a flag is in the process list, a
+// `<APP>_VERSION` the build sets -- and this is where the app says which.
+func Reads(prefixes ...string) LoadOption {
+	return func(o *loadOptions) { o.reads = append(o.reads, prefixes...) }
+}
+
+// unread is what is worth a warning: the unknown names that no [Reads] claims.
+func unread(l config.Loader, unknown []string, reads []string) []string {
+	out := make([]string, 0, len(unknown))
+	for _, name := range unknown {
+		claimed := false
+		for _, p := range reads {
+			if strings.HasPrefix(name, l.Prefix()+p) {
+				claimed = true
+				break
+			}
+		}
+		if !claimed {
+			out = append(out, name)
+		}
+	}
+
+	return out
 }
 
 // ConfigName is the flag [Load] reads the path from.
