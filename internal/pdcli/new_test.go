@@ -1,6 +1,7 @@
 package pdcli_test
 
 import (
+	"go/format"
 	"go/parser"
 	"go/token"
 	"os"
@@ -94,6 +95,50 @@ func TestTheTemplateIsGoThatParses(t *testing.T) {
 	// The count is here so that a template that stopped writing Go at all --
 	// a rename, a walk that lands somewhere else -- fails rather than passes
 	// with nothing to say.
+	x.NotZero(n)
+}
+
+// TestTheTemplateIsGofmtd, which parsing does not say.
+//
+// The `.tmpl` suffix is what keeps the template out of the repository's own
+// `gofmt -l .`, and what it writes is Go nobody runs a formatter over -- so an
+// import in the wrong place travels to every app `pd new` writes and is first
+// noticed by the person who ran it. It happened: the move to the ent fork put
+// `github.com/protobuf-orm/...` above `github.com/lesomnus/...` in one group,
+// and CI's own check for this sat behind a build error for as long as the
+// template also imported a package payday had removed.
+//
+// Formatting is worth a test rather than a shrug because this is the one file
+// in the repository whose output is somebody else's starting point.
+func TestTheTemplateIsGofmtd(t *testing.T) {
+	x := require.New(t)
+
+	dir := filepath.Join(t.TempDir(), "app")
+	x.NoError((pdcli.New{Dir: dir, Module: "github.com/acme/thing"}).Write())
+
+	n := 0
+	x.NoError(filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || filepath.Ext(p) != ".go" {
+			return err
+		}
+
+		src, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+
+		want, err := format.Source(src)
+		if err != nil {
+			return err
+		}
+
+		n++
+		rel, _ := filepath.Rel(dir, p)
+		x.Equal(string(want), string(src), "%s is not gofmt'd", rel)
+
+		return nil
+	}))
+
 	x.NotZero(n)
 }
 
