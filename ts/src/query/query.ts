@@ -150,6 +150,23 @@ export class Queries {
 	}
 
 	/**
+	 * raw is the transport these queries are asked over, for a caller that
+	 * wants the answer and **not** the bookkeeping.
+	 *
+	 * Everything else here puts what it read into the store, which is the
+	 * point: a page asks a question and every screen holding one of those rows
+	 * is right afterwards. That is exactly wrong for a caller whose subject is
+	 * the store -- something showing what the server says beside what this side
+	 * believes would make the two agree by looking at them.
+	 *
+	 * So it hands over the transport rather than a method to call: what to do
+	 * with it is `createClient`, and nothing here is in the way.
+	 */
+	get raw(): Transport {
+		return this.transport
+	}
+
+	/**
 	 * get answers with the entry for one query, starting it if nobody has.
 	 *
 	 * The same request twice is the same entry: `keyOf` is the method and the

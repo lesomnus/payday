@@ -20,12 +20,20 @@ import { OutboxSchema } from './app/payday/outbox_pb.js'
 import { SealSchema } from './app/seal_pb.js'
 import { TenantSchema } from './app/payday/tenant_pb.js'
 import { ThingSchema } from './shared/thing_pb.js'
+import { AuditService } from './app/payday/audit_svc_pb.js'
+import { CellService, FleetService, JointService, PairingService, ReadingService, RobotService } from './app/robot_svc_pb.js'
+import { HolderService } from './app/payday/holder_svc_pb.js'
+import { OutboxService } from './app/payday/outbox_svc_pb.js'
+import { SealService } from './app/seal_svc_pb.js'
+import { TenantService } from './app/payday/tenant_svc_pb.js'
+import { ThingService } from './shared/thing_svc_pb.js'
 
 /** app.Audit, as the store holds it. */
 export const Audit = {
 	typeName: "app.Audit",
 	schema: AuditSchema,
 	domain: 3,
+	service: AuditService,
 } as const satisfies EntityDesc
 
 /** app.Cell, as the store holds it. */
@@ -34,6 +42,7 @@ export const Cell = {
 	schema: CellSchema,
 	domain: 10,
 	refs: [{ field: "tenant", to: "app.Tenant" }],
+	service: CellService,
 } as const satisfies EntityDesc
 
 /** app.Fleet, as the store holds it. */
@@ -41,6 +50,7 @@ export const Fleet = {
 	typeName: "app.Fleet",
 	schema: FleetSchema,
 	domain: 9,
+	service: FleetService,
 } as const satisfies EntityDesc
 
 /** app.Holder, as the store holds it. */
@@ -50,6 +60,7 @@ export const Holder = {
 	domain: 2,
 	version: "dateUpdated",
 	refs: [{ field: "tenant", to: "app.Tenant" }],
+	service: HolderService,
 } as const satisfies EntityDesc
 
 /** app.Joint, as the store holds it. */
@@ -58,6 +69,7 @@ export const Joint = {
 	schema: JointSchema,
 	domain: 8,
 	refs: [{ field: "robot", to: "app.Robot" }],
+	service: JointService,
 } as const satisfies EntityDesc
 
 /** app.Outbox, as the store holds it. */
@@ -65,6 +77,7 @@ export const Outbox = {
 	typeName: "app.Outbox",
 	schema: OutboxSchema,
 	domain: 4,
+	service: OutboxService,
 } as const satisfies EntityDesc
 
 /** app.Pairing, as the store holds it. */
@@ -73,6 +86,7 @@ export const Pairing = {
 	schema: PairingSchema,
 	domain: 12,
 	refs: [{ field: "lead", to: "app.Robot" }, { field: "follow", to: "app.Robot" }],
+	service: PairingService,
 } as const satisfies EntityDesc
 
 /** app.Reading, as the store holds it. */
@@ -81,6 +95,7 @@ export const Reading = {
 	schema: ReadingSchema,
 	domain: 11,
 	refs: [{ field: "robot", to: "app.Robot" }],
+	service: ReadingService,
 } as const satisfies EntityDesc
 
 /** app.Robot, as the store holds it. */
@@ -90,6 +105,7 @@ export const Robot = {
 	domain: 7,
 	version: "dateUpdated",
 	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "thing", to: "shared.Thing" }, { field: "cell", to: "app.Cell" }],
+	service: RobotService,
 } as const satisfies EntityDesc
 
 /** app.Seal, as the store holds it. */
@@ -97,6 +113,7 @@ export const Seal = {
 	typeName: "app.Seal",
 	schema: SealSchema,
 	domain: 14,
+	service: SealService,
 } as const satisfies EntityDesc
 
 /** app.Tenant, as the store holds it. */
@@ -105,6 +122,7 @@ export const Tenant = {
 	schema: TenantSchema,
 	domain: 1,
 	version: "dateUpdated",
+	service: TenantService,
 } as const satisfies EntityDesc
 
 /** shared.Thing, as the store holds it. */
@@ -112,6 +130,7 @@ export const Thing = {
 	typeName: "shared.Thing",
 	schema: ThingSchema,
 	domain: 13,
+	service: ThingService,
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */

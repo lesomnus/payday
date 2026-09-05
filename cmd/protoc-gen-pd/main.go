@@ -143,6 +143,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 		// protoc-gen-es keeps the directory a .proto was in and renames the
 		// file, and the store's declarations import from there.
 		at := map[protoreflect.FullName]string{}
+		svc := map[protoreflect.FullName]string{}
 		for _, f := range p.Files {
 			if !f.Generate {
 				continue
@@ -150,11 +151,26 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 			for _, m := range f.Messages {
 				at[m.Desc.FullName()] = f.Desc.Path()
 			}
+
+			// And where the services landed, which is another file: the
+			// contract is generated beside the schema rather than into it, so
+			// nothing reachable from a message descriptor points at it.
+			for _, v := range f.Services {
+				svc[v.Desc.FullName()] = f.Desc.Path()
+			}
 		}
 
 		ent := p.NewGeneratedFile("entities.ts", "")
-		ent.P(pdgen.TsEntities(s, func(v *pdgen.Entity) string {
-			return pdgen.TsImport(at[v.FullName()])
+		ent.P(pdgen.TsEntities(s, func(v *pdgen.Entity) pdgen.TsSource {
+			// By name, the way the Go half finds it: `RobotService` answers
+			// about `Robot`. An entity that is stored and not served has none,
+			// and then the declaration carries none.
+			p := ""
+			if at, ok := svc[v.FullName()+"Service"]; ok {
+				p = pdgen.TsImport(at)
+			}
+
+			return pdgen.TsSource{Msg: pdgen.TsImport(at[v.FullName()]), Svc: p}
 		}))
 
 		return nil

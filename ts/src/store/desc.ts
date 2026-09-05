@@ -14,7 +14,7 @@
  * @module
  */
 
-import type { DescMessage } from '@bufbuild/protobuf'
+import type { DescMessage, DescService } from '@bufbuild/protobuf'
 
 /** Ref is a field that names another entity rather than holding a value. */
 export interface RefDesc {
@@ -28,12 +28,15 @@ export interface RefDesc {
 /**
  * EntityDesc is one entity, as `pd gen --ts` declares it.
  *
- * Three things, and each is something protobuf does not say:
+ * Four things, and each is something protobuf does not say **here**:
  *
  *   - `domain`, which is the byte an identifier of this entity carries;
  *   - `version`, the field two answers about one row are ordered by;
  *   - `refs`, which fields name other entities, so that a row that arrived with
- *     its neighbours nested can be taken apart.
+ *     its neighbours nested can be taken apart;
+ *   - `service`, which is the one that protobuf does carry and cannot be
+ *     reached from here: a message descriptor knows the file it is in, and the
+ *     service that answers about it is in another one.
  *
  * The server's `indexes:` are **not** here, and used to be. Nothing on this
  * side has a question to answer with one: rows are reached by identifier, and
@@ -59,6 +62,26 @@ export interface EntityDesc {
 	readonly version?: string
 
 	readonly refs?: readonly RefDesc[]
+
+	/**
+	 * The service that answers about this entity, which is what turns a
+	 * declaration into a call.
+	 *
+	 * It is here because it cannot be worked out from `schema`: an entity's
+	 * messages and its service are declared in two `.proto` files -- the
+	 * schema's and the contract generation writes beside it -- so the message
+	 * descriptor's own file holds no service at all.
+	 *
+	 * What it does not decide is which RPCs there are. That is the service's to
+	 * say, and it says it by having them: `service.method.list` is undefined
+	 * for an entity that declared no `list:`, which is the same answer a
+	 * boolean here would have given and one fewer thing to disagree with.
+	 *
+	 * Absent for an entity that is stored and not served. The store does not
+	 * read this -- it is for a caller that has a declaration and wants the call
+	 * that goes with it.
+	 */
+	readonly service?: DescService
 }
 
 /** Row is what a table holds: a message with its neighbours taken out. */

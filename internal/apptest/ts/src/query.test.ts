@@ -398,3 +398,41 @@ describe('a query nobody is drawing rests', () => {
 		expect(lists).toBe(2)
 	})
 })
+
+/**
+ * `Queries.raw` is for a caller whose subject is the store itself.
+ *
+ * Every other read here ends in `store.put`, which is what makes a page right
+ * after a write it did not make. A caller showing what the server says beside
+ * what this side believes needs the opposite: asking must not be what makes
+ * them agree.
+ */
+describe('the transport, without the bookkeeping', () => {
+	it('answers without writing what it read into the store', async () => {
+		const made = await add(named('raw'))
+
+		// Nothing has drawn this row, so the store has never heard of it.
+		expect(store.row(Robot.typeName, made.id)).toBeUndefined()
+
+		const c = createClient(RobotService, queries.raw)
+		const got = await c.list({ filters: [{ ref: { key: { case: 'id', value: made.id } } }] })
+
+		expect(got.items.map((v) => v.alias)).toEqual([made.alias])
+		expect(store.row(Robot.typeName, made.id), 'reading it is what put it there').toBeUndefined()
+	})
+
+	it('is the same transport the queries themselves use', async () => {
+		const made = await add(named('raw'))
+
+		// The other half: through `get`, the answer does land -- so the test
+		// above is about which path was taken and not about a query that
+		// failed to arrive.
+		const e = queries.get(RobotService.method.list, {
+			filters: [{ ref: { key: { case: 'id', value: made.id } } }],
+		})
+		queries.subscribe(e.key, () => {})
+		await until(() => queries.get(RobotService.method.list, { filters: [{ ref: { key: { case: 'id', value: made.id } } }] }).state === 'ok')
+
+		expect(store.row(Robot.typeName, made.id)).toBeDefined()
+	})
+})

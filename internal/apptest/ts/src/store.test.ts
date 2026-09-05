@@ -216,8 +216,12 @@ describe('what a declaration says, and what it deliberately does not', () => {
 		// answer a different question confidently.
 		expect(Robot).not.toHaveProperty('index')
 
-		// What is left is what protobuf does not say and the runtime does read.
-		expect(Object.keys(Robot).sort()).toEqual(['domain', 'refs', 'schema', 'typeName', 'version'])
+		// What is left is what protobuf does not say **here**: four the store
+		// reads, and `service`, which protobuf does say and says in another
+		// file -- so a declaration is where the two halves meet. The list is
+		// written out rather than counted so that a field arriving without a
+		// reason has to be added to this line by somebody.
+		expect(Object.keys(Robot).sort()).toEqual(['domain', 'refs', 'schema', 'service', 'typeName', 'version'])
 	})
 })
 
