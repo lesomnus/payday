@@ -78,6 +78,13 @@ func interceptRpcs(s *Schema, files []*protogen.File) []interceptRpc {
 // every entity, and the RPC nobody wrapped is the one that is not intercepted.
 // It is the same reason the wall is generated: what is missing compiles.
 //
+// What is generated is the **signature** and nothing else. Everything that
+// does not depend on the two message types -- the boxing, the info, the fold,
+// the stream adaptation -- is [grpcx.RunUnary] and its neighbours, written
+// once in payday rather than per RPC per app. That is not only smaller: a line
+// emitted a hundred times is a line that has to be right a hundred times, and
+// the one place it is wrong is the entity nobody read the diff of.
+//
 // # What it sees, which is not what a gRPC interceptor sees
 //
 // A gRPC interceptor runs once per call that arrived on the wire. This one
@@ -138,8 +145,8 @@ func EmitIntercept(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 		", stream []", pkgGrpc.Ident("StreamServerInterceptor"), ") Intercept {")
 	g.P("	return Intercept{")
 	g.P("		Overlay: ", root.Ident("NewOverlay"), "(next),")
-	g.P("		unary:   chainUnary(unary),")
-	g.P("		stream:  chainStream(stream),")
+	g.P("		unary:   ", pkgGrpcx.Ident("ChainUnary"), "(unary),")
+	g.P("		stream:  ", pkgGrpcx.Ident("ChainStream"), "(stream),")
 	g.P("	}")
 	g.P("}")
 	g.P("")
@@ -181,8 +188,6 @@ func EmitIntercept(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 	g.P("}")
 	g.P("")
 
-	emitChain(g)
-
 	// One wrapper per entity, holding every RPC of its service.
 	by := map[string][]interceptRpc{}
 	var order []string
@@ -197,63 +202,6 @@ func EmitIntercept(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 	for _, name := range order {
 		emitInterceptOf(g, name, by[name], root)
 	}
-}
-
-// emitChain writes the two folds.
-//
-// grpc-go chains its own with a server option rather than a function anybody
-// can call, so this is that fold: one value, applied outermost-first, and nil
-// for none so that the call sites can test it rather than call through a
-// wrapper that does nothing.
-func emitChain(g *protogen.GeneratedFile) {
-	g.P("// chainUnary folds interceptors into one, outermost first, and answers nil")
-	g.P("// for none.")
-	g.P("func chainUnary(vs []", pkgGrpc.Ident("UnaryServerInterceptor"), ") ", pkgGrpc.Ident("UnaryServerInterceptor"), " {")
-	g.P("	switch len(vs) {")
-	g.P("	case 0:")
-	g.P("		return nil")
-	g.P("	case 1:")
-	g.P("		return vs[0]")
-	g.P("	}")
-	g.P("")
-	g.P("	return func(ctx ", pkgCtx.Ident("Context"), ", req any, info *", pkgGrpc.Ident("UnaryServerInfo"),
-		", handler ", pkgGrpc.Ident("UnaryHandler"), ") (any, error) {")
-	g.P("		next := handler")
-	g.P("		for i := len(vs) - 1; i >= 0; i-- {")
-	g.P("			v, inner := vs[i], next")
-	g.P("			next = func(ctx ", pkgCtx.Ident("Context"), ", req any) (any, error) {")
-	g.P("				return v(ctx, req, info, inner)")
-	g.P("			}")
-	g.P("		}")
-	g.P("")
-	g.P("		return next(ctx, req)")
-	g.P("	}")
-	g.P("}")
-	g.P("")
-
-	g.P("// chainStream is [chainUnary] for the other kind.")
-	g.P("func chainStream(vs []", pkgGrpc.Ident("StreamServerInterceptor"), ") ", pkgGrpc.Ident("StreamServerInterceptor"), " {")
-	g.P("	switch len(vs) {")
-	g.P("	case 0:")
-	g.P("		return nil")
-	g.P("	case 1:")
-	g.P("		return vs[0]")
-	g.P("	}")
-	g.P("")
-	g.P("	return func(srv any, ss ", pkgGrpc.Ident("ServerStream"), ", info *", pkgGrpc.Ident("StreamServerInfo"),
-		", handler ", pkgGrpc.Ident("StreamHandler"), ") error {")
-	g.P("		next := handler")
-	g.P("		for i := len(vs) - 1; i >= 0; i-- {")
-	g.P("			v, inner := vs[i], next")
-	g.P("			next = func(srv any, ss ", pkgGrpc.Ident("ServerStream"), ") error {")
-	g.P("				return v(srv, ss, info, inner)")
-	g.P("			}")
-	g.P("		}")
-	g.P("")
-	g.P("		return next(srv, ss)")
-	g.P("	}")
-	g.P("}")
-	g.P("")
 }
 
 // emitInterceptOf writes the wrapper for one entity's service.
@@ -284,26 +232,8 @@ func emitInterceptOf(g *protogen.GeneratedFile, name string, vs []interceptRpc, 
 func emitInterceptUnary(g *protogen.GeneratedFile, lower, name string, v interceptRpc, root protogen.GoImportPath) {
 	g.P("func (s ", lower, ") ", v.Rpc, "(ctx ", pkgCtx.Ident("Context"),
 		", req *", root.Ident(v.In), ") (*", root.Ident(v.Out), ", error) {")
-	g.P("	if s.unary == nil {")
-	g.P("		return s.", name, "ServiceServer.", v.Rpc, "(ctx, req)")
-	g.P("	}")
-	g.P("")
-	g.P("	v, err := s.unary(ctx, req, &", pkgGrpc.Ident("UnaryServerInfo"), "{")
-	g.P("		Server:     s.", name, "ServiceServer,")
-	g.P("		FullMethod: ", root.Ident(v.Const), ",")
-	g.P("	}, func(ctx ", pkgCtx.Ident("Context"), ", req any) (any, error) {")
-	g.P("		return s.", name, "ServiceServer.", v.Rpc, "(ctx, req.(*", root.Ident(v.In), "))")
-	g.P("	})")
-	// An interceptor may answer nil for both -- a cache that decided there was
-	// nothing to say -- and the assertion below would panic on it, in generated
-	// code, from a line the app did not write.
-	g.P("	if err != nil {")
-	g.P("		return nil, err")
-	g.P("	}")
-	g.P("")
-	g.P("	w, _ := v.(*", root.Ident(v.Out), ")")
-	g.P("")
-	g.P("	return w, nil")
+	g.P("	return ", pkgGrpcx.Ident("RunUnary"), "(ctx, s.unary, s.", name, "ServiceServer,")
+	g.P("		", root.Ident(v.Const), ", req, s.", name, "ServiceServer.", v.Rpc, ")")
 	g.P("}")
 	g.P("")
 }
@@ -320,17 +250,8 @@ func emitInterceptUnary(g *protogen.GeneratedFile, lower, name string, v interce
 func emitInterceptStream(g *protogen.GeneratedFile, lower, name string, v interceptRpc, root protogen.GoImportPath) {
 	g.P("func (s ", lower, ") ", v.Rpc, "(req *", root.Ident(v.In),
 		", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", root.Ident(v.Out), "]) error {")
-	g.P("	if s.stream == nil {")
-	g.P("		return s.", name, "ServiceServer.", v.Rpc, "(req, out)")
-	g.P("	}")
-	g.P("")
-	g.P("	return s.stream(s.", name, "ServiceServer, out, &", pkgGrpc.Ident("StreamServerInfo"), "{")
-	g.P("		FullMethod:     ", root.Ident(v.Const), ",")
-	g.P("		IsServerStream: true,")
-	g.P("	}, func(srv any, ss ", pkgGrpc.Ident("ServerStream"), ") error {")
-	g.P("		return s.", name, "ServiceServer.", v.Rpc, "(req, &", pkgGrpc.Ident("GenericServerStream"),
-		"[", root.Ident(v.In), ", ", root.Ident(v.Out), "]{ServerStream: ss})")
-	g.P("	})")
+	g.P("	return ", pkgGrpcx.Ident("RunStream"), "(s.stream, s.", name, "ServiceServer,")
+	g.P("		", root.Ident(v.Const), ", req, out, s.", name, "ServiceServer.", v.Rpc, ")")
 	g.P("}")
 	g.P("")
 }

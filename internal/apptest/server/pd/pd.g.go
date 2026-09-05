@@ -17,6 +17,7 @@ import (
 	batch "github.com/lesomnus/payday/batch"
 	frame "github.com/lesomnus/payday/frame"
 	gate "github.com/lesomnus/payday/gate"
+	grpcx "github.com/lesomnus/payday/grpcx"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
@@ -3615,8 +3616,8 @@ type Intercept struct {
 func NewIntercept(next apptest.Server, unary []grpc.UnaryServerInterceptor, stream []grpc.StreamServerInterceptor) Intercept {
 	return Intercept{
 		Overlay: apptest.NewOverlay(next),
-		unary:   chainUnary(unary),
-		stream:  chainStream(stream),
+		unary:   grpcx.ChainUnary(unary),
+		stream:  grpcx.ChainStream(stream),
 	}
 }
 
@@ -3654,51 +3655,6 @@ func (s Intercept) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	return Intercept{Overlay: apptest.NewOverlay(next), unary: s.unary, stream: s.stream}, nil
 }
 
-// chainUnary folds interceptors into one, outermost first, and answers nil
-// for none.
-func chainUnary(vs []grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
-	switch len(vs) {
-	case 0:
-		return nil
-	case 1:
-		return vs[0]
-	}
-
-	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		next := handler
-		for i := len(vs) - 1; i >= 0; i-- {
-			v, inner := vs[i], next
-			next = func(ctx context.Context, req any) (any, error) {
-				return v(ctx, req, info, inner)
-			}
-		}
-
-		return next(ctx, req)
-	}
-}
-
-// chainStream is [chainUnary] for the other kind.
-func chainStream(vs []grpc.StreamServerInterceptor) grpc.StreamServerInterceptor {
-	switch len(vs) {
-	case 0:
-		return nil
-	case 1:
-		return vs[0]
-	}
-
-	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		next := handler
-		for i := len(vs) - 1; i >= 0; i-- {
-			v, inner := vs[i], next
-			next = func(srv any, ss grpc.ServerStream) error {
-				return v(srv, ss, info, inner)
-			}
-		}
-
-		return next(srv, ss)
-	}
-}
-
 func (s Intercept) Audit() apptest.AuditServiceServer {
 	return interceptAudit{s, s.Next().Audit()}
 }
@@ -3709,123 +3665,33 @@ type interceptAudit struct {
 }
 
 func (s interceptAudit) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
-	if s.unary == nil {
-		return s.AuditServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.AuditServiceServer,
-		FullMethod: apptest.AuditService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.AuditServiceServer.Add(ctx, req.(*apptest.AuditAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Audit)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Add_FullMethodName, req, s.AuditServiceServer.Add)
 }
 
 func (s interceptAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*apptest.Audit, error) {
-	if s.unary == nil {
-		return s.AuditServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.AuditServiceServer,
-		FullMethod: apptest.AuditService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.AuditServiceServer.Get(ctx, req.(*apptest.AuditGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Audit)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Get_FullMethodName, req, s.AuditServiceServer.Get)
 }
 
 func (s interceptAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	if s.unary == nil {
-		return s.AuditServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.AuditServiceServer,
-		FullMethod: apptest.AuditService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.AuditServiceServer.Patch(ctx, req.(*apptest.AuditPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Audit)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Patch_FullMethodName, req, s.AuditServiceServer.Patch)
 }
 
 func (s interceptAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	if s.unary == nil {
-		return s.AuditServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.AuditServiceServer,
-		FullMethod: apptest.AuditService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.AuditServiceServer.Apply(ctx, req.(*apptest.AuditApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Audit)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Apply_FullMethodName, req, s.AuditServiceServer.Apply)
 }
 
 func (s interceptAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	if s.unary == nil {
-		return s.AuditServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.AuditServiceServer,
-		FullMethod: apptest.AuditService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.AuditServiceServer.Erase(ctx, req.(*apptest.AuditRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.AuditEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Erase_FullMethodName, req, s.AuditServiceServer.Erase)
 }
 
 func (s interceptAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
-	if s.unary == nil {
-		return s.AuditServiceServer.List(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.AuditServiceServer,
-		FullMethod: apptest.AuditService_List_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.AuditServiceServer.List(ctx, req.(*apptest.AuditListRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.AuditListResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_List_FullMethodName, req, s.AuditServiceServer.List)
 }
 
 func (s Intercept) Tenant() apptest.TenantServiceServer {
@@ -3838,123 +3704,33 @@ type interceptTenant struct {
 }
 
 func (s interceptTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
-	if s.unary == nil {
-		return s.TenantServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.TenantServiceServer,
-		FullMethod: apptest.TenantService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.TenantServiceServer.Add(ctx, req.(*apptest.TenantAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Tenant)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
+		apptest.TenantService_Add_FullMethodName, req, s.TenantServiceServer.Add)
 }
 
 func (s interceptTenant) Get(ctx context.Context, req *apptest.TenantGetRequest) (*apptest.Tenant, error) {
-	if s.unary == nil {
-		return s.TenantServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.TenantServiceServer,
-		FullMethod: apptest.TenantService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.TenantServiceServer.Get(ctx, req.(*apptest.TenantGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Tenant)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
+		apptest.TenantService_Get_FullMethodName, req, s.TenantServiceServer.Get)
 }
 
 func (s interceptTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) (*apptest.Tenant, error) {
-	if s.unary == nil {
-		return s.TenantServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.TenantServiceServer,
-		FullMethod: apptest.TenantService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.TenantServiceServer.Patch(ctx, req.(*apptest.TenantPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Tenant)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
+		apptest.TenantService_Patch_FullMethodName, req, s.TenantServiceServer.Patch)
 }
 
 func (s interceptTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
-	if s.unary == nil {
-		return s.TenantServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.TenantServiceServer,
-		FullMethod: apptest.TenantService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.TenantServiceServer.Apply(ctx, req.(*apptest.TenantApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Tenant)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
+		apptest.TenantService_Apply_FullMethodName, req, s.TenantServiceServer.Apply)
 }
 
 func (s interceptTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	if s.unary == nil {
-		return s.TenantServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.TenantServiceServer,
-		FullMethod: apptest.TenantService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.TenantServiceServer.Erase(ctx, req.(*apptest.TenantRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.TenantEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
+		apptest.TenantService_Erase_FullMethodName, req, s.TenantServiceServer.Erase)
 }
 
 func (s interceptTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
-	if s.unary == nil {
-		return s.TenantServiceServer.List(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.TenantServiceServer,
-		FullMethod: apptest.TenantService_List_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.TenantServiceServer.List(ctx, req.(*apptest.TenantListRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.TenantListResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
+		apptest.TenantService_List_FullMethodName, req, s.TenantServiceServer.List)
 }
 
 func (s Intercept) Holder() apptest.HolderServiceServer {
@@ -3967,136 +3743,38 @@ type interceptHolder struct {
 }
 
 func (s interceptHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
-	if s.unary == nil {
-		return s.HolderServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.HolderServiceServer,
-		FullMethod: apptest.HolderService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.HolderServiceServer.Add(ctx, req.(*apptest.HolderAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Holder)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Add_FullMethodName, req, s.HolderServiceServer.Add)
 }
 
 func (s interceptHolder) Get(ctx context.Context, req *apptest.HolderGetRequest) (*apptest.Holder, error) {
-	if s.unary == nil {
-		return s.HolderServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.HolderServiceServer,
-		FullMethod: apptest.HolderService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.HolderServiceServer.Get(ctx, req.(*apptest.HolderGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Holder)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Get_FullMethodName, req, s.HolderServiceServer.Get)
 }
 
 func (s interceptHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
-	if s.unary == nil {
-		return s.HolderServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.HolderServiceServer,
-		FullMethod: apptest.HolderService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.HolderServiceServer.Patch(ctx, req.(*apptest.HolderPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Holder)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Patch_FullMethodName, req, s.HolderServiceServer.Patch)
 }
 
 func (s interceptHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
-	if s.unary == nil {
-		return s.HolderServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.HolderServiceServer,
-		FullMethod: apptest.HolderService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.HolderServiceServer.Apply(ctx, req.(*apptest.HolderApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Holder)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Apply_FullMethodName, req, s.HolderServiceServer.Apply)
 }
 
 func (s interceptHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
-	if s.unary == nil {
-		return s.HolderServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.HolderServiceServer,
-		FullMethod: apptest.HolderService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.HolderServiceServer.Erase(ctx, req.(*apptest.HolderRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.HolderEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Erase_FullMethodName, req, s.HolderServiceServer.Erase)
 }
 
 func (s interceptHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*apptest.HolderListResponse, error) {
-	if s.unary == nil {
-		return s.HolderServiceServer.List(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.HolderServiceServer,
-		FullMethod: apptest.HolderService_List_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.HolderServiceServer.List(ctx, req.(*apptest.HolderListRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.HolderListResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_List_FullMethodName, req, s.HolderServiceServer.List)
 }
 
 func (s interceptHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStreamingServer[apptest.HolderWatchResponse]) error {
-	if s.stream == nil {
-		return s.HolderServiceServer.Watch(req, out)
-	}
-
-	return s.stream(s.HolderServiceServer, out, &grpc.StreamServerInfo{
-		FullMethod:     apptest.HolderService_Watch_FullMethodName,
-		IsServerStream: true,
-	}, func(srv any, ss grpc.ServerStream) error {
-		return s.HolderServiceServer.Watch(req, &grpc.GenericServerStream[apptest.HolderWatchRequest, apptest.HolderWatchResponse]{ServerStream: ss})
-	})
+	return grpcx.RunStream(s.stream, s.HolderServiceServer,
+		apptest.HolderService_Watch_FullMethodName, req, out, s.HolderServiceServer.Watch)
 }
 
 func (s Intercept) Thing() apptest.ThingServiceServer {
@@ -4109,123 +3787,33 @@ type interceptThing struct {
 }
 
 func (s interceptThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
-	if s.unary == nil {
-		return s.ThingServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ThingServiceServer,
-		FullMethod: apptest.ThingService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ThingServiceServer.Add(ctx, req.(*apptest.ThingAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Thing)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ThingServiceServer,
+		apptest.ThingService_Add_FullMethodName, req, s.ThingServiceServer.Add)
 }
 
 func (s interceptThing) Get(ctx context.Context, req *apptest.ThingGetRequest) (*apptest.Thing, error) {
-	if s.unary == nil {
-		return s.ThingServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ThingServiceServer,
-		FullMethod: apptest.ThingService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ThingServiceServer.Get(ctx, req.(*apptest.ThingGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Thing)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ThingServiceServer,
+		apptest.ThingService_Get_FullMethodName, req, s.ThingServiceServer.Get)
 }
 
 func (s interceptThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*apptest.Thing, error) {
-	if s.unary == nil {
-		return s.ThingServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ThingServiceServer,
-		FullMethod: apptest.ThingService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ThingServiceServer.Patch(ctx, req.(*apptest.ThingPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Thing)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ThingServiceServer,
+		apptest.ThingService_Patch_FullMethodName, req, s.ThingServiceServer.Patch)
 }
 
 func (s interceptThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
-	if s.unary == nil {
-		return s.ThingServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ThingServiceServer,
-		FullMethod: apptest.ThingService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ThingServiceServer.Apply(ctx, req.(*apptest.ThingApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Thing)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ThingServiceServer,
+		apptest.ThingService_Apply_FullMethodName, req, s.ThingServiceServer.Apply)
 }
 
 func (s interceptThing) Erase(ctx context.Context, req *apptest.ThingRef) (*apptest.ThingEraseResponse, error) {
-	if s.unary == nil {
-		return s.ThingServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ThingServiceServer,
-		FullMethod: apptest.ThingService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ThingServiceServer.Erase(ctx, req.(*apptest.ThingRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.ThingEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ThingServiceServer,
+		apptest.ThingService_Erase_FullMethodName, req, s.ThingServiceServer.Erase)
 }
 
 func (s interceptThing) List(ctx context.Context, req *apptest.ThingListRequest) (*apptest.ThingListResponse, error) {
-	if s.unary == nil {
-		return s.ThingServiceServer.List(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ThingServiceServer,
-		FullMethod: apptest.ThingService_List_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ThingServiceServer.List(ctx, req.(*apptest.ThingListRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.ThingListResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ThingServiceServer,
+		apptest.ThingService_List_FullMethodName, req, s.ThingServiceServer.List)
 }
 
 func (s Intercept) Cell() apptest.CellServiceServer {
@@ -4238,103 +3826,28 @@ type interceptCell struct {
 }
 
 func (s interceptCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
-	if s.unary == nil {
-		return s.CellServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.CellServiceServer,
-		FullMethod: apptest.CellService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.CellServiceServer.Add(ctx, req.(*apptest.CellAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Cell)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.CellServiceServer,
+		apptest.CellService_Add_FullMethodName, req, s.CellServiceServer.Add)
 }
 
 func (s interceptCell) Get(ctx context.Context, req *apptest.CellGetRequest) (*apptest.Cell, error) {
-	if s.unary == nil {
-		return s.CellServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.CellServiceServer,
-		FullMethod: apptest.CellService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.CellServiceServer.Get(ctx, req.(*apptest.CellGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Cell)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.CellServiceServer,
+		apptest.CellService_Get_FullMethodName, req, s.CellServiceServer.Get)
 }
 
 func (s interceptCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
-	if s.unary == nil {
-		return s.CellServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.CellServiceServer,
-		FullMethod: apptest.CellService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.CellServiceServer.Patch(ctx, req.(*apptest.CellPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Cell)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.CellServiceServer,
+		apptest.CellService_Patch_FullMethodName, req, s.CellServiceServer.Patch)
 }
 
 func (s interceptCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
-	if s.unary == nil {
-		return s.CellServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.CellServiceServer,
-		FullMethod: apptest.CellService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.CellServiceServer.Apply(ctx, req.(*apptest.CellApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Cell)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.CellServiceServer,
+		apptest.CellService_Apply_FullMethodName, req, s.CellServiceServer.Apply)
 }
 
 func (s interceptCell) Erase(ctx context.Context, req *apptest.CellRef) (*apptest.CellEraseResponse, error) {
-	if s.unary == nil {
-		return s.CellServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.CellServiceServer,
-		FullMethod: apptest.CellService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.CellServiceServer.Erase(ctx, req.(*apptest.CellRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.CellEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.CellServiceServer,
+		apptest.CellService_Erase_FullMethodName, req, s.CellServiceServer.Erase)
 }
 
 func (s Intercept) Robot() apptest.RobotServiceServer {
@@ -4347,156 +3860,43 @@ type interceptRobot struct {
 }
 
 func (s interceptRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
-	if s.unary == nil {
-		return s.RobotServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.RobotServiceServer,
-		FullMethod: apptest.RobotService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.RobotServiceServer.Add(ctx, req.(*apptest.RobotAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Robot)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_Add_FullMethodName, req, s.RobotServiceServer.Add)
 }
 
 func (s interceptRobot) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
-	if s.unary == nil {
-		return s.RobotServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.RobotServiceServer,
-		FullMethod: apptest.RobotService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.RobotServiceServer.Get(ctx, req.(*apptest.RobotGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Robot)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_Get_FullMethodName, req, s.RobotServiceServer.Get)
 }
 
 func (s interceptRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
-	if s.unary == nil {
-		return s.RobotServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.RobotServiceServer,
-		FullMethod: apptest.RobotService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.RobotServiceServer.Patch(ctx, req.(*apptest.RobotPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Robot)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_Patch_FullMethodName, req, s.RobotServiceServer.Patch)
 }
 
 func (s interceptRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
-	if s.unary == nil {
-		return s.RobotServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.RobotServiceServer,
-		FullMethod: apptest.RobotService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.RobotServiceServer.Apply(ctx, req.(*apptest.RobotApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Robot)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_Apply_FullMethodName, req, s.RobotServiceServer.Apply)
 }
 
 func (s interceptRobot) Erase(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotEraseResponse, error) {
-	if s.unary == nil {
-		return s.RobotServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.RobotServiceServer,
-		FullMethod: apptest.RobotService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.RobotServiceServer.Erase(ctx, req.(*apptest.RobotRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.RobotEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_Erase_FullMethodName, req, s.RobotServiceServer.Erase)
 }
 
 func (s interceptRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*apptest.RobotListResponse, error) {
-	if s.unary == nil {
-		return s.RobotServiceServer.List(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.RobotServiceServer,
-		FullMethod: apptest.RobotService_List_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.RobotServiceServer.List(ctx, req.(*apptest.RobotListRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.RobotListResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_List_FullMethodName, req, s.RobotServiceServer.List)
 }
 
 func (s interceptRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStreamingServer[apptest.RobotWatchResponse]) error {
-	if s.stream == nil {
-		return s.RobotServiceServer.Watch(req, out)
-	}
-
-	return s.stream(s.RobotServiceServer, out, &grpc.StreamServerInfo{
-		FullMethod:     apptest.RobotService_Watch_FullMethodName,
-		IsServerStream: true,
-	}, func(srv any, ss grpc.ServerStream) error {
-		return s.RobotServiceServer.Watch(req, &grpc.GenericServerStream[apptest.RobotWatchRequest, apptest.RobotWatchResponse]{ServerStream: ss})
-	})
+	return grpcx.RunStream(s.stream, s.RobotServiceServer,
+		apptest.RobotService_Watch_FullMethodName, req, out, s.RobotServiceServer.Watch)
 }
 
 func (s interceptRobot) Move(ctx context.Context, req *apptest.RobotMoveRequest) (*apptest.Robot, error) {
-	if s.unary == nil {
-		return s.RobotServiceServer.Move(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.RobotServiceServer,
-		FullMethod: apptest.RobotService_Move_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.RobotServiceServer.Move(ctx, req.(*apptest.RobotMoveRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Robot)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_Move_FullMethodName, req, s.RobotServiceServer.Move)
 }
 
 func (s Intercept) Pairing() apptest.PairingServiceServer {
@@ -4509,103 +3909,28 @@ type interceptPairing struct {
 }
 
 func (s interceptPairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
-	if s.unary == nil {
-		return s.PairingServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.PairingServiceServer,
-		FullMethod: apptest.PairingService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.PairingServiceServer.Add(ctx, req.(*apptest.PairingAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Pairing)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.PairingServiceServer,
+		apptest.PairingService_Add_FullMethodName, req, s.PairingServiceServer.Add)
 }
 
 func (s interceptPairing) Get(ctx context.Context, req *apptest.PairingGetRequest) (*apptest.Pairing, error) {
-	if s.unary == nil {
-		return s.PairingServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.PairingServiceServer,
-		FullMethod: apptest.PairingService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.PairingServiceServer.Get(ctx, req.(*apptest.PairingGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Pairing)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.PairingServiceServer,
+		apptest.PairingService_Get_FullMethodName, req, s.PairingServiceServer.Get)
 }
 
 func (s interceptPairing) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
-	if s.unary == nil {
-		return s.PairingServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.PairingServiceServer,
-		FullMethod: apptest.PairingService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.PairingServiceServer.Patch(ctx, req.(*apptest.PairingPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Pairing)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.PairingServiceServer,
+		apptest.PairingService_Patch_FullMethodName, req, s.PairingServiceServer.Patch)
 }
 
 func (s interceptPairing) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
-	if s.unary == nil {
-		return s.PairingServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.PairingServiceServer,
-		FullMethod: apptest.PairingService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.PairingServiceServer.Apply(ctx, req.(*apptest.PairingApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Pairing)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.PairingServiceServer,
+		apptest.PairingService_Apply_FullMethodName, req, s.PairingServiceServer.Apply)
 }
 
 func (s interceptPairing) Erase(ctx context.Context, req *apptest.PairingRef) (*apptest.PairingEraseResponse, error) {
-	if s.unary == nil {
-		return s.PairingServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.PairingServiceServer,
-		FullMethod: apptest.PairingService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.PairingServiceServer.Erase(ctx, req.(*apptest.PairingRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.PairingEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.PairingServiceServer,
+		apptest.PairingService_Erase_FullMethodName, req, s.PairingServiceServer.Erase)
 }
 
 func (s Intercept) Joint() apptest.JointServiceServer {
@@ -4618,103 +3943,28 @@ type interceptJoint struct {
 }
 
 func (s interceptJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
-	if s.unary == nil {
-		return s.JointServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.JointServiceServer,
-		FullMethod: apptest.JointService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.JointServiceServer.Add(ctx, req.(*apptest.JointAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Joint)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.JointServiceServer,
+		apptest.JointService_Add_FullMethodName, req, s.JointServiceServer.Add)
 }
 
 func (s interceptJoint) Get(ctx context.Context, req *apptest.JointGetRequest) (*apptest.Joint, error) {
-	if s.unary == nil {
-		return s.JointServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.JointServiceServer,
-		FullMethod: apptest.JointService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.JointServiceServer.Get(ctx, req.(*apptest.JointGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Joint)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.JointServiceServer,
+		apptest.JointService_Get_FullMethodName, req, s.JointServiceServer.Get)
 }
 
 func (s interceptJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
-	if s.unary == nil {
-		return s.JointServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.JointServiceServer,
-		FullMethod: apptest.JointService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.JointServiceServer.Patch(ctx, req.(*apptest.JointPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Joint)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.JointServiceServer,
+		apptest.JointService_Patch_FullMethodName, req, s.JointServiceServer.Patch)
 }
 
 func (s interceptJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
-	if s.unary == nil {
-		return s.JointServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.JointServiceServer,
-		FullMethod: apptest.JointService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.JointServiceServer.Apply(ctx, req.(*apptest.JointApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Joint)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.JointServiceServer,
+		apptest.JointService_Apply_FullMethodName, req, s.JointServiceServer.Apply)
 }
 
 func (s interceptJoint) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.JointEraseResponse, error) {
-	if s.unary == nil {
-		return s.JointServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.JointServiceServer,
-		FullMethod: apptest.JointService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.JointServiceServer.Erase(ctx, req.(*apptest.JointRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.JointEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.JointServiceServer,
+		apptest.JointService_Erase_FullMethodName, req, s.JointServiceServer.Erase)
 }
 
 func (s Intercept) Fleet() apptest.FleetServiceServer {
@@ -4727,103 +3977,28 @@ type interceptFleet struct {
 }
 
 func (s interceptFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
-	if s.unary == nil {
-		return s.FleetServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.FleetServiceServer,
-		FullMethod: apptest.FleetService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.FleetServiceServer.Add(ctx, req.(*apptest.FleetAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Fleet)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.FleetServiceServer,
+		apptest.FleetService_Add_FullMethodName, req, s.FleetServiceServer.Add)
 }
 
 func (s interceptFleet) Get(ctx context.Context, req *apptest.FleetGetRequest) (*apptest.Fleet, error) {
-	if s.unary == nil {
-		return s.FleetServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.FleetServiceServer,
-		FullMethod: apptest.FleetService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.FleetServiceServer.Get(ctx, req.(*apptest.FleetGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Fleet)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.FleetServiceServer,
+		apptest.FleetService_Get_FullMethodName, req, s.FleetServiceServer.Get)
 }
 
 func (s interceptFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
-	if s.unary == nil {
-		return s.FleetServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.FleetServiceServer,
-		FullMethod: apptest.FleetService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.FleetServiceServer.Patch(ctx, req.(*apptest.FleetPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Fleet)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.FleetServiceServer,
+		apptest.FleetService_Patch_FullMethodName, req, s.FleetServiceServer.Patch)
 }
 
 func (s interceptFleet) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
-	if s.unary == nil {
-		return s.FleetServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.FleetServiceServer,
-		FullMethod: apptest.FleetService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.FleetServiceServer.Apply(ctx, req.(*apptest.FleetApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Fleet)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.FleetServiceServer,
+		apptest.FleetService_Apply_FullMethodName, req, s.FleetServiceServer.Apply)
 }
 
 func (s interceptFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.FleetEraseResponse, error) {
-	if s.unary == nil {
-		return s.FleetServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.FleetServiceServer,
-		FullMethod: apptest.FleetService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.FleetServiceServer.Erase(ctx, req.(*apptest.FleetRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.FleetEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.FleetServiceServer,
+		apptest.FleetService_Erase_FullMethodName, req, s.FleetServiceServer.Erase)
 }
 
 func (s Intercept) Reading() apptest.ReadingServiceServer {
@@ -4836,103 +4011,28 @@ type interceptReading struct {
 }
 
 func (s interceptReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
-	if s.unary == nil {
-		return s.ReadingServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ReadingServiceServer,
-		FullMethod: apptest.ReadingService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ReadingServiceServer.Add(ctx, req.(*apptest.ReadingAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Reading)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
+		apptest.ReadingService_Add_FullMethodName, req, s.ReadingServiceServer.Add)
 }
 
 func (s interceptReading) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
-	if s.unary == nil {
-		return s.ReadingServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ReadingServiceServer,
-		FullMethod: apptest.ReadingService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ReadingServiceServer.Get(ctx, req.(*apptest.ReadingGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Reading)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
+		apptest.ReadingService_Get_FullMethodName, req, s.ReadingServiceServer.Get)
 }
 
 func (s interceptReading) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
-	if s.unary == nil {
-		return s.ReadingServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ReadingServiceServer,
-		FullMethod: apptest.ReadingService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ReadingServiceServer.Patch(ctx, req.(*apptest.ReadingPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Reading)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
+		apptest.ReadingService_Patch_FullMethodName, req, s.ReadingServiceServer.Patch)
 }
 
 func (s interceptReading) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
-	if s.unary == nil {
-		return s.ReadingServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ReadingServiceServer,
-		FullMethod: apptest.ReadingService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ReadingServiceServer.Apply(ctx, req.(*apptest.ReadingApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Reading)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
+		apptest.ReadingService_Apply_FullMethodName, req, s.ReadingServiceServer.Apply)
 }
 
 func (s interceptReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
-	if s.unary == nil {
-		return s.ReadingServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.ReadingServiceServer,
-		FullMethod: apptest.ReadingService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.ReadingServiceServer.Erase(ctx, req.(*apptest.ReadingRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.ReadingEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
+		apptest.ReadingService_Erase_FullMethodName, req, s.ReadingServiceServer.Erase)
 }
 
 func (s Intercept) Seal() apptest.SealServiceServer {
@@ -4945,103 +4045,28 @@ type interceptSeal struct {
 }
 
 func (s interceptSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
-	if s.unary == nil {
-		return s.SealServiceServer.Add(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.SealServiceServer,
-		FullMethod: apptest.SealService_Add_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.SealServiceServer.Add(ctx, req.(*apptest.SealAddRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Seal)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.SealServiceServer,
+		apptest.SealService_Add_FullMethodName, req, s.SealServiceServer.Add)
 }
 
 func (s interceptSeal) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {
-	if s.unary == nil {
-		return s.SealServiceServer.Get(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.SealServiceServer,
-		FullMethod: apptest.SealService_Get_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.SealServiceServer.Get(ctx, req.(*apptest.SealGetRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Seal)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.SealServiceServer,
+		apptest.SealService_Get_FullMethodName, req, s.SealServiceServer.Get)
 }
 
 func (s interceptSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
-	if s.unary == nil {
-		return s.SealServiceServer.Patch(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.SealServiceServer,
-		FullMethod: apptest.SealService_Patch_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.SealServiceServer.Patch(ctx, req.(*apptest.SealPatchRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Seal)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.SealServiceServer,
+		apptest.SealService_Patch_FullMethodName, req, s.SealServiceServer.Patch)
 }
 
 func (s interceptSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
-	if s.unary == nil {
-		return s.SealServiceServer.Apply(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.SealServiceServer,
-		FullMethod: apptest.SealService_Apply_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.SealServiceServer.Apply(ctx, req.(*apptest.SealApplyRequest))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.Seal)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.SealServiceServer,
+		apptest.SealService_Apply_FullMethodName, req, s.SealServiceServer.Apply)
 }
 
 func (s interceptSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
-	if s.unary == nil {
-		return s.SealServiceServer.Erase(ctx, req)
-	}
-
-	v, err := s.unary(ctx, req, &grpc.UnaryServerInfo{
-		Server:     s.SealServiceServer,
-		FullMethod: apptest.SealService_Erase_FullMethodName,
-	}, func(ctx context.Context, req any) (any, error) {
-		return s.SealServiceServer.Erase(ctx, req.(*apptest.SealRef))
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	w, _ := v.(*apptest.SealEraseResponse)
-
-	return w, nil
+	return grpcx.RunUnary(ctx, s.unary, s.SealServiceServer,
+		apptest.SealService_Erase_FullMethodName, req, s.SealServiceServer.Erase)
 }
 
 // WatchRecorder answers with the recorder that remembers a write for `w`.

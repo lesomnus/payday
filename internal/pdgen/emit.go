@@ -35,6 +35,7 @@ const (
 	pkgFmt     = protogen.GoImportPath("fmt")
 	pkgDriver  = protogen.GoImportPath("database/sql/driver")
 	pkgVersion = protogen.GoImportPath("github.com/lesomnus/payday/version")
+	pkgGrpcx   = protogen.GoImportPath("github.com/lesomnus/payday/grpcx")
 )
 
 // EmitPayday writes which payday this file came out of, and the check that

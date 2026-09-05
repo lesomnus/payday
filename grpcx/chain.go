@@ -21,9 +21,12 @@ import (
 //     dispatched, and a batch arrives as one method carrying many. Applying
 //     those per operation means calling them as functions, which is only
 //     possible if they are functions.
+//   - **The seam between two layers of a server.** A generated stack is layers
+//     calling each other, and what crosses one of those is not on the wire at
+//     all; see [RunUnary].
 //
-// Both wanted the same thing, so the cost of having it is paid once. Options
-// are built from this rather than the other way round.
+// All three wanted the same thing, so the cost of having it is paid once.
+// Options are built from this rather than the other way round.
 type Chain struct {
 	// Stats run outside everything, including the interceptors, which is why
 	// what records a call lives here: a call that panicked, one that ran out
