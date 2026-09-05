@@ -50,7 +50,7 @@ with them: `cards_users_card` is `card_user_card`.
 
 **What to change.** Nothing in your schema or your Go code: the generated
 constants follow, and `pd gen` writes them. The database is the work. `pd gen`
-plans the rename like any other schema change, and `migrate.Check` refuses to
+plans the rename like any other schema change, and `entschema.Check` refuses to
 serve a database that does not match, so a deployment that has not run it will
 say so rather than read an empty table.
 

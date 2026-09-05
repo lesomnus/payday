@@ -111,7 +111,7 @@ policy and every tenant with one.
 | | What | payday's answer |
 | --- | --- | --- |
 | `watch.broker` | two processes, so `memory` sees half the writes | **refuses** — `config.WatchConfig` requires a name |
-| schema version | upgrade one and the other will not start | **refuses** — `migrate.Check` |
+| schema version | upgrade one and the other will not start | **refuses** — `entschema.Check` |
 | the outbox drainer | two of them publish twice (not wrong, but wasteful) | your wiring's choice |
 
 ## 4. Public rows are a projection, not a policy

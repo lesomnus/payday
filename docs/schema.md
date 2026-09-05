@@ -55,7 +55,7 @@ change them. That is why three things exist:
 - `pd gen --check` in CI, so a copy that was not regenerated is caught.
 - `version.Same`, refused at `NewSink`, so generated code and a linked payday
   cannot disagree at run time.
-- `migrate.Check` before serving, so a field that arrived in `internal/ent`
+- `entschema.Check` before serving, so a field that arrived in `internal/ent`
   cannot be served against a database that does not have the column.
 
 None of those is optional decoration. A field added upstream arrives quietly: it
@@ -68,7 +68,7 @@ Both run-time checks are deliberately narrow, so that neither is a guard people
 learn to work around. `version.Same` says nothing when either side cannot name
 itself — a checkout, a `replace`, a workspace — since refusing those would
 refuse every `go test` in every app developed against payday's source.
-`migrate.Check` asks whether the database is **not missing** anything rather
+`entschema.Check` asks whether the database is **not missing** anything rather
 than whether it matches: columns and indexes it does not know about are left
 alone, because a deployment's database is allowed to have more than the schema.
 

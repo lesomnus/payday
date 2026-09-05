@@ -453,7 +453,7 @@ licensed Atlas CLI is not involved.
 if c.Db.Migrate {
 	err := s.Ent.Schema.Create(ctx)      // development
 } else {
-	err := migrate.Check(ctx, s.Db, s.Dialect, entmigrate.Tables)
+	err := entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables)
 }
 ```
 

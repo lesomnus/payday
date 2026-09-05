@@ -69,7 +69,6 @@ table is for finding the right one.
 | [`watch`](../watch) | publishes what a call changed, once its transaction committed |
 | [`batch`](../batch) | several writes as one transaction, with the four transport rules re-applied per operation |
 | [`pderr`](../pderr) | the shape of a refusal: which field, and why |
-| [`migrate`](../migrate) | plans and applies versioned migrations, using the atlas packages ent already has |
 | [`version`](../version) | what build is running, read from what the toolchain already stamps |
 | [`pdcmd`](../pdcmd) | the commands every app has, ready to mount on your binary |
 | [`trail`](../trail) | how long the audit table keeps a row, per kind of thing, and where it goes when it leaves |
@@ -166,7 +165,7 @@ Everything payday enforces is placed as far left as it goes.
 | a `Watch` with no filter | the generated implementation answers `InvalidArgument` — a watch that says nothing is the whole table, for as long as it is open |
 | the watch broker is named | required config field — an unnamed one is right for one replica and silently wrong for two |
 | generated code and linked payday agree | `version.Same`, refused at `NewSink` |
-| the database is not behind the schema | `migrate.Check`, before anything is served on it |
+| the database is not behind the schema | `entschema.Check`, before anything is served on it |
 | the runtime assumes no file system | CI builds `GOOS=js GOARCH=wasm` |
 | every layer is an `enttx.Binder` | `pd doctor` finds one that is not — a missing `WithDriver` is nothing until the first transaction |
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
