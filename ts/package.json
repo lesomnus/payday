@@ -58,6 +58,10 @@
 			"types": "./dist/src/react/index.d.ts",
 			"import": "./dist/src/react/index.js"
 		},
+		"./react/devtools": {
+			"types": "./dist/src/react/devtools.d.ts",
+			"import": "./dist/src/react/devtools.js"
+		},
 		"./pderr": {
 			"types": "./dist/src/pderr/index.d.ts",
 			"import": "./dist/src/pderr/index.js"
@@ -68,8 +72,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsc -p tsconfig.build.json",
-		"check": "tsc -p tsconfig.json",
+		"build": "tsc -p tsconfig.build.json && tsc -p tsconfig.dom.build.json",
+		"check": "tsc -p tsconfig.json && tsc -p tsconfig.dom.json",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"prepack": "npm run check && npm run test && npm run build",

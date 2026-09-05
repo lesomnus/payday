@@ -1,0 +1,27 @@
+{
+	// The one file in this package that is a browser and nothing else.
+	//
+	// `lib` has no `DOM` in it on purpose -- `store/idb.ts` says why: this
+	// package also runs in a worker and in Node, and every browser global
+	// compiling everywhere is how a module ends up using one it cannot have.
+	// What that file does about it is declare the little it needs, and this one
+	// cannot: a form's `onChange` is React's own type, which is written in
+	// terms of `HTMLInputElement`, so there is no shape to declare that would
+	// satisfy it.
+	//
+	// So the same reasoning is followed rather than broken: `DOM` is turned on
+	// where a DOM is the subject, and stays off for the rest. A devtools panel
+	// runs in a page or nowhere.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"lib": [
+			"ES2022",
+			"DOM"
+		]
+	},
+	"include": [
+		"src/react/devtools.tsx"
+	],
+	"exclude": []
+}

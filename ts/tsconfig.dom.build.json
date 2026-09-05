@@ -1,14 +1,10 @@
 {
-	"extends": "./tsconfig.json",
+	"extends": "./tsconfig.dom.json",
 	"compilerOptions": {
 		"noEmit": false,
 		"outDir": "dist",
 		"rootDir": ".",
 		"declarationMap": true,
 		"sourceMap": true
-	},
-	"exclude": [
-		"src/**/*.test.ts",
-		"src/react/devtools.tsx"
-	]
+	}
 }
