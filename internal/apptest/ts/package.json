@@ -5,6 +5,7 @@
 	"description": "The TypeScript half of the app payday is tried against",
 	"type": "module",
 	"scripts": {
+		"dev": "vite",
 		"check": "tsc -p tsconfig.json",
 		"test": "vitest run",
 		"test:sandbox": "PDTEST_SANDBOX=1 vitest run src/sandbox.browser.test.ts"

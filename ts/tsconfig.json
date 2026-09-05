@@ -23,6 +23,8 @@
 	// The panel is a browser and is checked by `tsconfig.dom.json`, which is
 	// the only place `DOM` is in `lib`.
 	"exclude": [
-		"src/react/devtools.tsx"
+		"src/react/devtools.tsx",
+		"src/react/form.tsx",
+		"src/react/json.tsx"
 	]
 }

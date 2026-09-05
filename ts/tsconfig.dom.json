@@ -1,5 +1,5 @@
 {
-	// The one file in this package that is a browser and nothing else.
+	// The files in this package that are a browser and nothing else.
 	//
 	// `lib` has no `DOM` in it on purpose -- `store/idb.ts` says why: this
 	// package also runs in a worker and in Node, and every browser global
@@ -21,7 +21,9 @@
 		]
 	},
 	"include": [
-		"src/react/devtools.tsx"
+		"src/react/devtools.tsx",
+		"src/react/form.tsx",
+		"src/react/json.tsx"
 	],
 	"exclude": []
 }

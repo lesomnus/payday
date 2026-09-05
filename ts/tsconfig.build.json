@@ -9,6 +9,8 @@
 	},
 	"exclude": [
 		"src/**/*.test.ts",
-		"src/react/devtools.tsx"
+		"src/react/devtools.tsx",
+		"src/react/form.tsx",
+		"src/react/json.tsx"
 	]
 }

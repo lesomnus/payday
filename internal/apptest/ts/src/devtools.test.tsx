@@ -336,10 +336,12 @@ describe('an edge', () => {
 		asked = []
 		await act(async () => void fireEvent.click(link))
 
-		// It followed the edge into the entity it names, by identifier.
+		// It followed the edge into the entity it names, by identifier -- and
+		// the form says so, because what was sent is what is on the screen.
 		expect(asked.map((v) => v.method)).toEqual(['Get'])
 		expect((screen.getByLabelText('entity') as HTMLSelectElement).value).toBe(Tenant.typeName)
-		expect((screen.getByLabelText('identifier') as HTMLInputElement).value).toBe(pdid.from(tenant).toString())
+		expect((screen.getByLabelText('ref.key') as HTMLSelectElement).value).toBe('id')
+		expect((screen.getByLabelText('ref.id') as HTMLInputElement).value).toBe(pdid.from(tenant).toString())
 	})
 })
 
@@ -351,12 +353,19 @@ describe('the get form', () => {
 
 		asked = []
 		await act(async () => {
-			fireEvent.change(screen.getByLabelText('identifier'), { target: { value: pdid.from(id).toString() } })
+			fireEvent.change(screen.getByLabelText('ref.key'), { target: { value: 'id' } })
+		})
+		await act(async () => {
+			fireEvent.change(screen.getByLabelText('ref.id'), { target: { value: pdid.from(id).toString() } })
 		})
 		await act(async () => void fireEvent.click(screen.getByText('look up')))
 
 		expect(asked.map((v) => v.method)).toEqual(['Get'])
-		expect(screen.getByLabelText('served').textContent).toContain('arm-01')
+
+		// One row is a document rather than a row of a table, so it is shown
+		// as one.
+		expect(screen.queryByLabelText('served'), 'a Get is not a table').toBeNull()
+		expect(document.body.textContent).toContain('arm-01')
 	})
 
 	// A `Get` exists for every entity and a `List` does not, so the two tabs
@@ -369,5 +378,88 @@ describe('the get form', () => {
 		const names = Array.from(screen.getByLabelText('entity').querySelectorAll('option'), (o) => o.textContent)
 		expect(names).toContain(Cell.typeName)
 		expect(names.length).toBeGreaterThan(listable(entities).length)
+	})
+})
+
+describe('following edges', () => {
+	it('comes back the way it went', async () => {
+		const tenant = pdid.newId(TenantDomain).bytes
+		answer = create(RobotSchema, { id, alias: 'arm-01', tenant: create(TenantSchema, { id: tenant }) })
+
+		await mount()
+		await pick(Robot.typeName)
+
+		// Nothing to go back to before anything was followed.
+		expect(screen.queryByLabelText('back')).toBeNull()
+
+		await act(async () => void fireEvent.click(screen.getByText(pdid.from(tenant).toString())))
+		expect((screen.getByLabelText('entity') as HTMLSelectElement).value).toBe(Tenant.typeName)
+
+		await act(async () => void fireEvent.click(screen.getByLabelText('back')))
+		expect(screen.queryByLabelText('back'), 'the trail is empty again').toBeNull()
+	})
+})
+
+describe('a column that is turned off', () => {
+	it('collapses to its checkbox, and says its name on hover', async () => {
+		await mount()
+		await pick(Robot.typeName)
+
+		// The box is in the header, beside the name.
+		const head = () => Array.from(screen.getByLabelText('served').querySelectorAll('th'), (v) => v.textContent)
+		expect(head()).toContain('alias')
+
+		await act(async () => void fireEvent.click(screen.getByLabelText('alias')))
+		expect(head(), 'the name goes and the box stays').not.toContain('alias')
+		expect(screen.getByLabelText('alias'), 'the box is still there to turn back on').toBeDefined()
+
+		// Hovering it brings the name back, over the rows rather than in them.
+		expect(screen.queryByRole('tooltip')).toBeNull()
+		await act(async () => void fireEvent.mouseEnter(screen.getByLabelText('alias').parentElement as Element))
+		expect(screen.getByRole('tooltip').textContent).toBe('alias')
+	})
+})
+
+describe('a request form', () => {
+	// The filters of a `List` are a repeated message, which is the shape a form
+	// read off a descriptor has to handle to be worth having.
+	it('is the request message, repeated fields and all', async () => {
+		await mount()
+		await pick(Robot.typeName)
+
+		// `RobotListRequest` carries `filters`, `size` and `after`.
+		expect(screen.getByLabelText('size')).toBeDefined()
+		expect(screen.getByLabelText('after')).toBeDefined()
+
+		asked = []
+		await act(async () => void fireEvent.click(screen.getByText('add')))
+		await act(async () => {
+			fireEvent.change(screen.getByLabelText('filters.0.ref.key'), { target: { value: 'id' } })
+		})
+		await act(async () => {
+			fireEvent.change(screen.getByLabelText('filters.0.ref.id'), { target: { value: pdid.from(id).toString() } })
+		})
+		await act(async () => void fireEvent.click(screen.getByText('ask')))
+
+		const sent = asked.find((v) => v.method === 'List')
+		expect(sent).toBeDefined()
+
+		const req = sent?.req as { filters: { ref: { key: { case: string; value: Uint8Array } } }[] }
+		expect(req.filters).toHaveLength(1)
+		expect(req.filters[0]?.ref.key.case).toBe('id')
+		expect(Array.from(req.filters[0]?.ref.key.value ?? [])).toEqual(Array.from(id))
+	})
+
+	// A box nobody typed in is a field nobody asked about, which is not the
+	// same as one asked about with its default.
+	it('sends nothing for what was left blank', async () => {
+		await mount()
+		await pick(Robot.typeName)
+
+		asked = []
+		await act(async () => void fireEvent.click(screen.getByText('ask')))
+
+		const sent = asked.find((v) => v.method === 'List')
+		expect(sent?.req).toEqual({})
 	})
 })

@@ -42,7 +42,9 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Rea
 import * as pdid from '../pdid/index.js'
 import { bytes, key, type EntityDesc, type Row } from '../store/index.js'
 
+import { build, Form, useForm, type Vals } from './form.js'
 import { useApp } from './index.js'
+import { Json } from './json.js'
 
 /** Props is what an app hands the panel. */
 export interface Props {
@@ -128,6 +130,7 @@ const style = {
 		right: 0,
 		bottom: 0,
 		zIndex: 2147483000,
+		boxSizing: 'border-box',
 		background: back,
 		color: ink,
 		borderTop: `1px solid ${line}`,
@@ -138,20 +141,26 @@ const style = {
 	// The handle is what is there when nothing else is, so it is its own
 	// element outside the sheet's flow: a page that never opens this sees a
 	// tab at the bottom and nothing over its own content.
+	//
+	// Its bottom edge sits **on** the sheet's top edge rather than above it, so
+	// the two read as one thing that has slid up -- which is why there is no
+	// border or radius along the bottom of either: a rounded edge at the bottom
+	// of the viewport is a card, and this is not one.
 	handle: {
 		position: 'fixed',
 		left: '50%',
 		transform: 'translateX(-50%)',
 		zIndex: 2147483001,
+		boxSizing: 'border-box',
 		background: back,
 		color: dim,
 		border: `1px solid ${line}`,
 		borderBottom: 'none',
-		borderRadius: '6px 6px 0 0',
-		padding: '2px 18px',
-		cursor: 'ns-resize',
+		borderRadius: '8px 8px 0 0',
+		padding: '3px 22px 4px',
+		cursor: 'pointer',
 		font: '12px ui-monospace, SFMono-Regular, Menlo, monospace',
-		lineHeight: '16px',
+		lineHeight: '14px',
 	},
 	bar: {
 		display: 'flex',
@@ -191,6 +200,20 @@ const style = {
 		cursor: 'pointer',
 		textDecoration: 'underline',
 	},
+	// Over the rows rather than in the flow, so that reading a hidden column's
+	// name does not move the ones that are not hidden.
+	over: {
+		position: 'absolute',
+		top: '100%',
+		left: 0,
+		zIndex: 1,
+		background: '#101010',
+		border: `1px solid ${line}`,
+		borderRadius: 3,
+		padding: '1px 5px',
+		color: ink,
+		whiteSpace: 'nowrap',
+	},
 	bad: { color: '#ff8b8b', whiteSpace: 'pre-wrap' },
 } satisfies Record<string, CSSProperties>
 
@@ -215,7 +238,13 @@ export function Devtools(props: Props): ReactNode {
 	const gets = useMemo(() => byCall(props.entities, 'get'), [props.entities])
 
 	const [ungated, setUngated] = useState(false)
-	const [looking, setLooking] = useState<{ typeName: string; id: string }>()
+
+	// Where following edges has been, so that going back is going back rather
+	// than starting over. It is state and not history: the panel is a window on
+	// a page that has its own back button, and taking that one over would be
+	// answering a question nobody asked it.
+	const [trail, setTrail] = useState<{ typeName: string; id: string }[]>([])
+	const looking = trail[trail.length - 1]
 
 	const shown = kept.tab === 'get' ? gets : lists
 	const entity = shown.find((v) => v.typeName === kept.entity) ?? shown[0]
@@ -225,11 +254,22 @@ export function Devtools(props: Props): ReactNode {
 	/** look is what following an edge does: the Get tab, on the row it named. */
 	const look = useCallback(
 		(typeName: string, id: string) => {
-			setLooking({ typeName, id })
+			setTrail((v) => [...v, { typeName, id }])
 			keep({ tab: 'get', entity: typeName })
 		},
 		[keep],
 	)
+
+	/** back is one edge the way it was come by. */
+	const back = useCallback(() => {
+		setTrail((v) => {
+			const now = v.slice(0, -1)
+			const to = now[now.length - 1]
+			keep(to === undefined ? {} : { entity: to.typeName })
+
+			return now
+		})
+	}, [keep])
 
 	if (!kept.open) {
 		return (
@@ -264,6 +304,17 @@ export function Devtools(props: Props): ReactNode {
 							</option>
 						))}
 					</select>
+
+					{trail.length > 0 && kept.tab === 'get' && (
+						<button
+							type="button"
+							style={{ ...style.input, cursor: 'pointer' }}
+							onClick={back}
+							aria-label="back"
+						>
+							←
+						</button>
+					)}
 
 					{(['list', 'get', 'store'] as const).map((v) => (
 						<button
@@ -347,7 +398,9 @@ interface View {
 
 /** List is what the server answers for a whole page of them. */
 function List(props: View & { transport: Transport }): ReactNode {
-	const [filters, setFilters] = useState('[]')
+	const method = props.entity.service?.method.list as DescMethodUnary<DescMessage, DescMessage>
+	const [vals, setVals] = useForm(method.input)
+
 	const [rows, setRows] = useState<Record<string, unknown>[]>([])
 	const [next, setNext] = useState('')
 	const [err, setErr] = useState<string>()
@@ -356,7 +409,7 @@ function List(props: View & { transport: Transport }): ReactNode {
 		async (after: string) => {
 			setErr(undefined)
 			try {
-				const req: Record<string, unknown> = { filters: JSON.parse(filters) as unknown }
+				const req = build(method.input, vals)
 				if (after !== '') req.after = after
 
 				const v = (await call(props.entity, props.transport, 'list', req)) as {
@@ -371,33 +424,23 @@ function List(props: View & { transport: Transport }): ReactNode {
 				setErr(String(e))
 			}
 		},
-		[filters, props.entity, props.transport],
+		[method, vals, props.entity, props.transport],
 	)
 
 	useEffect(() => {
 		void ask('')
-		// On the entity and the path, not on every keystroke in the filters.
+		// On the entity and the path, not on every keystroke in the form.
 	}, [props.entity, props.transport]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	return (
 		<div>
-			<div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-				<input
-					aria-label="filters"
-					style={{ ...style.input, flex: 1 }}
-					value={filters}
-					onChange={(e) => setFilters(e.target.value)}
-					spellCheck={false}
-				/>
-				<button type="button" style={{ ...style.input, cursor: 'pointer' }} onClick={() => void ask('')}>
-					ask
-				</button>
+			<Ask desc={method.input} vals={vals} onChange={setVals} onAsk={() => void ask('')} what="ask">
 				{next !== '' && (
 					<button type="button" style={{ ...style.input, cursor: 'pointer' }} onClick={() => void ask(next)}>
 						next
 					</button>
 				)}
-			</div>
+			</Ask>
 
 			{err !== undefined && <p style={style.bad}>{err}</p>}
 			<Table label="served" rows={rows} {...props} />
@@ -405,57 +448,89 @@ function List(props: View & { transport: Transport }): ReactNode {
 	)
 }
 
-/** Get is one row, by the identifier somebody typed or followed an edge to. */
+/**
+ * Ask is a request form and the button that sends it.
+ *
+ * The form is the request message, whatever it happens to be -- a `List` takes
+ * filters and a page size, a `Get` takes a reference and a select, and both are
+ * read off the descriptor rather than written out here. An RPC that grows a
+ * field grows a box.
+ */
+function Ask(props: {
+	desc: DescMessage
+	vals: Vals
+	onChange: (v: Vals) => void
+	onAsk: () => void
+	what: string
+	children?: ReactNode
+}): ReactNode {
+	return (
+		<div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6, flexWrap: 'wrap' }}>
+			<div style={{ flex: 1, minWidth: 240 }}>
+				<Form desc={props.desc} vals={props.vals} onChange={props.onChange} />
+			</div>
+			<button type="button" style={{ ...style.input, cursor: 'pointer' }} onClick={props.onAsk}>
+				{props.what}
+			</button>
+			{props.children}
+		</div>
+	)
+}
+
+/**
+ * Get is one row, asked for however the request allows.
+ *
+ * A reference is a `oneof` -- an identifier, or a slug where the schema
+ * declared one -- and the form is that, so this is not an identifier box that
+ * happens to be the case everybody uses.
+ *
+ * What comes back is shown as JSON rather than as a table of one row. A table
+ * is for comparing rows and there is one; what is worth seeing here is the
+ * whole document, nesting and all.
+ */
 function Get(props: View & { transport: Transport; id?: string }): ReactNode {
-	const [id, setId] = useState(props.id ?? '')
-	const [rows, setRows] = useState<Record<string, unknown>[]>([])
+	const method = props.entity.service?.method.get as DescMethodUnary<DescMessage, DescMessage>
+	const [vals, setVals] = useForm(method.input)
+
+	const [row, setRow] = useState<unknown>()
 	const [err, setErr] = useState<string>()
 
 	const ask = useCallback(
-		async (v: string) => {
+		async (v: Vals) => {
 			setErr(undefined)
-			setRows([])
-			if (v === '') return
-
+			setRow(undefined)
 			try {
-				const ref = { key: { case: 'id', value: pdid.parse(v).bytes } }
-				const got = (await call(props.entity, props.transport, 'get', { ref })) as Record<string, unknown>
-
-				setRows([got])
+				const req = build(method.input, v)
+				setRow(await call(props.entity, props.transport, 'get', req))
 			} catch (e) {
 				setErr(String(e))
 			}
 		},
-		[props.entity, props.transport],
+		[method, props.entity, props.transport],
 	)
 
-	// Following an edge is a new `id` arriving from above, which asks for it
-	// rather than waiting for somebody to press the button again.
+	// Following an edge is an identifier arriving from above: it fills the form
+	// the way somebody would have and then asks, so what is on the screen is
+	// what was sent.
 	useEffect(() => {
 		if (props.id === undefined) return
 
-		setId(props.id)
-		void ask(props.id)
-	}, [props.id, ask])
+		const v: Vals = {
+			leaf: { 'ref.id': props.id },
+			pick: { 'ref.key': 'id' },
+			many: {},
+		}
+
+		setVals(v)
+		void ask(v)
+	}, [props.id, ask]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	return (
 		<div>
-			<div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-				<input
-					aria-label="identifier"
-					style={{ ...style.input, minWidth: 320 }}
-					value={id}
-					placeholder="019ff7c9-8a1e-8c3d-9f07-2b6c1f0a4d51"
-					onChange={(e) => setId(e.target.value)}
-					spellCheck={false}
-				/>
-				<button type="button" style={{ ...style.input, cursor: 'pointer' }} onClick={() => void ask(id)}>
-					look up
-				</button>
-			</div>
+			<Ask desc={method.input} vals={vals} onChange={setVals} onAsk={() => void ask(vals)} what="look up" />
 
 			{err !== undefined && <p style={style.bad}>{err}</p>}
-			<Table label="served" rows={rows} {...props} />
+			{row !== undefined && <Json value={row} />}
 		</div>
 	)
 }
@@ -492,50 +567,77 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[] })
 	}
 
 	return (
-		<div>
-			<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6, color: dim }}>
-				{fields.map((f) => (
-					<label key={f.localName}>
-						<input type="checkbox" checked={!hidden.has(f.localName)} onChange={() => toggle(f.localName)} />
-						{f.localName}
-					</label>
-				))}
-			</div>
-
-			<div style={{ overflowX: 'auto' }}>
-				<table style={style.table} aria-label={props.label}>
-					<thead>
-						<tr>
-							{fields.map((f) =>
-								hidden.has(f.localName) ? null : (
-									<th key={f.localName} style={style.th}>
-										{f.localName}
-									</th>
-								),
-							)}
-						</tr>
-					</thead>
-					<tbody>
-						{props.rows.map((row, i) => (
-							<tr key={String(row.id ?? i)}>
-								{fields.map((f) =>
-									hidden.has(f.localName) ? null : (
-										<td key={f.localName} style={style.td}>
-											<Cell
-												value={row[f.localName]}
-												field={f}
-												to={refs.get(f.localName)}
-												look={props.look}
-											/>
-										</td>
-									),
-								)}
-							</tr>
+		<div style={{ overflowX: 'auto' }}>
+			<table style={style.table} aria-label={props.label}>
+				<thead>
+					<tr>
+						{fields.map((f) => (
+							<th key={f.localName} style={style.th}>
+								<Head name={f.localName} shown={!hidden.has(f.localName)} toggle={toggle} />
+							</th>
 						))}
-					</tbody>
-				</table>
-			</div>
+					</tr>
+				</thead>
+				<tbody>
+					{props.rows.map((row, i) => (
+						<tr key={String(row.id ?? i)}>
+							{fields.map((f) => (
+								<td key={f.localName} style={style.td}>
+									{hidden.has(f.localName) ? null : (
+										<Cell
+											value={row[f.localName]}
+											field={f}
+											to={refs.get(f.localName)}
+											look={props.look}
+										/>
+									)}
+								</td>
+							))}
+						</tr>
+					))}
+				</tbody>
+			</table>
 		</div>
+	)
+}
+
+/**
+ * Head is one column's name and the box that turns it off.
+ *
+ * The box is beside the name rather than in a list somewhere else, because the
+ * question "is this column worth its width" is asked while looking at the
+ * column. Turned off, the name goes and the box stays -- which is the point:
+ * the column collapses to the width of a checkbox instead of leaving a gap
+ * where something used to be.
+ *
+ * Hovering it brings the name back, over the rows rather than in the flow, so
+ * finding a column that was turned off does not move everything that was not.
+ */
+function Head(props: { name: string; shown: boolean; toggle: (name: string) => void }): ReactNode {
+	const [over, setOver] = useState(false)
+
+	return (
+		<span
+			style={{ position: 'relative', display: 'inline-flex', gap: 4, alignItems: 'baseline' }}
+			onMouseEnter={() => setOver(true)}
+			onMouseLeave={() => setOver(false)}
+		>
+			<input
+				type="checkbox"
+				aria-label={props.name}
+				checked={props.shown}
+				onChange={() => props.toggle(props.name)}
+			/>
+			{props.shown ? (
+				<span>{props.name}</span>
+			) : (
+				over && (
+					<span role="tooltip" style={style.over}>
+						{props.name}
+					</span>
+				)
+			)}
+		</span>
 	)
 }
 
@@ -573,10 +675,15 @@ function Cell(props: {
 		)
 	}
 
-	const id = props.field.localName === 'id' ? idOf(v) : undefined
-	if (id !== undefined) return <span>{id}</span>
+	// Any bytes that is one of ours, not only the one called `id`: a trail row
+	// names four identifiers and none of them is called that. What is not one
+	// -- a trace, a marshalled patch, a row keyed by something else -- falls
+	// back to hex, which is what it is.
+	if (v instanceof Uint8Array) {
+		const b = idOf(v)
 
-	if (v instanceof Uint8Array) return <span>{key(v)}</span>
+		return <span>{b ?? key(v)}</span>
+	}
 
 	if (typeof v === 'object' && (v as { $typeName?: string }).$typeName === 'google.protobuf.Timestamp') {
 		return <span>{timestampDate(v as never).toISOString()}</span>
