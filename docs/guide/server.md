@@ -415,11 +415,12 @@ client := ent.NewClient(ent.Driver(drv))
 
 ### Migrations
 
-`migrate.Migrations` is the directory of files beside what your app says about
-them — which database they were written for, and what shape they bring one to:
+`entschema.Migrations` is the directory of files beside what your app says
+about them — which database they were written for, and what shape they bring
+one to:
 
 ```go
-m := migrate.Migrations{Dir: dir, Dialect: s.Dialect, Tables: entmigrate.Tables}
+m := entschema.Migrations{Dir: dir, Dialect: s.Dialect, Tables: entmigrate.Tables}
 ```
 
 Planning turns a change of your ent schema into a file of SQL to review. `dev`
@@ -443,9 +444,12 @@ run its migration with the same image it serves with. `pd new` does not write
 them — an app that has not deployed anything yet does not need a migration
 directory, and one that has should decide what its commands are called.
 
-The files live in your repository and are reviewed like any other code. Planning
-and applying both use the atlas packages ent already depends on; the separately
-licensed Atlas CLI is not involved.
+The files live in your repository and are reviewed like any other code. All of
+this is `github.com/protobuf-orm/ent/dialect/sql/schema`, imported here as
+`entschema` and already in your `go.mod` — it is ent's, beside `NewMigrate` and
+the atlas integration, rather than payday's. Planning and applying use the
+atlas packages ent already depends on; the separately licensed Atlas CLI is not
+involved.
 
 ### And a check before serving
 
