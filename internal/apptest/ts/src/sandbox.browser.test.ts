@@ -56,6 +56,28 @@ describe.runIf(enabled)("the sandbox", () => {
     await vite?.close();
   });
 
+  // The pages take the viewer's theme, and a media query is the kind of thing
+  // that goes back to a hardcoded colour in an edit about something else. This
+  // one loads `/`, which starts no wasm, so it costs a page load.
+  it.each(["dark", "light"] as const)("is a %s page for a %s viewer", async (scheme) => {
+    const page = await browser.newPage({ colorScheme: scheme });
+    await page.goto(`${origin}/`, { waitUntil: "load" });
+
+    const back = await page.evaluate(
+      () => getComputedStyle(document.body).backgroundColor,
+    );
+
+    // Parsed rather than matched, because what matters is which side of the
+    // middle it is on and not which grey was picked.
+    const lit =
+      (back.match(/\d+/g) ?? ["255"]).slice(0, 3).reduce((a, v) => a + Number(v), 0) / 3;
+
+    expect(lit, `${scheme}: ${back}`).toBeLessThan(scheme === "dark" ? 64 : 256);
+    expect(lit, `${scheme}: ${back}`).toBeGreaterThan(scheme === "dark" ? -1 : 192);
+
+    await page.close();
+  }, 60_000);
+
   it("serves the app the process serves", async () => {
     const page = await browser.newPage();
     const said: string[] = [];

@@ -154,7 +154,13 @@ const style = {
 		boxSizing: 'border-box',
 		background: back,
 		color: dim,
-		border: `1px solid ${line}`,
+
+		// Brighter than the panel's own lines, because this is the one element
+		// that sits on a background it does not control. Against a white page
+		// any dark edge reads; against a dark one `line` is a shade off the
+		// ground and the handle dissolves into it -- and a handle nobody can
+		// find is the whole panel gone.
+		border: '1px solid #3f3f3f',
 		borderBottom: 'none',
 		borderRadius: '8px 8px 0 0',
 		padding: '3px 22px 4px',

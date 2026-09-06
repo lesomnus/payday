@@ -12,11 +12,47 @@
 -->
 
 <style>
-	body { font: 14px/1.5 system-ui, sans-serif; margin: 2rem; max-width: 34rem }
+	/*
+		The theme is the viewer's. The panel brings its own look and it is a
+		dark one -- a devtools surface, like the browser's own -- so a page
+		fixed at white put a dark sheet on a white ground and made the reader
+		pay for the difference.
+
+		`color-scheme` as well as the colours, because it is what the *browser*
+		paints: the scrollbar, the form controls, and the ground behind the
+		document before any rule of ours applies.
+
+		The dark ground is a shade under the sheet's own `#161616`, so the sheet
+		still reads as the surface above the page.
+	*/
+	:root {
+		color-scheme: light dark;
+		--back: #fafafa;
+		--ink: #222;
+		--dim: #666;
+		--line: #ddd;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root {
+			--back: #0e0e0e;
+			--ink: #e6e6e6;
+			--dim: #8b8b8b;
+			--line: #2c2c2c;
+		}
+	}
+
+	body {
+		font: 14px/1.5 system-ui, sans-serif;
+		margin: 2rem;
+		max-width: 34rem;
+		background: var(--back);
+		color: var(--ink);
+	}
 	h1 { font-size: 1rem; margin: 0 0 1rem }
 	dt { margin-top: 1rem }
-	dd { margin: 0; color: #666 }
-	code { background: #f0f0f0; border-radius: 3px; padding: 0 3px }
+	dd { margin: 0; color: var(--dim) }
+	code { background: var(--line); border-radius: 3px; padding: 0 3px }
 </style>
 
 <h1>payday apptest</h1>
