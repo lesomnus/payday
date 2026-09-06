@@ -35,6 +35,7 @@ import (
 	"strings"
 
 	"github.com/protobuf-orm/protobuf-orm/graph"
+	"github.com/protobuf-orm/protobuf-orm/graph/gogen"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -100,7 +101,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	)
 
 	g := graph.NewGraph()
-	if err := graph.ParseFiles(ctx, g, p.Files); err != nil {
+	if err := gogen.ParseFiles(ctx, g, p.Files); err != nil {
 		return fmt.Errorf("read the schema: %w", err)
 	}
 
