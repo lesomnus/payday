@@ -627,11 +627,79 @@ describe('a hex dump', () => {
 
 		expect(screen.queryByRole('textbox', { name: 'hex' })).toBeNull()
 
-		await act(async () => void fireEvent.click(screen.getByText('text')))
+		// By role, because `find`'s mode list has an option of the same name.
+		await act(async () => void fireEvent.click(screen.getByRole('button', { name: 'text' })))
 
 		const box = screen.getByLabelText('hex') as HTMLTextAreaElement
 		expect(box.tagName).toBe('TEXTAREA')
 		expect(box.value.startsWith('00 01 02 03')).toBe(true)
+	})
+})
+
+describe('find', () => {
+	/** three holders, so there is something to narrow. */
+	function some(): void {
+		for (const alias of ['arm-01', 'arm-02', 'crane-07']) {
+			store.put(Robot.typeName, create(RobotSchema, { id: pdid.newId(RobotDomain).bytes, alias }))
+		}
+	}
+
+	async function look(q: string, how?: string): Promise<string[]> {
+		if (how !== undefined) {
+			await act(async () => {
+				fireEvent.change(screen.getByLabelText('how'), { target: { value: how } })
+			})
+		}
+		await act(async () => {
+			fireEvent.change(screen.getByLabelText('find'), { target: { value: q } })
+		})
+
+		const table = screen.getByLabelText('held')
+		const at = Array.from(table.querySelectorAll('thead th')).findIndex((th) => th.textContent === 'alias')
+
+		return Array.from(table.querySelectorAll('tbody tr')).map(
+			(tr) => tr.querySelectorAll('td')[at]?.textContent ?? '',
+		)
+	}
+
+	beforeEach(async () => {
+		some()
+		await mount()
+		await pick(Robot.typeName)
+		await tab('store')
+	})
+
+	it('keeps the rows something on the screen matches', async () => {
+		expect(await look('arm')).toEqual(['arm-01', 'arm-02'])
+		expect(screen.getByLabelText('matched').textContent).toBe('2 of 3')
+	})
+
+	// The letters in order and anything between them, which is the gesture
+	// every editor has: four characters somebody remembers out of a uuid.
+	it('takes the letters in order when it is asked to be fuzzy', async () => {
+		expect(await look('c7', 'fuzzy')).toEqual(['crane-07'])
+	})
+
+	it('takes a pattern when it is asked for a regex', async () => {
+		expect(await look('-0[12]$', 'regex')).toEqual(['arm-01', 'arm-02'])
+	})
+
+	// A pattern half typed is not "no rows matched", which is what swallowing
+	// the error would show and is indistinguishable from a wrong pattern.
+	it('says what is wrong with a pattern rather than matching nothing', async () => {
+		await look('arm-(', 'regex')
+		expect(screen.getByText(/SyntaxError|Invalid regular expression/)).toBeDefined()
+	})
+
+	// A column somebody turned off is a column they said they are not reading.
+	it('does not keep a row for what is in a column that is turned off', async () => {
+		expect(await look('crane')).toEqual(['crane-07'])
+
+		await act(async () => void fireEvent.click(screen.getByLabelText('alias')))
+		expect(
+			screen.getByLabelText('held').querySelectorAll('tbody tr'),
+			'the only column that said crane is gone',
+		).toHaveLength(0)
 	})
 })
 

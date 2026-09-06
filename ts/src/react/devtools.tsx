@@ -94,6 +94,56 @@ interface Kept {
 
 type Tab = 'list' | 'get' | 'store'
 
+/** How a query is read. */
+type How = 'text' | 'regex' | 'fuzzy'
+
+/** Find is what is being looked for, and how. */
+interface Find {
+	q: string
+	how: How
+}
+
+/**
+ * matcher answers whether a cell matches, or says what is wrong with the query.
+ *
+ * Three ways because they are three different questions. `text` is the one
+ * anybody means by default. `regex` is for a shape -- every alias ending in a
+ * digit, an action on one service -- and its mistakes are typos in the pattern,
+ * so the error is shown rather than swallowed into "no rows matched", which is
+ * what an unreadable pattern otherwise looks like. `fuzzy` is the editor
+ * gesture: the letters in order and anything between them, so `abc` finds
+ * `a-b-c` and a uuid is reachable by the four characters somebody remembers.
+ */
+function matcher(find: Find): ((s: string) => boolean) | string {
+	const q = find.q
+	if (q === '') return () => true
+
+	if (find.how === 'regex') {
+		try {
+			const re = new RegExp(q, 'i')
+
+			return (s) => re.test(s)
+		} catch (e) {
+			return String(e)
+		}
+	}
+
+	const want = q.toLowerCase()
+	if (find.how === 'text') return (s) => s.toLowerCase().includes(want)
+
+	return (s) => {
+		const v = s.toLowerCase()
+		let at = 0
+		for (const c of want) {
+			at = v.indexOf(c, at)
+			if (at < 0) return false
+			at++
+		}
+
+		return true
+	}
+}
+
 /** Step is one row followed into, and the screen it was followed from. */
 interface Step {
 	from: { tab: Tab; entity: string }
@@ -369,6 +419,13 @@ export function Devtools(props: Props): ReactNode {
 	// editor with it.
 	const [raw, setRaw] = useState<Raw>()
 
+	// Not remembered between reloads, unlike the columns: a hidden column is a
+	// decision about this entity and a search is a question being asked right
+	// now. Coming back to a panel that is still filtered by something typed
+	// yesterday is coming back to a table that is missing rows for no visible
+	// reason.
+	const [find, setFind] = useState<Find>({ q: '', how: 'text' })
+
 	// Where following edges has been, so that going back is going back rather
 	// than starting over. It is state and not history: the panel is a window on
 	// a page that has its own back button, and taking that one over would be
@@ -527,6 +584,40 @@ export function Devtools(props: Props): ReactNode {
 					)}
 
 					<span style={{ flex: 1 }} />
+
+					{/*
+						Over what is **on the screen** -- the columns that are
+						not turned off, as they are drawn. Searching the values
+						underneath would be a search that misses what it is
+						pointed at: a uuid is sixteen bytes down there and a
+						patch is a document, and neither is what anybody types.
+
+						On the screen also means the rows that have been
+						fetched, which the count says: `3 of 50` and not `3 of
+						everything`. Asking the server is what the form's own
+						filters are, and a find that quietly paged until it
+						found something would be a second, worse version of
+						them -- one that reads every row of a table to answer
+						what an index could.
+					*/}
+					<input
+						aria-label="find"
+						style={{ ...style.input, width: '18ch' }}
+						placeholder="find"
+						spellCheck={false}
+						value={find.q}
+						onChange={(e) => setFind({ ...find, q: e.target.value })}
+					/>
+					<select
+						aria-label="how"
+						style={style.input}
+						value={find.how}
+						onChange={(e) => setFind({ ...find, how: e.target.value as How })}
+					>
+						<option value="text">text</option>
+						<option value="regex">regex</option>
+						<option value="fuzzy">fuzzy</option>
+					</select>
 				</div>
 
 				<div style={style.body}>
@@ -539,6 +630,7 @@ export function Devtools(props: Props): ReactNode {
 							keep={keep}
 							look={look}
 							raw={setRaw}
+							find={find}
 							entities={props.entities}
 						/>
 					) : kept.tab === 'get' ? (
@@ -551,6 +643,7 @@ export function Devtools(props: Props): ReactNode {
 							keep={keep}
 							look={look}
 							raw={setRaw}
+							find={find}
 							{...(looking?.typeName === entity.typeName ? { id: looking.id } : {})}
 						/>
 					) : (
@@ -563,6 +656,7 @@ export function Devtools(props: Props): ReactNode {
 							keep={keep}
 							look={look}
 							raw={setRaw}
+							find={find}
 						/>
 					)}
 				</div>
@@ -609,6 +703,9 @@ interface View {
 	 * the handle floating in the middle of a full-screen editor.
 	 */
 	raw: (v: Raw) => void
+
+	/** What is being looked for, which only a table can answer. */
+	find: Find
 }
 
 /** Raw is a bytes value being looked at, and what saving it would do. */
@@ -848,6 +945,27 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 	const [edit, setEdit] = useState<{ at: string; field: string; value: string; err?: string }>()
 
 	/**
+	 * The rows that match, over the columns that are not turned off.
+	 *
+	 * A column somebody turned off is a column they said they are not reading,
+	 * and a row kept because of what is in one would be a row that matches
+	 * nothing on the screen.
+	 */
+	const wants = matcher(props.find)
+	const rows = useMemo(() => {
+		if (typeof wants === 'string' || props.find.q === '') return props.rows
+
+		return props.rows.filter((row) =>
+			fields.some(
+				(f) =>
+					!hidden.has(f.localName) &&
+					wants(shown({ value: row[f.localName], field: f, id: ids.has(f.localName), to: refs.get(f.localName) })),
+			),
+		)
+		// `wants` is rebuilt every render; what it stands for is the query.
+	}, [props.rows, props.find.q, props.find.how, props.hidden, props.entity]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	/**
 	 * The last column somebody turned, so that shift reaches back to it.
 	 *
 	 * A ref rather than state: nothing on the screen depends on it, and the
@@ -927,6 +1045,16 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 
 	return (
 		<>
+			{typeof wants === 'string' ? (
+				<p style={style.bad}>{wants}</p>
+			) : (
+				props.find.q !== '' && (
+					<p style={{ color: dim, margin: '2px 0' }} aria-label="matched">
+						{rows.length} of {props.rows.length}
+					</p>
+				)
+			)}
+
 			<table style={style.table} aria-label={props.label}>
 				<thead>
 					<tr>
@@ -938,7 +1066,7 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 					</tr>
 				</thead>
 				<tbody>
-					{props.rows.map((row, i) => {
+					{rows.map((row, i) => {
 						const at = rowAt(row, i)
 
 						return (
@@ -1115,7 +1243,7 @@ function Head(props: { name: string; shown: boolean; toggle: (name: string, span
  * what there is to show is the row it names — and following it is a `Get`,
  * which is a click rather than a join nobody asked for.
  */
-function Cell(props: {
+interface Value {
 	value: unknown
 	field: DescField
 
@@ -1124,62 +1252,75 @@ function Cell(props: {
 
 	/** The entity this field names, for a field that names one. */
 	to: string | undefined
-	look: (typeName: string, id: string) => void
-	onRaw: (v: Uint8Array) => void
-}): ReactNode {
+}
+
+/**
+ * shown is the text a cell puts on the screen, whatever it renders it as.
+ *
+ * Separate from [Cell] because find searches what is **on the screen** and not
+ * what is under it: somebody looking for a row types the uuid they can see and
+ * not the sixteen bytes it stands for, and `100 bytes` is what a patch column
+ * says. Two functions deciding that would be a search that misses what it is
+ * pointed at.
+ */
+function shown(props: Value): string {
 	const v = props.value
-	if (v === undefined || v === null) return <span style={{ color: dim }}>—</span>
+	if (v === undefined || v === null) return '—'
+	if (props.to !== undefined) return idOf(v) ?? '—'
 
-	// The store's own rows key by hex and the wire's carry bytes; both are an
-	// identifier and are shown as one.
-	if (props.to !== undefined) {
-		const id = idOf(v)
-		if (id === undefined) return <span style={{ color: dim }}>—</span>
-
-		return (
-			<button type="button" style={style.link} onClick={() => props.look(props.to as string, id)}>
-				{id}
-			</button>
-		)
-	}
-
-	// Bytes, which the **descriptor** says and the value does not: a row off
-	// the wire carries a `Uint8Array` and the same row out of the store carries
-	// the hex the store keys by, and asking the value which it is would answer
-	// differently for the same field on two tabs.
 	const raw = rawOf(props.field, v)
 	if (raw !== undefined) {
-		if (raw.byteLength === 0) return <span style={{ color: dim }}>—</span>
+		if (raw.byteLength === 0) return '—'
+		if (props.id && raw.byteLength === 16) return uuidOf(raw)
 
-		// Whether it is an identifier is the **schema's** to say and not the
-		// value's -- `EntityDesc.ids` says why, and it is not only the field
-		// called `id`: a trail row names six and none of them is called that.
-		//
-		// Written as a uuid and not as a `pdid`, which is the same sixteen
-		// bytes with two more claims made about them. A row minted somewhere
-		// else, or by something that used a plain v7, is still the uuid the
-		// column holds -- and `pdid.from` refusing it would put "16 bytes"
-		// where a value everybody can read was sitting.
-		if (props.id && raw.byteLength === 16) return <span>{uuidOf(raw)}</span>
-
-		// Not spelled out. A marshalled patch is a column as wide as the
-		// document it holds and hex is the least readable thing that column
-		// could be full of, so it says how big it is -- which is what anybody
-		// reads at a glance -- and opens on a click.
-		return (
-			<button type="button" style={style.link} onClick={() => props.onRaw(raw)}>
-				{raw.byteLength} bytes
-			</button>
-		)
+		return `${String(raw.byteLength)} bytes`
 	}
 
 	if (typeof v === 'object' && (v as { $typeName?: string }).$typeName === 'google.protobuf.Timestamp') {
-		return <span>{timestampDate(v as never).toISOString()}</span>
+		return timestampDate(v as never).toISOString()
 	}
 
-	if (typeof v === 'object') return <span>{JSON.stringify(v)}</span>
+	if (typeof v === 'object') return JSON.stringify(v)
 
-	return <span>{String(v)}</span>
+	return String(v)
+}
+
+function Cell(
+	props: Value & {
+		look: (typeName: string, id: string) => void
+		onRaw: (v: Uint8Array) => void
+	},
+): ReactNode {
+	// What it says is [shown]'s; what is left here is what it is rendered as,
+	// which is the only part that is not text.
+	const text = shown(props)
+	if (text === '—') return <span style={{ color: dim }}>—</span>
+
+	// An edge is not expanded. What the server answered with is a reference, so
+	// what there is to show is the row it names -- and following it is a `Get`,
+	// which is a click rather than a join nobody asked for.
+	if (props.to !== undefined) {
+		return (
+			<button type="button" style={style.link} onClick={() => props.look(props.to as string, text)}>
+				{text}
+			</button>
+		)
+	}
+
+	// Bytes that are not an identifier. A marshalled patch is a column as wide
+	// as the document it holds and hex is the least readable thing that column
+	// could be full of, so it says how big it is -- which is what anybody reads
+	// at a glance -- and opens on a click.
+	const raw = rawOf(props.field, props.value)
+	if (raw !== undefined && !(props.id && raw.byteLength === 16)) {
+		return (
+			<button type="button" style={style.link} onClick={() => props.onRaw(raw)}>
+				{text}
+			</button>
+		)
+	}
+
+	return <span>{text}</span>
 }
 
 /**
@@ -1221,6 +1362,9 @@ function Hex(props: {
 	const [raw, setRaw] = useState(false)
 	const [err, setErr] = useState<string>()
 
+	const box = useRef<HTMLDivElement>(null)
+	useEffect(() => box.current?.focus(), [])
+
 	/** Which byte is being typed into, and what has been typed of it. */
 	const [at, setAt] = useState<number>()
 	const [typed, setTyped] = useState('')
@@ -1257,10 +1401,16 @@ function Hex(props: {
 			style={{ ...style.side, bottom: props.under }}
 			role="dialog"
 			aria-label={`${props.name} bytes`}
-			// Escape closes it, and the div is focused on mount so that it
-			// does without anything being clicked first.
+			// Escape closes it, and it is focused **once** so that it does
+			// without anything being clicked first.
+			//
+			// Once, and by an effect, because this was an inline `ref` -- a new
+			// function every render, so React detached and reattached it every
+			// render and focused the dialog again each time. What that cost was
+			// the byte editor: opening one put the caret here instead of in the
+			// box, and typing a digit into it took the caret straight back out.
 			tabIndex={-1}
-			ref={(el) => el?.focus()}
+			ref={box}
 			onKeyDown={(e) => {
 				if (e.key === 'Escape') props.onClose()
 			}}
@@ -1368,6 +1518,16 @@ function Bytes(props: {
 	onTyped: (v: string) => void
 	onPut: (i: number, b: number) => void
 }): ReactNode {
+	// Focused by hand rather than by `autoFocus`, which is an attribute the
+	// browser honours when it parses a document and not when React puts an
+	// element into one: the box appeared and the caret stayed wherever it was.
+	// On `at` and not on mount, because moving to the next byte is a different
+	// box, and that is the same gesture.
+	const box = useRef<HTMLInputElement>(null)
+	useEffect(() => {
+		box.current?.focus()
+	}, [props.at])
+
 	const rows: ReactNode[] = []
 
 	for (let i = 0; i < props.value.length; i += 16) {
@@ -1387,7 +1547,7 @@ function Bytes(props: {
 						aria-label={`byte ${String(k)}`}
 						style={style.byte}
 						value={props.typed}
-						autoFocus
+						ref={box}
 						spellCheck={false}
 						onMouseDown={(e) => e.stopPropagation()}
 						onChange={(e) => {
@@ -1410,9 +1570,15 @@ function Bytes(props: {
 					<span
 						key={k}
 						style={props.settable ? style.cell : undefined}
+						// `preventDefault` as well as `stopPropagation`, and it
+						// is the one that matters: a mousedown's default action
+						// is to move focus, it runs **after** the handlers, and
+						// it was putting the caret back on the dialog the
+						// instant the box below had taken it.
 						onMouseDown={
 							props.settable
 								? (e) => {
+										e.preventDefault()
 										e.stopPropagation()
 										props.onOpen(k)
 									}
