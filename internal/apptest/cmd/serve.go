@@ -7,31 +7,25 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"slices"
 
 	"github.com/lesomnus/otx/log"
-	"github.com/lesomnus/xli"
 	"github.com/protobuf-orm/ent/dialect"
 	entsql "github.com/protobuf-orm/ent/dialect/sql"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/pdpb"
-	"github.com/lesomnus/payday/spin"
 	"github.com/lesomnus/payday/trail"
 	"github.com/lesomnus/payday/watch"
 	"github.com/lesomnus/payday/web"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent"
-	entmigrate "github.com/lesomnus/payday/internal/apptest/internal/ent/migrate"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
 	"github.com/lesomnus/payday/internal/apptest/server/core"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
-	entschema "github.com/protobuf-orm/ent/dialect/sql/schema"
 )
 
 // Server is a built app: the database it runs on and the two stacks it answers
@@ -362,65 +356,4 @@ func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(
 	log.From(ctx).InfoContext(ctx, "http", slog.String("addr", l.Addr().String()))
 
 	return func() { srv.Close() }, nil
-}
-
-// NewCmdServe is `<app> serve`.
-//
-// It is the app's own and not payday's, for the reason at the top of
-// `cmd/config.go`: the body of this command is the stack, and a framework that
-// supplied it would be hiding the one thing a reader of an app most needs to
-// see.
-func NewCmdServe(c *Config) *xli.Command {
-	return &xli.Command{
-		Name:  "serve",
-		Brief: "answer requests",
-
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			s, err := Build(ctx, *c)
-			if err != nil {
-				return err
-			}
-			defer s.Close()
-
-			// The database, before anything is served on it.
-			//
-			// payday owns some of this app's schema, so a field added to a
-			// holder there arrives in `internal/ent` the next time this app
-			// generates -- and nothing about that is loud. It compiles, the
-			// tests pass against a database the tests just created, and the
-			// first sign of trouble is a column that is not there in the one
-			// handler that reads it.
-			//
-			// So one of the two happens here, and which one is the operator's
-			// to say. `db.migrate: true` hands the serving process the right to
-			// alter tables, which is right for development and is a thing to
-			// decide on purpose; anything else and the shapes have to agree
-			// already.
-			if c.Db.Migrate {
-				if err := s.Ent.Schema.Create(ctx); err != nil {
-					return err
-				}
-			} else if err := entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
-				return err
-			}
-
-			l, err := net.Listen("tcp", c.Server.ListenAddr())
-			if err != nil {
-				return err
-			}
-
-			log.From(ctx).InfoContext(ctx, "grpc", slog.String("addr", l.Addr().String()))
-
-			// The background work and the server, together: whichever stops
-			// first stops the other. A loop that keeps running under a server
-			// that is going down is a process that will not exit, and a server
-			// that goes on answering after its outbox drain has died is one
-			// that accepts writes it will never publish.
-			g, ctx := errgroup.WithContext(ctx)
-			g.Go(func() error { return spin.Run(ctx, slices.Values(s.Spin)) })
-			g.Go(func() error { return s.Serve(ctx, *c, l) })
-
-			return g.Wait()
-		}),
-	}
 }

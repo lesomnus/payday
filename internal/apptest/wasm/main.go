@@ -31,7 +31,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	drpc "github.com/lesomnus/grpc-dgram"
@@ -48,6 +47,7 @@ import (
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
+	"github.com/lesomnus/payday/internal/apptest/sandbox"
 )
 
 func main() {
@@ -98,25 +98,21 @@ func main() {
 	}
 	defer s.Close()
 
-	// The schema is created rather than migrated. In a process that would be
-	// the wrong way round -- versioned migrations are what a deployment runs --
-	// but there is no database here that outlives the page, so there is nothing
-	// for a migration to move.
-	if err := s.Ent.Schema.Create(ctx); err != nil {
-		log.Fatal(err)
-	}
-
-	// The first rows, through the server the wall was never installed on.
+	// The schema and the first rows, in one statement, from a script generated
+	// by `sandbox`. Neither is created here, and both used to be.
 	//
-	// A tenant cannot be put up from inside one -- the Gate layer refuses it to
-	// everybody, which is the same answer a real deployment gives -- so a
-	// sandbox that seeded nothing would be one where the first thing anybody
-	// tries is refused, correctly, and there is no way round it from the page.
+	// The schema was `s.Ent.Schema.Create`, which is a migration engine asked to
+	// bring a database that does not exist into line with a schema -- correct,
+	// and it linked Atlas and an HCL parser into the page to decide something
+	// that has one answer. The rows were 202 calls through this server to a
+	// SQLite in another Worker, before the first frame, arriving at the same
+	// database every time.
 	//
-	// This was missing until the page was first loaded in a browser. Nothing
-	// said so: the refusal is served rather than logged, and the only reader is
-	// whoever is looking at the screen.
-	if err := seed(ctx, s.Ungated); err != nil {
+	// Both still happen. They happen in `sandbox_test.go`, on this stack,
+	// through this server -- the trail sees the writes, so what the page starts
+	// with is a database somebody could have arrived at by using the app -- and
+	// what is left here is executing what came out.
+	if err := sandbox.Load(ctx, s.Db); err != nil {
 		log.Fatal(err)
 	}
 
@@ -153,43 +149,4 @@ func main() {
 	// a main that returns takes the instance down and the page sees its calls
 	// start failing.
 	log.Fatal(gw.Serve(ctx, srv))
-}
-
-// seed puts a tenant and somebody in it, so the page has an app to look at.
-//
-// The same two rows an app's own `init` command writes, and for the same
-// reason: the page signs in as `@acme/admin` and there has to be an
-// `@acme/admin` to be.
-func seed(ctx context.Context, s app.Server) error {
-	t, err := s.Tenant().Add(ctx, app.TenantAddRequest_builder{
-		Alias: "acme",
-		Name:  "Acme",
-	}.Build())
-	if err != nil {
-		return fmt.Errorf("the tenant: %w", err)
-	}
-
-	if _, err := s.Holder().Add(ctx, app.HolderAddRequest_builder{
-		Tenant: app.TenantRef_builder{Id: t.GetId()}.Build(),
-		Alias:  "admin",
-	}.Build()); err != nil {
-		return fmt.Errorf("the holder: %w", err)
-	}
-
-	// And enough of them that a table has to be scrolled.
-	//
-	// A page of rows is not the same thing as a table: paging, a cursor that
-	// advances, a header that stays put and a column somebody turns off
-	// halfway down are all things that only happen past the first screenful.
-	// Two rows is a sandbox where none of that is ever exercised by hand.
-	for i := range 200 {
-		if _, err := s.Holder().Add(ctx, app.HolderAddRequest_builder{
-			Tenant: app.TenantRef_builder{Id: t.GetId()}.Build(),
-			Alias:  fmt.Sprintf("op-%03d", i),
-		}.Build()); err != nil {
-			return fmt.Errorf("holder %d: %w", i, err)
-		}
-	}
-
-	return nil
 }
