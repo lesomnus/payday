@@ -60,9 +60,9 @@ require (
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/protobuf-orm/ent v0.0.0-20260904022402-7714d7267878 // indirect
+	github.com/protobuf-orm/ent v0.0.0-20260906224055-1575ccbff508 // indirect
 	github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df // indirect
-	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260906213504-9e62bbf08cf7 // indirect
+	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260906232518-fa1777a2628d // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260906213448-03adaf8cb0fc // indirect
 	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260906213434-46a5916d5339 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
