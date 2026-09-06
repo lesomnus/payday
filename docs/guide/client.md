@@ -278,6 +278,45 @@ and no backend to start. See [client.md §2](../client.md#2-the-whole-app-in-a-p
 for what it needs from the page, and run `pd doctor` — the four ways it goes
 wrong all fail without naming their cause.
 
+### Do these two things while you are there
+
+The module is tens of megabytes — payday's own is 68 — and both of these are
+about that one fact. `pd sandbox init` writes the pass-through for them and the
+page decides:
+
+```ts
+const box = await start({
+	worker: new URL('./sandbox-worker.ts', import.meta.url),
+	onProgress: (v) => setGot(v),   // { loaded, total, from, keeping }
+})
+```
+
+**Keep it, which is on by default.** The browser's own HTTP cache will not hold
+an entry this size — a cache backend drops any single one over a fraction of the
+whole cache — so without this every reload downloads the module again, and
+nothing says so: the dev server answers `304` to a conditional request all day
+and the browser never sends one. payday keeps it in the Cache API instead and
+revalidates by hand, so a rebuild is still picked up. `cache: false` turns it
+off, and there is no good reason to.
+
+**Draw the progress.** A page that says only "starting" for eight seconds is
+indistinguishable from a page that has hung, and this is the whole of a first
+visit. Three of the four fields are worth putting on the screen:
+
+- `loaded` / `total`, with `total: 0` meaning the length is not knowable, which
+  is a state a bar needs rather than a number to substitute for;
+- `from`, because reading 68 MB off a disk fills a bar exactly like downloading
+  it does, and somebody watching that on a reload concludes the caching is
+  broken;
+- `keeping: false`, which means the next reload does all of it again. It has one
+  ordinary cause and the page is the only thing that can say it: the Cache API
+  needs a secure context, so a container's dev server reached from the host at
+  `http://172.17.0.2:5173` — by address rather than through a forwarded port —
+  has nowhere to keep anything.
+
+`internal/apptest/ts/src/devtools-page.tsx` in this repository draws all of it,
+in about forty lines.
+
 ---
 
 ## Where to go next

@@ -64,6 +64,20 @@ export interface EntityDesc {
 	readonly refs?: readonly RefDesc[]
 
 	/**
+	 * The fields that hold an identifier, as protobuf-es names them.
+	 *
+	 * It is here because it is the one thing about a `bytes` column that this
+	 * side cannot work out. A descriptor says `bytes`; the schema said `uuid`;
+	 * and every sixteen bytes can be read as one -- so anything deciding from
+	 * the value prints an OpenTelemetry trace as somebody's row about one time
+	 * in sixty-four, and does it to a different row on every deployment.
+	 *
+	 * The store does not read this. It is for a caller that has a row and has
+	 * to show it, which is what the devtools panel is.
+	 */
+	readonly ids?: readonly string[]
+
+	/**
 	 * The service that answers about this entity, which is what turns a
 	 * declaration into a call.
 	 *

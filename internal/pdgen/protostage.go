@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/protobuf-orm/protobuf-orm/graph"
 	"github.com/protobuf-orm/protobuf-orm/ormpb"
 )
 
@@ -367,6 +368,27 @@ import type { EntityDesc } from '@lesomnus/payday/store'
 		}
 		if len(refs) > 0 {
 			fmt.Fprintf(b, "\trefs: [%s],\n", strings.Join(refs, ", "))
+		}
+
+		// Which fields hold an identifier, which is the one thing about a
+		// `bytes` column that the other side cannot work out. A descriptor
+		// says `bytes`; the schema says `uuid`; and every sixteen bytes can
+		// be read as a uuid -- so a panel guessing from the value prints an
+		// OpenTelemetry trace as somebody's row about one time in sixty-four.
+		ids := []string{}
+		for p := range v.Props() {
+			f, ok := p.(graph.Field)
+			if !ok {
+				continue
+			}
+			if f.Type() != ormpb.Type_TYPE_UUID {
+				continue
+			}
+
+			ids = append(ids, fmt.Sprintf("%q", lowerCamel(string(f.Name()))))
+		}
+		if len(ids) > 0 {
+			fmt.Fprintf(b, "\tids: [%s],\n", strings.Join(ids, ", "))
 		}
 
 		// The service, which is what turns this declaration into a call. Which

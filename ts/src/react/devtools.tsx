@@ -34,15 +34,22 @@
  * @module
  */
 
-import { create, type DescField, type DescMessage, type DescMethodUnary, type DescService } from '@bufbuild/protobuf'
+import {
+	create,
+	ScalarType,
+	type DescField,
+	type DescMessage,
+	type DescMethodUnary,
+	type DescService,
+} from '@bufbuild/protobuf'
 import { timestampDate } from '@bufbuild/protobuf/wkt'
 import { createClient, type Transport } from '@connectrpc/connect'
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import * as pdid from '../pdid/index.js'
-import { bytes, key, type EntityDesc, type Row } from '../store/index.js'
+import { bytes, key, type EntityDesc } from '../store/index.js'
 
-import { build, Form, useForm, type Vals } from './form.js'
+import { build, Form, leafOf, useForm, type Vals } from './form.js'
 import { useApp } from './index.js'
 import { Json } from './json.js'
 
@@ -170,13 +177,42 @@ const style = {
 	},
 	bar: {
 		display: 'flex',
-		gap: 8,
+		gap: 4,
 		alignItems: 'center',
-		padding: '6px 8px',
+		padding: '4px 6px',
 		borderBottom: `1px solid ${line}`,
 		flexWrap: 'wrap',
 	},
-	body: { overflow: 'auto', flex: 1, padding: 8 },
+	body: { flex: 1, minHeight: 0, display: 'flex' },
+
+	// The form on the left and the answer on the right, each scrolling on its
+	// own. Stacked, the form pushed the table off the bottom of a sheet that is
+	// already short, and a table you have to scroll past a form to reach is a
+	// table you stop looking at.
+	pane: {
+		width: 260,
+		flex: 'none',
+		overflow: 'auto',
+		padding: 6,
+		borderRight: `1px solid ${line}`,
+		display: 'flex',
+		flexDirection: 'column',
+		gap: 6,
+	},
+	seen: { flex: 1, minWidth: 0, overflow: 'auto', padding: 6 },
+
+	// The top edge, which is where a sheet is resized from. It is its own
+	// element rather than a CSS `resize`, which cannot grow a thing anchored to
+	// the bottom of the viewport: dragging that handle moves the wrong edge.
+	grip: {
+		position: 'absolute',
+		left: 0,
+		right: 0,
+		top: -3,
+		height: 7,
+		cursor: 'ns-resize',
+		touchAction: 'none',
+	},
 	table: { borderCollapse: 'collapse', whiteSpace: 'nowrap', width: 'max-content' },
 	th: {
 		textAlign: 'left',
@@ -194,8 +230,22 @@ const style = {
 		color: ink,
 		border: `1px solid ${line}`,
 		borderRadius: 3,
-		padding: '2px 4px',
+		padding: '4px 8px',
 		font: 'inherit',
+	},
+
+	// The same box, sized to be hit rather than to be read past. What pays for
+	// it is the space around things and not the sheet: a bar of taller buttons
+	// with less between them is the height it was.
+	press: {
+		background: '#101010',
+		color: ink,
+		border: `1px solid ${line}`,
+		borderRadius: 3,
+		padding: '5px 12px',
+		font: 'inherit',
+		lineHeight: '16px',
+		cursor: 'pointer',
 	},
 	link: {
 		background: 'none',
@@ -206,11 +256,13 @@ const style = {
 		cursor: 'pointer',
 		textDecoration: 'underline',
 	},
-	// Over the rows rather than in the flow, so that reading a hidden column's
-	// name does not move the ones that are not hidden.
+	// Over the header rather than in the flow, so that reading a hidden
+	// column's name does not move the ones that are not hidden -- and *above*
+	// it, because below is where the rows are and covering the first of them
+	// to read a column name trades one thing hidden for another.
 	over: {
 		position: 'absolute',
-		top: '100%',
+		bottom: '100%',
 		left: 0,
 		zIndex: 1,
 		background: '#101010',
@@ -221,6 +273,20 @@ const style = {
 		whiteSpace: 'nowrap',
 	},
 	bad: { color: '#ff8b8b', whiteSpace: 'pre-wrap' },
+
+	// Above the sheet, which is itself above the page. The panel is the top of
+	// the page and this is the top of the panel, so the number is the sheet's
+	// plus two -- the handle has the one in between.
+	full: {
+		position: 'fixed',
+		inset: 0,
+		zIndex: 2147483002,
+		background: back,
+		color: ink,
+		font: '12px ui-monospace, SFMono-Regular, Menlo, monospace',
+		display: 'flex',
+		flexDirection: 'column',
+	},
 } satisfies Record<string, CSSProperties>
 
 /** Devtools is the panel. */
@@ -244,6 +310,14 @@ export function Devtools(props: Props): ReactNode {
 	const gets = useMemo(() => byCall(props.entities, 'get'), [props.entities])
 
 	const [ungated, setUngated] = useState(false)
+
+	/** Where a resize started, for as long as one is happening. */
+	const grip = useRef<{ y: number; height: number } | undefined>(undefined)
+
+	// Up here rather than in the table that opened it: see [View.raw], and also
+	// because a row scrolled out from under an open editor should not take the
+	// editor with it.
+	const [raw, setRaw] = useState<Raw>()
 
 	// Where following edges has been, so that going back is going back rather
 	// than starting over. It is state and not history: the panel is a window on
@@ -297,6 +371,50 @@ export function Devtools(props: Props): ReactNode {
 			</button>
 
 			<section style={{ ...style.sheet, height: kept.height }}>
+				{/*
+					Drag the top edge. A pointer capture rather than listeners
+					on the window: the pointer leaves this seven-pixel strip on
+					the first move, and without the capture the drag ends there.
+				*/}
+				<div
+					style={style.grip}
+					role="separator"
+					aria-label="resize"
+					onPointerDown={(e) => {
+						// Guarded because it is not everywhere: jsdom has no
+						// pointer capture, and a panel that throws on mousedown
+						// in a test suite is a panel nobody tests.
+						try {
+							e.currentTarget.setPointerCapture(e.pointerId)
+						} catch {
+							// Then the drag ends where the pointer leaves, which
+							// is worse and is not broken.
+						}
+
+						grip.current = { y: e.clientY, height: kept.height }
+					}}
+					onPointerMove={(e) => {
+						const from = grip.current
+						if (from === undefined) return
+
+						// Up is taller, because the sheet grows from the
+						// bottom of the viewport. Bounded below by the bar,
+						// which is the smallest thing that is still a panel,
+						// and above by the viewport, since a sheet taller than
+						// the page is a sheet with a handle nobody can reach.
+						setKept((old) => ({
+							...old,
+							height: Math.min(Math.max(from.height + (from.y - e.clientY), 80), window.innerHeight - 40),
+						}))
+					}}
+					onPointerUp={() => {
+						grip.current = undefined
+						// Written once, at the end: a drag is a hundred moves
+						// and storage is not where a hundred of anything goes.
+						keep({})
+					}}
+				/>
+
 				<div style={style.bar}>
 					<select
 						aria-label="entity"
@@ -346,21 +464,20 @@ export function Devtools(props: Props): ReactNode {
 					)}
 
 					<span style={{ flex: 1 }} />
-
-					<button
-						type="button"
-						style={{ ...style.input, cursor: 'pointer' }}
-						onClick={() => keep({ height: kept.height === 320 ? 640 : 320 })}
-					>
-						{kept.height === 320 ? 'taller' : 'shorter'}
-					</button>
 				</div>
 
 				<div style={style.body}>
 					{entity === undefined ? (
 						<p style={style.bad}>this app declares no entity that answers here.</p>
 					) : kept.tab === 'store' ? (
-						<Held entity={entity} hidden={kept.hidden} keep={keep} look={look} entities={props.entities} />
+						<Held
+							entity={entity}
+							hidden={kept.hidden}
+							keep={keep}
+							look={look}
+							raw={setRaw}
+							entities={props.entities}
+						/>
 					) : kept.tab === 'get' ? (
 						<Get
 							key={`${entity.typeName}:${String(ungated)}`}
@@ -370,6 +487,7 @@ export function Devtools(props: Props): ReactNode {
 							hidden={kept.hidden}
 							keep={keep}
 							look={look}
+							raw={setRaw}
 							{...(looking?.typeName === entity.typeName ? { id: looking.id } : {})}
 						/>
 					) : (
@@ -381,10 +499,25 @@ export function Devtools(props: Props): ReactNode {
 							hidden={kept.hidden}
 							keep={keep}
 							look={look}
+							raw={setRaw}
 						/>
 					)}
 				</div>
 			</section>
+
+			{/* A sibling of the sheet, so that it is above the handle too. */}
+			{raw !== undefined && (
+				<Hex
+					name={raw.name}
+					value={raw.value}
+					settable={raw.settable}
+					onClose={() => setRaw(undefined)}
+					onSave={async (v) => {
+						await raw.save(v)
+						setRaw(undefined)
+					}}
+				/>
+			)}
 		</>
 	)
 }
@@ -400,9 +533,37 @@ interface View {
 	hidden: Record<string, string[]>
 	keep: (v: Partial<Kept>) => void
 	look: (typeName: string, id: string) => void
+
+	/**
+	 * Open a bytes value over everything, which is the panel's to do and not a
+	 * table's.
+	 *
+	 * A `position: fixed` element inside the sheet is stacked *within* the
+	 * sheet, because the sheet has a `z-index` and so is a stacking context of
+	 * its own -- so an overlay rendered down there cannot get above the panel's
+	 * own handle however large a number it asks for. What it looked like was
+	 * the handle floating in the middle of a full-screen editor.
+	 */
+	raw: (v: Raw) => void
 }
 
-/** List is what the server answers for a whole page of them. */
+/** Raw is a bytes value being looked at, and what saving it would do. */
+interface Raw {
+	name: string
+	value: Uint8Array
+	settable: boolean
+	save: (v: Uint8Array) => Promise<void>
+}
+
+/**
+ * List is what the server answers for a whole page of them.
+ *
+ * It pages as it is scrolled rather than on a button, because what somebody
+ * does with a table is scroll it, and a `next` button is a cursor being managed
+ * by hand for no reason. The cursor is still on the screen -- the form's own
+ * `after` box holds whatever the last page answered with -- so what the panel
+ * is doing is visible and can be typed over.
+ */
 function List(props: View & { transport: Transport }): ReactNode {
 	const method = props.entity.service?.method.list as DescMethodUnary<DescMessage, DescMessage>
 	const [vals, setVals] = useForm(method.input)
@@ -411,11 +572,22 @@ function List(props: View & { transport: Transport }): ReactNode {
 	const [next, setNext] = useState('')
 	const [err, setErr] = useState<string>()
 
+	// A ref and not state: what it guards is the scroll handler, which fires
+	// again before a re-render could have told it anything.
+	const busy = useRef(false)
+
 	const ask = useCallback(
-		async (after: string) => {
+		async (after: string, more: boolean) => {
+			if (busy.current) return
+			busy.current = true
 			setErr(undefined)
 			try {
 				const req = build(method.input, vals)
+
+				// `size` is not on the form -- see the `skip` below -- so it is
+				// this that decides it. Big enough that the first answer fills
+				// a sheet and asks for the second by being scrolled.
+				req.size = 50
 				if (after !== '') req.after = after
 
 				const v = (await call(props.entity, props.transport, 'list', req)) as {
@@ -423,63 +595,93 @@ function List(props: View & { transport: Transport }): ReactNode {
 					next: string
 				}
 
-				setRows(v.items)
+				setRows((old) => (more ? [...old, ...v.items] : v.items))
 				setNext(v.next)
+
+				// The cursor, put where somebody would have typed it -- but
+				// only when it was scrolling that asked. A panel that pages
+				// invisibly is a panel whose paging cannot be checked against
+				// what the server answered; one that writes the cursor back on
+				// the *first* page turns the next press of `ask` into a second
+				// page nobody asked for.
+				if (more) setVals({ ...vals, leaf: { ...vals.leaf, after: v.next } })
 			} catch (e) {
-				setRows([])
+				if (!more) setRows([])
 				setErr(String(e))
+			} finally {
+				busy.current = false
 			}
 		},
-		[method, vals, props.entity, props.transport],
+		[method, vals, props.entity, props.transport, setVals],
 	)
 
 	useEffect(() => {
-		void ask('')
+		void ask('', false)
 		// On the entity and the path, not on every keystroke in the form.
 	}, [props.entity, props.transport]) // eslint-disable-line react-hooks/exhaustive-deps
 
-	return (
-		<div>
-			<Ask desc={method.input} vals={vals} onChange={setVals} onAsk={() => void ask('')} what="ask">
-				{next !== '' && (
-					<button type="button" style={{ ...style.input, cursor: 'pointer' }} onClick={() => void ask(next)}>
-						next
-					</button>
-				)}
-			</Ask>
+	/** more is the next page, if the last answer said there is one. */
+	const more = useCallback(
+		(e: { currentTarget: HTMLElement }) => {
+			if (next === '' || busy.current) return
 
-			{err !== undefined && <p style={style.bad}>{err}</p>}
-			<Table label="served" rows={rows} {...props} />
-		</div>
+			const el = e.currentTarget
+			if (el.scrollTop + el.clientHeight < el.scrollHeight - 64) return
+
+			void ask(next, true)
+		},
+		[next, ask],
+	)
+
+	return (
+		<>
+			<Pane desc={method.input} vals={vals} onChange={setVals} onAsk={() => void ask('', false)} what="ask" skip={['size']}>
+				{err !== undefined && <p style={style.bad}>{err}</p>}
+				<span style={{ color: dim }}>
+					{rows.length} row{rows.length === 1 ? '' : 's'}
+					{next === '' ? ', all of them' : ', scroll for more'}
+				</span>
+			</Pane>
+
+			<div style={style.seen} onScroll={more}>
+				<Table label="served" rows={rows} onSaved={() => void ask('', false)} {...props} />
+			</div>
+		</>
 	)
 }
 
 /**
- * Ask is a request form and the button that sends it.
+ * Pane is a request form and the button that sends it, down the left side.
  *
  * The form is the request message, whatever it happens to be -- a `List` takes
- * filters and a page size, a `Get` takes a reference and a select, and both are
+ * filters and a cursor, a `Get` takes a reference and a select, and both are
  * read off the descriptor rather than written out here. An RPC that grows a
  * field grows a box.
  */
-function Ask(props: {
+function Pane(props: {
 	desc: DescMessage
 	vals: Vals
 	onChange: (v: Vals) => void
 	onAsk: () => void
 	what: string
+	skip?: readonly string[]
 	children?: ReactNode
 }): ReactNode {
 	return (
-		<div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6, flexWrap: 'wrap' }}>
-			<div style={{ flex: 1, minWidth: 240 }}>
-				<Form desc={props.desc} vals={props.vals} onChange={props.onChange} />
-			</div>
-			<button type="button" style={{ ...style.input, cursor: 'pointer' }} onClick={props.onAsk}>
+		<aside style={style.pane}>
+			<button type="button" style={style.press} onClick={props.onAsk}>
 				{props.what}
 			</button>
+
+			<Form
+				desc={props.desc}
+				vals={props.vals}
+				onChange={props.onChange}
+				{...(props.skip === undefined ? {} : { skip: props.skip })}
+			/>
+
 			{props.children}
-		</div>
+		</aside>
 	)
 }
 
@@ -532,12 +734,13 @@ function Get(props: View & { transport: Transport; id?: string }): ReactNode {
 	}, [props.id, ask]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	return (
-		<div>
-			<Ask desc={method.input} vals={vals} onChange={setVals} onAsk={() => void ask(vals)} what="look up" />
+		<>
+			<Pane desc={method.input} vals={vals} onChange={setVals} onAsk={() => void ask(vals)} what="look up">
+				{err !== undefined && <p style={style.bad}>{err}</p>}
+			</Pane>
 
-			{err !== undefined && <p style={style.bad}>{err}</p>}
-			{row !== undefined && <Json value={row} />}
-		</div>
+			<div style={style.seen}>{row !== undefined && <Json value={row} />}</div>
+		</>
 	)
 }
 
@@ -546,7 +749,11 @@ function Held(props: View): ReactNode {
 	const app = useApp()
 	const rows = app.store.all(props.entity.typeName) as unknown as Record<string, unknown>[]
 
-	return <Table label="held" rows={rows} {...props} />
+	return (
+		<div style={style.seen}>
+			<Table label="held" rows={rows} {...props} />
+		</div>
+	)
 }
 
 /**
@@ -555,11 +762,26 @@ function Held(props: View): ReactNode {
  * The columns are the message's fields, in the order the schema declares them,
  * and the whole of it scrolls sideways rather than wrapping: a row is wide
  * because the entity is, and a wrapped one cannot be read across.
+ *
+ * A value is edited by double-clicking it, and only one is being edited at a
+ * time: opening a second closes the first without saving it. Two half-typed
+ * edits in two rows is a state where the next click is a guess about which one
+ * it meant.
  */
-function Table(props: View & { label: string; rows: Record<string, unknown>[] }): ReactNode {
+function Table(props: View & { label: string; rows: Record<string, unknown>[]; onSaved?: () => void }): ReactNode {
+	const app = useApp()
 	const fields = props.entity.schema.fields
 	const hidden = new Set(props.hidden[props.entity.typeName] ?? [])
 	const refs = new Map((props.entity.refs ?? []).map((v) => [v.field, v.to]))
+	const ids = new Set(props.entity.ids ?? [])
+
+	const method = props.entity.service?.method.patch as DescMethodUnary<DescMessage, DescMessage> | undefined
+	const settable = useMemo(
+		() => new Set(method === undefined ? [] : patchable(method, props.entity.version).map((f) => f.localName)),
+		[method, props.entity.version],
+	)
+
+	const [edit, setEdit] = useState<{ at: string; field: string; value: string; err?: string }>()
 
 	const toggle = (name: string): void => {
 		const now = new Set(hidden)
@@ -572,8 +794,42 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[] })
 		props.keep({ hidden: { ...props.hidden, [props.entity.typeName]: [...now] } })
 	}
 
+	/**
+	 * save writes one field of one row, through `Patch`.
+	 *
+	 * Through `Queries.call` rather than the raw transport, which is the
+	 * opposite of every read here and for the same reason: a write is supposed
+	 * to reach the store, so that every screen drawing that row is right
+	 * afterwards. Watching the page change is most of what this is for.
+	 *
+	 * The version travels as the precondition. A row read a minute ago and
+	 * patched now is refused rather than applied over somebody else's write,
+	 * and seeing that refusal is worth more than a panel that always wins.
+	 */
+	const save = async (row: Record<string, unknown>, f: DescField, v: unknown): Promise<boolean> => {
+		if (method === undefined) return false
+
+		try {
+			const req: Record<string, unknown> = {
+				ref: { key: { case: 'id', value: idBytes(row.id) } },
+				[f.localName]: v,
+			}
+			if (props.entity.version !== undefined) req[props.entity.version] = row[props.entity.version]
+
+			await app.queries.call(method, create(method.input, req as never))
+			props.onSaved?.()
+
+			return true
+		} catch (e) {
+			// Reported where it was typed, and thrown on so that whoever
+			// asked knows the value on the screen is not what is stored.
+			setEdit((old) => (old === undefined ? old : { ...old, err: String(e) }))
+			throw e
+		}
+	}
+
 	return (
-		<div style={{ overflowX: 'auto' }}>
+		<>
 			<table style={style.table} aria-label={props.label}>
 				<thead>
 					<tr>
@@ -585,25 +841,119 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[] })
 					</tr>
 				</thead>
 				<tbody>
-					{props.rows.map((row, i) => (
-						<tr key={String(row.id ?? i)}>
-							{fields.map((f) => (
-								<td key={f.localName} style={style.td}>
-									{hidden.has(f.localName) ? null : (
-										<Cell
-											value={row[f.localName]}
-											field={f}
-											to={refs.get(f.localName)}
-											look={props.look}
-										/>
-									)}
-								</td>
-							))}
-						</tr>
-					))}
+					{props.rows.map((row, i) => {
+						const at = rowAt(row, i)
+
+						return (
+							<tr key={at}>
+								{fields.map((f) => (
+									<td
+										key={f.localName}
+										style={style.td}
+										onDoubleClick={
+											settable.has(f.localName)
+												? () => setEdit({ at, field: f.localName, value: written(row[f.localName]) })
+												: undefined
+										}
+									>
+										{hidden.has(f.localName) ? null : edit?.at === at &&
+										  edit.field === f.localName ? (
+											<Editing
+												value={edit.value}
+												err={edit.err}
+												onChange={(v) =>
+													setEdit((old) => (old === undefined ? old : { ...old, value: v }))
+												}
+												onCancel={() => setEdit(undefined)}
+												onSave={() => {
+													void save(row, f, leafOf(f, edit.value)).then(
+														() => setEdit(undefined),
+														() => undefined,
+													)
+												}}
+											/>
+										) : (
+											<Cell
+												value={row[f.localName]}
+												field={f}
+												id={ids.has(f.localName)}
+												to={refs.get(f.localName)}
+												look={props.look}
+												onRaw={(v) =>
+													props.raw({
+														name: f.localName,
+														value: v,
+														settable: settable.has(f.localName),
+														save: async (w) => void (await save(row, f, w)),
+													})
+												}
+											/>
+										)}
+									</td>
+								))}
+							</tr>
+						)
+					})}
 				</tbody>
 			</table>
-		</div>
+
+		</>
+	)
+}
+
+/** rowAt is what names a row on the screen, which is its identifier. */
+function rowAt(row: Record<string, unknown>, i: number): string {
+	const v = row.id
+
+	return v instanceof Uint8Array ? key(v) : typeof v === 'string' && v !== '' ? v : `#${String(i)}`
+}
+
+/** idBytes is a row's identifier, from either shape it arrives in. */
+function idBytes(v: unknown): Uint8Array {
+	return v instanceof Uint8Array ? v : bytes(typeof v === 'string' ? v : '')
+}
+
+/** written is a value as somebody would have typed it into a box. */
+function written(v: unknown): string {
+	if (v === undefined || v === null) return ''
+	if (v instanceof Uint8Array) return idOf(v) ?? key(v)
+	if (typeof v === 'object') return ''
+
+	return String(v)
+}
+
+/** Editing is one cell, being typed into. */
+function Editing(props: {
+	value: string
+	err: string | undefined
+	onChange: (v: string) => void
+	onCancel: () => void
+	onSave: () => void
+}): ReactNode {
+	return (
+		<span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+			<input
+				aria-label="editing"
+				style={style.input}
+				value={props.value}
+				autoFocus
+				spellCheck={false}
+				onChange={(e) => props.onChange(e.target.value)}
+				onKeyDown={(e) => {
+					// The two keys a box like this already means, so that a
+					// value can be corrected without the mouse coming back.
+					if (e.key === 'Enter') props.onSave()
+					if (e.key === 'Escape') props.onCancel()
+				}}
+			/>
+			<button type="button" style={style.press} onClick={props.onSave}>
+				save
+			</button>
+			<button type="button" style={style.press} onClick={props.onCancel}>
+				cancel
+			</button>
+			{props.err !== undefined && <span style={style.bad}>{props.err}</span>}
+		</span>
 	)
 }
 
@@ -661,9 +1011,14 @@ function Head(props: { name: string; shown: boolean; toggle: (name: string) => v
 function Cell(props: {
 	value: unknown
 	field: DescField
+
+	/** Whether the schema declared this field a uuid. */
+	id: boolean
+
 	/** The entity this field names, for a field that names one. */
 	to: string | undefined
 	look: (typeName: string, id: string) => void
+	onRaw: (v: Uint8Array) => void
 }): ReactNode {
 	const v = props.value
 	if (v === undefined || v === null) return <span style={{ color: dim }}>—</span>
@@ -681,14 +1036,34 @@ function Cell(props: {
 		)
 	}
 
-	// Any bytes that is one of ours, not only the one called `id`: a trail row
-	// names four identifiers and none of them is called that. What is not one
-	// -- a trace, a marshalled patch, a row keyed by something else -- falls
-	// back to hex, which is what it is.
-	if (v instanceof Uint8Array) {
-		const b = idOf(v)
+	// Bytes, which the **descriptor** says and the value does not: a row off
+	// the wire carries a `Uint8Array` and the same row out of the store carries
+	// the hex the store keys by, and asking the value which it is would answer
+	// differently for the same field on two tabs.
+	const raw = rawOf(props.field, v)
+	if (raw !== undefined) {
+		if (raw.byteLength === 0) return <span style={{ color: dim }}>—</span>
 
-		return <span>{b ?? key(v)}</span>
+		// Whether it is an identifier is the **schema's** to say and not the
+		// value's -- `EntityDesc.ids` says why, and it is not only the field
+		// called `id`: a trail row names six and none of them is called that.
+		//
+		// Written as a uuid and not as a `pdid`, which is the same sixteen
+		// bytes with two more claims made about them. A row minted somewhere
+		// else, or by something that used a plain v7, is still the uuid the
+		// column holds -- and `pdid.from` refusing it would put "16 bytes"
+		// where a value everybody can read was sitting.
+		if (props.id && raw.byteLength === 16) return <span>{uuidOf(raw)}</span>
+
+		// Not spelled out. A marshalled patch is a column as wide as the
+		// document it holds and hex is the least readable thing that column
+		// could be full of, so it says how big it is -- which is what anybody
+		// reads at a glance -- and opens on a click.
+		return (
+			<button type="button" style={style.link} onClick={() => props.onRaw(raw)}>
+				{raw.byteLength} bytes
+			</button>
+		)
 	}
 
 	if (typeof v === 'object' && (v as { $typeName?: string }).$typeName === 'google.protobuf.Timestamp') {
@@ -700,7 +1075,178 @@ function Cell(props: {
 	return <span>{String(v)}</span>
 }
 
-/** idOf reads an identifier out of whatever shape it arrived in. */
+/**
+ * Hex is a bytes value, over everything.
+ *
+ * Full-screen because the thing it shows is not cell-shaped: sixteen bytes to a
+ * line with the text beside them is the layout every tool that has ever shown
+ * bytes uses, and it does not fit in a column. It sits above the sheet rather
+ * than inside it -- the panel is `2147483000` and this is one more -- so it is
+ * over the panel the same way the panel is over the page.
+ *
+ * Editable where the schema says the field is: `patchable` already knows, and a
+ * box that takes typing for a field the server will refuse is a box that
+ * teaches the wrong thing. What is typed is hex, because that is what is shown;
+ * anything that is not a pair of hex digits is refused before it is sent, with
+ * the position that is wrong.
+ */
+function Hex(props: {
+	name: string
+	value: Uint8Array
+	settable: boolean
+	onClose: () => void
+	onSave: (v: Uint8Array) => Promise<void>
+}): ReactNode {
+	const [text, setText] = useState(() => spaced(props.value))
+	const [err, setErr] = useState<string>()
+
+	const parsed = useMemo(() => packed(text), [text])
+	const changed = text !== spaced(props.value)
+
+	const send = (): void => {
+		if (typeof parsed === 'string') {
+			setErr(parsed)
+
+			return
+		}
+
+		setErr(undefined)
+		props.onSave(parsed).catch((e: unknown) => setErr(String(e)))
+	}
+
+	return (
+		<div
+			style={style.full}
+			role="dialog"
+			aria-label={`${props.name} bytes`}
+			// Escape closes it, and the div is focused on mount so that it
+			// does without anything being clicked first.
+			tabIndex={-1}
+			ref={(el) => el?.focus()}
+			onKeyDown={(e) => {
+				if (e.key === 'Escape') props.onClose()
+			}}
+		>
+			<div style={style.bar}>
+				<strong>{props.name}</strong>
+				<span style={{ color: dim }}>
+					{props.value.byteLength} bytes{props.settable ? '' : ', read only'}
+				</span>
+
+				<span style={{ flex: 1 }} />
+
+				{props.settable && (
+					<button type="button" style={style.press} onClick={send} disabled={!changed}>
+						save
+					</button>
+				)}
+				<button type="button" style={style.press} onClick={props.onClose}>
+					close
+				</button>
+			</div>
+
+			{err !== undefined && <p style={{ ...style.bad, margin: '6px 8px' }}>{err}</p>}
+
+			<div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'auto', padding: 8, gap: 16 }}>
+				<textarea
+					aria-label="hex"
+					readOnly={!props.settable}
+					spellCheck={false}
+					value={text}
+					onChange={(e) => setText(e.target.value)}
+					// Wide enough for the sixteen pairs a line holds and no
+					// wider: the text beside it is read against those columns,
+					// and a box that stretches puts a screen of nothing
+					// between them.
+					style={{
+						...style.input,
+						flex: 'none',
+						width: '52ch',
+						resize: 'none',
+						lineHeight: '18px',
+						whiteSpace: 'pre',
+					}}
+				/>
+
+				{/*
+					The same bytes as text, which is how anybody tells at a
+					glance whether they are looking at a string, a protobuf or
+					noise. Not editable: two editors over one value is two
+					answers about what was typed.
+				*/}
+				<pre aria-label="text" style={{ margin: 0, color: dim, lineHeight: '18px', whiteSpace: 'pre' }}>
+					{printable(typeof parsed === 'string' ? props.value : parsed)}
+				</pre>
+			</div>
+		</div>
+	)
+}
+
+/** spaced is bytes as hex, sixteen to a line. */
+function spaced(v: Uint8Array): string {
+	const out: string[] = []
+	for (let i = 0; i < v.length; i += 16) {
+		out.push(
+			Array.from(v.slice(i, i + 16), (b) => b.toString(16).padStart(2, '0')).join(' '),
+		)
+	}
+
+	return out.join('\n')
+}
+
+/** packed is [spaced] back, or what is wrong with it. */
+function packed(text: string): Uint8Array | string {
+	const t = text.replace(/\s+/g, '')
+	if (t.length % 2 !== 0) return `hex: ${String(t.length)} digits is half a byte short`
+
+	const out = new Uint8Array(t.length / 2)
+	for (let i = 0; i < out.length; i++) {
+		const pair = t.slice(i * 2, i * 2 + 2)
+		if (!/^[0-9a-fA-F]{2}$/.test(pair)) return `hex: ${JSON.stringify(pair)} at byte ${String(i)} is not two hex digits`
+
+		out[i] = Number.parseInt(pair, 16)
+	}
+
+	return out
+}
+
+/** printable is the same bytes as text, sixteen to a line. */
+function printable(v: Uint8Array): string {
+	const out: string[] = []
+	for (let i = 0; i < v.length; i += 16) {
+		out.push(
+			Array.from(v.slice(i, i + 16), (b) => (b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : '.')).join(''),
+		)
+	}
+
+	return out.join('\n')
+}
+
+/** rawOf is a bytes field's value, whichever of its two shapes it arrived in. */
+function rawOf(f: DescField, v: unknown): Uint8Array | undefined {
+	if (f.fieldKind !== 'scalar' || f.scalar !== ScalarType.BYTES) return undefined
+	if (v instanceof Uint8Array) return v
+
+	// The store's hex. Empty is a field nobody set, and a zero-length editor
+	// over it would be a dialog about nothing.
+	return typeof v === 'string' && v !== '' ? bytes(v) : undefined
+}
+
+/** uuidOf is sixteen bytes written the way a uuid is written. */
+function uuidOf(v: Uint8Array): string {
+	const h = key(v)
+
+	return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+}
+
+/**
+ * idOf reads an identifier out of whatever shape it arrived in.
+ *
+ * Which fields are identifiers is `EntityDesc.ids`, from the schema. This is
+ * only the reading, and it refuses bytes that are not one of ours -- an
+ * identifier minted by another deployment is bytes here, and saying so is
+ * better than printing a uuid nothing answers to.
+ */
 function idOf(v: unknown): string | undefined {
 	const b = v instanceof Uint8Array ? v : ((v as { id?: unknown } | null)?.id ?? v)
 
@@ -760,80 +1306,4 @@ export function patchable(method: DescMethodUnary<DescMessage, DescMessage>, ver
 		// something to type into a box. Scalars are what this edits.
 		return f.fieldKind === 'scalar'
 	})
-}
-
-/**
- * Edit sets one field of one row, through `Patch`.
- *
- * It goes through `Queries.call` rather than the raw transport, which is the
- * opposite of the reads above and for the same reason: a write is supposed to
- * reach the store, so that every screen drawing that row is right afterwards.
- * Watching the page change is most of what this is for.
- *
- * The version travels as the precondition. A row read a minute ago and patched
- * now is refused rather than applied over somebody else's write, and seeing
- * that refusal is worth more than a panel that always wins.
- */
-export function Edit(props: { entity: EntityDesc; row: Row; onDone?: () => void }): ReactNode {
-	const app = useApp()
-	const method = props.entity.service?.method.patch as DescMethodUnary<DescMessage, DescMessage> | undefined
-
-	const fields = useMemo(
-		() => (method === undefined ? [] : patchable(method, props.entity.version)),
-		[method, props.entity.version],
-	)
-
-	const [field, setField] = useState(0)
-	const [value, setValue] = useState('')
-	const [err, setErr] = useState<string>()
-
-	if (method === undefined || fields.length === 0) {
-		return <p style={style.bad}>nothing here takes a `Patch`.</p>
-	}
-
-	const f = fields[field]
-	if (f === undefined) return null
-
-	const send = async (): Promise<void> => {
-		setErr(undefined)
-		try {
-			const req: Record<string, unknown> = {
-				// The store keys rows by hex — `desc.key` says why — and a ref
-				// is the identifier itself, so this reads it back rather than
-				// sending the key.
-				ref: { key: { case: 'id', value: bytes(props.row.id) } },
-				[f.localName]: value,
-			}
-			if (props.entity.version !== undefined) {
-				req[props.entity.version] = props.row[props.entity.version]
-			}
-
-			await app.queries.call(method, create(method.input, req as never))
-			props.onDone?.()
-		} catch (e) {
-			setErr(String(e))
-		}
-	}
-
-	return (
-		<div style={{ display: 'flex', gap: 6 }}>
-			<select
-				value={field}
-				style={style.input}
-				onChange={(e) => setField(Number(e.target.value))}
-				aria-label="field"
-			>
-				{fields.map((v, i) => (
-					<option key={v.localName} value={i}>
-						{v.localName}
-					</option>
-				))}
-			</select>
-			<input aria-label="value" style={style.input} value={value} onChange={(e) => setValue(e.target.value)} />
-			<button type="button" style={{ ...style.input, cursor: 'pointer' }} onClick={() => void send()}>
-				patch
-			</button>
-			{err !== undefined && <p style={style.bad}>{err}</p>}
-		</div>
-	)
 }

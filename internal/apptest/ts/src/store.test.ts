@@ -14,7 +14,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { pdid } from '@lesomnus/payday'
 import { Store } from '@lesomnus/payday/store'
 
-import { entities, Robot, Tenant } from '../gen/entities.js'
+import { entities, Audit, Robot, Tenant } from '../gen/entities.js'
 import { RobotSchema, type Robot as RobotMsg } from '../gen/app/robot_pb.js'
 import { TenantSchema } from '../gen/app/payday/tenant_pb.js'
 import { RobotDomain, TenantDomain } from '../gen/domains.js'
@@ -207,6 +207,21 @@ describe('a store belongs to whoever it was opened for', () => {
 	})
 })
 
+describe('which columns hold an identifier', () => {
+	// The whole reason `ids` is generated rather than worked out: `bytes` is
+	// all a descriptor says, and every sixteen bytes can be read as a uuid --
+	// so anything deciding from the value prints a trace as somebody's row.
+	it('is what the schema declared a uuid, and not what merely looks like one', () => {
+		expect(Audit.ids).toContain('id')
+		expect(Audit.ids, 'not only the one called `id`').toContain('actorId')
+		expect(Audit.ids).toContain('objectId')
+
+		// Sixteen bytes of OpenTelemetry, declared `bytes` and nothing more.
+		expect(Audit.ids, 'a trace is not a row anybody can look up').not.toContain('traceId')
+		expect(Audit.ids, 'a marshalled document is not an identifier').not.toContain('patch')
+	})
+})
+
 describe('what a declaration says, and what it deliberately does not', () => {
 	it('carries no index, because nothing on this side could use one', () => {
 		// The server's `indexes:` used to be here, written the way Dexie takes
@@ -217,11 +232,22 @@ describe('what a declaration says, and what it deliberately does not', () => {
 		expect(Robot).not.toHaveProperty('index')
 
 		// What is left is what protobuf does not say **here**: four the store
-		// reads, and `service`, which protobuf does say and says in another
-		// file -- so a declaration is where the two halves meet. The list is
-		// written out rather than counted so that a field arriving without a
-		// reason has to be added to this line by somebody.
-		expect(Object.keys(Robot).sort()).toEqual(['domain', 'refs', 'schema', 'service', 'typeName', 'version'])
+		// reads, `service`, which protobuf does say and says in another file,
+		// and `ids`, which the store does not read at all -- it is for a
+		// caller that has to *show* a row, and `bytes` is all a descriptor
+		// says about a column the schema declared a uuid. So a declaration is
+		// where the two halves meet. The list is written out rather than
+		// counted so that a field arriving without a reason has to be added to
+		// this line by somebody.
+		expect(Object.keys(Robot).sort()).toEqual([
+			'domain',
+			'ids',
+			'refs',
+			'schema',
+			'service',
+			'typeName',
+			'version',
+		])
 	})
 })
 

@@ -117,7 +117,19 @@ function one(f: DescField, v: Vals, at: string, item = false): unknown {
 	const s = v.leaf[at]
 	if (s === undefined || s === '') return undefined
 
-	if (kind === 'enum') return Number(s)
+	return leafOf(f, s, kind === 'enum')
+}
+
+/**
+ * leafOf is one typed value read out of what somebody wrote.
+ *
+ * Exported because a form is not the only thing that takes a field and a
+ * string: a table cell edited in place has exactly the same job, and two
+ * answers to "what does this box mean" is how a panel starts sending a number
+ * where it sent a string.
+ */
+export function leafOf(f: DescField, s: string, asEnum = false): unknown {
+	if (asEnum || f.fieldKind === 'enum') return Number(s)
 	if (f.fieldKind !== 'scalar' && f.fieldKind !== 'list') return undefined
 
 	const t = f.fieldKind === 'scalar' ? f.scalar : f.listKind === 'scalar' ? f.scalar : undefined
@@ -179,8 +191,18 @@ export function Form(props: {
 	vals: Vals
 	onChange: (v: Vals) => void
 	at?: string
+
+	/**
+	 * Fields to leave out, by local name.
+	 *
+	 * For the one a caller drives itself rather than the one it dislikes: a
+	 * list that pages as it scrolls owns `size`, and a box somebody can type a
+	 * different number into is a box that disagrees with the scrolling.
+	 */
+	skip?: readonly string[]
 }): ReactNode {
 	const at = props.at ?? ''
+	const skip = new Set(props.skip ?? [])
 
 	const set = (part: keyof Vals, k: string, v: string | number): void => {
 		props.onChange({ ...props.vals, [part]: { ...props.vals[part], [k]: v } })
@@ -195,7 +217,7 @@ export function Form(props: {
 			))}
 
 			{props.desc.fields.map((f) =>
-				f.oneof !== undefined ? null : (
+				f.oneof !== undefined || skip.has(f.localName) ? null : (
 					<Field key={f.localName} {...props} field={f} at={path(at, f.localName)} set={set} />
 				),
 			)}

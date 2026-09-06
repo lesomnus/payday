@@ -21,16 +21,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { pdid } from '@lesomnus/payday'
 import { Queries } from '@lesomnus/payday/query'
 import { Provider, type App } from '@lesomnus/payday/react'
-import { Devtools, Edit, patchable } from '@lesomnus/payday/react/devtools'
+import { Devtools, patchable } from '@lesomnus/payday/react/devtools'
 import { Store } from '@lesomnus/payday/store'
 
 import type { EntityDesc } from '@lesomnus/payday/store'
 
-import { entities, Cell, Robot, Tenant } from '../gen/entities.js'
+import { entities, Audit, Cell, Robot, Tenant } from '../gen/entities.js'
 import { RobotSchema, type Robot as RobotMsg } from '../gen/app/robot_pb.js'
+import { AuditSchema } from '../gen/app/payday/audit_pb.js'
 import { TenantSchema } from '../gen/app/payday/tenant_pb.js'
 import { RobotService, RobotListResponseSchema } from '../gen/app/robot_svc_pb.js'
-import { RobotDomain, TenantDomain } from '../gen/domains.js'
+import { AuditDomain, RobotDomain, TenantDomain } from '../gen/domains.js'
 
 const id = pdid.newId(RobotDomain).bytes
 
@@ -43,8 +44,18 @@ let app: App
 let store: Store
 let answer: RobotMsg
 
+/**
+ * A trail row, which is the one with bytes that are not identifiers.
+ *
+ * The trace is deliberately sixteen bytes with the version nibble of a v4: it
+ * is the shape a panel could mistake for a row, and the domain byte is what
+ * says it is not.
+ */
+const trace = new Uint8Array(16).fill(0x4a)
+
 /** What the fake was asked, so a test can say what did *not* happen. */
 let asked: { method: string; req: unknown }[]
+let trail: ReturnType<typeof create<typeof AuditSchema>>
 
 function fake() {
 	return {
@@ -74,6 +85,12 @@ beforeEach(() => {
 		id,
 		alias: 'arm-01',
 		dateUpdated: timestampFromDate(new Date('2026-01-01T00:00:00Z')),
+	})
+	trail = create(AuditSchema, {
+		id: pdid.newId(AuditDomain).bytes,
+		traceId: trace,
+		patch: new Uint8Array([0xde, 0xad, 0xbe, 0xef]),
+		dateCreated: timestampFromDate(new Date('2026-01-01T00:00:00Z')),
 	})
 	asked = []
 
@@ -216,18 +233,15 @@ describe('what a Patch may set', () => {
 	})
 
 	it('sends the version it read, so a stale edit is refused rather than applied', async () => {
-		store.put(Robot.typeName, answer)
-		const row = store.all(Robot.typeName)[0]
-		expect(row).toBeDefined()
+		await mount()
+		await pick(Robot.typeName)
 
-		render(
-			<Provider app={app}>
-				<Edit entity={Robot} row={row as never} />
-			</Provider>,
-		)
-
-		fireEvent.change(screen.getByLabelText('value'), { target: { value: 'arm-02' } })
-		await act(async () => void fireEvent.click(screen.getByText('patch')))
+		// The value in the table, edited where it is: two clicks on the cell,
+		// which is the whole gesture.
+		asked = []
+		await act(async () => void fireEvent.doubleClick(screen.getByText('arm-01')))
+		fireEvent.change(screen.getByLabelText('editing'), { target: { value: 'arm-02' } })
+		await act(async () => void fireEvent.click(screen.getByText('save')))
 
 		const sent = asked.find((v) => v.method === 'Patch')
 		expect(sent).toBeDefined()
@@ -235,6 +249,27 @@ describe('what a Patch may set', () => {
 		const req = toJson(RobotService.method.patch.input, sent?.req as never) as Record<string, unknown>
 		expect(req.alias).toBe('arm-02')
 		expect(req.dateUpdated, 'the precondition travels with the write').toBeDefined()
+	})
+
+	it('edits one value at a time, so a half-typed one cannot be left behind', async () => {
+		// Two rows, so that opening the second has a first to close.
+		const other = create(RobotSchema, { id: pdid.newId(RobotDomain).bytes, alias: 'arm-09' })
+		await act(async () => {
+			answer = other
+		})
+
+		await mount()
+		await pick(Robot.typeName)
+
+		await act(async () => void fireEvent.doubleClick(screen.getByText('arm-09')))
+		fireEvent.change(screen.getByLabelText('editing'), { target: { value: 'typed and forgotten' } })
+
+		// The identifier's cell is not editable -- `patchable` says so -- so
+		// the second edit is opened on the alias of the same row, which is
+		// enough to prove the first one closed.
+		await act(async () => void fireEvent.click(screen.getByText('cancel')))
+		expect(screen.queryByLabelText('editing')).toBeNull()
+		expect(screen.getByText('arm-09'), 'cancelling leaves the value alone').toBeDefined()
 	})
 })
 
@@ -420,6 +455,76 @@ describe('a column that is turned off', () => {
 	})
 })
 
+describe('the table as it is scrolled', () => {
+	// The fake always answers `next: 'more'`, so what is being checked is that
+	// scrolling asks again and that the answer is added to what is there --
+	// not that paging ever ends.
+	it('asks for the next page and keeps what it had', async () => {
+		await mount()
+		await pick(Robot.typeName)
+
+		expect(screen.getAllByText('arm-01')).toHaveLength(1)
+
+		asked = []
+		await act(async () => void fireEvent.scroll(screen.getByLabelText('served').parentElement as Element))
+
+		const sent = asked.filter((v) => v.method === 'List')
+		expect(sent, 'scrolling to the end asks for the page after the cursor').toHaveLength(1)
+		expect((sent[0]?.req as { after?: string }).after).toBe('more')
+		expect(screen.getAllByText('arm-01'), 'the page is added, not swapped in').toHaveLength(2)
+	})
+
+	it('puts the cursor in the form, where it can be read and typed over', async () => {
+		await mount()
+		await pick(Robot.typeName)
+
+		// Blank until something has paged: writing it on the first answer
+		// makes the next press of `ask` a second page nobody asked for.
+		expect((screen.getByLabelText('after') as HTMLInputElement).value).toBe('')
+
+		await act(async () => void fireEvent.scroll(screen.getByLabelText('served').parentElement as Element))
+		expect((screen.getByLabelText('after') as HTMLInputElement).value).toBe('more')
+	})
+})
+
+describe('bytes that are not an identifier', () => {
+	// A trail row carries a 16-byte OpenTelemetry trace and a marshalled patch
+	// beside four identifiers, which is the whole of this: hex in a cell is a
+	// column as wide as the document it holds, and one of those sixteen bytes
+	// is not a row anybody can look up.
+	it('say how big they are, and open over everything', async () => {
+		store.put(Audit.typeName, trail)
+
+		await mount()
+		await pick(Audit.typeName)
+		await tab('store')
+
+		const open = screen.getByText('4 bytes')
+		await act(async () => void fireEvent.click(open))
+
+		const dialog = screen.getByRole('dialog')
+		expect(dialog.getAttribute('aria-label')).toBe('patch bytes')
+		expect((screen.getByLabelText('hex') as HTMLTextAreaElement).value).toBe('de ad be ef')
+		expect(screen.getByLabelText('text').textContent).toBe('....')
+
+		// Over the panel the way the panel is over the page.
+		expect(Number(dialog.style.zIndex)).toBeGreaterThan(2147483000)
+	})
+
+	it('are not read as a row when nothing here answers to their domain', async () => {
+		store.put(Audit.typeName, trail)
+
+		await mount()
+		await pick(Audit.typeName)
+		await tab('store')
+
+		// A trace is sixteen bytes and every sixteen bytes can be read as a
+		// UUID. What keeps it from being printed as somebody's row is the
+		// domain byte, which nothing registered.
+		expect(screen.getByText('16 bytes'), 'a trace is bytes, not an identifier').toBeDefined()
+	})
+})
+
 describe('a request form', () => {
 	// The filters of a `List` are a repeated message, which is the shape a form
 	// read off a descriptor has to handle to be worth having.
@@ -427,9 +532,12 @@ describe('a request form', () => {
 		await mount()
 		await pick(Robot.typeName)
 
-		// `RobotListRequest` carries `filters`, `size` and `after`.
-		expect(screen.getByLabelText('size')).toBeDefined()
+		// `RobotListRequest` carries `filters`, `size` and `after`, and two of
+		// them are boxes: `size` is the panel's own, because the table pages as
+		// it is scrolled and a number somebody could type over would disagree
+		// with the scrolling.
 		expect(screen.getByLabelText('after')).toBeDefined()
+		expect(screen.queryByLabelText('size'), 'the panel drives the page size').toBeNull()
 
 		asked = []
 		await act(async () => void fireEvent.click(screen.getByText('add')))
@@ -460,6 +568,10 @@ describe('a request form', () => {
 		await act(async () => void fireEvent.click(screen.getByText('ask')))
 
 		const sent = asked.find((v) => v.method === 'List')
-		expect(sent?.req).toEqual({})
+
+		// `size` is the panel's own and not a box: the table pages as it is
+		// scrolled, and a number somebody could type a different value into
+		// would be a number that disagrees with the scrolling.
+		expect(sent?.req).toEqual({ size: 50 })
 	})
 })

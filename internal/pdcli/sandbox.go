@@ -208,6 +208,17 @@ func (s Sandbox) steps(viteWhy string) []string {
 		"# compiler that builds the module -- so it is copied and never vendored",
 		`cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ts/public/`,
 		"GOOS=js GOARCH=wasm go build -o ts/public/app.wasm ./" + DirWasm,
+		"",
+
+		// Both are about the one fact that the module is tens of megabytes,
+		// and both fail quietly if nobody is told: the browser silently keeps
+		// no entry that size, and a page that says nothing for eight seconds
+		// is a page that looks hung.
+		"# `start` in ts/src/sandbox.ts takes an onProgress. Pass one and draw it:",
+		"# the module is tens of megabytes, the browser's own cache will not hold",
+		"# an entry that big -- payday keeps it in the Cache API instead -- and a",
+		"# page with nothing on it for that long is a page that looks broken.",
+		"# `Load.keeping` being false is the one thing only the page can say.",
 	}
 
 	if viteWhy != "" {
