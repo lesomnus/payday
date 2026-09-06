@@ -1,0 +1,22 @@
+//go:build !js
+
+package cmd
+
+// The one driver this app runs on in a process. It is blank-imported by the app
+// rather than by payday so that an app does not carry an engine it never opens.
+//
+// # Why this is its own file, and why it is tagged
+//
+// A blank import is a property of the **package**, and `wasm/main.go` imports
+// this one for `Build`. So a driver named here is linked into the sandbox too,
+// whether or not the page ever opens it -- and this one brings SQLite compiled
+// to Wasm and run on wazero, which is wasm inside wasm and 15 MB of module.
+//
+// The sandbox opens "sqlite3-wasm" instead: SQLite in a Worker beside the page,
+// which is what `config/dbsqlite3wasm` is for. Nothing would have said the
+// wazero engine was there -- the sandbox works, the driver is never opened, and
+// the only symptom is what the browser has to download.
+//
+// So the driver a process runs on goes in a file the js build does not compile.
+// Add a second one -- `dbpgx`, say -- beside it here, not in `config.go`.
+import _ "github.com/lesomnus/payday/config/dbsqlite3"

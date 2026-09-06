@@ -87,6 +87,19 @@ var dialects = map[string]string{}
 //
 // Another database is another such package, anywhere at all, doing the same two
 // lines from its init.
+//
+// # Where the app writes it
+//
+// In a file the js build does not compile -- `pd new` writes `cmd/driver.go`
+// for it -- and not beside the app's configuration. A blank import is a
+// property of the package, and an app's sandbox imports that package to build
+// the same server the process builds, so a driver named next to `Config` is
+// linked into the page as well. The page opens `config/dbsqlite3wasm`, which
+// is SQLite in a Worker; the engine it would carry instead is SQLite on wazero,
+// which is wasm inside wasm and 15 MB of what a browser has to download.
+//
+// Nothing reports it. The sandbox works, the driver is never opened, and the
+// only symptom is the size of the module.
 func RegisterDriver(driver string, dialect string) {
 	dialects[driver] = dialect
 }

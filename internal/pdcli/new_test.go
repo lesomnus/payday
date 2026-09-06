@@ -52,6 +52,7 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 		"buf.yaml",
 		"cmd/serve.go",
 		"cmd/config.go",
+		"cmd/driver.go",
 		"cmd/auth.go",
 		"cmd/thing/main.go",
 		"proto/app/thing.proto",
@@ -60,6 +61,40 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 	} {
 		x.Contains(vs, want)
 	}
+}
+
+// TestTheEngineIsNotInTheSandbox.
+//
+// A blank import is a property of the package, and the sandbox's `main`
+// imports `cmd` for `Build`. So a driver named in `config.go` is linked into
+// the page as well, whether or not the page ever opens it -- and the wazero
+// SQLite engine is 15 MB of module. The page opens "sqlite3-wasm" instead.
+//
+// Nothing else would say so. The sandbox works either way, the driver is
+// never opened, and the only symptom is what the browser downloads -- which
+// is how this went unnoticed in payday's own app until the module was
+// measured. So the check is on where the import is written.
+func TestTheEngineIsNotInTheSandbox(t *testing.T) {
+	x := require.New(t)
+
+	dir := filepath.Join(t.TempDir(), "app")
+	x.NoError((pdcli.New{Dir: dir, Module: "github.com/acme/thing"}).Write())
+
+	read := func(n string) string {
+		b, err := os.ReadFile(filepath.Join(dir, "cmd", n))
+		x.NoError(err)
+		return string(b)
+	}
+
+	// Where it is, and the tag that is the whole point of it being there.
+	drv := read("driver.go")
+	x.Contains(drv, "//go:build !js")
+	x.Contains(drv, `_ "github.com/lesomnus/payday/config/dbsqlite3"`)
+
+	// And where it is not. `config.go` is the file somebody edits, so this is
+	// the one that goes wrong again.
+	x.NotContains(read("config.go"), "payday/config/db",
+		"a driver imported here is linked into the sandbox; put it in driver.go")
 }
 
 // TestTheTemplateIsGoThatParses, which is less than it sounds and more than
