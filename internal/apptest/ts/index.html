@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>payday apptest</title>
+
+<!--
+	Where `npm run dev` lands.
+
+	It exists because there are two pages and neither is named `index`, so vite
+	answered `/` with a 404 -- which reads as a dev server that is broken rather
+	than one that is working and has nothing at that path. Both pages are the
+	same app: the whole server compiled to wasm, running here.
+-->
+
+<style>
+	body { font: 14px/1.5 system-ui, sans-serif; margin: 2rem; max-width: 34rem }
+	h1 { font-size: 1rem; margin: 0 0 1rem }
+	dt { margin-top: 1rem }
+	dd { margin: 0; color: #666 }
+	code { background: #f0f0f0; border-radius: 3px; padding: 0 3px }
+</style>
+
+<h1>payday apptest</h1>
+
+<dl>
+	<dt><a href="/devtools.html">devtools.html</a></dt>
+	<dd>The panel, over the whole app. What to open when the question is what it looks like.</dd>
+
+	<dt><a href="/sandbox.html">sandbox.html</a></dt>
+	<dd>A script that exercises the app and reports on the page. What <code>npm run test:sandbox</code> drives.</dd>
+</dl>
+
+<p>
+	Both need <code>public/app.wasm</code>, which <code>npm run wasm</code> builds — do that
+	after anything that changes the schema or the server.
+</p>
