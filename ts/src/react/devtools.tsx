@@ -103,48 +103,96 @@ interface Find {
 	how: How
 }
 
+/** Hits are the stretches of a value a query matched, in order. */
+type Hits = readonly (readonly [number, number])[]
+
 /**
- * matcher answers whether a cell matches, or says what is wrong with the query.
+ * matcher answers **where** a query matched, or says what is wrong with it.
  *
- * Three ways because they are three different questions. `text` is the one
- * anybody means by default. `regex` is for a shape -- every alias ending in a
- * digit, an action on one service -- and its mistakes are typos in the pattern,
- * so the error is shown rather than swallowed into "no rows matched", which is
- * what an unreadable pattern otherwise looks like. `fuzzy` is the editor
- * gesture: the letters in order and anything between them, so `abc` finds
- * `a-b-c` and a uuid is reachable by the four characters somebody remembers.
+ * Where and not whether, because a match nobody can see is a row somebody has
+ * to work out the reason for -- and that is most of what makes fuzzy usable at
+ * all: the letters it matched are lit up, so a row that looks like a false
+ * positive can be read as one at a glance instead of being taken on trust.
+ *
+ * Three ways because they are three questions. `fuzzy` is the editor gesture --
+ * the letters in order and anything between them -- and is the default: it is a
+ * superset of `text`, so it never hides what a substring would have found, and
+ * four characters somebody remembers reach a uuid. `text` is for narrowing when
+ * fuzzy has been too generous. `regex` is for a shape, and its mistakes are
+ * typos in the pattern, so the error is shown rather than swallowed into "no
+ * rows matched" -- which is what an unreadable pattern otherwise looks like.
  */
-function matcher(find: Find): ((s: string) => boolean) | string {
+function matcher(find: Find): ((s: string) => Hits | undefined) | string {
 	const q = find.q
-	if (q === '') return () => true
+	if (q === '') return () => []
 
 	if (find.how === 'regex') {
+		let re: RegExp
 		try {
-			const re = new RegExp(q, 'i')
-
-			return (s) => re.test(s)
+			re = new RegExp(q, 'gi')
 		} catch (e) {
 			return String(e)
+		}
+
+		return (s) => {
+			const out: [number, number][] = []
+			re.lastIndex = 0
+
+			let m: RegExpExecArray | null
+			while ((m = re.exec(s)) !== null) {
+				// A pattern that can match nothing -- `a*` -- would otherwise
+				// walk this loop forever at the same index.
+				if (m[0] === '') {
+					re.lastIndex++
+					continue
+				}
+
+				out.push([m.index, m.index + m[0].length])
+			}
+
+			return out.length === 0 ? undefined : out
 		}
 	}
 
 	const want = q.toLowerCase()
-	if (find.how === 'text') return (s) => s.toLowerCase().includes(want)
+	if (find.how === 'text') {
+		return (s) => {
+			const v = s.toLowerCase()
+			const out: [number, number][] = []
+			for (let at = v.indexOf(want); at >= 0; at = v.indexOf(want, at + want.length)) {
+				out.push([at, at + want.length])
+			}
+
+			return out.length === 0 ? undefined : out
+		}
+	}
 
 	return (s) => {
 		const v = s.toLowerCase()
+		const out: [number, number][] = []
+
 		let at = 0
 		for (const c of want) {
 			at = v.indexOf(c, at)
-			if (at < 0) return false
+			if (at < 0) return undefined
+
+			// Adjacent letters are one stretch, so `abc` found in `abc` lights
+			// up as a word rather than as three boxes touching.
+			const last = out[out.length - 1]
+			if (last !== undefined && last[1] === at) {
+				last[1] = at + 1
+			} else {
+				out.push([at, at + 1])
+			}
+
 			at++
 		}
 
-		return true
+		return out
 	}
 }
 
-/** Step is one row followed into, and the screen it was followed from. */
+/** Step is one row followed into, and the screen it was followed from. *//** Step is one row followed into, and the screen it was followed from. */
 interface Step {
 	from: { tab: Tab; entity: string }
 	typeName: string
@@ -343,6 +391,26 @@ const style = {
 	},
 	bad: { color: '#ff8b8b', whiteSpace: 'pre-wrap' },
 
+	// One glyph wide, and square, so three of them read as a set of switches
+	// rather than as three more buttons in a row of buttons.
+	chip: {
+		background: '#101010',
+		color: dim,
+		border: `1px solid ${line}`,
+		borderRadius: 3,
+		padding: 0,
+		width: 26,
+		height: 26,
+		font: 'inherit',
+		lineHeight: '24px',
+		cursor: 'pointer',
+	},
+	on: { color: '#101010', background: '#7db4ff', borderColor: '#7db4ff' },
+
+	// Loud on purpose. It is answering "why is this row here", and a highlight
+	// that has to be looked for does not answer it.
+	hit: { background: '#ffb86b', color: '#101010', borderRadius: 2 },
+
 	// Down the right side, and **under** the sheet. The panel is what somebody
 	// is working in and the bytes are what they are looking at from it, so the
 	// panel stays reachable: a full-screen editor over the top of it means
@@ -424,7 +492,7 @@ export function Devtools(props: Props): ReactNode {
 	// now. Coming back to a panel that is still filtered by something typed
 	// yesterday is coming back to a table that is missing rows for no visible
 	// reason.
-	const [find, setFind] = useState<Find>({ q: '', how: 'text' })
+	const [find, setFind] = useState<Find>({ q: '', how: 'fuzzy' })
 
 	// Where following edges has been, so that going back is going back rather
 	// than starting over. It is state and not history: the panel is a window on
@@ -608,16 +676,36 @@ export function Devtools(props: Props): ReactNode {
 						value={find.q}
 						onChange={(e) => setFind({ ...find, q: e.target.value })}
 					/>
-					<select
-						aria-label="how"
-						style={style.input}
-						value={find.how}
-						onChange={(e) => setFind({ ...find, how: e.target.value as How })}
-					>
-						<option value="text">text</option>
-						<option value="regex">regex</option>
-						<option value="fuzzy">fuzzy</option>
-					</select>
+					{/*
+						Beside the box rather than in a list, because these are
+						three states of the box and not three things to go
+						looking for -- and each is one glyph, which is what a
+						list of three one-word options was spending a click on.
+					*/}
+					{(
+						[
+							['fuzzy', '≈', 'the letters in order'],
+							['text', 'ab', 'the letters as typed'],
+							['regex', '.*', 'a pattern'],
+						] as const
+					).map(([how, glyph, why]) => (
+						<button
+							key={how}
+							type="button"
+							title={`${how} — ${why}`}
+							// Named for what it does to the search, because a
+							// panel showing bytes has a `text` column and a
+							// button that edits them as text, and three things
+							// called `text` is three things to disambiguate
+							// every time one of them is looked for.
+							aria-label={`match ${how}`}
+							aria-pressed={find.how === how}
+							style={{ ...style.chip, ...(find.how === how ? style.on : {}) }}
+							onClick={() => setFind({ ...find, how })}
+						>
+							{glyph}
+						</button>
+					))}
 				</div>
 
 				<div style={style.body}>
@@ -956,11 +1044,18 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 		if (typeof wants === 'string' || props.find.q === '') return props.rows
 
 		return props.rows.filter((row) =>
-			fields.some(
-				(f) =>
-					!hidden.has(f.localName) &&
-					wants(shown({ value: row[f.localName], field: f, id: ids.has(f.localName), to: refs.get(f.localName) })),
-			),
+			fields.some((f) => {
+				if (hidden.has(f.localName)) return false
+
+				const text = shown({
+					value: row[f.localName],
+					field: f,
+					id: ids.has(f.localName),
+					to: refs.get(f.localName),
+				})
+
+				return wants(text) !== undefined
+			}),
 		)
 		// `wants` is rebuilt every render; what it stands for is the query.
 	}, [props.rows, props.find.q, props.find.how, props.hidden, props.entity]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1103,6 +1198,7 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 												field={f}
 												id={ids.has(f.localName)}
 												to={refs.get(f.localName)}
+												hit={typeof wants === 'string' ? undefined : wants}
 												look={props.look}
 												onRaw={(v) =>
 													props.raw({
@@ -1287,6 +1383,8 @@ function shown(props: Value): string {
 
 function Cell(
 	props: Value & {
+		/** Where the current query matched, for a panel that is searching. */
+		hit: ((s: string) => Hits | undefined) | undefined
 		look: (typeName: string, id: string) => void
 		onRaw: (v: Uint8Array) => void
 	},
@@ -1296,13 +1394,15 @@ function Cell(
 	const text = shown(props)
 	if (text === '—') return <span style={{ color: dim }}>—</span>
 
+	const lit = <Mark text={text} hits={props.hit?.(text)} />
+
 	// An edge is not expanded. What the server answered with is a reference, so
 	// what there is to show is the row it names -- and following it is a `Get`,
 	// which is a click rather than a join nobody asked for.
 	if (props.to !== undefined) {
 		return (
 			<button type="button" style={style.link} onClick={() => props.look(props.to as string, text)}>
-				{text}
+				{lit}
 			</button>
 		)
 	}
@@ -1315,12 +1415,43 @@ function Cell(
 	if (raw !== undefined && !(props.id && raw.byteLength === 16)) {
 		return (
 			<button type="button" style={style.link} onClick={() => props.onRaw(raw)}>
-				{text}
+				{lit}
 			</button>
 		)
 	}
 
-	return <span>{text}</span>
+	return <span>{lit}</span>
+}
+
+/**
+ * Mark is a value with the part a query matched lit up.
+ *
+ * A row kept by a search and not saying why is a row somebody has to work the
+ * reason out for, over twenty columns -- and for fuzzy that is most of the
+ * work, because the letters it matched are scattered by definition.
+ */
+function Mark(props: { text: string; hits: Hits | undefined }): ReactNode {
+	const hits = props.hits
+	if (hits === undefined || hits.length === 0) return props.text
+
+	const out: ReactNode[] = []
+	let at = 0
+	let n = 0
+
+	for (const [a, b] of hits) {
+		if (a > at) out.push(<span key={n++}>{props.text.slice(at, a)}</span>)
+
+		out.push(
+			<mark key={n++} style={style.hit}>
+				{props.text.slice(a, b)}
+			</mark>,
+		)
+		at = b
+	}
+
+	if (at < props.text.length) out.push(<span key={n++}>{props.text.slice(at)}</span>)
+
+	return out
 }
 
 /**
@@ -1430,6 +1561,7 @@ function Hex(props: {
 					<button
 						type="button"
 						style={{ ...style.press, color: raw || bad ? '#ffb86b' : dim }}
+						aria-label="edit as text"
 						aria-pressed={raw || bad}
 						onClick={() => setRaw(!raw)}
 						disabled={bad}

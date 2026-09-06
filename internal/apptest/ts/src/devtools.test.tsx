@@ -627,8 +627,7 @@ describe('a hex dump', () => {
 
 		expect(screen.queryByRole('textbox', { name: 'hex' })).toBeNull()
 
-		// By role, because `find`'s mode list has an option of the same name.
-		await act(async () => void fireEvent.click(screen.getByRole('button', { name: 'text' })))
+		await act(async () => void fireEvent.click(screen.getByLabelText('edit as text')))
 
 		const box = screen.getByLabelText('hex') as HTMLTextAreaElement
 		expect(box.tagName).toBe('TEXTAREA')
@@ -646,9 +645,7 @@ describe('find', () => {
 
 	async function look(q: string, how?: string): Promise<string[]> {
 		if (how !== undefined) {
-			await act(async () => {
-				fireEvent.change(screen.getByLabelText('how'), { target: { value: how } })
-			})
+			await act(async () => void fireEvent.click(screen.getByLabelText(`match ${how}`)))
 		}
 		await act(async () => {
 			fireEvent.change(screen.getByLabelText('find'), { target: { value: q } })
@@ -670,14 +667,20 @@ describe('find', () => {
 	})
 
 	it('keeps the rows something on the screen matches', async () => {
-		expect(await look('arm')).toEqual(['arm-01', 'arm-02'])
+		expect(await look('arm', 'text')).toEqual(['arm-01', 'arm-02'])
 		expect(screen.getByLabelText('matched').textContent).toBe('2 of 3')
 	})
 
 	// The letters in order and anything between them, which is the gesture
 	// every editor has: four characters somebody remembers out of a uuid.
+	//
+	// `n` on purpose. The identifier column is on the screen too and it is
+	// hex, so a query of `c7` matches whichever rows happen to have a `c`
+	// before a `7` in a uuid drawn at random -- which is a test that passes
+	// most of the time. A letter hex cannot hold asks the question that was
+	// meant.
 	it('takes the letters in order when it is asked to be fuzzy', async () => {
-		expect(await look('c7', 'fuzzy')).toEqual(['crane-07'])
+		expect(await look('cn7', 'fuzzy')).toEqual(['crane-07'])
 	})
 
 	it('takes a pattern when it is asked for a regex', async () => {
@@ -691,9 +694,33 @@ describe('find', () => {
 		expect(screen.getByText(/SyntaxError|Invalid regular expression/)).toBeDefined()
 	})
 
+	// Which is what makes fuzzy usable as the default: the letters it matched
+	// are scattered by definition, so a row that looks like a false positive
+	// has to be readable as one at a glance.
+	it('lights up the part that matched', async () => {
+		await look('cn7', 'fuzzy')
+
+		// By its content and not by `getByText`, which cannot find a value the
+		// highlight has broken into pieces -- which is the thing being tested.
+		const row = Array.from(screen.getByLabelText('held').querySelectorAll('tbody tr')).find((tr) =>
+			Array.from(tr.querySelectorAll('td')).some((td) => td.textContent === 'crane-07'),
+		)
+		expect(row).toBeDefined()
+
+		const lit = Array.from(row?.querySelectorAll('mark') ?? []).map((v) => v.textContent)
+		expect(lit, 'the letters it matched, in order').toEqual(['c', 'n', '7'])
+	})
+
+	it('is fuzzy until it is told otherwise, because that hides nothing', async () => {
+		// A substring is also a subsequence, so the default never keeps back
+		// what `text` would have found.
+		expect(await look('crane')).toEqual(['crane-07'])
+		expect(screen.getByLabelText('match fuzzy').getAttribute('aria-pressed')).toBe('true')
+	})
+
 	// A column somebody turned off is a column they said they are not reading.
 	it('does not keep a row for what is in a column that is turned off', async () => {
-		expect(await look('crane')).toEqual(['crane-07'])
+		expect(await look('crane', 'text')).toEqual(['crane-07'])
 
 		await act(async () => void fireEvent.click(screen.getByLabelText('alias')))
 		expect(
