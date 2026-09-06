@@ -23,7 +23,8 @@
 	"include": [
 		"src/react/devtools.tsx",
 		"src/react/form.tsx",
-		"src/react/json.tsx"
+		"src/react/json.tsx",
+		"src/react/code.tsx"
 	],
 	"exclude": []
 }

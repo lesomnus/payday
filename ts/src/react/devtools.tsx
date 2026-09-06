@@ -36,6 +36,8 @@
 
 import {
 	create,
+	fromJson,
+	toJson,
 	ScalarType,
 	type DescField,
 	type DescMessage,
@@ -58,7 +60,9 @@ import {
 import * as pdid from '../pdid/index.js'
 import { bytes, key, type EntityDesc } from '../store/index.js'
 
+import { Code, type MonacoLike } from './code.js'
 import { build, Form, leafOf, useForm, type Vals } from './form.js'
+import { jsonSchemaOf } from './jsonschema.js'
 import { useApp } from './index.js'
 import { Json } from './json.js'
 
@@ -89,6 +93,25 @@ export interface Props {
 	 * and different through this.
 	 */
 	ungated?: Transport
+
+	/**
+	 * An editor for the document a `Get` answers with, which the app brings.
+	 *
+	 *     import * as monaco from 'monaco-editor'
+	 *     <Devtools entities={entities} monaco={monaco} />
+	 *
+	 * Absent is the ordinary case and the panel is whole without it: the same
+	 * document is shown as coloured text that cannot be edited. What it buys is
+	 * what a schema buys -- completion over the fields the message actually
+	 * has, a hover saying what each is, and a red line under a typo rather than
+	 * a refusal from the server -- because the descriptor is right there and a
+	 * JSON Schema is what a descriptor already says. See `./jsonschema.ts`.
+	 *
+	 * It is handed in rather than imported because payday cannot import it:
+	 * fifteen megabytes into every app that mounts the panel, and web worker
+	 * URLs only the app's own bundler can write. `./code.tsx` says the rest.
+	 */
+	monaco?: MonacoLike
 }
 
 /** Kept is what the panel remembers between reloads. */
@@ -411,16 +434,45 @@ const style = {
 	},
 	body: { flex: 1, minHeight: 0, display: 'flex' },
 
-	// The form on the left and the answer on the right, each scrolling on its
-	// own. Stacked, the form pushed the table off the bottom of a sheet that is
-	// already short, and a table you have to scroll past a form to reach is a
-	// table you stop looking at.
+	// Everything that is not the answer, down the left. It used to be a bar
+	// across the top and a pane under it, which is two places to look for one
+	// thing: what entity, which of its three questions, what is being asked,
+	// and what is being searched for are one column of decisions, and the
+	// answer is what the rest of the sheet is for.
 	pane: {
 		width: 260,
 		flex: 'none',
-		overflow: 'auto',
-		padding: 4,
+		minHeight: 0,
 		borderRight: `1px solid ${line}`,
+		display: 'flex',
+		flexDirection: 'column',
+	},
+
+	// Fixed at the top, and the form between it and the foot is what scrolls:
+	// a request with twenty filters should not push the entity picker off the
+	// screen.
+	top: { flex: 'none', padding: 4, display: 'flex', flexDirection: 'column', gap: 4 },
+
+	// Three of one thing. Even widths rather than each taking what its name
+	// needs, because they are not three separate buttons -- which is the same
+	// reason `seg` exists for the match modes.
+	tabs: { display: 'flex', border: `1px solid ${line}`, borderRadius: 3, overflow: 'hidden' },
+	tab: {
+		flex: 1,
+		background: '#101010',
+		color: dim,
+		border: 'none',
+		borderLeft: `1px solid ${line}`,
+		padding: '6px 0',
+		font: 'inherit',
+		cursor: 'pointer',
+	},
+
+	// Pinned to the bottom, where a search box is.
+	foot: {
+		flex: 'none',
+		padding: 4,
+		borderTop: `1px solid ${line}`,
 		display: 'flex',
 		flexDirection: 'column',
 		gap: 4,
@@ -429,6 +481,10 @@ const style = {
 	// the scrollport's padding edge, so a padded top is a strip above the
 	// header that rows scroll through.
 	seen: { flex: 1, minWidth: 0, overflow: 'auto', padding: '0 4px 4px' },
+
+	// What the view puts in the middle of the sidebar, between the fixed head
+	// and the fixed foot.
+	asked: { flex: 1, minHeight: 0, overflow: 'auto', padding: 4, display: 'flex', flexDirection: 'column', gap: 4 },
 
 	// The top edge, which is where a sheet is resized from. It is its own
 	// element rather than a CSS `resize`, which cannot grow a thing anchored to
@@ -674,6 +730,93 @@ export function Devtools(props: Props): ReactNode {
 		keep(top.from)
 	}, [trail, keep])
 
+	/**
+	 * head and foot are the sidebar around whatever the view puts in it.
+	 *
+	 * Built here and handed down rather than rendered here, because the
+	 * sidebar is one column: the entity, the three tabs, the view's own
+	 * request form, and the search at the bottom. Rendering the fixed parts
+	 * here and the form in the view would need them to be siblings, and they
+	 * are not -- so one place lays the column out and the view fills the
+	 * middle of it. See [Pane].
+	 */
+	const head = (
+		<div style={style.top}>
+			{/* Its own row: a type name is long and a row it shares is a row that wraps. */}
+			<select
+				aria-label="entity"
+				style={style.input}
+				value={entity?.typeName ?? ''}
+				onChange={(e) => keep({ entity: e.target.value })}
+			>
+				{shown.map((v) => (
+					<option key={v.typeName} value={v.typeName}>
+						{v.typeName}
+					</option>
+				))}
+			</select>
+
+			{/* Three of one thing, so they share the width rather than each taking what its name needs. */}
+			<div style={style.tabs}>
+				{(['list', 'get', 'store'] as const).map((v) => (
+					<button
+						key={v}
+						type="button"
+						style={{ ...style.tab, ...(kept.tab === v ? style.on : {}) }}
+						aria-pressed={kept.tab === v}
+						onMouseDown={(e) => e.preventDefault()}
+						onClick={() => keep({ tab: v })}
+					>
+						{v}
+					</button>
+				))}
+			</div>
+
+			{trail.length > 0 && kept.tab === 'get' && (
+				<button type="button" style={style.press} onClick={back} aria-label="back">
+					← back
+				</button>
+			)}
+		</div>
+	)
+
+	const foot = (
+		<div style={style.foot}>
+			{props.ungated !== undefined && (
+				<label style={{ color: ungated ? '#ffb86b' : dim, cursor: 'pointer' }}>
+					<input type="checkbox" checked={ungated} onChange={(e) => setUngated(e.target.checked)} />
+					past the wall
+				</label>
+			)}
+
+			{/*
+				At the bottom, where a search box is. Over what is **on the
+				screen** -- the columns that are not turned off, as they are
+				drawn. Searching the values underneath would be a search that
+				misses what it is pointed at: a uuid is sixteen bytes down there
+				and a patch is a document, and neither is what anybody types.
+
+				On the screen also means the rows that have been fetched, which
+				the count says: `3 of 50` and not `3 of everything`. Asking the
+				server is what the form's own filters are, and a find that
+				quietly paged until it found something would be a second, worse
+				version of them -- one that reads every row of a table to answer
+				what an index could.
+			*/}
+			<div style={{ display: 'flex', gap: 3 }}>
+				<input
+					aria-label="find"
+					style={{ ...style.input, flex: 1, minWidth: 0 }}
+					placeholder="find"
+					spellCheck={false}
+					value={find.q}
+					onChange={(e) => setFind({ ...find, q: e.target.value })}
+				/>
+				<Modes find={find} onChange={setFind} />
+			</div>
+		</div>
+	)
+
 	if (!kept.open) {
 		return (
 			<button type="button" style={{ ...style.handle, bottom: 0 }} onClick={() => keep({ open: true })}>
@@ -738,93 +881,13 @@ export function Devtools(props: Props): ReactNode {
 					}}
 				/>
 
-				<div style={style.bar}>
-					<select
-						aria-label="entity"
-						style={style.input}
-						value={entity?.typeName ?? ''}
-						onChange={(e) => keep({ entity: e.target.value })}
-					>
-						{shown.map((v) => (
-							<option key={v.typeName} value={v.typeName}>
-								{v.typeName}
-							</option>
-						))}
-					</select>
-
-					{trail.length > 0 && kept.tab === 'get' && (
-						<button
-							type="button"
-							style={{ ...style.input, cursor: 'pointer' }}
-							onClick={back}
-							aria-label="back"
-						>
-							←
-						</button>
-					)}
-
-					{(['list', 'get', 'store'] as const).map((v) => (
-						<button
-							key={v}
-							type="button"
-							style={{ ...style.input, cursor: 'pointer', color: kept.tab === v ? ink : dim }}
-							aria-pressed={kept.tab === v}
-							onClick={() => keep({ tab: v })}
-						>
-							{v}
-						</button>
-					))}
-
-					{props.ungated !== undefined && (
-						<label style={{ color: ungated ? '#ffb86b' : dim }}>
-							<input
-								type="checkbox"
-								checked={ungated}
-								onChange={(e) => setUngated(e.target.checked)}
-							/>
-							past the wall
-						</label>
-					)}
-
-					<span style={{ flex: 1 }} />
-
-					{/*
-						Over what is **on the screen** -- the columns that are
-						not turned off, as they are drawn. Searching the values
-						underneath would be a search that misses what it is
-						pointed at: a uuid is sixteen bytes down there and a
-						patch is a document, and neither is what anybody types.
-
-						On the screen also means the rows that have been
-						fetched, which the count says: `3 of 50` and not `3 of
-						everything`. Asking the server is what the form's own
-						filters are, and a find that quietly paged until it
-						found something would be a second, worse version of
-						them -- one that reads every row of a table to answer
-						what an index could.
-					*/}
-					<input
-						aria-label="find"
-						style={{ ...style.input, width: '18ch' }}
-						placeholder="find"
-						spellCheck={false}
-						value={find.q}
-						onChange={(e) => setFind({ ...find, q: e.target.value })}
-					/>
-					{/*
-						Beside the box rather than in a list, because these are
-						three states of the box and not three things to go
-						looking for -- and each is one glyph, which is what a
-						list of three one-word options was spending a click on.
-					*/}
-					<Modes find={find} onChange={setFind} />
-				</div>
-
 				<div style={style.body}>
 					{entity === undefined ? (
 						<p style={style.bad}>this app declares no entity that answers here.</p>
 					) : kept.tab === 'store' ? (
 						<Held
+							head={head}
+							foot={foot}
 							entity={entity}
 							hidden={kept.hidden}
 							keep={keep}
@@ -836,6 +899,8 @@ export function Devtools(props: Props): ReactNode {
 					) : kept.tab === 'get' ? (
 						<Get
 							key={`${entity.typeName}:${String(ungated)}`}
+							head={head}
+							foot={foot}
 							entity={entity}
 							entities={props.entities}
 							transport={transport}
@@ -844,11 +909,14 @@ export function Devtools(props: Props): ReactNode {
 							look={look}
 							raw={setRaw}
 							find={find}
+							{...(props.monaco === undefined ? {} : { monaco: props.monaco })}
 							{...(looking?.typeName === entity.typeName ? { id: looking.id } : {})}
 						/>
 					) : (
 						<List
 							key={`${entity.typeName}:${String(ungated)}`}
+							head={head}
+							foot={foot}
 							entity={entity}
 							entities={props.entities}
 							transport={transport}
@@ -906,6 +974,10 @@ interface View {
 
 	/** What is being looked for, which only a table can answer. */
 	find: Find
+
+	/** The sidebar above and below the view's own form; see [Pane]. */
+	head: ReactNode
+	foot: ReactNode
 }
 
 /** Raw is a bytes value being looked at, and what saving it would do. */
@@ -996,7 +1068,16 @@ function List(props: View & { transport: Transport }): ReactNode {
 
 	return (
 		<>
-			<Pane desc={method.input} vals={vals} onChange={setVals} onAsk={() => void ask('', false)} what="ask" skip={['size']}>
+			<Pane
+				head={props.head}
+				foot={props.foot}
+				desc={method.input}
+				vals={vals}
+				onChange={setVals}
+				onAsk={() => void ask('', false)}
+				what="ask"
+				skip={['size']}
+			>
 				{err !== undefined && <p style={style.bad}>{err}</p>}
 				<span style={{ color: dim }}>
 					{rows.length} row{rows.length === 1 ? '' : 's'}
@@ -1012,36 +1093,61 @@ function List(props: View & { transport: Transport }): ReactNode {
 }
 
 /**
- * Pane is a request form and the button that sends it, down the left side.
+ * Pane is the sidebar: everything that is not the answer, in one column.
  *
- * The form is the request message, whatever it happens to be -- a `List` takes
- * filters and a cursor, a `Get` takes a reference and a select, and both are
- * read off the descriptor rather than written out here. An RPC that grows a
- * field grows a box.
+ * The entity and the three tabs at the top, the request being built in the
+ * middle, and the search at the bottom -- and only the middle scrolls, so a
+ * request with twenty filters does not push the picker off the screen.
+ *
+ * The head and the foot are handed in rather than rendered here because they
+ * are the panel's and not a view's: which entity and which tab are the same
+ * question on all three tabs. What varies is the middle, which is the request
+ * message read off its descriptor -- a `List` takes filters and a cursor, a
+ * `Get` takes a reference and a select, and the store tab takes nothing at all.
+ * An RPC that grows a field grows a box.
  */
 function Pane(props: {
-	desc: DescMessage
-	vals: Vals
-	onChange: (v: Vals) => void
-	onAsk: () => void
-	what: string
+	head: ReactNode
+	foot: ReactNode
+
+	/** The request being built, for a tab that asks one. */
+	desc?: DescMessage
+	vals?: Vals
+	onChange?: (v: Vals) => void
+	onAsk?: () => void
+	what?: string
 	skip?: readonly string[]
+
+	/** Beside the ask button, for whatever else this tab can do to an answer. */
+	act?: ReactNode
 	children?: ReactNode
 }): ReactNode {
 	return (
 		<aside style={style.pane}>
-			<button type="button" style={style.press} onClick={props.onAsk}>
-				{props.what}
-			</button>
+			{props.head}
 
-			<Form
-				desc={props.desc}
-				vals={props.vals}
-				onChange={props.onChange}
-				{...(props.skip === undefined ? {} : { skip: props.skip })}
-			/>
+			<div style={style.asked}>
+				{props.onAsk !== undefined && (
+					<button type="button" style={style.press} onClick={props.onAsk}>
+						{props.what}
+					</button>
+				)}
 
-			{props.children}
+				{props.act}
+
+				{props.desc !== undefined && props.vals !== undefined && props.onChange !== undefined && (
+					<Form
+						desc={props.desc}
+						vals={props.vals}
+						onChange={props.onChange}
+						{...(props.skip === undefined ? {} : { skip: props.skip })}
+					/>
+				)}
+
+				{props.children}
+			</div>
+
+			{props.foot}
 		</aside>
 	)
 }
@@ -1053,24 +1159,47 @@ function Pane(props: {
  * declared one -- and the form is that, so this is not an identifier box that
  * happens to be the case everybody uses.
  *
- * What comes back is shown as JSON rather than as a table of one row. A table
- * is for comparing rows and there is one; what is worth seeing here is the
- * whole document, nesting and all.
+ * What comes back is shown as **protobuf JSON** rather than as a table of one
+ * row. A table is for comparing rows and there is one; what is worth seeing
+ * here is the whole document, nesting and all -- and JSON is what it goes back
+ * as, so what is on the screen is what would be sent.
+ *
+ * # Editing it
+ *
+ * With an editor -- see [Props.monaco] -- the document is typed into and saved,
+ * and what is sent is a `Patch` of the fields that **changed**: the whole
+ * document would rewrite every column with what it already held, which is a
+ * trail entry per field per save saying nothing happened.
  */
-function Get(props: View & { transport: Transport; id?: string }): ReactNode {
+function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoLike }): ReactNode {
+	const app = useApp()
 	const method = props.entity.service?.method.get as DescMethodUnary<DescMessage, DescMessage>
+	const patch = props.entity.service?.method.patch as DescMethodUnary<DescMessage, DescMessage> | undefined
 	const [vals, setVals] = useForm(method.input)
 
-	const [row, setRow] = useState<unknown>()
+	/** What the server answered, as JSON, and what is in the editor now. */
+	const [was, setWas] = useState<Record<string, unknown>>()
+	const [now, setNow] = useState<string>()
 	const [err, setErr] = useState<string>()
+
+	const schema = useMemo(() => jsonSchemaOf(method.output), [method.output])
+	const settable = useMemo(
+		() => (patch === undefined ? [] : patchable(patch, props.entity.version)),
+		[patch, props.entity.version],
+	)
 
 	const ask = useCallback(
 		async (v: Vals) => {
 			setErr(undefined)
-			setRow(undefined)
+			setWas(undefined)
+			setNow(undefined)
 			try {
 				const req = build(method.input, v)
-				setRow(await call(props.entity, props.transport, 'get', req))
+				const row = await call(props.entity, props.transport, 'get', req)
+				const json = toJson(method.output, row as never, { alwaysEmitImplicit: true }) as Record<string, unknown>
+
+				setWas(json)
+				setNow(JSON.stringify(json, null, 2))
 			} catch (e) {
 				setErr(String(e))
 			}
@@ -1094,13 +1223,98 @@ function Get(props: View & { transport: Transport; id?: string }): ReactNode {
 		void ask(v)
 	}, [props.id, ask]) // eslint-disable-line react-hooks/exhaustive-deps
 
+	/**
+	 * save sends what changed, and nothing else.
+	 *
+	 * Compared as JSON on both sides rather than as messages: that is the shape
+	 * the editor holds, and re-decoding it to compare would be deciding twice
+	 * what "different" means for a `bytes` or a `Timestamp`.
+	 */
+	const save = async (): Promise<void> => {
+		if (patch === undefined || was === undefined || now === undefined) return
+
+		setErr(undefined)
+		try {
+			const edited = JSON.parse(now) as Record<string, unknown>
+
+			const req: Record<string, unknown> = { ref: { id: was.id } }
+			let some = false
+			for (const f of settable) {
+				// A field the document does not have is a field this is not
+				// about. Deleting a line is not how a value is cleared -- the
+				// `_null` companions are, and they are on the request rather
+				// than on the row for exactly this reason: absent and empty
+				// are different things and a document cannot say which it
+				// meant.
+				if (!(f.jsonName in edited)) continue
+				if (JSON.stringify(edited[f.jsonName]) === JSON.stringify(was[f.jsonName])) continue
+
+				req[f.jsonName] = edited[f.jsonName]
+				some = true
+			}
+
+			if (!some) {
+				setErr('nothing changed')
+
+				return
+			}
+
+			// The precondition, from the answer rather than from the editor: a
+			// version somebody typed over is a write that overwrites whatever
+			// happened in between, which is the one thing this is here to
+			// refuse.
+			if (props.entity.version !== undefined) {
+				const v = method.output.fields.find((f) => f.localName === props.entity.version)
+				if (v !== undefined) req[v.jsonName] = was[v.jsonName]
+			}
+
+			await app.queries.call(patch, fromJson(patch.input, req as never))
+			await ask(vals)
+		} catch (e) {
+			setErr(String(e))
+		}
+	}
+
+	const editing = props.monaco !== undefined && settable.length > 0
+
 	return (
 		<>
-			<Pane desc={method.input} vals={vals} onChange={setVals} onAsk={() => void ask(vals)} what="look up">
-				{err !== undefined && <p style={style.bad}>{err}</p>}
-			</Pane>
+			<Pane
+				head={props.head}
+				foot={props.foot}
+				desc={method.input}
+				vals={vals}
+				onChange={setVals}
+				onAsk={() => void ask(vals)}
+				what="look up"
+				act={
+					<>
+						{editing && was !== undefined && (
+							<button type="button" style={style.press} onClick={() => void save()}>
+								save what changed
+							</button>
+						)}
+						{err !== undefined && <p style={style.bad}>{err}</p>}
+					</>
+				}
+			/>
 
-			<div style={style.seen}>{row !== undefined && <Json value={row} />}</div>
+			<div style={{ ...style.seen, padding: 0, display: 'flex' }}>
+				{now === undefined ? null : props.monaco === undefined ? (
+					<div style={{ overflow: 'auto', padding: 4 }}>
+						<Json value={was} />
+					</div>
+				) : (
+					<Code
+						monaco={props.monaco}
+						uri={`payday/${props.entity.typeName}.json`}
+						value={now}
+						schema={schema}
+						readOnly={!editing}
+						onChange={setNow}
+					/>
+				)}
+			</div>
 		</>
 	)
 }
@@ -1111,9 +1325,17 @@ function Held(props: View): ReactNode {
 	const rows = app.store.all(props.entity.typeName) as unknown as Record<string, unknown>[]
 
 	return (
-		<div style={style.seen}>
-			<Table label="held" rows={rows} {...props} />
-		</div>
+		<>
+			<Pane head={props.head} foot={props.foot}>
+				<p style={{ color: dim, margin: 0 }}>
+					what this browser holds, which the server was not asked about
+				</p>
+			</Pane>
+
+			<div style={style.seen}>
+				<Table label="held" rows={rows} {...props} />
+			</div>
+		</>
 	)
 }
 

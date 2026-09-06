@@ -18,6 +18,10 @@ import { Queries } from '@lesomnus/payday/query'
 import { Provider, type App } from '@lesomnus/payday/react'
 import type { Load } from '@lesomnus/payday/sandbox'
 import { Devtools } from '@lesomnus/payday/react/devtools'
+
+import * as monaco from 'monaco-editor'
+import jsonWorker from 'monaco-editor/language/json/json.worker?worker'
+import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 import { Store } from '@lesomnus/payday/store'
 
 import { entities } from '../gen/entities.js'
@@ -36,6 +40,21 @@ let once: Promise<App> | undefined
 
 /** watching is whoever is drawing the wait, for the same reason `once` exists. */
 const watching = new Set<(v: Load) => void>()
+
+/**
+ * Where Monaco finds its workers, which is the app's to say and not payday's.
+ *
+ * `?worker` is vite's, and that is the whole reason this is here: the URL of a
+ * bundled worker is something only the bundler that produced it knows. Without
+ * the JSON one there is no completion and no validation -- the language
+ * service is that worker -- and the editor still edits, which is the confusing
+ * half of getting it wrong.
+ */
+;(self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
+	getWorker(_id: string, label: string) {
+		return label === 'json' ? new jsonWorker() : new editorWorker()
+	},
+}
 
 function Page(): React.ReactNode {
 	const [app, setApp] = useState<App>()
@@ -66,7 +85,7 @@ function Page(): React.ReactNode {
 			</p>
 			{app === undefined ? <Starting got={got} /> : (
 				<Provider app={app}>
-					<Devtools entities={entities} />
+					<Devtools entities={entities} monaco={{ editor: monaco.editor, Uri: monaco.Uri, json: monaco.json.jsonDefaults }} />
 				</Provider>
 			)}
 		</main>

@@ -317,6 +317,36 @@ visit. Three of the four fields are worth putting on the screen:
 `internal/apptest/ts/src/devtools-page.tsx` in this repository draws all of it,
 in about forty lines.
 
+### The panel, with an editor
+
+`<Devtools>` shows a row the `Get` tab answered with as protobuf JSON. Hand it
+Monaco and that becomes an editor, with completion over the fields the message
+actually has, a hover saying what each is, and a red line under a typo — all of
+it from the descriptor, which is already a JSON Schema in every respect but the
+spelling:
+
+```ts
+import * as monaco from 'monaco-editor'
+
+<Devtools entities={entities} monaco={{ editor: monaco.editor, Uri: monaco.Uri, json: monaco.json.jsonDefaults }} />
+```
+
+payday does not depend on it and cannot: fifteen megabytes into every app that
+mounts the panel, and web-worker URLs that only your bundler can write. Set
+`MonacoEnvironment` yourself — without the JSON worker there is no language
+service, and the editor still edits, which is the confusing half of getting it
+wrong. `devtools-page.tsx` shows the four lines.
+
+Without it the panel is whole: the same document, coloured, read-only.
+
+Saving sends a `Patch` of the fields that **changed** and that the document
+actually carries. Deleting a line is not how a value is cleared — the `_null`
+companions on the request are, and they exist because absent and empty are
+different things that a document cannot tell apart.
+
+`jsonSchemaOf` is exported from `@lesomnus/payday/react/jsonschema` if you want
+the same thing for a form of your own.
+
 ---
 
 ## Where to go next
