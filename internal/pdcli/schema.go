@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/protobuf-orm/protobuf-orm/graph"
+	"github.com/protobuf-orm/protobuf-orm/graph/gogen"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -195,7 +196,7 @@ func read(fs *descriptorpb.FileDescriptorSet, generate []string) (*pdgen.Schema,
 	}
 
 	g := graph.NewGraph()
-	if err := graph.ParseFiles(context.Background(), g, p.Files); err != nil {
+	if err := gogen.ParseFiles(context.Background(), g, p.Files); err != nil {
 		return nil, fmt.Errorf("orm: %w", err)
 	}
 

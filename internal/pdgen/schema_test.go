@@ -10,6 +10,7 @@ import (
 
 	"github.com/bufbuild/protocompile"
 	"github.com/protobuf-orm/protobuf-orm/graph"
+	"github.com/protobuf-orm/protobuf-orm/graph/gogen"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
@@ -117,7 +118,7 @@ func readFiles(t *testing.T, files map[string]string) (*pdgen.Schema, error) {
 	}
 
 	g := graph.NewGraph()
-	if err := graph.ParseFiles(context.Background(), g, p.Files); err != nil {
+	if err := gogen.ParseFiles(context.Background(), g, p.Files); err != nil {
 		return nil, fmt.Errorf("orm: %w", err)
 	}
 
