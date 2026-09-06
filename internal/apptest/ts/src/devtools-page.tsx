@@ -56,6 +56,15 @@ const watching = new Set<(v: Load) => void>()
 	},
 }
 
+/**
+ * The four things payday asks of monaco, as one value.
+ *
+ * At module scope rather than written inline in the element, which is not a
+ * style: an object literal in JSX is a new object on every render, and the
+ * panel builds the editor from it.
+ */
+const editor = { editor: monaco.editor, Uri: monaco.Uri, json: monaco.json.jsonDefaults }
+
 function Page(): React.ReactNode {
 	const [app, setApp] = useState<App>()
 	const [err, setErr] = useState<string>()
@@ -85,7 +94,7 @@ function Page(): React.ReactNode {
 			</p>
 			{app === undefined ? <Starting got={got} /> : (
 				<Provider app={app}>
-					<Devtools entities={entities} monaco={{ editor: monaco.editor, Uri: monaco.Uri, json: monaco.json.jsonDefaults }} />
+					<Devtools entities={entities} monaco={editor} />
 				</Provider>
 			)}
 		</main>

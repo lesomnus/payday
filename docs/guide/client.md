@@ -344,6 +344,11 @@ actually carries. Deleting a line is not how a value is cleared — the `_null`
 companions on the request are, and they exist because absent and empty are
 different things that a document cannot tell apart.
 
+**against what was read** splits the region into Monaco's diff editor: the
+server's answer on the left, read-only, and what you have typed on the right
+with the changes marked. It is the answer to "what am I about to send" that one
+pane cannot give once a document is more than a screenful.
+
 `jsonSchemaOf` is exported from `@lesomnus/payday/react/jsonschema` if you want
 the same thing for a form of your own.
 

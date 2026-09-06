@@ -61,6 +61,8 @@ import * as pdid from '../pdid/index.js'
 import { bytes, key, type EntityDesc } from '../store/index.js'
 
 import { Code, type MonacoLike } from './code.js'
+
+export { Code, type MonacoLike }
 import { build, Form, leafOf, useForm, type Vals } from './form.js'
 import { jsonSchemaOf } from './jsonschema.js'
 import { useApp } from './index.js'
@@ -122,6 +124,9 @@ interface Kept {
 	tab: Tab
 	/** Which columns are hidden, per entity. Absent is "all of them shown". */
 	hidden: Record<string, string[]>
+
+	/** Whether a document is shown against what the server answered with. */
+	diff: boolean
 }
 
 type Tab = 'list' | 'get' | 'store'
@@ -355,7 +360,7 @@ const at = 'payday.devtools'
  * failure mode.
  */
 function read(): Kept {
-	const zero: Kept = { open: false, height: 320, entity: '', tab: 'list', hidden: {} }
+	const zero: Kept = { open: false, height: 320, entity: '', tab: 'list', hidden: {}, diff: false }
 	try {
 		const v = localStorage.getItem(at)
 		if (v === null) return zero
@@ -909,6 +914,7 @@ export function Devtools(props: Props): ReactNode {
 							look={look}
 							raw={setRaw}
 							find={find}
+							diff={kept.diff}
 							{...(props.monaco === undefined ? {} : { monaco: props.monaco })}
 							{...(looking?.typeName === entity.typeName ? { id: looking.id } : {})}
 						/>
@@ -1171,7 +1177,7 @@ function Pane(props: {
  * document would rewrite every column with what it already held, which is a
  * trail entry per field per save saying nothing happened.
  */
-function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoLike }): ReactNode {
+function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoLike; diff: boolean }): ReactNode {
 	const app = useApp()
 	const method = props.entity.service?.method.get as DescMethodUnary<DescMessage, DescMessage>
 	const patch = props.entity.service?.method.patch as DescMethodUnary<DescMessage, DescMessage> | undefined
@@ -1179,6 +1185,18 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 
 	/** What the server answered, as JSON, and what is in the editor now. */
 	const [was, setWas] = useState<Record<string, unknown>>()
+
+	/**
+	 * How many answers there have been, which is the editor's `key`.
+	 *
+	 * A new answer is a new editor. `Code` reads its document once and cannot
+	 * be told a later one -- see its `value` -- because what would arrive
+	 * while somebody types is that editor's own text a render behind. Counting
+	 * is what makes "a different document" a thing React can see, and it is
+	 * not the identifier: looking the **same** row up again is also a new
+	 * document, and is how somebody throws an edit away.
+	 */
+	const [got, setGot] = useState(0)
 	const [now, setNow] = useState<string>()
 	const [err, setErr] = useState<string>()
 
@@ -1200,6 +1218,7 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 
 				setWas(json)
 				setNow(JSON.stringify(json, null, 2))
+				setGot((n) => n + 1)
 			} catch (e) {
 				setErr(String(e))
 			}
@@ -1277,6 +1296,13 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 
 	const editing = props.monaco !== undefined && settable.length > 0
 
+	// On the toggle and on nothing else. It was also asking whether anything
+	// had changed yet -- a diff of a document against itself being half the
+	// width spent saying so -- and that flipped **while somebody was typing**,
+	// which rebuilds the editor and throws away the keystroke that flipped it.
+	// An empty diff is honest; an editor that eats the first character is not.
+	const split = props.diff && was !== undefined
+
 	return (
 		<>
 			<Pane
@@ -1290,9 +1316,19 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 				act={
 					<>
 						{editing && was !== undefined && (
-							<button type="button" style={style.press} onClick={() => void save()}>
-								save what changed
-							</button>
+							<>
+								<button type="button" style={style.press} onClick={() => void save()}>
+									save what changed
+								</button>
+								<label style={{ color: props.diff ? '#ffb86b' : dim, cursor: 'pointer' }}>
+									<input
+										type="checkbox"
+										checked={props.diff}
+										onChange={(e) => props.keep({ diff: e.target.checked })}
+									/>
+									against what was read
+								</label>
+							</>
 						)}
 						{err !== undefined && <p style={style.bad}>{err}</p>}
 					</>
@@ -1306,9 +1342,11 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 					</div>
 				) : (
 					<Code
+						key={got}
 						monaco={props.monaco}
 						uri={`payday/${props.entity.typeName}.json`}
 						value={now}
+						{...(split ? { original: JSON.stringify(was, null, 2) } : {})}
 						schema={schema}
 						readOnly={!editing}
 						onChange={setNow}

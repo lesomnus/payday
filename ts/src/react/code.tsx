@@ -36,6 +36,16 @@ import type { Schema } from './jsonschema.js'
 export interface MonacoLike {
 	readonly editor: {
 		create(el: HTMLElement, opts: Record<string, unknown>): Editor
+		/**
+		 * A diff editor, answered as `unknown` and narrowed where it is used.
+		 *
+		 * Its `setModel` cannot be described here. The parameter is checked
+		 * against monaco's own, and the only type that passes is `ITextModel`
+		 * itself -- sixty-odd members transcribed to say a thing this file
+		 * calls once, and stale the next release. So the narrowing is one cast
+		 * at the call site instead.
+		 */
+		createDiffEditor(el: HTMLElement, opts: Record<string, unknown>): unknown
 		createModel(value: string, language: string, uri: unknown): Model
 	}
 
@@ -67,8 +77,12 @@ interface Model {
 }
 
 interface Editor {
-	layout(): void
-	updateOptions(opts: Record<string, unknown>): void
+	dispose(): void
+}
+
+interface DiffEditor {
+	setModel(v: { original: Model; modified: Model }): void
+	getModifiedEditor(): { updateOptions(opts: Record<string, unknown>): void }
 	dispose(): void
 }
 
@@ -87,30 +101,68 @@ const style = {
 export function Code(props: {
 	monaco: MonacoLike
 	uri: string
+
+	/**
+	 * The document to open on, read **once**.
+	 *
+	 * A new answer is a new editor: give this a `key` that changes with the
+	 * document and let React remount it. Writing a later `value` into the
+	 * model instead cannot be made correct -- what arrives here while somebody
+	 * types is this editor's own text one render behind, and putting that back
+	 * throws away the keystrokes that came after it. There is no way from in
+	 * here to tell a stale echo from an answer, and guessing wrong eats
+	 * characters.
+	 */
 	value: string
+
+	/**
+	 * What the value was, for a side-by-side diff against it.
+	 *
+	 * Absent is one editor. Given, the region is Monaco's diff editor: the
+	 * original on the left, read-only, and the value being typed on the right
+	 * with the changes marked -- which is the same thing a reviewer looks at,
+	 * and is the answer to "what am I about to send" that a single pane cannot
+	 * give once a document is more than a screenful.
+	 */
+	original?: string
 	schema: Schema | undefined
 	readOnly: boolean
 	onChange: (v: string) => void
 }): ReactNode {
 	const box = useRef<HTMLDivElement>(null)
 
-	// The callback, kept where the effect can read the current one. Rebuilding
-	// the editor when a parent re-renders would throw away the caret, the
-	// folding and the undo history on every keystroke somewhere else.
+	// Kept in a ref and left out of the deps below, because an editor is not
+	// something anything swaps mid-life -- and because a caller writing
+	// `monaco={{ editor, Uri, json }}` inline hands over a new object on every
+	// render, which would rebuild the editor between two keystrokes. What that
+	// looks like is typing that arrives out of order and half missing.
+	const api = useRef(props.monaco)
+	api.current = props.monaco
+
+	// The models, kept so that they can be disposed of.
+	const mine = useRef<Model>(null)
+	const theirs = useRef<Model>(null)
+
+	// The callback, kept where the effect can read the current one rather than
+	// the one from the render that built the editor.
 	const onChange = useRef(props.onChange)
 	onChange.current = props.onChange
+
+	const split = props.original !== undefined
 
 	useEffect(() => {
 		const el = box.current
 		if (el === null) return
 
+		const monaco = api.current
+
 		// A scheme, because `fileMatch` is matched against the model's URI as a
 		// string: a bare `app.Tenant.json` parses to a URI with no scheme and
 		// matches nothing, which is a schema that is registered and never
 		// applies -- an editor with completion and validation silently off.
-		const uri = props.monaco.Uri.parse(`inmemory://payday/${props.uri}`)
+		const uri = monaco.Uri.parse(`inmemory://payday/${props.uri}`)
 
-		props.monaco.json?.setDiagnosticsOptions({
+		monaco.json?.setDiagnosticsOptions({
 			validate: true,
 			schemas:
 				props.schema === undefined
@@ -118,9 +170,10 @@ export function Code(props: {
 					: [{ uri: `payday://schema/${props.uri}`, fileMatch: [uri.toString()], schema: props.schema }],
 		})
 
-		const model = props.monaco.editor.createModel(props.value, 'json', uri)
-		const editor = props.monaco.editor.create(el, {
-			model,
+		const model = monaco.editor.createModel(props.value, 'json', uri)
+		mine.current = model
+
+		const opts = {
 			readOnly: props.readOnly,
 			automaticLayout: true,
 			minimap: { enabled: false },
@@ -131,7 +184,39 @@ export function Code(props: {
 			tabSize: 2,
 			renderLineHighlight: 'none',
 			overviewRulerLanes: 0,
-		})
+		}
+
+		let editor: Editor
+		if (split) {
+			// The original needs a URI of its own -- two models cannot share
+			// one -- and is deliberately **not** matched to the schema: it is
+			// the server's own answer, so a red line on it would be a
+			// complaint about something nobody typed.
+			const was = monaco.editor.createModel(
+				props.original ?? '',
+				'json',
+				monaco.Uri.parse(`inmemory://payday/${props.uri}.was`),
+			)
+			theirs.current = was
+
+			const diff = monaco.editor.createDiffEditor(el, {
+				...opts,
+				originalEditable: false,
+				renderSideBySide: true,
+				readOnly: props.readOnly,
+			}) as DiffEditor
+			diff.setModel({ original: was, modified: model })
+
+			// Said again to the editor on the right, because the diff editor
+			// does not pass it down: given `readOnly: false` it still builds a
+			// modified side that refuses every keystroke, and what that looks
+			// like is a pane with a caret in it that cannot be typed in.
+			diff.getModifiedEditor().updateOptions({ readOnly: props.readOnly })
+			editor = diff
+		} else {
+			theirs.current = null
+			editor = monaco.editor.create(el, { ...opts, model })
+		}
 
 		const sub = model.onDidChangeContent(() => onChange.current(model.getValue()))
 
@@ -139,11 +224,13 @@ export function Code(props: {
 			sub.dispose()
 			editor.dispose()
 			model.dispose()
+			theirs.current?.dispose()
+			mine.current = null
+			theirs.current = null
 		}
-		// The document, and not what is being typed into it: `value` is the
-		// answer that arrived, and re-creating the model on every keystroke is
-		// what makes an editor impossible to type in.
-	}, [props.monaco, props.uri, props.readOnly]) // eslint-disable-line react-hooks/exhaustive-deps
+		// Not on `value`: that is what is being typed, and rebuilding the
+		// editor on every keystroke is what makes one impossible to type in.
+	}, [props.uri, props.readOnly, split]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	return <div ref={box} style={style.box} />
 }
