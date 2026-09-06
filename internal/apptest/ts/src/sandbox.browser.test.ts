@@ -86,6 +86,12 @@ describe.runIf(enabled)("the sandbox", () => {
     expect(say).toContain("robot: arm-01");
     expect(say).toContain("list: 1");
 
+    // Calls at once, which a page makes and a process does not -- the database
+    // is one worker thread here. See `sandbox.html` for what losing this looks
+    // like, which is not a message about a lock.
+    expect(say, said.join("\n")).toContain("at once read: 8");
+    expect(say, said.join("\n")).toContain("at once write: 8");
+
     // And the wall, which is the same answer it gives over HTTP: a row this
     // caller may not see is a row the query did not match.
     expect(say).toContain("wall: not_found");

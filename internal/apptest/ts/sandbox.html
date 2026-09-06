@@ -48,6 +48,21 @@ try {
 
 	say('list:', (await c.robot.list({ filters: [] })).items.length)
 
+	// Calls at once, which a page makes and a process does not. Two things in
+	// `wasm/main.go` hold these at eight, and each was found by losing it:
+	// without the leading slash in the DSN the second connection reads an
+	// empty database of its own, and without `MaxOpenConns: 1` the second
+	// writer is told the database is locked. Neither says either of those --
+	// what a page sees is `could not say who is calling`.
+	const atOnce = async (what, f) => {
+		const rs = await Promise.allSettled(Array.from({ length: 8 }, (_, i) => f(i)))
+		say(`at once ${what}:`, rs.filter(v => v.status === 'fulfilled').length)
+		say(`at once ${what} refused:`, rs.find(v => v.status === 'rejected')?.reason ?? 'nothing')
+	}
+
+	await atOnce('read', () => c.robot.list({ filters: [] }))
+	await atOnce('write', i => c.robot.add({ tenant: { key: { case: 'id', value: t.id } }, alias: `at-once-${i}` }))
+
 	// The wall, and it is the same answer it gives over HTTP: a row this caller
 	// may not see is a row the query did not match.
 	try {

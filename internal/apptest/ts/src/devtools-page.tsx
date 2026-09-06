@@ -11,7 +11,7 @@
  * here is what it would show anywhere.
  */
 
-import { useEffect, useState } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { Queries } from '@lesomnus/payday/query'
@@ -64,7 +64,6 @@ function Page(): React.ReactNode {
 async function boot(): Promise<App> {
 	const box = await start()
 
-				// `Plain` believes what the caller writes, which is what a
 	// `Plain` believes what the caller writes, which is what a sandbox is:
 	// there is nobody else in the page to lie to.
 	const raw = box.transport as unknown as {
@@ -100,4 +99,11 @@ async function boot(): Promise<App> {
 	return { store, queries: new Queries(store, transport as never, entities) }
 }
 
-createRoot(document.getElementById('root') as HTMLElement).render(<Page />)
+createRoot(document.getElementById('root') as HTMLElement).render(
+	// StrictMode on, because the panel is React and this page is where its
+	// effects are actually run twice. The one thing that cannot be run twice is
+	// starting the server, and `once` above is what says so.
+	<StrictMode>
+		<Page />
+	</StrictMode>,
+)

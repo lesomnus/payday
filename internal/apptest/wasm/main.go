@@ -57,7 +57,29 @@ func main() {
 	// reload a fresh server. A sandbox that remembered would be a sandbox
 	// somebody has to clear.
 	s, err := cmd.Build(ctx, cmd.Config{
-		Db: config.DbConfig{Driver: "sqlite3-wasm", Dsn: "file:sandbox?vfs=memdb"},
+		Db: config.DbConfig{
+			Driver: "sqlite3-wasm",
+
+			// The leading slash is load-bearing. `file:sandbox` is a *relative*
+			// name to the memdb VFS, and a relative name is resolved per
+			// connection: the second one in the pool opens its own empty
+			// database, and the first thing it is asked is the read that
+			// resolves the caller. So the page answers `could not say who is
+			// calling` for a tenant that plainly exists, on a call that is
+			// identical to the one beside it that worked.
+			Dsn: "file:/sandbox?vfs=memdb",
+
+			// One connection, because there is one of it.
+			//
+			// The engine is a single JS thread in a worker, so a second
+			// connection buys no parallelism and costs the lock: this build has
+			// no WAL, so a writer excludes everyone and the loser is told
+			// SQLITE_BUSY. Waiting is not on offer either -- the driver's busy
+			// handler would sleep on the very thread that has to deliver the
+			// other connection's COMMIT, which is why it rejects `_busy_timeout`
+			// outright. Measured here: eight concurrent adds, three landed.
+			MaxOpenConns: 1,
+		},
 
 		// Named, because payday refuses a deployment that leaves it unsaid --
 		// `memory` is right for one replica and silently wrong for two, so the

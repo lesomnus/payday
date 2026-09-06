@@ -6,6 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
+		"wasm": "GOOS=js GOARCH=wasm go build -o public/app.wasm ../wasm && cp \"$(go env GOROOT)/lib/wasm/wasm_exec.js\" ./public/",
 		"check": "tsc -p tsconfig.json",
 		"test": "vitest run",
 		"test:sandbox": "PDTEST_SANDBOX=1 vitest run src/sandbox.browser.test.ts"
