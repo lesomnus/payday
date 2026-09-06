@@ -176,5 +176,20 @@ func seed(ctx context.Context, s app.Server) error {
 		return fmt.Errorf("the holder: %w", err)
 	}
 
+	// And enough of them that a table has to be scrolled.
+	//
+	// A page of rows is not the same thing as a table: paging, a cursor that
+	// advances, a header that stays put and a column somebody turns off
+	// halfway down are all things that only happen past the first screenful.
+	// Two rows is a sandbox where none of that is ever exercised by hand.
+	for i := range 200 {
+		if _, err := s.Holder().Add(ctx, app.HolderAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: t.GetId()}.Build(),
+			Alias:  fmt.Sprintf("op-%03d", i),
+		}.Build()); err != nil {
+			return fmt.Errorf("holder %d: %w", i, err)
+		}
+	}
+
 	return nil
 }

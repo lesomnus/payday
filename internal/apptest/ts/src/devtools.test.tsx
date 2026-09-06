@@ -131,6 +131,29 @@ async function pick(typeName: string): Promise<void> {
 	await act(async () => void fireEvent.change(select, { target: { value: typeName } }))
 }
 
+/**
+ * hex is what the dump says, whichever way it is being shown.
+ *
+ * The grid separates its bytes with non-breaking spaces so that a line does not
+ * reflow while it is being typed in; this reads them as the spaces they stand
+ * for, so one assertion covers both.
+ */
+function hex(): string {
+	const el = screen.getByLabelText('hex')
+	if (el instanceof HTMLTextAreaElement) return el.value
+
+	// A row is a div and a byte under edit is an input, so neither the row
+	// breaks nor what is being typed is in `textContent`.
+	return Array.from(el.children)
+		.map((row) =>
+			Array.from(row.childNodes)
+				.map((n) => (n instanceof HTMLInputElement ? n.value : (n.textContent ?? '')))
+				.join(''),
+		)
+		.join('\n')
+		.replace(/\u00a0/g, ' ')
+}
+
 /** tab switches to one of the three. */
 async function tab(name: string): Promise<void> {
 	await act(async () => void fireEvent.click(screen.getByText(name)))
@@ -504,9 +527,9 @@ describe('bytes that are not an identifier', () => {
 
 		const dialog = screen.getByRole('dialog')
 		expect(dialog.getAttribute('aria-label')).toBe('patch bytes')
-		expect((screen.getByLabelText('hex') as HTMLTextAreaElement).value).toBe('de ad be ef')
+		expect(hex()).toBe('de ad be ef')
 		expect(screen.getByLabelText('text').textContent).toBe('....')
-		expect(screen.getByLabelText('offset').textContent).toBe('00000000')
+		expect(screen.getByLabelText('offset').textContent).toBe('0000 0000')
 
 		// Under the panel, which is what somebody is working in: an editor over
 		// the top of it means closing the editor to do anything at all.
@@ -528,26 +551,87 @@ describe('bytes that are not an identifier', () => {
 })
 
 describe('a hex dump', () => {
-	// Four groups of four are read; sixteen pairs in a row are counted.
-	it('groups the bytes in fours and says where each line starts', async () => {
-		const long = create(AuditSchema, {
-			id: pdid.newId(AuditDomain).bytes,
-			patch: new Uint8Array(20).map((_, i) => i),
-		})
-		store.put(Audit.typeName, long)
+	/** long is a value with more than one line in it. */
+	function long(): void {
+		store.put(
+			Audit.typeName,
+			create(AuditSchema, {
+				id: pdid.newId(AuditDomain).bytes,
+				patch: new Uint8Array(20).map((_, i) => i),
+			}),
+		)
+	}
 
+	async function open(what: string): Promise<void> {
 		await mount()
 		await pick(Audit.typeName)
 		await tab('store')
-		await act(async () => void fireEvent.click(screen.getByText('20 bytes')))
+		await act(async () => void fireEvent.click(screen.getByText(what)))
+	}
 
-		expect((screen.getByLabelText('hex') as HTMLTextAreaElement).value).toBe(
-			'00 01 02 03  04 05 06 07  08 09 0a 0b  0c 0d 0e 0f\n10 11 12 13',
-		)
+	// Four groups of four are read; sixteen pairs in a row are counted.
+	it('groups the bytes in fours and says where each line starts', async () => {
+		long()
+		await open('20 bytes')
+
+		expect(hex()).toBe('00 01 02 03  04 05 06 07  08 09 0a 0b  0c 0d 0e 0f\n10 11 12 13')
 
 		// Counted from what is on each line, so that a line somebody shortens
-		// moves the ones under it rather than lying about them.
-		expect(screen.getByLabelText('offset').textContent).toBe('00000000\n00000010')
+		// moves the ones under it rather than lying about them -- and split in
+		// half, because eight digits in a row is a number to be counted.
+		expect(screen.getByLabelText('offset').textContent).toBe('0000 0000\n0000 0010')
+	})
+
+	// The gesture this exists for: click the byte, type two digits, and be on
+	// the next one. No selecting the right two characters out of a wall.
+	it('edits one byte and moves to the next', async () => {
+		long()
+		await open('20 bytes')
+
+		await act(async () => void fireEvent.mouseDown(screen.getByText('02')))
+		await act(async () => {
+			fireEvent.change(screen.getByLabelText('byte 2'), { target: { value: 'ff' } })
+		})
+
+		// Two digits is the whole of a byte and there is no third thing it
+		// could be waiting for, so it is already on the next one.
+		expect(screen.getByLabelText('byte 3')).toBeDefined()
+		expect(screen.queryByLabelText('byte 2')).toBeNull()
+
+		// And the byte it moved off is what was typed. Read after clicking
+		// away, since the one under edit is a box and not a pair of digits.
+		await act(async () => void fireEvent.mouseDown(screen.getByRole('dialog')))
+		expect(hex().startsWith('00 01 ff 03')).toBe(true)
+	})
+
+	it('stops editing when something that is not a byte is clicked', async () => {
+		long()
+		await open('20 bytes')
+
+		await act(async () => void fireEvent.mouseDown(screen.getByText('02')))
+		expect(screen.getByLabelText('byte 2')).toBeDefined()
+
+		await act(async () => void fireEvent.mouseDown(screen.getByRole('dialog')))
+		expect(screen.queryByLabelText('byte 2')).toBeNull()
+
+		// And half a byte typed into it is left alone rather than written as
+		// one: half a byte is not a value anybody meant.
+		expect(hex().startsWith('00 01 02 03')).toBe(true)
+	})
+
+	// What a grid of cells cannot do is take a run out or paste a new value
+	// over the whole thing.
+	it('is a text box when a whole run has to be edited', async () => {
+		long()
+		await open('20 bytes')
+
+		expect(screen.queryByRole('textbox', { name: 'hex' })).toBeNull()
+
+		await act(async () => void fireEvent.click(screen.getByText('text')))
+
+		const box = screen.getByLabelText('hex') as HTMLTextAreaElement
+		expect(box.tagName).toBe('TEXTAREA')
+		expect(box.value.startsWith('00 01 02 03')).toBe(true)
 	})
 })
 

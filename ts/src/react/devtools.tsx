@@ -94,6 +94,13 @@ interface Kept {
 
 type Tab = 'list' | 'get' | 'store'
 
+/** Step is one row followed into, and the screen it was followed from. */
+interface Step {
+	from: { tab: Tab; entity: string }
+	typeName: string
+	id: string
+}
+
 const at = 'payday.devtools'
 
 /**
@@ -199,7 +206,10 @@ const style = {
 		flexDirection: 'column',
 		gap: 4,
 	},
-	seen: { flex: 1, minWidth: 0, overflow: 'auto', padding: 4 },
+	// No padding at the top, which is not a nicety: a sticky header sticks to
+	// the scrollport's padding edge, so a padded top is a strip above the
+	// header that rows scroll through.
+	seen: { flex: 1, minWidth: 0, overflow: 'auto', padding: '0 4px 4px' },
 
 	// The top edge, which is where a sheet is resized from. It is its own
 	// element rather than a CSS `resize`, which cannot grow a thing anchored to
@@ -216,7 +226,11 @@ const style = {
 	table: { borderCollapse: 'collapse', whiteSpace: 'nowrap', width: 'max-content' },
 	th: {
 		textAlign: 'left',
-		padding: '1px 10px 1px 0',
+		padding: '1px 8px',
+		// A rule between columns, because a row of a wide entity is read
+		// **across** and nothing else says where one value stops. Without it
+		// two empty cells in a row are one wide gap.
+		borderRight: `1px solid ${line}`,
 		borderBottom: `1px solid ${line}`,
 		color: dim,
 		fontWeight: 'normal',
@@ -224,7 +238,12 @@ const style = {
 		top: 0,
 		background: back,
 	},
-	td: { padding: '1px 10px 1px 0', borderBottom: `1px solid ${line}`, verticalAlign: 'top' },
+	td: {
+		padding: '1px 8px',
+		borderRight: `1px solid ${line}`,
+		borderBottom: `1px solid ${line}`,
+		verticalAlign: 'top',
+	},
 	input: {
 		background: '#101010',
 		color: ink,
@@ -300,6 +319,24 @@ const style = {
 		flexDirection: 'column',
 	},
 	rule: { color: dim, lineHeight: '18px', whiteSpace: 'pre', margin: 0, flex: 'none' },
+	grid: { flex: 'none', lineHeight: '18px', width: '51ch' },
+
+	// A byte is a click target, so it says so -- and it keeps the width it has
+	// in the line, because a cell that grew on hover would move every byte
+	// after it.
+	cell: { cursor: 'text', borderRadius: 2 },
+	byte: {
+		background: '#101010',
+		color: '#ffb86b',
+		border: 'none',
+		outline: `1px solid #7db4ff`,
+		borderRadius: 2,
+		padding: 0,
+		margin: 0,
+		font: 'inherit',
+		width: '2ch',
+		lineHeight: '18px',
+	},
 } satisfies Record<string, CSSProperties>
 
 /** Devtools is the panel. */
@@ -336,7 +373,7 @@ export function Devtools(props: Props): ReactNode {
 	// than starting over. It is state and not history: the panel is a window on
 	// a page that has its own back button, and taking that one over would be
 	// answering a question nobody asked it.
-	const [trail, setTrail] = useState<{ typeName: string; id: string }[]>([])
+	const [trail, setTrail] = useState<Step[]>([])
 	const looking = trail[trail.length - 1]
 
 	const shown = kept.tab === 'get' ? gets : lists
@@ -344,25 +381,38 @@ export function Devtools(props: Props): ReactNode {
 
 	const transport = ungated && props.ungated !== undefined ? props.ungated : app.queries.raw
 
-	/** look is what following an edge does: the Get tab, on the row it named. */
+	/**
+	 * look is what following an edge does: the Get tab, on the row it named.
+	 *
+	 * Each step records **where it was left from** as well as where it goes,
+	 * because that is the only thing that can be gone back to. Without it the
+	 * first press of back had nowhere to return to -- it popped the one step
+	 * there was, found no step under it, and left the screen exactly as it
+	 * was while the button that did nothing disappeared.
+	 */
 	const look = useCallback(
 		(typeName: string, id: string) => {
-			setTrail((v) => [...v, { typeName, id }])
+			setTrail((v) => [...v, { from: { tab: kept.tab, entity: kept.entity }, typeName, id }])
 			keep({ tab: 'get', entity: typeName })
 		},
-		[keep],
+		[keep, kept.tab, kept.entity],
 	)
 
-	/** back is one edge the way it was come by. */
+	/**
+	 * back is one edge, the way it was come by.
+	 *
+	 * The step is read out here rather than inside the `setTrail` updater. An
+	 * updater has to be a pure function of the state it is given -- React calls
+	 * it again when it decides to -- and `keep` is a second `setState`, so
+	 * putting it in there is asking for the tab to be set twice or not at all.
+	 */
 	const back = useCallback(() => {
-		setTrail((v) => {
-			const now = v.slice(0, -1)
-			const to = now[now.length - 1]
-			keep(to === undefined ? {} : { entity: to.typeName })
+		const top = trail[trail.length - 1]
+		if (top === undefined) return
 
-			return now
-		})
-	}, [keep])
+		setTrail(trail.slice(0, -1))
+		keep(top.from)
+	}, [trail, keep])
 
 	if (!kept.open) {
 		return (
@@ -524,6 +574,7 @@ export function Devtools(props: Props): ReactNode {
 					name={raw.name}
 					value={raw.value}
 					settable={raw.settable}
+					under={kept.height}
 					onClose={() => setRaw(undefined)}
 					onSave={async (v) => {
 						await raw.save(v)
@@ -1024,9 +1075,12 @@ function Head(props: { name: string; shown: boolean; toggle: (name: string, span
 	// browser and not in a test.
 	const span = useRef(false)
 
+	// A `label` and not a `span`, which is the whole of what makes the name
+	// turn the box -- the browser has done this since forever and writing it as
+	// a span is opting out of it for nothing.
 	return (
-		<span
-			style={{ position: 'relative', display: 'inline-flex', gap: 4, alignItems: 'baseline' }}
+		<label
+			style={{ position: 'relative', display: 'inline-flex', gap: 4, alignItems: 'baseline', cursor: 'pointer' }}
 			onMouseEnter={() => setOver(true)}
 			onMouseLeave={() => setOver(false)}
 		>
@@ -1046,7 +1100,7 @@ function Head(props: { name: string; shown: boolean; toggle: (name: string, span
 					</span>
 				)
 			)}
-		</span>
+		</label>
 	)
 }
 
@@ -1134,31 +1188,58 @@ function Cell(props: {
  * Three columns because that is what every tool that has ever shown bytes uses
  * and it is not a style: the offset says where you are, the hex is what is
  * there, and the text is how anybody tells at a glance whether they are looking
- * at a string, a protobuf or noise. They are read across, so they are computed
- * from the **same lines** -- the offsets are the running byte count of what has
- * been typed, so a line somebody shortened moves the ones under it rather than
- * lying about them.
+ * at a string, a protobuf or noise.
  *
- * It sits under the panel rather than over it; `style.side` says why.
+ * It sits under the panel and stops where the panel starts; `style.side` says
+ * why it is not over the top of it.
+ *
+ * # Two ways to edit, and why both
+ *
+ * A byte at a time is what somebody wants nine times out of ten: click the
+ * byte, type two digits, and it is on the next one -- no selecting the right
+ * two characters out of a wall of them and no chance of leaving one digit
+ * behind. What that cannot do is take a run of bytes out or paste a new value
+ * over the whole thing, and a text box is exactly right for that. So the byte
+ * grid is what opens and `text` is a button away, and only one of them is on
+ * the screen at a time -- two editors over one value is two answers about what
+ * was typed.
  *
  * Editable where the schema says the field is: `patchable` already knows, and a
  * box that takes typing for a field the server will refuse is a box that
- * teaches the wrong thing. What is typed is hex, because that is what is shown;
- * anything that is not a pair of hex digits is refused before it is sent, with
- * the position that is wrong.
+ * teaches the wrong thing.
  */
 function Hex(props: {
 	name: string
 	value: Uint8Array
 	settable: boolean
+	/** Where the panel starts, which is where this stops. */
+	under: number
 	onClose: () => void
 	onSave: (v: Uint8Array) => Promise<void>
 }): ReactNode {
 	const [text, setText] = useState(() => spaced(props.value))
+	const [raw, setRaw] = useState(false)
 	const [err, setErr] = useState<string>()
+
+	/** Which byte is being typed into, and what has been typed of it. */
+	const [at, setAt] = useState<number>()
+	const [typed, setTyped] = useState('')
 
 	const parsed = useMemo(() => packed(text), [text])
 	const changed = text !== spaced(props.value)
+
+	// A document that does not parse cannot be shown as bytes, and the box it
+	// was typed in is the only place the mistake can be fixed.
+	const bad = typeof parsed === 'string'
+	const grid = !raw && !bad
+
+	const put = (i: number, b: number): void => {
+		if (typeof parsed === 'string') return
+
+		const next = new Uint8Array(parsed)
+		next[i] = b
+		setText(spaced(next))
+	}
 
 	const send = (): void => {
 		if (typeof parsed === 'string') {
@@ -1173,7 +1254,7 @@ function Hex(props: {
 
 	return (
 		<div
-			style={style.side}
+			style={{ ...style.side, bottom: props.under }}
 			role="dialog"
 			aria-label={`${props.name} bytes`}
 			// Escape closes it, and the div is focused on mount so that it
@@ -1183,6 +1264,9 @@ function Hex(props: {
 			onKeyDown={(e) => {
 				if (e.key === 'Escape') props.onClose()
 			}}
+			// Anywhere that is not a byte ends the edit, which is what clicking
+			// off something means. The bytes stop this from reaching here.
+			onMouseDown={() => setAt(undefined)}
 		>
 			<div style={style.bar}>
 				<strong>{props.name}</strong>
@@ -1192,6 +1276,17 @@ function Hex(props: {
 
 				<span style={{ flex: 1 }} />
 
+				{props.settable && (
+					<button
+						type="button"
+						style={{ ...style.press, color: raw || bad ? '#ffb86b' : dim }}
+						aria-pressed={raw || bad}
+						onClick={() => setRaw(!raw)}
+						disabled={bad}
+					>
+						text
+					</button>
+				)}
 				{props.settable && (
 					<button type="button" style={style.press} onClick={send} disabled={!changed}>
 						save
@@ -1203,29 +1298,45 @@ function Hex(props: {
 			</div>
 
 			{err !== undefined && <p style={{ ...style.bad, margin: '4px 6px' }}>{err}</p>}
+			{bad && <p style={{ ...style.bad, margin: '4px 6px' }}>{parsed}</p>}
 
 			<div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'auto', padding: '6px 10px', gap: 10 }}>
 				<pre aria-label="offset" style={style.rule}>
 					{offsets(text)}
 				</pre>
 
-				<textarea
-					aria-label="hex"
-					readOnly={!props.settable}
-					spellCheck={false}
-					value={text}
-					onChange={(e) => setText(e.target.value)}
-					// The width of a line and no more: sixteen pairs, three
-					// gaps between the fours, and the borders.
-					style={{
-						...style.input,
-						flex: 'none',
-						width: '51ch',
-						resize: 'none',
-						lineHeight: '18px',
-						whiteSpace: 'pre',
-					}}
-				/>
+				{grid ? (
+					<Bytes
+						value={parsed as Uint8Array}
+						settable={props.settable}
+						at={at}
+						typed={typed}
+						onOpen={(i) => {
+							setAt(i)
+							setTyped('')
+						}}
+						onTyped={setTyped}
+						onPut={put}
+					/>
+				) : (
+					<textarea
+						aria-label="hex"
+						readOnly={!props.settable}
+						spellCheck={false}
+						value={text}
+						onChange={(e) => setText(e.target.value)}
+						// The width of a line and no more: sixteen pairs, three
+						// gaps between the fours, and the borders.
+						style={{
+							...style.input,
+							flex: 'none',
+							width: '51ch',
+							resize: 'none',
+							lineHeight: '18px',
+							whiteSpace: 'pre',
+						}}
+					/>
+				)}
 
 				{/*
 					Not editable: two editors over one value is two answers
@@ -1235,6 +1346,95 @@ function Hex(props: {
 					{printable(text)}
 				</pre>
 			</div>
+		</div>
+	)
+}
+
+/**
+ * Bytes is the hex, one clickable cell per byte.
+ *
+ * Two digits and it moves on, which is the whole gesture: a byte is two
+ * characters and there is no third thing it could be waiting for, so asking
+ * for a Tab as well would be asking for a keystroke that carries no
+ * information. One digit and then a click away is left alone rather than
+ * written as `0x0d` -- half a byte is not a value anybody meant.
+ */
+function Bytes(props: {
+	value: Uint8Array
+	settable: boolean
+	at: number | undefined
+	typed: string
+	onOpen: (i: number) => void
+	onTyped: (v: string) => void
+	onPut: (i: number, b: number) => void
+}): ReactNode {
+	const rows: ReactNode[] = []
+
+	for (let i = 0; i < props.value.length; i += 16) {
+		const cells: ReactNode[] = []
+		for (let j = 0; j < 16 && i + j < props.value.length; j++) {
+			const k = i + j
+
+			// The wider gap every four, which is what makes a line countable:
+			// sixteen pairs in a row are counted one at a time and four groups
+			// of four are read.
+			if (j > 0) cells.push(<span key={`g${String(j)}`}>{j % 4 === 0 ? '\u00a0\u00a0' : '\u00a0'}</span>)
+
+			cells.push(
+				props.at === k ? (
+					<input
+						key={k}
+						aria-label={`byte ${String(k)}`}
+						style={style.byte}
+						value={props.typed}
+						autoFocus
+						spellCheck={false}
+						onMouseDown={(e) => e.stopPropagation()}
+						onChange={(e) => {
+							const v = e.target.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 2)
+							if (v.length < 2) {
+								props.onTyped(v)
+
+								return
+							}
+
+							props.onPut(k, Number.parseInt(v, 16))
+							if (k + 1 < props.value.length) {
+								props.onOpen(k + 1)
+							} else {
+								props.onTyped(v)
+							}
+						}}
+					/>
+				) : (
+					<span
+						key={k}
+						style={props.settable ? style.cell : undefined}
+						onMouseDown={
+							props.settable
+								? (e) => {
+										e.stopPropagation()
+										props.onOpen(k)
+									}
+								: undefined
+						}
+					>
+						{props.value[k]?.toString(16).padStart(2, '0')}
+					</span>
+				),
+			)
+		}
+
+		rows.push(
+			<div key={i} style={{ whiteSpace: 'pre' }}>
+				{cells}
+			</div>,
+		)
+	}
+
+	return (
+		<div aria-label="hex" style={style.grid}>
+			{rows}
 		</div>
 	)
 }
@@ -1269,6 +1469,9 @@ function digits(line: string): string {
  * From the text rather than from the line number, because a line somebody
  * edited is not sixteen bytes any more and an offset that assumed it was would
  * name the wrong byte for the whole rest of the document.
+ *
+ * Written in two halves, for the same reason the bytes are in fours: eight
+ * digits in a row is a number to be counted rather than read.
  */
 function offsets(text: string): string {
 	let at = 0
@@ -1276,10 +1479,10 @@ function offsets(text: string): string {
 	return text
 		.split('\n')
 		.map((l) => {
-			const was = at
+			const was = at.toString(16).padStart(8, '0')
 			at += digits(l).length >> 1
 
-			return was.toString(16).padStart(8, '0')
+			return `${was.slice(0, 4)} ${was.slice(4)}`
 		})
 		.join('\n')
 }

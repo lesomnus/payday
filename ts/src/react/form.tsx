@@ -369,8 +369,11 @@ function Field(props: {
 		// the box after a name the boxes land wherever the names happen to end.
 		// A column of checkboxes is a thing to scan down; the same column
 		// ragged is a thing to hunt through.
+		//
+		// A `label` and not a `span`, so the name turns the box: the browser
+		// has done that since forever and a span opts out of it for nothing.
 		return (
-			<span style={style.row}>
+			<label style={{ ...style.row, cursor: 'pointer' }}>
 				<input
 					type="checkbox"
 					aria-label={props.at}
@@ -378,7 +381,7 @@ function Field(props: {
 					onChange={(e) => props.set('leaf', props.at, e.target.checked ? 'true' : '')}
 				/>
 				{name}
-			</span>
+			</label>
 		)
 	}
 
