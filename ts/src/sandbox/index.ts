@@ -72,19 +72,20 @@ declare const URL: {
 
 declare const location: { readonly href: string }
 
-// And the four a progress report needs, for the same reason and written the
-// same way. What is being asked for is the module as a stream of bytes, which
-// is the only way to know how far along it is.
+// And what keeping the module between visits needs, for the same reason and
+// written the same way. The list is also the documentation of how little is
+// being asked for.
 interface Res {
 	readonly ok: boolean
 	readonly status: number
 	readonly statusText: string
 	readonly headers: { get(name: string): string | null }
 	readonly body: { getReader(): { read(): Promise<{ done: boolean; value?: Uint8Array }> } } | null
+	clone(): Res
 	text(): Promise<string>
 }
 
-declare const fetch: (url: string) => Promise<Res>
+declare const fetch: (url: string, init?: { cache?: string; headers?: Record<string, string> }) => Promise<Res>
 
 declare const Response: new (body: unknown, init?: { headers?: Record<string, string> }) => Res
 
@@ -96,6 +97,15 @@ declare const ReadableStream: new (src: {
 // which keeps the name `WebAssembly.Module` out of a package compiled without
 // a DOM.
 declare const WebAssembly: { compileStreaming(src: Res): Promise<WasmApp> }
+
+interface Store {
+	match(url: string): Promise<Res | undefined>
+	put(url: string, res: Res): Promise<void>
+}
+
+// Declared as possibly absent because it is: `caches` exists in a secure
+// context only. See [Opts.cache].
+declare const caches: { open(name: string): Promise<Store> } | undefined
 
 /** Sandbox is the running instance, and the transport that reaches it. */
 export interface Sandbox {
@@ -152,27 +162,84 @@ export interface Opts {
 	 * Told how much of the module has arrived, so a page can say so.
 	 *
 	 * A payday app compiled to wasm is tens of megabytes -- the one in this
-	 * repository is 72 -- and on a cold cache that is a long time in which a
-	 * page that only says "starting" is indistinguishable from a page that has
+	 * repository is 72 -- and even from the last visit that is a wait in which
+	 * a page saying only "starting" is indistinguishable from one that has
 	 * hung. This is what it takes to say which.
 	 *
-	 * `total` is 0 when the length is not knowable, and the two cases are worth
-	 * telling apart rather than guessing at:
-	 *
-	 *   - the response has no `content-length`, which is what a chunked
-	 *     response is;
-	 *   - it has one and a `content-encoding`, in which case the header counts
-	 *     the compressed bytes while the stream yields decompressed ones, so a
-	 *     ratio of the two would sail past 100% and settle somewhere absurd.
-	 *
-	 * So a bar drawn from this needs an indeterminate state, and a page that
-	 * would rather show bytes than a bar needs nothing.
-	 *
-	 * The last call is `(total, total)`, and it is not the end of the wait:
-	 * compiling what arrived is the rest, and it has no progress to report.
-	 * Saying "compiling" there is the honest thing for a page to do.
+	 * [Load.from] is why it is not just a number. A page that draws the same
+	 * bar for both tells somebody their module is downloading again when it is
+	 * being read off their own disk, which is the question this option
+	 * otherwise invites.
 	 */
-	onProgress?: (loaded: number, total: number) => void
+	onProgress?: (v: Load) => void
+
+	/**
+	 * Where to keep the module between visits, or `false` not to.
+	 *
+	 * The browser's own HTTP cache does not do this job, and the reason is the
+	 * size: a cache backend drops any single entry over a fraction of the whole
+	 * cache, so a module this big is never stored and every reload is the
+	 * entire download again. The server is not doing anything wrong when this
+	 * happens -- it answers `304` to a conditional request all day, and the
+	 * browser never asks one, because it has nothing to ask about.
+	 *
+	 * The Cache API is subject to the origin's storage quota instead, which is
+	 * gigabytes. So the module is kept there and the freshness question is
+	 * asked by hand: the stored response's `ETag` goes out as `If-None-Match`
+	 * -- or its `Last-Modified` as `If-Modified-Since` -- and a `304` means the
+	 * stored one is still the server's answer. Rebuild the module and the
+	 * validator changes and it is fetched again. **A stale sandbox is not a
+	 * thing this can leave you with.**
+	 *
+	 * It is a **secure context** feature, so it is there on `https://` and on
+	 * `localhost`, and it is not there on `http://192.168.x.x:5173` -- which is
+	 * what a container's dev server looks like when it is reached from the host
+	 * by address rather than through a forwarded port. Without it this falls
+	 * back to fetching every time, which is what it did before, and says so
+	 * through [Load.from].
+	 */
+	cache?: string | false
+}
+
+/** Load is how far the module has got, and where it is coming from. */
+export interface Load {
+	/** Bytes so far. */
+	loaded: number
+
+	/**
+	 * How many there are, or 0 when that is not knowable -- which is a state a
+	 * bar needs rather than a number to substitute for:
+	 *
+	 *   - a response with no `content-length`, which is what a chunked one is;
+	 *   - one with a `content-length` **and** a `content-encoding`, where the
+	 *     header counts compressed bytes and the stream yields decompressed
+	 *     ones, so a ratio of the two sails past 100%.
+	 */
+	total: number
+
+	/**
+	 * `cache` when these bytes are the ones kept from the last visit, and the
+	 * server has said they are still current.
+	 *
+	 * Worth saying out loud on the page. Reading 72MB off a disk moves a bar
+	 * exactly like downloading it does, and somebody watching that a second
+	 * time will conclude the caching is broken.
+	 */
+	from: 'network' | 'cache'
+
+	/**
+	 * Whether this module is being kept for the next visit.
+	 *
+	 * False means the next reload does all of this again, and there is one
+	 * ordinary reason for it: [Opts.cache] needs a secure context, so a dev
+	 * server reached at `http://192.168.x.x:5173` -- a container's, from the
+	 * host, by address rather than through a forwarded port -- has nowhere to
+	 * keep anything.
+	 *
+	 * Which is worth a line on the page. Nothing about a download that repeats
+	 * says the address it was asked for is the reason.
+	 */
+	keeping: boolean
 }
 
 /**
@@ -182,13 +249,7 @@ export interface Opts {
  * on the transport it answers with reaches a server that is up.
  */
 export async function start(opts: Opts): Promise<Sandbox> {
-	const url = opts.url ?? '/app.wasm'
-
-	// Fetched here only when somebody is watching. Handed a URL, `open` fetches
-	// it itself and does it better -- one call, and the browser's own cache
-	// revalidation -- so the counting version is what a caller asked for rather
-	// than what everyone gets.
-	const app = opts.onProgress === undefined ? url : await counted(url, opts.onProgress)
+	const app = await load(opts)
 
 	const sock = await open(app, {
 		// Against the document rather than this module: what the app passed is
@@ -213,32 +274,99 @@ export async function start(opts: Opts): Promise<Sandbox> {
 }
 
 /**
- * counted fetches the module and says how far along it is.
+ * load answers with the module, from wherever it is.
  *
- * It compiles from the stream rather than from the bytes it collected, which is
- * the point of doing it this way at all: `compileStreaming` compiles what has
- * arrived while the rest is still arriving, so watching the download costs
- * nothing but the counter. Reading it into an array first and compiling that
- * would trade the overlap for a number.
- *
- * What comes back is a compiled module and not the bytes, and that matters on
- * the way to the worker: `open` posts this, and a `WebAssembly.Module` is
- * structured-cloned by sharing the compiled code, where a 72MB `ArrayBuffer`
- * is copied.
+ * Nothing here happens for a caller that asked for neither progress nor a
+ * cache: a URL handed to `open` is fetched by `open`, which is one fewer thing
+ * between the page and the compiler.
  */
-async function counted(url: string, onProgress: (loaded: number, total: number) => void): Promise<WasmApp> {
-	const res = await fetch(url)
+async function load(opts: Opts): Promise<WasmApp | string> {
+	const url = opts.url ?? '/app.wasm'
+	const store = opts.cache === false ? undefined : await opened(opts.cache ?? 'payday-sandbox')
+	if (store === undefined && opts.onProgress === undefined) return url
+
+	const kept = store === undefined ? undefined : await store.match(url).catch(() => undefined)
+
+	const res = await fetch(url, {
+		// The browser's own cache is not in play. It will not store an entry
+		// this size -- see [Opts.cache] -- so asking it to try buys a copy and
+		// no hit, and asking it *not* to keeps the two caches from disagreeing
+		// about which answer is current.
+		cache: 'no-store',
+		headers: asking(kept),
+	})
+
+	// The stored one is still the server's answer. Nothing came over the wire
+	// but this line of headers.
+	if (res.status === 304 && kept !== undefined) return compile(kept, opts.onProgress, 'cache', keeper(store, url))
+
 	if (!res.ok) {
 		const body = await res.text().catch(() => '')
 		throw new Error(`sandbox: GET ${url} failed: ${res.status} ${res.statusText}${body === '' ? '' : `\n${body}`}`)
 	}
 
-	const body = res.body
-	if (body === null) throw new Error(`sandbox: GET ${url} answered with no body`)
+	return compile(res, opts.onProgress, 'network', keeper(store, url))
+}
 
-	// Unknown rather than wrong. See `Opts.onProgress`: an encoded response
-	// counts its compressed bytes in the header and its decompressed ones in
-	// the stream, so the header is only a total when nothing re-encoded it.
+/** keeper is how a fetched module is put away, if there is anywhere to put it. */
+function keeper(store: Store | undefined, url: string): ((v: Res) => Promise<void>) | undefined {
+	return store === undefined ? undefined : (v) => store.put(url, v)
+}
+
+/** opened is the cache, or nothing where there is no such thing. */
+async function opened(name: string): Promise<Store | undefined> {
+	// Absent outside a secure context, and `caches.open` can still refuse --
+	// a browser told to allow no site data has the name and not the storage.
+	// Neither is an error here: it is the difference between a fast reload and
+	// a slow one.
+	if (typeof caches === 'undefined') return undefined
+
+	return caches.open(name).catch(() => undefined)
+}
+
+/**
+ * asking is the conditional request for what is already held, if anything.
+ *
+ * `ETag` first because it is exact; `Last-Modified` is the fallback for a
+ * server that does not send one, and it is only good to the second -- which is
+ * a rebuild landing inside the same second reading as unchanged. A dev server
+ * sends an `ETag`, so this is the path that is almost never taken.
+ */
+function asking(kept: Res | undefined): Record<string, string> {
+	if (kept === undefined) return {}
+
+	const tag = kept.headers.get('etag')
+	if (tag !== null) return { 'if-none-match': tag }
+
+	const at = kept.headers.get('last-modified')
+
+	return at === null ? {} : { 'if-modified-since': at }
+}
+
+/**
+ * compile turns a response into the module, counting the bytes on the way past
+ * and handing a copy to `keep` if there is one.
+ *
+ * It compiles from the stream rather than from bytes it collected first, which
+ * is the point of doing it by hand at all: `compileStreaming` compiles what has
+ * arrived while the rest is still arriving, so watching costs only the counter.
+ *
+ * What comes back is a compiled module rather than the bytes, and that matters
+ * on the way to the worker: `open` posts this, and a `WebAssembly.Module` is
+ * structured-cloned by sharing the compiled code where a 72MB `ArrayBuffer` is
+ * copied.
+ */
+async function compile(
+	res: Res,
+	onProgress: ((v: Load) => void) | undefined,
+	from: Load['from'],
+	keep: ((v: Res) => Promise<void>) | undefined,
+): Promise<WasmApp> {
+	const body = res.body
+	if (body === null) throw new Error('sandbox: the module arrived with no body')
+
+	// See [Load.total]. An encoded response counts compressed bytes in the
+	// header and decompressed ones in the stream, so its header is not a total.
 	const total = res.headers.get('content-encoding') === null ? Number(res.headers.get('content-length') ?? 0) : 0
 
 	let seen = 0
@@ -252,7 +380,7 @@ async function counted(url: string, onProgress: (loaded: number, total: number) 
 					if (value === undefined) continue
 
 					seen += value.byteLength
-					onProgress(seen, total)
+					onProgress?.({ loaded: seen, total, from, keeping: keep !== undefined })
 					c.enqueue(value)
 				}
 				c.close()
@@ -262,8 +390,35 @@ async function counted(url: string, onProgress: (loaded: number, total: number) 
 		},
 	})
 
-	// The mime type is restated because `compileStreaming` insists on it and
-	// this is a new response over the same bytes: the one that carried it is
-	// the one being read from.
-	return WebAssembly.compileStreaming(new Response(counting, { headers: { 'content-type': 'application/wasm' } }))
+	// Only the three a later visit needs: what it is, and the two ways to ask
+	// whether it still is. Carrying the rest would be carrying a `date` and a
+	// `content-encoding` that describe a transfer that already happened.
+	const over = new Response(counting, { headers: carried(res) })
+
+	// Cloned **before** either side reads, and not awaited: storing is for the
+	// next visit and this one should not wait on a disk write. A failure here
+	// is a slow reload rather than a broken page -- the quota is the usual
+	// reason, and there is nothing to do about it from here.
+	//
+	// Not for a `304`, which is already what is in the store: writing it back
+	// would be reading a copy out to write the same copy in.
+	if (keep !== undefined && from === 'network') void keep(over.clone()).catch(() => undefined)
+
+	return WebAssembly.compileStreaming(over)
+}
+
+/** carried is the headers a stored response has to keep. */
+function carried(res: Res): Record<string, string> {
+	const out: Record<string, string> = {
+		// Restated rather than copied: `compileStreaming` insists on it, and a
+		// response read back out of the cache has to satisfy it too.
+		'content-type': 'application/wasm',
+	}
+
+	for (const name of ['etag', 'last-modified', 'content-length']) {
+		const v = res.headers.get(name)
+		if (v !== null) out[name] = v
+	}
+
+	return out
 }

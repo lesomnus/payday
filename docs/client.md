@@ -218,31 +218,64 @@ by path, say — the socket and the transport come from different ones. That is
 not a type error. It is a refusal arriving with no status, so `NotFound` reads
 as `Unknown` and nothing else in the run looks wrong.
 
-### Saying how far along it is
+### Saying how far along it is, and not fetching it twice
 
 The module is 68 MB raw and about 11 MB compressed, so a cold load is seconds
-in which the page has nothing to show. `onProgress` is what it has to show:
+in which the page has nothing to show, and a reload should not repeat it.
 
 ```ts
 const box = await start({
 	worker: new URL('./sandbox-worker.ts', import.meta.url),
-	onProgress: (loaded, total) => setGot({ loaded, total }),
+	onProgress: (v) => setGot(v),        // { loaded, total, from, keeping }
 })
 ```
 
-Given it, payday fetches the module itself and counts the bytes on the way past;
-without it the browser fetches it and payday asks for nothing. Either way it is
-compiled from the stream as it arrives, so watching costs only the counter.
+Given `onProgress` or a cache — and the cache is on by default — payday fetches
+the module itself; otherwise the browser does and payday asks for nothing.
+Either way it is compiled from the stream as it arrives, so watching costs only
+the counter, and what reaches the worker is a compiled `WebAssembly.Module`,
+which is structured-cloned by sharing the compiled code rather than copying
+68 MB.
 
-`total` is **0 when the length is not knowable**, which is a state a bar has to
-have rather than a number to substitute for: a chunked response declares no
-length, and one that declares a length *and* a `content-encoding` is counting
-compressed bytes in the header and decompressed ones in the stream, so a ratio
-of the two runs past 100%.
+**The browser's own HTTP cache does not keep a module this size.** A cache
+backend drops any single entry over a fraction of the whole cache, so it is
+never stored, and every reload is the entire download again. Nothing looks
+wrong while this happens: the dev server sends `Cache-Control: no-cache` with an
+`ETag` and answers `304` to a conditional request all day, and the browser never
+sends one, because it has nothing to ask about.
 
-And the last call is `(total, total)` with the wait not over — compiling what
-arrived is the rest of it, and there is nothing to report from there. A full bar
-is the moment to say "compiling", not the moment to say "done".
+So the module is kept in the **Cache API**, which is subject to the origin's
+storage quota — gigabytes — and the freshness question is asked by hand: the
+stored response's `ETag` goes out as `If-None-Match`, and `304` means the stored
+one is still the server's answer. Rebuild the module and the validator changes
+and it is fetched again, so a stale sandbox is not something this can leave you
+with. `cache: false` turns it off; `cache: 'some-name'` picks the store.
+
+| | what the page transfers |
+| --- | ---: |
+| first visit | 68 MB |
+| every visit after | 300 B — the `304` |
+
+**`keeping: false` is the one to put on the screen.** The Cache API is a secure
+context feature, so it is there on `https://` and on `localhost` and it is *not*
+there on `http://192.168.x.x:5173` — which is what a container's dev server
+looks like reached from the host by address rather than through a forwarded
+port. Nothing about a download that repeats says the address it was asked for is
+the reason, so the page should: payday falls back to fetching every time and
+says so rather than failing.
+
+The other two fields are about the bar itself. `total` is **0 when the length is
+not knowable**, which is a state a bar has to have rather than a number to
+substitute for: a chunked response declares no length, and one that declares a
+length *and* a `content-encoding` counts compressed bytes in the header against
+decompressed ones in the stream. And `from` is `cache` when the bytes are the
+ones kept from last time — worth saying, because reading 68 MB off a disk fills
+a bar exactly like downloading it does, and somebody watching that on a reload
+concludes the caching is broken.
+
+The last call is `(total, total)` with the wait not over: compiling what arrived
+is the rest of it, and there is nothing to report from there. A full bar is the
+moment to say "compiling", not the moment to say "done".
 
 ### What the sandbox is not
 

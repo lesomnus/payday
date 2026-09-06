@@ -15,7 +15,7 @@
  * @module
  */
 
-import { start as open, type Sandbox as Instance } from '@lesomnus/payday/sandbox'
+import { start as open, type Load, type Sandbox as Instance } from '@lesomnus/payday/sandbox'
 
 import { app, type App } from './client.js'
 
@@ -46,25 +46,27 @@ export interface Sandbox {
  * start compiles the app into the page and answers with a client for it.
  *
  * `onProgress` is how far the module has got. A payday app compiled to wasm is
- * tens of megabytes, and on a cold cache that is long enough that a page saying
- * only "starting" is indistinguishable from a page that has hung -- so a page
- * that has somewhere to draw should pass this. `total` is 0 when the length is
- * not knowable; `Opts.onProgress` in `@lesomnus/payday/sandbox` says when.
+ * tens of megabytes, and that is long enough that a page saying only "starting"
+ * is indistinguishable from a page that has hung -- so a page with somewhere to
+ * draw should pass this. `Load.from` says whether the bytes are the server's or
+ * the last visit's, which is worth showing: reading a module off a disk fills a
+ * bar exactly like downloading it does.
+ *
+ * See `Opts` in `@lesomnus/payday/sandbox` for `Load.total` being 0, and for
+ * why the module is kept in the Cache API rather than the browser's own.
  *
  * The worker URL is resolved against **this** module rather than passed in,
  * because `sandbox-worker.ts` sits beside this file and a bundler rewrites
  * where it lands. It is this file's to know and not the package's: a default
  * inside `@lesomnus/payday` would resolve against `node_modules`.
  */
-export async function start(url = '/app.wasm', onProgress?: (loaded: number, total: number) => void): Promise<Sandbox> {
+export async function start(url = '/app.wasm', onProgress?: (v: Load) => void): Promise<Sandbox> {
 	const box = await open({
 		url,
 		worker: new URL('./sandbox-worker.ts', import.meta.url),
 
-		// Passed on rather than defaulted, because payday fetches the module
-		// itself only when somebody is watching -- handed a URL it lets the
-		// browser do it, which is one fewer thing between the cache and the
-		// compiler.
+		// Passed on rather than defaulted, because a sandbox with nowhere to
+		// draw has no use for the count.
 		...(onProgress === undefined ? {} : { onProgress }),
 	})
 

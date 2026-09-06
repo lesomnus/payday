@@ -14,7 +14,7 @@
  * @module
  */
 
-import { start as open, type Sandbox as Instance } from '@lesomnus/payday/sandbox'
+import { start as open, type Load, type Sandbox as Instance } from '@lesomnus/payday/sandbox'
 
 import { app, type App } from './client.js'
 
@@ -52,15 +52,17 @@ export interface Sandbox {
  * start compiles the app into the page and answers with a client for it.
  *
  * `onProgress` is how far the module has got, for a page that would rather show
- * that than nothing: this one is 72MB, and on a cold cache the wait is long
- * enough that silence reads as a hang.
+ * that than nothing: this one is 72MB, and even read back from the last visit
+ * that is long enough that silence reads as a hang. `Load.from` says which of
+ * the two is happening, which is worth putting on the screen -- see
+ * `Opts.cache`, and why the browser's own cache is not what keeps it.
  *
  * The worker URL is resolved against **this** module rather than passed in,
  * because `sandbox-worker.ts` sits beside this file and a bundler rewrites
  * where it lands. It is this file's to know and not the package's: a default
  * inside `@lesomnus/payday` would resolve against `node_modules`.
  */
-export async function start(url = '/app.wasm', onProgress?: (loaded: number, total: number) => void): Promise<Sandbox> {
+export async function start(url = '/app.wasm', onProgress?: (v: Load) => void): Promise<Sandbox> {
 	const box = await open({
 		url,
 		worker: new URL('./sandbox-worker.ts', import.meta.url),

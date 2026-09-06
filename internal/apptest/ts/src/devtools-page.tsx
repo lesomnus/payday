@@ -16,6 +16,7 @@ import { createRoot } from 'react-dom/client'
 
 import { Queries } from '@lesomnus/payday/query'
 import { Provider, type App } from '@lesomnus/payday/react'
+import type { Load } from '@lesomnus/payday/sandbox'
 import { Devtools } from '@lesomnus/payday/react/devtools'
 import { Store } from '@lesomnus/payday/store'
 
@@ -34,18 +35,12 @@ import { start } from './sandbox.js'
 let once: Promise<App> | undefined
 
 /** watching is whoever is drawing the wait, for the same reason `once` exists. */
-const watching = new Set<(v: Got) => void>()
-
-/** Got is how much of the module has arrived, and how much there is. */
-interface Got {
-	loaded: number
-	total: number
-}
+const watching = new Set<(v: Load) => void>()
 
 function Page(): React.ReactNode {
 	const [app, setApp] = useState<App>()
 	const [err, setErr] = useState<string>()
-	const [got, setGot] = useState<Got>()
+	const [got, setGot] = useState<Load>()
 
 	useEffect(() => {
 		// Subscribed to rather than passed in, because the boot is module state
@@ -81,20 +76,23 @@ function Page(): React.ReactNode {
 /**
  * Starting is the wait, which is most of a cold load.
  *
- * Three states and not two. A module still arriving has a fraction to show; one
+ * Four states and not two. A module still arriving has a fraction to show; one
  * that has all arrived is being compiled, which takes seconds more and has
- * nothing to report; and before the first byte there is nothing at all. Drawing
- * the last two the same way is how a bar sits full and looks stuck.
+ * nothing to report; and before the first byte there is nothing at all. The
+ * fourth is where the bytes are coming from -- reading 72MB off a disk fills a
+ * bar exactly like downloading it does, and somebody watching that on a reload
+ * concludes the caching is broken. It is not; see `Opts.cache`.
  */
-function Starting(props: { got: Got | undefined }): React.ReactNode {
+function Starting(props: { got: Load | undefined }): React.ReactNode {
 	const got = props.got
 	const mb = (n: number): string => `${(n / 1024 / 1024).toFixed(1)} MB`
 
 	// `total` is 0 when the length was not knowable -- a chunked or a
-	// re-encoded response; see `Opts.onProgress`. Bytes are still worth saying
-	// then, so it falls back to those rather than to nothing.
+	// re-encoded response; see `Load.total`. Bytes are still worth saying then,
+	// so it falls back to those rather than to nothing.
 	const part = got === undefined || got.total === 0 ? undefined : got.loaded / got.total
 	const done = got !== undefined && part === 1
+	const kept = got?.from === 'cache'
 
 	return (
 		<p style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#8b8b8b' }}>
@@ -112,7 +110,7 @@ function Starting(props: { got: Got | undefined }): React.ReactNode {
 					style={{
 						display: 'block',
 						height: '100%',
-						background: '#7db4ff',
+						background: kept ? '#a8e6a1' : '#7db4ff',
 						// An unknown length is the whole bar, dimmed: there is
 						// no fraction to draw and an empty bar would say the
 						// download had not started.
@@ -123,21 +121,33 @@ function Starting(props: { got: Got | undefined }): React.ReactNode {
 				/>
 			</span>
 
-			{got === undefined
-				? 'fetching…'
-				: done
-					? 'compiling…'
-					: part === undefined
-						? `${mb(got.loaded)}…`
-						: `${mb(got.loaded)} of ${mb(got.total)}`}
+			<span style={{ whiteSpace: 'nowrap' }}>
+				{got === undefined
+					? 'fetching…'
+					: done
+						? 'compiling…'
+						: part === undefined
+							? `${mb(got.loaded)}…`
+							: `${mb(got.loaded)} of ${mb(got.total)}`}
+			</span>
+
+			{kept && <span style={{ color: '#5f5f5f' }}>from the last visit</span>}
+
+			{got !== undefined && !got.keeping && (
+				// The one thing a repeated download does not say about itself.
+				// See `Load.keeping`.
+				<span style={{ color: '#ffb86b' }}>
+					not kept — this origin is not a secure context, so open it over localhost or https
+				</span>
+			)}
 		</p>
 	)
 }
 
 /** boot starts the app and seeds it with something to look at. */
 async function boot(): Promise<App> {
-	const box = await start('/app.wasm', (loaded, total) => {
-		for (const w of watching) w({ loaded, total })
+	const box = await start('/app.wasm', (v) => {
+		for (const w of watching) w(v)
 	})
 
 	// `Plain` believes what the caller writes, which is what a sandbox is:

@@ -59,24 +59,67 @@ describe.runIf(enabled)("the sandbox", () => {
   // The pages take the viewer's theme, and a media query is the kind of thing
   // that goes back to a hardcoded colour in an edit about something else. This
   // one loads `/`, which starts no wasm, so it costs a page load.
-  it.each(["dark", "light"] as const)("is a %s page for a %s viewer", async (scheme) => {
-    const page = await browser.newPage({ colorScheme: scheme });
-    await page.goto(`${origin}/`, { waitUntil: "load" });
+  it.each(["dark", "light"] as const)(
+    "is a %s page for a %s viewer",
+    async (scheme) => {
+      const page = await browser.newPage({ colorScheme: scheme });
+      await page.goto(`${origin}/`, { waitUntil: "load" });
 
-    const back = await page.evaluate(
-      () => getComputedStyle(document.body).backgroundColor,
-    );
+      const back = await page.evaluate(
+        () => getComputedStyle(document.body).backgroundColor,
+      );
 
-    // Parsed rather than matched, because what matters is which side of the
-    // middle it is on and not which grey was picked.
-    const lit =
-      (back.match(/\d+/g) ?? ["255"]).slice(0, 3).reduce((a, v) => a + Number(v), 0) / 3;
+      // Parsed rather than matched, because what matters is which side of the
+      // middle it is on and not which grey was picked.
+      const lit =
+        (back.match(/\d+/g) ?? ["255"])
+          .slice(0, 3)
+          .reduce((a, v) => a + Number(v), 0) / 3;
 
-    expect(lit, `${scheme}: ${back}`).toBeLessThan(scheme === "dark" ? 64 : 256);
-    expect(lit, `${scheme}: ${back}`).toBeGreaterThan(scheme === "dark" ? -1 : 192);
+      expect(lit, `${scheme}: ${back}`).toBeLessThan(
+        scheme === "dark" ? 64 : 256,
+      );
+      expect(lit, `${scheme}: ${back}`).toBeGreaterThan(
+        scheme === "dark" ? -1 : 192,
+      );
 
-    await page.close();
-  }, 60_000);
+      await page.close();
+    },
+    60_000,
+  );
+
+  // The second visit, which is the one that matters for a 72MB module: the
+  // browser's own cache will not hold an entry that size, so without the Cache
+  // API every reload is the whole download again. It is a page of its own
+  // rather than an assertion in the one above, because what is being tested is
+  // what a *reload* does -- one context, two loads.
+  //
+  // Removing the cache from `start` puts this back to `from: network`.
+  it("reads the module back on the next visit", async () => {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+
+    const from = async (): Promise<string> => {
+      await page.goto(`${origin}/sandbox.html`, { waitUntil: "load" });
+      await page.waitForFunction(
+        () => (window as never as { __done?: boolean }).__done === true,
+        null,
+        { timeout: 240_000 },
+      );
+
+      const out =
+        (await page.evaluate(
+          () => (window as never as { __out?: string[] }).__out,
+        )) ?? [];
+
+      return out.find((v) => v.startsWith("from:")) ?? "nothing";
+    };
+
+    expect(await from()).toBe("from: network");
+    expect(await from()).toBe("from: cache");
+
+    await ctx.close();
+  }, 300_000);
 
   it("serves the app the process serves", async () => {
     const page = await browser.newPage();
@@ -119,6 +162,10 @@ describe.runIf(enabled)("the sandbox", () => {
     // like, which is not a message about a lock.
     expect(say, said.join("\n")).toContain("at once read: 8");
     expect(say, said.join("\n")).toContain("at once write: 8");
+
+    // The module was fetched, because this page had never been opened. The
+    // second visit is a test of its own -- see below.
+    expect(say, said.join("\n")).toContain("from: network");
 
     // And the wall, which is the same answer it gives over HTTP: a row this
     // caller may not see is a row the query did not match.
