@@ -16,10 +16,6 @@ import (
 	"github.com/lesomnus/payday/pdcmd"
 
 	"github.com/lesomnus/payday/config"
-
-	// The one driver this app runs on. It is blank-imported here rather than
-	// by payday so that an app does not carry an engine it never opens.
-	_ "github.com/lesomnus/payday/config/dbsqlite3"
 )
 
 // Name is what this app is called, and it is the only place it is written.
