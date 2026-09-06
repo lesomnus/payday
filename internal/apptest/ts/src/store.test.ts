@@ -220,6 +220,13 @@ describe('which columns hold an identifier', () => {
 		expect(Audit.ids, 'a trace is not a row anybody can look up').not.toContain('traceId')
 		expect(Audit.ids, 'a marshalled document is not an identifier').not.toContain('patch')
 	})
+
+	it('says which one names the row', () => {
+		// Generated rather than assumed: a table linking the column called
+		// `id` would be reading a name to decide what it means.
+		expect(Audit.key).toBe('id')
+		expect(Robot.key).toBe('id')
+	})
 })
 
 describe('what a declaration says, and what it deliberately does not', () => {
@@ -233,15 +240,17 @@ describe('what a declaration says, and what it deliberately does not', () => {
 
 		// What is left is what protobuf does not say **here**: four the store
 		// reads, `service`, which protobuf does say and says in another file,
-		// and `ids`, which the store does not read at all -- it is for a
-		// caller that has to *show* a row, and `bytes` is all a descriptor
-		// says about a column the schema declared a uuid. So a declaration is
-		// where the two halves meet. The list is written out rather than
-		// counted so that a field arriving without a reason has to be added to
-		// this line by somebody.
+		// and two the store does not read at all -- `ids` and `key`, which are
+		// for a caller that has to *show* a row. `bytes` is all a descriptor
+		// says about a column the schema declared a uuid, and a field called
+		// `id` is a convention rather than a fact. So a declaration is where
+		// the two halves meet. The list is written out rather than counted so
+		// that a field arriving without a reason has to be added to this line
+		// by somebody.
 		expect(Object.keys(Robot).sort()).toEqual([
 			'domain',
 			'ids',
+			'key',
 			'refs',
 			'schema',
 			'service',

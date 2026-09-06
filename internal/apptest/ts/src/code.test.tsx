@@ -11,7 +11,7 @@
  */
 
 import { act, cleanup, render } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Code, type MonacoLike } from '@lesomnus/payday/react/devtools'
 
@@ -46,18 +46,20 @@ function model(value: string) {
 
 function fake() {
 	const made: ReturnType<typeof model>[] = []
-	const diffs: { readOnly: unknown }[] = []
+	const opts: { editor?: Record<string, unknown>; diff?: Record<string, unknown> } = {}
 
 	const monaco = {
 		editor: {
-			create: () => ({ dispose: () => undefined }),
-			createDiffEditor: () => ({
-				setModel: () => undefined,
-				getModifiedEditor: () => ({
-					updateOptions: (o: Record<string, unknown>) => diffs.push({ readOnly: o.readOnly }),
-				}),
-				dispose: () => undefined,
-			}),
+			create: (_el: HTMLElement, o: Record<string, unknown>) => {
+				opts.editor = o
+
+				return { dispose: () => undefined }
+			},
+			createDiffEditor: (_el: HTMLElement, o: Record<string, unknown>) => {
+				opts.diff = o
+
+				return { setModel: () => undefined, dispose: () => undefined }
+			},
 			createModel: (v: string) => {
 				const m = model(v)
 				made.push(m)
@@ -69,7 +71,7 @@ function fake() {
 		json: { setDiagnosticsOptions: () => undefined },
 	} satisfies MonacoLike
 
-	return { monaco, made, diffs }
+	return { monaco, made, opts }
 }
 
 describe('a document in an editor', () => {
@@ -123,8 +125,8 @@ describe('a document in an editor', () => {
 		expect(made[1]?.getValue()).toBe('two')
 	})
 
-	it('says read-only to the modified side again when it is a diff', async () => {
-		const { monaco, made, diffs } = fake()
+	it('is the document on the left and a diff of it on the right', async () => {
+		const { monaco, made, opts } = fake()
 
 		render(
 			<Code
@@ -138,10 +140,51 @@ describe('a document in an editor', () => {
 			/>,
 		)
 
-		// Two models -- the diff is against a document of its own -- and the
-		// modified side told again, because the diff editor does not pass the
-		// option down and builds one that refuses every keystroke.
-		expect(made).toHaveLength(2)
-		expect(diffs).toEqual([{ readOnly: false }])
+		// Three models: what is being typed, what was read, and the copy of
+		// the first that the diff is computed against -- the copy being what
+		// the delay is on, since the live one cannot be delayed.
+		expect(made.map((m) => m.getValue())).toEqual(['two', 'one', 'two'])
+
+		// The half that is edited is the plain editor; the diff is read-only
+		// and inline, because half the width cannot hold two columns.
+		expect(opts.editor?.readOnly).toBe(false)
+		expect(opts.diff?.readOnly).toBe(true)
+		expect(opts.diff?.renderSideBySide).toBe(false)
+	})
+
+	it('waits for typing to stop before it works the diff out', async () => {
+		vi.useFakeTimers()
+		try {
+			const { monaco, made } = fake()
+
+			render(
+				<Code
+					monaco={monaco}
+					uri="a.json"
+					value="one"
+					original="one"
+					schema={undefined}
+					readOnly={false}
+					onChange={() => undefined}
+					debounceMs={300}
+				/>,
+			)
+
+			const live = made[0]
+			const snap = made[2]
+			expect(live).toBeDefined()
+			expect(snap).toBeDefined()
+
+			live?.type('on')
+			live?.type('one!')
+			expect(snap?.getValue(), 'nothing while it is still being typed').toBe('one')
+
+			await act(async () => {
+				vi.advanceTimersByTime(300)
+			})
+			expect(snap?.getValue()).toBe('one!')
+		} finally {
+			vi.useRealTimers()
+		}
 	})
 })

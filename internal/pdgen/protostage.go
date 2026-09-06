@@ -375,12 +375,20 @@ import type { EntityDesc } from '@lesomnus/payday/store'
 		// says `bytes`; the schema says `uuid`; and every sixteen bytes can
 		// be read as a uuid -- so a panel guessing from the value prints an
 		// OpenTelemetry trace as somebody's row about one time in sixty-four.
+		// The field the row is named by, which nothing on the other side can
+		// work out either: a field called `id` is a convention, and reading a
+		// name is how a panel starts being wrong quietly.
+		if k := v.Key(); k != nil {
+			fmt.Fprintf(b, "\tkey: %q,\n", lowerCamel(string(k.Name())))
+		}
+
 		ids := []string{}
 		for p := range v.Props() {
 			f, ok := p.(graph.Field)
 			if !ok {
 				continue
 			}
+
 			if f.Type() != ormpb.Type_TYPE_UUID {
 				continue
 			}

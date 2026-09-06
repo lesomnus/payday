@@ -33,6 +33,7 @@ export const Audit = {
 	typeName: "app.Audit",
 	schema: AuditSchema,
 	domain: 3,
+	key: "id",
 	ids: ["id", "tenantId", "actorId", "objectId", "actorTenantId", "counterpartTenantId"],
 	service: AuditService,
 } as const satisfies EntityDesc
@@ -43,6 +44,7 @@ export const Cell = {
 	schema: CellSchema,
 	domain: 10,
 	refs: [{ field: "tenant", to: "app.Tenant" }],
+	key: "id",
 	ids: ["id"],
 	service: CellService,
 } as const satisfies EntityDesc
@@ -52,6 +54,7 @@ export const Fleet = {
 	typeName: "app.Fleet",
 	schema: FleetSchema,
 	domain: 9,
+	key: "id",
 	ids: ["id"],
 	service: FleetService,
 } as const satisfies EntityDesc
@@ -63,6 +66,7 @@ export const Holder = {
 	domain: 2,
 	version: "dateUpdated",
 	refs: [{ field: "tenant", to: "app.Tenant" }],
+	key: "id",
 	ids: ["id"],
 	service: HolderService,
 } as const satisfies EntityDesc
@@ -73,6 +77,7 @@ export const Joint = {
 	schema: JointSchema,
 	domain: 8,
 	refs: [{ field: "robot", to: "app.Robot" }],
+	key: "id",
 	ids: ["id"],
 	service: JointService,
 } as const satisfies EntityDesc
@@ -82,6 +87,7 @@ export const Outbox = {
 	typeName: "app.Outbox",
 	schema: OutboxSchema,
 	domain: 4,
+	key: "id",
 	ids: ["id", "tenantId", "actorId", "objectId"],
 	service: OutboxService,
 } as const satisfies EntityDesc
@@ -92,6 +98,7 @@ export const Pairing = {
 	schema: PairingSchema,
 	domain: 12,
 	refs: [{ field: "lead", to: "app.Robot" }, { field: "follow", to: "app.Robot" }],
+	key: "id",
 	ids: ["id"],
 	service: PairingService,
 } as const satisfies EntityDesc
@@ -102,6 +109,7 @@ export const Reading = {
 	schema: ReadingSchema,
 	domain: 11,
 	refs: [{ field: "robot", to: "app.Robot" }],
+	key: "id",
 	ids: ["id", "tenantId"],
 	service: ReadingService,
 } as const satisfies EntityDesc
@@ -113,6 +121,7 @@ export const Robot = {
 	domain: 7,
 	version: "dateUpdated",
 	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "thing", to: "shared.Thing" }, { field: "cell", to: "app.Cell" }],
+	key: "id",
 	ids: ["id"],
 	service: RobotService,
 } as const satisfies EntityDesc
@@ -122,6 +131,7 @@ export const Seal = {
 	typeName: "app.Seal",
 	schema: SealSchema,
 	domain: 14,
+	key: "id",
 	ids: ["id"],
 	service: SealService,
 } as const satisfies EntityDesc
@@ -132,6 +142,7 @@ export const Tenant = {
 	schema: TenantSchema,
 	domain: 1,
 	version: "dateUpdated",
+	key: "id",
 	ids: ["id"],
 	service: TenantService,
 } as const satisfies EntityDesc
@@ -141,6 +152,7 @@ export const Thing = {
 	typeName: "shared.Thing",
 	schema: ThingSchema,
 	domain: 13,
+	key: "id",
 	ids: ["id"],
 	service: ThingService,
 } as const satisfies EntityDesc

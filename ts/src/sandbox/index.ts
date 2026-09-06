@@ -228,6 +228,21 @@ export interface Load {
 	from: 'network' | 'cache'
 
 	/**
+	 * Bytes per second so far, or 0 before there is anything to divide by.
+	 *
+	 * Averaged over the whole transfer rather than sampled, because what a page
+	 * does with it is print it: an instantaneous rate over a stream that
+	 * arrives in chunks jitters by a factor of ten between two frames, and a
+	 * number nobody can read is worse than no number.
+	 *
+	 * It is here rather than left to the page because every page would work it
+	 * out the same way and get the jitter wrong the same way -- and because the
+	 * clock has to start at the **first byte**, which is the one thing a
+	 * caller cannot see from the outside.
+	 */
+	rate: number
+
+	/**
 	 * Whether this module is being kept for the next visit.
 	 *
 	 * False means the next reload does all of this again, and there is one
@@ -370,6 +385,12 @@ async function compile(
 	const total = res.headers.get('content-encoding') === null ? Number(res.headers.get('content-length') ?? 0) : 0
 
 	let seen = 0
+
+	// The first byte and not the request: the wait before it is a round trip
+	// and a revalidation, and counting that as transfer time reports a rate
+	// that starts at nothing and climbs for the whole download.
+	let began = 0
+
 	const counting = new ReadableStream({
 		async start(c) {
 			const r = body.getReader()
@@ -379,8 +400,17 @@ async function compile(
 					if (done) break
 					if (value === undefined) continue
 
+					if (began === 0) began = Date.now()
+
 					seen += value.byteLength
-					onProgress?.({ loaded: seen, total, from, keeping: keep !== undefined })
+					const ms = Date.now() - began
+					onProgress?.({
+						loaded: seen,
+						total,
+						from,
+						keeping: keep !== undefined,
+						rate: ms === 0 ? 0 : (seen * 1000) / ms,
+					})
 					c.enqueue(value)
 				}
 				c.close()

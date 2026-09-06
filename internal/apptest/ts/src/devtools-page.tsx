@@ -159,6 +159,15 @@ function Starting(props: { got: Load | undefined }): React.ReactNode {
 							: `${mb(got.loaded)} of ${mb(got.total)}`}
 			</span>
 
+			{/*
+				How fast, which is the other half of "is this stuck". A bar
+				that has not moved in a second and a rate of 40 MB/s are the
+				same picture and different situations.
+			*/}
+			{got !== undefined && !done && got.rate > 0 && (
+				<span style={{ whiteSpace: 'nowrap', color: '#5f5f5f' }}>{mb(got.rate)}/s</span>
+			)}
+
 			{kept && <span style={{ color: '#5f5f5f' }}>from the last visit</span>}
 
 			{got !== undefined && !got.keeping && (

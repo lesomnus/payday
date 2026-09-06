@@ -344,10 +344,16 @@ actually carries. Deleting a line is not how a value is cleared — the `_null`
 companions on the request are, and they exist because absent and empty are
 different things that a document cannot tell apart.
 
-**against what was read** splits the region into Monaco's diff editor: the
-server's answer on the left, read-only, and what you have typed on the right
-with the changes marked. It is the answer to "what am I about to send" that one
-pane cannot give once a document is more than a screenful.
+**diff** halves the region: the document is typed into on the left, and the
+right is an inline diff of it against what was read, read-only. That way round
+rather than Monaco's own side-by-side — where the editable half is the right
+one — because typing belongs where reading starts and a diff is something to
+glance at. It is also why the right is a second editor: one diff editor cannot
+be half editable and half not.
+
+The diff waits 300ms for typing to stop. Recomputing it per keystroke costs
+nothing anybody sees and makes the right-hand side flicker through every
+half-typed word.
 
 `jsonSchemaOf` is exported from `@lesomnus/payday/react/jsonschema` if you want
 the same thing for a form of your own.

@@ -64,6 +64,17 @@ export interface EntityDesc {
 	readonly refs?: readonly RefDesc[]
 
 	/**
+	 * The field a row of this entity is named by, as protobuf-es names it.
+	 *
+	 * `id` for every entity payday generates, and generated rather than
+	 * assumed for the same reason [EntityDesc.ids] is: a field called `id` is
+	 * a convention, and something reading a name to decide what a column means
+	 * is something that will be wrong quietly on the schema that does it
+	 * differently.
+	 */
+	readonly key?: string
+
+	/**
 	 * The fields that hold an identifier, as protobuf-es names them.
 	 *
 	 * It is here because it is the one thing about a `bytes` column that this

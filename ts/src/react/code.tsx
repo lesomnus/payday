@@ -82,12 +82,12 @@ interface Editor {
 
 interface DiffEditor {
 	setModel(v: { original: Model; modified: Model }): void
-	getModifiedEditor(): { updateOptions(opts: Record<string, unknown>): void }
 	dispose(): void
 }
 
 const style = {
-	box: { width: '100%', height: '100%', minHeight: 0 },
+	box: { width: '100%', height: '100%', minHeight: 0, display: 'flex' },
+	half: { flex: 1, minWidth: 0, height: '100%' },
 } satisfies Record<string, CSSProperties>
 
 /**
@@ -116,18 +116,29 @@ export function Code(props: {
 	value: string
 
 	/**
-	 * What the value was, for a side-by-side diff against it.
+	 * What the value was, for a diff against it beside the editor.
 	 *
-	 * Absent is one editor. Given, the region is Monaco's diff editor: the
-	 * original on the left, read-only, and the value being typed on the right
-	 * with the changes marked -- which is the same thing a reviewer looks at,
-	 * and is the answer to "what am I about to send" that a single pane cannot
-	 * give once a document is more than a screenful.
+	 * Absent is one editor. Given, the region is halved: the document is typed
+	 * into on the **left**, and the right is an inline diff of it against this,
+	 * read-only.
+	 *
+	 * That way round rather than Monaco's own side-by-side, where the editable
+	 * half is the right one: typing belongs where reading starts, and a diff is
+	 * something to glance at. It is also why the right is a second editor and
+	 * not the same widget -- one diff editor cannot be half editable and half
+	 * not, and its editable half is the one it draws the diff in.
+	 *
+	 * The diff is behind a short delay; see [Code.debounceMs]. Recomputing it
+	 * per keystroke costs nothing anybody sees and makes the right-hand side
+	 * flicker through every half-typed word.
 	 */
 	original?: string
 	schema: Schema | undefined
 	readOnly: boolean
 	onChange: (v: string) => void
+
+	/** How long the diff waits for typing to stop. */
+	debounceMs?: number
 }): ReactNode {
 	const box = useRef<HTMLDivElement>(null)
 
@@ -141,7 +152,9 @@ export function Code(props: {
 
 	// The models, kept so that they can be disposed of.
 	const mine = useRef<Model>(null)
-	const theirs = useRef<Model>(null)
+
+	/** Where the diff goes, when there is one. */
+	const other = useRef<HTMLDivElement>(null)
 
 	// The callback, kept where the effect can read the current one rather than
 	// the one from the render that built the editor.
@@ -149,9 +162,11 @@ export function Code(props: {
 	onChange.current = props.onChange
 
 	const split = props.original !== undefined
+	const wait = props.debounceMs ?? 300
 
 	useEffect(() => {
 		const el = box.current
+		const el2 = other.current
 		if (el === null) return
 
 		const monaco = api.current
@@ -170,9 +185,6 @@ export function Code(props: {
 					: [{ uri: `payday://schema/${props.uri}`, fileMatch: [uri.toString()], schema: props.schema }],
 		})
 
-		const model = monaco.editor.createModel(props.value, 'json', uri)
-		mine.current = model
-
 		const opts = {
 			readOnly: props.readOnly,
 			automaticLayout: true,
@@ -186,51 +198,75 @@ export function Code(props: {
 			overviewRulerLanes: 0,
 		}
 
-		let editor: Editor
-		if (split) {
-			// The original needs a URI of its own -- two models cannot share
-			// one -- and is deliberately **not** matched to the schema: it is
-			// the server's own answer, so a red line on it would be a
-			// complaint about something nobody typed.
+		const live = monaco.editor.createModel(props.value, 'json', uri)
+		mine.current = live
+
+		const editor = monaco.editor.create(el, { ...opts, model: live })
+
+		const shut: (() => void)[] = [
+			() => {
+				editor.dispose()
+				live.dispose()
+				mine.current = null
+			},
+		]
+
+		if (split && el2 !== null) {
+			// Two more models. The right-hand side compares what was read
+			// against a **copy** of what is being typed, and the copy is what
+			// the delay is on -- the live model cannot be the one it reads,
+			// because then there is no delay.
 			const was = monaco.editor.createModel(
 				props.original ?? '',
 				'json',
 				monaco.Uri.parse(`inmemory://payday/${props.uri}.was`),
 			)
-			theirs.current = was
+			const snap = monaco.editor.createModel(
+				props.value,
+				'json',
+				monaco.Uri.parse(`inmemory://payday/${props.uri}.now`),
+			)
 
-			const diff = monaco.editor.createDiffEditor(el, {
+			const diff = monaco.editor.createDiffEditor(el2, {
 				...opts,
+				readOnly: true,
 				originalEditable: false,
-				renderSideBySide: true,
-				readOnly: props.readOnly,
-			}) as DiffEditor
-			diff.setModel({ original: was, modified: model })
 
-			// Said again to the editor on the right, because the diff editor
-			// does not pass it down: given `readOnly: false` it still builds a
-			// modified side that refuses every keystroke, and what that looks
-			// like is a pane with a caret in it that cannot be typed in.
-			diff.getModifiedEditor().updateOptions({ readOnly: props.readOnly })
-			editor = diff
-		} else {
-			theirs.current = null
-			editor = monaco.editor.create(el, { ...opts, model })
+				// Inline, because this is half the width: two columns in it
+				// would be four on the screen for one document.
+				renderSideBySide: false,
+			}) as DiffEditor
+			diff.setModel({ original: was, modified: snap })
+
+			let timer: ReturnType<typeof setTimeout> | undefined
+			const later = live.onDidChangeContent(() => {
+				if (timer !== undefined) clearTimeout(timer)
+				timer = setTimeout(() => snap.setValue(live.getValue()), wait)
+			})
+
+			shut.unshift(() => {
+				if (timer !== undefined) clearTimeout(timer)
+				later.dispose()
+				diff.dispose()
+				snap.dispose()
+				was.dispose()
+			})
 		}
 
-		const sub = model.onDidChangeContent(() => onChange.current(model.getValue()))
+		const sub = live.onDidChangeContent(() => onChange.current(live.getValue()))
+		shut.unshift(() => sub.dispose())
 
 		return () => {
-			sub.dispose()
-			editor.dispose()
-			model.dispose()
-			theirs.current?.dispose()
-			mine.current = null
-			theirs.current = null
+			for (const f of shut) f()
 		}
 		// Not on `value`: that is what is being typed, and rebuilding the
 		// editor on every keystroke is what makes one impossible to type in.
-	}, [props.uri, props.readOnly, split]) // eslint-disable-line react-hooks/exhaustive-deps
+	}, [props.uri, props.readOnly, split, wait]) // eslint-disable-line react-hooks/exhaustive-deps
 
-	return <div ref={box} style={style.box} />
+	return (
+		<div style={style.box}>
+			<div ref={box} style={style.half} />
+			{split && <div ref={other} style={{ ...style.half, borderLeft: '1px solid #2c2c2c' }} />}
+		</div>
+	)
 }

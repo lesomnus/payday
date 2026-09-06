@@ -447,14 +447,18 @@ describe('following edges', () => {
 		await mount()
 		await pick(Robot.typeName)
 
-		// Nothing to go back to before anything was followed.
-		expect(screen.queryByLabelText('back')).toBeNull()
+		// Nothing to go back to yet -- but the button keeps its place, because
+		// one that appears and disappears moves the row it shares.
+		const back = (): HTMLButtonElement => screen.getByLabelText('back') as HTMLButtonElement
+		expect(back().disabled).toBe(true)
 
 		await act(async () => void fireEvent.click(screen.getByText(pdid.from(tenant).toString())))
 		expect((screen.getByLabelText('entity') as HTMLSelectElement).value).toBe(Tenant.typeName)
+		expect(back().disabled).toBe(false)
 
-		await act(async () => void fireEvent.click(screen.getByLabelText('back')))
-		expect(screen.queryByLabelText('back'), 'the trail is empty again').toBeNull()
+		await act(async () => void fireEvent.click(back()))
+		expect((screen.getByLabelText('entity') as HTMLSelectElement).value).toBe(Robot.typeName)
+		expect(back().disabled, 'the trail is empty again').toBe(true)
 	})
 })
 

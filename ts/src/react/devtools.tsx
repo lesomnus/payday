@@ -777,11 +777,6 @@ export function Devtools(props: Props): ReactNode {
 				))}
 			</div>
 
-			{trail.length > 0 && kept.tab === 'get' && (
-				<button type="button" style={style.press} onClick={back} aria-label="back">
-					← back
-				</button>
-			)}
 		</div>
 	)
 
@@ -899,6 +894,7 @@ export function Devtools(props: Props): ReactNode {
 							look={look}
 							raw={setRaw}
 							find={find}
+							back={{ go: back, can: trail.length > 0 }}
 							entities={props.entities}
 						/>
 					) : kept.tab === 'get' ? (
@@ -914,6 +910,7 @@ export function Devtools(props: Props): ReactNode {
 							look={look}
 							raw={setRaw}
 							find={find}
+							back={{ go: back, can: trail.length > 0 }}
 							diff={kept.diff}
 							{...(props.monaco === undefined ? {} : { monaco: props.monaco })}
 							{...(looking?.typeName === entity.typeName ? { id: looking.id } : {})}
@@ -931,6 +928,7 @@ export function Devtools(props: Props): ReactNode {
 							look={look}
 							raw={setRaw}
 							find={find}
+							back={{ go: back, can: trail.length > 0 }}
 						/>
 					)}
 				</div>
@@ -984,6 +982,16 @@ interface View {
 	/** The sidebar above and below the view's own form; see [Pane]. */
 	head: ReactNode
 	foot: ReactNode
+
+	/**
+	 * One edge back, and whether there is one.
+	 *
+	 * It keeps its place when there is nowhere to go rather than appearing and
+	 * disappearing: a button that comes and goes moves everything under it, and
+	 * the row it shares would be a different row every time an edge is
+	 * followed.
+	 */
+	back: { go: () => void; can: boolean }
 }
 
 /** Raw is a bytes value being looked at, and what saving it would do. */
@@ -1077,6 +1085,7 @@ function List(props: View & { transport: Transport }): ReactNode {
 			<Pane
 				head={props.head}
 				foot={props.foot}
+				back={props.back}
 				desc={method.input}
 				vals={vals}
 				onChange={setVals}
@@ -1115,6 +1124,7 @@ function List(props: View & { transport: Transport }): ReactNode {
 function Pane(props: {
 	head: ReactNode
 	foot: ReactNode
+	back: { go: () => void; can: boolean }
 
 	/** The request being built, for a tab that asks one. */
 	desc?: DescMessage
@@ -1133,11 +1143,23 @@ function Pane(props: {
 			{props.head}
 
 			<div style={style.asked}>
-				{props.onAsk !== undefined && (
-					<button type="button" style={style.press} onClick={props.onAsk}>
-						{props.what}
+				<div style={{ display: 'flex', gap: 3 }}>
+					<button
+						type="button"
+						style={{ ...style.press, opacity: props.back.can ? 1 : 0.4 }}
+						onClick={props.back.go}
+						disabled={!props.back.can}
+						aria-label="back"
+					>
+						←
 					</button>
-				)}
+
+					{props.onAsk !== undefined && (
+						<button type="button" style={{ ...style.press, flex: 1 }} onClick={props.onAsk}>
+							{props.what}
+						</button>
+					)}
+				</div>
 
 				{props.act}
 
@@ -1295,6 +1317,8 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 	}
 
 	const editing = props.monaco !== undefined && settable.length > 0
+	const clean = was === undefined ? '' : JSON.stringify(was, null, 2)
+	const dirty = now !== undefined && now !== clean
 
 	// On the toggle and on nothing else. It was also asking whether anything
 	// had changed yet -- a diff of a document against itself being half the
@@ -1308,6 +1332,7 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 			<Pane
 				head={props.head}
 				foot={props.foot}
+				back={props.back}
 				desc={method.input}
 				vals={vals}
 				onChange={setVals}
@@ -1316,19 +1341,48 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 				act={
 					<>
 						{editing && was !== undefined && (
-							<>
-								<button type="button" style={style.press} onClick={() => void save()}>
-									save what changed
+							<div style={{ display: 'flex', gap: 3, alignItems: 'stretch' }}>
+								<button
+									type="button"
+									style={{ ...style.press, flex: 1, opacity: dirty ? 1 : 0.4 }}
+									disabled={!dirty}
+									onClick={() => {
+										// A new editor over the answer, which
+										// is what throwing an edit away is:
+										// `Code` reads its document once.
+										setNow(clean)
+										setGot((n) => n + 1)
+									}}
+								>
+									cancel
 								</button>
-								<label style={{ color: props.diff ? '#ffb86b' : dim, cursor: 'pointer' }}>
+
+								<label
+									style={{
+										...style.press,
+										display: 'flex',
+										alignItems: 'center',
+										gap: 4,
+										color: props.diff ? '#ffb86b' : dim,
+									}}
+								>
 									<input
 										type="checkbox"
 										checked={props.diff}
 										onChange={(e) => props.keep({ diff: e.target.checked })}
 									/>
-									against what was read
+									diff
 								</label>
-							</>
+
+								<button
+									type="button"
+									style={{ ...style.press, flex: 1, opacity: dirty ? 1 : 0.4 }}
+									disabled={!dirty}
+									onClick={() => void save()}
+								>
+									save
+								</button>
+							</div>
 						)}
 						{err !== undefined && <p style={style.bad}>{err}</p>}
 					</>
@@ -1364,7 +1418,7 @@ function Held(props: View): ReactNode {
 
 	return (
 		<>
-			<Pane head={props.head} foot={props.foot}>
+			<Pane head={props.head} foot={props.foot} back={props.back}>
 				<p style={{ color: dim, margin: 0 }}>
 					what this browser holds, which the server was not asked about
 				</p>
@@ -1569,7 +1623,14 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 												value={row[f.localName]}
 												field={f}
 												id={ids.has(f.localName)}
-												to={refs.get(f.localName)}
+												// The row's own key names this row,
+												// which is the one edge a table has
+												// that is not in `refs`.
+												to={
+													f.localName === props.entity.key
+														? props.entity.typeName
+														: refs.get(f.localName)
+												}
 												hit={typeof wants === 'string' ? undefined : wants}
 												look={props.look}
 												onRaw={(v) =>
