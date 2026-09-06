@@ -10,8 +10,6 @@ import (
 	"reflect"
 	"uuid"
 
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/migrate"
-
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
@@ -33,8 +31,6 @@ import (
 // Client is the client that holds all ent builders.
 type Client struct {
 	config
-	// Schema is the client for creating, migrating and dropping schema.
-	Schema *migrate.Schema
 	// Audit is the client for interacting with the Audit builders.
 	Audit *AuditClient
 	// Cell is the client for interacting with the Cell builders.
@@ -69,7 +65,6 @@ func NewClient(opts ...Option) *Client {
 }
 
 func (c *Client) init() {
-	c.Schema = migrate.NewSchema(c.driver)
 	c.Audit = NewAuditClient(c.config)
 	c.Cell = NewCellClient(c.config)
 	c.Fleet = NewFleetClient(c.config)

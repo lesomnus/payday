@@ -616,6 +616,22 @@ func (g Gen) entRuntime(ctx context.Context) error {
 		"--target", "./"+DirEnt,
 		"--feature", "sql/modifier",
 		"--feature", "sql/versioned-migration",
+
+		// The migration engine, off the generated `Client`.
+		//
+		// `Client.Schema` is a `*migrate.Schema` and `NewClient` builds one,
+		// which is an import, and the linker follows imports: the client pulls
+		// in Atlas -- its diff planner, all three of its SQL dialects, and the
+		// HCL parser those import for a schema language nothing here writes.
+		// Every binary that opens the database carried it, whether or not it
+		// ever migrates. Measured on this app's sandbox, that was 10.5 MB of a
+		// 54 MB module a browser downloads.
+		//
+		// What migrates says so instead, with the driver it already had:
+		// `migrate.NewSchema(drv).Create(ctx)`, which is `cli.Migrate` in the
+		// app -- and `cli` is the package a sandbox does not import.
+		"--feature", "sql/no-client-schema",
+
 		"./"+DirEnt+"/schema")
 	cmd.Dir = g.Out
 
