@@ -171,15 +171,19 @@ const dim = '#8b8b8b'
 const line = '#2c2c2c'
 
 const style = {
-	group: { border: `1px solid ${line}`, borderRadius: 3, padding: '4px 6px', margin: '2px 0' },
-	label: { color: dim, marginRight: 6 },
-	row: { display: 'flex', gap: 6, alignItems: 'baseline', margin: '2px 0', flexWrap: 'wrap' },
+	group: { border: `1px solid ${line}`, borderRadius: 3, padding: '3px 5px', margin: '1px 0' },
+	label: { color: dim, marginRight: 4 },
+	row: { display: 'flex', gap: 4, alignItems: 'center', margin: '1px 0', flexWrap: 'wrap' },
+
+	// Sized to be hit rather than to be read past, and the space around it is
+	// what pays: a form of taller boxes with less between them is the height it
+	// was, and every one of these is something somebody has to click into.
 	input: {
 		background: '#101010',
 		color: '#e6e6e6',
 		border: `1px solid ${line}`,
 		borderRadius: 3,
-		padding: '1px 4px',
+		padding: '5px 8px',
 		font: 'inherit',
 		minWidth: 0,
 	},
@@ -359,15 +363,21 @@ function Field(props: {
 	}
 
 	if (f.scalar === ScalarType.BOOL) {
+		// The box first, and then the name. Every other field is `name box`
+		// because the name says what the box is for, and this one followed that
+		// rule -- but a `Get`'s select is thirty of these in a column, and with
+		// the box after a name the boxes land wherever the names happen to end.
+		// A column of checkboxes is a thing to scan down; the same column
+		// ragged is a thing to hunt through.
 		return (
 			<span style={style.row}>
-				{name}
 				<input
 					type="checkbox"
 					aria-label={props.at}
 					checked={props.vals.leaf[props.at] === 'true'}
 					onChange={(e) => props.set('leaf', props.at, e.target.checked ? 'true' : '')}
 				/>
+				{name}
 			</span>
 		)
 	}

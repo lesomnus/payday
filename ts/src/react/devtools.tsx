@@ -177,9 +177,9 @@ const style = {
 	},
 	bar: {
 		display: 'flex',
-		gap: 4,
+		gap: 3,
 		alignItems: 'center',
-		padding: '4px 6px',
+		padding: '3px 4px',
 		borderBottom: `1px solid ${line}`,
 		flexWrap: 'wrap',
 	},
@@ -193,13 +193,13 @@ const style = {
 		width: 260,
 		flex: 'none',
 		overflow: 'auto',
-		padding: 6,
+		padding: 4,
 		borderRight: `1px solid ${line}`,
 		display: 'flex',
 		flexDirection: 'column',
-		gap: 6,
+		gap: 4,
 	},
-	seen: { flex: 1, minWidth: 0, overflow: 'auto', padding: 6 },
+	seen: { flex: 1, minWidth: 0, overflow: 'auto', padding: 4 },
 
 	// The top edge, which is where a sheet is resized from. It is its own
 	// element rather than a CSS `resize`, which cannot grow a thing anchored to
@@ -216,7 +216,7 @@ const style = {
 	table: { borderCollapse: 'collapse', whiteSpace: 'nowrap', width: 'max-content' },
 	th: {
 		textAlign: 'left',
-		padding: '2px 10px 2px 0',
+		padding: '1px 10px 1px 0',
 		borderBottom: `1px solid ${line}`,
 		color: dim,
 		fontWeight: 'normal',
@@ -224,13 +224,13 @@ const style = {
 		top: 0,
 		background: back,
 	},
-	td: { padding: '2px 10px 2px 0', borderBottom: `1px solid ${line}`, verticalAlign: 'top' },
+	td: { padding: '1px 10px 1px 0', borderBottom: `1px solid ${line}`, verticalAlign: 'top' },
 	input: {
 		background: '#101010',
 		color: ink,
 		border: `1px solid ${line}`,
 		borderRadius: 3,
-		padding: '4px 8px',
+		padding: '5px 8px',
 		font: 'inherit',
 	},
 
@@ -242,7 +242,7 @@ const style = {
 		color: ink,
 		border: `1px solid ${line}`,
 		borderRadius: 3,
-		padding: '5px 12px',
+		padding: '7px 14px',
 		font: 'inherit',
 		lineHeight: '16px',
 		cursor: 'pointer',
@@ -274,19 +274,32 @@ const style = {
 	},
 	bad: { color: '#ff8b8b', whiteSpace: 'pre-wrap' },
 
-	// Above the sheet, which is itself above the page. The panel is the top of
-	// the page and this is the top of the panel, so the number is the sheet's
-	// plus two -- the handle has the one in between.
-	full: {
+	// Down the right side, and **under** the sheet. The panel is what somebody
+	// is working in and the bytes are what they are looking at from it, so the
+	// panel stays reachable: a full-screen editor over the top of it means
+	// closing the editor to do anything at all.
+	//
+	// Its width is its content's -- sixteen bytes of hex, the offsets and the
+	// text -- because that is a fixed number of columns and stretching it to
+	// the viewport puts a screen of nothing between the hex and the text it is
+	// read against.
+	side: {
 		position: 'fixed',
-		inset: 0,
-		zIndex: 2147483002,
+		top: 0,
+		right: 0,
+		bottom: 0,
+		zIndex: 2147482999,
+		width: 'max-content',
+		maxWidth: '100vw',
+		boxSizing: 'border-box',
 		background: back,
 		color: ink,
+		borderLeft: `1px solid ${line}`,
 		font: '12px ui-monospace, SFMono-Regular, Menlo, monospace',
 		display: 'flex',
 		flexDirection: 'column',
 	},
+	rule: { color: dim, lineHeight: '18px', whiteSpace: 'pre', margin: 0, flex: 'none' },
 } satisfies Record<string, CSSProperties>
 
 /** Devtools is the panel. */
@@ -783,14 +796,47 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 
 	const [edit, setEdit] = useState<{ at: string; field: string; value: string; err?: string }>()
 
-	const toggle = (name: string): void => {
-		const now = new Set(hidden)
-		if (now.has(name)) {
-			now.delete(name)
-		} else {
-			now.add(name)
+	/**
+	 * The last column somebody turned, so that shift reaches back to it.
+	 *
+	 * A ref rather than state: nothing on the screen depends on it, and the
+	 * click that reads it is the same one that writes it.
+	 */
+	const from = useRef<string | undefined>(undefined)
+
+	/**
+	 * toggle turns a column off, or a run of them.
+	 *
+	 * Shift takes everything from the last one turned to this one, which is
+	 * what a list of checkboxes means everywhere else -- and a wide entity is
+	 * twenty columns of which somebody wants three, so without it the gesture
+	 * is seventeen clicks.
+	 *
+	 * The run is given **this** column's new state rather than each being
+	 * flipped: a range that flipped would turn some on and some off, which is
+	 * not what anybody dragging a selection means.
+	 */
+	const toggle = (name: string, span: boolean): void => {
+		const names = fields.map((f) => f.localName)
+		const show = hidden.has(name)
+
+		let run = [name]
+		if (span && from.current !== undefined) {
+			const a = names.indexOf(from.current)
+			const b = names.indexOf(name)
+			if (a >= 0 && b >= 0) run = names.slice(Math.min(a, b), Math.max(a, b) + 1)
 		}
 
+		const now = new Set(hidden)
+		for (const v of run) {
+			if (show) {
+				now.delete(v)
+			} else {
+				now.add(v)
+			}
+		}
+
+		from.current = name
 		props.keep({ hidden: { ...props.hidden, [props.entity.typeName]: [...now] } })
 	}
 
@@ -969,8 +1015,14 @@ function Editing(props: {
  * Hovering it brings the name back, over the rows rather than in the flow, so
  * finding a column that was turned off does not move everything that was not.
  */
-function Head(props: { name: string; shown: boolean; toggle: (name: string) => void }): ReactNode {
+function Head(props: { name: string; shown: boolean; toggle: (name: string, span: boolean) => void }): ReactNode {
 	const [over, setOver] = useState(false)
+
+	// Whether shift was down, taken from the click rather than from the change
+	// it causes: a `change` event is an `Event` and carries no modifiers, and
+	// reading `nativeEvent` for one is reading a field that is there in a
+	// browser and not in a test.
+	const span = useRef(false)
 
 	return (
 		<span
@@ -982,7 +1034,8 @@ function Head(props: { name: string; shown: boolean; toggle: (name: string) => v
 				type="checkbox"
 				aria-label={props.name}
 				checked={props.shown}
-				onChange={() => props.toggle(props.name)}
+				onClick={(e) => (span.current = e.shiftKey)}
+				onChange={() => props.toggle(props.name, span.current)}
 			/>
 			{props.shown ? (
 				<span>{props.name}</span>
@@ -1076,13 +1129,17 @@ function Cell(props: {
 }
 
 /**
- * Hex is a bytes value, over everything.
+ * Hex is a bytes value, down the right side.
  *
- * Full-screen because the thing it shows is not cell-shaped: sixteen bytes to a
- * line with the text beside them is the layout every tool that has ever shown
- * bytes uses, and it does not fit in a column. It sits above the sheet rather
- * than inside it -- the panel is `2147483000` and this is one more -- so it is
- * over the panel the same way the panel is over the page.
+ * Three columns because that is what every tool that has ever shown bytes uses
+ * and it is not a style: the offset says where you are, the hex is what is
+ * there, and the text is how anybody tells at a glance whether they are looking
+ * at a string, a protobuf or noise. They are read across, so they are computed
+ * from the **same lines** -- the offsets are the running byte count of what has
+ * been typed, so a line somebody shortened moves the ones under it rather than
+ * lying about them.
+ *
+ * It sits under the panel rather than over it; `style.side` says why.
  *
  * Editable where the schema says the field is: `patchable` already knows, and a
  * box that takes typing for a field the server will refuse is a box that
@@ -1116,7 +1173,7 @@ function Hex(props: {
 
 	return (
 		<div
-			style={style.full}
+			style={style.side}
 			role="dialog"
 			aria-label={`${props.name} bytes`}
 			// Escape closes it, and the div is focused on mount so that it
@@ -1145,23 +1202,25 @@ function Hex(props: {
 				</button>
 			</div>
 
-			{err !== undefined && <p style={{ ...style.bad, margin: '6px 8px' }}>{err}</p>}
+			{err !== undefined && <p style={{ ...style.bad, margin: '4px 6px' }}>{err}</p>}
 
-			<div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'auto', padding: 8, gap: 16 }}>
+			<div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'auto', padding: '6px 10px', gap: 10 }}>
+				<pre aria-label="offset" style={style.rule}>
+					{offsets(text)}
+				</pre>
+
 				<textarea
 					aria-label="hex"
 					readOnly={!props.settable}
 					spellCheck={false}
 					value={text}
 					onChange={(e) => setText(e.target.value)}
-					// Wide enough for the sixteen pairs a line holds and no
-					// wider: the text beside it is read against those columns,
-					// and a box that stretches puts a screen of nothing
-					// between them.
+					// The width of a line and no more: sixteen pairs, three
+					// gaps between the fours, and the borders.
 					style={{
 						...style.input,
 						flex: 'none',
-						width: '52ch',
+						width: '51ch',
 						resize: 'none',
 						lineHeight: '18px',
 						whiteSpace: 'pre',
@@ -1169,34 +1228,65 @@ function Hex(props: {
 				/>
 
 				{/*
-					The same bytes as text, which is how anybody tells at a
-					glance whether they are looking at a string, a protobuf or
-					noise. Not editable: two editors over one value is two
-					answers about what was typed.
+					Not editable: two editors over one value is two answers
+					about what was typed.
 				*/}
-				<pre aria-label="text" style={{ margin: 0, color: dim, lineHeight: '18px', whiteSpace: 'pre' }}>
-					{printable(typeof parsed === 'string' ? props.value : parsed)}
+				<pre aria-label="text" style={style.rule}>
+					{printable(text)}
 				</pre>
 			</div>
 		</div>
 	)
 }
 
-/** spaced is bytes as hex, sixteen to a line. */
+/**
+ * spaced is bytes as hex, sixteen to a line and grouped in fours.
+ *
+ * The gap every four is the whole reason a hex dump is countable: sixteen pairs
+ * in a row have to be counted one at a time, and four groups of four are read.
+ */
 function spaced(v: Uint8Array): string {
 	const out: string[] = []
 	for (let i = 0; i < v.length; i += 16) {
-		out.push(
-			Array.from(v.slice(i, i + 16), (b) => b.toString(16).padStart(2, '0')).join(' '),
-		)
+		const line = Array.from(v.slice(i, i + 16), (b) => b.toString(16).padStart(2, '0'))
+		const fours: string[] = []
+		for (let j = 0; j < line.length; j += 4) fours.push(line.slice(j, j + 4).join(' '))
+
+		out.push(fours.join('  '))
 	}
 
 	return out.join('\n')
 }
 
+/** digits is one line's hex, with everything that is not a digit taken out. */
+function digits(line: string): string {
+	return line.replace(/\s+/g, '')
+}
+
+/**
+ * offsets is where each line starts, counted from what is on it.
+ *
+ * From the text rather than from the line number, because a line somebody
+ * edited is not sixteen bytes any more and an offset that assumed it was would
+ * name the wrong byte for the whole rest of the document.
+ */
+function offsets(text: string): string {
+	let at = 0
+
+	return text
+		.split('\n')
+		.map((l) => {
+			const was = at
+			at += digits(l).length >> 1
+
+			return was.toString(16).padStart(8, '0')
+		})
+		.join('\n')
+}
+
 /** packed is [spaced] back, or what is wrong with it. */
 function packed(text: string): Uint8Array | string {
-	const t = text.replace(/\s+/g, '')
+	const t = digits(text)
 	if (t.length % 2 !== 0) return `hex: ${String(t.length)} digits is half a byte short`
 
 	const out = new Uint8Array(t.length / 2)
@@ -1210,16 +1300,26 @@ function packed(text: string): Uint8Array | string {
 	return out
 }
 
-/** printable is the same bytes as text, sixteen to a line. */
-function printable(v: Uint8Array): string {
-	const out: string[] = []
-	for (let i = 0; i < v.length; i += 16) {
-		out.push(
-			Array.from(v.slice(i, i + 16), (b) => (b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : '.')).join(''),
-		)
-	}
+/**
+ * printable is the same bytes as text, on the same lines.
+ *
+ * Line by line rather than sixteen at a time, so that the three columns stay
+ * read-across while somebody is in the middle of typing.
+ */
+function printable(text: string): string {
+	return text
+		.split('\n')
+		.map((l) => {
+			const t = digits(l)
+			let out = ''
+			for (let i = 0; i + 1 < t.length; i += 2) {
+				const b = Number.parseInt(t.slice(i, i + 2), 16)
+				out += Number.isNaN(b) || b < 0x20 || b >= 0x7f ? '.' : String.fromCharCode(b)
+			}
 
-	return out.join('\n')
+			return out
+		})
+		.join('\n')
 }
 
 /** rawOf is a bytes field's value, whichever of its two shapes it arrived in. */

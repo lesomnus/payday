@@ -492,7 +492,7 @@ describe('bytes that are not an identifier', () => {
 	// beside four identifiers, which is the whole of this: hex in a cell is a
 	// column as wide as the document it holds, and one of those sixteen bytes
 	// is not a row anybody can look up.
-	it('say how big they are, and open over everything', async () => {
+	it('say how big they are, and open beside the panel', async () => {
 		store.put(Audit.typeName, trail)
 
 		await mount()
@@ -506,9 +506,11 @@ describe('bytes that are not an identifier', () => {
 		expect(dialog.getAttribute('aria-label')).toBe('patch bytes')
 		expect((screen.getByLabelText('hex') as HTMLTextAreaElement).value).toBe('de ad be ef')
 		expect(screen.getByLabelText('text').textContent).toBe('....')
+		expect(screen.getByLabelText('offset').textContent).toBe('00000000')
 
-		// Over the panel the way the panel is over the page.
-		expect(Number(dialog.style.zIndex)).toBeGreaterThan(2147483000)
+		// Under the panel, which is what somebody is working in: an editor over
+		// the top of it means closing the editor to do anything at all.
+		expect(Number(dialog.style.zIndex)).toBeLessThan(2147483000)
 	})
 
 	it('are not read as a row when nothing here answers to their domain', async () => {
@@ -522,6 +524,57 @@ describe('bytes that are not an identifier', () => {
 		// UUID. What keeps it from being printed as somebody's row is the
 		// domain byte, which nothing registered.
 		expect(screen.getByText('16 bytes'), 'a trace is bytes, not an identifier').toBeDefined()
+	})
+})
+
+describe('a hex dump', () => {
+	// Four groups of four are read; sixteen pairs in a row are counted.
+	it('groups the bytes in fours and says where each line starts', async () => {
+		const long = create(AuditSchema, {
+			id: pdid.newId(AuditDomain).bytes,
+			patch: new Uint8Array(20).map((_, i) => i),
+		})
+		store.put(Audit.typeName, long)
+
+		await mount()
+		await pick(Audit.typeName)
+		await tab('store')
+		await act(async () => void fireEvent.click(screen.getByText('20 bytes')))
+
+		expect((screen.getByLabelText('hex') as HTMLTextAreaElement).value).toBe(
+			'00 01 02 03  04 05 06 07  08 09 0a 0b  0c 0d 0e 0f\n10 11 12 13',
+		)
+
+		// Counted from what is on each line, so that a line somebody shortens
+		// moves the ones under it rather than lying about them.
+		expect(screen.getByLabelText('offset').textContent).toBe('00000000\n00000010')
+	})
+})
+
+describe('a column checkbox', () => {
+	// A wide entity is twenty columns of which somebody wants three, so
+	// without this the gesture is seventeen clicks.
+	it('takes everything back to the last one when shift is held', async () => {
+		await mount()
+		await pick(Robot.typeName)
+
+		const names = Robot.schema.fields.map((f) => f.localName)
+		expect(names.length, 'this only says something over a run of columns').toBeGreaterThan(2)
+
+		const first = names[0] as string
+		const last = names[names.length - 1] as string
+
+		await act(async () => void fireEvent.click(screen.getByLabelText(first)))
+		await act(async () => {
+			fireEvent.click(screen.getByLabelText(last), { shiftKey: true })
+		})
+
+		// Every one of them, and given the state of the one that was shifted
+		// onto rather than each flipped -- a range that flipped would turn some
+		// on and some off.
+		for (const n of names) {
+			expect((screen.getByLabelText(n) as HTMLInputElement).checked, n).toBe(false)
+		}
 	})
 })
 
