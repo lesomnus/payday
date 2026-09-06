@@ -10,6 +10,7 @@ import (
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/frame"
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/cli"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 	"github.com/lesomnus/payday/pdid"
@@ -47,7 +48,7 @@ func TestARowThatNamesNoNextHopCanStillBeWritten(t *testing.T) {
 	})
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })
-	x.NoError(s.Ent.Schema.Create(ctx))
+	x.NoError(cli.Migrate(ctx, s))
 
 	before, err := s.Ent.Audit.Query().Count(ctx)
 	x.NoError(err)
@@ -77,7 +78,7 @@ func TestTheWallStillHoldsForARowWithNoNextHop(t *testing.T) {
 	})
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })
-	x.NoError(s.Ent.Schema.Create(ctx))
+	x.NoError(cli.Migrate(ctx, s))
 
 	tenant, err := s.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "acme"}.Build())
 	x.NoError(err)

@@ -1,6 +1,25 @@
-//go:build !js
-
-package cmd
+// Package cli is this app's command line, and what only a process does.
+//
+// `cmd` is the wiring both entry points share -- `Build` is there, and the
+// sandbox calls it to stand up the same server the process stands up. This
+// package is everything on the other side of that: parsing arguments, the
+// database engine a process opens, and deciding what to do about the shape of a
+// database that was already there.
+//
+// # Why a package and not a build tag
+//
+// Because the linker follows imports, and a blank import or a migration engine
+// named in `cmd` is linked into the page whether the page can use it or not.
+// Measured on this app: the wazero SQLite engine was 15 MB of the sandbox
+// module and Atlas, which `entschema.Check` and `Schema.Create` reach, another
+// 10.5 MB -- 26 MB of a 72 MB download, to answer questions a page never asks.
+//
+// Both were first fixed with `//go:build !js`, which worked and was wrong: a
+// tag refuses to compile what would compile, and says nothing about why. What
+// is actually true is that a process and a page need different things, and a
+// package boundary is how Go says that. Nothing here is excluded from a build;
+// the sandbox simply does not import it.
+package cli
 
 import (
 	"context"
@@ -17,27 +36,9 @@ import (
 	"github.com/lesomnus/payday/pdcmd"
 	"github.com/lesomnus/payday/spin"
 
+	"github.com/lesomnus/payday/internal/apptest/cmd"
 	entmigrate "github.com/lesomnus/payday/internal/apptest/internal/ent/migrate"
 )
-
-// This app's command line, in a file the sandbox does not compile.
-//
-// `Build` is in `serve.go` and is what both entry points call. What is here is
-// everything that only a **process** does: parsing arguments, and deciding what
-// to do about the shape of a database that was already there.
-//
-// It is tagged for the same reason `driver.go` is, and it is the second half of
-// the same discovery. `entschema.Check` is ent's migration engine, which is
-// Atlas -- its diff planner, its three SQL dialects, and the HCL parser they
-// import. `wasm/main.go` imports this package for `Build`, so all of that was
-// linked into the page: 10.6 MB, measured, to answer a question the page never
-// asks. There is nothing for a migration to decide in a database that did not
-// exist a moment ago and will not exist after a reload; the page executes
-// `sandbox.Script` instead.
-//
-// So the rule this file is an instance of: what a process does with the
-// database's **shape** belongs on this side of the tag. What builds the server
-// belongs in `serve.go`, where both can reach it.
 
 // Cmd is this app's own command line: what payday supplies, plus whatever the
 // app has of its own.
@@ -51,20 +52,20 @@ import (
 // `serve` is not among them and will not be. It is the one command whose body
 // is the stack -- which layers, in which order, with the wall on which server
 // -- and that is the most important thing a reader of an app can see.
-func Cmd(c *Config) *xli.Command {
+func Cmd(c *cmd.Config) *xli.Command {
 	return &xli.Command{
-		Name:  Name,
+		Name:  cmd.Name,
 		Brief: "the app payday is tried against",
 
 		Flags: flg.Flags{pdcmd.ConfigFlag()},
 
 		Commands: []*xli.Command{
 			pdcmd.NewCmdVersion(),
-			pdcmd.NewCmdConfig(Loader, c),
+			pdcmd.NewCmdConfig(cmd.Loader, c),
 			NewCmdServe(c),
 		},
 
-		Handler: xli.Chain(pdcmd.Load(Loader, c), xli.RequireSubcommand()),
+		Handler: xli.Chain(pdcmd.Load(cmd.Loader, c), xli.RequireSubcommand()),
 	}
 }
 
@@ -74,13 +75,13 @@ func Cmd(c *Config) *xli.Command {
 // `cmd/config.go`: the body of this command is the stack, and a framework that
 // supplied it would be hiding the one thing a reader of an app most needs to
 // see.
-func NewCmdServe(c *Config) *xli.Command {
+func NewCmdServe(c *cmd.Config) *xli.Command {
 	return &xli.Command{
 		Name:  "serve",
 		Brief: "answer requests",
 
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			s, err := Build(ctx, *c)
+		Handler: xli.OnRun(func(ctx context.Context, _ *xli.Command, next xli.Next) error {
+			s, err := cmd.Build(ctx, *c)
 			if err != nil {
 				return err
 			}
@@ -101,7 +102,7 @@ func NewCmdServe(c *Config) *xli.Command {
 			// decide on purpose; anything else and the shapes have to agree
 			// already.
 			if c.Db.Migrate {
-				if err := s.Ent.Schema.Create(ctx); err != nil {
+				if err := Migrate(ctx, s); err != nil {
 					return err
 				}
 			} else if err := entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
@@ -127,4 +128,14 @@ func NewCmdServe(c *Config) *xli.Command {
 			return g.Wait()
 		}),
 	}
+}
+
+// Migrate brings the database s runs on into the shape this app's schema says.
+//
+// It is here rather than on `cmd.Server` because this is the call that links
+// the migration engine, and `cmd` is what the sandbox imports. The page does
+// not migrate: it executes a script that is already the answer, which is what
+// `sandbox` is for.
+func Migrate(ctx context.Context, s *cmd.Server) error {
+	return entmigrate.NewSchema(s.Drv).Create(ctx)
 }

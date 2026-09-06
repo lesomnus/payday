@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/lesomnus/payday/internal/apptest/cli"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 )
 
@@ -20,7 +21,7 @@ func TestConfigEnvIsReadFromTheStruct(t *testing.T) {
 	x := require.New(t)
 
 	var c cmd.Config
-	root := cmd.Cmd(&c)
+	root := cli.Cmd(&c)
 
 	out := &bytes.Buffer{}
 	root.Writer = out
@@ -49,7 +50,7 @@ func TestConfigEnvSaysWhetherAndNeverWhat(t *testing.T) {
 	t.Setenv("APPTEST_DB_DSN", "postgres://someone:hunter2@db/app")
 
 	var c cmd.Config
-	root := cmd.Cmd(&c)
+	root := cli.Cmd(&c)
 
 	out := &bytes.Buffer{}
 	root.Writer = out

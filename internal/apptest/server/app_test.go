@@ -11,6 +11,7 @@ import (
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent"
+	entmigrate "github.com/lesomnus/payday/internal/apptest/internal/ent/migrate"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 
@@ -56,9 +57,10 @@ func New(t *testing.T) *App {
 		dia = dialect.SQLite
 	}
 
-	c := ent.NewClient(ent.Driver(entsql.OpenDB(dia, db)))
+	d := entsql.OpenDB(dia, db)
+	c := ent.NewClient(ent.Driver(d))
 	t.Cleanup(func() { c.Close() })
-	x.NoError(c.Schema.Create(t.Context()))
+	x.NoError(entmigrate.NewSchema(d).Create(t.Context()))
 
 	// The two hooks the schema declared, and nothing written by hand: the
 	// minter comes out of `(payday.entity).domain` and the wall out of the

@@ -21,6 +21,7 @@ import (
 	"github.com/lesomnus/payday/pdid"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/cli"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 	entaudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
@@ -83,7 +84,7 @@ func buildOn(t *testing.T, db config.DbConfig, w config.WatchConfig) (*built, co
 	})
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })
-	x.NoError(s.Ent.Schema.Create(ctx))
+	x.NoError(cli.Migrate(ctx, s))
 
 	// Through the ungated server, which is the point: there is nobody to be
 	// inside a tenant before there is a tenant.

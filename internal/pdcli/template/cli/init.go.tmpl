@@ -1,4 +1,4 @@
-package cmd
+package cli
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/lesomnus/payday/pdid"
 
 	app "{{.Module}}"
+	"{{.Module}}/cmd"
 )
 
 // NewCmdInit is `{{.Name}} init`: the first tenant, and somebody in it.
@@ -23,7 +24,7 @@ import (
 // Running it twice is an error rather than a no-op, because an alias is unique
 // and the database says so. That is the right answer -- an `init` that quietly
 // did nothing is one somebody runs against the wrong deployment and believes.
-func NewCmdInit(c *Config) *xli.Command {
+func NewCmdInit(c *cmd.Config) *xli.Command {
 	return &xli.Command{
 		Name:  "init",
 		Brief: "put up the first tenant and somebody in it",
@@ -44,7 +45,7 @@ func NewCmdInit(c *Config) *xli.Command {
 				holder = "admin"
 			}
 
-			s, err := Build(ctx, *c)
+			s, err := cmd.Build(ctx, *c)
 			if err != nil {
 				return err
 			}
@@ -53,7 +54,7 @@ func NewCmdInit(c *Config) *xli.Command {
 			// The schema, so that a fresh database is one this can run against.
 			// A deployment with migrations of its own does that instead; see
 			// payday's `migrate`.
-			if err := s.Ent.Schema.Create(ctx); err != nil {
+			if err := Migrate(ctx, s); err != nil {
 				return err
 			}
 
