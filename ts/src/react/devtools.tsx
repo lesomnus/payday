@@ -127,6 +127,14 @@ interface Kept {
 
 	/** Whether a document is shown against what the server answered with. */
 	diff: boolean
+
+	/**
+	 * Which edge columns are showing the identifier rather than the name, per
+	 * entity. Absent is "all of them by name", which is the useful default:
+	 * `acme` is what somebody is looking for and the uuid is what they would
+	 * have to translate it into first.
+	 */
+	asId: Record<string, string[]>
 }
 
 type Tab = 'list' | 'get' | 'store'
@@ -341,7 +349,104 @@ function matcher(find: Find): ((s: string) => Hits | undefined) | string {
 	}
 }
 
-/** Step is one row followed into, and the screen it was followed from. *//** Step is one row followed into, and the screen it was followed from. */
+/**
+ * useNames resolves references to what they are called, once each.
+ *
+ * Through `call` and never through `Queries`, like every other read here: what
+ * this is for is looking at what the server says, and a lookup that filled the
+ * store would make the served tab and the store tab agree by writing to one of
+ * them.
+ */
+function useNames(entities: readonly EntityDesc[], transport: Transport): Names {
+	const app = useApp()
+	const [known, setKnown] = useState<Record<string, string>>({})
+
+	// A ref and not state: it guards a fetch that is started from an effect,
+	// and the guard has to hold before the state that would report it lands.
+	const asked = useRef(new Set<string>())
+
+	const of = useCallback(
+		(typeName: string, id: string): string | undefined => {
+			const e = entities.find((v) => v.typeName === typeName)
+			if (e?.alias === undefined) return undefined
+
+			// The store first, and free: a row it already holds is a row
+			// nobody has to be asked about again.
+			const row = app.store.row(typeName, bytes(id)) as Record<string, unknown> | undefined
+			const held = row?.[e.alias]
+			if (typeof held === 'string' && held !== '') return held
+
+			return known[`${typeName}:${id}`]
+		},
+		[entities, known, app.store],
+	)
+
+	const want = useCallback(
+		(vs: readonly { typeName: string; id: string }[]) => {
+			for (const v of vs) {
+				const at = `${v.typeName}:${v.id}`
+				if (asked.current.has(at)) continue
+
+				const e = entities.find((w) => w.typeName === v.typeName)
+				if (e?.alias === undefined || e.service?.method.get === undefined) continue
+
+				asked.current.add(at)
+				void call(e, transport, 'get', { ref: { key: { case: 'id', value: bytes(v.id) } } }).then(
+					(row) => {
+						const name = (row as Record<string, unknown>)[e.alias as string]
+						if (typeof name !== 'string' || name === '') return
+
+						setKnown((old) => ({ ...old, [at]: name }))
+					},
+					() => {
+						// A row this caller may not see is a row with no name
+						// to show, which is the wall answering and not a
+						// failure. It stays asked, so it is asked once.
+					},
+				)
+			}
+		},
+		[entities, transport],
+	)
+
+	return { of, want }
+}
+
+/**
+ * Names is what a reference is called, for a table that would rather show that.
+ *
+ * A `List` answers references and not rows: the neighbour arrives with its
+ * identifier set and nothing else, because the request has no `select` to ask
+ * for more. So the name has to be fetched, and this is the cache that makes
+ * that one call per distinct row rather than one per cell -- fifty robots in
+ * one tenant is one `Get`.
+ */
+interface Names {
+	/** The name, or undefined until it is known. */
+	of(typeName: string, id: string): string | undefined
+
+	/** Ask for these, if they are not already known. */
+	want(vs: readonly { typeName: string; id: string }[]): void
+}
+
+/** Step is one row followed into, and the screen it was followed from. *//**
+ * Names is what a reference is called, for a table that would rather show that.
+ *
+ * A `List` answers references and not rows: the neighbour arrives with its
+ * identifier set and nothing else, because the request has no `select` to ask
+ * for more. So the name has to be fetched, and this is the cache that makes
+ * that one call per distinct row rather than one per cell -- fifty robots in
+ * one tenant is one `Get`.
+ */
+interface Names {
+	/** The name, or undefined until it is known. */
+	of(typeName: string, id: string): string | undefined
+
+	/** Ask for these, if they are not already known. */
+	want(vs: readonly { typeName: string; id: string }[]): void
+}
+
+/** Step is one row followed into, and the screen it was followed from. */
 interface Step {
 	from: { tab: Tab; entity: string }
 	typeName: string
@@ -360,7 +465,7 @@ const at = 'payday.devtools'
  * failure mode.
  */
 function read(): Kept {
-	const zero: Kept = { open: false, height: 320, entity: '', tab: 'list', hidden: {}, diff: false }
+	const zero: Kept = { open: false, height: 320, entity: '', tab: 'list', hidden: {}, diff: false, asId: {} }
 	try {
 		const v = localStorage.getItem(at)
 		if (v === null) return zero
@@ -587,6 +692,23 @@ const style = {
 	},
 	bad: { color: '#ff8b8b', whiteSpace: 'pre-wrap' },
 
+	// A word in a heading rather than a button in one: it is the size of the
+	// text it sits beside, and what it does is say which of two things the
+	// column is showing.
+	tag: {
+		background: 'none',
+		border: 'none',
+		padding: 0,
+		margin: 0,
+		font: 'inherit',
+		cursor: 'pointer',
+	},
+
+	// The one control the browser draws in its own colours, which is a
+	// light-grey box in a dark panel. `accentColor` is the whole of what it
+	// takes, and it keeps the box a real checkbox.
+	box: { accentColor: '#7db4ff', width: 13, height: 13, margin: 0, cursor: 'pointer' },
+
 	// One glyph wide, and square, so three of them read as a set of switches
 	// rather than as three more buttons in a row of buttons.
 	chip: {
@@ -702,6 +824,8 @@ export function Devtools(props: Props): ReactNode {
 
 	const transport = ungated && props.ungated !== undefined ? props.ungated : app.queries.raw
 
+	const names = useNames(props.entities, transport)
+
 	/**
 	 * look is what following an edge does: the Get tab, on the row it named.
 	 *
@@ -784,7 +908,12 @@ export function Devtools(props: Props): ReactNode {
 		<div style={style.foot}>
 			{props.ungated !== undefined && (
 				<label style={{ color: ungated ? '#ffb86b' : dim, cursor: 'pointer' }}>
-					<input type="checkbox" checked={ungated} onChange={(e) => setUngated(e.target.checked)} />
+					<input
+						type="checkbox"
+						style={style.box}
+						checked={ungated}
+						onChange={(e) => setUngated(e.target.checked)}
+					/>
 					past the wall
 				</label>
 			)}
@@ -890,10 +1019,12 @@ export function Devtools(props: Props): ReactNode {
 							foot={foot}
 							entity={entity}
 							hidden={kept.hidden}
+							asId={kept.asId}
 							keep={keep}
 							look={look}
 							raw={setRaw}
 							find={find}
+							names={names}
 							back={{ go: back, can: trail.length > 0 }}
 							entities={props.entities}
 						/>
@@ -906,10 +1037,12 @@ export function Devtools(props: Props): ReactNode {
 							entities={props.entities}
 							transport={transport}
 							hidden={kept.hidden}
+							asId={kept.asId}
 							keep={keep}
 							look={look}
 							raw={setRaw}
 							find={find}
+							names={names}
 							back={{ go: back, can: trail.length > 0 }}
 							diff={kept.diff}
 							{...(props.monaco === undefined ? {} : { monaco: props.monaco })}
@@ -924,10 +1057,12 @@ export function Devtools(props: Props): ReactNode {
 							entities={props.entities}
 							transport={transport}
 							hidden={kept.hidden}
+							asId={kept.asId}
 							keep={keep}
 							look={look}
 							raw={setRaw}
 							find={find}
+							names={names}
 							back={{ go: back, can: trail.length > 0 }}
 						/>
 					)}
@@ -961,6 +1096,7 @@ interface View {
 	entity: EntityDesc
 	entities: readonly EntityDesc[]
 	hidden: Record<string, string[]>
+	asId: Record<string, string[]>
 	keep: (v: Partial<Kept>) => void
 	look: (typeName: string, id: string) => void
 
@@ -978,6 +1114,9 @@ interface View {
 
 	/** What is being looked for, which only a table can answer. */
 	find: Find
+
+	/** What a reference is called, and how to go and find out. */
+	names: Names
 
 	/** The sidebar above and below the view's own form; see [Pane]. */
 	head: ReactNode
@@ -1368,6 +1507,7 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 								>
 									<input
 										type="checkbox"
+										style={style.box}
 										checked={props.diff}
 										onChange={(e) => props.keep({ diff: e.target.checked })}
 									/>
@@ -1449,6 +1589,44 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 	const hidden = new Set(props.hidden[props.entity.typeName] ?? [])
 	const refs = new Map((props.entity.refs ?? []).map((v) => [v.field, v.to]))
 	const ids = new Set(props.entity.ids ?? [])
+	const asId = new Set(props.asId[props.entity.typeName] ?? [])
+
+	/** to is what a column points at -- an edge, or this entity for its key. */
+	const to = (name: string): string | undefined =>
+		name === props.entity.key ? props.entity.typeName : refs.get(name)
+
+	/**
+	 * named is a column that can show a name instead of an identifier: an edge
+	 * into an entity that has one, and not turned off.
+	 */
+	const named = (name: string): boolean => {
+		if (asId.has(name)) return false
+
+		// Edges only. The key column names **this** row, and showing its alias
+		// there would put the same word in two columns of every line.
+		const at = refs.get(name)
+
+		return at !== undefined && props.entities.find((v) => v.typeName === at)?.alias !== undefined
+	}
+
+	// What is on the screen and not yet known. Asked for in an effect because
+	// asking is a fetch, and one row's name is one `Get` however many cells
+	// point at it.
+	const { want } = props.names
+	useEffect(() => {
+		const vs: { typeName: string; id: string }[] = []
+		for (const row of props.rows) {
+			for (const f of fields) {
+				if (hidden.has(f.localName) || !named(f.localName)) continue
+
+				const at = refs.get(f.localName)
+				const id = idOf(row[f.localName])
+				if (at !== undefined && id !== undefined) vs.push({ typeName: at, id: key(bytesOfId(id)) })
+			}
+		}
+
+		want(vs)
+	}) // eslint-disable-line react-hooks/exhaustive-deps
 
 	const method = props.entity.service?.method.patch as DescMethodUnary<DescMessage, DescMessage> | undefined
 	const settable = useMemo(
@@ -1477,7 +1655,8 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 					value: row[f.localName],
 					field: f,
 					id: ids.has(f.localName),
-					to: refs.get(f.localName),
+					to: to(f.localName),
+					names: named(f.localName) ? props.names : undefined,
 				})
 
 				return wants(text) !== undefined
@@ -1581,7 +1760,31 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 					<tr>
 						{fields.map((f) => (
 							<th key={f.localName} style={style.th}>
-								<Head name={f.localName} shown={!hidden.has(f.localName)} toggle={toggle} />
+								<Head
+									name={f.localName}
+									shown={!hidden.has(f.localName)}
+									toggle={toggle}
+									{...(refs.get(f.localName) !== undefined &&
+									props.entities.find((v) => v.typeName === refs.get(f.localName))?.alias !== undefined
+										? {
+												alias: {
+													on: !asId.has(f.localName),
+													toggle: () => {
+														const now = new Set(asId)
+														if (now.has(f.localName)) {
+															now.delete(f.localName)
+														} else {
+															now.add(f.localName)
+														}
+
+														props.keep({
+															asId: { ...props.asId, [props.entity.typeName]: [...now] },
+														})
+													},
+												},
+											}
+										: {})}
+								/>
 							</th>
 						))}
 					</tr>
@@ -1626,11 +1829,8 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 												// The row's own key names this row,
 												// which is the one edge a table has
 												// that is not in `refs`.
-												to={
-													f.localName === props.entity.key
-														? props.entity.typeName
-														: refs.get(f.localName)
-												}
+												to={to(f.localName)}
+												names={named(f.localName) ? props.names : undefined}
 												hit={typeof wants === 'string' ? undefined : wants}
 												look={props.look}
 												onRaw={(v) =>
@@ -1723,7 +1923,21 @@ function Editing(props: {
  * Hovering it brings the name back, over the rows rather than in the flow, so
  * finding a column that was turned off does not move everything that was not.
  */
-function Head(props: { name: string; shown: boolean; toggle: (name: string, span: boolean) => void }): ReactNode {
+function Head(props: {
+	name: string
+	shown: boolean
+	toggle: (name: string, span: boolean) => void
+
+	/**
+	 * Whether this column is showing names, for one that can.
+	 *
+	 * Written as `(id)` struck through, which says what is being left out
+	 * rather than what is being shown: the column is called `tenant` either
+	 * way, and what the switch decides is whether the identifier is what you
+	 * are looking at.
+	 */
+	alias?: { on: boolean; toggle: () => void }
+}): ReactNode {
 	const [over, bind] = useOver()
 
 	// Whether shift was down, taken from the click rather than from the change
@@ -1740,12 +1954,36 @@ function Head(props: { name: string; shown: boolean; toggle: (name: string, span
 			<label style={{ display: 'inline-flex', gap: 4, alignItems: 'baseline', cursor: 'pointer' }} {...bind}>
 				<input
 					type="checkbox"
+					style={style.box}
 					aria-label={props.name}
 					checked={props.shown}
 					onClick={(e) => (span.current = e.shiftKey)}
 					onChange={() => props.toggle(props.name, span.current)}
 				/>
 				{props.shown && <span>{props.name}</span>}
+
+				{props.shown && props.alias !== undefined && (
+					<button
+						type="button"
+						style={{
+							...style.tag,
+							textDecoration: props.alias.on ? 'line-through' : 'none',
+							color: props.alias.on ? '#5f5f5f' : '#7db4ff',
+						}}
+						aria-label={`${props.name} as id`}
+						aria-pressed={!props.alias.on}
+						onMouseDown={(e) => e.preventDefault()}
+						onClick={(e) => {
+							// The name beside it is inside a `label`, so
+							// without this the click would also turn the
+							// column off.
+							e.preventDefault()
+							props.alias?.toggle()
+						}}
+					>
+						(id)
+					</button>
+				)}
 			</label>
 
 			{!props.shown && <Over at={over}>{props.name}</Over>}
@@ -1762,6 +2000,9 @@ interface Value {
 
 	/** The entity this field names, for a field that names one. */
 	to: string | undefined
+
+	/** Where to look up what it is called, for a column showing names. */
+	names: Names | undefined
 }
 
 /**
@@ -1776,7 +2017,15 @@ interface Value {
 function shown(props: Value): string {
 	const v = props.value
 	if (v === undefined || v === null) return '—'
-	if (props.to !== undefined) return idOf(v) ?? '—'
+	if (props.to !== undefined) {
+		const id = idOf(v)
+		if (id === undefined) return '—'
+
+		// What the row is called if that is known and asked for, and the
+		// identifier until it is: a column that went blank while it waited
+		// would be a column that flickers.
+		return props.names?.of(props.to, key(bytesOfId(id))) ?? id
+	}
 
 	const raw = rawOf(props.field, v)
 	if (raw !== undefined) {
@@ -1814,8 +2063,17 @@ function Cell(
 	// what there is to show is the row it names -- and following it is a `Get`,
 	// which is a click rather than a join nobody asked for.
 	if (props.to !== undefined) {
+		// Followed by identifier and not by what is on the screen: a column
+		// showing names shows `acme`, and `acme` is not what a `Get` takes.
+		const id = idOf(props.value)
+
 		return (
-			<button type="button" style={style.link} onClick={() => props.look(props.to as string, text)}>
+			<button
+				type="button"
+				style={style.link}
+				disabled={id === undefined}
+				onClick={() => id !== undefined && props.look(props.to as string, id)}
+			>
 				{lit}
 			</button>
 		)
@@ -2235,6 +2493,15 @@ function printable(text: string): string {
 			return out
 		})
 		.join('\n')
+}
+
+/** bytesOfId is a written identifier back as the bytes a store keys by. */
+function bytesOfId(v: string): Uint8Array {
+	try {
+		return pdid.parse(v).bytes
+	} catch {
+		return bytes(v)
+	}
 }
 
 /** rawOf is a bytes field's value, whichever of its two shapes it arrived in. */

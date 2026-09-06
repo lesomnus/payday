@@ -375,6 +375,14 @@ import type { EntityDesc } from '@lesomnus/payday/store'
 		// says `bytes`; the schema says `uuid`; and every sixteen bytes can
 		// be read as a uuid -- so a panel guessing from the value prints an
 		// OpenTelemetry trace as somebody's row about one time in sixty-four.
+		// The field a **person** names this row by, for anything that has a
+		// reference and wants to show something other than sixteen bytes. It
+		// is the same `alias` the wall's slugs are made of; see `Entity.Alias`
+		// for why it is found rather than declared.
+		if v.Alias {
+			fmt.Fprintf(b, "\talias: %q,\n", "alias")
+		}
+
 		// The field the row is named by, which nothing on the other side can
 		// work out either: a field called `id` is a convention, and reading a
 		// name is how a panel starts being wrong quietly.

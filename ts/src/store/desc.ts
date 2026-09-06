@@ -64,6 +64,17 @@ export interface EntityDesc {
 	readonly refs?: readonly RefDesc[]
 
 	/**
+	 * The field a **person** names a row of this entity by, when it has one.
+	 *
+	 * `alias` where it is there at all, which is the same field the wall's
+	 * slugs are made of -- `@acme/arm-01` is a tenant's and a robot's. It is
+	 * here so that something holding a reference can show what the row is
+	 * called instead of the sixteen bytes it is named by, which is what a
+	 * uuid is good for and a person is not.
+	 */
+	readonly alias?: string
+
+	/**
 	 * The field a row of this entity is named by, as protobuf-es names it.
 	 *
 	 * `id` for every entity payday generates, and generated rather than

@@ -154,6 +154,33 @@ function hex(): string {
 		.replace(/\u00a0/g, ' ')
 }
 
+/**
+ * settle lets whatever the panel started off finish.
+ *
+ * An edge column resolves its name with a call of its own, and a fetch that
+ * was started inside an `act` is not one that has answered by the time it
+ * returns.
+ */
+async function settle(): Promise<void> {
+	await act(async () => {
+		await new Promise((go) => setTimeout(go, 0))
+	})
+}
+
+/**
+ * edge is the link in one column of the first served row.
+ *
+ * By column and not by the text in it, because an edge column shows what the
+ * row is **called** -- which is the point of it, and is not a uuid to search
+ * the screen for.
+ */
+function edge(of: EntityDesc, name: string, label = 'served'): HTMLElement {
+	const at = of.schema.fields.findIndex((f) => f.localName === name)
+	const cell = screen.getByLabelText(label).querySelectorAll('tbody td')[at]
+
+	return cell?.querySelector('button') as HTMLElement
+}
+
 /** tab switches to one of the three. */
 async function tab(name: string): Promise<void> {
 	await act(async () => void fireEvent.click(screen.getByText(name)))
@@ -174,6 +201,9 @@ describe('the panel over a whole schema', () => {
 		await mount()
 		await pick(Robot.typeName)
 
+		// Two `List`s: the entity it opened on and the one picked. Nothing
+		// else -- this answer carries no edge, and an edge is the only thing
+		// that is looked up to be named.
 		expect(asked.map((v) => v.method)).toEqual(['List', 'List'])
 		expect(screen.getByLabelText('served').textContent).toContain('arm-01')
 	})
@@ -340,7 +370,11 @@ describe('the table', () => {
 		await mount()
 		await pick(Robot.typeName)
 
-		const head = Array.from(screen.getByLabelText('served').querySelectorAll('th'), (v) => v.textContent)
+		// The name, with the `(id)` switch an edge column carries taken off:
+		// what is being checked is which columns there are and in what order.
+		const head = Array.from(screen.getByLabelText('served').querySelectorAll('th'), (v) =>
+			(v.textContent ?? '').replace('(id)', ''),
+		)
 		expect(head).toEqual(Robot.schema.fields.map((f) => f.localName))
 	})
 
@@ -386,9 +420,11 @@ describe('an edge', () => {
 		await mount()
 		await pick(Robot.typeName)
 
-		// The identifier, not the row: what the server answered with is a
-		// reference, so there is nothing else to show.
-		const link = screen.getByText(pdid.from(tenant).toString())
+		// A reference is what the server answered with, so the cell is a link
+		// to the row rather than the row itself. What it says is `an edge
+		// column`'s subject; what this is about is that clicking it looks the
+		// row up -- by identifier, whatever is written on it.
+		const link = edge(Robot, 'tenant')
 		expect(link.tagName).toBe('BUTTON')
 
 		asked = []
@@ -452,7 +488,7 @@ describe('following edges', () => {
 		const back = (): HTMLButtonElement => screen.getByLabelText('back') as HTMLButtonElement
 		expect(back().disabled).toBe(true)
 
-		await act(async () => void fireEvent.click(screen.getByText(pdid.from(tenant).toString())))
+		await act(async () => void fireEvent.click(edge(Robot, 'tenant')))
 		expect((screen.getByLabelText('entity') as HTMLSelectElement).value).toBe(Tenant.typeName)
 		expect(back().disabled).toBe(false)
 
@@ -766,6 +802,52 @@ describe('find', () => {
 			screen.getByLabelText('held').querySelectorAll('tbody tr'),
 			'the only column that said crane is gone',
 		).toHaveLength(0)
+	})
+})
+
+describe('an edge column', () => {
+	// `acme` is what somebody is looking for; the uuid is what they would have
+	// to translate it into first.
+	it('shows what the row is called, and says so is what `(id)` is struck for', async () => {
+		const tenant = pdid.newId(TenantDomain).bytes
+		answer = create(RobotSchema, { id, alias: 'arm-01', tenant: create(TenantSchema, { id: tenant }) })
+
+		// The name is fetched, and the fake answers Robots -- so what comes
+		// back for the tenant is the Robot, whose alias is `arm-01`. What is
+		// being checked is which way the column resolves, not what it finds.
+		await mount()
+		await pick(Robot.typeName)
+		await settle()
+
+		const cell = (): string =>
+			(screen.getByLabelText('served').querySelectorAll('tbody td')[
+				Robot.schema.fields.findIndex((f) => f.localName === 'tenant')
+			]?.textContent ?? '')
+
+		expect(cell(), 'the name, not the identifier').toBe('arm-01')
+
+		// Turned off, it is the identifier again -- and the switch is
+		// remembered, like a hidden column is.
+		await act(async () => void fireEvent.click(screen.getByLabelText('tenant as id')))
+		expect(cell()).toBe(pdid.from(tenant).toString())
+		expect(screen.getByLabelText('tenant as id').getAttribute('aria-pressed')).toBe('true')
+	})
+
+	it('does not turn the column off when the switch is pressed', async () => {
+		answer = create(RobotSchema, {
+			id,
+			alias: 'arm-01',
+			tenant: create(TenantSchema, { id: pdid.newId(TenantDomain).bytes }),
+		})
+
+		await mount()
+		await pick(Robot.typeName)
+		await settle()
+
+		// The name beside it is a `label`, so a click that reached it would
+		// turn the whole column off instead.
+		await act(async () => void fireEvent.click(screen.getByLabelText('tenant as id')))
+		expect((screen.getByLabelText('tenant') as HTMLInputElement).checked).toBe(true)
 	})
 })
 

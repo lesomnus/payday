@@ -178,6 +178,11 @@ const style = {
 	// Sized to be hit rather than to be read past, and the space around it is
 	// what pays: a form of taller boxes with less between them is the height it
 	// was, and every one of these is something somebody has to click into.
+	// The one control the browser draws in its own colours, which is a
+	// light-grey box in a dark form. `accentColor` is the whole of what it
+	// takes, and it keeps the box a real checkbox.
+	box: { accentColor: '#7db4ff', width: 13, height: 13, margin: 0, cursor: 'pointer' },
+
 	input: {
 		background: '#101010',
 		color: '#e6e6e6',
@@ -376,6 +381,7 @@ function Field(props: {
 			<label style={{ ...style.row, cursor: 'pointer' }}>
 				<input
 					type="checkbox"
+					style={style.box}
 					aria-label={props.at}
 					checked={props.vals.leaf[props.at] === 'true'}
 					onChange={(e) => props.set('leaf', props.at, e.target.checked ? 'true' : '')}

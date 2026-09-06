@@ -221,6 +221,13 @@ describe('which columns hold an identifier', () => {
 		expect(Audit.ids, 'a marshalled document is not an identifier').not.toContain('patch')
 	})
 
+	it('says which field a person names a row by', () => {
+		// So that something holding a reference can show `acme` instead of the
+		// sixteen bytes the row is actually named by.
+		expect(Tenant.alias).toBe('alias')
+		expect(Robot.alias).toBe('alias')
+	})
+
 	it('says which one names the row', () => {
 		// Generated rather than assumed: a table linking the column called
 		// `id` would be reading a name to decide what it means.
@@ -248,6 +255,7 @@ describe('what a declaration says, and what it deliberately does not', () => {
 		// that a field arriving without a reason has to be added to this line
 		// by somebody.
 		expect(Object.keys(Robot).sort()).toEqual([
+			'alias',
 			'domain',
 			'ids',
 			'key',
