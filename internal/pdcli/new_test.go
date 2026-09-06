@@ -52,7 +52,8 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 		"buf.yaml",
 		"cmd/serve.go",
 		"cmd/config.go",
-		"cmd/driver.go",
+		"cli/cli.go",
+		"cli/driver.go",
 		"cmd/auth.go",
 		"cmd/thing/main.go",
 		"proto/app/thing.proto",
@@ -63,38 +64,90 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 	}
 }
 
-// TestTheEngineIsNotInTheSandbox.
+// TestTheEnginesAreNotInTheSandbox.
 //
-// A blank import is a property of the package, and the sandbox's `main`
-// imports `cmd` for `Build`. So a driver named in `config.go` is linked into
-// the page as well, whether or not the page ever opens it -- and the wazero
-// SQLite engine is 15 MB of module. The page opens "sqlite3-wasm" instead.
+// An import is a property of the package that writes it, and an app's sandbox
+// imports `cmd` for `Build`. So anything named in `cmd` is linked into the page
+// whether the page can use it or not, and two things there are large: the
+// wazero SQLite driver, which was 15 MB of payday's own sandbox module, and the
+// migration engine `Schema.Create` reaches, which was another 10.5 MB. The page
+// opens "sqlite3-wasm" and executes a script; it needs neither.
 //
-// Nothing else would say so. The sandbox works either way, the driver is
-// never opened, and the only symptom is what the browser downloads -- which
-// is how this went unnoticed in payday's own app until the module was
-// measured. So the check is on where the import is written.
-func TestTheEngineIsNotInTheSandbox(t *testing.T) {
+// Nothing else would say so. The sandbox works either way, neither is ever
+// used, and the only symptom is what the browser downloads -- which is how both
+// went unnoticed until the module was measured. So the check is on which
+// package the import is written in.
+func TestTheEnginesAreNotInTheSandbox(t *testing.T) {
 	x := require.New(t)
 
 	dir := filepath.Join(t.TempDir(), "app")
 	x.NoError((pdcli.New{Dir: dir, Module: "github.com/acme/thing"}).Write())
 
-	read := func(n string) string {
-		b, err := os.ReadFile(filepath.Join(dir, "cmd", n))
+	b, err := os.ReadFile(filepath.Join(dir, "cli", "driver.go"))
+	x.NoError(err)
+	x.Contains(string(b), `_ "github.com/lesomnus/payday/config/dbsqlite3"`)
+
+	// And not in `cmd`, which is the half a sandbox imports. Every file of the
+	// package rather than the one they were written in, because the next one to
+	// go wrong is a file that does not exist yet.
+	es, err := os.ReadDir(filepath.Join(dir, "cmd"))
+	x.NoError(err)
+
+	n := 0
+	for _, e := range es {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".go" {
+			continue
+		}
+
+		b, err := os.ReadFile(filepath.Join(dir, "cmd", e.Name()))
 		x.NoError(err)
-		return string(b)
+
+		n++
+		for _, bad := range []string{"payday/config/db", "/internal/ent/migrate"} {
+			x.NotContains(string(b), bad,
+				"cmd/%s: the sandbox imports this package, so %s is linked into the page; it belongs in cli/",
+				e.Name(), bad)
+		}
 	}
+	x.NotZero(n)
+}
 
-	// Where it is, and the tag that is the whole point of it being there.
-	drv := read("driver.go")
-	x.Contains(drv, "//go:build !js")
-	x.Contains(drv, `_ "github.com/lesomnus/payday/config/dbsqlite3"`)
+// TestTheScaffoldNeedsNoBuildTag.
+//
+// Both engines above were first kept out of the sandbox with `//go:build !js`,
+// which worked. It is still the wrong answer: a tag refuses to compile what
+// would compile, and a reader of the file learns that something is excluded
+// rather than why. What is true is that a process and a page need different
+// things, and Go has a way to say that -- which package they are in.
+//
+// So this is the decision, written where it can fail. An app that grows a tag
+// has usually reached for it instead of a package boundary.
+func TestTheScaffoldNeedsNoBuildTag(t *testing.T) {
+	x := require.New(t)
 
-	// And where it is not. `config.go` is the file somebody edits, so this is
-	// the one that goes wrong again.
-	x.NotContains(read("config.go"), "payday/config/db",
-		"a driver imported here is linked into the sandbox; put it in driver.go")
+	dir := filepath.Join(t.TempDir(), "app")
+	x.NoError((pdcli.New{Dir: dir, Module: "github.com/acme/thing"}).Write())
+
+	x.NoError(filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || filepath.Ext(p) != ".go" {
+			return err
+		}
+
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+
+		// The line and not the text: a constraint is a directive at the start of
+		// a line, and `cli.go` explains in prose why it does not use one.
+		rel, _ := filepath.Rel(dir, p)
+		for _, line := range strings.Split(string(b), "\n") {
+			x.False(strings.HasPrefix(line, "//go:build"),
+				"%s: a package boundary says it better", rel)
+		}
+
+		return nil
+	}))
 }
 
 // TestTheTemplateIsGoThatParses, which is less than it sounds and more than

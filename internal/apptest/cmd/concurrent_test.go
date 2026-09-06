@@ -10,6 +10,7 @@ import (
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/cli"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 	"github.com/lesomnus/payday/pdtest"
 )
@@ -40,7 +41,7 @@ func TestCallsAtOnceAllSayWhoIsCalling(t *testing.T) {
 	s, err := cmd.Build(ctx, c)
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })
-	x.NoError(s.Ent.Schema.Create(ctx))
+	x.NoError(cli.Migrate(ctx, s))
 
 	// Somebody to be, put there the way a deployment puts the first one there.
 	tenant, err := s.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "acme"}.Build())

@@ -11,6 +11,7 @@ import (
 	"github.com/lesomnus/payday/pdtest"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/cli"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
@@ -37,7 +38,7 @@ func TestTheAppIsWhatTheAppWrote(t *testing.T) {
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })
 
-	x.NoError(s.Ent.Schema.Create(ctx))
+	x.NoError(cli.Migrate(ctx, s))
 
 	// The deployment puts the first tenant there, through the server the wall
 	// was never installed on -- there is nobody to be inside a tenant yet.
@@ -67,7 +68,7 @@ func TestServes(t *testing.T) {
 	s, err := cmd.Build(ctx, c)
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })
-	x.NoError(s.Ent.Schema.Create(ctx))
+	x.NoError(cli.Migrate(ctx, s))
 
 	g, err := s.Grpc(ctx, c, pdtest.Logging(t))
 	x.NoError(err)

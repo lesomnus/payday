@@ -15,6 +15,7 @@ import (
 	"github.com/lesomnus/payday/pdtest"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/cli"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 	"github.com/lesomnus/payday/internal/apptest/sandbox"
 )
@@ -66,7 +67,7 @@ func TestTheScriptIsThisSchema(t *testing.T) {
 	ctx := t.Context()
 
 	s, db := built(t, x)
-	x.NoError(s.Ent.Schema.Create(ctx))
+	x.NoError(cli.Migrate(ctx, s))
 
 	want, err := schemaOf(ctx, db)
 	x.NoError(err)
@@ -97,7 +98,7 @@ func TestTheScriptIsWhatThePageGets(t *testing.T) {
 	script := sandbox.Script
 	if update() {
 		s, db := built(t, x)
-		x.NoError(s.Ent.Schema.Create(ctx))
+		x.NoError(cli.Migrate(ctx, s))
 		x.NoError(seed(ctx, s.Ungated))
 
 		b, err := dump(ctx, db)

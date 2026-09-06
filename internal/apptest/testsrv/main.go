@@ -22,6 +22,7 @@ import (
 	"github.com/lesomnus/payday/config"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/cli"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 )
 
@@ -62,7 +63,7 @@ func run() error {
 	}
 	defer s.Close()
 
-	if err := s.Ent.Schema.Create(ctx); err != nil {
+	if err := cli.Migrate(ctx, s); err != nil {
 		return err
 	}
 
