@@ -97,6 +97,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/protobuf-orm/ent v0.0.0-20260904022402-7714d7267878 h1:NOSI5hrV/nV0AJlJPD3imX/sS+mt/PscR0cIyVIqorU=
 github.com/protobuf-orm/ent v0.0.0-20260904022402-7714d7267878/go.mod h1:EE8o+t0Y4xtH8DRH/shGerAb2mPQJ0A1TqWT5LU7pZQ=
+github.com/protobuf-orm/ent v0.0.0-20260906224055-1575ccbff508 h1:Pvk4/sP7JWUmhkTc7DP3+9EMluQX0Rbu4U2A/GnUiFU=
+github.com/protobuf-orm/ent v0.0.0-20260906224055-1575ccbff508/go.mod h1:EE8o+t0Y4xtH8DRH/shGerAb2mPQJ0A1TqWT5LU7pZQ=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29 h1:yLrMWcjBT70hljInsE7zssdIZ8pwvotprlUGsLEs4ms=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260807003431-ce1156ba9f29/go.mod h1:jMdK+un3aGD6fB5zl3rBg0OMahe7vP5Dpfxe6Sws7mM=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260906212449-04c0cd58f10a h1:EXbJ28yY25wzt2HbzVkw7Tk46pF1GAHV+XMcC+kir40=
@@ -105,6 +107,8 @@ github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260904022510-9ae3928
 github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260904022510-9ae3928a6ee4/go.mod h1:jokWi7kGIxGNyPjYIcYG0w2nowkMKMeGZHlmPahQl+s=
 github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260906213504-9e62bbf08cf7 h1:tyOdn5ZKsaxJzGaLTjZBlzPQP4xPGH6E237ER4zZoG4=
 github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260906213504-9e62bbf08cf7/go.mod h1:jokWi7kGIxGNyPjYIcYG0w2nowkMKMeGZHlmPahQl+s=
+github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260906232518-fa1777a2628d h1:+AMXRkD7EN/P4MVMC745X53Mxw+5HaQuSM0/+2FabEw=
+github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260906232518-fa1777a2628d/go.mod h1:qj2tHR4lxdJ8Pl81QGG2H8Kvg3K7sCCT0jMoTMPuIfk=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260814204207-b3aac775fe3e h1:+Qdm1VcxUB+YTKWGQyHnL/2IN3VkNmCaVCh4m/XbxZ0=
 github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260814204207-b3aac775fe3e/go.mod h1:EUiEHkmQI53u+32lC+9OiiECSY2xJ1hrgHk7Km9yn20=
 github.com/rogpeppe/go-internal v1.16.0 h1:O9DK+vNMDVGLr2BeZqmpLeMjiMNkuXfcqntWbZV6S5g=
