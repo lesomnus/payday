@@ -474,7 +474,42 @@ describe('a column that is turned off', () => {
 		// Hovering it brings the name back, over the rows rather than in them.
 		expect(screen.queryByRole('tooltip')).toBeNull()
 		await act(async () => void fireEvent.mouseEnter(screen.getByLabelText('alias').parentElement as Element))
-		expect(screen.getByRole('tooltip').textContent).toBe('alias')
+
+		const tip = screen.getByRole('tooltip')
+		expect(tip.textContent).toBe('alias')
+
+		// In the viewport and not in the table, which is what makes it
+		// readable: the table scrolls inside a pane of its own, and a label
+		// positioned in there is clipped by it.
+		expect(tip.style.position).toBe('fixed')
+	})
+})
+
+describe('how a query is read', () => {
+	it('is one of three rather than three switches', async () => {
+		await mount()
+
+		const modes = screen.getByRole('group', { name: 'how to match' })
+		expect(Array.from(modes.querySelectorAll('button'), (v) => v.getAttribute('aria-label'))).toEqual([
+			'match fuzzy',
+			'match text',
+			'match regex',
+		])
+
+		// Pressing the one that is already on leaves it on, which is what a
+		// group of three means and is why it is drawn as one control.
+		await act(async () => void fireEvent.click(screen.getByLabelText('match fuzzy')))
+		expect(screen.getByLabelText('match fuzzy').getAttribute('aria-pressed')).toBe('true')
+	})
+
+	// A glyph nobody has met before needs to say what it is, and the browser's
+	// own `title` says it after a wait somebody has to know to sit through.
+	it('says what a glyph means when it is hovered', async () => {
+		await mount()
+
+		expect(screen.queryByRole('tooltip')).toBeNull()
+		await act(async () => void fireEvent.mouseEnter(screen.getByLabelText('match regex')))
+		expect(screen.getByRole('tooltip').textContent).toBe('regex — a pattern')
 	})
 })
 

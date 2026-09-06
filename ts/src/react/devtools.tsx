@@ -44,7 +44,16 @@ import {
 } from '@bufbuild/protobuf'
 import { timestampDate } from '@bufbuild/protobuf/wkt'
 import { createClient, type Transport } from '@connectrpc/connect'
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type CSSProperties,
+	type MouseEvent,
+	type ReactNode,
+} from 'react'
 
 import * as pdid from '../pdid/index.js'
 import { bytes, key, type EntityDesc } from '../store/index.js'
@@ -101,6 +110,118 @@ type How = 'text' | 'regex' | 'fuzzy'
 interface Find {
 	q: string
 	how: How
+}
+
+/**
+ * useOver is where the thing being hovered is, for [Over].
+ *
+ * A rectangle rather than a boolean because the label is positioned in the
+ * viewport -- see `style.over` -- so it has to be told where to go.
+ */
+function useOver(): [DOMRect | undefined, { onMouseEnter: (e: MouseEvent<HTMLElement>) => void; onMouseLeave: () => void }] {
+	const [at, setAt] = useState<DOMRect>()
+
+	return [
+		at,
+		{
+			onMouseEnter: (e) => setAt(e.currentTarget.getBoundingClientRect()),
+			onMouseLeave: () => setAt(undefined),
+		},
+	]
+}
+
+/**
+ * Over is a label above whatever [useOver] measured.
+ *
+ * Anchored by whichever edge it will not run off. A label on the last column
+ * of a wide table, or on the rightmost of the mode buttons, is a label that
+ * starts near the edge of the window and grows past it -- so past the middle
+ * it grows leftwards from the right edge instead, which needs no measurement
+ * of the label itself.
+ */
+function Over(props: { at: DOMRect | undefined; children: ReactNode }): ReactNode {
+	const at = props.at
+	if (at === undefined) return null
+
+	const side =
+		at.left > window.innerWidth / 2
+			? { right: Math.max(window.innerWidth - at.right, 0) }
+			: { left: at.left }
+
+	return (
+		<span role="tooltip" style={{ ...style.over, ...side, bottom: window.innerHeight - at.top + 4 }}>
+			{props.children}
+		</span>
+	)
+}
+
+/** The three, in the order they are offered. */
+const modes = [
+	['fuzzy', '≈', 'the letters in order'],
+	['text', 'ab', 'the letters as typed'],
+	['regex', '.*', 'a pattern'],
+] as const
+
+/**
+ * Modes is which of the three a query is read as.
+ *
+ * One control and not three, because it is one of three and not three
+ * switches: separate boxes read as things that can each be turned off, and
+ * pressing the one that is already on does nothing -- which is exactly what
+ * "wait, is this a toggle?" looks like.
+ */
+function Modes(props: { find: Find; onChange: (v: Find) => void }): ReactNode {
+	return (
+		<span style={style.seg} role="group" aria-label="how to match">
+			{modes.map(([how, glyph, why]) => (
+				<Mode
+					key={how}
+					how={how}
+					glyph={glyph}
+					why={why}
+					on={props.find.how === how}
+					onPick={() => props.onChange({ ...props.find, how })}
+				/>
+			))}
+		</span>
+	)
+}
+
+function Mode(props: {
+	how: How
+	glyph: string
+	why: string
+	on: boolean
+	onPick: () => void
+}): ReactNode {
+	const [over, bind] = useOver()
+
+	return (
+		<>
+			<button
+				type="button"
+				// Named for what it does to the search, because a panel showing
+				// bytes has a `text` column and a button that edits them as
+				// text, and three things called `text` is three things to
+				// disambiguate every time one of them is looked for.
+				aria-label={`match ${props.how}`}
+				aria-pressed={props.on}
+				style={{ ...style.chip, ...(props.on ? style.on : {}) }}
+				// A click picks it and does not focus it. A ring left on the
+				// one that was pressed reads as a state of its own, on a
+				// control where the state is already the fill.
+				onMouseDown={(e) => e.preventDefault()}
+				onClick={props.onPick}
+				{...bind}
+			>
+				{props.glyph}
+			</button>
+
+			<Over at={over}>
+				{props.how} — {props.why}
+			</Over>
+		</>
+	)
 }
 
 /** Hits are the stretches of a value a query matched, in order. */
@@ -373,21 +494,35 @@ const style = {
 		cursor: 'pointer',
 		textDecoration: 'underline',
 	},
-	// Over the header rather than in the flow, so that reading a hidden
-	// column's name does not move the ones that are not hidden -- and *above*
-	// it, because below is where the rows are and covering the first of them
-	// to read a column name trades one thing hidden for another.
+	// Positioned in the **viewport** and not in the flow, which is not a
+	// nicety: the table scrolls inside a container of its own, and an
+	// absolutely positioned label is clipped by it -- so the name of a column
+	// somebody turned off was drawn outside the pane and could not be read,
+	// which is a tooltip that exists and does not work.
+	//
+	// Above whatever it names, because below is where the rows are and
+	// covering the first of them to read a column name trades one thing hidden
+	// for another.
 	over: {
-		position: 'absolute',
-		bottom: '100%',
-		left: 0,
-		zIndex: 1,
+		position: 'fixed',
+		zIndex: 2147483002,
 		background: '#101010',
 		border: `1px solid ${line}`,
 		borderRadius: 3,
 		padding: '1px 5px',
 		color: ink,
 		whiteSpace: 'nowrap',
+		pointerEvents: 'none',
+	},
+
+	// One of three, drawn as one control. Three separate boxes read as three
+	// switches somebody can turn off, and pressing the one that is already on
+	// does nothing -- which is what "is this a toggle?" looks like.
+	seg: {
+		display: 'inline-flex',
+		border: `1px solid ${line}`,
+		borderRadius: 3,
+		overflow: 'hidden',
 	},
 	bad: { color: '#ff8b8b', whiteSpace: 'pre-wrap' },
 
@@ -396,8 +531,8 @@ const style = {
 	chip: {
 		background: '#101010',
 		color: dim,
-		border: `1px solid ${line}`,
-		borderRadius: 3,
+		border: 'none',
+		borderLeft: `1px solid ${line}`,
 		padding: 0,
 		width: 26,
 		height: 26,
@@ -405,7 +540,7 @@ const style = {
 		lineHeight: '24px',
 		cursor: 'pointer',
 	},
-	on: { color: '#101010', background: '#7db4ff', borderColor: '#7db4ff' },
+	on: { color: '#101010', background: '#7db4ff' },
 
 	// Loud on purpose. It is answering "why is this row here", and a highlight
 	// that has to be looked for does not answer it.
@@ -682,30 +817,7 @@ export function Devtools(props: Props): ReactNode {
 						looking for -- and each is one glyph, which is what a
 						list of three one-word options was spending a click on.
 					*/}
-					{(
-						[
-							['fuzzy', '≈', 'the letters in order'],
-							['text', 'ab', 'the letters as typed'],
-							['regex', '.*', 'a pattern'],
-						] as const
-					).map(([how, glyph, why]) => (
-						<button
-							key={how}
-							type="button"
-							title={`${how} — ${why}`}
-							// Named for what it does to the search, because a
-							// panel showing bytes has a `text` column and a
-							// button that edits them as text, and three things
-							// called `text` is three things to disambiguate
-							// every time one of them is looked for.
-							aria-label={`match ${how}`}
-							aria-pressed={find.how === how}
-							style={{ ...style.chip, ...(find.how === how ? style.on : {}) }}
-							onClick={() => setFind({ ...find, how })}
-						>
-							{glyph}
-						</button>
-					))}
+					<Modes find={find} onChange={setFind} />
 				</div>
 
 				<div style={style.body}>
@@ -1291,7 +1403,7 @@ function Editing(props: {
  * finding a column that was turned off does not move everything that was not.
  */
 function Head(props: { name: string; shown: boolean; toggle: (name: string, span: boolean) => void }): ReactNode {
-	const [over, setOver] = useState(false)
+	const [over, bind] = useOver()
 
 	// Whether shift was down, taken from the click rather than from the change
 	// it causes: a `change` event is an `Event` and carries no modifiers, and
@@ -1303,42 +1415,23 @@ function Head(props: { name: string; shown: boolean; toggle: (name: string, span
 	// turn the box -- the browser has done this since forever and writing it as
 	// a span is opting out of it for nothing.
 	return (
-		<label
-			style={{ position: 'relative', display: 'inline-flex', gap: 4, alignItems: 'baseline', cursor: 'pointer' }}
-			onMouseEnter={() => setOver(true)}
-			onMouseLeave={() => setOver(false)}
-		>
-			<input
-				type="checkbox"
-				aria-label={props.name}
-				checked={props.shown}
-				onClick={(e) => (span.current = e.shiftKey)}
-				onChange={() => props.toggle(props.name, span.current)}
-			/>
-			{props.shown ? (
-				<span>{props.name}</span>
-			) : (
-				over && (
-					<span role="tooltip" style={style.over}>
-						{props.name}
-					</span>
-				)
-			)}
-		</label>
+		<>
+			<label style={{ display: 'inline-flex', gap: 4, alignItems: 'baseline', cursor: 'pointer' }} {...bind}>
+				<input
+					type="checkbox"
+					aria-label={props.name}
+					checked={props.shown}
+					onClick={(e) => (span.current = e.shiftKey)}
+					onChange={() => props.toggle(props.name, span.current)}
+				/>
+				{props.shown && <span>{props.name}</span>}
+			</label>
+
+			{!props.shown && <Over at={over}>{props.name}</Over>}
+		</>
 	)
 }
 
-/**
- * Cell is one value, rendered as the thing it is rather than as JSON.
- *
- * An identifier is sixteen bytes and protojson would show them base64, which is
- * not what anybody has written down anywhere: a payday identifier is a uuid and
- * carries the entity in its ninth byte, so it is shown the way it is typed.
- *
- * An edge is not expanded. What the server answered with is a reference, so
- * what there is to show is the row it names — and following it is a `Get`,
- * which is a click rather than a join nobody asked for.
- */
 interface Value {
 	value: unknown
 	field: DescField
