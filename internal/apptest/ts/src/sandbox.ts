@@ -51,15 +51,24 @@ export interface Sandbox {
 /**
  * start compiles the app into the page and answers with a client for it.
  *
+ * `onProgress` is how far the module has got, for a page that would rather show
+ * that than nothing: this one is 72MB, and on a cold cache the wait is long
+ * enough that silence reads as a hang.
+ *
  * The worker URL is resolved against **this** module rather than passed in,
  * because `sandbox-worker.ts` sits beside this file and a bundler rewrites
  * where it lands. It is this file's to know and not the package's: a default
  * inside `@lesomnus/payday` would resolve against `node_modules`.
  */
-export async function start(url = '/app.wasm'): Promise<Sandbox> {
+export async function start(url = '/app.wasm', onProgress?: (loaded: number, total: number) => void): Promise<Sandbox> {
 	const box = await open({
 		url,
 		worker: new URL('./sandbox-worker.ts', import.meta.url),
+
+		// Passed on rather than defaulted to something, because a sandbox with
+		// nowhere to draw has no use for the count -- see `Opts.onProgress`,
+		// which is also where `total` being 0 is explained.
+		...(onProgress === undefined ? {} : { onProgress }),
 	})
 
 	// `box.transport` is a Connect `Transport` like any other, which is the

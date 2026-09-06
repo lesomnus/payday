@@ -23,6 +23,12 @@ export default defineConfig({
   optimizeDeps: { exclude: ["@lesomnus/grpc-dgram"] },
 
   server: {
+    // Every address, because this repository is worked on from inside a
+    // container and the browser is outside it: bound to loopback the server is
+    // listening on an interface the host cannot reach, and what that looks
+    // like is a dev server that started fine and a page that never connects.
+    host: true,
+
     // SQLite in a Worker cancels work with a `SharedArrayBuffer`, which does
     // not exist without cross-origin isolation. The symptom is "it works on
     // the other dev server".

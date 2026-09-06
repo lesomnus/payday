@@ -218,6 +218,32 @@ by path, say — the socket and the transport come from different ones. That is
 not a type error. It is a refusal arriving with no status, so `NotFound` reads
 as `Unknown` and nothing else in the run looks wrong.
 
+### Saying how far along it is
+
+The module is 68 MB raw and about 11 MB compressed, so a cold load is seconds
+in which the page has nothing to show. `onProgress` is what it has to show:
+
+```ts
+const box = await start({
+	worker: new URL('./sandbox-worker.ts', import.meta.url),
+	onProgress: (loaded, total) => setGot({ loaded, total }),
+})
+```
+
+Given it, payday fetches the module itself and counts the bytes on the way past;
+without it the browser fetches it and payday asks for nothing. Either way it is
+compiled from the stream as it arrives, so watching costs only the counter.
+
+`total` is **0 when the length is not knowable**, which is a state a bar has to
+have rather than a number to substitute for: a chunked response declares no
+length, and one that declares a length *and* a `content-encoding` is counting
+compressed bytes in the header and decompressed ones in the stream, so a ratio
+of the two runs past 100%.
+
+And the last call is `(total, total)` with the wait not over — compiling what
+arrived is the rest of it, and there is nothing to report from there. A full bar
+is the moment to say "compiling", not the moment to say "done".
+
 ### What the sandbox is not
 
 It is not the local store. They get confused because both put data in the

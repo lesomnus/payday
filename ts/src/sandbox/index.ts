@@ -55,7 +55,7 @@
 
 import type { Transport } from '@connectrpc/connect'
 import { createDrpcTransport } from '@lesomnus/grpc-dgram/transport/connect'
-import { open, type WasmSock } from '@lesomnus/grpc-dgram/wasm'
+import { open, type WasmApp, type WasmSock } from '@lesomnus/grpc-dgram/wasm'
 
 // The two globals this module needs from a page, declared rather than by
 // putting `DOM` in `lib` -- which would make every browser global compile in a
@@ -71,6 +71,31 @@ declare const URL: {
 }
 
 declare const location: { readonly href: string }
+
+// And the four a progress report needs, for the same reason and written the
+// same way. What is being asked for is the module as a stream of bytes, which
+// is the only way to know how far along it is.
+interface Res {
+	readonly ok: boolean
+	readonly status: number
+	readonly statusText: string
+	readonly headers: { get(name: string): string | null }
+	readonly body: { getReader(): { read(): Promise<{ done: boolean; value?: Uint8Array }> } } | null
+	text(): Promise<string>
+}
+
+declare const fetch: (url: string) => Promise<Res>
+
+declare const Response: new (body: unknown, init?: { headers?: Record<string, string> }) => Res
+
+declare const ReadableStream: new (src: {
+	start(c: { enqueue(v: Uint8Array): void; close(): void; error(e: unknown): void }): Promise<void>
+}) => unknown
+
+// Typed as answering what `open` takes, which is all this asks of it -- and
+// which keeps the name `WebAssembly.Module` out of a package compiled without
+// a DOM.
+declare const WebAssembly: { compileStreaming(src: Res): Promise<WasmApp> }
 
 /** Sandbox is the running instance, and the transport that reaches it. */
 export interface Sandbox {
@@ -122,6 +147,32 @@ export interface Opts {
 	 * SQLite at all.
 	 */
 	worker: URL | string
+
+	/**
+	 * Told how much of the module has arrived, so a page can say so.
+	 *
+	 * A payday app compiled to wasm is tens of megabytes -- the one in this
+	 * repository is 72 -- and on a cold cache that is a long time in which a
+	 * page that only says "starting" is indistinguishable from a page that has
+	 * hung. This is what it takes to say which.
+	 *
+	 * `total` is 0 when the length is not knowable, and the two cases are worth
+	 * telling apart rather than guessing at:
+	 *
+	 *   - the response has no `content-length`, which is what a chunked
+	 *     response is;
+	 *   - it has one and a `content-encoding`, in which case the header counts
+	 *     the compressed bytes while the stream yields decompressed ones, so a
+	 *     ratio of the two would sail past 100% and settle somewhere absurd.
+	 *
+	 * So a bar drawn from this needs an indeterminate state, and a page that
+	 * would rather show bytes than a bar needs nothing.
+	 *
+	 * The last call is `(total, total)`, and it is not the end of the wait:
+	 * compiling what arrived is the rest, and it has no progress to report.
+	 * Saying "compiling" there is the honest thing for a page to do.
+	 */
+	onProgress?: (loaded: number, total: number) => void
 }
 
 /**
@@ -131,7 +182,15 @@ export interface Opts {
  * on the transport it answers with reaches a server that is up.
  */
 export async function start(opts: Opts): Promise<Sandbox> {
-	const sock = await open(opts.url ?? '/app.wasm', {
+	const url = opts.url ?? '/app.wasm'
+
+	// Fetched here only when somebody is watching. Handed a URL, `open` fetches
+	// it itself and does it better -- one call, and the browser's own cache
+	// revalidation -- so the counting version is what a caller asked for rather
+	// than what everyone gets.
+	const app = opts.onProgress === undefined ? url : await counted(url, opts.onProgress)
+
+	const sock = await open(app, {
 		// Against the document rather than this module: what the app passed is
 		// its own file, and a bundler rewrites where that lands.
 		workerUrl: new URL(opts.worker, location.href),
@@ -151,4 +210,60 @@ export async function start(opts: Opts): Promise<Sandbox> {
 		sock,
 		close: () => sock.close(),
 	}
+}
+
+/**
+ * counted fetches the module and says how far along it is.
+ *
+ * It compiles from the stream rather than from the bytes it collected, which is
+ * the point of doing it this way at all: `compileStreaming` compiles what has
+ * arrived while the rest is still arriving, so watching the download costs
+ * nothing but the counter. Reading it into an array first and compiling that
+ * would trade the overlap for a number.
+ *
+ * What comes back is a compiled module and not the bytes, and that matters on
+ * the way to the worker: `open` posts this, and a `WebAssembly.Module` is
+ * structured-cloned by sharing the compiled code, where a 72MB `ArrayBuffer`
+ * is copied.
+ */
+async function counted(url: string, onProgress: (loaded: number, total: number) => void): Promise<WasmApp> {
+	const res = await fetch(url)
+	if (!res.ok) {
+		const body = await res.text().catch(() => '')
+		throw new Error(`sandbox: GET ${url} failed: ${res.status} ${res.statusText}${body === '' ? '' : `\n${body}`}`)
+	}
+
+	const body = res.body
+	if (body === null) throw new Error(`sandbox: GET ${url} answered with no body`)
+
+	// Unknown rather than wrong. See `Opts.onProgress`: an encoded response
+	// counts its compressed bytes in the header and its decompressed ones in
+	// the stream, so the header is only a total when nothing re-encoded it.
+	const total = res.headers.get('content-encoding') === null ? Number(res.headers.get('content-length') ?? 0) : 0
+
+	let seen = 0
+	const counting = new ReadableStream({
+		async start(c) {
+			const r = body.getReader()
+			try {
+				for (;;) {
+					const { done, value } = await r.read()
+					if (done) break
+					if (value === undefined) continue
+
+					seen += value.byteLength
+					onProgress(seen, total)
+					c.enqueue(value)
+				}
+				c.close()
+			} catch (e) {
+				c.error(e)
+			}
+		},
+	})
+
+	// The mime type is restated because `compileStreaming` insists on it and
+	// this is a new response over the same bytes: the one that carried it is
+	// the one being read from.
+	return WebAssembly.compileStreaming(new Response(counting, { headers: { 'content-type': 'application/wasm' } }))
 }

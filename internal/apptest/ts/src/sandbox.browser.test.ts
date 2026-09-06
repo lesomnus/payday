@@ -76,6 +76,12 @@ describe.runIf(enabled)("the sandbox", () => {
       )) ?? [];
     const say = out.join("\n");
 
+    // The module arriving, which is 72MB and the whole of a cold start: a
+    // page with nothing to draw there looks hung. See `sandbox.html`.
+    expect(say, said.join("\n")).toContain("progress ticks: many");
+    expect(say).toContain("progress rises: true");
+    expect(say).toContain("progress ends full: true");
+
     // The headers, which are the thing that fails confusingly.
     expect(say, said.join("\n")).toContain("crossOriginIsolated: true");
     expect(say).toContain("SharedArrayBuffer: function");

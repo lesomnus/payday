@@ -18,8 +18,17 @@ try {
 	const { start } = await import('/src/sandbox.ts')
 	const { app } = await import('/src/client.ts')
 
-	const sb = await start('/app.wasm')
+	// The count the module arrives with, which is what a page draws a bar
+	// from. Only the shape is asserted -- that it rises and lands on the
+	// length the response declared -- because the bytes are the build's.
+	const seen = []
+	const sb = await start('/app.wasm', (loaded, total) => seen.push([loaded, total]))
 	say('served')
+
+	const last = seen[seen.length - 1] ?? [0, 0]
+	say('progress ticks:', seen.length > 1 ? 'many' : String(seen.length))
+	say('progress rises:', String(seen.every((v, i) => i === 0 || v[0] > seen[i - 1][0])))
+	say('progress ends full:', String(last[0] === last[1] && last[0] > 0))
 
 	// A client that says who is calling. `start` builds one that does not, so
 	// this wraps the transport it answered with -- which is what `transport` is

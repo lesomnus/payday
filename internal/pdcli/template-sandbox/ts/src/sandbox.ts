@@ -45,15 +45,27 @@ export interface Sandbox {
 /**
  * start compiles the app into the page and answers with a client for it.
  *
+ * `onProgress` is how far the module has got. A payday app compiled to wasm is
+ * tens of megabytes, and on a cold cache that is long enough that a page saying
+ * only "starting" is indistinguishable from a page that has hung -- so a page
+ * that has somewhere to draw should pass this. `total` is 0 when the length is
+ * not knowable; `Opts.onProgress` in `@lesomnus/payday/sandbox` says when.
+ *
  * The worker URL is resolved against **this** module rather than passed in,
  * because `sandbox-worker.ts` sits beside this file and a bundler rewrites
  * where it lands. It is this file's to know and not the package's: a default
  * inside `@lesomnus/payday` would resolve against `node_modules`.
  */
-export async function start(url = '/app.wasm'): Promise<Sandbox> {
+export async function start(url = '/app.wasm', onProgress?: (loaded: number, total: number) => void): Promise<Sandbox> {
 	const box = await open({
 		url,
 		worker: new URL('./sandbox-worker.ts', import.meta.url),
+
+		// Passed on rather than defaulted, because payday fetches the module
+		// itself only when somebody is watching -- handed a URL it lets the
+		// browser do it, which is one fewer thing between the cache and the
+		// compiler.
+		...(onProgress === undefined ? {} : { onProgress }),
 	})
 
 	// `box.transport` is a Connect `Transport` like any other, which is the
