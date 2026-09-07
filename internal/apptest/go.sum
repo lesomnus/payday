@@ -84,6 +84,8 @@ github.com/lesomnus/sqlite3-wasm v0.0.0-20260907041449-288d2976a4a4 h1:fsLI6bNqW
 github.com/lesomnus/sqlite3-wasm v0.0.0-20260907041449-288d2976a4a4/go.mod h1:OT2wkw6444ni+rf0+zlh9T8IQhOWy5x04ArBbqv3Lu0=
 github.com/lesomnus/sqlite3-wasm v0.0.0-20260907044757-82ad585600dc h1:lTnOMCdBoGg/9xAtolXEuEnozUBZav9580B4tsQGUIE=
 github.com/lesomnus/sqlite3-wasm v0.0.0-20260907044757-82ad585600dc/go.mod h1:OT2wkw6444ni+rf0+zlh9T8IQhOWy5x04ArBbqv3Lu0=
+github.com/lesomnus/sqlite3-wasm v0.0.0-20260907051834-c375b662b25b h1:04FHuF9JkQtpK6so/g+b4BASGU5pxMVLD8qXHm7xJuk=
+github.com/lesomnus/sqlite3-wasm v0.0.0-20260907051834-c375b662b25b/go.mod h1:OT2wkw6444ni+rf0+zlh9T8IQhOWy5x04ArBbqv3Lu0=
 github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057 h1:R2XCSr97o/DRfLdUBNM3eYj9CUhTBBXWOYH2y7uP63E=
 github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057/go.mod h1:9dZNkM86FqzAsiBYaeT026Nt8PPxAyuq6RtWE4vNxSA=
 github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278 h1:dBLfXrOR8qLwZculDy8uJfNN+Q5xlyvM9CF4yylPB/0=
