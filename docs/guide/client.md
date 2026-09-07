@@ -317,7 +317,63 @@ visit. Three of the four fields are worth putting on the screen:
 `internal/apptest/ts/src/devtools-page.tsx` in this repository draws all of it,
 in about forty lines.
 
-### The panel, with an editor
+## 8. The panel
+
+A window on the rows the server answers with and on what the store believes,
+in the page, without a network tab — which a sandbox does not have, since its
+calls travel a message port to a Worker.
+
+Nothing writes it for you. `pd new` does not and `pd sandbox init` does not:
+it is a development surface and where it belongs is a decision about your
+build, not about your schema. It is an import and an element.
+
+```tsx
+import { Provider } from '@lesomnus/payday/react'
+import { Devtools } from '@lesomnus/payday/react/devtools'
+
+import { entities } from '../gen/entities.js'
+
+<Provider app={app}>
+	<Devtools entities={entities} />
+</Provider>
+```
+
+**Under the `Provider`**, because it reads the same `App` and the same store
+your page does — that is the point of it. **`entities` is the generated array**,
+the one `Store.open` was already given; the panel takes it rather than reading
+it off the store because what a picker wants is the list as the app declared
+it.
+
+`internal/apptest/ts/src/devtools-page.tsx` in this repository is a whole page
+around it — the transport, the editor, and the progress a first load needs —
+and it is what payday's own sandbox is looked at through. The four lines above
+are the part that is the panel.
+
+### What is in it
+
+| | |
+| --- | --- |
+| `list` | rows as the wire answered, paged by being scrolled, columns you can turn off, and a search over what is on the screen |
+| `get` | one row as protobuf JSON — read-only, or an editor; see below |
+| `store` | what this browser holds for that entity, which the server was not asked about |
+
+Two switches at the bottom. `utc` writes timestamps in UTC rather than in the
+zone you are in — the column holds UTC either way, and the default is yours
+because the request log beside this is a wall clock. `past the wall` appears
+only if you hand it somewhere to go:
+
+```tsx
+<Devtools entities={entities} ungated={ungatedTransport} />
+```
+
+That is a second transport reaching the **ungated** stack, which a sandbox has
+and a deployment does not — there, the wall protects the page from itself. It
+answers the one question the walled path cannot: a row that is not there and a
+row you may not see are the same answer through the wall and different through
+this. An app that was never given one cannot offer the switch, which is the
+whole of the guard.
+
+### An editor over the document
 
 `<Devtools>` shows a row the `Get` tab answered with as protobuf JSON. Hand it
 Monaco and that becomes an editor, with completion over the fields the message
