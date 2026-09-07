@@ -627,6 +627,16 @@ const style = {
 	th: {
 		textAlign: 'left',
 		padding: '1px 8px',
+
+		// The cell centres what is in it, and what is in it is a `flex` label
+		// rather than an `inline-flex` one.
+		//
+		// Both halves matter. A table cell aligns its content by the baseline
+		// unless told otherwise, and an inline-flex label's baseline is its
+		// first item's -- the checkbox's, which is its bottom edge. So the
+		// whole label hung 1.75px above the middle of the row, box and word
+		// together, however well the two were centred against each other.
+		verticalAlign: 'middle',
 		// A rule between columns, because a row of a wide entity is read
 		// **across** and nothing else says where one value stops. Without it
 		// two empty cells in a row are one wide gap.
@@ -2023,7 +2033,7 @@ function Head(props: {
 	// a span is opting out of it for nothing.
 	return (
 		<>
-			<label style={{ ...style.check, display: 'inline-flex' }} {...bind}>
+			<label style={{ ...style.check, display: 'flex' }} {...bind}>
 				<input
 					type="checkbox"
 					style={style.box}
