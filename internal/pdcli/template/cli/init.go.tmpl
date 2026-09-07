@@ -34,13 +34,13 @@ func NewCmdInit(c *cmd.Config) *xli.Command {
 			&flg.String{Name: "holder", Brief: "the alias of the holder to create in it"},
 		},
 
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			tenant, ok := flg.Find[string](cmd, "tenant")
+		Handler: xli.OnRun(func(ctx context.Context, self *xli.Command, next xli.Next) error {
+			tenant, ok := flg.Find[string](self, "tenant")
 			if !ok || tenant == "" {
 				tenant = "acme"
 			}
 
-			holder, ok := flg.Find[string](cmd, "holder")
+			holder, ok := flg.Find[string](self, "holder")
 			if !ok || holder == "" {
 				holder = "admin"
 			}
@@ -82,9 +82,9 @@ func NewCmdInit(c *cmd.Config) *xli.Command {
 				return err
 			}
 
-			cmd.Printf("tenant %s is %s\n", tenant, k)
-			cmd.Printf("holder %s is %s\n", holder, j)
-			cmd.Printf("\nsign in as: @%s/%s\n", tenant, holder)
+			self.Printf("tenant %s is %s\n", tenant, k)
+			self.Printf("holder %s is %s\n", holder, j)
+			self.Printf("\nsign in as: @%s/%s\n", tenant, holder)
 
 			return nil
 		}),

@@ -1,6 +1,7 @@
 package pdcli_test
 
 import (
+	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/token"
@@ -184,6 +185,89 @@ func TestTheTemplateIsGoThatParses(t *testing.T) {
 	// a rename, a walk that lands somewhere else -- fails rather than passes
 	// with nothing to say.
 	x.NotZero(n)
+}
+
+// TestNoParameterShadowsAnImport, which parsing does not say either.
+//
+// The app's wiring package is named `cmd`, and `cmd` is also what xli's own
+// idiom calls the command a handler is running -- so `cli/init.go` had
+// `func(ctx context.Context, cmd *xli.Command, ...)` around a body calling
+// `cmd.Build`, and what that resolves to is the parameter. It parses. It is
+// gofmt'd. It fails to compile with `cmd.Build undefined (type *xli.Command
+// has no field or method Build)`, and the first thing to say so was CI on a
+// real scaffold, three minutes and a push away.
+//
+// A parameter with the name of an import is the whole of that mistake, and it
+// is answerable from the syntax tree alone. This is not a general shadowing
+// rule -- a local variable may deliberately take the name -- but a parameter
+// does not get to.
+func TestNoParameterShadowsAnImport(t *testing.T) {
+	x := require.New(t)
+
+	dir := filepath.Join(t.TempDir(), "app")
+	x.NoError((pdcli.New{Dir: dir, Module: "github.com/acme/thing"}).Write())
+
+	n := 0
+	x.NoError(filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || filepath.Ext(p) != ".go" {
+			return err
+		}
+
+		f, err := parser.ParseFile(token.NewFileSet(), p, nil, parser.SkipObjectResolution)
+		if err != nil {
+			return err
+		}
+
+		// What each import is called here: the alias when there is one, and
+		// otherwise the last segment of the path, which is what a reader of the
+		// file sees before the dot.
+		imports := map[string]string{}
+		for _, im := range f.Imports {
+			path := strings.Trim(im.Path.Value, `"`)
+			name := path[strings.LastIndex(path, "/")+1:]
+			if im.Name != nil {
+				name = im.Name.Name
+			}
+			if name == "_" || name == "." {
+				continue
+			}
+
+			imports[name] = path
+		}
+
+		rel, _ := filepath.Rel(dir, p)
+		ast.Inspect(f, func(node ast.Node) bool {
+			var params *ast.FieldList
+			switch v := node.(type) {
+			case *ast.FuncDecl:
+				params = v.Type.Params
+			case *ast.FuncLit:
+				params = v.Type.Params
+			default:
+				return true
+			}
+
+			for _, field := range params.List {
+				for _, id := range field.Names {
+					path, ok := imports[id.Name]
+					if !ok {
+						continue
+					}
+
+					n++
+					x.Failf("a parameter shadows an import",
+						"%s: the parameter %q hides the import %q, so %s.X in this body is the parameter",
+						rel, id.Name, path, id.Name)
+				}
+			}
+
+			return true
+		})
+
+		return nil
+	}))
+
+	x.Zero(n)
 }
 
 // TestTheTemplateIsGofmtd, which parsing does not say.
