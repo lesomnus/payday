@@ -55,7 +55,7 @@ the whole of what CI was doing.
 Four things, and the last two are the ones that fail confusingly.
 
 ```sh
-GOOS=js GOARCH=wasm go build -o public/app.wasm ../wasm
+GOOS=js GOARCH=wasm go build -tags grpcnotrace -o public/app.wasm ../wasm
 cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./public/
 ```
 

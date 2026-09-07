@@ -207,7 +207,15 @@ func (s Sandbox) steps(viteWhy string) []string {
 		"# the JS half of the Go runtime, which is version-coupled to the",
 		"# compiler that builds the module -- so it is copied and never vendored",
 		`cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ts/public/`,
-		"GOOS=js GOARCH=wasm go build -o ts/public/app.wasm ./" + DirWasm,
+
+		// `grpcnotrace` is gRPC's own tag, and it drops
+		// `golang.org/x/net/trace` -- a ring buffer of recent RPCs, served at
+		// `/debug/requests` by a handler an app registers itself. It is off
+		// unless `grpc.EnableTracing` is set, nothing here registers that
+		// handler, and a sandbox serves with `grpc-dgram` rather than
+		// `grpc.Server` -- so the code is never reached. It renders its page
+		// with `html/template`, which is most of the 1.4 MB it costs.
+		"GOOS=js GOARCH=wasm go build -tags grpcnotrace -o ts/public/app.wasm ./" + DirWasm,
 		"",
 
 		// Both are about the one fact that the module is tens of megabytes,

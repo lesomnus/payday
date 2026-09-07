@@ -272,7 +272,6 @@ jobs:
       - name: and the sandbox it compiles to
         working-directory: internal/apptest/ts
         run: |
-          GOOS=js GOARCH=wasm go build -o public/app.wasm ../wasm
-          cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./public/
+          npm run wasm
           npx playwright install --with-deps chromium
           npm run test:sandbox

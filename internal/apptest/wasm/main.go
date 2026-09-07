@@ -12,7 +12,15 @@
 // the front end does not start a backend, does not migrate anything, and does
 // not have to remember what state they left it in.
 //
-//	GOOS=js GOARCH=wasm go build -o web/app.wasm ./wasm
+//	GOOS=js GOARCH=wasm go build -tags grpcnotrace -o web/app.wasm ./wasm
+//
+// The tag is gRPC's own, and what it drops is `golang.org/x/net/trace` -- an
+// in-process ring buffer of recent RPCs, served at `/debug/requests` by a
+// handler an app has to register. Three things make it dead weight here: it is
+// off unless `grpc.EnableTracing` is set, nothing in this repository registers
+// that handler, and the sandbox serves with `grpc-dgram` rather than
+// `grpc.Server`, so the code is never on the path at all. It renders its page
+// with `html/template`, which is most of the 1.4 MB the tag saves.
 //
 // It is very nearly what `pd sandbox init` writes, and deliberately so: the
 // template's copy is only parsed by a test -- compiling it would need a
