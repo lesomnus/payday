@@ -49,7 +49,7 @@ require (
 	github.com/lesomnus/mkot/mkotx v0.0.0-20260801183340-9c83100aa7c2 // indirect
 	github.com/lesomnus/mkot/pretty v0.0.0-20260907012347-f3fd02e2da01 // indirect
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20260807173743-977a5687d6ba // indirect
-	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e // indirect
+	github.com/lesomnus/sqlite3-wasm v0.0.0-20260907044757-82ad585600dc // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
