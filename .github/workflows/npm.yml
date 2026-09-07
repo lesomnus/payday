@@ -1,0 +1,93 @@
+# The TypeScript half, staged for release.
+#
+# It stages rather than publishes: `npm stage publish` puts the tarball on the
+# registry in a state nobody can install, and a person runs `npm stage approve`
+# to make it real. That split is the point of doing this in CI at all --
+# what a machine is good at is building the thing the same way every time, and
+# what it must not be able to do on its own is put a version in front of
+# everybody who depends on this.
+#
+# # Registering it
+#
+# npm publishes from here without a token, through OIDC -- so the trust is in
+# **this file** rather than in a secret somebody has to rotate. On npmjs.com,
+# under the package's Settings → Trusted publisher, name:
+#
+#	repository:   lesomnus/payday
+#	workflow:     npm.yml
+#	environment:  (none)
+#
+# The workflow filename is part of what npm checks, so renaming this file
+# revokes it until the registration is changed to match.
+name: npm
+
+on:
+  # A tag, because publishing is a decision and a decision has a name. `git tag
+  # ts/v0.0.4 && git push --tags` is the whole of it, and the job below refuses
+  # a tag that disagrees with `package.json` rather than staging the wrong
+  # version under the right name.
+  push:
+    tags: ['ts/v*']
+
+  # And by hand, for a re-run that failed on something other than the build.
+  workflow_dispatch:
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    permissions:
+      # What OIDC needs, and the whole reason there is no token here.
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # Writes the .npmrc that points at the registry OIDC answers for.
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing wants a recent CLI, and the runner's is older than
+      # the one that speaks it.
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+        working-directory: ts
+
+      # The tag says which version this is, and `package.json` says which
+      # version it is. A release where those two disagree is one nobody can
+      # find afterwards, so it is refused here rather than discovered later.
+      - name: the tag is the version
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: ts
+        run: |
+          want="${GITHUB_REF_NAME#ts/v}"
+          have="$(node -p 'require("./package.json").version')"
+          if [ "$want" != "$have" ]; then
+            echo "tag says $want and package.json says $have" >&2
+            exit 1
+          fi
+
+      # `prepack` runs the check, the tests and the build, so what is staged is
+      # what those passed on. It is named here anyway: a package that skipped
+      # them because a flag changed would skip them silently.
+      - run: npm run check
+        working-directory: ts
+      - run: npm test
+        working-directory: ts
+
+      # `--provenance` is the other half of what OIDC buys: the tarball carries
+      # a signed statement of the commit and the workflow that built it, which
+      # is checkable by anybody rather than trusted.
+      - run: npm stage publish --provenance
+        working-directory: ts
+
+      - name: what is left to do
+        run: |
+          echo "Staged. It is not installable until somebody approves it:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```sh' >> "$GITHUB_STEP_SUMMARY"
+          echo 'npm stage list @lesomnus/payday' >> "$GITHUB_STEP_SUMMARY"
+          echo 'npm stage approve <stage-id>' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

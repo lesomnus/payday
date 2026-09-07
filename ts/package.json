@@ -1,6 +1,6 @@
 {
 	"name": "@lesomnus/payday",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"description": "The client half of a payday app: the identifier and the slug a row is named by, a local store of what one caller may see, and reads that keep themselves up to date",
 	"license": "Apache-2.0",
 	"author": "lesomnus",
