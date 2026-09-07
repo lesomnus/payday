@@ -155,6 +155,7 @@ message HolderListResponse {
 message HolderFilter {
   HolderRef ref = 1;
   TenantRef tenant = 2;
+  map<string, string> labels = 3;
 }
 
 message HolderWatchRequest {

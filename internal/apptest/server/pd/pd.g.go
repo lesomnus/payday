@@ -43,6 +43,7 @@ import (
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
+	sqljson "github.com/protobuf-orm/ent/dialect/sql/sqljson"
 	sqlpage "github.com/protobuf-orm/ent/dialect/sql/sqlpage"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
@@ -54,6 +55,7 @@ import (
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	slog "log/slog"
 	slices "slices"
+	sort "sort"
 	time "time"
 	uuid "uuid"
 )
@@ -1050,6 +1052,22 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 			}
 
 			ps = append(ps, holder.HasTenantWith(q))
+		}
+	}
+	if m := f.GetLabels(); len(m) > 0 {
+		ks := make([]string, 0, len(m))
+		for k := range m {
+			ks = append(ks, k)
+		}
+		sort.Strings(ks)
+
+		for _, k := range ks {
+			ps = append(ps, predicate.Holder(func(s *sql.Selector) {
+				s.Where(sql.And(
+					sqljson.HasKey(holder.FieldLabels, sqljson.Path(k)),
+					sqljson.ValueEQ(holder.FieldLabels, m[k], sqljson.Path(k)),
+				))
+			}))
 		}
 	}
 	if len(ps) == 0 {

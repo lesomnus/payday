@@ -36,6 +36,9 @@ const (
 	pkgDriver  = protogen.GoImportPath("database/sql/driver")
 	pkgVersion = protogen.GoImportPath("github.com/lesomnus/payday/version")
 	pkgGrpcx   = protogen.GoImportPath("github.com/lesomnus/payday/grpcx")
+	pkgEntSql  = protogen.GoImportPath("github.com/protobuf-orm/ent/dialect/sql")
+	pkgSqlJson = protogen.GoImportPath("github.com/protobuf-orm/ent/dialect/sql/sqljson")
+	pkgSort    = protogen.GoImportPath("sort")
 )
 
 // EmitPayday writes which payday this file came out of, and the check that

@@ -123,9 +123,14 @@ message Holder {
       // the caller may see, so a filter that names one can only ever cut that
       // down further -- naming a tenant outside the scope answers with nothing
       // rather than with somebody else's people.
+      // `labels` because an app modelling anything Kubernetes-shaped grows
+      // one, and the alternative is every such app writing the same paging
+      // loop on the client -- where filtering the first page is the obvious
+      // implementation and is silently wrong.
       by: [
         {name: "ref"},
-        {name: "tenant"}
+        {name: "tenant"},
+        {name: "labels"}
       ]
       size: 20
       max: 100

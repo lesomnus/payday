@@ -152,6 +152,16 @@ message %sWatchItem {
 				b.WriteString(fmt.Sprintf("  %sRef %s = %d;\n", inPkg(by.Target, pkg), by.Edge, i+1))
 				continue
 			}
+			if by.Map {
+				// Every pair has to be present and equal, which is what a
+				// caller wants nine times in ten. A selector grammar --
+				// `k in (...)`, `!k` -- is a language, and a language in a
+				// generator is where "an Rpc somebody wrote" is the better
+				// answer.
+				b.WriteString(fmt.Sprintf("  map<string, string> %s = %d;\n", by.Field, i+1))
+				continue
+			}
+
 			b.WriteString(fmt.Sprintf("  %s %s = %d;\n", protoTypeOf(by.Type), by.Field, i+1))
 		}
 		b.WriteString("}\n")

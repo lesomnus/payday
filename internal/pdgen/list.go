@@ -523,6 +523,11 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 
 		at, col := camel(by.Field), pascal(by.Field)
 
+		if by.Map {
+			emitMapFilter(g, v, by, at, p, entPkg)
+			continue
+		}
+
 		g.P("	if f.Has", at, "() {")
 		switch by.Type {
 		case ormpb.Type_TYPE_UUID:
@@ -544,6 +549,50 @@ func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 	g.P("	return ", entPkg.Ident("And"), "(ps...), nil")
 	g.P("}")
 	g.P("")
+}
+
+// emitMapFilter writes the predicate for a `map<string, string>` filter: every
+// pair named has to be present and equal.
+//
+// One predicate per pair rather than one containment test, because the three
+// engines spell containment three ways and `sqljson` already spells the two
+// halves of a pair for all of them. What is written is what it says: the key is
+// there, and what is under it is this.
+//
+// # Why the key is asked about separately
+//
+// A missing key and an empty value are different rows, and a filter that could
+// not tell them apart would widen instead of narrowing -- `draft=""` matching
+// every row that has never heard of `draft`. `HasKey` is what says which of the
+// two this is, and it is written even where the engine's own comparison would
+// have excluded the row anyway: what it costs is a term, and what it buys is
+// that the predicate reads as the question.
+//
+// # Why the keys are sorted
+//
+// So that the same filter is the same SQL. A map's iteration order is
+// deliberately not stable, and an unstable statement is one a prepared-statement
+// cache holds several copies of and a test cannot be written against.
+func emitMapFilter(g *protogen.GeneratedFile, v *Entity, by By, at string, p Paths, entPkg protogen.GoImportPath) {
+	e := v.GoName()
+	col := pascal(by.Field)
+
+	g.P("	if m := f.Get", at, "(); len(m) > 0 {")
+	g.P("		ks := make([]string, 0, len(m))")
+	g.P("		for k := range m {")
+	g.P("			ks = append(ks, k)")
+	g.P("		}")
+	g.P("		", pkgSort.Ident("Strings"), "(ks)")
+	g.P("")
+	g.P("		for _, k := range ks {")
+	g.P("			ps = append(ps, ", (p.Ent + "/predicate").Ident(e), "(func(s *", pkgEntSql.Ident("Selector"), ") {")
+	g.P("				s.Where(", pkgEntSql.Ident("And"), "(")
+	g.P("					", pkgSqlJson.Ident("HasKey"), "(", entPkg.Ident("Field"+col), ", ", pkgSqlJson.Ident("Path"), "(k)),")
+	g.P("					", pkgSqlJson.Ident("ValueEQ"), "(", entPkg.Ident("Field"+col), ", m[k], ", pkgSqlJson.Ident("Path"), "(k)),")
+	g.P("				))")
+	g.P("			}))")
+	g.P("		}")
+	g.P("	}")
 }
 
 // goTypeOf is what a cursor column is decoded into.

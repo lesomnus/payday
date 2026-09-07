@@ -436,6 +436,27 @@ what a request that asks for nothing gets, and it may not exceed `max`.
 anything else is a field, compared for equality. A field that equality is not a
 sensible question about is refused rather than generated.
 
+**A `map<string, string>` is filtered by pairs.** Labels, annotations, anything
+Kubernetes-shaped: the filter carries a map, and every pair in it has to be
+present and equal — `{team: core, tier: gold}` is rows carrying both.
+
+```proto
+by: [{name: "ref"}, {name: "tenant"}, {name: "labels"}]
+```
+
+Two things it is worth knowing the answer to before asking:
+
+- **A missing key is not an empty value.** `{team: ""}` is rows that say the
+  team is empty, and not rows that have never heard of `team`. Reading a map by
+  index gives the same answer for both, which is a filter that widens instead of
+  narrowing; the generated predicate asks whether the key is there.
+- **An empty map constrains nothing**, the way an absent scalar does. A filter
+  that names nothing else is then a filter that names nothing, which was already
+  refused.
+
+No selector grammar — `k in (...)`, `!k`. That is a language, and a language in
+a generator is where an `Rpc` somebody wrote is the better answer.
+
 **Declare an index that covers the order.** Generation *warns* rather than
 refuses — it is not wrong, only slow — but the read it names would scan the one
 table that never stops growing and sort what it found. Covered means some index

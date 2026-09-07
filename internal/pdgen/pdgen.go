@@ -879,6 +879,15 @@ type By struct {
 	// read it out of the request.
 	Type ormpb.Type
 
+	// Map says the field is a `map<string, string>`, which is filtered by
+	// naming pairs rather than by a value.
+	//
+	// It is not something [ormpb.Type] can say: a map is TYPE_JSON, and so is
+	// every other shape that lands in a JSON column. What knows is the field
+	// descriptor, which is why this is decided where the schema is read rather
+	// than from the type alone.
+	Map bool
+
 	// Edge is the edge compared, empty otherwise, and Target is the entity it
 	// points at, by its **full** name.
 	//
@@ -999,6 +1008,10 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 			return fmt.Errorf(
 				"list: by: %s has no field or edge %q", e.FullName(), name)
 		}
+		if isStringMap(f) {
+			v.By = append(v.By, By{Field: name, Type: f.Type(), Map: true})
+			continue
+		}
 		if protoTypeOf(f.Type()) == "" {
 			return fmt.Errorf(
 				"list: by: %q is %s, and a filter compares for equality -- which is not "+
@@ -1016,6 +1029,27 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 
 	e.List = v
 	return nil
+}
+
+// isStringMap reports whether f is a `map<string, string>`.
+//
+// The descriptor and not [ormpb.Type], which answers TYPE_JSON for a map and
+// for everything else that lands in a JSON column -- an `Any`, a list, a
+// message somebody chose to store whole. A filter is written for the map and
+// would be nonsense for the rest, so what decides is the shape protobuf
+// declared rather than the shape the column has.
+//
+// Only string keys and string values, which is the labels-and-annotations
+// shape this is for. A map of int64 to a message is a JSON column too, and a
+// predicate over it is a thing to want on purpose rather than to be handed.
+func isStringMap(f graph.Field) bool {
+	d := f.Descriptor()
+	if !d.IsMap() {
+		return false
+	}
+
+	return d.MapKey().Kind() == protoreflect.StringKind &&
+		d.MapValue().Kind() == protoreflect.StringKind
 }
 
 func field(e graph.Entity, name string) (graph.Field, bool) {
