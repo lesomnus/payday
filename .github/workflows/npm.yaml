@@ -14,7 +14,7 @@
 # under the package's Settings → Trusted publisher, name:
 #
 #	repository:   lesomnus/payday
-#	workflow:     npm.yml
+#	workflow:     npm.yaml
 #	environment:  (none)
 #
 # The workflow filename is part of what npm checks, so renaming this file
