@@ -3,7 +3,7 @@
 This app, compiled for the page it serves.
 
 ```sh
-$ GOOS=js GOARCH=wasm go build -o web/app.wasm ./wasm
+$ GOOS=js GOARCH=wasm go build -tags grpcnotrace -o web/app.wasm ./wasm
 ```
 
 It is the same server `cmd` runs. The two lines that differ are the driver

@@ -141,6 +141,25 @@ runs as two deployments. What an app can be told is what `cmd/config.go`
 declares; nothing is documented separately, because a documented list goes out
 of date on the commit that adds a field.
 
+### Building it for a deployment
+
+```sh
+go build -tags grpcnotrace -ldflags="-s -w" ./cmd/{{.Name}}
+```
+
+Neither is required and neither changes what the binary does. `-s -w` drops
+DWARF, which is most of what a Go binary weighs and is worth keeping in a build
+somebody debugs with a profiler. `grpcnotrace` is gRPC's own tag: it drops
+`golang.org/x/net/trace`, a ring buffer of recent RPCs served at
+`/debug/requests` — off unless `grpc.EnableTracing` is set, and reachable only
+through a handler this app does not register. If you want it, leave the tag off
+and register the handler; what payday gives you instead is OpenTelemetry, which
+`cmd/config.go` already configures, and the trail, which records what a write
+changed rather than that it happened.
+
+A build flag rather than something payday decides, because it has to be: a
+library cannot set the tags its consumers build with.
+
 ## The page
 
 ```sh

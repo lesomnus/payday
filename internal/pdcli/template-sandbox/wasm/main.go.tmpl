@@ -12,7 +12,14 @@
 // the front end does not start a backend, does not migrate anything, and does
 // not have to remember what state they left it in.
 //
-//	GOOS=js GOARCH=wasm go build -o ts/public/app.wasm ./wasm
+//	GOOS=js GOARCH=wasm go build -tags grpcnotrace -o ts/public/app.wasm ./wasm
+//
+// The tag is gRPC's own. It drops `golang.org/x/net/trace`, a ring buffer of
+// recent RPCs served at `/debug/requests` by a handler an app registers itself
+// -- off unless `grpc.EnableTracing` is set, never registered here, and never
+// reached anyway, since a sandbox serves with `grpc-dgram` rather than
+// `grpc.Server`. It renders its page with `html/template`, which is most of
+// what the tag saves.
 //
 // # Why this is a second entry point and not a flag
 //

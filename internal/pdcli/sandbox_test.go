@@ -114,6 +114,13 @@ func TestTheSandboxIsGoThatParsesAndNamesThisApp(t *testing.T) {
 	joined := strings.Join(steps, "\n")
 	x.Contains(joined, "GOOS=js GOARCH=wasm go build")
 	x.Contains(joined, "wasm_exec.js")
+
+	// The tag, because a sandbox built without it carries `x/net/trace` and the
+	// `html/template` it renders `/debug/requests` with -- 1.4 MB for a handler
+	// nothing registers, in a page that serves with `grpc-dgram` and never
+	// reaches `grpc.Server` at all. Nothing else would report it: the module
+	// works either way and the only symptom is its size.
+	x.Contains(joined, "-tags grpcnotrace")
 }
 
 // TestASecondSandboxIsRefused. There is one of these, which is why the verb is
