@@ -48,6 +48,9 @@
  *
  *         cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./public/
  *
+ *     A page mounted under a path also has to say where it landed, because the
+ *     default is the origin's root: see [Opts.wasmExec].
+ *
  *   - **The worker is the app's**, and it has to be. See [start].
  *
  * @module
@@ -199,6 +202,28 @@ export interface Opts {
 	 * through [Load.from].
 	 */
 	cache?: string | false
+
+	/**
+	 * Where `wasm_exec.js` is, when it is not at the root.
+	 *
+	 * It is the JS half of the Go runtime and the instance loads it by URL, so
+	 * somebody has to say where. The default is `/wasm_exec.js`, which is right
+	 * for a page served at the origin's root and wrong for one mounted under a
+	 * path: a console at `/console/` copies the file to `/console/wasm_exec.js`
+	 * along with everything else in `public/`, and the root is a 404.
+	 *
+	 * What that 404 looks like is worth knowing, because it does not mention
+	 * this: the worker fails to import a script and the instance never
+	 * publishes its entry point, so [start] rejects on the ready timeout --
+	 * ten seconds of nothing, and then a message about a server that did not
+	 * come up.
+	 *
+	 * Resolved against the document, like [Opts.worker], so a relative path is
+	 * relative to the page and a bundler's base can be handed in as-is:
+	 *
+	 *     wasmExec: import.meta.env.BASE_URL + 'wasm_exec.js'
+	 */
+	wasmExec?: string | URL
 }
 
 /** Load is how far the module has got, and where it is coming from. */
@@ -270,6 +295,10 @@ export async function start(opts: Opts): Promise<Sandbox> {
 		// Against the document rather than this module: what the app passed is
 		// its own file, and a bundler rewrites where that lands.
 		workerUrl: new URL(opts.worker, location.href),
+
+		// Same, and only when it was said: `open` has a default and passing
+		// `undefined` is not the same as not passing it.
+		...(opts.wasmExec === undefined ? {} : { wasmExec: new URL(opts.wasmExec, location.href) }),
 	})
 
 	return {

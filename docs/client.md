@@ -196,6 +196,24 @@ has none:
 Each of the four fails in a way that does not name its cause, which is why they
 are checked and not merely written down.
 
+A page mounted under a path -- a console at `/console/`, say -- has a fifth,
+which is not checkable because only the page knows its base. `wasm_exec.js` is
+loaded by URL and the default is the origin's root, so the copy that went to
+`/console/wasm_exec.js` with everything else in `public/` is not where the
+instance looks. Say where:
+
+```ts
+start({
+	url: import.meta.env.BASE_URL + 'app.wasm',
+	worker: new URL('./sandbox-worker.ts', import.meta.url),
+	wasmExec: import.meta.env.BASE_URL + 'wasm_exec.js',
+})
+```
+
+Leaving it out is a 404 in a worker: the instance never publishes its entry
+point, and what the page is told, ten seconds later, is that the server did not
+come up.
+
 ### What the page needs from the app
 
 `@lesomnus/payday/sandbox` is the part that does not vary:
