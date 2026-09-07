@@ -87,7 +87,12 @@ jobs:
       # `--provenance` is the other half of what OIDC buys: the tarball carries
       # a signed statement of the commit and the workflow that built it, which
       # is checkable by anybody rather than trusted.
-      - run: npm stage publish --provenance
+      # `--loglevel verbose`, because the OIDC helper swallows every way it can
+      # fail -- a missing id token, a rejected exchange, a response without a
+      # token -- and answers `undefined` to all of them. What the publish then
+      # says is `ENEEDAUTH`, which is true and names nothing. The reason is one
+      # `npm verb oidc` line away, and only at this level.
+      - run: npm stage publish --provenance --loglevel verbose
         working-directory: ts
 
       - name: what is left to do
