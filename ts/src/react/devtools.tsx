@@ -1162,6 +1162,17 @@ function List(props: View & { transport: Transport }): ReactNode {
 	// again before a re-render could have told it anything.
 	const busy = useRef(false)
 
+	// And the cursor beside it, for exactly that reason.
+	//
+	// `next` is state because the form shows it. State is what a *render* sees,
+	// and the scroll handler runs between the answer arriving and the render it
+	// causes -- `busy` goes false at the end of `ask`, while `setNext` is still
+	// queued. A scroll landing in that window read the cursor of the page
+	// before and asked for it again, so a fast scroll appended a page twice.
+	//
+	// Written where the answer is read, so the two are never a render apart.
+	const cursor = useRef('')
+
 	const ask = useCallback(
 		async (after: string, more: boolean) => {
 			if (busy.current) return
@@ -1181,6 +1192,8 @@ function List(props: View & { transport: Transport }): ReactNode {
 					next: string
 				}
 
+				cursor.current = v.next
+
 				setRows((old) => (more ? [...old, ...v.items] : v.items))
 				setNext(v.next)
 
@@ -1192,7 +1205,10 @@ function List(props: View & { transport: Transport }): ReactNode {
 				// page nobody asked for.
 				if (more) setVals({ ...vals, leaf: { ...vals.leaf, after: v.next } })
 			} catch (e) {
-				if (!more) setRows([])
+				if (!more) {
+					setRows([])
+					cursor.current = ''
+				}
 				setErr(String(e))
 			} finally {
 				busy.current = false
@@ -1209,14 +1225,17 @@ function List(props: View & { transport: Transport }): ReactNode {
 	/** more is the next page, if the last answer said there is one. */
 	const more = useCallback(
 		(e: { currentTarget: HTMLElement }) => {
-			if (next === '' || busy.current) return
+			// `cursor.current` and not `next`: see the ref. They hold the same
+			// thing everywhere except in the window this handler fires in.
+			const at = cursor.current
+			if (at === '' || busy.current) return
 
 			const el = e.currentTarget
 			if (el.scrollTop + el.clientHeight < el.scrollHeight - 64) return
 
-			void ask(next, true)
+			void ask(at, true)
 		},
-		[next, ask],
+		[ask],
 	)
 
 	return (
@@ -1951,7 +1970,15 @@ function Head(props: {
 	// a span is opting out of it for nothing.
 	return (
 		<>
-			<label style={{ display: 'inline-flex', gap: 4, alignItems: 'baseline', cursor: 'pointer' }} {...bind}>
+			{/*
+			 * `center` and not `baseline`, which is what this was and what sat
+			 * the box 2.5px above the word beside it. A checkbox is a replaced
+			 * element, so its baseline is its bottom edge: lining that up with
+			 * the text's baseline lifts the box by however far the descenders
+			 * hang. Nothing here needs a shared baseline anyway -- the row is a
+			 * box and a word, and centring is what makes them read as one.
+			 */}
+			<label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', cursor: 'pointer' }} {...bind}>
 				<input
 					type="checkbox"
 					style={style.box}

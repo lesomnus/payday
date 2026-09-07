@@ -2,3 +2,6 @@
 dist/
 node_modules/
 *.db
+
+# The background-isolation switch is this checkout's, not the project's.
+/.claude/settings.json
