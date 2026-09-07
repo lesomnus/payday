@@ -33,6 +33,7 @@ import (
 	entschema "github.com/protobuf-orm/ent/dialect/sql/schema"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/pdcmd"
 	"github.com/lesomnus/payday/spin"
 
@@ -81,6 +82,16 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 		Brief: "answer requests",
 
 		Handler: xli.OnRun(func(ctx context.Context, _ *xli.Command, next xli.Next) error {
+			// Telemetry first, because everything after it logs. What
+			// `Build` answers with is a context carrying the providers, and
+			// what reads them is `grpcx` -- so a server built on a context
+			// this did not touch traces and logs into providers that discard.
+			ctx, done, err := Telemetry(ctx, c)
+			if err != nil {
+				return err
+			}
+			defer done()
+
 			s, err := cmd.Build(ctx, *c)
 			if err != nil {
 				return err
@@ -138,4 +149,41 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 // `sandbox` is for.
 func Migrate(ctx context.Context, s *cmd.Server) error {
 	return entmigrate.NewSchema(s.Drv).Create(ctx)
+}
+
+// Telemetry builds what this app's `otel:` describes and puts it on the
+// context, answering with that context and what shuts it down.
+//
+// It is written here rather than done by payday, and that is the same decision
+// `cmd/serve.go` makes about the stack: the order is load-bearing and belongs
+// where it can be read. `Build` answers with a **new context**, and everything
+// that logs, traces or measures reads the providers off it -- so this has to
+// happen before `cmd.Build`, and a reader has to be able to see that it does.
+//
+// What it costs to leave out is silence. `grpcx` puts a request logger on every
+// server from `otx.From(ctx)`, and `otx.From` answers a context carrying
+// nothing with the OpenTelemetry globals, which discard. The app serves, the
+// calls succeed, and there is no log. `grpcx` says so once on stderr now, which
+// is the only place left that still works.
+func Telemetry(ctx context.Context, c *cmd.Config) (context.Context, func(), error) {
+	ctx, o, err := c.Otel.Build(ctx, config.Service{
+		Name: cmd.Name,
+
+		// The Go package instruments are created from. Without it an
+		// instrument is attributed to whichever library happened to make it,
+		// and a dashboard groups by the name of a dependency.
+		Scope: "github.com/lesomnus/payday/internal/apptest",
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := o.Start(ctx); err != nil {
+		return nil, nil, err
+	}
+
+	// Shutdown and not ForceFlush: shutting the providers down is what flushes
+	// the last batch, and a process that exits without it loses whatever that
+	// batch held.
+	return ctx, func() { o.Shutdown(ctx) }, nil
 }

@@ -50,6 +50,8 @@ func ServerOptions(ctx context.Context, opts ...Option) []grpc.ServerOption {
 // Serving is [ServerOptions] as the pieces, which is what everything that is
 // not `grpc.NewServer` needs. See [Chain].
 func Serving(ctx context.Context, opts ...Option) Chain {
+	sayIfSilent(ctx)
+
 	o := options{deadline: DefaultTimeout}
 	for _, f := range opts {
 		f(&o)

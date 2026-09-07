@@ -55,6 +55,7 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 		"cmd/config.go",
 		"cli/cli.go",
 		"cli/driver.go",
+		"cli/telemetry.go",
 		"cmd/auth.go",
 		"cmd/thing/main.go",
 		"proto/app/thing.proto",

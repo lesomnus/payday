@@ -170,5 +170,38 @@ describe.runIf(enabled)("the sandbox", () => {
     // And the wall, which is the same answer it gives over HTTP: a row this
     // caller may not see is a row the query did not match.
     expect(say).toContain("wall: not_found");
+
+    // The server's own log, in the console, one line per call.
+    //
+    // `said` and not `__out`: these are not the page's, they are the Go
+    // program's, and they arrive because `wasm/main.go` builds the telemetry
+    // and hands the request logger to `drpc.NewServer`. Every one of those is
+    // a line an app writes itself, and forgetting any of them is silent --
+    // `otx.From` falls back to a provider that drops what it is given, so the
+    // page works and the console stays empty.
+    // Polled, because a console message is delivered asynchronously and
+    // `__done` is the page saying it is finished, not the browser saying it has
+    // reported everything the Go side wrote. On a cold start the difference is
+    // invisible; on a cached one the whole run is over in a second and the last
+    // lines have not arrived yet.
+    await expect
+      .poll(() => said.join("\n"), { timeout: 30_000 })
+      .toContain("app.RobotService/");
+
+    // The service and not the whole method name: the method is painted on its
+    // own, so what the console is handed reads `app.RobotService/%cAdd` and
+    // the name is split across a style boundary.
+    const log = said.join("\n");
+
+    // And painted, which is the other half. Go's stderr reaches the browser as
+    // text, so a line a terminal would colour arrives with `[36m` in it unless
+    // something translates: `pretty` defaults to mkot's `console` output here,
+    // which turns the escapes into the `%c` and CSS a console reads. What
+    // Playwright reports is the unsubstituted format followed by its
+    // arguments, so both halves are here to assert on -- and an escape
+    // surviving into it is what this catches.
+    expect(log).toContain("%c");
+    expect(log).toContain("color:");
+    expect(log).not.toContain("[");
   }, 300_000);
 });

@@ -44,6 +44,7 @@ import (
 	drpc "github.com/lesomnus/grpc-dgram"
 	"github.com/lesomnus/grpc-dgram/transport/jsport"
 
+	"github.com/lesomnus/otx/otxgrpc"
 	pdauth "github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/gate"
@@ -60,6 +61,29 @@ import (
 
 func main() {
 	ctx := context.Background()
+
+	// Telemetry, before anything that logs.
+	//
+	// It is three calls and an app writes them itself -- see `cli.Telemetry`,
+	// which is the same three on the other side. What they buy here is the
+	// server's own log, in the browser's console, one line per call: `pretty`
+	// defaults to the `console` output on Wasm, which is `mkot`'s writer
+	// turning what a terminal would paint into what a console reads.
+	//
+	// Nothing is configured, because there is no file here to configure it
+	// with and the defaults are what a sandbox wants.
+	ctx, o, err := (&config.OtelConfig{}).Build(ctx, config.Service{
+		Name:  cmd.Name,
+		Scope: "github.com/lesomnus/payday/internal/apptest",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer o.Shutdown(ctx)
+
+	if err := o.Start(ctx); err != nil {
+		log.Fatal(err)
+	}
 
 	// Held in memory rather than in OPFS, which is the decision that makes a
 	// reload a fresh server. A sandbox that remembered would be a sandbox
@@ -141,6 +165,12 @@ func main() {
 	// `Plain` believes what the caller writes, which is what a sandbox is --
 	// there is nobody else in the page to lie to.
 	srv := drpc.NewServer(gw,
+		// The request log, which is the line per call in the console. It is
+		// the same handler `grpcx` puts on the process's server; what differs
+		// is that a message port has no `grpc.ServerOption`, so it is named
+		// here rather than through `grpcx.ServerOptions`.
+		drpc.WithStatsHandler(otxgrpc.NewServerLogger(o)),
+
 		drpc.ChainUnaryInterceptors(
 			pdauth.InterceptorUnary(pdauth.Plain(), cmd.Resolver(s.Ungated), pdauth.PublicDefault),
 			gate.Unary(s.Policy),
