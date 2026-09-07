@@ -10,9 +10,9 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/lesomnus/mkot v0.0.0-20260801183340-9c83100aa7c2
+	github.com/lesomnus/mkot v0.0.0-20260907012347-f3fd02e2da01
 	github.com/lesomnus/mkot/mkotx v0.0.0-20260801183340-9c83100aa7c2
-	github.com/lesomnus/mkot/pretty v0.0.0-20260801183340-9c83100aa7c2
+	github.com/lesomnus/mkot/pretty v0.0.0-20260907012347-f3fd02e2da01
 	github.com/lesomnus/otx v0.0.0-20260807173743-977a5687d6ba
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20260807173743-977a5687d6ba
 	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e

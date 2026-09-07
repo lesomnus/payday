@@ -45,9 +45,9 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.10.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/lesomnus/mkot v0.0.0-20260801183340-9c83100aa7c2 // indirect
+	github.com/lesomnus/mkot v0.0.0-20260907012347-f3fd02e2da01 // indirect
 	github.com/lesomnus/mkot/mkotx v0.0.0-20260801183340-9c83100aa7c2 // indirect
-	github.com/lesomnus/mkot/pretty v0.0.0-20260801183340-9c83100aa7c2 // indirect
+	github.com/lesomnus/mkot/pretty v0.0.0-20260907012347-f3fd02e2da01 // indirect
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20260807173743-977a5687d6ba // indirect
 	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect

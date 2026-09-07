@@ -29,6 +29,16 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 		Brief: "answer requests",
 
 		Handler: xli.OnRun(func(ctx context.Context, _ *xli.Command, next xli.Next) error {
+			// Telemetry first, because everything after it logs. What
+			// `Build` answers with is a context carrying the providers, and
+			// what reads them is `grpcx` -- so a server built on a context
+			// this did not touch traces and logs into providers that discard.
+			ctx, done, err := Telemetry(ctx, c)
+			if err != nil {
+				return err
+			}
+			defer done()
+
 			s, err := cmd.Build(ctx, *c)
 			if err != nil {
 				return err
