@@ -43,11 +43,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `registry-url`, which is the one thing that has to be left out.
+      #
+      # It writes an `.npmrc` carrying `_authToken=${NODE_AUTH_TOKEN}`, and
+      # with no such secret set that resolves to an empty token -- which npm
+      # then *uses*, rather than noticing it has none and asking OIDC. What
+      # that looks like is a publish that signs its provenance happily and then
+      # answers `E401 ... your authentication token seems to be invalid`, which
+      # names the one thing this workflow does not have.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          # Writes the .npmrc that points at the registry OIDC answers for.
-          registry-url: https://registry.npmjs.org
 
       # Trusted publishing wants a recent CLI, and the runner's is older than
       # the one that speaks it.
