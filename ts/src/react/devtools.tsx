@@ -135,6 +135,21 @@ interface Kept {
 	 * have to translate it into first.
 	 */
 	asId: Record<string, string[]>
+
+	/**
+	 * Whether a timestamp is shown as UTC rather than in the viewer's zone.
+	 *
+	 * One switch and not one per column, which is what the `(id)` toggle is:
+	 * that one is per column because only an edge has two readings and which
+	 * you want differs by column. A zone is the same question about every
+	 * timestamp at once, and the answer belongs to the person rather than to
+	 * the field.
+	 *
+	 * Off by default -- the request log beside this panel is a wall clock, and
+	 * reading a row against it is what somebody is doing here. What the column
+	 * holds is UTC either way; see `config.OtelConfig` and the driver.
+	 */
+	utc: boolean
 }
 
 type Tab = 'list' | 'get' | 'store'
@@ -465,7 +480,7 @@ const at = 'payday.devtools'
  * failure mode.
  */
 function read(): Kept {
-	const zero: Kept = { open: false, height: 320, entity: '', tab: 'list', hidden: {}, diff: false, asId: {} }
+	const zero: Kept = { open: false, height: 320, entity: '', tab: 'list', hidden: {}, diff: false, asId: {}, utc: false }
 	try {
 		const v = localStorage.getItem(at)
 		if (v === null) return zero
@@ -919,6 +934,22 @@ export function Devtools(props: Props): ReactNode {
 			)}
 
 			{/*
+				A zone and not a format: what the column holds is UTC either
+				way. The log this panel sits beside is a wall clock, which is
+				why the default is the viewer's own -- and why the offset is
+				always drawn, so that a row read out of here is unambiguous.
+			*/}
+			<label style={{ color: kept.utc ? '#7db4ff' : dim, cursor: 'pointer' }}>
+				<input
+					type="checkbox"
+					style={style.box}
+					checked={kept.utc}
+					onChange={(e) => keep({ utc: e.target.checked })}
+				/>
+				utc
+			</label>
+
+			{/*
 				At the bottom, where a search box is. Over what is **on the
 				screen** -- the columns that are not turned off, as they are
 				drawn. Searching the values underneath would be a search that
@@ -1020,6 +1051,7 @@ export function Devtools(props: Props): ReactNode {
 							entity={entity}
 							hidden={kept.hidden}
 							asId={kept.asId}
+							utc={kept.utc}
 							keep={keep}
 							look={look}
 							raw={setRaw}
@@ -1038,6 +1070,7 @@ export function Devtools(props: Props): ReactNode {
 							transport={transport}
 							hidden={kept.hidden}
 							asId={kept.asId}
+							utc={kept.utc}
 							keep={keep}
 							look={look}
 							raw={setRaw}
@@ -1058,6 +1091,7 @@ export function Devtools(props: Props): ReactNode {
 							transport={transport}
 							hidden={kept.hidden}
 							asId={kept.asId}
+							utc={kept.utc}
 							keep={keep}
 							look={look}
 							raw={setRaw}
@@ -1097,6 +1131,9 @@ interface View {
 	entities: readonly EntityDesc[]
 	hidden: Record<string, string[]>
 	asId: Record<string, string[]>
+
+	/** Whether a timestamp is shown as UTC; see [Kept.utc]. */
+	utc: boolean
 	keep: (v: Partial<Kept>) => void
 	look: (typeName: string, id: string) => void
 
@@ -1676,6 +1713,7 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 					id: ids.has(f.localName),
 					to: to(f.localName),
 					names: named(f.localName) ? props.names : undefined,
+					utc: props.utc,
 				})
 
 				return wants(text) !== undefined
@@ -1850,6 +1888,7 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 												// that is not in `refs`.
 												to={to(f.localName)}
 												names={named(f.localName) ? props.names : undefined}
+												utc={props.utc}
 												hit={typeof wants === 'string' ? undefined : wants}
 												look={props.look}
 												onRaw={(v) =>
@@ -2030,6 +2069,9 @@ interface Value {
 
 	/** Where to look up what it is called, for a column showing names. */
 	names: Names | undefined
+
+	/** Whether a timestamp is shown as UTC; see [Kept.utc]. */
+	utc: boolean
 }
 
 /**
@@ -2063,12 +2105,47 @@ function shown(props: Value): string {
 	}
 
 	if (typeof v === 'object' && (v as { $typeName?: string }).$typeName === 'google.protobuf.Timestamp') {
-		return timestampDate(v as never).toISOString()
+		return when(timestampDate(v as never), props.utc)
 	}
 
 	if (typeof v === 'object') return JSON.stringify(v)
 
 	return String(v)
+}
+
+/**
+ * when is a moment on the screen.
+ *
+ * Written out rather than left to `toLocaleString`, which is a different shape
+ * per locale: a column of them is read down, and two rows only compare at a
+ * glance when every row is the same width in the same order. This is the ISO
+ * spelling with the date and the time parted by a space -- a `T` is for a wire
+ * and this is for a person -- and the offset always written, because a wall
+ * clock with no zone on it is the thing this switch exists to stop being.
+ *
+ * Milliseconds and no further: the column holds nanoseconds and a JavaScript
+ * `Date` does not, so the last six digits are gone before this is reached. The
+ * bytes are still there under `raw`.
+ */
+function when(at: Date, utc: boolean): string {
+	const p = (v: number, n = 2): string => String(v).padStart(n, '0')
+
+	if (utc) {
+		const d = `${String(at.getUTCFullYear())}-${p(at.getUTCMonth() + 1)}-${p(at.getUTCDate())}`
+		const t = `${p(at.getUTCHours())}:${p(at.getUTCMinutes())}:${p(at.getUTCSeconds())}.${p(at.getUTCMilliseconds(), 3)}`
+
+		return `${d} ${t} Z`
+	}
+
+	const d = `${String(at.getFullYear())}-${p(at.getMonth() + 1)}-${p(at.getDate())}`
+	const t = `${p(at.getHours())}:${p(at.getMinutes())}:${p(at.getSeconds())}.${p(at.getMilliseconds(), 3)}`
+
+	// `getTimezoneOffset` counts the other way round: minutes to add to local
+	// to reach UTC, so a zone ahead of UTC answers with a negative number.
+	const off = -at.getTimezoneOffset()
+	const z = `${off < 0 ? '-' : '+'}${p(Math.floor(Math.abs(off) / 60))}:${p(Math.abs(off) % 60)}`
+
+	return `${d} ${t} ${z}`
 }
 
 function Cell(
