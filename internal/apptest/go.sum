@@ -80,6 +80,10 @@ github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f h1:hIDTEG7
 github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f/go.mod h1:0sqL1bt/0v8atiVioyoJ25XQnZcn8zA9GYM1DvC4i5o=
 github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e h1:S272MwPLsKMFJ7Xl75vVixiZ6QpN9tLuJXH4Q3GsKJk=
 github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e/go.mod h1:OT2wkw6444ni+rf0+zlh9T8IQhOWy5x04ArBbqv3Lu0=
+github.com/lesomnus/sqlite3-wasm v0.0.0-20260907041449-288d2976a4a4 h1:fsLI6bNqWbJ4jY/FvbOBDmprzqe/9rtF3HC9Rx/iDGU=
+github.com/lesomnus/sqlite3-wasm v0.0.0-20260907041449-288d2976a4a4/go.mod h1:OT2wkw6444ni+rf0+zlh9T8IQhOWy5x04ArBbqv3Lu0=
+github.com/lesomnus/sqlite3-wasm v0.0.0-20260907044757-82ad585600dc h1:lTnOMCdBoGg/9xAtolXEuEnozUBZav9580B4tsQGUIE=
+github.com/lesomnus/sqlite3-wasm v0.0.0-20260907044757-82ad585600dc/go.mod h1:OT2wkw6444ni+rf0+zlh9T8IQhOWy5x04ArBbqv3Lu0=
 github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057 h1:R2XCSr97o/DRfLdUBNM3eYj9CUhTBBXWOYH2y7uP63E=
 github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057/go.mod h1:9dZNkM86FqzAsiBYaeT026Nt8PPxAyuq6RtWE4vNxSA=
 github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278 h1:dBLfXrOR8qLwZculDy8uJfNN+Q5xlyvM9CF4yylPB/0=
