@@ -9,7 +9,8 @@ architecture — the transports, the sandbox, and the layering of the store.
 - [1. Two transports, and why](#1-two-transports-and-why)
 - [2. The whole app in a page](#2-the-whole-app-in-a-page)
 - [3. The client is a replica](#3-the-client-is-a-replica)
-- [4. What is forced and what is not](#4-what-is-forced-and-what-is-not)
+- [4. A window on both halves](#4-a-window-on-both-halves)
+- [5. What is forced and what is not](#5-what-is-forced-and-what-is-not)
 
 ## 1. Two transports, and why
 
@@ -364,7 +365,51 @@ It is measured from **when this side last wrote it**, not from the server's
 `dateUpdated`. Measuring the other way discards rows that have not changed since
 2020 first — that is, the rows that never change.
 
-## 4. What is forced and what is not
+## 4. A window on both halves
+
+Two of the three things above have no reader. A sandbox's calls travel a
+message port to a Worker, so a network tab shows nothing; and the store is
+payday's own state, which no page can read from outside itself. Debugging a
+page therefore meant trusting what it drew, or writing a CLI call against the
+same database and hoping the two questions were the same one.
+
+`@lesomnus/payday/react/devtools` is the reader. [The guide](guide/client.md#8-the-panel)
+is how to mount it; what follows is why it is here rather than in each app.
+
+### Why payday ships it and an app does not
+
+Because there is nothing in it that an app knows. The entity picker is the
+generated declarations, the filters are built from the `List` request's own
+descriptor, and the rows are rendered from the field descriptors — so the same
+view is the same view for every payday app, and an app-side one would be a
+page per entity or a generic one re-deriving what `entities.ts` already says.
+The store half cannot be written outside payday at all.
+
+### It goes through the wire, not around it
+
+It holds a `Transport` and calls `List` and `Get` like anything else. It does
+not read the database, and the sandbox is exactly where that would have been
+easy — the engine is right there in the page.
+
+That restraint is what makes it worth trusting: the panel sees what a caller
+sees, including the wall. A row that is not there and a row this caller may not
+see are the same answer, which is the correct answer and an inconvenient one.
+
+`ungated` is the exception, and it is structural rather than a flag. An app
+passes a second transport reaching the ungated stack, and only a deployment
+that *has* one can — which is a sandbox, where the wall protects the page from
+itself. A served deployment has no ungated port to reach, so there is nothing
+to pass and no switch to offer. The guard is that there is nothing to turn on
+rather than a check on whether you may.
+
+### The store tab is a different question
+
+Not the same rows a moment earlier: what this browser holds, which the server
+was not asked about. That difference is the whole of what a stale-list bug is,
+and reading the two side by side is what the tab is for. See §3 — the mirror is
+a mirror, and the question is always whether it still is.
+
+## 5. What is forced and what is not
 
 **Forced: the store.** Not React. The reactive layer is a separate entry point
 whose whole job is `useSyncExternalStore` over `Queries.subscribe` — the read

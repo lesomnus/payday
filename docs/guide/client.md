@@ -344,6 +344,10 @@ the one `Store.open` was already given; the panel takes it rather than reading
 it off the store because what a picker wants is the list as the app declared
 it.
 
+[client.md §4](../client.md#4-a-window-on-both-halves) is why it is payday's
+rather than each app's, and why it asks the server rather than the database
+it is sitting on top of.
+
 `internal/apptest/ts/src/devtools-page.tsx` in this repository is a whole page
 around it — the transport, the editor, and the progress a first load needs —
 and it is what payday's own sandbox is looked at through. The four lines above
