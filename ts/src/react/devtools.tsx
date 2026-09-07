@@ -724,6 +724,21 @@ const style = {
 	// takes, and it keeps the box a real checkbox.
 	box: { accentColor: '#7db4ff', width: 13, height: 13, margin: 0, cursor: 'pointer' },
 
+	// A checkbox and the word it belongs to, which is four places in this file
+	// and was four answers -- two of them wrong the same way.
+	//
+	// `center` and not the default, which is `baseline`: a checkbox is a
+	// replaced element, so its baseline is its bottom edge, and lining that up
+	// with the text's lifts the box by however far the descenders hang. The
+	// gap is here for the same reason it is one style -- a label written
+	// without one puts the word against the box, and the next person writes a
+	// third answer.
+	//
+	// `display` is left to the caller: one of these is a flex item in a row of
+	// buttons and wants `flex`, the rest sit in a line of text and want
+	// `inline-flex`.
+	check: { alignItems: 'center', gap: 4, cursor: 'pointer' },
+
 	// One glyph wide, and square, so three of them read as a set of switches
 	// rather than as three more buttons in a row of buttons.
 	chip: {
@@ -922,7 +937,7 @@ export function Devtools(props: Props): ReactNode {
 	const foot = (
 		<div style={style.foot}>
 			{props.ungated !== undefined && (
-				<label style={{ color: ungated ? '#ffb86b' : dim, cursor: 'pointer' }}>
+				<label style={{ ...style.check, display: 'inline-flex', color: ungated ? '#ffb86b' : dim }}>
 					<input
 						type="checkbox"
 						style={style.box}
@@ -939,7 +954,7 @@ export function Devtools(props: Props): ReactNode {
 				why the default is the viewer's own -- and why the offset is
 				always drawn, so that a row read out of here is unambiguous.
 			*/}
-			<label style={{ color: kept.utc ? '#7db4ff' : dim, cursor: 'pointer' }}>
+			<label style={{ ...style.check, display: 'inline-flex', color: kept.utc ? '#7db4ff' : dim }}>
 				<input
 					type="checkbox"
 					style={style.box}
@@ -1555,9 +1570,8 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 								<label
 									style={{
 										...style.press,
+										...style.check,
 										display: 'flex',
-										alignItems: 'center',
-										gap: 4,
 										color: props.diff ? '#ffb86b' : dim,
 									}}
 								>
@@ -2009,15 +2023,7 @@ function Head(props: {
 	// a span is opting out of it for nothing.
 	return (
 		<>
-			{/*
-			 * `center` and not `baseline`, which is what this was and what sat
-			 * the box 2.5px above the word beside it. A checkbox is a replaced
-			 * element, so its baseline is its bottom edge: lining that up with
-			 * the text's baseline lifts the box by however far the descenders
-			 * hang. Nothing here needs a shared baseline anyway -- the row is a
-			 * box and a word, and centring is what makes them read as one.
-			 */}
-			<label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', cursor: 'pointer' }} {...bind}>
+			<label style={{ ...style.check, display: 'inline-flex' }} {...bind}>
 				<input
 					type="checkbox"
 					style={style.box}
