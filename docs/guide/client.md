@@ -395,9 +395,32 @@ payday does not depend on it and cannot: fifteen megabytes into every app that
 mounts the panel, and web-worker URLs that only your bundler can write. Set
 `MonacoEnvironment` yourself — without the JSON worker there is no language
 service, and the editor still edits, which is the confusing half of getting it
-wrong. `devtools-page.tsx` shows the four lines.
+wrong. `devtools-page.tsx` shows where it goes.
 
 Without it the panel is whole: the same document, coloured, read-only.
+
+**Fetch it rather than import it.** Monaco is four megabytes and the first
+thing anybody does in the panel is read a list, which needs none of it. At the
+top of the module it is in the entry chunk, so nothing renders until all of it
+has arrived; asked for after the page is up, the table is on the screen and
+interactive while the editor is still coming. The panel takes `monaco` whenever
+it turns up — a `Get` opened before it lands is the read-only document above,
+and becomes editable when it does.
+
+```ts
+const [edit, setEdit] = useState<MonacoLike>()
+useEffect(() => {
+	void editor().then(setEdit)   // the dynamic import, and MonacoEnvironment inside it
+}, [])
+
+<Devtools entities={entities} {...(edit === undefined ? {} : { monaco: edit })} />
+```
+
+Measured on this repository's own page: the entry chunk is 484 kB where it was
+4,354 kB, and 146 kB gzipped where it was 1,133. `devtools-page.tsx` is the
+whole of it, including where `MonacoEnvironment` has to go — beside the import
+that will ask for a worker, which is the only ordering that guarantees it is set
+first.
 
 Saving sends a `Patch` of the fields that **changed** and that the document
 actually carries. Deleting a line is not how a value is cleared — the `_null`

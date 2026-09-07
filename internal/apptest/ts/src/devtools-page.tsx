@@ -17,11 +17,8 @@ import { createRoot } from 'react-dom/client'
 import { Queries } from '@lesomnus/payday/query'
 import { Provider, type App } from '@lesomnus/payday/react'
 import type { Load } from '@lesomnus/payday/sandbox'
-import { Devtools } from '@lesomnus/payday/react/devtools'
+import { Devtools, type MonacoLike } from '@lesomnus/payday/react/devtools'
 
-import * as monaco from 'monaco-editor'
-import jsonWorker from 'monaco-editor/language/json/json.worker?worker'
-import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 import { Store } from '@lesomnus/payday/store'
 
 import { entities } from '../gen/entities.js'
@@ -41,34 +38,74 @@ let once: Promise<App> | undefined
 /** watching is whoever is drawing the wait, for the same reason `once` exists. */
 const watching = new Set<(v: Load) => void>()
 
-/**
- * Where Monaco finds its workers, which is the app's to say and not payday's.
- *
- * `?worker` is vite's, and that is the whole reason this is here: the URL of a
- * bundled worker is something only the bundler that produced it knows. Without
- * the JSON one there is no completion and no validation -- the language
- * service is that worker -- and the editor still edits, which is the confusing
- * half of getting it wrong.
- */
-;(self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
-	getWorker(_id: string, label: string) {
-		return label === 'json' ? new jsonWorker() : new editorWorker()
-	},
-}
+/** editing is monaco, fetched once, for as long as this page is open. */
+let editing: Promise<MonacoLike> | undefined
 
 /**
- * The four things payday asks of monaco, as one value.
+ * editor is the four things payday asks of monaco, fetched rather than
+ * imported.
  *
- * At module scope rather than written inline in the element, which is not a
- * style: an object literal in JSX is a new object on every render, and the
- * panel builds the editor from it.
+ * Monaco is four megabytes and this page is a table. Imported at the top it is
+ * in the entry chunk, so nothing renders until all of it has arrived -- and the
+ * first thing anybody does here is read a list, which needs none of it. Asked
+ * for after the page is up, the table is on the screen and interactive while
+ * the editor is still coming, and a `Get` opened before it lands is the
+ * read-only document the panel draws without one.
+ *
+ * `MonacoEnvironment` is set in here for the same reason it exists at all: the
+ * URL of a bundled worker is something only the bundler that produced it knows,
+ * and `?worker` is vite's way of saying so. It has to be set before monaco asks
+ * for a worker, and the only ordering that guarantees is this one -- beside the
+ * import that will do the asking. Without the JSON one there is no completion
+ * and no validation, and the editor still edits, which is the confusing half of
+ * getting it wrong.
+ *
+ * Module state and not a hook, for the reason `once` is: StrictMode runs an
+ * effect twice, and two of these is two copies of four megabytes.
  */
-const editor = { editor: monaco.editor, Uri: monaco.Uri, json: monaco.json.jsonDefaults }
+function editor(): Promise<MonacoLike> {
+	editing ??= (async () => {
+		const [monaco, json, plain] = await Promise.all([
+			import('monaco-editor'),
+			import('monaco-editor/language/json/json.worker?worker'),
+			import('monaco-editor/editor/editor.worker?worker'),
+		])
+
+		;(self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
+			getWorker(_id: string, label: string) {
+				return label === 'json' ? new json.default() : new plain.default()
+			},
+		}
+
+		return { editor: monaco.editor, Uri: monaco.Uri, json: monaco.json.jsonDefaults }
+	})()
+
+	return editing
+}
 
 function Page(): React.ReactNode {
 	const [app, setApp] = useState<App>()
 	const [err, setErr] = useState<string>()
 	const [got, setGot] = useState<Load>()
+	const [edit, setEdit] = useState<MonacoLike>()
+
+	// Started here rather than at the top of the module, so that it is fetched
+	// beside the page instead of before it. Nothing waits on it: the panel is
+	// whole without one -- a `Get` is the same document, read-only -- and it
+	// becomes editable when this lands.
+	useEffect(() => {
+		let alive = true
+		editor().then(
+			(v) => {
+				if (alive) setEdit(v)
+			},
+			(e: unknown) => console.error('monaco:', e),
+		)
+
+		return () => {
+			alive = false
+		}
+	}, [])
 
 	useEffect(() => {
 		// Subscribed to rather than passed in, because the boot is module state
@@ -94,7 +131,7 @@ function Page(): React.ReactNode {
 			</p>
 			{app === undefined ? <Starting got={got} /> : (
 				<Provider app={app}>
-					<Devtools entities={entities} monaco={editor} />
+					<Devtools entities={entities} {...(edit === undefined ? {} : { monaco: edit })} />
 				</Provider>
 			)}
 		</main>
