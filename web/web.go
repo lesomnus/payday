@@ -98,8 +98,8 @@ func New(c config.HttpConfig, s *grpc.Server) (*Mux, error) {
 	}
 
 	// The transcoder in **front** of the mux rather than mounted in it, and
-	// chosen by what the request says it is rather than by where it is
-	// addressed. See [Rpc].
+	// reached by a request that both says it is a call and is addressed to a
+	// service this server has. See [dispatch].
 	var h http.Handler = mux
 	if c.AllowWeb {
 		t, err := Transcode(s)
@@ -107,7 +107,7 @@ func New(c config.HttpConfig, s *grpc.Server) (*Mux, error) {
 			return nil, err
 		}
 
-		h = dispatch(t, mux)
+		h = dispatch(t, mux, s.GetServiceInfo())
 	}
 
 	return &Mux{ServeMux: mux, h: Cors(c.Origin(), h)}, nil
@@ -115,13 +115,32 @@ func New(c config.HttpConfig, s *grpc.Server) (*Mux, error) {
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) { m.h.ServeHTTP(w, r) }
 
-// dispatch is the transcoder for a request that declares itself one, and the
-// app for everything else.
+// dispatch is the transcoder for a request that is a call **and** is addressed
+// to a service on this server, and the app for everything else.
 //
-// Preflights do not reach it: [Cors] answers `OPTIONS` itself, above.
-func dispatch(rpc http.Handler, app http.Handler) http.Handler {
+// # Why both
+//
+// Because each alone gets one case wrong, and they are not the same case.
+//
+// The address alone cannot tell a call from a navigation. A page's route that
+// looks like a gRPC address -- a first segment with a dot in it -- is taken for
+// a call and the page does not load; and the rule that says that will not
+// happen is a rule about the app's routes rather than about the request, which
+// is unwritten and silent when it stops being true.
+//
+// What the request says alone cannot tell a call from an app's own endpoint. A
+// listener serving `POST /session` beside its Rpcs -- roster's control plane
+// does -- loses it the moment a client sends `Connect-Protocol-Version` with
+// it, which is what somebody writing a client by hand does after reading that
+// this is how you call the thing.
+//
+// Together there is nothing left over: a navigation never declares itself, and
+// an app's route is not a service name.
+//
+// Preflights do not reach here at all: [Cors] answers `OPTIONS` itself, above.
+func dispatch(rpc http.Handler, app http.Handler, at map[string]grpc.ServiceInfo) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if Rpc(r) {
+		if Rpc(r) && addressed(at, r.URL.Path) {
 			rpc.ServeHTTP(w, r)
 
 			return
@@ -131,28 +150,33 @@ func dispatch(rpc http.Handler, app http.Handler) http.Handler {
 	})
 }
 
+// addressed is whether the path names a service this server has.
+//
+// A gRPC address is `/<package>.<Service>/<Method>`, so the first segment is
+// the whole of the question and the names are known exactly. This is a lookup
+// and not a guess about shape.
+func addressed(at map[string]grpc.ServiceInfo, path string) bool {
+	name, _, ok := strings.Cut(strings.TrimPrefix(path, "/"), "/")
+	if !ok {
+		return false
+	}
+	_, ok = at[name]
+
+	return ok
+}
+
 // Rpc is whether this request is one of the protocols the transcoder speaks.
 //
-// # Why not the path
+// It is half of what [dispatch] asks, and the half that tells a call from a
+// **navigation**: a browser typing an address sends none of this, so a page may
+// route on whatever it likes and `/foo.bar/baz` is a page's to use. The other
+// half is where it is addressed.
 //
-// Because the path is only half a rule. A gRPC address is
-// `/<package>.<Service>/<Method>`, so the RPC half can be matched exactly --
-// the names are known -- but the other half is "everything else", and that is
-// an assumption about the app's own routes rather than a fact about the
-// request. It holds because a service name has a dot in it and a page's routes
-// do not, which is true, unwritten, and silent when it stops being true: the
-// service wins and the page does not load.
-//
-// What the request says about itself has no such half. A browser navigating
-// never sends any of this, so a page may route on whatever it likes -- and
-// `/foo.bar/baz` is a page's to use.
-//
-// # What it costs
-//
-// A call that does not declare itself gets the app, which for a page-serving
-// listener is HTML where JSON was wanted. That is `curl` by hand, and it is a
-// person reading the answer rather than a client misbehaving: every generated
-// client sends one of these, because the protocols require it.
+// What it costs is that a call declaring nothing is not one. A `curl` by hand
+// at a service address gets the app, which for a page-serving listener is HTML
+// where JSON was wanted -- a person reading the answer rather than a client
+// misbehaving, since every generated client sends one of these because the
+// protocols require it.
 func Rpc(r *http.Request) bool {
 	// gRPC, gRPC-Web and gRPC-Web-Text all begin `application/grpc`, and
 	// Connect's streaming media type is its own.
