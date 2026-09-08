@@ -389,3 +389,50 @@ func TestACallThatSaysNothingGetsTheApp(t *testing.T) {
 
 	x.Equal(http.StatusTeapot, res.StatusCode)
 }
+
+// TestAnAppsOwnRouteIsNotACallHoweverItIsAsked is the other half of the
+// conjunction, and the one a header alone gets wrong.
+//
+// A listener that serves `POST /session` beside its Rpcs -- roster's control
+// plane does -- loses it the moment a client sends `Connect-Protocol-Version`
+// with it, which is what somebody writing a client by hand does after reading
+// that this is how you call the thing. The address is what says it is not a
+// call: `session` is not a service on this server.
+func TestAnAppsOwnRouteIsNotACallHoweverItIsAsked(t *testing.T) {
+	x := require.New(t)
+
+	g := grpc.NewServer()
+	healthpb.RegisterHealthServer(g, health.NewServer())
+
+	m, err := web.New(config.HttpConfig{AllowWeb: true}, g)
+	x.NoError(err)
+
+	m.Handle("POST /session", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	s := httptest.NewServer(m)
+	defer s.Close()
+
+	for _, tc := range []struct {
+		name string
+		with func(*http.Request)
+	}{
+		{"plain", func(*http.Request) {}},
+		{"with the connect header", func(r *http.Request) { r.Header.Set("Connect-Protocol-Version", "1") }},
+		{"with a grpc-web content type", func(r *http.Request) { r.Header.Set("Content-Type", "application/grpc-web+proto") }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r, err := http.NewRequest(http.MethodPost, s.URL+"/session", strings.NewReader(`{}`))
+			require.NoError(t, err)
+			r.Header.Set("Content-Type", "application/json")
+			tc.with(r)
+
+			res, err := http.DefaultClient.Do(r)
+			require.NoError(t, err)
+			defer res.Body.Close()
+
+			require.Equal(t, http.StatusNoContent, res.StatusCode, "the transcoder took the app's route")
+		})
+	}
+}
