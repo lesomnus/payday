@@ -57,6 +57,11 @@ import (
 // it owns here is the two things an app gets wrong by leaving them out, which
 // are the transcoder's options and the cross-origin answer.
 //
+// **Every route on it is the app's, `/` included.** The transcoder is in front
+// rather than mounted among them, and a request reaches it by saying what it is
+// rather than by where it is addressed -- so a page may route on anything at
+// all, and route on it at the root. See [Rpc].
+//
 // # Why the CORS is on the whole mux
 //
 // It used to be on the transcoder alone, and that is the arrangement where an
@@ -83,34 +88,6 @@ type Mux struct {
 func New(c config.HttpConfig, s *grpc.Server) (*Mux, error) {
 	mux := http.NewServeMux()
 
-	if c.AllowWeb {
-		h, err := Transcode(s)
-		if err != nil {
-			return nil, err
-		}
-
-		// Under each service's own prefix, and **not** at `/`.
-		//
-		// `/` in a `ServeMux` is the catch-all, so mounting the transcoder
-		// there claimed every path on this listener -- including every path it
-		// can never answer. A gRPC path is `/<service>/<method>` and nothing
-		// else is one, so what it was claiming was the app's: an app could add
-		// a route beside it, because that pattern is more specific, and could
-		// not have `/` itself, because that one is taken and a `ServeMux`
-		// panics on a second.
-		//
-		// Which is a page. A person who types the host and no path gets the
-		// front door of whatever is there, and on a listener that serves a UI
-		// that is the UI. It could not be, and nothing said why -- the app was
-		// left to mount its page under a prefix and to write down that it had
-		// to.
-		//
-		// The names are the ones [Transcode] is built from, so the two cannot
-		// disagree about what is routed.
-		for _, name := range slices.Sorted(maps.Keys(s.GetServiceInfo())) {
-			mux.Handle("/"+name+"/", h)
-		}
-	}
 	if c.AllowPprof {
 		// One by one rather than by prefix, because `pprof.Index` serves the
 		// named profiles itself and the three below are separate handlers.
@@ -120,10 +97,86 @@ func New(c config.HttpConfig, s *grpc.Server) (*Mux, error) {
 		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 	}
 
-	return &Mux{ServeMux: mux, h: Cors(c.Origin(), mux)}, nil
+	// The transcoder in **front** of the mux rather than mounted in it, and
+	// chosen by what the request says it is rather than by where it is
+	// addressed. See [Rpc].
+	var h http.Handler = mux
+	if c.AllowWeb {
+		t, err := Transcode(s)
+		if err != nil {
+			return nil, err
+		}
+
+		h = dispatch(t, mux)
+	}
+
+	return &Mux{ServeMux: mux, h: Cors(c.Origin(), h)}, nil
 }
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) { m.h.ServeHTTP(w, r) }
+
+// dispatch is the transcoder for a request that declares itself one, and the
+// app for everything else.
+//
+// Preflights do not reach it: [Cors] answers `OPTIONS` itself, above.
+func dispatch(rpc http.Handler, app http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if Rpc(r) {
+			rpc.ServeHTTP(w, r)
+
+			return
+		}
+
+		app.ServeHTTP(w, r)
+	})
+}
+
+// Rpc is whether this request is one of the protocols the transcoder speaks.
+//
+// # Why not the path
+//
+// Because the path is only half a rule. A gRPC address is
+// `/<package>.<Service>/<Method>`, so the RPC half can be matched exactly --
+// the names are known -- but the other half is "everything else", and that is
+// an assumption about the app's own routes rather than a fact about the
+// request. It holds because a service name has a dot in it and a page's routes
+// do not, which is true, unwritten, and silent when it stops being true: the
+// service wins and the page does not load.
+//
+// What the request says about itself has no such half. A browser navigating
+// never sends any of this, so a page may route on whatever it likes -- and
+// `/foo.bar/baz` is a page's to use.
+//
+// # What it costs
+//
+// A call that does not declare itself gets the app, which for a page-serving
+// listener is HTML where JSON was wanted. That is `curl` by hand, and it is a
+// person reading the answer rather than a client misbehaving: every generated
+// client sends one of these, because the protocols require it.
+func Rpc(r *http.Request) bool {
+	// gRPC, gRPC-Web and gRPC-Web-Text all begin `application/grpc`, and
+	// Connect's streaming media type is its own.
+	ct := r.Header.Get("Content-Type")
+	if strings.HasPrefix(ct, "application/grpc") || strings.HasPrefix(ct, "application/connect+") {
+		return true
+	}
+
+	// Connect unary is ordinary JSON or protobuf -- deliberately, so that a
+	// call can be made with anything that speaks HTTP -- so it is this header
+	// that says which it is.
+	if r.Header.Get("Connect-Protocol-Version") != "" {
+		return true
+	}
+
+	// And a Connect GET has no body to describe, so it says the same thing in
+	// the query instead. Missing this reads as "the idempotent methods are the
+	// broken ones", which is a long way from the cause.
+	if r.Method == http.MethodGet && r.URL.Query().Get("connect") != "" {
+		return true
+	}
+
+	return false
+}
 
 // Transcode is every service registered on `s`, answering the protocols a
 // browser can speak.

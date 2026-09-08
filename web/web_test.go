@@ -256,3 +256,136 @@ func TestNothingIsServedWhereNothingWasMounted(t *testing.T) {
 
 	x.Equal(http.StatusNotFound, res.StatusCode)
 }
+
+// TestAPageMayRouteOnAnythingIncludingAServiceName is what routing by the
+// request rather than by the path buys, and it is the case the path could not
+// do.
+//
+// A page's route that is shaped like a gRPC address -- first segment with a dot
+// in it -- used to be swallowed by the transcoder, silently, because "not a
+// known service" was how a page's routes were recognised. Nothing declares
+// itself an RPC here, so nothing is one.
+func TestAPageMayRouteOnAnythingIncludingAServiceName(t *testing.T) {
+	x := require.New(t)
+
+	g := grpc.NewServer()
+	healthpb.RegisterHealthServer(g, health.NewServer())
+
+	m, err := web.New(config.HttpConfig{AllowWeb: true}, g)
+	x.NoError(err)
+
+	m.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	}))
+
+	s := httptest.NewServer(m)
+	defer s.Close()
+
+	for _, at := range []string{
+		"/",
+		"/customers/@contoso/people",
+		"/foo.bar/baz",
+
+		// The name of a service that is actually on this server, navigated to.
+		// A browser address bar can produce this and it is still not a call.
+		"/grpc.health.v1.Health/Check",
+	} {
+		res, err := http.Get(s.URL + at) //nolint:noctx // a test
+		x.NoError(err)
+		res.Body.Close()
+		x.Equal(http.StatusTeapot, res.StatusCode, "%s did not reach the app", at)
+	}
+}
+
+// TestEveryProtocolSaysWhatItIs is the other side: each of the four ways a
+// generated client announces itself reaches the transcoder.
+//
+// Four and not one because they are four separate reads of the request, and a
+// missed one fails for a subset of calls -- "the idempotent methods are the
+// broken ones" being the least findable of them.
+func TestEveryProtocolSaysWhatItIs(t *testing.T) {
+	x := require.New(t)
+
+	g := grpc.NewServer()
+	healthpb.RegisterHealthServer(g, health.NewServer())
+
+	m, err := web.New(config.HttpConfig{AllowWeb: true}, g)
+	x.NoError(err)
+
+	// The app answers a teapot, so anything that is not one reached the
+	// transcoder -- whatever it then made of the body.
+	m.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	}))
+
+	s := httptest.NewServer(m)
+	defer s.Close()
+
+	at := s.URL + "/grpc.health.v1.Health/Check"
+	for _, tc := range []struct {
+		name string
+		req  func() *http.Request
+	}{
+		{"connect unary", func() *http.Request {
+			r, _ := http.NewRequest(http.MethodPost, at, strings.NewReader(`{}`))
+			r.Header.Set("Content-Type", "application/json")
+			r.Header.Set("Connect-Protocol-Version", "1")
+
+			return r
+		}},
+		{"connect streaming", func() *http.Request {
+			r, _ := http.NewRequest(http.MethodPost, at, strings.NewReader(``))
+			r.Header.Set("Content-Type", "application/connect+json")
+
+			return r
+		}},
+		{"grpc-web", func() *http.Request {
+			r, _ := http.NewRequest(http.MethodPost, at, strings.NewReader(``))
+			r.Header.Set("Content-Type", "application/grpc-web+proto")
+
+			return r
+		}},
+		{"connect get", func() *http.Request {
+			r, _ := http.NewRequest(http.MethodGet, at+"?connect=v1&encoding=json&message=%7B%7D", nil)
+
+			return r
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := http.DefaultClient.Do(tc.req())
+			require.NoError(t, err)
+			defer res.Body.Close()
+
+			require.NotEqual(t, http.StatusTeapot, res.StatusCode, "this reached the app instead of the transcoder")
+		})
+	}
+}
+
+// TestACallThatSaysNothingGetsTheApp is the cost, written down.
+//
+// A `curl` with no headers at a service address gets the page, not an error
+// about the procedure. It is the one thing routing by the path did better, and
+// it is a person reading an answer rather than a client misbehaving: every
+// generated client sends one of the four above, because the protocols say so.
+func TestACallThatSaysNothingGetsTheApp(t *testing.T) {
+	x := require.New(t)
+
+	g := grpc.NewServer()
+	healthpb.RegisterHealthServer(g, health.NewServer())
+
+	m, err := web.New(config.HttpConfig{AllowWeb: true}, g)
+	x.NoError(err)
+
+	m.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	}))
+
+	s := httptest.NewServer(m)
+	defer s.Close()
+
+	res, err := http.Post(s.URL+"/grpc.health.v1.Health/Check", "application/json", strings.NewReader(`{}`)) //nolint:noctx // a test
+	x.NoError(err)
+	defer res.Body.Close()
+
+	x.Equal(http.StatusTeapot, res.StatusCode)
+}
