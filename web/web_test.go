@@ -168,8 +168,7 @@ func TestAnOriginNobodyNamedGetsNothing(t *testing.T) {
 // TestAnAppMountsItsOwnRoutes, which is where a sign-in endpoint goes.
 //
 // A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide
-// with one -- and this asserts the transcoder mounted at `/` does not swallow
-// it.
+// with one -- and this asserts the transcoder does not swallow it.
 func TestAnAppMountsItsOwnRoutes(t *testing.T) {
 	x := require.New(t)
 
@@ -191,4 +190,69 @@ func TestAnAppMountsItsOwnRoutes(t *testing.T) {
 	defer res.Body.Close()
 
 	x.Equal(http.StatusNoContent, res.StatusCode)
+}
+
+// TestTheRootIsTheApps is the half of the line above that used to be false.
+//
+// `/` is not a gRPC path and never will be, so the transcoder has no answer for
+// it -- and it was mounted there anyway, as the catch-all, which meant an app
+// could not put a page at the address a person types. Two things are asserted
+// because either alone reads as the other rule: the app's root is reached, and
+// a path that is neither is a plain 404 rather than a transcoder's refusal.
+func TestTheRootIsTheApps(t *testing.T) {
+	x := require.New(t)
+
+	g := grpc.NewServer()
+	healthpb.RegisterHealthServer(g, health.NewServer())
+
+	m, err := web.New(config.HttpConfig{AllowWeb: true}, g)
+	x.NoError(err)
+
+	m.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	}))
+
+	s := httptest.NewServer(m)
+	defer s.Close()
+
+	for _, at := range []string{"/", "/index.html", "/assets/main.js"} {
+		res, err := http.Get(s.URL + at) //nolint:noctx // a test
+		x.NoError(err)
+		res.Body.Close()
+		x.Equal(http.StatusTeapot, res.StatusCode, "%s did not reach the app", at)
+	}
+
+	// And the service is still where a client looks for it.
+	r, err := http.NewRequest(http.MethodPost,
+		s.URL+"/grpc.health.v1.Health/Check", strings.NewReader(`{}`))
+	x.NoError(err)
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Connect-Protocol-Version", "1")
+
+	res, err := http.DefaultClient.Do(r)
+	x.NoError(err)
+	defer res.Body.Close()
+	x.Equal(http.StatusOK, res.StatusCode, "the transcoder is not answering for its own service")
+}
+
+// TestNothingIsServedWhereNothingWasMounted is the other half: a listener with
+// no app routes answers 404 for a page, rather than the transcoder's idea of
+// what a missing procedure is.
+func TestNothingIsServedWhereNothingWasMounted(t *testing.T) {
+	x := require.New(t)
+
+	g := grpc.NewServer()
+	healthpb.RegisterHealthServer(g, health.NewServer())
+
+	m, err := web.New(config.HttpConfig{AllowWeb: true}, g)
+	x.NoError(err)
+
+	s := httptest.NewServer(m)
+	defer s.Close()
+
+	res, err := http.Get(s.URL + "/") //nolint:noctx // a test
+	x.NoError(err)
+	defer res.Body.Close()
+
+	x.Equal(http.StatusNotFound, res.StatusCode)
 }
