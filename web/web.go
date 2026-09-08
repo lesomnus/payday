@@ -89,7 +89,27 @@ func New(c config.HttpConfig, s *grpc.Server) (*Mux, error) {
 			return nil, err
 		}
 
-		mux.Handle("/", h)
+		// Under each service's own prefix, and **not** at `/`.
+		//
+		// `/` in a `ServeMux` is the catch-all, so mounting the transcoder
+		// there claimed every path on this listener -- including every path it
+		// can never answer. A gRPC path is `/<service>/<method>` and nothing
+		// else is one, so what it was claiming was the app's: an app could add
+		// a route beside it, because that pattern is more specific, and could
+		// not have `/` itself, because that one is taken and a `ServeMux`
+		// panics on a second.
+		//
+		// Which is a page. A person who types the host and no path gets the
+		// front door of whatever is there, and on a listener that serves a UI
+		// that is the UI. It could not be, and nothing said why -- the app was
+		// left to mount its page under a prefix and to write down that it had
+		// to.
+		//
+		// The names are the ones [Transcode] is built from, so the two cannot
+		// disagree about what is routed.
+		for _, name := range slices.Sorted(maps.Keys(s.GetServiceInfo())) {
+			mux.Handle("/"+name+"/", h)
+		}
 	}
 	if c.AllowPprof {
 		// One by one rather than by prefix, because `pprof.Index` serves the
