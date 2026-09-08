@@ -258,6 +258,88 @@ column: on the wire one `Add` takes 40ms and the answer to what was slow is
 `Add`, while beneath the gate the tenant read and the write it guards are two
 lines with their own method names.
 
+### More than one layer, and which one a caller enters at
+
+Two things about the stack are easy to miss for a long time, and both turn a
+"payday cannot do that" into a few lines.
+
+#### A layer changes what a call *means*
+
+A layer does not only guard a call. It takes the request it was given and calls
+`Next()` with a **different one**, so a field can mean one thing where a caller
+reaches it and another by the time the row is written.
+
+```go
+func (s coreCredential) Set(ctx context.Context, req *api.CredentialSetRequest) (*api.CredentialSetResponse, error) {
+	sum, err := hash(req.GetSecret())   // the caller sent a password as typed
+	if err != nil {
+		return nil, err
+	}
+
+	return s.Next().Credential().Add(ctx, api.CredentialAddRequest_builder{
+		Holder: req.GetRef(),
+		Secret: sum,                     // the row stores a hash
+	}.Build())
+}
+```
+
+Nothing generated changed and no Rpc was added. So *the generated verb takes the
+wrong thing* is not a wall — it takes what your layer hands it, and the
+conversion is the work. The same reading covers *there is no field for it*: the
+message is yours to extend in `proto/ext/`, which is a field number and
+`pd gen`.
+
+#### A rule that must hold for one caller and not another
+
+`app.Build` takes a list, so an app has as many layers of its own as it has
+reasons for. The reason that comes up is this one: a rule is right for callers
+and wrong for one internal caller that has to do the opposite.
+
+Written as a branch inside the one layer, it closes both. Written as a **link of
+its own**, the other caller is handed the stack from below it:
+
+```go
+// What a caller reaches: every rule.
+stacked, _ := app.Build(sink.WithWatch(w), core.Build(rules), core.SelfBuild(), pd.AuditBuild(), pd.GateBuild())
+
+// The same stack without that one link, for the one server whose job is the
+// opposite. Never handed to anything a caller can reach.
+operable, _ := app.Build(sink.WithWatch(w), core.Build(rules), pd.AuditBuild(), pd.GateBuild())
+```
+
+A worked example, from roster. `Credential.Set` did two jobs — a person changing
+the password they hold, and an operator giving somebody one they did not choose
+— and the second is `Vouch.Reset`'s. Making `Set` refuse anybody else's row
+would have closed `Reset` too, because `Reset` writes **through** `Set`.
+
+So the "your own row" rule became one link, and the vouch server was handed
+`operable`. Everything else — the hashing, the leaked-password check, the rule
+about writing somebody wider than you — is in the layers under both doors, so
+neither skips them and neither has a copy.
+
+The general shape:
+
+> A rule that must hold for one caller and not another is a rule in a layer the
+> other one does not enter.
+
+The same seam answers *this rule should not apply on the control plane*: the two
+planes are two stacks built in `cmd/serve.go`, and they need not be built from
+the same list.
+
+#### What is actually fixed
+
+Three things, and they have reasons written where they are decided rather than
+being conventions:
+
+- **The wall** is a predicate in the innermost server. There is no layer above
+  it that can turn it off, and that is the point of it being there.
+- **The trail** is written inside the transaction that makes the write, so it
+  cannot be a layer that forgets.
+- **The generated `Gate`** is rewritten by `pd gen`. Put your authorization in
+  front of it or in the `gate.Policy` you inject, never in it.
+
+Everything else in the stack is yours, including where each caller enters it.
+
 ## 4. The interceptors
 
 The chain is built in `cmd/serve.go` and the order is readable there:
