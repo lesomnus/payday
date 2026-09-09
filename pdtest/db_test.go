@@ -82,3 +82,29 @@ func TestNth(t *testing.T) {
 	// Per name, not global: another test's first database is still its first.
 	x.Equal(0, nth(name+"/another"))
 }
+
+// TestSchemaNameKeepsTheCounter, which is what a long test name took away.
+//
+// The counter used to be part of what was truncated, so a test whose name was
+// already at the limit got one schema for both its databases -- and the second
+// `DROP SCHEMA` took the first one's tables, which is the bug the counter
+// exists to prevent, back for exactly the tests most likely to hit it. An
+// integration test that stands two apps up has a long name because it says what
+// it does.
+func TestSchemaNameKeepsTheCounter(t *testing.T) {
+	x := require.New(t)
+
+	short := "TestShort"
+	x.Equal("t_testshort", schemaName(short, 0))
+	x.Equal("t_testshort_1", schemaName(short, 1))
+
+	// Long enough that the whole of it does not fit, which is where this went
+	// wrong: both calls truncated to the same thing.
+	long := strings.Repeat("a", 80)
+	first, second := schemaName(long, 0), schemaName(long, 1)
+
+	x.Len(first, 63, "a name at the limit is the limit")
+	x.Len(second, 63)
+	x.NotEqual(first, second, "two databases of one test got one schema")
+	x.True(strings.HasSuffix(second, "_1"), "the counter was truncated away")
+}

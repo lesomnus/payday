@@ -100,22 +100,19 @@ func pgSchema(tb testing.TB, dsn string) string {
 	}
 	defer db.Close()
 
-	name := schemaName(tb.Name())
-	if n := nth(tb.Name()); n > 0 {
-		// A second database in one test is a second database.
-		//
-		// Two apps in one process is the case: an integration test that stands
-		// one app up and points another at it calls this twice, and without
-		// this both got one schema -- so the second call's `DROP SCHEMA`
-		// removed the first app's tables and every later read found nothing.
-		// It passed on SQLite, where each call is its own file, which is
-		// exactly the direction that hides a mistake.
-		//
-		// Counted rather than named by the caller, so that no existing test has
-		// to say anything. Nothing could have wanted the old behaviour: a
-		// second call always dropped what the first had made.
-		name = schemaName(fmt.Sprintf("%s_%d", tb.Name(), n))
-	}
+	// A second database in one test is a second database.
+	//
+	// Two apps in one process is the case: an integration test that stands one
+	// app up and points another at it calls this twice, and without this both
+	// got one schema -- so the second call's `DROP SCHEMA` removed the first
+	// app's tables and every later read found nothing. It passed on SQLite,
+	// where each call is its own file, which is exactly the direction that
+	// hides a mistake.
+	//
+	// Counted rather than named by the caller, so that no existing test has to
+	// say anything. Nothing could have wanted the old behaviour: a second call
+	// always dropped what the first had made.
+	name := schemaName(tb.Name(), nth(tb.Name()))
 	if _, err := db.Exec(fmt.Sprintf(`DROP SCHEMA IF EXISTS %q CASCADE`, name)); err != nil {
 		tb.Fatalf("drop schema %s: %v", name, err)
 	}
@@ -150,13 +147,29 @@ func pgSchema(tb testing.TB, dsn string) string {
 	return u.String()
 }
 
-// schemaName is a test's name as an identifier PostgreSQL will take.
+// schemaName is a test's name, and which of its databases this is, as an
+// identifier PostgreSQL will take.
 //
 // Truncated to 63 bytes, which is its limit -- silently, if nobody does it
 // here: a longer name is cut by the server and two tests whose names agree for
 // the first 63 characters would then share a schema and each drop the other's
 // tables.
-func schemaName(v string) string {
+//
+// # The counter is appended after the truncation, and has to be
+//
+// It used to be part of what was truncated -- `schemaName(name + "_1")` -- and
+// that put back the very bug the counter exists to fix, for any test whose name
+// is already at the limit: both calls truncate to the same 63 characters, so an
+// app and the second app beside it get one schema and the second `DROP` takes
+// the first one's tables. It came back as `Role already exists` in an app
+// standing up two planes from one test whose name ran long, which is a message
+// about the app and not about here.
+//
+// So the room is reserved: the name gives way to the counter rather than the
+// other way round. Two tests whose names agree that far still collide, and that
+// is the limit doing what it does; two **databases of one test** cannot, which
+// is what this decides.
+func schemaName(v string, n int) string {
 	v = strings.Map(func(r rune) rune {
 		switch {
 		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '_':
@@ -169,11 +182,16 @@ func schemaName(v string) string {
 	}, v)
 
 	v = "t_" + v
-	if len(v) > 63 {
-		v = v[:63]
+
+	nth := ""
+	if n > 0 {
+		nth = fmt.Sprintf("_%d", n)
+	}
+	if len(v)+len(nth) > 63 {
+		v = v[:63-len(nth)]
 	}
 
-	return v
+	return v + nth
 }
 
 // nth is how many databases this test has already been given.
