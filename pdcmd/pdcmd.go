@@ -47,6 +47,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -126,10 +127,48 @@ func Reads(prefixes ...string) LoadOption {
 	return func(o *loadOptions) { o.reads = append(o.reads, prefixes...) }
 }
 
-// unread is what is worth a warning: the unknown names that no [Reads] claims.
+// injected matches an environment variable an orchestrator set rather than a
+// person: Kubernetes' service links, which are Docker's links before them.
+//
+// One set per service in the namespace, named after the service, uppercased --
+// so a deployment whose services are named after the app produces dozens of
+// them under the app's own prefix. That is the ordinary shape and not an odd
+// one: `roster`, `roster-data`, `roster-hydra` in a namespace give a `roster`
+// binary fifty-odd `ROSTER_…` variables it never asked for.
+//
+//	ROSTER_DATA_SERVICE_HOST
+//	ROSTER_DATA_SERVICE_PORT_GRPC
+//	ROSTER_HYDRA_PORT_4445_TCP_ADDR
+//
+// [Reads] cannot answer this. The prefix is the **service's** name, which the
+// app does not know and which changes when somebody adds a service -- so an app
+// claiming them would be claiming a moving list, and every claim widens the
+// place a real typo can hide.
+var injected = regexp.MustCompile(`_(SERVICE_HOST|SERVICE_PORT(_[A-Z0-9_]+)?|PORT|PORT_[0-9]+_(TCP|UDP)(_(ADDR|PORT|PROTO))?)$`)
+
+// unread is what is worth a warning: the unknown names that no [Reads] claims
+// and no orchestrator set.
+//
+// # Why the second half is here and not left to the deployment
+//
+// A deployment **can** turn service links off -- `enableServiceLinks: false` --
+// and one that reads this comment should. But the warning exists to be read,
+// and fifty-seven true statements about variables nobody set is not noise: it
+// is the check defeated, because the one line it is for is entry fifty-eight.
+// A tool that is useless in the ordinary deployment shape is a tool that gets
+// turned off.
+//
+// Nothing is hidden by this. A name a field answers to never reaches here --
+// `Unknown` is what the loader could not place -- so a deployment that really
+// has a `port` field goes on being served by it, and a typo that happens to end
+// in `_PORT` is the one case this trades away for the fifty-seven.
 func unread(l config.Loader, unknown []string, reads []string) []string {
 	out := make([]string, 0, len(unknown))
 	for _, name := range unknown {
+		if injected.MatchString(name) {
+			continue
+		}
+
 		claimed := false
 		for _, p := range reads {
 			if strings.HasPrefix(name, l.Prefix()+p) {
