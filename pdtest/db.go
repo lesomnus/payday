@@ -75,15 +75,36 @@ const Postgres = "PDTEST_POSTGRES"
 // Five seconds because it is far longer than any contention a test creates and
 // far shorter than a suite's own patience, so a genuine deadlock still fails
 // rather than hanging until CI gives up.
+//
+// # And the contention waiting cannot cover
+//
+// `busy_timeout` is the answer for a reader holding a transaction open, which
+// was the shape that paragraph was written about. It is not the answer for
+// **two writers**: `BEGIN DEFERRED` takes the read lock first and asks for the
+// write lock later, and when two of those overlap SQLite returns SQLITE_BUSY
+// without invoking the busy handler at all, because waiting could deadlock.
+// Which is the ordinary shape of a test that makes two calls at once, and it
+// failed one run in three of an app's suite with `database is locked` from a
+// database working perfectly.
+//
+// So the DSN asks for `_txlock=immediate` as well, which takes the write lock
+// up front where there is nothing to deadlock. [config.DbConfig.Open] adds the
+// same thing to any SQLite DSN that does not say it, so a test reaching the
+// database through the app's own configuration was already covered; this is for
+// the tests that open the DSN themselves, and so that the harness and a
+// deployment are the same shape.
 func DB(tb testing.TB) (string, string) {
 	tb.Helper()
 
 	dsn := os.Getenv(Postgres)
 	if dsn == "" {
-		return "sqlite3", memdb.TestDB(tb, url.Values{"_pragma": {
-			"foreign_keys(1)",
-			"busy_timeout(5000)",
-		}})
+		return "sqlite3", memdb.TestDB(tb, url.Values{
+			"_pragma": {
+				"foreign_keys(1)",
+				"busy_timeout(5000)",
+			},
+			"_txlock": {"immediate"},
+		})
 	}
 
 	return "pgx", pgSchema(tb, dsn)
