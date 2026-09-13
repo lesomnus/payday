@@ -6,8 +6,6 @@ module github.com/lesomnus/payday/internal/apptest
 go 1.27.0
 
 require (
-	// Paired with npm @lesomnus/grpc-dgram 0.1.x. Upgrade both peers and
-	// pd sandbox init together when the wire format changes.
 	github.com/lesomnus/grpc-dgram v0.0.0-20260912133542-a7366077bf6f
 	github.com/lesomnus/otx v0.0.0-20260807173743-977a5687d6ba
 	github.com/lesomnus/payday v0.0.0-20260901023457-72d006c78d10
