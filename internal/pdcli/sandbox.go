@@ -201,11 +201,15 @@ cross-origin isolation. `+"`pd doctor`"+` checks for both.`, s.Layout.Rel("ts", 
 // without doing either.
 func (s Sandbox) steps(viteWhy string) []string {
 	vs := []string{
-		"go get github.com/lesomnus/grpc-dgram",
+		// npm's published 0.0.1 uses the older metadata wire format. This Go
+		// revision has the singular interceptor APIs but predates the wire
+		// break. Upgrade both peers together once npm 0.1.0 is available, and
+		// keep apptest and CI's fresh-app build on the same pair.
+		"go get github.com/lesomnus/grpc-dgram@v0.0.0-20260912091128-1650fa374f91",
 		// The new wasm entry point also imports payday's SQLite wasm driver;
 		// its transitive dependencies may not be in the app's sums yet.
 		"go mod tidy",
-		"cd ts && npm install @lesomnus/grpc-dgram sqlite3-wasm-go && cd ..",
+		"cd ts && npm install @lesomnus/grpc-dgram@0.0.1 sqlite3-wasm-go && cd ..",
 		"",
 		"# the JS half of the Go runtime, which is version-coupled to the",
 		"# compiler that builds the module -- so it is copied and never vendored",

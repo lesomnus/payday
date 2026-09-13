@@ -234,13 +234,13 @@ jobs:
           cd .. && go tool pd gen --ts .
           cd ts && npm run build
 
-      # Compile the rendered template against the dependency a new app gets.
+      # Compile the rendered template against the pair sandbox init prints.
       # Building apptest alone cannot catch stale APIs in the sandbox template.
       - name: and its sandbox
         working-directory: widget
         run: |
           go tool pd sandbox init .
-          go get github.com/lesomnus/grpc-dgram
+          go get github.com/lesomnus/grpc-dgram@v0.0.0-20260912091128-1650fa374f91
           go mod tidy
           mkdir -p ts/public
           cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ts/public/
