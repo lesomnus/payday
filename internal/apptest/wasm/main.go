@@ -23,9 +23,8 @@
 // with `html/template`, which is most of the 1.4 MB the tag saves.
 //
 // It is very nearly what `pd sandbox init` writes, and deliberately so: the
-// template's copy is only parsed by a test -- compiling it would need a
-// generation and a module graph -- so this file is where it is actually built.
-// A change to one belongs in the other.
+// template's copy is compiled in CI's fresh-app job, after generation and
+// dependency setup. A change to the shared wiring belongs in both files.
 //
 // # Why this is a second entry point and not a flag
 //
@@ -171,11 +170,11 @@ func main() {
 		// here rather than through `grpcx.ServerOptions`.
 		drpc.WithStatsHandler(otxgrpc.NewServerLogger(o)),
 
-		drpc.ChainUnaryInterceptors(
+		drpc.ChainUnaryInterceptor(
 			pdauth.InterceptorUnary(pdauth.Plain(), cmd.Resolver(s.Ungated), pdauth.PublicDefault),
 			gate.Unary(s.Policy),
 		),
-		drpc.ChainStreamInterceptors(
+		drpc.ChainStreamInterceptor(
 			pdauth.InterceptorStream(pdauth.Plain(), cmd.Resolver(s.Ungated), pdauth.PublicDefault),
 			gate.Stream(s.Policy),
 		),

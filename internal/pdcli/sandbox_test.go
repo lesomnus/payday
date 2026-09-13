@@ -78,6 +78,7 @@ func TestAnAppWithNoCmdIsRefused(t *testing.T) {
 // [TestTheTemplateIsGoThatParses] gives: compiling it means a generation and a
 // module graph. What is checked past parsing is the part a template gets wrong
 // -- the import paths, which are the app's and not payday's.
+// CI's fresh-app job generates and compiles the sandbox to check its APIs too.
 func TestTheSandboxIsGoThatParsesAndNamesThisApp(t *testing.T) {
 	x := require.New(t)
 
