@@ -75,6 +75,10 @@ jobs:
       # is only kept by being checked.
       - run: GOOS=js GOARCH=wasm go build ./...
 
+      # The workspace pattern above does not enter the app's separate module.
+      - run: GOOS=js GOARCH=wasm go build -tags grpcnotrace -o /tmp/apptest.wasm ./wasm
+        working-directory: internal/apptest
+
   # The same suite, on the database an app is actually deployed on.
   #
   # SQLite needs no server, which is why everything above uses it and why it
@@ -229,6 +233,18 @@ jobs:
           npm install --save "${GITHUB_WORKSPACE}"/lesomnus-payday-*.tgz
           cd .. && go tool pd gen --ts .
           cd ts && npm run build
+
+      # Compile the rendered template against the pair sandbox init prints.
+      # Building apptest alone cannot catch stale APIs in the sandbox template.
+      - name: and its sandbox
+        working-directory: widget
+        run: |
+          go tool pd sandbox init .
+          go get github.com/lesomnus/grpc-dgram@latest
+          go mod tidy
+          mkdir -p ts/public
+          cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ts/public/
+          GOOS=js GOARCH=wasm go build -tags grpcnotrace -o ts/public/app.wasm ./wasm
 
   # The TypeScript, twice: payday's own half, and the app's -- which is where
   # the two halves are checked against each other. That job starts the real

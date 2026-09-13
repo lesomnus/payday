@@ -50,6 +50,7 @@ import (
 
 	app "{{.Pkg}}"
 	"{{.Module}}/cmd"
+	entmigrate "{{.Module}}/internal/ent/migrate"
 )
 
 func main() {
@@ -96,7 +97,9 @@ func main() {
 	// the wrong way round -- versioned migrations are what a deployment runs --
 	// but there is no database here that outlives the page, so there is nothing
 	// for a migration to move.
-	if err := s.Ent.Schema.Create(ctx); err != nil {
+	// sql/no-client-schema omits Client.Schema, so use the generated migration
+	// package with the same driver the server's client was built on.
+	if err := entmigrate.NewSchema(s.Drv).Create(ctx); err != nil {
 		log.Fatal(err)
 	}
 
@@ -122,11 +125,11 @@ func main() {
 	// there is nobody else in the page to lie to. Replace it here and not in
 	// `cmd`: the two entry points are separate on purpose.
 	srv := drpc.NewServer(gw,
-		drpc.ChainUnaryInterceptors(
+		drpc.ChainUnaryInterceptor(
 			pdauth.InterceptorUnary(pdauth.Plain(), cmd.Resolver(s.Ungated), pdauth.PublicDefault),
 			gate.Unary(s.Policy),
 		),
-		drpc.ChainStreamInterceptors(
+		drpc.ChainStreamInterceptor(
 			pdauth.InterceptorStream(pdauth.Plain(), cmd.Resolver(s.Ungated), pdauth.PublicDefault),
 			gate.Stream(s.Policy),
 		),
