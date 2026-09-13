@@ -240,7 +240,7 @@ jobs:
         working-directory: widget
         run: |
           go tool pd sandbox init .
-          go get github.com/lesomnus/grpc-dgram@v0.0.0-20260912091128-1650fa374f91
+          go get github.com/lesomnus/grpc-dgram@latest
           go mod tidy
           mkdir -p ts/public
           cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ts/public/
