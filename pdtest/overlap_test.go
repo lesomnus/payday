@@ -82,7 +82,8 @@ func readThenWrite(ctx context.Context, db *sql.DB) error {
 	if err := tx.QueryRowContext(ctx, `SELECT n FROM overlap WHERE id = 1`).Scan(&n); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE overlap SET n = ? WHERE id = 1`, n+1); err != nil {
+	// $1 is accepted by both SQLite and PostgreSQL; ? is SQLite-only.
+	if _, err := tx.ExecContext(ctx, `UPDATE overlap SET n = $1 WHERE id = 1`, n+1); err != nil {
 		return err
 	}
 
