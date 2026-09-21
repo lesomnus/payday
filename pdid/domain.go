@@ -74,6 +74,9 @@ var registry = struct {
 	byEntity map[string]Domain
 	// byName maps the name a person writes -- "robot" -- to its domain.
 	byName map[string]Domain
+	// ambiguous is a name two apps in this process write for two different
+	// things, so it names nothing here. See [Register].
+	ambiguous map[string]bool
 	// names maps a domain back to that name.
 	names map[Domain]string
 	// shared is a domain two apps in this process numbered differently, so it
@@ -83,10 +86,11 @@ var registry = struct {
 	// tenant is the domain of whichever entity declared `own: OWN_TENANT`.
 	tenant Domain
 }{
-	byEntity: map[string]Domain{},
-	byName:   map[string]Domain{},
-	names:    map[Domain]string{},
-	shared:   map[Domain]bool{},
+	byEntity:  map[string]Domain{},
+	byName:    map[string]Domain{},
+	ambiguous: map[string]bool{},
+	names:     map[Domain]string{},
+	shared:    map[Domain]bool{},
 }
 
 // Name is what a person writes an entity as: the word its schema declared, or
@@ -151,12 +155,28 @@ func Register(entity string, d Domain, name string) {
 	if v, ok := registry.byEntity[entity]; ok && v != d {
 		panic(fmt.Sprintf("pdid: %s: already registered as domain %d, now %d", entity, v, d))
 	}
-	if v, ok := registry.byName[name]; ok && v != d {
-		panic(fmt.Sprintf("pdid: %q: already registered as domain %d, now %d", name, v, d))
-	}
-
 	registry.byEntity[entity] = d
-	registry.byName[name] = d
+
+	// The word a person writes, and this is the other thing two apps in one
+	// process can disagree about: the note below on the number says a proto
+	// package keeps this unique, and it does not -- a `Site` is an ordinary
+	// thing to have, and two apps that both have one both write `site`.
+	//
+	// Refusing it took the process down before `main`, over a word. What the
+	// word resolves is a slug somebody typed, `#site:...`, and in a process
+	// where two apps mean two things by it there is no right answer to give:
+	// so the name stops answering, [DomainOf] says it knows no such word, and
+	// what does not stop is [Lookup], keyed by the full name, which is how
+	// anything generated finds its way. An app that is the only one in its
+	// process, which is nearly every one, never sees this.
+	switch v, ok := registry.byName[name]; {
+	case registry.ambiguous[name]:
+	case ok && v != d:
+		delete(registry.byName, name)
+		registry.ambiguous[name] = true
+	default:
+		registry.byName[name] = d
+	}
 
 	// The number, back to a name -- and this is the one that two apps in one
 	// process disagree about.
