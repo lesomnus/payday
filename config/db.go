@@ -170,7 +170,7 @@ func (c DbConfig) Open(ctx context.Context) (*sql.DB, string, error) {
 		return nil, "", err
 	}
 
-	db, err := sql.Open(c.Driver, writesImmediately(dialect, c.Dsn))
+	db, err := sql.Open(c.Driver, timesAsIntegers(dialect, writesImmediately(dialect, c.Dsn)))
 	if err != nil {
 		return nil, "", z.Err(err, "open")
 	}
@@ -233,6 +233,36 @@ func (c DbConfig) Open(ctx context.Context) (*sql.DB, string, error) {
 // Only `file:` DSNs are touched. A bare path is a filename to SQLite, not a
 // URI, so a query string appended to one becomes part of the name.
 func writesImmediately(dialect, dsn string) string {
+	return sqliteDefault(dialect, dsn, "_txlock", "immediate")
+}
+
+// timesAsIntegers adds `_timefmt=unixepoch_nano` to a SQLite DSN that does not
+// say, because the default stores times as text that does not sort as time.
+//
+// # What goes wrong without it
+//
+// The driver's default is `time.RFC3339Nano`, which trims the trailing zeros of
+// the fraction: a time on the second is `05:38:42Z` and one 93 ms later is
+// `05:38:42.093Z`. SQLite compares those as text, `Z` sorts after `.`, and the
+// earlier one comes out greater. Every `<`, `>=` and `ORDER BY` ent writes on a
+// time column is that comparison, so two times in the same second whose
+// fractions differ in length compare wrongly, in either direction.
+//
+// Nanoseconds since the epoch compare as numbers, keep every digit Go has and
+// carry no zone. What that gives up is a database readable by eye --
+// `datetime(x/1e9, 'unixepoch')` reads one -- and the years outside 1678-2262.
+// The driver's other formats do not do better: `sqlite` is whole seconds,
+// `rfc3339` is the same trimmed text, and a fixed-width layout keeps each
+// value's own zone, so it sorts only if every caller stores UTC.
+//
+// A database written in text does not read in this format, so a DSN that names
+// `_timefmt` keeps what it names.
+func timesAsIntegers(dialect, dsn string) string {
+	return sqliteDefault(dialect, dsn, "_timefmt", "unixepoch_nano")
+}
+
+// sqliteDefault sets `key` on a SQLite `file:` DSN that does not have it.
+func sqliteDefault(dialect, dsn, key, value string) string {
 	if dialect != DialectSQLite || !strings.HasPrefix(dsn, "file:") {
 		return dsn
 	}
@@ -243,11 +273,11 @@ func writesImmediately(dialect, dsn string) string {
 	}
 
 	q := u.Query()
-	if q.Has("_txlock") {
+	if q.Has(key) {
 		return dsn
 	}
 
-	q.Set("_txlock", "immediate")
+	q.Set(key, value)
 	u.RawQuery = q.Encode()
 
 	return u.String()

@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -89,5 +90,33 @@ func TestDbOpen(t *testing.T) {
 			Dsn:    "file:/no/such/directory/test.db",
 		}.Open(t.Context())
 		x.ErrorContains(err, "ping")
+	})
+	t.Run("times compare as times", func(t *testing.T) {
+		x := require.New(t)
+
+		// Stored as trimmed RFC 3339 text, `05:38:42Z` sorts after
+		// `05:38:42.005Z`, and the row is not before a bound that is after it.
+		db, _, err := config.DbConfig{
+			Driver:       "sqlite3",
+			Dsn:          "file:test.db?mode=memory",
+			MaxOpenConns: 1,
+		}.Open(t.Context())
+		x.NoError(err)
+		defer db.Close()
+
+		_, err = db.ExecContext(t.Context(), "CREATE TABLE t (d DATETIME)")
+		x.NoError(err)
+
+		on := time.Date(2026, 9, 21, 5, 38, 42, 0, time.UTC)
+		_, err = db.ExecContext(t.Context(), "INSERT INTO t (d) VALUES (?)", on)
+		x.NoError(err)
+
+		count := func(bound time.Time) (n int) {
+			err := db.QueryRowContext(t.Context(), "SELECT COUNT(*) FROM t WHERE d < ?", bound).Scan(&n)
+			x.NoError(err)
+			return n
+		}
+		x.Equal(1, count(on.Add(5*time.Millisecond)))
+		x.Equal(0, count(on))
 	})
 }

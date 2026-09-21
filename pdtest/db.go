@@ -92,7 +92,8 @@ const Postgres = "PDTEST_POSTGRES"
 // same thing to any SQLite DSN that does not say it, so a test reaching the
 // database through the app's own configuration was already covered; this is for
 // the tests that open the DSN themselves, and so that the harness and a
-// deployment are the same shape.
+// deployment are the same shape. `_timefmt=unixepoch_nano` is here for the same
+// reason; see config's timesAsIntegers for why Open asks for it.
 func DB(tb testing.TB) (string, string) {
 	tb.Helper()
 
@@ -103,7 +104,8 @@ func DB(tb testing.TB) (string, string) {
 				"foreign_keys(1)",
 				"busy_timeout(5000)",
 			},
-			"_txlock": {"immediate"},
+			"_txlock":  {"immediate"},
+			"_timefmt": {"unixepoch_nano"},
 		})
 	}
 
