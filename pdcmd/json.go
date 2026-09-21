@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -155,6 +157,13 @@ func emitValue(b *bytes.Buffer, x any, fd protoreflect.FieldDescriptor, indent s
 }
 
 func emitOne(b *bytes.Buffer, x any, fd protoreflect.FieldDescriptor, indent string) error {
+	// A map is a message field too -- of its entry type, whose fields are `key`
+	// and `value` -- but protojson writes it keyed by the map's own keys, so
+	// walking it as the entry would find neither and print `{}`.
+	if m, ok := x.(map[string]any); ok && fd.IsMap() {
+		return emitMap(b, m, fd.MapValue(), indent)
+	}
+
 	// A nested message, and only when it really came out as an object: a
 	// well-known type is a message to the descriptor and a string to protojson,
 	// and recursing into one with its descriptor would look for fields in a
@@ -179,6 +188,32 @@ func emitOne(b *bytes.Buffer, x any, fd protoreflect.FieldDescriptor, indent str
 	}
 
 	b.Write(out)
+	return nil
+}
+
+// emitMap writes a map field, each value as the schema declares it, in the
+// order protojson wrote the keys: sorted.
+func emitMap(b *bytes.Buffer, v map[string]any, fd protoreflect.FieldDescriptor, indent string) error {
+	if len(v) == 0 {
+		b.WriteString("{}")
+		return nil
+	}
+
+	keys := slices.Sorted(maps.Keys(v))
+	inner := indent + "  "
+
+	b.WriteString("{")
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteString(",")
+		}
+		fmt.Fprintf(b, "\n%s%q: ", inner, k)
+		if err := emitOne(b, v[k], fd, inner); err != nil {
+			return err
+		}
+	}
+	fmt.Fprintf(b, "\n%s}", indent)
+
 	return nil
 }
 
