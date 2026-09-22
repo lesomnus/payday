@@ -106,6 +106,34 @@ func RegisterDriver(driver string, dialect string) {
 	dialects[driver] = dialect
 }
 
+// dsnDefaults holds the DSN parameters each driver wants set when a
+// configuration does not set them.
+var dsnDefaults = map[string]map[string]string{}
+
+// RegisterDsnDefault records a parameter [DbConfig.Open] adds to a DSN opened
+// with `driver` that does not name it.
+//
+// It is the registration for a default that cannot be written once for a
+// dialect, because the drivers that speak it do not spell it the same. The
+// integer time format is the one payday needs: `sqlite3` says
+// `_timefmt=unixepoch_nano` and `sqlite3-wasm` says
+// `_time_integer_format=unix_nano`, and each is a parameter the other rejects
+// -- sqlite3-wasm refuses a DSN with a parameter it does not know, so a
+// default written for both is a page that does not open. `_txlock` is not here
+// for the opposite reason: every SQLite driver spells it that way, so
+// [DbConfig.Open] sets it for the dialect.
+//
+// Only a DSN with a scheme is touched, and a parameter already in it is kept.
+func RegisterDsnDefault(driver string, key string, value string) {
+	q, ok := dsnDefaults[driver]
+	if !ok {
+		q = map[string]string{}
+		dsnDefaults[driver] = q
+	}
+
+	q[key] = value
+}
+
 // Drivers lists the registered drivers in lexical order.
 func Drivers() []string {
 	return slices.Sorted(maps.Keys(dialects))
@@ -170,7 +198,7 @@ func (c DbConfig) Open(ctx context.Context) (*sql.DB, string, error) {
 		return nil, "", err
 	}
 
-	db, err := sql.Open(c.Driver, timesAsIntegers(dialect, writesImmediately(dialect, c.Dsn)))
+	db, err := sql.Open(c.Driver, withDsnDefaults(c.Driver, writesImmediately(dialect, c.Dsn)))
 	if err != nil {
 		return nil, "", z.Err(err, "open")
 	}
@@ -236,29 +264,40 @@ func writesImmediately(dialect, dsn string) string {
 	return sqliteDefault(dialect, dsn, "_txlock", "immediate")
 }
 
-// timesAsIntegers adds `_timefmt=unixepoch_nano` to a SQLite DSN that does not
-// say, because the default stores times as text that does not sort as time.
+// withDsnDefaults adds what the driver registered with [RegisterDsnDefault] and
+// the DSN does not already say.
 //
-// # What goes wrong without it
-//
-// The driver's default is `time.RFC3339Nano`, which trims the trailing zeros of
-// the fraction: a time on the second is `05:38:42Z` and one 93 ms later is
-// `05:38:42.093Z`. SQLite compares those as text, `Z` sorts after `.`, and the
-// earlier one comes out greater. Every `<`, `>=` and `ORDER BY` ent writes on a
-// time column is that comparison, so two times in the same second whose
-// fractions differ in length compare wrongly, in either direction.
-//
-// Nanoseconds since the epoch compare as numbers, keep every digit Go has and
-// carry no zone. What that gives up is a database readable by eye --
-// `datetime(x/1e9, 'unixepoch')` reads one -- and the years outside 1678-2262.
-// The driver's other formats do not do better: `sqlite` is whole seconds,
-// `rfc3339` is the same trimmed text, and a fixed-width layout keeps each
-// value's own zone, so it sorts only if every caller stores UTC.
-//
-// A database written in text does not read in this format, so a DSN that names
-// `_timefmt` keeps what it names.
-func timesAsIntegers(dialect, dsn string) string {
-	return sqliteDefault(dialect, dsn, "_timefmt", "unixepoch_nano")
+// A DSN with no scheme is left alone for the reason a bare path is: it is a
+// filename to SQLite rather than a URI, so a query string appended to one
+// becomes part of the name.
+func withDsnDefaults(driver, dsn string) string {
+	defaults := dsnDefaults[driver]
+	if len(defaults) == 0 {
+		return dsn
+	}
+
+	u, err := url.Parse(dsn)
+	if err != nil || u.Scheme == "" {
+		return dsn
+	}
+
+	q := u.Query()
+	changed := false
+	for _, k := range slices.Sorted(maps.Keys(defaults)) {
+		if q.Has(k) {
+			continue
+		}
+
+		q.Set(k, defaults[k])
+		changed = true
+	}
+	if !changed {
+		return dsn
+	}
+
+	u.RawQuery = q.Encode()
+
+	return u.String()
 }
 
 // sqliteDefault sets `key` on a SQLite `file:` DSN that does not have it.

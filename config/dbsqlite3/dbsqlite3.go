@@ -22,4 +22,18 @@ import (
 
 func init() {
 	config.RegisterDriver("sqlite3", config.DialectSQLite)
+
+	// Times as nanoseconds since the epoch, because this driver's default is
+	// `time.RFC3339Nano` text with the fraction's trailing zeros trimmed:
+	// `05:38:42Z` and `05:38:42.093Z`, which SQLite compares as text, where `Z`
+	// sorts after `.` and so the earlier one is the greater. Every `<`, `>=`
+	// and `ORDER BY` on a time column is that comparison.
+	//
+	// Integers compare as numbers and keep every digit Go has. What it gives up
+	// is a database readable by eye -- `datetime(x/1e9, 'unixepoch')` reads one
+	// -- and the years outside 1678-2262. This driver's other formats do not
+	// do better: `sqlite` is whole seconds, `rfc3339` is the same trimmed text,
+	// and a fixed-width layout keeps each value's own zone, so it sorts only if
+	// every caller stores UTC.
+	config.RegisterDsnDefault("sqlite3", "_timefmt", "unixepoch_nano")
 }

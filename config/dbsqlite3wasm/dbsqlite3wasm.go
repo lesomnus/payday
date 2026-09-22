@@ -24,4 +24,15 @@ import (
 
 func init() {
 	config.RegisterDriver("sqlite3-wasm", config.DialectSQLite)
+
+	// The same times-as-integers the other SQLite driver asks for, under the
+	// name this one gives it. Both are set so that a database one of them
+	// writes is one the other reads: the page loads a script a process dumped.
+	//
+	// It matters here even though this driver's text is fixed-width and does
+	// sort: written with no format at all it would read those integers back
+	// with mattn's heuristic, where anything above 1e12 is milliseconds -- and
+	// nanoseconds always are, so every timestamp would come back in the year
+	// 56000-odd.
+	config.RegisterDsnDefault("sqlite3-wasm", "_time_integer_format", "unix_nano")
 }
