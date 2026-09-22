@@ -31,4 +31,14 @@ type Config struct {
 	Db     config.DbConfig     `yaml:"db"`
 	Otel   config.OtelConfig   `yaml:"otel"`
 	Watch  config.WatchConfig  `yaml:"watch"`
+
+	// How long the trail keeps a row, per kind of thing. Every write this app
+	// makes is recorded, and nothing else applies a window, so a deployment
+	// that names none keeps all of it forever -- which is this field left
+	// empty, and is the only honest default: a version upgrade is not the right
+	// thing to decide how long somebody's evidence lasts.
+	//
+	// What the values are is what this app is regulated as, which payday cannot
+	// know. `trail.Profiles` carries the sentence each number comes from.
+	Audit config.AuditConfig `yaml:"audit"`
 }

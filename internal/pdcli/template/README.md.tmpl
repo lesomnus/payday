@@ -141,6 +141,16 @@ runs as two deployments. What an app can be told is what `cmd/config.go`
 declares; nothing is documented separately, because a documented list goes out
 of date on the commit that adds a field.
 
+One block is worth knowing about before a deployment has been running a while:
+`audit:`. Every write this app makes is recorded inside the transaction that
+makes it, and nothing else applies a retention window — so with no `audit:`
+block the trail is kept whole, forever, and it is usually the table that grows
+without anybody writing to it. That is the default on purpose: a scaffold does
+not know what this app is regulated as, and the wrong window here works, in the
+sense that the table stops growing while the evidence is destroyed.
+`app.yaml` carries a commented example, and `trail.Profiles` carries the
+sentence each number comes from.
+
 ### Building it for a deployment
 
 ```sh

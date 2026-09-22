@@ -32,3 +32,33 @@ watch:
   # replica and silently wrong for two -- a client watching against one never
   # hears about a write that landed on another, and nothing reports it.
   broker: memory
+
+# How long the trail keeps a row. Every write this app makes is recorded, and
+# **nothing else applies a window**: with no block here the table is kept whole,
+# forever, and it is the one that grows without anybody writing to it.
+#
+# Left out rather than filled in, because a scaffold cannot know what this app
+# is regulated as -- and a wrong number here is the mistake worth being loudest
+# about, since it works: the sweep runs, the table stops growing, every graph
+# improves, and what it is doing is destroying the evidence.
+#
+# `retain` is how long a row stays in the database and `destroy` is how long the
+# archive holds it afterwards. Naming `retain` with nowhere for the rows to go
+# is refused where this process comes up, unless `discard: true` says the
+# deployment means to keep nothing.
+#
+# `profile:` fills both from a named regime -- pci, hipaa, sox, pipa,
+# pipa-sensitive, gdpr, forever -- and `trail.Profiles` carries the sentence
+# each number comes from, so what is written here is arguable rather than
+# arbitrary. Anything set beside a profile wins.
+#
+# `by:` is per kind of thing, keyed by what the schema registered. Obligations
+# are not uniform: what was done to a person eventually has to stop existing,
+# and what a machine did is an operating record with the opposite requirement.
+#
+# audit:
+#   profile: pipa
+#   archive: /var/lib/{{.Name}}/audit
+#   by:
+#     holder:
+#       profile: gdpr
