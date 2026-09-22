@@ -192,6 +192,69 @@ Do not edit the generated `Gate`. It holds payday's own rule — the wall, and t
 rules about Tenant and Holder — and it is rewritten on every `pd gen`. Your
 authorization goes in front of it or into the `gate.Policy` you inject.
 
+### Changing what the trail records
+
+"Not yours" in that table is about **where**, not about whether. A layer cannot
+decide what goes on the trail, because the trail is written below every layer,
+inside the transaction that makes the write — that is what keeps `Patch` and
+`Apply`, two RPCs and one write, from being two records or none. What decides is
+the recorder, and the recorder is assembled in your `cmd/serve.go`:
+
+```go
+rec := bare.Recorders{pd.Recorder(), pd.WatchRecorder(w)}
+```
+
+`bare.Recorder` is one method and `pd.Recorder()` is a value like any other, so
+a recorder that drops a class of writes is a wrapper around it:
+
+```go
+// The trail is for what somebody did. A fleet reporting its own temperature
+// every second is not that, and at this app's volume it is most of the table.
+type unlessMachine struct{ bare.Recorder }
+
+func (r unlessMachine) Record(ctx context.Context, s bare.Server, c bare.Change) error {
+	if c.Method == app.ReadingService_Add_FullMethodName {
+		return nil // not recorded; the write itself still happens
+	}
+	return r.Recorder.Record(ctx, s, c)
+}
+```
+
+```go
+rec := bare.Recorders{unlessMachine{pd.Recorder()}, pd.WatchRecorder(w)}
+```
+
+Answering nil means *nothing to record*, and the write carries on. Answering an
+error undoes the write — that is the guarantee the trail is worth anything for,
+and it is why the choice of which writes matter belongs to whoever wrote the
+recorder rather than to an option on `WithRecorder`. Give `WithRecorder` one
+`bare.Recorders` and not three calls; a second call is `bare.ErrTwice`, because
+neither dropping one nor appending in call order is a thing a framework should
+decide quietly.
+
+What to decide on is in `bare.Change` and in the frame:
+
+- `c.Method` is the RPC gRPC dispatched for the whole request, and `c.By` is the
+  RPC of the innermost server that actually wrote. `Move` that issues a `Patch`
+  below itself is `Method: Move`, `By: Patch`.
+- `frame.From(ctx)` is who is calling: `Actor`, `Tenant`, and `Row`, the actor as
+  it was read. Machine or person is not a distinction payday makes — if the
+  callers are different kinds of thing, `f.Actor.Domain()` says so, and otherwise
+  it is a field on your own actor type, which `f.Row` type-asserts to.
+
+Not `auth.Identity.Method`: how somebody authenticated never reaches the
+context, deliberately, because "a rule that turns on the way somebody
+authenticated is a rule that will be wrong one day".
+
+Filtering is the smaller of two answers and usually the second one to try. If
+the problem is that the table is large, the window is `audit:` and no code — see
+[the trail's retention](../runtime.md#the-trails-retention-is-one-of-them-and-it-is-the-loud-one),
+which is per kind of thing and keeps an archive. Filtering is for writes that
+should never have been a record at all, and what it costs is that they are not
+one *later either*: the trail is the only account of a write that is inside its
+transaction, and a log line is not the same thing — it survives a rollback the
+write did not, and it rotates.
+
 ### An interceptor between two layers
 
 A layer written by hand is a method per RPC of every entity, and the one

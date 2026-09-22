@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/lesomnus/z"
@@ -790,6 +791,84 @@ func TestAWriteNothingCouldRecordIsUndone(t *testing.T) {
 		x.Equal(1, rows)
 		x.Equal(before+1, trail)
 	})
+}
+
+// TestARecorderMayDropAWriteItIsNotFor is the pattern docs/guide/server.md
+// describes under "Changing what the trail records", compiled.
+//
+// An app whose machines write far more often than its people do can decide that
+// what a machine did is not what the trail is for. Nothing in payday expresses
+// that -- there is no schema option and no context flag, and a layer could not
+// do it because the trail is written below every layer -- so what it is, is a
+// recorder wrapping the generated one and answering nil for the writes it is
+// not for. The write still happens; it is the record of it that does not.
+//
+// Here so that the documented shape is one the compiler has seen. A snippet in
+// a guide that no longer builds is worse than none: it is read as current.
+func TestARecorderMayDropAWriteItIsNotFor(t *testing.T) {
+	b, ctx := build(t)
+
+	s, err := pd.NewSink(b.Ent,
+		bare.WithMinter(pd.Minter()),
+		bare.WithRecorder(bare.Recorders{unless(pd.Recorder(), app.RobotService_Add_FullMethodName)}),
+	)
+	require.NoError(t, err)
+
+	trail := func(x *require.Assertions) int {
+		n, err := b.Ent.Audit.Query().Count(ctx)
+		x.NoError(err)
+
+		return n
+	}
+
+	t.Run("the write it is not for happens and is not recorded", func(t *testing.T) {
+		x := require.New(t)
+
+		before := trail(x)
+
+		v, err := s.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  "arm-quiet",
+		}.Build())
+		x.NoError(err)
+
+		n, err := b.Ent.Robot.Query().Where(robot.AliasEQ("arm-quiet")).Count(ctx)
+		x.NoError(err)
+		x.Equal(1, n, "answering nil is not refusing: the row is there")
+		x.Equal(before, trail(x))
+
+		// And the next write on the same row is on the trail, which is what
+		// says the one above was dropped by what it was rather than by the
+		// recorder having been broken.
+		before = trail(x)
+
+		_, err = s.Robot().Patch(b.as(ctx), app.RobotPatchRequest_builder{
+			Ref:         app.RobotRef_builder{Id: v.GetId()}.Build(),
+			Alias:       proto.String("arm-loud"),
+			DateUpdated: v.GetDateUpdated(),
+		}.Build())
+		x.NoError(err)
+		x.Equal(before+1, trail(x))
+	})
+}
+
+// unless is the wrapper the guide shows: the generated recorder, less the
+// writes a deployment has decided are not what its trail is for.
+func unless(rec bare.Recorder, methods ...string) bare.Recorder {
+	return dropping{Recorder: rec, methods: methods}
+}
+
+type dropping struct {
+	bare.Recorder
+	methods []string
+}
+
+func (r dropping) Record(ctx context.Context, s bare.Server, c bare.Change) error {
+	if slices.Contains(r.methods, c.Method) {
+		return nil
+	}
+
+	return r.Recorder.Record(ctx, s, c)
 }
 
 // answers is a recorder that does nothing but answer, which is all a test of
