@@ -572,7 +572,15 @@ message in the contract, including the ones the generator wrote.
 ### An RPC of your own
 
 The CRUD of an entity is generated and the general writes are closed, so an
-operation that means something is an RPC you declare. It goes in an overlay too,
+operation that means something is an RPC you declare.
+
+**First ask whether it is one.** An operation that is what a generated verb
+already means -- `Add` that also writes the rows the row is useless without --
+is not a new verb, and declaring one makes *do it properly* a second name
+beside *do it*. That is a layer and no schema change at all: see
+[completing a generated verb](server.md#completing-a-generated-verb). What
+belongs here is an act the generated four do not name -- retiring a widget,
+verifying a secret, spending a link. It goes in an overlay too,
 in `proto/ext/app/`, named after the **generated contract** it joins. That
 contract is named from the file the entity is in rather than from the entity, so
 `proto/app/widget.proto` produces `app/widget_svc.g.proto` and is overlaid by
