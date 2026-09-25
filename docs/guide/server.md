@@ -95,10 +95,12 @@ run, and it is answered in
 
 ## 3. Writing a layer
 
-A layer is where an RPC of your own is answered. Declaring one is a schema
-change and is written up there — see
-[an RPC of your own](schema.md#an-rpc-of-your-own); what follows is what answers
-it.
+A layer is where your app's rules live. Two kinds of thing are answered here:
+an RPC of your own — declaring one is a schema change and is written up there,
+see [an RPC of your own](schema.md#an-rpc-of-your-own) — and a **generated verb
+your app means more by**, which needs no schema change at all and is the case
+people miss. [Completing a generated verb](#completing-a-generated-verb) is
+that one.
 
 A layer is a struct embedding the generated `Overlay`, which forwards every
 service you do not override:
@@ -137,6 +139,66 @@ func (s coreRobot) Add(ctx context.Context, req *api.RobotAddRequest) (*api.Robo
 	// your rule, and then s.RobotServiceServer.Add(ctx, req)
 }
 ```
+
+### Completing a generated verb
+
+The `Add` above guards: it checks a rule and passes the same write on. A layer
+may also **finish** one — write the rows the verb is useless without — and that
+is still a layer rather than an RPC of your own, because it is the same act.
+
+The question is not how many rows are written; it is whether the caller asked
+for one thing or two. If `Add` leaves a row nobody can use until somebody makes
+three more, then those three are part of adding it, and a second verb beside
+`Add` would be *do it properly* next to *do it* — two names for one act, which
+is what the rule about a second **service** already refuses for one set of rows.
+
+```go
+func (s coreRobot) Add(ctx context.Context, req *api.RobotAddRequest) (*api.Robot, error) {
+	drv, tx, err := dialect.BeginTx(ctx, s.drv)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// This layer again over a rebound one below it: the rules carry over and
+	// the driver does not, so nothing inside opens a second transaction.
+	next, err := enttx.Rebind(s.Next(), drv)
+	if err != nil {
+		return nil, err
+	}
+	at := s.over(next)
+
+	// The row itself goes to the server **below** this layer. Sending it back
+	// through `at.Robot()` would be this method calling itself.
+	v, err := next.Robot().Add(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// And the rest go back through the layer, so every rule that would have
+	// met them arriving on their own still does.
+	if _, err := at.Part().Add(ctx, partOf(v)); err != nil {
+		return nil, err
+	}
+
+	return v, tx.Commit()
+}
+```
+
+Three things make it safe rather than surprising, and a reviewer will look for
+each:
+
+- **Through the layer, not past it.** The extra writes go to `at`, which is this
+  layer rebound — so a caller who could not have made them alone still cannot.
+  Reaching `s.Next()` for them is a composite that goes around the rules the
+  separate calls were held to, which is the thing people are right to fear about
+  one call doing four writes.
+- **One transaction.** Otherwise a refusal at the third write leaves the first
+  two, and the row that is left is the unfinished state the whole change exists
+  to make impossible.
+- **The row itself goes below.** `at.Robot().Add` is this method again, and the
+  stack overflow it ends in is at run time and in a test that was passing an
+  hour ago.
 
 ### The one thing that is easy to forget
 
