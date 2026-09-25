@@ -102,6 +102,29 @@ Both are English. Neither duplicates a package comment: godoc is the detail, the
 docs are the shape of the whole. When adding a runtime package, its **package
 comment** is the real documentation.
 
+## Before adding an RPC to an app
+
+The question comes up in every app built on payday, and the wrong answer is the
+easy one: **a new RPC**. Three branches, and the first is the one that gets
+missed:
+
+- **The act is what a generated verb already means** -- `Add` that also writes
+  the rows its row is useless without. That is a **layer** overriding the
+  generated method, and no schema change at all. A second verb beside `Add`
+  would be *do it properly* next to *do it*, which is two names for one act.
+  `docs/guide/server.md` § *Completing a generated verb* has the shape, and the
+  three things that make it safe: the extra writes go back **through** the
+  layer, they are one transaction, and the row itself goes to the server below
+  or the method calls itself.
+- **It is an act the generated four do not name** -- verifying a secret,
+  spending a link. That is an **overlay** on the entity's own service:
+  `docs/guide/schema.md` § *An RPC of your own*.
+- **It belongs to no single entity.** Only then a service of its own.
+
+This is worth saying here because the guide used to read as though every
+operation that means something is an RPC to declare, and two apps in a row took
+it that way.
+
 ## Two habits this repository holds to
 
 **Verify by running it.** A claim about what code does is not a claim until the
