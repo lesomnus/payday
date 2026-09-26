@@ -22,6 +22,8 @@ type Seal struct {
 	Alias string `json:"alias,omitempty"`
 	// Secret holds the value of the "secret" field.
 	Secret []byte `json:"secret,omitempty"`
+	// Code holds the value of the "code" field.
+	Code string `json:"code,omitempty"`
 	// DateErased holds the value of the "date_erased" field.
 	DateErased *time.Time `json:"date_erased,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
@@ -36,7 +38,7 @@ func (*Seal) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case seal.FieldSecret:
 			values[i] = new([]byte)
-		case seal.FieldAlias:
+		case seal.FieldAlias, seal.FieldCode:
 			values[i] = new(sql.NullString)
 		case seal.FieldDateErased, seal.FieldDateCreated:
 			values[i] = new(sql.NullTime)
@@ -77,6 +79,12 @@ func (_m *Seal) assignValues(columns []string, values []any) error {
 				if _m.Secret == nil {
 					_m.Secret = []byte{}
 				}
+			}
+		case seal.FieldCode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field code", values[i])
+			} else if value.Valid {
+				_m.Code = value.String
 			}
 		case seal.FieldDateErased:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -132,6 +140,9 @@ func (_m *Seal) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("secret=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Secret))
+	builder.WriteString(", ")
+	builder.WriteString("code=")
+	builder.WriteString(_m.Code)
 	builder.WriteString(", ")
 	if v := _m.DateErased; v != nil {
 		builder.WriteString("date_erased=")

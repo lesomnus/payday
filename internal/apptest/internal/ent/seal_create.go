@@ -34,6 +34,12 @@ func (_c *SealCreate) SetSecret(v []byte) *SealCreate {
 	return _c
 }
 
+// SetCode sets the "code" field.
+func (_c *SealCreate) SetCode(v string) *SealCreate {
+	_c.mutation.SetCode(v)
+	return _c
+}
+
 // SetDateErased sets the "date_erased" field.
 func (_c *SealCreate) SetDateErased(v time.Time) *SealCreate {
 	_c.mutation.SetDateErased(v)
@@ -108,6 +114,9 @@ func (_c *SealCreate) check() error {
 	if _, ok := _c.mutation.Secret(); !ok {
 		return &ValidationError{Name: "secret", err: errors.New(`ent: missing required field "Seal.secret"`)}
 	}
+	if _, ok := _c.mutation.Code(); !ok {
+		return &ValidationError{Name: "code", err: errors.New(`ent: missing required field "Seal.code"`)}
+	}
 	return nil
 }
 
@@ -154,6 +163,10 @@ func (_c *SealCreate) createSpec() (*Seal, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Secret(); ok {
 		_spec.SetField(seal.FieldSecret, field.TypeBytes, value)
 		_node.Secret = value
+	}
+	if value, ok := _c.mutation.Code(); ok {
+		_spec.SetField(seal.FieldCode, field.TypeString, value)
+		_node.Code = value
 	}
 	if value, ok := _c.mutation.DateErased(); ok {
 		_spec.SetField(seal.FieldDateErased, field.TypeTime, value)

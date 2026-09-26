@@ -52,6 +52,7 @@ import (
 	status "google.golang.org/grpc/status"
 	protojson "google.golang.org/protobuf/encoding/protojson"
 	proto "google.golang.org/protobuf/proto"
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	slog "log/slog"
 	slices "slices"
@@ -2996,7 +2997,7 @@ func hidden(key pdid.Id, p *patchpb.Patch) *patchpb.Patch {
 	case RobotDomain:
 		secret = []uint32{8}
 	case SealDomain:
-		secret = []uint32{8}
+		secret = []uint32{8, 9}
 	}
 	if len(secret) == 0 {
 		// An entity that declared none, which is nearly all of them.
@@ -3540,12 +3541,29 @@ func (s secretRobotStream) Send(v *apptest.RobotWatchResponse) error {
 //
 // A nil row passes through, because an error is answered with one and the
 // caller of this is handing both on.
+//
+// By field number and through the descriptor, rather than a setter per
+// field, because a setter's argument has a type and this has to hold for
+// every field a row can carry. A `Set<F>(nil)` per secret is what this
+// was, and it compiled only while every secret anybody had declared was
+// `bytes`: a `string` one ended the build in a generated file, and an
+// enum would have needed its own type spelled out here to say zero.
+//
+// Clear is also the truer word. A field with presence is **absent**
+// afterwards rather than present and empty, which is what "never answered
+// with" says; one without presence reads as its zero value either way.
+// And the numbers are the ones `hidden` filters the trail's patch by, so
+// the two cannot come to disagree about which fields they are.
 func hideRobot(v *apptest.Robot) *apptest.Robot {
 	if v == nil {
 		return nil
 	}
 
-	v.SetSecret(nil)
+	m := v.ProtoReflect()
+	fs := m.Descriptor().Fields()
+	for _, n := range []protoreflect.FieldNumber{8} {
+		m.Clear(fs.ByNumber(n))
+	}
 
 	return v
 }
@@ -3587,12 +3605,29 @@ func (s secretSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*
 //
 // A nil row passes through, because an error is answered with one and the
 // caller of this is handing both on.
+//
+// By field number and through the descriptor, rather than a setter per
+// field, because a setter's argument has a type and this has to hold for
+// every field a row can carry. A `Set<F>(nil)` per secret is what this
+// was, and it compiled only while every secret anybody had declared was
+// `bytes`: a `string` one ended the build in a generated file, and an
+// enum would have needed its own type spelled out here to say zero.
+//
+// Clear is also the truer word. A field with presence is **absent**
+// afterwards rather than present and empty, which is what "never answered
+// with" says; one without presence reads as its zero value either way.
+// And the numbers are the ones `hidden` filters the trail's patch by, so
+// the two cannot come to disagree about which fields they are.
 func hideSeal(v *apptest.Seal) *apptest.Seal {
 	if v == nil {
 		return nil
 	}
 
-	v.SetSecret(nil)
+	m := v.ProtoReflect()
+	fs := m.Descriptor().Fields()
+	for _, n := range []protoreflect.FieldNumber{8, 9} {
+		m.Clear(fs.ByNumber(n))
+	}
 
 	return v
 }

@@ -39,6 +39,20 @@ message Seal {
     (payday.field) = {secret: true}
   ];
 
+  // And a secret that is not `bytes`, which is the other thing about this
+  // entity that is a test by existing.
+  //
+  // `hideSeal` cleared a secret with its setter, and `nil` is not a `string`:
+  // every secret anybody had declared was a digest, so the whole annotation
+  // worked for the one type nobody had written it for on purpose. `pd gen`
+  // succeeded and `go build` failed in a generated file -- the same shape as
+  // the missing `List` above, found the same way.
+  //
+  // A value rather than a digest is a real thing to declare: a short code
+  // somebody types, a token held for readback, a key belonging to another
+  // API. What it means here is what it means for `secret` above.
+  string code = 9 [(payday.field) = {secret: true}];
+
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 

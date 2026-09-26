@@ -43,6 +43,7 @@ type Seal struct {
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
 	xxx_hidden_Secret      []byte                 `protobuf:"bytes,8,opt,name=secret"`
+	xxx_hidden_Code        string                 `protobuf:"bytes,9,opt,name=code"`
 	xxx_hidden_DateErased  *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields          protoimpl.UnknownFields
@@ -95,6 +96,13 @@ func (x *Seal) GetSecret() []byte {
 	return nil
 }
 
+func (x *Seal) GetCode() string {
+	if x != nil {
+		return x.xxx_hidden_Code
+	}
+	return ""
+}
+
 func (x *Seal) GetDateErased() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateErased
@@ -125,6 +133,10 @@ func (x *Seal) SetSecret(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Secret = v
+}
+
+func (x *Seal) SetCode(v string) {
+	x.xxx_hidden_Code = v
 }
 
 func (x *Seal) SetDateErased(v *timestamppb.Timestamp) {
@@ -163,7 +175,20 @@ type Seal_builder struct {
 	Id    []byte
 	Alias string
 	// The field this entity is about. Written, and never answered with.
-	Secret      []byte
+	Secret []byte
+	// And a secret that is not `bytes`, which is the other thing about this
+	// entity that is a test by existing.
+	//
+	// `hideSeal` cleared a secret with its setter, and `nil` is not a `string`:
+	// every secret anybody had declared was a digest, so the whole annotation
+	// worked for the one type nobody had written it for on purpose. `pd gen`
+	// succeeded and `go build` failed in a generated file -- the same shape as
+	// the missing `List` above, found the same way.
+	//
+	// A value rather than a digest is a real thing to declare: a short code
+	// somebody types, a token held for readback, a key belonging to another
+	// API. What it means here is what it means for `secret` above.
+	Code        string
 	DateErased  *timestamppb.Timestamp
 	DateCreated *timestamppb.Timestamp
 }
@@ -175,6 +200,7 @@ func (b0 Seal_builder) Build() *Seal {
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_Secret = b.Secret
+	x.xxx_hidden_Code = b.Code
 	x.xxx_hidden_DateErased = b.DateErased
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
@@ -184,11 +210,12 @@ var File_app_seal_proto protoreflect.FileDescriptor
 
 const file_app_seal_proto_rawDesc = "" +
 	"\n" +
-	"\x0eapp/seal.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x81\x02\n" +
+	"\x0eapp/seal.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x9d\x02\n" +
 	"\x04Seal\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12$\n" +
-	"\x06secret\x18\b \x01(\fB\f\xea\x82\x16\x02\x10\f\xaa\xc1\x16\x02\b\x01R\x06secret\x12D\n" +
+	"\x06secret\x18\b \x01(\fB\f\xea\x82\x16\x02\x10\f\xaa\xc1\x16\x02\b\x01R\x06secret\x12\x1a\n" +
+	"\x04code\x18\t \x01(\tB\x06\xaa\xc1\x16\x02\b\x01R\x04code\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\x0e*\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"

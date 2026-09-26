@@ -17,6 +17,7 @@ const (
 	pkgEmpty   = protogen.GoImportPath("google.golang.org/protobuf/types/known/emptypb")
 	pkgProto   = protogen.GoImportPath("google.golang.org/protobuf/proto")
 	pkgPatchpb = protogen.GoImportPath("github.com/lesomnus/protobuf-patch/patchpb")
+	pkgReflect = protogen.GoImportPath("google.golang.org/protobuf/reflect/protoreflect")
 )
 
 // Own is the entity payday ships under that marker, and nil for a schema that
@@ -1304,18 +1305,38 @@ func emitSecretOf(g *protogen.GeneratedFile, e *Entity, root protogen.GoImportPa
 		g.P("")
 	}
 
+	ns := make([]string, 0, len(e.SecretNumbers))
+	for _, n := range e.SecretNumbers {
+		ns = append(ns, strconv.FormatUint(uint64(n), 10))
+	}
+
 	g.P("// hide", name, " clears what this entity declared it never answers with.")
 	g.P("//")
 	g.P("// A nil row passes through, because an error is answered with one and the")
 	g.P("// caller of this is handing both on.")
+	g.P("//")
+	g.P("// By field number and through the descriptor, rather than a setter per")
+	g.P("// field, because a setter's argument has a type and this has to hold for")
+	g.P("// every field a row can carry. A `Set<F>(nil)` per secret is what this")
+	g.P("// was, and it compiled only while every secret anybody had declared was")
+	g.P("// `bytes`: a `string` one ended the build in a generated file, and an")
+	g.P("// enum would have needed its own type spelled out here to say zero.")
+	g.P("//")
+	g.P("// Clear is also the truer word. A field with presence is **absent**")
+	g.P("// afterwards rather than present and empty, which is what \"never answered")
+	g.P("// with\" says; one without presence reads as its zero value either way.")
+	g.P("// And the numbers are the ones `hidden` filters the trail's patch by, so")
+	g.P("// the two cannot come to disagree about which fields they are.")
 	g.P("func hide", name, "(v *", root.Ident(name), ") *", root.Ident(name), " {")
 	g.P("	if v == nil {")
 	g.P("		return nil")
 	g.P("	}")
 	g.P("")
-	for _, f := range e.Secrets {
-		g.P("	v.Set", camel(f), "(nil)")
-	}
+	g.P("	m := v.ProtoReflect()")
+	g.P("	fs := m.Descriptor().Fields()")
+	g.P("	for _, n := range []", pkgReflect.Ident("FieldNumber"), "{", strings.Join(ns, ", "), "} {")
+	g.P("		m.Clear(fs.ByNumber(n))")
+	g.P("	}")
 	g.P("")
 	g.P("	return v")
 	g.P("}")

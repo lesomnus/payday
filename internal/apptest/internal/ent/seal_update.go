@@ -49,6 +49,20 @@ func (_u *SealUpdate) SetSecret(v []byte) *SealUpdate {
 	return _u
 }
 
+// SetCode sets the "code" field.
+func (_u *SealUpdate) SetCode(v string) *SealUpdate {
+	_u.mutation.SetCode(v)
+	return _u
+}
+
+// SetNillableCode sets the "code" field if the given value is not nil.
+func (_u *SealUpdate) SetNillableCode(v *string) *SealUpdate {
+	if v != nil {
+		_u.SetCode(*v)
+	}
+	return _u
+}
+
 // SetDateErased sets the "date_erased" field.
 func (_u *SealUpdate) SetDateErased(v time.Time) *SealUpdate {
 	_u.mutation.SetDateErased(v)
@@ -122,6 +136,9 @@ func (_u *SealUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Secret(); ok {
 		_spec.SetField(seal.FieldSecret, field.TypeBytes, value)
 	}
+	if value, ok := _u.mutation.Code(); ok {
+		_spec.SetField(seal.FieldCode, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(seal.FieldDateErased, field.TypeTime, value)
 	}
@@ -170,6 +187,20 @@ func (_u *SealUpdateOne) SetNillableAlias(v *string) *SealUpdateOne {
 // SetSecret sets the "secret" field.
 func (_u *SealUpdateOne) SetSecret(v []byte) *SealUpdateOne {
 	_u.mutation.SetSecret(v)
+	return _u
+}
+
+// SetCode sets the "code" field.
+func (_u *SealUpdateOne) SetCode(v string) *SealUpdateOne {
+	_u.mutation.SetCode(v)
+	return _u
+}
+
+// SetNillableCode sets the "code" field if the given value is not nil.
+func (_u *SealUpdateOne) SetNillableCode(v *string) *SealUpdateOne {
+	if v != nil {
+		_u.SetCode(*v)
+	}
 	return _u
 }
 
@@ -275,6 +306,9 @@ func (_u *SealUpdateOne) sqlSave(ctx context.Context) (_node *Seal, err error) {
 	}
 	if value, ok := _u.mutation.Secret(); ok {
 		_spec.SetField(seal.FieldSecret, field.TypeBytes, value)
+	}
+	if value, ok := _u.mutation.Code(); ok {
+		_spec.SetField(seal.FieldCode, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(seal.FieldDateErased, field.TypeTime, value)

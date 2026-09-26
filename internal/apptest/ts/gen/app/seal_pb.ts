@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/seal.proto.
  */
 export const file_app_seal: GenFile = /*@__PURE__*/
-  fileDesc("Cg5hcHAvc2VhbC5wcm90bxIDYXBwItUBCgRTZWFsEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABINCgVhbGlhcxgEIAEoCRIcCgZzZWNyZXQYCCABKAxCDOqCFgIQDKrBFgIIARI4CgtkYXRlX2VyYXNlZBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOSAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOhDK/BUEEgIQAYq7FgQIDioAQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Cg5hcHAvc2VhbC5wcm90bxIDYXBwIusBCgRTZWFsEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABINCgVhbGlhcxgEIAEoCRIcCgZzZWNyZXQYCCABKAxCDOqCFgIQDKrBFgIIARIUCgRjb2RlGAkgASgJQgaqwRYCCAESOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBADoQyvwVBBICEAGKuxYECA4qAEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Seal is a secret with **no list**, and that is the whole of what it is for.
@@ -53,6 +53,24 @@ export type Seal = Message<"app.Seal"> & {
    * @generated from field: bytes secret = 8;
    */
   secret: Uint8Array;
+
+  /**
+   * And a secret that is not `bytes`, which is the other thing about this
+   * entity that is a test by existing.
+   *
+   * `hideSeal` cleared a secret with its setter, and `nil` is not a `string`:
+   * every secret anybody had declared was a digest, so the whole annotation
+   * worked for the one type nobody had written it for on purpose. `pd gen`
+   * succeeded and `go build` failed in a generated file -- the same shape as
+   * the missing `List` above, found the same way.
+   *
+   * A value rather than a digest is a real thing to declare: a short code
+   * somebody types, a token held for readback, a key belonging to another
+   * API. What it means here is what it means for `secret` above.
+   *
+   * @generated from field: string code = 9;
+   */
+  code: string;
 
   /**
    * @generated from field: google.protobuf.Timestamp date_erased = 14;

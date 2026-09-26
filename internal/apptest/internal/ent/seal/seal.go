@@ -15,6 +15,8 @@ const (
 	FieldAlias = "alias"
 	// FieldSecret holds the string denoting the secret field in the database.
 	FieldSecret = "secret"
+	// FieldCode holds the string denoting the code field in the database.
+	FieldCode = "code"
 	// FieldDateErased holds the string denoting the date_erased field in the database.
 	FieldDateErased = "date_erased"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
@@ -28,6 +30,7 @@ var Columns = []string{
 	FieldId,
 	FieldAlias,
 	FieldSecret,
+	FieldCode,
 	FieldDateErased,
 	FieldDateCreated,
 }
@@ -53,6 +56,11 @@ func ById(opts ...sql.OrderTermOption) OrderOption {
 // ByAlias orders the results by the alias field.
 func ByAlias(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAlias, opts...).ToFunc()
+}
+
+// ByCode orders the results by the code field.
+func ByCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCode, opts...).ToFunc()
 }
 
 // ByDateErased orders the results by the date_erased field.

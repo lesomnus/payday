@@ -21,6 +21,7 @@ func (Seal) Fields() []ent.Field {
 			Immutable(),
 		field.String("alias"),
 		field.Bytes("secret"),
+		field.String("code"),
 		field.Time("date_erased").
 			Nillable().
 			Optional(),

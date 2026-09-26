@@ -303,6 +303,7 @@ var (
 		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
 		{Name: "secret", Type: field.TypeBytes},
+		{Name: "code", Type: field.TypeString},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 	}

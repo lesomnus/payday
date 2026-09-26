@@ -18,6 +18,7 @@ type Mutation struct {
 	typ           string
 	alias         *string
 	secret        *[]byte
+	code          *string
 	date_erased   *time.Time
 	date_created  *time.Time
 	clearedFields map[string]struct{}
@@ -74,6 +75,25 @@ func (m *Mutation) Secret() (r []byte, exists bool) {
 // ResetSecret resets all changes to the "secret" field.
 func (m *Mutation) ResetSecret() {
 	m.secret = nil
+}
+
+// SetCode sets the "code" field.
+func (m *Mutation) SetCode(s string) {
+	m.code = &s
+}
+
+// Code returns the value of the "code" field in the mutation.
+func (m *Mutation) Code() (r string, exists bool) {
+	v := m.code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCode resets all changes to the "code" field.
+func (m *Mutation) ResetCode() {
+	m.code = nil
 }
 
 // SetDateErased sets the "date_erased" field.
@@ -174,12 +194,15 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m.alias != nil {
 		fields = append(fields, FieldAlias)
 	}
 	if m.secret != nil {
 		fields = append(fields, FieldSecret)
+	}
+	if m.code != nil {
+		fields = append(fields, FieldCode)
 	}
 	if m.date_erased != nil {
 		fields = append(fields, FieldDateErased)
@@ -199,6 +222,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.Alias()
 	case FieldSecret:
 		return m.Secret()
+	case FieldCode:
+		return m.Code()
 	case FieldDateErased:
 		return m.DateErased()
 	case FieldDateCreated:
@@ -232,6 +257,13 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSecret(v)
+		return nil
+	case FieldCode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCode(v)
 		return nil
 	case FieldDateErased:
 		v, ok := value.(time.Time)
@@ -316,6 +348,9 @@ func (m *Mutation) ResetField(name string) error {
 		return nil
 	case FieldSecret:
 		m.ResetSecret()
+		return nil
+	case FieldCode:
+		m.ResetCode()
 		return nil
 	case FieldDateErased:
 		m.ResetDateErased()

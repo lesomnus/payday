@@ -2262,6 +2262,23 @@ func (m *SealMutation) OldSecret(ctx context.Context) (v []byte, err error) {
 	return oldValue.Secret, nil
 }
 
+// OldCode returns the old "code" field's value of the Seal entity.
+// If the Seal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SealMutation) OldCode(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldCode is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldCode requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCode: %w", err)
+	}
+	return oldValue.Code, nil
+}
+
 // OldDateErased returns the old "date_erased" field's value of the Seal entity.
 // If the Seal object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
@@ -2305,6 +2322,8 @@ func (m *SealMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldAlias(ctx)
 	case seal.FieldSecret:
 		return m.OldSecret(ctx)
+	case seal.FieldCode:
+		return m.OldCode(ctx)
 	case seal.FieldDateErased:
 		return m.OldDateErased(ctx)
 	case seal.FieldDateCreated:

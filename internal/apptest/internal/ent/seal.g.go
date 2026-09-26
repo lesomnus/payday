@@ -13,6 +13,7 @@ func (e *Seal) Proto() *apptest.Seal {
 	x.SetId(e.Id[:])
 	x.SetAlias(e.Alias)
 	x.SetSecret(e.Secret)
+	x.SetCode(e.Code)
 	if e.DateErased != nil {
 		x.SetDateErased(timestamppb.New(*e.DateErased))
 	}

@@ -30,6 +30,7 @@ type SealAddRequest struct {
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
 	xxx_hidden_Secret      []byte                 `protobuf:"bytes,8,opt,name=secret"`
+	xxx_hidden_Code        string                 `protobuf:"bytes,9,opt,name=code"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
@@ -83,6 +84,13 @@ func (x *SealAddRequest) GetSecret() []byte {
 	return nil
 }
 
+func (x *SealAddRequest) GetCode() string {
+	if x != nil {
+		return x.xxx_hidden_Code
+	}
+	return ""
+}
+
 func (x *SealAddRequest) GetDateCreated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateCreated
@@ -95,7 +103,7 @@ func (x *SealAddRequest) SetId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
 }
 
 func (x *SealAddRequest) SetAlias(v string) {
@@ -107,6 +115,10 @@ func (x *SealAddRequest) SetSecret(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Secret = v
+}
+
+func (x *SealAddRequest) SetCode(v string) {
+	x.xxx_hidden_Code = v
 }
 
 func (x *SealAddRequest) SetDateCreated(v *timestamppb.Timestamp) {
@@ -142,6 +154,7 @@ type SealAddRequest_builder struct {
 	Id          []byte
 	Alias       string
 	Secret      []byte
+	Code        string
 	DateCreated *timestamppb.Timestamp
 }
 
@@ -150,11 +163,12 @@ func (b0 SealAddRequest_builder) Build() *SealAddRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
 		x.xxx_hidden_Id = b.Id
 	}
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_Secret = b.Secret
+	x.xxx_hidden_Code = b.Code
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
 }
@@ -290,6 +304,7 @@ type SealSelect struct {
 	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
 	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
 	xxx_hidden_Secret      bool                   `protobuf:"varint,8,opt,name=secret"`
+	xxx_hidden_Code        bool                   `protobuf:"varint,9,opt,name=code"`
 	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
 	xxx_hidden_DateCreated bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
@@ -344,6 +359,13 @@ func (x *SealSelect) GetSecret() bool {
 	return false
 }
 
+func (x *SealSelect) GetCode() bool {
+	if x != nil {
+		return x.xxx_hidden_Code
+	}
+	return false
+}
+
 func (x *SealSelect) GetDateErased() bool {
 	if x != nil {
 		return x.xxx_hidden_DateErased
@@ -360,27 +382,32 @@ func (x *SealSelect) GetDateCreated() bool {
 
 func (x *SealSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
 }
 
 func (x *SealSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
 }
 
 func (x *SealSelect) SetSecret(v bool) {
 	x.xxx_hidden_Secret = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+}
+
+func (x *SealSelect) SetCode(v bool) {
+	x.xxx_hidden_Code = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
 }
 
 func (x *SealSelect) SetDateErased(v bool) {
 	x.xxx_hidden_DateErased = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
 }
 
 func (x *SealSelect) SetDateCreated(v bool) {
 	x.xxx_hidden_DateCreated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
 }
 
 func (x *SealSelect) HasAll() bool {
@@ -404,18 +431,25 @@ func (x *SealSelect) HasSecret() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
-func (x *SealSelect) HasDateErased() bool {
+func (x *SealSelect) HasCode() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
-func (x *SealSelect) HasDateCreated() bool {
+func (x *SealSelect) HasDateErased() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *SealSelect) HasDateCreated() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
 }
 
 func (x *SealSelect) ClearAll() {
@@ -433,13 +467,18 @@ func (x *SealSelect) ClearSecret() {
 	x.xxx_hidden_Secret = false
 }
 
-func (x *SealSelect) ClearDateErased() {
+func (x *SealSelect) ClearCode() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Code = false
+}
+
+func (x *SealSelect) ClearDateErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
 	x.xxx_hidden_DateErased = false
 }
 
 func (x *SealSelect) ClearDateCreated() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
 	x.xxx_hidden_DateCreated = false
 }
 
@@ -449,6 +488,7 @@ type SealSelect_builder struct {
 	All         *bool
 	Alias       *bool
 	Secret      *bool
+	Code        *bool
 	DateErased  *bool
 	DateCreated *bool
 }
@@ -458,23 +498,27 @@ func (b0 SealSelect_builder) Build() *SealSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
 		x.xxx_hidden_All = *b.All
 	}
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
 		x.xxx_hidden_Alias = *b.Alias
 	}
 	if b.Secret != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
 		x.xxx_hidden_Secret = *b.Secret
 	}
+	if b.Code != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		x.xxx_hidden_Code = *b.Code
+	}
 	if b.DateErased != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
 		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	if b.DateCreated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
 		x.xxx_hidden_DateCreated = *b.DateCreated
 	}
 	return m0
@@ -578,6 +622,7 @@ type SealPatchRequest struct {
 	xxx_hidden_Ref         *SealRef               `protobuf:"bytes,1,opt,name=ref"`
 	xxx_hidden_Alias       *string                `protobuf:"bytes,8,opt,name=alias"`
 	xxx_hidden_Secret      []byte                 `protobuf:"bytes,16,opt,name=secret"`
+	xxx_hidden_Code        *string                `protobuf:"bytes,18,opt,name=code"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -633,13 +678,23 @@ func (x *SealPatchRequest) GetSecret() []byte {
 	return nil
 }
 
+func (x *SealPatchRequest) GetCode() string {
+	if x != nil {
+		if x.xxx_hidden_Code != nil {
+			return *x.xxx_hidden_Code
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *SealPatchRequest) SetRef(v *SealRef) {
 	x.xxx_hidden_Ref = v
 }
 
 func (x *SealPatchRequest) SetAlias(v string) {
 	x.xxx_hidden_Alias = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
 }
 
 func (x *SealPatchRequest) SetSecret(v []byte) {
@@ -647,7 +702,12 @@ func (x *SealPatchRequest) SetSecret(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Secret = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *SealPatchRequest) SetCode(v string) {
+	x.xxx_hidden_Code = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
 }
 
 func (x *SealPatchRequest) HasRef() bool {
@@ -671,6 +731,13 @@ func (x *SealPatchRequest) HasSecret() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
+func (x *SealPatchRequest) HasCode() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
 func (x *SealPatchRequest) ClearRef() {
 	x.xxx_hidden_Ref = nil
 }
@@ -685,12 +752,18 @@ func (x *SealPatchRequest) ClearSecret() {
 	x.xxx_hidden_Secret = nil
 }
 
+func (x *SealPatchRequest) ClearCode() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Code = nil
+}
+
 type SealPatchRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Ref    *SealRef
 	Alias  *string
 	Secret []byte
+	Code   *string
 }
 
 func (b0 SealPatchRequest_builder) Build() *SealPatchRequest {
@@ -699,12 +772,16 @@ func (b0 SealPatchRequest_builder) Build() *SealPatchRequest {
 	_, _ = b, x
 	x.xxx_hidden_Ref = b.Ref
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
 		x.xxx_hidden_Alias = b.Alias
 	}
 	if b.Secret != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
 		x.xxx_hidden_Secret = b.Secret
+	}
+	if b.Code != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_Code = b.Code
 	}
 	return m0
 }
@@ -886,30 +963,33 @@ var File_app_seal_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_seal_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x14app/seal_svc.g.proto\x12\x03app\x1a\x0eapp/seal.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\x9b\x01\n" +
+	"\x14app/seal_svc.g.proto\x12\x03app\x1a\x0eapp/seal.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xb6\x01\n" +
 	"\x0eSealAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x1d\n" +
-	"\x06secret\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\x06secret\x12=\n" +
+	"\x06secret\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\x06secret\x12\x19\n" +
+	"\x04code\x18\t \x01(\tB\x05\xaa\x01\x02\b\x02R\x04code\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"\"\n" +
 	"\aSealRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
-	"\x03key\"\x90\x01\n" +
+	"\x03key\"\xa4\x01\n" +
 	"\n" +
 	"SealSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x16\n" +
-	"\x06secret\x18\b \x01(\bR\x06secret\x12\x1f\n" +
+	"\x06secret\x18\b \x01(\bR\x06secret\x12\x12\n" +
+	"\x04code\x18\t \x01(\bR\x04code\x12\x1f\n" +
 	"\vdate_erased\x18\x0e \x01(\bR\n" +
 	"dateErased\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"Y\n" +
 	"\x0eSealGetRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.SealRefR\x03ref\x12'\n" +
-	"\x06select\x18\x02 \x01(\v2\x0f.app.SealSelectR\x06select\"`\n" +
+	"\x06select\x18\x02 \x01(\v2\x0f.app.SealSelectR\x06select\"t\n" +
 	"\x10SealPatchRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.SealRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\x12\x16\n" +
-	"\x06secret\x18\x10 \x01(\fR\x06secret\"V\n" +
+	"\x06secret\x18\x10 \x01(\fR\x06secret\x12\x12\n" +
+	"\x04code\x18\x12 \x01(\tR\x04code\"V\n" +
 	"\x10SealApplyRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.SealRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"+\n" +

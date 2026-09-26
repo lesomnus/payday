@@ -106,6 +106,7 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 	}
 	q.SetAlias(req.GetAlias())
 	q.SetSecret(req.GetSecret())
+	q.SetCode(req.GetCode())
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
@@ -180,6 +181,9 @@ func SealSelectedFields(m *apptest.SealSelect) []string {
 	if m.GetSecret() {
 		vs = append(vs, seal.FieldSecret)
 	}
+	if m.GetCode() {
+		vs = append(vs, seal.FieldCode)
+	}
 	if m.GetDateErased() {
 		vs = append(vs, seal.FieldDateErased)
 	}
@@ -251,7 +255,7 @@ func SealGetKey(ctx context.Context, db *ent.Client, ref *apptest.SealRef) (uuid
 var sealOrmEntity = ormpatch.MustEntityOf(apptest.File_app_seal_proto, "Seal")
 
 var sealPatchColumns = entpatch.Columns{
-	1: seal.FieldId, 4: seal.FieldAlias, 8: seal.FieldSecret, 14: seal.FieldDateErased, 15: seal.FieldDateCreated}
+	1: seal.FieldId, 4: seal.FieldAlias, 8: seal.FieldSecret, 9: seal.FieldCode, 14: seal.FieldDateErased, 15: seal.FieldDateCreated}
 
 func (s SealServiceServer) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
 	if !req.HasPatch() {

@@ -19,7 +19,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/seal_svc.g.proto.
  */
 export const file_app_seal_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChRhcHAvc2VhbF9zdmMuZy5wcm90bxIDYXBwInsKDlNlYWxBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhQKBWFsaWFzGAQgASgJQgWqAQIIAhIVCgZzZWNyZXQYCCABKAxCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiHgoHU2VhbFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJjCgpTZWFsU2VsZWN0EgsKA2FsbBgBIAEoCBINCgVhbGlhcxgEIAEoCBIOCgZzZWNyZXQYCCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIkwKDlNlYWxHZXRSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5TZWFsUmVmEh8KBnNlbGVjdBgCIAEoCzIPLmFwcC5TZWFsU2VsZWN0IkwKEFNlYWxQYXRjaFJlcXVlc3QSGQoDcmVmGAEgASgLMgwuYXBwLlNlYWxSZWYSDQoFYWxpYXMYCCABKAkSDgoGc2VjcmV0GBAgASgMIkoKEFNlYWxBcHBseVJlcXVlc3QSGQoDcmVmGAEgASgLMgwuYXBwLlNlYWxSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIjChFTZWFsRXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgy4AEKC1NlYWxTZXJ2aWNlEiUKA0FkZBITLmFwcC5TZWFsQWRkUmVxdWVzdBoJLmFwcC5TZWFsEiUKA0dldBITLmFwcC5TZWFsR2V0UmVxdWVzdBoJLmFwcC5TZWFsEikKBVBhdGNoEhUuYXBwLlNlYWxQYXRjaFJlcXVlc3QaCS5hcHAuU2VhbBIpCgVBcHBseRIVLmFwcC5TZWFsQXBwbHlSZXF1ZXN0GgkuYXBwLlNlYWwSLQoFRXJhc2USDC5hcHAuU2VhbFJlZhoWLmFwcC5TZWFsRXJhc2VSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_seal, file_google_protobuf_timestamp, file_patch_patch]);
+  fileDesc("ChRhcHAvc2VhbF9zdmMuZy5wcm90bxIDYXBwIpABCg5TZWFsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIUCgVhbGlhcxgEIAEoCUIFqgECCAISFQoGc2VjcmV0GAggASgMQgWqAQIIAhITCgRjb2RlGAkgASgJQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIh4KB1NlYWxSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkicQoKU2VhbFNlbGVjdBILCgNhbGwYASABKAgSDQoFYWxpYXMYBCABKAgSDgoGc2VjcmV0GAggASgIEgwKBGNvZGUYCSABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIkwKDlNlYWxHZXRSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5TZWFsUmVmEh8KBnNlbGVjdBgCIAEoCzIPLmFwcC5TZWFsU2VsZWN0IloKEFNlYWxQYXRjaFJlcXVlc3QSGQoDcmVmGAEgASgLMgwuYXBwLlNlYWxSZWYSDQoFYWxpYXMYCCABKAkSDgoGc2VjcmV0GBAgASgMEgwKBGNvZGUYEiABKAkiSgoQU2VhbEFwcGx5UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuU2VhbFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiMKEVNlYWxFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCDLgAQoLU2VhbFNlcnZpY2USJQoDQWRkEhMuYXBwLlNlYWxBZGRSZXF1ZXN0GgkuYXBwLlNlYWwSJQoDR2V0EhMuYXBwLlNlYWxHZXRSZXF1ZXN0GgkuYXBwLlNlYWwSKQoFUGF0Y2gSFS5hcHAuU2VhbFBhdGNoUmVxdWVzdBoJLmFwcC5TZWFsEikKBUFwcGx5EhUuYXBwLlNlYWxBcHBseVJlcXVlc3QaCS5hcHAuU2VhbBItCgVFcmFzZRIMLmFwcC5TZWFsUmVmGhYuYXBwLlNlYWxFcmFzZVJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_seal, file_google_protobuf_timestamp, file_patch_patch]);
 
 /**
  * @generated from message app.SealAddRequest
@@ -39,6 +39,11 @@ export type SealAddRequest = Message<"app.SealAddRequest"> & {
    * @generated from field: bytes secret = 8 [features.field_presence = IMPLICIT];
    */
   secret: Uint8Array;
+
+  /**
+   * @generated from field: string code = 9 [features.field_presence = IMPLICIT];
+   */
+  code: string;
 
   /**
    * @generated from field: google.protobuf.Timestamp date_created = 15;
@@ -94,6 +99,11 @@ export type SealSelect = Message<"app.SealSelect"> & {
    * @generated from field: bool secret = 8;
    */
   secret: boolean;
+
+  /**
+   * @generated from field: bool code = 9;
+   */
+  code: boolean;
 
   /**
    * @generated from field: bool date_erased = 14;
@@ -153,6 +163,11 @@ export type SealPatchRequest = Message<"app.SealPatchRequest"> & {
    * @generated from field: bytes secret = 16;
    */
   secret: Uint8Array;
+
+  /**
+   * @generated from field: string code = 18;
+   */
+  code: string;
 };
 
 /**

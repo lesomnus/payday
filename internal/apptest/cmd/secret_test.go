@@ -48,6 +48,53 @@ func TestASecretIsNotAnsweredWith(t *testing.T) {
 	}
 }
 
+// TestASecretThatIsNotBytesIsNotAnsweredWith, which is a test by compiling
+// before it is one by asserting.
+//
+// `hideSeal` cleared each secret with its setter, and the argument was `nil`.
+// That is a `[]byte`, so it held for exactly as long as every secret anybody
+// had declared was a digest -- and `Seal.code` is the first that is not. `pd
+// gen` succeeded; the build ended inside a generated file. See the comment on
+// `Seal`, which is the other bug of this shape.
+//
+// What clears them now is `Clear` by field number, so the assertions below are
+// about the annotation rather than about a type: a `string` secret does not
+// come back, on the same paths a `bytes` one does not.
+func TestASecretThatIsNotBytesIsNotAnsweredWith(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	code := "884-113"
+
+	v, err := b.Walled.Seal().Add(b.as(ctx), app.SealAddRequest_builder{
+		Alias:  "seal-01",
+		Secret: []byte("hunter2"),
+		Code:   code,
+	}.Build())
+	x.NoError(err)
+	x.Empty(v.GetCode(), "an Add echoed the code back")
+	x.Empty(v.GetSecret(), "an Add echoed the secret back")
+
+	// Asked for by name, which is the caller trying hardest.
+	got, err := b.Walled.Seal().Get(b.as(ctx), app.SealGetRequest_builder{
+		Ref:    app.SealRef_builder{Id: v.GetId()}.Build(),
+		Select: app.SealSelect_builder{All: z.Ptr(true), Code: z.Ptr(true), Secret: z.Ptr(true)}.Build(),
+	}.Build())
+	x.NoError(err)
+	x.Empty(got.GetCode(), "a Get answered with the code")
+	x.Empty(got.GetSecret(), "a Get answered with the secret")
+	x.Equal("seal-01", got.GetAlias(), "the rest of the row came back")
+
+	// And it was stored, which is what says the two above are the layer
+	// clearing a value rather than nothing having been written.
+	k, err := entuuid.FromBytes(v.GetId())
+	x.NoError(err)
+
+	row, err := b.Ent.Seal.Get(ctx, k)
+	x.NoError(err)
+	x.Equal(code, row.Code, "the code was not stored at all")
+}
+
 // TestTheWriteHalfStillWorks, which is the half that was never the problem.
 //
 // The value is in the database and the app can read it there; what the layer
