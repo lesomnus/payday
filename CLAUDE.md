@@ -113,9 +113,10 @@ missed:
   generated method, and no schema change at all. A second verb beside `Add`
   would be *do it properly* next to *do it*, which is two names for one act.
   `docs/guide/server.md` § *Completing a generated verb* has the shape, and the
-  three things that make it safe: the extra writes go back **through** the
-  layer, they are one transaction, and the row itself goes to the server below
-  or the method calls itself.
+  three things that make it safe: the extra writes go back **through** the layer
+  so its own rules meet them, they are one transaction, and the row itself goes
+  to the server **below** — sending it back through the layer is the method
+  calling itself, and a stack overflow no compiler catches.
 - **It is an act the generated four do not name** -- verifying a secret,
   spending a link. That is an **overlay** on the entity's own service:
   `docs/guide/schema.md` § *An RPC of your own*.
