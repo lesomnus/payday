@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/lesomnus/payday/auth"
@@ -139,6 +141,107 @@ func TestASignInCanBeAnRpc(t *testing.T) {
 			metadata.Pairs("cookie", "pd_session="+cs[0].Value)))
 		x.Error(err, "the session outlived the sign-out")
 		x.False(errorsIsNoCredential(err), "a dead cookie fell through as a missing one")
+	})
+}
+
+// TestACookieTheServerHasForgottenIsNobodyAtTheDoor is lesomnus/roster#70 over
+// the wire.
+//
+// A session that idled out leaves its cookie in the browser, and the methods a
+// page then reaches for -- what the form should be, and the sign-in -- are the
+// public ones. Refused there, it draws a form that cannot work either, and
+// nothing short of somebody deleting the cookie by hand gets out.
+//
+// Both halves cross the transcoder, and the second is the one worth a real
+// server for: the public method is served, as nobody; and every answer to the
+// dead cookie carries the header that drops it -- **the refusal included**,
+// which is a header set on a call that ends in an error, and whether a
+// transport delivers one is not a thing to assume.
+func TestACookieTheServerHasForgottenIsNobodyAtTheDoor(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	who := pdid.New(1)
+	store := authsession.NewMemStore()
+	sessions := authsession.New(store, authsession.Insecure())
+
+	// One method of each: the sign-in is public, as one has to be, and health
+	// is not -- backwards from the default, so that the refusal has somewhere
+	// to happen.
+	public := func(method string) bool { return method == pdpb.TokenService_Introspect_FullMethodName }
+	resolver := auth.ResolverFunc(func(context.Context, auth.Identity) (*frame.Frame, error) {
+		return frame.New(who, pdid.New(2), frame.Whole()), nil
+	})
+
+	g := grpc.NewServer(auth.Interceptor(sessions.Handler(), resolver, public)...)
+	pdpb.RegisterTokenServiceServer(g, signer{sessions: sessions, who: who})
+	healthpb.RegisterHealthServer(g, health.NewServer())
+
+	h, err := web.Transcode(g)
+	x.NoError(err)
+
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+
+	call := func(method, body string, c *http.Cookie) *http.Response {
+		t.Helper()
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+method, strings.NewReader(body))
+		x.NoError(err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Connect-Protocol-Version", "1")
+		if c != nil {
+			req.AddCookie(c)
+		}
+
+		res, err := http.DefaultClient.Do(req)
+		x.NoError(err)
+		t.Cleanup(func() { _ = res.Body.Close() })
+
+		return res
+	}
+	dropped := func(res *http.Response) bool {
+		for _, c := range res.Cookies() {
+			if c.Name == "pd_session" && c.Value == "" && c.MaxAge < 0 {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	// A session, and then the row gone from under it: ended here, idled out
+	// in the wild, and one answer for both.
+	res := call(pdpb.TokenService_Introspect_FullMethodName, `{"token":"in"}`, nil)
+	x.Equal(http.StatusOK, res.StatusCode)
+	x.Len(res.Cookies(), 1)
+	live := res.Cookies()[0]
+
+	res = call(healthpb.Health_Check_FullMethodName, `{}`, live)
+	x.Equal(http.StatusOK, res.StatusCode, "the cookie it minted was refused")
+
+	x.NoError(store.Del(ctx, live.Value))
+
+	t.Run("where the method asks who is calling, it is refused and dropped", func(t *testing.T) {
+		x := require.New(t)
+
+		res := call(healthpb.Health_Check_FullMethodName, `{}`, live)
+		x.Equal(http.StatusUnauthorized, res.StatusCode)
+		x.True(dropped(res), "the browser was left carrying a key nothing holds: %v", res.Header.Values("Set-Cookie"))
+	})
+
+	t.Run("where it does not, it is served as nobody and dropped", func(t *testing.T) {
+		x := require.New(t)
+
+		res := call(pdpb.TokenService_Introspect_FullMethodName, `{"token":"in"}`, live)
+		x.Equal(http.StatusOK, res.StatusCode, "a dead cookie shut the door it exists to open")
+		x.True(dropped(res), "the browser was left carrying a key nothing holds: %v", res.Header.Values("Set-Cookie"))
+
+		// And the sign-in this call was still wins: the cookie it minted comes
+		// after the one that clears, so a browser applying them in order ends
+		// signed in.
+		cs := res.Cookies()
+		x.NotEmpty(cs[len(cs)-1].Value, "the sign-in was undone by its own answer")
 	})
 }
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/lesomnus/payday/auth"
@@ -158,6 +159,57 @@ func TestACookieThatNamesNothingDoesNotFallThrough(t *testing.T) {
 	_, err = h.Handle(carrying(dead))
 	x.Error(err, "a dead session became the next handler's caller")
 }
+
+// TestACookieTheServerHasForgottenIsCleared is the half of lesomnus/roster#70
+// that is this package's: the refusal above tells the browser to drop the key,
+// so it stops presenting one nothing holds. `auth` serves it as nobody where
+// the method asks for nobody, and `grpc_test.go` has the two together over the
+// wire.
+func TestACookieTheServerHasForgottenIsCleared(t *testing.T) {
+	x := require.New(t)
+
+	dead := &http.Cookie{Name: authsession.DefaultCookie, Value: "not-a-key"}
+
+	var out headers
+	_, err := authsession.New(authsession.NewMemStore()).Handler().
+		Handle(grpc.NewContextWithServerTransportStream(carrying(dead), &out))
+	x.ErrorIs(err, authsession.ErrNoSession)
+
+	cs := out.md.Get("set-cookie")
+	x.Len(cs, 1, "the browser was left carrying a key nothing holds")
+	x.Contains(cs[0], authsession.DefaultCookie+"=;")
+	x.Contains(cs[0], "Max-Age=0")
+
+	// Not when the store could not say. The session may well be there, and a
+	// store that is down for a minute would sign out everybody who called in
+	// it.
+	t.Run("and not by a store that is down", func(t *testing.T) {
+		x := require.New(t)
+
+		var out headers
+		_, err := authsession.New(brokenStore{}).Handler().
+			Handle(grpc.NewContextWithServerTransportStream(carrying(dead), &out))
+		x.ErrorIs(err, auth.ErrUnavailable)
+		x.Empty(out.md.Get("set-cookie"), "a store that was down signed the browser out")
+	})
+
+	// And a call that did not come in over the wire has nowhere to write one,
+	// which is not an error: it has no cookie to clear either.
+	t.Run("and quietly where there is no stream", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := authsession.New(authsession.NewMemStore()).Handler().Handle(carrying(dead))
+		x.ErrorIs(err, authsession.ErrNoSession)
+	})
+}
+
+// headers is the stream a response's metadata is set on, kept for reading.
+type headers struct{ md metadata.MD }
+
+func (h *headers) Method() string                  { return "" }
+func (h *headers) SetHeader(md metadata.MD) error  { h.md = metadata.Join(h.md, md); return nil }
+func (h *headers) SendHeader(md metadata.MD) error { return nil }
+func (h *headers) SetTrailer(md metadata.MD) error { return nil }
 
 // TestAnExpiredSessionIsRefusedEvenWhileTheStoreHoldsIt.
 //

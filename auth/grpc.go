@@ -17,6 +17,13 @@ import (
 )
 
 // Public reports whether a method is served without asking who is calling.
+//
+// Without asking, and not without knowing: a caller who carried a credential
+// is served as whoever it names, so a method here may answer differently to
+// somebody than to nobody. What it does not do is refuse over one. A credential
+// that is no good is nobody here, where anywhere else it is Unauthenticated --
+// the reason is beside the branch in the interceptor, and the caller it is for
+// is a browser whose session ran out.
 type Public func(method string) bool
 
 // PublicDefault is what is answered to anyone: whether the server is up, and
@@ -230,7 +237,37 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				return nil, Identity{}, resolveFailed(ctx, err)
 			}
 		} else if !errors.Is(err, ErrNoCredential) {
-			return nil, Identity{}, statusOf(err)
+			// Somebody said something and it was no good -- a token nothing
+			// holds, a session the store has forgotten -- and it is refused
+			// as itself, the way "names nobody who is here" is above. With
+			// the one exception the two share: a method that asks nothing of
+			// the caller.
+			//
+			// A public method is served as nobody to a caller who carried
+			// nothing, and one who carried something dead is nobody too;
+			// refusing them is refusing over a thing the method does not ask
+			// about. It is not academic, because the caller it lands on is a
+			// browser. A session that idled out leaves its cookie behind, and
+			// the methods a page then reaches for **because** it has no
+			// usable credential -- what the form should be, and the sign-in
+			// itself -- are exactly the public ones. Refused there, the page
+			// cannot learn how to sign in, the form it draws instead cannot
+			// work either, and nothing short of somebody deleting the cookie
+			// by hand gets out of it (lesomnus/roster#70).
+			//
+			// Not for [ErrUnavailable]. That is not "no good" but "cannot
+			// tell", and a public method is served as *somebody* to a caller
+			// whose credential is good -- so nobody would be an answer to a
+			// question that could not be asked, and Unavailable is the one
+			// that says come back.
+			//
+			// And it is not the fall-through [Seq] refuses to be: the search
+			// stopped at the handler that refused, so nobody is who this is
+			// served as, and not whoever the next handler would have made of
+			// the same request.
+			if errors.Is(err, ErrUnavailable) || !public(method) {
+				return nil, Identity{}, statusOf(err)
+			}
 		}
 
 		if public(method) {

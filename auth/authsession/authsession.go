@@ -81,6 +81,7 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/lesomnus/payday/auth"
@@ -420,6 +421,36 @@ func (s *Sessions) Handler() auth.Handler {
 
 		v, err := s.Read(ctx, key)
 		if err != nil {
+			if errors.Is(err, ErrNoSession) {
+				// The browser is told to drop it, on the way to the refusal.
+				//
+				// Left alone, a cookie the server has forgotten is presented
+				// on every call until a sign-in overwrites it or its own
+				// `Expires` runs out -- the absolute lifetime, for one that
+				// idled out -- and looked up and refused on every one. And
+				// `auth` serves a public method as nobody to a caller whose
+				// credential is no good rather than refusing them
+				// (lesomnus/roster#70), so a browser in this state works, and
+				// would go on carrying a dead key that nothing ever told it
+				// about.
+				//
+				// Not on [auth.ErrUnavailable]: the store may well still hold
+				// the session, and clearing the cookie of everybody who calls
+				// while it is down is signing them all out because it was.
+				//
+				// Best effort, for the reason [Sessions.End] gives. `SetHeader`
+				// has nowhere to write on a call that did not come in over the
+				// wire, and that is a caller with no cookie to clear.
+				//
+				// What it costs is one race. A response is applied when it
+				// arrives, so a call sent with the dead cookie and answered
+				// after a sign-in in another tab minted a live one clears the
+				// live one, and the person signs in again. The window is a
+				// call in flight; the alternative, every browser carrying a
+				// dead key, is paid on every call by everybody.
+				_ = grpc.SetHeader(ctx, metadata.Pairs("set-cookie", s.cleared().String()))
+			}
+
 			return auth.Identity{}, err
 		}
 
@@ -667,9 +698,16 @@ func (s *Sessions) End(ctx context.Context, key string) *http.Cookie {
 		_ = s.store.Del(ctx, key)
 	}
 
-	// Cleared with the same attributes it was set with. A browser matches a
-	// cookie to overwrite by name, path and domain, so one cleared at a
-	// different path leaves the original exactly where it was.
+	return s.cleared()
+}
+
+// cleared is the cookie that removes this one from a browser: what a sign-out
+// answers with, and what a call carrying a key nothing holds is answered with.
+//
+// Cleared with the same attributes it was set with. A browser matches a cookie
+// to overwrite by name, path and domain, so one cleared at a different path
+// leaves the original exactly where it was.
+func (s *Sessions) cleared() *http.Cookie {
 	return &http.Cookie{
 		Name:     s.cookie,
 		Value:    "",
