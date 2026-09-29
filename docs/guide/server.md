@@ -95,10 +95,12 @@ run, and it is answered in
 
 ## 3. Writing a layer
 
-A layer is where an RPC of your own is answered. Declaring one is a schema
-change and is written up there — see
-[an RPC of your own](schema.md#an-rpc-of-your-own); what follows is what answers
-it.
+A layer is where your app's rules live. Two kinds of thing are answered here:
+an RPC of your own — declaring one is a schema change and is written up there,
+see [an RPC of your own](schema.md#an-rpc-of-your-own) — and a **generated verb
+your app means more by**, which needs no schema change at all and is the case
+people miss. [Completing a generated verb](#completing-a-generated-verb) is
+that one.
 
 A layer is a struct embedding the generated `Overlay`, which forwards every
 service you do not override:
@@ -137,6 +139,114 @@ func (s coreRobot) Add(ctx context.Context, req *api.RobotAddRequest) (*api.Robo
 	// your rule, and then s.RobotServiceServer.Add(ctx, req)
 }
 ```
+
+### Completing a generated verb
+
+The `Add` above guards: it checks a rule and passes the same write on. A layer
+may also **finish** one — write the rows the verb is useless without — and that
+is still a layer rather than an RPC of your own, because it is the same act.
+
+The question is not how many rows are written; it is whether the caller asked
+for one thing or two. If `Add` leaves a row nobody can use until somebody makes
+three more, then those three are part of adding it, and a second verb beside
+`Add` would be *do it properly* next to *do it* — two names for one act, which
+is what the rule about a second **service** already refuses for one set of rows.
+
+Several writes are one transaction, and a transaction is begun on a driver — so
+this is the layer that is **constructed with one**, which a layer that only
+guards never needs:
+
+```go
+type Core struct {
+	api.Overlay
+
+	drv dialect.Driver
+}
+
+func New(next api.Server, drv dialect.Driver) Core {
+	return Core{api.NewOverlay(next), drv}
+}
+
+// WithDriver carries the driver and replaces it. See below for what rebuilding
+// this layer with the old one costs.
+func (s Core) WithDriver(drv dialect.Driver) (api.Server, error) {
+	next, err := enttx.Rebind(s.Next(), drv)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(next, drv), nil
+}
+```
+
+Then the verb itself:
+
+```go
+func (s coreRobot) Add(ctx context.Context, req *api.RobotAddRequest) (*api.Robot, error) {
+	drv, tx, err := dialect.BeginTx(ctx, s.drv)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// This layer again, over a rebound one below it.
+	next, err := enttx.Rebind(s.Next(), drv)
+	if err != nil {
+		return nil, err
+	}
+	at := New(next, drv)
+
+	// The row itself goes to the server **below** this layer. Sending it back
+	// through `at.Robot()` would be this method calling itself.
+	v, err := next.Robot().Add(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// And the rest go back through the layer, so a rule this layer holds about
+	// a joint meets the one this method writes as well as one a caller sends.
+	if _, err := at.Joint().Add(ctx, api.JointAddRequest_builder{
+		Robot: api.RobotRef_builder{Id: v.GetId()}.Build(),
+		Alias: v.GetAlias() + "-base",
+	}.Build()); err != nil {
+		return nil, err
+	}
+
+	return v, tx.Commit()
+}
+```
+
+Three things make it safe rather than surprising, and a reviewer will look for
+each:
+
+- **Through the layer, not past it.** The extra writes go to `at`, which is this
+  layer rebound, so the rules **this layer** holds meet the rows it writes for
+  itself and not only the ones a caller sends. What it is not is the whole stack
+  again: the layers in front wrapped the outer call and do not run a second
+  time, so a rule the composite must not go around belongs in this layer or
+  under it. A composite that reaches `s.Next()` for the extra writes is one that
+  skips its own rules, which is the thing people are right to fear about a call
+  that writes four rows.
+- **One transaction.** Otherwise a refusal at the third write leaves the first
+  two, and the row that is left is the unfinished state the whole change exists
+  to make impossible.
+- **The row itself goes below.** `at.Robot().Add` is this method again, and the
+  stack overflow it ends in is at run time and in a test that was passing an
+  hour ago. It is the one of the three no compiler catches.
+
+And the reason `WithDriver` above hands on the driver it was given: inside a
+batch, this `Add` is already running in somebody else's transaction, because a
+batch puts the whole stack on one. Rebound with that driver, the transaction
+this method begins **is** that one — `dialect.BeginTx` on a driver that is
+already a transaction answers with a `Tx` that cannot end it, so the inner
+`Commit` is a no-op and the writes hold or fall with the batch. Rebuilt with the
+original driver instead, it would open a second transaction on another
+connection: the writes split between two, and on SQLite the second waits out
+`busy_timeout` for a lock the first is holding.
+
+The whole of it is compiled and run in
+`internal/apptest/cmd/composite_test.go` — one call writing both rows, a refusal
+halfway writing neither, and the same verb inside a batch.
 
 ### The one thing that is easy to forget
 
