@@ -319,6 +319,21 @@ It answers 204 even when the store refuses, because the caller asked to be
 signed out and the cookie is cleared either way — a 503 leaves somebody looking
 at a page that says they are still signed in.
 
+## A cookie the server has forgotten
+
+A session that idled out, or was ended from the other side, leaves its cookie in
+the browser, and the browser goes on presenting it. What that gets is not a dead
+end. A method that asks nothing of the caller — `public`, which is what a
+sign-in has to be and what "how do I sign in here" should be — is served as
+nobody, exactly as it is to a browser carrying no cookie at all; and every
+answer to the dead cookie, the refusals included, carries the header that clears
+it. So the page learns how to sign in, does, and the browser stops carrying a
+key nothing holds.
+
+Where a method does ask who is calling, the answer is `Unauthenticated`, as it
+was. A store that could not be asked is `Unavailable` wherever the call was
+going, and clears nothing: the session may well still be there.
+
 ## What the endpoint answers
 
 204 and no body. What a page needs about the person is a request it should make,
@@ -338,7 +353,8 @@ auth.Seq(sessions.Handler(), auth.MTLS())
 the rule is [permissions §4](permissions.md#4-who-is-asking). For a cookie that
 means a request carrying none reaches the certificate, while one naming a
 session that has expired, been signed out, or lives in a store that is down
-does not.
+does not — it is refused, or on a public method served as nobody, and either
+way never as whoever the certificate says.
 
 An app that also takes API tokens adds the third:
 

@@ -203,6 +203,13 @@ srv := grpc.NewServer(auth.Interceptor(handler, resolver, auth.PublicDefault)...
 `PublicDefault` is health and reflection: served to anybody, because neither says
 anything about what is inside.
 
+A public method is served to a caller who carried nothing as nobody, to one
+whose credential is good as who it names, and to one whose credential is **no
+good** — a token nothing holds, a session that expired — as nobody too, rather
+than refused. The last is what lets a browser whose session idled out ask how to
+sign in again, with the dead cookie still in it. Only "cannot tell" is an answer
+there: a store that is down is `Unavailable` wherever the call was going.
+
 ---
 
 ## 5. What a caller may see

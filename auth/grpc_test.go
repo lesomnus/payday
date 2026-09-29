@@ -201,6 +201,53 @@ func TestInterceptor(t *testing.T) {
 		x.Equal(codes.Unauthenticated, status.Code(err))
 	})
 
+	// The exception that refusal and "names nobody who is here" share: a
+	// method that asks nothing of the caller. The caller it is for is a browser
+	// whose session idled out and whose cookie stayed behind -- the methods it
+	// then reaches for, how to sign in and the sign-in itself, are the public
+	// ones, and refused there it has no way back in (lesomnus/roster#70).
+	t.Run("a credential that is no good is nobody on a public method", func(t *testing.T) {
+		x := require.New(t)
+
+		h := auth.Seq(auth.Bearer(auth.NewMemTokenStore()), auth.Plain())
+		bad := incoming("Bearer nope")
+		health := "/grpc.health.v1.Health/Check"
+
+		// Where the method asks who is calling, as before.
+		_, err := serve(h, known(), auth.PublicDefault, bad, getMethod)
+		x.Equal(codes.Unauthenticated, status.Code(err))
+
+		// Where it does not: served, and as nobody.
+		ctx, err := serve(h, known(), auth.PublicDefault, bad, health)
+		x.NoError(err)
+		_, ok := frame.From(ctx)
+		x.False(ok, "a dead credential was served as somebody")
+
+		// As nobody and not as the next handler's caller: the search stopped
+		// at the token, so the name beside it is never read.
+		both := incoming("Bearer nope", "Plain @acme/admin")
+		ctx, err = serve(h, known(), auth.PublicDefault, both, health)
+		x.NoError(err)
+		_, ok = frame.From(ctx)
+		x.False(ok, "a dead credential fell through to the one beside it")
+
+		// While a good one is served as who it names, which is what makes the
+		// next answer the right one.
+		ctx, err = serve(h, known(), auth.PublicDefault, incoming("Plain @acme/admin"), health)
+		x.NoError(err)
+		_, ok = frame.From(ctx)
+		x.True(ok, "a public call is served as whoever a good credential names")
+
+		// A store that is down is Unavailable here too: the credential may be
+		// perfectly good, and nobody would be an answer to a question that
+		// could not be asked.
+		down := auth.TokenStoreFunc(func(context.Context, string) (auth.Identity, error) {
+			return auth.Identity{}, fmt.Errorf("dial tcp: %w", auth.ErrUnavailable)
+		})
+		_, err = serve(auth.Bearer(down), known(), auth.PublicDefault, bad, health)
+		x.Equal(codes.Unavailable, status.Code(err))
+	})
+
 	// A credential may say which tenant holds the actor it names -- a device
 	// certificate carrying both is the ordinary case -- and this is the only
 	// place the claim and the row are both in hand. A handler has read nothing;
