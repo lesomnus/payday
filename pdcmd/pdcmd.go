@@ -201,7 +201,8 @@ func ConfigFlag() *flg.String {
 // It prints the **loaded** configuration rather than the file, which is the
 // point of having it: a file, then the environment over the top of it, then
 // whatever a default answers -- and what a deployment wants to know is what
-// came out, not what any one of those said.
+// came out, not what any one of those said. Its secrets are not printed; see
+// [redacted] for which those are.
 //
 //	Commands: []*xli.Command{ pdcmd.NewCmdConfig(loader, &cfg) },
 func NewCmdConfig[T any](l config.Loader, v *T) *xli.Command {
@@ -212,7 +213,15 @@ func NewCmdConfig[T any](l config.Loader, v *T) *xli.Command {
 		Commands: []*xli.Command{NewCmdConfigEnv(l, v)},
 
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			return yaml.NewEncoder(cmd).Encode(v)
+			// Without its secrets: a deployment's token and its database's
+			// password were printed whole, by a command whose use is to show
+			// somebody else what was read. See [redacted].
+			out, err := redacted(v)
+			if err != nil {
+				return err
+			}
+
+			return yaml.NewEncoder(cmd).Encode(out)
 		}),
 	}
 }
