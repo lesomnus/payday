@@ -87,13 +87,20 @@ audit:
 		x := require.New(t)
 
 		var c App
-		s, err := cfg.New("acme", &c, cfg.WithPaths()).Load("", []string{"ACME_DB_DSN=postgres://app:hunter2@db/app"})
+		s, err := cfg.New("acme", &c, cfg.WithPaths()).Load("", []string{
+			"ACME_DB_DSN=postgres://app:hunter2@db/app",
+			// The database `migrate plan` works migrations out on has a
+			// password like any other, under a name that is not `dsn`.
+			"ACME_DB_DEV_DSN=postgres://app:devsecret@db/dev",
+		})
 		x.NoError(err)
 
 		b := &strings.Builder{}
 		x.NoError(s.Print(b))
 		x.NotContains(b.String(), "hunter2")
+		x.NotContains(b.String(), "devsecret")
 		x.Contains(b.String(), "postgres://app:<redacted>@db/app")
+		x.Contains(b.String(), "postgres://app:<redacted>@db/dev")
 	})
 }
 
