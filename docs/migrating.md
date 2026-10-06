@@ -3,6 +3,50 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The configuration is read by xli's `cfg`
+
+**Applies if** anything says `config.For`, `pdcmd.Load`, `pdcmd.ConfigFlag` or
+`pdcmd.NewCmdConfig` — every app `pd new` wrote does, in `cmd/config.go` and
+`cli/cli.go`.
+
+What read an app's struct from a file and the environment moved to
+[`github.com/lesomnus/xli/cfg`](https://github.com/lesomnus/xli/blob/main/cfg/DESIGN.md),
+beside the flags it can now bind. payday keeps the blocks (`config.ServerConfig`
+and the rest), which read the same.
+
+| was | is |
+| --- | --- |
+| `var Loader = config.For(Name)` in `cmd` | `l := cfg.New(cmd.Name, c)` in `cli.Cmd` |
+| `pdcmd.ConfigFlag()` | `cfg.ConfigFlag()` |
+| `pdcmd.NewCmdConfig(cmd.Loader, c)` | `cfg.NewCmdConfig(l)` |
+| `pdcmd.Load(cmd.Loader, c)` | `cfg.Load(l, version)`, with `version := pdcmd.NewCmdVersion()` |
+| `pdcmd.Reads("KEY_")` | `cfg.New(cmd.Name, c, cfg.Reads("KEY_"))` |
+| `config.ReadFile(path, &v)` | `cfg.NewFile[V](path).Read()` |
+| `cmd.Loader.EnvNames(&c)` | `l.EnvNames()` |
+| `if v, _ := flg.Find[string](cl, "x"); v != "" { c.X = v }` after the load | `cfg.Bind(l, &c.X, &flg.String{Name: "x"})` |
+
+`cfg.Load(l, version)` loads for every command but `version`, so a deployment
+whose configuration is wrong can still be asked what build it is.
+
+What a deployment will notice:
+
+- **A key in the file that nothing reads is an error**, with the line it is on.
+  It was ignored, which is how a misspelt key became a setting that silently was
+  not there. A key starting with `x-` is ignored, for anchors.
+- A value from the environment is taken as it is. A list is `a,b` or YAML flow,
+  `[a, b]`; it was only the latter.
+- In the file, a reference inside `[...]` or `{...}` must be quoted:
+  `["${env:A}"]`. The parse error says so.
+- `${file:/path}` is for a secret only, in a field of type `cfg.Secret`, which
+  reads the file again when it is rotated. A secret written `file:/path`, the
+  way roster and shale wrote one, is an error that says how to write it.
+- A field with no tag is named in snake_case: `ListenAddr` is `listen_addr`,
+  where it was `listenaddr`. Every block payday ships is tagged.
+- `010` is ten, as YAML 1.2 reads it. It was eight.
+- `config env` lists in the order of the struct rather than sorted; `config`
+  prints what was set, with where it came from, and no secrets — by name, as it
+  did, and every `cfg.Secret`.
+
 ## A UUID is the standard library's
 
 `uuid.UUID` now comes from Go 1.27's `uuid` package rather than from

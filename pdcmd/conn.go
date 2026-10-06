@@ -34,7 +34,7 @@ type Conn = grpc.ClientConnInterface
 //
 // `xli` reads configuration in a handler on the root, so by the time a leaf
 // runs the answer is there. [Connector.Connect] runs then. The shape is the one
-// an app already uses for everything it needs late: `pdcmd.Load` puts the
+// an app already uses for everything it needs late: `cfg.Load` puts the
 // configuration in place on the way down, and this reads it on the way to doing
 // the work.
 //

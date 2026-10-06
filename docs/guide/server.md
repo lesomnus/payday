@@ -601,28 +601,40 @@ type Config struct {
 }
 ```
 
-And the loader fills in any struct at all:
+What fills it in is xli's [`cfg`](https://github.com/lesomnus/xli/blob/main/cfg/DESIGN.md),
+which reads any struct at all. `pd new` writes it into `cli/cli.go`:
 
 ```go
-l := config.For("acme")
+l := cfg.New("acme", &c) // what c holds now is the defaults
 
-var c Config
-from, err := l.Load(&c, path, os.Environ())
+root := &xli.Command{
+	Flags:    flg.Flags{cfg.ConfigFlag()},
+	Commands: xli.Commands{version, cfg.NewCmdConfig(l), serve},
+	Handler:  xli.Chain(cfg.Load(l, version), xli.RequireSubcommand()),
+}
 ```
 
-A file, then the environment over the top of it. The order is fixed and
-`Load` does both, rather than leaving them to be called in turn — a
-configuration read the other way round is one where a deployment sets a variable,
-watches the file win, and has nothing to look at that says so.
+The defaults, then a file, then the environment over the top of it, then any
+flag bound to a field with `cfg.Bind`. The order is fixed and one load does all
+of it, rather than leaving them to be called in turn — a configuration read the
+other way round is one where a deployment sets a variable, watches the file win,
+and has nothing to look at that says so.
 
-Inside the file, `${env:NAME}` is resolved before decoding, so a secret can be
-named in the file without being written in it. `${env:NAME:-default}` is the
-same with an answer for when nothing set it.
+Inside the file, `${env:NAME}` is resolved, so a secret can be named in the file
+without being written in it. `${env:NAME:-default}` is the same with an answer
+for when nothing set it, and `$$` is a dollar sign. A field of type `cfg.Secret`
+may also be `${file:/run/secrets/db}`, which is read again when the file is
+rotated.
 
 Environment variable names come from the struct by reflection, so `server.addr`
-is `ACME_SERVER_ADDR` for an app whose loader was made with `config.For("acme")`.
-`<app> config env` prints the whole list, which is what a `.env.example` should
-be diffed against.
+is `ACME_SERVER_ADDR` for an app whose loader was made with `cfg.New("acme", …)`.
+A variable that is set and empty clears the value. `<app> config env` prints the
+whole list, which is what a `.env.example` should be diffed against, and
+`<app> config` prints what came out — where each value came from, and none of
+its secrets.
+
+A key in the file that nothing reads is an error, with the line it is on: a
+misspelt key is otherwise a setting that silently is not there.
 
 ### The one setting with no default
 
@@ -746,9 +758,10 @@ your app can hand over:
 | `<app> config` / `config env` | needs your config struct to walk |
 | `<app> version` | what build is running |
 
-The last two come ready-made from `payday/pdcmd` — `pdcmd.NewCmdConfig(Loader, c)`
-and `pdcmd.NewCmdVersion()` — and the first two are written into your repository
-by `pd new`, because their bodies are the stack and the first row.
+The last two come ready-made — `cfg.NewCmdConfig(l)` from xli's `cfg`, beside
+what reads the configuration, and `pdcmd.NewCmdVersion()` — and the first two
+are written into your repository by `pd new`, because their bodies are the stack
+and the first row.
 
 The same package builds `get`, `ls`, `watch`, `add`, `patch` and `erase` for
 every entity you have, against a deployment it is told how to reach:

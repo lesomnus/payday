@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lesomnus/xli/cfg"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -108,7 +109,7 @@ func TestServerConfig(t *testing.T) {
 		}
 
 		var c Config
-		_, err := acme.OverrideFromEnv(&c, []string{
+		_, err := cfg.New("acme", &c, cfg.WithPaths()).Load("", []string{
 			"ACME_SERVER_ALLOW_REFLECTION=true",
 			"ACME_SERVER_MAX_RECV_MSG_SIZE=1048576",
 			"ACME_SERVER_KEEPALIVE_MAX_CONNECTION_AGE=30m",

@@ -6,18 +6,17 @@
 // `pd` is the generator, and it runs against a checkout: it reads a schema and
 // writes code, and it never has the app's types. These commands are the other
 // kind -- they run against a **deployment**, and every one of them needs
-// something only the app can hand over.
+// something only the app can hand over. `version` reads the build information
+// of the binary it is in; `migrate` needs the database the app configured.
 //
-// `config env` is the clearest case and the one that settled the boundary.
-// Listing the environment variables a deployment can set means walking the
-// app's configuration struct, and payday's whole position on configuration is
-// that the struct is the app's: what an app can be told is what it declared,
-// and a framework that owned that would be a framework every app fights. So
-// `config.Loader` walks whatever it is handed, and this mounts a command over
-// it -- the app supplies the struct, payday supplies the command.
-//
-// The rest follow the same rule. `version` reads the build information of the
-// binary it is in; `migrate` needs the database the app configured.
+// `config` and `config env` were here, and settled the boundary: listing the
+// variables a deployment can set means walking the app's struct, and payday's
+// whole position on configuration is that the struct is the app's. They are
+// xli's now, with the reading they print -- `cfg.NewCmdConfig` beside
+// `cfg.Load` -- because what reads a struct from a file, the environment and
+// the flags is nothing to do with RPC, and the half that binds a flag to a
+// field belongs beside what parses the flag. The rule they settled is the same
+// one: the app supplies the struct, and the command is mounted over it.
 //
 // # The entity commands
 //
@@ -45,242 +44,22 @@ package pdcmd
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"regexp"
-	"sort"
-	"strings"
 
-	"github.com/goccy/go-yaml"
 	"github.com/lesomnus/xli"
 	"github.com/lesomnus/xli/flg"
-	"github.com/lesomnus/xli/mode"
 
-	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/version"
 )
-
-// Load reads the configuration, and belongs on the **root** command so that it
-// has happened before any subcommand runs.
-//
-//	Handler: xli.Chain(pdcmd.Load(Loader, c), xli.RequireSubcommand()),
-//
-// It is a handler rather than something `serve` does, because every command
-// that touches a deployment needs it: `config` prints what was read, `migrate`
-// opens the database it names, and a command that loaded it for itself would be
-// one more place for the order to be wrong.
-//
-// It runs when the root is passed **through** as well as when it is the command
-// -- `mode.Run|mode.Pass` -- which is the whole of why this is a function
-// rather than a line in each app: an `OnRun` here fires only for `<app>` with
-// no subcommand, so the file is read when nothing needs it and not read when
-// everything does.
-//
-// `--config` names a file; nothing named is [config.Loader.Paths] in order.
-// Reading none is not a failure -- a deployment may say everything in the
-// environment -- so what says the file was there is [config.Loaded.Path].
-//
-// A variable that starts with the app's prefix and that no field answers to is
-// **reported**, because that is what a typo looks like and the alternative is a
-// deployment that set something and was not served by it -- unless the app
-// said it reads such names itself, with [Reads].
-func Load[T any](l config.Loader, v *T, opts ...LoadOption) xli.Handler {
-	var o loadOptions
-	for _, opt := range opts {
-		opt(&o)
-	}
-
-	return xli.On(mode.Run, func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-		// Read off the command rather than from a variable the flag was told
-		// to write, because when that variable is written is the flag
-		// machinery's business and this has to happen after it.
-		p, _ := flg.Find[string](cmd, ConfigName)
-
-		from, err := l.Load(v, p, os.Environ())
-		if err != nil {
-			return err
-		}
-		for _, name := range unread(l, from.Unknown, o.reads) {
-			fmt.Fprintf(cmd.ErrWriter, "%s: %s is set and nothing reads it\n", l.Name(), name)
-		}
-
-		return next(ctx)
-	})
-}
-
-// LoadOption is what [Load] may be told beyond the loader and the struct.
-type LoadOption func(*loadOptions)
-
-type loadOptions struct {
-	reads []string
-}
-
-// Reads says the app reads names under these prefixes itself, so a variable
-// there is not a typo.
-//
-// The prefixes are what follows the app's own: `Reads("ACCOUNT_KEY_")` for an
-// app called `roster` is every `ROSTER_ACCOUNT_KEY_*`. [config.Loaded.Unknown]
-// is answered with rather than refused for exactly this -- a secret an app
-// takes from the environment because a flag is in the process list, a
-// `<APP>_VERSION` the build sets -- and this is where the app says which.
-func Reads(prefixes ...string) LoadOption {
-	return func(o *loadOptions) { o.reads = append(o.reads, prefixes...) }
-}
-
-// injected matches an environment variable an orchestrator set rather than a
-// person: Kubernetes' service links, which are Docker's links before them.
-//
-// One set per service in the namespace, named after the service, uppercased --
-// so a deployment whose services are named after the app produces dozens of
-// them under the app's own prefix. That is the ordinary shape and not an odd
-// one: `roster`, `roster-data`, `roster-hydra` in a namespace give a `roster`
-// binary fifty-odd `ROSTER_…` variables it never asked for.
-//
-//	ROSTER_DATA_SERVICE_HOST
-//	ROSTER_DATA_SERVICE_PORT_GRPC
-//	ROSTER_HYDRA_PORT_4445_TCP_ADDR
-//
-// [Reads] cannot answer this. The prefix is the **service's** name, which the
-// app does not know and which changes when somebody adds a service -- so an app
-// claiming them would be claiming a moving list, and every claim widens the
-// place a real typo can hide.
-var injected = regexp.MustCompile(`_(SERVICE_HOST|SERVICE_PORT(_[A-Z0-9_]+)?|PORT|PORT_[0-9]+_(TCP|UDP)(_(ADDR|PORT|PROTO))?)$`)
-
-// unread is what is worth a warning: the unknown names that no [Reads] claims
-// and no orchestrator set.
-//
-// # Why the second half is here and not left to the deployment
-//
-// A deployment **can** turn service links off -- `enableServiceLinks: false` --
-// and one that reads this comment should. But the warning exists to be read,
-// and fifty-seven true statements about variables nobody set is not noise: it
-// is the check defeated, because the one line it is for is entry fifty-eight.
-// A tool that is useless in the ordinary deployment shape is a tool that gets
-// turned off.
-//
-// Nothing is hidden by this. A name a field answers to never reaches here --
-// `Unknown` is what the loader could not place -- so a deployment that really
-// has a `port` field goes on being served by it, and a typo that happens to end
-// in `_PORT` is the one case this trades away for the fifty-seven.
-func unread(l config.Loader, unknown []string, reads []string) []string {
-	out := make([]string, 0, len(unknown))
-	for _, name := range unknown {
-		if injected.MatchString(name) {
-			continue
-		}
-
-		claimed := false
-		for _, p := range reads {
-			if strings.HasPrefix(name, l.Prefix()+p) {
-				claimed = true
-				break
-			}
-		}
-		if !claimed {
-			out = append(out, name)
-		}
-	}
-
-	return out
-}
-
-// ConfigName is the flag [Load] reads the path from.
-const ConfigName = "config"
-
-// ConfigFlag is `--config`, for the root command [Load] is on.
-func ConfigFlag() *flg.String {
-	return &flg.String{
-		Name:  ConfigName,
-		Brief: "the configuration file to read; the app's own by default",
-	}
-}
-
-// NewCmdConfig is `<app> config`: what this deployment is configured with, as
-// it was read.
-//
-// It prints the **loaded** configuration rather than the file, which is the
-// point of having it: a file, then the environment over the top of it, then
-// whatever a default answers -- and what a deployment wants to know is what
-// came out, not what any one of those said. Its secrets are not printed; see
-// [redacted] for which those are.
-//
-//	Commands: []*xli.Command{ pdcmd.NewCmdConfig(loader, &cfg) },
-func NewCmdConfig[T any](l config.Loader, v *T) *xli.Command {
-	return &xli.Command{
-		Name:  "config",
-		Brief: "print this deployment's configuration, as it was read",
-
-		Commands: []*xli.Command{NewCmdConfigEnv(l, v)},
-
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			// Without its secrets: a deployment's token and its database's
-			// password were printed whole, by a command whose use is to show
-			// somebody else what was read. See [redacted].
-			out, err := redacted(v)
-			if err != nil {
-				return err
-			}
-
-			return yaml.NewEncoder(cmd).Encode(out)
-		}),
-	}
-}
-
-// NewCmdConfigEnv is `<app> config env`: every environment variable this app
-// reads.
-//
-// It answers the question a deployment actually has -- "what can I set" -- and
-// it answers it from the struct rather than from a list somebody maintains,
-// which is the whole reason it is worth being a command. A documented list of
-// environment variables goes out of date on the commit that adds a field, and
-// the way that is found out is somebody setting one that does nothing.
-//
-// Nothing about the values is printed. What a variable is *set* to is
-// [NewCmdConfig]'s answer, and printing both here would put secrets in the
-// output of a command whose whole use is to be pasted into a ticket.
-func NewCmdConfigEnv[T any](l config.Loader, v *T) *xli.Command {
-	return &xli.Command{
-		Name:  "env",
-		Brief: "print every environment variable this app reads",
-
-		Flags: flg.Flags{
-			&flg.Switch{
-				Name:  "set",
-				Brief: "say which of them are set, without saying what to",
-			},
-		},
-
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			vs := l.EnvNames(v)
-			sort.Strings(vs)
-
-			set, _ := flg.Find[bool](cmd, "set")
-			for _, name := range vs {
-				if !set {
-					cmd.Println(name)
-					continue
-				}
-
-				// Whether, and never what. A command that prints the value of
-				// every variable it knows about is one whose output nobody can
-				// paste anywhere.
-				if _, ok := lookup(name); ok {
-					cmd.Printf("%s\tset\n", name)
-				} else {
-					cmd.Printf("%s\t-\n", name)
-				}
-			}
-
-			return nil
-		}),
-	}
-}
 
 // NewCmdVersion is `<app> version`.
 //
 // The build information comes from the binary this is compiled into, so an app
 // that mounts this gets the version of *itself* rather than of payday. That is
 // what makes it mountable at all.
+//
+// It needs no configuration, and is the command somebody runs to ask a
+// deployment whose configuration is wrong what build it is -- so an app that
+// reads its configuration on the root says so: `cfg.Load(l, version)`.
 func NewCmdVersion() *xli.Command {
 	return &xli.Command{
 		Name:  "version",
@@ -303,7 +82,3 @@ func NewCmdVersion() *xli.Command {
 		}),
 	}
 }
-
-// lookup is `os.LookupEnv`, behind a name, so that a test can say what the
-// environment holds without setting it.
-var lookup = os.LookupEnv
