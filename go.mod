@@ -16,7 +16,8 @@ require (
 	github.com/lesomnus/otx v0.0.0-20260807173743-977a5687d6ba
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20260807173743-977a5687d6ba
 	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e
-	github.com/lesomnus/xli v0.0.0-20260717171524-bf8cac633057
+	github.com/lesomnus/xli v0.0.0-20261006051808-dadaa2417a76
+	github.com/lesomnus/xli/cfg v0.1.0
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260906212449-04c0cd58f10a

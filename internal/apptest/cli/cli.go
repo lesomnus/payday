@@ -29,6 +29,7 @@ import (
 
 	"github.com/lesomnus/otx/log"
 	"github.com/lesomnus/xli"
+	"github.com/lesomnus/xli/cfg"
 	"github.com/lesomnus/xli/flg"
 	entschema "github.com/protobuf-orm/ent/dialect/sql/schema"
 	"golang.org/x/sync/errgroup"
@@ -41,32 +42,39 @@ import (
 	entmigrate "github.com/lesomnus/payday/internal/apptest/internal/ent/migrate"
 )
 
-// Cmd is this app's own command line: what payday supplies, plus whatever the
-// app has of its own.
+// Cmd is this app's own command line: what payday and xli supply, plus
+// whatever the app has of its own.
 //
-// `config`, `config env` and `version` are payday's -- they are the commands
-// that run against a **deployment** rather than against a checkout, and every
-// one of them needs something only the app can hand over. `config env` is the
-// clearest: listing the variables a deployment can set means walking this
-// struct, and the struct is the app's.
+// `config`, `config env` and `version` are the commands that run against a
+// **deployment** rather than against a checkout, and every one of them needs
+// something only the app can hand over. `config env` is the clearest: listing
+// the variables a deployment can set means walking this struct, and the struct
+// is the app's. `version` is payday's; the two `config` are xli's, beside what
+// reads the configuration.
 //
 // `serve` is not among them and will not be. It is the one command whose body
 // is the stack -- which layers, in which order, with the wall on which server
 // -- and that is the most important thing a reader of an app can see.
 func Cmd(c *cmd.Config) *xli.Command {
+	l := cfg.New(cmd.Name, c)
+
+	// `version` needs no configuration, and is what somebody runs to ask a
+	// deployment whose configuration is wrong what build it is.
+	version := pdcmd.NewCmdVersion()
+
 	return &xli.Command{
 		Name:  cmd.Name,
 		Brief: "the app payday is tried against",
 
-		Flags: flg.Flags{pdcmd.ConfigFlag()},
+		Flags: flg.Flags{cfg.ConfigFlag()},
 
 		Commands: []*xli.Command{
-			pdcmd.NewCmdVersion(),
-			pdcmd.NewCmdConfig(cmd.Loader, c),
+			version,
+			cfg.NewCmdConfig(l),
 			NewCmdServe(c),
 		},
 
-		Handler: xli.Chain(pdcmd.Load(cmd.Loader, c), xli.RequireSubcommand()),
+		Handler: xli.Chain(cfg.Load(l, version), xli.RequireSubcommand()),
 	}
 }
 

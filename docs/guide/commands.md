@@ -53,7 +53,7 @@ the answer is there. `Connect` runs then:
 type remote struct{ c *Config }
 
 func (r remote) Connect(ctx context.Context) (pdcmd.Conn, func(), error) {
-	// r.c is filled in by now: `pdcmd.Load` ran on the root.
+	// r.c is filled in by now: `cfg.Load` ran on the root.
 	conn, err := grpc.NewClient(r.c.Server.Addr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, nil, err
