@@ -32,10 +32,17 @@ func serve(t *testing.T, ctx context.Context) grpc_health_v1.HealthClient {
 // to call.
 func serveConn(t *testing.T, ctx context.Context, also ...func(*grpc.Server)) *grpc.ClientConn {
 	t.Helper()
+	return serveConnWith(t, ctx, nil, also...)
+}
+
+// serveConnWith is [serveConn] for a test of what [grpcx.ServerOptions] is
+// told.
+func serveConnWith(t *testing.T, ctx context.Context, opts []grpcx.Option, also ...func(*grpc.Server)) *grpc.ClientConn {
+	t.Helper()
 	x := require.New(t)
 
 	l := bufconn.Listen(1 << 20)
-	g := grpc.NewServer(grpcx.ServerOptions(ctx)...)
+	g := grpc.NewServer(grpcx.ServerOptions(ctx, opts...)...)
 	grpc_health_v1.RegisterHealthServer(g, health.NewServer())
 	for _, f := range also {
 		f(g)

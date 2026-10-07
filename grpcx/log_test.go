@@ -11,6 +11,8 @@ import (
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
+
+	"github.com/lesomnus/payday/grpcx"
 )
 
 // echo is a service of one method, so that a test has something to call that is
@@ -101,6 +103,21 @@ func TestLog(t *testing.T) {
 		// The span is ended by the handler registered in front of the log, from
 		// the same event and in the same pass, so once it is here the log has
 		// had its turn and declined to take it.
+		wait(t, func() bool { return len(h.Ended()) == 1 })
+		x.Empty(h.Records())
+	})
+
+	t.Run("nor is a method the app says is polled", func(t *testing.T) {
+		x := require.New(t)
+
+		h := otxtest.New(t)
+		conn := serveConnWith(t, h.Into(t.Context()), []grpcx.Option{grpcx.WithPolled(echoMethod)}, serveEcho)
+
+		err := conn.Invoke(t.Context(), echoMethod,
+			&grpc_health_v1.HealthCheckRequest{}, &grpc_health_v1.HealthCheckResponse{})
+		x.NoError(err)
+
+		// The span is still there -- only the record is left out.
 		wait(t, func() bool { return len(h.Ended()) == 1 })
 		x.Empty(h.Records())
 	})
