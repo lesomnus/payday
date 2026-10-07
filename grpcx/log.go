@@ -2,6 +2,7 @@ package grpcx
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	"github.com/lesomnus/otx"
@@ -26,20 +27,28 @@ func Log(ctx context.Context) grpc.ServerOption {
 	return grpc.StatsHandler(logHandler(ctx))
 }
 
-// logHandler is [Log] as the handler itself, for [Chain].
-func logHandler(ctx context.Context) stats.Handler {
-	return otxgrpc.NewServerLogger(otx.From(ctx), otxgrpc.WithFilter(worth))
-}
+// logHandler is [Log] as the handler itself, for [Chain]. `polled` is what
+// [WithPolled] was told.
+func logHandler(ctx context.Context, polled ...string) stats.Handler {
+	worth := func(info *stats.RPCTagInfo) bool {
+		return !isNoise(info.FullMethodName, polled)
+	}
 
-// worth is [isNoise] in the shape a logger is told it in.
-func worth(info *stats.RPCTagInfo) bool {
-	return !isNoise(info.FullMethodName)
+	return otxgrpc.NewServerLogger(otx.From(ctx), otxgrpc.WithFilter(worth))
 }
 
 // isNoise tells whether a method is polled often enough that recording it says
 // nothing. A readiness probe every few seconds, from every replica, is most of
 // what a log holds and none of what anybody reads -- and the day it matters
 // that a health check failed, the thing that noticed is the prober.
-func isNoise(method string) bool {
-	return strings.HasPrefix(method, "/grpc.health.v1.Health/")
+//
+// Health is the one every server has. The rest are the app's to name, because
+// which of its own methods are a clock rather than a request is something only
+// it knows; see [WithPolled].
+func isNoise(method string, polled []string) bool {
+	if strings.HasPrefix(method, "/grpc.health.v1.Health/") {
+		return true
+	}
+
+	return slices.Contains(polled, method)
 }

@@ -17,6 +17,7 @@ type Option func(*options)
 
 type options struct {
 	deadline time.Duration
+	polled   []string
 }
 
 // WithDeadline caps a call that arrived without a deadline of its own. Zero
@@ -27,6 +28,19 @@ type options struct {
 // decision is something said rather than something left out.
 func WithDeadline(d time.Duration) Option {
 	return func(o *options) { o.deadline = d }
+}
+
+// WithPolled names methods that are called on a clock rather than because
+// somebody asked for something -- a heartbeat every few seconds from every
+// node, say -- by full name (`/package.Service/Method`). Their calls are not
+// recorded as they arrive and are answered, for the reason a health check is
+// not: see [Log].
+//
+// Only the record of the call is left out. The span and the metrics are kept,
+// and so is everything a handler logs of its own accord -- a heartbeat that
+// fails still says so wherever it was going to.
+func WithPolled(methods ...string) Option {
+	return func(o *options) { o.polled = append(o.polled, methods...) }
 }
 
 // ServerOptions returns the options the app is served with. Every call is
@@ -60,7 +74,7 @@ func Serving(ctx context.Context, opts ...Option) Chain {
 	c := Chain{
 		// Otel before Log so that a record carries the ids of the span it
 		// happened inside.
-		Stats:  []stats.Handler{otxgrpc.NewServerHandler(otx.From(ctx)), logHandler(ctx)},
+		Stats:  []stats.Handler{otxgrpc.NewServerHandler(otx.From(ctx)), logHandler(ctx, o.polled...)},
 		Unary:  []grpc.UnaryServerInterceptor{RecoverUnary()},
 		Stream: []grpc.StreamServerInterceptor{RecoverStream()},
 	}
