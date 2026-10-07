@@ -102,6 +102,21 @@ audit:
 		x.Contains(b.String(), "postgres://app:<redacted>@db/app")
 		x.Contains(b.String(), "postgres://app:<redacted>@db/dev")
 	})
+	t.Run("config leaves out a block nothing in it was said about", func(t *testing.T) {
+		x := require.New(t)
+
+		var c App
+		s, err := cfg.New("acme", &c).Load("", []string{"ACME_DB_DSN=postgres://app@db/app"})
+		x.NoError(err)
+
+		b := &strings.Builder{}
+		x.NoError(s.Print(b))
+		x.Contains(b.String(), "db:")
+		// `server:` with nothing under it is a key whose value is null, and
+		// what `config` prints is meant to be a file that reads back to the
+		// same configuration.
+		x.NotContains(b.String(), "server:")
+	})
 }
 
 // write writes body to the file name in dir and answers with its path.
