@@ -3,6 +3,24 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An overlay may add an index to one of payday's entities
+
+**Applies if** a file in `proto/ext/payday/` declares an `option`, of any kind.
+
+An option an overlay put on one of payday's entities used to be dropped
+entirely, without a word, when payday's entity declared the same option. That
+is always the case for `(orm.message)` and `(payday.entity)`. protobuf-merge now
+merges the two (payday requires
+`v0.0.0-20261009205601-8502fad9e678`, so upgrading payday raises an app's pin
+with it), and `pd gen` compares the result against what payday shipped:
+
+- An **index** the overlay adds to `(orm.message)` is generated. An overlay
+  that carried one all along gets it now, and the next migration creates it. A
+  `unique` one fails to create on a table that already holds rows it forbids, so
+  look before you deploy.
+- **Anything else** an overlay adds to `(orm.message)` or `(payday.entity)` is
+  refused, where it used to be dropped. It never did anything, so take it out.
+
 ## The configuration is read by xli's `cfg`
 
 **Applies if** anything says `config.For`, `pdcmd.Load`, `pdcmd.ConfigFlag` or

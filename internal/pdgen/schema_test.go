@@ -443,7 +443,7 @@ message Holder {
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 ` + extra + `
   option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, own: OWN_HOLDER};
+  option (payday.entity) = {domain: 2, own: OWN_HOLDER};
 }`
 	}
 
@@ -511,6 +511,60 @@ message Site {
 			t.Log(err)
 		})
 	}
+
+	// The options are the declaration, and the merge keeps payday's value for
+	// anything both sides set -- so what an overlay can still do is set what
+	// payday left unset. payday's Holder says nothing about tenancy because
+	// saying nothing **is** its declaration, which makes that the first thing
+	// worth trying.
+	for _, tt := range []struct {
+		what string
+		was  string
+		is   string
+		says string
+	}{{
+		what: "saying what payday's tenancy is",
+		was:  `option (payday.entity) = {domain: 2, own: OWN_HOLDER};`,
+		is:   `option (payday.entity) = {domain: 2, own: OWN_HOLDER, tenanted: {via: "tenant"}};`,
+		says: "(payday.entity) tenanted is not payday's",
+	}, {
+		what: "turning one of payday's rpcs off",
+		was:  `option (orm.message) = {rpc: {crud: true}};`,
+		is:   `option (orm.message) = {rpc: {crud: true, add: {disabled: true}}};`,
+		says: "(orm.message) rpc.add is not payday's",
+	}} {
+		t.Run(tt.what+" is refused", func(t *testing.T) {
+			if !strings.Contains(holder(""), tt.was) {
+				t.Fatalf("the fixture no longer says %q", tt.was)
+			}
+			src := tenantOf("payday") + strings.Replace(holder(""), tt.was, tt.is, 1)
+
+			_, err := readAs(t, "payday", src)
+			if err == nil {
+				t.Fatal("generated anyway")
+			}
+			if !strings.Contains(err.Error(), tt.says) {
+				t.Fatalf("the refusal does not say %q:\n%s", tt.says, err)
+			}
+			t.Log(err)
+		})
+	}
+
+	t.Run("adding an index is fine", func(t *testing.T) {
+		// Unique per tenant, which `unique: true` on the field cannot say: one
+		// person in two tenants is two holders with one address.
+		const was = `option (orm.message) = {rpc: {crud: true}};`
+		src := tenantOf("payday") + strings.Replace(holder(`  string email = 8;`), was,
+			`option (orm.message) = {rpc: {crud: true}, indexes: [`+
+				`{name: "email", refs: [{name: "email", number: 8}, {name: "tenant", number: 2}], unique: true}]};`, 1)
+		if !strings.Contains(src, `name: "email"`) {
+			t.Fatalf("the fixture no longer says %q", was)
+		}
+
+		if _, err := readAs(t, "payday", src); err != nil {
+			t.Fatal(err)
+		}
+	})
 
 	t.Run("an app's own entity is the app's entirely", func(t *testing.T) {
 		// Nothing here is payday's, so nothing is checked against it.

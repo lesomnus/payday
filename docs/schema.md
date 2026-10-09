@@ -101,6 +101,18 @@ kind it holds, and for a message field what it points at. The numbers you may
 use, and the refusal itself, are in
 [the schema guide](guide/schema.md#7-adding-to-paydays-entities).
 
+**Adding to payday's options.** The merge also merges options. Where payday's
+entity and the overlay set the same option to message literals, the two are
+merged field by field, and payday's value is kept wherever both set one. That
+leaves one way to change payday's entity: setting something payday left unset.
+`global: {}` on a Holder that says nothing about tenancy (because saying nothing
+is its declaration) would take the wall off the table `auth` reads. So
+`(payday.entity)` is compared the same way the numbers are, and anything an
+overlay added to it is refused. `(orm.message)` is held to the same rule with
+one exception: an overlay may add an **index**, because a key over the fields it
+added is often what those fields are for. An index restricts what may be
+written and changes nothing that is read.
+
 **An overlay that changes what the file is.** `features.field_presence =
 IMPLICIT` copied out of an entity file lands on the *whole merged file* — every
 field of every message in it, including the generated ones. It is refused on

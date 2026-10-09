@@ -109,8 +109,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/protobuf-orm/ent v0.0.0-20260906224055-1575ccbff508 h1:Pvk4/sP7JWUmhkTc7DP3+9EMluQX0Rbu4U2A/GnUiFU=
 github.com/protobuf-orm/ent v0.0.0-20260906224055-1575ccbff508/go.mod h1:EE8o+t0Y4xtH8DRH/shGerAb2mPQJ0A1TqWT5LU7pZQ=
-github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df h1:BLzNAaAtxGAqYhrJfYHrUWVUWlBmBIZb/RrJ7UL8H4Q=
-github.com/protobuf-orm/protobuf-merge v0.0.0-20260628173210-5ad3f89671df/go.mod h1:BUd72lrno943ObVibUbiF5fXPwJlTNJk4zUeZ8htwmY=
+github.com/protobuf-orm/protobuf-merge v0.0.0-20261009205601-8502fad9e678 h1:ctZg+lCcJNh6atIjPyyGxdtwpAl9tg/96ydlGtmzQL8=
+github.com/protobuf-orm/protobuf-merge v0.0.0-20261009205601-8502fad9e678/go.mod h1:gxSIttLrIbNDMqEDXqWMvtKWiW1izopNkZhmIj0PZ6A=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260906212449-04c0cd58f10a h1:EXbJ28yY25wzt2HbzVkw7Tk46pF1GAHV+XMcC+kir40=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260906212449-04c0cd58f10a/go.mod h1:OYlbo4/9t+Hgj/XZwdgN8Z9MyViTLPHxBWLUR4+j52o=
 github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260906232518-fa1777a2628d h1:jhCcUTgWGh0Y5nsyxPWsiNTqCURK+pCb7SeS12hiEfk=
