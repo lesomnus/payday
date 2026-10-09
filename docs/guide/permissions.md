@@ -146,7 +146,9 @@ holds that tenant. That is the shape of the bug, not a mitigation of it.
 | --- | --- |
 | the **first hop** of the row's path to its tenant | **yes**, through the wall |
 | field 3, the set (§7) | **yes**, for the same reason one level down |
-| any other edge | **no** |
+| any other edge to a walled entity | **yes**, every one the request sets |
+| an edge to a global entity, or to one the schema does not describe | **no** |
+| any edge a `Patch` moves | **yes**, the same read again |
 
 The first hop is the `tenant` edge for the ordinary entity, and for one that
 reaches its tenant through another row it is that row. Reading it through the
@@ -156,13 +158,21 @@ caller see the thing it says this row belongs to". Field 3 joins it because
 payday reads field 3 as an isolation boundary too, so an `Add` into a set the
 caller cannot see is the same bug one level down.
 
-Ordinary edges are **not** read. Pointing at somebody else's row is a
-referential-integrity question rather than a tenancy one, and asking it would
-cost a read per edge on every write.
+Every other edge is read as well, for a reason of its own: **an edge is a
+read.** A `Select` walks it, so a row pointing at something in another tenant is
+a way through the wall one hop later -- the caller writes a row it may see,
+pointing at one it may not, and reads the far end back through its own. So the
+gate asks of each edge the request sets the question it asks of the first hop,
+"may this caller see it", and an edge left empty is not asked about. A `Patch`
+asks it again of every edge it moves; an immutable edge cannot be moved, so it
+is asked once, at `Add`. That is a read per edge per write, which is what
+keeping the wall whole costs.
 
-Which leaves the row with a **second** path to a tenant: the gate does not
-compare the two, and an entity that needs them to agree says so with `agrees:`,
-which is written up in
+What the gate does **not** do is compare. "May I see it" is answered yes twice
+by a caller whose scope covers two tenants, so an operator can write a row with
+a foot in each, and the deployment writing through the server with no wall is
+not asked at all. A row with a **second** path to a tenant that must reach the
+same one says so with `agrees:`, which is written up in
 [the schema guide](schema.md#agrees--when-a-second-edge-also-reaches-a-tenant).
 
 ---

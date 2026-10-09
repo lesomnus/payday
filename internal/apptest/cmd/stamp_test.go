@@ -134,13 +134,13 @@ func TestAReadingWithNoRobotIsRefused(t *testing.T) {
 
 // TestPathsThatMustAgree is what `agrees:` adds to what the gate already does.
 //
-// The generated gate reads one edge of an Add through the wall: the first hop
-// of the tenancy path, and the set at field 3 where an app declares one. Here
-// that is `lead`, so an ordinary caller cannot point a Pairing at a lead it
-// cannot see -- and `follow` is not read at all, because an edge to some other
-// row is referential rather than tenancy. What no gate can see is a caller who
-// may see **both**: an operator whose scope covers several tenants, and the
-// deployment writing through the server the wall was never installed on.
+// The generated gate reads every edge of an Add through the wall, `lead` and
+// `follow` alike, so an ordinary caller cannot point a Pairing at a robot it
+// cannot see on either side; see TestAnEdgeIsARead. What it asks is whether the
+// caller may see each, which is not whether they are in the same tenant, and
+// what no gate can catch is a caller who may see **both**: an operator whose
+// scope covers several tenants, and the deployment writing through the server
+// the wall was never installed on.
 func TestPathsThatMustAgree(t *testing.T) {
 	x := pdtest.NewX(t)
 	b, ctx := build(t)

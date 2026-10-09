@@ -260,15 +260,15 @@ The comparison happens on the Sink, before the write, and each path is read from
 **below** the wall — a row in another tenant has to arrive as a disagreement and
 not as "there is no such row".
 
-Which is also why it is worth declaring. The generated gate reads the first hop
-of `via` through the wall and field 3 if the app declared one, and nothing else
-— see [permissions §3](permissions.md#3-where-it-is-enforced-and-why-in-two-places)
-for what it covers and why an ordinary edge is left alone. A second path to a
-tenant is not in that set, and the caller the gate cannot catch is the one who
-can see **both** tenants: an operator whose scope covers several holds one edge
-in each, so "may I see what this row says it belongs to" is answered yes twice
-and the row is written with a foot in two walls. A declared disagreement names
-the edge and the path it did not agree with:
+Which is also why it is worth declaring. The generated gate reads every edge of
+an `Add` through the wall, and every edge a `Patch` moves — see
+[permissions §3](permissions.md#3-where-it-is-enforced-and-why-in-two-places) —
+so an ordinary caller cannot point either path at a row it cannot see. What the
+gate does not do is compare the two, and the caller that leaves uncaught is the
+one who can see **both** tenants: an operator whose scope covers several holds
+one edge in each, so "may I see what this edge names" is answered yes twice and
+the row is written with a foot in two walls. A declared disagreement names the
+edge and the path it did not agree with:
 
 ```
 follow: it is in another tenant than lead.tenant
