@@ -366,6 +366,22 @@ round trip and it is the true answer.
 was the one that erased, never what it erased — so its subject is read out of
 the **request**.
 
+A write with nobody to answer it can wait instead of failing: `Queries.send`
+keeps it in the mirror and sends it once anything answers. It is the one thing
+in the mirror that is not a copy of the server, so the usual rule is turned
+round for it:
+
+- **The disk is the truth for writes, not memory.** A row is state, and two
+  tabs writing the same row are harmless. A write is an effect, and two tabs
+  sending what each hydrated would send it twice. So the page holding the Web
+  Lock re-reads the queue from the mirror before sending, and drops each write
+  from the mirror before sending the next.
+- **Writes are kept outside the stamp and the expiry.** A schema change or a
+  week's age throws away copies. A write is the only record that it was made, so
+  it is kept in wire form, which protobuf can read across a schema change.
+- **Replaying them causes one re-read, not one per write.** The lists are read
+  again once, after the queue stops, over every entity the writes touched.
+
 That is this side's own writes. Somebody else's arrive over the sibling `Watch`,
 which a query holds open for as long as it is drawn — and only when it named at
 least one filter, because a watch that says nothing is the whole table for as

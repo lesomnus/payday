@@ -15,10 +15,11 @@
  * @module
  */
 
-export { Store, roundtrip } from './store.js'
+export { Store, WRITES, roundtrip } from './store.js'
 export type { Key, Opts } from './store.js'
+export { Writes } from './writes.js'
 export { identityOf } from './identity.js'
 export { key, bytes } from './desc.js'
 export type { EntityDesc, RefDesc, Row } from './desc.js'
 export { flatten, newer } from './flat.js'
-export type { Changes, Disk, Held } from './disk.js'
+export type { Changes, Disk, Held, Queue, Queued, Refusal } from './disk.js'

@@ -7,7 +7,7 @@
  * framework payday *required* would be the thing that makes full-stack
  * frameworks fail.
  *
- * So this is a binding and not a layer: five exports, and the
+ * So this is a binding and not a layer: six exports, and the
  * `useSyncExternalStore` over [Queries.subscribe] under them is twenty lines.
  * The same file for Vue or Svelte is the same length -- which is the point: an
  * app that wants neither leaves this entry unimported and gives up nothing the
@@ -34,7 +34,7 @@ import {
 
 import type { DescMessage, DescMethodUnary, Message, MessageInitShape, MessageShape } from '@bufbuild/protobuf'
 
-import type { CallOpts, Entry, Queries, QueryOpts } from '../query/index.js'
+import type { CallOpts, Entry, Queries, QueryOpts, Write } from '../query/index.js'
 import type { Store } from '../store/index.js'
 
 /** App is what a page reads through. */
@@ -202,4 +202,24 @@ export function useRow<T extends Message>(typeName: string, id: Uint8Array | str
 	const row = useSyncExternalStore(subscribe, snapshot, snapshot)
 
 	return useMemo(() => (row === undefined ? undefined : store.message<T>(typeName, row)), [store, typeName, row])
+}
+
+/**
+ * useWrites is every write [Queries.send] is holding, and re-renders when one
+ * is kept, sent or refused.
+ *
+ *   const waiting = useWrites().filter((w) => w.state === 'waiting')
+ *
+ * What a page draws from it is its own: a count in a corner, or a list with a
+ * way to let a refused one go -- `useApp().queries.dismiss(w.id)`.
+ */
+export function useWrites(): readonly Write[] {
+	const { queries } = useApp()
+
+	const [subscribe, snapshot] = useMemo(
+		() => [(cb: () => void) => queries.subscribeWrites(cb), () => queries.writes()] as const,
+		[queries],
+	)
+
+	return useSyncExternalStore(subscribe, snapshot, snapshot)
 }

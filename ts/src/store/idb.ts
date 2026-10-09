@@ -25,7 +25,7 @@
 
 import type { EntityDesc, Row } from './desc.js'
 import { digest } from './digest.js'
-import type { Changes, Disk, Held } from './disk.js'
+import type { Changes, Disk, Held, Queue, Queued } from './disk.js'
 import type { Key } from './store.js'
 
 // The whole of what this module needs from a browser, declared rather than by
@@ -81,6 +81,18 @@ const BLOBS = 'blobs'
 /** One entry: which schema wrote what is in the other two. */
 const META = 'meta'
 
+/**
+ * The writes waiting to be sent; see [Store.writes].
+ *
+ * Outside [TABLES] on purpose: those two are copies of what the server has,
+ * and are thrown away when the schema moves or when they are a week old. A
+ * write is not a copy of anything -- it is the only record that it was made --
+ * so neither of those gets to take one. Its request is in wire form, which is
+ * what protobuf reads across a schema change; one that no longer reads is
+ * refused where it is read, and said so, rather than dropped here.
+ */
+const WRITES = 'writes'
+
 const TABLES = [ROWS, BLOBS]
 
 /** At is which store this is the mirror of; the same shape [Store.open] takes. */
@@ -129,10 +141,12 @@ export async function openDisk(entities: readonly EntityDesc[], at: At, opts: Di
 	const stamp = await stampOf(entities)
 	const name = `payday/${at.name}:${at.identity}`
 
-	const req = indexedDB.open(name, 1)
+	// Version 2 is the queue: a mirror written before it gains the table and
+	// keeps everything else.
+	const req = indexedDB.open(name, 2)
 	req.onupgradeneeded = (): void => {
 		const db = req.result
-		for (const t of TABLES) {
+		for (const t of [...TABLES, WRITES]) {
 			if (!db.objectStoreNames.contains(t)) db.createObjectStore(t, { keyPath: 'k' })
 		}
 		if (!db.objectStoreNames.contains(META)) db.createObjectStore(META)
@@ -174,6 +188,41 @@ class Mirror implements Disk {
 	constructor(db: Db, keep: number) {
 		this.db = db
 		this.keep = keep
+	}
+
+	/**
+	 * One transaction per call, and each answers when it has committed: see
+	 * [Queue] for why a write may not reach the disk a turn late the way a row
+	 * may. Read back in key order, which is the order they were made.
+	 */
+	readonly queue: Queue = {
+		load: async (): Promise<Queued[]> => {
+			const tx = this.db.transaction(WRITES, 'readonly')
+			const all = tx.objectStore(WRITES).getAll()
+			await settled(tx)
+
+			return (all.result as Kept<Queued>[]).map((r) => r.v)
+		},
+		put: async (v: Queued): Promise<void> => {
+			const tx = this.db.transaction(WRITES, 'readwrite')
+			tx.objectStore(WRITES).put({ k: v.id, v, at: Date.now() })
+
+			await settled(tx)
+		},
+		drop: async (id: string): Promise<void> => {
+			const tx = this.db.transaction(WRITES, 'readwrite')
+			tx.objectStore(WRITES).delete(id)
+
+			await settled(tx)
+		},
+		clear: (): Promise<void> => {
+			// Opened before anything is awaited, which is the whole of the
+			// promise this makes.
+			const tx = this.db.transaction(WRITES, 'readwrite')
+			tx.objectStore(WRITES).clear()
+
+			return settled(tx)
+		},
 	}
 
 	/**
@@ -253,8 +302,10 @@ class Mirror implements Disk {
 	}
 
 	async clear(): Promise<void> {
-		const tx = this.db.transaction(TABLES, 'readwrite')
-		for (const t of TABLES) tx.objectStore(t).clear()
+		// The writes too: this is a caller being done, and what they never sent
+		// is theirs as much as what they read. See [Store.forget].
+		const tx = this.db.transaction([...TABLES, WRITES], 'readwrite')
+		for (const t of [...TABLES, WRITES]) tx.objectStore(t).clear()
 
 		await settled(tx)
 	}

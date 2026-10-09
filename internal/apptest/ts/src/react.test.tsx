@@ -21,7 +21,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { pdid } from '@lesomnus/payday'
 import { Queries } from '@lesomnus/payday/query'
-import { Provider, useCall, useQuery, useRow, type App } from '@lesomnus/payday/react'
+import { Provider, useCall, useQuery, useRow, useWrites, type App } from '@lesomnus/payday/react'
 import { Store } from '@lesomnus/payday/store'
 
 import { entities, Robot } from '../gen/entities.js'
@@ -318,5 +318,38 @@ describe('a write shows up wherever the row is', () => {
 		// page catches it; one that does not is a write whose failure nobody
 		// looked at, and that should be loud.
 		expect(caught).toBeInstanceOf(Error)
+	})
+})
+
+describe('useWrites draws what is waiting to be sent', () => {
+	it('follows a write from kept to sent', async () => {
+		function Waiting(): React.ReactNode {
+			const ws = useWrites()
+
+			return <span data-testid="waiting">{ws.filter((w) => w.state === 'waiting').length}</span>
+		}
+
+		render(
+			<Provider app={app}>
+				<Waiting />
+			</Provider>,
+		)
+		expect(screen.getByTestId('waiting').textContent).toBe('0')
+
+		// A transport that throws rather than answers is nobody there, so the
+		// write is kept instead of failed.
+		refuse = true
+		await act(async () => {
+			await app.queries.send(RobotService.method.patch, { ref: { key: { case: 'id', value: id } }, alias: 'kept' })
+		})
+		await flush()
+		expect(screen.getByTestId('waiting').textContent).toBe('1')
+
+		refuse = false
+		await act(async () => {
+			await app.queries.flush()
+		})
+		expect(screen.getByTestId('waiting').textContent).toBe('0')
+		expect(app.store.row(Robot.typeName, id)?.['alias']).toBe('kept')
 	})
 })

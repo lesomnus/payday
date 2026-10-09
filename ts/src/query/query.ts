@@ -25,6 +25,14 @@
  * production and a Go server compiled to wasm in the sandbox, and neither is
  * known here.
  *
+ * # And the writes that wait
+ *
+ * A write made with no connection is kept rather than failed -- see
+ * [Queries.send] -- and sent in the order it was made once there is somebody
+ * to send it to. It is drawn as what it is, a write waiting, and **not** as the
+ * row it will make: guessing the row is the optimistic update this layer does
+ * not have, and the reason is the same one. The answer is the row.
+ *
  * @module
  */
 
@@ -41,9 +49,10 @@ import {
 	type MessageInitShape,
 	type MessageShape,
 } from '@bufbuild/protobuf'
-import { createClient, type Transport } from '@connectrpc/connect'
+import { Code, ConnectError, createClient, type Transport } from '@connectrpc/connect'
 
-import { key, type EntityDesc, type Key, type Store } from '../store/index.js'
+import { random } from '../random.js'
+import { WRITES, key, type EntityDesc, type Key, type Queued, type Refusal, type Store } from '../store/index.js'
 
 // Declared rather than putting `DOM` in `lib`: these two are in a page, a
 // worker and Node, and they are all this module needs from outside the
@@ -51,6 +60,11 @@ import { key, type EntityDesc, type Key, type Store } from '../store/index.js'
 type AbortSignal = { readonly aborted: boolean }
 type Aborter = { readonly signal: AbortSignal; abort(): void }
 declare const AbortController: { new (): Aborter }
+
+// Web Locks, which is what makes "one page sends a store's writes" true across
+// tabs. In a page, a worker and Node; absent is a realm of one, see [exclusive].
+declare const navigator: { readonly locks?: Locks } | undefined
+type Locks = { request<T>(name: string, f: () => Promise<T>): Promise<T> }
 
 /** State is where a query has got to. */
 export type State = 'pending' | 'ok' | 'error'
@@ -115,6 +129,53 @@ export interface CallOpts {
 	readonly revalidate?: boolean
 }
 
+/**
+ * Write is one write [Queries.send] is holding: waiting to be sent, or refused
+ * when it was.
+ */
+export interface Write {
+	/** What it is called here, from when it was made until it is let go. */
+	readonly id: string
+
+	/** `<service>/<method>`, which is what it was made with. */
+	readonly name: string
+
+	/**
+	 * The method, and undefined when this page knows no service by that name --
+	 * a write kept by a deploy that had one. It waits rather than being dropped;
+	 * see [QueriesOpts.services].
+	 */
+	readonly method: DescMethod | undefined
+
+	/** The request, read back, and undefined wherever `method` is. */
+	readonly input: Message | undefined
+
+	readonly at: Date
+
+	readonly state: 'waiting' | 'refused'
+
+	/**
+	 * What the server refused it with: the `ConnectError` a call would have
+	 * thrown, details and all, so whatever reads one -- `pderr` among them --
+	 * reads this the same way.
+	 */
+	readonly error: ConnectError | undefined
+}
+
+/** QueriesOpts is what the query layer may be told beyond its store. */
+export interface QueriesOpts {
+	/**
+	 * Services beside the entities', for a write [Queries.send] kept to one of
+	 * them.
+	 *
+	 * Every entity's service is known already, an app's own RPCs on it
+	 * included. A write to some other service is kept by name, and reading it
+	 * back after a reload needs the descriptor -- which a page that has not sent
+	 * through that service yet has only if it was told here.
+	 */
+	readonly services?: readonly DescService[]
+}
+
 /** Opts is what a query may be told beyond its request. */
 export interface QueryOpts {
 	/**
@@ -143,10 +204,23 @@ export class Queries {
 	/** Which message types are entities, by full name. */
 	private readonly entities: Map<string, EntityDesc>
 
-	constructor(store: Store, transport: Transport, entities: readonly EntityDesc[]) {
+	/** Every service a kept write may name, by full name; see [Queries.methodOf]. */
+	private readonly services = new Map<string, DescService>()
+
+	/** The drain that is running, and the one waiting to; see [Queries.flush]. */
+	private flushing: Promise<void> = Promise.resolve()
+	private next: Promise<void> | undefined
+
+	/** What [Queries.writes] last answered, and what it was answered from. */
+	private seen: { of: readonly Queued[]; v: readonly Write[] } | undefined
+
+	constructor(store: Store, transport: Transport, entities: readonly EntityDesc[], opts: QueriesOpts = {}) {
 		this.store = store
 		this.transport = transport
 		this.entities = new Map(entities.map((v) => [v.typeName, v]))
+
+		for (const v of entities) if (v.service !== undefined) this.services.set(v.service.typeName, v.service)
+		for (const v of opts.services ?? []) this.services.set(v.typeName, v)
 	}
 
 	/**
@@ -249,21 +323,122 @@ export class Queries {
 		const req = create(method.input, input) as Message
 		const res = (await this.invoke(method as DescMethod, req)) as Message
 
-		const touched = new Set<string>()
-		for (const r of this.absorb(method.output, res)) touched.add(r.typeName)
-
-		const gone = this.erased(method as DescMethod, req)
-		if (gone !== undefined) {
-			// The identifier is there only when the row was named by one. A ref
-			// by slug says which row to the server and not to this, and the
-			// re-read below is what takes it off the screen.
-			if (gone.id !== undefined) this.store.apply(gone.typeName, [{ id: gone.id }])
-			touched.add(gone.typeName)
-		}
-
+		const touched = this.landed(method as DescMethod, req, res)
 		if (opts.revalidate !== false) this.revalidate(touched)
+		this.resume()
 
 		return res as MessageShape<O>
+	}
+
+	/**
+	 * send is [Queries.call] for a write that may have to wait for a
+	 * connection, and it answers once the write is **kept** -- not once it is
+	 * made.
+	 *
+	 *   const id = pdid.newId(RobotDomain).bytes
+	 *   await queries.send(RobotService.method.add, { id, tenant, alias })
+	 *
+	 * The write goes to the store's mirror first, so a page closed a moment
+	 * later still has it, and is then tried. Answered, it lands the way a
+	 * call's answer does. Not answered -- no network, or a server that is not
+	 * there -- it waits, and the ones made after it wait behind it, so they are
+	 * sent in the order they were made. Refused, it stays in [Queries.writes]
+	 * with the error the call would have thrown, until somebody lets it go.
+	 *
+	 * # The same write, however many times it is sent
+	 *
+	 * An answer can be lost on the way back, and the write is then sent again.
+	 * So what is worth queueing is a write that is the same write twice, and an
+	 * `Add` that names its row is the case this knows: the identifier is minted
+	 * here, the second `Add` is refused `AlreadyExists`, and the row is read by
+	 * that identifier instead -- which is the answer the first one never got. An
+	 * `Erase` is the same write by nature. A `Patch` that names the version it
+	 * read is refused the second time, which is right about the row and wrong
+	 * about the write; and an app's own RPC is the same write twice when its
+	 * request carries an identifier the server knows it by.
+	 *
+	 * # When it is sent
+	 *
+	 * Now, and then whenever anything answers: a read that came back is a
+	 * connection that came back. A page that would like to try sooner -- on the
+	 * browser's `online`, say -- calls [Queries.flush].
+	 */
+	async send<I extends DescMessage, O extends DescMessage>(
+		method: DescMethodUnary<I, O>,
+		input: MessageInitShape<I>,
+	): Promise<Write> {
+		const req = create(method.input, input)
+		this.services.set(method.parent.typeName, method.parent)
+
+		const v: Queued = {
+			id: mint(),
+			method: nameOf(method as DescMethod),
+			input: toBinary(method.input, req),
+			at: Date.now(),
+		}
+		await this.store.writes.add(v)
+
+		void this.flush().catch(() => {})
+
+		return this.writeOf(v)
+	}
+
+	/**
+	 * writes is every write [Queries.send] is holding, in the order they were
+	 * made, **now** -- the same array until one is kept, sent or refused.
+	 */
+	writes(): readonly Write[] {
+		const of = this.store.writes.all()
+		if (this.seen?.of === of) return this.seen.v
+
+		const v = of.map((w) => this.writeOf(w))
+		this.seen = { of, v }
+
+		return v
+	}
+
+	/** subscribeWrites tells `cb` when [Queries.writes] would answer differently. */
+	subscribeWrites(cb: () => void): () => void {
+		return this.store.subscribe([WRITES], cb)
+	}
+
+	/**
+	 * flush sends what is waiting, in order, and answers when it has sent what
+	 * it can.
+	 *
+	 * One at a time per store, across every page of the origin where the
+	 * platform has Web Locks: two tabs open on one store both hold its queue,
+	 * and a write is an effect, so only one of them may be sending it. The one
+	 * that holds the lock reads the queue from the mirror before it starts, so
+	 * what another tab sent is not sent again and what another tab kept is
+	 * sent.
+	 *
+	 * Rejects only when the mirror does. What the server says lands in
+	 * [Queries.writes], not here.
+	 */
+	flush(): Promise<void> {
+		if (this.next !== undefined) return this.next
+
+		const next = this.flushing.then(() => {
+			this.next = undefined
+
+			return exclusive(this.lockName(), () => this.drain())
+		})
+		this.next = next
+		this.flushing = next.catch(() => {})
+
+		return next
+	}
+
+	/**
+	 * dismiss lets a write go: a refused one somebody has read, or a waiting
+	 * one taken back before it was sent.
+	 *
+	 * Under the same lock as sending, so a write is either sent or let go and
+	 * never both.
+	 */
+	dismiss(id: string): Promise<void> {
+		return exclusive(this.lockName(), () => this.store.writes.drop(id))
 	}
 
 	/**
@@ -316,6 +491,7 @@ export class Queries {
 		const gen = ++v.gen
 		try {
 			const res = (await this.invoke(v.method, v.input)) as Message
+			this.resume()
 			if (gen !== v.gen) return
 
 			// Into the store first, so the rows exist before anything reads
@@ -330,6 +506,191 @@ export class Queries {
 
 			this.settle(v, 'error', err)
 		}
+	}
+
+	/**
+	 * landed is the answer to a write put where everything reading will see
+	 * it, and answers with the entities whose lists it may have moved.
+	 *
+	 * A removal is the one write whose answer names no row -- see
+	 * [Queries.call] -- so its subject is read from the request.
+	 */
+	private landed(method: DescMethod, req: Message, res: Message): Set<string> {
+		const touched = new Set<string>()
+		for (const r of this.absorb(method.output, res)) touched.add(r.typeName)
+
+		const gone = this.erased(method, req)
+		if (gone !== undefined) {
+			// The identifier is there only when the row was named by one. A ref
+			// by slug says which row to the server and not to this, and the
+			// re-read after is what takes it off the screen.
+			if (gone.id !== undefined) this.store.apply(gone.typeName, [{ id: gone.id }])
+			touched.add(gone.typeName)
+		}
+
+		return touched
+	}
+
+	/**
+	 * drain sends every write that is waiting, in order, and stops at the first
+	 * the server did not answer -- the rest would not be answered either, and
+	 * would arrive out of order if they were.
+	 *
+	 * A refused write does not stop it. The server judged that one, and the
+	 * next is judged on its own; one that needed the refused one to have
+	 * happened is refused for that, which is what it should say.
+	 *
+	 * The lists are read again **once**, when it stops, over every entity the
+	 * writes touched: a replay of two hundred writes made in a basement is one
+	 * re-read of each list on screen, not two hundred.
+	 */
+	private async drain(): Promise<void> {
+		const q = this.store.writes
+
+		// Another page on this store may have sent some of these, or kept more.
+		await q.reload()
+
+		const touched = new Set<string>()
+		try {
+			for (const w of q.all()) {
+				if (w.refused !== undefined) continue
+
+				// Let go since the loop began: dismissed, or the caller is
+				// done -- and sending what a caller who has gone wrote, under
+				// whatever credential the transport carries now, is the one
+				// thing this must not do.
+				if (!q.has(w.id)) continue
+
+				// Left waiting rather than dropped: a later deploy, or a page
+				// told about the service, can still send it.
+				const method = this.methodOf(w.method)
+				if (method === undefined) continue
+
+				let req: Message
+				try {
+					req = fromBinary(method.input, w.input) as Message
+				} catch (err) {
+					await q.refuse(w.id, {
+						code: Code.DataLoss,
+						message: `the request no longer reads as a ${method.input.typeName}: ${String(err)}`,
+						details: [],
+					})
+					continue
+				}
+
+				const got = await this.attempt(method, req)
+				if (got === undefined) return
+				if (got instanceof ConnectError) {
+					await q.refuse(w.id, refusalOf(got))
+					continue
+				}
+
+				// Let go before it lands, so that a page closed in between
+				// sends it again -- which an `Add` with its own identifier
+				// survives -- rather than keeping a write that happened.
+				await q.drop(w.id)
+				for (const t of this.landed(method, req, got)) touched.add(t)
+			}
+		} finally {
+			this.revalidate(touched)
+		}
+	}
+
+	/**
+	 * attempt sends one write, and answers with the answer, with the refusal,
+	 * or with nothing when nobody answered.
+	 */
+	private async attempt(method: DescMethod, req: Message): Promise<Message | ConnectError | undefined> {
+		try {
+			return (await this.invoke(method, req)) as Message
+		} catch (err) {
+			if (unanswered(err)) return undefined
+
+			const e = ConnectError.from(err)
+			if (e.code !== Code.AlreadyExists) return e
+
+			const was = await this.already(method, req)
+			if (was === null) return undefined
+
+			return was ?? e
+		}
+	}
+
+	/**
+	 * already is the row an `Add` made the last time it was sent, when it was --
+	 * undefined when it was not, and null when that could not be asked.
+	 *
+	 * `AlreadyExists` is the one refusal that can mean "this already
+	 * happened", and it can as well mean a slug somebody else holds. So the row
+	 * is read by the identifier this side minted: there, it is the answer the
+	 * first send never got; not there, the refusal was about something else and
+	 * stands.
+	 */
+	private async already(method: DescMethod, req: Message): Promise<Message | undefined | null> {
+		if (method.name !== 'Add') return undefined
+
+		const id = (req as unknown as { id?: unknown }).id
+		if (!(id instanceof Uint8Array) || id.length === 0) return undefined
+
+		const get = method.parent.methods.find((m) => m.name === 'Get' && m.methodKind === 'unary')
+		if (get === undefined) return undefined
+
+		try {
+			const ref = create(get.input, { ref: { key: { case: 'id', value: id } } } as never) as Message
+
+			return (await this.invoke(get, ref)) as Message
+		} catch (err) {
+			return unanswered(err) ? null : undefined
+		}
+	}
+
+	/**
+	 * resume sends what is waiting, once a call has shown there is somebody to
+	 * send it to.
+	 */
+	private resume(): void {
+		if (!this.store.writes.all().some((w) => w.refused === undefined)) return
+
+		void this.flush().catch(() => {})
+	}
+
+	/** methodOf is the unary method a kept write names, if this page has it. */
+	private methodOf(name: string): DescMethod | undefined {
+		const at = name.lastIndexOf('/')
+		if (at < 0) return undefined
+
+		const m = this.services.get(name.slice(0, at))?.methods.find((v) => v.name === name.slice(at + 1))
+
+		return m?.methodKind === 'unary' ? m : undefined
+	}
+
+	/** writeOf is a kept write as a page reads one. */
+	private writeOf(v: Queued): Write {
+		const method = this.methodOf(v.method)
+
+		let input: Message | undefined
+		if (method !== undefined) {
+			try {
+				input = fromBinary(method.input, v.input) as Message
+			} catch {
+				input = undefined
+			}
+		}
+
+		return {
+			id: v.id,
+			name: v.method,
+			method,
+			input,
+			at: new Date(v.at),
+			state: v.refused === undefined ? 'waiting' : 'refused',
+			error: v.refused === undefined ? undefined : errorOf(v.refused),
+		}
+	}
+
+	/** lockName is what one store's sending is serialized on, across pages. */
+	private lockName(): string {
+		return `payday/${this.store.name}/writes`
 	}
 
 	private async invoke(method: DescMethod, input: Message): Promise<unknown> {
@@ -789,6 +1150,105 @@ function messageOf(f: DescField): DescMessage | undefined {
 	if (f.fieldKind === 'list' && f.listKind === 'message') return f.message
 
 	return undefined
+}
+
+/**
+ * unanswered is whether a failed call is one the server never answered --
+ * the only kind worth sending again.
+ *
+ * `Unavailable` is a proxy or the transport saying so. `Canceled` and
+ * `DeadlineExceeded` are this side giving up, which says nothing about whether
+ * the server got it. `Unknown` with a cause is a `fetch` that failed, which is
+ * how connect-web reports a page with no network: the `TypeError` wrapped in a
+ * ConnectError with no code of its own. And something that is not a
+ * ConnectError at all is a transport that broke before it could say anything.
+ *
+ * Anything else, the server said -- and saying it again changes nothing.
+ */
+function unanswered(err: unknown): boolean {
+	if (!(err instanceof ConnectError)) return true
+
+	switch (err.code) {
+		case Code.Unavailable:
+		case Code.Canceled:
+		case Code.DeadlineExceeded:
+			return true
+		case Code.Unknown:
+			return err.cause !== undefined && !(err.cause instanceof ConnectError)
+		default:
+			return false
+	}
+}
+
+/** refusalOf is a refusal in the shape a mirror holds. */
+function refusalOf(err: ConnectError): Refusal {
+	return {
+		code: err.code,
+		message: err.rawMessage,
+		details: err.details.map((d) => {
+			if (!('desc' in d)) return { type: d.type, value: d.value }
+
+			return { type: d.desc.typeName, value: toBinary(d.desc, create(d.desc, d.value)) }
+		}),
+	}
+}
+
+/** errorOf is a kept refusal as the error a call would have thrown. */
+function errorOf(v: Refusal): ConnectError {
+	const err = new ConnectError(v.message, v.code)
+	err.details = v.details.map((d) => ({ type: d.type, value: d.value }))
+
+	return err
+}
+
+/** nameOf is how a kept write names its method. */
+function nameOf(method: DescMethod): string {
+	return `${method.parent.typeName}/${method.name}`
+}
+
+/**
+ * mint is a kept write's name, which sorts in the order writes were made: the
+ * time, then a count for two in one millisecond, then enough randomness that
+ * two pages minting at once do not collide.
+ */
+function mint(): string {
+	const at = Date.now()
+	count = at === last ? count + 1 : 0
+	last = at
+
+	const tail = Array.from(random(6), (b) => b.toString(16).padStart(2, '0')).join('')
+
+	return `${at.toString(36).padStart(9, '0')}-${count.toString(36).padStart(4, '0')}-${tail}`
+}
+
+let last = 0
+let count = 0
+
+/** One holder at a time per name, within this realm, where there are no Web Locks. */
+const held = new Map<string, Promise<void>>()
+
+/**
+ * exclusive runs `f` holding `name`: across every page of the origin where
+ * the platform has Web Locks, and across everything in this realm where it
+ * does not -- which is a realm with no other page to be exclusive of.
+ */
+async function exclusive<T>(name: string, f: () => Promise<T>): Promise<T> {
+	const locks = typeof navigator === 'undefined' ? undefined : navigator.locks
+	if (locks !== undefined) return locks.request(name, f)
+
+	const before = held.get(name) ?? Promise.resolve()
+	const run = before.then(f, f)
+	const tail = run.then(
+		() => {},
+		() => {},
+	)
+	held.set(name, tail)
+
+	try {
+		return await run
+	} finally {
+		if (held.get(name) === tail) held.delete(name)
+	}
 }
 
 /** siblingWatch is the streaming method beside a query, when there is one. */

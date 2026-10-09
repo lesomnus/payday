@@ -129,6 +129,11 @@ A few things it is worth knowing before reaching for it:
 - **Order and membership are the server's answers.** The store holds rows by
   identifier and never sorts or filters a partial copy, which would answer a
   different question confidently.
+- **A write can wait for a connection.** `queries.send` keeps a write in the
+  mirror before trying it, and sends what is waiting in the order it was made
+  once anything answers. A page draws what is waiting with `useWrites`, as
+  writes, not as the rows they will make. A refusal is kept as the error a call
+  would have thrown, until somebody dismisses it.
 - **React is an optional peer dependency.** `store` and `query` know nothing
   about it; `react` is thirty lines of `useSyncExternalStore` over them, and the
   same file for Vue or Svelte is the same length.

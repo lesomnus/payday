@@ -209,6 +209,70 @@ The last call is then the only read, and it is yours: with `revalidate: false`
 nothing else will make one. The answers still land in the store — that is not
 the part being turned off.
 
+### Without a connection
+
+`call` fails when there is nobody to answer. A write that has to survive that,
+such as a count taken in a basement, goes through `send`:
+
+```ts
+const id = pdid.newId(RobotDomain).bytes
+await queries.send(RobotService.method.add, { id, tenant, alias })
+```
+
+It resolves once the write is **kept**, in the store's mirror, before anything
+is sent. After that it is tried, and what happens depends on the answer:
+
+- **Answered:** it lands the way a call does.
+- **Nobody answered** (no network, or no server behind the proxy): it waits,
+  and every write made after it waits behind it, so they arrive in the order
+  they were made.
+- **Refused:** it stays, with the error a `call` would have thrown, details
+  included, so `pderr` reads it as it reads any other refusal.
+
+What is waiting is sent again whenever anything answers, because a read that
+came back means the connection came back. For other moments, such as the
+browser's `online` event, call `queries.flush()`.
+
+```tsx
+function Waiting() {
+	const { queries } = useApp()
+	const writes = useWrites()
+
+	return writes.map((w) => (
+		<li key={w.id}>
+			{w.name} — {w.state === 'refused' ? w.error?.rawMessage : 'waiting'}
+			{w.state === 'refused' && <button onClick={() => queries.dismiss(w.id)}>dismiss</button>}
+		</li>
+	))
+}
+```
+
+A waiting write is drawn **as a write**, not as the row it will make. Guessing
+that row is the optimistic update [§6](#6-what-is-not-here) says this does not
+have, for the same reason.
+
+Four things are worth knowing before relying on it:
+
+- **A write may arrive twice.** An answer can be lost on the way back, and the
+  write is then sent again, so queue writes that mean the same thing twice. An
+  `Add` with an identifier minted here is the case payday knows: the second one
+  is refused `AlreadyExists`, and the queue reads the row by that identifier
+  instead. An `Erase` is the same write by nature. A `Patch` that names the
+  version it read is refused the second time, which is correct about the row
+  and misleading about the write.
+- **One tab sends.** Two tabs on one store both hold its queue. The one sending
+  takes a Web Lock and re-reads the queue from the mirror first, so a write is
+  sent once.
+- **It belongs to the credential.** The queue lives in that caller's store, so
+  a store opened for a new credential does not have it, and `store.forget()`
+  drops it with the rows. Read `queries.writes()` before logging out. If your
+  credential is rotated during a session, open the store under something that
+  stays the same for that session.
+- **A service no entity answers** has to be named:
+  `new Queries(store, transport, entities, { services: [ReportService] })`.
+  Otherwise a write to it kept by an earlier page waits until this page sends
+  through that service itself.
+
 ---
 
 ## 5. Persistence
