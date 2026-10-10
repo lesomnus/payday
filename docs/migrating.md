@@ -3,6 +3,25 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## What the ent schema cannot state has a directory of its own
+
+**Applies if** you keep hand-written DDL (an exclusion constraint, a foreign key
+that carries the tenant) in the planned migration directory, or in a second
+directory that shares its history.
+
+`entschema.Migrations.Extra` is a directory beside the planned one with a
+history of its own, applied after it and never planned. See
+[the server guide](guide/server.md#what-the-ent-schema-cannot-state). To move to
+it:
+
+- **Out of the planned directory.** Those statements are what each plan proposed
+  to drop. Move them into new files under `migrations/extra`.
+- **Out of a shared history.** Their versions are recorded in `schema_revisions`,
+  so the new history starts without them, and on a database that already ran
+  them they run again. Write the moved files so that running twice is harmless
+  (PostgreSQL has no `ADD CONSTRAINT IF NOT EXISTS`, so guard each one with a
+  check of `pg_constraint` in a `DO` block).
+
 ## `entschema.Check` leaves a foreign key or a check it does not know about alone
 
 **Applies if** your database holds constraints the ent schema does not

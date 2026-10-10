@@ -107,8 +107,8 @@ github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741/go.mod h1:pxMtw7c
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/protobuf-orm/ent v0.0.0-20261010071722-cf7a87c9af59 h1:ZhtLP4Fm3sMXepwq7LSNZIXcxcm4xngrY0A1GJmDDV4=
-github.com/protobuf-orm/ent v0.0.0-20261010071722-cf7a87c9af59/go.mod h1:JKSVsmxOY0wMq7X+n6Kikb9T20FZHhXYwbY31ijmoM0=
+github.com/protobuf-orm/ent v0.0.0-20261010083551-979efcebf01a h1:mqFHWDstu4JsnJdgTkW8mEoLCA0R4lc1xa/1RxUA0TA=
+github.com/protobuf-orm/ent v0.0.0-20261010083551-979efcebf01a/go.mod h1:JKSVsmxOY0wMq7X+n6Kikb9T20FZHhXYwbY31ijmoM0=
 github.com/protobuf-orm/protobuf-merge v0.0.0-20261009205601-8502fad9e678 h1:ctZg+lCcJNh6atIjPyyGxdtwpAl9tg/96ydlGtmzQL8=
 github.com/protobuf-orm/protobuf-merge v0.0.0-20261009205601-8502fad9e678/go.mod h1:gxSIttLrIbNDMqEDXqWMvtKWiW1izopNkZhmIj0PZ6A=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20260906212449-04c0cd58f10a h1:EXbJ28yY25wzt2HbzVkw7Tk46pF1GAHV+XMcC+kir40=
