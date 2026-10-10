@@ -8,6 +8,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/lesomnus/flob"
+	"github.com/lesomnus/otx/log"
 	"github.com/lesomnus/payday/pdid"
 )
 
@@ -101,7 +103,7 @@ func (p Policy) Collect(ctx context.Context, s Store, of Kinds, before time.Time
 	if gone > 0 {
 		x.r.add(Receipt{Act: "discard", Where: "database", Kind: kindsOf(of), Before: before.UTC(), Rows: gone, Held: h.Rows})
 	}
-	if werr := x.r.write(ctx, p.Archive); werr != nil && err == nil {
+	if werr := x.r.write(ctx, x.p.Archive); werr != nil && err == nil {
 		err = werr
 	}
 
@@ -127,14 +129,19 @@ func kindsOf(k Kinds) string {
 //
 // Its own method rather than a flag on [Policy.Purge], so that the list a dry
 // run prints is the list the real one acts on -- two passes that agree today
-// are two passes.
+// are two passes. Which is also why it takes the store: what Purge destroys is
+// decided by the manifest.
 //
 // `cut` is asked per kind, because the second clock is per kind: an operating
 // record and a person's are in one archive and are not destroyed on the same
 // day. A kind it declines is left alone. A chunk goes when **every** row in it
 // is older than the cutoff; see [Chunk.Before].
-func (p Policy) Doomed(ctx context.Context, cut func(kind string) (time.Time, bool)) ([]Chunk, Held, error) {
-	return p.purge(ctx, cut, true)
+func (p Policy) Doomed(ctx context.Context, s Store, cut func(kind string) (time.Time, bool)) ([]Chunk, Held, error) {
+	if s == nil {
+		return nil, Held{}, errors.New("no store to read the manifest from")
+	}
+
+	return p.purge(ctx, s, cut, true)
 }
 
 // Purge destroys the chunks that are entirely older than the cutoff, in every
@@ -151,24 +158,53 @@ func (p Policy) Doomed(ctx context.Context, cut func(kind string) (time.Time, bo
 // A file of everybody's from before the archive was a flob store loses what is
 // not held and keeps what is. It writes a [Receipt] of what went, including
 // when it stopped part of the way.
-func (p Policy) Purge(ctx context.Context, cut func(kind string) (time.Time, bool)) ([]Chunk, Held, error) {
-	return p.purge(ctx, cut, false)
+//
+// It goes through the archive's manifest like every other act, which is why it
+// takes the store: the manifest is in the database; see [Archived]. A chunk is
+// decided by the labels the manifest recorded for it, and one the manifest
+// does not account for is left alone and said so in the log -- it is what
+// [Policy.Verify] is for, and destroying it would destroy what it would find.
+func (p Policy) Purge(ctx context.Context, s Store, cut func(kind string) (time.Time, bool)) ([]Chunk, Held, error) {
+	if s == nil {
+		return nil, Held{}, errors.New("no store to keep the manifest in")
+	}
+
+	return p.purge(ctx, s, cut, false)
 }
 
-func (p Policy) purge(ctx context.Context, cut func(kind string) (time.Time, bool), dry bool) ([]Chunk, Held, error) {
+func (p Policy) purge(ctx context.Context, s Store, cut func(kind string) (time.Time, bool), dry bool) ([]Chunk, Held, error) {
 	h := Held{}
 	if p.Archive == nil {
 		return nil, h, errors.New("no archive to destroy from")
 	}
 
-	x, err := p.start(nil)
+	x, err := p.start(s)
 	if err != nil {
 		return nil, h, err
 	}
 
-	vs, err := Chunks(ctx, p.Archive)
+	nss, err := chunkNamespaces(ctx, x.raw())
 	if err != nil {
 		return nil, h, err
+	}
+	vs, rest, err := x.chunks(ctx, nss, true)
+	if err != nil {
+		return nil, h, err
+	}
+
+	left := 0
+	for _, c := range rest {
+		if before, ok := cut(c.Kind); ok && c.Before(before) {
+			if left < 20 {
+				log.From(ctx).WarnContext(ctx, "trail: a chunk the manifest does not account for, left alone", "chunk", c.String())
+			}
+
+			left++
+		}
+	}
+	if left > 0 {
+		log.From(ctx).WarnContext(ctx, "trail: chunks the manifest does not account for, left alone",
+			"chunks", left, "see", "`trail verify`")
 	}
 
 	out := []Chunk{}
@@ -204,7 +240,7 @@ func (p Policy) purge(ctx context.Context, cut func(kind string) (time.Time, boo
 	}
 
 	if !dry {
-		if werr := x.r.write(ctx, p.Archive); werr != nil && err == nil {
+		if werr := x.r.write(ctx, x.p.Archive); werr != nil && err == nil {
 			err = werr
 		}
 	}
@@ -265,6 +301,12 @@ type Forgotten struct {
 // round again until a round finds nothing left to blank, because a pass
 // folding chunks at the same moment can have copied a row out of the old one
 // before it was rewritten.
+//
+// # And a chunk the manifest does not account for
+//
+// Is blanked all the same: whatever it is, it holds what it holds about the
+// person. It is written again beneath the manifest, so that what it became is
+// as unaccounted for as what it was, and [Policy.Verify] still finds it.
 func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (Forgotten, error) {
 	out := Forgotten{}
 	if len(objects) == 0 {
@@ -319,11 +361,7 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (Forgott
 		}
 	}
 
-	if err := x.r.write(ctx, p.Archive); err != nil {
-		return out, err
-	}
-
-	return out, nil
+	return out, x.r.write(ctx, x.p.Archive)
 }
 
 // forget is the archive's half of [Policy.Forget], and answers how many rows
@@ -351,14 +389,18 @@ func (x *pass) forget(ctx context.Context, objects []pdid.Id, h *Held) (int, int
 
 	n, rewritten := 0, 0
 	for round := 0; round < 3; round++ {
-		vs, err := Chunks(ctx, x.p.Archive)
+		nss, err := chunkNamespaces(ctx, x.raw())
+		if err != nil {
+			return n, rewritten, err
+		}
+		vs, rest, err := x.chunks(ctx, nss, true)
 		if err != nil {
 			return n, rewritten, err
 		}
 
 		k := 0
-		for _, c := range vs {
-			v, err := edit(ctx, x.p.Archive, c, false, pre, func(line []byte, v head) ([]byte, mark, error) {
+		for _, r := range x.reach(vs, rest) {
+			v, err := edit(ctx, r.a, r.c, false, pre, func(line []byte, v head) ([]byte, mark, error) {
 				if !of[v.Object] {
 					return line, kept, nil
 				}
@@ -506,7 +548,7 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 		})
 	}
 
-	return out, x.r.write(ctx, p.Archive)
+	return out, x.r.write(ctx, x.p.Archive)
 }
 
 // purgeDatabase is the database's half of a tenant leaving, and answers how
@@ -605,38 +647,47 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 
 	touched := 0
 
-	// Its own, whole.
-	cs, err := chunksIn(ctx, a, tenant.String())
+	cs, rest, err := x.chunks(ctx, []string{tenant.String(), SharedNamespace, LegacyNamespace}, true)
 	if err != nil {
 		return touched, err
 	}
-	for _, c := range cs {
+	rs := x.reach(cs, rest)
+
+	// Its own, whole -- what the manifest does not account for with it, by the
+	// archive beneath it. Rows are counted by what the manifest recorded, so
+	// a chunk it does not account for is a chunk, and not what its labels say.
+	for _, r := range rs {
+		c := r.c
+		if c.Namespace != tenant.String() {
+			continue
+		}
+
 		if !dry {
-			if err := a.Use(c.Namespace).Erase(ctx, c.Digest); err != nil {
+			if err := r.a.Use(c.Namespace).Erase(ctx, c.Digest); err != nil {
 				return touched, err
 			}
 		}
 
 		out.Chunks++
-		out.Rows += c.Rows
+		if r.trusted {
+			out.Rows += c.Rows
+		}
 		touched++
 	}
 
-	// What it shares, and the files of everybody's from before.
+	// What it shares, and the files of everybody's from before. A chunk of
+	// [SharedNamespace] the manifest does not account for is opened whatever
+	// tenants it says it has: those are its own labels.
 	named := []byte(`"` + encoded(tenant) + `"`)
 	pre := func(line []byte) bool { return bytes.Contains(line, named) }
 	for _, ns := range []string{SharedNamespace, LegacyNamespace} {
-		cs, err := chunksIn(ctx, a, ns)
-		if err != nil {
-			return touched, err
-		}
-
-		for _, c := range cs {
-			if ns == SharedNamespace && !slices.Contains(c.Tenants, tenant) {
+		for _, r := range rs {
+			c := r.c
+			if c.Namespace != ns || (ns == SharedNamespace && r.trusted && !slices.Contains(c.Tenants, tenant)) {
 				continue
 			}
 
-			v, err := edit(ctx, a, c, dry, pre, func(line []byte, v head) ([]byte, mark, error) {
+			v, err := edit(ctx, r.a, c, dry, pre, func(line []byte, v head) ([]byte, mark, error) {
 				if !v.filed(tenant) {
 					return line, kept, nil
 				}
@@ -672,6 +723,27 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 	}
 
 	return touched, nil
+}
+
+// reached is a chunk an act edits or erases, and the archive it does it
+// through: the one through the manifest for a chunk it accounts for, and the
+// one beneath it for the rest.
+type reached struct {
+	c       Chunk
+	a       flob.Stores
+	trusted bool
+}
+
+func (x *pass) reach(trusted, rest []Chunk) []reached {
+	out := make([]reached, 0, len(trusted)+len(rest))
+	for _, c := range trusted {
+		out = append(out, reached{c, x.p.Archive, true})
+	}
+	for _, c := range rest {
+		out = append(out, reached{c, x.raw(), false})
+	}
+
+	return out
 }
 
 // others is the tenants a row names besides this one.

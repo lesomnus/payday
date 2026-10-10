@@ -26,6 +26,7 @@ import (
 )
 
 type Server interface {
+	Archived() ArchivedServiceServer
 	Audit() AuditServiceServer
 	Tenant() TenantServiceServer
 	Holder() HolderServiceServer
@@ -45,6 +46,7 @@ type Server interface {
 // It takes a [grpc.ServiceRegistrar] rather than a *grpc.Server so that a
 // server which is not gRPC's own can be handed the same set of services.
 func RegisterServer(g grpc.ServiceRegistrar, s Server) {
+	RegisterArchivedServiceServer(g, s.Archived())
 	RegisterAuditServiceServer(g, s.Audit())
 	RegisterTenantServiceServer(g, s.Tenant())
 	RegisterHolderServiceServer(g, s.Holder())
@@ -60,20 +62,24 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 }
 
 type UnimplementedServer struct {
-	AuditServer   AuditServiceServer
-	TenantServer  TenantServiceServer
-	HolderServer  HolderServiceServer
-	OutboxServer  OutboxServiceServer
-	ThingServer   ThingServiceServer
-	CellServer    CellServiceServer
-	RobotServer   RobotServiceServer
-	PairingServer PairingServiceServer
-	JointServer   JointServiceServer
-	FleetServer   FleetServiceServer
-	ReadingServer ReadingServiceServer
-	SealServer    SealServiceServer
+	ArchivedServer ArchivedServiceServer
+	AuditServer    AuditServiceServer
+	TenantServer   TenantServiceServer
+	HolderServer   HolderServiceServer
+	OutboxServer   OutboxServiceServer
+	ThingServer    ThingServiceServer
+	CellServer     CellServiceServer
+	RobotServer    RobotServiceServer
+	PairingServer  PairingServiceServer
+	JointServer    JointServiceServer
+	FleetServer    FleetServiceServer
+	ReadingServer  ReadingServiceServer
+	SealServer     SealServiceServer
 }
 
+func (UnimplementedServer) Archived() ArchivedServiceServer {
+	return UnimplementedArchivedServiceServer{}
+}
 func (UnimplementedServer) Audit() AuditServiceServer     { return UnimplementedAuditServiceServer{} }
 func (UnimplementedServer) Tenant() TenantServiceServer   { return UnimplementedTenantServiceServer{} }
 func (UnimplementedServer) Holder() HolderServiceServer   { return UnimplementedHolderServiceServer{} }
@@ -88,34 +94,37 @@ func (UnimplementedServer) Reading() ReadingServiceServer { return Unimplemented
 func (UnimplementedServer) Seal() SealServiceServer       { return UnimplementedSealServiceServer{} }
 
 type StaticServer struct {
-	AuditServer   AuditServiceServer
-	TenantServer  TenantServiceServer
-	HolderServer  HolderServiceServer
-	OutboxServer  OutboxServiceServer
-	ThingServer   ThingServiceServer
-	CellServer    CellServiceServer
-	RobotServer   RobotServiceServer
-	PairingServer PairingServiceServer
-	JointServer   JointServiceServer
-	FleetServer   FleetServiceServer
-	ReadingServer ReadingServiceServer
-	SealServer    SealServiceServer
+	ArchivedServer ArchivedServiceServer
+	AuditServer    AuditServiceServer
+	TenantServer   TenantServiceServer
+	HolderServer   HolderServiceServer
+	OutboxServer   OutboxServiceServer
+	ThingServer    ThingServiceServer
+	CellServer     CellServiceServer
+	RobotServer    RobotServiceServer
+	PairingServer  PairingServiceServer
+	JointServer    JointServiceServer
+	FleetServer    FleetServiceServer
+	ReadingServer  ReadingServiceServer
+	SealServer     SealServiceServer
 }
 
-func (s StaticServer) Audit() AuditServiceServer     { return s.AuditServer }
-func (s StaticServer) Tenant() TenantServiceServer   { return s.TenantServer }
-func (s StaticServer) Holder() HolderServiceServer   { return s.HolderServer }
-func (s StaticServer) Outbox() OutboxServiceServer   { return s.OutboxServer }
-func (s StaticServer) Thing() ThingServiceServer     { return s.ThingServer }
-func (s StaticServer) Cell() CellServiceServer       { return s.CellServer }
-func (s StaticServer) Robot() RobotServiceServer     { return s.RobotServer }
-func (s StaticServer) Pairing() PairingServiceServer { return s.PairingServer }
-func (s StaticServer) Joint() JointServiceServer     { return s.JointServer }
-func (s StaticServer) Fleet() FleetServiceServer     { return s.FleetServer }
-func (s StaticServer) Reading() ReadingServiceServer { return s.ReadingServer }
-func (s StaticServer) Seal() SealServiceServer       { return s.SealServer }
+func (s StaticServer) Archived() ArchivedServiceServer { return s.ArchivedServer }
+func (s StaticServer) Audit() AuditServiceServer       { return s.AuditServer }
+func (s StaticServer) Tenant() TenantServiceServer     { return s.TenantServer }
+func (s StaticServer) Holder() HolderServiceServer     { return s.HolderServer }
+func (s StaticServer) Outbox() OutboxServiceServer     { return s.OutboxServer }
+func (s StaticServer) Thing() ThingServiceServer       { return s.ThingServer }
+func (s StaticServer) Cell() CellServiceServer         { return s.CellServer }
+func (s StaticServer) Robot() RobotServiceServer       { return s.RobotServer }
+func (s StaticServer) Pairing() PairingServiceServer   { return s.PairingServer }
+func (s StaticServer) Joint() JointServiceServer       { return s.JointServer }
+func (s StaticServer) Fleet() FleetServiceServer       { return s.FleetServer }
+func (s StaticServer) Reading() ReadingServiceServer   { return s.ReadingServer }
+func (s StaticServer) Seal() SealServiceServer         { return s.SealServer }
 
 type Client interface {
+	Archived() ArchivedServiceClient
 	Audit() AuditServiceClient
 	Tenant() TenantServiceClient
 	Holder() HolderServiceClient
@@ -132,48 +141,51 @@ type Client interface {
 
 func NewClient(c *grpc.ClientConn) Client {
 	return &client{
-		_Audit:   NewAuditServiceClient(c),
-		_Tenant:  NewTenantServiceClient(c),
-		_Holder:  NewHolderServiceClient(c),
-		_Outbox:  NewOutboxServiceClient(c),
-		_Thing:   NewThingServiceClient(c),
-		_Cell:    NewCellServiceClient(c),
-		_Robot:   NewRobotServiceClient(c),
-		_Pairing: NewPairingServiceClient(c),
-		_Joint:   NewJointServiceClient(c),
-		_Fleet:   NewFleetServiceClient(c),
-		_Reading: NewReadingServiceClient(c),
-		_Seal:    NewSealServiceClient(c),
+		_Archived: NewArchivedServiceClient(c),
+		_Audit:    NewAuditServiceClient(c),
+		_Tenant:   NewTenantServiceClient(c),
+		_Holder:   NewHolderServiceClient(c),
+		_Outbox:   NewOutboxServiceClient(c),
+		_Thing:    NewThingServiceClient(c),
+		_Cell:     NewCellServiceClient(c),
+		_Robot:    NewRobotServiceClient(c),
+		_Pairing:  NewPairingServiceClient(c),
+		_Joint:    NewJointServiceClient(c),
+		_Fleet:    NewFleetServiceClient(c),
+		_Reading:  NewReadingServiceClient(c),
+		_Seal:     NewSealServiceClient(c),
 	}
 }
 
 type client struct {
-	_Audit   AuditServiceClient
-	_Tenant  TenantServiceClient
-	_Holder  HolderServiceClient
-	_Outbox  OutboxServiceClient
-	_Thing   ThingServiceClient
-	_Cell    CellServiceClient
-	_Robot   RobotServiceClient
-	_Pairing PairingServiceClient
-	_Joint   JointServiceClient
-	_Fleet   FleetServiceClient
-	_Reading ReadingServiceClient
-	_Seal    SealServiceClient
+	_Archived ArchivedServiceClient
+	_Audit    AuditServiceClient
+	_Tenant   TenantServiceClient
+	_Holder   HolderServiceClient
+	_Outbox   OutboxServiceClient
+	_Thing    ThingServiceClient
+	_Cell     CellServiceClient
+	_Robot    RobotServiceClient
+	_Pairing  PairingServiceClient
+	_Joint    JointServiceClient
+	_Fleet    FleetServiceClient
+	_Reading  ReadingServiceClient
+	_Seal     SealServiceClient
 }
 
-func (c *client) Audit() AuditServiceClient     { return c._Audit }
-func (c *client) Tenant() TenantServiceClient   { return c._Tenant }
-func (c *client) Holder() HolderServiceClient   { return c._Holder }
-func (c *client) Outbox() OutboxServiceClient   { return c._Outbox }
-func (c *client) Thing() ThingServiceClient     { return c._Thing }
-func (c *client) Cell() CellServiceClient       { return c._Cell }
-func (c *client) Robot() RobotServiceClient     { return c._Robot }
-func (c *client) Pairing() PairingServiceClient { return c._Pairing }
-func (c *client) Joint() JointServiceClient     { return c._Joint }
-func (c *client) Fleet() FleetServiceClient     { return c._Fleet }
-func (c *client) Reading() ReadingServiceClient { return c._Reading }
-func (c *client) Seal() SealServiceClient       { return c._Seal }
+func (c *client) Archived() ArchivedServiceClient { return c._Archived }
+func (c *client) Audit() AuditServiceClient       { return c._Audit }
+func (c *client) Tenant() TenantServiceClient     { return c._Tenant }
+func (c *client) Holder() HolderServiceClient     { return c._Holder }
+func (c *client) Outbox() OutboxServiceClient     { return c._Outbox }
+func (c *client) Thing() ThingServiceClient       { return c._Thing }
+func (c *client) Cell() CellServiceClient         { return c._Cell }
+func (c *client) Robot() RobotServiceClient       { return c._Robot }
+func (c *client) Pairing() PairingServiceClient   { return c._Pairing }
+func (c *client) Joint() JointServiceClient       { return c._Joint }
+func (c *client) Fleet() FleetServiceClient       { return c._Fleet }
+func (c *client) Reading() ReadingServiceClient   { return c._Reading }
+func (c *client) Seal() SealServiceClient         { return c._Seal }
 
 // Middleware is a server that delegates to another server.
 type Middleware interface {
@@ -245,7 +257,7 @@ func SinkOf(s Server) Server {
 //		Overlay
 //	}
 //
-//	func (s Server) Audit() AuditServiceServer { ... }
+//	func (s Server) Archived() ArchivedServiceServer { ... }
 type Overlay struct {
 	Server
 }

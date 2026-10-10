@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
@@ -84,18 +85,19 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			audit.Table:   audit.ValidColumn,
-			cell.Table:    cell.ValidColumn,
-			fleet.Table:   fleet.ValidColumn,
-			holder.Table:  holder.ValidColumn,
-			joint.Table:   joint.ValidColumn,
-			outbox.Table:  outbox.ValidColumn,
-			pairing.Table: pairing.ValidColumn,
-			reading.Table: reading.ValidColumn,
-			robot.Table:   robot.ValidColumn,
-			seal.Table:    seal.ValidColumn,
-			tenant.Table:  tenant.ValidColumn,
-			thing.Table:   thing.ValidColumn,
+			archived.Table: archived.ValidColumn,
+			audit.Table:    audit.ValidColumn,
+			cell.Table:     cell.ValidColumn,
+			fleet.Table:    fleet.ValidColumn,
+			holder.Table:   holder.ValidColumn,
+			joint.Table:    joint.ValidColumn,
+			outbox.Table:   outbox.ValidColumn,
+			pairing.Table:  pairing.ValidColumn,
+			reading.Table:  reading.ValidColumn,
+			robot.Table:    robot.ValidColumn,
+			seal.Table:     seal.ValidColumn,
+			tenant.Table:   tenant.ValidColumn,
+			thing.Table:    thing.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

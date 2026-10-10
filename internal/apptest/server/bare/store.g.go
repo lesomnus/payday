@@ -8,6 +8,7 @@ import (
 	fmt "fmt"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
+	archived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
@@ -319,6 +320,7 @@ func record(ctx context.Context, rec Recorder, db *ent.Client, c Change) error {
 // Embed [Unscoped] to write out only the entities there is something to
 // say about.
 type Scope interface {
+	ArchivedScope(ctx context.Context) (predicate.Archived, error)
 	AuditScope(ctx context.Context) (predicate.Audit, error)
 	TenantScope(ctx context.Context) (predicate.Tenant, error)
 	HolderScope(ctx context.Context) (predicate.Holder, error)
@@ -345,6 +347,9 @@ type Unscoped struct{}
 
 var _ Scope = Unscoped{}
 
+func (Unscoped) ArchivedScope(_ context.Context) (predicate.Archived, error) {
+	return nil, nil
+}
 func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
 	return nil, nil
 }
@@ -400,6 +405,26 @@ func (Unscoped) SealScope(_ context.Context) (predicate.Seal, error) {
 type Scopes []Scope
 
 var _ Scope = Scopes{}
+
+func (ss Scopes) ArchivedScope(ctx context.Context) (predicate.Archived, error) {
+	ps := make([]predicate.Archived, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.ArchivedScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return archived.And(ps...), nil
+}
 
 func (ss Scopes) AuditScope(ctx context.Context) (predicate.Audit, error) {
 	ps := make([]predicate.Audit, 0, len(ss))
@@ -759,6 +784,9 @@ func (s Server) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	return s, nil
 }
 
+func (s Server) Archived() apptest.ArchivedServiceServer {
+	return ArchivedServiceServer{Store: s.Store}
+}
 func (s Server) Audit() apptest.AuditServiceServer     { return AuditServiceServer{Store: s.Store} }
 func (s Server) Tenant() apptest.TenantServiceServer   { return TenantServiceServer{Store: s.Store} }
 func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceServer{Store: s.Store} }

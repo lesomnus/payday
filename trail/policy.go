@@ -2,6 +2,7 @@ package trail
 
 import (
 	"context"
+	"crypto"
 	"errors"
 	"fmt"
 	"maps"
@@ -426,6 +427,34 @@ type Policy struct {
 	// the failure is logged -- because the alternative is falling back to a
 	// window nobody chose for them.
 	Tenants func(ctx context.Context, tenant pdid.Id) (Tenant, error)
+
+	// Checkpoints is where a pass leaves what the archive held when it ended;
+	// see [Checkpoint]. Nil is the archive's own [CheckpointNamespace].
+	//
+	// Their worth is where they are kept. On a store that refuses deletion --
+	// S3 Object Lock -- and apart from the archive, they are the archive's
+	// contents day by day beyond the reach of anybody who can write both the
+	// database and the archive; in the archive itself they say what it held to
+	// whoever has not rewritten it.
+	Checkpoints flob.Store
+
+	// Signer signs checkpoints: Ed25519, ECDSA or RSA. Nil leaves them
+	// unsigned.
+	//
+	// What it adds is that a checkpoint cannot be written by somebody without
+	// it, and that is worth what keeping the key apart from the database's and
+	// the archive's credentials is worth. A key read from a file --
+	// `audit.checkpoints.key`, which is how a secret is mounted, and
+	// [ParseKey] -- is in the process, beside them, and held by whoever holds
+	// the process. One in a TPM, an HSM or a cloud KMS is not: hand in its
+	// [crypto.Signer], and the private half never comes out.
+	Signer crypto.Signer
+
+	// Trust is the keys besides [Policy.Signer]'s whose signatures on a
+	// checkpoint [Policy.Verify] believes: a key rotated out, each replica's
+	// own when each has a device of its own, or the deployment's for a
+	// verifier that is not given the signer. [ParsePublicKey] reads one.
+	Trust []crypto.PublicKey
 }
 
 // For is the deployment's own policy for one kind of thing: what a tenant
@@ -530,6 +559,21 @@ func (p Policy) Valid() error {
 		}
 		if _, ok := flob.AsWalker(p.Archive.Use(ReceiptNamespace)); !ok {
 			return fmt.Errorf("audit.archive: %w", errUnwalkable)
+		}
+	}
+	if p.Checkpoints != nil {
+		if _, ok := flob.AsWalker(p.Checkpoints); !ok {
+			return fmt.Errorf("audit.checkpoints: %w", errUnwalkable)
+		}
+	}
+	if p.Signer != nil {
+		if err := signable(p.Signer.Public()); err != nil {
+			return fmt.Errorf("audit.checkpoints.key: %w", err)
+		}
+	}
+	for i, k := range p.Trust {
+		if err := signable(k); err != nil {
+			return fmt.Errorf("audit.checkpoints.trust[%d]: %w", i, err)
 		}
 	}
 
@@ -668,7 +712,11 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 		return
 	}
 
-	x.adopt(ctx)
+	if x.m != nil {
+		x.verify(ctx)
+		x.adopt(ctx)
+		x.refile(ctx)
+	}
 
 	if p.Tenants == nil {
 		named := p.Named()
@@ -704,8 +752,16 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 		x.reclaim(ctx)
 	}
 
-	if err := x.r.write(ctx, p.Archive); err != nil {
+	if err := x.r.write(ctx, x.p.Archive); err != nil {
 		log.From(ctx).WarnContext(ctx, "trail: the receipts of a pass", "err", err)
+	}
+
+	if x.m != nil {
+		if c, err := x.p.checkpoint(ctx, x.s); err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: the checkpoint of a pass", "err", err)
+		} else {
+			log.From(ctx).InfoContext(ctx, "trail: a checkpoint", "k", c.K, "blobs", c.Count)
+		}
 	}
 }
 
@@ -738,6 +794,9 @@ func (x *pass) reclaim(ctx context.Context) {
 
 // pass is one application of a policy: one instant, one run, and every
 // tenant's answer asked once.
+//
+// Its policy's archive is the archive through the manifest, so that what the
+// act does to it is in the database before it is done; see [Archived].
 type pass struct {
 	p       Policy
 	s       Store
@@ -746,6 +805,14 @@ type pass struct {
 	answers map[pdid.Id]answer
 	told    map[string]bool
 	r       receipts
+
+	// m is the archive through the manifest, and nil with no archive or no
+	// store to keep a manifest in. It is also what the act trusts: a chunk
+	// the manifest does not account for is not destroyed, folded or written
+	// again by a pass -- what it holds would become the manifest's by being
+	// copied into a chunk the manifest has -- and every chunk is decided by
+	// the labels the manifest recorded for it; see [pass.chunks].
+	m *manifested
 }
 
 type answer struct {
@@ -759,14 +826,57 @@ func (p Policy) start(s Store) (*pass, error) {
 		return nil, err
 	}
 
-	return &pass{
+	x := &pass{
 		p:       p,
 		s:       s,
 		now:     time.Now(),
 		run:     run,
 		answers: map[pdid.Id]answer{},
 		told:    map[string]bool{},
-	}, nil
+	}
+	if p.Archive != nil && s != nil {
+		x.m = p.manifested(s)
+		x.p.Archive = x.m
+	}
+
+	return x, nil
+}
+
+// verify is the start of every pass: what a crash left in flight settled, and
+// the light half of [Policy.Verify] -- the manifest and what the archive
+// holds, by name and labels, no bytes read. What it finds is a warning and a
+// receipt, and the pass goes on.
+func (x *pass) verify(ctx context.Context) {
+	p := x.p
+	p.Archive = x.m.a
+
+	if err := p.settle(ctx, x.s); err != nil {
+		log.From(ctx).WarnContext(ctx, "trail: settling the manifest", "err", err)
+	}
+
+	v, err := p.Verify(ctx, x.s, false)
+	if err != nil {
+		// And the pass trusts nothing in the archive but what it writes.
+		log.From(ctx).WarnContext(ctx, "trail: verifying the archive against its manifest", "err", err)
+
+		return
+	}
+	x.m.load(v.trusted, map[string]map[string]string{})
+	if v.Ok() {
+		return
+	}
+
+	kinds := map[string]int{}
+	for i, f := range v.Findings {
+		kinds[f.Kind]++
+		if i < 20 {
+			log.From(ctx).WarnContext(ctx, "trail: the archive is not what its manifest says", "finding", f.String())
+		}
+	}
+	log.From(ctx).WarnContext(ctx, "trail: the archive is not what its manifest says",
+		"findings", len(v.Findings), "by", kinds, "see", "`trail verify`")
+
+	x.r.add(Receipt{Act: "finding", Where: "archive", Findings: kinds})
 }
 
 // once answers true the first time it is asked about `k` in this pass, so that
@@ -785,7 +895,7 @@ func (x *pass) once(k string) bool {
 // directory, so that a deployment upgrading has nothing to run.
 func (x *pass) adopt(ctx context.Context) {
 	var root string
-	switch v := x.p.Archive.(type) {
+	switch v := unwrapStores(x.p.Archive).(type) {
 	case flob.OsStores:
 		root = v.Root()
 	case *flob.OsStores:
@@ -1154,7 +1264,7 @@ func (x *pass) archive(ctx context.Context) {
 	}
 
 	for _, ns := range nss {
-		if ns == ReceiptNamespace {
+		if ns == ReceiptNamespace || ns == CheckpointNamespace {
 			continue
 		}
 
@@ -1163,7 +1273,7 @@ func (x *pass) archive(ctx context.Context) {
 			continue
 		}
 
-		cs, err := chunksIn(ctx, a, ns)
+		cs, _, err := x.chunks(ctx, []string{ns}, false)
 		if err != nil {
 			log.From(ctx).WarnContext(ctx, "trail: the archive", "namespace", ns, "err", err)
 
@@ -1382,34 +1492,41 @@ func (p Policy) Preview(ctx context.Context, s Store, tenant pdid.Id, t Tenant) 
 		return out, nil
 	}
 
-	// The archive: its own namespace, and what it shares.
-	for _, ns := range []string{tenant.String(), SharedNamespace} {
-		judge := x.judge(ctx, ns)
+	// The archive: its own namespace, and what it shares -- what the manifest
+	// accounts for, which is what a pass destroys.
+	cs, _, err := x.chunks(ctx, []string{tenant.String(), SharedNamespace}, true)
+	if err != nil {
+		return nil, err
+	}
 
-		cs, err := chunksIn(ctx, p.Archive, ns)
-		if err != nil {
-			return nil, err
+	judges := map[string]func(Chunk, *Held) (Keep, bool, bool){}
+	for _, c := range cs {
+		if c.Namespace == SharedNamespace && !slices.Contains(c.Tenants, tenant) {
+			continue
 		}
 
-		for _, c := range cs {
-			if ns == SharedNamespace && !slices.Contains(c.Tenants, tenant) {
-				continue
-			}
-
-			k, held, ok := judge(c, nil)
-			if !ok || held || k.Destroy <= 0 || !c.Before(x.now.Add(-k.Destroy)) {
-				continue
-			}
-
-			kind := c.Kind
-			if kind == "" {
-				kind = "*"
-			}
-
-			r := out[kind]
-			r.Destroyed += c.Rows
-			out[kind] = r
+		judge, ok := judges[c.Namespace]
+		if !ok {
+			judge = x.judge(ctx, c.Namespace)
+			judges[c.Namespace] = judge
 		}
+		if judge == nil {
+			continue
+		}
+
+		k, held, ok := judge(c, nil)
+		if !ok || held || k.Destroy <= 0 || !c.Before(x.now.Add(-k.Destroy)) {
+			continue
+		}
+
+		kind := c.Kind
+		if kind == "" {
+			kind = "*"
+		}
+
+		r := out[kind]
+		r.Destroyed += c.Rows
+		out[kind] = r
 	}
 
 	return out, nil
