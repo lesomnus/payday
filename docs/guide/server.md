@@ -293,6 +293,7 @@ drifts later into a compile error rather than another refusal at run time.
 | | Where |
 | --- | --- |
 | "only an admin may erase a Robot" | your layer, or a `gate.Policy` |
+| "only our own operations write a History row" | your `gate.Policy`, or a layer in front -- see [a verb only your own operations call](#a-verb-only-your-own-operations-call) |
 | "an alias is lowercased before it is stored" | your layer |
 | "a Robot is only visible inside its tenant" | **not yours** — declare `tenanted:` and it is generated |
 | "who is calling" | **not yours** — `auth`, in the interceptors |
@@ -301,6 +302,75 @@ drifts later into a compile error rather than another refusal at run time.
 Do not edit the generated `Gate`. It holds payday's own rule — the wall, and the
 rules about Tenant and Holder — and it is rewritten on every `pd gen`. Your
 authorization goes in front of it or into the `gate.Policy` you inject.
+
+### A verb only your own operations call
+
+Some entities are written only by an operation of your app: a history row, a
+ledger line, a booking's allocation. Each still needs its generated `Add` and
+`Erase`, because that is the path your layer writes through, and the minter, the
+wall, the trail and the watch are all on it. What it does not want is a caller
+reaching those methods directly.
+
+Which verbs are internal is a property of your app, not of the schema, so payday
+leaves it to you. There are two ways, and **both cover a batch**.
+
+**Leave them out of your `gate.Policy`.** A policy that answers from a list of
+what each caller may do refuses every method the list does not name. A verb
+nobody listed is then closed to every caller. The interceptor asks the policy
+for each call, and the batch `Guard` asks it again for each operation inside a
+batch, so one list closes both paths. It also fails closed: an entity added
+later starts with no callers until somebody lists them.
+
+```go
+func (p policy) May(ctx context.Context, c gate.Call) error {
+	// c.Action is the method a caller asked for: "/app.HistoryService/Add".
+	// Nothing lists it, so nobody reaches it. The domain layer's own
+	// writes are calls inside the server and never come here.
+	if !p.allows(c.Row, c.Action) {
+		return status.Error(codes.PermissionDenied, "not something you may call")
+	}
+
+	return nil
+}
+```
+
+**Or refuse them in a layer above the one that writes them.** The layer answers
+those methods with `PermissionDenied`, or `Unimplemented` if you would rather not
+say they exist. The operations that write the rows sit **below** it and write
+through their own `Next()`, so they never pass it. A caller enters at the top,
+and so does a batch, because a batch dispatches into the same stack.
+
+```go
+type sealedHistory struct {
+	Sealed
+	api.HistoryServiceServer
+}
+
+func (s Sealed) History() api.HistoryServiceServer {
+	return sealedHistory{s, s.Next().History()}
+}
+
+func (sealedHistory) Add(context.Context, *api.HistoryAddRequest) (*api.History, error) {
+	return nil, status.Error(codes.PermissionDenied, "history is written by the operations that make it")
+}
+
+// Later in the list is further out: callers meet Sealed first, and the domain
+// layer, under it, writes history through its own Next().
+stacked, _ := app.Build(sink.WithWatch(w), pd.AuditBuild(), pd.GateBuild(), domain.Build(), sealed.Build())
+```
+
+`Sealed` is a layer like any other, so it embeds `api.Overlay` and writes its own
+`WithDriver` ([the one thing that is easy to forget](#the-one-thing-that-is-easy-to-forget)).
+
+What does **not** work:
+
+- **An interceptor of your own.** A batch arrives as one call to
+  `BatchService/Do`, so your interceptor sees that method and not the ones
+  inside it. The batch `Guard` asks the `gate.Policy`, not your interceptor.
+- **`rpc: {add: {disabled: true}}`.** It removes the method from the generated
+  server, and with it the path your own layer writes through.
+- **`grpcx.GeneralWrite`.** It opens or closes `Patch` and `Apply` for every
+  entity at once. It is not a per-entity switch.
 
 ### Changing what the trail records
 
