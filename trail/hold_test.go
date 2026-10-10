@@ -469,3 +469,29 @@ func TestAPreviewKnowsAboutTheHold(t *testing.T) {
 	x.NoError(err)
 	x.Equal(map[string]Removal{"person": {Archived: 1}}, got, "a held row would be discarded")
 }
+
+// reclaiming is an archive that says when it is asked to give bytes back.
+type reclaiming struct {
+	*flob.MemStores
+	asked []time.Duration
+}
+
+func (r *reclaiming) Reclaim(ctx context.Context, grace time.Duration) (int, error) {
+	r.asked = append(r.asked, grace)
+	return 0, nil
+}
+
+// TestAPassGivesBackWhatTheArchiveNoLongerHolds.
+//
+// Destroying a chunk erases its reference, and on S3 nothing else would ever
+// take the bytes: a pass that destroyed a tenant's history and stopped there
+// would leave it in the bucket for as long as the bucket lasts.
+func TestAPassGivesBackWhatTheArchiveNoLongerHolds(t *testing.T) {
+	x := require.New(t)
+
+	a := &reclaiming{MemStores: flob.NewMemStores()}
+	p := Policy{Archive: a, Keep: Keep{Retain: 30 * day, Destroy: year}}
+	p.Pass(t.Context(), &fakeStore{})
+
+	x.Equal([]time.Duration{Reclaimed}, a.asked)
+}
