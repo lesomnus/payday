@@ -65,7 +65,9 @@ watch:
 # `checkpoints:` is where every pass leaves what the archive held, which the
 # database's account of the archive is checked against. Kept apart from the
 # archive on a disk that refuses deletion, and signed with a key mounted as a
-# secret, they are what catches an archive somebody rewrote.
+# secret -- Ed25519, ECDSA or RSA, as `openssl genpkey` writes one -- they are
+# what catches an archive somebody rewrote. A key in a TPM, an HSM or a KMS is
+# handed in by the app, as `trail.Policy.Signer`.
 #
 # audit:
 #   profile: pipa

@@ -2,7 +2,7 @@ package trail
 
 import (
 	"context"
-	"crypto/ed25519"
+	"crypto"
 	"errors"
 	"fmt"
 	"maps"
@@ -438,19 +438,23 @@ type Policy struct {
 	// whoever has not rewritten it.
 	Checkpoints flob.Store
 
-	// Key signs checkpoints. Nil leaves them unsigned.
+	// Signer signs checkpoints: Ed25519, ECDSA or RSA. Nil leaves them
+	// unsigned.
 	//
 	// What it adds is that a checkpoint cannot be written by somebody without
 	// it, and that is worth what keeping the key apart from the database's and
-	// the archive's credentials is worth: a key mounted beside them, in the
-	// same process, is held by whoever holds them. `audit.checkpoints.key`
-	// names a file, which is how a secret is mounted.
-	Key ed25519.PrivateKey
+	// the archive's credentials is worth. A key read from a file --
+	// `audit.checkpoints.key`, which is how a secret is mounted, and
+	// [ParseKey] -- is in the process, beside them, and held by whoever holds
+	// the process. One in a TPM, an HSM or a cloud KMS is not: hand in its
+	// [crypto.Signer], and the private half never comes out.
+	Signer crypto.Signer
 
-	// Trust is the keys besides [Policy.Key] whose signatures on a checkpoint
-	// [Policy.Verify] believes: a key rotated out, or the deployment's own for
-	// a verifier that is not given it.
-	Trust []ed25519.PublicKey
+	// Trust is the keys besides [Policy.Signer]'s whose signatures on a
+	// checkpoint [Policy.Verify] believes: a key rotated out, each replica's
+	// own when each has a device of its own, or the deployment's for a
+	// verifier that is not given the signer. [ParsePublicKey] reads one.
+	Trust []crypto.PublicKey
 }
 
 // For is the deployment's own policy for one kind of thing: what a tenant
@@ -560,6 +564,16 @@ func (p Policy) Valid() error {
 	if p.Checkpoints != nil {
 		if _, ok := flob.AsWalker(p.Checkpoints); !ok {
 			return fmt.Errorf("audit.checkpoints: %w", errUnwalkable)
+		}
+	}
+	if p.Signer != nil {
+		if err := signable(p.Signer.Public()); err != nil {
+			return fmt.Errorf("audit.checkpoints.key: %w", err)
+		}
+	}
+	for i, k := range p.Trust {
+		if err := signable(k); err != nil {
+			return fmt.Errorf("audit.checkpoints.trust[%d]: %w", i, err)
 		}
 	}
 
@@ -793,14 +807,12 @@ type pass struct {
 	r       receipts
 
 	// m is the archive through the manifest, and nil with no archive or no
-	// store to keep a manifest in.
+	// store to keep a manifest in. It is also what the act trusts: a chunk
+	// the manifest does not account for is not destroyed, folded or written
+	// again by a pass -- what it holds would become the manifest's by being
+	// copied into a chunk the manifest has -- and every chunk is decided by
+	// the labels the manifest recorded for it; see [pass.chunks].
 	m *manifested
-
-	// rows is the blobs the manifest accounted for when the pass began. A
-	// chunk not among them, or among what the pass wrote itself, is not
-	// folded or written again: what it holds would become the manifest's by
-	// being copied into a chunk the manifest has.
-	rows map[blobKey]bool
 }
 
 type answer struct {
@@ -844,11 +856,12 @@ func (x *pass) verify(ctx context.Context) {
 
 	v, err := p.Verify(ctx, x.s, false)
 	if err != nil {
+		// And the pass trusts nothing in the archive but what it writes.
 		log.From(ctx).WarnContext(ctx, "trail: verifying the archive against its manifest", "err", err)
 
 		return
 	}
-	x.rows = v.known
+	x.m.load(v.trusted, map[string]map[string]string{})
 	if v.Ok() {
 		return
 	}
@@ -864,19 +877,6 @@ func (x *pass) verify(ctx context.Context) {
 		"findings", len(v.Findings), "by", kinds, "see", "`trail verify`")
 
 	x.r.add(Receipt{Act: "finding", Where: "archive", Findings: kinds})
-}
-
-// known answers whether the manifest accounts for a chunk: it did when the
-// pass began, or this pass wrote it. Everything is, for a pass with no
-// manifest.
-func (x *pass) known(c Chunk) bool {
-	if x.m == nil || x.rows == nil {
-		return true
-	}
-
-	k := blobKey{c.Namespace, c.Digest}
-
-	return x.rows[k] || x.m.wrote(k)
 }
 
 // once answers true the first time it is asked about `k` in this pass, so that
@@ -1198,11 +1198,6 @@ func (x *pass) spend(ctx context.Context, c Chunk, held bool, before time.Time, 
 	}
 
 	if c.Namespace == LegacyNamespace && x.p.Tenants != nil {
-		if !x.known(c) {
-			h.keep(c.Rows, 1)
-			return 0, nil
-		}
-
 		v, err := edit(ctx, a, c, dry, nil, func(line []byte, v head) ([]byte, mark, error) {
 			if x.held(ctx, v.tenants(), pdid.Domain(v.Domain), true, h) {
 				return line, heldBack, nil
@@ -1278,7 +1273,7 @@ func (x *pass) archive(ctx context.Context) {
 			continue
 		}
 
-		cs, err := chunksIn(ctx, a, ns)
+		cs, _, err := x.chunks(ctx, []string{ns}, false)
 		if err != nil {
 			log.From(ctx).WarnContext(ctx, "trail: the archive", "namespace", ns, "err", err)
 
@@ -1306,7 +1301,7 @@ func (x *pass) archive(ctx context.Context) {
 				continue
 			}
 
-			if ns != LegacyNamespace && x.known(c) {
+			if ns != LegacyNamespace {
 				g := key{c.Kind, Month(c.Month), joined(c.Tenants)}
 				groups[g] = append(groups[g], c)
 			}
@@ -1497,34 +1492,41 @@ func (p Policy) Preview(ctx context.Context, s Store, tenant pdid.Id, t Tenant) 
 		return out, nil
 	}
 
-	// The archive: its own namespace, and what it shares.
-	for _, ns := range []string{tenant.String(), SharedNamespace} {
-		judge := x.judge(ctx, ns)
+	// The archive: its own namespace, and what it shares -- what the manifest
+	// accounts for, which is what a pass destroys.
+	cs, _, err := x.chunks(ctx, []string{tenant.String(), SharedNamespace}, true)
+	if err != nil {
+		return nil, err
+	}
 
-		cs, err := chunksIn(ctx, p.Archive, ns)
-		if err != nil {
-			return nil, err
+	judges := map[string]func(Chunk, *Held) (Keep, bool, bool){}
+	for _, c := range cs {
+		if c.Namespace == SharedNamespace && !slices.Contains(c.Tenants, tenant) {
+			continue
 		}
 
-		for _, c := range cs {
-			if ns == SharedNamespace && !slices.Contains(c.Tenants, tenant) {
-				continue
-			}
-
-			k, held, ok := judge(c, nil)
-			if !ok || held || k.Destroy <= 0 || !c.Before(x.now.Add(-k.Destroy)) {
-				continue
-			}
-
-			kind := c.Kind
-			if kind == "" {
-				kind = "*"
-			}
-
-			r := out[kind]
-			r.Destroyed += c.Rows
-			out[kind] = r
+		judge, ok := judges[c.Namespace]
+		if !ok {
+			judge = x.judge(ctx, c.Namespace)
+			judges[c.Namespace] = judge
 		}
+		if judge == nil {
+			continue
+		}
+
+		k, held, ok := judge(c, nil)
+		if !ok || held || k.Destroy <= 0 || !c.Before(x.now.Add(-k.Destroy)) {
+			continue
+		}
+
+		kind := c.Kind
+		if kind == "" {
+			kind = "*"
+		}
+
+		r := out[kind]
+		r.Destroyed += c.Rows
+		out[kind] = r
 	}
 
 	return out, nil

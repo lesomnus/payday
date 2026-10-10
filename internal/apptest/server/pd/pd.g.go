@@ -4813,9 +4813,10 @@ func archivedRows(vs []*ent.Archived) []trail.Archived {
 }
 
 // TrailOf is a reader of the archive's documents as the messages they hold:
-// what `trail.Read`, `trail.ReadTenant` and `trail.ReadFiles` are handed.
+// what `policy.Read` and `policy.ReadTenant` are handed, and `trail.Read`,
+// `trail.ReadTenant` and `trail.ReadFiles`, which check nothing.
 //
-//	err := trail.Read(ctx, archive, pd.TrailOf(func(v *app.Audit) error {
+//	err := policy.ReadTenant(ctx, store, tenant, pd.TrailOf(func(v *app.Audit) error {
 //		...
 //	}))
 //

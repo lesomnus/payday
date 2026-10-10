@@ -203,5 +203,19 @@ v, err := policy.Verify(ctx, pd.TrailStore(db), full)
 Keep checkpoints apart from the archive, on a store that refuses deletion —
 `audit.checkpoints.dir` — so that somebody who can write the database and the
 archive both cannot rewrite what the archive held, and give the operator a
-command that runs this, `full` on a schedule. See
-[the runtime](../runtime.md#the-manifest).
+command that runs this, `full` on a schedule. Sign them with
+`audit.checkpoints.key`, a key mounted as a secret, to start with; a key the
+process cannot give away — a TPM, an HSM, a cloud KMS — is any `crypto.Signer`,
+handed in as `trail.Policy.Signer`.
+
+An export of a tenant's trail — a tenant leaving, a person asking what is kept
+about them — reads the archive the same way:
+
+```go
+err := policy.ReadTenant(ctx, pd.TrailStore(db), tenant, pd.TrailOf(func(v *app.Audit) error {
+	// only what the manifest accounts for; a chunk whose bytes changed is an error
+}))
+```
+
+`trail.ReadTenant` reads the archive as it is, for when there is no database
+left to check it against. See [the runtime](../runtime.md#the-manifest).

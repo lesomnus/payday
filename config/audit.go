@@ -1,7 +1,7 @@
 package config
 
 import (
-	"crypto/ed25519"
+	"crypto"
 	"fmt"
 	"os"
 	"strings"
@@ -133,25 +133,28 @@ type AuditCheckpointsConfig struct {
 	// among them, is handed in by the app as `trail.Policy.Checkpoints`.
 	Dir string `yaml:"dir"`
 
-	// Key is the Ed25519 key checkpoints are signed with: a file, as
-	// `openssl genpkey -algorithm ed25519` writes one -- which is how a secret
-	// is mounted -- or the PEM document itself, which is how one is given
-	// through the environment. Empty signs nothing.
+	// Key is the key checkpoints are signed with -- Ed25519, ECDSA or RSA,
+	// as `openssl genpkey` writes one -- named by the file it is in, which is
+	// how a secret is mounted, or the PEM document itself, which is how one is
+	// given through the environment (`<APP>_AUDIT_CHECKPOINTS_KEY`). Empty
+	// signs nothing.
 	//
 	// Read where the process comes up, so a key that does not read is a
 	// process that does not start rather than checkpoints that stop being
-	// signed.
+	// signed. A key in a TPM, an HSM or a cloud KMS is not configured here:
+	// the app hands its signer in as `trail.Policy.Signer`.
 	Key string `yaml:"key"`
 
-	// Trust is the public keys, base64, besides Key's own whose signatures a
-	// verification believes: a key rotated out, or the deployment's for a
-	// verifier that is not given its private half.
+	// Trust is the public keys besides Key's own whose signatures a
+	// verification believes -- a key rotated out, or the deployment's for a
+	// verifier that is not given its private half -- each PKIX, base64, or
+	// the PEM document of one.
 	Trust []string `yaml:"trust"`
 }
 
 // keys is the checkpoints' keys, read.
-func (c AuditCheckpointsConfig) keys() (ed25519.PrivateKey, []ed25519.PublicKey, error) {
-	var key ed25519.PrivateKey
+func (c AuditCheckpointsConfig) keys() (crypto.Signer, []crypto.PublicKey, error) {
+	var key crypto.Signer
 	if v := strings.TrimSpace(c.Key); v != "" {
 		doc := []byte(v)
 		if !strings.HasPrefix(v, "-----BEGIN") {
@@ -171,7 +174,7 @@ func (c AuditCheckpointsConfig) keys() (ed25519.PrivateKey, []ed25519.PublicKey,
 		key = k
 	}
 
-	trust := []ed25519.PublicKey{}
+	trust := []crypto.PublicKey{}
 	for i, v := range c.Trust {
 		k, err := trail.ParsePublicKey(v)
 		if err != nil {
@@ -301,7 +304,7 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 		}
 	}
 
-	if p.Key, p.Trust, err = c.Checkpoints.keys(); err != nil {
+	if p.Signer, p.Trust, err = c.Checkpoints.keys(); err != nil {
 		return trail.Policy{}, fmt.Errorf("audit.checkpoints.%w", err)
 	}
 	if c.Checkpoints.Dir != "" {

@@ -237,7 +237,7 @@ func TestPurgeByHandLeavesWhatIsHeldAndSaysSo(t *testing.T) {
 
 	vs[held] = Tenant{Hold: onHold()}
 
-	doomed, h, err := p.Doomed(ctx, Before(time.Now()))
+	doomed, h, err := p.Doomed(ctx, s, Before(time.Now()))
 	x.NoError(err)
 	x.Len(doomed, 1)
 	x.Equal(1, h.Chunks)

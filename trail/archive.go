@@ -545,19 +545,26 @@ func chunkOrder(a, b Chunk) int {
 	)
 }
 
-// Chunks is every chunk in the archive, oldest month first.
-func Chunks(ctx context.Context, a flob.Stores) ([]Chunk, error) {
+// chunkNamespaces is every namespace of the archive that holds chunks: all of
+// them but the receipts and the checkpoints.
+func chunkNamespaces(ctx context.Context, a flob.Stores) ([]string, error) {
 	nss, err := namespaces(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+
+	return slices.DeleteFunc(nss, func(ns string) bool { return ns == ReceiptNamespace || ns == CheckpointNamespace }), nil
+}
+
+// Chunks is every chunk in the archive, oldest month first, by its own labels.
+func Chunks(ctx context.Context, a flob.Stores) ([]Chunk, error) {
+	nss, err := chunkNamespaces(ctx, a)
 	if err != nil {
 		return nil, err
 	}
 
 	out := []Chunk{}
 	for _, ns := range nss {
-		if ns == ReceiptNamespace || ns == CheckpointNamespace {
-			continue
-		}
-
 		vs, err := chunksIn(ctx, a, ns)
 		if err != nil {
 			return out, fmt.Errorf("%s: %w", ns, err)
@@ -580,20 +587,19 @@ func Chunks(ctx context.Context, a flob.Stores) ([]Chunk, error) {
 // The document is handed over rather than a message, because this package has
 // no `Audit` type to unmarshal into -- see the note on the package. An app that
 // wants one has a generated adapter that does it, `pd.TrailOf`.
+//
+// # It is what the archive holds, and nothing is checked
+//
+// Every chunk, by its own labels, whoever wrote it. [Policy.Read] is the same
+// for an archive with a manifest, and is the one to hand to anybody who will
+// take what it reads as the trail.
 func Read(ctx context.Context, a flob.Stores, fn func(doc []byte) error) error {
 	vs, err := Chunks(ctx, a)
 	if err != nil {
 		return err
 	}
 
-	seen := map[string]bool{}
-	for _, c := range vs {
-		if err := readChunk(ctx, a, c, seen, nil, fn); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return readChunks(ctx, a, vs, pdid.Nil, false, fn)
 }
 
 // ReadTenant is the rows of the archive one tenant may read: the ones that name
@@ -602,6 +608,9 @@ func Read(ctx context.Context, a flob.Stores, fn func(doc []byte) error) error {
 // Its own namespace, the chunks of [SharedNamespace] whose tenants include it,
 // and the rows of [LegacyNamespace] that name it -- which is the one place it
 // has to open a row to know, since a file from before held everybody's.
+//
+// Like [Read], it is what the archive holds, and nothing is checked;
+// [Policy.ReadTenant] is the one an export is made with.
 func ReadTenant(ctx context.Context, a flob.Stores, tenant pdid.Id, fn func(doc []byte) error) error {
 	if tenant.IsZero() {
 		return errors.New("no tenant")
@@ -614,23 +623,96 @@ func ReadTenant(ctx context.Context, a flob.Stores, tenant pdid.Id, fn func(doc 
 			return fmt.Errorf("%s: %w", ns, err)
 		}
 
-		for _, c := range cs {
-			if ns == SharedNamespace && !slices.Contains(c.Tenants, tenant) {
-				continue
-			}
+		vs = append(vs, cs...)
+	}
 
-			vs = append(vs, c)
+	return readChunks(ctx, a, vs, tenant, false, fn)
+}
+
+// Read is [Read] for an archive with a manifest: only the chunks it accounts
+// for, and only while their bytes are still their digest.
+//
+// A chunk the manifest does not account for -- put there by somebody who is
+// not the deployment, or restored from a backup and not accepted -- is left
+// out, and said so in the log; see [Policy.Verify]. One whose bytes are not its
+// digest any more is an error: what it held was the trail, and what it holds
+// now is not. Each chunk is read whole before a row of it is handed over, and
+// checked again as it is read, so bytes changed in between fail the read at
+// that chunk's end. A chunk the manifest has and the archive no longer holds is
+// nothing a read can hand over: [Policy.Verify] is what finds that one.
+func (p Policy) Read(ctx context.Context, s Store, fn func(doc []byte) error) error {
+	return p.read(ctx, s, pdid.Nil, fn)
+}
+
+// ReadTenant is [ReadTenant] for an archive with a manifest, and reads what
+// [Policy.Read] does: whether a chunk of [SharedNamespace] is the tenant's to
+// read is by the tenants the manifest recorded for it.
+func (p Policy) ReadTenant(ctx context.Context, s Store, tenant pdid.Id, fn func(doc []byte) error) error {
+	if tenant.IsZero() {
+		return errors.New("no tenant")
+	}
+
+	return p.read(ctx, s, tenant, fn)
+}
+
+func (p Policy) read(ctx context.Context, s Store, tenant pdid.Id, fn func(doc []byte) error) error {
+	if p.Archive == nil {
+		return errors.New("no archive to read")
+	}
+	if s == nil {
+		return errors.New("no store to read the archive's manifest from")
+	}
+
+	x, err := p.start(s)
+	if err != nil {
+		return err
+	}
+
+	nss := []string{tenant.String(), SharedNamespace, LegacyNamespace}
+	if tenant.IsZero() {
+		if nss, err = chunkNamespaces(ctx, x.raw()); err != nil {
+			return err
 		}
 	}
-	slices.SortFunc(vs, chunkOrder)
+
+	cs, rest, err := x.chunks(ctx, nss, true)
+	if err != nil {
+		return err
+	}
+	for i, c := range rest {
+		if i < 20 {
+			log.From(ctx).WarnContext(ctx, "trail: a chunk the manifest does not account for, left out of what is read", "chunk", c.String())
+		}
+	}
+	if len(rest) > 0 {
+		log.From(ctx).WarnContext(ctx, "trail: chunks the manifest does not account for, left out of what is read",
+			"chunks", len(rest), "see", "`trail verify`")
+	}
+
+	return readChunks(ctx, x.raw(), cs, tenant, true, fn)
+}
+
+// readChunks is the rows of these chunks, oldest month first, each once. A
+// tenant's reads only the rows of [LegacyNamespace] that name it, and only the
+// chunks of [SharedNamespace] whose tenants include it.
+func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, verify bool, fn func([]byte) error) error {
+	cs = slices.Clone(cs)
+	slices.SortFunc(cs, chunkOrder)
 
 	seen := map[string]bool{}
-	for _, c := range vs {
+	for _, c := range cs {
 		var keep func(head) bool
-		if c.Namespace == LegacyNamespace {
-			keep = func(h head) bool { return h.names(tenant) }
+		if !tenant.IsZero() {
+			switch c.Namespace {
+			case SharedNamespace:
+				if !slices.Contains(c.Tenants, tenant) {
+					continue
+				}
+			case LegacyNamespace:
+				keep = func(h head) bool { return h.names(tenant) }
+			}
 		}
-		if err := readChunk(ctx, a, c, seen, keep, fn); err != nil {
+		if err := readChunk(ctx, a, c, seen, keep, verify, fn); err != nil {
 			return err
 		}
 	}
@@ -638,9 +720,13 @@ func ReadTenant(ctx context.Context, a flob.Stores, tenant pdid.Id, fn func(doc 
 	return nil
 }
 
+// errAltered is a chunk whose bytes are not what its name says.
+var errAltered = errors.New("its bytes are not its digest any more; see `trail verify`")
+
 // readChunk is one chunk's rows, less the ones `seen` has, and less the ones
-// `keep` declines when there is one.
-func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool, keep func(head) bool, fn func([]byte) error) error {
+// `keep` declines when there is one. `verify` reads it whole first, and refuses
+// it when its bytes are not its digest.
+func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool, keep func(head) bool, verify bool, fn func([]byte) error) error {
 	r, _, err := a.Use(c.Namespace).Open(ctx, c.Digest)
 	if err != nil {
 		if errors.Is(err, flob.ErrNotExist) {
@@ -653,7 +739,28 @@ func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool
 	}
 	defer r.Close()
 
-	err = lines(r, func(doc []byte) error {
+	src := io.Reader(r)
+	var v interface {
+		io.Writer
+		Verified() bool
+	}
+	if verify {
+		w := c.Digest.Verifier()
+		if _, err := io.Copy(w, r); err != nil {
+			return fmt.Errorf("%s: %w", c, err)
+		}
+		if !w.Verified() {
+			return fmt.Errorf("%s: %w", c, errAltered)
+		}
+		if _, err := r.Seek(0, io.SeekStart); err != nil {
+			return fmt.Errorf("%s: %w", c, err)
+		}
+
+		v = c.Digest.Verifier()
+		src = io.TeeReader(r, v)
+	}
+
+	err = lines(src, func(doc []byte) error {
 		h, err := headOf(doc)
 		if err != nil {
 			return err
@@ -670,6 +777,16 @@ func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool
 	})
 	if err != nil {
 		return fmt.Errorf("%s: %w", c, err)
+	}
+
+	if v != nil {
+		// What the rows did not take, so that the digest is over every byte.
+		if _, err := io.Copy(v, r); err != nil {
+			return fmt.Errorf("%s: %w", c, err)
+		}
+		if !v.Verified() {
+			return fmt.Errorf("%s: %w", c, errAltered)
+		}
 	}
 
 	return nil
@@ -1355,23 +1472,21 @@ func encoded(v pdid.Id) string { return base64.StdEncoding.EncodeToString(v.Byte
 // does not account for is left where it is.
 func (x *pass) refile(ctx context.Context) {
 	a := x.p.Archive
-	cs, err := chunksIn(ctx, a, LegacyNamespace)
+	cs, rest, err := x.chunks(ctx, []string{LegacyNamespace}, false)
 	if err != nil {
 		log.From(ctx).WarnContext(ctx, "trail: the files of a version before", "err", err)
 
 		return
 	}
 
+	for _, c := range rest {
+		if x.once("refile " + string(c.Digest)) {
+			log.From(ctx).WarnContext(ctx, "trail: a file of a version before that the manifest does not account for, left where it is", "chunk", c.String())
+		}
+	}
+
 	files, rows := 0, 0
 	for _, c := range cs {
-		if !x.known(c) {
-			if x.once("refile " + string(c.Digest)) {
-				log.From(ctx).WarnContext(ctx, "trail: a file of a version before that the manifest does not account for, left where it is", "chunk", c.String())
-			}
-
-			continue
-		}
-
 		n, err := refile(ctx, a, x.run, c)
 		rows += n
 		if err != nil {

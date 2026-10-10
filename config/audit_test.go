@@ -1,7 +1,11 @@
 package config_test
 
 import (
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,22 +24,37 @@ import (
 func TestTheCheckpointsKeyIsAFileOrTheDocumentItself(t *testing.T) {
 	x := require.New(t)
 
-	doc, pub, err := trail.GenerateKey()
+	ed, edPub, err := trail.GenerateKey()
 	x.NoError(err)
-	path := filepath.Join(t.TempDir(), "checkpoints.pem")
-	x.NoError(os.WriteFile(path, doc, 0o600))
 
-	for _, v := range []string{path, string(doc)} {
-		p, err := config.AuditConfig{Checkpoints: config.AuditCheckpointsConfig{Key: v}}.Policy()
-		x.NoError(err)
-		x.NotNil(p.Key)
-		x.Equal(pub, trail.PublicKeyString(p.Key.Public().(ed25519.PublicKey)))
+	// And one of the kind a TPM signs with, as `openssl genpkey -algorithm EC
+	// -pkeyopt ec_paramgen_curve:P-256` writes it.
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	x.NoError(err)
+	der, err := x509.MarshalPKCS8PrivateKey(k)
+	x.NoError(err)
+	ec := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	ecPub, err := trail.PublicKeyString(k.Public())
+	x.NoError(err)
+
+	for doc, pub := range map[string]string{string(ed): edPub, string(ec): ecPub} {
+		path := filepath.Join(t.TempDir(), "checkpoints.pem")
+		x.NoError(os.WriteFile(path, []byte(doc), 0o600))
+
+		for _, v := range []string{path, doc} {
+			p, err := config.AuditConfig{Checkpoints: config.AuditCheckpointsConfig{Key: v}}.Policy()
+			x.NoError(err)
+			x.NotNil(p.Signer)
+			got, err := trail.PublicKeyString(p.Signer.Public())
+			x.NoError(err)
+			x.Equal(pub, got)
+		}
 	}
 
-	p, err := config.AuditConfig{Checkpoints: config.AuditCheckpointsConfig{Trust: []string{pub}}}.Policy()
+	p, err := config.AuditConfig{Checkpoints: config.AuditCheckpointsConfig{Trust: []string{edPub, ecPub}}}.Policy()
 	x.NoError(err)
-	x.Nil(p.Key)
-	x.Len(p.Trust, 1)
+	x.Nil(p.Signer)
+	x.Len(p.Trust, 2)
 
 	_, err = config.AuditConfig{Checkpoints: config.AuditCheckpointsConfig{Key: filepath.Join(t.TempDir(), "nothing.pem")}}.Policy()
 	x.ErrorContains(err, "audit.checkpoints.key")

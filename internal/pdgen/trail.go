@@ -314,9 +314,10 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	emitManifest(g, s, p)
 
 	g.P("// TrailOf is a reader of the archive's documents as the messages they hold:")
-	g.P("// what `trail.Read`, `trail.ReadTenant` and `trail.ReadFiles` are handed.")
+	g.P("// what `policy.Read` and `policy.ReadTenant` are handed, and `trail.Read`,")
+	g.P("// `trail.ReadTenant` and `trail.ReadFiles`, which check nothing.")
 	g.P("//")
-	g.P("//	err := trail.Read(ctx, archive, pd.TrailOf(func(v *app.", e, ") error {")
+	g.P("//	err := policy.ReadTenant(ctx, store, tenant, pd.TrailOf(func(v *app.", e, ") error {")
 	g.P("//		...")
 	g.P("//	}))")
 	g.P("//")

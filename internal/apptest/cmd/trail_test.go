@@ -692,7 +692,7 @@ func TestARowTwoTenantsMayReadLastsAsLongAsTheLongerKeepsIt(t *testing.T) {
 
 		for _, id := range []pdid.Id{b.Tenant, other} {
 			found := false
-			x.NoError(trail.ReadTenant(ctx, p.Archive, id, pd.TrailOf(func(v *app.Audit) error {
+			x.NoError(p.ReadTenant(ctx, s, id, pd.TrailOf(func(v *app.Audit) error {
 				if string(v.GetId()) == string(both.Id[:]) {
 					found = true
 				}
@@ -745,7 +745,7 @@ func TestAHeldTenantKeepsItsTrail(t *testing.T) {
 	x.Zero(left, "the window did not move a held tenant's rows")
 
 	kept := 0
-	x.NoError(trail.ReadTenant(ctx, p.Archive, held, pd.TrailOf(func(v *app.Audit) error {
+	x.NoError(p.ReadTenant(ctx, s, held, pd.TrailOf(func(v *app.Audit) error {
 		kept++
 		return nil
 	})))
@@ -879,7 +879,7 @@ func TestTheManifestIsKeptInTheAppsOwnTable(t *testing.T) {
 
 	a := flob.NewMemStores()
 	s := pd.TrailStore(b.Ent)
-	p := trail.Policy{Archive: a, Keep: trail.Keep{Retain: time.Nanosecond}, Key: key}
+	p := trail.Policy{Archive: a, Keep: trail.Keep{Retain: time.Nanosecond}, Signer: key}
 
 	p.Pass(ctx, s)
 

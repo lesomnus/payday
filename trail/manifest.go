@@ -5,12 +5,8 @@ import (
 	"cmp"
 	"compress/gzip"
 	"context"
-	"crypto/ed25519"
-	"crypto/rand"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -141,16 +137,33 @@ type Manifest interface {
 // A decorator rather than a call at every place a pass writes, so that a way
 // of changing the archive added later goes through the manifest without
 // anybody remembering to.
+//
+// It also keeps what the act trusts: the blobs the manifest accounts for, by
+// the labels it recorded for each. Those labels are what an act decides by --
+// a chunk's month, its kind, whose it is -- and not the ones on the blob, which
+// anybody who can write the archive can change.
 type manifested struct {
 	a flob.Stores
 	m Manifest
 
-	mu    sync.Mutex
-	added map[blobKey]bool
+	mu sync.Mutex
+
+	// known is the blobs the manifest accounted for when the act loaded it,
+	// and intents the adds in flight then, by namespace and intent; see
+	// [pass.trust]. added is what the act wrote itself, as it wrote it.
+	known   map[blobKey]map[string]string
+	intents map[string]map[string]string
+	added   map[blobKey]map[string]string
 }
 
 func (p Policy) manifested(m Manifest) *manifested {
-	return &manifested{a: p.Archive, m: m, added: map[blobKey]bool{}}
+	return &manifested{
+		a:       p.Archive,
+		m:       m,
+		known:   map[blobKey]map[string]string{},
+		intents: map[string]map[string]string{},
+		added:   map[blobKey]map[string]string{},
+	}
 }
 
 func (r *manifested) Use(ns string) flob.Store {
@@ -161,12 +174,65 @@ func (r *manifested) Use(ns string) flob.Store {
 // reclaiming -- reachable through this.
 func (r *manifested) Unwrap() flob.Stores { return r.a }
 
-// wrote answers whether a blob was added through this archive.
-func (r *manifested) wrote(k blobKey) bool {
+// load is what the manifest accounts for, as an act read it.
+func (r *manifested) load(known map[blobKey]map[string]string, intents map[string]map[string]string) {
+	r.mu.Lock()
+	r.known, r.intents = known, intents
+	r.mu.Unlock()
+}
+
+// trusts answers the labels the manifest has for a blob: as the act wrote it,
+// or as the act loaded it.
+func (r *manifested) trusts(k blobKey) (map[string]string, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	return r.added[k]
+	if l, ok := r.added[k]; ok {
+		return l, true
+	}
+
+	l, ok := r.known[k]
+	return l, ok
+}
+
+// inFlight answers the labels of an add in flight, by the intent its blob is
+// labelled with.
+func (r *manifested) inFlight(ns, intent string) (map[string]string, bool) {
+	if intent == "" {
+		return nil, false
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	l, ok := r.intents[ns+"\x00"+intent]
+	return l, ok
+}
+
+func (r *manifested) remember(k blobKey, l map[string]string) {
+	r.mu.Lock()
+	r.added[k] = l
+	r.mu.Unlock()
+}
+
+// relabel records new labels for a blob the act trusts, and nothing for one it
+// does not: relabelling a blob through the manifest is no way into it.
+func (r *manifested) relabel(k blobKey, l map[string]string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.added[k]; ok {
+		r.added[k] = l
+	} else if _, ok := r.known[k]; ok {
+		r.known[k] = l
+	}
+}
+
+func (r *manifested) forget(k blobKey) {
+	r.mu.Lock()
+	delete(r.added, k)
+	delete(r.known, k)
+	r.mu.Unlock()
 }
 
 type manifestedStore struct {
@@ -220,9 +286,7 @@ func (s manifestedStore) Add(ctx context.Context, m flob.Meta, r io.Reader) (flo
 		log.From(ctx).WarnContext(ctx, "trail: the manifest", "err", merr)
 	}
 
-	s.r.mu.Lock()
-	s.r.added[blobKey{s.ns, v.Digest}] = true
-	s.r.mu.Unlock()
+	s.r.remember(blobKey{s.ns, v.Digest}, labelsOf(l))
 
 	return v, err
 }
@@ -231,6 +295,8 @@ func (s manifestedStore) Label(ctx context.Context, d flob.Digest, l flob.Labels
 	if err := s.Store.Label(ctx, d, l); err != nil {
 		return err
 	}
+
+	s.r.relabel(blobKey{s.ns, d}, labelsOf(l))
 
 	return s.r.m.Label(ctx, s.ns, string(d), labelsOf(l))
 }
@@ -249,6 +315,8 @@ func (s manifestedStore) Erase(ctx context.Context, d flob.Digest) error {
 
 		return err
 	}
+
+	s.r.forget(blobKey{s.ns, d})
 
 	return s.r.m.Mark(ctx, s.ns, string(d), Erasing, Erased)
 }
@@ -269,9 +337,7 @@ func adopted(ctx context.Context, s flob.Store, d flob.Digest, l flob.Labels) er
 		return err
 	}
 
-	r.r.mu.Lock()
-	r.r.added[blobKey{r.ns, d}] = true
-	r.r.mu.Unlock()
+	r.r.remember(blobKey{r.ns, d}, labelsOf(l))
 
 	return nil
 }
@@ -295,6 +361,16 @@ func labelsOf(l flob.Labels) map[string]string {
 	}
 
 	return out
+}
+
+// labelsFrom is a row's labels as a blob carries them.
+func labelsFrom(m map[string]string) flob.Labels {
+	l := flob.Labels{}
+	for k, v := range m {
+		l.Set(k, v)
+	}
+
+	return l
 }
 
 type blobKey struct {
@@ -341,6 +417,145 @@ func inventory(ctx context.Context, a flob.Stores) (map[blobKey]map[string]strin
 	}
 
 	return out, nil
+}
+
+// trust loads what the manifest accounts for, for an act that is not a pass --
+// a pass has it from verifying; see [pass.verify]: every blob it has a row for,
+// present or being erased, and the adds in flight, by the intent their blobs
+// are labelled with. A manifest with no rows is filled first, as the first
+// pass would; see [Policy.fill].
+func (x *pass) trust(ctx context.Context) error {
+	if x.m == nil {
+		return nil
+	}
+
+	rows, err := x.s.Rows(ctx)
+	if err != nil {
+		return fmt.Errorf("the manifest: %w", err)
+	}
+	if len(rows) == 0 {
+		inv, err := inventory(ctx, x.m.a)
+		if err != nil {
+			return err
+		}
+		if len(inv) > 0 {
+			if err := x.p.fill(ctx, x.s, inv); err != nil {
+				return fmt.Errorf("the manifest: %w", err)
+			}
+			if rows, err = x.s.Rows(ctx); err != nil {
+				return fmt.Errorf("the manifest: %w", err)
+			}
+		}
+	}
+
+	known := map[blobKey]map[string]string{}
+	intents := map[string]map[string]string{}
+	for _, v := range rows {
+		switch v.State {
+		case Adding:
+			if v.Intent != "" {
+				intents[v.Namespace+"\x00"+v.Intent] = v.Labels
+			}
+		case Present, Erasing:
+			known[blobKey{v.Namespace, flob.Digest(v.Digest)}] = v.Labels
+		}
+	}
+	x.m.load(known, intents)
+
+	return nil
+}
+
+// raw is the archive beneath the manifest: for what an act does to a blob the
+// manifest does not account for, which it must not come to account for by
+// being written again.
+func (x *pass) raw() flob.Stores {
+	if x.m == nil {
+		return x.p.Archive
+	}
+
+	return x.m.a
+}
+
+// chunks is the chunks of these namespaces as an act decides by them: the ones
+// the manifest accounts for, by the labels it recorded -- which nobody who can
+// write only the archive can change -- and apart from them, the rest, by their
+// own. Each oldest first. With no manifest, every chunk is the first kind.
+//
+// `fresh` lists the archive before the manifest is read, for an act: every blob
+// written through the manifest has its row by then, present or in flight, so
+// that what another pass is writing is not taken for something nobody wrote. A
+// pass reads it once, when it verifies, and keeps it up to date as it goes.
+func (x *pass) chunks(ctx context.Context, nss []string, fresh bool) ([]Chunk, []Chunk, error) {
+	type blob struct {
+		ns string
+		v  flob.Info
+	}
+
+	bs := []blob{}
+	for _, ns := range nss {
+		w, ok := flob.AsWalker(x.raw().Use(ns))
+		if !ok {
+			return nil, nil, errUnwalkable
+		}
+		for v, err := range w.Walk(ctx) {
+			if err != nil {
+				return nil, nil, fmt.Errorf("%s: %w", ns, err)
+			}
+
+			bs = append(bs, blob{ns, v})
+		}
+	}
+
+	if fresh {
+		if err := x.trust(ctx); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	trusted, rest := []Chunk{}, []Chunk{}
+	for _, b := range bs {
+		k := blobKey{b.ns, b.v.Digest()}
+
+		// With no manifest, a blob's own labels are all there is.
+		l, ok := map[string]string(nil), x.m == nil
+		if x.m != nil {
+			l, ok = x.m.trusts(k)
+		}
+		if x.m == nil || !ok {
+			sl, err := b.v.Labels(ctx)
+			if err != nil {
+				if errors.Is(err, flob.ErrNotExist) {
+					// Erased between the listing and the look, by another pass.
+					continue
+				}
+
+				return nil, nil, fmt.Errorf("%s: %w", b.ns, err)
+			}
+
+			l = labelsOf(sl)
+			if x.m != nil {
+				if v, in := x.m.inFlight(b.ns, l[labelIntent]); in {
+					l, ok = v, true
+				}
+			}
+		}
+
+		c, isChunk := chunkOf(b.ns, k.d, labelsFrom(l))
+		if !isChunk {
+			continue
+		}
+
+		c.Size, _ = b.v.Size(ctx)
+		if ok {
+			trusted = append(trusted, c)
+		} else {
+			rest = append(rest, c)
+		}
+	}
+	slices.SortFunc(trusted, chunkOrder)
+	slices.SortFunc(rest, chunkOrder)
+
+	return trusted, rest, nil
 }
 
 // settle finishes what a crash left in flight, and fills the manifest the
@@ -488,8 +703,10 @@ type Verified struct {
 	// look.
 	Findings []Finding `json:"findings,omitempty"`
 
-	// known is the archive's blobs the manifest accounts for.
-	known map[blobKey]bool
+	// trusted is the archive's blobs the manifest accounts for, with the
+	// labels it recorded -- which are what a pass decides by, and not the
+	// ones on the blob, which whoever can write the archive can change.
+	trusted map[blobKey]map[string]string
 }
 
 // Ok answers whether there was nothing to find.
@@ -507,12 +724,12 @@ func (v Verified) Ok() bool { return len(v.Findings) == 0 }
 //
 // # Which checkpoint signatures count
 //
-// The ones made by [Policy.Key] or by a key in [Policy.Trust]; one signed by
+// The ones made by [Policy.Signer] or by a key in [Policy.Trust]; one signed by
 // any other key is forged. One with no signature is a finding only after one
 // that had a signature: a deployment that gave itself a key later has
 // checkpoints that begin unsigned.
 func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error) {
-	out := Verified{known: map[blobKey]bool{}}
+	out := Verified{trusted: map[blobKey]map[string]string{}}
 	if p.Archive == nil {
 		return out, errors.New("no archive to verify")
 	}
@@ -534,7 +751,7 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 
 	type held struct{ before, after map[blobKey]Archived }
 	live := held{map[blobKey]Archived{}, map[blobKey]Archived{}}
-	intents := map[string]bool{}
+	intents := map[string]Archived{}
 	for i, rows := range [][]Archived{before, after} {
 		m := live.before
 		if i == 1 {
@@ -543,7 +760,7 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		for _, v := range rows {
 			switch v.State {
 			case Adding:
-				intents[v.Namespace+"\x00"+v.Intent] = true
+				intents[v.Namespace+"\x00"+v.Intent] = v
 			case Present, Erasing:
 				m[blobKey{v.Namespace, flob.Digest(v.Digest)}] = v
 			}
@@ -556,15 +773,16 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		if !ok {
 			v, ok = live.before[k]
 		}
+		intent, adding := intents[k.ns+"\x00"+l[labelIntent]]
 		switch {
 		case ok:
-			out.known[k] = true
+			out.trusted[k] = v.Labels
 			if v.State == Present && !sameLabels(v.Labels, l) && p.relabelled(ctx, s, a, k, v) {
 				out.Findings = append(out.Findings, Finding{Kind: "relabelled", Namespace: k.ns, Digest: k.d, Note: labelDiff(v.Labels, l)})
 			}
-		case l[labelIntent] != "" && intents[k.ns+"\x00"+l[labelIntent]]:
+		case l[labelIntent] != "" && adding:
 			// Being written, or written by an act a crash stopped.
-			out.known[k] = true
+			out.trusted[k] = intent.Labels
 		default:
 			out.Findings = append(out.Findings, Finding{Kind: "unaccounted", Namespace: k.ns, Digest: k.d})
 		}
@@ -693,7 +911,7 @@ type Kept struct {
 }
 
 // signed is a checkpoint as it is stored: its bytes, and the signature over
-// exactly those bytes with the public half of the key that made it.
+// exactly those bytes with the public half of the key that made it, PKIX.
 type signed struct {
 	Checkpoint json.RawMessage `json:"checkpoint"`
 	Key        []byte          `json:"key,omitempty"`
@@ -776,9 +994,10 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) 
 	}
 
 	v := signed{Checkpoint: b}
-	if p.Key != nil {
-		v.Key = p.Key.Public().(ed25519.PublicKey)
-		v.Sig = ed25519.Sign(p.Key, b)
+	if p.Signer != nil {
+		if v.Key, v.Sig, err = sign(p.Signer, b); err != nil {
+			return c, fmt.Errorf("checkpoint %d: signing it: %w", k, err)
+		}
 	}
 	doc, err := json.Marshal(v)
 	if err != nil {
@@ -925,8 +1144,8 @@ func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out 
 	}
 
 	trusted := slices.Clone(p.Trust)
-	if p.Key != nil {
-		trusted = append(trusted, p.Key.Public().(ed25519.PublicKey))
+	if p.Signer != nil {
+		trusted = append(trusted, p.Signer.Public())
 	}
 
 	signedOnce := false
@@ -941,8 +1160,8 @@ func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out 
 		switch has, good := signature(v.s); {
 		case has && !good:
 			fs = append(fs, Finding{Kind: "forged", Checkpoint: k, Note: "its signature is not good"})
-		case has && len(trusted) > 0 && !slices.ContainsFunc(trusted, func(t ed25519.PublicKey) bool { return t.Equal(ed25519.PublicKey(v.s.Key)) }):
-			fs = append(fs, Finding{Kind: "forged", Checkpoint: k, Note: "signed by a key nobody trusts: " + PublicKeyString(v.s.Key)})
+		case has && len(trusted) > 0 && !trusts(trusted, v.s.Key):
+			fs = append(fs, Finding{Kind: "forged", Checkpoint: k, Note: "signed by a key nobody trusts: " + base64.StdEncoding.EncodeToString(v.s.Key)})
 		case has:
 			signedOnce = true
 		case signedOnce:
@@ -967,15 +1186,15 @@ func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out 
 	return fs, nil
 }
 
+// signature answers whether a checkpoint is signed, and whether the signature
+// is good -- by the key it names, which is a question [Policy.Trust] answers
+// apart.
 func signature(v signed) (bool, bool) {
 	if len(v.Sig) == 0 {
 		return false, false
 	}
-	if len(v.Key) != ed25519.PublicKeySize {
-		return true, false
-	}
 
-	return true, ed25519.Verify(ed25519.PublicKey(v.Key), v.Checkpoint, v.Sig)
+	return true, verified(v.Key, v.Checkpoint, v.Sig)
 }
 
 // checkpointDiff says how the rows differ from what a checkpoint kept.
@@ -1045,59 +1264,4 @@ func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, erro
 	log.From(ctx).InfoContext(ctx, "trail: the manifest, made to say what the archive holds", "why", why, "findings", len(v.Findings))
 
 	return v, err
-}
-
-// GenerateKey makes a key a deployment signs its checkpoints with, as the PEM
-// document [ParseKey] reads, and its public half as [Policy.Trust] lists it.
-func GenerateKey() ([]byte, string, error) {
-	pub, key, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, "", err
-	}
-
-	der, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), PublicKeyString(pub), nil
-}
-
-// ParseKey reads an Ed25519 private key from a PEM document, PKCS #8 as
-// `openssl genpkey -algorithm ed25519` writes one.
-func ParseKey(doc []byte) (ed25519.PrivateKey, error) {
-	b, _ := pem.Decode(doc)
-	if b == nil {
-		return nil, errors.New("not a PEM document")
-	}
-
-	v, err := x509.ParsePKCS8PrivateKey(b.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	key, ok := v.(ed25519.PrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("a %T, and checkpoints are signed with Ed25519", v)
-	}
-
-	return key, nil
-}
-
-// PublicKeyString is a public key as a configuration lists one.
-func PublicKeyString(k ed25519.PublicKey) string {
-	return base64.StdEncoding.EncodeToString(k)
-}
-
-// ParsePublicKey reads one back.
-func ParsePublicKey(v string) (ed25519.PublicKey, error) {
-	b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(v))
-	if err != nil {
-		return nil, err
-	}
-	if len(b) != ed25519.PublicKeySize {
-		return nil, fmt.Errorf("%d bytes, and an Ed25519 public key is %d", len(b), ed25519.PublicKeySize)
-	}
-
-	return ed25519.PublicKey(b), nil
 }

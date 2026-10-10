@@ -6,7 +6,8 @@ how to tell whether it applies to you.
 ## The database keeps an account of the trail's archive
 
 **Applies if** you set `audit.archive` or `trail.Policy.Archive`, call
-`Policy.Purge`, or wrote a `trail.Store` of your own (a test double counts).
+`Policy.Purge`, `Policy.Doomed` or `trail.ReadTenant`, or wrote a `trail.Store`
+of your own (a test double counts).
 
 Every change to the archive is now written into a manifest in the database
 first, and `Policy.Verify` compares the two — see
@@ -16,12 +17,21 @@ first, and `Policy.Verify` compares the two — see
   payday's, `Archived` (domain 5, which payday kept for this), and `trail.Store`
   gains the manifest's methods, which the generated store implements on it.
   The migration is one new table.
-- **`Policy.Purge` takes the store**, `policy.Purge(ctx, store, cut)`, because
-  the manifest is in the database. `Policy.Doomed` does not change.
+- **`Policy.Purge` and `Policy.Doomed` take the store**,
+  `policy.Purge(ctx, store, cut)`, because what they destroy is decided by the
+  manifest, which is in the database.
+- **Export through the policy.** `policy.ReadTenant(ctx, store, tenant, fn)` and
+  `policy.Read(ctx, store, fn)` read only what the manifest accounts for and
+  check each chunk's bytes; anything that hands a tenant's trail to somebody as
+  the trail — an offboarding export, a subject access request — wants those.
+  `trail.ReadTenant` and `trail.Read` are unchanged, and read the archive as it
+  is.
 - **Decide where checkpoints go**, optionally: `audit.checkpoints.dir` for a
   directory of their own (`trail.Policy.Checkpoints` for anything else), and
-  `audit.checkpoints.key` to sign them. With neither, they are kept in the
-  archive and unsigned.
+  `audit.checkpoints.key` to sign them — Ed25519, ECDSA or RSA, a file or the PEM
+  document — or a `crypto.Signer` of your own as `trail.Policy.Signer`, for a
+  TPM, an HSM or a cloud KMS. With neither, they are kept in the archive and
+  unsigned.
 - **Give an operator a way to verify**: a command that calls
   `policy.Verify(ctx, store, full)` and prints the findings, and one that calls
   `policy.Accept(ctx, store, why)` once they have looked.

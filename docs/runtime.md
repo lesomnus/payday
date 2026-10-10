@@ -381,18 +381,35 @@ way through is no finding, and no clock is asked. What it finds:
 
 Every pass starts with the light half — names and labels, no bytes read —
 settles what was in flight, says what it found (a warning, and a receipt,
-`finding`), and goes on. It does not fold or rewrite a chunk the manifest does
-not have: copying what it holds into a chunk the manifest has would launder
-it.
+`finding`), and goes on.
+
+**What an act decides by is the manifest.** A chunk's month, kind and tenants
+are the labels the manifest recorded for it, not the ones on the blob, which
+whoever can write the archive can change: a chunk relabelled to look old is not
+destroyed early, and one relabelled to look new is not kept. A chunk the
+manifest does not account for is not destroyed, folded or written again by a
+pass or `Policy.Purge` — copying what it holds into a chunk the manifest has
+would launder it, and destroying it would destroy what `Verify` found. An act
+that must reach it does: `Policy.Forget` and `Policy.PurgeTenant`, since
+whatever it is, it holds what it holds about the person or the tenant. They
+write it again beneath the manifest, so that what it became is as unaccounted
+for as what it was.
+
+`Policy.Read` and `Policy.ReadTenant` read the same way — only what the
+manifest accounts for, a chunk of `_shared` by the tenants the manifest
+recorded for it — and check each chunk's bytes against its digest before a row
+of it is handed over; one that is not its digest any more is an error. They are
+what an export is made with. `trail.Read` and `trail.ReadTenant` read the
+archive as it is and check nothing, for when there is no database to check it
+against.
 
 #### Checkpoints
 
 A pass ends with a **checkpoint**: the next number, taken under a row lock so
 that two passes never share one, and every blob the manifest has at that
 moment, written whole to the checkpoint store and signed when the deployment
-gives a key (`trail.GenerateKey`, `audit.checkpoints.key`). Each manifest row
-says which checkpoints it was in, so `Verify` recomputes the latest one from the
-rows and compares.
+gives it something to sign with. Each manifest row says which checkpoints it
+was in, so `Verify` recomputes the latest one from the rows and compares.
 
 That is what covers somebody who can write both the database and the archive.
 Their worth is where they are kept: `audit.checkpoints.dir`, or
@@ -401,8 +418,19 @@ mount) and apart from the archive, is the archive's contents day by day beyond
 anybody's reach. In the archive itself (`_checkpoints`, the default) they say
 what it held to whoever has not rewritten it. What happens after the latest
 checkpoint is not covered by anything written with the deployment's own
-credentials, and a key mounted beside those credentials is held by whoever
-holds them.
+credentials, and a key read into the process is held by whoever holds the
+process. One in a device is not: whoever holds the process can have it sign
+while they do, and cannot take it away to sign anything after.
+
+What signs is a `crypto.Signer`, `Policy.Signer`: a key read at start from
+`audit.checkpoints.key` (`<APP>_AUDIT_CHECKPOINTS_KEY`) — a file, or the PEM
+document itself; Ed25519, ECDSA or RSA, as `openssl genpkey` or
+`trail.GenerateKey` writes one — or one an app hands in for a TPM, an HSM or a
+cloud KMS, whose private half never comes out. Ed25519 signs a checkpoint's
+bytes, ECDSA and RSA their SHA-256, and a signature is verified by the kind of
+key that made it. `audit.checkpoints.trust` is the public keys besides the
+signer's that a verification believes: one rotated out, or each replica's when
+each has a device of its own.
 
 An operator who has looked at what verification found and decided the archive
 is right — a crash, a blob restored from a backup — calls `Policy.Accept` with
