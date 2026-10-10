@@ -3,6 +3,35 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## Erasing from the trail answers to a legal hold
+
+**Applies if** you call `pd.ForgetInTrail`, `trail.Forget`, `trail.Collect`,
+`trail.Leave`, `trail.Doomed` or `trail.Purge`, or wrote a `trail.Store` of
+your own.
+
+A tenant's answer can now carry a legal hold, `trail.Tenant.Hold`, and nothing a
+held tenant may read stops existing while it is on — see
+[the runtime](runtime.md#legal-holds). Every act that destroys something of the
+trail had to be able to see the hold, so they are methods of `trail.Policy` now,
+and the functions they replace are gone rather than kept beside them: a caller
+still written against those would erase through a hold without knowing it.
+
+| Was | Is |
+| --- | --- |
+| `pd.ForgetInTrail(ctx, db, objects)` and `trail.Forget(ctx, archive, encoded)` | `policy.Forget(ctx, pd.TrailStore(db), objects)`: the database and the archive in one call, answering `trail.Forgotten` with what a hold kept |
+| `trail.Collect(ctx, s, of, before)` | `policy.Collect(ctx, s, of, before)`, answering what a hold kept as well |
+| `trail.Leave(…)` | `trail.Archive`, or `policy.Collect` |
+| `trail.Doomed(ctx, archive, cut)`, `trail.Purge(ctx, archive, cut)` | `policy.Doomed(ctx, cut)`, `policy.Purge(ctx, cut)` |
+| `trail.Store` | gains `Heads` and `Blank`; `trail.Scope` gains `Objects`, and `trail.Whose` gains `Sharing` |
+
+A caller with no policy of its own — a test, a command that was handed an
+archive — means `trail.Policy{Archive: archive}`, which holds nothing. The
+store is generated, so `pd gen` writes the new one.
+
+And one thing is new: `policy.PurgeTenant` takes a leaving tenant's trail out,
+and `policy.PlanTenantPurge` says what it would take. See
+[the runtime](runtime.md#a-tenant-leaving).
+
 ## The trail's archive is a flob store, kept per tenant
 
 **Applies if** you set `audit.archive`, call anything in `trail` beyond `Sweep`

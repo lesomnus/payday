@@ -2,7 +2,7 @@ package cmd_test
 
 import (
 	"context"
-	"encoding/base64"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -89,9 +89,10 @@ func TestTheTrailIsKeptPerKindOfThing(t *testing.T) {
 	s := pd.TrailStore(b.Ent)
 
 	// One pass of each half, which is what `trail.Sweep` does on its clock.
-	n, err := trail.Collect(ctx, s, trail.Except(robot), time.Now().Add(time.Hour))
+	n, held, err := p.Collect(ctx, s, trail.Except(robot), time.Now().Add(time.Hour))
 	x.NoError(err)
 	x.NotZero(n)
+	x.False(held.Any())
 
 	x.Equal(trail.Keep{Note: p.For(robot).Note}, p.For(robot),
 		"the robot's policy has a clock on it")
@@ -171,11 +172,11 @@ func TestAKindTheAppDoesNotHaveIsRefused(t *testing.T) {
 
 // TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe.
 //
-// The second clock is per kind as well, and [trail.Purge] decides from the
-// labels of a chunk rather than by opening it -- so a chunk holding two kinds
-// with two `destroy` windows would be a chunk that is half destroyable, and
-// there is no such thing. The split is what makes the question answerable at
-// all.
+// The second clock is per kind as well, and [trail.Policy.Purge] decides from
+// the labels of a chunk rather than by opening it -- so a chunk holding two
+// kinds with two `destroy` windows would be a chunk that is half destroyable,
+// and there is no such thing. The split is what makes the question answerable
+// at all.
 func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
@@ -218,7 +219,7 @@ func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 		x := require.New(t)
 
 		// Long past everything, for the robot alone.
-		vs, err := trail.Purge(ctx, a, trail.Only(robot).CutFor(time.Now().AddDate(1, 0, 0)))
+		vs, _, err := trail.Policy{Archive: a}.Purge(ctx, trail.Only(robot).CutFor(time.Now().AddDate(1, 0, 0)))
 		x.NoError(err)
 		x.NotEmpty(vs, "the robot's archive was not destroyed")
 
@@ -296,9 +297,9 @@ func TestOnePersonLeavesTheTrailWithoutTakingTheEventWithThem(t *testing.T) {
 	}.Build())
 	x.NoError(err)
 
-	n, err := pd.ForgetInTrail(ctx, b.Ent, []pdid.Id{who})
+	got, err := trail.Policy{}.Forget(ctx, pd.TrailStore(b.Ent), []pdid.Id{who})
 	x.NoError(err)
-	x.Equal(len(was), n)
+	x.Equal(len(was), got.Rows)
 
 	for _, u := range rows() {
 		x.Empty(u.Value, "the contents of a write about them survived")
@@ -356,11 +357,9 @@ func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 	})))
 	x.NotZero(held, "the archive holds nothing about them, so this proves nothing")
 
-	// The object as protojson writes it, which is what the runtime matches on:
-	// it has no `Audit` type and reads the document as JSON.
-	n, err := trail.Forget(ctx, a, []string{base64.StdEncoding.EncodeToString(who.Bytes())})
+	got, err := trail.Policy{Archive: a}.Forget(ctx, pd.TrailStore(b.Ent), []pdid.Id{who})
 	x.NoError(err)
-	x.NotZero(n)
+	x.NotZero(got.Archived)
 
 	left := 0
 	events := 0
@@ -700,5 +699,155 @@ func TestARowTwoTenantsMayReadLastsAsLongAsTheLongerKeepsIt(t *testing.T) {
 			})))
 			x.True(found, "a tenant the row names cannot read it back")
 		}
+	})
+}
+
+// TestAHeldTenantKeepsItsTrail.
+//
+// Through the generated store and the app's own callback: a tenant whose
+// contract says discard and whose hold says keep is moved into the archive
+// rather than discarded, and is not destroyed by hand either.
+func TestAHeldTenantKeepsItsTrail(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	held := must(pdid.From(must(b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "held"}.Build())).GetId()))
+	_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: held.Bytes()}.Build(),
+		Alias:  "a-machine",
+	}.Build())
+	x.NoError(err)
+
+	gone := trail.Keep{Retain: time.Nanosecond, Discard: true}
+	vs := map[pdid.Id]trail.Tenant{
+		b.Tenant: {Keep: &gone},
+		held:     {Keep: &gone, Hold: &trail.Hold{Why: "a dispute"}},
+	}
+
+	p := trail.Policy{
+		Archive: flob.NewMemStores(),
+		Keep:    trail.Keep{Retain: time.Hour},
+		Tenants: func(ctx context.Context, id pdid.Id) (trail.Tenant, error) { return vs[id], nil },
+	}
+	x.NoError(p.Valid())
+
+	s := pd.TrailStore(b.Ent)
+	theirs, err := b.Ent.Audit.Query().Where(entaudit.TenantIdEQ(held.Uuid())).Count(ctx)
+	x.NoError(err)
+	x.NotZero(theirs)
+
+	p.Pass(ctx, s)
+
+	left, err := b.Ent.Audit.Query().Where(entaudit.TenantIdIn(held.Uuid(), b.Tenant.Uuid())).Count(ctx)
+	x.NoError(err)
+	x.Zero(left, "the window did not move a held tenant's rows")
+
+	kept := 0
+	x.NoError(trail.ReadTenant(ctx, p.Archive, held, pd.TrailOf(func(v *app.Audit) error {
+		kept++
+		return nil
+	})))
+	x.Equal(theirs, kept, "a held tenant's rows were discarded")
+
+	_, h, err := p.Purge(ctx, trail.Before(time.Now().Add(time.Hour)))
+	x.NoError(err)
+	x.Equal([]pdid.Id{held}, h.By)
+}
+
+// TestErasingASubjectThroughTheStoreLeavesWhatIsHeld.
+func TestErasingASubjectThroughTheStoreLeavesWhatIsHeld(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	held := must(pdid.From(must(b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "held"}.Build())).GetId()))
+
+	// One subject with rows in two tenants -- something that moved between
+	// them.
+	at := time.Now().Add(-time.Minute)
+	free := trailRow(t, ctx, b.Ent, b.Tenant, b.Tenant, nil, at)
+	who := pdid.Id(free.ObjectId)
+	kept := must(b.Ent.Audit.Create().
+		SetId(uuid.NewV7()).
+		SetTenantId(held.Uuid()).
+		SetActorTenantId(held.Uuid()).
+		SetActorId(uuid.Nil()).
+		SetTraceId([]byte{}).
+		SetAction("/test/Write").
+		SetObjectId(who.Uuid()).
+		SetDomain(free.Domain).
+		SetPatch([]byte{}).
+		SetValue([]byte("contents")).
+		SetDateCreated(at).
+		Save(ctx))
+
+	p := trail.Policy{Tenants: func(ctx context.Context, id pdid.Id) (trail.Tenant, error) {
+		if id == held {
+			return trail.Tenant{Hold: &trail.Hold{Why: "a dispute"}}, nil
+		}
+
+		return trail.Tenant{}, nil
+	}}
+
+	got, err := p.Forget(ctx, pd.TrailStore(b.Ent), []pdid.Id{who})
+	x.NoError(err)
+	x.Equal(1, got.Rows)
+	x.Equal(1, got.Held.Rows)
+	x.Equal([]pdid.Id{held}, got.Held.By)
+
+	x.Empty(must(b.Ent.Audit.Get(ctx, free.Id)).Value)
+	x.NotEmpty(must(b.Ent.Audit.Get(ctx, kept.Id)).Value, "a held row was blanked")
+}
+
+// TestATenantLeavesTheDatabase.
+//
+// Through the generated store, because the four scopes a tenant leaving reads
+// -- its alone, what it shares, what others share with it, and the rest -- are
+// predicates over the columns the wall reads.
+func TestATenantLeavesTheDatabase(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	leaving := must(pdid.From(must(b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "leaving"}.Build())).GetId()))
+	at := time.Now().Add(-time.Minute)
+
+	alone := trailRow(t, ctx, b.Ent, leaving, leaving, nil, at)
+	byNobody := trailRow(t, ctx, b.Ent, leaving, pdid.Nil, nil, at)
+	sharing := trailRow(t, ctx, b.Ent, leaving, b.Tenant, nil, at)
+	theirs := trailRow(t, ctx, b.Ent, b.Tenant, b.Tenant, &leaving, at)
+
+	p := trail.Policy{}
+	s := pd.TrailStore(b.Ent)
+
+	plan, err := p.PlanTenantPurge(ctx, s, leaving)
+	x.NoError(err)
+
+	got, err := p.PurgeTenant(ctx, s, leaving)
+	x.NoError(err)
+	x.Equal(plan, got, "the plan is not what the purge did")
+
+	// The two above, and the record of the tenant being made: a tenant is its
+	// own, and nobody made it but the deployment.
+	x.Equal(3, got.Removed)
+	x.Equal(1, got.Blanked)
+
+	gone := func(id uuid.UUID) bool {
+		_, err := b.Ent.Audit.Get(ctx, id)
+		return ent.IsNotFound(err)
+	}
+	x.True(gone(alone.Id))
+	x.True(gone(byNobody.Id), "a row the deployment wrote into the tenant outlived it")
+	x.False(gone(sharing.Id), "a row it shares went")
+	x.Empty(must(b.Ent.Audit.Get(ctx, sharing.Id)).Value)
+	x.NotEmpty(must(b.Ent.Audit.Get(ctx, theirs.Id)).Value, "the other side's record was touched")
+
+	t.Run("and refuses under a hold", func(t *testing.T) {
+		x := require.New(t)
+
+		p := trail.Policy{Tenants: func(context.Context, pdid.Id) (trail.Tenant, error) {
+			return trail.Tenant{Hold: &trail.Hold{Why: "a dispute"}}, nil
+		}}
+
+		_, err := p.PurgeTenant(ctx, s, b.Tenant)
+		x.True(errors.Is(err, trail.ErrHeld))
 	})
 }

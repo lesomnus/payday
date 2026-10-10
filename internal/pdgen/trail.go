@@ -21,11 +21,17 @@ var (
 //
 // What is not generated is any judgement. There is none here beyond *read a
 // batch of these rows older than this, say which tenants rows are filed under,
-// and forget the ones I name*: the two clocks, whose clock a row is on, the
-// refusal to destroy what was never written, the archive's layout and what may
-// be destroyed are all in the runtime, where they can be argued with once
-// instead of per app. Even the rule for which tenants a row names is the
-// runtime's -- `trail.TenantsOf` -- and this hands it the three columns.
+// and forget or blank the ones I name*: the two clocks, whose clock a row is
+// on, what a hold keeps, the refusal to destroy what was never written, the
+// archive's layout and what may be destroyed are all in the runtime, where they
+// can be argued with once instead of per app. Even the rule for which tenants a
+// row names is the runtime's -- `trail.TenantsOf` -- and this hands it the
+// three columns.
+//
+// Which is why erasing one subject is not generated either, though it was:
+// `pd.ForgetInTrail` blanked two columns for a set the caller chose, and once a
+// legal hold could be on some of those rows, which of them was a judgement.
+// It is `trail.Policy.Forget`, and this is the `Blank` it calls.
 //
 // The document that travels between the two halves is protojson, which is the
 // archive's format anyway -- *readable by anything that can read an `Audit`*.
@@ -74,6 +80,15 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		q = q.Where(", entPkg.Ident("DomainNotIn"), "(numbers(k.Except)...))")
 	g.P("	}")
 	g.P("")
+	g.P("	if len(k.Objects) > 0 {")
+	g.P("		ids := make([]", pkgUuid.Ident("UUID"), ", len(k.Objects))")
+	g.P("		for i, v := range k.Objects {")
+	g.P("			ids[i] = v.Uuid()")
+	g.P("		}")
+	g.P("")
+	g.P("		q = q.Where(", entPkg.Ident("ObjectIdIn"), "(ids...))")
+	g.P("	}")
+	g.P("")
 	g.P("	t := k.Tenant.Uuid()")
 	g.P("	switch k.Whose {")
 	g.P("	case ", pkgTrail.Ident("FiledUnder"), ":")
@@ -86,6 +101,8 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 		entPkg.Ident("ActorTenantIdEQ"), "(t), ", entPkg.Ident("CounterpartTenantIdEQ"), "(t)),")
 	g.P("			", entPkg.Ident("Not"), "(trailAlone(t)),")
 	g.P("		)")
+	g.P("	case ", pkgTrail.Ident("Sharing"), ":")
+	g.P("		q = q.Where(", entPkg.Ident("TenantIdEQ"), "(t), ", entPkg.Ident("Not"), "(trailAlone(t)))")
 	g.P("	}")
 	g.P("")
 	g.P("	return q")
@@ -134,9 +151,9 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("}")
 	g.P("")
 
-	g.P("func (s trailStore) Older(ctx ", pkgCtx.Ident("Context"), ", k ", pkgTrail.Ident("Scope"),
-		", at ", pkgTime.Ident("Time"), ", after ", pkgTrail.Ident("Cursor"), ", limit int) (",
-		pkgTrail.Ident("Rows"), ", error) {")
+	g.P("// older is a scope's rows written before `at`, past `after`, oldest first.")
+	g.P("func (s trailStore) older(k ", pkgTrail.Ident("Scope"), ", at ", pkgTime.Ident("Time"),
+		", after ", pkgTrail.Ident("Cursor"), ", limit int) (*", p.Ent.Ident(e+"Query"), ", error) {")
 	g.P("	q := s.of(k).Where(", entPkg.Ident("DateCreatedLT"), "(at))")
 	g.P("	if after.Key != nil {")
 	g.P("		id, ok := after.Key.(", pkgUuid.Ident("UUID"), ")")
@@ -151,11 +168,21 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		))")
 	g.P("	}")
 	g.P("")
-	g.P("	vs, err := q.")
+	g.P("	return q.")
 	g.P("		Order(", p.Ent.Ident("Asc"), "(", entPkg.Ident("FieldDateCreated"),
 		", ", entPkg.Ident("FieldId"), ")).")
-	g.P("		Limit(limit).")
-	g.P("		All(ctx)")
+	g.P("		Limit(limit), nil")
+	g.P("}")
+	g.P("")
+	g.P("func (s trailStore) Older(ctx ", pkgCtx.Ident("Context"), ", k ", pkgTrail.Ident("Scope"),
+		", at ", pkgTime.Ident("Time"), ", after ", pkgTrail.Ident("Cursor"), ", limit int) (",
+		pkgTrail.Ident("Rows"), ", error) {")
+	g.P("	q, err := s.older(k, at, after, limit)")
+	g.P("	if err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+	g.P("	vs, err := q.All(ctx)")
 	g.P("	if err != nil {")
 	g.P("		return nil, err")
 	g.P("	}")
@@ -183,6 +210,41 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("}")
 	g.P("")
 
+	g.P("// Heads is the same rows with only what a decision about them reads: no")
+	g.P("// `value`, no `patch`, and nothing marshalled.")
+	g.P("func (s trailStore) Heads(ctx ", pkgCtx.Ident("Context"), ", k ", pkgTrail.Ident("Scope"),
+		", at ", pkgTime.Ident("Time"), ", after ", pkgTrail.Ident("Cursor"), ", limit int) (",
+		pkgTrail.Ident("Rows"), ", error) {")
+	g.P("	q, err := s.older(k, at, after, limit)")
+	g.P("	if err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+	g.P("	vs, err := q.Select(")
+	g.P("		", entPkg.Ident("FieldId"), ",")
+	g.P("		", entPkg.Ident("FieldDateCreated"), ",")
+	g.P("		", entPkg.Ident("FieldDomain"), ",")
+	g.P("		", entPkg.Ident("FieldTenantId"), ",")
+	g.P("		", entPkg.Ident("FieldActorTenantId"), ",")
+	g.P("		", entPkg.Ident("FieldCounterpartTenantId"), ",")
+	g.P("	).All(ctx)")
+	g.P("	if err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+	g.P("	out := make(", pkgTrail.Ident("Rows"), ", 0, len(vs))")
+	g.P("	for _, v := range vs {")
+	g.P("		out = append(out, ", pkgTrail.Ident("Row"), "{")
+	g.P("			Key:     v.Id,")
+	g.P("			Domain:  ", pkgPdid.Ident("Domain"), "(v.Domain),")
+	g.P("			Created: v.DateCreated,")
+	g.P("			Tenants: ", pkgTrail.Ident("TenantsOf"), "(v.TenantId, v.ActorTenantId, v.CounterpartTenantId),")
+	g.P("		})")
+	g.P("	}")
+	g.P("")
+	g.P("	return out, nil")
+	g.P("}")
+	g.P("")
 	g.P("func (s trailStore) Count(ctx ", pkgCtx.Ident("Context"), ", k ", pkgTrail.Ident("Scope"),
 		", at ", pkgTime.Ident("Time"), ") (int, error) {")
 	g.P("	return s.of(k).Where(", entPkg.Ident("DateCreatedLT"), "(at)).Count(ctx)")
@@ -196,17 +258,44 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("// when it runs, and a row backdated by a clock that stepped is one it")
 	g.P("// removes and the archive does not have.")
 	g.P("func (s trailStore) Forget(ctx ", pkgCtx.Ident("Context"), ", keys []any) (int, error) {")
+	g.P("	ids, err := trailKeys(keys)")
+	g.P("	if err != nil {")
+	g.P("		return 0, err")
+	g.P("	}")
+	g.P("")
+	g.P("	return s.db.", e, ".Delete().Where(", entPkg.Ident("IdIn"), "(ids...)).Exec(ctx)")
+	g.P("}")
+	g.P("")
+	g.P("// Blank empties the two columns that hold contents, for exactly these rows.")
+	g.P("//")
+	g.P("// Empty and not nil: nil is SQL NULL, which a NOT NULL column refuses on")
+	g.P("// PostgreSQL and accepts on SQLite.")
+	g.P("func (s trailStore) Blank(ctx ", pkgCtx.Ident("Context"), ", keys []any) (int, error) {")
+	g.P("	ids, err := trailKeys(keys)")
+	g.P("	if err != nil {")
+	g.P("		return 0, err")
+	g.P("	}")
+	g.P("")
+	g.P("	return s.db.", e, ".Update().")
+	g.P("		Where(", entPkg.Ident("IdIn"), "(ids...)).")
+	g.P("		SetValue([]byte{}).")
+	g.P("		SetPatch([]byte{}).")
+	g.P("		Save(ctx)")
+	g.P("}")
+	g.P("")
+	g.P("// trailKeys is the keys this store gave out, back as what it deletes by.")
+	g.P("func trailKeys(keys []any) ([]", pkgUuid.Ident("UUID"), ", error) {")
 	g.P("	ids := make([]", pkgUuid.Ident("UUID"), ", 0, len(keys))")
 	g.P("	for _, k := range keys {")
 	g.P("		v, ok := k.(", pkgUuid.Ident("UUID"), ")")
 	g.P("		if !ok {")
-	g.P("			return 0, ", pkgFmt.Ident("Errorf"), "(\"trail: %T is not a key this store gave out\", k)")
+	g.P("			return nil, ", pkgFmt.Ident("Errorf"), "(\"trail: %T is not a key this store gave out\", k)")
 	g.P("		}")
 	g.P("")
 	g.P("		ids = append(ids, v)")
 	g.P("	}")
 	g.P("")
-	g.P("	return s.db.", e, ".Delete().Where(", entPkg.Ident("IdIn"), "(ids...)).Exec(ctx)")
+	g.P("	return ids, nil")
 	g.P("}")
 	g.P("")
 
@@ -219,57 +308,6 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("	}")
 	g.P("")
 	g.P("	return out")
-	g.P("}")
-	g.P("")
-
-	g.P("// ForgetInTrail blanks the contents of every trail row about one of these")
-	g.P("// objects, and answers how many it changed.")
-	g.P("//")
-	g.P("// # What it takes out")
-	g.P("//")
-	g.P("// `value` and `patch`, which are the two columns that hold contents.")
-	g.P("// Everything else -- who acted, what they did, which object, when -- stays,")
-	g.P("// and stays on purpose: that is the record a trail exists to be, and it is")
-	g.P("// what a legal-obligation exemption is an exemption *for*. What is destroyed")
-	g.P("// is what the row said about somebody; what survives is that it happened.")
-	g.P("//")
-	g.P("// The actor is not touched. It is an identifier, and it is personal data only")
-	g.P("// because it **resolves** -- a property of the row it points at rather than of")
-	g.P("// this one. A caller that has destroyed the person's own record has already")
-	g.P("// made it a pseudonym reaching nothing, and blanking it here would destroy")
-	g.P("// *who did this*, which is the whole of what a trail is for.")
-	g.P("//")
-	g.P("// # And why payday offers it at all")
-	g.P("//")
-	g.P("// **Which** rows, and **when**, is the app's -- what it owes a person and")
-	g.P("// under what regime is not a thing a framework can know, which is why")
-	g.P("// `docs/runtime.md` lists erasing a subject among the things payday does not")
-	g.P("// do. This is the other half: two columns of payday's own table, blanked for")
-	g.P("// a set the caller chose. There is no judgement in it, which is the same line")
-	g.P("// `internal/pdgen/outbox.go` draws about the drain.")
-	g.P("//")
-	g.P("// The archive is `trail.Forget`, and a caller that keeps one has to call both:")
-	g.P("// a mechanism that stopped at the database would destroy the copy an operator")
-	g.P("// can see and leave the copy in the archive beside it.")
-	g.P("func ForgetInTrail(ctx ", pkgCtx.Ident("Context"), ", db *", p.Ent.Ident("Client"),
-		", objects []", pkgPdid.Ident("Id"), ") (int, error) {")
-	g.P("	if len(objects) == 0 {")
-	g.P("		return 0, nil")
-	g.P("	}")
-	g.P("")
-	g.P("	ids := make([]", pkgUuid.Ident("UUID"), ", len(objects))")
-	g.P("	for i, v := range objects {")
-	g.P("		ids[i] = v.Uuid()")
-	g.P("	}")
-	g.P("")
-	// Empty and not nil, for the reason the recorder's `notNull` gives: nil is
-	// SQL NULL, which a NOT NULL column refuses on Postgres and accepts on
-	// SQLite.
-	g.P("	return db.", e, ".Update().")
-	g.P("		Where(", entPkg.Ident("ObjectIdIn"), "(ids...)).")
-	g.P("		SetValue([]byte{}).")
-	g.P("		SetPatch([]byte{}).")
-	g.P("		Save(ctx)")
 	g.P("}")
 	g.P("")
 

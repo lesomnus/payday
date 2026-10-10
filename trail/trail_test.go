@@ -113,6 +113,9 @@ func (s *fakeStore) match(of Scope, r fakeRow) bool {
 	if len(of.Only) == 0 && slices.Contains(of.Except, r.domain) {
 		return false
 	}
+	if len(of.Objects) > 0 && !slices.Contains(of.Objects, pdid.Id(r.object)) {
+		return false
+	}
 
 	t, none := of.Tenant.Uuid(), uuid.Nil()
 	alone := r.tenant == t &&
@@ -127,6 +130,8 @@ func (s *fakeStore) match(of Scope, r fakeRow) bool {
 	case Together:
 		names := r.tenant == t || r.actor == t || (r.counterpart != nil && *r.counterpart == t)
 		return names && !alone
+	case Sharing:
+		return r.tenant == t && !alone
 	default:
 		return true
 	}
@@ -186,6 +191,44 @@ func (s *fakeStore) Older(ctx context.Context, of Scope, at time.Time, after Cur
 	}
 
 	return out, nil
+}
+
+func (s *fakeStore) Heads(ctx context.Context, of Scope, at time.Time, after Cursor, limit int) (Rows, error) {
+	vs, err := s.Older(ctx, of, at, after, limit)
+	for i := range vs {
+		vs[i].Doc = nil
+	}
+
+	return vs, err
+}
+
+func (s *fakeStore) Blank(ctx context.Context, keys []any) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	n := 0
+	for i, r := range s.rows {
+		if slices.Contains(keys, any(r.id)) {
+			s.rows[i].value = ""
+			n++
+		}
+	}
+
+	return n, nil
+}
+
+// get is one row as the table holds it now.
+func (s *fakeStore) get(id uuid.UUID) (fakeRow, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, r := range s.rows {
+		if r.id == id {
+			return r, true
+		}
+	}
+
+	return fakeRow{}, false
 }
 
 func (s *fakeStore) Count(ctx context.Context, of Scope, at time.Time) (int, error) {
@@ -716,11 +759,11 @@ func TestTheFilesOfAVersionBeforeAreAdopted(t *testing.T) {
 	t.Run("and destroyed by the month in its name", func(t *testing.T) {
 		x := require.New(t)
 
-		vs, err := Doomed(ctx, p.Archive, Before(time.Date(2020, 1, 31, 0, 0, 0, 0, time.UTC)))
+		vs, _, err := p.Doomed(ctx, Before(time.Date(2020, 1, 31, 0, 0, 0, 0, time.UTC)))
 		x.NoError(err)
 		x.Empty(vs, "January went before the month was over")
 
-		vs, err = Purge(ctx, p.Archive, Before(time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC)))
+		vs, _, err = p.Purge(ctx, Before(time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC)))
 		x.NoError(err)
 		x.Len(vs, 1)
 	})
@@ -746,9 +789,10 @@ func TestForgettingRewritesOnlyWhatItMust(t *testing.T) {
 	x.NoError(err)
 	x.Len(before, 1)
 
-	n, err := Forget(ctx, p.Archive, []string{base64.StdEncoding.EncodeToString(who[:])})
+	got, err := p.Forget(ctx, s, []pdid.Id{pdid.Id(who)})
 	x.NoError(err)
-	x.Equal(1, n)
+	x.Equal(1, got.Archived)
+	x.Zero(got.Rows, "nothing about them was left in the database")
 
 	after, err := chunksIn(ctx, p.Archive, other.String())
 	x.NoError(err)
@@ -770,9 +814,9 @@ func TestForgettingRewritesOnlyWhatItMust(t *testing.T) {
 	}))
 	x.Equal(2, left)
 
-	n, err = Forget(ctx, p.Archive, []string{base64.StdEncoding.EncodeToString(who[:])})
+	got, err = p.Forget(ctx, s, []pdid.Id{pdid.Id(who)})
 	x.NoError(err)
-	x.Equal(1, n, "a row already blank is still one reached")
+	x.Equal(1, got.Archived, "a row already blank is still one reached")
 }
 
 // TestAPreviewIsWhatAPassWouldTake.

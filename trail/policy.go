@@ -306,6 +306,61 @@ type Tenant struct {
 
 	// By is the kinds that differ for this tenant.
 	By map[pdid.Domain]Keep
+
+	// Hold is a legal hold on this tenant's trail, or nil for none.
+	Hold *Hold
+}
+
+// Hold is a legal hold: while it is on, nothing of the tenant's trail is
+// destroyed.
+//
+// # Why it is apart from the windows
+//
+// Because lifting it has to bring the windows back. A hold written as a window
+// of forever would be one nobody could lift without remembering what the
+// window used to be, and the record of that is the thing a hold is about.
+//
+// # What it stops, and what it does not
+//
+// A pass still **moves** a held tenant's rows out of the database on its
+// window -- moving keeps them -- and into the archive even when the window says
+// discard, or leaves them in the database when there is no archive. What it
+// stops is everything that makes a row stop existing:
+//
+//   - a pass's discards, and its destruction at the end of a window;
+//   - [Policy.Collect] and [Policy.Purge], which leave what is held and say
+//     how much;
+//   - a subject's erasure, [Policy.Forget], which leaves the held rows as they
+//     are and answers with them, so that the caller erases again when the hold
+//     lifts -- a legal claim overrides an erasure request, which is GDPR
+//     Art. 17(3)(e) and the exception in 개인정보보호법 §21 for what another law
+//     requires to be kept;
+//   - [Policy.PurgeTenant], which refuses.
+//
+// A hold on a tenant holds every row that tenant may read: a row it shares
+// with another tenant is held by either's hold.
+//
+// Holds on one subject -- a person, an asset -- inside a tenant that is not
+// held are not here.
+type Hold struct {
+	// Kinds is what it covers. Empty is every kind.
+	Kinds []pdid.Domain
+
+	// Why is what it is for -- a case, a demand -- for the log.
+	Why string
+}
+
+// covers answers whether the hold is on rows of this kind. `named` false is the
+// kinds nobody named, which only a hold on every kind covers.
+func (h *Hold) covers(d pdid.Domain, named bool) bool {
+	if h == nil {
+		return false
+	}
+	if len(h.Kinds) == 0 {
+		return true
+	}
+
+	return named && slices.Contains(h.Kinds, d)
 }
 
 // Policy is what a deployment keeps, per kind of thing and, when the app
@@ -424,9 +479,15 @@ func (p Policy) Named() []pdid.Domain {
 	return sorted(slices.Collect(maps.Keys(p.By)), slices.Collect(maps.Keys(p.MinBy)))
 }
 
-// named is every kind a pass over one tenant has to treat on its own.
+// named is every kind a pass over one tenant has to treat on its own: the ones
+// with a window or a floor of their own, and the ones a hold names.
 func (p Policy) named(t Tenant) []pdid.Domain {
-	return sorted(p.Named(), slices.Collect(maps.Keys(t.By)))
+	held := []pdid.Domain{}
+	if t.Hold != nil {
+		held = t.Hold.Kinds
+	}
+
+	return sorted(p.Named(), slices.Collect(maps.Keys(t.By)), held)
 }
 
 func sorted(vs ...[]pdid.Domain) []pdid.Domain {
@@ -611,10 +672,10 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 	if p.Tenants == nil {
 		named := p.Named()
 		for _, d := range named {
-			x.drain(ctx, Scope{Kinds: Only(d)}, p.For(d), nameOf(d))
+			x.drain(ctx, Scope{Kinds: Only(d)}, p.For(d), false, nameOf(d))
 		}
 
-		x.drain(ctx, Scope{Kinds: Except(named...)}, p.Keep, "*")
+		x.drain(ctx, Scope{Kinds: Except(named...)}, p.Keep, false, "*")
 	} else {
 		x.tenant(ctx, pdid.Nil)
 
@@ -768,23 +829,49 @@ func (x *pass) keep(ctx context.Context, id pdid.Id, d pdid.Domain, named bool) 
 	return out, true
 }
 
-// row is how long a row lasts, from every tenant it names; see [longest].
-func (x *pass) row(ctx context.Context, v Row) (Keep, bool) {
+// row is how long a row lasts, from every tenant it names -- see [longest] --
+// and whether any of their holds is on it.
+func (x *pass) row(ctx context.Context, v Row) (Keep, bool, bool) {
 	if len(v.Tenants) == 0 {
-		return x.keep(ctx, pdid.Nil, v.Domain, true)
+		k, ok := x.keep(ctx, pdid.Nil, v.Domain, true)
+		return k, false, ok
 	}
 
 	ks := make([]Keep, 0, len(v.Tenants))
 	for _, id := range v.Tenants {
 		k, ok := x.keep(ctx, id, v.Domain, true)
 		if !ok {
-			return Keep{}, false
+			return Keep{}, false, false
 		}
 
 		ks = append(ks, k)
 	}
 
-	return longest(x.p.Archive != nil, ks...), true
+	return longest(x.p.Archive != nil, ks...), x.held(ctx, v.Tenants, v.Domain, true, nil), true
+}
+
+// held answers whether a hold is on what these tenants may read of one kind,
+// and counts whose it is into `h` when there is one. A tenant with no answer
+// is held: nothing of theirs is destroyed on a guess.
+func (x *pass) held(ctx context.Context, ids []pdid.Id, d pdid.Domain, named bool, h *Held) bool {
+	out := false
+	for _, id := range ids {
+		if id.IsZero() {
+			continue
+		}
+
+		t, ok := x.answer(ctx, id)
+		switch {
+		case !ok:
+			h.unanswered(id)
+			out = true
+		case t.Hold.covers(d, named):
+			h.by(id)
+			out = true
+		}
+	}
+
+	return out
 }
 
 // alone answers whether a row is the tenant's and nobody else's, which is the
@@ -808,41 +895,55 @@ func (x *pass) tenant(ctx context.Context, id pdid.Id) {
 	for _, d := range named {
 		k, ok := x.keep(ctx, id, d, true)
 		if ok {
-			x.drain(ctx, Scope{Kinds: Only(d), Whose: FiledUnder, Tenant: id}, k, nameOf(d))
+			x.drain(ctx, Scope{Kinds: Only(d), Whose: FiledUnder, Tenant: id}, k, t.Hold.covers(d, true), nameOf(d))
 		}
 	}
 
 	if k, ok := x.keep(ctx, id, pdid.Unknown, false); ok {
-		x.drain(ctx, Scope{Kinds: Except(named...), Whose: FiledUnder, Tenant: id}, k, "*")
+		x.drain(ctx, Scope{Kinds: Except(named...), Whose: FiledUnder, Tenant: id}, k, t.Hold.covers(pdid.Unknown, false), "*")
 	}
 }
 
 // drain is one scope's rows out of the database, on one window. A row that
 // names somebody else as well is on the longest of their windows, and stays
-// when that one has not run out.
-func (x *pass) drain(ctx context.Context, of Scope, k Keep, kind string) {
+// when that one has not run out. A row under a hold is moved and never
+// discarded: into the archive if there is one, and nowhere if not.
+func (x *pass) drain(ctx context.Context, of Scope, k Keep, held bool, kind string) {
 	if k.Retain <= 0 {
 		return
 	}
 
 	before := x.now.Add(-k.Retain)
 	archive := x.p.Archive != nil
+	kept := 0
 	decide := func(v Row) fate {
-		w := k
+		w, h := k, held
 		if x.p.Tenants != nil && !alone(v, of.Tenant) {
 			var ok bool
-			if w, ok = x.row(ctx, v); !ok || w.Retain <= 0 || !v.Created.Before(x.now.Add(-w.Retain)) {
+			if w, h, ok = x.row(ctx, v); !ok || w.Retain <= 0 || !v.Created.Before(x.now.Add(-w.Retain)) {
 				return stays
 			}
 		}
 		if w.Discard || !archive {
-			return discarded
+			switch {
+			case !h:
+				return discarded
+			case archive:
+				return archived
+			default:
+				kept++
+				return stays
+			}
 		}
 
 		return archived
 	}
 
 	moved, gone, err := drain(ctx, x.s, of, before, x.p.Archive, x.run, decide)
+	if kept > 0 {
+		log.From(ctx).InfoContext(ctx, "trail: rows a hold keeps in the database, with no archive to move them to",
+			"kind", kind, "tenant", of.Tenant, "rows", kept)
+	}
 
 	whose := ""
 	if of.Whose != Anyone {
@@ -881,35 +982,41 @@ func kindOf(name string) (pdid.Domain, bool) {
 	return domainOf(name)
 }
 
-// judge is how a namespace's chunks are decided, and nil for a namespace this
-// did not write.
-func (x *pass) judge(ctx context.Context, ns string) func(Chunk) (Keep, bool) {
+// judge is how a namespace's chunks are decided -- each one's window, and
+// whether a hold is on it -- and nil for a namespace this did not write. It
+// counts whose holds into `h` when there is one.
+//
+// A chunk of [LegacyNamespace] holds everybody's rows together, so whether a
+// hold is on it is a question about each of its rows, which [pass.spend] asks
+// and this does not.
+func (x *pass) judge(ctx context.Context, ns string) func(Chunk, *Held) (Keep, bool, bool) {
 	switch ns {
 	case LegacyNamespace, DeploymentNamespace:
-		return func(c Chunk) (Keep, bool) {
+		return func(c Chunk, _ *Held) (Keep, bool, bool) {
 			d, ok := kindOf(c.Kind)
 			if !ok {
-				return x.p.Keep, true
+				return x.p.Keep, false, true
 			}
 
-			return x.p.For(d), true
+			return x.p.For(d), false, true
 		}
 
 	case SharedNamespace:
-		return func(c Chunk) (Keep, bool) {
+		return func(c Chunk, h *Held) (Keep, bool, bool) {
 			d, named := kindOf(c.Kind)
 
 			ks := make([]Keep, 0, len(c.Tenants))
 			for _, id := range c.Tenants {
 				k, ok := x.keep(ctx, id, d, named)
 				if !ok {
-					return Keep{}, false
+					h.unanswered(id)
+					return Keep{}, true, false
 				}
 
 				ks = append(ks, k)
 			}
 
-			return longest(true, ks...), len(ks) > 0
+			return longest(true, ks...), x.held(ctx, c.Tenants, d, named, h), len(ks) > 0
 		}
 
 	default:
@@ -922,17 +1029,91 @@ func (x *pass) judge(ctx context.Context, ns string) func(Chunk) (Keep, bool) {
 			return nil
 		}
 
-		return func(c Chunk) (Keep, bool) {
+		return func(c Chunk, h *Held) (Keep, bool, bool) {
 			d, named := kindOf(c.Kind)
 
-			return x.keep(ctx, id, d, named)
+			k, ok := x.keep(ctx, id, d, named)
+			if !ok {
+				h.unanswered(id)
+				return Keep{}, true, false
+			}
+
+			return k, x.held(ctx, []pdid.Id{id}, d, named, h), true
 		}
 	}
 }
 
+// spend destroys a chunk whose window has run out, or what of it no hold
+// keeps, and answers how many of its rows went. A dry one destroys nothing and
+// answers the same. What a hold kept is counted into `h`.
+//
+// A chunk is held whole or not at all, except one of [LegacyNamespace]: a file
+// from before held every tenant's rows together, and a hold on one of them is
+// no reason to keep the others' past their window. So that one is written
+// again with what is held, and only what is held.
+func (x *pass) spend(ctx context.Context, c Chunk, held bool, before time.Time, act string, dry bool, h *Held) (int, error) {
+	a := x.p.Archive
+	if held {
+		h.keep(c.Rows, 1)
+		return 0, nil
+	}
+
+	if c.Namespace == LegacyNamespace && x.p.Tenants != nil {
+		v, err := edit(ctx, a, c, dry, nil, func(line []byte, v head) ([]byte, mark, error) {
+			if x.held(ctx, v.tenants(), pdid.Domain(v.Domain), true, h) {
+				return line, heldBack, nil
+			}
+
+			return nil, dropped, nil
+		})
+		if err != nil {
+			return 0, err
+		}
+
+		h.keep(v.held, 0)
+		if !dry && v.dropped > 0 {
+			x.r.add(Receipt{
+				Act: act, Where: "archive", Tenant: c.Namespace, Kind: c.Kind, Month: Month(c.Month),
+				Before: before.UTC(), Rows: v.dropped, Chunks: btoi(v.left == 0), Held: v.held,
+			})
+		}
+
+		return v.dropped, nil
+	}
+
+	// A chunk adopted from a directory never said how many rows it holds, and
+	// a receipt that says nothing is worth less than one that counts.
+	if c.Rows == 0 {
+		v, err := edit(ctx, a, c, true, nil, func([]byte, head) ([]byte, mark, error) { return nil, dropped, nil })
+		if err != nil {
+			return 0, err
+		}
+
+		c.Rows = v.dropped
+	}
+
+	if !dry {
+		if err := a.Use(c.Namespace).Erase(ctx, c.Digest); err != nil {
+			return 0, err
+		}
+
+		x.r.chunk(act, c, before)
+	}
+
+	return c.Rows, nil
+}
+
+func btoi(v bool) int {
+	if v {
+		return 1
+	}
+
+	return 0
+}
+
 // archive is the second clock, namespace by namespace: what is past its window
-// is destroyed, and the month that can receive no more is folded into one
-// chunk.
+// is destroyed unless a hold is on it, and the month that can receive no more
+// is folded into one chunk.
 func (x *pass) archive(ctx context.Context) {
 	a := x.p.Archive
 
@@ -963,21 +1144,20 @@ func (x *pass) archive(ctx context.Context) {
 		type key struct{ kind, month, tenants string }
 		groups := map[key][]Chunk{}
 		destroyed := 0
+		kept := &Held{}
 		for _, c := range cs {
-			k, ok := judge(c)
+			k, held, ok := judge(c, kept)
 			if !ok {
 				continue
 			}
 
 			if before := x.now.Add(-k.Destroy); k.Destroy > 0 && c.Before(before) {
-				if err := a.Use(ns).Erase(ctx, c.Digest); err != nil {
+				n, err := x.spend(ctx, c, held, before, "destroy", false, kept)
+				if err != nil {
 					log.From(ctx).WarnContext(ctx, "trail: the archive", "namespace", ns, "chunk", c.String(), "err", err)
-
-					continue
 				}
 
-				x.r.chunk("destroy", c, before)
-				destroyed++
+				destroyed += n
 
 				continue
 			}
@@ -990,6 +1170,10 @@ func (x *pass) archive(ctx context.Context) {
 		if destroyed > 0 {
 			log.From(ctx).InfoContext(ctx, "trail: the archive", "namespace", ns, "destroyed", destroyed)
 		}
+		if kept.Rows+kept.Chunks > 0 {
+			log.From(ctx).InfoContext(ctx, "trail: what a hold keeps in the archive past its window",
+				"namespace", ns, "chunks", kept.Chunks, "rows", kept.Rows, "by", kept.By, "unanswered", kept.Unanswered)
+		}
 
 		gs := slices.Collect(maps.Keys(groups))
 		sort.Slice(gs, func(i, j int) bool {
@@ -1001,7 +1185,7 @@ func (x *pass) archive(ctx context.Context) {
 				continue
 			}
 
-			k, _ := judge(vs[0])
+			k, _, _ := judge(vs[0], nil)
 			if !x.closed(vs[0], k) {
 				continue
 			}
@@ -1082,6 +1266,7 @@ func (p Policy) Preview(ctx context.Context, s Store, tenant pdid.Id, t Tenant) 
 		kind string
 		of   Kinds
 		k    Keep
+		held bool
 	}
 
 	bs := []bucket{}
@@ -1091,17 +1276,17 @@ func (p Policy) Preview(ctx context.Context, s Store, tenant pdid.Id, t Tenant) 
 			return nil, fmt.Errorf("%s: the answer contradicts itself: %s", nameOf(d), x.p.resolve(t, d).contradiction())
 		}
 
-		bs = append(bs, bucket{nameOf(d), Only(d), k})
+		bs = append(bs, bucket{nameOf(d), Only(d), k, t.Hold.covers(d, true)})
 	}
 
 	// And whatever kinds the rows hold that the schema no longer registers.
 	if k, ok := x.keep(ctx, tenant, pdid.Unknown, false); ok {
-		bs = append(bs, bucket{"*", Except(ds...), k})
+		bs = append(bs, bucket{"*", Except(ds...), k, t.Hold.covers(pdid.Unknown, false)})
 	}
 
 	for _, b := range bs {
 		k := b.k
-		if k.Retain <= 0 {
+		if k.Retain <= 0 || (b.held && p.Archive == nil) {
 			continue
 		}
 
@@ -1116,6 +1301,8 @@ func (p Policy) Preview(ctx context.Context, s Store, tenant pdid.Id, t Tenant) 
 
 		gone := 0
 		switch {
+		case b.held:
+			// Moved, and nothing more.
 		case k.Discard || p.Archive == nil:
 			gone = n
 		case k.Destroy > 0:
@@ -1141,15 +1328,18 @@ func (p Policy) Preview(ctx context.Context, s Store, tenant pdid.Id, t Tenant) 
 		for _, v := range vs {
 			at = Cursor{Created: v.Created, Key: v.Key}
 
-			k, ok := x.row(ctx, v)
-			if !ok || k.Retain <= 0 || !v.Created.Before(x.now.Add(-k.Retain)) {
+			k, held, ok := x.row(ctx, v)
+			if !ok || k.Retain <= 0 || !v.Created.Before(x.now.Add(-k.Retain)) || (held && p.Archive == nil) {
 				continue
 			}
 
 			r := out[nameOf(v.Domain)]
-			if k.Discard || p.Archive == nil || (k.Destroy > 0 && v.Created.Before(x.now.Add(-k.Destroy))) {
+			switch {
+			case held:
+				r.Archived++
+			case k.Discard || p.Archive == nil || (k.Destroy > 0 && v.Created.Before(x.now.Add(-k.Destroy))):
 				r.Discarded++
-			} else {
+			default:
 				r.Archived++
 			}
 			out[nameOf(v.Domain)] = r
@@ -1177,8 +1367,8 @@ func (p Policy) Preview(ctx context.Context, s Store, tenant pdid.Id, t Tenant) 
 				continue
 			}
 
-			k, ok := judge(c)
-			if !ok || k.Destroy <= 0 || !c.Before(x.now.Add(-k.Destroy)) {
+			k, held, ok := judge(c, nil)
+			if !ok || held || k.Destroy <= 0 || !c.Before(x.now.Add(-k.Destroy)) {
 				continue
 			}
 

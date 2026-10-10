@@ -4392,6 +4392,15 @@ func (s trailStore) of(k trail.Scope) *ent.AuditQuery {
 		q = q.Where(audit.DomainNotIn(numbers(k.Except)...))
 	}
 
+	if len(k.Objects) > 0 {
+		ids := make([]uuid.UUID, len(k.Objects))
+		for i, v := range k.Objects {
+			ids[i] = v.Uuid()
+		}
+
+		q = q.Where(audit.ObjectIdIn(ids...))
+	}
+
 	t := k.Tenant.Uuid()
 	switch k.Whose {
 	case trail.FiledUnder:
@@ -4403,6 +4412,8 @@ func (s trailStore) of(k trail.Scope) *ent.AuditQuery {
 			audit.Or(audit.TenantIdEQ(t), audit.ActorTenantIdEQ(t), audit.CounterpartTenantIdEQ(t)),
 			audit.Not(trailAlone(t)),
 		)
+	case trail.Sharing:
+		q = q.Where(audit.TenantIdEQ(t), audit.Not(trailAlone(t)))
 	}
 
 	return q
@@ -4446,7 +4457,8 @@ func (s trailStore) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pd
 	return out, nil
 }
 
-func (s trailStore) Older(ctx context.Context, k trail.Scope, at time.Time, after trail.Cursor, limit int) (trail.Rows, error) {
+// older is a scope's rows written before `at`, past `after`, oldest first.
+func (s trailStore) older(k trail.Scope, at time.Time, after trail.Cursor, limit int) (*ent.AuditQuery, error) {
 	q := s.of(k).Where(audit.DateCreatedLT(at))
 	if after.Key != nil {
 		id, ok := after.Key.(uuid.UUID)
@@ -4460,10 +4472,18 @@ func (s trailStore) Older(ctx context.Context, k trail.Scope, at time.Time, afte
 		))
 	}
 
-	vs, err := q.
+	return q.
 		Order(ent.Asc(audit.FieldDateCreated, audit.FieldId)).
-		Limit(limit).
-		All(ctx)
+		Limit(limit), nil
+}
+
+func (s trailStore) Older(ctx context.Context, k trail.Scope, at time.Time, after trail.Cursor, limit int) (trail.Rows, error) {
+	q, err := s.older(k, at, after, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	vs, err := q.All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -4487,6 +4507,39 @@ func (s trailStore) Older(ctx context.Context, k trail.Scope, at time.Time, afte
 	return out, nil
 }
 
+// Heads is the same rows with only what a decision about them reads: no
+// `value`, no `patch`, and nothing marshalled.
+func (s trailStore) Heads(ctx context.Context, k trail.Scope, at time.Time, after trail.Cursor, limit int) (trail.Rows, error) {
+	q, err := s.older(k, at, after, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	vs, err := q.Select(
+		audit.FieldId,
+		audit.FieldDateCreated,
+		audit.FieldDomain,
+		audit.FieldTenantId,
+		audit.FieldActorTenantId,
+		audit.FieldCounterpartTenantId,
+	).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(trail.Rows, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, trail.Row{
+			Key:     v.Id,
+			Domain:  pdid.Domain(v.Domain),
+			Created: v.DateCreated,
+			Tenants: trail.TenantsOf(v.TenantId, v.ActorTenantId, v.CounterpartTenantId),
+		})
+	}
+
+	return out, nil
+}
+
 func (s trailStore) Count(ctx context.Context, k trail.Scope, at time.Time) (int, error) {
 	return s.of(k).Where(audit.DateCreatedLT(at)).Count(ctx)
 }
@@ -4498,17 +4551,44 @@ func (s trailStore) Count(ctx context.Context, k trail.Scope, at time.Time) (int
 // when it runs, and a row backdated by a clock that stepped is one it
 // removes and the archive does not have.
 func (s trailStore) Forget(ctx context.Context, keys []any) (int, error) {
+	ids, err := trailKeys(keys)
+	if err != nil {
+		return 0, err
+	}
+
+	return s.db.Audit.Delete().Where(audit.IdIn(ids...)).Exec(ctx)
+}
+
+// Blank empties the two columns that hold contents, for exactly these rows.
+//
+// Empty and not nil: nil is SQL NULL, which a NOT NULL column refuses on
+// PostgreSQL and accepts on SQLite.
+func (s trailStore) Blank(ctx context.Context, keys []any) (int, error) {
+	ids, err := trailKeys(keys)
+	if err != nil {
+		return 0, err
+	}
+
+	return s.db.Audit.Update().
+		Where(audit.IdIn(ids...)).
+		SetValue([]byte{}).
+		SetPatch([]byte{}).
+		Save(ctx)
+}
+
+// trailKeys is the keys this store gave out, back as what it deletes by.
+func trailKeys(keys []any) ([]uuid.UUID, error) {
 	ids := make([]uuid.UUID, 0, len(keys))
 	for _, k := range keys {
 		v, ok := k.(uuid.UUID)
 		if !ok {
-			return 0, fmt.Errorf("trail: %T is not a key this store gave out", k)
+			return nil, fmt.Errorf("trail: %T is not a key this store gave out", k)
 		}
 
 		ids = append(ids, v)
 	}
 
-	return s.db.Audit.Delete().Where(audit.IdIn(ids...)).Exec(ctx)
+	return ids, nil
 }
 
 // numbers is what the column holds, which is a domain widened to what
@@ -4520,52 +4600,6 @@ func numbers(ds []pdid.Domain) []uint32 {
 	}
 
 	return out
-}
-
-// ForgetInTrail blanks the contents of every trail row about one of these
-// objects, and answers how many it changed.
-//
-// # What it takes out
-//
-// `value` and `patch`, which are the two columns that hold contents.
-// Everything else -- who acted, what they did, which object, when -- stays,
-// and stays on purpose: that is the record a trail exists to be, and it is
-// what a legal-obligation exemption is an exemption *for*. What is destroyed
-// is what the row said about somebody; what survives is that it happened.
-//
-// The actor is not touched. It is an identifier, and it is personal data only
-// because it **resolves** -- a property of the row it points at rather than of
-// this one. A caller that has destroyed the person's own record has already
-// made it a pseudonym reaching nothing, and blanking it here would destroy
-// *who did this*, which is the whole of what a trail is for.
-//
-// # And why payday offers it at all
-//
-// **Which** rows, and **when**, is the app's -- what it owes a person and
-// under what regime is not a thing a framework can know, which is why
-// `docs/runtime.md` lists erasing a subject among the things payday does not
-// do. This is the other half: two columns of payday's own table, blanked for
-// a set the caller chose. There is no judgement in it, which is the same line
-// `internal/pdgen/outbox.go` draws about the drain.
-//
-// The archive is `trail.Forget`, and a caller that keeps one has to call both:
-// a mechanism that stopped at the database would destroy the copy an operator
-// can see and leave the copy in the archive beside it.
-func ForgetInTrail(ctx context.Context, db *ent.Client, objects []pdid.Id) (int, error) {
-	if len(objects) == 0 {
-		return 0, nil
-	}
-
-	ids := make([]uuid.UUID, len(objects))
-	for i, v := range objects {
-		ids[i] = v.Uuid()
-	}
-
-	return db.Audit.Update().
-		Where(audit.ObjectIdIn(ids...)).
-		SetValue([]byte{}).
-		SetPatch([]byte{}).
-		Save(ctx)
 }
 
 // TrailOf is a reader of the archive's documents as the messages they hold:
