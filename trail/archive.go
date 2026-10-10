@@ -60,18 +60,18 @@ const (
 // The labels a chunk carries. Everything a pass decides is decided from these,
 // without opening the chunk.
 const (
-	labelFormat  = "Format"
-	labelKind    = "Kind"
-	labelMonth   = "Month"
-	labelRun     = "Run"
-	labelRows    = "Rows"
-	labelFirst   = "First"
-	labelLast    = "Last"
-	labelTenants = "Tenants"
-	labelName    = "Name"
-	labelForgot  = "Forgotten"
-	labelAt      = "At"
-	labelActs    = "Acts"
+	labelFormat    = "Format"
+	labelKind      = "Kind"
+	labelMonth     = "Month"
+	labelRun       = "Run"
+	labelRows      = "Rows"
+	labelFirst     = "First"
+	labelLast      = "Last"
+	labelTenants   = "Tenants"
+	labelName      = "Name"
+	labelRewritten = "Rewritten"
+	labelAt        = "At"
+	labelActs      = "Acts"
 )
 
 const (
@@ -569,72 +569,6 @@ func Chunks(ctx context.Context, a flob.Stores) ([]Chunk, error) {
 	return out, nil
 }
 
-// Doomed is what [Purge] would destroy, and destroys nothing.
-//
-// Its own function rather than a flag on [Purge], so that the list a dry run
-// prints is the list the real one acts on -- two passes that agree today are
-// two passes.
-//
-// `cut` is asked per kind, because the second clock is per kind: an operating
-// record and a person's are in one archive and are not destroyed on the same
-// day. A kind it declines is left alone. A chunk goes when **every** row in it
-// is older than the cutoff; see [Chunk.Before].
-func Doomed(ctx context.Context, a flob.Stores, cut func(kind string) (time.Time, bool)) ([]Chunk, error) {
-	vs, err := Chunks(ctx, a)
-	if err != nil {
-		return nil, err
-	}
-
-	out := []Chunk{}
-	for _, c := range vs {
-		before, ok := cut(c.Kind)
-		if ok && c.Before(before) {
-			out = append(out, c)
-		}
-	}
-
-	return out, nil
-}
-
-// Purge destroys the chunks that are entirely older than the cutoff, in every
-// namespace, and answers with what it destroyed.
-//
-// This is the end of the line and there is nothing after it. It is the act an
-// operator takes by hand, with a cutoff of their own, and it answers to nobody's
-// window: [Policy.Pass] is what applies the deployment's and the tenants'.
-//
-// It writes a [Receipt] of what it destroyed, including when it stopped part
-// of the way.
-func Purge(ctx context.Context, a flob.Stores, cut func(kind string) (time.Time, bool)) ([]Chunk, error) {
-	vs, err := Doomed(ctx, a, cut)
-	if err != nil {
-		return nil, err
-	}
-
-	out := []Chunk{}
-	for _, c := range vs {
-		if err = ctx.Err(); err != nil {
-			break
-		}
-		if err = a.Use(c.Namespace).Erase(ctx, c.Digest); err != nil {
-			break
-		}
-
-		out = append(out, c)
-	}
-
-	r := receipts{}
-	for _, c := range out {
-		before, _ := cut(c.Kind)
-		r.chunk("purge", c, before)
-	}
-	if werr := r.write(ctx, a); werr != nil && err == nil {
-		err = werr
-	}
-
-	return out, err
-}
-
 // Read walks the archive and calls `fn` for each row, as the protojson document
 // it was stored as. Every namespace, oldest month first.
 //
@@ -769,249 +703,194 @@ func lines(r io.Reader, fn func([]byte) error) error {
 	return s.Err()
 }
 
-// Forget blanks the contents of every archived row about one of these objects,
-// and answers how many rows about them it reached.
-//
-// # Why the archive has to be reachable at all
-//
-// The retention policy is about **age** and reaches everybody's rows at once.
-// A person asking to be forgotten is about a **subject**, and a mechanism that
-// stopped at the database would be one that destroyed the copy an operator can
-// see and left the copy in the archive beside it. That is not a retention
-// policy with a gap; it is an answer that is wrong in the direction that
-// matters.
-//
-// # What it blanks, and what it deliberately does not
-//
-// `value` and `patch`, which are the two columns that hold contents. Everything
-// else -- who acted, what they did, which object, when -- stays, and stays on
-// purpose: that is the record the trail exists to be, and it is what a
-// legal-obligation exemption is an exemption *for*. What is destroyed is what
-// the row said about somebody; what survives is that it happened.
-//
-// The actor is not touched. It is an identifier, and it is personal data only
-// because it **resolves** -- which is a property of the row it points at rather
-// than of this one. A caller that has destroyed the person's own record has
-// already made it a pseudonym that reaches nothing, and blanking it here would
-// destroy *who did this*, which is the whole of what a trail is for.
+// mark is what an edit did with one row.
+type mark int
+
+const (
+	// kept is a row the edit is not about, left as it was.
+	kept mark = iota
+
+	// same is a row the edit is about with nothing left to change in it: a
+	// subject's row that was blanked already.
+	same
+
+	// heldBack is a row the edit is about and a legal hold kept as it was.
+	heldBack
+
+	// changed is a row written in place of what it was.
+	changed
+
+	// dropped is a row left out.
+	dropped
+)
+
+// tally is an edit's rows, counted by what it did with them.
+type tally struct {
+	same, held, changed, dropped, left int
+	first, last                        time.Time
+}
+
+// edit writes a chunk again with every row passed through `fn`, and erases the
+// chunk it replaces -- when anything changed. `fn` answers what to write in the
+// row's place and what it did; `pre`, when there is one, passes over a row it
+// declines without parsing it, which is most rows of most chunks.
 //
 // # It rewrites chunks, which nothing else here does
 //
-// [Purge] destroys whole chunks and a pass only adds them, precisely so that
-// an archive is never edited. This is the one act that edits one, and it is
-// worth being explicit that it is an exception rather than an oversight: the
-// alternative is a person's contents surviving in a place the deployment
-// controls, which is the thing they asked to end.
+// A pass only adds chunks and destroys whole ones, precisely so that an
+// archive is never edited. This is the exception, and it is one on purpose:
+// the acts that need it -- forgetting a subject, a tenant leaving, a hold that
+// keeps part of a file of everybody's -- are the ones where the alternative is
+// somebody's contents surviving in a place the deployment controls.
 //
-// A chunk is written again beside itself, and the old one erased only once the
-// store holds the new. It goes round again until a round finds nothing left to
-// blank, because a pass merging chunks at the same moment can have copied a
-// row out of the old one before it was rewritten.
-//
-// The objects are named as protojson writes them, base64; see the test that
-// uses it.
-func Forget(ctx context.Context, a flob.Stores, objects []string) (int, error) {
-	if len(objects) == 0 {
-		return 0, nil
-	}
-
-	of := make(map[string]bool, len(objects))
-	marks := make([][]byte, 0, len(objects))
-	for _, v := range objects {
-		of[v] = true
-		marks = append(marks, []byte(`"`+v+`"`))
-	}
-
-	n, rewritten := 0, 0
-	var err error
-	for round := 0; round < 3; round++ {
-		var vs []Chunk
-		vs, err = Chunks(ctx, a)
-		if err != nil {
-			break
-		}
-
-		k := 0
-		for _, c := range vs {
-			var hits int
-			var dirty bool
-			hits, dirty, err = scan(ctx, a, c, of, marks)
-			if err != nil {
-				break
-			}
-			if round == 0 {
-				n += hits
-			}
-			if !dirty {
-				continue
-			}
-			if err = rewrite(ctx, a, c, of, marks); err != nil {
-				break
-			}
-
-			k++
-		}
-
-		rewritten += k
-		if err != nil || k == 0 {
-			break
-		}
-	}
-
-	r := receipts{}
-	if n > 0 {
-		r.add(Receipt{Act: "forget", Where: "archive", Rows: n, Chunks: rewritten, Objects: len(objects)})
-	}
-	if werr := r.write(ctx, a); werr != nil && err == nil {
-		err = werr
-	}
-
-	return n, err
-}
-
-// scan answers how many rows of one chunk are about these objects, and whether
-// any of them still has contents to lose.
-func scan(ctx context.Context, a flob.Stores, c Chunk, of map[string]bool, marks [][]byte) (int, bool, error) {
-	r, _, err := a.Use(c.Namespace).Open(ctx, c.Digest)
-	if err != nil {
-		if errors.Is(err, flob.ErrNotExist) {
-			return 0, false, nil
-		}
-
-		return 0, false, err
-	}
-	defer r.Close()
-
-	n, dirty := 0, false
-	err = lines(r, func(line []byte) error {
-		if !mentions(line, marks) {
-			return nil
-		}
-
-		_, hit, had, err := blanked(line, of)
-		if err != nil {
-			return err
-		}
-		if hit {
-			n++
-		}
-		if had {
-			dirty = true
-		}
-
-		return nil
-	})
-	if err != nil {
-		return n, dirty, fmt.Errorf("%s: %w", c, err)
-	}
-
-	return n, dirty, nil
-}
-
-// rewrite writes a chunk again with these objects' contents taken out, and
-// erases the one it replaces.
-func rewrite(ctx context.Context, a flob.Stores, c Chunk, of map[string]bool, marks [][]byte) error {
+// The chunk is read twice, once to find out whether anything would change and
+// once to write, so that a chunk nothing touches is never written again: every
+// rewrite is a chance to lose a chunk that was fine. What it answers is counted
+// on the first read, and a dry edit stops there. The new chunk is added before
+// the old one is erased, so a crash leaves one or the other and never neither;
+// a chunk with nothing left in it is only erased.
+func edit(ctx context.Context, a flob.Stores, c Chunk, dry bool, pre func([]byte) bool, fn func(line []byte, h head) ([]byte, mark, error)) (tally, error) {
 	s := a.Use(c.Namespace)
 
-	r, _, err := s.Open(ctx, c.Digest)
-	if err != nil {
-		if errors.Is(err, flob.ErrNotExist) {
-			return nil
-		}
+	// `times` reads when every row left was written, which a chunk that lost
+	// rows has to say again; one that only changed rows says what it said.
+	read := func(write func([]byte) error, times bool) (tally, error) {
+		v := tally{}
 
-		return err
-	}
-	defer r.Close()
-
-	l := c.labels()
-	l.Set(labelForgot, time.Now().UTC().Format(time.RFC3339Nano))
-
-	m, err := stream(ctx, s, l, func(w io.Writer) error {
-		z := gzip.NewWriter(w)
-		err := lines(r, func(line []byte) error {
-			if mentions(line, marks) {
-				out, _, _, err := blanked(line, of)
-				if err != nil {
-					return err
-				}
-
-				line = out
+		r, _, err := s.Open(ctx, c.Digest)
+		if err != nil {
+			if errors.Is(err, flob.ErrNotExist) {
+				// Destroyed, merged or rewritten since it was listed.
+				return v, nil
 			}
 
-			_, err := z.Write(append(line, '\n'))
-			return err
+			return v, err
+		}
+		defer r.Close()
+
+		err = lines(r, func(line []byte) error {
+			out, m := line, kept
+
+			var h head
+			if pre == nil || pre(line) || times {
+				if h, err = headOf(line); err != nil {
+					return err
+				}
+			}
+			if pre == nil || pre(line) {
+				if out, m, err = fn(line, h); err != nil {
+					return err
+				}
+			}
+
+			switch m {
+			case same:
+				v.same++
+			case heldBack:
+				v.held++
+			case changed:
+				v.changed++
+			case dropped:
+				v.dropped++
+				return nil
+			}
+
+			v.left++
+			if at, err := time.Parse(time.RFC3339Nano, h.Created); times && err == nil {
+				if v.first.IsZero() || at.Before(v.first) {
+					v.first = at
+				}
+				if at.After(v.last) {
+					v.last = at
+				}
+			}
+
+			if write != nil {
+				return write(out)
+			}
+
+			return nil
 		})
 		if err != nil {
-			return err
+			return v, fmt.Errorf("%s: %w", c, err)
 		}
 
-		return z.Close()
-	})
-	if err != nil && !errors.Is(err, flob.ErrAlreadyExists) {
-		return fmt.Errorf("%s: %w", c, err)
-	}
-	if m.Digest == c.Digest {
-		return nil
+		return v, nil
 	}
 
-	return s.Erase(ctx, c.Digest)
-}
+	v, err := read(nil, false)
+	if err != nil || v.changed+v.dropped == 0 || dry {
+		return v, err
+	}
 
-// mentions is the cheap half of the question: whether the line has one of the
-// objects in it anywhere, before it is parsed to ask whether as its object.
-func mentions(line []byte, marks [][]byte) bool {
-	for _, v := range marks {
-		if bytes.Contains(line, v) {
-			return true
+	if v.left > 0 {
+		out := c
+		out.Rows = v.left
+
+		times := v.dropped > 0 || c.Last.IsZero()
+
+		// Added with the old chunk's times, which span the new one's: a crash
+		// before the labels are narrowed leaves a chunk destroyed a little
+		// late rather than one nothing can see.
+		l := out.labels()
+		l.Set(labelRewritten, time.Now().UTC().Format(time.RFC3339Nano))
+
+		var w tally
+		m, err := stream(ctx, s, l, func(dst io.Writer) error {
+			z := gzip.NewWriter(dst)
+
+			var err error
+			if w, err = read(func(line []byte) error {
+				_, err := z.Write(append(line, '\n'))
+				return err
+			}, times); err != nil {
+				return err
+			}
+
+			return z.Close()
+		})
+		if err != nil && !errors.Is(err, flob.ErrAlreadyExists) {
+			return v, fmt.Errorf("%s: %w", c, err)
+		}
+		if m.Digest == c.Digest {
+			return v, nil
+		}
+
+		if times {
+			out.First, out.Last = w.first, w.last
+
+			l := out.labels()
+			l.Set(labelRewritten, time.Now().UTC().Format(time.RFC3339Nano))
+			if err := s.Label(ctx, m.Digest, l); err != nil {
+				return v, fmt.Errorf("%s: %w", c, err)
+			}
 		}
 	}
 
-	return false
+	if err := s.Erase(ctx, c.Digest); err != nil {
+		return v, err
+	}
+
+	return v, nil
 }
 
-// blanked is one line with its contents taken out, if it is about one of them.
-// It answers whether it was, and whether there was anything to take out.
+// blanked is a row with its contents taken out: `value` and `patch`, the two
+// columns that hold contents. Everything else -- who acted, what they did,
+// which object, when -- stays; that is the record a trail exists to be.
 //
 // Through generic JSON rather than the message, because this package has no
-// `Audit` type -- see the note on the package. `value`, `patch` and `objectId`
-// are the names protojson gives those fields, and they are payday's own
-// columns, so there is nothing here an app can move.
-//
-// Counted as a hit whether or not it had contents to lose. What is being
-// answered is *how many rows about this person were reached*, which is what
-// somebody wants to hear back; a row that was already empty is still one this
-// is responsible for.
-func blanked(line []byte, of map[string]bool) ([]byte, bool, bool, error) {
+// `Audit` type -- see the note on the package. The names are the ones protojson
+// gives payday's own columns, so there is nothing here an app can move.
+func blanked(line []byte) ([]byte, error) {
 	var v map[string]json.RawMessage
 	if err := json.Unmarshal(line, &v); err != nil {
-		return nil, false, false, err
-	}
-
-	var object string
-	if raw, ok := v["objectId"]; ok {
-		if err := json.Unmarshal(raw, &object); err != nil {
-			return nil, false, false, err
-		}
-	}
-	if object == "" || !of[object] {
-		return line, false, false, nil
-	}
-
-	_, value := v["value"]
-	_, patch := v["patch"]
-	if !value && !patch {
-		return line, true, false, nil
+		return nil, err
 	}
 
 	delete(v, "value")
 	delete(v, "patch")
 
-	out, err := json.Marshal(v)
-	if err != nil {
-		return nil, false, false, err
-	}
-
-	return out, true, true, nil
+	return json.Marshal(v)
 }
 
 // merge folds chunks of one namespace, kind, month and set of tenants into one,
@@ -1236,8 +1115,9 @@ func partsOf(name string) (time.Time, string, string, bool) {
 // and how much -- and never what it said.
 //
 // Every destruction writes one: the rows a pass discards on their way out of
-// the database, the chunks it destroys at the end of their window, a [Purge]
-// by hand, and the rows [Forget] blanks. What it is for is the question a
+// the database, the chunks it destroys at the end of their window, a purge by
+// hand, the rows a subject's erasure blanks, and a tenant leaving -- see
+// [Policy.Collect], [Policy.Purge], [Policy.Forget] and [Policy.PurgeTenant]. What it is for is the question a
 // customer or a regulator asks afterwards, *show me that it was deleted*, which
 // a log answers only for as long as the log is kept and only to somebody who
 // can read it.
@@ -1249,7 +1129,9 @@ type Receipt struct {
 	// At is when it happened.
 	At time.Time `json:"at"`
 
-	// Act is `discard`, `destroy`, `purge` or `forget`.
+	// Act is `discard` (rows leaving the database with no copy), `destroy` (a
+	// chunk at the end of its window), `purge` (chunks by hand), `forget` (a
+	// subject's contents) or `purge-tenant` (a tenant leaving).
 	Act string `json:"act"`
 
 	// Where is `database` or `archive`.
@@ -1271,9 +1153,15 @@ type Receipt struct {
 	// Before is the cutoff: every row it describes was written before it.
 	Before time.Time `json:"before,omitzero"`
 
-	// Rows and Chunks are how much.
+	// Rows and Chunks are how much went.
 	Rows   int `json:"rows"`
 	Chunks int `json:"chunks,omitempty"`
+
+	// Blanked is the rows whose contents went and whose events stayed.
+	Blanked int `json:"blanked,omitempty"`
+
+	// Held is the rows a legal hold kept as they were; see [Hold].
+	Held int `json:"held,omitempty"`
 
 	// Objects is how many subjects [Forget] was asked about. Their identifiers
 	// are not here: a receipt is the one record of an erasure that is kept,

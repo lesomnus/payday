@@ -72,9 +72,11 @@ package trail
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"slices"
 	"sort"
@@ -230,6 +232,11 @@ const (
 	// Together is the rows that name the tenant and some other tenant as well,
 	// in whichever columns.
 	Together
+
+	// Sharing is the rows filed under the tenant that name another tenant as
+	// well: the ones it shares, from its own side. A tenant that leaves takes
+	// these with it in part -- what they said goes, that they happened stays.
+	Sharing
 )
 
 // Scope is which rows a read is about: of which kinds, and whose.
@@ -243,7 +250,20 @@ type Scope struct {
 	// Tenant is whose rows these are, when Whose says so. Zero is the rows
 	// filed under nobody.
 	Tenant pdid.Id
+
+	// Objects, when set, narrows to the rows about these: what erasing a
+	// subject reads.
+	Objects []pdid.Id
 }
+
+// forever is the cutoff of an act that is about every row whatever its age:
+// a subject's erasure, a tenant leaving.
+//
+// The largest instant there is in nanoseconds, in 2262, and not a round year
+// after it: SQLite's driver stores a time as nanoseconds in an int64, and the
+// year 9999 this was first written as overflowed into a cutoff no row is
+// older than. The tests on SQLite are what said so.
+var forever = time.Unix(0, math.MaxInt64).UTC()
 
 // Cursor is where a read of [Store.Older] carries on from: past the row written
 // at this instant with this key, in the order the store answers in.
@@ -261,7 +281,8 @@ type Cursor struct {
 // Generated rather than written, for `internal/pdgen/outbox.go`'s reason -- the
 // ent client and its predicates are the app's types. What is asked of it has no
 // judgement in it: read a batch of rows older than an instant, count them, say
-// which tenants rows are filed under, forget the ones that were named.
+// which tenants rows are filed under, forget or blank the ones that were
+// named.
 //
 // It is deliberately a **bulk** interface, which `auth/authsession.Store` is
 // deliberately not. That one has `Put`, `Get` and `Del` and no pass over
@@ -281,6 +302,11 @@ type Store interface {
 	// oldest first, starting past `after`.
 	Older(ctx context.Context, of Scope, at time.Time, after Cursor, limit int) (Rows, error)
 
+	// Heads is [Store.Older] without the documents: everything a decision
+	// about a row reads, for an act that keeps no copy of it. A tenant that
+	// leaves is millions of rows nobody needs marshalled.
+	Heads(ctx context.Context, of Scope, at time.Time, after Cursor, limit int) (Rows, error)
+
 	// Count is how many of this scope are past the cutoff, for a dry run.
 	Count(ctx context.Context, of Scope, at time.Time) (int, error)
 
@@ -288,6 +314,10 @@ type Store interface {
 	// went. A key it does not find is not an error: another writer reached it
 	// first, which is a thing that happens rather than a thing to fail over.
 	Forget(ctx context.Context, keys []any) (int, error)
+
+	// Blank empties `value` and `patch` of exactly the rows these keys name,
+	// and answers how many it reached. What the row says happened stays.
+	Blank(ctx context.Context, keys []any) (int, error)
 }
 
 // Batch is how many rows one pass reads and removes at a time.
@@ -323,8 +353,8 @@ const Batch = 1000
 // # A nil archive is refused
 //
 // Deleting without keeping is a thing a deployment may genuinely want, and it
-// is not a thing to arrive at by leaving a field blank. See [Collect], which is
-// what that deployment calls.
+// is not a thing to arrive at by leaving a field blank. See [Policy.Collect],
+// which is what that deployment calls.
 func Archive(ctx context.Context, s Store, of Kinds, before time.Time, a flob.Stores) (int, error) {
 	if a == nil {
 		return 0, errors.New("no archive to write into")
@@ -338,27 +368,6 @@ func Archive(ctx context.Context, s Store, of Kinds, before time.Time, a flob.St
 	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, a, run, func(Row) fate { return archived })
 
 	return moved, err
-}
-
-// Collect removes rows older than `before` and keeps no copy.
-//
-// Separate from [Archive] rather than the same call with no archive, because
-// the two are different acts and one of them is irreversible. A deployment
-// that means it says so.
-func Collect(ctx context.Context, s Store, of Kinds, before time.Time) (int, error) {
-	_, gone, err := drain(ctx, s, Scope{Kinds: of}, before, nil, "", func(Row) fate { return discarded })
-
-	return gone, err
-}
-
-// Leave is whichever of the two a caller asked for, which is the one thing that
-// varies between them.
-func Leave(ctx context.Context, s Store, of Kinds, before time.Time, a flob.Stores) (int, error) {
-	if a == nil {
-		return Collect(ctx, s, of, before)
-	}
-
-	return Archive(ctx, s, of, before, a)
 }
 
 // fate is what one pass does with one row it read.
@@ -382,17 +391,20 @@ const (
 // Rows to archive are gathered and written a chunk at a time -- see
 // [chunkRows] -- and forgotten only once the store holds the chunk, which is
 // the order [Archive] is about. Rows to discard are forgotten a batch at a
-// time, since there is nothing to wait for.
+// time, since there is nothing to wait for. With no archive there is nothing
+// to write, and the rows are read without their documents.
 func drain(ctx context.Context, s Store, of Scope, before time.Time, a flob.Stores, run string, decide func(Row) fate) (int, int, error) {
 	var w *writer
+	read := s.Heads
 	if a != nil {
 		w = newWriter(a, run)
+		read = s.Older
 	}
 
 	moved, gone := 0, 0
 	at := Cursor{}
 	for {
-		vs, err := s.Older(ctx, of, before, at, Batch)
+		vs, err := read(ctx, of, before, at, Batch)
 		if err != nil {
 			return moved, gone, err
 		}
@@ -442,11 +454,20 @@ func drain(ctx context.Context, s Store, of Scope, before time.Time, a flob.Stor
 // forget is [Store.Forget] a batch at a time, because a flushed chunk can name
 // more rows than one statement should.
 func forget(ctx context.Context, s Store, keys []any) (int, error) {
+	return batched(ctx, s.Forget, keys)
+}
+
+// blank is [Store.Blank] a batch at a time.
+func blank(ctx context.Context, s Store, keys []any) (int, error) {
+	return batched(ctx, s.Blank, keys)
+}
+
+func batched(ctx context.Context, fn func(context.Context, []any) (int, error), keys []any) (int, error) {
 	n := 0
 	for len(keys) > 0 {
 		k := min(len(keys), Batch)
 
-		m, err := s.Forget(ctx, keys[:k])
+		m, err := fn(ctx, keys[:k])
 		n += m
 		if err != nil {
 			return n, err
@@ -576,6 +597,9 @@ type head struct {
 	Counterpart string `json:"counterpartTenantId"`
 	Object      string `json:"objectId"`
 	Created     string `json:"dateCreated"`
+	Domain      uint32 `json:"domain"`
+	Value       string `json:"value"`
+	Patch       string `json:"patch"`
 }
 
 func headOf(doc []byte) (head, error) {
@@ -606,3 +630,30 @@ func (h head) names(tenant pdid.Id) bool {
 
 	return h.Tenant == v || h.Actor == v || h.Counterpart == v
 }
+
+// tenants is what a document names, as [TenantsOf] reads the columns.
+func (h head) tenants() []pdid.Id {
+	id := func(v string) uuid.UUID {
+		b, err := base64.StdEncoding.DecodeString(v)
+		if err != nil || len(b) != 16 {
+			return uuid.Nil()
+		}
+
+		return uuid.UUID(b)
+	}
+
+	var counterpart *uuid.UUID
+	if h.Counterpart != "" {
+		v := id(h.Counterpart)
+		counterpart = &v
+	}
+
+	return TenantsOf(id(h.Tenant), id(h.Actor), counterpart)
+}
+
+// filed answers whether a document is filed under this tenant.
+func (h head) filed(tenant pdid.Id) bool { return h.Tenant == encoded(tenant) }
+
+// contents answers whether a document still says something about what it
+// happened to.
+func (h head) contents() bool { return h.Value != "" || h.Patch != "" }

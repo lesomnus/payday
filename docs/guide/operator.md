@@ -12,6 +12,7 @@ This page is where to put that, and how the trail's retention reads it.
 - [2. Who reads it, and who writes it](#2-who-reads-it-and-who-writes-it)
 - [3. The trail asks it](#3-the-trail-asks-it)
 - [4. When a window shortens](#4-when-a-window-shortens)
+- [5. A hold, and a tenant leaving](#5-a-hold-and-a-tenant-leaving)
 
 ## 1. An entity of its own
 
@@ -149,3 +150,38 @@ What a tenant may **view** and what is **kept** are two different things, and
 they can shrink at different times: a downgraded plan can stop showing history
 at once, from your read path, while the trail keeps it until the grace is over
 — so a plan that comes back shows it again.
+
+## 5. A hold, and a tenant leaving
+
+A legal hold is the operator's too, and it goes in the same entity: a field
+saying it is on and why, which the callback answers as `Hold`.
+
+```go
+out := trail.Tenant{Keep: &trail.Keep{...}}
+if v.HoldReason != "" {
+	out.Hold = &trail.Hold{Why: v.HoldReason}
+}
+
+return out, nil
+```
+
+While it is on, nothing of the tenant's trail stops existing: a pass still
+moves its rows into the archive, and destroys nothing. A person asking to be
+erased gets back what a hold kept — `trail.Forgotten.Held` — and is erased
+again when it lifts, which is the app's to remember. See
+[the runtime](../runtime.md#legal-holds).
+
+A tenant leaving is `trail.Policy.PurgeTenant`, called **when** the app decides:
+at once, or once the grace an offboarding gives has run out. A contract row
+that says when it ends is what makes that a lookup.
+
+```go
+plan, err := policy.PlanTenantPurge(ctx, pd.TrailStore(db), tenant)
+// The confirmation an operator reads: plan.Removed rows go, plan.Blanked keep
+// their events, plan.Chunks of the archive are erased.
+
+got, err := policy.PurgeTenant(ctx, pd.TrailStore(db), tenant)
+```
+
+It refuses while a hold is on, and answers what another tenant's hold kept of
+the rows the two of them share.

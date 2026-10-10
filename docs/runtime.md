@@ -335,6 +335,54 @@ On S3, flob's `Erase` removes a namespace's reference and does not yet reclaim
 the bytes ([flob#47](https://github.com/lesomnus/flob/issues/47)), so a chunk
 destroyed there is unreachable rather than gone. On a disk it is gone.
 
+#### Legal holds
+
+A tenant's answer can say it is under a **hold**, `Tenant.Hold`, on everything
+or on some kinds. It is apart from the windows because lifting it has to bring
+them back, and a hold written as a window of forever would be one nobody could
+lift without remembering what the window was.
+
+While a hold is on, nothing the tenant may read stops existing — and a row it
+shares with another tenant is one it may read:
+
+- a pass still **moves** its rows out of the database on their window, into the
+  archive even when the window says discard, and keeps them in the database
+  when there is no archive; what it does not do is discard or destroy;
+- `Policy.Collect` and `Policy.Purge`, the acts an operator takes by hand,
+  leave what is held and answer with it. They go ahead for everybody else,
+  because refusing would keep every other tenant's trail past what they are
+  owed. A file of everybody's from before the archive was a flob store is
+  written again with what is held and nothing else;
+- `Policy.Forget`, a subject's erasure, leaves the held rows as they are and
+  answers with them and whose holds they are. A legal claim overrides an
+  erasure request — GDPR Art. 17(3)(e), and the exception in 개인정보보호법 §21
+  for what another law requires to be kept — and the caller erases again when
+  the hold lifts;
+- `Policy.PurgeTenant` refuses, with `trail.ErrHeld`.
+
+A tenant the app gives no answer for is held by all of these, for the reason a
+pass keeps its rows: nothing is destroyed on a guess. A hold on one subject — a
+person, an asset — inside a tenant that is not held is not here yet.
+
+#### A tenant leaving
+
+`Policy.PurgeTenant` takes a tenant's trail out, and `Policy.PlanTenantPurge`
+says what it would take. It is a function and not a schedule: **when** is the
+app's — at once, on a request or a legal demand, or after the grace an
+offboarding gives.
+
+- What was the tenant's **alone** goes: its rows in the database, its
+  namespace in the archive, its rows in the files from before.
+- What it **shares** stays, as an event with its contents gone, because it is
+  the other tenant's evidence as much as its own. One it shares with a tenant
+  under a hold stays exactly as it is.
+- What is **filed under another tenant** and only names this one — the other
+  side of a transfer — is the other tenant's, and is not touched.
+
+It refuses a tenant under a hold and one the app has no answer for, goes round
+again until a round finds nothing (a pass can write a chunk after the
+namespace was erased), and writes a receipt.
+
 ## 7. What payday does not do
 
 Some of these are gaps and some are decisions. The difference is written down
@@ -346,10 +394,11 @@ because a reader cannot tell them apart.
   about **age** and reaches everybody's rows at once. A right-to-erasure request
   is about a subject — *which* rows, and *when*, is what an app owes somebody
   under a regime payday cannot know. What payday does supply is the half with no
-  judgement in it: `pd.ForgetInTrail` blanks `value` and `patch` for a set the
-  caller chose, and `trail.Forget` does the same to the archive, because a
-  mechanism that stopped at the database would destroy the copy an operator can
-  see and leave the copy in the archive beside it.
+  judgement in it but one: `trail.Policy.Forget` blanks `value` and `patch` for
+  a set the caller chose, in the database and in the archive in one call —
+  a mechanism that stopped at the database would destroy the copy an operator
+  can see and leave the copy in the archive beside it — and leaves the rows a
+  legal hold is on, answering with them.
 
   Everything else stays — who acted, what they did, which object, when. That is
   the record a trail exists to be and what a legal-obligation exemption is an
