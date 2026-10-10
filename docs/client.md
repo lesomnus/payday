@@ -381,6 +381,14 @@ round for it:
   it is kept in wire form, which protobuf can read across a schema change.
 - **Replaying them causes one re-read, not one per write.** The lists are read
   again once, after the queue stops, over every entity the writes touched.
+- **A request is the one thing kept here that could hold a secret.** No row
+  does, since the server never answers with one. So `send` refuses a request
+  that sets a field declared `(payday.field).secret`, and `pd gen --ts` writes
+  those fields into the declarations so that it can tell.
+- **It is sent as whoever the transport is at the time.** With a credential
+  every tab shares, such as a cookie, a queue left in an open tab after its
+  person signed out would go out as whoever signed in next. A forgotten store
+  keeps nothing more and sends nothing, and signing out has to reach every tab.
 
 That is this side's own writes. Somebody else's arrive over the sibling `Watch`,
 which a query holds open for as long as it is drawn — and only when it named at

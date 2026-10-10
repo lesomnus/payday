@@ -39,6 +39,9 @@ export class Writes {
 	 */
 	private gen = 0
 
+	/** Set by [Writes.clear], and never unset; see [Writes.closed]. */
+	private done = false
+
 	/**
 	 * Made by the store, with the mirror's queue if it has one and the way to
 	 * tell everything subscribed that the list moved.
@@ -58,6 +61,15 @@ export class Writes {
 		return this.list
 	}
 
+	/**
+	 * closed is whether the caller is done: [Store.forget] was called, so
+	 * nothing is kept and nothing is sent from here again. A write kept after
+	 * it would be sent as whoever the transport carries next.
+	 */
+	get closed(): boolean {
+		return this.done
+	}
+
 	/** has is whether one is still held, for whoever is about to send it. */
 	has(id: string): boolean {
 		return this.list.some((w) => w.id === id)
@@ -65,6 +77,10 @@ export class Writes {
 
 	/** add keeps one more, and answers once it is on disk. */
 	async add(v: Queued): Promise<void> {
+		if (this.done) {
+			throw new Error('store: this caller is done, so a write kept now would be sent as whoever signs in next')
+		}
+
 		const gen = this.gen
 		await this.disk?.put(v)
 		if (gen !== this.gen) return
@@ -122,6 +138,7 @@ export class Writes {
 	 */
 	clear(): void {
 		this.gen++
+		this.done = true
 		this.set([])
 
 		void this.disk?.clear().catch(() => {})

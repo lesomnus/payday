@@ -419,7 +419,10 @@ export class Store {
 	 * The writes it never sent go as well. They are this caller's, and sending
 	 * them as the next one would be the next one doing them -- so a page that
 	 * would rather not lose them reads [Store.writes] before it logs out, and
-	 * says so.
+	 * says so. And the store keeps no more: a write made after this would be
+	 * sent as whoever the transport carries next. With a credential every page
+	 * shares, such as a cookie, that is a reason to call this in every page
+	 * holding the store, not only the one that signed out.
 	 */
 	forget(): void {
 		this.batch(() => {

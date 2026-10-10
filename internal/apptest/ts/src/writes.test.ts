@@ -352,4 +352,68 @@ describe('a caller who is done', () => {
 		expect(queries.writes()).toEqual([])
 		expect((await opened()).queries.writes()).toEqual([])
 	})
+
+	it('keeps nothing more, and sends nothing another page left behind', async () => {
+		const ref = await tenantRef()
+
+		// One page signs out. Another on the same store -- a second tab that
+		// has not heard yet -- goes on keeping writes.
+		const gone = await opened()
+		const other = await opened()
+		gone.store.forget()
+		await gone.store.flushed()
+
+		await expect(
+			gone.queries.send(RobotService.method.add, { id: pdid.newId(RobotDomain).bytes, tenant: ref, alias: named('w') }),
+		).rejects.toThrow(/done/)
+
+		offline = true
+		await other.queries.send(RobotService.method.add, { id: pdid.newId(RobotDomain).bytes, tenant: ref, alias: named('w') })
+		await other.queries.flush()
+
+		// The page that signed out does not know who it would be sending as
+		// any more, so what the other page kept is not its to send.
+		offline = false
+		await gone.queries.flush()
+		expect(calls).not.toContain('Add')
+		expect(other.queries.writes()).toHaveLength(1)
+	})
+})
+
+describe('a write that carries a secret', () => {
+	it('is refused before anything is kept', async () => {
+		const ref = await tenantRef()
+		const { queries } = await opened()
+
+		// `secret` is `(payday.field).secret` on Robot: written, and never
+		// answered with. Kept, it would wait on disk in the clear.
+		offline = true
+		await expect(
+			queries.send(RobotService.method.add, {
+				id: pdid.newId(RobotDomain).bytes,
+				tenant: ref,
+				alias: named('w'),
+				secret: new Uint8Array([1, 2, 3]),
+			}),
+		).rejects.toThrow(/secret/)
+		await expect(
+			queries.send(RobotService.method.patch, {
+				ref: { key: { case: 'id', value: pdid.newId(RobotDomain).bytes } },
+				secret: new Uint8Array([1, 2, 3]),
+			}),
+		).rejects.toThrow(/secret/)
+
+		expect(queries.writes()).toEqual([])
+		expect((await opened()).queries.writes()).toEqual([])
+		expect(calls).toEqual([])
+	})
+
+	it('still goes as a call', async () => {
+		const ref = await tenantRef()
+		const { queries } = await opened()
+		const id = pdid.newId(RobotDomain).bytes
+
+		await queries.call(RobotService.method.add, { id, tenant: ref, alias: named('w'), secret: new Uint8Array([1, 2, 3]) })
+		expect((await robot(id)).id).toEqual(id)
+	})
 })

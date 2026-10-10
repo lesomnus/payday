@@ -133,7 +133,10 @@ A few things it is worth knowing before reaching for it:
   mirror before trying it, and sends what is waiting in the order it was made
   once anything answers. A page draws what is waiting with `useWrites`, as
   writes, not as the rows they will make. A refusal is kept as the error a call
-  would have thrown, until somebody dismisses it.
+  would have thrown, until somebody dismisses it. A write that sets a declared
+  secret is refused rather than kept, and a queue is sent as whoever the
+  transport carries when it goes, so signing out means `store.forget()` in every
+  tab.
 - **React is an optional peer dependency.** `store` and `query` know nothing
   about it; `react` is thirty lines of `useSyncExternalStore` over them, and the
   same file for Vue or Svelte is the same length.

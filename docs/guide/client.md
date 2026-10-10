@@ -251,7 +251,7 @@ A waiting write is drawn **as a write**, not as the row it will make. Guessing
 that row is the optimistic update [§6](#6-what-is-not-here) says this does not
 have, for the same reason.
 
-Four things are worth knowing before relying on it:
+Six things are worth knowing before relying on it:
 
 - **A write may arrive twice.** An answer can be lost on the way back, and the
   write is then sent again, so queue writes that mean the same thing twice. An
@@ -260,14 +260,29 @@ Four things are worth knowing before relying on it:
   instead. An `Erase` is the same write by nature. A `Patch` that names the
   version it read is refused the second time, which is correct about the row
   and misleading about the write.
+- **Whether the server takes that identifier is your app's call.** `pd.Minter()`
+  keeps an identifier of the right domain. A minter of your own may refuse it,
+  and the queued `Add` is then a refused write. Or it may replace it, and then a
+  lost answer's second `Add` makes a second row. Keeping what the page mints in
+  step with what your minter accepts is your app's job too
+  ([the generation contract §5](../schema.md#5-identifiers)).
+- **It is sent as whoever the transport is when it goes**, not when it was made.
+  With a bearer token the page holds, that is the same person. With a cookie,
+  every tab shares one credential, so it is whoever signed in last. If one tab
+  signs out and another signs in as somebody else, a third tab still holding the
+  first person's queue would send it as the second. So signing out has to reach
+  **every** page holding the store, for example over a `BroadcastChannel`:
+  `store.forget()` in each, and drop that `Queries`. A forgotten store keeps
+  nothing more and sends nothing. Read `queries.writes()` before signing out if
+  losing them matters.
+- **A secret is not kept.** A write that sets a field declared
+  `(payday.field).secret` is refused by `send` before anything is stored, because
+  waiting would keep the secret on disk in the clear. Send it with `call`. A
+  secret in a batch or in an RPC of your own, such as a password, is not visible
+  here, so keep those out of `send` yourself.
 - **One tab sends.** Two tabs on one store both hold its queue. The one sending
   takes a Web Lock and re-reads the queue from the mirror first, so a write is
   sent once.
-- **It belongs to the credential.** The queue lives in that caller's store, so
-  a store opened for a new credential does not have it, and `store.forget()`
-  drops it with the rows. Read `queries.writes()` before logging out. If your
-  credential is rotated during a session, open the store under something that
-  stays the same for that session.
 - **A service no entity answers** has to be named:
   `new Queries(store, transport, entities, { services: [ReportService] })`.
   Otherwise a write to it kept by an earlier page waits until this page sends

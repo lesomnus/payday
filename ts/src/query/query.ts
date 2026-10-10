@@ -39,6 +39,7 @@
 import {
 	create,
 	fromBinary,
+	isFieldSet,
 	toBinary,
 	type DescField,
 	type DescMessage,
@@ -357,17 +358,46 @@ export class Queries {
 	 * about the write; and an app's own RPC is the same write twice when its
 	 * request carries an identifier the server knows it by.
 	 *
+	 * Whether a request may name its row is the server's to say, and the
+	 * app's to decide: `pd.Minter()` keeps an identifier of the right domain,
+	 * and an app that writes its own minter may refuse one or replace it.
+	 * Refused, a queued `Add` is a refused write. Replaced, the answer this
+	 * relies on never comes -- the second `Add` makes a second row. And what
+	 * this side mints has to be what that minter accepts, which is the app's
+	 * to keep in step as well.
+	 *
 	 * # When it is sent
 	 *
 	 * Now, and then whenever anything answers: a read that came back is a
 	 * connection that came back. A page that would like to try sooner -- on the
 	 * browser's `online`, say -- calls [Queries.flush].
+	 *
+	 * # Who it is sent as
+	 *
+	 * Whoever the transport carries **when it is sent**, not when it was made.
+	 * A page holding a bearer token for one person sends as that person either
+	 * way. A credential every page of the origin shares -- a cookie -- is
+	 * whoever signed in last, in any tab: sign out in one tab and in as
+	 * somebody else in another, and a page still holding the first person's
+	 * queue would send it as the second. So signing out has to reach every page
+	 * holding this store: [Store.forget] in each, after which it keeps nothing
+	 * and sends nothing, and this `Queries` dropped with it.
+	 *
+	 * # What it will not keep
+	 *
+	 * A request that sets a field its entity declares a secret, since a write
+	 * that waits is kept on disk and the secret would wait there in the clear.
+	 * That is refused here, before anything is kept; send it with
+	 * [Queries.call]. It is read off the entity whose service the method is on,
+	 * so a secret in a batch, or in an RPC of the app's own -- a password, a
+	 * token -- is not seen, and keeping those out of a queue is the app's.
 	 */
 	async send<I extends DescMessage, O extends DescMessage>(
 		method: DescMethodUnary<I, O>,
 		input: MessageInitShape<I>,
 	): Promise<Write> {
 		const req = create(method.input, input)
+		this.refuseSecret(method as DescMethod, req)
 		this.services.set(method.parent.typeName, method.parent)
 
 		const v: Queued = {
@@ -547,6 +577,11 @@ export class Queries {
 	private async drain(): Promise<void> {
 		const q = this.store.writes
 
+		// The caller is done, and whatever another page left on the mirror
+		// since is theirs to send, not this page's -- which no longer knows
+		// who it would be sending as.
+		if (q.closed) return
+
 		// Another page on this store may have sent some of these, or kept more.
 		await q.reload()
 
@@ -641,6 +676,29 @@ export class Queries {
 			return (await this.invoke(get, ref)) as Message
 		} catch (err) {
 			return unanswered(err) ? null : undefined
+		}
+	}
+
+	/**
+	 * refuseSecret throws for a request that sets a field the method's entity
+	 * declares a secret; see [Queries.send].
+	 *
+	 * By name, because that is what a request has of its entity: the contract
+	 * carries an entity's fields under their own names, and not their options.
+	 */
+	private refuseSecret(method: DescMethod, req: Message): void {
+		for (const e of this.entities.values()) {
+			if (e.service?.typeName !== method.parent.typeName) continue
+
+			for (const name of e.secrets ?? []) {
+				const f = method.input.fields.find((v) => v.localName === name)
+				if (f === undefined || !isFieldSet(req, f)) continue
+
+				throw new Error(
+					`query: ${nameOf(method)} sets ${name}, which ${e.typeName} keeps secret; ` +
+						'a write that waits is kept on disk, so this one goes with call()',
+				)
+			}
 		}
 	}
 

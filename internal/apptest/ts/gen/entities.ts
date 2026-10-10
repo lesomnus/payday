@@ -128,6 +128,7 @@ export const Robot = {
 	alias: "alias",
 	key: "id",
 	ids: ["id"],
+	secrets: ["secret"],
 	service: RobotService,
 } as const satisfies EntityDesc
 
@@ -139,6 +140,7 @@ export const Seal = {
 	alias: "alias",
 	key: "id",
 	ids: ["id"],
+	secrets: ["secret", "code"],
 	service: SealService,
 } as const satisfies EntityDesc
 
