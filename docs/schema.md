@@ -69,8 +69,11 @@ learn to work around. `version.Same` says nothing when either side cannot name
 itself — a checkout, a `replace`, a workspace — since refusing those would
 refuse every `go test` in every app developed against payday's source.
 `entschema.Check` asks whether the database is **not missing** anything rather
-than whether it matches: columns and indexes it does not know about are left
-alone, because a deployment's database is allowed to have more than the schema.
+than whether it matches: columns, indexes, foreign keys and checks it does not
+know about are left alone, because a deployment's database is allowed to have
+more than the schema. That is also what lets a deployment add the constraints
+the schema cannot state, such as a foreign key that carries the tenant so a
+reference cannot cross one.
 
 ## 2. Overlays: adding, never overriding
 

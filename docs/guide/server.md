@@ -800,7 +800,9 @@ if c.Db.Migrate {
 
 payday owns part of your schema, so a field added upstream arrives in
 `internal/ent` the next time you generate and has no symptom until the one
-handler that reads it runs. This check is what turns that into a server that
+handler that reads it runs. It asks only whether the database is missing
+something. An index, a foreign key or a check you added beside the schema is
+left alone, and a column the schema has and the database does not is refused. This check is what turns that into a server that
 does not start; the other two moments it is caught at are in
 [the cost](../schema.md#the-cost).
 

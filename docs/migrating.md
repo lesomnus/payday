@@ -3,6 +3,25 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## `entschema.Check` leaves a foreign key or a check it does not know about alone
+
+**Applies if** your database holds constraints the ent schema does not
+declare, such as a foreign key that carries the tenant or a `CHECK`, or if you
+kept them out because the server would not start with them.
+
+`entschema.Check` used to refuse a database that held a foreign key or a check
+constraint the schema does not declare: they came back from the diff as drops
+and were counted as drift. They are now left alone, the same as an extra column
+or index. A foreign key the schema declares and the database lacks is still
+refused. So a composite foreign key that keeps a reference inside its tenant can
+be a constraint rather than a trigger. payday requires `protobuf-orm/ent`
+`v0.0.0-20261010071722-cf7a87c9af59`, so upgrading payday raises an app's pin
+with it.
+
+`Plan` has not changed. It still proposes dropping anything in the ent migration
+directory that the schema does not declare, so keep those statements in a
+directory of your own and apply it after the ent one.
+
 ## An overlay may add an index to one of payday's entities
 
 **Applies if** a file in `proto/ext/payday/` declares an `option`, of any kind.
