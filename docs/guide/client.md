@@ -209,6 +209,85 @@ The last call is then the only read, and it is yours: with `revalidate: false`
 nothing else will make one. The answers still land in the store — that is not
 the part being turned off.
 
+### Without a connection
+
+`call` fails when there is nobody to answer. A write that has to survive that,
+such as a count taken in a basement, goes through `send`:
+
+```ts
+const id = pdid.newId(RobotDomain).bytes
+await queries.send(RobotService.method.add, { id, tenant, alias })
+```
+
+It resolves once the write is **kept**, in the store's mirror, before anything
+is sent. After that it is tried, and what happens depends on the answer:
+
+- **Answered:** it lands the way a call does.
+- **Nobody answered** (no network, or no server behind the proxy): it waits,
+  and every write made after it waits behind it, so they arrive in the order
+  they were made.
+- **Refused:** it stays, with the error a `call` would have thrown, details
+  included, so `pderr` reads it as it reads any other refusal.
+
+What is waiting is sent again whenever anything answers, because a read that
+came back means the connection came back. For other moments, such as the
+browser's `online` event, call `queries.flush()`.
+
+```tsx
+function Waiting() {
+	const { queries } = useApp()
+	const writes = useWrites()
+
+	return writes.map((w) => (
+		<li key={w.id}>
+			{w.name} — {w.state === 'refused' ? w.error?.rawMessage : 'waiting'}
+			{w.state === 'refused' && <button onClick={() => queries.dismiss(w.id)}>dismiss</button>}
+		</li>
+	))
+}
+```
+
+A waiting write is drawn **as a write**, not as the row it will make. Guessing
+that row is the optimistic update [§6](#6-what-is-not-here) says this does not
+have, for the same reason.
+
+Six things are worth knowing before relying on it:
+
+- **A write may arrive twice.** An answer can be lost on the way back, and the
+  write is then sent again, so queue writes that mean the same thing twice. An
+  `Add` with an identifier minted here is the case payday knows: the second one
+  is refused `AlreadyExists`, and the queue reads the row by that identifier
+  instead. An `Erase` is the same write by nature. A `Patch` that names the
+  version it read is refused the second time, which is correct about the row
+  and misleading about the write.
+- **Whether the server takes that identifier is your app's call.** `pd.Minter()`
+  keeps an identifier of the right domain. A minter of your own may refuse it,
+  and the queued `Add` is then a refused write. Or it may replace it, and then a
+  lost answer's second `Add` makes a second row. Keeping what the page mints in
+  step with what your minter accepts is your app's job too
+  ([the generation contract §5](../schema.md#5-identifiers)).
+- **It is sent as whoever the transport is when it goes**, not when it was made.
+  With a bearer token the page holds, that is the same person. With a cookie,
+  every tab shares one credential, so it is whoever signed in last. If one tab
+  signs out and another signs in as somebody else, a third tab still holding the
+  first person's queue would send it as the second. So signing out has to reach
+  **every** page holding the store, for example over a `BroadcastChannel`:
+  `store.forget()` in each, and drop that `Queries`. A forgotten store keeps
+  nothing more and sends nothing. Read `queries.writes()` before signing out if
+  losing them matters.
+- **A secret is not kept.** A write that sets a field declared
+  `(payday.field).secret` is refused by `send` before anything is stored, because
+  waiting would keep the secret on disk in the clear. Send it with `call`. A
+  secret in a batch or in an RPC of your own, such as a password, is not visible
+  here, so keep those out of `send` yourself.
+- **One tab sends.** Two tabs on one store both hold its queue. The one sending
+  takes a Web Lock and re-reads the queue from the mirror first, so a write is
+  sent once.
+- **A service no entity answers** has to be named:
+  `new Queries(store, transport, entities, { services: [ReportService] })`.
+  Otherwise a write to it kept by an earlier page waits until this page sends
+  through that service itself.
+
 ---
 
 ## 5. Persistence

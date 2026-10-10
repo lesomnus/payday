@@ -375,6 +375,17 @@ with a message saying what it actually was. Without that, a caller could store a
 Robot under an identifier whose domain says Holder, and every later reading of
 that domain would be reading the caller's word rather than the schema's.
 
+**Whether a request may name its identifier at all is the app's decision.**
+`pd.Minter()` keeps one that passes that check. An app that installs a minter of
+its own with `bare.WithMinter` may refuse one, or replace it, and payday does
+not take a position. The same goes for the client: `pdid` mints in TypeScript
+from the same generated domains, but keeping what a page mints in step with
+what the server's minter accepts is the app's job. A batch that refers to rows
+it is creating ([the batch guide](guide/batch.md#4-referring-to-a-row-you-are-creating-in-the-same-batch)),
+and a write that waits for a connection
+([the client guide](guide/client.md#without-a-connection)), both rely on the
+server keeping the identifier.
+
 Reading is checked where a written reference is **parsed**, by `slug.Slug.Expect`
 and `pdcmd.Ref.Expect`. It is not the server's job, because the server is not
 wrong: it narrows to rows of its own entity, finds none, and says `NotFound`

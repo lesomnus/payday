@@ -54,6 +54,7 @@ import { create, fromBinary, toBinary, type Message } from '@bufbuild/protobuf'
 import { bytes, key, type EntityDesc, type Row } from './desc.js'
 import type { Disk } from './disk.js'
 import { flatten, newer } from './flat.js'
+import { Writes } from './writes.js'
 
 // In a page, in a worker and in Node, and the only thing outside the language
 // this module needs. Declared rather than putting `DOM` in `lib`; see
@@ -92,9 +93,24 @@ export interface Opts {
  */
 export type Key = string
 
+/**
+ * WRITES is the key [Store.writes] changing is said on.
+ *
+ * Not a row's -- a row's key always holds a `/` -- so nothing drawing a row is
+ * woken by it.
+ */
+export const WRITES: Key = 'payday:writes'
+
 /** Store is every entity of one app, for one caller. */
 export class Store {
 	readonly name: string
+
+	/**
+	 * writes are what this caller made that the server has not answered yet,
+	 * kept beside the rows and dropped with them; see `writes.ts`, and
+	 * [Queries.send] for what sends them.
+	 */
+	readonly writes: Writes
 
 	private readonly by: Map<string, EntityDesc>
 	private readonly rows = new Map<string, Map<string, Row>>()
@@ -119,6 +135,7 @@ export class Store {
 		this.name = name
 		this.by = by
 		this.disk = disk
+		this.writes = new Writes(disk?.queue, () => this.touch(WRITES))
 		for (const typeName of by.keys()) this.rows.set(typeName, new Map())
 	}
 
@@ -143,9 +160,14 @@ export class Store {
 	 * the tab that wrote them, and what makes them true again is the reads a
 	 * page makes anyway -- drawn over what was already there instead of over a
 	 * spinner. A `Watch` closes the rest.
+	 *
+	 * The writes that were waiting come back too, and stay waiting: sending
+	 * them is the query layer's, the next time it can.
 	 */
 	async hydrate(): Promise<void> {
 		if (this.disk === undefined) return
+
+		await this.writes.reload()
 
 		const held = await this.disk.load()
 		for (const [k, v] of held.blobs) this.blobs.set(k, v)
@@ -393,6 +415,14 @@ export class Store {
 	 *
 	 * Everything subscribed hears about it, because a screen drawn from rows
 	 * that are gone is a screen showing what is no longer there.
+	 *
+	 * The writes it never sent go as well. They are this caller's, and sending
+	 * them as the next one would be the next one doing them -- so a page that
+	 * would rather not lose them reads [Store.writes] before it logs out, and
+	 * says so. And the store keeps no more: a write made after this would be
+	 * sent as whoever the transport carries next. With a credential every page
+	 * shares, such as a cookie, that is a reason to call this in every page
+	 * holding the store, not only the one that signed out.
 	 */
 	forget(): void {
 		this.batch(() => {
@@ -414,6 +444,7 @@ export class Store {
 		// behind by a failed key-by-key delete is the outcome worth ruling out.
 		this.queued.clear()
 		this.queuedBlobs.clear()
+		this.writes.clear()
 
 		const disk = this.disk
 		if (disk !== undefined) this.chain(() => disk.clear())

@@ -417,6 +417,19 @@ import type { EntityDesc } from '@lesomnus/payday/store'
 			fmt.Fprintf(b, "\tids: [%s],\n", strings.Join(ids, ", "))
 		}
 
+		// The fields written and never answered with. Nothing this side reads
+		// ever holds one, since the server never sends it; what can is a
+		// request, and a write waiting for a connection is a request kept on
+		// disk -- so this is what keeps a secret from waiting there in the
+		// clear. See `Queries.send`.
+		if len(v.Secrets) > 0 {
+			ss := make([]string, len(v.Secrets))
+			for i, n := range v.Secrets {
+				ss[i] = fmt.Sprintf("%q", lowerCamel(n))
+			}
+			fmt.Fprintf(b, "\tsecrets: [%s],\n", strings.Join(ss, ", "))
+		}
+
 		// The service, which is what turns this declaration into a call. Which
 		// RPCs it has is not written out: the service says that by having them.
 		if p := src[v].Svc; p != "" {

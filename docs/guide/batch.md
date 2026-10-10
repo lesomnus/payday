@@ -153,9 +153,11 @@ second operation needs the first one's identifier.
 The usual answer is a placeholder language (`$0.id`), and placeholder languages
 grow.
 
-**payday does not need one.** The minter takes the identifier a request supplies
-rather than replacing it: what it checks is that the identifier is one of
-payday's and that its domain is the entity's, not where it came from. And `pdid`
+**payday does not need one.** The generated minter, `pd.Minter()`, takes the
+identifier a request supplies rather than replacing it. What it checks is that
+the identifier is one of payday's and that its domain is the entity's, not
+where it came from. (A minter of the app's own may decide otherwise; see
+[the generation contract §5](../schema.md#5-identifiers).) And `pdid`
 mints one in TypeScript too, out of `@lesomnus/payday` — so the client mints
 both identifiers up front and writes them into both operations:
 

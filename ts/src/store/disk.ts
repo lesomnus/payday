@@ -43,6 +43,14 @@
  * the same credential and drops at the same moment. The query layer keeps its
  * answers there. See [Store.blob].
  *
+ * # And the writes that could not be sent
+ *
+ * The one thing here that is not a copy. A row on disk is something the server
+ * also has; a write made without a connection is something nobody else has
+ * heard of yet, and the mirror is the only record that it was made. So it is
+ * kept apart from the rest -- not stamped, not expired -- and a mirror may keep
+ * none, which is a queue that lives as long as the page. See [Queue].
+ *
  * @module
  */
 
@@ -61,6 +69,71 @@ export interface Changes {
 	readonly blobs: Iterable<readonly [string, Uint8Array | undefined]>
 }
 
+/**
+ * Queued is one write this caller made that the server has not answered, as a
+ * mirror keeps it.
+ *
+ * The request is its wire form, and the method is named rather than held,
+ * because this outlives the page that made it: what reads it back is a page
+ * with descriptors of its own, which may be a later deploy's -- and reading the
+ * bytes of an older message is what protobuf is for.
+ */
+export interface Queued {
+	/** What this write is called: minted when it was made, and ordered by when. */
+	readonly id: string
+
+	/** `<service>/<method>`, by the descriptors' full names. */
+	readonly method: string
+
+	readonly input: Uint8Array
+
+	/** When it was made, in milliseconds. */
+	readonly at: number
+
+	/**
+	 * What the server said when it refused this, and absent while it is still
+	 * to be sent.
+	 *
+	 * A refused write is kept until somebody lets it go: it is something this
+	 * caller did that did not happen, and that is worth a line on a screen.
+	 */
+	readonly refused?: Refusal
+}
+
+/** Refusal is a refused write's answer, in a shape a mirror can hold. */
+export interface Refusal {
+	readonly code: number
+	readonly message: string
+
+	/** The error's details as the wire carried them, so a form can still say which field. */
+	readonly details: readonly { readonly type: string; readonly value: Uint8Array }[]
+}
+
+/**
+ * Queue is where a mirror keeps the writes waiting to be sent.
+ *
+ * Every method answers once what it did is on disk, and the store awaits each
+ * one. That is the other half of the exception in the note above: a row may
+ * reach the mirror a turn late, and a write may not -- the page that keeps it
+ * is the page a person may close next.
+ */
+export interface Queue {
+	/** Every write held, in the order they were made. */
+	load(): Promise<Queued[]>
+
+	/** Keep one, or replace the one with its identifier. */
+	put(v: Queued): Promise<void>
+
+	/** Let one go. */
+	drop(id: string): Promise<void>
+
+	/**
+	 * Let all of them go, in a transaction opened before this answers -- see
+	 * [Writes.clear] for why that matters.
+	 */
+	clear(): Promise<void>
+}
+
 /** Disk is a mirror of one caller's store. */
 export interface Disk {
 	/**
@@ -76,9 +149,19 @@ export interface Disk {
 	/** Mirror what changed, rows and blobs together in one go. */
 	save(changes: Changes): Promise<void>
 
-	/** Throw the mirror away. */
+	/** Throw the mirror away, the writes waiting in it with it. */
 	clear(): Promise<void>
 
 	/** Let go of whatever holds it open. */
 	close(): void
+
+	/**
+	 * Where the writes made without a connection wait, if this mirror keeps
+	 * them; see [Store.writes].
+	 *
+	 * Absent is a queue in memory, which holds a write for as long as the page
+	 * is open and loses it to the reload after -- still a queue, and the right
+	 * one for a mirror that was never meant to outlive anything.
+	 */
+	readonly queue?: Queue
 }

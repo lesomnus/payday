@@ -100,6 +100,18 @@ export interface EntityDesc {
 	readonly ids?: readonly string[]
 
 	/**
+	 * The fields declared `(payday.field).secret` -- written, and never
+	 * answered with -- as protobuf-es names them.
+	 *
+	 * No row this store holds has one, because the server never sends it. What
+	 * can hold one is a **request**, and [Queries.send] keeps a request on disk
+	 * until there is somebody to send it to; so it reads this and refuses a
+	 * write that carries one, rather than leave a secret waiting in the clear.
+	 * Absent for an entity with none, which is nearly every entity.
+	 */
+	readonly secrets?: readonly string[]
+
+	/**
 	 * The service that answers about this entity, which is what turns a
 	 * declaration into a call.
 	 *

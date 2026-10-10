@@ -251,9 +251,11 @@ describe('what a declaration says, and what it deliberately does not', () => {
 		// for a caller that has to *show* a row. `bytes` is all a descriptor
 		// says about a column the schema declared a uuid, and a field called
 		// `id` is a convention rather than a fact. So a declaration is where
-		// the two halves meet. The list is written out rather than counted so
-		// that a field arriving without a reason has to be added to this line
-		// by somebody.
+		// the two halves meet. And `secrets`, which no row holds -- the server
+		// never answers with one -- and a request can: the query layer reads it
+		// to refuse keeping a write on disk with a secret in it. The list is
+		// written out rather than counted so that a field arriving without a
+		// reason has to be added to this line by somebody.
 		expect(Object.keys(Robot).sort()).toEqual([
 			'alias',
 			'domain',
@@ -261,6 +263,7 @@ describe('what a declaration says, and what it deliberately does not', () => {
 			'key',
 			'refs',
 			'schema',
+			'secrets',
 			'service',
 			'typeName',
 			'version',
