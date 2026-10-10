@@ -25,6 +25,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	"github.com/protobuf-orm/protobuf-orm/ormpb"
+
 	"github.com/lesomnus/payday/pdpb"
 )
 
@@ -45,10 +47,18 @@ type Field struct {
 	Message string
 }
 
+// Options is what payday declared about one of its entities besides its
+// fields: the two options on the message, as they ship.
+type Options struct {
+	Entity  *pdpb.Entity
+	Message *ormpb.MessageOptions
+}
+
 var (
-	once  sync.Once
-	owned map[pdpb.Own]map[int32]Field
-	fail  error
+	once    sync.Once
+	owned   map[pdpb.Own]map[int32]Field
+	options map[pdpb.Own]Options
+	fail    error
 )
 
 // Owned answers with the fields payday declared, by the marker each entity
@@ -61,15 +71,30 @@ var (
 // entities in its own proto package. The name was the thing that made the
 // package payday's rather than the app's; the marker travels with the message.
 func Owned() (map[pdpb.Own]map[int32]Field, error) {
-	once.Do(func() { owned, fail = read() })
+	once.Do(load)
 	return owned, fail
 }
 
-func read() (map[pdpb.Own]map[int32]Field, error) {
+// OwnedOptions answers with the options payday declared on its entities, by
+// the marker each carries.
+//
+// They are payday's half of the contract as much as the numbers are: whether
+// rows are behind the wall is `(payday.entity)`, and so is how they are erased.
+// The merge keeps payday's value for anything both sides set, so what an
+// overlay can still do is set what payday left unset -- and [CheckOverlay]
+// holds that against these.
+func OwnedOptions() (map[pdpb.Own]Options, error) {
+	once.Do(load)
+	return options, fail
+}
+
+func load() { owned, options, fail = read() }
+
+func read() (map[pdpb.Own]map[int32]Field, map[pdpb.Own]Options, error) {
 	names := []string{}
 	es, err := files.ReadDir("payday")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, e := range es {
 		names = append(names, path.Join("payday", e.Name()))
@@ -92,10 +117,11 @@ func read() (map[pdpb.Own]map[int32]Field, error) {
 
 	fds, err := c.Compile(context.Background(), names...)
 	if err != nil {
-		return nil, fmt.Errorf("read payday's own entities: %w", err)
+		return nil, nil, fmt.Errorf("read payday's own entities: %w", err)
 	}
 
 	vs := map[pdpb.Own]map[int32]Field{}
+	declared := map[pdpb.Own]Options{}
 	for _, fd := range fds {
 		// The compiler resolves `payday.proto` out of the global registry and
 		// makes a *dynamicpb.Message of an option written against it, which
@@ -103,7 +129,7 @@ func read() (map[pdpb.Own]map[int32]Field, error) {
 		// round-trip through the wire form brings it back as the linked one.
 		own, err := ownOf(fd)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		ms := fd.Messages()
@@ -119,25 +145,32 @@ func read() (map[pdpb.Own]map[int32]Field, error) {
 				fs[int32(f.Number())] = v
 			}
 
-			k, ok := own[string(m.Name())]
+			d, ok := own[string(m.Name())]
 			if !ok {
 				// A message payday ships that is not one of its entities.
 				continue
 			}
 
-			vs[k] = fs
+			vs[d.own] = fs
+			declared[d.own] = d.opts
 		}
 	}
 
-	return vs, nil
+	return vs, declared, nil
 }
 
-// ownOf is the marker each top-level message of a file declares, by message
-// name, leaving out the ones that declare none.
+// decl is one entity's marker and its options, read off the wire form.
+type decl struct {
+	own  pdpb.Own
+	opts Options
+}
+
+// ownOf is the marker each top-level message of a file declares, with the
+// options beside it, by message name, leaving out the ones that declare none.
 //
 // It reads the descriptor back through its wire form because the options on the
 // compiled one are dynamic; see the note at the call site.
-func ownOf(fd protoreflect.FileDescriptor) (map[string]pdpb.Own, error) {
+func ownOf(fd protoreflect.FileDescriptor) (map[string]decl, error) {
 	b, err := proto.Marshal(protodesc.ToFileDescriptorProto(fd))
 	if err != nil {
 		return nil, fmt.Errorf("hold %s: %w", fd.Path(), err)
@@ -150,11 +183,12 @@ func ownOf(fd protoreflect.FileDescriptor) (map[string]pdpb.Own, error) {
 		return nil, fmt.Errorf("read %s back: %w", fd.Path(), err)
 	}
 
-	vs := map[string]pdpb.Own{}
+	vs := map[string]decl{}
 	for _, m := range v.GetMessageType() {
 		e, _ := proto.GetExtension(m.GetOptions(), pdpb.E_Entity).(*pdpb.Entity)
 		if k := e.GetOwn(); k != pdpb.Own_OWN_UNSPECIFIED {
-			vs[m.GetName()] = k
+			o, _ := proto.GetExtension(m.GetOptions(), ormpb.E_Message).(*ormpb.MessageOptions)
+			vs[m.GetName()] = decl{own: k, opts: Options{Entity: e, Message: o}}
 		}
 	}
 

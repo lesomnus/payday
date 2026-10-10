@@ -540,8 +540,16 @@ lasts until the next `pd gen`. What lasts is an **overlay**:
 ```proto
 // proto/ext/payday/holder.ext.proto
 message Holder {
-  string idp_subject = 8 [(orm.field) = {unique: true, nullable: true}];
+  string idp_subject = 8 [(orm.field) = {nullable: true}];
   bytes  badge       = 16;
+
+  // Unique within a tenant, which `unique: true` on the field cannot say: one
+  // person in two tenants is two holders with the same subject.
+  option (orm.message) = {
+    indexes: [
+      {name: "idp", refs: [{name: "idp_subject", number: 8}, {name: "tenant", number: 2}], unique: true}
+    ]
+  };
 }
 ```
 
@@ -555,6 +563,7 @@ You may add at any number payday does not use; changing one it does is refused:
 ```
 an overlay may add to one of payday's entities and may not change it.
 payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.
+Of its options, an overlay may add an index to (orm.message), and nothing else.
 
   app.Holder: 4 is payday's "alias" (string) and was redeclared as "handle" (string)
 ```
@@ -563,6 +572,15 @@ The check is there because the merge takes the overlay's word and says nothing
 about it. `int64 alias = 4` is a perfectly good message, so the app still
 **compiles** and what breaks does so at run time; the whole of that argument is
 [the generation contract §2](../schema.md#2-overlays-adding-never-overriding).
+
+An overlay may add an **index**, as above. payday's entity declares
+`(orm.message)` too, and the two are merged: the overlay's indexes are appended
+to payday's. Nothing else in either option is the overlay's. `(payday.entity)` is
+payday's declaration, so an overlay that adds anything to it is refused.
+`(payday.entity) = {tenanted: {via: "tenant"}}` on Holder is refused even though
+it restates the default, because saying nothing **is** Holder's declaration.
+Anything in `(orm.message)` other than an index is refused the same way, and
+where both sides set the same value, payday's is the one kept.
 
 One thing an overlay may not say is what the file **is**. A file-level
 `features.` option — `features.field_presence = IMPLICIT` copied down from the
@@ -649,6 +667,7 @@ only test for whether it belongs on this list.
 | `watch:` with no `ref` in `by:` | no way to name the rows it is about |
 | `watch:` with no version field | a late answer overwriting a fresh one |
 | an overlay changing payday's field | a column that is no longer what its readers expect |
+| an overlay adding to payday's options, beyond an index | an entity declared differently from the one payday's layers were written for |
 | an overlay setting a file-level `features.` option | the whole contract silently changed by one line |
 | two `go_package`, or two proto packages | two Go packages is two ent schemas, and the wall is an edge |
 | generated code from a different payday | a wall written by one version, read by another |

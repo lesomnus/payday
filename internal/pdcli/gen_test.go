@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -143,6 +144,66 @@ func TestAnEditedCopyIsCaughtByCheck(t *testing.T) {
 	b, err = os.ReadFile(at)
 	x.NoError(err)
 	x.NotContains(string(b), edit)
+}
+
+// TestAnOverlayAddsAnIndexToPaydaysEntity.
+//
+// An overlay's `option (orm.message)` was dropped whole: payday's entity
+// declares the same option, and the merge kept payday's. So an app could add
+// a field to Holder and not the index that makes it a key -- "who is this
+// subject in this tenant" is unique per tenant, which `unique: true` on the
+// field cannot say. The merge now appends the overlay's indexes to payday's,
+// and keeps payday's word on a value both set, which is what "adding, never
+// overriding" means for an option.
+func TestAnOverlayAddsAnIndexToPaydaysEntity(t *testing.T) {
+	x := require.New(t)
+
+	l := genApp(t)
+
+	at := filepath.Join(l.Path(pdcli.DirExt), "payday", "holder.ext.proto")
+	b, err := os.ReadFile(at)
+	x.NoError(err)
+
+	const option = `message Holder {
+  option (orm.message) = {
+    rpc: {crud: false}
+    indexes: [
+      {name: "idp", refs: [{name: "idp_subject", number: 8}, {name: "tenant", number: 2}], unique: true}
+    ]
+  };
+`
+	x.Contains(string(b), "message Holder {\n")
+	x.NoError(os.WriteFile(at, []byte(strings.Replace(string(b), "message Holder {\n", option, 1)), 0o644))
+	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
+
+	b, err = os.ReadFile(filepath.Join(l.Root, l.DirPd(), "holder.proto"))
+	x.NoError(err)
+	merged := string(b)
+	x.Contains(merged, `name: "slug"`, "payday's index went")
+	x.Contains(merged, `name: "idp"`, "the overlay's index was dropped")
+	x.Contains(merged, "crud: true", "the overlay overrode payday's value")
+	x.NotContains(merged, "crud: false")
+
+	b, err = os.ReadFile(filepath.Join(l.Path(pdcli.DirEnt), "schema", "holder.go"))
+	x.NoError(err)
+	x.Contains(string(b), `index.Fields("idp_subject")`, "the merged proto has the index and the ent schema does not")
+
+	t.Run("and one that adds to payday's declaration is refused", func(t *testing.T) {
+		x := require.New(t)
+
+		// Merged like the index is, since payday's Holder declares this option
+		// too -- and what it adds is what payday left unset on purpose.
+		const tenancy = `message Holder {
+  option (payday.entity) = {tenanted: {via: "tenant"}};
+`
+		b, err := os.ReadFile(at)
+		x.NoError(err)
+		x.NoError(os.WriteFile(at, []byte(strings.Replace(string(b), "message Holder {\n", tenancy, 1)), 0o644))
+
+		err = pdcli.Gen{Layout: l}.Run(t.Context())
+		x.Error(err, "an overlay wrote payday's tenancy quietly")
+		x.Contains(err.Error(), "(payday.entity) tenanted is not payday's")
+	})
 }
 
 // TestAnOverlayNothingMergesIsRefused.

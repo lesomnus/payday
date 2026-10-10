@@ -29,6 +29,7 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdpb"
@@ -42,6 +43,13 @@ type Entity struct {
 	// Opts is the `payday.entity` option, and is never nil by the time
 	// anything reads it: [Read] refuses an entity that has none.
 	Opts *pdpb.Entity
+
+	// Written is the message's options as the schema wrote them, which is not
+	// quite what its descriptor holds by the time anything here runs: the graph
+	// fills `crud: true` out into the RPCs it stands for, on the descriptor's
+	// own copy. What an overlay added is a question about what was written; see
+	// [CheckOverlay].
+	Written *descriptorpb.MessageOptions
 
 	// SecretNumbers are the same fields by number, which is what a patch
 	// document names them by -- see the recorder's `hidden`. Kept beside the
@@ -201,6 +209,7 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", m.Desc.FullName(), err)
 			}
+			v.Written = written(f, m)
 
 			s.Entities = append(s.Entities, v)
 		}
@@ -223,6 +232,19 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	}
 
 	return s, nil
+}
+
+// written is a top-level message's options as the file declares them: the
+// request's own copy, which a descriptor is built from by cloning, and which
+// nothing after that writes to.
+func written(f *protogen.File, m *protogen.Message) *descriptorpb.MessageOptions {
+	for _, v := range f.Proto.GetMessageType() {
+		if v.GetName() == string(m.Desc.Name()) {
+			return v.GetOptions()
+		}
+	}
+
+	return nil
 }
 
 func read(e graph.Entity, m *protogen.Message) (*Entity, error) {

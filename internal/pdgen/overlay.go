@@ -5,8 +5,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/protobuf-orm/protobuf-orm/ormpb"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
+	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/schema"
 )
 
@@ -87,8 +90,22 @@ func CheckOwn(s *Schema) error {
 // generated, by number: the name it was given, the kind it holds, and for a
 // message field what it points at. An app is free to do anything at a number
 // payday never used.
+//
+// # And the options, which are the declaration
+//
+// The merge keeps payday's value for an option both sides set, and fills in
+// what only the overlay set. So the one way left to change payday's entity is
+// to set what payday left unset -- `global: {}` on a Holder that says nothing
+// about tenancy because saying nothing **is** its declaration -- and that is
+// refused the same way a number is. What an overlay may add is an index: a key
+// over the fields it added is what those fields are often for, and an index
+// narrows what may be written without changing what anything reads.
 func CheckOverlay(s *Schema) error {
 	owned, err := schema.Owned()
+	if err != nil {
+		return err
+	}
+	declared, err := schema.OwnedOptions()
 	if err != nil {
 		return err
 	}
@@ -119,6 +136,21 @@ func CheckOverlay(s *Schema) error {
 					v.FullName(), n, w.Name, describe(w), g.Name, describe(g)))
 			}
 		}
+
+		d := declared[v.Own]
+		e, _ := proto.GetExtension(v.Written, pdpb.E_Entity).(*pdpb.Entity)
+		for _, p := range added(e.ProtoReflect(), d.Entity.ProtoReflect(), "") {
+			errs = append(errs, fmt.Sprintf(
+				"%s: (payday.entity) %s is not payday's; an overlay may not add to payday's declaration",
+				v.FullName(), p))
+		}
+
+		m, _ := proto.GetExtension(v.Written, ormpb.E_Message).(*ormpb.MessageOptions)
+		for _, p := range added(withoutIndexes(m), withoutIndexes(d.Message), "") {
+			errs = append(errs, fmt.Sprintf(
+				"%s: (orm.message) %s is not payday's; an overlay may add an index there and nothing else",
+				v.FullName(), p))
+		}
 	}
 	if len(errs) == 0 {
 		return nil
@@ -127,8 +159,83 @@ func CheckOverlay(s *Schema) error {
 	sort.Strings(errs)
 	return fmt.Errorf(
 		"an overlay may add to one of payday's entities and may not change it.\n"+
-			"payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.\n\n  %s",
+			"payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.\n"+
+			"Of its options, an overlay may add an index to (orm.message), and nothing else.\n\n  %s",
 		strings.Join(errs, "\n  "))
+}
+
+// added answers with what `got` sets that `want` does not, by path: a field
+// `want` leaves unset, a value it sets to something else, and an entry of a
+// list or a map it does not hold.
+//
+// One direction only, and on purpose. The merge cannot take anything out of
+// payday's options, so what `want` sets and `got` does not is a schema written
+// by hand -- a test's, nearly always -- and not an overlay.
+func added(got, want protoreflect.Message, at string) []string {
+	out := []string{}
+	got.Range(func(f protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		p := at + string(f.Name())
+		if !want.Has(f) {
+			out = append(out, p)
+			return true
+		}
+
+		w := want.Get(f)
+		switch {
+		case f.IsList():
+			for i := range v.List().Len() {
+				if !holds(f, w.List(), v.List().Get(i)) {
+					out = append(out, fmt.Sprintf("%s[%d]", p, i))
+				}
+			}
+		case f.IsMap():
+			v.Map().Range(func(k protoreflect.MapKey, e protoreflect.Value) bool {
+				if !w.Map().Has(k) || !same(f.MapValue(), w.Map().Get(k), e) {
+					out = append(out, fmt.Sprintf("%s[%v]", p, k.Interface()))
+				}
+				return true
+			})
+		case f.Message() != nil:
+			out = append(out, added(v.Message(), w.Message(), p+".")...)
+		case !v.Equal(w):
+			out = append(out, p)
+		}
+		return true
+	})
+
+	return out
+}
+
+// holds reports whether list `l` of field `f` has an entry equal to `v`.
+func holds(f protoreflect.FieldDescriptor, l protoreflect.List, v protoreflect.Value) bool {
+	for i := range l.Len() {
+		if same(f, l.Get(i), v) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func same(f protoreflect.FieldDescriptor, a, b protoreflect.Value) bool {
+	if f.Message() != nil {
+		return proto.Equal(a.Message().Interface(), b.Message().Interface())
+	}
+
+	return a.Equal(b)
+}
+
+// withoutIndexes is `(orm.message)` with what an overlay may add to it taken
+// out, so that what is left is compared whole.
+func withoutIndexes(v *ormpb.MessageOptions) protoreflect.Message {
+	if v == nil {
+		return (*ormpb.MessageOptions)(nil).ProtoReflect()
+	}
+
+	v = proto.Clone(v).(*ormpb.MessageOptions)
+	v.SetIndexes(nil)
+
+	return v.ProtoReflect()
 }
 
 // fieldsOf is what an entity declares, in the shape [schema.Owned] answers in.
