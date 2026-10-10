@@ -775,6 +775,39 @@ this database has not run yet, in order:
 files, err := m.Apply(ctx, s.Db, s.Dialect)
 ```
 
+#### What the ent schema cannot state
+
+Some of what a deployment's database should hold cannot be said in an ent
+schema: an exclusion constraint (a room is not booked twice over one hour), or a
+foreign key that carries the tenant so a reference cannot cross one. Put into
+the planned directory, it is what the next plan proposes to drop, because
+planning brings that directory into line with the schema. So it goes into a
+directory of its own beside the planned one:
+
+```go
+ent   := entschema.Migrations{Dir: dir, Dialect: s.Dialect, Tables: entmigrate.Tables}
+extra := ent.Extra(extraDir)                // migrations/extra
+
+_, err = ent.Apply(ctx, s.Db, s.Dialect)    // the schema first
+_, err = extra.Apply(ctx, s.Db, s.Dialect)  // then what stands on it
+```
+
+- **Written by hand, never planned.** `extra.Write(entschema.Version(time.Now()),
+  "booking_no_overlap", sql)` adds a file and rewrites `atlas.sum`, so the
+  directory opens without the Atlas CLI. `extra.Plan` is refused. While a file is
+  still being written, `extra.Rehash()` updates the sum. Once any database has run
+  it, a fix is a new file.
+- **A history of its own** (`schema_revisions_extra`). If the two directories
+  shared one, a file written on one branch would be refused as out of order once
+  a plan made on another had run.
+- **Applied after the ent directory, every time**, since its statements stand on
+  the schema's tables. The other direction needs a release of its own. An ent
+  change that a constraint here would block, such as dropping a column the
+  constraint names, means a file here changes the constraint first, in an
+  earlier release.
+- **`entschema.Check` leaves what it made alone**, the same as an index or a
+  foreign key you added by hand.
+
 Mounting these as commands is yours to do, and they belong on **your** binary
 rather than on `pd`: they have to link your ent schema, and a deployment should
 run its migration with the same image it serves with. `pd new` does not write
