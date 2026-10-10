@@ -26,8 +26,8 @@ require (
 	go.opentelemetry.io/otel/log v0.20.0
 	go.opentelemetry.io/otel/sdk/log v0.20.0
 	go.opentelemetry.io/otel/trace v1.45.0
-	golang.org/x/mod v0.40.0
-	golang.org/x/sync v0.22.0
+	golang.org/x/mod v0.41.0
+	golang.org/x/sync v0.23.0
 	golang.org/x/time v0.15.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa
 	google.golang.org/grpc v1.83.0
@@ -61,10 +61,10 @@ require (
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/protobuf-orm/ent v0.0.0-20260906224055-1575ccbff508 // indirect
+	github.com/protobuf-orm/ent v0.0.0-20261010071722-cf7a87c9af59 // indirect
 	github.com/protobuf-orm/protobuf-merge v0.0.0-20261009205601-8502fad9e678 // indirect
-	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20260906232518-fa1777a2628d // indirect
-	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20260906213448-03adaf8cb0fc // indirect
+	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20261010070757-67358807600f // indirect
+	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20261010065542-f9ac5b66df3e // indirect
 	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260906213434-46a5916d5339 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/tidwall/btree v1.8.1 // indirect
@@ -77,11 +77,11 @@ require (
 	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
-	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
