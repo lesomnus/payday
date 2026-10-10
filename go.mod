@@ -10,7 +10,7 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/lesomnus/flob v0.0.0-20261007104342-79a4676dad3e
+	github.com/lesomnus/flob v0.0.0-20261010120939-21f89e60609e
 	github.com/lesomnus/mkot v0.0.0-20260907012347-f3fd02e2da01
 	github.com/lesomnus/mkot/mkotx v0.0.0-20260801183340-9c83100aa7c2
 	github.com/lesomnus/mkot/pretty v0.0.0-20260907012347-f3fd02e2da01

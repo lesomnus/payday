@@ -331,9 +331,11 @@ forgotten — saying when, what kind, whose, how many rows and the cutoff, and
 never what they said. `trail.Receipts` reads them back. A deployment with no
 archive has nowhere to keep them, and has the log.
 
-On S3, flob's `Erase` removes a namespace's reference and does not yet reclaim
-the bytes ([flob#47](https://github.com/lesomnus/flob/issues/47)), so a chunk
-destroyed there is unreachable rather than gone. On a disk it is gone.
+Destroying a chunk erases its reference, and whether the bytes go with it is the
+store's. On a disk they go at once. On S3 they never would on their own, so a
+pass also runs flob's reclaim on the archive (`flob.Reclaimer`, with a grace of a
+day, `trail.Reclaimed`): a chunk a pass destroyed, forgot or purged is gone from
+the bucket two passes later, at least a day apart. Backups are the operator's.
 
 #### Legal holds
 

@@ -2,6 +2,7 @@ package trail
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -700,10 +701,38 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 
 	if p.Archive != nil {
 		x.archive(ctx)
+		x.reclaim(ctx)
 	}
 
 	if err := x.r.write(ctx, p.Archive); err != nil {
 		log.From(ctx).WarnContext(ctx, "trail: the receipts of a pass", "err", err)
+	}
+}
+
+// Reclaimed is the grace a pass gives flob's reclaim: how long a blob has to
+// have been unreferenced before its bytes are taken, which is the longest a
+// write into the archive may take. Nothing a pass writes takes a day.
+const Reclaimed = Swept
+
+// reclaim gives back the bytes of what the archive no longer references.
+//
+// Erasing a chunk removes its reference, and whether the bytes go with it is
+// the store's: on a disk they do at once, and on S3 they never would on their
+// own, so a destroyed chunk -- a window run out, a subject forgotten, a tenant
+// gone -- would stay in the bucket for as long as the bucket does. flob's
+// reclaim is what takes them, in two sweeps at least [Reclaimed] apart, so
+// that a chunk this pass destroyed is gone two passes from now.
+func (x *pass) reclaim(ctx context.Context) {
+	r, ok := flob.AsReclaimer(x.p.Archive)
+	if !ok {
+		return
+	}
+
+	n, err := r.Reclaim(ctx, Reclaimed)
+	if err != nil && !errors.Is(err, flob.ErrUnimplemented) {
+		log.From(ctx).WarnContext(ctx, "trail: the bytes of what the archive no longer holds", "err", err, "reclaimed", n)
+	} else if n > 0 {
+		log.From(ctx).InfoContext(ctx, "trail: the bytes of what the archive no longer holds", "reclaimed", n)
 	}
 }
 

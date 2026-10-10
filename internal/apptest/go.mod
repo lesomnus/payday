@@ -6,7 +6,7 @@ module github.com/lesomnus/payday/internal/apptest
 go 1.27.0
 
 require (
-	github.com/lesomnus/flob v0.0.0-20261007104342-79a4676dad3e
+	github.com/lesomnus/flob v0.0.0-20261010120939-21f89e60609e
 	github.com/lesomnus/grpc-dgram v0.0.0-20260912133542-a7366077bf6f
 	github.com/lesomnus/otx v0.0.0-20260807173743-977a5687d6ba
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20260807173743-977a5687d6ba
