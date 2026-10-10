@@ -22,6 +22,17 @@
 // served. Those come from what the app is regulated as, which payday cannot
 // know. See [Policy] and `config.AuditConfig`.
 //
+// # Whose window it is
+//
+// The deployment's policy is per kind of thing, and a deployment whose
+// customers keep their history for different lengths of time -- a plan, a
+// contract, a regulated customer -- answers per tenant as well, through
+// [Policy.Tenants]. payday stores no plans: what a tenant keeps follows from
+// its contract, which is the app's data. What payday adds is the arithmetic --
+// the deployment's own floors ([Policy.Min]), and the rule for a row that more
+// than one tenant may read, which is that it lasts as long as the longest of
+// them keeps it.
+//
 // # Where the line between this and generated code is
 //
 // `internal/pdgen/outbox.go` drew it already, about the drain: *it is generated
@@ -31,14 +42,21 @@
 //
 // So the app's generated code supplies a [Store] -- query rows past a cutoff,
 // hand them over as documents, delete the ones that were handed over -- and
-// everything with a decision in it is here: the two clocks, the refusal to
-// destroy what was never written, the archive's layout, the order of the write
-// and the delete, and what may be purged.
+// everything with a decision in it is here: the two clocks, whose clock a row
+// is on, the refusal to destroy what was never written, the archive's layout,
+// the order of the write and the delete, and what may be destroyed.
 //
 // It also means this package names no `Audit` Go type, and could not: payday's
 // copy of the schema is generated **into each app**, so `payday.Audit` has no
 // Go type upstream at all. What travels between the two halves is the
 // protojson document, which is the archive's format anyway.
+//
+// # The archive
+//
+// A [flob.Stores], with a namespace per tenant -- see [Chunk] for what is in
+// one, and [SharedNamespace] for the rows that are not one tenant's. A
+// deployment that names a directory in `audit.archive` gets one on the disk;
+// anything else flob reaches, S3 included, is a store the app hands in.
 //
 // # And why none of it is an RPC
 //
@@ -53,27 +71,27 @@
 package trail
 
 import (
-	"bufio"
-	"bytes"
-	"compress/gzip"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"uuid"
+
+	"github.com/lesomnus/flob"
+
 	"github.com/lesomnus/payday/pdid"
 )
 
-// Ext is what an archive file is called, after the month it holds.
+// Ext is what an archive file was called, after the month it held, when the
+// archive was a directory of files; see [Adopt]. A chunk read back out of the
+// archive and written to a disk is the same format.
 const Ext = ".jsonl.gz"
 
 // Row is one line of the trail on its way out of the database.
@@ -90,12 +108,45 @@ type Row struct {
 	Key any
 
 	// Domain is what kind of thing the row is about, which is what decides
-	// whose policy applies to it. See [Policy].
+	// which of a policy's windows applies to it. See [Policy].
 	Domain pdid.Domain
 
-	// Created is when it was written, which is what decides which month's file
-	// it belongs in.
+	// Created is when it was written, which is what decides which month it is
+	// filed under in the archive.
 	Created time.Time
+
+	// Tenants is every tenant the row names, and so every tenant that may read
+	// it. See [TenantsOf].
+	Tenants []pdid.Id
+}
+
+// TenantsOf is the tenants a row names, from its three columns: the one it is
+// filed under, the actor's, and the other party's.
+//
+// Each once, the one it is filed under first, and none of them zero. Zero is
+// how the trail spells *nobody* -- an actor with no frame is the deployment
+// acting on itself -- and nobody is not a tenant whose window applies.
+//
+// Here rather than in the generated store so that the rule is written once:
+// whose window a row is on is a judgement, and this is it.
+func TenantsOf(tenant uuid.UUID, actor uuid.UUID, counterpart *uuid.UUID) []pdid.Id {
+	out := make([]pdid.Id, 0, 3)
+	add := func(v uuid.UUID) {
+		id := pdid.Id(v)
+		if id.IsZero() || slices.Contains(out, id) {
+			return
+		}
+
+		out = append(out, id)
+	}
+
+	add(tenant)
+	add(actor)
+	if counterpart != nil {
+		add(*counterpart)
+	}
+
+	return out
 }
 
 // Rows is one batch of them, oldest first.
@@ -133,23 +184,18 @@ func (k Kinds) Has(d pdid.Domain) bool {
 // All answers whether this pass is about everything there is.
 func (k Kinds) All() bool { return len(k.Only) == 0 && len(k.Except) == 0 }
 
-// cut is this pass's cutoff, asked of an archive by the name it carries.
+// CutFor is a cutoff for these kinds, asked of the archive by the kind a chunk
+// carries: *destroy this pass's kinds, as far back as this*. It is what an
+// operator at a shell means by `--kind` beside `--older-than`.
 //
-// A file whose name says nothing about its kind -- which is what the first
-// version of the format wrote -- belongs to whichever pass is about everything
-// **else**, since that is where a row of an unknown kind would have gone.
-func (k Kinds) cut(before time.Time) func(domain string) (time.Time, bool) {
-	return k.CutFor(before)
-}
-
-// CutFor is [Kinds.cut] for a caller outside this package -- a command, or a
-// test -- which is the same question asked by hand: *destroy this pass's kinds,
-// as far back as this*.
-func (k Kinds) CutFor(before time.Time) func(domain string) (time.Time, bool) {
-	return func(domain string) (time.Time, bool) {
-		d, ok := domainOf(domain)
+// A chunk that says nothing about its kind -- which is what the first version
+// of the format wrote -- belongs to whichever pass is about everything **else**,
+// since that is where a row of an unknown kind would have gone.
+func (k Kinds) CutFor(before time.Time) func(kind string) (time.Time, bool) {
+	return func(kind string) (time.Time, bool) {
+		d, ok := domainOf(kind)
 		if !ok {
-			return before, k.All() || len(k.Only) == 0
+			return before, len(k.Only) == 0
 		}
 		if !k.Has(d) {
 			return time.Time{}, false
@@ -159,12 +205,63 @@ func (k Kinds) CutFor(before time.Time) func(domain string) (time.Time, bool) {
 	}
 }
 
+// Before is the cutoff that is the same for every kind, which is what an
+// operator at a shell means by `--older-than` alone.
+func Before(at time.Time) func(string) (time.Time, bool) {
+	return func(string) (time.Time, bool) { return at, true }
+}
+
+// Whose is how the rows of a [Scope] belong to its tenant.
+type Whose int
+
+const (
+	// Anyone does not narrow by tenant: every row of the scope's kinds.
+	Anyone Whose = iota
+
+	// FiledUnder is the rows filed under the tenant -- `tenant_id` -- whoever
+	// else they name. Every row is filed under exactly one tenant, so a pass
+	// that goes tenant by tenant this way reaches each row once.
+	FiledUnder
+
+	// Alone is the rows filed under the tenant that name no other: the
+	// ordinary write, which is nearly all of them.
+	Alone
+
+	// Together is the rows that name the tenant and some other tenant as well,
+	// in whichever columns.
+	Together
+)
+
+// Scope is which rows a read is about: of which kinds, and whose.
+type Scope struct {
+	Kinds
+
+	// Whose narrows to the rows of [Scope.Tenant], and says how they are its.
+	// The zero value, [Anyone], does not narrow.
+	Whose Whose
+
+	// Tenant is whose rows these are, when Whose says so. Zero is the rows
+	// filed under nobody.
+	Tenant pdid.Id
+}
+
+// Cursor is where a read of [Store.Older] carries on from: past the row written
+// at this instant with this key, in the order the store answers in.
+//
+// A pass leaves some rows where they are -- a row that names a tenant keeping
+// it longer -- and asking again for *the oldest thousand* would answer with the
+// same ones for ever. The zero value is the start.
+type Cursor struct {
+	Created time.Time
+	Key     any
+}
+
 // Store is the app's half: the audit table, as much of it as this needs.
 //
 // Generated rather than written, for `internal/pdgen/outbox.go`'s reason -- the
 // ent client and its predicates are the app's types. What is asked of it has no
-// judgement in it: read a batch of one kind older than an instant, count them,
-// forget the ones that were named.
+// judgement in it: read a batch of rows older than an instant, count them, say
+// which tenants rows are filed under, forget the ones that were named.
 //
 // It is deliberately a **bulk** interface, which `auth/authsession.Store` is
 // deliberately not. That one has `Put`, `Get` and `Del` and no pass over
@@ -172,12 +269,20 @@ func (k Kinds) CutFor(before time.Time) func(domain string) (time.Time, bool) {
 // by whoever happens to be signing in. This is the opposite job: nothing here
 // is on a request path, and a pass over everything is the whole of it.
 type Store interface {
-	// Older answers up to `limit` rows of these kinds written before `at`,
-	// oldest first.
-	Older(ctx context.Context, of Kinds, at time.Time, limit int) (Rows, error)
+	// Tenants answers up to `limit` of the tenants rows are filed under, in
+	// identifier order, starting after `after`.
+	//
+	// One seek per tenant rather than a `DISTINCT` over the table: the one is
+	// as many index lookups as there are tenants, and the other is a scan of
+	// the table that never stops growing.
+	Tenants(ctx context.Context, after pdid.Id, limit int) ([]pdid.Id, error)
 
-	// Count is how many of these kinds are past the cutoff, for a dry run.
-	Count(ctx context.Context, of Kinds, at time.Time) (int, error)
+	// Older answers up to `limit` rows of this scope written before `at`,
+	// oldest first, starting past `after`.
+	Older(ctx context.Context, of Scope, at time.Time, after Cursor, limit int) (Rows, error)
+
+	// Count is how many of this scope are past the cutoff, for a dry run.
+	Count(ctx context.Context, of Scope, at time.Time) (int, error)
 
 	// Forget removes exactly the rows these keys name, and answers how many
 	// went. A key it does not find is not an error: another writer reached it
@@ -193,92 +298,164 @@ type Store interface {
 // run has still moved everything it wrote.
 const Batch = 1000
 
-// Archive writes every row older than `before` into `dir`, then removes exactly
-// the rows it wrote. It answers with how many moved.
+// Archive writes every row older than `before` into the archive, then removes
+// exactly the rows it wrote. It answers with how many moved.
 //
 // # The order, and why it is not a flag
 //
-// Written, flushed, `fsync`ed, closed -- and only then deleted, by the keys of
-// the rows that are actually in the file. Not by asking for "everything older
-// than `before`" a second time: a second query matches whatever is true when it
-// runs rather than what was written, so a row backdated by a clock that stepped
-// or written by a replica whose idea of now is behind is a row the second query
-// removes and the file does not have.
+// Written, and the store has answered that it holds it -- and only then
+// deleted, by the keys of the rows that are actually in the chunk. Not by
+// asking for "everything older than `before`" a second time: a second query
+// matches whatever is true when it runs rather than what was written, so a row
+// backdated by a clock that stepped or written by a replica whose idea of now
+// is behind is a row the second query removes and the archive does not have.
 //
-// The failure that is left is a crash between the sync and the delete, and it
+// The failure that is left is a crash between the write and the delete, and it
 // leaves the rows in **both** places. That is the direction to fail in, and
 // [Read] drops the duplicate.
 //
-// # An empty dir is refused
+// # Every tenant's rows go to that tenant
+//
+// Whatever the policy, a row is filed under the tenants it names -- see
+// [Chunk] -- so an archive written by hand is laid out like one the sweep
+// wrote, and a tenant's window can be applied to it later.
+//
+// # A nil archive is refused
 //
 // Deleting without keeping is a thing a deployment may genuinely want, and it
 // is not a thing to arrive at by leaving a field blank. See [Collect], which is
 // what that deployment calls.
-func Archive(ctx context.Context, s Store, of Kinds, before time.Time, dir string) (int, error) {
-	if dir == "" {
-		return 0, errors.New("no directory to archive into")
+func Archive(ctx context.Context, s Store, of Kinds, before time.Time, a flob.Stores) (int, error) {
+	if a == nil {
+		return 0, errors.New("no archive to write into")
 	}
 
-	w, err := NewWriter(dir)
+	run, err := newRun()
 	if err != nil {
 		return 0, err
 	}
 
-	return move(ctx, s, of, before, w)
+	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, a, run, func(Row) fate { return archived })
+
+	return moved, err
 }
 
 // Collect removes rows older than `before` and keeps no copy.
 //
-// Separate from [Archive] rather than the same call with an empty directory,
-// because the two are different acts and one of them is irreversible. A
-// deployment that means it says so.
+// Separate from [Archive] rather than the same call with no archive, because
+// the two are different acts and one of them is irreversible. A deployment
+// that means it says so.
 func Collect(ctx context.Context, s Store, of Kinds, before time.Time) (int, error) {
-	return move(ctx, s, of, before, nil)
+	_, gone, err := drain(ctx, s, Scope{Kinds: of}, before, nil, "", func(Row) fate { return discarded })
+
+	return gone, err
 }
 
-// Leave is whichever of the two a policy asked for, which is the one thing that
+// Leave is whichever of the two a caller asked for, which is the one thing that
 // varies between them.
-func Leave(ctx context.Context, s Store, of Kinds, before time.Time, dir string) (int, error) {
-	if dir == "" {
+func Leave(ctx context.Context, s Store, of Kinds, before time.Time, a flob.Stores) (int, error) {
+	if a == nil {
 		return Collect(ctx, s, of, before)
 	}
 
-	return Archive(ctx, s, of, before, dir)
+	return Archive(ctx, s, of, before, a)
 }
 
-func move(ctx context.Context, s Store, of Kinds, before time.Time, w *Writer) (int, error) {
-	moved := 0
+// fate is what one pass does with one row it read.
+type fate int
+
+const (
+	// stays in the database: a row that also names a tenant keeping it
+	// longer, or one whose tenant has no answer this pass.
+	stays fate = iota
+
+	// archived leaves the database for the archive.
+	archived
+
+	// discarded leaves it with no copy kept.
+	discarded
+)
+
+// drain is the loop every move out of the database is, and answers how many
+// rows it archived and how many it discarded.
+//
+// Rows to archive are gathered and written a chunk at a time -- see
+// [chunkRows] -- and forgotten only once the store holds the chunk, which is
+// the order [Archive] is about. Rows to discard are forgotten a batch at a
+// time, since there is nothing to wait for.
+func drain(ctx context.Context, s Store, of Scope, before time.Time, a flob.Stores, run string, decide func(Row) fate) (int, int, error) {
+	var w *writer
+	if a != nil {
+		w = newWriter(a, run)
+	}
+
+	moved, gone := 0, 0
+	at := Cursor{}
 	for {
-		vs, err := s.Older(ctx, of, before, Batch)
+		vs, err := s.Older(ctx, of, before, at, Batch)
 		if err != nil {
-			return moved, err
-		}
-		if len(vs) == 0 {
-			return moved, nil
+			return moved, gone, err
 		}
 
-		if w != nil {
-			if err := w.Write(vs); err != nil {
-				return moved, err
+		drop := []any{}
+		for _, v := range vs {
+			at = Cursor{Created: v.Created, Key: v.Key}
+
+			switch decide(v) {
+			case archived:
+				if w == nil {
+					return moved, gone, errors.New("a row is due for the archive and there is no archive")
+				}
+
+				w.add(v)
+
+			case discarded:
+				drop = append(drop, v.Key)
 			}
 		}
 
-		keys := make([]any, len(vs))
-		for i, v := range vs {
-			keys[i] = v.Key
-		}
-
-		n, err := s.Forget(ctx, keys)
+		n, err := forget(ctx, s, drop)
+		gone += n
 		if err != nil {
-			return moved, err
+			return moved, gone, err
 		}
 
-		moved += n
+		last := len(vs) < Batch
+		if w != nil && (last || w.full()) {
+			keys, err := w.flush(ctx)
+			if err != nil {
+				return moved, gone, err
+			}
 
-		if len(vs) < Batch {
-			return moved, nil
+			n, err := forget(ctx, s, keys)
+			moved += n
+			if err != nil {
+				return moved, gone, err
+			}
+		}
+		if last {
+			return moved, gone, nil
 		}
 	}
+}
+
+// forget is [Store.Forget] a batch at a time, because a flushed chunk can name
+// more rows than one statement should.
+func forget(ctx context.Context, s Store, keys []any) (int, error) {
+	n := 0
+	for len(keys) > 0 {
+		k := min(len(keys), Batch)
+
+		m, err := s.Forget(ctx, keys[:k])
+		n += m
+		if err != nil {
+			return n, err
+		}
+
+		keys = keys[k:]
+	}
+
+	return n, nil
 }
 
 // Month is the part of an archive's name that says what is in it.
@@ -287,37 +464,11 @@ func move(ctx context.Context, s Store, of Kinds, before time.Time, w *Writer) (
 // depending on where the machine thinks it is.
 func Month(at time.Time) string { return at.UTC().Format("2006-01") }
 
-// Named is the file a row of this date belongs in, for one run.
-//
-// **A month and a run**, and the run half is not decoration. The first version
-// was the month alone, appended to, on the reasoning that concatenated gzip
-// members are a valid stream and so a file need never be rewritten. That is
-// true of one writer.
-//
-// There is not one writer. [Sweep] takes no lock -- neither does the generated
-// outbox drain, and its comment says so: *nothing here takes a lock, so two of
-// these drain the same rows.* For the drain that is wasted work. Here two
-// writers interleave gzip members **inside one member**, because a
-// `gzip.Writer` flushes to the file in chunks of its own choosing, and what
-// lands is not a gzip stream at all. Two replicas, or an operator pruning while
-// the process sweeps, and the month is unreadable.
-//
-// A run writes its own files, so writers never share one. What it costs is more
-// files, and the duplicate rows two writers produce -- which [Read] already
-// drops, because a crash between the sync and the delete could always leave
-// them.
-//
-// The month stays **first** so that [Doomed] can answer *is all of this old
-// enough* from the name, without opening anything.
-func Named(at time.Time, d pdid.Domain, run string) string {
-	return "audit-" + Month(at) + "." + nameOf(d) + "." + run + Ext
-}
-
 // nameOf is the kind, as a name a person writes in a configuration file.
 //
 // The schema's own, through `pdid`, so `holder` and `robot` rather than 2 and
 // 17. A domain nothing registered -- which includes zero, the one number no
-// entity may hold -- is written as its number, because a file has to be named
+// entity may hold -- is written as its number, because a chunk has to say
 // something and a number is at least true.
 func nameOf(d pdid.Domain) string {
 	if v, ok := pdid.Domains()[d]; ok && v != "" {
@@ -328,7 +479,7 @@ func nameOf(d pdid.Domain) string {
 }
 
 // domainOf reads a name back, from a configuration file or from an archive's
-// own name.
+// own labels.
 func domainOf(v string) (pdid.Domain, bool) {
 	if d, ok := pdid.DomainOf(v); ok {
 		return d, true
@@ -362,112 +513,20 @@ func DomainOf(v string) (pdid.Domain, error) {
 		v, strings.Join(names, ", "))
 }
 
-// Writer is one pass, collecting documents into that pass's own files.
-type Writer struct {
-	dir string
-	run string
-}
-
-// NewWriter makes the directory if it is not there and picks this run's name.
-func NewWriter(dir string) (*Writer, error) {
-	if dir == "" {
-		return nil, errors.New("no directory to archive into")
-	}
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return nil, err
-	}
-
-	// Random rather than a timestamp or a process id: two replicas starting
-	// from the same cron minute would collide on the first, and a container
-	// that always comes up as pid 1 on the second.
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err != nil {
-		return nil, err
-	}
-
-	return &Writer{dir: dir, run: hex.EncodeToString(b)}, nil
-}
-
-// Run is what tells this pass's files from another's.
-func (w *Writer) Run() string { return w.run }
-
-// Write appends a batch to this run's file for the month and kind each row
-// belongs to, and returns once every byte is on the disk.
+// ReadFiles walks archives on a disk in the order given and calls `fn` for
+// each row, as the protojson document it was stored as.
 //
-// Split by kind as well as by month, because that is what makes the second
-// clock answerable: [Purge] decides from the name, so a file holding two kinds
-// with two `destroy` windows would be a file that is half destroyable.
-func (w *Writer) Write(vs Rows) error {
-	byName := map[string][][]byte{}
-	for _, v := range vs {
-		name := Named(v.Created, v.Domain, w.run)
-		byName[name] = append(byName[name], v.Doc)
-	}
-
-	names := make([]string, 0, len(byName))
-	for name := range byName {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	for _, name := range names {
-		if err := appendTo(filepath.Join(w.dir, name), byName[name]); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func appendTo(path string, docs [][]byte) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o640)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	// Built whole and written once. A `gzip.Writer` over the file would flush
-	// in chunks of its own choosing, and a chunk is where a second writer gets
-	// in -- see [Named]. This is belt beside those braces: the run id already
-	// means nobody else has this file open, and a member that reaches the disk
-	// in one write cannot be half of one either.
-	buf := &bytes.Buffer{}
-
-	z := gzip.NewWriter(buf)
-	for _, doc := range docs {
-		if _, err := z.Write(append(doc, '\n')); err != nil {
-			return err
-		}
-	}
-	if err := z.Close(); err != nil {
-		return err
-	}
-	if _, err := f.Write(buf.Bytes()); err != nil {
-		return err
-	}
-
-	// The whole point of the ordering. Until this returns, what is in the file
-	// is what the operating system intends to write, and the delete after it is
-	// about to make this copy the only one.
-	return f.Sync()
-}
-
-// Read walks archives in the order given and calls `fn` for each row, as the
-// protojson document it was stored as.
+// For a file somebody took out of an archive -- a chunk saved for a request, or
+// the directory of a version before the archive was a flob store. What is in
+// the archive itself is [Read].
 //
 // Duplicates are dropped by identifier, **across** the files rather than within
-// one: two writers that reached the same month wrote two files, and a row in
-// both is one row. It is the same drop that makes [Archive]'s crash window
-// cheap.
-//
-// The document is handed over rather than a message, because this package has
-// no `Audit` type to unmarshal into -- see the note on the package. An app that
-// wants one has a generated reader that does it.
-func Read(paths []string, fn func(doc []byte) error) error {
+// one, for the reason [Read] gives.
+func ReadFiles(paths []string, fn func(doc []byte) error) error {
 	seen := map[string]bool{}
 
 	for _, path := range paths {
-		if err := read(path, seen, fn); err != nil {
+		if err := readFile(path, seen, fn); err != nil {
 			return err
 		}
 	}
@@ -475,386 +534,75 @@ func Read(paths []string, fn func(doc []byte) error) error {
 	return nil
 }
 
-func read(path string, seen map[string]bool, fn func([]byte) error) error {
+func readFile(path string, seen map[string]bool, fn func([]byte) error) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	z, err := gzip.NewReader(f)
-	if err != nil {
-		return fmt.Errorf("%s: %w", path, err)
-	}
-	defer z.Close()
-
-	s := bufio.NewScanner(z)
-	s.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
-	for s.Scan() {
-		line := bytes.TrimSpace(s.Bytes())
-		if len(line) == 0 {
-			continue
-		}
-
-		k, err := identifier(line)
+	err = lines(f, func(doc []byte) error {
+		k, err := identifier(doc)
 		if err != nil {
-			return fmt.Errorf("%s: %w", path, err)
+			return err
 		}
 		if seen[k] {
-			continue
+			return nil
 		}
 		seen[k] = true
 
-		// A copy, because the scanner's buffer is about to be reused and the
-		// caller may keep what it is handed.
-		doc := make([]byte, len(line))
-		copy(doc, line)
-
-		if err := fn(doc); err != nil {
-			return err
-		}
+		return fn(doc)
+	})
+	if err != nil {
+		return fmt.Errorf("%s: %w", path, err)
 	}
 
-	return s.Err()
+	return nil
 }
 
-// head is the two fields this package reads out of a document it cannot
-// otherwise interpret.
+// head is the fields this package reads out of a document it cannot otherwise
+// interpret.
 //
 // protojson writes `bytes` as base64, which is a JSON string, so ordinary JSON
 // reaches it without a descriptor. That is one of the reasons the archive is
-// protojson and not the wire format: the half of payday that owns the files can
-// still tell whether it has seen a row, without a Go type it does not have.
+// protojson and not the wire format: the half of payday that owns the archive
+// can still tell whether it has seen a row, and whose it is, without a Go type
+// it does not have. The names are payday's own columns, so there is nothing
+// here an app can move.
 type head struct {
-	Id string `json:"id"`
+	Id          string `json:"id"`
+	Tenant      string `json:"tenantId"`
+	Actor       string `json:"actorTenantId"`
+	Counterpart string `json:"counterpartTenantId"`
+	Object      string `json:"objectId"`
+	Created     string `json:"dateCreated"`
+}
+
+func headOf(doc []byte) (head, error) {
+	var v head
+	if err := json.Unmarshal(doc, &v); err != nil {
+		return head{}, err
+	}
+	if v.Id == "" {
+		return head{}, errors.New("a row in the archive has no identifier")
+	}
+
+	return v, nil
 }
 
 func identifier(doc []byte) (string, error) {
-	var v head
-	if err := json.Unmarshal(doc, &v); err != nil {
+	v, err := headOf(doc)
+	if err != nil {
 		return "", err
-	}
-	if v.Id == "" {
-		return "", errors.New("a row in the archive has no identifier")
 	}
 
 	return v.Id, nil
 }
 
-// Files is every archive in `dir`, oldest month first.
-func Files(dir string) ([]string, error) {
-	vs, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
+// names reports whether a document names this tenant, in any of its three
+// columns, which is the wall's own rule.
+func (h head) names(tenant pdid.Id) bool {
+	v := encoded(tenant)
 
-	out := []string{}
-	for _, v := range vs {
-		if v.IsDir() || !strings.HasSuffix(v.Name(), Ext) {
-			continue
-		}
-
-		out = append(out, filepath.Join(dir, v.Name()))
-	}
-	sort.Strings(out)
-
-	return out, nil
-}
-
-// Purge destroys the archives that are entirely older than `before`, and
-// answers with what it removed.
-//
-// This is the end of the line and there is nothing after it. It is separate
-// from [Archive] because it answers to a different clock and a different
-// person: how long the hot table carries a row is an operational choice, and
-// how long the record exists at all is the obligation.
-func Purge(ctx context.Context, dir string, cut func(kind string) (time.Time, bool)) ([]string, error) {
-	vs, err := Doomed(dir, cut)
-	if err != nil {
-		return nil, err
-	}
-
-	out := []string{}
-	for _, path := range vs {
-		if err := ctx.Err(); err != nil {
-			return out, err
-		}
-		if err := os.Remove(path); err != nil {
-			return out, err
-		}
-
-		out = append(out, path)
-	}
-
-	return out, nil
-}
-
-// Before is the cutoff that is the same for every kind, which is what an
-// operator at a shell means by `--older-than`.
-func Before(at time.Time) func(string) (time.Time, bool) {
-	return func(string) (time.Time, bool) { return at, true }
-}
-
-// Doomed is what [Purge] would remove, and removes nothing.
-//
-// Its own function rather than a flag on [Purge], so that the list a dry run
-// prints is the list the real one acts on -- two passes that agree today are
-// two passes.
-//
-// **Entirely** older, which is what the month in a name is for: a file named
-// for a month holds nothing after it, so one is removable when the month
-// **after** it has also passed. January goes when the cutoff has reached
-// February, and not on the 31st.
-//
-// `cut` is asked per kind, because the second clock is per kind: an operating
-// record and a person's are in the same directory and are not destroyed on the
-// same day. A kind it declines is left alone.
-func Doomed(dir string, cut func(kind string) (time.Time, bool)) ([]string, error) {
-	vs, err := Files(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	out := []string{}
-	for _, path := range vs {
-		at, kind, ok := partsOf(filepath.Base(path))
-		if !ok {
-			// A file in the directory that this did not write. Left alone: a
-			// destructive pass over a directory is not the place to guess.
-			continue
-		}
-
-		before, ok := cut(kind)
-		if !ok {
-			continue
-		}
-		if end := at.AddDate(0, 1, 0); end.After(before.UTC()) {
-			continue
-		}
-
-		out = append(out, path)
-	}
-
-	return out, nil
-}
-
-// partsOf reads back the two halves of [Named] that a destructive pass needs:
-// the month, and the kind.
-//
-// The run is not parsed and is not looked at. A name it cannot read a month out
-// of is a file this did not write, and one with no kind in it is a file the
-// first version of the format wrote -- answered as the empty kind, which
-// [Kinds.cut] gives to whichever pass is about everything else.
-func partsOf(name string) (time.Time, string, bool) {
-	v := strings.TrimSuffix(name, Ext)
-	if v == name {
-		return time.Time{}, "", false
-	}
-
-	v, ok := strings.CutPrefix(v, "audit-")
-	if !ok {
-		return time.Time{}, "", false
-	}
-
-	vs := strings.Split(v, ".")
-
-	at, err := time.ParseInLocation("2006-01", vs[0], time.UTC)
-	if err != nil {
-		return time.Time{}, "", false
-	}
-	if len(vs) < 3 {
-		return at, "", true
-	}
-
-	return at, vs[1], true
-}
-
-// Forget blanks the contents of every archived row about one of these objects,
-// and answers how many rows it changed.
-//
-// # Why the archive has to be reachable at all
-//
-// The retention policy above is about **age** and reaches everybody's rows at
-// once. A person asking to be forgotten is about a **subject**, and a mechanism
-// that stopped at the database would be one that destroyed the copy an operator
-// can see and left the copy on the disk beside it. That is not a retention
-// policy with a gap; it is an answer that is wrong in the direction that
-// matters.
-//
-// # What it blanks, and what it deliberately does not
-//
-// `value` and `patch`, which are the two columns that hold contents. Everything
-// else -- who acted, what they did, which object, when -- stays, and stays on
-// purpose: that is the record the trail exists to be, and it is what a
-// legal-obligation exemption is an exemption *for*. What is destroyed is what
-// the row said about somebody; what survives is that it happened.
-//
-// The actor is not touched. It is an identifier, and it is personal data only
-// because it **resolves** -- which is a property of the row it points at rather
-// than of this one. A caller that has destroyed the person's own record has
-// already made it a pseudonym that reaches nothing, and blanking it here would
-// destroy *who did this*, which is the whole of what a trail is for.
-//
-// # It rewrites files, which nothing else here does
-//
-// [Purge] destroys whole files and [Archive] only appends, precisely so that an
-// archive is never edited. This is the one act that edits one, and it is worth
-// being explicit that it is an exception rather than an oversight: the
-// alternative is a person's contents surviving in a place the deployment
-// controls, which is the thing they asked to end.
-//
-// Each file is rewritten beside itself, `fsync`ed, and renamed over the
-// original. A crash leaves either the old file or the new one, and never half
-// of either.
-func Forget(dir string, objects []string) (int, error) {
-	if len(objects) == 0 {
-		return 0, nil
-	}
-
-	of := make(map[string]bool, len(objects))
-	for _, v := range objects {
-		of[v] = true
-	}
-
-	paths, err := Files(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// A deployment that keeps no archive has nothing here to forget,
-			// which is an answer rather than a failure.
-			return 0, nil
-		}
-
-		return 0, err
-	}
-
-	n := 0
-	for _, path := range paths {
-		k, err := forget(path, of)
-		if err != nil {
-			return n, err
-		}
-
-		n += k
-	}
-
-	return n, nil
-}
-
-// forget rewrites one archive, and leaves it alone when nothing in it matched.
-func forget(path string, of map[string]bool) (int, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return 0, err
-	}
-	defer f.Close()
-
-	z, err := gzip.NewReader(f)
-	if err != nil {
-		return 0, fmt.Errorf("%s: %w", path, err)
-	}
-	defer z.Close()
-
-	buf := &bytes.Buffer{}
-	w := gzip.NewWriter(buf)
-
-	n := 0
-	s := bufio.NewScanner(z)
-	s.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
-	for s.Scan() {
-		line := bytes.TrimSpace(s.Bytes())
-		if len(line) == 0 {
-			continue
-		}
-
-		out, hit, err := blanked(line, of)
-		if err != nil {
-			return n, fmt.Errorf("%s: %w", path, err)
-		}
-		if hit {
-			n++
-		}
-		if _, err := w.Write(append(out, '\n')); err != nil {
-			return n, err
-		}
-	}
-	if err := s.Err(); err != nil {
-		return n, err
-	}
-	if err := w.Close(); err != nil {
-		return n, err
-	}
-	if n == 0 {
-		// Nothing about these objects is in here, so there is nothing to gain
-		// by rewriting it -- and every rewrite is a chance to lose a file that
-		// was fine.
-		return 0, nil
-	}
-
-	return n, replace(path, buf.Bytes())
-}
-
-// blanked is one line with its contents taken out, if it is about one of them.
-//
-// Through generic JSON rather than the message, because this package has no
-// `Audit` type -- see the note on the package. `value`, `patch` and `objectId`
-// are the names protojson gives those fields, and they are payday's own
-// columns, so there is nothing here an app can move.
-func blanked(line []byte, of map[string]bool) ([]byte, bool, error) {
-	var v map[string]json.RawMessage
-	if err := json.Unmarshal(line, &v); err != nil {
-		return nil, false, err
-	}
-
-	var object string
-	if raw, ok := v["objectId"]; ok {
-		if err := json.Unmarshal(raw, &object); err != nil {
-			return nil, false, err
-		}
-	}
-	if object == "" || !of[object] {
-		return line, false, nil
-	}
-
-	delete(v, "value")
-	delete(v, "patch")
-
-	out, err := json.Marshal(v)
-	if err != nil {
-		return nil, false, err
-	}
-
-	// Counted as a hit whether or not it had contents to lose. What is being
-	// answered is *how many rows about this person were reached*, which is what
-	// somebody wants to hear back; a row that was already empty is still one
-	// this pass is responsible for.
-	return out, true, nil
-}
-
-// replace puts `b` where `path` is, atomically.
-func replace(path string, b []byte) error {
-	tmp := path + ".forgetting"
-
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o640)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(b); err != nil {
-		f.Close()
-		os.Remove(tmp)
-
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		os.Remove(tmp)
-
-		return err
-	}
-	if err := f.Close(); err != nil {
-		os.Remove(tmp)
-
-		return err
-	}
-
-	return os.Rename(tmp, path)
+	return h.Tenant == v || h.Actor == v || h.Counterpart == v
 }

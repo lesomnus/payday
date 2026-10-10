@@ -4373,28 +4373,94 @@ type trailStore struct{ db *ent.Client }
 
 var _ trail.Store = trailStore{}
 
-// of narrows to the kinds a pass is about.
+// of narrows to the kinds a read is about, and to whose rows they are.
 //
 // By the `domain` column and not by the domain byte inside `object_id`,
 // which carries the same fact and cannot be indexed: *what kind was this
 // row about* is answered by reading a row, and *which rows were about
 // robots* is a query over a set. The second is what a retention policy is
 // made of.
-func (s trailStore) of(k trail.Kinds) *ent.AuditQuery {
+//
+// And by the three tenant columns, which are what the wall on the trail
+// reads: a row is readable by every tenant it names, and so it is on each
+// of their windows.
+func (s trailStore) of(k trail.Scope) *ent.AuditQuery {
 	q := s.db.Audit.Query()
 	if len(k.Only) > 0 {
-		return q.Where(audit.DomainIn(numbers(k.Only)...))
+		q = q.Where(audit.DomainIn(numbers(k.Only)...))
+	} else if len(k.Except) > 0 {
+		q = q.Where(audit.DomainNotIn(numbers(k.Except)...))
 	}
-	if len(k.Except) > 0 {
-		return q.Where(audit.DomainNotIn(numbers(k.Except)...))
+
+	t := k.Tenant.Uuid()
+	switch k.Whose {
+	case trail.FiledUnder:
+		q = q.Where(audit.TenantIdEQ(t))
+	case trail.Alone:
+		q = q.Where(trailAlone(t))
+	case trail.Together:
+		q = q.Where(
+			audit.Or(audit.TenantIdEQ(t), audit.ActorTenantIdEQ(t), audit.CounterpartTenantIdEQ(t)),
+			audit.Not(trailAlone(t)),
+		)
 	}
 
 	return q
 }
 
-func (s trailStore) Older(ctx context.Context, k trail.Kinds, at time.Time, limit int) (trail.Rows, error) {
-	vs, err := s.of(k).
-		Where(audit.DateCreatedLT(at)).
+// trailAlone is a row filed under `t` that names no other tenant: the actor
+// is of `t` or is nobody, and so is the other party if there is one. Nobody
+// is the zero identifier -- the deployment, writing to itself.
+func trailAlone(t uuid.UUID) predicate.Audit {
+	none := uuid.Nil()
+
+	return audit.And(
+		audit.TenantIdEQ(t),
+		audit.ActorTenantIdIn(t, none),
+		audit.Or(audit.CounterpartTenantIdIsNil(), audit.CounterpartTenantIdIn(t, none)),
+	)
+}
+
+// Tenants is one seek per tenant: the next `tenant_id` after the last, which
+// the index on `(tenant_id, date_created)` answers without reading the rows
+// in between. A `DISTINCT` would read all of them.
+func (s trailStore) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pdid.Id, error) {
+	out := []pdid.Id{}
+	last := after.Uuid()
+	for len(out) < limit {
+		v, err := s.db.Audit.Query().
+			Where(audit.TenantIdGT(last)).
+			Order(ent.Asc(audit.FieldTenantId)).
+			First(ctx)
+		if ent.IsNotFound(err) {
+			break
+		}
+		if err != nil {
+			return out, err
+		}
+
+		out = append(out, pdid.Id(v.TenantId))
+		last = v.TenantId
+	}
+
+	return out, nil
+}
+
+func (s trailStore) Older(ctx context.Context, k trail.Scope, at time.Time, after trail.Cursor, limit int) (trail.Rows, error) {
+	q := s.of(k).Where(audit.DateCreatedLT(at))
+	if after.Key != nil {
+		id, ok := after.Key.(uuid.UUID)
+		if !ok {
+			return nil, fmt.Errorf("trail: %T is not a key this store gave out", after.Key)
+		}
+
+		q = q.Where(audit.Or(
+			audit.DateCreatedGT(after.Created),
+			audit.And(audit.DateCreatedEQ(after.Created), audit.IdGT(id)),
+		))
+	}
+
+	vs, err := q.
 		Order(ent.Asc(audit.FieldDateCreated, audit.FieldId)).
 		Limit(limit).
 		All(ctx)
@@ -4414,13 +4480,14 @@ func (s trailStore) Older(ctx context.Context, k trail.Kinds, at time.Time, limi
 			Key:     v.Id,
 			Domain:  pdid.Domain(v.Domain),
 			Created: v.DateCreated,
+			Tenants: trail.TenantsOf(v.TenantId, v.ActorTenantId, v.CounterpartTenantId),
 		})
 	}
 
 	return out, nil
 }
 
-func (s trailStore) Count(ctx context.Context, k trail.Kinds, at time.Time) (int, error) {
+func (s trailStore) Count(ctx context.Context, k trail.Scope, at time.Time) (int, error) {
 	return s.of(k).Where(audit.DateCreatedLT(at)).Count(ctx)
 }
 
@@ -4429,7 +4496,7 @@ func (s trailStore) Count(ctx context.Context, k trail.Kinds, at time.Time) (int
 // By identifier and not by the cutoff again, which is the whole of what
 // makes the archive trustworthy: a second query matches whatever is true
 // when it runs, and a row backdated by a clock that stepped is one it
-// removes and the file does not have.
+// removes and the archive does not have.
 func (s trailStore) Forget(ctx context.Context, keys []any) (int, error) {
 	ids := make([]uuid.UUID, 0, len(keys))
 	for _, k := range keys {
@@ -4483,7 +4550,7 @@ func numbers(ds []pdid.Domain) []uint32 {
 //
 // The archive is `trail.Forget`, and a caller that keeps one has to call both:
 // a mechanism that stopped at the database would destroy the copy an operator
-// can see and leave the copy on the disk beside it.
+// can see and leave the copy in the archive beside it.
 func ForgetInTrail(ctx context.Context, db *ent.Client, objects []pdid.Id) (int, error) {
 	if len(objects) == 0 {
 		return 0, nil
@@ -4501,7 +4568,12 @@ func ForgetInTrail(ctx context.Context, db *ent.Client, objects []pdid.Id) (int,
 		Save(ctx)
 }
 
-// ReadTrail is an archive read back as the messages it holds.
+// TrailOf is a reader of the archive's documents as the messages they hold:
+// what `trail.Read`, `trail.ReadTenant` and `trail.ReadFiles` are handed.
+//
+//	err := trail.Read(ctx, archive, pd.TrailOf(func(v *app.Audit) error {
+//		...
+//	}))
 //
 // The runtime hands over documents, because it has no `Audit` type to
 // unmarshal into. This is the half that does.
@@ -4509,15 +4581,15 @@ func ForgetInTrail(ctx context.Context, db *ent.Client, objects []pdid.Id) (int,
 // It opens no database, deliberately: what an archive is for is outliving
 // the deployment that wrote it, and a reader that needed the deployment
 // would be answering the question at the one moment nobody can.
-func ReadTrail(paths []string, fn func(*apptest.Audit) error) error {
-	return trail.Read(paths, func(doc []byte) error {
+func TrailOf(fn func(*apptest.Audit) error) func(doc []byte) error {
+	return func(doc []byte) error {
 		v := &apptest.Audit{}
 		if err := protojson.Unmarshal(doc, v); err != nil {
 			return err
 		}
 
 		return fn(v)
-	})
+	}
 }
 
 // Batch answers with the server that runs several writes as one

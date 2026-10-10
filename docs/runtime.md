@@ -254,6 +254,87 @@ for whom, and payday knows neither.
 Empty is forever, which is the only honest default. A version upgrade is not the
 right thing to decide how long somebody's evidence lasts.
 
+#### And per tenant, when the app answers for them
+
+A deployment whose customers keep their history for different lengths of time —
+a plan, a contract, a regulated customer — would otherwise have to set every
+kind to the **shortest** window it owes anybody. `trail.Policy.Tenants` is a
+callback the app hands in, and a pass asks it once per tenant:
+
+```go
+p, err := c.Audit.Policy()
+p.Tenants = func(ctx context.Context, tenant pdid.Id) (trail.Tenant, error) {
+	v, err := contracts.Of(ctx, tenant) // the app's own data
+	if err != nil {
+		return trail.Tenant{}, err
+	}
+
+	return trail.Tenant{Keep: &trail.Keep{Retain: 90 * day, Destroy: v.History}}, nil
+}
+```
+
+payday stores no plans: what a tenant keeps follows from its contract, which is
+the app's data, and where to keep it is
+[a guide of its own](guide/operator.md). What payday does is the arithmetic:
+
+- **The most specific answer wins**, a kind before a blanket and the tenant
+  before the deployment: the tenant's `By`, then the deployment's `by:`, then the
+  tenant's `Keep`, then the deployment's. The zero answer is the deployment's,
+  and a kind the deployment named — a machine's record kept forever — stays its
+  until a tenant names it too.
+- **Floors.** `audit.min` and `audit.by.<kind>.min` are the deployment's own
+  obligations, which no contract shortens. A tenant's answer below one is
+  raised to it and logged; the deployment's own windows below one are refused
+  where the process comes up.
+- **A row several tenants may read lasts as long as the longest of them keeps
+  it.** A row names up to three tenants — the one it is filed under, the
+  actor's, the other party's — and the wall lets each of them read it, so none of
+  their contracts ends it for the others. Forever beats any duration. Who may
+  *read* it does not change; this decides only how long it lasts.
+- **A tenant whose answer fails keeps everything** for that pass, rows it shares
+  included, and the failure is logged. Falling back to the deployment's window
+  would be a window nobody chose for them.
+- **Grace is the app's.** A shortened window applies from the next pass, so an
+  app that owes a tenant a grace period answers with the old window until it has
+  run out. `Policy.Preview` says what a given answer would take, kind by kind,
+  for the warning before and the dashboard after.
+
+#### The archive
+
+`audit.archive` is a directory, and it is a [flob](https://github.com/lesomnus/flob)
+store on the disk: **a namespace per tenant**, and three that are not —
+`_shared` for the rows that name more than one tenant, each chunk saying which,
+`_deployment` for the rows that name none, and `_receipts`. An archive anywhere
+else flob reaches, S3 among them, is a `flob.Stores` the app sets as
+`Policy.Archive`.
+
+A blob is a **chunk**: the rows of one kind and one month, filed under one
+namespace, written whole by one pass. It is still gzip JSONL — a database file
+finds one subject fifty to a hundred times faster and is five to nine times the
+size, and an archive is written every day and read when somebody asks. Its
+labels say the kind, the month, the run and when its oldest and newest rows were
+written, which is everything a pass decides from:
+
+- a chunk whose newest row is past its window is **destroyed**;
+- once a month can receive no more rows, its chunks are **folded** into one, so
+  that a daily pass is not a blob a day per tenant for as long as the archive is
+  kept.
+
+A directory a version before this one wrote files into is the same setting. The
+first pass **adopts** what is there into `_legacy`, by hard link, and those files
+are decided by the deployment's policy, as they were, since each of them holds
+everybody's rows.
+
+Every destruction writes a **receipt** — a discard on the way out of the
+database, a chunk destroyed at the end of its window, a purge by hand, a subject
+forgotten — saying when, what kind, whose, how many rows and the cutoff, and
+never what they said. `trail.Receipts` reads them back. A deployment with no
+archive has nowhere to keep them, and has the log.
+
+On S3, flob's `Erase` removes a namespace's reference and does not yet reclaim
+the bytes ([flob#47](https://github.com/lesomnus/flob/issues/47)), so a chunk
+destroyed there is unreachable rather than gone. On a disk it is gone.
+
 ## 7. What payday does not do
 
 Some of these are gaps and some are decisions. The difference is written down
@@ -268,7 +349,7 @@ because a reader cannot tell them apart.
   judgement in it: `pd.ForgetInTrail` blanks `value` and `patch` for a set the
   caller chose, and `trail.Forget` does the same to the archive, because a
   mechanism that stopped at the database would destroy the copy an operator can
-  see and leave the copy on the disk beside it.
+  see and leave the copy in the archive beside it.
 
   Everything else stays — who acted, what they did, which object, when. That is
   the record a trail exists to be and what a legal-obligation exemption is an

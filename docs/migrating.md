@@ -3,6 +3,48 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The trail's archive is a flob store, kept per tenant
+
+**Applies if** you set `audit.archive`, call anything in `trail` beyond `Sweep`
+and `Policy.Pass`, call the generated `pd.ReadTrail`, or wrote a `trail.Store`
+of your own (a test double counts).
+
+`trail.Policy` can now answer per tenant — `Policy.Tenants`, and floors in
+`audit.min` — and the archive moved to a [flob](https://github.com/lesomnus/flob)
+store with a namespace per tenant so that a tenant's window can be applied to
+it. See [the runtime](runtime.md#and-per-tenant-when-the-app-answers-for-them).
+With nothing new configured, what is kept and for how long does not change.
+
+- **Nothing to run for the archive.** `audit.archive` is the same directory. The
+  first pass adopts the files a version before wrote into it, by hard link, into
+  a namespace of their own, and removes them from the directory; they are
+  destroyed by the month in their name, as before. A copy taken before the
+  upgrade is still readable with `trail.ReadFiles`.
+- **One migration**, an index on `Audit (tenant_id, domain, date_created)`. Plan
+  it as you plan any other.
+- **The code:**
+
+  | Was | Is |
+  | --- | --- |
+  | `trail.Policy.Archive` a directory | a `flob.Stores`; `config.AuditConfig.Policy()` makes one from `audit.archive` |
+  | `trail.Archive(ctx, s, of, before, dir)`, `trail.Leave(…, dir)` | the same with the archive in place of `dir` |
+  | `trail.Files(dir)` | `trail.Chunks(ctx, archive)` |
+  | `trail.Read(paths, fn)` | `trail.Read(ctx, archive, fn)`, or `trail.ReadTenant` for one tenant's; `trail.ReadFiles(paths, fn)` for files on a disk |
+  | `pd.ReadTrail(paths, fn)` | `trail.Read(ctx, archive, pd.TrailOf(fn))` |
+  | `trail.Doomed(dir, cut)`, `trail.Purge(ctx, dir, cut)` | `(ctx, archive, cut)`, answering `[]trail.Chunk`; `Purge` writes a receipt |
+  | `trail.Forget(dir, objects)` | `trail.Forget(ctx, archive, objects)` |
+  | `trail.Named`, `trail.Writer`, `trail.NewWriter` | gone: a pass writes chunks |
+  | `trail.Store`: `Older(ctx, kinds, at, limit)`, `Count(ctx, kinds, at)` | `Older(ctx, scope, at, cursor, limit)`, `Count(ctx, scope, at)`, and `Tenants(ctx, after, limit)` |
+
+  The store is generated, so `pd gen` writes the new one; a scope of
+  `trail.Scope{Kinds: kinds}` is what the old calls meant.
+- **An archive that cannot list itself is refused** where the process comes up,
+  since nothing could ever be destroyed from it. flob's stores on a disk, in
+  memory and on S3 all can.
+
+`pd.ForgetInTrail` and `trail.Forget` erase as they did. What they will do
+about a tenant under a legal hold is the next change to them.
+
 ## What the ent schema cannot state has a directory of its own
 
 **Applies if** you keep hand-written DDL (an exclusion constraint, a foreign key

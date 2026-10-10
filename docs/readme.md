@@ -17,6 +17,7 @@ comments, which are where the detail actually lives.
 | [More than one proto package](guide/packages.md) | `option (payday.app)`, and two apps linked into one process |
 | [Refusals](guide/errors.md) | a field-level error, from the server to a form field |
 | [Putting a login in front of an app](guide/signing-in.md) | a session cookie, where it lives, and whether you need an identity provider at all |
+| [What the operator keeps about a tenant](guide/operator.md) | a plan, a contract, how long its history lasts: an entity the tenant reads and only the operator writes |
 | [Testing](guide/testing.md) | the harness, the two seams, and golden files |
 
 ## References
