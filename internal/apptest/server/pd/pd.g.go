@@ -20,6 +20,7 @@ import (
 	grpcx "github.com/lesomnus/payday/grpcx"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
+	archived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
@@ -84,21 +85,23 @@ func Check() error { return version.Same(Payday) }
 // trail says what kind of thing it was long after the row is gone. So a
 // number is chosen once and never given to something else.
 const (
-	AuditDomain   pdid.Domain = 3  // "audit"
-	CellDomain    pdid.Domain = 10 // "cell"
-	FleetDomain   pdid.Domain = 9  // "fleet"
-	HolderDomain  pdid.Domain = 2  // "holder"
-	JointDomain   pdid.Domain = 8  // "joint"
-	OutboxDomain  pdid.Domain = 4  // "outbox"
-	PairingDomain pdid.Domain = 12 // "pairing"
-	ReadingDomain pdid.Domain = 11 // "reading"
-	RobotDomain   pdid.Domain = 7  // "robot"
-	SealDomain    pdid.Domain = 14 // "seal"
-	TenantDomain  pdid.Domain = 1  // "tenant"
-	ThingDomain   pdid.Domain = 13 // "thing"
+	ArchivedDomain pdid.Domain = 5  // "archived"
+	AuditDomain    pdid.Domain = 3  // "audit"
+	CellDomain     pdid.Domain = 10 // "cell"
+	FleetDomain    pdid.Domain = 9  // "fleet"
+	HolderDomain   pdid.Domain = 2  // "holder"
+	JointDomain    pdid.Domain = 8  // "joint"
+	OutboxDomain   pdid.Domain = 4  // "outbox"
+	PairingDomain  pdid.Domain = 12 // "pairing"
+	ReadingDomain  pdid.Domain = 11 // "reading"
+	RobotDomain    pdid.Domain = 7  // "robot"
+	SealDomain     pdid.Domain = 14 // "seal"
+	TenantDomain   pdid.Domain = 1  // "tenant"
+	ThingDomain    pdid.Domain = 13 // "thing"
 )
 
 func init() {
+	pdid.Register("app.Archived", ArchivedDomain, "archived")
 	pdid.Register("app.Audit", AuditDomain, "audit")
 	pdid.Register("app.Cell", CellDomain, "cell")
 	pdid.Register("app.Fleet", FleetDomain, "fleet")
@@ -118,6 +121,7 @@ func init() {
 // Domains is the domain of each entity by the full name of its message,
 // which is the name a [Minter] is asked about.
 var Domains = map[string]pdid.Domain{
+	"app.Archived": ArchivedDomain,
 	"app.Audit":    AuditDomain,
 	"app.Cell":     CellDomain,
 	"app.Fleet":    FleetDomain,
@@ -173,6 +177,11 @@ func Wall() bare.Scope { return wall{} }
 type wall struct{}
 
 var _ bare.Scope = wall{}
+
+// ArchivedScope: declared `global`, so it is not behind the wall at all.
+func (wall) ArchivedScope(ctx context.Context) (predicate.Archived, error) {
+	return nil, nil
+}
 
 // AuditScope: a row is readable by every tenant it names -- tenant_id, actor_tenant_id, counterpart_tenant_id -- which is the trail.
 func (wall) AuditScope(ctx context.Context) (predicate.Audit, error) {
@@ -310,6 +319,11 @@ func Grouped(of Sets) bare.Scope { return grouped{of} }
 type grouped struct{ of Sets }
 
 var _ bare.Scope = grouped{}
+
+// ArchivedScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) ArchivedScope(ctx context.Context) (predicate.Archived, error) {
+	return nil, nil
+}
 
 // AuditScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) AuditScope(ctx context.Context) (predicate.Audit, error) {
@@ -4597,6 +4611,202 @@ func numbers(ds []pdid.Domain) []uint32 {
 	out := make([]uint32, len(ds))
 	for i, d := range ds {
 		out[i] = uint32(d)
+	}
+
+	return out
+}
+
+// archivedCounter is the manifest's one row that is not a blob: the number
+// of the latest checkpoint, whose row lock is what keeps two checkpoints
+// from taking one number.
+var archivedCounter = uuid.Nil()
+
+func (s trailStore) Adding(ctx context.Context, ns, intent string, labels map[string]string) (any, error) {
+	v, err := s.db.Archived.Create().
+		SetId(pdid.New(ArchivedDomain).Uuid()).
+		SetNamespace(ns).
+		SetDigest("").
+		SetIntent(intent).
+		SetLabels(labels).
+		SetState(trail.Adding).
+		SetSince(0).
+		SetGone(0).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return v.Id, nil
+}
+
+func (s trailStore) Added(ctx context.Context, key any, digest string, labels map[string]string) error {
+	id, ok := key.(uuid.UUID)
+	if !ok {
+		return fmt.Errorf("trail: %T is not a key this store gave out", key)
+	}
+
+	return s.db.Archived.UpdateOneId(id).
+		SetDigest(digest).
+		SetLabels(labels).
+		SetState(trail.Present).
+		Exec(ctx)
+}
+
+func (s trailStore) Drop(ctx context.Context, key any) error {
+	id, ok := key.(uuid.UUID)
+	if !ok {
+		return fmt.Errorf("trail: %T is not a key this store gave out", key)
+	}
+
+	_, err := s.db.Archived.Delete().Where(archived.IdEQ(id), archived.StateEQ(trail.Adding)).Exec(ctx)
+	return err
+}
+
+func (s trailStore) Mark(ctx context.Context, ns, digest, from, to string) error {
+	_, err := s.db.Archived.Update().
+		Where(archived.NamespaceEQ(ns), archived.DigestEQ(digest), archived.StateEQ(from)).
+		SetState(to).
+		Save(ctx)
+	return err
+}
+
+func (s trailStore) Label(ctx context.Context, ns, digest string, labels map[string]string) error {
+	_, err := s.db.Archived.Update().
+		Where(archived.NamespaceEQ(ns), archived.DigestEQ(digest), archived.StateNEQ(trail.Erased)).
+		SetLabels(labels).
+		Save(ctx)
+	return err
+}
+
+func (s trailStore) Rows(ctx context.Context) ([]trail.Archived, error) {
+	vs, err := s.db.Archived.Query().
+		Where(archived.NamespaceNEQ(""), archived.StateNEQ(trail.Erased)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return archivedRows(vs), nil
+}
+
+// Checkpoint is one transaction, and the counter's row is the first thing it
+// writes: a second checkpoint waits on that row until the first has
+// committed, and then takes the next number.
+func (s trailStore) Checkpoint(ctx context.Context) (int, []trail.Archived, error) {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer tx.Rollback()
+
+	n, err := tx.Archived.Update().Where(archived.IdEQ(archivedCounter)).AddSince(1).Save(ctx)
+	if err != nil {
+		return 0, nil, err
+	}
+	if n == 0 {
+		// The first. Two at once both try, and one is refused for the key.
+		if err := tx.Archived.Create().
+			SetId(archivedCounter).
+			SetNamespace("").
+			SetDigest("").
+			SetIntent("").
+			SetLabels(map[string]string{}).
+			SetState("counter").
+			SetSince(1).
+			SetGone(0).
+			Exec(ctx); err != nil {
+			return 0, nil, err
+		}
+	}
+
+	c, err := tx.Archived.Get(ctx, archivedCounter)
+	if err != nil {
+		return 0, nil, err
+	}
+	k := c.Since
+
+	// In it from now on: what was added since the last one.
+	if _, err := tx.Archived.Update().
+		Where(archived.NamespaceNEQ(""), archived.StateIn(trail.Present, trail.Erasing), archived.SinceEQ(0)).
+		SetSince(k).
+		Save(ctx); err != nil {
+		return 0, nil, err
+	}
+
+	// Out of it from now on: what was erased since.
+	if _, err := tx.Archived.Update().
+		Where(archived.NamespaceNEQ(""), archived.StateEQ(trail.Erased), archived.GoneEQ(0), archived.SinceGT(0)).
+		SetGone(k).
+		Save(ctx); err != nil {
+		return 0, nil, err
+	}
+
+	// And what no checkpoint read back any more was in: erased before one
+	// saw it, or gone before the one before this.
+	if _, err := tx.Archived.Delete().
+		Where(
+			archived.NamespaceNEQ(""),
+			archived.StateEQ(trail.Erased),
+			archived.Or(archived.SinceEQ(0), archived.And(archived.GoneGT(0), archived.GoneLT(k))),
+		).
+		Exec(ctx); err != nil {
+		return 0, nil, err
+	}
+
+	vs, err := tx.Archived.Query().Where(archivedAt(k)).All(ctx)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return int(k), archivedRows(vs), tx.Commit()
+}
+
+func (s trailStore) At(ctx context.Context, k int) ([]trail.Archived, error) {
+	vs, err := s.db.Archived.Query().Where(archivedAt(uint32(k))).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return archivedRows(vs), nil
+}
+
+func (s trailStore) Latest(ctx context.Context) (int, error) {
+	c, err := s.db.Archived.Get(ctx, archivedCounter)
+	if ent.IsNotFound(err) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	return int(c.Since), nil
+}
+
+// archivedAt is the rows a checkpoint was taken over: in it by then, and
+// not gone by then.
+func archivedAt(k uint32) predicate.Archived {
+	return archived.And(
+		archived.NamespaceNEQ(""),
+		archived.SinceGT(0),
+		archived.SinceLTE(k),
+		archived.Or(archived.GoneEQ(0), archived.GoneGT(k)),
+	)
+}
+
+func archivedRows(vs []*ent.Archived) []trail.Archived {
+	out := make([]trail.Archived, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, trail.Archived{
+			Key:       v.Id,
+			Namespace: v.Namespace,
+			Digest:    v.Digest,
+			Intent:    v.Intent,
+			Labels:    v.Labels,
+			State:     v.State,
+			Since:     int(v.Since),
+			Gone:      int(v.Gone),
+			Created:   v.DateCreated,
+		})
 	}
 
 	return out

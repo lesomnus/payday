@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ import (
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent"
+	entarchived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	entaudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
@@ -219,7 +221,7 @@ func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 		x := require.New(t)
 
 		// Long past everything, for the robot alone.
-		vs, _, err := trail.Policy{Archive: a}.Purge(ctx, trail.Only(robot).CutFor(time.Now().AddDate(1, 0, 0)))
+		vs, _, err := trail.Policy{Archive: a}.Purge(ctx, s, trail.Only(robot).CutFor(time.Now().AddDate(1, 0, 0)))
 		x.NoError(err)
 		x.NotEmpty(vs, "the robot's archive was not destroyed")
 
@@ -749,7 +751,7 @@ func TestAHeldTenantKeepsItsTrail(t *testing.T) {
 	})))
 	x.Equal(theirs, kept, "a held tenant's rows were discarded")
 
-	_, h, err := p.Purge(ctx, trail.Before(time.Now().Add(time.Hour)))
+	_, h, err := p.Purge(ctx, s, trail.Before(time.Now().Add(time.Hour)))
 	x.NoError(err)
 	x.Equal([]pdid.Id{held}, h.By)
 }
@@ -850,4 +852,81 @@ func TestATenantLeavesTheDatabase(t *testing.T) {
 		_, err := p.PurgeTenant(ctx, s, b.Tenant)
 		x.True(errors.Is(err, trail.ErrHeld))
 	})
+}
+
+// TestTheManifestIsKeptInTheAppsOwnTable.
+//
+// Through the generated store, on the app's own database: every blob a pass
+// writes is a row of `Archived` before it is written, the pass ends with a
+// checkpoint the rows add up to, and two passes at once are put in order by
+// the database rather than by anything payday keeps.
+func TestTheManifestIsKeptInTheAppsOwnTable(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	for i := range 3 {
+		_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  fmt.Sprintf("a-machine-%d", i),
+		}.Build())
+		x.NoError(err)
+	}
+
+	doc, _, err := trail.GenerateKey()
+	x.NoError(err)
+	key, err := trail.ParseKey(doc)
+	x.NoError(err)
+
+	a := flob.NewMemStores()
+	s := pd.TrailStore(b.Ent)
+	p := trail.Policy{Archive: a, Keep: trail.Keep{Retain: time.Nanosecond}, Key: key}
+
+	p.Pass(ctx, s)
+
+	present, err := b.Ent.Archived.Query().Where(entarchived.NamespaceNEQ(""), entarchived.StateEQ(trail.Present)).Count(ctx)
+	x.NoError(err)
+	x.Positive(present)
+	left, err := b.Ent.Audit.Query().Count(ctx)
+	x.NoError(err)
+	x.Zero(left, "the window of a nanosecond left a row of the trail in the database")
+
+	v, err := p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+	x.Equal(present, v.Blobs)
+	x.Equal(1, v.Checkpoint)
+
+	// Two at once, and a write between them.
+	_, err = b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "one-more",
+	}.Build())
+	x.NoError(err)
+	time.Sleep(time.Millisecond)
+
+	done := make(chan struct{}, 2)
+	for range 2 {
+		go func() {
+			p.Pass(ctx, s)
+			done <- struct{}{}
+		}()
+	}
+	<-done
+	<-done
+
+	v, err = p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+	x.GreaterOrEqual(v.Checkpoint, 2)
+
+	// And a chunk taken away behind its back.
+	cs, err := trail.Chunks(ctx, a)
+	x.NoError(err)
+	x.NotEmpty(cs)
+	x.NoError(a.Use(cs[0].Namespace).Erase(ctx, cs[0].Digest))
+
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Len(v.Findings, 1)
+	x.Equal("missing", v.Findings[0].Kind)
 }

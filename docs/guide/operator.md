@@ -13,6 +13,7 @@ This page is where to put that, and how the trail's retention reads it.
 - [3. The trail asks it](#3-the-trail-asks-it)
 - [4. When a window shortens](#4-when-a-window-shortens)
 - [5. A hold, and a tenant leaving](#5-a-hold-and-a-tenant-leaving)
+- [6. Showing that the archive is what it was](#6-showing-that-the-archive-is-what-it-was)
 
 ## 1. An entity of its own
 
@@ -185,3 +186,22 @@ got, err := policy.PurgeTenant(ctx, pd.TrailStore(db), tenant)
 
 It refuses while a hold is on, and answers what another tenant's hold kept of
 the rows the two of them share.
+
+## 6. Showing that the archive is what it was
+
+What a customer or an auditor asks of an archive after *was it deleted* is *has
+it changed*. The database keeps an account of every blob of the archive, and
+`trail.Policy.Verify` answers the second question:
+
+```go
+v, err := policy.Verify(ctx, pd.TrailStore(db), full)
+// v.Findings: a chunk missing, one nobody wrote, bytes that are not their
+// digest, a checkpoint the manifest no longer adds up to. Empty is the
+// archive as the database says it is.
+```
+
+Keep checkpoints apart from the archive, on a store that refuses deletion —
+`audit.checkpoints.dir` — so that somebody who can write the database and the
+archive both cannot rewrite what the archive held, and give the operator a
+command that runs this, `full` on a schedule. See
+[the runtime](../runtime.md#the-manifest).

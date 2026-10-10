@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -77,6 +79,11 @@ func (r fakeRow) doc() []byte {
 type fakeStore struct {
 	mu   sync.Mutex
 	rows []fakeRow
+
+	// The manifest, as the generated store keeps it on `Archived`.
+	archived []Archived
+	keys     int
+	counter  int
 }
 
 var _ Store = (*fakeStore)(nil)
@@ -135,6 +142,122 @@ func (s *fakeStore) match(of Scope, r fakeRow) bool {
 	default:
 		return true
 	}
+}
+
+func (s *fakeStore) Adding(ctx context.Context, ns, intent string, labels map[string]string) (any, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.keys++
+	s.archived = append(s.archived, Archived{Key: s.keys, Namespace: ns, Intent: intent, Labels: maps.Clone(labels), State: Adding, Created: time.Now()})
+
+	return s.keys, nil
+}
+
+func (s *fakeStore) Added(ctx context.Context, key any, d string, labels map[string]string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i, v := range s.archived {
+		if v.Key == key {
+			s.archived[i].Digest, s.archived[i].Labels, s.archived[i].State = d, maps.Clone(labels), Present
+			return nil
+		}
+	}
+
+	return fmt.Errorf("no row %v", key)
+}
+
+func (s *fakeStore) Drop(ctx context.Context, key any) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.archived = slices.DeleteFunc(s.archived, func(v Archived) bool { return v.Key == key && v.State == Adding })
+
+	return nil
+}
+
+func (s *fakeStore) Mark(ctx context.Context, ns, d, from, to string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i, v := range s.archived {
+		if v.Namespace == ns && v.Digest == d && v.State == from {
+			s.archived[i].State = to
+		}
+	}
+
+	return nil
+}
+
+func (s *fakeStore) Label(ctx context.Context, ns, d string, labels map[string]string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i, v := range s.archived {
+		if v.Namespace == ns && v.Digest == d && v.State != Erased {
+			s.archived[i].Labels = maps.Clone(labels)
+		}
+	}
+
+	return nil
+}
+
+func (s *fakeStore) Rows(ctx context.Context) ([]Archived, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	out := []Archived{}
+	for _, v := range s.archived {
+		if v.State != Erased {
+			v.Labels = maps.Clone(v.Labels)
+			out = append(out, v)
+		}
+	}
+
+	return out, nil
+}
+
+func (s *fakeStore) Checkpoint(ctx context.Context) (int, []Archived, error) {
+	s.mu.Lock()
+	s.counter++
+	k := s.counter
+	for i, v := range s.archived {
+		switch {
+		case (v.State == Present || v.State == Erasing) && v.Since == 0:
+			s.archived[i].Since = k
+		case v.State == Erased && v.Gone == 0 && v.Since > 0:
+			s.archived[i].Gone = k
+		}
+	}
+	s.archived = slices.DeleteFunc(s.archived, func(v Archived) bool {
+		return (v.State == Erased && v.Since == 0) || (v.Gone > 0 && v.Gone <= k-1)
+	})
+	s.mu.Unlock()
+
+	rows, err := s.At(ctx, k)
+	return k, rows, err
+}
+
+func (s *fakeStore) At(ctx context.Context, k int) ([]Archived, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	out := []Archived{}
+	for _, v := range s.archived {
+		if v.Since > 0 && v.Since <= k && (v.Gone == 0 || v.Gone > k) {
+			out = append(out, v)
+		}
+	}
+
+	return out, nil
+}
+
+func (s *fakeStore) Latest(ctx context.Context) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.counter, nil
 }
 
 func (s *fakeStore) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pdid.Id, error) {
@@ -736,18 +859,25 @@ func TestTheFilesOfAVersionBeforeAreAdopted(t *testing.T) {
 	x.NoError(os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("not ours"), 0o640))
 
 	p := Policy{Archive: flob.NewOsStores(dir)}
-	p.Pass(ctx, &fakeStore{})
+	s := &fakeStore{}
+	p.Pass(ctx, s)
 
 	_, err = os.Stat(filepath.Join(dir, name))
 	x.ErrorIs(err, os.ErrNotExist, "the file was left in the directory")
 	_, err = os.Stat(filepath.Join(dir, "notes.txt"))
 	x.NoError(err, "a file this did not write was taken")
 
+	// And filed by tenant, in the same pass: the file is a chunk of the
+	// tenant's, on the tenant's windows.
 	cs, err := chunksIn(ctx, p.Archive, LegacyNamespace)
+	x.NoError(err)
+	x.Empty(cs, "the adopted file was not filed by tenant")
+	cs, err = chunksIn(ctx, p.Archive, tenant.String())
 	x.NoError(err)
 	x.Len(cs, 1)
 	x.Equal("person", cs[0].Kind)
-	x.Equal(name, cs[0].Name)
+	x.Equal(1, cs[0].Rows)
+	x.True(cs[0].Last.Equal(r.created), "the chunk does not say when its row was written")
 
 	seen := 0
 	x.NoError(ReadTenant(ctx, p.Archive, tenant, func(doc []byte) error {
@@ -756,16 +886,18 @@ func TestTheFilesOfAVersionBeforeAreAdopted(t *testing.T) {
 	}))
 	x.Equal(1, seen, "the tenant's row in an adopted file was not read back")
 
-	t.Run("and destroyed by the month in its name", func(t *testing.T) {
+	// The adoption, by a link the manifest does not see made, and the filing
+	// are both in it.
+	v, err := p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+
+	t.Run("a file not yet filed is destroyed by the month in its name", func(t *testing.T) {
 		x := require.New(t)
 
-		vs, _, err := p.Doomed(ctx, Before(time.Date(2020, 1, 31, 0, 0, 0, 0, time.UTC)))
-		x.NoError(err)
-		x.Empty(vs, "January went before the month was over")
-
-		vs, _, err = p.Purge(ctx, Before(time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC)))
-		x.NoError(err)
-		x.Len(vs, 1)
+		c := Chunk{Namespace: LegacyNamespace, Kind: "person", Month: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), Name: name}
+		x.False(c.Before(time.Date(2020, 1, 31, 0, 0, 0, 0, time.UTC)), "January went before the month was over")
+		x.True(c.Before(time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC)))
 	})
 }
 

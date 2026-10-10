@@ -27,7 +27,7 @@ const (
 // The numbers are of the same kind as a field number: chosen once and never
 // given to something else. They are **not** domains -- a domain is what an
 // identifier carries and an app declares, and these are what payday declares
-// about its own four.
+// about its own.
 type Own int32
 
 const (
@@ -37,6 +37,9 @@ const (
 	Own_OWN_HOLDER      Own = 2
 	Own_OWN_AUDIT       Own = 3
 	Own_OWN_OUTBOX      Own = 4
+	// The trail archive's manifest: what the archive holds, as the database
+	// keeps the account of it. See `trail.Manifest`.
+	Own_OWN_ARCHIVED Own = 5
 )
 
 // Enum value maps for Own.
@@ -47,6 +50,7 @@ var (
 		2: "OWN_HOLDER",
 		3: "OWN_AUDIT",
 		4: "OWN_OUTBOX",
+		5: "OWN_ARCHIVED",
 	}
 	Own_value = map[string]int32{
 		"OWN_UNSPECIFIED": 0,
@@ -54,6 +58,7 @@ var (
 		"OWN_HOLDER":      2,
 		"OWN_AUDIT":       3,
 		"OWN_OUTBOX":      4,
+		"OWN_ARCHIVED":    5,
 	}
 )
 
@@ -1448,7 +1453,7 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\atenancy\"9\n" +
 	"\x05Field\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
-	"\astamped\x18\x02 \x01(\bR\astamped*Y\n" +
+	"\astamped\x18\x02 \x01(\bR\astamped*k\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -1457,7 +1462,8 @@ const file_payday_entity_proto_rawDesc = "" +
 	"OWN_HOLDER\x10\x02\x12\r\n" +
 	"\tOWN_AUDIT\x10\x03\x12\x0e\n" +
 	"\n" +
-	"OWN_OUTBOX\x10\x04B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"OWN_OUTBOX\x10\x04\x12\x10\n" +
+	"\fOWN_ARCHIVED\x10\x05B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 10)

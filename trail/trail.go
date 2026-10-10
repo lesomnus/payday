@@ -318,6 +318,11 @@ type Store interface {
 	// Blank empties `value` and `patch` of exactly the rows these keys name,
 	// and answers how many it reached. What the row says happened stays.
 	Blank(ctx context.Context, keys []any) (int, error)
+
+	// Manifest is the database's account of what the archive holds; see
+	// [Archived]. It is in the store because the database is where it has to
+	// be: somewhere the archive's own storage cannot reach.
+	Manifest
 }
 
 // Batch is how many rows one pass reads and removes at a time.
@@ -360,12 +365,13 @@ func Archive(ctx context.Context, s Store, of Kinds, before time.Time, a flob.St
 		return 0, errors.New("no archive to write into")
 	}
 
-	run, err := newRun()
+	// Through the manifest, like every act.
+	x, err := Policy{Archive: a}.start(s)
 	if err != nil {
 		return 0, err
 	}
 
-	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, a, run, func(Row) fate { return archived })
+	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, x.p.Archive, x.run, func(Row) fate { return archived })
 
 	return moved, err
 }

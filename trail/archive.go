@@ -25,6 +25,7 @@ import (
 	"uuid"
 
 	"github.com/lesomnus/flob"
+	"github.com/lesomnus/otx/log"
 
 	"github.com/lesomnus/payday/pdid"
 )
@@ -553,7 +554,7 @@ func Chunks(ctx context.Context, a flob.Stores) ([]Chunk, error) {
 
 	out := []Chunk{}
 	for _, ns := range nss {
-		if ns == ReceiptNamespace {
+		if ns == ReceiptNamespace || ns == CheckpointNamespace {
 			continue
 		}
 
@@ -1055,10 +1056,16 @@ func adopt(ctx context.Context, a flob.Stores, c Chunk, path string, at time.Tim
 	s := a.Use(LegacyNamespace)
 	m := flob.Meta{Digest: d, Labels: c.labels()}
 
-	if o, ok := s.(flob.OsStore); ok {
+	// The disk beneath the manifest, which a hard link is made on and the
+	// manifest does not see being made.
+	inner := s
+	if r, ok := s.(manifestedStore); ok {
+		inner = r.Store
+	}
+	if o, ok := inner.(flob.OsStore); ok {
 		_, err := o.Adopt(ctx, m, path, flob.AdoptOptions{Added: at, Verify: true})
 		if err == nil || errors.Is(err, flob.ErrAlreadyExists) {
-			return nil
+			return adopted(ctx, s, d, m.Labels)
 		}
 		if !errors.Is(err, syscall.EXDEV) && !errors.Is(err, fs.ErrPermission) {
 			return err
@@ -1131,7 +1138,9 @@ type Receipt struct {
 
 	// Act is `discard` (rows leaving the database with no copy), `destroy` (a
 	// chunk at the end of its window), `purge` (chunks by hand), `forget` (a
-	// subject's contents) or `purge-tenant` (a tenant leaving).
+	// subject's contents) or `purge-tenant` (a tenant leaving) -- or
+	// `finding`, which is no destruction: what a pass found the archive's
+	// manifest does not account for.
 	Act string `json:"act"`
 
 	// Where is `database` or `archive`.
@@ -1162,6 +1171,10 @@ type Receipt struct {
 
 	// Held is the rows a legal hold kept as they were; see [Hold].
 	Held int `json:"held,omitempty"`
+
+	// Findings is what a pass found the archive's manifest does not account
+	// for, by kind, for the act `finding`; see [Finding].
+	Findings map[string]int `json:"findings,omitempty"`
 
 	// Objects is how many subjects [Forget] was asked about. Their identifiers
 	// are not here: a receipt is the one record of an erasure that is kept,
@@ -1329,3 +1342,90 @@ func Receipts(ctx context.Context, a flob.Stores, fn func(Receipt) error) error 
 
 // encoded is an identifier as protojson writes one.
 func encoded(v pdid.Id) string { return base64.StdEncoding.EncodeToString(v.Bytes()) }
+
+// refile moves the rows of the files a version before this one wrote --
+// [LegacyNamespace], every tenant's rows together -- into the chunks of the
+// tenants they belong to, so that the manifest and every rule after it see one
+// layout: a tenant's windows, a tenant's hold, a tenant leaving.
+//
+// A file at a time, and its rows are not judged: they go where a pass would
+// have filed them, in the months they were written, and the file is erased
+// once every chunk made of it is written. A crash between the two leaves the
+// rows in both places, which [Read] drops and a fold folds. A file the manifest
+// does not account for is left where it is.
+func (x *pass) refile(ctx context.Context) {
+	a := x.p.Archive
+	cs, err := chunksIn(ctx, a, LegacyNamespace)
+	if err != nil {
+		log.From(ctx).WarnContext(ctx, "trail: the files of a version before", "err", err)
+
+		return
+	}
+
+	files, rows := 0, 0
+	for _, c := range cs {
+		if !x.known(c) {
+			if x.once("refile " + string(c.Digest)) {
+				log.From(ctx).WarnContext(ctx, "trail: a file of a version before that the manifest does not account for, left where it is", "chunk", c.String())
+			}
+
+			continue
+		}
+
+		n, err := refile(ctx, a, x.run, c)
+		rows += n
+		if err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: the files of a version before", "chunk", c.String(), "err", err)
+
+			continue
+		}
+
+		files++
+	}
+	if files > 0 {
+		log.From(ctx).InfoContext(ctx, "trail: the files of a version before, filed by tenant", "files", files, "rows", rows)
+	}
+}
+
+func refile(ctx context.Context, a flob.Stores, run string, c Chunk) (int, error) {
+	r, _, err := a.Use(c.Namespace).Open(ctx, c.Digest)
+	if err != nil {
+		if errors.Is(err, flob.ErrNotExist) {
+			return 0, nil
+		}
+
+		return 0, err
+	}
+
+	w := newWriter(a, run)
+	n := 0
+	err = lines(r, func(doc []byte) error {
+		h, err := headOf(doc)
+		if err != nil {
+			return err
+		}
+		at, err := time.Parse(time.RFC3339Nano, h.Created)
+		if err != nil {
+			return fmt.Errorf("a row written at %q: %w", h.Created, err)
+		}
+
+		w.add(Row{Doc: doc, Key: h.Id, Domain: pdid.Domain(h.Domain), Created: at, Tenants: h.tenants()})
+		n++
+		if w.full() {
+			if _, err := w.flush(ctx); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	r.Close()
+	if err != nil {
+		return n, err
+	}
+	if _, err := w.flush(ctx); err != nil {
+		return n, err
+	}
+
+	return n, a.Use(c.Namespace).Erase(ctx, c.Digest)
+}

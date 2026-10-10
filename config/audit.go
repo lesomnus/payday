@@ -1,7 +1,10 @@
 package config
 
 import (
+	"crypto/ed25519"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/lesomnus/flob"
@@ -77,10 +80,12 @@ type AuditConfig struct {
 	// refused unless `discard` says the deployment means it.
 	//
 	// It is a flob store on the disk, a namespace per tenant -- see the `trail`
-	// package. A directory a version before this one wrote files into is the
-	// same setting: the first pass adopts what is there. An archive anywhere
-	// else flob reaches, S3 among them, is handed in by the app as
-	// `trail.Policy.Archive`.
+	// package -- whose every blob the database keeps an account of; see
+	// `checkpoints` below. A directory a version before this one wrote files
+	// into is the same setting: the first pass adopts what is there, and files
+	// it by tenant.
+	// An archive anywhere else flob reaches, S3 among them, is handed in by
+	// the app as `trail.Policy.Archive`.
 	Archive string `yaml:"archive"`
 
 	// Discard is a deployment saying it means to keep nothing.
@@ -108,6 +113,75 @@ type AuditConfig struct {
 	// registered -- `holder`, `robot`, `audit`. A kind named here that this app
 	// does not have is refused rather than ignored.
 	By map[string]AuditKeepConfig `yaml:"by"`
+
+	// Checkpoints is where a pass leaves what the archive held when it ended,
+	// and the key it signs that with. See `trail.Checkpoint`.
+	Checkpoints AuditCheckpointsConfig `yaml:"checkpoints"`
+}
+
+// AuditCheckpointsConfig is where checkpoints are kept, and what signs them.
+//
+// There is no switch here. An archive always has a manifest in the database
+// and a checkpoint at the end of every pass. What these settings change is
+// what a checkpoint is worth against somebody who can write both the database
+// and the archive: kept apart from the archive, on a store that refuses
+// deletion, and signed by a key kept apart from the process's credentials.
+type AuditCheckpointsConfig struct {
+	// Dir is a directory of their own, which is where a disk that refuses to
+	// delete -- a WORM mount -- goes. Empty keeps them in the archive, in
+	// `_checkpoints`. A store that is not a directory, S3 with Object Lock
+	// among them, is handed in by the app as `trail.Policy.Checkpoints`.
+	Dir string `yaml:"dir"`
+
+	// Key is the Ed25519 key checkpoints are signed with: a file, as
+	// `openssl genpkey -algorithm ed25519` writes one -- which is how a secret
+	// is mounted -- or the PEM document itself, which is how one is given
+	// through the environment. Empty signs nothing.
+	//
+	// Read where the process comes up, so a key that does not read is a
+	// process that does not start rather than checkpoints that stop being
+	// signed.
+	Key string `yaml:"key"`
+
+	// Trust is the public keys, base64, besides Key's own whose signatures a
+	// verification believes: a key rotated out, or the deployment's for a
+	// verifier that is not given its private half.
+	Trust []string `yaml:"trust"`
+}
+
+// keys is the checkpoints' keys, read.
+func (c AuditCheckpointsConfig) keys() (ed25519.PrivateKey, []ed25519.PublicKey, error) {
+	var key ed25519.PrivateKey
+	if v := strings.TrimSpace(c.Key); v != "" {
+		doc := []byte(v)
+		if !strings.HasPrefix(v, "-----BEGIN") {
+			b, err := os.ReadFile(v)
+			if err != nil {
+				return nil, nil, fmt.Errorf("key: %w", err)
+			}
+
+			doc = b
+		}
+
+		k, err := trail.ParseKey(doc)
+		if err != nil {
+			return nil, nil, fmt.Errorf("key: %w", err)
+		}
+
+		key = k
+	}
+
+	trust := []ed25519.PublicKey{}
+	for i, v := range c.Trust {
+		k, err := trail.ParsePublicKey(v)
+		if err != nil {
+			return nil, nil, fmt.Errorf("trust[%d]: %w", i, err)
+		}
+
+		trust = append(trust, k)
+	}
+
+	return key, trust, nil
 }
 
 // AuditMinConfig is a floor: the least a deployment keeps, whatever a tenant's
@@ -225,6 +299,13 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 
 			p.MinBy[d] = f
 		}
+	}
+
+	if p.Key, p.Trust, err = c.Checkpoints.keys(); err != nil {
+		return trail.Policy{}, fmt.Errorf("audit.checkpoints.%w", err)
+	}
+	if c.Checkpoints.Dir != "" {
+		p.Checkpoints = flob.NewOsStores(c.Checkpoints.Dir).Use(trail.CheckpointNamespace)
 	}
 
 	if err := p.Valid(); err != nil {

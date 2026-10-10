@@ -2,6 +2,7 @@ package trail
 
 import (
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"maps"
@@ -426,6 +427,30 @@ type Policy struct {
 	// the failure is logged -- because the alternative is falling back to a
 	// window nobody chose for them.
 	Tenants func(ctx context.Context, tenant pdid.Id) (Tenant, error)
+
+	// Checkpoints is where a pass leaves what the archive held when it ended;
+	// see [Checkpoint]. Nil is the archive's own [CheckpointNamespace].
+	//
+	// Their worth is where they are kept. On a store that refuses deletion --
+	// S3 Object Lock -- and apart from the archive, they are the archive's
+	// contents day by day beyond the reach of anybody who can write both the
+	// database and the archive; in the archive itself they say what it held to
+	// whoever has not rewritten it.
+	Checkpoints flob.Store
+
+	// Key signs checkpoints. Nil leaves them unsigned.
+	//
+	// What it adds is that a checkpoint cannot be written by somebody without
+	// it, and that is worth what keeping the key apart from the database's and
+	// the archive's credentials is worth: a key mounted beside them, in the
+	// same process, is held by whoever holds them. `audit.checkpoints.key`
+	// names a file, which is how a secret is mounted.
+	Key ed25519.PrivateKey
+
+	// Trust is the keys besides [Policy.Key] whose signatures on a checkpoint
+	// [Policy.Verify] believes: a key rotated out, or the deployment's own for
+	// a verifier that is not given it.
+	Trust []ed25519.PublicKey
 }
 
 // For is the deployment's own policy for one kind of thing: what a tenant
@@ -530,6 +555,11 @@ func (p Policy) Valid() error {
 		}
 		if _, ok := flob.AsWalker(p.Archive.Use(ReceiptNamespace)); !ok {
 			return fmt.Errorf("audit.archive: %w", errUnwalkable)
+		}
+	}
+	if p.Checkpoints != nil {
+		if _, ok := flob.AsWalker(p.Checkpoints); !ok {
+			return fmt.Errorf("audit.checkpoints: %w", errUnwalkable)
 		}
 	}
 
@@ -668,7 +698,11 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 		return
 	}
 
-	x.adopt(ctx)
+	if x.m != nil {
+		x.verify(ctx)
+		x.adopt(ctx)
+		x.refile(ctx)
+	}
 
 	if p.Tenants == nil {
 		named := p.Named()
@@ -704,8 +738,16 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 		x.reclaim(ctx)
 	}
 
-	if err := x.r.write(ctx, p.Archive); err != nil {
+	if err := x.r.write(ctx, x.p.Archive); err != nil {
 		log.From(ctx).WarnContext(ctx, "trail: the receipts of a pass", "err", err)
+	}
+
+	if x.m != nil {
+		if c, err := x.p.checkpoint(ctx, x.s); err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: the checkpoint of a pass", "err", err)
+		} else {
+			log.From(ctx).InfoContext(ctx, "trail: a checkpoint", "k", c.K, "blobs", c.Count)
+		}
 	}
 }
 
@@ -738,6 +780,9 @@ func (x *pass) reclaim(ctx context.Context) {
 
 // pass is one application of a policy: one instant, one run, and every
 // tenant's answer asked once.
+//
+// Its policy's archive is the archive through the manifest, so that what the
+// act does to it is in the database before it is done; see [Archived].
 type pass struct {
 	p       Policy
 	s       Store
@@ -746,6 +791,16 @@ type pass struct {
 	answers map[pdid.Id]answer
 	told    map[string]bool
 	r       receipts
+
+	// m is the archive through the manifest, and nil with no archive or no
+	// store to keep a manifest in.
+	m *manifested
+
+	// rows is the blobs the manifest accounted for when the pass began. A
+	// chunk not among them, or among what the pass wrote itself, is not
+	// folded or written again: what it holds would become the manifest's by
+	// being copied into a chunk the manifest has.
+	rows map[blobKey]bool
 }
 
 type answer struct {
@@ -759,14 +814,69 @@ func (p Policy) start(s Store) (*pass, error) {
 		return nil, err
 	}
 
-	return &pass{
+	x := &pass{
 		p:       p,
 		s:       s,
 		now:     time.Now(),
 		run:     run,
 		answers: map[pdid.Id]answer{},
 		told:    map[string]bool{},
-	}, nil
+	}
+	if p.Archive != nil && s != nil {
+		x.m = p.manifested(s)
+		x.p.Archive = x.m
+	}
+
+	return x, nil
+}
+
+// verify is the start of every pass: what a crash left in flight settled, and
+// the light half of [Policy.Verify] -- the manifest and what the archive
+// holds, by name and labels, no bytes read. What it finds is a warning and a
+// receipt, and the pass goes on.
+func (x *pass) verify(ctx context.Context) {
+	p := x.p
+	p.Archive = x.m.a
+
+	if err := p.settle(ctx, x.s); err != nil {
+		log.From(ctx).WarnContext(ctx, "trail: settling the manifest", "err", err)
+	}
+
+	v, err := p.Verify(ctx, x.s, false)
+	if err != nil {
+		log.From(ctx).WarnContext(ctx, "trail: verifying the archive against its manifest", "err", err)
+
+		return
+	}
+	x.rows = v.known
+	if v.Ok() {
+		return
+	}
+
+	kinds := map[string]int{}
+	for i, f := range v.Findings {
+		kinds[f.Kind]++
+		if i < 20 {
+			log.From(ctx).WarnContext(ctx, "trail: the archive is not what its manifest says", "finding", f.String())
+		}
+	}
+	log.From(ctx).WarnContext(ctx, "trail: the archive is not what its manifest says",
+		"findings", len(v.Findings), "by", kinds, "see", "`trail verify`")
+
+	x.r.add(Receipt{Act: "finding", Where: "archive", Findings: kinds})
+}
+
+// known answers whether the manifest accounts for a chunk: it did when the
+// pass began, or this pass wrote it. Everything is, for a pass with no
+// manifest.
+func (x *pass) known(c Chunk) bool {
+	if x.m == nil || x.rows == nil {
+		return true
+	}
+
+	k := blobKey{c.Namespace, c.Digest}
+
+	return x.rows[k] || x.m.wrote(k)
 }
 
 // once answers true the first time it is asked about `k` in this pass, so that
@@ -785,7 +895,7 @@ func (x *pass) once(k string) bool {
 // directory, so that a deployment upgrading has nothing to run.
 func (x *pass) adopt(ctx context.Context) {
 	var root string
-	switch v := x.p.Archive.(type) {
+	switch v := unwrapStores(x.p.Archive).(type) {
 	case flob.OsStores:
 		root = v.Root()
 	case *flob.OsStores:
@@ -1088,6 +1198,11 @@ func (x *pass) spend(ctx context.Context, c Chunk, held bool, before time.Time, 
 	}
 
 	if c.Namespace == LegacyNamespace && x.p.Tenants != nil {
+		if !x.known(c) {
+			h.keep(c.Rows, 1)
+			return 0, nil
+		}
+
 		v, err := edit(ctx, a, c, dry, nil, func(line []byte, v head) ([]byte, mark, error) {
 			if x.held(ctx, v.tenants(), pdid.Domain(v.Domain), true, h) {
 				return line, heldBack, nil
@@ -1154,7 +1269,7 @@ func (x *pass) archive(ctx context.Context) {
 	}
 
 	for _, ns := range nss {
-		if ns == ReceiptNamespace {
+		if ns == ReceiptNamespace || ns == CheckpointNamespace {
 			continue
 		}
 
@@ -1191,7 +1306,7 @@ func (x *pass) archive(ctx context.Context) {
 				continue
 			}
 
-			if ns != LegacyNamespace {
+			if ns != LegacyNamespace && x.known(c) {
 				g := key{c.Kind, Month(c.Month), joined(c.Tenants)}
 				groups[g] = append(groups[g], c)
 			}

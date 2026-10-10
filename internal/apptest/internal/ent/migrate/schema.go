@@ -9,6 +9,36 @@ import (
 )
 
 var (
+	// ArchivedColumns holds the columns for the "archived" table.
+	ArchivedColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "labels", Type: field.TypeJson, Nullable: true},
+		{Name: "namespace", Type: field.TypeString},
+		{Name: "digest", Type: field.TypeString},
+		{Name: "intent", Type: field.TypeString},
+		{Name: "state", Type: field.TypeString},
+		{Name: "since", Type: field.TypeUint32},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "gone", Type: field.TypeUint32},
+	}
+	// ArchivedTable holds the schema information for the "archived" table.
+	ArchivedTable = &schema.Table{
+		Name:       "archived",
+		Columns:    ArchivedColumns,
+		PrimaryKey: []*schema.Column{ArchivedColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "archived_namespace_digest",
+				Unique:  false,
+				Columns: []*schema.Column{ArchivedColumns[2], ArchivedColumns[3]},
+			},
+			{
+				Name:    "archived_state",
+				Unique:  false,
+				Columns: []*schema.Column{ArchivedColumns[5]},
+			},
+		},
+	}
 	// AuditColumns holds the columns for the "audit" table.
 	AuditColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -349,6 +379,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		ArchivedTable,
 		AuditTable,
 		CellTable,
 		FleetTable,
@@ -365,6 +396,9 @@ var (
 )
 
 func init() {
+	ArchivedTable.Annotation = &entsql.Annotation{
+		Table: "archived",
+	}
 	AuditTable.Annotation = &entsql.Annotation{
 		Table: "audit",
 	}

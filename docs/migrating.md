@@ -3,6 +3,32 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The database keeps an account of the trail's archive
+
+**Applies if** you set `audit.archive` or `trail.Policy.Archive`, call
+`Policy.Purge`, or wrote a `trail.Store` of your own (a test double counts).
+
+Every change to the archive is now written into a manifest in the database
+first, and `Policy.Verify` compares the two — see
+[the runtime](runtime.md#the-manifest). For an app:
+
+- **Regenerate, and migrate once.** `pd gen` copies in one more entity of
+  payday's, `Archived` (domain 5, which payday kept for this), and `trail.Store`
+  gains the manifest's methods, which the generated store implements on it.
+  The migration is one new table.
+- **`Policy.Purge` takes the store**, `policy.Purge(ctx, store, cut)`, because
+  the manifest is in the database. `Policy.Doomed` does not change.
+- **Decide where checkpoints go**, optionally: `audit.checkpoints.dir` for a
+  directory of their own (`trail.Policy.Checkpoints` for anything else), and
+  `audit.checkpoints.key` to sign them. With neither, they are kept in the
+  archive and unsigned.
+- **Give an operator a way to verify**: a command that calls
+  `policy.Verify(ctx, store, full)` and prints the findings, and one that calls
+  `policy.Accept(ctx, store, why)` once they have looked.
+
+Nothing has to be run on the upgrade: the first pass fills the manifest from
+what the archive holds, and files what is in `_legacy` by tenant.
+
 ## Erasing from the trail answers to a legal hold
 
 **Applies if** you call `pd.ForgetInTrail`, `trail.Forget`, `trail.Collect`,

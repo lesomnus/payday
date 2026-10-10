@@ -101,7 +101,7 @@ func (p Policy) Collect(ctx context.Context, s Store, of Kinds, before time.Time
 	if gone > 0 {
 		x.r.add(Receipt{Act: "discard", Where: "database", Kind: kindsOf(of), Before: before.UTC(), Rows: gone, Held: h.Rows})
 	}
-	if werr := x.r.write(ctx, p.Archive); werr != nil && err == nil {
+	if werr := x.r.write(ctx, x.p.Archive); werr != nil && err == nil {
 		err = werr
 	}
 
@@ -134,7 +134,7 @@ func kindsOf(k Kinds) string {
 // day. A kind it declines is left alone. A chunk goes when **every** row in it
 // is older than the cutoff; see [Chunk.Before].
 func (p Policy) Doomed(ctx context.Context, cut func(kind string) (time.Time, bool)) ([]Chunk, Held, error) {
-	return p.purge(ctx, cut, true)
+	return p.purge(ctx, nil, cut, true)
 }
 
 // Purge destroys the chunks that are entirely older than the cutoff, in every
@@ -151,22 +151,29 @@ func (p Policy) Doomed(ctx context.Context, cut func(kind string) (time.Time, bo
 // A file of everybody's from before the archive was a flob store loses what is
 // not held and keeps what is. It writes a [Receipt] of what went, including
 // when it stopped part of the way.
-func (p Policy) Purge(ctx context.Context, cut func(kind string) (time.Time, bool)) ([]Chunk, Held, error) {
-	return p.purge(ctx, cut, false)
+//
+// It goes through the archive's manifest like every other act, which is why it
+// takes the store: the manifest is in the database; see [Archived].
+func (p Policy) Purge(ctx context.Context, s Store, cut func(kind string) (time.Time, bool)) ([]Chunk, Held, error) {
+	if s == nil {
+		return nil, Held{}, errors.New("no store to keep the manifest in")
+	}
+
+	return p.purge(ctx, s, cut, false)
 }
 
-func (p Policy) purge(ctx context.Context, cut func(kind string) (time.Time, bool), dry bool) ([]Chunk, Held, error) {
+func (p Policy) purge(ctx context.Context, s Store, cut func(kind string) (time.Time, bool), dry bool) ([]Chunk, Held, error) {
 	h := Held{}
 	if p.Archive == nil {
 		return nil, h, errors.New("no archive to destroy from")
 	}
 
-	x, err := p.start(nil)
+	x, err := p.start(s)
 	if err != nil {
 		return nil, h, err
 	}
 
-	vs, err := Chunks(ctx, p.Archive)
+	vs, err := Chunks(ctx, x.p.Archive)
 	if err != nil {
 		return nil, h, err
 	}
@@ -204,7 +211,7 @@ func (p Policy) purge(ctx context.Context, cut func(kind string) (time.Time, boo
 	}
 
 	if !dry {
-		if werr := x.r.write(ctx, p.Archive); werr != nil && err == nil {
+		if werr := x.r.write(ctx, x.p.Archive); werr != nil && err == nil {
 			err = werr
 		}
 	}
@@ -319,11 +326,7 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (Forgott
 		}
 	}
 
-	if err := x.r.write(ctx, p.Archive); err != nil {
-		return out, err
-	}
-
-	return out, nil
+	return out, x.r.write(ctx, x.p.Archive)
 }
 
 // forget is the archive's half of [Policy.Forget], and answers how many rows
@@ -506,7 +509,7 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 		})
 	}
 
-	return out, x.r.write(ctx, p.Archive)
+	return out, x.r.write(ctx, x.p.Archive)
 }
 
 // purgeDatabase is the database's half of a tenant leaving, and answers how
