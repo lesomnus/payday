@@ -201,15 +201,20 @@ func TestAHoldKeepsItsOwnRowsOfAFileOfEverybodys(t *testing.T) {
 	x.NotContains(in, mine.id, "a row nobody holds outlived its window for sharing a file with one somebody does")
 	x.Contains(in, theirs.id, "the held row went with the file")
 
+	// By the file's rows going to their own tenants first, each then on its
+	// own windows and its own hold.
 	cs, err := chunksIn(ctx, a, LegacyNamespace)
+	x.NoError(err)
+	x.Empty(cs, "the file was not filed by tenant")
+	cs, err = chunksIn(ctx, a, held.String())
 	x.NoError(err)
 	x.Len(cs, 1)
 	x.Equal(1, cs[0].Rows)
 
 	rs := receiptsIn(t, a)
 	x.Len(rs, 1)
+	x.Equal(free.String(), rs[0].Tenant)
 	x.Equal(1, rs[0].Rows)
-	x.Equal(1, rs[0].Held)
 }
 
 // TestPurgeByHandLeavesWhatIsHeldAndSaysSo.
@@ -237,7 +242,7 @@ func TestPurgeByHandLeavesWhatIsHeldAndSaysSo(t *testing.T) {
 	x.Len(doomed, 1)
 	x.Equal(1, h.Chunks)
 
-	gone, h, err := p.Purge(ctx, Before(time.Now()))
+	gone, h, err := p.Purge(ctx, s, Before(time.Now()))
 	x.NoError(err)
 	x.Equal(doomed, gone, "the dry run and the act disagree")
 	x.Equal([]pdid.Id{held}, h.By)

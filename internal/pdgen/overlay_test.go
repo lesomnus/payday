@@ -40,7 +40,7 @@ func TestASchemaMissingPaydaysOwnIsRefused(t *testing.T) {
 	}
 
 	for _, want := range []string{
-		"OWN_TENANT", "OWN_HOLDER", "OWN_AUDIT", "OWN_OUTBOX",
+		"OWN_TENANT", "OWN_HOLDER", "OWN_AUDIT", "OWN_OUTBOX", "OWN_ARCHIVED",
 		"reads stay walled and writes stop being",
 	} {
 		if !strings.Contains(err.Error(), want) {
@@ -72,6 +72,7 @@ func TestPaydaysOwnEntitiesAreFoundByMarkerNotName(t *testing.T) {
 		{pdpb.Own_OWN_HOLDER, "fleet.Holder"},
 		{pdpb.Own_OWN_AUDIT, "fleet.Audit"},
 		{pdpb.Own_OWN_OUTBOX, "fleet.Outbox"},
+		{pdpb.Own_OWN_ARCHIVED, "fleet.Archived"},
 	} {
 		v := s.Own(tc.own)
 		if v == nil {
@@ -128,7 +129,7 @@ func ownAll(t *testing.T) string {
 	drop := regexp.MustCompile(`(?m)^(edition|package|import|option (features|go_package))\b.*$`)
 
 	b := &strings.Builder{}
-	for _, name := range []string{"tenant", "holder", "audit", "outbox"} {
+	for _, name := range []string{"tenant", "holder", "audit", "outbox", "archived"} {
 		v, err := os.ReadFile(filepath.Join("..", "..", "schema", "payday", name+".proto"))
 		if err != nil {
 			t.Fatal(err)

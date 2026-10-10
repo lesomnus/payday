@@ -62,9 +62,17 @@ watch:
 # time. What a tenant keeps is the app's data rather than a setting, so it is
 # answered in code, as `trail.Policy.Tenants`; this is the floor under it.
 #
+# `checkpoints:` is where every pass leaves what the archive held, which the
+# database's account of the archive is checked against. Kept apart from the
+# archive on a disk that refuses deletion, and signed with a key mounted as a
+# secret, they are what catches an archive somebody rewrote.
+#
 # audit:
 #   profile: pipa
 #   archive: /var/lib/{{.Name}}/audit
+#   checkpoints:
+#     dir: /mnt/worm/{{.Name}}/checkpoints
+#     key: /run/secrets/checkpoints.pem
 #   min:
 #     profile: pipa
 #   by:

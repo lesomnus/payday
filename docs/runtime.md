@@ -321,9 +321,12 @@ written, which is everything a pass decides from:
   kept.
 
 A directory a version before this one wrote files into is the same setting. The
-first pass **adopts** what is there into `_legacy`, by hard link, and those files
-are decided by the deployment's policy, as they were, since each of them holds
-everybody's rows.
+first pass **adopts** what is there into `_legacy`, by hard link, and then
+**files its rows by tenant**: each row goes to the chunk a pass would have
+written it into, and the file is erased once they all have. From then on there
+is one layout, and every row is on its own tenant's windows and holds. A file
+the pass could not file stays in `_legacy` and is decided by the deployment's
+policy, as it was.
 
 Every destruction writes a **receipt** — a discard on the way out of the
 database, a chunk destroyed at the end of its window, a purge by hand, a subject
@@ -336,6 +339,79 @@ store's. On a disk they go at once. On S3 they never would on their own, so a
 pass also runs flob's reclaim on the archive (`flob.Reclaimer`, with a grace of a
 day, `trail.Reclaimed`): a chunk a pass destroyed, forgot or purged is gone from
 the bucket two passes later, at least a day apart. Backups are the operator's.
+
+#### The manifest
+
+A chunk is named by its digest, so its bytes cannot change without its name
+changing. What that does not say is whether the archive still holds **what it
+should**: a chunk taken away, or one put there by somebody who is not the
+deployment, looks like any other. So the database keeps an account of the
+archive — the **manifest**, payday's `Archived` entity, one row per blob —
+somewhere the archive's own storage cannot reach.
+
+Every change to the archive goes through it, by the archive every act is handed
+(a decorator on the `flob.Stores`), so no act changes the archive without it:
+
+- an add is a row in `adding` before the blob is written, the blob labelled with
+  the row's intent, and the row `present` once the store holds it;
+- an erase is `erasing` before the blob goes, and `erased` after.
+
+A crash between the halves leaves a row that says what was in flight, and the
+next pass settles it from what the store holds: an add whose blob is there is
+present, and an erase whose blob is still there is **undone**, for the pass to
+decide again. So a row in the database alone never makes a pass destroy
+anything. The first pass fills the manifest from what the archive holds.
+
+`Policy.Verify` compares the manifest with what the archive holds, and with
+`full` reads every blob and checks its bytes against its digest. A blob being
+written or erased is in a state that says so, so a pass on another replica half
+way through is no finding, and no clock is asked. What it finds:
+
+| | |
+| --- | --- |
+| `missing` | a blob the manifest says is there, and is not |
+| `unaccounted` | a blob that is there, and the manifest never added |
+| `relabelled` | a blob whose labels are not the ones the manifest recorded |
+| `altered` | a blob whose bytes are no longer its digest (`full` only) |
+| `rewritten` | the latest checkpoint, which the manifest's rows no longer add up to |
+| `unkept` | a checkpoint the database numbered and the store does not keep |
+| `behind` | a checkpoint the store keeps that the database never numbered |
+| `emptied` | a manifest with no rows beside an archive with checkpoints |
+| `forged`, `unsigned` | a checkpoint whose signature is bad or untrusted, or missing after one that had one |
+
+Every pass starts with the light half — names and labels, no bytes read —
+settles what was in flight, says what it found (a warning, and a receipt,
+`finding`), and goes on. It does not fold or rewrite a chunk the manifest does
+not have: copying what it holds into a chunk the manifest has would launder
+it.
+
+#### Checkpoints
+
+A pass ends with a **checkpoint**: the next number, taken under a row lock so
+that two passes never share one, and every blob the manifest has at that
+moment, written whole to the checkpoint store and signed when the deployment
+gives a key (`trail.GenerateKey`, `audit.checkpoints.key`). Each manifest row
+says which checkpoints it was in, so `Verify` recomputes the latest one from the
+rows and compares.
+
+That is what covers somebody who can write both the database and the archive.
+Their worth is where they are kept: `audit.checkpoints.dir`, or
+`Policy.Checkpoints`, on a store that refuses deletion (S3 Object Lock, a WORM
+mount) and apart from the archive, is the archive's contents day by day beyond
+anybody's reach. In the archive itself (`_checkpoints`, the default) they say
+what it held to whoever has not rewritten it. What happens after the latest
+checkpoint is not covered by anything written with the deployment's own
+credentials, and a key mounted beside those credentials is held by whoever
+holds them.
+
+An operator who has looked at what verification found and decided the archive
+is right — a crash, a blob restored from a backup — calls `Policy.Accept` with
+why, and the manifest says what the archive holds from then on.
+
+Encryption is the storage's. Encryption at rest — S3's server-side encryption
+with a KMS key, an encrypted disk — covers what most requirements ask of it, and
+the manifest is what says the archive is what it was. Per-tenant keys for the
+contents are decided and not built; see lesomnus/payday#35.
 
 #### Legal holds
 

@@ -8,6 +8,7 @@ BEGIN;
 PRAGMA defer_foreign_keys = ON;
 
 -- The schema, as ent creates it. Checked by TestTheScriptIsThisSchema.
+CREATE TABLE `archived` (`id` uuid NOT NULL, `labels` json NULL, `namespace` text NOT NULL, `digest` text NOT NULL, `intent` text NOT NULL, `state` text NOT NULL, `since` integer NOT NULL, `date_created` datetime NULL, `gone` integer NOT NULL, PRIMARY KEY (`id`));
 CREATE TABLE `audit` (`id` uuid NOT NULL, `tenant_id` uuid NOT NULL, `actor_id` uuid NOT NULL, `trace_id` blob NOT NULL, `action` text NOT NULL, `object_id` uuid NOT NULL, `patch` blob NOT NULL, `date_created` datetime NULL, `actor_tenant_id` uuid NOT NULL, `value` blob NOT NULL, `counterpart_tenant_id` uuid NULL, `domain` integer NULL, PRIMARY KEY (`id`));
 CREATE TABLE `cell` (`id` uuid NOT NULL, `alias` text NOT NULL, `date_erased` datetime NULL, `tenant_id` uuid NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `cell_tenant_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenant` (`id`) ON DELETE NO ACTION);
 CREATE TABLE `fleet` (`id` uuid NOT NULL, `alias` text NOT NULL, `date_erased` datetime NULL, PRIMARY KEY (`id`));
@@ -20,6 +21,8 @@ CREATE TABLE `robot` (`id` uuid NOT NULL, `alias` text NOT NULL, `secret` blob N
 CREATE TABLE `seal` (`id` uuid NOT NULL, `alias` text NOT NULL, `secret` blob NOT NULL, `code` text NOT NULL, `date_erased` datetime NULL, `date_created` datetime NULL, PRIMARY KEY (`id`));
 CREATE TABLE `tenant` (`id` uuid NOT NULL, `alias` text NOT NULL, `name` text NOT NULL, `desc` text NOT NULL, `labels` json NULL, `date_updated` datetime NOT NULL, `date_created` datetime NULL, PRIMARY KEY (`id`));
 CREATE TABLE `thing` (`id` uuid NOT NULL, `alias` text NOT NULL, `date_erased` datetime NULL, `date_created` datetime NULL, PRIMARY KEY (`id`));
+CREATE INDEX `archived_namespace_digest` ON `archived` (`namespace`, `digest`);
+CREATE INDEX `archived_state` ON `archived` (`state`);
 CREATE INDEX `audit_actor_id_date_created` ON `audit` (`actor_id`, `date_created`);
 CREATE INDEX `audit_actor_tenant_id_date_created` ON `audit` (`actor_tenant_id`, `date_created`);
 CREATE INDEX `audit_counterpart_tenant_id_date_created` ON `audit` (`counterpart_tenant_id`, `date_created`);

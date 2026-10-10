@@ -360,7 +360,7 @@ message Entity {
 // The numbers are of the same kind as a field number: chosen once and never
 // given to something else. They are **not** domains -- a domain is what an
 // identifier carries and an app declares, and these are what payday declares
-// about its own four.
+// about its own.
 enum Own {
   // The app's own entity, which is everything an app writes.
   OWN_UNSPECIFIED = 0;
@@ -369,6 +369,10 @@ enum Own {
   OWN_HOLDER = 2;
   OWN_AUDIT = 3;
   OWN_OUTBOX = 4;
+
+  // The trail archive's manifest: what the archive holds, as the database
+  // keeps the account of it. See `trail.Manifest`.
+  OWN_ARCHIVED = 5;
 }
 
 // Field is what payday adds to one field of an entity.
