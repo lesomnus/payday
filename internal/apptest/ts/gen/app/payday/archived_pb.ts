@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/archived.proto.
  */
 export const file_app_payday_archived: GenFile = /*@__PURE__*/
-  fileDesc("ChlhcHAvcGF5ZGF5L2FyY2hpdmVkLnByb3RvEgNhcHAi5AIKCEFyY2hpdmVkEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIpCgZsYWJlbHMYByADKAsyGS5hcHAuQXJjaGl2ZWQuTGFiZWxzRW50cnkSEQoJbmFtZXNwYWNlGAggASgJEg4KBmRpZ2VzdBgJIAEoCRIOCgZpbnRlbnQYCiABKAkSDQoFc3RhdGUYCyABKAkSDQoFc2luY2UYDCABKA0SOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAEgwKBGdvbmUYECABKA0aLQoLTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ATpJyvwVNxohEgRibG9iGg0KCW5hbWVzcGFjZRAIGgoKBmRpZ2VzdBAJGhISBXN0YXRlGgkKBXN0YXRlEAuKuxYKCAVCAgoASAUqAEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("ChlhcHAvcGF5ZGF5L2FyY2hpdmVkLnByb3RvEgNhcHAinwMKCEFyY2hpdmVkEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIpCgZsYWJlbHMYByADKAsyGS5hcHAuQXJjaGl2ZWQuTGFiZWxzRW50cnkSEQoJbmFtZXNwYWNlGAggASgJEg4KBmRpZ2VzdBgJIAEoCRIOCgZpbnRlbnQYCiABKAkSDQoFc3RhdGUYCyABKAkSDQoFc2luY2UYDCABKA0SOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASDAoEZ29uZRgQIAEoDRotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBOknK/BU3GiESBGJsb2IaDQoJbmFtZXNwYWNlEAgaCgoGZGlnZXN0EAkaEhIFc3RhdGUaCQoFc3RhdGUQC4q7FgoIBUICCgBIBSoAQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Archived is one blob of the trail's archive, as the database keeps the
@@ -38,9 +38,10 @@ export const file_app_payday_archived: GenFile = /*@__PURE__*/
  * An add is a row in `adding` before the blob is written, labelled with the
  * row's `intent`, and `present` once the store holds it. An erase is `erasing`
  * before the blob goes, and `erased` after. A crash between the two halves
- * leaves a row that says what was happening, and the next pass settles it from
- * what the store holds -- which is why nothing a verification compares needs a
- * clock to tell an act in flight from one that never happened.
+ * leaves a row that says what was happening, and a pass settles it from what
+ * the store holds once it is old enough not to be another pass still at it --
+ * which is why nothing a verification compares needs a clock to tell an act in
+ * flight from one that never happened.
  *
  * # Checkpoints
  *
@@ -101,6 +102,14 @@ export type Archived = Message<"app.Archived"> & {
    * @generated from field: uint32 since = 12;
    */
   since: number;
+
+  /**
+   * When the row last changed: how long an erase has been in flight, which
+   * is what keeps a pass from undoing one another pass is still making.
+   *
+   * @generated from field: google.protobuf.Timestamp date_updated = 13;
+   */
+  dateUpdated?: Timestamp | undefined;
 
   /**
    * @generated from field: google.protobuf.Timestamp date_created = 15;

@@ -27,6 +27,7 @@ func (Archived) Fields() []ent.Field {
 		field.String("intent"),
 		field.String("state"),
 		field.Uint32("since"),
+		field.Time("date_updated"),
 		field.Time("date_created").
 			Immutable().
 			Optional(),

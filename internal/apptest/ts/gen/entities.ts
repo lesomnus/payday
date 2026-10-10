@@ -35,6 +35,7 @@ export const Archived = {
 	typeName: "app.Archived",
 	schema: ArchivedSchema,
 	domain: 5,
+	version: "dateUpdated",
 	key: "id",
 	ids: ["id"],
 	service: ArchivedService,

@@ -4631,6 +4631,7 @@ func (s trailStore) Adding(ctx context.Context, ns, intent string, labels map[st
 		SetState(trail.Adding).
 		SetSince(0).
 		SetGone(0).
+		SetDateUpdated(time.Now()).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -4649,6 +4650,7 @@ func (s trailStore) Added(ctx context.Context, key any, digest string, labels ma
 		SetDigest(digest).
 		SetLabels(labels).
 		SetState(trail.Present).
+		SetDateUpdated(time.Now()).
 		Exec(ctx)
 }
 
@@ -4666,6 +4668,7 @@ func (s trailStore) Mark(ctx context.Context, ns, digest, from, to string) error
 	_, err := s.db.Archived.Update().
 		Where(archived.NamespaceEQ(ns), archived.DigestEQ(digest), archived.StateEQ(from)).
 		SetState(to).
+		SetDateUpdated(time.Now()).
 		Save(ctx)
 	return err
 }
@@ -4699,7 +4702,7 @@ func (s trailStore) Checkpoint(ctx context.Context) (int, []trail.Archived, erro
 	}
 	defer tx.Rollback()
 
-	n, err := tx.Archived.Update().Where(archived.IdEQ(archivedCounter)).AddSince(1).Save(ctx)
+	n, err := tx.Archived.Update().Where(archived.IdEQ(archivedCounter)).AddSince(1).SetDateUpdated(time.Now()).Save(ctx)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -4714,6 +4717,7 @@ func (s trailStore) Checkpoint(ctx context.Context) (int, []trail.Archived, erro
 			SetState("counter").
 			SetSince(1).
 			SetGone(0).
+			SetDateUpdated(time.Now()).
 			Exec(ctx); err != nil {
 			return 0, nil, err
 		}
@@ -4770,16 +4774,16 @@ func (s trailStore) At(ctx context.Context, k int) ([]trail.Archived, error) {
 	return archivedRows(vs), nil
 }
 
-func (s trailStore) Latest(ctx context.Context) (int, error) {
+func (s trailStore) Latest(ctx context.Context) (int, time.Time, error) {
 	c, err := s.db.Archived.Get(ctx, archivedCounter)
 	if ent.IsNotFound(err) {
-		return 0, nil
+		return 0, time.Time{}, nil
 	}
 	if err != nil {
-		return 0, err
+		return 0, time.Time{}, err
 	}
 
-	return int(c.Since), nil
+	return int(c.Since), c.DateUpdated, nil
 }
 
 // archivedAt is the rows a checkpoint was taken over: in it by then, and
@@ -4806,6 +4810,7 @@ func archivedRows(vs []*ent.Archived) []trail.Archived {
 			Since:     int(v.Since),
 			Gone:      int(v.Gone),
 			Created:   v.DateCreated,
+			Updated:   v.DateUpdated,
 		})
 	}
 

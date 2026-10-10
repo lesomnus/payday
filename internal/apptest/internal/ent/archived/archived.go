@@ -23,6 +23,8 @@ const (
 	FieldState = "state"
 	// FieldSince holds the string denoting the since field in the database.
 	FieldSince = "since"
+	// FieldDateUpdated holds the string denoting the date_updated field in the database.
+	FieldDateUpdated = "date_updated"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
 	FieldDateCreated = "date_created"
 	// FieldGone holds the string denoting the gone field in the database.
@@ -40,6 +42,7 @@ var Columns = []string{
 	FieldIntent,
 	FieldState,
 	FieldSince,
+	FieldDateUpdated,
 	FieldDateCreated,
 	FieldGone,
 }
@@ -85,6 +88,11 @@ func ByState(opts ...sql.OrderTermOption) OrderOption {
 // BySince orders the results by the since field.
 func BySince(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSince, opts...).ToFunc()
+}
+
+// ByDateUpdated orders the results by the date_updated field.
+func ByDateUpdated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateUpdated, opts...).ToFunc()
 }
 
 // ByDateCreated orders the results by the date_created field.

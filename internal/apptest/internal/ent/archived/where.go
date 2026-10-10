@@ -80,6 +80,11 @@ func Since(v uint32) predicate.Archived {
 	return predicate.Archived(sql.FieldEQ(FieldSince, v))
 }
 
+// DateUpdated applies equality check predicate on the "date_updated" field. It's identical to DateUpdatedEQ.
+func DateUpdated(v time.Time) predicate.Archived {
+	return predicate.Archived(sql.FieldEQ(FieldDateUpdated, v))
+}
+
 // DateCreated applies equality check predicate on the "date_created" field. It's identical to DateCreatedEQ.
 func DateCreated(v time.Time) predicate.Archived {
 	return predicate.Archived(sql.FieldEQ(FieldDateCreated, v))
@@ -398,6 +403,46 @@ func SinceLT(v uint32) predicate.Archived {
 // SinceLTE applies the LTE predicate on the "since" field.
 func SinceLTE(v uint32) predicate.Archived {
 	return predicate.Archived(sql.FieldLTE(FieldSince, v))
+}
+
+// DateUpdatedEQ applies the EQ predicate on the "date_updated" field.
+func DateUpdatedEQ(v time.Time) predicate.Archived {
+	return predicate.Archived(sql.FieldEQ(FieldDateUpdated, v))
+}
+
+// DateUpdatedNEQ applies the NEQ predicate on the "date_updated" field.
+func DateUpdatedNEQ(v time.Time) predicate.Archived {
+	return predicate.Archived(sql.FieldNEQ(FieldDateUpdated, v))
+}
+
+// DateUpdatedIn applies the In predicate on the "date_updated" field.
+func DateUpdatedIn(vs ...time.Time) predicate.Archived {
+	return predicate.Archived(sql.FieldIn(FieldDateUpdated, vs...))
+}
+
+// DateUpdatedNotIn applies the NotIn predicate on the "date_updated" field.
+func DateUpdatedNotIn(vs ...time.Time) predicate.Archived {
+	return predicate.Archived(sql.FieldNotIn(FieldDateUpdated, vs...))
+}
+
+// DateUpdatedGT applies the GT predicate on the "date_updated" field.
+func DateUpdatedGT(v time.Time) predicate.Archived {
+	return predicate.Archived(sql.FieldGT(FieldDateUpdated, v))
+}
+
+// DateUpdatedGTE applies the GTE predicate on the "date_updated" field.
+func DateUpdatedGTE(v time.Time) predicate.Archived {
+	return predicate.Archived(sql.FieldGTE(FieldDateUpdated, v))
+}
+
+// DateUpdatedLT applies the LT predicate on the "date_updated" field.
+func DateUpdatedLT(v time.Time) predicate.Archived {
+	return predicate.Archived(sql.FieldLT(FieldDateUpdated, v))
+}
+
+// DateUpdatedLTE applies the LTE predicate on the "date_updated" field.
+func DateUpdatedLTE(v time.Time) predicate.Archived {
+	return predicate.Archived(sql.FieldLTE(FieldDateUpdated, v))
 }
 
 // DateCreatedEQ applies the EQ predicate on the "date_created" field.

@@ -264,6 +264,23 @@ func (m *ArchivedMutation) OldSince(ctx context.Context) (v uint32, err error) {
 	return oldValue.Since, nil
 }
 
+// OldDateUpdated returns the old "date_updated" field's value of the Archived entity.
+// If the Archived object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ArchivedMutation) OldDateUpdated(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateUpdated is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateUpdated requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateUpdated: %w", err)
+	}
+	return oldValue.DateUpdated, nil
+}
+
 // OldDateCreated returns the old "date_created" field's value of the Archived entity.
 // If the Archived object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
@@ -315,6 +332,8 @@ func (m *ArchivedMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldState(ctx)
 	case archived.FieldSince:
 		return m.OldSince(ctx)
+	case archived.FieldDateUpdated:
+		return m.OldDateUpdated(ctx)
 	case archived.FieldDateCreated:
 		return m.OldDateCreated(ctx)
 	case archived.FieldGone:

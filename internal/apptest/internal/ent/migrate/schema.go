@@ -18,6 +18,7 @@ var (
 		{Name: "intent", Type: field.TypeString},
 		{Name: "state", Type: field.TypeString},
 		{Name: "since", Type: field.TypeUint32},
+		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "gone", Type: field.TypeUint32},
 	}

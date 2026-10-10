@@ -29,9 +29,10 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // An add is a row in `adding` before the blob is written, labelled with the
 // row's `intent`, and `present` once the store holds it. An erase is `erasing`
 // before the blob goes, and `erased` after. A crash between the two halves
-// leaves a row that says what was happening, and the next pass settles it from
-// what the store holds -- which is why nothing a verification compares needs a
-// clock to tell an act in flight from one that never happened.
+// leaves a row that says what was happening, and a pass settles it from what
+// the store holds once it is old enough not to be another pass still at it --
+// which is why nothing a verification compares needs a clock to tell an act in
+// flight from one that never happened.
 //
 // # Checkpoints
 //
@@ -66,6 +67,10 @@ message Archived {
 
   // The first checkpoint the row was in, and zero before one.
   uint32 since = 12;
+
+  // When the row last changed: how long an erase has been in flight, which
+  // is what keeps a pass from undoing one another pass is still making.
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
 
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {
     immutable: true

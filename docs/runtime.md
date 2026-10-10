@@ -356,11 +356,18 @@ Every change to the archive goes through it, by the archive every act is handed
   the row's intent, and the row `present` once the store holds it;
 - an erase is `erasing` before the blob goes, and `erased` after.
 
-A crash between the halves leaves a row that says what was in flight, and the
-next pass settles it from what the store holds: an add whose blob is there is
+A crash between the halves leaves a row that says what was in flight, and a
+pass settles it from what the store holds: an add whose blob is there is
 present, and an erase whose blob is still there is **undone**, for the pass to
 decide again. So a row in the database alone never makes a pass destroy
-anything. The first pass fills the manifest from what the archive holds.
+anything. Each waits until it is a day old (`date_updated`), since what is
+younger may be another pass still at it. The first pass fills the manifest from
+what the archive holds.
+
+Two passes that move the same rows write the same chunk, and a chunk is one
+blob: the second write finds the first's there and drops its own row, so that
+the first pass's rows — and an erase that pass may already be making — are the
+whole account of it.
 
 `Policy.Verify` compares the manifest with what the archive holds, and with
 `full` reads every blob and checks its bytes against its digest. A blob being
@@ -409,7 +416,10 @@ A pass ends with a **checkpoint**: the next number, taken under a row lock so
 that two passes never share one, and every blob the manifest has at that
 moment, written whole to the checkpoint store and signed when the deployment
 gives it something to sign with. Each manifest row says which checkpoints it
-was in, so `Verify` recomputes the latest one from the rows and compares.
+was in, so `Verify` recomputes the latest one from the rows and compares — and
+reads again when a checkpoint was taken while it read. The number comes before
+the write, so one the database numbered and the store does not keep is
+`unkept` only once it is ten minutes old.
 
 That is what covers somebody who can write both the database and the archive.
 Their worth is where they are kept: `audit.checkpoints.dir`, or

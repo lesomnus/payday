@@ -17,6 +17,7 @@ func (e *Archived) Proto() *apptest.Archived {
 	x.SetIntent(e.Intent)
 	x.SetState(e.State)
 	x.SetSince(e.Since)
+	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	x.SetGone(e.Gone)
 	return x

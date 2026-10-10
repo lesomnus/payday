@@ -63,10 +63,10 @@ const (
 //     with the row's intent, and the row [Present] once the store holds it;
 //   - an erase is [Erasing] before the blob goes, and [Erased] after.
 //
-// A crash between the halves leaves a row that says what was happening, and
-// the next pass settles it from what the store holds. That is why nothing
-// [Policy.Verify] compares needs a clock to tell an act in flight from one
-// that never happened.
+// A crash between the halves leaves a row that says what was happening, and a
+// pass settles it from what the store holds -- once it is old enough not to be
+// another pass still at it. That is why nothing [Policy.Verify] compares needs
+// a clock to tell an act in flight from one that never happened.
 type Archived struct {
 	// Key is the row, as the store gave it out.
 	Key any
@@ -91,8 +91,10 @@ type Archived struct {
 	Gone  int
 
 	// Created is when the row was added, which is how long an add has been
-	// in flight.
+	// in flight, and Updated when it last changed, which is how long an erase
+	// has.
 	Created time.Time
+	Updated time.Time
 }
 
 // Manifest is the database's half of the archive: its account of what the
@@ -127,8 +129,9 @@ type Manifest interface {
 	// At answers the rows a checkpoint was taken over, for the latest two.
 	At(ctx context.Context, k int) ([]Archived, error)
 
-	// Latest is the number of the latest checkpoint, and zero before one.
-	Latest(ctx context.Context) (int, error)
+	// Latest is the number of the latest checkpoint and when it was taken,
+	// and zero before one.
+	Latest(ctx context.Context) (int, time.Time, error)
 }
 
 // manifested is the archive with every change written into the manifest
@@ -243,9 +246,12 @@ type manifestedStore struct {
 
 func (s manifestedStore) Unwrap() flob.Store { return s.Store }
 
-// Add writes the row first, and the blob labelled with the row's intent. A
-// blob the store already held -- the same rows, written by another pass -- is
-// settled with the labels the store kept, which are the other pass's.
+// Add writes the row first, and the blob labelled with the row's intent.
+//
+// A blob the store already held -- the same rows, written by another pass at
+// the same moment -- is that pass's to account for, and the row is dropped:
+// the blob's own rows say what becomes of it, including the erase that pass
+// may be making of it right now, which a row of this one's would outlive.
 func (s manifestedStore) Add(ctx context.Context, m flob.Meta, r io.Reader) (flob.Meta, error) {
 	intent, err := newRun()
 	if err != nil {
@@ -264,15 +270,7 @@ func (s manifestedStore) Add(ctx context.Context, m flob.Meta, r io.Reader) (flo
 	}
 
 	v, err := s.Store.Add(ctx, flob.Meta{Digest: m.Digest, Labels: l}, r)
-	switch {
-	case err == nil:
-	case errors.Is(err, flob.ErrAlreadyExists):
-		if info, serr := s.Store.Stat(ctx, v.Digest); serr == nil {
-			if kept, lerr := info.Labels(ctx); lerr == nil {
-				l = kept
-			}
-		}
-	default:
+	if err != nil {
 		if derr := s.r.m.Drop(ctx, key); derr != nil {
 			log.From(ctx).WarnContext(ctx, "trail: the manifest", "err", derr)
 		}
@@ -288,7 +286,7 @@ func (s manifestedStore) Add(ctx context.Context, m flob.Meta, r io.Reader) (flo
 
 	s.r.remember(blobKey{s.ns, v.Digest}, labelsOf(l))
 
-	return v, err
+	return v, nil
 }
 
 func (s manifestedStore) Label(ctx context.Context, d flob.Digest, l flob.Labels) error {
@@ -564,9 +562,11 @@ func (x *pass) chunks(ctx context.Context, nss []string, fresh bool) ([]Chunk, [
 // An add whose blob is there, labelled with its intent, is present, and one
 // whose blob is not is dropped once it is a day old -- what is younger may be
 // another pass still writing. An erase whose blob is gone is erased, and one
-// whose blob is still there is **undone**: the act that marked it did not
-// finish, and the pass decides again, so a row in the database alone can never
-// make a pass destroy anything.
+// whose blob is still there is **undone** once it is a day old: the act that
+// marked it did not finish, and the pass decides again, so a row in the
+// database alone can never make a pass destroy anything. What is younger may be
+// another pass between marking and erasing, and undoing that one would leave
+// its row present and its blob gone.
 func (p Policy) settle(ctx context.Context, m Manifest) error {
 	rows, err := m.Rows(ctx)
 	if err != nil {
@@ -597,10 +597,10 @@ func (p Policy) settle(ctx context.Context, m Manifest) error {
 				err = errors.Join(err, m.Drop(ctx, v.Key))
 			}
 		case Erasing:
-			if _, ok := inv[blobKey{v.Namespace, flob.Digest(v.Digest)}]; ok {
-				err = errors.Join(err, m.Mark(ctx, v.Namespace, v.Digest, Erasing, Present))
-			} else {
+			if _, ok := inv[blobKey{v.Namespace, flob.Digest(v.Digest)}]; !ok {
 				err = errors.Join(err, m.Mark(ctx, v.Namespace, v.Digest, Erasing, Erased))
+			} else if time.Since(v.Updated) > Swept {
+				err = errors.Join(err, m.Mark(ctx, v.Namespace, v.Digest, Erasing, Present))
 			}
 		}
 	}
@@ -613,7 +613,7 @@ func (p Policy) settle(ctx context.Context, m Manifest) error {
 // beside them is a database restored from before them -- which an operator
 // looks at, and [Policy.Accept] is for.
 func (p Policy) fill(ctx context.Context, m Manifest, inv map[blobKey]map[string]string) error {
-	if k, err := m.Latest(ctx); err != nil {
+	if k, _, err := m.Latest(ctx); err != nil {
 		return err
 	} else if k > 0 {
 		return nil
@@ -974,7 +974,7 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) 
 	if err != nil {
 		return Checkpoint{}, err
 	}
-	latest, err := m.Latest(ctx)
+	latest, _, err := m.Latest(ctx)
 	if err != nil {
 		return Checkpoint{}, err
 	}
@@ -1114,19 +1114,48 @@ func (p Policy) ReadCheckpoints(ctx context.Context, fn func(Checkpoint) error) 
 	return nil
 }
 
+// checkpointing is how long a checkpoint may take between being numbered and
+// being kept: a signature from a device across a network, and the store's
+// write. One the database numbered and the store does not keep is a finding
+// once it is older than this, and a pass taking it before then.
+const checkpointing = 10 * time.Minute
+
 // verifyCheckpoints compares the latest checkpoint with the rows it was taken
 // over, and checks the signatures of every checkpoint the store keeps.
+//
+// Again when a checkpoint was taken while it read: the latest two are
+// recomputed from rows a checkpoint changes, and what was read of them before
+// one and after it are two checkpoints' rows.
 func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out *Verified) ([]Finding, error) {
+	for i := 0; ; i++ {
+		fs, latest, err := p.checkpointFindings(ctx, s, empty, out)
+		if err != nil {
+			return nil, err
+		}
+
+		now, _, err := s.Latest(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("the manifest: %w", err)
+		}
+		if now == latest || i == 2 {
+			return fs, nil
+		}
+	}
+}
+
+// checkpointFindings is one reading of [Policy.verifyCheckpoints], and the
+// latest checkpoint it read.
+func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out *Verified) ([]Finding, int, error) {
 	fs := []Finding{}
 
 	store := p.checkpoints()
 	ks, err := checkpointsIn(ctx, store)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	latest, err := s.Latest(ctx)
+	latest, at, err := s.Latest(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("the manifest: %w", err)
+		return nil, 0, fmt.Errorf("the manifest: %w", err)
 	}
 
 	if empty && len(ks) > 0 {
@@ -1137,7 +1166,7 @@ func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out 
 			fs = append(fs, Finding{Kind: "behind", Checkpoint: k, Note: fmt.Sprintf("the database has numbered %d checkpoints, and the store keeps one numbered %d: a database restored from before it", latest, k)})
 		}
 	}
-	if latest > 0 {
+	if latest > 0 && time.Since(at) > checkpointing {
 		if _, ok := ks[latest]; !ok {
 			fs = append(fs, Finding{Kind: "unkept", Checkpoint: latest, Note: "the database numbered it, and the checkpoint store does not keep it"})
 		}
@@ -1174,7 +1203,7 @@ func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out 
 		}
 		rows, err := s.At(ctx, k)
 		if err != nil {
-			return nil, fmt.Errorf("the manifest: %w", err)
+			return nil, 0, fmt.Errorf("the manifest: %w", err)
 		}
 		if got := checkpointOf(k, v.c.At, rows); got.Digest != v.c.Digest {
 			fs = append(fs, Finding{Kind: "rewritten", Checkpoint: k, Note: checkpointDiff(v.c, got)})
@@ -1183,7 +1212,7 @@ func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out 
 	}
 	out.Checkpoint = newest
 
-	return fs, nil
+	return fs, latest, nil
 }
 
 // signature answers whether a checkpoint is signed, and whether the signature

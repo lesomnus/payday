@@ -31,6 +31,8 @@ type Archived struct {
 	State string `json:"state,omitempty"`
 	// Since holds the value of the "since" field.
 	Since uint32 `json:"since,omitempty"`
+	// DateUpdated holds the value of the "date_updated" field.
+	DateUpdated time.Time `json:"date_updated,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
 	// Gone holds the value of the "gone" field.
@@ -49,7 +51,7 @@ func (*Archived) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case archived.FieldNamespace, archived.FieldDigest, archived.FieldIntent, archived.FieldState:
 			values[i] = new(sql.NullString)
-		case archived.FieldDateCreated:
+		case archived.FieldDateUpdated, archived.FieldDateCreated:
 			values[i] = new(sql.NullTime)
 		case archived.FieldId:
 			values[i] = new(uuid.UUID)
@@ -111,6 +113,12 @@ func (_m *Archived) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field since", values[i])
 			} else if value.Valid {
 				_m.Since = uint32(value.Int64)
+			}
+		case archived.FieldDateUpdated:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field date_updated", values[i])
+			} else if value.Valid {
+				_m.DateUpdated = value.Time
 			}
 		case archived.FieldDateCreated:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -177,6 +185,9 @@ func (_m *Archived) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("since=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Since))
+	builder.WriteString(", ")
+	builder.WriteString("date_updated=")
+	builder.WriteString(_m.DateUpdated.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("date_created=")
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))

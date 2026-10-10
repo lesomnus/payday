@@ -58,6 +58,12 @@ func (_c *ArchivedCreate) SetSince(v uint32) *ArchivedCreate {
 	return _c
 }
 
+// SetDateUpdated sets the "date_updated" field.
+func (_c *ArchivedCreate) SetDateUpdated(v time.Time) *ArchivedCreate {
+	_c.mutation.SetDateUpdated(v)
+	return _c
+}
+
 // SetDateCreated sets the "date_created" field.
 func (_c *ArchivedCreate) SetDateCreated(v time.Time) *ArchivedCreate {
 	_c.mutation.SetDateCreated(v)
@@ -133,6 +139,9 @@ func (_c *ArchivedCreate) check() error {
 	if _, ok := _c.mutation.Since(); !ok {
 		return &ValidationError{Name: "since", err: errors.New(`ent: missing required field "Archived.since"`)}
 	}
+	if _, ok := _c.mutation.DateUpdated(); !ok {
+		return &ValidationError{Name: "date_updated", err: errors.New(`ent: missing required field "Archived.date_updated"`)}
+	}
 	if _, ok := _c.mutation.Gone(); !ok {
 		return &ValidationError{Name: "gone", err: errors.New(`ent: missing required field "Archived.gone"`)}
 	}
@@ -198,6 +207,10 @@ func (_c *ArchivedCreate) createSpec() (*Archived, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Since(); ok {
 		_spec.SetField(archived.FieldSince, field.TypeUint32, value)
 		_node.Since = value
+	}
+	if value, ok := _c.mutation.DateUpdated(); ok {
+		_spec.SetField(archived.FieldDateUpdated, field.TypeTime, value)
+		_node.DateUpdated = value
 	}
 	if value, ok := _c.mutation.DateCreated(); ok {
 		_spec.SetField(archived.FieldDateCreated, field.TypeTime, value)

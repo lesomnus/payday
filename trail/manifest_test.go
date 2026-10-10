@@ -3,6 +3,7 @@ package trail
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto"
 	"crypto/ecdh"
 	"crypto/ecdsa"
@@ -616,8 +617,83 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 		cs, err = chunksIn(ctx, p.Archive, tenant.String())
 		x.NoError(err)
 		x.True(slices.ContainsFunc(cs, func(v Chunk) bool { return v.Digest == c.Digest }), "a row in the database destroyed a chunk")
+		x.Equal(Erasing, s.state(c.Namespace, c.Digest), "an erase younger than a day was undone")
+
+		// And undone once nothing can be making it any more.
+		s.mu.Lock()
+		for i := range s.archived {
+			s.archived[i].Updated = s.archived[i].Updated.Add(-2 * day)
+		}
+		s.mu.Unlock()
+		p.Pass(ctx, s)
 		x.Equal(Present, s.state(c.Namespace, c.Digest))
 	})
+
+	t.Run("an erase another pass is making", func(t *testing.T) {
+		x := require.New(t)
+		s, p, tenant := manifestedArchive(t, nil)
+		cs, err := chunksIn(ctx, p.Archive, tenant.String())
+		x.NoError(err)
+		c := cs[0]
+
+		// The other pass has marked it, and this one starts before it erases.
+		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Present, Erasing))
+		p.Pass(ctx, s)
+
+		x.NoError(unwrapStores(p.Archive).Use(c.Namespace).Erase(ctx, c.Digest))
+		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Erasing, Erased))
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.True(v.Ok(), "the erase this pass took for a crash's: %v", v.Findings)
+	})
+
+	t.Run("a write of what another pass is erasing", func(t *testing.T) {
+		x := require.New(t)
+		s, p, tenant := manifestedArchive(t, nil)
+
+		// Two passes moved the same rows, so the two chunks are one blob: the
+		// second write finds the first's, and the first destroys it before
+		// the second has said so.
+		r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(40 * day)}
+		c := Chunk{Namespace: tenant.String(), Kind: "person", Month: r.created, Rows: 1, First: r.created, Last: r.created}
+
+		first := p.manifested(s)
+		m, err := first.Use(c.Namespace).Add(ctx, flob.Meta{Labels: c.labels()}, bytes.NewReader(gz(t, r.doc())))
+		x.NoError(err)
+
+		between := Policy{Archive: hooked{p.Archive, func() {
+			x.NoError(first.Use(c.Namespace).Erase(ctx, m.Digest))
+		}}}
+		_, err = between.manifested(s).Use(c.Namespace).Add(ctx, flob.Meta{Labels: c.labels()}, bytes.NewReader(gz(t, r.doc())))
+		x.ErrorIs(err, flob.ErrAlreadyExists)
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.True(v.Ok(), "the second write outlived the blob it found: %v", v.Findings)
+		x.Equal(Erased, s.state(c.Namespace, m.Digest))
+	})
+}
+
+// hooked is an archive that runs `after` once a write has reached the store,
+// and before the writer hears back: what another pass does in between.
+type hooked struct {
+	flob.Stores
+	after func()
+}
+
+func (h hooked) Use(ns string) flob.Store { return hookedStore{h.Stores.Use(ns), h.after} }
+
+type hookedStore struct {
+	flob.Store
+	after func()
+}
+
+func (h hookedStore) Add(ctx context.Context, m flob.Meta, r io.Reader) (flob.Meta, error) {
+	v, err := h.Store.Add(ctx, m, r)
+	h.after()
+
+	return v, err
 }
 
 func adding(s *fakeStore) []Archived {
@@ -672,7 +748,17 @@ func TestACheckpointIsWhatTheArchiveHeld(t *testing.T) {
 		x.NoError(err)
 		x.NoError(p.checkpoints().Erase(ctx, ks[1]))
 
+		// Which is also what a checkpoint being written looks like, for a
+		// while: the database numbers it before the store keeps it.
 		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.True(v.Ok(), "a checkpoint in flight is a finding: %v", v.Findings)
+
+		s.mu.Lock()
+		s.counterAt = s.counterAt.Add(-time.Hour)
+		s.mu.Unlock()
+
+		v, err = p.Verify(ctx, s, false)
 		x.NoError(err)
 		x.Equal([]string{"unkept"}, kinds(v))
 	})

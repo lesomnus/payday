@@ -43,9 +43,10 @@ const (
 // An add is a row in `adding` before the blob is written, labelled with the
 // row's `intent`, and `present` once the store holds it. An erase is `erasing`
 // before the blob goes, and `erased` after. A crash between the two halves
-// leaves a row that says what was happening, and the next pass settles it from
-// what the store holds -- which is why nothing a verification compares needs a
-// clock to tell an act in flight from one that never happened.
+// leaves a row that says what was happening, and a pass settles it from what
+// the store holds once it is old enough not to be another pass still at it --
+// which is why nothing a verification compares needs a clock to tell an act in
+// flight from one that never happened.
 //
 // # Checkpoints
 //
@@ -63,6 +64,7 @@ type Archived struct {
 	xxx_hidden_Intent      string                 `protobuf:"bytes,10,opt,name=intent"`
 	xxx_hidden_State       string                 `protobuf:"bytes,11,opt,name=state"`
 	xxx_hidden_Since       uint32                 `protobuf:"varint,12,opt,name=since"`
+	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	xxx_hidden_Gone        uint32                 `protobuf:"varint,16,opt,name=gone"`
 	unknownFields          protoimpl.UnknownFields
@@ -143,6 +145,13 @@ func (x *Archived) GetSince() uint32 {
 	return 0
 }
 
+func (x *Archived) GetDateUpdated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateUpdated
+	}
+	return nil
+}
+
 func (x *Archived) GetDateCreated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateCreated
@@ -188,6 +197,10 @@ func (x *Archived) SetSince(v uint32) {
 	x.xxx_hidden_Since = v
 }
 
+func (x *Archived) SetDateUpdated(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateUpdated = v
+}
+
 func (x *Archived) SetDateCreated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateCreated = v
 }
@@ -196,11 +209,22 @@ func (x *Archived) SetGone(v uint32) {
 	x.xxx_hidden_Gone = v
 }
 
+func (x *Archived) HasDateUpdated() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateUpdated != nil
+}
+
 func (x *Archived) HasDateCreated() bool {
 	if x == nil {
 		return false
 	}
 	return x.xxx_hidden_DateCreated != nil
+}
+
+func (x *Archived) ClearDateUpdated() {
+	x.xxx_hidden_DateUpdated = nil
 }
 
 func (x *Archived) ClearDateCreated() {
@@ -225,7 +249,10 @@ type Archived_builder struct {
 	// adding | present | erasing | erased
 	State string
 	// The first checkpoint the row was in, and zero before one.
-	Since       uint32
+	Since uint32
+	// When the row last changed: how long an erase has been in flight, which
+	// is what keeps a pass from undoing one another pass is still making.
+	DateUpdated *timestamppb.Timestamp
 	DateCreated *timestamppb.Timestamp
 	// The first checkpoint the row was not in, once it was erased, and zero
 	// while it is in them.
@@ -243,6 +270,7 @@ func (b0 Archived_builder) Build() *Archived {
 	x.xxx_hidden_Intent = b.Intent
 	x.xxx_hidden_State = b.State
 	x.xxx_hidden_Since = b.Since
+	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_Gone = b.Gone
 	return m0
@@ -252,7 +280,7 @@ var File_app_payday_archived_proto protoreflect.FileDescriptor
 
 const file_app_payday_archived_proto_rawDesc = "" +
 	"\n" +
-	"\x19app/payday/archived.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xb8\x03\n" +
+	"\x19app/payday/archived.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x80\x04\n" +
 	"\bArchived\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x121\n" +
 	"\x06labels\x18\a \x03(\v2\x19.app.Archived.LabelsEntryR\x06labels\x12\x1c\n" +
@@ -261,7 +289,8 @@ const file_app_payday_archived_proto_rawDesc = "" +
 	"\x06intent\x18\n" +
 	" \x01(\tR\x06intent\x12\x14\n" +
 	"\x05state\x18\v \x01(\tR\x05state\x12\x14\n" +
-	"\x05since\x18\f \x01(\rR\x05since\x12H\n" +
+	"\x05since\x18\f \x01(\rR\x05since\x12F\n" +
+	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12\x12\n" +
 	"\x04gone\x18\x10 \x01(\rR\x04gone\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
@@ -282,12 +311,13 @@ var file_app_payday_archived_proto_goTypes = []any{
 }
 var file_app_payday_archived_proto_depIdxs = []int32{
 	1, // 0: app.Archived.labels:type_name -> app.Archived.LabelsEntry
-	2, // 1: app.Archived.date_created:type_name -> google.protobuf.Timestamp
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 1: app.Archived.date_updated:type_name -> google.protobuf.Timestamp
+	2, // 2: app.Archived.date_created:type_name -> google.protobuf.Timestamp
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_archived_proto_init() }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
@@ -117,6 +118,20 @@ func (_u *ArchivedUpdate) AddSince(v int32) *ArchivedUpdate {
 	return _u
 }
 
+// SetDateUpdated sets the "date_updated" field.
+func (_u *ArchivedUpdate) SetDateUpdated(v time.Time) *ArchivedUpdate {
+	_u.mutation.SetDateUpdated(v)
+	return _u
+}
+
+// SetNillableDateUpdated sets the "date_updated" field if the given value is not nil.
+func (_u *ArchivedUpdate) SetNillableDateUpdated(v *time.Time) *ArchivedUpdate {
+	if v != nil {
+		_u.SetDateUpdated(*v)
+	}
+	return _u
+}
+
 // SetGone sets the "gone" field.
 func (_u *ArchivedUpdate) SetGone(v uint32) *ArchivedUpdate {
 	_u.mutation.ResetGone()
@@ -208,6 +223,9 @@ func (_u *ArchivedUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedSince(); ok {
 		_spec.AddField(archived.FieldSince, field.TypeUint32, value)
+	}
+	if value, ok := _u.mutation.DateUpdated(); ok {
+		_spec.SetField(archived.FieldDateUpdated, field.TypeTime, value)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(archived.FieldDateCreated, field.TypeTime)
@@ -326,6 +344,20 @@ func (_u *ArchivedUpdateOne) SetNillableSince(v *uint32) *ArchivedUpdateOne {
 // AddSince adds value to the "since" field.
 func (_u *ArchivedUpdateOne) AddSince(v int32) *ArchivedUpdateOne {
 	_u.mutation.AddSince(v)
+	return _u
+}
+
+// SetDateUpdated sets the "date_updated" field.
+func (_u *ArchivedUpdateOne) SetDateUpdated(v time.Time) *ArchivedUpdateOne {
+	_u.mutation.SetDateUpdated(v)
+	return _u
+}
+
+// SetNillableDateUpdated sets the "date_updated" field if the given value is not nil.
+func (_u *ArchivedUpdateOne) SetNillableDateUpdated(v *time.Time) *ArchivedUpdateOne {
+	if v != nil {
+		_u.SetDateUpdated(*v)
+	}
 	return _u
 }
 
@@ -450,6 +482,9 @@ func (_u *ArchivedUpdateOne) sqlSave(ctx context.Context) (_node *Archived, err 
 	}
 	if value, ok := _u.mutation.AddedSince(); ok {
 		_spec.AddField(archived.FieldSince, field.TypeUint32, value)
+	}
+	if value, ok := _u.mutation.DateUpdated(); ok {
+		_spec.SetField(archived.FieldDateUpdated, field.TypeTime, value)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(archived.FieldDateCreated, field.TypeTime)

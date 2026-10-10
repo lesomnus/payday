@@ -81,9 +81,10 @@ type fakeStore struct {
 	rows []fakeRow
 
 	// The manifest, as the generated store keeps it on `Archived`.
-	archived []Archived
-	keys     int
-	counter  int
+	archived  []Archived
+	keys      int
+	counter   int
+	counterAt time.Time
 }
 
 var _ Store = (*fakeStore)(nil)
@@ -149,7 +150,7 @@ func (s *fakeStore) Adding(ctx context.Context, ns, intent string, labels map[st
 	defer s.mu.Unlock()
 
 	s.keys++
-	s.archived = append(s.archived, Archived{Key: s.keys, Namespace: ns, Intent: intent, Labels: maps.Clone(labels), State: Adding, Created: time.Now()})
+	s.archived = append(s.archived, Archived{Key: s.keys, Namespace: ns, Intent: intent, Labels: maps.Clone(labels), State: Adding, Created: time.Now(), Updated: time.Now()})
 
 	return s.keys, nil
 }
@@ -160,7 +161,7 @@ func (s *fakeStore) Added(ctx context.Context, key any, d string, labels map[str
 
 	for i, v := range s.archived {
 		if v.Key == key {
-			s.archived[i].Digest, s.archived[i].Labels, s.archived[i].State = d, maps.Clone(labels), Present
+			s.archived[i].Digest, s.archived[i].Labels, s.archived[i].State, s.archived[i].Updated = d, maps.Clone(labels), Present, time.Now()
 			return nil
 		}
 	}
@@ -183,7 +184,7 @@ func (s *fakeStore) Mark(ctx context.Context, ns, d, from, to string) error {
 
 	for i, v := range s.archived {
 		if v.Namespace == ns && v.Digest == d && v.State == from {
-			s.archived[i].State = to
+			s.archived[i].State, s.archived[i].Updated = to, time.Now()
 		}
 	}
 
@@ -221,6 +222,7 @@ func (s *fakeStore) Rows(ctx context.Context) ([]Archived, error) {
 func (s *fakeStore) Checkpoint(ctx context.Context) (int, []Archived, error) {
 	s.mu.Lock()
 	s.counter++
+	s.counterAt = time.Now()
 	k := s.counter
 	for i, v := range s.archived {
 		switch {
@@ -253,11 +255,11 @@ func (s *fakeStore) At(ctx context.Context, k int) ([]Archived, error) {
 	return out, nil
 }
 
-func (s *fakeStore) Latest(ctx context.Context) (int, error) {
+func (s *fakeStore) Latest(ctx context.Context) (int, time.Time, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.counter, nil
+	return s.counter, s.counterAt, nil
 }
 
 func (s *fakeStore) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pdid.Id, error) {

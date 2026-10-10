@@ -23,6 +23,7 @@ type Mutation struct {
 	state         *string
 	since         *uint32
 	addsince      *int32
+	date_updated  *time.Time
 	date_created  *time.Time
 	gone          *uint32
 	addgone       *int32
@@ -191,6 +192,25 @@ func (m *Mutation) ResetSince() {
 	m.addsince = nil
 }
 
+// SetDateUpdated sets the "date_updated" field.
+func (m *Mutation) SetDateUpdated(t time.Time) {
+	m.date_updated = &t
+}
+
+// DateUpdated returns the value of the "date_updated" field in the mutation.
+func (m *Mutation) DateUpdated() (r time.Time, exists bool) {
+	v := m.date_updated
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDateUpdated resets all changes to the "date_updated" field.
+func (m *Mutation) ResetDateUpdated() {
+	m.date_updated = nil
+}
+
 // SetDateCreated sets the "date_created" field.
 func (m *Mutation) SetDateCreated(t time.Time) {
 	m.date_created = &t
@@ -296,7 +316,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.labels != nil {
 		fields = append(fields, FieldLabels)
 	}
@@ -314,6 +334,9 @@ func (m *Mutation) Fields() []string {
 	}
 	if m.since != nil {
 		fields = append(fields, FieldSince)
+	}
+	if m.date_updated != nil {
+		fields = append(fields, FieldDateUpdated)
 	}
 	if m.date_created != nil {
 		fields = append(fields, FieldDateCreated)
@@ -341,6 +364,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.State()
 	case FieldSince:
 		return m.Since()
+	case FieldDateUpdated:
+		return m.DateUpdated()
 	case FieldDateCreated:
 		return m.DateCreated()
 	case FieldGone:
@@ -402,6 +427,13 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSince(v)
+		return nil
+	case FieldDateUpdated:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDateUpdated(v)
 		return nil
 	case FieldDateCreated:
 		v, ok := value.(time.Time)
@@ -525,6 +557,9 @@ func (m *Mutation) ResetField(name string) error {
 		return nil
 	case FieldSince:
 		m.ResetSince()
+		return nil
+	case FieldDateUpdated:
+		m.ResetDateUpdated()
 		return nil
 	case FieldDateCreated:
 		m.ResetDateCreated()
