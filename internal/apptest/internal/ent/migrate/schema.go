@@ -56,6 +56,11 @@ var (
 				Columns: []*schema.Column{AuditColumns[11], AuditColumns[7]},
 			},
 			{
+				Name:    "audit_tenant_id_domain_date_created",
+				Unique:  false,
+				Columns: []*schema.Column{AuditColumns[1], AuditColumns[11], AuditColumns[7]},
+			},
+			{
 				Name:    "audit_actor_id_date_created",
 				Unique:  false,
 				Columns: []*schema.Column{AuditColumns[2], AuditColumns[7]},

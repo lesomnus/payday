@@ -20,10 +20,12 @@ var (
 // the schema is **copied** into each app and generated there.
 //
 // What is not generated is any judgement. There is none here beyond *read a
-// batch of these kinds older than this, and forget the ones I name*: the two
-// clocks, the refusal to destroy what was never written, the archive's layout
-// and what may be purged are all in the runtime, where they can be argued with
-// once instead of per app.
+// batch of these rows older than this, say which tenants rows are filed under,
+// and forget the ones I name*: the two clocks, whose clock a row is on, the
+// refusal to destroy what was never written, the archive's layout and what may
+// be destroyed are all in the runtime, where they can be argued with once
+// instead of per app. Even the rule for which tenants a row names is the
+// runtime's -- `trail.TenantsOf` -- and this hands it the three columns.
 //
 // The document that travels between the two halves is protojson, which is the
 // archive's format anyway -- *readable by anything that can read an `Audit`*.
@@ -36,6 +38,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	v := s.Own(pdpb.Own_OWN_AUDIT)
 	e := v.GoName()
 	entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+	pred := p.Ent + "/predicate"
 
 	g.P("// TrailStore is the audit table as [trail.Store] sees it.")
 	g.P("//")
@@ -52,30 +55,103 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("var _ ", pkgTrail.Ident("Store"), " = trailStore{}")
 	g.P("")
 
-	g.P("// of narrows to the kinds a pass is about.")
+	g.P("// of narrows to the kinds a read is about, and to whose rows they are.")
 	g.P("//")
 	g.P("// By the `domain` column and not by the domain byte inside `object_id`,")
 	g.P("// which carries the same fact and cannot be indexed: *what kind was this")
 	g.P("// row about* is answered by reading a row, and *which rows were about")
 	g.P("// robots* is a query over a set. The second is what a retention policy is")
 	g.P("// made of.")
-	g.P("func (s trailStore) of(k ", pkgTrail.Ident("Kinds"), ") *", p.Ent.Ident(e+"Query"), " {")
+	g.P("//")
+	g.P("// And by the three tenant columns, which are what the wall on the trail")
+	g.P("// reads: a row is readable by every tenant it names, and so it is on each")
+	g.P("// of their windows.")
+	g.P("func (s trailStore) of(k ", pkgTrail.Ident("Scope"), ") *", p.Ent.Ident(e+"Query"), " {")
 	g.P("	q := s.db.", e, ".Query()")
 	g.P("	if len(k.Only) > 0 {")
-	g.P("		return q.Where(", entPkg.Ident("DomainIn"), "(numbers(k.Only)...))")
+	g.P("		q = q.Where(", entPkg.Ident("DomainIn"), "(numbers(k.Only)...))")
+	g.P("	} else if len(k.Except) > 0 {")
+	g.P("		q = q.Where(", entPkg.Ident("DomainNotIn"), "(numbers(k.Except)...))")
 	g.P("	}")
-	g.P("	if len(k.Except) > 0 {")
-	g.P("		return q.Where(", entPkg.Ident("DomainNotIn"), "(numbers(k.Except)...))")
+	g.P("")
+	g.P("	t := k.Tenant.Uuid()")
+	g.P("	switch k.Whose {")
+	g.P("	case ", pkgTrail.Ident("FiledUnder"), ":")
+	g.P("		q = q.Where(", entPkg.Ident("TenantIdEQ"), "(t))")
+	g.P("	case ", pkgTrail.Ident("Alone"), ":")
+	g.P("		q = q.Where(trailAlone(t))")
+	g.P("	case ", pkgTrail.Ident("Together"), ":")
+	g.P("		q = q.Where(")
+	g.P("			", entPkg.Ident("Or"), "(", entPkg.Ident("TenantIdEQ"), "(t), ",
+		entPkg.Ident("ActorTenantIdEQ"), "(t), ", entPkg.Ident("CounterpartTenantIdEQ"), "(t)),")
+	g.P("			", entPkg.Ident("Not"), "(trailAlone(t)),")
+	g.P("		)")
 	g.P("	}")
 	g.P("")
 	g.P("	return q")
 	g.P("}")
 	g.P("")
 
-	g.P("func (s trailStore) Older(ctx ", pkgCtx.Ident("Context"), ", k ", pkgTrail.Ident("Kinds"),
-		", at ", pkgTime.Ident("Time"), ", limit int) (", pkgTrail.Ident("Rows"), ", error) {")
-	g.P("	vs, err := s.of(k).")
-	g.P("		Where(", entPkg.Ident("DateCreatedLT"), "(at)).")
+	g.P("// trailAlone is a row filed under `t` that names no other tenant: the actor")
+	g.P("// is of `t` or is nobody, and so is the other party if there is one. Nobody")
+	g.P("// is the zero identifier -- the deployment, writing to itself.")
+	g.P("func trailAlone(t ", pkgUuid.Ident("UUID"), ") ", pred.Ident(e), " {")
+	g.P("	none := ", pkgUuid.Ident("Nil"), "()")
+	g.P("")
+	g.P("	return ", entPkg.Ident("And"), "(")
+	g.P("		", entPkg.Ident("TenantIdEQ"), "(t),")
+	g.P("		", entPkg.Ident("ActorTenantIdIn"), "(t, none),")
+	g.P("		", entPkg.Ident("Or"), "(", entPkg.Ident("CounterpartTenantIdIsNil"), "(), ",
+		entPkg.Ident("CounterpartTenantIdIn"), "(t, none)),")
+	g.P("	)")
+	g.P("}")
+	g.P("")
+
+	g.P("// Tenants is one seek per tenant: the next `tenant_id` after the last, which")
+	g.P("// the index on `(tenant_id, date_created)` answers without reading the rows")
+	g.P("// in between. A `DISTINCT` would read all of them.")
+	g.P("func (s trailStore) Tenants(ctx ", pkgCtx.Ident("Context"), ", after ", pkgPdid.Ident("Id"),
+		", limit int) ([]", pkgPdid.Ident("Id"), ", error) {")
+	g.P("	out := []", pkgPdid.Ident("Id"), "{}")
+	g.P("	last := after.Uuid()")
+	g.P("	for len(out) < limit {")
+	g.P("		v, err := s.db.", e, ".Query().")
+	g.P("			Where(", entPkg.Ident("TenantIdGT"), "(last)).")
+	g.P("			Order(", p.Ent.Ident("Asc"), "(", entPkg.Ident("FieldTenantId"), ")).")
+	g.P("			First(ctx)")
+	g.P("		if ", p.Ent.Ident("IsNotFound"), "(err) {")
+	g.P("			break")
+	g.P("		}")
+	g.P("		if err != nil {")
+	g.P("			return out, err")
+	g.P("		}")
+	g.P("")
+	g.P("		out = append(out, ", pkgPdid.Ident("Id"), "(v.TenantId))")
+	g.P("		last = v.TenantId")
+	g.P("	}")
+	g.P("")
+	g.P("	return out, nil")
+	g.P("}")
+	g.P("")
+
+	g.P("func (s trailStore) Older(ctx ", pkgCtx.Ident("Context"), ", k ", pkgTrail.Ident("Scope"),
+		", at ", pkgTime.Ident("Time"), ", after ", pkgTrail.Ident("Cursor"), ", limit int) (",
+		pkgTrail.Ident("Rows"), ", error) {")
+	g.P("	q := s.of(k).Where(", entPkg.Ident("DateCreatedLT"), "(at))")
+	g.P("	if after.Key != nil {")
+	g.P("		id, ok := after.Key.(", pkgUuid.Ident("UUID"), ")")
+	g.P("		if !ok {")
+	g.P("			return nil, ", pkgFmt.Ident("Errorf"), "(\"trail: %T is not a key this store gave out\", after.Key)")
+	g.P("		}")
+	g.P("")
+	g.P("		q = q.Where(", entPkg.Ident("Or"), "(")
+	g.P("			", entPkg.Ident("DateCreatedGT"), "(after.Created),")
+	g.P("			", entPkg.Ident("And"), "(", entPkg.Ident("DateCreatedEQ"), "(after.Created), ",
+		entPkg.Ident("IdGT"), "(id)),")
+	g.P("		))")
+	g.P("	}")
+	g.P("")
+	g.P("	vs, err := q.")
 	g.P("		Order(", p.Ent.Ident("Asc"), "(", entPkg.Ident("FieldDateCreated"),
 		", ", entPkg.Ident("FieldId"), ")).")
 	g.P("		Limit(limit).")
@@ -99,6 +175,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("			Key:     v.Id,")
 	g.P("			Domain:  ", pkgPdid.Ident("Domain"), "(v.Domain),")
 	g.P("			Created: v.DateCreated,")
+	g.P("			Tenants: ", pkgTrail.Ident("TenantsOf"), "(v.TenantId, v.ActorTenantId, v.CounterpartTenantId),")
 	g.P("		})")
 	g.P("	}")
 	g.P("")
@@ -106,7 +183,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("}")
 	g.P("")
 
-	g.P("func (s trailStore) Count(ctx ", pkgCtx.Ident("Context"), ", k ", pkgTrail.Ident("Kinds"),
+	g.P("func (s trailStore) Count(ctx ", pkgCtx.Ident("Context"), ", k ", pkgTrail.Ident("Scope"),
 		", at ", pkgTime.Ident("Time"), ") (int, error) {")
 	g.P("	return s.of(k).Where(", entPkg.Ident("DateCreatedLT"), "(at)).Count(ctx)")
 	g.P("}")
@@ -117,7 +194,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("// By identifier and not by the cutoff again, which is the whole of what")
 	g.P("// makes the archive trustworthy: a second query matches whatever is true")
 	g.P("// when it runs, and a row backdated by a clock that stepped is one it")
-	g.P("// removes and the file does not have.")
+	g.P("// removes and the archive does not have.")
 	g.P("func (s trailStore) Forget(ctx ", pkgCtx.Ident("Context"), ", keys []any) (int, error) {")
 	g.P("	ids := make([]", pkgUuid.Ident("UUID"), ", 0, len(keys))")
 	g.P("	for _, k := range keys {")
@@ -173,7 +250,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("//")
 	g.P("// The archive is `trail.Forget`, and a caller that keeps one has to call both:")
 	g.P("// a mechanism that stopped at the database would destroy the copy an operator")
-	g.P("// can see and leave the copy on the disk beside it.")
+	g.P("// can see and leave the copy in the archive beside it.")
 	g.P("func ForgetInTrail(ctx ", pkgCtx.Ident("Context"), ", db *", p.Ent.Ident("Client"),
 		", objects []", pkgPdid.Ident("Id"), ") (int, error) {")
 	g.P("	if len(objects) == 0 {")
@@ -196,7 +273,12 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("}")
 	g.P("")
 
-	g.P("// ReadTrail is an archive read back as the messages it holds.")
+	g.P("// TrailOf is a reader of the archive's documents as the messages they hold:")
+	g.P("// what `trail.Read`, `trail.ReadTenant` and `trail.ReadFiles` are handed.")
+	g.P("//")
+	g.P("//	err := trail.Read(ctx, archive, pd.TrailOf(func(v *app.", e, ") error {")
+	g.P("//		...")
+	g.P("//	}))")
 	g.P("//")
 	g.P("// The runtime hands over documents, because it has no `", e, "` type to")
 	g.P("// unmarshal into. This is the half that does.")
@@ -204,15 +286,15 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("// It opens no database, deliberately: what an archive is for is outliving")
 	g.P("// the deployment that wrote it, and a reader that needed the deployment")
 	g.P("// would be answering the question at the one moment nobody can.")
-	g.P("func ReadTrail(paths []string, fn func(*", root.Ident(e), ") error) error {")
-	g.P("	return ", pkgTrail.Ident("Read"), "(paths, func(doc []byte) error {")
+	g.P("func TrailOf(fn func(*", root.Ident(e), ") error) func(doc []byte) error {")
+	g.P("	return func(doc []byte) error {")
 	g.P("		v := &", root.Ident(e), "{}")
 	g.P("		if err := ", pkgProtojson.Ident("Unmarshal"), "(doc, v); err != nil {")
 	g.P("			return err")
 	g.P("		}")
 	g.P("")
 	g.P("		return fn(v)")
-	g.P("	})")
+	g.P("	}")
 	g.P("}")
 	g.P("")
 }

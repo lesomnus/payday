@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lesomnus/flob"
+
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/trail"
 )
@@ -32,6 +34,8 @@ import (
 //	audit:
 //	  profile: pipa
 //	  archive: /var/lib/roster/audit
+//	  min:
+//	    profile: pipa
 //	  by:
 //	    robot:
 //	      profile: forever
@@ -41,6 +45,14 @@ import (
 // Empty is forever, which is what a deployment that has not thought about it
 // gets, and is the only honest default: a version upgrade is not the right
 // thing to decide how long somebody's evidence lasts.
+//
+// # And per tenant, from the app
+//
+// A deployment whose tenants keep their history for different lengths of time
+// answers that in code, through `trail.Policy.Tenants`, since what a tenant
+// keeps is the app's data and not a setting. What this block says is the
+// deployment's: its own windows, which a tenant that answers nothing gets, and
+// its floors, `min:`, which nothing a tenant answers goes below.
 type AuditConfig struct {
 	// Profile fills the two clocks in from a named regime -- `pci`, `hipaa`,
 	// `sox`, `pipa`, `pipa-sensitive`, `gdpr`, `forever`. See [trail.Profiles],
@@ -60,9 +72,15 @@ type AuditConfig struct {
 	// days. Empty takes the profile's, and then forever.
 	Retain time.Duration `yaml:"retain"`
 
-	// Archive is the one directory rows are written to on their way out of the
-	// database, for every kind. Empty keeps no copy, which is refused unless
-	// `discard` says the deployment means it.
+	// Archive is the directory rows are written to on their way out of the
+	// database, for every kind and every tenant. Empty keeps no copy, which is
+	// refused unless `discard` says the deployment means it.
+	//
+	// It is a flob store on the disk, a namespace per tenant -- see the `trail`
+	// package. A directory a version before this one wrote files into is the
+	// same setting: the first pass adopts what is there. An archive anywhere
+	// else flob reaches, S3 among them, is handed in by the app as
+	// `trail.Policy.Archive`.
 	Archive string `yaml:"archive"`
 
 	// Discard is a deployment saying it means to keep nothing.
@@ -73,18 +91,47 @@ type AuditConfig struct {
 	// configuration mistake that gets discovered by an auditor.
 	Discard bool `yaml:"discard"`
 
-	// Destroy is how long an archive file is kept once it is written. Empty
-	// takes the profile's, and then forever.
+	// Destroy is how long a row exists at all, counted from when it was
+	// written: it leaves the database at `retain` and the archive at this.
+	// Empty takes the profile's, and then forever.
 	Destroy time.Duration `yaml:"destroy"`
 
 	// Every is how often the policy is applied, for every kind. Empty is
 	// [trail.Swept], a day.
 	Every time.Duration `yaml:"every"`
 
+	// Min is the deployment's own floor: the least it keeps of every kind,
+	// whatever a tenant answers. See [AuditMinConfig].
+	Min AuditMinConfig `yaml:"min"`
+
 	// By is the kinds that are not like the rest, keyed by the name the schema
 	// registered -- `holder`, `robot`, `audit`. A kind named here that this app
 	// does not have is refused rather than ignored.
 	By map[string]AuditKeepConfig `yaml:"by"`
+}
+
+// AuditMinConfig is a floor: the least a deployment keeps, whatever a tenant's
+// answer says.
+//
+// It is the deployment's obligations, as distinct from its windows. An access
+// log the deployment must keep a year is not a customer's to shorten, so a
+// tenant whose plan says ninety days is kept a year anyway, and the raise is
+// logged. The deployment's own windows are held to it as well, and one below
+// it is refused where the process comes up.
+//
+// Empty is no floor, on either clock -- the opposite of a window, whose empty
+// is forever.
+type AuditMinConfig struct {
+	// Profile fills the floor in from a named regime. Most of them are floors
+	// when read closely -- *at least a year* -- which is what this is for.
+	// `forever` is refused: it is a window and not a floor.
+	Profile string `yaml:"profile"`
+
+	// Retain is the least time a row stays in the database.
+	Retain time.Duration `yaml:"retain"`
+
+	// Destroy is the least time a row exists at all.
+	Destroy time.Duration `yaml:"destroy"`
 }
 
 // AuditKeepConfig is one kind's two clocks.
@@ -104,8 +151,11 @@ type AuditKeepConfig struct {
 	// says.
 	Discard bool `yaml:"discard"`
 
-	// Destroy is how long the archive holds this kind.
+	// Destroy is how long a row of this kind exists at all.
 	Destroy time.Duration `yaml:"destroy"`
+
+	// Min is this kind's floor, on top of `audit.min`.
+	Min AuditMinConfig `yaml:"min"`
 }
 
 // Policy is this block as the thing that applies it, resolved and checked.
@@ -126,10 +176,18 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 		return trail.Policy{}, fmt.Errorf("audit.%w", err)
 	}
 
+	least, err := floorOf(c.Min)
+	if err != nil {
+		return trail.Policy{}, fmt.Errorf("audit.min.%w", err)
+	}
+
 	p := trail.Policy{
-		Archive: c.Archive,
-		Every:   c.Every,
-		Keep:    keep,
+		Every: c.Every,
+		Keep:  keep,
+		Min:   least,
+	}
+	if c.Archive != "" {
+		p.Archive = flob.NewOsStores(c.Archive)
 	}
 
 	if len(c.By) > 0 {
@@ -141,16 +199,32 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 			return trail.Policy{}, fmt.Errorf("audit.by: %w", err)
 		}
 
-		k, err := keepOf(v.Profile, trail.Keep{
-			Retain:  v.Retain,
-			Discard: v.Discard,
-			Destroy: v.Destroy,
-		})
-		if err != nil {
-			return trail.Policy{}, fmt.Errorf("audit.by.%s.%w", name, err)
+		// A block that says nothing but a floor is a floor and no window: the
+		// kind keeps what everything else keeps, held to its own minimum.
+		if v.window() {
+			k, err := keepOf(v.Profile, trail.Keep{
+				Retain:  v.Retain,
+				Discard: v.Discard,
+				Destroy: v.Destroy,
+			})
+			if err != nil {
+				return trail.Policy{}, fmt.Errorf("audit.by.%s.%w", name, err)
+			}
+
+			p.By[d] = k
 		}
 
-		p.By[d] = k
+		f, err := floorOf(v.Min)
+		if err != nil {
+			return trail.Policy{}, fmt.Errorf("audit.by.%s.min.%w", name, err)
+		}
+		if f.On() {
+			if p.MinBy == nil {
+				p.MinBy = map[pdid.Domain]trail.Floor{}
+			}
+
+			p.MinBy[d] = f
+		}
 	}
 
 	if err := p.Valid(); err != nil {
@@ -158,6 +232,28 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 	}
 
 	return p, nil
+}
+
+// window answers whether a kind's block says anything about its own windows,
+// as opposed to only its floor.
+func (c AuditKeepConfig) window() bool {
+	return c.Profile != "" || c.Retain != 0 || c.Discard || c.Destroy != 0 || !c.Min.set()
+}
+
+func (c AuditMinConfig) set() bool { return c.Profile != "" || c.Retain != 0 || c.Destroy != 0 }
+
+func floorOf(c AuditMinConfig) (trail.Floor, error) {
+	f := trail.Floor{Retain: c.Retain, Destroy: c.Destroy}
+	if c.Profile == "" {
+		return f, nil
+	}
+
+	v, err := trail.NamedProfile(c.Profile)
+	if err != nil {
+		return trail.Floor{}, err
+	}
+
+	return v.OverFloor(f)
 }
 
 func keepOf(profile string, k trail.Keep) (trail.Keep, error) {

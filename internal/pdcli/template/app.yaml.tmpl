@@ -42,10 +42,11 @@ watch:
 # about, since it works: the sweep runs, the table stops growing, every graph
 # improves, and what it is doing is destroying the evidence.
 #
-# `retain` is how long a row stays in the database and `destroy` is how long the
-# archive holds it afterwards. Naming `retain` with nowhere for the rows to go
-# is refused where this process comes up, unless `discard: true` says the
-# deployment means to keep nothing.
+# `retain` is how long a row stays in the database and `destroy` is how long it
+# exists at all, the archive holding it in between. Naming `retain` with nowhere
+# for the rows to go is refused where this process comes up, unless
+# `discard: true` says the deployment means to keep nothing. `archive` is a
+# directory, and the store in it keeps each tenant's rows apart.
 #
 # `profile:` fills both from a named regime -- pci, hipaa, sox, pipa,
 # pipa-sensitive, gdpr, forever -- and `trail.Profiles` carries the sentence
@@ -56,9 +57,16 @@ watch:
 # are not uniform: what was done to a person eventually has to stop existing,
 # and what a machine did is an operating record with the opposite requirement.
 #
+# `min:` is the least this deployment keeps whatever a tenant's contract says,
+# and is for an app whose tenants keep their history for different lengths of
+# time. What a tenant keeps is the app's data rather than a setting, so it is
+# answered in code, as `trail.Policy.Tenants`; this is the floor under it.
+#
 # audit:
 #   profile: pipa
 #   archive: /var/lib/{{.Name}}/audit
+#   min:
+#     profile: pipa
 #   by:
 #     holder:
 #       profile: gdpr

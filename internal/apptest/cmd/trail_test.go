@@ -1,10 +1,15 @@
 package cmd_test
 
 import (
+	"context"
 	"encoding/base64"
+	"slices"
 	"testing"
 	"time"
 
+	"uuid"
+
+	"github.com/lesomnus/flob"
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 
@@ -128,14 +133,49 @@ func TestAKindTheAppDoesNotHaveIsRefused(t *testing.T) {
 		}.Policy()
 		x.ErrorContains(err, "nowhere to put")
 	})
+
+	t.Run("and a window below the deployment's own floor", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := config.AuditConfig{
+			Archive: "/tmp/nowhere",
+			Retain:  time.Hour,
+			Destroy: 24 * time.Hour,
+			Min:     config.AuditMinConfig{Profile: "pipa"},
+		}.Policy()
+		x.ErrorContains(err, "the floor is")
+
+		_, err = config.AuditConfig{
+			Archive: "/tmp/nowhere",
+			Retain:  time.Hour,
+			Min:     config.AuditMinConfig{Profile: "forever"},
+		}.Policy()
+		x.ErrorContains(err, "no floor")
+	})
+
+	t.Run("and a floor of one kind alone is a floor and no window", func(t *testing.T) {
+		x := require.New(t)
+
+		p, err := config.AuditConfig{
+			Archive: "/tmp/nowhere",
+			Retain:  time.Hour,
+			By:      map[string]config.AuditKeepConfig{"robot": {Min: config.AuditMinConfig{Retain: time.Minute}}},
+		}.Policy()
+		x.NoError(err)
+
+		robot, _ := pdid.DomainOf("robot")
+		x.Equal(p.Keep, p.For(robot), "a floor became the kind's window")
+		x.Equal(time.Minute, p.MinBy[robot].Retain)
+	})
 }
 
 // TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe.
 //
 // The second clock is per kind as well, and [trail.Purge] decides from the
-// name of a file rather than by opening it -- so a file holding two kinds with
-// two `destroy` windows would be a file that is half destroyable, and there is
-// no such thing. The split is what makes the question answerable at all.
+// labels of a chunk rather than by opening it -- so a chunk holding two kinds
+// with two `destroy` windows would be a chunk that is half destroyable, and
+// there is no such thing. The split is what makes the question answerable at
+// all.
 func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
@@ -149,46 +189,56 @@ func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 	robot, ok := pdid.DomainOf("robot")
 	x.True(ok)
 
-	dir := t.TempDir()
+	a := flob.NewOsStores(t.TempDir())
 	s := pd.TrailStore(b.Ent)
 
 	was, err := b.Ent.Audit.Query().Count(ctx)
 	x.NoError(err)
 
-	n, err := trail.Archive(ctx, s, trail.Kinds{}, time.Now().Add(time.Hour), dir)
+	n, err := trail.Archive(ctx, s, trail.Kinds{}, time.Now().Add(time.Hour), a)
 	x.NoError(err)
 	x.Equal(was, n)
 
-	files, err := trail.Files(dir)
+	cs, err := trail.Chunks(ctx, a)
 	x.NoError(err)
-	x.Greater(len(files), 1, "every kind went into one file, so the second clock has nothing to read")
+	x.Greater(len(cs), 1, "every kind went into one chunk, so the second clock has nothing to read")
 
 	// Read back as messages, which is the generated half of this: the runtime
 	// has no `Audit` type and hands over documents.
 	seen := 0
-	x.NoError(pd.ReadTrail(files, func(v *app.Audit) error {
+	x.NoError(trail.Read(ctx, a, pd.TrailOf(func(v *app.Audit) error {
 		x.NotEmpty(v.GetAction())
 		seen++
 
 		return nil
-	}))
+	})))
 	x.Equal(n, seen)
 
 	t.Run("and one kind is destroyed while another is not", func(t *testing.T) {
 		x := require.New(t)
 
 		// Long past everything, for the robot alone.
-		vs, err := trail.Purge(ctx, dir, trail.Only(robot).CutFor(time.Now().AddDate(1, 0, 0)))
+		vs, err := trail.Purge(ctx, a, trail.Only(robot).CutFor(time.Now().AddDate(1, 0, 0)))
 		x.NoError(err)
 		x.NotEmpty(vs, "the robot's archive was not destroyed")
 
-		left, err := trail.Files(dir)
+		left, err := trail.Chunks(ctx, a)
 		x.NoError(err)
 		x.NotEmpty(left, "everything was destroyed, not only the kind that was named")
 
 		for _, v := range left {
-			x.NotContains(v, ".robot.")
+			x.NotEqual("robot", v.Kind)
 		}
+
+		rs := 0
+		x.NoError(trail.Receipts(ctx, a, func(v trail.Receipt) error {
+			x.Equal("purge", v.Act)
+			x.Equal("robot", v.Kind)
+			rs++
+
+			return nil
+		}))
+		x.NotZero(rs, "the purge left no receipt")
 	})
 }
 
@@ -273,13 +323,13 @@ func TestOnePersonLeavesTheTrailWithoutTakingTheEventWithThem(t *testing.T) {
 // TestAnArchivedRowIsForgottenToo.
 //
 // A mechanism that stopped at the database would destroy the copy an operator
-// can see and leave the copy on the disk beside it. That is not a gap in a
+// can see and leave the copy in the archive beside it. That is not a gap in a
 // retention policy; it is an answer that is wrong in the direction that matters.
 //
 // It is also the one act in this package that **edits** an archive -- `Purge`
-// destroys whole files and `Archive` only appends, precisely so that nothing
-// does. Written beside itself, synced, renamed over: a crash leaves the old file
-// or the new one and never half of either.
+// destroys whole chunks and a pass only adds them, precisely so that nothing
+// does. Written again beside itself, and the old one erased only once the new
+// one is held.
 func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
@@ -292,33 +342,29 @@ func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 
 	who := must(pdid.From(v.GetId()))
 
-	dir := t.TempDir()
-	_, err = trail.Archive(ctx, pd.TrailStore(b.Ent), trail.Kinds{}, time.Now().Add(time.Hour), dir)
+	a := flob.NewMemStores()
+	_, err = trail.Archive(ctx, pd.TrailStore(b.Ent), trail.Kinds{}, time.Now().Add(time.Hour), a)
 	x.NoError(err)
-
-	files, err := trail.Files(dir)
-	x.NoError(err)
-	x.NotEmpty(files)
 
 	held := 0
-	x.NoError(pd.ReadTrail(files, func(u *app.Audit) error {
+	x.NoError(trail.Read(ctx, a, pd.TrailOf(func(u *app.Audit) error {
 		if string(u.GetObjectId()) == string(who.Bytes()) && len(u.GetValue()) > 0 {
 			held++
 		}
 
 		return nil
-	}))
+	})))
 	x.NotZero(held, "the archive holds nothing about them, so this proves nothing")
 
 	// The object as protojson writes it, which is what the runtime matches on:
 	// it has no `Audit` type and reads the document as JSON.
-	n, err := trail.Forget(dir, []string{base64.StdEncoding.EncodeToString(who.Bytes())})
+	n, err := trail.Forget(ctx, a, []string{base64.StdEncoding.EncodeToString(who.Bytes())})
 	x.NoError(err)
 	x.NotZero(n)
 
 	left := 0
 	events := 0
-	x.NoError(pd.ReadTrail(files, func(u *app.Audit) error {
+	x.NoError(trail.Read(ctx, a, pd.TrailOf(func(u *app.Audit) error {
 		if string(u.GetObjectId()) != string(who.Bytes()) {
 			return nil
 		}
@@ -330,7 +376,329 @@ func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 		x.NotEmpty(u.GetAction(), "the archived event went with the contents")
 
 		return nil
-	}))
+	})))
 	x.Zero(left, "an archived row still holds what it said about them")
 	x.NotZero(events, "the archived events went as well as their contents")
+}
+
+// trailRow writes one row of the trail through ent, the way an app records
+// what the servers cannot see -- which is the one way to have a row that names
+// two tenants without a transfer to make it.
+func trailRow(t *testing.T, ctx context.Context, db *ent.Client, tenant, actor pdid.Id, counterpart *pdid.Id, at time.Time) *ent.Audit {
+	t.Helper()
+
+	robot, _ := pdid.DomainOf("robot")
+
+	q := db.Audit.Create().
+		SetId(uuid.NewV7()).
+		SetTenantId(tenant.Uuid()).
+		SetActorTenantId(actor.Uuid()).
+		SetActorId(uuid.Nil()).
+		SetTraceId([]byte{}).
+		SetAction("/test/Write").
+		SetObjectId(pdid.New(robot).Uuid()).
+		SetDomain(uint32(robot)).
+		SetPatch([]byte{}).
+		SetValue([]byte("contents")).
+		SetDateCreated(at)
+	if counterpart != nil {
+		q = q.SetCounterpartTenantId(counterpart.Uuid())
+	}
+
+	return must(q.Save(ctx))
+}
+
+// TestTheStoreSaysWhoseARowIs.
+//
+// Through the generated store and a real database, because the three scopes
+// are predicates over the three columns the wall reads, and a predicate is
+// only as right as the SQL it becomes.
+func TestTheStoreSaysWhoseARowIs(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	other := must(pdid.From(must(b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "other"}.Build())).GetId()))
+	nobody := pdid.Nil
+	at := time.Now().Add(-time.Minute)
+
+	mine := trailRow(t, ctx, b.Ent, b.Tenant, b.Tenant, nil, at)
+	byNobody := trailRow(t, ctx, b.Ent, b.Tenant, nobody, nil, at)
+	byOther := trailRow(t, ctx, b.Ent, b.Tenant, other, nil, at)
+	toOther := trailRow(t, ctx, b.Ent, other, other, &b.Tenant, at)
+	theirs := trailRow(t, ctx, b.Ent, other, other, nil, at)
+
+	s := pd.TrailStore(b.Ent)
+	now := time.Now()
+
+	keys := func(of trail.Scope) []uuid.UUID {
+		t.Helper()
+
+		vs, err := s.Older(ctx, of, now, trail.Cursor{}, trail.Batch)
+		require.NoError(t, err)
+
+		out := []uuid.UUID{}
+		for _, v := range vs {
+			k := v.Key.(uuid.UUID)
+			for _, id := range []uuid.UUID{mine.Id, byNobody.Id, byOther.Id, toOther.Id, theirs.Id} {
+				if k == id {
+					out = append(out, k)
+				}
+			}
+		}
+		slices.SortFunc(out, uuid.UUID.Compare)
+
+		return out
+	}
+	sorted := func(vs ...uuid.UUID) []uuid.UUID {
+		slices.SortFunc(vs, uuid.UUID.Compare)
+		return vs
+	}
+
+	x.Equal(sorted(mine.Id, byNobody.Id, byOther.Id), keys(trail.Scope{Whose: trail.FiledUnder, Tenant: b.Tenant}))
+	x.Equal(sorted(mine.Id, byNobody.Id), keys(trail.Scope{Whose: trail.Alone, Tenant: b.Tenant}),
+		"a row the deployment wrote into a tenant is not that tenant's alone")
+	x.Equal(sorted(byOther.Id, toOther.Id), keys(trail.Scope{Whose: trail.Together, Tenant: b.Tenant}))
+	x.Equal(sorted(byOther.Id, toOther.Id), keys(trail.Scope{Whose: trail.Together, Tenant: other}))
+
+	n, err := s.Count(ctx, trail.Scope{Whose: trail.Alone, Tenant: other}, now)
+	x.NoError(err)
+	x.GreaterOrEqual(n, 1)
+
+	t.Run("and every row names its tenants", func(t *testing.T) {
+		x := require.New(t)
+
+		// The one it is filed under first.
+		want := map[uuid.UUID][]pdid.Id{
+			byOther.Id: {b.Tenant, other},
+			toOther.Id: {other, b.Tenant},
+		}
+
+		vs, err := s.Older(ctx, trail.Scope{Whose: trail.Together, Tenant: b.Tenant}, now, trail.Cursor{}, trail.Batch)
+		x.NoError(err)
+		x.Len(vs, 2)
+		for _, v := range vs {
+			x.Equal(want[v.Key.(uuid.UUID)], v.Tenants)
+		}
+
+		vs, err = s.Older(ctx, trail.Scope{Whose: trail.Alone, Tenant: b.Tenant}, now, trail.Cursor{}, trail.Batch)
+		x.NoError(err)
+		for _, v := range vs {
+			x.Equal([]pdid.Id{b.Tenant}, v.Tenants, "nobody was counted as a tenant")
+		}
+	})
+
+	t.Run("and the tenants rows are filed under, one seek each", func(t *testing.T) {
+		x := require.New(t)
+
+		vs, err := s.Tenants(ctx, pdid.Nil, trail.Batch)
+		x.NoError(err)
+		x.Contains(vs, b.Tenant)
+		x.Contains(vs, other)
+		x.True(slices.IsSortedFunc(vs, func(a, b pdid.Id) int { return uuid.UUID(a).Compare(uuid.UUID(b)) }))
+
+		first, err := s.Tenants(ctx, pdid.Nil, 1)
+		x.NoError(err)
+		x.Len(first, 1)
+
+		rest, err := s.Tenants(ctx, first[0], trail.Batch)
+		x.NoError(err)
+		x.Equal(vs[1:], rest)
+	})
+}
+
+// TestRowsWrittenAtOneInstantAreReadOnceEach.
+//
+// A pass leaves some rows where they are and carries on past them, by the
+// instant and then the identifier. Two rows written in the same instant are the
+// case that tells whether the second half of that works on the database at
+// hand -- an equality on a timestamp is exactly where a driver's idea of one
+// shows.
+func TestRowsWrittenAtOneInstantAreReadOnceEach(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	at := time.Now().Add(-time.Minute).Truncate(time.Millisecond)
+	want := []uuid.UUID{}
+	for range 5 {
+		want = append(want, trailRow(t, ctx, b.Ent, b.Tenant, b.Tenant, nil, at).Id)
+	}
+	slices.SortFunc(want, uuid.UUID.Compare)
+
+	s := pd.TrailStore(b.Ent)
+	of := trail.Scope{Kinds: trail.Only(must(trail.DomainOf("robot"))), Whose: trail.FiledUnder, Tenant: b.Tenant}
+
+	got := []uuid.UUID{}
+	c := trail.Cursor{}
+	for range 20 {
+		vs, err := s.Older(ctx, of, time.Now(), c, 1)
+		x.NoError(err)
+		if len(vs) == 0 {
+			break
+		}
+
+		c = trail.Cursor{Created: vs[0].Created, Key: vs[0].Key}
+		if k := vs[0].Key.(uuid.UUID); slices.Contains(want, k) {
+			got = append(got, k)
+		}
+	}
+
+	x.Equal(want, got, "a row was read twice, or not at all")
+}
+
+// TestEachTenantKeepsItsTrailForItsOwnWindow.
+//
+// The deployment says ninety days for everybody and one tenant's contract says
+// otherwise. Through the generated store, the app's own callback, and an
+// archive on the disk: the tenant on the short window loses its rows from the
+// database and then from the archive, and the other tenant keeps both.
+func TestEachTenantKeepsItsTrailForItsOwnWindow(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	other := must(pdid.From(must(b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "other"}.Build())).GetId()))
+	for _, id := range []pdid.Id{b.Tenant, other} {
+		_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: id.Bytes()}.Build(),
+			Alias:  "a-machine",
+		}.Build())
+		x.NoError(err)
+	}
+
+	p, err := config.AuditConfig{
+		Archive: t.TempDir(),
+		Retain:  90 * 24 * time.Hour,
+	}.Policy()
+	x.NoError(err)
+
+	// Gone from the database at once and from the archive straight after,
+	// which is a contract nobody signs and the shortest way to see both clocks
+	// run in one pass.
+	short := trail.Keep{Retain: time.Nanosecond, Destroy: 2 * time.Nanosecond}
+	asked := []pdid.Id{}
+	p.Tenants = func(ctx context.Context, id pdid.Id) (trail.Tenant, error) {
+		asked = append(asked, id)
+		if id == other {
+			return trail.Tenant{Keep: &short}, nil
+		}
+
+		return trail.Tenant{}, nil
+	}
+	x.NoError(p.Valid())
+
+	count := func(id pdid.Id) int {
+		n, err := b.Ent.Audit.Query().Where(entaudit.TenantIdEQ(id.Uuid())).Count(ctx)
+		require.NoError(t, err)
+
+		return n
+	}
+
+	mine, theirs := count(b.Tenant), count(other)
+	x.NotZero(mine)
+	x.NotZero(theirs)
+
+	p.Pass(ctx, pd.TrailStore(b.Ent))
+
+	x.Equal(mine, count(b.Tenant), "the tenant on the deployment's window lost rows")
+	x.Zero(count(other), "the tenant on its own window kept its rows")
+	x.Contains(asked, other)
+	x.Contains(asked, b.Tenant)
+
+	held := map[string]int{}
+	cs, err := trail.Chunks(ctx, p.Archive)
+	x.NoError(err)
+	for _, c := range cs {
+		held[c.Namespace] += c.Rows
+	}
+	x.Zero(held[other.String()], "the short window's archive outlived it")
+
+	destroyed := 0
+	x.NoError(trail.Receipts(ctx, p.Archive, func(v trail.Receipt) error {
+		if v.Act == "destroy" && v.Tenant == other.String() {
+			destroyed += v.Rows
+		}
+
+		return nil
+	}))
+	x.Equal(theirs, destroyed, "what was destroyed is not what the receipts say")
+
+	t.Run("and a preview of the same answer for the other says what it would take", func(t *testing.T) {
+		x := require.New(t)
+
+		got, err := p.Preview(ctx, pd.TrailStore(b.Ent), b.Tenant, trail.Tenant{Keep: &short})
+		x.NoError(err)
+
+		n := 0
+		for _, v := range got {
+			x.Zero(v.Archived, "a row on a window of nanoseconds would be kept")
+			n += v.Discarded
+		}
+		x.Equal(count(b.Tenant), n)
+	})
+}
+
+// TestARowTwoTenantsMayReadLastsAsLongAsTheLongerKeepsIt.
+func TestARowTwoTenantsMayReadLastsAsLongAsTheLongerKeepsIt(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	other := must(pdid.From(must(b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "other"}.Build())).GetId()))
+
+	// Filed under this tenant, written by an operator of the other.
+	both := trailRow(t, ctx, b.Ent, b.Tenant, other, nil, time.Now().Add(-time.Minute))
+
+	gone := trail.Keep{Retain: time.Nanosecond, Discard: true}
+	kept := trail.Keep{Retain: time.Hour}
+	answers := map[pdid.Id]trail.Keep{b.Tenant: gone, other: kept}
+
+	p := trail.Policy{
+		Archive: flob.NewMemStores(),
+		Tenants: func(ctx context.Context, id pdid.Id) (trail.Tenant, error) {
+			k := answers[id]
+			return trail.Tenant{Keep: &k}, nil
+		},
+	}
+	x.NoError(p.Valid())
+
+	s := pd.TrailStore(b.Ent)
+	exists := func() bool {
+		n, err := b.Ent.Audit.Query().Where(entaudit.IdEQ(both.Id)).Count(ctx)
+		require.NoError(t, err)
+
+		return n > 0
+	}
+
+	p.Pass(ctx, s)
+	x.True(exists(), "a row the other tenant keeps for an hour was discarded on this one's window")
+
+	answers[other] = trail.Keep{Retain: time.Nanosecond}
+	p.Pass(ctx, s)
+	x.False(exists())
+
+	cs, err := trail.Chunks(ctx, p.Archive)
+	x.NoError(err)
+
+	shared := []trail.Chunk{}
+	for _, c := range cs {
+		if c.Namespace == trail.SharedNamespace {
+			shared = append(shared, c)
+		}
+	}
+	x.Len(shared, 1, "a row two tenants may read was kept as one of theirs")
+	x.ElementsMatch([]pdid.Id{b.Tenant, other}, shared[0].Tenants)
+
+	t.Run("and both of them read it back", func(t *testing.T) {
+		x := require.New(t)
+
+		for _, id := range []pdid.Id{b.Tenant, other} {
+			found := false
+			x.NoError(trail.ReadTenant(ctx, p.Archive, id, pd.TrailOf(func(v *app.Audit) error {
+				if string(v.GetId()) == string(both.Id[:]) {
+					found = true
+				}
+
+				return nil
+			})))
+			x.True(found, "a tenant the row names cannot read it back")
+		}
+	})
 }

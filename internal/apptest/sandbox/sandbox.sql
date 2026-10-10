@@ -26,6 +26,7 @@ CREATE INDEX `audit_counterpart_tenant_id_date_created` ON `audit` (`counterpart
 CREATE INDEX `audit_domain_date_created` ON `audit` (`domain`, `date_created`);
 CREATE INDEX `audit_object_id` ON `audit` (`object_id`);
 CREATE INDEX `audit_tenant_id_date_created` ON `audit` (`tenant_id`, `date_created`);
+CREATE INDEX `audit_tenant_id_domain_date_created` ON `audit` (`tenant_id`, `domain`, `date_created`);
 CREATE UNIQUE INDEX `fleet_alias` ON `fleet` (`alias`) WHERE date_erased IS NULL;
 CREATE UNIQUE INDEX `holder_alias_tenant_id` ON `holder` (`alias`, `tenant_id`) WHERE date_erased IS NULL;
 CREATE INDEX `outbox_id` ON `outbox` (`id`);
