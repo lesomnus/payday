@@ -57,7 +57,8 @@ import (
 // can be destroyed is that it is destroyed, and the archive's backups are
 // kept for as long as the archive is. The key store's backups are what decide
 // how long after a tenant leaves its contents can still be read, so they are
-// to be short.
+// to be short -- and it is not a store that keeps what is erased, such as a
+// versioned or Object-Locked bucket, or a purge destroys nothing.
 //
 // Whoever can write the key store can put a key there that rows will be sealed
 // to, as whoever can write the archive can put rows there: it is trusted as the

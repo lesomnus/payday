@@ -255,6 +255,8 @@ rather than handing over a row with its contents missing.
 that stops part way has already made what was the tenant's alone unreadable,
 and asking again finishes the rows. Back the key store up on a **short**
 schedule and keep few copies: how long a departed tenant's rows can still be
-read from a backup is how long the key store's backups are kept. See [the
+read from a backup is how long the key store's backups are kept. And never on
+a store that keeps what is erased -- a versioned or Object-Locked bucket keeps
+every key it was ever given, and a purge then destroys nothing. See [the
 runtime](../runtime.md#sealed-contents).
 
