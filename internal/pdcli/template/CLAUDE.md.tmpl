@@ -119,7 +119,10 @@ It believes what the caller writes. It is right for tests and a sandbox, and
 `serve.go` wires it because the alternative is an app that cannot be run until
 there is a certificate authority. For a browser there is `auth/authsession`,
 which serves the sign-in endpoint and mints the cookie; what it takes from this
-app is a `Verify`, since only this app knows what checking a secret means.
+app is a `Verify`, since only this app knows what checking a secret means. The
+page's half is `ts/src/session.tsx`, which `index.html` points at instead of
+`main.tsx` once the server serves `GET`, `POST` and `DELETE /session`: it holds
+no credential, and names its store by what `GET /session` answers.
 
 ## Reference
 

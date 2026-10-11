@@ -2,6 +2,7 @@ package authsession_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -459,18 +460,126 @@ func TestTheGrantSurvivesTheRoundTrip(t *testing.T) {
 	x.Equal(frame.Whole(), id.Grant)
 }
 
-// TestOnlyPostAndDelete.
-func TestOnlyPostAndDelete(t *testing.T) {
+// TestOnlyGetPostAndDelete.
+func TestOnlyGetPostAndDelete(t *testing.T) {
 	x := require.New(t)
 
 	s := authsession.New(authsession.NewMemStore())
 
 	w := httptest.NewRecorder()
 	s.Serve(who("019-abc", "019-acme")).
-		ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/session", nil))
+		ServeHTTP(w, httptest.NewRequest(http.MethodPut, "/session", nil))
 
 	x.Equal(http.StatusMethodNotAllowed, w.Code)
-	x.Equal("POST, DELETE", w.Header().Get("Allow"))
+	x.Equal("GET, POST, DELETE", w.Header().Get("Allow"))
+}
+
+// which asks the endpoint which session a browser holds, the way a page does on
+// load.
+func which(t *testing.T, s *authsession.Sessions, cs ...*http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+
+	r := httptest.NewRequest(http.MethodGet, "/session", nil)
+	for _, c := range cs {
+		r.AddCookie(c)
+	}
+
+	w := httptest.NewRecorder()
+	s.Serve(nil).ServeHTTP(w, r)
+
+	return w
+}
+
+func decoded(t *testing.T, w *httptest.ResponseRecorder) authsession.Which {
+	t.Helper()
+
+	var v authsession.Which
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&v))
+
+	return v
+}
+
+// TestAPageIsToldWhichSessionItHolds.
+//
+// A page signed in by cookie cannot read its credential and names its store by
+// it all the same, so the server tells it the name -- and who the session
+// names, which is what the page asks its first question with. Never the key:
+// that is what HttpOnly keeps from script, and an answer carrying it would
+// undo the cookie.
+func TestAPageIsToldWhichSessionItHolds(t *testing.T) {
+	x := require.New(t)
+
+	s := authsession.New(authsession.NewMemStore())
+	c := signIn(t, s, who("019-abc", "019-acme"))
+
+	w := which(t, s, c)
+	x.Equal(http.StatusOK, w.Code)
+	x.Equal("no-store", w.Header().Get("Cache-Control"), "an answer about one browser, kept by a cache for the next")
+	x.NotContains(w.Body.String(), c.Value)
+
+	v := decoded(t, w)
+	x.Equal(authsession.IdentityOf(c.Value), v.Identity)
+	x.Equal("019-abc", v.Id)
+	x.Equal("019-acme", v.TenantId)
+}
+
+// TestEverySignInIsAStoreOfItsOwn, which is what naming the store by the
+// credential is for: the same person signed in twice is two names, as two
+// credentials are, so a narrowed session never draws what a wide one left on
+// disk.
+func TestEverySignInIsAStoreOfItsOwn(t *testing.T) {
+	x := require.New(t)
+
+	s := authsession.New(authsession.NewMemStore())
+	a := decoded(t, which(t, s, signIn(t, s, who("019-abc", "019-acme"))))
+	b := decoded(t, which(t, s, signIn(t, s, who("019-abc", "019-acme"))))
+
+	x.Equal(a.Id, b.Id)
+	x.NotEqual(a.Identity, b.Identity)
+}
+
+// TestABrowserHoldingNoSessionIsToldSo, and one holding a session the server
+// has forgotten is told to drop the cookie as well, as every call it makes is.
+func TestABrowserHoldingNoSessionIsToldSo(t *testing.T) {
+	x := require.New(t)
+
+	store := authsession.NewMemStore()
+	s := authsession.New(store)
+
+	w := which(t, s)
+	x.Equal(http.StatusUnauthorized, w.Code)
+	x.Empty(w.Result().Cookies(), "nothing to clear")
+
+	c := signIn(t, s, who("019-abc", "019-acme"))
+	x.NoError(store.Del(context.Background(), c.Value))
+
+	w = which(t, s, c)
+	x.Equal(http.StatusUnauthorized, w.Code)
+	cleared := w.Result().Cookies()
+	x.Len(cleared, 1)
+	x.Equal(authsession.DefaultCookie, cleared[0].Name)
+	x.Less(cleared[0].MaxAge, 0)
+}
+
+// TestAStoreThatCannotBeReachedCannotSay, and does not sign anybody out for it:
+// the session may well still be there.
+func TestAStoreThatCannotBeReachedCannotSay(t *testing.T) {
+	x := require.New(t)
+
+	s := authsession.New(brokenStore{})
+
+	w := which(t, s, &http.Cookie{Name: authsession.DefaultCookie, Value: "whatever"})
+	x.Equal(http.StatusServiceUnavailable, w.Code)
+	x.Empty(w.Result().Cookies())
+	x.NotContains(w.Body.String(), "down")
+}
+
+// TestIdentityOfIsTheNameThePageWouldHaveMade: sixteen hex characters of the
+// key's SHA-256, which is `identityOf` in `@lesomnus/payday/store` -- the same
+// vector is in `ts/src/store/identity.test.ts`, so the two cannot drift apart
+// unnoticed.
+func TestIdentityOfIsTheNameThePageWouldHaveMade(t *testing.T) {
+	require.Equal(t, "ba7816bf8f01cfea", authsession.IdentityOf("abc"))
 }
 
 // TestANamedCookieIsUsedByBothHalves.

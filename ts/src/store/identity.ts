@@ -41,6 +41,23 @@ import { digest } from './digest.js'
  * answers is "is this the same credential as last time", and a token that was
  * rotated is a different one -- so a rotation starts an empty store, which
  * costs a refill of something the server has anyway.
+ *
+ * # A page signed in by cookie
+ *
+ * It cannot call this, because it cannot read its credential: a session cookie
+ * is HttpOnly, and that is the whole point of one. Keying the store on the person
+ * instead -- asking who they are and using the answer -- is the case above that
+ * goes wrong, made worse by a mirror on disk that keeps the wide session's rows
+ * for the narrowed one to draw after a reload.
+ *
+ * So the server says the name. `GET /session`, which `auth/authsession` serves
+ * beside the sign-in, answers `{ identity, id, tenantId }`, and `identity` is
+ * this same digest of the session's key, worked out where the key can be read
+ * (`authsession.IdentityOf`). A page passes it where this answer would have
+ * gone, and every sign-in is a store of its own as every credential is. The
+ * other two are who the session names, which is what the page's first question
+ * about the person is asked with. `pd new` writes both pages: `main.tsx`, which
+ * holds a credential, and `session.tsx`, which holds a cookie.
  */
 export async function identityOf(credential: string): Promise<string> {
 	return digest(credential)

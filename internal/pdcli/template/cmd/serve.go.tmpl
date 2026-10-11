@@ -320,7 +320,13 @@ func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(
 	// this app is a `Verify`, because the people are in this app's schema and
 	// what checking their secret means is this app's to say.
 	//
-	//	h.Handle("POST /session", sessions.Serve(login))
+	//	h.Handle("GET /session", sessions.Serve(login))     // which session the browser holds
+	//	h.Handle("POST /session", sessions.Serve(login))    // sign in
+	//	h.Handle("DELETE /session", sessions.Serve(login))  // sign out
+	//
+	// with `s.Auth = sessions.Handler()` before [Server.Grpc]. `ts/src/session.tsx`
+	// is the page's half: it holds no credential, so it asks the GET which
+	// session it holds and names its store by the answer.
 	//
 	// A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide
 	// with one -- and `ServeMux` panics rather than shadowing if one somehow

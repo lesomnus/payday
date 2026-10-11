@@ -119,7 +119,9 @@ A few things it is worth knowing before reaching for it:
 - **A store is opened for a credential, not for a person.** What a caller may
   see is the actor *and* the scope, so a narrowed credential is a different
   store. `identityOf` is a digest, so the token itself never reaches a database
-  name.
+  name. A page signed in by a session cookie cannot read its credential, and is
+  told the same digest instead: `GET /session`, which payday's `auth/authsession`
+  serves, answers it as `identity`.
 - **It is in memory, and that is not a shortcut.** Reading has to answer *now* —
   `useSyncExternalStore` takes a function, not a promise. `store/idb` is a
   mirror behind that: memory is the truth and the disk is a copy, so a reload

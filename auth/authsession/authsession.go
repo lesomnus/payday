@@ -24,7 +24,9 @@
 // opaque, means nothing anywhere else, and is a row in a store this server owns
 // -- closer to a row number than to a claim. Revoking it is a delete.
 //
-// It is also why there are no claims here and nothing a client can read. With
+// It is also why there are no claims here and nothing in the cookie a client can
+// read. What a page is told of its session it asks for ([Which]): a name for it
+// and two identifiers, none of which is anything to present elsewhere. With
 // a [Store], everything about a session is on the server, which is what makes
 // "sign this person out everywhere, now" a thing that works. With [Sealed]
 // the session rides in the cookie under a key only this server holds -- still
@@ -40,6 +42,7 @@
 // an absolute expiry, and the read path that turns a cookie back into an
 // [auth.Identity] -- and takes a [Verify] for the part it cannot know.
 //
+//	mux.Handle("GET /session", sessions.Serve(login))
 //	mux.Handle("POST /session", sessions.Serve(login))
 //	mux.Handle("DELETE /session", sessions.Serve(login))
 //
@@ -73,7 +76,10 @@ package authsession
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -575,30 +581,80 @@ func (s *Sessions) used(ctx context.Context, v Session, now time.Time) Session {
 
 // Serve is the endpoint a sign-in form posts to.
 //
+//	GET     says which session this browser holds, as a [Which]
 //	POST    mints a session and sets the cookie
 //	DELETE  ends it and clears the cookie
 //
-// Both on one handler because they are one resource, and a mux routes by method:
+// All on one handler because they are one resource, and a mux routes by method:
 //
+//	mux.Handle("GET /session", sessions.Serve(login))
 //	mux.Handle("POST /session", sessions.Serve(login))
 //	mux.Handle("DELETE /session", sessions.Serve(login))
 //
-// It answers 204 and no body. What a page needs to know is in the cookie, and
-// what it needs *about the person* is a request it should make -- an answer
-// composed here would be a second place that has to change when the app's idea
-// of a person does.
+// A sign-in and a sign-out answer 204 and no body. What a page needs about the
+// person is a request it should make -- an answer composed here would be a
+// second place that has to change when the app's idea of a person does. A GET
+// answers what the session **is** and nothing about them; [Which] says why a
+// page cannot do without that much.
 func (s *Sessions) Serve(verify Verify) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
+		case http.MethodGet:
+			s.which(w, r)
 		case http.MethodPost:
 			s.mint(w, r, verify)
 		case http.MethodDelete:
 			s.end(w, r)
 		default:
-			w.Header().Set("Allow", "POST, DELETE")
+			w.Header().Set("Allow", "GET, POST, DELETE")
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
+}
+
+// Which is what [Sessions.Serve] answers a GET with: the session this browser
+// holds, said without saying its key.
+//
+// # Why a page needs this much
+//
+// A page keeps a store of what its caller may see, and the store is named by
+// the **credential** and not by the person -- the same holder with a narrowed
+// credential sees less, so keyed on the person the narrowed session would draw
+// the wide one's rows, and with a mirror on disk it would go on drawing them
+// after a reload. `identityOf` in `@lesomnus/payday/store` is that argument at
+// length. A page signed in by cookie cannot read its credential, which is what
+// HttpOnly is for, so it has nothing to name its store by unless it is told;
+// [Which.Identity] is the name.
+//
+// And it has to ask somebody something to draw anything: who it is signed in
+// as, at the least. [Which.Id] and [Which.TenantId] are who the session names,
+// as identifiers, which is what that request is made with. Nothing about the
+// person comes back here, for the reason the sign-in answers nothing.
+//
+// A browser holding none is 401, and one holding a session this server no
+// longer has is 401 with the cookie cleared, as [Sessions.Handler] clears it.
+type Which struct {
+	// Identity is [IdentityOf] the session's key: a different name for every
+	// sign-in, never the key, and the name `identityOf` would have given the
+	// key had the page been able to read it.
+	Identity string `json:"identity"`
+
+	// Id and TenantId are [Session.Id] and [Session.TenantId].
+	Id       string `json:"id"`
+	TenantId string `json:"tenantId"`
+}
+
+// IdentityOf is a session's key as a store name: sixteen hex characters of its
+// SHA-256, which is what `identityOf` makes of a credential in the page.
+//
+// One-way, because the name is not a secret and the key is: it ends up in
+// IndexedDB, in a devtools pane, in a screenshot. Sixty-four bits names one
+// session among however many a browser profile will ever hold, and defends
+// nothing -- the key itself is what the cookie keeps from script.
+func IdentityOf(key string) string {
+	sum := sha256.Sum256([]byte(key))
+
+	return hex.EncodeToString(sum[:8])
 }
 
 // ErrNobody is a session that names no actor.
@@ -747,6 +803,37 @@ func (s *Sessions) mint(w http.ResponseWriter, r *http.Request, verify Verify) {
 
 	http.SetCookie(w, c)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Sessions) which(w http.ResponseWriter, r *http.Request) {
+	// An answer about one browser's session, which nothing between here and
+	// there should keep and hand to the next request.
+	w.Header().Set("Cache-Control", "no-store")
+
+	c, err := r.Cookie(s.cookie)
+	if err != nil || c.Value == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+		return
+	}
+
+	// Read and not Get: asking which session this is, is using it.
+	v, err := s.Read(r.Context(), c.Value)
+	if err != nil {
+		if errors.Is(err, ErrNoSession) {
+			http.SetCookie(w, s.cleared())
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		http.Error(w, "cannot tell just now", http.StatusServiceUnavailable)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(Which{Identity: IdentityOf(c.Value), Id: v.Id, TenantId: v.TenantId})
 }
 
 func (s *Sessions) end(w http.ResponseWriter, r *http.Request) {
