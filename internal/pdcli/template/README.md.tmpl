@@ -231,7 +231,9 @@ Whatever else this app serves over HTTP goes on the same mux, in `serve.go`:
 
 ```go
 h, err := web.New(c.Server.Http, g)
+h.Handle("GET /session", sessions.Serve(login))
 h.Handle("POST /session", sessions.Serve(login))
+h.Handle("DELETE /session", sessions.Serve(login))
 ```
 
 That is where signing a browser in lands, and the page needs it: `auth.Plain`
@@ -242,6 +244,14 @@ attributes, the expiry and the store — and what it asks of this app is a
 `Verify`, since the people are in this app's schema and their secrets are
 wherever this app keeps them. The cross-origin answer is over the whole mux, so
 a route added here is reachable from the same page the RPCs are.
+
+The page has two starts for the two ways of being signed in. `ts/src/main.tsx`
+holds its credential, which is what `auth.Plain` needs; `ts/src/session.tsx`
+holds a cookie it cannot read, so it asks `GET /session` which session it holds
+and names its local store by the answer — a digest of the session's key, which
+keeps a narrowed sign-in and a whole one apart as two credentials would be.
+`index.html` points at the first; point it at the second once the server serves
+sessions.
 
 `go tool pd gen --ts .` writes the messages and service descriptors into
 `ts/gen`, along with `entities.ts` — one declaration per entity, which is what

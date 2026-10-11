@@ -20,7 +20,7 @@ import type { Transport } from '@connectrpc/connect'
 
 import { Queries } from '@lesomnus/payday/query'
 import type { App } from '@lesomnus/payday/react'
-import { Store, identityOf } from '@lesomnus/payday/store'
+import { Store } from '@lesomnus/payday/store'
 import { openDisk } from '@lesomnus/payday/store/idb'
 
 import { entities } from '../gen/entities.js'
@@ -28,11 +28,16 @@ import { entities } from '../gen/entities.js'
 /**
  * open answers with this app's store and queries, for one caller.
  *
- * The identity is a digest of the **credential** rather than a name for the
+ * `identity` is a digest of the **credential** rather than a name for the
  * person -- see `identityOf`. What a caller may see is the actor and the scope
  * together, so the same person holding a narrowed credential is a different
  * store; keyed on the person, the narrowed session would draw the wide
  * session's rows. Nothing leaks either way, and the screen is wrong.
+ *
+ * It is taken already made, because the two pages `pd new` writes come by it
+ * differently and must not disagree about what it is: `main.tsx` holds its
+ * credential and digests it, and `session.tsx`, signed in by a cookie it cannot
+ * read, is told the same digest by the server (`GET /session`).
  *
  * The mirror is what makes a reload draw the page it had rather than a spinner
  * for it. Delete these two lines and everything still works -- the store is a
@@ -42,8 +47,8 @@ import { entities } from '../gen/entities.js'
  * `Infinity` turns it off. What it bounds is both how large a mirror gets and
  * how old the answer a reload draws may be.
  */
-export async function open(transport: Transport, credential: string): Promise<App> {
-	const at = { name: '{{.Name}}', identity: await identityOf(credential) }
+export async function open(transport: Transport, identity: string): Promise<App> {
+	const at = { name: '{{.Name}}', identity }
 
 	const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) })
 	await store.hydrate()

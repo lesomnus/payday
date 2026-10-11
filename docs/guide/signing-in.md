@@ -18,6 +18,7 @@ chain := grpcx.Serving(ctx).
 	WithStream(auth.InterceptorStream(sessions.Handler(), Resolver(s.Ungated), public))
 
 // ... and on the HTTP listener, which is the mux `web.New` answered:
+h.Handle("GET /session", sessions.Serve(login))
 h.Handle("POST /session", sessions.Serve(login))
 h.Handle("DELETE /session", sessions.Serve(login))
 ```
@@ -336,9 +337,49 @@ going, and clears nothing: the session may well still be there.
 
 ## What the endpoint answers
 
-204 and no body. What a page needs about the person is a request it should make,
-against the same server, behind the same wall. An answer composed at sign-in is
-a second place that has to change when the app's idea of a person does.
+To a sign-in and a sign-out, 204 and no body. What a page needs about the person
+is a request it should make, against the same server, behind the same wall. An
+answer composed at sign-in is a second place that has to change when the app's
+idea of a person does.
+
+To a `GET`, which session the browser holds, and nothing about the person:
+
+```json
+{ "identity": "3fa6c1d9e0b24a17", "id": "<the actor>", "tenantId": "<who holds them>" }
+```
+
+401 when it holds none, with the cookie cleared when it holds one this server
+has forgotten; 503 when the store cannot be asked. Why a page needs even this
+much is the next section.
+
+## A page signed in by cookie
+
+A page keeps a store of what its caller may see, and names it by the
+**credential** rather than by the person — the same holder with a narrowed
+credential sees less, and keyed on the person the narrowed session would draw
+the wide one's rows, from a mirror on disk after a reload. `identityOf` in
+`@lesomnus/payday/store` is that argument at length.
+
+A page signed in by cookie cannot read its credential. So the server says the
+name: `identity` above is `authsession.IdentityOf(key)`, sixteen hex characters
+of the key's SHA-256 — the digest `identityOf` would have made of the key, and
+never the key. Every sign-in is a different name, so every sign-in is a store of
+its own.
+
+`id` and `tenantId` are what the page asks its first question with, since the
+sign-in answered nothing about the person:
+
+```ts
+const which = await (await fetch(`${addr}/session`, { credentials: 'include' })).json()
+const me = await holders.get({ ref: { key: { case: 'id', value: parse(which.id).bytes } } })
+const app = await open(transport, which.identity)
+```
+
+`pd new` writes this page as `ts/src/session.tsx`, beside `main.tsx`, which
+holds a credential for `auth.Plain`; `index.html` points at the second until the
+server serves sessions. Its transport carries no `authorization` header and
+sends the cookie on every request (`credentials: "include"`), which a page on
+another origin has to ask for.
 
 ## Mixing with other credentials
 

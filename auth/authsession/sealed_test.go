@@ -189,6 +189,23 @@ func TestNewSealedRefusesAKeyOfTheWrongSize(t *testing.T) {
 	x.Error(err, "a bad key behind a good one was let through")
 }
 
+// TestASealedSessionSaysWhichItIsToo: the key is the session itself here, and
+// what a page is told is still a name for it and not it.
+func TestASealedSessionSaysWhichItIsToo(t *testing.T) {
+	x := require.New(t)
+
+	s := authsession.New(sealedWith(t, aKey(t)))
+	c := signIn(t, s, who("019-abc", "019-acme"))
+
+	w := which(t, s, c)
+	x.Equal(http.StatusOK, w.Code)
+	x.NotContains(w.Body.String(), c.Value)
+
+	v := decoded(t, w)
+	x.Equal(authsession.IdentityOf(c.Value), v.Identity)
+	x.Equal("019-abc", v.Id)
+}
+
 // TestTakeAnswersADeadSessionOnceForTheSignOut: what a browser held is
 // answered even after the session died here, so the app can end it where it
 // lives -- and then it is gone.

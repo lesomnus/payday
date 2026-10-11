@@ -28,6 +28,7 @@ whose `src/` holds four TypeScript files, and only the last of them is yours:
 | `src/client.ts` | `createClient` per service — for a script, a one-off call, or [several writes as one transaction](batch.md) |
 | `src/store.ts` | the store and the queries a page reads through — §2 |
 | `src/main.tsx` | the transport, the credential, and the `Provider` around the page — §2 |
+| `src/session.tsx` | the same, signed in by a session cookie instead of holding a credential — §2 |
 | `src/page.tsx` | yours |
 
 `index.html`, `style.css`, `vite.config.ts` and `tsconfig.json` come with them,
@@ -45,8 +46,8 @@ is what makes a row it drew redraw when the row changes.
 ## 2. Opening the store
 
 ```ts
-export async function open(transport: Transport, credential: string): Promise<App> {
-	const at = { name: 'widget', identity: await identityOf(credential) }
+export async function open(transport: Transport, identity: string): Promise<App> {
+	const at = { name: 'widget', identity }
 
 	const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) })
 	await store.hydrate()
@@ -62,6 +63,16 @@ a caller may see is the actor *and* the scope together, so the same person
 holding a narrowed credential is a different store. Keyed on the person, the
 narrowed session would draw the wide session's rows: nothing leaks either way,
 and the screen is wrong.
+
+It is passed in already made, because the two pages `pd new` writes come by it
+differently. `main.tsx` holds its credential and digests it with `identityOf`.
+`session.tsx` is signed in by a session cookie it cannot read — that is what
+HttpOnly is for — so it asks the server instead: `GET /session` answers
+`{ identity, id, tenantId }`, and `identity` is the same digest of the session's
+key, made where the key can be read. Every sign-in is then a store of its own,
+as every credential is. The other two are who the session names, which is what
+the page's first question about the person is asked with. See
+[Putting a login in front of an app](signing-in.md#a-page-signed-in-by-cookie).
 
 **The disk is optional.** Delete those two lines and everything still works —
 the store is a store either way and lives as long as the tab does. What the
