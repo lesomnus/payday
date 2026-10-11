@@ -455,6 +455,11 @@ type Policy struct {
 	// own when each has a device of its own, or the deployment's for a
 	// verifier that is not given the signer. [ParsePublicKey] reads one.
 	Trust []crypto.PublicKey
+
+	// Keys seals what the archive's rows say, a key per tenant; see [Keys].
+	// Nil seals nothing, and an archive written with it is what one was
+	// before.
+	Keys *Keys
 }
 
 // For is the deployment's own policy for one kind of thing: what a tenant
@@ -576,6 +581,11 @@ func (p Policy) Valid() error {
 			return fmt.Errorf("audit.checkpoints.trust[%d]: %w", i, err)
 		}
 	}
+	if p.Keys != nil {
+		if err := p.Keys.valid(p.Archive != nil); err != nil {
+			return err
+		}
+	}
 
 	if err := p.valid("audit", "", p.Keep, p.Min); err != nil {
 		return err
@@ -638,6 +648,9 @@ func (p Policy) String() string {
 	}
 	if p.Tenants != nil {
 		out = append(out, "and each tenant's own, as the app answers")
+	}
+	if p.Keys != nil {
+		out = append(out, p.Keys.String())
 	}
 
 	return strings.Join(out, "; ")
@@ -778,17 +791,27 @@ const Reclaimed = Swept
 // gone -- would stay in the bucket for as long as the bucket does. flob's
 // reclaim is what takes them, in two sweeps at least [Reclaimed] apart, so
 // that a chunk this pass destroyed is gone two passes from now.
+//
+// The key store's too, where a key a tenant took with it has to be gone for
+// what its rows said to be; see [Keys].
 func (x *pass) reclaim(ctx context.Context) {
-	r, ok := flob.AsReclaimer(x.p.Archive)
-	if !ok {
-		return
+	stores := []flob.Stores{x.p.Archive}
+	if x.p.Keys != nil {
+		stores = append(stores, x.p.Keys.Store)
 	}
 
-	n, err := r.Reclaim(ctx, Reclaimed)
-	if err != nil && !errors.Is(err, flob.ErrUnimplemented) {
-		log.From(ctx).WarnContext(ctx, "trail: the bytes of what the archive no longer holds", "err", err, "reclaimed", n)
-	} else if n > 0 {
-		log.From(ctx).InfoContext(ctx, "trail: the bytes of what the archive no longer holds", "reclaimed", n)
+	for _, s := range stores {
+		r, ok := flob.AsReclaimer(s)
+		if !ok {
+			continue
+		}
+
+		n, err := r.Reclaim(ctx, Reclaimed)
+		if err != nil && !errors.Is(err, flob.ErrUnimplemented) {
+			log.From(ctx).WarnContext(ctx, "trail: the bytes of what the archive no longer holds", "err", err, "reclaimed", n)
+		} else if n > 0 {
+			log.From(ctx).InfoContext(ctx, "trail: the bytes of what the archive no longer holds", "reclaimed", n)
+		}
 	}
 }
 
@@ -813,6 +836,10 @@ type pass struct {
 	// copied into a chunk the manifest has -- and every chunk is decided by
 	// the labels the manifest recorded for it; see [pass.chunks].
 	m *manifested
+
+	// seal seals what rows say on their way into the archive, and is nil when
+	// the policy has no [Keys].
+	seal *sealer
 }
 
 type answer struct {
@@ -833,6 +860,7 @@ func (p Policy) start(s Store) (*pass, error) {
 		run:     run,
 		answers: map[pdid.Id]answer{},
 		told:    map[string]bool{},
+		seal:    newSealer(p.Keys),
 	}
 	if p.Archive != nil && s != nil {
 		x.m = p.manifested(s)
@@ -1078,7 +1106,7 @@ func (x *pass) drain(ctx context.Context, of Scope, k Keep, held bool, kind stri
 		return archived
 	}
 
-	moved, gone, err := drain(ctx, x.s, of, before, x.p.Archive, x.run, decide)
+	moved, gone, err := drain(ctx, x.s, of, before, x.p.Archive, x.run, x.seal, decide)
 	if kept > 0 {
 		log.From(ctx).InfoContext(ctx, "trail: rows a hold keeps in the database, with no archive to move them to",
 			"kind", kind, "tenant", of.Tenant, "rows", kept)

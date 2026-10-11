@@ -91,7 +91,7 @@ func (p Policy) Collect(ctx context.Context, s Store, of Kinds, before time.Time
 		return 0, h, err
 	}
 
-	_, gone, err := drain(ctx, s, Scope{Kinds: of}, before, nil, "", func(v Row) fate {
+	_, gone, err := drain(ctx, s, Scope{Kinds: of}, before, nil, "", nil, func(v Row) fate {
 		if x.held(ctx, v.Tenants, v.Domain, true, &h) {
 			h.keep(1, 0)
 			return stays
@@ -457,6 +457,10 @@ type TenantPurge struct {
 	// Held is what another tenant's hold kept as it was: a row this tenant
 	// shares with one under a hold.
 	Held Held
+
+	// Keys is the keys its rows were sealed with, destroyed before anything
+	// else; see [Keys].
+	Keys int
 }
 
 // PurgeTenant removes one tenant's trail: its rows in the database, and its
@@ -472,6 +476,16 @@ type TenantPurge struct {
 // event stays, because it is the other tenant's evidence as much as this
 // one's: a transfer, an operator of one tenant writing into another. And a row
 // it shares with a tenant under a hold stays exactly as it is.
+//
+// # Its key, first
+//
+// When its trail is sealed, the tenant's key is destroyed before anything
+// else, and with it what every copy of the rows that were its alone said,
+// wherever the copy is -- the archive's backups included, which nothing here
+// reaches. A purge that stops after that stops with none of those left
+// readable, and asking again finishes the rows. A row it shared was sealed to
+// the other side's key as well, so the copy a hold keeps is still readable to
+// them; see [Keys].
 //
 // What is filed under another tenant and only names this one -- the other
 // side's record of a transfer, a write this tenant's operator made into
@@ -518,6 +532,10 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 		x.answers[tenant] = answer{t: t}
 	}
 
+	if err := x.purgeKeys(ctx, tenant, dry, &out); err != nil {
+		return out, err
+	}
+
 	for round := 0; round < 3; round++ {
 		n, err := x.purgeDatabase(ctx, tenant, dry, round == 0, &out)
 		if err != nil {
@@ -537,6 +555,12 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 		return out, nil
 	}
 
+	// Again, for the key a pass sealing the tenant's rows at the same moment
+	// made after the first went.
+	if err := x.purgeKeys(ctx, tenant, dry, &out); err != nil {
+		return out, err
+	}
+
 	x.r.add(Receipt{
 		Act: "purge-tenant", Where: "database", Tenant: tenant.String(),
 		Rows: out.Removed, Blanked: out.Blanked, Held: out.Held.Rows,
@@ -549,6 +573,30 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 	}
 
 	return out, x.r.write(ctx, x.p.Archive)
+}
+
+// purgeKeys destroys the keys a tenant's rows were sealed with, and writes the
+// receipt for it at once: of everything a purge does, this is the part that
+// cannot be undone, and the one a later failure must not leave without a
+// record.
+func (x *pass) purgeKeys(ctx context.Context, tenant pdid.Id, dry bool, out *TenantPurge) error {
+	if x.p.Keys == nil {
+		return nil
+	}
+
+	n, err := x.p.Keys.destroy(ctx, tenant.String(), dry)
+	if err != nil {
+		return err
+	}
+
+	out.Keys += n
+	if dry || n == 0 {
+		return nil
+	}
+
+	x.r.add(Receipt{Act: "purge-tenant", Where: "keys", Tenant: tenant.String(), Keys: n})
+
+	return x.r.write(ctx, x.p.Archive)
 }
 
 // purgeDatabase is the database's half of a tenant leaving, and answers how

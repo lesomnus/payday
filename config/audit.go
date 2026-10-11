@@ -2,11 +2,14 @@ package config
 
 import (
 	"crypto"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"filippo.io/age"
 	"github.com/lesomnus/flob"
 
 	"github.com/lesomnus/payday/pdid"
@@ -117,6 +120,96 @@ type AuditConfig struct {
 	// Checkpoints is where a pass leaves what the archive held when it ended,
 	// and the key it signs that with. See `trail.Checkpoint`.
 	Checkpoints AuditCheckpointsConfig `yaml:"checkpoints"`
+
+	// Keys seals what the archive's rows say, a key per tenant. See
+	// [AuditKeysConfig].
+	Keys AuditKeysConfig `yaml:"keys"`
+}
+
+// AuditKeysConfig seals what the archive's rows say: a key per tenant, each
+// sealed in turn to a master whose private half the serving process does not
+// hold.
+//
+//	audit:
+//	  archive: /var/lib/app/audit
+//	  keys:
+//	    dir: /var/lib/app/audit-keys
+//	    master: age1…   # `age-keygen -y` of a key kept offline
+//
+// Empty seals nothing, which is what an archive was before. Encryption at rest
+// is still the storage's -- an encrypted disk, S3 with a KMS key -- and it
+// covers what most requirements ask. What this adds is that a tenant that
+// leaves takes what its rows said with it, out of every copy, the archive's
+// backups among them; see `trail.Keys`.
+type AuditKeysConfig struct {
+	// Dir is the key store: a directory of its own, not inside `archive`, and
+	// one whose backups are kept short, since they are what decides how long
+	// a departed tenant's rows can still be read. A store that is not a
+	// directory is handed in by the app as `trail.Keys.Store`.
+	Dir string `yaml:"dir"`
+
+	// Master is the public key each tenant's key is sealed to, as
+	// `age-keygen` prints one (`age1…`), or several for more than one way
+	// back. Its private half is kept offline.
+	Master []string `yaml:"master"`
+
+	// Identity is the master's private half, for a process that reads what
+	// rows say -- an export, an operator at a shell -- and for no other: never
+	// set where the process serves. Named by the file it is in, which is how a
+	// secret is mounted, or the key itself (`AGE-SECRET-KEY-1…`), which is how
+	// one comes through the environment for one command.
+	Identity string `yaml:"identity"`
+}
+
+// on answers whether the block says anything at all.
+func (c AuditKeysConfig) on() bool { return c.Dir != "" || len(c.Master) > 0 || c.Identity != "" }
+
+// keys is the block, read.
+func (c AuditKeysConfig) keys(archive string) (*trail.Keys, error) {
+	if !c.on() {
+		return nil, nil
+	}
+
+	k := &trail.Keys{}
+	if c.Dir != "" {
+		if archive != "" {
+			if rel, err := filepath.Rel(archive, c.Dir); err == nil && (rel == "." || !strings.HasPrefix(rel, "..")) {
+				return nil, errors.New("dir: inside audit.archive, which would keep the keys as long as the archive and back them up with it")
+			}
+		}
+
+		k.Store = flob.NewOsStores(c.Dir)
+	}
+
+	for i, v := range c.Master {
+		rs, err := age.ParseRecipients(strings.NewReader(v))
+		if err != nil {
+			return nil, fmt.Errorf("master[%d]: %w", i, err)
+		}
+
+		k.Master = append(k.Master, rs...)
+	}
+
+	if v := strings.TrimSpace(c.Identity); v != "" {
+		doc := v
+		if !strings.HasPrefix(v, "AGE-SECRET-KEY-") {
+			b, err := os.ReadFile(v)
+			if err != nil {
+				return nil, fmt.Errorf("identity: %w", err)
+			}
+
+			doc = string(b)
+		}
+
+		ids, err := age.ParseIdentities(strings.NewReader(doc))
+		if err != nil {
+			return nil, fmt.Errorf("identity: %w", err)
+		}
+
+		k.Identities = ids
+	}
+
+	return k, nil
 }
 
 // AuditCheckpointsConfig is where checkpoints are kept, and what signs them.
@@ -309,6 +402,9 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 	}
 	if c.Checkpoints.Dir != "" {
 		p.Checkpoints = flob.NewOsStores(c.Checkpoints.Dir).Use(trail.CheckpointNamespace)
+	}
+	if p.Keys, err = c.Keys.keys(c.Archive); err != nil {
+		return trail.Policy{}, fmt.Errorf("audit.keys.%w", err)
 	}
 
 	if err := p.Valid(); err != nil {

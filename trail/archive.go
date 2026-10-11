@@ -325,10 +325,12 @@ const (
 )
 
 // writer gathers rows on their way to the archive, into one chunk per
-// namespace, set of tenants, kind and month.
+// namespace, set of tenants, kind and month, and seals what they say when
+// there is a sealer.
 type writer struct {
 	a      flob.Stores
 	run    string
+	seal   *sealer
 	groups map[groupKey]*group
 	rows   int
 	size   int
@@ -349,8 +351,8 @@ type group struct {
 	last    time.Time
 }
 
-func newWriter(a flob.Stores, run string) *writer {
-	return &writer{a: a, run: run, groups: map[groupKey]*group{}}
+func newWriter(a flob.Stores, run string, seal *sealer) *writer {
+	return &writer{a: a, run: run, seal: seal, groups: map[groupKey]*group{}}
 }
 
 func (w *writer) add(v Row) {
@@ -410,7 +412,20 @@ func (w *writer) flush(ctx context.Context) ([]any, error) {
 			Last:      g.last,
 			Tenants:   g.tenants,
 		}
-		if _, err := put(ctx, w.a, c, g.docs); err != nil {
+
+		docs := g.docs
+		if w.seal != nil {
+			docs = make([][]byte, len(g.docs))
+			for i, doc := range g.docs {
+				v, err := w.seal.seal(ctx, doc)
+				if err != nil {
+					return keys, err
+				}
+
+				docs[i] = v
+			}
+		}
+		if _, err := put(ctx, w.a, c, docs); err != nil {
 			return keys, err
 		}
 
@@ -593,13 +608,16 @@ func Chunks(ctx context.Context, a flob.Stores) ([]Chunk, error) {
 // Every chunk, by its own labels, whoever wrote it. [Policy.Read] is the same
 // for an archive with a manifest, and is the one to hand to anybody who will
 // take what it reads as the trail.
+//
+// A row whose contents are sealed is [ErrSealed]: this has no key to open it
+// with, and [Policy.Read] does; see [Keys].
 func Read(ctx context.Context, a flob.Stores, fn func(doc []byte) error) error {
 	vs, err := Chunks(ctx, a)
 	if err != nil {
 		return err
 	}
 
-	return readChunks(ctx, a, vs, pdid.Nil, false, fn)
+	return readChunks(ctx, a, vs, pdid.Nil, false, nil, fn)
 }
 
 // ReadTenant is the rows of the archive one tenant may read: the ones that name
@@ -610,7 +628,8 @@ func Read(ctx context.Context, a flob.Stores, fn func(doc []byte) error) error {
 // has to open a row to know, since a file from before held everybody's.
 //
 // Like [Read], it is what the archive holds, and nothing is checked;
-// [Policy.ReadTenant] is the one an export is made with.
+// [Policy.ReadTenant] is the one an export is made with. A row whose contents
+// are sealed is [ErrSealed], as it is to [Read].
 func ReadTenant(ctx context.Context, a flob.Stores, tenant pdid.Id, fn func(doc []byte) error) error {
 	if tenant.IsZero() {
 		return errors.New("no tenant")
@@ -626,7 +645,7 @@ func ReadTenant(ctx context.Context, a flob.Stores, tenant pdid.Id, fn func(doc 
 		vs = append(vs, cs...)
 	}
 
-	return readChunks(ctx, a, vs, tenant, false, fn)
+	return readChunks(ctx, a, vs, tenant, false, nil, fn)
 }
 
 // Read is [Read] for an archive with a manifest: only the chunks it accounts
@@ -640,6 +659,10 @@ func ReadTenant(ctx context.Context, a flob.Stores, tenant pdid.Id, fn func(doc 
 // checked again as it is read, so bytes changed in between fail the read at
 // that chunk's end. A chunk the manifest has and the archive no longer holds is
 // nothing a read can hand over: [Policy.Verify] is what finds that one.
+//
+// A row whose contents are sealed is handed over opened, with
+// [Keys.Identities]; without them it is [ErrSealed], and a row whose key is
+// gone is [ErrKeyGone]. See [Keys].
 func (p Policy) Read(ctx context.Context, s Store, fn func(doc []byte) error) error {
 	return p.read(ctx, s, pdid.Nil, fn)
 }
@@ -689,13 +712,14 @@ func (p Policy) read(ctx context.Context, s Store, tenant pdid.Id, fn func(doc [
 			"chunks", len(rest), "see", "`trail verify`")
 	}
 
-	return readChunks(ctx, x.raw(), cs, tenant, true, fn)
+	return readChunks(ctx, x.raw(), cs, tenant, true, newOpener(p.Keys), fn)
 }
 
 // readChunks is the rows of these chunks, oldest month first, each once. A
 // tenant's reads only the rows of [LegacyNamespace] that name it, and only the
-// chunks of [SharedNamespace] whose tenants include it.
-func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, verify bool, fn func([]byte) error) error {
+// chunks of [SharedNamespace] whose tenants include it. A sealed row is opened
+// by `open`, and nil opens none.
+func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, verify bool, open *opener, fn func([]byte) error) error {
 	cs = slices.Clone(cs)
 	slices.SortFunc(cs, chunkOrder)
 
@@ -712,7 +736,7 @@ func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, 
 				keep = func(h head) bool { return h.names(tenant) }
 			}
 		}
-		if err := readChunk(ctx, a, c, seen, keep, verify, fn); err != nil {
+		if err := readChunk(ctx, a, c, seen, keep, verify, open, fn); err != nil {
 			return err
 		}
 	}
@@ -725,8 +749,8 @@ var errAltered = errors.New("its bytes are not its digest any more; see `trail v
 
 // readChunk is one chunk's rows, less the ones `seen` has, and less the ones
 // `keep` declines when there is one. `verify` reads it whole first, and refuses
-// it when its bytes are not its digest.
-func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool, keep func(head) bool, verify bool, fn func([]byte) error) error {
+// it when its bytes are not its digest. A sealed row is opened by `open`.
+func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool, keep func(head) bool, verify bool, open *opener, fn func([]byte) error) error {
 	r, _, err := a.Use(c.Namespace).Open(ctx, c.Digest)
 	if err != nil {
 		if errors.Is(err, flob.ErrNotExist) {
@@ -772,6 +796,10 @@ func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool
 			return nil
 		}
 		seen[h.Id] = true
+
+		if doc, err = open.open(ctx, doc, h); err != nil {
+			return err
+		}
 
 		return fn(doc)
 	})
@@ -993,8 +1021,9 @@ func edit(ctx context.Context, a flob.Stores, c Chunk, dry bool, pre func([]byte
 }
 
 // blanked is a row with its contents taken out: `value` and `patch`, the two
-// columns that hold contents. Everything else -- who acted, what they did,
-// which object, when -- stays; that is the record a trail exists to be.
+// columns that hold contents, or the two of them sealed; see [Keys]. Everything
+// else -- who acted, what they did, which object, when -- stays; that is the
+// record a trail exists to be.
 //
 // Through generic JSON rather than the message, because this package has no
 // `Audit` type -- see the note on the package. The names are the ones protojson
@@ -1007,6 +1036,7 @@ func blanked(line []byte) ([]byte, error) {
 
 	delete(v, "value")
 	delete(v, "patch")
+	delete(v, sealedField)
 
 	return json.Marshal(v)
 }
@@ -1260,7 +1290,7 @@ type Receipt struct {
 	// manifest does not account for.
 	Act string `json:"act"`
 
-	// Where is `database` or `archive`.
+	// Where is `database`, `archive`, or `keys` for the key store.
 	Where string `json:"where"`
 
 	// Tenant is whose: a tenant's identifier, a namespace, or empty for every
@@ -1297,6 +1327,10 @@ type Receipt struct {
 	// are not here: a receipt is the one record of an erasure that is kept,
 	// and keeping *who* would keep what was erased.
 	Objects int `json:"objects,omitempty"`
+
+	// Keys is how many keys went: a tenant's, when it left and its trail was
+	// sealed; see [Keys].
+	Keys int `json:"keys,omitempty"`
 }
 
 // receipts gathers one act's receipts, to be written as one blob.
@@ -1487,7 +1521,7 @@ func (x *pass) refile(ctx context.Context) {
 
 	files, rows := 0, 0
 	for _, c := range cs {
-		n, err := refile(ctx, a, x.run, c)
+		n, err := refile(ctx, a, x.run, x.seal, c)
 		rows += n
 		if err != nil {
 			log.From(ctx).WarnContext(ctx, "trail: the files of a version before", "chunk", c.String(), "err", err)
@@ -1502,7 +1536,7 @@ func (x *pass) refile(ctx context.Context) {
 	}
 }
 
-func refile(ctx context.Context, a flob.Stores, run string, c Chunk) (int, error) {
+func refile(ctx context.Context, a flob.Stores, run string, seal *sealer, c Chunk) (int, error) {
 	r, _, err := a.Use(c.Namespace).Open(ctx, c.Digest)
 	if err != nil {
 		if errors.Is(err, flob.ErrNotExist) {
@@ -1512,7 +1546,7 @@ func refile(ctx context.Context, a flob.Stores, run string, c Chunk) (int, error
 		return 0, err
 	}
 
-	w := newWriter(a, run)
+	w := newWriter(a, run, seal)
 	n := 0
 	err = lines(r, func(doc []byte) error {
 		h, err := headOf(doc)

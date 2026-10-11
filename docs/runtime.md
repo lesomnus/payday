@@ -446,10 +446,56 @@ An operator who has looked at what verification found and decided the archive
 is right — a crash, a blob restored from a backup — calls `Policy.Accept` with
 why, and the manifest says what the archive holds from then on.
 
-Encryption is the storage's. Encryption at rest — S3's server-side encryption
-with a KMS key, an encrypted disk — covers what most requirements ask of it, and
-the manifest is what says the archive is what it was. Per-tenant keys for the
-contents are decided and not built; see lesomnus/payday#35.
+#### Sealed contents
+
+Encryption at rest is the storage's — S3's server-side encryption with a KMS
+key, an encrypted disk — and it covers what most requirements ask of it; the
+manifest is what says the archive is what it was. What it cannot do is let a
+tenant that leaves take its trail out of the archive's **backups**, which are
+kept as long as the archive is and which no purge reaches. `trail.Keys`
+(`audit.keys`) is for that:
+
+- **Only what a row says is sealed** — `value` and `patch`, together, row by
+  row, with [age](https://age-encryption.org). Who acted, on what, when and
+  whose it is stay in the clear, because every act on the archive decides by
+  them: a pass folding a month, a subject's erasure, a tenant leaving, a hold
+  that keeps part of a file. None of them needs a key; only reading what a row
+  said does. The cost is the archive's size, since the contents no longer
+  compress together.
+- **A key per tenant, and a master.** A row is sealed to the key of every tenant
+  it names — the ones that may read it, the wall's rule — and `_deployment`'s
+  for a row that names nobody. Each tenant's key is an X25519 identity, made by
+  the process that first has a row of theirs to seal and kept **sealed to the
+  master** in a key store of its own (`audit.keys.dir`, or any `flob.Stores` as
+  `Keys.Store`). The process that writes the archive holds public keys only:
+  the tenants', in the key store's labels, and the master's, which is
+  configuration. The master's private half, `Keys.Identities`
+  (`audit.keys.identity`), is given to a process that reads what rows say — an
+  export, an operator at a shell — and to no other.
+- **A tenant leaving takes its key first.** `Policy.PurgeTenant` destroys the
+  tenant's keys before anything else, writes the receipt for it at once, and
+  then its rows. From then on what was its alone cannot be read from any copy:
+  the archive's backups, a file somebody saved. A row it shared stays readable to
+  the other side, whose evidence it is too — which is also what keeps a row
+  another tenant's hold is on readable after this one has gone. Grace keeps a
+  key, because nothing before the purge touches it; a hold refuses its
+  destruction, because a held tenant is not purged; a window that destroys every
+  chunk of a tenant leaves its key, since the tenant is still there.
+- **Reading.** `Policy.Read` and `Policy.ReadTenant` hand a sealed row over
+  opened, given the master; without it a sealed row is `trail.ErrSealed`, and
+  one whose every key is gone is `trail.ErrKeyGone`. `trail.Read`,
+  `trail.ReadTenant` and `trail.ReadFiles` take no key and refuse a sealed row;
+  `Keys.Open` opens one row, for a file taken out of the archive.
+
+The key store's **backups are what decide** how long after a tenant leaves its
+rows can still be read, so they are kept short, and it is not inside the
+archive's directory, which would back it up with the archive. Whoever can write
+the key store can put a key there that rows will be sealed to, as whoever can
+write the archive can put rows there: it is trusted as the archive is, and the
+manifest does not cover it. Nothing changes for an archive with no keys, and a
+chunk written before them stays as it was; the rows a pass files from `_legacy`
+are sealed on the way. The database's half of the trail — the `retain` window —
+is not sealed.
 
 #### Legal holds
 

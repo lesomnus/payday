@@ -10,6 +10,7 @@ import (
 
 	"uuid"
 
+	"filippo.io/age"
 	"github.com/lesomnus/flob"
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
@@ -929,4 +930,72 @@ func TestTheManifestIsKeptInTheAppsOwnTable(t *testing.T) {
 	x.NoError(err)
 	x.Len(v.Findings, 1)
 	x.Equal("missing", v.Findings[0].Kind)
+}
+
+// TestWhatTheTrailSaysIsSealedThroughTheAppsOwnStore.
+//
+// Through the generated store, with the app's own `Audit` rows: what a row says
+// leaves the database sealed and comes back through `pd.TrailOf` as it was,
+// for a process given the master and for no other. And no field of the app's
+// `Audit` is called what a sealed row keeps its contents under, since a row is
+// read back by that name.
+func TestWhatTheTrailSaysIsSealedThroughTheAppsOwnStore(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	fs := (&app.Audit{}).ProtoReflect().Descriptor().Fields()
+	x.Nil(fs.ByJSONName("sealed"), "a field of Audit is named what a sealed row keeps its contents under")
+	x.Nil(fs.ByName("sealed"))
+
+	_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "a-machine",
+	}.Build())
+	x.NoError(err)
+
+	before := map[string][]byte{}
+	for _, v := range must(b.Ent.Audit.Query().Where(entaudit.TenantIdEQ(b.Tenant.Uuid())).All(ctx)) {
+		before[string(v.Id[:])] = v.Value
+	}
+	x.NotEmpty(before)
+
+	master, err := age.GenerateX25519Identity()
+	x.NoError(err)
+	keys := &trail.Keys{Store: flob.NewOsStores(t.TempDir()), Master: []age.Recipient{master.Recipient()}}
+	p := trail.Policy{Archive: flob.NewOsStores(t.TempDir()), Keep: trail.Keep{Retain: time.Nanosecond}, Keys: keys}
+	x.NoError(p.Valid())
+
+	s := pd.TrailStore(b.Ent)
+	p.Pass(ctx, s)
+
+	left, err := b.Ent.Audit.Query().Where(entaudit.TenantIdEQ(b.Tenant.Uuid())).Count(ctx)
+	x.NoError(err)
+	x.Zero(left, "the window moved nothing")
+
+	err = p.ReadTenant(ctx, s, b.Tenant, pd.TrailOf(func(*app.Audit) error { return nil }))
+	x.ErrorIs(err, trail.ErrSealed, "the process that wrote the archive read what it says")
+
+	open := p
+	open.Keys = &trail.Keys{Store: keys.Store, Master: keys.Master, Identities: []age.Identity{master}}
+	got := map[string][]byte{}
+	x.NoError(open.ReadTenant(ctx, s, b.Tenant, pd.TrailOf(func(v *app.Audit) error {
+		got[string(v.GetId())] = v.GetValue()
+		return nil
+	})))
+	x.Equal(before, got, "what the rows said did not come back as it was")
+
+	t.Run("and a tenant that leaves takes it with it", func(t *testing.T) {
+		x := require.New(t)
+
+		purged, err := p.PurgeTenant(ctx, s, b.Tenant)
+		x.NoError(err)
+		x.Equal(1, purged.Keys)
+
+		n := 0
+		x.NoError(open.ReadTenant(ctx, s, b.Tenant, pd.TrailOf(func(*app.Audit) error {
+			n++
+			return nil
+		})))
+		x.Zero(n, "a tenant's trail outlived it")
+	})
 }

@@ -14,6 +14,7 @@ This page is where to put that, and how the trail's retention reads it.
 - [4. When a window shortens](#4-when-a-window-shortens)
 - [5. A hold, and a tenant leaving](#5-a-hold-and-a-tenant-leaving)
 - [6. Showing that the archive is what it was](#6-showing-that-the-archive-is-what-it-was)
+- [7. A tenant's trail that leaves with it](#7-a-tenants-trail-that-leaves-with-it)
 
 ## 1. An entity of its own
 
@@ -219,3 +220,43 @@ err := policy.ReadTenant(ctx, pd.TrailStore(db), tenant, pd.TrailOf(func(v *app.
 
 `trail.ReadTenant` reads the archive as it is, for when there is no database
 left to check it against. See [the runtime](../runtime.md#the-manifest).
+
+## 7. A tenant's trail that leaves with it
+
+A tenant that leaves is purged from the archive, and not from the archive's
+backups, which are kept as long as the archive is. Sealing what the rows say
+with a key per tenant is how it leaves those too:
+
+```sh
+age-keygen -o master.txt    # kept offline; its public half is printed
+```
+
+```yaml
+audit:
+  archive: /var/lib/acme/audit
+  keys:
+    dir: /var/lib/acme/audit-keys   # a store of its own, not inside the archive
+    master: age1…                   # the public half of master.txt
+```
+
+The serving process seals and never reads: it holds the master's public half
+and the tenants' public halves, and nothing that opens a row. A command that
+reads what the rows say — an export, a subject access request — is given the
+master for that run alone, by its file or the key itself:
+
+```sh
+ACME_AUDIT_KEYS_IDENTITY=/run/secrets/master.txt acme tenant export --tenant @acme
+```
+
+Without it, `policy.ReadTenant` refuses a sealed row with `trail.ErrSealed`,
+rather than handing over a row with its contents missing.
+
+`policy.PurgeTenant` destroys the tenant's key before anything else, so a purge
+that stops part way has already made what was the tenant's alone unreadable,
+and asking again finishes the rows. Back the key store up on a **short**
+schedule and keep few copies: how long a departed tenant's rows can still be
+read from a backup is how long the key store's backups are kept. And never on
+a store that keeps what is erased -- a versioned or Object-Locked bucket keeps
+every key it was ever given, and a purge then destroys nothing. See [the
+runtime](../runtime.md#sealed-contents).
+
