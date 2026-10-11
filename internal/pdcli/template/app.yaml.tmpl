@@ -69,12 +69,21 @@ watch:
 # what catches an archive somebody rewrote. A key in a TPM, an HSM or a KMS is
 # handed in by the app, as `trail.Policy.Signer`.
 #
+# `keys:` seals what the archive's rows say, a key per tenant, so that a tenant
+# that leaves takes its trail out of the archive's backups as well. `master` is
+# the public half of a key `age-keygen` made and is kept offline; a command that
+# reads the trail is given the private half for one run, as
+# `<APP>_AUDIT_KEYS_IDENTITY`, and the serving process never is.
+#
 # audit:
 #   profile: pipa
 #   archive: /var/lib/{{.Name}}/audit
 #   checkpoints:
 #     dir: /mnt/worm/{{.Name}}/checkpoints
 #     key: /run/secrets/checkpoints.pem
+#   keys:
+#     dir: /var/lib/{{.Name}}/audit-keys
+#     master: age1…
 #   min:
 #     profile: pipa
 #   by:

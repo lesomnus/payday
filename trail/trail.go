@@ -58,6 +58,14 @@
 // deployment that names a directory in `audit.archive` gets one on the disk;
 // anything else flob reaches, S3 included, is a store the app hands in.
 //
+// # What a row says, sealed
+//
+// The archive can keep what each row says sealed, a key per tenant and a
+// master each key is sealed to, so that a tenant that leaves takes its trail
+// out of every copy of the archive and not only out of the archive. Only
+// reading what a row said needs a key; everything a pass, an erasure or a purge
+// decides by stays in the clear. See [Keys].
+//
 // # And why none of it is an RPC
 //
 // The generated layer in front of `AuditService` refuses every write -- *"the
@@ -371,7 +379,7 @@ func Archive(ctx context.Context, s Store, of Kinds, before time.Time, a flob.St
 		return 0, err
 	}
 
-	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, x.p.Archive, x.run, func(Row) fate { return archived })
+	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, x.p.Archive, x.run, nil, func(Row) fate { return archived })
 
 	return moved, err
 }
@@ -398,12 +406,13 @@ const (
 // [chunkRows] -- and forgotten only once the store holds the chunk, which is
 // the order [Archive] is about. Rows to discard are forgotten a batch at a
 // time, since there is nothing to wait for. With no archive there is nothing
-// to write, and the rows are read without their documents.
-func drain(ctx context.Context, s Store, of Scope, before time.Time, a flob.Stores, run string, decide func(Row) fate) (int, int, error) {
+// to write, and the rows are read without their documents. A sealer, when
+// there is one, seals what the archived rows say; see [Keys].
+func drain(ctx context.Context, s Store, of Scope, before time.Time, a flob.Stores, run string, seal *sealer, decide func(Row) fate) (int, int, error) {
 	var w *writer
 	read := s.Heads
 	if a != nil {
-		w = newWriter(a, run)
+		w = newWriter(a, run, seal)
 		read = s.Older
 	}
 
@@ -541,7 +550,8 @@ func DomainOf(v string) (pdid.Domain, error) {
 }
 
 // ReadFiles walks archives on a disk in the order given and calls `fn` for
-// each row, as the protojson document it was stored as.
+// each row, as the protojson document it was stored as. A row whose contents
+// are sealed is [ErrSealed]: open it with [Keys.Open].
 //
 // For a file somebody took out of an archive -- a chunk saved for a request, or
 // the directory of a version before the archive was a flob store. What is in
@@ -569,14 +579,20 @@ func readFile(path string, seen map[string]bool, fn func([]byte) error) error {
 	defer f.Close()
 
 	err = lines(f, func(doc []byte) error {
-		k, err := identifier(doc)
+		h, err := headOf(doc)
 		if err != nil {
 			return err
 		}
-		if seen[k] {
+		if seen[h.Id] {
 			return nil
 		}
-		seen[k] = true
+		seen[h.Id] = true
+
+		// A file somebody saved is opened a row at a time, by whoever holds
+		// the master key: see [Keys.Open].
+		if h.Sealed != "" {
+			return fmt.Errorf("%w; open each row with Keys.Open", ErrSealed)
+		}
 
 		return fn(doc)
 	})
@@ -606,6 +622,10 @@ type head struct {
 	Domain      uint32 `json:"domain"`
 	Value       string `json:"value"`
 	Patch       string `json:"patch"`
+
+	// Sealed is `value` and `patch` sealed together, in their place; see
+	// [Keys].
+	Sealed string `json:"sealed"`
 }
 
 func headOf(doc []byte) (head, error) {
@@ -661,5 +681,5 @@ func (h head) tenants() []pdid.Id {
 func (h head) filed(tenant pdid.Id) bool { return h.Tenant == encoded(tenant) }
 
 // contents answers whether a document still says something about what it
-// happened to.
-func (h head) contents() bool { return h.Value != "" || h.Patch != "" }
+// happened to, in the clear or sealed.
+func (h head) contents() bool { return h.Value != "" || h.Patch != "" || h.Sealed != "" }

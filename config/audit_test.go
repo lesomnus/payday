@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"filippo.io/age"
 	"github.com/stretchr/testify/require"
 
 	"github.com/lesomnus/payday/config"
@@ -73,4 +74,56 @@ func TestCheckpointsGoWhereTheyAreToldTo(t *testing.T) {
 	p, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1}.Policy()
 	x.NoError(err)
 	x.Nil(p.Checkpoints, "with no directory, they are the archive's")
+}
+
+// TestTheKeysAreWhatTheConfigurationSays.
+//
+// The master's public half is configuration, and its private half is read only
+// when given -- from a file, which is how a secret is mounted, or the key
+// itself, which is how one comes through the environment for one command. A key
+// store inside the archive is refused: it would be kept as long as the archive
+// and backed up with it, which is the one thing a key that can be destroyed
+// must not be.
+func TestTheKeysAreWhatTheConfigurationSays(t *testing.T) {
+	x := require.New(t)
+
+	master, err := age.GenerateX25519Identity()
+	x.NoError(err)
+	public := master.Recipient().String()
+	archive := t.TempDir()
+
+	p, err := config.AuditConfig{Archive: archive, Retain: 1, Keys: config.AuditKeysConfig{Dir: t.TempDir(), Master: []string{public}}}.Policy()
+	x.NoError(err)
+	x.NotNil(p.Keys)
+	x.Len(p.Keys.Master, 1)
+	x.Empty(p.Keys.Identities, "a process that serves holds the master's private half")
+
+	path := filepath.Join(t.TempDir(), "master.txt")
+	x.NoError(os.WriteFile(path, []byte("# created by age-keygen\n"+master.String()+"\n"), 0o600))
+	for _, v := range []string{path, master.String()} {
+		p, err := config.AuditConfig{Archive: archive, Retain: 1, Keys: config.AuditKeysConfig{
+			Dir: t.TempDir(), Master: []string{public}, Identity: v,
+		}}.Policy()
+		x.NoError(err)
+		x.Len(p.Keys.Identities, 1)
+	}
+
+	p, err = config.AuditConfig{Archive: archive, Retain: 1}.Policy()
+	x.NoError(err)
+	x.Nil(p.Keys, "a configuration that says nothing sealed something")
+
+	for want, c := range map[string]config.AuditConfig{
+		"audit.keys.dir: inside audit.archive": {Archive: archive, Keys: config.AuditKeysConfig{Dir: filepath.Join(archive, "keys"), Master: []string{public}}},
+		"audit.keys.dir":                       {Archive: archive, Keys: config.AuditKeysConfig{Master: []string{public}}},
+		"audit.keys.master:":                   {Archive: archive, Keys: config.AuditKeysConfig{Dir: t.TempDir()}},
+		"audit.keys.master[0]":                 {Archive: archive, Keys: config.AuditKeysConfig{Dir: t.TempDir(), Master: []string{master.String()}}},
+		"audit.keys.identity":                  {Archive: archive, Keys: config.AuditKeysConfig{Dir: t.TempDir(), Master: []string{public}, Identity: filepath.Join(t.TempDir(), "none")}},
+		"audit.archive names no archive":       {Keys: config.AuditKeysConfig{Dir: t.TempDir(), Master: []string{public}}},
+	} {
+		_, err := c.Policy()
+		x.ErrorContains(err, want)
+		if err != nil {
+			x.NotContains(err.Error(), "AGE-SECRET-KEY", "an error printed a private key")
+		}
+	}
 }

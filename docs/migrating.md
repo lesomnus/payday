@@ -3,6 +3,32 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The trail's archive can seal what its rows say
+
+**Applies if** you want a tenant that leaves to take its trail out of the
+archive's backups too, or you read the archive with `trail.Read`,
+`trail.ReadTenant` or `trail.ReadFiles`.
+
+Nothing changes without it. With `audit.keys` (or `trail.Policy.Keys`), what
+each row says is sealed on its way into the archive, a key per tenant, and the
+master's private half opens it — see [the runtime](runtime.md#sealed-contents).
+For an app that turns it on:
+
+- **Give the commands that read the master, and nothing else.** An export or a
+  subject access request reads through `policy.ReadTenant`, which opens what
+  it reads with `Keys.Identities` — `audit.keys.identity`, so
+  `<APP>_AUDIT_KEYS_IDENTITY` for one run — and refuses a sealed row without it
+  (`trail.ErrSealed`). The serving process is never given it.
+- **`trail.Read`, `trail.ReadTenant` and `trail.ReadFiles` refuse a sealed
+  row**, since they take no key. Read through the policy, or open a row with
+  `Keys.Open`.
+- **`TenantPurge.Keys` and `Receipt.Keys`** say how many keys a tenant's purge
+  destroyed, which it does first, with a receipt `where: keys`.
+- **Back the key store up briefly**, apart from the archive.
+
+Chunks written before stay as they are and stay readable; rows a pass files from
+`_legacy` are sealed on the way.
+
 ## The database keeps an account of the trail's archive
 
 **Applies if** you set `audit.archive` or `trail.Policy.Archive`, call
