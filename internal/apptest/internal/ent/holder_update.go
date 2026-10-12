@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"uuid"
 
 	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/protobuf-orm/ent/dialect/sql"
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	"github.com/protobuf-orm/ent/schema/field"
@@ -144,9 +146,54 @@ func (_u *HolderUpdate) ClearProfile() *HolderUpdate {
 	return _u
 }
 
+// SetDirectory sets the "directory" field.
+func (_u *HolderUpdate) SetDirectory(v string) *HolderUpdate {
+	_u.mutation.SetDirectory(v)
+	return _u
+}
+
+// SetNillableDirectory sets the "directory" field if the given value is not nil.
+func (_u *HolderUpdate) SetNillableDirectory(v *string) *HolderUpdate {
+	if v != nil {
+		_u.SetDirectory(*v)
+	}
+	return _u
+}
+
+// SetRobotId sets the "robot_id" field.
+func (_u *HolderUpdate) SetRobotId(v uuid.UUID) *HolderUpdate {
+	_u.mutation.SetRobotId(v)
+	return _u
+}
+
+// SetNillableRobotId sets the "robot_id" field if the given value is not nil.
+func (_u *HolderUpdate) SetNillableRobotId(v *uuid.UUID) *HolderUpdate {
+	if v != nil {
+		_u.SetRobotId(*v)
+	}
+	return _u
+}
+
+// ClearRobotId clears the value of the "robot_id" field.
+func (_u *HolderUpdate) ClearRobotId() *HolderUpdate {
+	_u.mutation.ClearRobotId()
+	return _u
+}
+
+// SetRobot sets the "robot" edge to the Robot entity.
+func (_u *HolderUpdate) SetRobot(v *Robot) *HolderUpdate {
+	return _u.SetRobotId(v.Id)
+}
+
 // Mutation returns the HolderMutation object of the builder.
 func (_u *HolderUpdate) Mutation() *HolderMutation {
 	return _u.mutation
+}
+
+// ClearRobot clears the "robot" edge to the Robot entity.
+func (_u *HolderUpdate) ClearRobot() *HolderUpdate {
+	_u.mutation.ClearRobot()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -244,6 +291,38 @@ func (_u *HolderUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ProfileCleared() {
 		_spec.ClearField(holder.FieldProfile, field.TypeJson)
+	}
+	if value, ok := _u.mutation.Directory(); ok {
+		_spec.SetField(holder.FieldDirectory, field.TypeString, value)
+	}
+	if _u.mutation.RobotCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   holder.RobotTable,
+			Columns: []string{holder.RobotColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RobotIds(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   holder.RobotTable,
+			Columns: []string{holder.RobotColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -381,9 +460,54 @@ func (_u *HolderUpdateOne) ClearProfile() *HolderUpdateOne {
 	return _u
 }
 
+// SetDirectory sets the "directory" field.
+func (_u *HolderUpdateOne) SetDirectory(v string) *HolderUpdateOne {
+	_u.mutation.SetDirectory(v)
+	return _u
+}
+
+// SetNillableDirectory sets the "directory" field if the given value is not nil.
+func (_u *HolderUpdateOne) SetNillableDirectory(v *string) *HolderUpdateOne {
+	if v != nil {
+		_u.SetDirectory(*v)
+	}
+	return _u
+}
+
+// SetRobotId sets the "robot_id" field.
+func (_u *HolderUpdateOne) SetRobotId(v uuid.UUID) *HolderUpdateOne {
+	_u.mutation.SetRobotId(v)
+	return _u
+}
+
+// SetNillableRobotId sets the "robot_id" field if the given value is not nil.
+func (_u *HolderUpdateOne) SetNillableRobotId(v *uuid.UUID) *HolderUpdateOne {
+	if v != nil {
+		_u.SetRobotId(*v)
+	}
+	return _u
+}
+
+// ClearRobotId clears the value of the "robot_id" field.
+func (_u *HolderUpdateOne) ClearRobotId() *HolderUpdateOne {
+	_u.mutation.ClearRobotId()
+	return _u
+}
+
+// SetRobot sets the "robot" edge to the Robot entity.
+func (_u *HolderUpdateOne) SetRobot(v *Robot) *HolderUpdateOne {
+	return _u.SetRobotId(v.Id)
+}
+
 // Mutation returns the HolderMutation object of the builder.
 func (_u *HolderUpdateOne) Mutation() *HolderMutation {
 	return _u.mutation
+}
+
+// ClearRobot clears the "robot" edge to the Robot entity.
+func (_u *HolderUpdateOne) ClearRobot() *HolderUpdateOne {
+	_u.mutation.ClearRobot()
+	return _u
 }
 
 // Where appends a list predicates to the HolderUpdate builder.
@@ -511,6 +635,38 @@ func (_u *HolderUpdateOne) sqlSave(ctx context.Context) (_node *Holder, err erro
 	}
 	if _u.mutation.ProfileCleared() {
 		_spec.ClearField(holder.FieldProfile, field.TypeJson)
+	}
+	if value, ok := _u.mutation.Directory(); ok {
+		_spec.SetField(holder.FieldDirectory, field.TypeString, value)
+	}
+	if _u.mutation.RobotCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   holder.RobotTable,
+			Columns: []string{holder.RobotColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RobotIds(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   holder.RobotTable,
+			Columns: []string{holder.RobotColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Holder{config: _u.config}

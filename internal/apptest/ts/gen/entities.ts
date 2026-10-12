@@ -80,7 +80,7 @@ export const Holder = {
 	schema: HolderSchema,
 	domain: 2,
 	version: "dateUpdated",
-	refs: [{ field: "tenant", to: "app.Tenant" }],
+	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "robot", to: "app.Robot" }],
 	alias: "alias",
 	key: "id",
 	ids: ["id"],

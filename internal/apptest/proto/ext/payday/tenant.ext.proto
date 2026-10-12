@@ -1,0 +1,11 @@
+// What this app adds to payday's Tenant.
+//
+// A stamped scalar, for the same reason the holder has one (payday#29): an
+// overlay on one of payday's own entities whose `Add` the gate already writes
+// out by hand -- refused outright, for a tenant -- has to come out as that one
+// gate and not a second beside it.
+message Tenant {
+  // Where the deployment keeps this tenant's rows. The deployment's to say,
+  // and never a request's.
+  string region = 8 [(payday.field) = {stamped: true}];
+}

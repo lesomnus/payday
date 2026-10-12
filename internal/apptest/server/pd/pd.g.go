@@ -2587,9 +2587,17 @@ func (s Gate) Holder() apptest.HolderServiceServer {
 // tenant gives: that one exists is itself something a caller who may not see
 // it should not be told. It also gets a tenant that simply is not there
 // right, which comparing against a scope did not.
+//
+// And what an app's overlay added to the holder is asked here with it, as it
+// is of the app's own entities: a stamp a request may not assert, and an
+// edge, which is a read of whatever it names.
 func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
 	if _, err := gate.Actor(ctx); err != nil {
 		return nil, err
+	}
+
+	if req.GetDirectory() != "" {
+		return nil, pderr.Invalidf("directory", "is established by this deployment and not asserted by a request")
 	}
 
 	if _, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
@@ -2602,7 +2610,41 @@ func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 		return nil, err
 	}
 
+	if ref := req.GetRobot(); ref != nil {
+		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Robot")
+			}
+
+			return nil, err
+		}
+	}
+
 	return s.HolderServiceServer.Add(ctx, req)
+}
+
+// Patch refuses an edge moved onto a row this caller cannot see.
+//
+// The wall narrows the row being written and says nothing about what the
+// write points **at**. An edge is a read -- a `Select` walks it -- so one
+// moved out of the caller's scope is a way through the wall one hop later,
+// exactly as it would have been at `Add`.
+func (s gateHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
+	if ref := req.GetRobot(); ref != nil {
+		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+			Ref: ref,
+		}.Build()); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Robot")
+			}
+
+			return nil, err
+		}
+	}
+
+	return s.HolderServiceServer.Patch(ctx, req)
 }
 
 type gateCell struct {
@@ -3800,50 +3842,6 @@ func (s interceptTenant) List(ctx context.Context, req *apptest.TenantListReques
 		apptest.TenantService_List_FullMethodName, req, s.TenantServiceServer.List)
 }
 
-func (s Intercept) Holder() apptest.HolderServiceServer {
-	return interceptHolder{s, s.Next().Holder()}
-}
-
-type interceptHolder struct {
-	Intercept
-	apptest.HolderServiceServer
-}
-
-func (s interceptHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
-		apptest.HolderService_Add_FullMethodName, req, s.HolderServiceServer.Add)
-}
-
-func (s interceptHolder) Get(ctx context.Context, req *apptest.HolderGetRequest) (*apptest.Holder, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
-		apptest.HolderService_Get_FullMethodName, req, s.HolderServiceServer.Get)
-}
-
-func (s interceptHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
-		apptest.HolderService_Patch_FullMethodName, req, s.HolderServiceServer.Patch)
-}
-
-func (s interceptHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
-		apptest.HolderService_Apply_FullMethodName, req, s.HolderServiceServer.Apply)
-}
-
-func (s interceptHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
-		apptest.HolderService_Erase_FullMethodName, req, s.HolderServiceServer.Erase)
-}
-
-func (s interceptHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*apptest.HolderListResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
-		apptest.HolderService_List_FullMethodName, req, s.HolderServiceServer.List)
-}
-
-func (s interceptHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStreamingServer[apptest.HolderWatchResponse]) error {
-	return grpcx.RunStream(s.stream, s.HolderServiceServer,
-		apptest.HolderService_Watch_FullMethodName, req, out, s.HolderServiceServer.Watch)
-}
-
 func (s Intercept) Thing() apptest.ThingServiceServer {
 	return interceptThing{s, s.Next().Thing()}
 }
@@ -4100,6 +4098,50 @@ func (s interceptReading) Apply(ctx context.Context, req *apptest.ReadingApplyRe
 func (s interceptReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
 		apptest.ReadingService_Erase_FullMethodName, req, s.ReadingServiceServer.Erase)
+}
+
+func (s Intercept) Holder() apptest.HolderServiceServer {
+	return interceptHolder{s, s.Next().Holder()}
+}
+
+type interceptHolder struct {
+	Intercept
+	apptest.HolderServiceServer
+}
+
+func (s interceptHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Add_FullMethodName, req, s.HolderServiceServer.Add)
+}
+
+func (s interceptHolder) Get(ctx context.Context, req *apptest.HolderGetRequest) (*apptest.Holder, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Get_FullMethodName, req, s.HolderServiceServer.Get)
+}
+
+func (s interceptHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Patch_FullMethodName, req, s.HolderServiceServer.Patch)
+}
+
+func (s interceptHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Apply_FullMethodName, req, s.HolderServiceServer.Apply)
+}
+
+func (s interceptHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Erase_FullMethodName, req, s.HolderServiceServer.Erase)
+}
+
+func (s interceptHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*apptest.HolderListResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_List_FullMethodName, req, s.HolderServiceServer.List)
+}
+
+func (s interceptHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStreamingServer[apptest.HolderWatchResponse]) error {
+	return grpcx.RunStream(s.stream, s.HolderServiceServer,
+		apptest.HolderService_Watch_FullMethodName, req, out, s.HolderServiceServer.Watch)
 }
 
 func (s Intercept) Seal() apptest.SealServiceServer {
@@ -5122,84 +5164,6 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 
 		return anypb.New(res)
 
-	case apptest.HolderService_Add_FullMethodName:
-		v := &apptest.HolderAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_Get_FullMethodName:
-		v := &apptest.HolderGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_Patch_FullMethodName:
-		v := &apptest.HolderPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_Apply_FullMethodName:
-		v := &apptest.HolderApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_Erase_FullMethodName:
-		v := &apptest.HolderRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.HolderService_List_FullMethodName:
-		v := &apptest.HolderListRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().List(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
 	case apptest.ThingService_Add_FullMethodName:
 		v := &apptest.ThingAddRequest{}
 		if err := op.GetRequest().UnmarshalTo(v); err != nil {
@@ -5688,6 +5652,84 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Reading().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Add_FullMethodName:
+		v := &apptest.HolderAddRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Get_FullMethodName:
+		v := &apptest.HolderGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Patch_FullMethodName:
+		v := &apptest.HolderPatchRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Patch(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Apply_FullMethodName:
+		v := &apptest.HolderApplyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Apply(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_Erase_FullMethodName:
+		v := &apptest.HolderRef{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().Erase(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.HolderService_List_FullMethodName:
+		v := &apptest.HolderListRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Holder().List(ctx, v)
 		if err != nil {
 			return nil, err
 		}

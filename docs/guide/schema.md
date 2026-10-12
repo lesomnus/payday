@@ -582,6 +582,13 @@ it restates the default, because saying nothing **is** Holder's declaration.
 Anything in `(orm.message)` other than an index is refused the same way, and
 where both sides set the same value, payday's is the one kept.
 
+What the gate asks of your own entities it asks of what an overlay adds to
+these. A field the overlay stamps (`(payday.field) = {stamped: true}`) is refused
+to an `Add` request, and an edge the overlay adds is read through the wall at
+`Add` and again by a `Patch` that moves it. Holder's gate is the one payday
+writes out by hand, and these are written into it, not into a second gate
+beside it.
+
 One thing an overlay may not say is what the file **is**. A file-level
 `features.` option — `features.field_presence = IMPLICIT` copied down from the
 entity file — is refused, because the merge would put it on every field of every

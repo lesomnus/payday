@@ -1270,6 +1270,23 @@ func (m *HolderMutation) OldProfile(ctx context.Context) (v *apptest.Profile, er
 	return oldValue.Profile, nil
 }
 
+// OldDirectory returns the old "directory" field's value of the Holder entity.
+// If the Holder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HolderMutation) OldDirectory(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDirectory is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDirectory requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDirectory: %w", err)
+	}
+	return oldValue.Directory, nil
+}
+
 // OldTenantId returns the old "tenant_id" field's value of the Holder entity.
 // If the Holder object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
@@ -1285,6 +1302,23 @@ func (m *HolderMutation) OldTenantId(ctx context.Context) (v uuid.UUID, err erro
 		return v, fmt.Errorf("querying old value for OldTenantId: %w", err)
 	}
 	return oldValue.TenantId, nil
+}
+
+// OldRobotId returns the old "robot_id" field's value of the Holder entity.
+// If the Holder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HolderMutation) OldRobotId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldRobotId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldRobotId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRobotId: %w", err)
+	}
+	return oldValue.RobotId, nil
 }
 
 // OldField returns the old value of the field from the database. An error is
@@ -1310,8 +1344,12 @@ func (m *HolderMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldIdpSubject(ctx)
 	case holder.FieldProfile:
 		return m.OldProfile(ctx)
+	case holder.FieldDirectory:
+		return m.OldDirectory(ctx)
 	case holder.FieldTenantId:
 		return m.OldTenantId(ctx)
+	case holder.FieldRobotId:
+		return m.OldRobotId(ctx)
 	}
 	return nil, fmt.Errorf("unknown Holder field %s", name)
 }
@@ -2838,6 +2876,23 @@ func (m *TenantMutation) OldDateCreated(ctx context.Context) (v time.Time, err e
 	return oldValue.DateCreated, nil
 }
 
+// OldRegion returns the old "region" field's value of the Tenant entity.
+// If the Tenant object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TenantMutation) OldRegion(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldRegion is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldRegion requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRegion: %w", err)
+	}
+	return oldValue.Region, nil
+}
+
 // OldField returns the old value of the field from the database. An error is
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
@@ -2855,6 +2910,8 @@ func (m *TenantMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldDateUpdated(ctx)
 	case tenant.FieldDateCreated:
 		return m.OldDateCreated(ctx)
+	case tenant.FieldRegion:
+		return m.OldRegion(ctx)
 	}
 	return nil, fmt.Errorf("unknown Tenant field %s", name)
 }

@@ -29,6 +29,7 @@ func (Tenant) Fields() []ent.Field {
 		field.Time("date_created").
 			Immutable().
 			Optional(),
+		field.String("region"),
 	}
 }
 

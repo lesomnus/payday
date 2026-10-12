@@ -32,5 +32,13 @@ func (e *Holder) Proto() *apptest.Holder {
 	if e.Profile != nil {
 		x.SetProfile(e.Profile)
 	}
+	x.SetDirectory(e.Directory)
+	if v := e.Edges.Robot; v != nil {
+		x.SetRobot(v.Proto())
+	} else if v := e.RobotId; v != *new(uuid.UUID) {
+		r := &apptest.Robot{}
+		r.SetId(v[:])
+		x.SetRobot(r)
+	}
 	return x
 }

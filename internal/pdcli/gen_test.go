@@ -280,3 +280,26 @@ func TestAnOverlayThatRedeclaresAGeneratedRpcIsRefused(t *testing.T) {
 		x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
 	})
 }
+
+// TestAGenerationRunsOnWhatTheLastOneWrote.
+//
+// A contract the last generation wrote is an input to this one if it is left
+// where buf reads, so each is removed first -- and the removal once reached
+// one directory down, which is where an app's own contracts are and not where
+// payday's are. Theirs are beside the copies, a directory further. This app's
+// holder has an edge to its robot, so the holder's contract imports the
+// robot's: the removal took the robot's away and left the holder's importing
+// it, and every generation after the first failed on a file nobody could find.
+func TestAGenerationRunsOnWhatTheLastOneWrote(t *testing.T) {
+	x := require.New(t)
+
+	l := genApp(t)
+
+	b, err := os.ReadFile(filepath.Join(l.Root, l.DirPd(), "holder_svc.g.proto"))
+	x.NoError(err)
+	x.Contains(string(b), `import "app/robot_svc.g.proto";`,
+		"the case this is about: one of payday's contracts importing one of the app's")
+
+	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
+	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()), "and again, on what that one wrote")
+}

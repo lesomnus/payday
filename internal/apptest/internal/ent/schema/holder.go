@@ -38,8 +38,11 @@ func (Holder) Fields() []ent.Field {
 		field.String("idp_subject"),
 		field.Json("profile", &apptest.Profile{}).ValueScanner(entpb.ValueScanner[*apptest.Profile]{}).
 			Optional(),
+		field.String("directory"),
 		field.Uuid("tenant_id").
 			Immutable(),
+		field.Uuid("robot_id").
+			Optional(),
 	}
 }
 
@@ -50,6 +53,9 @@ func (Holder) Edges() []ent.Edge {
 			Field("tenant_id").
 			Required().
 			Immutable(),
+		edge.To("robot", Robot.Type).
+			Unique().
+			Field("robot_id"),
 	}
 }
 

@@ -23,6 +23,8 @@ const (
 	FieldDateUpdated = "date_updated"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
 	FieldDateCreated = "date_created"
+	// FieldRegion holds the string denoting the region field in the database.
+	FieldRegion = "region"
 	// Table holds the table name of the tenant in the database.
 	Table = "tenant"
 )
@@ -36,6 +38,7 @@ var Columns = []string{
 	FieldLabels,
 	FieldDateUpdated,
 	FieldDateCreated,
+	FieldRegion,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -79,4 +82,9 @@ func ByDateUpdated(opts ...sql.OrderTermOption) OrderOption {
 // ByDateCreated orders the results by the date_created field.
 func ByDateCreated(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateCreated, opts...).ToFunc()
+}
+
+// ByRegion orders the results by the region field.
+func ByRegion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRegion, opts...).ToFunc()
 }

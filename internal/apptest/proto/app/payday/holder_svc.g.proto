@@ -4,6 +4,7 @@ package app;
 import "app/payday/holder.proto";
 import "app/payday/tenant_svc.g.proto";
 import "app/profile.proto";
+import "app/robot_svc.g.proto";
 import "google/protobuf/timestamp.proto";
 import "patch/patch.proto";
 
@@ -46,6 +47,8 @@ message HolderAddRequest {
   google.protobuf.Timestamp date_created = 15;
   string idp_subject = 8 [features.field_presence = IMPLICIT];
   Profile profile = 9;
+  string directory = 10 [features.field_presence = IMPLICIT];
+  RobotRef robot = 11;
 }
 
 message HolderGetRequest {
@@ -77,6 +80,8 @@ message HolderSelect {
   bool date_created = 15;
   bool idp_subject = 8;
   bool profile = 9;
+  bool directory = 10;
+  RobotSelect robot = 11;
 }
 
 message HolderPatchRequest {
@@ -106,6 +111,13 @@ message HolderPatchRequest {
   // "leave it alone", so no value could have meant NULL. It wins
   // outright: setting both this and profile clears.
   bool profile_null = 19;
+  string directory = 20;
+  RobotRef robot = 22;
+  // Clear robot instead of writing it.
+  // It takes a field of its own because an unset value already means
+  // "leave it alone", so no value could have meant NULL. It wins
+  // outright: setting both this and robot clears.
+  bool robot_null = 23;
 }
 
 message HolderApplyRequest {

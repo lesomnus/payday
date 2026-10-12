@@ -32,10 +32,16 @@ const (
 	FieldIdpSubject = "idp_subject"
 	// FieldProfile holds the string denoting the profile field in the database.
 	FieldProfile = "profile"
+	// FieldDirectory holds the string denoting the directory field in the database.
+	FieldDirectory = "directory"
 	// FieldTenantId holds the string denoting the tenant_id field in the database.
 	FieldTenantId = "tenant_id"
+	// FieldRobotId holds the string denoting the robot_id field in the database.
+	FieldRobotId = "robot_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
 	EdgeTenant = "tenant"
+	// EdgeRobot holds the string denoting the robot edge name in mutations.
+	EdgeRobot = "robot"
 	// Table holds the table name of the holder in the database.
 	Table = "holder"
 	// TenantTable is the table that holds the tenant relation/edge.
@@ -45,6 +51,13 @@ const (
 	TenantInverseTable = "tenant"
 	// TenantColumn is the table column denoting the tenant relation/edge.
 	TenantColumn = "tenant_id"
+	// RobotTable is the table that holds the robot relation/edge.
+	RobotTable = "holder"
+	// RobotInverseTable is the table name for the Robot entity.
+	// It exists in this package in order to avoid circular dependency with the "robot" package.
+	RobotInverseTable = "robot"
+	// RobotColumn is the table column denoting the robot relation/edge.
+	RobotColumn = "robot_id"
 )
 
 // Columns holds all SQL columns for holder fields.
@@ -59,7 +72,9 @@ var Columns = []string{
 	FieldDateCreated,
 	FieldIdpSubject,
 	FieldProfile,
+	FieldDirectory,
 	FieldTenantId,
+	FieldRobotId,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -122,9 +137,19 @@ func ByIdpSubject(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIdpSubject, opts...).ToFunc()
 }
 
+// ByDirectory orders the results by the directory field.
+func ByDirectory(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDirectory, opts...).ToFunc()
+}
+
 // ByTenantId orders the results by the tenant_id field.
 func ByTenantId(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTenantId, opts...).ToFunc()
+}
+
+// ByRobotId orders the results by the robot_id field.
+func ByRobotId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRobotId, opts...).ToFunc()
 }
 
 // ByTenantField orders the results by tenant field.
@@ -133,10 +158,24 @@ func ByTenantField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newTenantStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByRobotField orders the results by robot field.
+func ByRobotField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRobotStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newTenantStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldId),
 		sqlgraph.To(TenantInverseTable, FieldId),
 		sqlgraph.Edge(sqlgraph.M2O, false, TenantTable, TenantColumn),
+	)
+}
+func newRobotStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldId),
+		sqlgraph.To(RobotInverseTable, FieldId),
+		sqlgraph.Edge(sqlgraph.M2O, false, RobotTable, RobotColumn),
 	)
 }

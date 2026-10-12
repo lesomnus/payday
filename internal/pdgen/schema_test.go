@@ -1719,3 +1719,79 @@ message Holder {
 		}
 	})
 }
+
+// TestAStampIsAskedOfTheRequestItIsIn: what refuses a stamp is a question about
+// the `Add` request, and the request is the ORM's -- it declares a scalar the row
+// cannot do without `IMPLICIT`, with no `Has` to ask. Asking one anyway was a
+// server that did not compile for the first stamped string (#29), so the
+// question is the one each shape can answer: presence where there is presence,
+// which also refuses a zero said on purpose, and the zero where there is not.
+func TestAStampIsAskedOfTheRequestItIsIn(t *testing.T) {
+	stamped := func(decl string) string {
+		return strings.Replace(decl, ";", " [(payday.field) = {stamped: true}];", 1)
+	}
+	s, err := read(t, tenant+`
+enum Mood {
+  MOOD_UNSPECIFIED = 0;
+  MOOD_GOOD = 1;
+}
+`+entity("Robot", `domain: 7, tenanted: {via: "tenant"}`,
+		`Tenant tenant = 2 [(orm.edge) = {}];`,
+		stamped(`string text = 8;`),
+		stamped(`bool flag = 9;`),
+		stamped(`int64 count = 10;`),
+		stamped(`bytes blob = 11;`),
+		stamped(`Mood mood = 12;`),
+		stamped(`repeated string tags = 16;`),
+		stamped(`map<string, string> notes = 17;`),
+		`string named = 18 [(orm.field) = {nullable: true}, (payday.field) = {stamped: true}];`,
+		`string kept = 19 [(orm.field) = {default: "x"}, (payday.field) = {stamped: true}];`,
+		`google.protobuf.Timestamp date_seen = 20 [(orm.field) = {nullable: true}, (payday.field) = {stamped: true}];`,
+		`Robot buddy = 21 [(orm.edge) = {nullable: true}, (payday.field) = {stamped: true}];`,
+		`string doc = 22 [(orm.field) = {type: TYPE_JSON}, (payday.field) = {stamped: true}];`,
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := map[string]string{
+		// IMPLICIT in the request: the zero is every request that said nothing.
+		"text":  `req.GetText() != ""`,
+		"flag":  `req.GetFlag()`,
+		"count": `req.GetCount() != 0`,
+		"blob":  `len(req.GetBlob()) != 0`,
+		"mood":  `req.GetMood() != 0`,
+
+		// No presence either way, and empty is saying nothing.
+		"tags":  `len(req.GetTags()) != 0`,
+		"notes": `len(req.GetNotes()) != 0`,
+
+		// Presence, which a row that may do without the value keeps.
+		"named":     `req.HasNamed()`,
+		"kept":      `req.HasKept()`,
+		"date_seen": `req.HasDateSeen()`,
+		"buddy":     `req.HasBuddy()`,
+
+		// A string the ORM keeps as JSON is a message to it, and the request
+		// gives it the presence a message has.
+		"doc": `req.HasDoc()`,
+	}
+
+	for _, v := range s.Entities {
+		if v.GoName() != "Robot" {
+			continue
+		}
+		if len(v.Stamped) != len(want) {
+			t.Errorf("stamped: %q", v.Stamped)
+		}
+		for p := range v.Props() {
+			w, ok := want[p.Name()]
+			if !ok {
+				continue
+			}
+			if got := pdgen.Asserted(p); got != w {
+				t.Errorf("%s: %s, and the request answers %s", p.Name(), got, w)
+			}
+		}
+	}
+}

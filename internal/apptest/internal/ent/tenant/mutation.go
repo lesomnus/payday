@@ -22,6 +22,7 @@ type Mutation struct {
 	labels        *map[string]string
 	date_updated  *time.Time
 	date_created  *time.Time
+	region        *string
 	clearedFields map[string]struct{}
 	predicates    []predicate.Tenant
 }
@@ -180,6 +181,25 @@ func (m *Mutation) ResetDateCreated() {
 	delete(m.clearedFields, FieldDateCreated)
 }
 
+// SetRegion sets the "region" field.
+func (m *Mutation) SetRegion(s string) {
+	m.region = &s
+}
+
+// Region returns the value of the "region" field in the mutation.
+func (m *Mutation) Region() (r string, exists bool) {
+	v := m.region
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRegion resets all changes to the "region" field.
+func (m *Mutation) ResetRegion() {
+	m.region = nil
+}
+
 // Where appends a list predicates to the Mutation builder.
 func (m *Mutation) Where(ps ...predicate.Tenant) {
 	m.predicates = append(m.predicates, ps...)
@@ -214,7 +234,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.alias != nil {
 		fields = append(fields, FieldAlias)
 	}
@@ -232,6 +252,9 @@ func (m *Mutation) Fields() []string {
 	}
 	if m.date_created != nil {
 		fields = append(fields, FieldDateCreated)
+	}
+	if m.region != nil {
+		fields = append(fields, FieldRegion)
 	}
 	return fields
 }
@@ -253,6 +276,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.DateUpdated()
 	case FieldDateCreated:
 		return m.DateCreated()
+	case FieldRegion:
+		return m.Region()
 	}
 	return nil, false
 }
@@ -310,6 +335,13 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDateCreated(v)
+		return nil
+	case FieldRegion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRegion(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Tenant field %s", name)
@@ -392,6 +424,9 @@ func (m *Mutation) ResetField(name string) error {
 		return nil
 	case FieldDateCreated:
 		m.ResetDateCreated()
+		return nil
+	case FieldRegion:
+		m.ResetRegion()
 		return nil
 	}
 	return fmt.Errorf("unknown Tenant field %s", name)

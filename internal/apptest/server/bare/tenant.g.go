@@ -112,6 +112,7 @@ func (s TenantServiceServer) Add(ctx context.Context, req *apptest.TenantAddRequ
 	} else {
 		q.SetDateCreated(st.now())
 	}
+	q.SetRegion(req.GetRegion())
 
 	u, err := q.Save(ctx)
 	if err != nil {
@@ -193,6 +194,9 @@ func TenantSelectedFields(m *apptest.TenantSelect) []string {
 	if m.GetDateCreated() {
 		vs = append(vs, tenant.FieldDateCreated)
 	}
+	if m.GetRegion() {
+		vs = append(vs, tenant.FieldRegion)
+	}
 
 	return vs
 }
@@ -258,7 +262,7 @@ func TenantGetKey(ctx context.Context, db *ent.Client, ref *apptest.TenantRef) (
 var tenantOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_tenant_proto, "Tenant")
 
 var tenantPatchColumns = entpatch.Columns{
-	1: tenant.FieldId, 4: tenant.FieldAlias, 5: tenant.FieldName, 6: tenant.FieldDesc, 7: tenant.FieldLabels, 13: tenant.FieldDateUpdated, 15: tenant.FieldDateCreated}
+	1: tenant.FieldId, 4: tenant.FieldAlias, 5: tenant.FieldName, 6: tenant.FieldDesc, 7: tenant.FieldLabels, 13: tenant.FieldDateUpdated, 15: tenant.FieldDateCreated, 8: tenant.FieldRegion}
 
 func (s TenantServiceServer) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
 	if !req.HasPatch() {

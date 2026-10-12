@@ -97,6 +97,20 @@ func (_u *TenantUpdate) SetNillableDateUpdated(v *time.Time) *TenantUpdate {
 	return _u
 }
 
+// SetRegion sets the "region" field.
+func (_u *TenantUpdate) SetRegion(v string) *TenantUpdate {
+	_u.mutation.SetRegion(v)
+	return _u
+}
+
+// SetNillableRegion sets the "region" field if the given value is not nil.
+func (_u *TenantUpdate) SetNillableRegion(v *string) *TenantUpdate {
+	if v != nil {
+		_u.SetRegion(*v)
+	}
+	return _u
+}
+
 // Mutation returns the TenantMutation object of the builder.
 func (_u *TenantUpdate) Mutation() *TenantMutation {
 	return _u.mutation
@@ -164,6 +178,9 @@ func (_u *TenantUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(tenant.FieldDateCreated, field.TypeTime)
+	}
+	if value, ok := _u.mutation.Region(); ok {
+		_spec.SetField(tenant.FieldRegion, field.TypeString, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -251,6 +268,20 @@ func (_u *TenantUpdateOne) SetDateUpdated(v time.Time) *TenantUpdateOne {
 func (_u *TenantUpdateOne) SetNillableDateUpdated(v *time.Time) *TenantUpdateOne {
 	if v != nil {
 		_u.SetDateUpdated(*v)
+	}
+	return _u
+}
+
+// SetRegion sets the "region" field.
+func (_u *TenantUpdateOne) SetRegion(v string) *TenantUpdateOne {
+	_u.mutation.SetRegion(v)
+	return _u
+}
+
+// SetNillableRegion sets the "region" field if the given value is not nil.
+func (_u *TenantUpdateOne) SetNillableRegion(v *string) *TenantUpdateOne {
+	if v != nil {
+		_u.SetRegion(*v)
 	}
 	return _u
 }
@@ -352,6 +383,9 @@ func (_u *TenantUpdateOne) sqlSave(ctx context.Context) (_node *Tenant, err erro
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(tenant.FieldDateCreated, field.TypeTime)
+	}
+	if value, ok := _u.mutation.Region(); ok {
+		_spec.SetField(tenant.FieldRegion, field.TypeString, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Tenant{config: _u.config}

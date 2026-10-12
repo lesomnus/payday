@@ -215,14 +215,32 @@ generation.
 func (r run) contracts(ctx context.Context) error {
 	// The previous run's contracts, which are inputs to this one if they are
 	// left where buf can read them.
-	vs, err := filepath.Glob(filepath.Join(r.Out, DirProto, "*", "*_svc.g.proto"))
-	if err != nil {
-		return err
-	}
-	for _, v := range vs {
-		if err := os.Remove(v); err != nil {
+	//
+	// **At every depth.** This was one directory down, which is where an app's
+	// own contracts are and not where payday's are: those are beside the
+	// copies, in `proto/<pkg>/payday/`. One of them left behind is read as it
+	// was, importing whatever an overlay last made it import -- and an overlay
+	// that gives the holder an edge to an app's entity makes it import that
+	// entity's contract, which the line above had just removed. Every
+	// generation after the first then failed on a file nobody could find.
+	if err := filepath.WalkDir(filepath.Join(r.Out, DirProto), func(p string, d fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
 			return err
+		case d.IsDir():
+			if p == filepath.Join(r.Out, DirExt) {
+				// Overlays, which are the app's and never generated.
+				return fs.SkipDir
+			}
+
+			return nil
+		case !strings.HasSuffix(p, "_svc.g.proto"):
+			return nil
 		}
+
+		return os.Remove(p)
+	}); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
 	}
 
 	return r.buf(ctx, tmplContracts(r.Layout, r.svc, r.pd))

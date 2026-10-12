@@ -1074,6 +1074,17 @@ func isStringMap(f graph.Field) bool {
 		d.MapValue().Kind() == protoreflect.StringKind
 }
 
+// prop is the field or edge of `e` named `name`.
+func prop(e graph.Entity, name string) (graph.Prop, bool) {
+	for p := range e.Props() {
+		if p.Name() == name {
+			return p, true
+		}
+	}
+
+	return nil, false
+}
+
 func field(e graph.Entity, name string) (graph.Field, bool) {
 	for p := range e.Props() {
 		f, ok := p.(graph.Field)

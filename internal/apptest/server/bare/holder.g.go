@@ -10,14 +10,17 @@ import (
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
+	graph "github.com/protobuf-orm/protobuf-orm/graph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	uuid "uuid"
 )
 
@@ -90,7 +93,7 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 	st := s
 	st.Db = tx.Db
 
-	ds := make([]func(v *apptest.Holder), 0, 1)
+	ds := make([]func(v *apptest.Holder), 0, 2)
 	q := st.Db.Holder.Create()
 	var k uuid.UUID
 	if req.HasId() {
@@ -128,6 +131,17 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 	q.SetIdpSubject(req.GetIdpSubject())
 	if req.HasProfile() {
 		q.SetProfile(req.GetProfile())
+	}
+	q.SetDirectory(req.GetDirectory())
+	if req.HasRobot() {
+		if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
+			return nil, err
+		} else {
+			q.SetRobotId(k)
+			ds = append(ds, func(v *apptest.Holder) {
+				v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
+			})
+		}
 	}
 
 	u, err := q.Save(ctx)
@@ -223,6 +237,9 @@ func HolderSelectedFields(m *apptest.HolderSelect) []string {
 	if m.GetProfile() {
 		vs = append(vs, holder.FieldProfile)
 	}
+	if m.GetDirectory() {
+		vs = append(vs, holder.FieldDirectory)
+	}
 
 	return vs
 }
@@ -237,6 +254,12 @@ func HolderSelect(q *ent.HolderQuery, m *apptest.HolderSelect) {
 			TenantSelect(q, m.GetTenant())
 		})
 	}
+	if m.HasRobot() {
+		q.WithRobot(func(q *ent.RobotQuery) {
+			q.Where(robot.DateErasedIsNil())
+			RobotSelect(q, m.GetRobot())
+		})
+	}
 }
 
 func HolderSelectInit(q *ent.HolderQuery, m *apptest.HolderSelect) {
@@ -244,11 +267,22 @@ func HolderSelectInit(q *ent.HolderQuery, m *apptest.HolderSelect) {
 		HolderSelect(q, m)
 	} else {
 		q.WithTenant(selectTenantKey)
+		q.WithRobot(selectRobotKey)
 	}
 }
 
 func (s HolderServiceServer) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
-	doc, err := ormpatch.FromPatchRequest(holderOrmEntity, req.ProtoReflect(), nil)
+	doc, err := ormpatch.FromPatchRequest(holderOrmEntity, req.ProtoReflect(), func(ed graph.Edge, ref protoreflect.Message) (protoreflect.Value, error) {
+		switch ed.Number() {
+		case 11:
+			k, err := RobotGetKey(ctx, s.Db, ref.Interface().(*apptest.RobotRef))
+			if err != nil {
+				return protoreflect.Value{}, err
+			}
+			return protoreflect.ValueOfBytes(k[:]), nil
+		}
+		return protoreflect.Value{}, status.Errorf(codes.Internal, "no key resolver for edge: %s", ed.Name())
+	})
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
 			return nil, err
@@ -294,7 +328,7 @@ func HolderGetKey(ctx context.Context, db *ent.Client, ref *apptest.HolderRef) (
 var holderOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_holder_proto, "Holder")
 
 var holderPatchColumns = entpatch.Columns{
-	1: holder.FieldId, 2: holder.TenantColumn, 4: holder.FieldAlias, 5: holder.FieldName, 6: holder.FieldDesc, 7: holder.FieldLabels, 13: holder.FieldDateUpdated, 14: holder.FieldDateErased, 15: holder.FieldDateCreated, 8: holder.FieldIdpSubject, 9: holder.FieldProfile}
+	1: holder.FieldId, 2: holder.TenantColumn, 4: holder.FieldAlias, 5: holder.FieldName, 6: holder.FieldDesc, 7: holder.FieldLabels, 13: holder.FieldDateUpdated, 14: holder.FieldDateErased, 15: holder.FieldDateCreated, 8: holder.FieldIdpSubject, 9: holder.FieldProfile, 10: holder.FieldDirectory, 11: holder.RobotColumn}
 
 func (s HolderServiceServer) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
 	if !req.HasPatch() {

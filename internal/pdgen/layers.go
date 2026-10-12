@@ -1,10 +1,13 @@
 package pdgen
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/protobuf-orm/protobuf-orm/graph"
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/lesomnus/payday/pdpb"
 )
@@ -174,12 +177,26 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("// tenant gives: that one exists is itself something a caller who may not see")
 	g.P("// it should not be told. It also gets a tenant that simply is not there")
 	g.P("// right, which comparing against a scope did not.")
+	g.P("//")
+	g.P("// And what an app's overlay added to the holder is asked here with it, as it")
+	g.P("// is of the app's own entities: a stamp a request may not assert, and an")
+	g.P("// edge, which is a read of whatever it names.")
 	g.P("func (s gateHolder) Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("HolderAddRequest"),
 		") (*", root.Ident("Holder"), ", error) {")
 	g.P("	if _, err := ", pkgGate.Ident("Actor"), "(ctx); err != nil {")
 	g.P("		return nil, err")
 	g.P("	}")
 	g.P("")
+
+	// What an app's overlay says about a holder is said here as well, and not
+	// in a gate of its own beside this one: that was two `gateHolder`s, and an
+	// app that stamped a field of payday's holder had a server that did not
+	// compile (#29). An overlay is how an app adds to payday's entity, so this
+	// is the holder's whole `Add` -- the stamps before the read, as
+	// [emitAdmit] has them, since they are a fact about the request.
+	holder := s.Own(pdpb.Own_OWN_HOLDER)
+	stamps(g, holder)
+
 	g.P("	if _, err := s.Gate.Next().Tenant().Get(ctx, ", root.Ident("TenantGetRequest_builder"), "{")
 	g.P("		Ref: req.GetTenant(),")
 	g.P("	}.Build()); err != nil {")
@@ -190,9 +207,17 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("		return nil, err")
 	g.P("	}")
 	g.P("")
+
+	// And every edge an overlay gave it, for the reason on [emitAdmit]: an
+	// edge is a read. That payday's own holder has none but its tenant is not
+	// a promise about what an app adds to it.
+	others(g, s, root, holder, "tenant")
+
 	g.P("	return s.HolderServiceServer.Add(ctx, req)")
 	g.P("}")
 	g.P("")
+
+	emitAdmitPatch(g, holder, s, root)
 
 	emitAdmit(g, s, root)
 }
@@ -255,11 +280,17 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 // see past: a global row belongs to no tenant and is readable by everybody.
 func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath) {
 	for _, v := range s.Sorted() {
-		// The tenant is refused outright above, the holder has its own written
-		// out, and an entity that is not behind the wall has nothing to check.
-		// An entity that names its tenant with a column (`field:`) is refused a
+		// The tenant is refused outright above and the holder's gate is written
+		// out there too, with whatever an overlay added to it: a gate here as
+		// well would be a second type of the same name (#29).
+		if v.IsTenant || v.Own == pdpb.Own_OWN_HOLDER {
+			continue
+		}
+
+		// An entity that is not behind the wall has nothing to check. An entity
+		// that names its tenant with a column (`field:`) is refused a
 		// hand-written row by the audit layer.
-		walled := !v.IsTenant && !v.IsGlobal && len(v.Via) > 0 && v.Own != pdpb.Own_OWN_HOLDER
+		walled := !v.IsGlobal && len(v.Via) > 0
 
 		var (
 			hop string
@@ -327,30 +358,10 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 			seen(g, root, v.Set, s.Set)
 		}
 
-		// And every other edge, for the reason at the top of this function: an
-		// edge is a read, so one pointing out of the caller's scope is a way
-		// through the wall one hop later.
-		//
-		// In declaration order, so that the generated file is stable, and
+		// And every other edge, for the reason at the top of this function,
 		// skipping the two above rather than emitting them twice.
-		for e := range v.Edges() {
-			if !walled {
-				break
-			}
-
-			at := e.Name()
-			if at == hop || at == v.Set {
-				continue
-			}
-
-			target, ok := s.of(e.Target().FullName())
-			if !ok || target.IsGlobal {
-				// A target this schema does not describe, or one that belongs
-				// to no tenant. Neither has a wall to be on the wrong side of.
-				continue
-			}
-
-			seen(g, root, at, target)
+		if walled {
+			others(g, s, root, v, hop, v.Set)
 		}
 
 		g.P("	return s.", name, "ServiceServer.Add(ctx, req)")
@@ -445,11 +456,81 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 // written by.
 func stamps(g *protogen.GeneratedFile, v *Entity) {
 	for _, at := range v.Stamped {
-		g.P("	if req.Has", pascal(at), "() {")
+		p, ok := prop(v.Entity, at)
+		if !ok {
+			continue
+		}
+		if f, ok := p.(graph.Field); ok && (f.IsVersion() || f.IsErased()) {
+			// Neither is in the request at all -- the server stamps both --
+			// so there is nothing for one to assert.
+			continue
+		}
+
+		g.P("	if ", asserted(p), " {")
 		g.P("		return nil, ", pkgPderr.Ident("Invalidf"), "(", strconv.Quote(at), ", ",
 			strconv.Quote("is established by this deployment and not asserted by a request"), ")")
 		g.P("	}")
 		g.P("")
+	}
+}
+
+// asserted is the condition an `Add` request meets by saying anything about
+// `p`.
+//
+// The request's shape decides it rather than the entity's, and that shape is
+// the ORM's (`protoc-gen-orm-service`, `xMsgAddRequest`): a scalar the row
+// cannot do without is declared `IMPLICIT` and has no `Has` -- its zero is what
+// every request that did not set it reads as -- and everything else keeps the
+// presence it has. Asking `Has` of the first kind is what did not compile
+// (#29); a timestamp, which is what stamps had been, has presence either way.
+//
+// Where there is presence it is the test, being the stronger one: a value set
+// on purpose to its zero is still a request saying something. Where there is
+// none, a zero is saying nothing, and so is an empty list or map.
+func asserted(p graph.Prop) string {
+	at := pascal(p.Name())
+	fd := p.Descriptor()
+
+	if fd.IsList() || fd.IsMap() {
+		return "len(req.Get" + at + "()) != 0"
+	}
+	if _, ok := p.(graph.Field); !ok || !p.Type().IsScalar() || p.IsOptional() {
+		return "req.Has" + at + "()"
+	}
+
+	switch fd.Kind() {
+	case protoreflect.BoolKind:
+		return "req.Get" + at + "()"
+	case protoreflect.StringKind:
+		return "req.Get" + at + "() != \"\""
+	case protoreflect.BytesKind:
+		return "len(req.Get" + at + "()) != 0"
+	default:
+		// A number, or an enum, whose zero is the value that names nothing.
+		return "req.Get" + at + "() != 0"
+	}
+}
+
+// others writes [seen] for every edge of `v` but the ones in `skip`: an edge is
+// a read, so one pointing out of the caller's scope is a way through the wall
+// one hop later (see [emitAdmit]).
+//
+// In declaration order, so that the generated file is stable.
+func others(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath, v *Entity, skip ...string) {
+	for e := range v.Edges() {
+		at := e.Name()
+		if slices.Contains(skip, at) {
+			continue
+		}
+
+		target, ok := s.of(e.Target().FullName())
+		if !ok || target.IsGlobal {
+			// A target this schema does not describe, or one that belongs to
+			// no tenant. Neither has a wall to be on the wrong side of.
+			continue
+		}
+
+		seen(g, root, at, target)
 	}
 }
 
