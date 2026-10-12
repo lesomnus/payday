@@ -29,6 +29,10 @@ to the device — see [the runtime](runtime.md#keys-in-a-device):
   request a row, which a pass that moves many chunks makes many of.
 - **A value that begins with a scheme an imported package registered** is that
   device's key, and not a file of that name.
+- **`audit.keys.master` and `audit.keys.identity` read an age plugin's** too —
+  `age1yubikey1…` and `AGE-PLUGIN-YUBIKEY-1…` — for a master in a device, run
+  as `age-plugin-<name>` from PATH. The master is sealed to once at start now,
+  which also refuses recipients age will not seal to together.
 
 ## The trail's manifest is signed, and its checkpoints chained
 

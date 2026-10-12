@@ -676,6 +676,15 @@ kept as long as the archive is and which no purge reaches. `trail.Keys`
   configuration. The master's private half, `Keys.Identities`
   (`audit.keys.identity`), is given to a process that reads what rows say — an
   export, an operator at a shell — and to no other.
+- **The master may be in a device**, as age has one: a plugin, `age-plugin-<name>`
+  on PATH — age-plugin-yubikey for a YubiKey's PIV slot, age-plugin-tpm for a
+  TPM. Its recipient (`age1yubikey1…`) is the master, and the process that
+  serves seals to it by running the plugin, which needs no device to seal; its
+  identity (`AGE-PLUGIN-YUBIKEY-1…`) is what a reading command is given, and
+  opening takes the device and whatever it asks the terminal for, a PIN or a
+  touch. So the master's private half is in no file at all. The master is sealed
+  to once where the process comes up, and a plugin that is not on PATH, or
+  will not seal, is a process that does not start.
 - **A tenant leaving takes its key first.** `Policy.PurgeTenant` destroys the
   tenant's keys before anything else, writes the receipt for it at once, and
   then its rows. From then on what was its alone cannot be read from any copy:
