@@ -3,6 +3,42 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## Every act ends in a checkpoint, and `trail.Archive` takes the policy
+
+**Applies if** you call `trail.Archive`, or any act on the trail's archive —
+`Policy.Forget`, `Policy.Purge`, `Policy.PurgeTenant`, `Policy.Collect`,
+`Policy.Accept` — and read what it answers.
+
+- **`trail.Archive(ctx, s, p, of, before)`** takes the policy where it took an
+  archive, and writes into `p.Archive` as a pass does: sealed with `p.Keys`, its
+  manifest's rows signed by `p.Signer`, ending in a checkpoint. It used to seal
+  nothing and sign nothing, so in a deployment with a key its rows were
+  `unsigned` until accepted. It still asks nothing of the windows or the holds.
+
+  ```go
+  n, err := trail.Archive(ctx, store, of, before, flob.NewOsStores(dir)) // was
+  p.Archive = flob.NewOsStores(dir)                                      // is
+  n, err := trail.Archive(ctx, store, p, of, before)
+  ```
+
+  Hand it the policy the deployment runs with, so that the checkpoint it ends
+  in goes where the others do. A directory of the operator's own for `p.Archive`
+  is a manifest that says the archive holds chunks it does not, and, with no
+  `p.Checkpoints`, checkpoints in that directory and not beside the others.
+- **Every act that changed the archive ends in a checkpoint**, as a pass does;
+  one that changed nothing takes none, and nor does a question (`Doomed`,
+  `PlanTenantPurge`, `Preview`, `Read`). What an act answers stands; when the
+  checkpoint after it could not be taken, its error says so as well, joined to
+  whatever else it says. A device that signs is asked once more per act.
+- **No checkpoint is taken over rows that no longer add up to the latest one.**
+  Once somebody has changed them, every act's error says so, until an operator
+  accepts: `Policy.Accept` ends in a checkpoint of its own that says why
+  (`Checkpoint.Accepted`). Nothing is settled meanwhile.
+- **A loop that forgets one person per call** takes a checkpoint per person.
+  Hand `Policy.Forget` everybody who is due at once where it can.
+
+A `trail.Store` of your own changes nothing.
+
 ## A key in a device is a line of configuration
 
 **Applies if** you hand in a `crypto.Signer` for a TPM, an HSM, Vault or a
@@ -60,7 +96,8 @@ checkpoint names the one before it — see
   The generated store does all of it.
 - **`trail.Archive` signs nothing**, since it is handed no policy: with a key,
   the rows it writes are findings until accepted. A pass moves that
-  deployment's rows.
+  deployment's rows. (It is handed the policy since
+  [the entry above](#every-act-ends-in-a-checkpoint-and-trailarchive-takes-the-policy).)
 - **On a store that refuses deletion, say so**: hand it in as
   `trail.WriteOnce(store)`, or set `audit.checkpoints.write_once` beside
   `audit.checkpoints.dir` on a WORM mount.

@@ -199,7 +199,7 @@ func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 	was, err := b.Ent.Audit.Query().Count(ctx)
 	x.NoError(err)
 
-	n, err := trail.Archive(ctx, s, trail.Kinds{}, time.Now().Add(time.Hour), a)
+	n, err := trail.Archive(ctx, s, trail.Policy{Archive: a}, trail.Kinds{}, time.Now().Add(time.Hour))
 	x.NoError(err)
 	x.Equal(was, n)
 
@@ -347,7 +347,7 @@ func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 	who := must(pdid.From(v.GetId()))
 
 	a := flob.NewMemStores()
-	_, err = trail.Archive(ctx, pd.TrailStore(b.Ent), trail.Kinds{}, time.Now().Add(time.Hour), a)
+	_, err = trail.Archive(ctx, pd.TrailStore(b.Ent), trail.Policy{Archive: a}, trail.Kinds{}, time.Now().Add(time.Hour))
 	x.NoError(err)
 
 	held := 0

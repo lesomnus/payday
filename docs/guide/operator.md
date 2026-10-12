@@ -219,6 +219,12 @@ hand the store in as `trail.WriteOnce(store)`. Rows written before the
 deployment had a key are findings until an operator accepts them once,
 `policy.Accept(ctx, pd.TrailStore(db), why)`, which signs them as they stand.
 
+Every act that changes the archive ends in a checkpoint, as a pass does. Once
+the rows no longer add up to the latest one, none is taken — every act says so
+in its error, after doing what it does — until an operator who has looked
+accepts, and the acceptance is a checkpoint that says why. Have the command
+that runs `Verify` page somebody rather than log.
+
 An export of a tenant's trail — a tenant leaving, a person asking what is kept
 about them — reads the archive the same way:
 

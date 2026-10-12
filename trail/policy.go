@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/lesomnus/flob"
@@ -428,8 +429,9 @@ type Policy struct {
 	// window nobody chose for them.
 	Tenants func(ctx context.Context, tenant pdid.Id) (Tenant, error)
 
-	// Checkpoints is where a pass leaves what the archive held when it ended;
-	// see [Checkpoint]. Nil is the archive's own [CheckpointNamespace].
+	// Checkpoints is where a pass, and every act that changes the archive,
+	// leaves what the archive held when it ended; see [Checkpoint]. Nil is the
+	// archive's own [CheckpointNamespace].
 	//
 	// Their worth is where they are kept. On a store that refuses deletion --
 	// S3 Object Lock -- and apart from the archive, they are the archive's
@@ -800,7 +802,7 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 	}
 
 	if x.m != nil {
-		if c, err := x.p.checkpoint(ctx, x.s); err != nil {
+		if c, err := x.p.checkpoint(ctx, x.s, ""); err != nil {
 			log.From(ctx).WarnContext(ctx, "trail: the checkpoint of a pass", "err", err)
 		} else {
 			log.From(ctx).InfoContext(ctx, "trail: a checkpoint", "k", c.K, "blobs", c.Count)
@@ -870,6 +872,10 @@ type pass struct {
 	// seal seals what rows say on their way into the archive, and is nil when
 	// the policy has no [Keys].
 	seal *sealer
+
+	// touched is whether the act has changed the manifest, which is what
+	// decides whether it ends in a checkpoint; see [pass.cover].
+	touched atomic.Bool
 }
 
 type answer struct {
@@ -892,12 +898,78 @@ func (p Policy) start(s Store) (*pass, error) {
 		told:    map[string]bool{},
 		seal:    newSealer(p.Keys),
 	}
+	if s != nil {
+		x.s = touching{Store: s, at: &x.touched}
+	}
 	if p.Archive != nil && s != nil {
-		x.m = p.manifested(s)
+		x.m = p.manifested(x.s)
 		x.p.Archive = x.m
 	}
 
 	return x, nil
+}
+
+// cover is how an act that changed the manifest ends: in a checkpoint, as a
+// pass does, so that what a finished act wrote is never after the latest one
+// (#60). Between two checkpoints, somebody who can write both the database and
+// the archive can change the two together, and only a checkpoint says what
+// they were; with one at the end of every act, what is after the latest is at
+// most what an act still at it has written.
+//
+// Deferred by the act, so that one that stops part of the way covers what it
+// did. An act that changed nothing takes none: a checkpoint is every blob the
+// manifest has, and one the same as the last says nothing.
+//
+// What it answers joins the act's error rather than replacing it, and the act's
+// results stand. The act was done; what it wrote is not covered until the next
+// checkpoint is, and that is what the error says.
+func (x *pass) cover(ctx context.Context, act string, err *error) {
+	if x.m == nil || !x.touched.Load() {
+		return
+	}
+
+	c, cerr := x.p.checkpoint(ctx, x.s, "")
+	if cerr != nil {
+		*err = errors.Join(*err, fmt.Errorf("the checkpoint after it: %w", cerr))
+
+		return
+	}
+
+	log.From(ctx).InfoContext(ctx, "trail: a checkpoint", "after", act, "k", c.K, "blobs", c.Count)
+}
+
+// touching is an act's store, noting when the act changes the manifest. A
+// wrapper rather than a line at every write, for the reason [manifested] is a
+// decorator: a way of changing the manifest added later is noted without
+// anybody remembering to.
+type touching struct {
+	Store
+	at *atomic.Bool
+}
+
+func (t touching) Adding(ctx context.Context, ns, intent string, labels map[string]string, sign Sign) (any, error) {
+	t.at.Store(true)
+	return t.Store.Adding(ctx, ns, intent, labels, sign)
+}
+
+func (t touching) Added(ctx context.Context, key any, digest string, labels map[string]string, sign Sign) error {
+	t.at.Store(true)
+	return t.Store.Added(ctx, key, digest, labels, sign)
+}
+
+func (t touching) Drop(ctx context.Context, key any) error {
+	t.at.Store(true)
+	return t.Store.Drop(ctx, key)
+}
+
+func (t touching) Mark(ctx context.Context, ns, digest, from, to string, sign Sign) error {
+	t.at.Store(true)
+	return t.Store.Mark(ctx, ns, digest, from, to, sign)
+}
+
+func (t touching) Label(ctx context.Context, ns, digest string, labels map[string]string, sign Sign) error {
+	t.at.Store(true)
+	return t.Store.Label(ctx, ns, digest, labels, sign)
 }
 
 // verify is the start of every pass: what a crash left in flight settled, and
@@ -908,7 +980,15 @@ func (x *pass) verify(ctx context.Context) {
 	p := x.p
 	p.Archive = x.m.a
 
-	if err := p.settle(ctx, x.s); err != nil {
+	// Only while the rows still add up to the latest checkpoint. Settling an
+	// add takes a blob in under its row by the intent the blob is labelled
+	// with, so a row a checkpoint had as present, put back into `adding` with
+	// the signature it had then, is a way to take somebody's blob in. What
+	// does not add up is found below, and no checkpoint is taken over it.
+	adrift := p.addsUpToLatest(ctx, x.s)
+	if adrift != nil {
+		log.From(ctx).WarnContext(ctx, "trail: settling the manifest, not while it does not add up to its latest checkpoint", "err", adrift)
+	} else if err := p.settle(ctx, x.s); err != nil {
 		log.From(ctx).WarnContext(ctx, "trail: settling the manifest", "err", err)
 	}
 
@@ -919,7 +999,16 @@ func (x *pass) verify(ctx context.Context) {
 
 		return
 	}
-	x.m.load(v.trusted, map[string]map[string]string{})
+	trusted := v.trusted
+	if adrift != nil {
+		// Nor is the blob of an add in flight trusted for its intent, for the
+		// reason it is not settled.
+		trusted = maps.Clone(trusted)
+		for k := range v.flying {
+			delete(trusted, k)
+		}
+	}
+	x.m.load(trusted, map[string]map[string]string{})
 	if v.Ok() {
 		return
 	}

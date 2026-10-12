@@ -70,8 +70,9 @@ spin:
 # time. What a tenant keeps is the app's data rather than a setting, so it is
 # answered in code, as `trail.Policy.Tenants`; this is the floor under it.
 #
-# `checkpoints:` is where every pass leaves what the archive held, which the
-# database's account of the archive is checked against. Kept apart from the
+# `checkpoints:` is where every pass, and every act that changes the archive,
+# leaves what the archive held, which the database's account of it is checked
+# against. Kept apart from the
 # archive on a disk that refuses deletion, and signed with a key mounted as a
 # secret -- Ed25519, ECDSA or RSA, as `openssl genpkey` writes one -- they are
 # what catches an archive somebody rewrote. A key in a device is named here by

@@ -341,8 +341,8 @@ type Store interface {
 // run has still moved everything it wrote.
 const Batch = 1000
 
-// Archive writes every row older than `before` into the archive, then removes
-// exactly the rows it wrote. It answers with how many moved.
+// Archive writes every row older than `before` into the policy's archive, then
+// removes exactly the rows it wrote. It answers with how many moved.
 //
 // # The order, and why it is not a flag
 //
@@ -369,24 +369,35 @@ const Batch = 1000
 // is not a thing to arrive at by leaving a field blank. See [Policy.Collect],
 // which is what that deployment calls.
 //
-// # It is handed no policy
+// # Through the policy
 //
-// So it seals nothing ([Keys]) and signs nothing ([Signature]): in a
-// deployment with keys, what it writes is in the clear, and its rows are
-// unsigned, which is a finding until an operator accepts them. A pass is what
-// moves that deployment's rows.
-func Archive(ctx context.Context, s Store, of Kinds, before time.Time, a flob.Stores) (int, error) {
-	if a == nil {
+// What it writes goes where the policy says, as a pass's does: into
+// [Policy.Archive], through the manifest, what the rows say sealed with
+// [Policy.Keys], the manifest's rows signed by [Policy.Signer], and ending in a
+// checkpoint in [Policy.Checkpoints] (#59). It was handed only the archive
+// once, and in a deployment with keys what it wrote was in the clear and its
+// rows were findings until an operator accepted them.
+//
+// What it does not ask is the policy's windows or its holds: what moves is
+// every row older than `before`, and moving a row into the archive destroys
+// nothing. It is a function that takes the policy rather than a method of it
+// only because [Policy.Archive] is the field it writes into.
+func Archive(ctx context.Context, s Store, p Policy, of Kinds, before time.Time) (_ int, err error) {
+	if p.Archive == nil {
 		return 0, errors.New("no archive to write into")
+	}
+	if s == nil {
+		return 0, errors.New("no store to move the rows out of")
 	}
 
 	// Through the manifest, like every act.
-	x, err := Policy{Archive: a}.start(s)
+	x, err := p.start(s)
 	if err != nil {
 		return 0, err
 	}
+	defer x.cover(ctx, "archive", &err)
 
-	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, x.p.Archive, x.run, nil, func(Row) fate { return archived })
+	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, x.p.Archive, x.run, x.seal, func(Row) fate { return archived })
 
 	return moved, err
 }

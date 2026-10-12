@@ -375,7 +375,10 @@ Destroying a chunk erases its reference, and whether the bytes go with it is the
 store's. On a disk they go at once. On S3 they never would on their own, so a
 pass also runs flob's reclaim on the archive (`flob.Reclaimer`, with a grace of a
 day, `trail.Reclaimed`): a chunk a pass destroyed, forgot or purged is gone from
-the bucket two passes later, at least a day apart. Backups are the operator's.
+the bucket two passes later, at least a day apart. On a bucket with Object Lock
+the bytes stay for the retention, whoever asks — which is what the checkpoints
+want and what an archive that destroys by a window does not, so Object Lock is
+for `Policy.Checkpoints` and not for the archive. Backups are the operator's.
 
 #### The manifest
 
@@ -451,14 +454,37 @@ against.
 
 #### Checkpoints
 
-A pass ends with a **checkpoint**: the next number, taken under a row lock so
-that two passes never share one, and every blob the manifest has at that
-moment, written whole to the checkpoint store, naming the one before it, and
-signed when the deployment gives it something to sign with. Each manifest row
-says which checkpoints it was in, so `Verify` recomputes the latest one from
-the rows and compares — and reads again when a checkpoint was taken while it
-read. The number comes before the write, so one the database numbered and the
-store does not keep is `unkept` only once it is ten minutes old.
+A pass ends with a **checkpoint**, and so does every act that changed the
+archive — `trail.Archive`, `Policy.Collect` when it leaves a receipt,
+`Policy.Purge`, `Policy.Forget`, `Policy.PurgeTenant` and `Policy.Accept`: the
+next number, taken under a row lock so that two never share one, and every blob
+the manifest has at that moment, written whole to the checkpoint store, naming
+the one before it, and signed when the deployment gives it something to sign
+with. An act that changed nothing takes none, and nor does a question
+(`Policy.Doomed`, `Policy.PlanTenantPurge`, `Policy.Preview`, `Policy.Read`).
+Each manifest row says which checkpoints it was in, so `Verify` recomputes the
+latest one from the rows and compares — and reads again when a checkpoint was
+taken while it read. The number comes before the write, so one the database
+numbered and the store does not keep is `unkept` only once it is ten minutes
+old.
+
+**No checkpoint is taken over rows that no longer add up to the latest one.**
+`Verify` recomputes the latest two, and with a checkpoint at the end of every
+act the latest two are soon others: one taken over rows somebody changed would
+put what they changed out of reach two acts later. So while they do not add
+up, the next is refused — an act says so in its error, after doing what it
+does, and a pass in the log — and `trail verify` finds it as `rewritten` for as
+long as it is so. Nor does a pass settle anything meanwhile, or an act trust
+the blob of an add in flight by the intent it is labelled with: a row put back
+into `adding` with the signature it had is a way to take somebody's blob in.
+An operator who has looked accepts, and the acceptance is a checkpoint of its
+own, taken over the manifest as accepted and saying why (`Checkpoint.Accepted`);
+the ones after it are compared with it.
+
+What a checkpoint per act costs is one more write per act — the manifest's
+blobs, signed, which a device is asked for once more — to a store that keeps
+every one, and `Verify` reads them all. An act handed one person to forget at a
+time takes one per person; handed everybody who is due, one.
 
 That is what covers somebody who can write both the database and the archive.
 Their worth is where they are kept: `audit.checkpoints.dir`, or
@@ -485,15 +511,18 @@ An operator who has looked at what verification found and decided the archive
 is right — a crash, a blob restored from a backup, rows from before the
 deployment had a key — calls `Policy.Accept` with why, and the manifest says
 what the archive holds from then on. Accepting a row is signing it, so a policy
-that names a key accepts only with its signer.
+that names a key accepts only with its signer. The acceptance ends in a
+checkpoint that says why, which is also how a deployment whose rows no longer
+add up to the latest checkpoint goes on taking them.
 
 #### After the latest checkpoint
 
-Between two passes, somebody who can write both the database and the archive
-can change the two together, and the next checkpoint would take in whatever
-they made them say: a chunk put there with a row to match, a row relabelled so
-that a pass destroys its chunk early, a row marked erased and its chunk taken
-away. Two things are there for that, and a third that is the storage's:
+Between two checkpoints — which, with one at the end of every act, is while an
+act is at it — somebody who can write both the database and the archive can
+change the two together, and the next checkpoint would take in whatever they
+made them say: a chunk put there with a row to match, a row relabelled so that
+a pass destroys its chunk early, a row marked erased and its chunk taken away.
+Two things are there for that, and a third that is the storage's:
 
 - **Every row is signed.** With a key, each row of the manifest carries a
   signature by `Policy.Signer` over what it says — which row it is, its
@@ -531,13 +560,33 @@ away. Two things are there for that, and a third that is the storage's:
   changes its labels, and says where the process comes up that its checkpoints
   are on a store that says it is write-once.
 
+  Tried on MinIO (`TestCheckpointsOnS3ObjectLock`, a bucket made with a default
+  retention in compliance mode): flob's layout — a blob, then a marker that
+  carries its labels — works on it as it is. An erase through flob is a delete
+  marker over the latest version, which the chain finds (`unkept`), and taking
+  the marker away brings the checkpoint back; a delete of a version is refused,
+  whoever's credentials ask; and a relabel is a new version, as locked as the
+  first, which is still beneath it. Not tried on AWS S3, whose documentation
+  asks a `PUT` of an object with an Object Lock retention for a `Content-MD5` or
+  checksum header, which flob sends only when it streams a blob — whether a
+  bucket's default retention counts is the first thing to try there.
+
 **A directory promises what its disk does.** On an ordinary disk, whoever holds
 the process's user, or root, removes or rewrites any file in
 `audit.checkpoints.dir`, and `write_once` keeps nothing from them: it is the
 process promising not to, which keeps a pass, a bug, or an erase aimed at the
 wrong store off the checkpoints, and nothing more. A WORM mount makes the
-promise beneath the process. flob writes a blob into a staging directory and
-moves it into place, which has not been tried on one.
+promise beneath the process. flob writes a blob and its labels into a staging
+directory and moves the directory into place, links the blob beside it, and
+relabels by moving a new labels file over the old. That was tried on the
+closest thing to a WORM mount a test can make
+(`TestCheckpointsInADirectoryThatKeepsWhatItIsGiven`): as root, every file
+flob has put in place made immutable and every directory append-only as soon
+as a checkpoint is written, the staging directories left as they are.
+Checkpoints go on being written onto what was committed, and neither an erase
+nor a relabel of one gets through. An appliance was not tried: one that refuses
+moving a directory out of the staging area, or commits a file when it is
+created rather than when it is closed, is one this layout does not fit.
 
 **Without a key** nothing is signed and nothing is held to a signature, as
 before: the rows are covered up to the latest checkpoint and by nothing after
@@ -552,21 +601,37 @@ sign them itself: a row with no signature looks the same as one whose signature
 somebody took off, and a pass that signed every row it found without one would
 sign whatever was put there that way.
 
-**What is still out of reach.** With a key, every change to the manifest is one
-the key made or one that is found, but two, and both are of what happened since
-the latest checkpoint:
+**What is still out of reach.** With a key, two kinds of thing.
 
-- a blob added since then, taken away with its row: nothing written yet says it
-  was there;
-- a row put back to a state it was in since then, with the signature it had
-  then. For a row added since, that is its `adding`, and a blob of somebody's
-  labelled with its intent is taken in under it by the next pass.
+- **What an act still at it has written**, or one a crash stopped. Its rows are
+  after the latest checkpoint until its own is taken, so a blob it added can be
+  taken away with its row and nothing says it was there, and a row it moved can
+  be put back to a state it was in during the act. And the blob of an add in
+  flight is known by the intent it is labelled with, which anybody who can
+  write the archive can label a blob with: an add a crash stopped before its
+  blob was written can be answered by somebody else's, which the next pass
+  takes in. With a checkpoint at the end of every act, that is one act's worth;
+  for an act a crash stopped, until the next checkpoint.
+- **A row put back to a state signed before the latest checkpoint, where no
+  checkpoint says otherwise.** A checkpoint keeps which blobs the manifest had,
+  and not each row's state or labels. So a row put back is found when that
+  changes what the latest checkpoint's rows add up to — a present row put back
+  into `adding`, or taken away — and not when it does not: a row erased before
+  the latest two checkpoints, put back as present with the signature it had and
+  `since` cleared, which brings its chunk back; the `adding` of a row erased
+  before them, which the next pass settles with a blob labelled with its
+  intent; a row the checkpoint has, put back into `erasing` with the signature
+  of an erase that was refused or undone, which the next pass finishes once its
+  chunk is taken away; a present row's earlier labels. Each needs a row's
+  signature to say when it was made — the number of the checkpoint it was made
+  after, read where the row is written so that none is numbered in between —
+  and a checkpoint to keep each row's state, the adds and erases in flight
+  among them. That is a column, a change to what a store's writes do, and a
+  change to the checkpoint's format, and it is not done.
 
-A pass ends with a checkpoint, so for what a pass writes the window is the
-pass. What `Policy.Forget`, `Policy.Purge` and `Policy.PurgeTenant` write is
-covered from the next pass's checkpoint. And a key read into the process is the
-process's: whoever holds the process can have it sign what they like while they
-do, and with a key from a file, after.
+And a key read into the process is the process's: whoever holds the process
+can have it sign what they like while they do, and with a key from a file,
+after.
 
 #### Keys in a device
 

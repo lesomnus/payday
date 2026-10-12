@@ -458,6 +458,13 @@ func (x *pass) trust(ctx context.Context) error {
 		}
 	}
 
+	// The adds in flight are trusted by the intent their blobs are labelled
+	// with, which anybody who can write the archive can label a blob with.
+	// While the rows add up to the latest checkpoint that is an add an act is
+	// still at; once they do not, it may be a row put back into `adding` with
+	// the signature it had, and its intent is nothing to go by.
+	flying := x.p.addsUpToLatest(ctx, x.s) == nil
+
 	trusted := x.p.trusted()
 	known := map[blobKey]map[string]string{}
 	intents := map[string]map[string]string{}
@@ -468,7 +475,7 @@ func (x *pass) trust(ctx context.Context) error {
 
 		switch v.State {
 		case Adding:
-			if v.Intent != "" {
+			if v.Intent != "" && flying {
 				intents[v.Namespace+"\x00"+v.Intent] = v.Labels
 			}
 		case Present, Erasing:
@@ -755,7 +762,10 @@ type Verified struct {
 	// trusted is the archive's blobs the manifest accounts for, with the
 	// labels it recorded -- which are what a pass decides by, and not the
 	// ones on the blob, which whoever can write the archive can change.
+	// flying is which of them are trusted only for the intent they are
+	// labelled with: the blob of an add in flight.
 	trusted map[blobKey]map[string]string
+	flying  map[blobKey]bool
 }
 
 // Ok answers whether there was nothing to find.
@@ -782,7 +792,7 @@ func (v Verified) Ok() bool { return len(v.Findings) == 0 }
 // compared with -- what it says is nobody's word -- so its blob is no other
 // finding.
 func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error) {
-	out := Verified{trusted: map[blobKey]map[string]string{}}
+	out := Verified{trusted: map[blobKey]map[string]string{}, flying: map[blobKey]bool{}}
 	if p.Archive == nil {
 		return out, errors.New("no archive to verify")
 	}
@@ -859,6 +869,7 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		case l[labelIntent] != "" && adding:
 			// Being written, or written by an act a crash stopped.
 			out.trusted[k] = intent.Labels
+			out.flying[k] = true
 		case nobodys[k] || (l[labelIntent] != "" && nobodysIntent[k.ns+"\x00"+l[labelIntent]]):
 			// Its row is a finding of its own, and the blob nothing an act
 			// trusts.
@@ -1000,6 +1011,12 @@ type Checkpoint struct {
 	Count  int         `json:"count"`
 	Digest flob.Digest `json:"digest"`
 	Blobs  []Kept      `json:"blobs"`
+
+	// Accepted is why an operator accepted the manifest as it stood, when the
+	// checkpoint was taken over an acceptance; see [Policy.Accept]. It is the
+	// one kind taken whether or not the rows add up to the one before it, and
+	// it says so.
+	Accepted string `json:"accepted,omitempty"`
 }
 
 // Kept is one blob of a checkpoint.
@@ -1061,14 +1078,27 @@ func (p Policy) checkpoints() flob.Store {
 // errBehind is a database whose checkpoint numbers are behind the store's.
 var errBehind = errors.New("the checkpoint store has checkpoints the database never numbered: a database restored from before them; see `trail verify`")
 
-// checkpoint ends a pass: the next number, and every blob the manifest has,
-// written to the checkpoint store naming the one before it, and signed when the
-// policy has a key.
+// errRewritten is a manifest whose rows no longer add up to the latest
+// checkpoint the store keeps.
+var errRewritten = errors.New("the manifest no longer adds up to the latest checkpoint, and no checkpoint is taken over it until an operator accepts it; see `trail verify`")
+
+// checkpoint ends a pass, and every act that changed the manifest (see
+// [pass.cover]): the next number, and every blob the manifest has, written to
+// the checkpoint store naming the one before it, and signed when the policy has
+// a key.
 //
 // Not while the store keeps a checkpoint the database has not numbered yet.
 // That is a database restored from before it, and a checkpoint written then
 // would take a number one already has.
-func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) {
+//
+// Nor while the rows the latest checkpoint was taken over no longer add up to
+// it, unless `accepted` says why an operator has accepted the manifest as it
+// is. [Policy.Verify] recomputes the latest two checkpoints from their rows,
+// and with a checkpoint at the end of every act the latest two are soon
+// others: a checkpoint taken over rows somebody changed would put what they
+// changed out of reach two acts later. Refused, it stays the latest, and
+// stays found.
+func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted string) (Checkpoint, error) {
 	store := p.checkpoints()
 	ls, err := listCheckpoints(ctx, store)
 	if err != nil {
@@ -1091,6 +1121,11 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) 
 			return Checkpoint{}, errBehind
 		}
 	}
+	if accepted == "" {
+		if err := addsUp(ctx, m, store, ls, latest); err != nil {
+			return Checkpoint{}, err
+		}
+	}
 
 	k, rows, err := m.Checkpoint(ctx)
 	if err != nil {
@@ -1098,6 +1133,7 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) 
 	}
 
 	c := checkpointOf(k, time.Now(), rows)
+	c.Accepted = accepted
 	if c.Prev, err = prevOf(ctx, store, k); err != nil {
 		return c, err
 	}
@@ -1136,6 +1172,65 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) 
 	}
 
 	return c, nil
+}
+
+// addsUp answers whether the rows the latest checkpoint was taken over still
+// add up to what the store keeps of it: [errRewritten] when they do not.
+//
+// By what a checkpoint says, which is signed, and of the ones whose labels say
+// they are the latest: one not kept yet -- being written, or numbered by a
+// pass a crash stopped -- is nothing to compare, and is `unkept` to
+// [Policy.Verify] once it is old enough.
+//
+// The rows a checkpoint was taken over do not change with anything an act
+// does after it: a row added since is in none yet, and one erased since is
+// still in it until the next is numbered. So a difference is a row somebody
+// changed beneath the deployment -- a blob taken away with its row, or a row
+// put back into a state the checkpoint did not have it in.
+func addsUp(ctx context.Context, m Manifest, s flob.Store, ls []listed, latest int) error {
+	if latest == 0 {
+		return nil
+	}
+
+	kept := []stored{}
+	for _, v := range ls {
+		if v.k != latest {
+			continue
+		}
+		if was, err := readCheckpoint(ctx, s, v.d); err == nil && was.c.K == latest {
+			kept = append(kept, was)
+		}
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+
+	rows, err := m.At(ctx, latest)
+	if err != nil {
+		return fmt.Errorf("the manifest: %w", err)
+	}
+	for _, v := range kept {
+		if got := checkpointOf(latest, v.c.At, rows); got.Digest != v.c.Digest {
+			return fmt.Errorf("checkpoint %d: %s: %w", latest, checkpointDiff(v.c, got), errRewritten)
+		}
+	}
+
+	return nil
+}
+
+// addsUpToLatest is [addsUp] for the checkpoint the database numbered last.
+func (p Policy) addsUpToLatest(ctx context.Context, m Manifest) error {
+	store := p.checkpoints()
+	ls, err := listCheckpoints(ctx, store)
+	if err != nil {
+		return err
+	}
+	latest, _, err := m.Latest(ctx)
+	if err != nil {
+		return fmt.Errorf("the manifest: %w", err)
+	}
+
+	return addsUp(ctx, m, store, ls, latest)
 }
 
 // prevOf is the checkpoint the one numbered k names as the one before it: the
@@ -1563,8 +1658,11 @@ func checkpointDiff(was, is Checkpoint) string {
 // policy that names a key has to have [Policy.Signer] to accept anything:
 // accepting is signing, and an acceptance without the key is refused.
 //
-// A checkpoint is what it is, and Accept does nothing about one; the next
-// checkpoint is taken over the manifest as it is now.
+// A checkpoint is what it is, and Accept changes none. It ends in one of its
+// own, taken over the manifest as it accepted it and saying why
+// ([Checkpoint.Accepted]): the one kind taken whether or not the rows add up to
+// the one before -- no other is taken over rows that do not (see
+// [Policy.checkpoint]) -- and the checkpoints after it are compared with it.
 func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, error) {
 	if strings.TrimSpace(why) == "" {
 		return Verified{}, errors.New("an acceptance says why")
@@ -1618,6 +1716,12 @@ func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, erro
 	}
 
 	log.From(ctx).InfoContext(ctx, "trail: the manifest, made to say what the archive holds", "why", why, "findings", len(v.Findings))
+
+	c, cerr := p.checkpoint(ctx, s, why)
+	if cerr != nil {
+		return v, errors.Join(err, fmt.Errorf("the checkpoint over what was accepted: %w", cerr))
+	}
+	log.From(ctx).InfoContext(ctx, "trail: a checkpoint", "after", "accept", "k", c.K, "blobs", c.Count)
 
 	return v, err
 }
