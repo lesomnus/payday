@@ -34,14 +34,14 @@ on:
 
 jobs:
   stage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       # What OIDC needs, and the whole reason there is no token here.
       id-token: write
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # No `registry-url`, which is the one thing that has to be left out.
       #
@@ -51,7 +51,7 @@ jobs:
       # that looks like is a publish that signs its provenance happily and then
       # answers `E401 ... your authentication token seems to be invalid`, which
       # names the one thing this workflow does not have.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 

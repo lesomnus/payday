@@ -11,16 +11,18 @@ on:
     branches: [main]
   pull_request:
 
+# Every job names its image rather than `ubuntu-latest`, so that the runner
+# moves when this file says so and not on GitHub's schedule.
 jobs:
   go:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       # The whole history, because `buf breaking` below compares against the
       # branch tip and a shallow checkout has no ref to compare against.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -54,7 +56,7 @@ jobs:
       # its schema and the TypeScript half of that needs the plugin. A run
       # without it is a run that says the generated code is fine having looked
       # at two thirds of it.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: npm ci --prefix ts
@@ -111,7 +113,7 @@ jobs:
   # runs the gate against it. Every nil this has caught was caught here rather
   # than there, which is one push later than it had to be.
   postgres:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     # Once, for both steps. The service publishes its port on the runner and the
     # steps run there, so the address is loopback rather than the service name.
@@ -134,8 +136,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -174,7 +176,7 @@ jobs:
   # `-p 1`, because both TPM packages share the one swtpm, which holds a few
   # objects at a time and has no resource manager to share them out.
   signers:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     env:
       PDTEST_SOFTHSM2: /usr/lib/softhsm/libsofthsm2.so
@@ -206,8 +208,8 @@ jobs:
         image: nsmithuk/local-kms:3.11.7
         ports: ["8080:8080"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -246,12 +248,12 @@ jobs:
   # It replaces payday with this checkout, which is the point: the template is
   # held to the payday it ships with rather than to the last tagged one.
   new:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: payday
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: payday/go.mod
           cache: true
@@ -304,7 +306,7 @@ jobs:
         working-directory: widget
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -339,14 +341,14 @@ jobs:
   # server and sends it bytes, so it needs Go as well; a mock would agree with
   # whatever the TypeScript believes, which is the one thing not worth checking.
   ts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
