@@ -605,6 +605,13 @@ authentication off or widen what a caller sees. `s.Policy` also goes to
 a batch rather than to the envelope that carries them; see
 [the guard](batch.md#3-the-guard-and-why-it-is-refused-rather-than-defaulted).
 
+A server that only its own process can reach takes `auth.PlainInProcess()` in
+`s.Auth` instead. That is one served on an in-memory listener, such as another
+payday app run inside yours and called over `bufconn`. It believes its callers
+as `Plain` does, and says so once at info rather than with `Plain`'s warning,
+which would read as a hole in a server nobody outside can dial. Give it only to
+a server served that way.
+
 Who is calling comes first, because everything after it reads the frame.
 
 | | What it does |
