@@ -3,6 +3,34 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An acceptance carries a restored database on, and is clean at once
+
+**Applies if** you restore an app's database from a backup, or accept what
+`trail verify` found. Regenerate; a `trail.Store` of your own changes as
+below.
+
+- **A database restored from before the latest checkpoint goes on once
+  accepted.** It is `behind` -- it has numbered fewer checkpoints than the store
+  keeps -- and no act takes a checkpoint while it is, as before. The acceptance
+  that was to end that was refused for the same reason, so nothing took one
+  again (#70). `Policy.Accept` now numbers its checkpoint after the newest the
+  store keeps, by what each says, and names that one as the one before: the
+  checkpoints from after the backup stay what the archive held, and the
+  database goes on from there.
+- **`Verify` is clean as soon as an acceptance is the latest checkpoint.** It
+  compared the rows with the one before as well, which is what the operator had
+  accepted they no longer add up to, so it went on finding that one `rewritten`
+  until the next act took a checkpoint.
+- **`Manifest.Checkpoint` takes `after`**: the next number is after the latest
+  and after `after` as well, in the same transaction that takes it. The
+  generated store has it once regenerated. One of your own moves its counter
+  past `after` when that is higher:
+
+  ```go
+  func (s store) Checkpoint(ctx context.Context) (int, []trail.Archived, error)            // was
+  func (s store) Checkpoint(ctx context.Context, after int) (int, []trail.Archived, error) // is
+  ```
+
 ## A list reads the other way round, and in orders the schema names
 
 **Applies if** an entity declares `list:`. Regenerate, and nothing else has to

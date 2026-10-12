@@ -422,10 +422,10 @@ way through is no finding, and no clock is asked. What it finds:
 | `altered` | a blob whose bytes are no longer its digest (`full` only) |
 | `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts |
 | `unsigned` | a row with no signature when the policy names a key; a checkpoint with none after one that had one |
-| `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to; or one of two the store keeps under one number |
+| `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to (not the one before an acceptance); or one of two the store keeps under one number |
 | `reordered` | a checkpoint that names one after it as the one before |
 | `unkept` | a checkpoint the database numbered, or the one after it names, that the store does not keep |
-| `behind` | a checkpoint the store keeps that the database never numbered |
+| `behind` | a checkpoint the store keeps that the database never numbered: a database restored from before it, until an operator accepts |
 | `emptied` | a manifest with no rows beside an archive with checkpoints |
 
 Every pass starts with the light half — names and labels, no bytes read —
@@ -479,7 +479,7 @@ the blob of an add in flight by the intent it is labelled with: a row put back
 into `adding` with the signature it had is a way to take somebody's blob in.
 An operator who has looked accepts, and the acceptance is a checkpoint of its
 own, taken over the manifest as accepted and saying why (`Checkpoint.Accepted`);
-the ones after it are compared with it.
+the ones after it are compared with it, and the one before it no longer is.
 
 What a checkpoint per act costs is one more write per act — the manifest's
 blobs, signed, which a device is asked for once more — to a store that keeps
@@ -514,6 +514,15 @@ what the archive holds from then on. Accepting a row is signing it, so a policy
 that names a key accepts only with its signer. The acceptance ends in a
 checkpoint that says why, which is also how a deployment whose rows no longer
 add up to the latest checkpoint goes on taking them.
+
+And how a database restored from a backup goes on. One older than the latest
+checkpoint has numbered fewer than the store keeps, `behind`, and while it is
+no act takes a checkpoint: it would take a number one already has. An
+acceptance is numbered after the newest the store keeps -- by what each says,
+whatever its labels -- and names that one as the one before it, so the
+checkpoints from after the backup stay in the chain as what the archive held
+then, and the database's numbering goes on past them. `Manifest.Checkpoint`
+takes that floor, `after`, in the transaction that numbers it.
 
 #### After the latest checkpoint
 

@@ -854,6 +854,19 @@ func TestACheckpointIsWhatTheArchiveHeld(t *testing.T) {
 		x.NoError(err)
 		x.Contains(kinds(v), "behind")
 		x.Contains(kinds(v), "unaccounted", "what the archive held before is in a manifest nobody filled")
+
+		// Until an operator accepts what the archive holds, which is numbered
+		// after the checkpoint the store keeps, and goes on from there (#70).
+		_, err = p.Accept(ctx, s, "a database restored from before the first pass")
+		x.NoError(err)
+		x.Equal(2, latestOf(t, s))
+		for k := range was {
+			x.Equal(Present, s.state(k.ns, k.d))
+		}
+
+		v, err = p.Verify(ctx, s, true)
+		x.NoError(err)
+		x.True(v.Ok(), "%v", v.Findings)
 	})
 
 	t.Run("on a store of their own", func(t *testing.T) {

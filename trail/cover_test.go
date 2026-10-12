@@ -3,6 +3,7 @@ package trail
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto"
 	"errors"
 	"slices"
 	"testing"
@@ -157,6 +158,14 @@ func TestAChunkAnActWroteIsFoundWhenItIsTakenAwayWithItsRow(t *testing.T) {
 	x.NoError(p.ReadCheckpoints(ctx, func(c Checkpoint) error { cs = append(cs, c); return nil }))
 	x.Equal(why, cs[len(cs)-1].Accepted)
 	x.Empty(cs[0].Accepted)
+
+	// Clean at once: the rows are compared with the acceptance, and not with
+	// the one before it, which is what the operator accepted they no longer
+	// add up to. It was `rewritten` until the next act took a checkpoint.
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+	x.Equal(3, v.Checkpoint)
 
 	// And the next acts are compared with that one.
 	_, err = p.Forget(ctx, s, []pdid.Id{newTenant()})
@@ -321,4 +330,88 @@ func TestArchiveWritesAsThePolicySays(t *testing.T) {
 		require.Error(t, err)
 		require.False(t, errors.Is(err, errRewritten))
 	})
+}
+
+// TestADatabaseRestoredFromBeforeTheLatestCheckpointGoesOnOnceAccepted.
+//
+// A database restored from a backup older than the latest checkpoint has
+// numbered fewer checkpoints than the store keeps, and no checkpoint is taken
+// while it is: one would take a number one already has. That much is the
+// point -- a database rolled back is found, and every act says so -- but the
+// acceptance that was to end it was refused for the same reason, so nothing
+// took a checkpoint again (#70). An acceptance is now numbered after the
+// newest the store keeps, and names it as the one before: the checkpoints from
+// after the backup stay what the archive held, and the database goes on from
+// there.
+func TestADatabaseRestoredFromBeforeTheLatestCheckpointGoesOnOnceAccepted(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	key := newKey(t)
+	s, p, tenant := manifestedArchive(t, key)
+	x.Equal(1, latestOf(t, s))
+
+	// The backup.
+	s.mu.Lock()
+	backup, counter, at := slices.Clone(s.archived), s.counter, s.counterAt
+	s.mu.Unlock()
+
+	// Life goes on after it: two acts, and their checkpoints.
+	for _, v := range []string{"after the backup", "and after that"} {
+		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(2 * day), value: v})
+		_, err := Archive(ctx, s, p, Kinds{}, time.Now())
+		x.NoError(err)
+	}
+	x.Equal(3, latestOf(t, s))
+	third := numbered(t, p, 3).d
+
+	// The database restored from the backup, and the archive and the
+	// checkpoint store not.
+	s.mu.Lock()
+	s.archived, s.counter, s.counterAt = backup, counter, at
+	s.mu.Unlock()
+
+	v, err := p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"behind", "unaccounted"}, kinds(v))
+
+	// Every act says so, and takes none.
+	s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(2 * day), value: "after the restore"})
+	_, err = Archive(ctx, s, p, Kinds{}, time.Now())
+	x.ErrorIs(err, errBehind)
+	p.Pass(ctx, s)
+	x.Equal(1, latestOf(t, s))
+
+	// An acceptance is a signature, as it was.
+	unkeyed := p
+	unkeyed.Signer, unkeyed.Trust = nil, []crypto.PublicKey{key.Public()}
+	_, err = unkeyed.Accept(ctx, s, "restored from the backup")
+	x.Error(err)
+	x.Equal(1, latestOf(t, s))
+
+	const why = "the database restored from the backup of 2026-10-01; the chunks since are ours"
+	_, err = p.Accept(ctx, s, why)
+	x.NoError(err)
+
+	// After the store's newest, and naming it.
+	x.Equal(4, latestOf(t, s))
+	c := numbered(t, p, 4).c
+	x.Equal(why, c.Accepted)
+	x.Equal(third, c.Prev)
+
+	v, err = p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+	x.Equal(4, v.Checkpoint)
+
+	// And the next act takes the next one, compared with the acceptance.
+	s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(2 * day), value: "and on"})
+	_, err = Archive(ctx, s, p, Kinds{}, time.Now())
+	x.NoError(err)
+	x.Equal(5, latestOf(t, s))
+
+	v, err = p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+	x.Equal(5, v.Checkpoint)
 }

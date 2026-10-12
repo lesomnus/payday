@@ -1017,6 +1017,125 @@ func TestTheManifestIsSignedAndChainedInTheAppsOwnTable(t *testing.T) {
 	x.Equal(row.Digest, string(v.Findings[0].Digest))
 }
 
+// TestADatabaseRestoredFromBeforeTheLatestCheckpointIsAcceptedInTheAppsOwnTable.
+//
+// Through the generated store, on the app's own database: the manifest's table
+// put back as a backup had it, two checkpoints later, is `behind`, and nothing
+// takes a checkpoint until an operator accepts -- which is numbered after the
+// newest the store keeps, the counter's row moved past it in the same
+// transaction, and names it as the one before (#70).
+func TestADatabaseRestoredFromBeforeTheLatestCheckpointIsAcceptedInTheAppsOwnTable(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	robot := func(alias string) {
+		_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  alias,
+		}.Build())
+		x.NoError(err)
+		time.Sleep(time.Millisecond)
+	}
+	latest := func() int {
+		k, _, err := pd.TrailStore(b.Ent).Latest(ctx)
+		x.NoError(err)
+		return k
+	}
+	kinds := func(v trail.Verified) []string {
+		out := []string{}
+		for _, f := range v.Findings {
+			out = append(out, f.Kind)
+		}
+		slices.Sort(out)
+		return slices.Compact(out)
+	}
+
+	doc, _, err := trail.GenerateKey()
+	x.NoError(err)
+	key, err := trail.ParseKey(doc)
+	x.NoError(err)
+
+	a := flob.NewMemStores()
+	s := pd.TrailStore(b.Ent)
+	p := trail.Policy{Archive: a, Keep: trail.Keep{Retain: time.Nanosecond}, Signer: key}
+
+	robot("a-machine")
+	p.Pass(ctx, s)
+	x.Equal(1, latest())
+
+	// The backup, of the manifest's table.
+	backup, err := b.Ent.Archived.Query().All(ctx)
+	x.NoError(err)
+
+	for _, v := range []string{"another", "and-another"} {
+		robot(v)
+		p.Pass(ctx, s)
+	}
+	x.Equal(3, latest())
+
+	// Restored, and the archive and its checkpoints not.
+	_, err = b.Ent.Archived.Delete().Exec(ctx)
+	x.NoError(err)
+	for _, v := range backup {
+		x.NoError(b.Ent.Archived.Create().
+			SetId(v.Id).
+			SetNamespace(v.Namespace).
+			SetDigest(v.Digest).
+			SetIntent(v.Intent).
+			SetLabels(v.Labels).
+			SetState(v.State).
+			SetSince(v.Since).
+			SetGone(v.Gone).
+			SetSignature(v.Signature).
+			SetSignedBy(v.SignedBy).
+			SetDateCreated(v.DateCreated).
+			SetDateUpdated(v.DateUpdated).
+			Exec(ctx))
+	}
+	x.Equal(1, latest())
+
+	v, err := p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"behind", "unaccounted"}, kinds(v))
+
+	robot("after-the-restore")
+	p.Pass(ctx, s)
+	x.Equal(1, latest(), "a checkpoint was taken over a database behind the store")
+
+	const why = "restored from the backup; the chunks since are the deployment's"
+	_, err = p.Accept(ctx, s, why)
+	x.NoError(err)
+	x.Equal(4, latest())
+
+	cs := map[int]trail.Checkpoint{}
+	x.NoError(p.ReadCheckpoints(ctx, func(c trail.Checkpoint) error { cs[c.K] = c; return nil }))
+	x.Len(cs, 4)
+	x.Equal(why, cs[4].Accepted)
+	w, ok := flob.AsWalker(a.Use(trail.CheckpointNamespace))
+	x.True(ok)
+	for info, err := range w.Walk(ctx) {
+		x.NoError(err)
+		l, err := info.Labels(ctx)
+		x.NoError(err)
+		if l.Get("K") == "3" {
+			x.Equal(info.Digest(), cs[4].Prev)
+		}
+	}
+
+	v, err = p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+
+	// And it goes on from there.
+	robot("and-on")
+	p.Pass(ctx, s)
+	x.Equal(5, latest())
+	v, err = p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+	x.Equal(5, v.Checkpoint)
+}
+
 // TestTheGeneratedManifestWritesARowWholeWithItsSignature.
 //
 // What the generated store promises a `trail.Sign`: it is handed each row as

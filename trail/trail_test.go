@@ -250,9 +250,9 @@ func (s *fakeStore) Rows(ctx context.Context) ([]Archived, error) {
 	return out, nil
 }
 
-func (s *fakeStore) Checkpoint(ctx context.Context) (int, []Archived, error) {
+func (s *fakeStore) Checkpoint(ctx context.Context, after int) (int, []Archived, error) {
 	s.mu.Lock()
-	s.counter++
+	s.counter = max(s.counter, after) + 1
 	s.counterAt = time.Now()
 	k := s.counter
 	for i, v := range s.archived {
