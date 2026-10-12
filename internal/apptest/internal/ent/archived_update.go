@@ -153,6 +153,30 @@ func (_u *ArchivedUpdate) AddGone(v int32) *ArchivedUpdate {
 	return _u
 }
 
+// SetSignature sets the "signature" field.
+func (_u *ArchivedUpdate) SetSignature(v []byte) *ArchivedUpdate {
+	_u.mutation.SetSignature(v)
+	return _u
+}
+
+// ClearSignature clears the value of the "signature" field.
+func (_u *ArchivedUpdate) ClearSignature() *ArchivedUpdate {
+	_u.mutation.ClearSignature()
+	return _u
+}
+
+// SetSignedBy sets the "signed_by" field.
+func (_u *ArchivedUpdate) SetSignedBy(v []byte) *ArchivedUpdate {
+	_u.mutation.SetSignedBy(v)
+	return _u
+}
+
+// ClearSignedBy clears the value of the "signed_by" field.
+func (_u *ArchivedUpdate) ClearSignedBy() *ArchivedUpdate {
+	_u.mutation.ClearSignedBy()
+	return _u
+}
+
 // Mutation returns the ArchivedMutation object of the builder.
 func (_u *ArchivedUpdate) Mutation() *ArchivedMutation {
 	return _u.mutation
@@ -235,6 +259,18 @@ func (_u *ArchivedUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedGone(); ok {
 		_spec.AddField(archived.FieldGone, field.TypeUint32, value)
+	}
+	if value, ok := _u.mutation.Signature(); ok {
+		_spec.SetField(archived.FieldSignature, field.TypeBytes, value)
+	}
+	if _u.mutation.SignatureCleared() {
+		_spec.ClearField(archived.FieldSignature, field.TypeBytes)
+	}
+	if value, ok := _u.mutation.SignedBy(); ok {
+		_spec.SetField(archived.FieldSignedBy, field.TypeBytes, value)
+	}
+	if _u.mutation.SignedByCleared() {
+		_spec.ClearField(archived.FieldSignedBy, field.TypeBytes)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -382,6 +418,30 @@ func (_u *ArchivedUpdateOne) AddGone(v int32) *ArchivedUpdateOne {
 	return _u
 }
 
+// SetSignature sets the "signature" field.
+func (_u *ArchivedUpdateOne) SetSignature(v []byte) *ArchivedUpdateOne {
+	_u.mutation.SetSignature(v)
+	return _u
+}
+
+// ClearSignature clears the value of the "signature" field.
+func (_u *ArchivedUpdateOne) ClearSignature() *ArchivedUpdateOne {
+	_u.mutation.ClearSignature()
+	return _u
+}
+
+// SetSignedBy sets the "signed_by" field.
+func (_u *ArchivedUpdateOne) SetSignedBy(v []byte) *ArchivedUpdateOne {
+	_u.mutation.SetSignedBy(v)
+	return _u
+}
+
+// ClearSignedBy clears the value of the "signed_by" field.
+func (_u *ArchivedUpdateOne) ClearSignedBy() *ArchivedUpdateOne {
+	_u.mutation.ClearSignedBy()
+	return _u
+}
+
 // Mutation returns the ArchivedMutation object of the builder.
 func (_u *ArchivedUpdateOne) Mutation() *ArchivedMutation {
 	return _u.mutation
@@ -494,6 +554,18 @@ func (_u *ArchivedUpdateOne) sqlSave(ctx context.Context) (_node *Archived, err 
 	}
 	if value, ok := _u.mutation.AddedGone(); ok {
 		_spec.AddField(archived.FieldGone, field.TypeUint32, value)
+	}
+	if value, ok := _u.mutation.Signature(); ok {
+		_spec.SetField(archived.FieldSignature, field.TypeBytes, value)
+	}
+	if _u.mutation.SignatureCleared() {
+		_spec.ClearField(archived.FieldSignature, field.TypeBytes)
+	}
+	if value, ok := _u.mutation.SignedBy(); ok {
+		_spec.SetField(archived.FieldSignedBy, field.TypeBytes, value)
+	}
+	if _u.mutation.SignedByCleared() {
+		_spec.ClearField(archived.FieldSignedBy, field.TypeBytes)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Archived{config: _u.config}

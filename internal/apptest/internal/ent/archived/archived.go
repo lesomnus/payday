@@ -29,6 +29,10 @@ const (
 	FieldDateCreated = "date_created"
 	// FieldGone holds the string denoting the gone field in the database.
 	FieldGone = "gone"
+	// FieldSignature holds the string denoting the signature field in the database.
+	FieldSignature = "signature"
+	// FieldSignedBy holds the string denoting the signed_by field in the database.
+	FieldSignedBy = "signed_by"
 	// Table holds the table name of the archived in the database.
 	Table = "archived"
 )
@@ -45,6 +49,8 @@ var Columns = []string{
 	FieldDateUpdated,
 	FieldDateCreated,
 	FieldGone,
+	FieldSignature,
+	FieldSignedBy,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

@@ -932,6 +932,166 @@ func TestTheManifestIsKeptInTheAppsOwnTable(t *testing.T) {
 	x.Equal("missing", v.Findings[0].Kind)
 }
 
+// TestTheManifestIsSignedAndChainedInTheAppsOwnTable.
+//
+// Through the generated store, on the app's own database: every row of
+// `Archived` carries the key's signature, written with it; each checkpoint
+// names the one before it; and a checkpoint taken away, or a row changed in
+// the app's table by somebody without the key, is found.
+func TestTheManifestIsSignedAndChainedInTheAppsOwnTable(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	robot := func(alias string) {
+		_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  alias,
+		}.Build())
+		x.NoError(err)
+	}
+
+	doc, _, err := trail.GenerateKey()
+	x.NoError(err)
+	key, err := trail.ParseKey(doc)
+	x.NoError(err)
+
+	a := flob.NewMemStores()
+	s := pd.TrailStore(b.Ent)
+	p := trail.Policy{Archive: a, Keep: trail.Keep{Retain: time.Nanosecond}, Signer: key}
+	for _, v := range []string{"a-machine", "another"} {
+		robot(v)
+		time.Sleep(time.Millisecond)
+		p.Pass(ctx, s)
+	}
+
+	rows, err := b.Ent.Archived.Query().Where(entarchived.NamespaceNEQ("")).All(ctx)
+	x.NoError(err)
+	x.NotEmpty(rows)
+	for _, v := range rows {
+		x.NotEmpty(v.Signature, "%s %s %s is not signed", v.State, v.Namespace, v.Digest)
+		x.NotEmpty(v.SignedBy)
+	}
+
+	cs := []trail.Checkpoint{}
+	x.NoError(p.ReadCheckpoints(ctx, func(c trail.Checkpoint) error { cs = append(cs, c); return nil }))
+	x.Len(cs, 2)
+	x.Empty(cs[0].Prev)
+	x.NotEmpty(cs[1].Prev)
+
+	v, err := p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+
+	// The first checkpoint taken away, which the second names.
+	w, ok := flob.AsWalker(a.Use(trail.CheckpointNamespace))
+	x.True(ok)
+	for info, err := range w.Walk(ctx) {
+		x.NoError(err)
+		l, err := info.Labels(ctx)
+		x.NoError(err)
+		if l.Get("K") == "1" {
+			x.Equal(cs[1].Prev, info.Digest())
+			x.NoError(a.Use(trail.CheckpointNamespace).Erase(ctx, info.Digest()))
+		}
+	}
+
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Len(v.Findings, 1)
+	x.Equal("unkept", v.Findings[0].Kind)
+
+	// And a row relabelled in the app's table.
+	var row *ent.Archived
+	for _, v := range rows {
+		if v.State == trail.Present {
+			row = v
+		}
+	}
+	x.NotNil(row)
+	x.NoError(b.Ent.Archived.UpdateOneId(row.Id).SetLabels(map[string]string{"Kind": "nothing"}).Exec(ctx))
+
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Len(v.Findings, 2)
+	x.Equal("forged", v.Findings[0].Kind)
+	x.Equal(row.Digest, string(v.Findings[0].Digest))
+}
+
+// TestTheGeneratedManifestWritesARowWholeWithItsSignature.
+//
+// What the generated store promises a `trail.Sign`: it is handed each row as
+// it is and as it is about to be, a row at a time, and every field a signature
+// is over is written in the same write as the signature -- or, when signing
+// fails, nothing is.
+func TestTheGeneratedManifestWritesARowWholeWithItsSignature(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+	s := pd.TrailStore(b.Ent)
+
+	// A sign that says what it was handed, and signs nothing of trail's.
+	type call struct{ was, is trail.Archived }
+	calls := []call{}
+	sign := func(was, is trail.Archived) (trail.Signature, error) {
+		calls = append(calls, call{was, is})
+		return trail.Signature{Key: []byte("key"), Sig: fmt.Appendf(nil, "sig %d", len(calls))}, nil
+	}
+	row := func(id any) *ent.Archived {
+		v, err := b.Ent.Archived.Get(ctx, id.(uuid.UUID))
+		x.NoError(err)
+
+		return v
+	}
+	whole := func(id any, is trail.Archived, sig string) {
+		t.Helper()
+
+		v := row(id)
+		x.Equal(is.Namespace, v.Namespace)
+		x.Equal(is.Digest, v.Digest)
+		x.Equal(is.Intent, v.Intent)
+		x.Equal(is.State, v.State)
+		x.Equal(is.Labels, v.Labels)
+		x.Equal(sig, string(v.Signature))
+		x.Equal("key", string(v.SignedBy))
+	}
+
+	key, err := s.Adding(ctx, "ns", "an-intent", map[string]string{"a": "1"}, sign)
+	x.NoError(err)
+	x.Nil(calls[0].was.Key, "a row being added was nothing before")
+	x.Equal(key, calls[0].is.Key, "and is signed as the row it is")
+	whole(key, calls[0].is, "sig 1")
+
+	x.NoError(s.Added(ctx, key, "sha256:abc", map[string]string{"a": "2"}, sign))
+	x.Equal("sig 1", string(calls[1].was.Signature.Sig), "the row as it was, signature and all")
+	x.Equal(trail.Present, calls[1].is.State)
+	whole(key, calls[1].is, "sig 2")
+
+	x.NoError(s.Label(ctx, "ns", "sha256:abc", map[string]string{"a": "3"}, sign))
+	whole(key, calls[2].is, "sig 3")
+
+	x.NoError(s.Mark(ctx, "ns", "sha256:abc", trail.Present, trail.Erasing, sign))
+	whole(key, calls[3].is, "sig 4")
+
+	// A row in another state than the one a mark is from is not handed over.
+	x.NoError(s.Mark(ctx, "ns", "sha256:abc", trail.Present, trail.Erased, sign))
+	x.Len(calls, 4)
+
+	// And a signature refused is a write not made.
+	refused := errors.New("refused")
+	err = s.Mark(ctx, "ns", "sha256:abc", trail.Erasing, trail.Erased, func(trail.Archived, trail.Archived) (trail.Signature, error) {
+		return trail.Signature{}, refused
+	})
+	x.ErrorIs(err, refused)
+	whole(key, calls[3].is, "sig 4")
+
+	// Nor is one over a row another act moved between the store's read and its
+	// write: the row is that act's.
+	x.NoError(s.Mark(ctx, "ns", "sha256:abc", trail.Erasing, trail.Present, func(was, is trail.Archived) (trail.Signature, error) {
+		x.NoError(b.Ent.Archived.UpdateOneId(key.(uuid.UUID)).SetState(trail.Erased).Exec(ctx))
+		return sign(was, is)
+	}))
+	x.Equal(trail.Erased, row(key).State, "a row another act moved was written over")
+}
+
 // TestWhatTheTrailSaysIsSealedThroughTheAppsOwnStore.
 //
 // Through the generated store, with the app's own `Audit` rows: what a row says

@@ -74,6 +74,17 @@ func TestCheckpointsGoWhereTheyAreToldTo(t *testing.T) {
 	p, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1}.Policy()
 	x.NoError(err)
 	x.Nil(p.Checkpoints, "with no directory, they are the archive's")
+
+	// On a disk that says it keeps them, kept by the process too: an erase is
+	// refused, and the process says so where it comes up.
+	p, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Dir: t.TempDir(), WriteOnce: true}}.Policy()
+	x.NoError(err)
+	x.True(trail.IsWriteOnce(p.Checkpoints))
+	x.ErrorIs(p.Checkpoints.Erase(t.Context(), "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"), trail.ErrWriteOnce)
+	x.Contains(p.String(), "write-once")
+
+	_, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{WriteOnce: true}}.Policy()
+	x.ErrorContains(err, "audit.checkpoints.write_once", "the archive is where a pass erases from")
 }
 
 // TestTheKeysAreWhatTheConfigurationSays.

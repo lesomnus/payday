@@ -145,24 +145,33 @@ func (s *fakeStore) match(of Scope, r fakeRow) bool {
 	}
 }
 
-func (s *fakeStore) Adding(ctx context.Context, ns, intent string, labels map[string]string) (any, error) {
+func (s *fakeStore) Adding(ctx context.Context, ns, intent string, labels map[string]string, sign Sign) (any, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.keys++
-	s.archived = append(s.archived, Archived{Key: s.keys, Namespace: ns, Intent: intent, Labels: maps.Clone(labels), State: Adding, Created: time.Now(), Updated: time.Now()})
+	v := Archived{Key: s.keys, Namespace: ns, Intent: intent, Labels: maps.Clone(labels), State: Adding, Created: time.Now(), Updated: time.Now()}
+	sig, err := sign(Archived{}, v)
+	if err != nil {
+		return nil, err
+	}
+
+	v.Signature = sig
+	s.archived = append(s.archived, v)
 
 	return s.keys, nil
 }
 
-func (s *fakeStore) Added(ctx context.Context, key any, d string, labels map[string]string) error {
+func (s *fakeStore) Added(ctx context.Context, key any, d string, labels map[string]string, sign Sign) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	for i, v := range s.archived {
 		if v.Key == key {
-			s.archived[i].Digest, s.archived[i].Labels, s.archived[i].State, s.archived[i].Updated = d, maps.Clone(labels), Present, time.Now()
-			return nil
+			is := v
+			is.Digest, is.Labels, is.State, is.Updated = d, maps.Clone(labels), Present, time.Now()
+
+			return s.write(i, v, is, sign)
 		}
 	}
 
@@ -178,28 +187,50 @@ func (s *fakeStore) Drop(ctx context.Context, key any) error {
 	return nil
 }
 
-func (s *fakeStore) Mark(ctx context.Context, ns, d, from, to string) error {
+func (s *fakeStore) Mark(ctx context.Context, ns, d, from, to string, sign Sign) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	for i, v := range s.archived {
 		if v.Namespace == ns && v.Digest == d && v.State == from {
-			s.archived[i].State, s.archived[i].Updated = to, time.Now()
+			is := v
+			is.State, is.Updated = to, time.Now()
+			if err := s.write(i, v, is, sign); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-func (s *fakeStore) Label(ctx context.Context, ns, d string, labels map[string]string) error {
+func (s *fakeStore) Label(ctx context.Context, ns, d string, labels map[string]string, sign Sign) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	for i, v := range s.archived {
 		if v.Namespace == ns && v.Digest == d && v.State != Erased {
-			s.archived[i].Labels = maps.Clone(labels)
+			is := v
+			is.Labels, is.Updated = maps.Clone(labels), time.Now()
+			if err := s.write(i, v, is, sign); err != nil {
+				return err
+			}
 		}
 	}
+
+	return nil
+}
+
+// write is one row written whole, as the generated store writes one: every
+// field a signature is over, with the signature.
+func (s *fakeStore) write(i int, was, is Archived, sign Sign) error {
+	sig, err := sign(was, is)
+	if err != nil {
+		return err
+	}
+
+	is.Signature = sig
+	s.archived[i] = is
 
 	return nil
 }

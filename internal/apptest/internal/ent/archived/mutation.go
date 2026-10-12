@@ -27,6 +27,8 @@ type Mutation struct {
 	date_created  *time.Time
 	gone          *uint32
 	addgone       *int32
+	signature     *[]byte
+	signed_by     *[]byte
 	clearedFields map[string]struct{}
 	predicates    []predicate.Archived
 }
@@ -282,6 +284,70 @@ func (m *Mutation) ResetGone() {
 	m.addgone = nil
 }
 
+// SetSignature sets the "signature" field.
+func (m *Mutation) SetSignature(b []byte) {
+	m.signature = &b
+}
+
+// Signature returns the value of the "signature" field in the mutation.
+func (m *Mutation) Signature() (r []byte, exists bool) {
+	v := m.signature
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearSignature clears the value of the "signature" field.
+func (m *Mutation) ClearSignature() {
+	m.signature = nil
+	m.clearedFields[FieldSignature] = struct{}{}
+}
+
+// SignatureCleared returns if the "signature" field was cleared in this mutation.
+func (m *Mutation) SignatureCleared() bool {
+	_, ok := m.clearedFields[FieldSignature]
+	return ok
+}
+
+// ResetSignature resets all changes to the "signature" field.
+func (m *Mutation) ResetSignature() {
+	m.signature = nil
+	delete(m.clearedFields, FieldSignature)
+}
+
+// SetSignedBy sets the "signed_by" field.
+func (m *Mutation) SetSignedBy(b []byte) {
+	m.signed_by = &b
+}
+
+// SignedBy returns the value of the "signed_by" field in the mutation.
+func (m *Mutation) SignedBy() (r []byte, exists bool) {
+	v := m.signed_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearSignedBy clears the value of the "signed_by" field.
+func (m *Mutation) ClearSignedBy() {
+	m.signed_by = nil
+	m.clearedFields[FieldSignedBy] = struct{}{}
+}
+
+// SignedByCleared returns if the "signed_by" field was cleared in this mutation.
+func (m *Mutation) SignedByCleared() bool {
+	_, ok := m.clearedFields[FieldSignedBy]
+	return ok
+}
+
+// ResetSignedBy resets all changes to the "signed_by" field.
+func (m *Mutation) ResetSignedBy() {
+	m.signed_by = nil
+	delete(m.clearedFields, FieldSignedBy)
+}
+
 // Where appends a list predicates to the Mutation builder.
 func (m *Mutation) Where(ps ...predicate.Archived) {
 	m.predicates = append(m.predicates, ps...)
@@ -316,7 +382,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 11)
 	if m.labels != nil {
 		fields = append(fields, FieldLabels)
 	}
@@ -344,6 +410,12 @@ func (m *Mutation) Fields() []string {
 	if m.gone != nil {
 		fields = append(fields, FieldGone)
 	}
+	if m.signature != nil {
+		fields = append(fields, FieldSignature)
+	}
+	if m.signed_by != nil {
+		fields = append(fields, FieldSignedBy)
+	}
 	return fields
 }
 
@@ -370,6 +442,10 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.DateCreated()
 	case FieldGone:
 		return m.Gone()
+	case FieldSignature:
+		return m.Signature()
+	case FieldSignedBy:
+		return m.SignedBy()
 	}
 	return nil, false
 }
@@ -449,6 +525,20 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetGone(v)
 		return nil
+	case FieldSignature:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSignature(v)
+		return nil
+	case FieldSignedBy:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSignedBy(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Archived field %s", name)
 }
@@ -512,6 +602,12 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldDateCreated) {
 		fields = append(fields, FieldDateCreated)
 	}
+	if m.FieldCleared(FieldSignature) {
+		fields = append(fields, FieldSignature)
+	}
+	if m.FieldCleared(FieldSignedBy) {
+		fields = append(fields, FieldSignedBy)
+	}
 	return fields
 }
 
@@ -531,6 +627,12 @@ func (m *Mutation) ClearField(name string) error {
 		return nil
 	case FieldDateCreated:
 		m.ClearDateCreated()
+		return nil
+	case FieldSignature:
+		m.ClearSignature()
+		return nil
+	case FieldSignedBy:
+		m.ClearSignedBy()
 		return nil
 	}
 	return fmt.Errorf("unknown Archived nullable field %s", name)
@@ -566,6 +668,12 @@ func (m *Mutation) ResetField(name string) error {
 		return nil
 	case FieldGone:
 		m.ResetGone()
+		return nil
+	case FieldSignature:
+		m.ResetSignature()
+		return nil
+	case FieldSignedBy:
+		m.ResetSignedBy()
 		return nil
 	}
 	return fmt.Errorf("unknown Archived field %s", name)

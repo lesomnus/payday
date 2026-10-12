@@ -75,7 +75,10 @@ spin:
 # archive on a disk that refuses deletion, and signed with a key mounted as a
 # secret -- Ed25519, ECDSA or RSA, as `openssl genpkey` writes one -- they are
 # what catches an archive somebody rewrote. A key in a TPM, an HSM or a KMS is
-# handed in by the app, as `trail.Policy.Signer`.
+# handed in by the app, as `trail.Policy.Signer`. The key signs every row of
+# the account too, and `write_once` says the disk keeps what it is given, so
+# that the process never erases a checkpoint either -- it is the disk's
+# promise, and on an ordinary one it keeps nothing from whoever holds it.
 #
 # `keys:` seals what the archive's rows say, a key per tenant, so that a tenant
 # that leaves takes its trail out of the archive's backups as well. `master` is
@@ -88,6 +91,7 @@ spin:
 #   archive: /var/lib/{{.Name}}/audit
 #   checkpoints:
 #     dir: /mnt/worm/{{.Name}}/checkpoints
+#     write_once: true
 #     key: /run/secrets/checkpoints.pem
 #   keys:
 #     dir: /var/lib/{{.Name}}/audit-keys

@@ -368,6 +368,13 @@ const Batch = 1000
 // Deleting without keeping is a thing a deployment may genuinely want, and it
 // is not a thing to arrive at by leaving a field blank. See [Policy.Collect],
 // which is what that deployment calls.
+//
+// # It is handed no policy
+//
+// So it seals nothing ([Keys]) and signs nothing ([Signature]): in a
+// deployment with keys, what it writes is in the clear, and its rows are
+// unsigned, which is a finding until an operator accepts them. A pass is what
+// moves that deployment's rows.
 func Archive(ctx context.Context, s Store, of Kinds, before time.Time, a flob.Stores) (int, error) {
 	if a == nil {
 		return 0, errors.New("no archive to write into")

@@ -209,6 +209,14 @@ command that runs this, `full` on a schedule. Sign them with
 process cannot give away — a TPM, an HSM, a cloud KMS — is any `crypto.Signer`,
 handed in as `trail.Policy.Signer`.
 
+The key signs every row of the manifest as well, so that a row changed after
+the latest checkpoint is found too, and each checkpoint names the one before
+it. On a WORM mount, say so — `audit.checkpoints.write_once: true` — and the
+process never erases or relabels a checkpoint either; on S3 with Object Lock,
+hand the store in as `trail.WriteOnce(store)`. Rows written before the
+deployment had a key are findings until an operator accepts them once,
+`policy.Accept(ctx, pd.TrailStore(db), why)`, which signs them as they stand.
+
 An export of a tenant's trail — a tenant leaving, a person asking what is kept
 about them — reads the archive the same way:
 

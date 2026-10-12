@@ -38,6 +38,10 @@ func newKey(t *testing.T) crypto.Signer {
 	return k
 }
 
+// nobody is what somebody who writes the database and holds no key signs a row
+// with: nothing.
+func nobody(_, _ Archived) (Signature, error) { return Signature{}, nil }
+
 // kinds is what a verification found, by kind.
 func kinds(v Verified) []string {
 	out := []string{}
@@ -214,7 +218,7 @@ func TestWhatChangesBehindTheManifestsBackIsFound(t *testing.T) {
 		month = time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
 
 		s := &fakeStore{}
-		p := Policy{Archive: flob.NewMemStores(), Signer: newKey(t)}
+		p := Policy{Archive: flob.NewMemStores()}
 		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: month.Add(10 * day), value: "a"})
 		_, err := Archive(ctx, s, Kinds{}, time.Now(), p.Archive)
 		x.NoError(err)
@@ -547,7 +551,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 		s, p, tenant := manifestedArchive(t, nil)
 
 		// Stopped after the blob and before the row says so.
-		key, err := s.Adding(ctx, tenant.String(), "the-intent", nil)
+		key, err := s.Adding(ctx, tenant.String(), "the-intent", nil, p.signing())
 		x.NoError(err)
 		c := Chunk{Namespace: tenant.String(), Kind: "person", Month: time.Now(), Rows: 1}
 		l := c.labels()
@@ -569,7 +573,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 		x := require.New(t)
 		s, p, tenant := manifestedArchive(t, nil)
 
-		_, err := s.Adding(ctx, tenant.String(), "lost", nil)
+		_, err := s.Adding(ctx, tenant.String(), "lost", nil, p.signing())
 		x.NoError(err)
 		p.Pass(ctx, s)
 		x.Len(adding(s), 1, "a write younger than a day may still be being made")
@@ -591,7 +595,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 		c := cs[0]
 
 		// Stopped after the blob went and before the row says so.
-		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Present, Erasing))
+		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Present, Erasing, p.signing()))
 		x.NoError(unwrapStores(p.Archive).Use(c.Namespace).Erase(ctx, c.Digest))
 
 		v, err := p.Verify(ctx, s, false)
@@ -611,7 +615,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 
 		// Somebody with the database and nothing else, and a chunk nowhere
 		// near the end of its window.
-		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Present, Erasing))
+		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Present, Erasing, nobody))
 		p.Pass(ctx, s)
 
 		cs, err = chunksIn(ctx, p.Archive, tenant.String())
@@ -637,11 +641,11 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 		c := cs[0]
 
 		// The other pass has marked it, and this one starts before it erases.
-		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Present, Erasing))
+		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Present, Erasing, p.signing()))
 		p.Pass(ctx, s)
 
 		x.NoError(unwrapStores(p.Archive).Use(c.Namespace).Erase(ctx, c.Digest))
-		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Erasing, Erased))
+		x.NoError(s.Mark(ctx, c.Namespace, string(c.Digest), Erasing, Erased, p.signing()))
 
 		v, err := p.Verify(ctx, s, false)
 		x.NoError(err)
@@ -794,10 +798,23 @@ func TestACheckpointIsWhatTheArchiveHeld(t *testing.T) {
 		x := require.New(t)
 		s, p, _ := manifestedArchive(t, nil)
 
+		// Its checkpoints begin unsigned, which is no finding. Its rows were
+		// written unsigned, which is one until an operator says they are
+		// right: a row with no signature looks the same as one whose signature
+		// somebody took off.
 		p.Signer = newKey(t)
 		p.Pass(ctx, s)
 
 		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"unsigned"}, kinds(v))
+		for _, f := range v.Findings {
+			x.Zero(f.Checkpoint, "a checkpoint from before the key: %v", f)
+		}
+
+		_, err = p.Accept(ctx, s, "the rows from before the deployment had a key")
+		x.NoError(err)
+		v, err = p.Verify(ctx, s, false)
 		x.NoError(err)
 		x.True(v.Ok(), "%v", v.Findings)
 	})

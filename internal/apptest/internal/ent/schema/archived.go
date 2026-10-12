@@ -32,6 +32,10 @@ func (Archived) Fields() []ent.Field {
 			Immutable().
 			Optional(),
 		field.Uint32("gone"),
+		field.Bytes("signature").
+			Optional(),
+		field.Bytes("signed_by").
+			Optional(),
 	}
 }
 

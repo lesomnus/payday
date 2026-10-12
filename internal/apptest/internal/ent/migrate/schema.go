@@ -21,6 +21,8 @@ var (
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "gone", Type: field.TypeUint32},
+		{Name: "signature", Type: field.TypeBytes, Nullable: true},
+		{Name: "signed_by", Type: field.TypeBytes, Nullable: true},
 	}
 	// ArchivedTable holds the schema information for the "archived" table.
 	ArchivedTable = &schema.Table{
