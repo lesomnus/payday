@@ -15,9 +15,10 @@
 //	  checkpoints:
 //	    key: pkcs11:token=payday;object=checkpoints?module-path=/usr/lib/softhsm/libsofthsm2.so&pin-source=/run/secrets/hsm-pin
 //
-// The URI `pkcs11-tool --list-objects` prints for the key is the start of one:
-// it names the token and the object, and this adds the library and where the
-// PIN is.
+// `token=` is the token's label and `object=` the key's, as `softhsm2-util
+// --label` and `pkcs11-tool --label` gave them, or `id=` its `CKA_ID`,
+// percent-encoded (`--id 01` is `id=%01`); the query says which library speaks
+// to the token and where the PIN is.
 package signerpkcs11
 
 import (

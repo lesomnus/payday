@@ -585,9 +585,9 @@ uses and none of the others:
 - **PKCS #11** is an HSM on the network or in the machine, a cloud's HSM
   through the library its vendor ships — AWS CloudHSM, Google Cloud KMS
   through `kmsp11`, Thales Luna, YubiHSM — or a smart card. The URI is RFC
-  7512's, which `pkcs11-tool --list-objects` prints for a key, plus the
-  library and the file the PIN is in. It loads a C library, so it needs cgo;
-  built without, it refuses at start rather than not building.
+  7512's: the token's label, the key's label or `CKA_ID`, the library, and the
+  file the PIN is in. It loads a C library, so it needs cgo; built without, it
+  refuses at start rather than not building.
 - **A TPM** is the machine's, or a virtual machine's vTPM. The key is made in
   it and kept at a persistent handle (`trail/trailtpm` has the two
   `tpm2-tools` commands), reached through the kernel's resource manager,
