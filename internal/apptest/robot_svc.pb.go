@@ -22,6 +22,52 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// RobotListOrder names an order a list of Robots may be read in.
+type RobotListOrder int32
+
+const (
+	// The list's own order, which a request that names none gets.
+	RobotListOrder_ROBOT_LIST_ORDER_UNSPECIFIED RobotListOrder = 0
+	RobotListOrder_ROBOT_LIST_ORDER_ALIAS       RobotListOrder = 1
+	RobotListOrder_ROBOT_LIST_ORDER_ALIAS_DESC  RobotListOrder = 2
+)
+
+// Enum value maps for RobotListOrder.
+var (
+	RobotListOrder_name = map[int32]string{
+		0: "ROBOT_LIST_ORDER_UNSPECIFIED",
+		1: "ROBOT_LIST_ORDER_ALIAS",
+		2: "ROBOT_LIST_ORDER_ALIAS_DESC",
+	}
+	RobotListOrder_value = map[string]int32{
+		"ROBOT_LIST_ORDER_UNSPECIFIED": 0,
+		"ROBOT_LIST_ORDER_ALIAS":       1,
+		"ROBOT_LIST_ORDER_ALIAS_DESC":  2,
+	}
+)
+
+func (x RobotListOrder) Enum() *RobotListOrder {
+	p := new(RobotListOrder)
+	*p = x
+	return p
+}
+
+func (x RobotListOrder) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RobotListOrder) Descriptor() protoreflect.EnumDescriptor {
+	return file_app_robot_svc_g_proto_enumTypes[0].Descriptor()
+}
+
+func (RobotListOrder) Type() protoreflect.EnumType {
+	return &file_app_robot_svc_g_proto_enumTypes[0]
+}
+
+func (x RobotListOrder) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
 type CellAddRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
@@ -2298,6 +2344,8 @@ type RobotListRequest struct {
 	xxx_hidden_Filters *[]*RobotFilter        `protobuf:"bytes,1,rep,name=filters"`
 	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
 	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
+	xxx_hidden_Reverse bool                   `protobuf:"varint,4,opt,name=reverse"`
+	xxx_hidden_Order   RobotListOrder         `protobuf:"varint,5,opt,name=order,enum=app.RobotListOrder"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -2350,6 +2398,20 @@ func (x *RobotListRequest) GetAfter() string {
 	return ""
 }
 
+func (x *RobotListRequest) GetReverse() bool {
+	if x != nil {
+		return x.xxx_hidden_Reverse
+	}
+	return false
+}
+
+func (x *RobotListRequest) GetOrder() RobotListOrder {
+	if x != nil {
+		return x.xxx_hidden_Order
+	}
+	return RobotListOrder_ROBOT_LIST_ORDER_UNSPECIFIED
+}
+
 func (x *RobotListRequest) SetFilters(v []*RobotFilter) {
 	x.xxx_hidden_Filters = &v
 }
@@ -2360,6 +2422,14 @@ func (x *RobotListRequest) SetSize(v int32) {
 
 func (x *RobotListRequest) SetAfter(v string) {
 	x.xxx_hidden_After = v
+}
+
+func (x *RobotListRequest) SetReverse(v bool) {
+	x.xxx_hidden_Reverse = v
+}
+
+func (x *RobotListRequest) SetOrder(v RobotListOrder) {
+	x.xxx_hidden_Order = v
 }
 
 type RobotListRequest_builder struct {
@@ -2377,6 +2447,14 @@ type RobotListRequest_builder struct {
 	// ahead of the page does not shift it and a caller reading through never sees
 	// one twice or misses one.
 	After string
+	// Read the order the other way round, every column of it at once -- newest
+	// first where it is oldest first -- which the index the order walks walks
+	// from the other end. A cursor is of the way it was read, so the next page
+	// carries on that way, and one of the other way is refused.
+	Reverse bool
+	// Which of the orders the schema declares to read in. Unspecified is the one
+	// it reads in otherwise.
+	Order RobotListOrder
 }
 
 func (b0 RobotListRequest_builder) Build() *RobotListRequest {
@@ -2386,6 +2464,8 @@ func (b0 RobotListRequest_builder) Build() *RobotListRequest {
 	x.xxx_hidden_Filters = &b.Filters
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_After = b.After
+	x.xxx_hidden_Reverse = b.Reverse
+	x.xxx_hidden_Order = b.Order
 	return m0
 }
 
@@ -6222,11 +6302,13 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +
 	"\x12RobotEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"v\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xc9\x01\n" +
 	"\x10RobotListRequest\x12*\n" +
 	"\afilters\x18\x01 \x03(\v2\x10.app.RobotFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
-	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\"P\n" +
+	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\x12\x1f\n" +
+	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\x120\n" +
+	"\x05order\x18\x05 \x01(\x0e2\x13.app.RobotListOrderB\x05\xaa\x01\x02\b\x02R\x05order\"P\n" +
 	"\x11RobotListResponse\x12 \n" +
 	"\x05items\x18\x01 \x03(\v2\n" +
 	".app.RobotR\x05items\x12\x19\n" +
@@ -6346,7 +6428,11 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\x0f.app.ReadingRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\".\n" +
 	"\x14ReadingEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased2\xe0\x01\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased*o\n" +
+	"\x0eRobotListOrder\x12 \n" +
+	"\x1cROBOT_LIST_ORDER_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16ROBOT_LIST_ORDER_ALIAS\x10\x01\x12\x1f\n" +
+	"\x1bROBOT_LIST_ORDER_ALIAS_DESC\x10\x022\xe0\x01\n" +
 	"\vCellService\x12%\n" +
 	"\x03Add\x12\x13.app.CellAddRequest\x1a\t.app.Cell\x12%\n" +
 	"\x03Get\x12\x13.app.CellGetRequest\x1a\t.app.Cell\x12)\n" +
@@ -6400,209 +6486,212 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x05Apply\x12\x18.app.ReadingApplyRequest\x1a\f.app.Reading\x123\n" +
 	"\x05Erase\x12\x0f.app.ReadingRef\x1a\x19.app.ReadingEraseResponseB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
+var file_app_robot_svc_g_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_app_robot_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 50)
 var file_app_robot_svc_g_proto_goTypes = []any{
-	(*CellAddRequest)(nil),        // 0: app.CellAddRequest
-	(*CellGetRequest)(nil),        // 1: app.CellGetRequest
-	(*CellRef)(nil),               // 2: app.CellRef
-	(*CellSelect)(nil),            // 3: app.CellSelect
-	(*CellPatchRequest)(nil),      // 4: app.CellPatchRequest
-	(*CellApplyRequest)(nil),      // 5: app.CellApplyRequest
-	(*CellEraseResponse)(nil),     // 6: app.CellEraseResponse
-	(*RobotAddRequest)(nil),       // 7: app.RobotAddRequest
-	(*RobotGetRequest)(nil),       // 8: app.RobotGetRequest
-	(*RobotRef)(nil),              // 9: app.RobotRef
-	(*RobotRefBySlug)(nil),        // 10: app.RobotRefBySlug
-	(*RobotSelect)(nil),           // 11: app.RobotSelect
-	(*RobotPatchRequest)(nil),     // 12: app.RobotPatchRequest
-	(*RobotApplyRequest)(nil),     // 13: app.RobotApplyRequest
-	(*RobotEraseResponse)(nil),    // 14: app.RobotEraseResponse
-	(*RobotListRequest)(nil),      // 15: app.RobotListRequest
-	(*RobotListResponse)(nil),     // 16: app.RobotListResponse
-	(*RobotFilter)(nil),           // 17: app.RobotFilter
-	(*RobotWatchRequest)(nil),     // 18: app.RobotWatchRequest
-	(*RobotWatchResponse)(nil),    // 19: app.RobotWatchResponse
-	(*RobotWatchItem)(nil),        // 20: app.RobotWatchItem
-	(*RobotMoveRequest)(nil),      // 21: app.RobotMoveRequest
-	(*PairingAddRequest)(nil),     // 22: app.PairingAddRequest
-	(*PairingGetRequest)(nil),     // 23: app.PairingGetRequest
-	(*PairingRef)(nil),            // 24: app.PairingRef
-	(*PairingSelect)(nil),         // 25: app.PairingSelect
-	(*PairingPatchRequest)(nil),   // 26: app.PairingPatchRequest
-	(*PairingApplyRequest)(nil),   // 27: app.PairingApplyRequest
-	(*PairingEraseResponse)(nil),  // 28: app.PairingEraseResponse
-	(*JointAddRequest)(nil),       // 29: app.JointAddRequest
-	(*JointGetRequest)(nil),       // 30: app.JointGetRequest
-	(*JointRef)(nil),              // 31: app.JointRef
-	(*JointSelect)(nil),           // 32: app.JointSelect
-	(*JointPatchRequest)(nil),     // 33: app.JointPatchRequest
-	(*JointApplyRequest)(nil),     // 34: app.JointApplyRequest
-	(*JointEraseResponse)(nil),    // 35: app.JointEraseResponse
-	(*FleetAddRequest)(nil),       // 36: app.FleetAddRequest
-	(*FleetGetRequest)(nil),       // 37: app.FleetGetRequest
-	(*FleetRef)(nil),              // 38: app.FleetRef
-	(*FleetSelect)(nil),           // 39: app.FleetSelect
-	(*FleetPatchRequest)(nil),     // 40: app.FleetPatchRequest
-	(*FleetApplyRequest)(nil),     // 41: app.FleetApplyRequest
-	(*FleetEraseResponse)(nil),    // 42: app.FleetEraseResponse
-	(*ReadingAddRequest)(nil),     // 43: app.ReadingAddRequest
-	(*ReadingGetRequest)(nil),     // 44: app.ReadingGetRequest
-	(*ReadingRef)(nil),            // 45: app.ReadingRef
-	(*ReadingSelect)(nil),         // 46: app.ReadingSelect
-	(*ReadingPatchRequest)(nil),   // 47: app.ReadingPatchRequest
-	(*ReadingApplyRequest)(nil),   // 48: app.ReadingApplyRequest
-	(*ReadingEraseResponse)(nil),  // 49: app.ReadingEraseResponse
-	(*TenantRef)(nil),             // 50: app.TenantRef
-	(*TenantSelect)(nil),          // 51: app.TenantSelect
-	(*patchpb.Patch)(nil),         // 52: patch.Patch
-	(*ThingRef)(nil),              // 53: shared.ThingRef
-	(*timestamppb.Timestamp)(nil), // 54: google.protobuf.Timestamp
-	(*ThingSelect)(nil),           // 55: shared.ThingSelect
-	(*Robot)(nil),                 // 56: app.Robot
-	(*Cell)(nil),                  // 57: app.Cell
-	(*Pairing)(nil),               // 58: app.Pairing
-	(*Joint)(nil),                 // 59: app.Joint
-	(*Fleet)(nil),                 // 60: app.Fleet
-	(*Reading)(nil),               // 61: app.Reading
+	(RobotListOrder)(0),           // 0: app.RobotListOrder
+	(*CellAddRequest)(nil),        // 1: app.CellAddRequest
+	(*CellGetRequest)(nil),        // 2: app.CellGetRequest
+	(*CellRef)(nil),               // 3: app.CellRef
+	(*CellSelect)(nil),            // 4: app.CellSelect
+	(*CellPatchRequest)(nil),      // 5: app.CellPatchRequest
+	(*CellApplyRequest)(nil),      // 6: app.CellApplyRequest
+	(*CellEraseResponse)(nil),     // 7: app.CellEraseResponse
+	(*RobotAddRequest)(nil),       // 8: app.RobotAddRequest
+	(*RobotGetRequest)(nil),       // 9: app.RobotGetRequest
+	(*RobotRef)(nil),              // 10: app.RobotRef
+	(*RobotRefBySlug)(nil),        // 11: app.RobotRefBySlug
+	(*RobotSelect)(nil),           // 12: app.RobotSelect
+	(*RobotPatchRequest)(nil),     // 13: app.RobotPatchRequest
+	(*RobotApplyRequest)(nil),     // 14: app.RobotApplyRequest
+	(*RobotEraseResponse)(nil),    // 15: app.RobotEraseResponse
+	(*RobotListRequest)(nil),      // 16: app.RobotListRequest
+	(*RobotListResponse)(nil),     // 17: app.RobotListResponse
+	(*RobotFilter)(nil),           // 18: app.RobotFilter
+	(*RobotWatchRequest)(nil),     // 19: app.RobotWatchRequest
+	(*RobotWatchResponse)(nil),    // 20: app.RobotWatchResponse
+	(*RobotWatchItem)(nil),        // 21: app.RobotWatchItem
+	(*RobotMoveRequest)(nil),      // 22: app.RobotMoveRequest
+	(*PairingAddRequest)(nil),     // 23: app.PairingAddRequest
+	(*PairingGetRequest)(nil),     // 24: app.PairingGetRequest
+	(*PairingRef)(nil),            // 25: app.PairingRef
+	(*PairingSelect)(nil),         // 26: app.PairingSelect
+	(*PairingPatchRequest)(nil),   // 27: app.PairingPatchRequest
+	(*PairingApplyRequest)(nil),   // 28: app.PairingApplyRequest
+	(*PairingEraseResponse)(nil),  // 29: app.PairingEraseResponse
+	(*JointAddRequest)(nil),       // 30: app.JointAddRequest
+	(*JointGetRequest)(nil),       // 31: app.JointGetRequest
+	(*JointRef)(nil),              // 32: app.JointRef
+	(*JointSelect)(nil),           // 33: app.JointSelect
+	(*JointPatchRequest)(nil),     // 34: app.JointPatchRequest
+	(*JointApplyRequest)(nil),     // 35: app.JointApplyRequest
+	(*JointEraseResponse)(nil),    // 36: app.JointEraseResponse
+	(*FleetAddRequest)(nil),       // 37: app.FleetAddRequest
+	(*FleetGetRequest)(nil),       // 38: app.FleetGetRequest
+	(*FleetRef)(nil),              // 39: app.FleetRef
+	(*FleetSelect)(nil),           // 40: app.FleetSelect
+	(*FleetPatchRequest)(nil),     // 41: app.FleetPatchRequest
+	(*FleetApplyRequest)(nil),     // 42: app.FleetApplyRequest
+	(*FleetEraseResponse)(nil),    // 43: app.FleetEraseResponse
+	(*ReadingAddRequest)(nil),     // 44: app.ReadingAddRequest
+	(*ReadingGetRequest)(nil),     // 45: app.ReadingGetRequest
+	(*ReadingRef)(nil),            // 46: app.ReadingRef
+	(*ReadingSelect)(nil),         // 47: app.ReadingSelect
+	(*ReadingPatchRequest)(nil),   // 48: app.ReadingPatchRequest
+	(*ReadingApplyRequest)(nil),   // 49: app.ReadingApplyRequest
+	(*ReadingEraseResponse)(nil),  // 50: app.ReadingEraseResponse
+	(*TenantRef)(nil),             // 51: app.TenantRef
+	(*TenantSelect)(nil),          // 52: app.TenantSelect
+	(*patchpb.Patch)(nil),         // 53: patch.Patch
+	(*ThingRef)(nil),              // 54: shared.ThingRef
+	(*timestamppb.Timestamp)(nil), // 55: google.protobuf.Timestamp
+	(*ThingSelect)(nil),           // 56: shared.ThingSelect
+	(*Robot)(nil),                 // 57: app.Robot
+	(*Cell)(nil),                  // 58: app.Cell
+	(*Pairing)(nil),               // 59: app.Pairing
+	(*Joint)(nil),                 // 60: app.Joint
+	(*Fleet)(nil),                 // 61: app.Fleet
+	(*Reading)(nil),               // 62: app.Reading
 }
 var file_app_robot_svc_g_proto_depIdxs = []int32{
-	50, // 0: app.CellAddRequest.tenant:type_name -> app.TenantRef
-	2,  // 1: app.CellGetRequest.ref:type_name -> app.CellRef
-	3,  // 2: app.CellGetRequest.select:type_name -> app.CellSelect
-	51, // 3: app.CellSelect.tenant:type_name -> app.TenantSelect
-	2,  // 4: app.CellPatchRequest.ref:type_name -> app.CellRef
-	2,  // 5: app.CellApplyRequest.ref:type_name -> app.CellRef
-	52, // 6: app.CellApplyRequest.patch:type_name -> patch.Patch
-	50, // 7: app.RobotAddRequest.tenant:type_name -> app.TenantRef
-	53, // 8: app.RobotAddRequest.thing:type_name -> shared.ThingRef
-	2,  // 9: app.RobotAddRequest.cell:type_name -> app.CellRef
-	54, // 10: app.RobotAddRequest.date_attested:type_name -> google.protobuf.Timestamp
-	54, // 11: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	9,  // 12: app.RobotGetRequest.ref:type_name -> app.RobotRef
-	11, // 13: app.RobotGetRequest.select:type_name -> app.RobotSelect
-	10, // 14: app.RobotRef.slug:type_name -> app.RobotRefBySlug
-	50, // 15: app.RobotRefBySlug.tenant:type_name -> app.TenantRef
-	51, // 16: app.RobotSelect.tenant:type_name -> app.TenantSelect
-	55, // 17: app.RobotSelect.thing:type_name -> shared.ThingSelect
-	3,  // 18: app.RobotSelect.cell:type_name -> app.CellSelect
-	9,  // 19: app.RobotPatchRequest.ref:type_name -> app.RobotRef
-	53, // 20: app.RobotPatchRequest.thing:type_name -> shared.ThingRef
-	2,  // 21: app.RobotPatchRequest.cell:type_name -> app.CellRef
-	54, // 22: app.RobotPatchRequest.date_attested:type_name -> google.protobuf.Timestamp
-	54, // 23: app.RobotPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	9,  // 24: app.RobotApplyRequest.ref:type_name -> app.RobotRef
-	52, // 25: app.RobotApplyRequest.patch:type_name -> patch.Patch
-	17, // 26: app.RobotListRequest.filters:type_name -> app.RobotFilter
-	56, // 27: app.RobotListResponse.items:type_name -> app.Robot
-	9,  // 28: app.RobotFilter.ref:type_name -> app.RobotRef
-	50, // 29: app.RobotFilter.tenant:type_name -> app.TenantRef
-	53, // 30: app.RobotFilter.thing:type_name -> shared.ThingRef
-	17, // 31: app.RobotWatchRequest.filters:type_name -> app.RobotFilter
-	20, // 32: app.RobotWatchResponse.items:type_name -> app.RobotWatchItem
-	56, // 33: app.RobotWatchItem.value:type_name -> app.Robot
-	9,  // 34: app.RobotMoveRequest.ref:type_name -> app.RobotRef
-	2,  // 35: app.RobotMoveRequest.to:type_name -> app.CellRef
-	9,  // 36: app.PairingAddRequest.lead:type_name -> app.RobotRef
-	9,  // 37: app.PairingAddRequest.follow:type_name -> app.RobotRef
-	54, // 38: app.PairingAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	24, // 39: app.PairingGetRequest.ref:type_name -> app.PairingRef
-	25, // 40: app.PairingGetRequest.select:type_name -> app.PairingSelect
-	11, // 41: app.PairingSelect.lead:type_name -> app.RobotSelect
-	11, // 42: app.PairingSelect.follow:type_name -> app.RobotSelect
-	24, // 43: app.PairingPatchRequest.ref:type_name -> app.PairingRef
-	24, // 44: app.PairingApplyRequest.ref:type_name -> app.PairingRef
-	52, // 45: app.PairingApplyRequest.patch:type_name -> patch.Patch
-	9,  // 46: app.JointAddRequest.robot:type_name -> app.RobotRef
-	31, // 47: app.JointGetRequest.ref:type_name -> app.JointRef
-	32, // 48: app.JointGetRequest.select:type_name -> app.JointSelect
-	11, // 49: app.JointSelect.robot:type_name -> app.RobotSelect
-	31, // 50: app.JointPatchRequest.ref:type_name -> app.JointRef
-	31, // 51: app.JointApplyRequest.ref:type_name -> app.JointRef
-	52, // 52: app.JointApplyRequest.patch:type_name -> patch.Patch
-	38, // 53: app.FleetGetRequest.ref:type_name -> app.FleetRef
-	39, // 54: app.FleetGetRequest.select:type_name -> app.FleetSelect
-	38, // 55: app.FleetPatchRequest.ref:type_name -> app.FleetRef
-	38, // 56: app.FleetApplyRequest.ref:type_name -> app.FleetRef
-	52, // 57: app.FleetApplyRequest.patch:type_name -> patch.Patch
-	9,  // 58: app.ReadingAddRequest.robot:type_name -> app.RobotRef
-	54, // 59: app.ReadingAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	45, // 60: app.ReadingGetRequest.ref:type_name -> app.ReadingRef
-	46, // 61: app.ReadingGetRequest.select:type_name -> app.ReadingSelect
-	11, // 62: app.ReadingSelect.robot:type_name -> app.RobotSelect
-	45, // 63: app.ReadingPatchRequest.ref:type_name -> app.ReadingRef
-	45, // 64: app.ReadingApplyRequest.ref:type_name -> app.ReadingRef
-	52, // 65: app.ReadingApplyRequest.patch:type_name -> patch.Patch
-	0,  // 66: app.CellService.Add:input_type -> app.CellAddRequest
-	1,  // 67: app.CellService.Get:input_type -> app.CellGetRequest
-	4,  // 68: app.CellService.Patch:input_type -> app.CellPatchRequest
-	5,  // 69: app.CellService.Apply:input_type -> app.CellApplyRequest
-	2,  // 70: app.CellService.Erase:input_type -> app.CellRef
-	7,  // 71: app.RobotService.Add:input_type -> app.RobotAddRequest
-	8,  // 72: app.RobotService.Get:input_type -> app.RobotGetRequest
-	12, // 73: app.RobotService.Patch:input_type -> app.RobotPatchRequest
-	13, // 74: app.RobotService.Apply:input_type -> app.RobotApplyRequest
-	9,  // 75: app.RobotService.Erase:input_type -> app.RobotRef
-	15, // 76: app.RobotService.List:input_type -> app.RobotListRequest
-	18, // 77: app.RobotService.Watch:input_type -> app.RobotWatchRequest
-	21, // 78: app.RobotService.Move:input_type -> app.RobotMoveRequest
-	22, // 79: app.PairingService.Add:input_type -> app.PairingAddRequest
-	23, // 80: app.PairingService.Get:input_type -> app.PairingGetRequest
-	26, // 81: app.PairingService.Patch:input_type -> app.PairingPatchRequest
-	27, // 82: app.PairingService.Apply:input_type -> app.PairingApplyRequest
-	24, // 83: app.PairingService.Erase:input_type -> app.PairingRef
-	29, // 84: app.JointService.Add:input_type -> app.JointAddRequest
-	30, // 85: app.JointService.Get:input_type -> app.JointGetRequest
-	33, // 86: app.JointService.Patch:input_type -> app.JointPatchRequest
-	34, // 87: app.JointService.Apply:input_type -> app.JointApplyRequest
-	31, // 88: app.JointService.Erase:input_type -> app.JointRef
-	36, // 89: app.FleetService.Add:input_type -> app.FleetAddRequest
-	37, // 90: app.FleetService.Get:input_type -> app.FleetGetRequest
-	40, // 91: app.FleetService.Patch:input_type -> app.FleetPatchRequest
-	41, // 92: app.FleetService.Apply:input_type -> app.FleetApplyRequest
-	38, // 93: app.FleetService.Erase:input_type -> app.FleetRef
-	43, // 94: app.ReadingService.Add:input_type -> app.ReadingAddRequest
-	44, // 95: app.ReadingService.Get:input_type -> app.ReadingGetRequest
-	47, // 96: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
-	48, // 97: app.ReadingService.Apply:input_type -> app.ReadingApplyRequest
-	45, // 98: app.ReadingService.Erase:input_type -> app.ReadingRef
-	57, // 99: app.CellService.Add:output_type -> app.Cell
-	57, // 100: app.CellService.Get:output_type -> app.Cell
-	57, // 101: app.CellService.Patch:output_type -> app.Cell
-	57, // 102: app.CellService.Apply:output_type -> app.Cell
-	6,  // 103: app.CellService.Erase:output_type -> app.CellEraseResponse
-	56, // 104: app.RobotService.Add:output_type -> app.Robot
-	56, // 105: app.RobotService.Get:output_type -> app.Robot
-	56, // 106: app.RobotService.Patch:output_type -> app.Robot
-	56, // 107: app.RobotService.Apply:output_type -> app.Robot
-	14, // 108: app.RobotService.Erase:output_type -> app.RobotEraseResponse
-	16, // 109: app.RobotService.List:output_type -> app.RobotListResponse
-	19, // 110: app.RobotService.Watch:output_type -> app.RobotWatchResponse
-	56, // 111: app.RobotService.Move:output_type -> app.Robot
-	58, // 112: app.PairingService.Add:output_type -> app.Pairing
-	58, // 113: app.PairingService.Get:output_type -> app.Pairing
-	58, // 114: app.PairingService.Patch:output_type -> app.Pairing
-	58, // 115: app.PairingService.Apply:output_type -> app.Pairing
-	28, // 116: app.PairingService.Erase:output_type -> app.PairingEraseResponse
-	59, // 117: app.JointService.Add:output_type -> app.Joint
-	59, // 118: app.JointService.Get:output_type -> app.Joint
-	59, // 119: app.JointService.Patch:output_type -> app.Joint
-	59, // 120: app.JointService.Apply:output_type -> app.Joint
-	35, // 121: app.JointService.Erase:output_type -> app.JointEraseResponse
-	60, // 122: app.FleetService.Add:output_type -> app.Fleet
-	60, // 123: app.FleetService.Get:output_type -> app.Fleet
-	60, // 124: app.FleetService.Patch:output_type -> app.Fleet
-	60, // 125: app.FleetService.Apply:output_type -> app.Fleet
-	42, // 126: app.FleetService.Erase:output_type -> app.FleetEraseResponse
-	61, // 127: app.ReadingService.Add:output_type -> app.Reading
-	61, // 128: app.ReadingService.Get:output_type -> app.Reading
-	61, // 129: app.ReadingService.Patch:output_type -> app.Reading
-	61, // 130: app.ReadingService.Apply:output_type -> app.Reading
-	49, // 131: app.ReadingService.Erase:output_type -> app.ReadingEraseResponse
-	99, // [99:132] is the sub-list for method output_type
-	66, // [66:99] is the sub-list for method input_type
-	66, // [66:66] is the sub-list for extension type_name
-	66, // [66:66] is the sub-list for extension extendee
-	0,  // [0:66] is the sub-list for field type_name
+	51,  // 0: app.CellAddRequest.tenant:type_name -> app.TenantRef
+	3,   // 1: app.CellGetRequest.ref:type_name -> app.CellRef
+	4,   // 2: app.CellGetRequest.select:type_name -> app.CellSelect
+	52,  // 3: app.CellSelect.tenant:type_name -> app.TenantSelect
+	3,   // 4: app.CellPatchRequest.ref:type_name -> app.CellRef
+	3,   // 5: app.CellApplyRequest.ref:type_name -> app.CellRef
+	53,  // 6: app.CellApplyRequest.patch:type_name -> patch.Patch
+	51,  // 7: app.RobotAddRequest.tenant:type_name -> app.TenantRef
+	54,  // 8: app.RobotAddRequest.thing:type_name -> shared.ThingRef
+	3,   // 9: app.RobotAddRequest.cell:type_name -> app.CellRef
+	55,  // 10: app.RobotAddRequest.date_attested:type_name -> google.protobuf.Timestamp
+	55,  // 11: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	10,  // 12: app.RobotGetRequest.ref:type_name -> app.RobotRef
+	12,  // 13: app.RobotGetRequest.select:type_name -> app.RobotSelect
+	11,  // 14: app.RobotRef.slug:type_name -> app.RobotRefBySlug
+	51,  // 15: app.RobotRefBySlug.tenant:type_name -> app.TenantRef
+	52,  // 16: app.RobotSelect.tenant:type_name -> app.TenantSelect
+	56,  // 17: app.RobotSelect.thing:type_name -> shared.ThingSelect
+	4,   // 18: app.RobotSelect.cell:type_name -> app.CellSelect
+	10,  // 19: app.RobotPatchRequest.ref:type_name -> app.RobotRef
+	54,  // 20: app.RobotPatchRequest.thing:type_name -> shared.ThingRef
+	3,   // 21: app.RobotPatchRequest.cell:type_name -> app.CellRef
+	55,  // 22: app.RobotPatchRequest.date_attested:type_name -> google.protobuf.Timestamp
+	55,  // 23: app.RobotPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	10,  // 24: app.RobotApplyRequest.ref:type_name -> app.RobotRef
+	53,  // 25: app.RobotApplyRequest.patch:type_name -> patch.Patch
+	18,  // 26: app.RobotListRequest.filters:type_name -> app.RobotFilter
+	0,   // 27: app.RobotListRequest.order:type_name -> app.RobotListOrder
+	57,  // 28: app.RobotListResponse.items:type_name -> app.Robot
+	10,  // 29: app.RobotFilter.ref:type_name -> app.RobotRef
+	51,  // 30: app.RobotFilter.tenant:type_name -> app.TenantRef
+	54,  // 31: app.RobotFilter.thing:type_name -> shared.ThingRef
+	18,  // 32: app.RobotWatchRequest.filters:type_name -> app.RobotFilter
+	21,  // 33: app.RobotWatchResponse.items:type_name -> app.RobotWatchItem
+	57,  // 34: app.RobotWatchItem.value:type_name -> app.Robot
+	10,  // 35: app.RobotMoveRequest.ref:type_name -> app.RobotRef
+	3,   // 36: app.RobotMoveRequest.to:type_name -> app.CellRef
+	10,  // 37: app.PairingAddRequest.lead:type_name -> app.RobotRef
+	10,  // 38: app.PairingAddRequest.follow:type_name -> app.RobotRef
+	55,  // 39: app.PairingAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	25,  // 40: app.PairingGetRequest.ref:type_name -> app.PairingRef
+	26,  // 41: app.PairingGetRequest.select:type_name -> app.PairingSelect
+	12,  // 42: app.PairingSelect.lead:type_name -> app.RobotSelect
+	12,  // 43: app.PairingSelect.follow:type_name -> app.RobotSelect
+	25,  // 44: app.PairingPatchRequest.ref:type_name -> app.PairingRef
+	25,  // 45: app.PairingApplyRequest.ref:type_name -> app.PairingRef
+	53,  // 46: app.PairingApplyRequest.patch:type_name -> patch.Patch
+	10,  // 47: app.JointAddRequest.robot:type_name -> app.RobotRef
+	32,  // 48: app.JointGetRequest.ref:type_name -> app.JointRef
+	33,  // 49: app.JointGetRequest.select:type_name -> app.JointSelect
+	12,  // 50: app.JointSelect.robot:type_name -> app.RobotSelect
+	32,  // 51: app.JointPatchRequest.ref:type_name -> app.JointRef
+	32,  // 52: app.JointApplyRequest.ref:type_name -> app.JointRef
+	53,  // 53: app.JointApplyRequest.patch:type_name -> patch.Patch
+	39,  // 54: app.FleetGetRequest.ref:type_name -> app.FleetRef
+	40,  // 55: app.FleetGetRequest.select:type_name -> app.FleetSelect
+	39,  // 56: app.FleetPatchRequest.ref:type_name -> app.FleetRef
+	39,  // 57: app.FleetApplyRequest.ref:type_name -> app.FleetRef
+	53,  // 58: app.FleetApplyRequest.patch:type_name -> patch.Patch
+	10,  // 59: app.ReadingAddRequest.robot:type_name -> app.RobotRef
+	55,  // 60: app.ReadingAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	46,  // 61: app.ReadingGetRequest.ref:type_name -> app.ReadingRef
+	47,  // 62: app.ReadingGetRequest.select:type_name -> app.ReadingSelect
+	12,  // 63: app.ReadingSelect.robot:type_name -> app.RobotSelect
+	46,  // 64: app.ReadingPatchRequest.ref:type_name -> app.ReadingRef
+	46,  // 65: app.ReadingApplyRequest.ref:type_name -> app.ReadingRef
+	53,  // 66: app.ReadingApplyRequest.patch:type_name -> patch.Patch
+	1,   // 67: app.CellService.Add:input_type -> app.CellAddRequest
+	2,   // 68: app.CellService.Get:input_type -> app.CellGetRequest
+	5,   // 69: app.CellService.Patch:input_type -> app.CellPatchRequest
+	6,   // 70: app.CellService.Apply:input_type -> app.CellApplyRequest
+	3,   // 71: app.CellService.Erase:input_type -> app.CellRef
+	8,   // 72: app.RobotService.Add:input_type -> app.RobotAddRequest
+	9,   // 73: app.RobotService.Get:input_type -> app.RobotGetRequest
+	13,  // 74: app.RobotService.Patch:input_type -> app.RobotPatchRequest
+	14,  // 75: app.RobotService.Apply:input_type -> app.RobotApplyRequest
+	10,  // 76: app.RobotService.Erase:input_type -> app.RobotRef
+	16,  // 77: app.RobotService.List:input_type -> app.RobotListRequest
+	19,  // 78: app.RobotService.Watch:input_type -> app.RobotWatchRequest
+	22,  // 79: app.RobotService.Move:input_type -> app.RobotMoveRequest
+	23,  // 80: app.PairingService.Add:input_type -> app.PairingAddRequest
+	24,  // 81: app.PairingService.Get:input_type -> app.PairingGetRequest
+	27,  // 82: app.PairingService.Patch:input_type -> app.PairingPatchRequest
+	28,  // 83: app.PairingService.Apply:input_type -> app.PairingApplyRequest
+	25,  // 84: app.PairingService.Erase:input_type -> app.PairingRef
+	30,  // 85: app.JointService.Add:input_type -> app.JointAddRequest
+	31,  // 86: app.JointService.Get:input_type -> app.JointGetRequest
+	34,  // 87: app.JointService.Patch:input_type -> app.JointPatchRequest
+	35,  // 88: app.JointService.Apply:input_type -> app.JointApplyRequest
+	32,  // 89: app.JointService.Erase:input_type -> app.JointRef
+	37,  // 90: app.FleetService.Add:input_type -> app.FleetAddRequest
+	38,  // 91: app.FleetService.Get:input_type -> app.FleetGetRequest
+	41,  // 92: app.FleetService.Patch:input_type -> app.FleetPatchRequest
+	42,  // 93: app.FleetService.Apply:input_type -> app.FleetApplyRequest
+	39,  // 94: app.FleetService.Erase:input_type -> app.FleetRef
+	44,  // 95: app.ReadingService.Add:input_type -> app.ReadingAddRequest
+	45,  // 96: app.ReadingService.Get:input_type -> app.ReadingGetRequest
+	48,  // 97: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
+	49,  // 98: app.ReadingService.Apply:input_type -> app.ReadingApplyRequest
+	46,  // 99: app.ReadingService.Erase:input_type -> app.ReadingRef
+	58,  // 100: app.CellService.Add:output_type -> app.Cell
+	58,  // 101: app.CellService.Get:output_type -> app.Cell
+	58,  // 102: app.CellService.Patch:output_type -> app.Cell
+	58,  // 103: app.CellService.Apply:output_type -> app.Cell
+	7,   // 104: app.CellService.Erase:output_type -> app.CellEraseResponse
+	57,  // 105: app.RobotService.Add:output_type -> app.Robot
+	57,  // 106: app.RobotService.Get:output_type -> app.Robot
+	57,  // 107: app.RobotService.Patch:output_type -> app.Robot
+	57,  // 108: app.RobotService.Apply:output_type -> app.Robot
+	15,  // 109: app.RobotService.Erase:output_type -> app.RobotEraseResponse
+	17,  // 110: app.RobotService.List:output_type -> app.RobotListResponse
+	20,  // 111: app.RobotService.Watch:output_type -> app.RobotWatchResponse
+	57,  // 112: app.RobotService.Move:output_type -> app.Robot
+	59,  // 113: app.PairingService.Add:output_type -> app.Pairing
+	59,  // 114: app.PairingService.Get:output_type -> app.Pairing
+	59,  // 115: app.PairingService.Patch:output_type -> app.Pairing
+	59,  // 116: app.PairingService.Apply:output_type -> app.Pairing
+	29,  // 117: app.PairingService.Erase:output_type -> app.PairingEraseResponse
+	60,  // 118: app.JointService.Add:output_type -> app.Joint
+	60,  // 119: app.JointService.Get:output_type -> app.Joint
+	60,  // 120: app.JointService.Patch:output_type -> app.Joint
+	60,  // 121: app.JointService.Apply:output_type -> app.Joint
+	36,  // 122: app.JointService.Erase:output_type -> app.JointEraseResponse
+	61,  // 123: app.FleetService.Add:output_type -> app.Fleet
+	61,  // 124: app.FleetService.Get:output_type -> app.Fleet
+	61,  // 125: app.FleetService.Patch:output_type -> app.Fleet
+	61,  // 126: app.FleetService.Apply:output_type -> app.Fleet
+	43,  // 127: app.FleetService.Erase:output_type -> app.FleetEraseResponse
+	62,  // 128: app.ReadingService.Add:output_type -> app.Reading
+	62,  // 129: app.ReadingService.Get:output_type -> app.Reading
+	62,  // 130: app.ReadingService.Patch:output_type -> app.Reading
+	62,  // 131: app.ReadingService.Apply:output_type -> app.Reading
+	50,  // 132: app.ReadingService.Erase:output_type -> app.ReadingEraseResponse
+	100, // [100:133] is the sub-list for method output_type
+	67,  // [67:100] is the sub-list for method input_type
+	67,  // [67:67] is the sub-list for extension type_name
+	67,  // [67:67] is the sub-list for extension extendee
+	0,   // [0:67] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_svc_g_proto_init() }
@@ -6638,13 +6727,14 @@ func file_app_robot_svc_g_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_robot_svc_g_proto_rawDesc), len(file_app_robot_svc_g_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   50,
 			NumExtensions: 0,
 			NumServices:   6,
 		},
 		GoTypes:           file_app_robot_svc_g_proto_goTypes,
 		DependencyIndexes: file_app_robot_svc_g_proto_depIdxs,
+		EnumInfos:         file_app_robot_svc_g_proto_enumTypes,
 		MessageInfos:      file_app_robot_svc_g_proto_msgTypes,
 	}.Build()
 	File_app_robot_svc_g_proto = out.File

@@ -466,6 +466,40 @@ table that never stops growing and sort what it found. Covered means some index
 `with:` names edges to load alongside, so a page can render without a second
 round trip per row.
 
+**A list reads the other way round, and in the orders it names.** Every List
+request has `reverse`, which turns every column of the order round at once --
+oldest first where it is newest first -- and needs declaring nowhere: an index
+walks from either end, so the one the order walks serves both ways. `orders`
+declares other orders a request may name, each by a name and each ending in the
+key, as `order` does:
+
+```proto
+list: {
+  order:  [{field: {name: "date_created"}, desc: true}, {field: {name: "id"}, desc: true}]
+  orders: [
+    {name: "occurred", order: [{field: {name: "occurred_at"}}, {field: {name: "id"}}]},
+    {name: "alias_desc", order: [{field: {name: "alias"}, desc: true}, {field: {name: "id"}}]}
+  ]
+  max: 100
+}
+```
+
+The request then has `order`, an enum of them -- `STOCK_MOVEMENT_LIST_ORDER_OCCURRED`,
+and `…_UNSPECIFIED` for `order` itself -- and any of them can be read `reverse`.
+A request names an order and never makes one up: an order is a walk of an
+index, and which indexes there are is the schema's to know. **Declare the index
+each one walks**: some index has to begin with its columns, in its directions or
+in all of them the other way, or reading a page scans the table and sorts it. An
+order of mixed directions, `alias` backwards and `id` forwards, wants an index
+of those directions; an ordinary `(alias, id)` serves `(alias, id)` both ways
+round and not that. Nothing is checked for the named orders; the warning above
+is about `order` alone.
+
+A cursor is of the order it was read in and the way: carried on in another, or
+the other way round, it is refused, since it names a place in a sequence it is
+not in. The cursor of `order` read forwards is the same shape it always was, so
+one a client is holding carries on across the upgrade.
+
 ---
 
 ## 6. `watch:` — the page, kept current

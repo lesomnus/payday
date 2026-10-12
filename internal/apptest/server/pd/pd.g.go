@@ -510,6 +510,37 @@ var orderAudit = []sqlpage.Order{
 	{Column: audit.FieldId, Desc: true},
 }
 
+func afterAudit(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 time.Time
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextAudit(last *ent.Audit, tag string) (string, error) {
+	return pdNext(tag, last.DateCreated, last.Id)
+}
+
+// orderByAudit is an order as ent orders a query by it.
+func orderByAudit(by []sqlpage.Order) []audit.OrderOption {
+	out := make([]audit.OrderOption, len(by))
+	for i, o := range by {
+		if o.Desc {
+			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
+			continue
+		}
+
+		out[i] = sql.OrderByField(o.Column).ToFunc()
+	}
+
+	return out
+}
+
 const (
 	// AuditPageSize is what a request that did not say gets, and
 	// AuditPageLimit is the most it gets however loudly it asks.
@@ -558,16 +589,16 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 		q.Where(audit.Or(ps...))
 	}
 
-	if v := req.GetAfter(); v != "" {
-		var (
-			at0 time.Time
-			at1 uuid.UUID
-		)
-		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
-		}
+	// Which order, and which way: one the schema declared, and never one a
+	// request makes up, since an order is a walk of an index.
+	by, after, next, tag := orderAudit, afterAudit, nextAudit, ""
+	if req.GetReverse() {
+		// The same index, walked from the other end.
+		by, tag = pdReverse(by), tag+"/reverse"
+	}
 
-		p, err := sqlpage.After(orderAudit, []any{at0, at1})
+	if v := req.GetAfter(); v != "" {
+		p, err := after(v, by, tag)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -581,7 +612,7 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := sqlpage.Size(int(req.GetSize()), AuditPageSize, AuditPageLimit)
-	us, err := q.Order(audit.ByDateCreated(sql.OrderDesc()), audit.ById(sql.OrderDesc())).Limit(size + 1).All(ctx)
+	us, err := q.Order(orderByAudit(by)...).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -598,13 +629,12 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 
 	res := apptest.AuditListResponse_builder{Items: items}.Build()
 	if more {
-		last := us[len(us)-1]
-		next, err := sqlpage.Encode(last.DateCreated, last.Id)
+		v, err := next(us[len(us)-1], tag)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
 
-		res.SetNext(next)
+		res.SetNext(v)
 	}
 
 	return res, nil
@@ -931,6 +961,37 @@ var orderHolder = []sqlpage.Order{
 	{Column: holder.FieldId, Desc: false},
 }
 
+func afterHolder(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 time.Time
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextHolder(last *ent.Holder, tag string) (string, error) {
+	return pdNext(tag, last.DateCreated, last.Id)
+}
+
+// orderByHolder is an order as ent orders a query by it.
+func orderByHolder(by []sqlpage.Order) []holder.OrderOption {
+	out := make([]holder.OrderOption, len(by))
+	for i, o := range by {
+		if o.Desc {
+			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
+			continue
+		}
+
+		out[i] = sql.OrderByField(o.Column).ToFunc()
+	}
+
+	return out
+}
+
 const (
 	// HolderPageSize is what a request that did not say gets, and
 	// HolderPageLimit is the most it gets however loudly it asks.
@@ -979,16 +1040,16 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 		q.Where(holder.Or(ps...))
 	}
 
-	if v := req.GetAfter(); v != "" {
-		var (
-			at0 time.Time
-			at1 uuid.UUID
-		)
-		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
-		}
+	// Which order, and which way: one the schema declared, and never one a
+	// request makes up, since an order is a walk of an index.
+	by, after, next, tag := orderHolder, afterHolder, nextHolder, ""
+	if req.GetReverse() {
+		// The same index, walked from the other end.
+		by, tag = pdReverse(by), tag+"/reverse"
+	}
 
-		p, err := sqlpage.After(orderHolder, []any{at0, at1})
+	if v := req.GetAfter(); v != "" {
+		p, err := after(v, by, tag)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -1002,7 +1063,7 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := sqlpage.Size(int(req.GetSize()), HolderPageSize, HolderPageLimit)
-	us, err := q.Order(holder.ByDateCreated(), holder.ById()).Limit(size + 1).All(ctx)
+	us, err := q.Order(orderByHolder(by)...).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1019,13 +1080,12 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 
 	res := apptest.HolderListResponse_builder{Items: items}.Build()
 	if more {
-		last := us[len(us)-1]
-		next, err := sqlpage.Encode(last.DateCreated, last.Id)
+		v, err := next(us[len(us)-1], tag)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
 
-		res.SetNext(next)
+		res.SetNext(v)
 	}
 
 	return res, nil
@@ -1621,6 +1681,81 @@ var orderRobot = []sqlpage.Order{
 	{Column: robot.FieldId, Desc: false},
 }
 
+// orderRobotAlias is the order a request names as ALIAS.
+var orderRobotAlias = []sqlpage.Order{
+	{Column: robot.FieldAlias, Desc: false},
+	{Column: robot.FieldId, Desc: false},
+}
+
+// orderRobotAliasDesc is the order a request names as ALIAS_DESC.
+var orderRobotAliasDesc = []sqlpage.Order{
+	{Column: robot.FieldAlias, Desc: true},
+	{Column: robot.FieldId, Desc: false},
+}
+
+func afterRobot(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 time.Time
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextRobot(last *ent.Robot, tag string) (string, error) {
+	return pdNext(tag, last.DateCreated, last.Id)
+}
+
+func afterRobotAlias(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 string
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextRobotAlias(last *ent.Robot, tag string) (string, error) {
+	return pdNext(tag, last.Alias, last.Id)
+}
+
+func afterRobotAliasDesc(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 string
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextRobotAliasDesc(last *ent.Robot, tag string) (string, error) {
+	return pdNext(tag, last.Alias, last.Id)
+}
+
+// orderByRobot is an order as ent orders a query by it.
+func orderByRobot(by []sqlpage.Order) []robot.OrderOption {
+	out := make([]robot.OrderOption, len(by))
+	for i, o := range by {
+		if o.Desc {
+			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
+			continue
+		}
+
+		out[i] = sql.OrderByField(o.Column).ToFunc()
+	}
+
+	return out
+}
+
 const (
 	// RobotPageSize is what a request that did not say gets, and
 	// RobotPageLimit is the most it gets however loudly it asks.
@@ -1669,16 +1804,25 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 		q.Where(robot.Or(ps...))
 	}
 
-	if v := req.GetAfter(); v != "" {
-		var (
-			at0 time.Time
-			at1 uuid.UUID
-		)
-		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
-		}
+	// Which order, and which way: one the schema declared, and never one a
+	// request makes up, since an order is a walk of an index.
+	by, after, next, tag := orderRobot, afterRobot, nextRobot, ""
+	switch req.GetOrder() {
+	case apptest.RobotListOrder_ROBOT_LIST_ORDER_UNSPECIFIED:
+	case apptest.RobotListOrder_ROBOT_LIST_ORDER_ALIAS:
+		by, after, next, tag = orderRobotAlias, afterRobotAlias, nextRobotAlias, "alias"
+	case apptest.RobotListOrder_ROBOT_LIST_ORDER_ALIAS_DESC:
+		by, after, next, tag = orderRobotAliasDesc, afterRobotAliasDesc, nextRobotAliasDesc, "alias_desc"
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "order: %v is not an order this list is read in", req.GetOrder())
+	}
+	if req.GetReverse() {
+		// The same index, walked from the other end.
+		by, tag = pdReverse(by), tag+"/reverse"
+	}
 
-		p, err := sqlpage.After(orderRobot, []any{at0, at1})
+	if v := req.GetAfter(); v != "" {
+		p, err := after(v, by, tag)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -1694,7 +1838,7 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := sqlpage.Size(int(req.GetSize()), RobotPageSize, RobotPageLimit)
-	us, err := q.Order(robot.ByDateCreated(), robot.ById()).Limit(size + 1).All(ctx)
+	us, err := q.Order(orderByRobot(by)...).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1711,13 +1855,12 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 
 	res := apptest.RobotListResponse_builder{Items: items}.Build()
 	if more {
-		last := us[len(us)-1]
-		next, err := sqlpage.Encode(last.DateCreated, last.Id)
+		v, err := next(us[len(us)-1], tag)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
 
-		res.SetNext(next)
+		res.SetNext(v)
 	}
 
 	return res, nil
@@ -2158,6 +2301,37 @@ var orderTenant = []sqlpage.Order{
 	{Column: tenant.FieldId, Desc: false},
 }
 
+func afterTenant(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 time.Time
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextTenant(last *ent.Tenant, tag string) (string, error) {
+	return pdNext(tag, last.DateCreated, last.Id)
+}
+
+// orderByTenant is an order as ent orders a query by it.
+func orderByTenant(by []sqlpage.Order) []tenant.OrderOption {
+	out := make([]tenant.OrderOption, len(by))
+	for i, o := range by {
+		if o.Desc {
+			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
+			continue
+		}
+
+		out[i] = sql.OrderByField(o.Column).ToFunc()
+	}
+
+	return out
+}
+
 const (
 	// TenantPageSize is what a request that did not say gets, and
 	// TenantPageLimit is the most it gets however loudly it asks.
@@ -2206,16 +2380,16 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 		q.Where(tenant.Or(ps...))
 	}
 
-	if v := req.GetAfter(); v != "" {
-		var (
-			at0 time.Time
-			at1 uuid.UUID
-		)
-		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
-		}
+	// Which order, and which way: one the schema declared, and never one a
+	// request makes up, since an order is a walk of an index.
+	by, after, next, tag := orderTenant, afterTenant, nextTenant, ""
+	if req.GetReverse() {
+		// The same index, walked from the other end.
+		by, tag = pdReverse(by), tag+"/reverse"
+	}
 
-		p, err := sqlpage.After(orderTenant, []any{at0, at1})
+	if v := req.GetAfter(); v != "" {
+		p, err := after(v, by, tag)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -2229,7 +2403,7 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := sqlpage.Size(int(req.GetSize()), TenantPageSize, TenantPageLimit)
-	us, err := q.Order(tenant.ByDateCreated(), tenant.ById()).Limit(size + 1).All(ctx)
+	us, err := q.Order(orderByTenant(by)...).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2246,13 +2420,12 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 
 	res := apptest.TenantListResponse_builder{Items: items}.Build()
 	if more {
-		last := us[len(us)-1]
-		next, err := sqlpage.Encode(last.DateCreated, last.Id)
+		v, err := next(us[len(us)-1], tag)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
 
-		res.SetNext(next)
+		res.SetNext(v)
 	}
 
 	return res, nil
@@ -2375,6 +2548,37 @@ var orderThing = []sqlpage.Order{
 	{Column: thing.FieldId, Desc: false},
 }
 
+func afterThing(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 time.Time
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextThing(last *ent.Thing, tag string) (string, error) {
+	return pdNext(tag, last.DateCreated, last.Id)
+}
+
+// orderByThing is an order as ent orders a query by it.
+func orderByThing(by []sqlpage.Order) []thing.OrderOption {
+	out := make([]thing.OrderOption, len(by))
+	for i, o := range by {
+		if o.Desc {
+			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
+			continue
+		}
+
+		out[i] = sql.OrderByField(o.Column).ToFunc()
+	}
+
+	return out
+}
+
 const (
 	// ThingPageSize is what a request that did not say gets, and
 	// ThingPageLimit is the most it gets however loudly it asks.
@@ -2423,16 +2627,16 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 		q.Where(thing.Or(ps...))
 	}
 
-	if v := req.GetAfter(); v != "" {
-		var (
-			at0 time.Time
-			at1 uuid.UUID
-		)
-		if err := sqlpage.Decode(v, &at0, &at1); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
-		}
+	// Which order, and which way: one the schema declared, and never one a
+	// request makes up, since an order is a walk of an index.
+	by, after, next, tag := orderThing, afterThing, nextThing, ""
+	if req.GetReverse() {
+		// The same index, walked from the other end.
+		by, tag = pdReverse(by), tag+"/reverse"
+	}
 
-		p, err := sqlpage.After(orderThing, []any{at0, at1})
+	if v := req.GetAfter(); v != "" {
+		p, err := after(v, by, tag)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
 		}
@@ -2446,7 +2650,7 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 	// there -- so a full last page answers with no cursor rather than sending
 	// the caller back for an empty one.
 	size := sqlpage.Size(int(req.GetSize()), ThingPageSize, ThingPageLimit)
-	us, err := q.Order(thing.ByDateCreated(), thing.ById()).Limit(size + 1).All(ctx)
+	us, err := q.Order(orderByThing(by)...).Limit(size + 1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2463,13 +2667,12 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 
 	res := apptest.ThingListResponse_builder{Items: items}.Build()
 	if more {
-		last := us[len(us)-1]
-		next, err := sqlpage.Encode(last.DateCreated, last.Id)
+		v, err := next(us[len(us)-1], tag)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "next: %s", err)
 		}
 
-		res.SetNext(next)
+		res.SetNext(v)
 	}
 
 	return res, nil
@@ -2493,6 +2696,43 @@ func filterThing(f *apptest.ThingFilter) (predicate.Thing, error) {
 	}
 
 	return thing.And(ps...), nil
+}
+
+// pdAfter reads a cursor into the values it carries, refusing one of another
+// order, or of this one read the other way.
+func pdAfter(v string, tag string, into ...any) error {
+	if tag == "" {
+		return sqlpage.Decode(v, into...)
+	}
+
+	var was string
+	if err := sqlpage.Decode(v, append([]any{&was}, into...)...); err != nil {
+		return err
+	}
+	if was != tag {
+		return fmt.Errorf("%w: it is of another order, or of this one read the other way", sqlpage.ErrCursor)
+	}
+
+	return nil
+}
+
+// pdNext writes a cursor of the values given, saying which order it is of.
+func pdNext(tag string, vs ...any) (string, error) {
+	if tag == "" {
+		return sqlpage.Encode(vs...)
+	}
+
+	return sqlpage.Encode(append([]any{tag}, vs...)...)
+}
+
+// pdReverse is an order read the other way round, every column at once.
+func pdReverse(by []sqlpage.Order) []sqlpage.Order {
+	out := make([]sqlpage.Order, len(by))
+	for i, o := range by {
+		out[i] = sqlpage.Order{Column: o.Column, Desc: !o.Desc}
+	}
+
+	return out
 }
 
 // Gate is the layer that says what a caller may do with a request.

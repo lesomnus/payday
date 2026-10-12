@@ -2,6 +2,7 @@ package pdgen
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/protobuf-orm/protobuf-orm/ormpb"
@@ -163,6 +164,65 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 			emitList(g, v, s, p, root)
 		}
 	}
+
+	for _, v := range wraps {
+		if v.List != nil {
+			emitCursor(g)
+			break
+		}
+	}
+}
+
+// emitCursor writes what every list's cursor is read and written with.
+//
+// A cursor is the values of the last row's order columns, and it is also of an
+// order and of a way: carried on in another order, or the other way round, it
+// names a place in a sequence it is not in, and the page it answers with is
+// neither the next one nor an error. So a cursor says which it is of, and one
+// of another is refused.
+//
+// Except a cursor of a list's own order read forwards, which says nothing
+// beside its values, as every cursor did before orders could be named -- so
+// that one a client is holding still carries on after the deployment moved to
+// a version that names them.
+func emitCursor(g *protogen.GeneratedFile) {
+	g.P("// pdAfter reads a cursor into the values it carries, refusing one of another")
+	g.P("// order, or of this one read the other way.")
+	g.P("func pdAfter(v string, tag string, into ...any) error {")
+	g.P("	if tag == \"\" {")
+	g.P("		return ", pkgEntpage.Ident("Decode"), "(v, into...)")
+	g.P("	}")
+	g.P("")
+	g.P("	var was string")
+	g.P("	if err := ", pkgEntpage.Ident("Decode"), "(v, append([]any{&was}, into...)...); err != nil {")
+	g.P("		return err")
+	g.P("	}")
+	g.P("	if was != tag {")
+	g.P("		return ", pkgFmt.Ident("Errorf"), "(\"%w: it is of another order, or of this one read the other way\", ", pkgEntpage.Ident("ErrCursor"), ")")
+	g.P("	}")
+	g.P("")
+	g.P("	return nil")
+	g.P("}")
+	g.P("")
+	g.P("// pdNext writes a cursor of the values given, saying which order it is of.")
+	g.P("func pdNext(tag string, vs ...any) (string, error) {")
+	g.P("	if tag == \"\" {")
+	g.P("		return ", pkgEntpage.Ident("Encode"), "(vs...)")
+	g.P("	}")
+	g.P("")
+	g.P("	return ", pkgEntpage.Ident("Encode"), "(append([]any{tag}, vs...)...)")
+	g.P("}")
+	g.P("")
+	g.P("// pdReverse is an order read the other way round, every column at once.")
+	g.P("func pdReverse(by []", pkgEntpage.Ident("Order"), ") []", pkgEntpage.Ident("Order"), " {")
+	g.P("	out := make([]", pkgEntpage.Ident("Order"), ", len(by))")
+	g.P("	for i, o := range by {")
+	g.P("		out[i] = ", pkgEntpage.Ident("Order"), "{Column: o.Column, Desc: !o.Desc}")
+	g.P("	}")
+	g.P("")
+	g.P("	return out")
+	g.P("}")
+	g.P("")
 }
 
 // emitAlias writes the two overrides that put a name through the rules before
@@ -289,6 +349,38 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	}
 	g.P("}")
 	g.P("")
+	for _, n := range l.Orders {
+		g.P("// order", e, pascal(n.Name), " is the order a request names as ", strings.ToUpper(n.Name), ".")
+		g.P("var order", e, pascal(n.Name), " = []", pkgEntpage.Ident("Order"), "{")
+		for _, o := range n.Order {
+			g.P("	{Column: ", entPkg.Ident("Field"+pascal(o.Field)), ", Desc: ", o.Desc, "},")
+		}
+		g.P("}")
+		g.P("")
+	}
+
+	// What each order's cursor is read and written with: the columns' values,
+	// typed as the columns are, and the order it is of.
+	emitOrderCursor(g, v, "", l.Order, entPkg, p)
+	for _, n := range l.Orders {
+		emitOrderCursor(g, v, pascal(n.Name), n.Order, entPkg, p)
+	}
+
+	g.P("// orderBy", e, " is an order as ent orders a query by it.")
+	g.P("func orderBy", e, "(by []", pkgEntpage.Ident("Order"), ") []", entPkg.Ident("OrderOption"), " {")
+	g.P("	out := make([]", entPkg.Ident("OrderOption"), ", len(by))")
+	g.P("	for i, o := range by {")
+	g.P("		if o.Desc {")
+	g.P("			out[i] = ", pkgEntsql.Ident("OrderByField"), "(o.Column, ", pkgEntsql.Ident("OrderDesc"), "()).ToFunc()")
+	g.P("			continue")
+	g.P("		}")
+	g.P("")
+	g.P("		out[i] = ", pkgEntsql.Ident("OrderByField"), "(o.Column).ToFunc()")
+	g.P("	}")
+	g.P("")
+	g.P("	return out")
+	g.P("}")
+	g.P("")
 
 	g.P("const (")
 	g.P("	// ", e, "PageSize is what a request that did not say gets, and")
@@ -350,30 +442,33 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 		g.P("")
 	}
 
+	// Which order, and which way. One the schema declared, always, and never
+	// one a request makes up: an order is a walk of an index, and which
+	// indexes there are is the schema's to know.
+	g.P("	// Which order, and which way: one the schema declared, and never one a")
+	g.P("	// request makes up, since an order is a walk of an index.")
+	g.P("	by, after, next, tag := order", e, ", after", e, ", next", e, ", \"\"")
+	if len(l.Orders) > 0 {
+		prefix := orderPrefix(v)
+		g.P("	switch req.GetOrder() {")
+		g.P("	case ", root.Ident(e+"ListOrder_"+prefix+"UNSPECIFIED"), ":")
+		for _, n := range l.Orders {
+			g.P("	case ", root.Ident(e+"ListOrder_"+prefix+strings.ToUpper(n.Name)), ":")
+			g.P("		by, after, next, tag = order", e, pascal(n.Name), ", after", e, pascal(n.Name), ", next", e, pascal(n.Name), ", ", strconv.Quote(n.Name))
+		}
+		g.P("	default:")
+		g.P("		return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"order: %v is not an order this list is read in\", req.GetOrder())")
+		g.P("	}")
+	}
+	g.P("	if req.GetReverse() {")
+	g.P("		// The same index, walked from the other end.")
+	g.P("		by, tag = pdReverse(by), tag+\"/reverse\"")
+	g.P("	}")
+	g.P("")
+
 	// The cursor.
 	g.P("	if v := req.GetAfter(); v != \"\" {")
-	g.P("		var (")
-	for i, o := range l.Order {
-		f, _ := field(v.Entity, o.Field)
-		g.P("			at", i, " ", goTypeOf(g, f.Type()))
-	}
-	g.P("		)")
-	pf(g, "		if err := %s(v", g.QualifiedGoIdent(pkgEntpage.Ident("Decode")))
-	for i := range l.Order {
-		pf(g, ", &at%d", i)
-	}
-	g.P("); err != nil {")
-	g.P("			return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"after: %s\", err)")
-	g.P("		}")
-	g.P("")
-	pf(g, "		p, err := %s(order%s, []any{", g.QualifiedGoIdent(pkgEntpage.Ident("After")), e)
-	for i := range l.Order {
-		if i > 0 {
-			pf(g, ", ")
-		}
-		pf(g, "at%d", i)
-	}
-	g.P("})")
+	g.P("		p, err := after(v, by, tag)")
 	g.P("		if err != nil {")
 	g.P("			return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"after: %s\", err)")
 	g.P("		}")
@@ -395,19 +490,7 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	g.P("	// there -- so a full last page answers with no cursor rather than sending")
 	g.P("	// the caller back for an empty one.")
 	g.P("	size := ", pkgEntpage.Ident("Size"), "(int(req.GetSize()), ", e, "PageSize, ", e, "PageLimit)")
-	pf(g, "	us, err := q.Order(")
-	for i, o := range l.Order {
-		if i > 0 {
-			pf(g, ", ")
-		}
-		if o.Desc {
-			pf(g, "%s(%s())", g.QualifiedGoIdent(entPkg.Ident("By"+pascal(o.Field))),
-				g.QualifiedGoIdent(pkgEntsql.Ident("OrderDesc")))
-			continue
-		}
-		pf(g, "%s()", g.QualifiedGoIdent(entPkg.Ident("By"+pascal(o.Field))))
-	}
-	g.P(").Limit(size + 1).All(ctx)")
+	g.P("	us, err := q.Order(orderBy", e, "(by)...).Limit(size + 1).All(ctx)")
 	g.P("	if err != nil {")
 	g.P("		return nil, err")
 	g.P("	}")
@@ -424,20 +507,12 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	g.P("")
 	g.P("	res := ", root.Ident(e+"ListResponse_builder"), "{Items: items}.Build()")
 	g.P("	if more {")
-	g.P("		last := us[len(us)-1]")
-	pf(g, "		next, err := %s(", g.QualifiedGoIdent(pkgEntpage.Ident("Encode")))
-	for i, o := range l.Order {
-		if i > 0 {
-			pf(g, ", ")
-		}
-		pf(g, "last.%s", pascal(o.Field))
-	}
-	g.P(")")
+	g.P("		v, err := next(us[len(us)-1], tag)")
 	g.P("		if err != nil {")
 	g.P("			return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("Internal"), ", \"next: %s\", err)")
 	g.P("		}")
 	g.P("")
-	g.P("		res.SetNext(next)")
+	g.P("		res.SetNext(v)")
 	g.P("	}")
 	g.P("")
 	g.P("	return res, nil")
@@ -450,6 +525,47 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	if v.Watch {
 		emitWatch(g, v, p, root)
 	}
+}
+
+// emitOrderCursor writes how a cursor of one order is read and written: the
+// order's columns, typed as they are, in its order.
+func emitOrderCursor(g *protogen.GeneratedFile, v *Entity, name string, by []Order, entPkg protogen.GoImportPath, p Paths) {
+	e := v.GoName()
+
+	g.P("func after", e, name, "(v string, by []", pkgEntpage.Ident("Order"), ", tag string) (func(*", pkgEntsql.Ident("Selector"), "), error) {")
+	g.P("	var (")
+	for i, o := range by {
+		f, _ := field(v.Entity, o.Field)
+		g.P("		at", i, " ", goTypeOf(g, f.Type()))
+	}
+	g.P("	)")
+	pf(g, "	if err := pdAfter(v, tag")
+	for i := range by {
+		pf(g, ", &at%d", i)
+	}
+	g.P("); err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+	pf(g, "	return %s(by, []any{", g.QualifiedGoIdent(pkgEntpage.Ident("After")))
+	for i := range by {
+		if i > 0 {
+			pf(g, ", ")
+		}
+		pf(g, "at%d", i)
+	}
+	g.P("})")
+	g.P("}")
+	g.P("")
+
+	g.P("func next", e, name, "(last *", (p.Ent).Ident(e), ", tag string) (string, error) {")
+	pf(g, "	return pdNext(tag")
+	for _, o := range by {
+		pf(g, ", last.%s", pascal(o.Field))
+	}
+	g.P(")")
+	g.P("}")
+	g.P("")
 }
 
 // emitFilter writes what one filter selects.

@@ -321,6 +321,30 @@ message Entity {
     // rows than there are is a caller being generous with themselves, and
     // dropping half the filters would answer a question nobody asked.
     uint32 filters = 6;
+
+    // Orders are the other orders a request may read the list in, each by its
+    // name: the request's `order` names one, and `order` above is what one
+    // that names none gets.
+    //
+    // Declared rather than asked for, column by column, at the request,
+    // because an order is a walk of an index and a request does not know
+    // which indexes there are. Each is held to what `order` is held to -- the
+    // last column is the key -- and each wants an index that begins with its
+    // columns, in its directions or all of them the other way, or reading a
+    // page is a scan and a sort.
+    //
+    // Any order can also be read backwards, every column the other way round
+    // at once (the request's `reverse`), which the same index walks from the
+    // other end; that one needs declaring nowhere.
+    repeated NamedOrder orders = 7;
+  }
+
+  // NamedOrder is an order of a list a request names.
+  message NamedOrder {
+    // Name is what a request names it by: lower case, words joined by `_`.
+    string name = 1;
+
+    repeated Order order = 2;
   }
 
   // Watch is how this entity is read as it changes.

@@ -1106,6 +1106,7 @@ type Entity_List struct {
 	xxx_hidden_Size    uint32                 `protobuf:"varint,4,opt,name=size"`
 	xxx_hidden_Max     uint32                 `protobuf:"varint,5,opt,name=max"`
 	xxx_hidden_Filters uint32                 `protobuf:"varint,6,opt,name=filters"`
+	xxx_hidden_Orders  *[]*Entity_NamedOrder  `protobuf:"bytes,7,rep,name=orders"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1183,6 +1184,15 @@ func (x *Entity_List) GetFilters() uint32 {
 	return 0
 }
 
+func (x *Entity_List) GetOrders() []*Entity_NamedOrder {
+	if x != nil {
+		if x.xxx_hidden_Orders != nil {
+			return *x.xxx_hidden_Orders
+		}
+	}
+	return nil
+}
+
 func (x *Entity_List) SetOrder(v []*Entity_Order) {
 	x.xxx_hidden_Order = &v
 }
@@ -1205,6 +1215,10 @@ func (x *Entity_List) SetMax(v uint32) {
 
 func (x *Entity_List) SetFilters(v uint32) {
 	x.xxx_hidden_Filters = v
+}
+
+func (x *Entity_List) SetOrders(v []*Entity_NamedOrder) {
+	x.xxx_hidden_Orders = &v
 }
 
 type Entity_List_builder struct {
@@ -1252,6 +1266,21 @@ type Entity_List_builder struct {
 	// rows than there are is a caller being generous with themselves, and
 	// dropping half the filters would answer a question nobody asked.
 	Filters uint32
+	// Orders are the other orders a request may read the list in, each by its
+	// name: the request's `order` names one, and `order` above is what one
+	// that names none gets.
+	//
+	// Declared rather than asked for, column by column, at the request,
+	// because an order is a walk of an index and a request does not know
+	// which indexes there are. Each is held to what `order` is held to -- the
+	// last column is the key -- and each wants an index that begins with its
+	// columns, in its directions or all of them the other way, or reading a
+	// page is a scan and a sort.
+	//
+	// Any order can also be read backwards, every column the other way round
+	// at once (the request's `reverse`), which the same index walks from the
+	// other end; that one needs declaring nowhere.
+	Orders []*Entity_NamedOrder
 }
 
 func (b0 Entity_List_builder) Build() *Entity_List {
@@ -1264,6 +1293,82 @@ func (b0 Entity_List_builder) Build() *Entity_List {
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_Max = b.Max
 	x.xxx_hidden_Filters = b.Filters
+	x.xxx_hidden_Orders = &b.Orders
+	return m0
+}
+
+// NamedOrder is an order of a list a request names.
+type Entity_NamedOrder struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Name  string                 `protobuf:"bytes,1,opt,name=name"`
+	xxx_hidden_Order *[]*Entity_Order       `protobuf:"bytes,2,rep,name=order"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *Entity_NamedOrder) Reset() {
+	*x = Entity_NamedOrder{}
+	mi := &file_payday_entity_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entity_NamedOrder) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entity_NamedOrder) ProtoMessage() {}
+
+func (x *Entity_NamedOrder) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Entity_NamedOrder) GetName() string {
+	if x != nil {
+		return x.xxx_hidden_Name
+	}
+	return ""
+}
+
+func (x *Entity_NamedOrder) GetOrder() []*Entity_Order {
+	if x != nil {
+		if x.xxx_hidden_Order != nil {
+			return *x.xxx_hidden_Order
+		}
+	}
+	return nil
+}
+
+func (x *Entity_NamedOrder) SetName(v string) {
+	x.xxx_hidden_Name = v
+}
+
+func (x *Entity_NamedOrder) SetOrder(v []*Entity_Order) {
+	x.xxx_hidden_Order = &v
+}
+
+type Entity_NamedOrder_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Name is what a request names it by: lower case, words joined by `_`.
+	Name  string
+	Order []*Entity_Order
+}
+
+func (b0 Entity_NamedOrder_builder) Build() *Entity_NamedOrder {
+	m0 := &Entity_NamedOrder{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Name = b.Name
+	x.xxx_hidden_Order = &b.Order
 	return m0
 }
 
@@ -1283,7 +1388,7 @@ type Entity_Watch struct {
 
 func (x *Entity_Watch) Reset() {
 	*x = Entity_Watch{}
-	mi := &file_payday_entity_proto_msgTypes[8]
+	mi := &file_payday_entity_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1295,7 +1400,7 @@ func (x *Entity_Watch) String() string {
 func (*Entity_Watch) ProtoMessage() {}
 
 func (x *Entity_Watch) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[8]
+	mi := &file_payday_entity_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1340,7 +1445,7 @@ type Entity_Order struct {
 
 func (x *Entity_Order) Reset() {
 	*x = Entity_Order{}
-	mi := &file_payday_entity_proto_msgTypes[9]
+	mi := &file_payday_entity_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1352,7 +1457,7 @@ func (x *Entity_Order) String() string {
 func (*Entity_Order) ProtoMessage() {}
 
 func (x *Entity_Order) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[9]
+	mi := &file_payday_entity_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1418,7 +1523,7 @@ var File_payday_entity_proto protoreflect.FileDescriptor
 
 const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/entity.proto\x12\x06payday\x1a\rorm/ref.proto\"\x9b\x06\n" +
+	"\x13payday/entity.proto\x12\x06payday\x1a\rorm/ref.proto\"\x9c\a\n" +
 	"\x06Entity\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domain\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
@@ -1438,14 +1543,19 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x06Global\x1a0\n" +
 	"\x05Erase\x12'\n" +
 	"\x04hard\x18\x01 \x01(\v2\x13.payday.Entity.HardR\x04hard\x1a\x06\n" +
-	"\x04Hard\x1a\xaa\x01\n" +
+	"\x04Hard\x1a\xdd\x01\n" +
 	"\x04List\x12*\n" +
 	"\x05order\x18\x01 \x03(\v2\x14.payday.Entity.OrderR\x05order\x12\x1c\n" +
 	"\x04with\x18\x02 \x03(\v2\b.orm.RefR\x04with\x12\x18\n" +
 	"\x02by\x18\x03 \x03(\v2\b.orm.RefR\x02by\x12\x12\n" +
 	"\x04size\x18\x04 \x01(\rR\x04size\x12\x10\n" +
 	"\x03max\x18\x05 \x01(\rR\x03max\x12\x18\n" +
-	"\afilters\x18\x06 \x01(\rR\afilters\x1a\a\n" +
+	"\afilters\x18\x06 \x01(\rR\afilters\x121\n" +
+	"\x06orders\x18\a \x03(\v2\x19.payday.Entity.NamedOrderR\x06orders\x1aL\n" +
+	"\n" +
+	"NamedOrder\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12*\n" +
+	"\x05order\x18\x02 \x03(\v2\x14.payday.Entity.OrderR\x05order\x1a\a\n" +
 	"\x05Watch\x1a;\n" +
 	"\x05Order\x12\x1e\n" +
 	"\x05field\x18\x01 \x01(\v2\b.orm.RefR\x05field\x12\x12\n" +
@@ -1466,39 +1576,42 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\fOWN_ARCHIVED\x10\x05B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_payday_entity_proto_goTypes = []any{
-	(Own)(0),                // 0: payday.Own
-	(*Entity)(nil),          // 1: payday.Entity
-	(*Field)(nil),           // 2: payday.Field
-	(*Entity_Tenant)(nil),   // 3: payday.Entity.Tenant
-	(*Entity_Tenanted)(nil), // 4: payday.Entity.Tenanted
-	(*Entity_Global)(nil),   // 5: payday.Entity.Global
-	(*Entity_Erase)(nil),    // 6: payday.Entity.Erase
-	(*Entity_Hard)(nil),     // 7: payday.Entity.Hard
-	(*Entity_List)(nil),     // 8: payday.Entity.List
-	(*Entity_Watch)(nil),    // 9: payday.Entity.Watch
-	(*Entity_Order)(nil),    // 10: payday.Entity.Order
-	(*ormpb.Ref)(nil),       // 11: orm.Ref
+	(Own)(0),                  // 0: payday.Own
+	(*Entity)(nil),            // 1: payday.Entity
+	(*Field)(nil),             // 2: payday.Field
+	(*Entity_Tenant)(nil),     // 3: payday.Entity.Tenant
+	(*Entity_Tenanted)(nil),   // 4: payday.Entity.Tenanted
+	(*Entity_Global)(nil),     // 5: payday.Entity.Global
+	(*Entity_Erase)(nil),      // 6: payday.Entity.Erase
+	(*Entity_Hard)(nil),       // 7: payday.Entity.Hard
+	(*Entity_List)(nil),       // 8: payday.Entity.List
+	(*Entity_NamedOrder)(nil), // 9: payday.Entity.NamedOrder
+	(*Entity_Watch)(nil),      // 10: payday.Entity.Watch
+	(*Entity_Order)(nil),      // 11: payday.Entity.Order
+	(*ormpb.Ref)(nil),         // 12: orm.Ref
 }
 var file_payday_entity_proto_depIdxs = []int32{
 	3,  // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
 	4,  // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
 	5,  // 2: payday.Entity.global:type_name -> payday.Entity.Global
 	8,  // 3: payday.Entity.list:type_name -> payday.Entity.List
-	9,  // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
+	10, // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
 	6,  // 5: payday.Entity.erase:type_name -> payday.Entity.Erase
 	0,  // 6: payday.Entity.own:type_name -> payday.Own
 	7,  // 7: payday.Entity.Erase.hard:type_name -> payday.Entity.Hard
-	10, // 8: payday.Entity.List.order:type_name -> payday.Entity.Order
-	11, // 9: payday.Entity.List.with:type_name -> orm.Ref
-	11, // 10: payday.Entity.List.by:type_name -> orm.Ref
-	11, // 11: payday.Entity.Order.field:type_name -> orm.Ref
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	11, // 8: payday.Entity.List.order:type_name -> payday.Entity.Order
+	12, // 9: payday.Entity.List.with:type_name -> orm.Ref
+	12, // 10: payday.Entity.List.by:type_name -> orm.Ref
+	9,  // 11: payday.Entity.List.orders:type_name -> payday.Entity.NamedOrder
+	11, // 12: payday.Entity.NamedOrder.order:type_name -> payday.Entity.Order
+	12, // 13: payday.Entity.Order.field:type_name -> orm.Ref
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_payday_entity_proto_init() }
@@ -1517,7 +1630,7 @@ func file_payday_entity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_entity_proto_rawDesc), len(file_payday_entity_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

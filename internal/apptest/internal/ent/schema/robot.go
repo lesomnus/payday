@@ -100,6 +100,7 @@ func (Robot) Indexes() []ent.Index {
 			Edges("tenant").
 			Unique().
 			Annotations(entsql.IndexWhere("date_erased IS NULL")),
+		index.Fields("alias", "id"),
 	}
 }
 

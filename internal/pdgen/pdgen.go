@@ -20,6 +20,7 @@ package pdgen
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -880,6 +881,16 @@ type List struct {
 	Size    int
 	Max     int
 	Filters int
+
+	// Orders are the other orders a request may name, in the order they were
+	// declared; `Order` is the one it gets by naming none.
+	Orders []NamedOrder
+}
+
+// NamedOrder is an order of a list a request names.
+type NamedOrder struct {
+	Name  string
+	Order []Order
 }
 
 // Order is one column of a list's order.
@@ -970,29 +981,40 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 	}
 
 	key := e.Key().Name()
-	for _, o := range opts.GetOrder() {
-		name, err := named(e.Entity, o.GetField(), "order")
+	order, err := readOrder(e, opts.GetOrder(), "order")
+	if err != nil {
+		return err
+	}
+	if len(order) == 0 {
+		// The key alone, which is always correct and rarely what somebody
+		// wanted to read.
+		order = []Order{{Field: key}}
+	}
+	v.Order = order
+
+	seen := map[string]bool{}
+	for i, o := range opts.GetOrders() {
+		name := o.GetName()
+		at := fmt.Sprintf("orders[%d]", i)
+		switch {
+		case !orderName.MatchString(name):
+			return fmt.Errorf("list: %s: %q is not a name a request can say: lower case, words joined by `_`", at, name)
+		case name == "unspecified":
+			// What the request's enum calls the order it gets by naming none.
+			return fmt.Errorf("list: %s: %q is what a request that names no order says, and `order` is that one", at, name)
+		case seen[name]:
+			return fmt.Errorf("list: %s: two orders are called %q", at, name)
+		}
+		seen[name] = true
+
+		order, err := readOrder(e, o.GetOrder(), "orders."+name)
 		if err != nil {
 			return err
 		}
-		if _, ok := field(e.Entity, name); !ok {
-			return fmt.Errorf("list: order: %s has no field %q", e.FullName(), name)
+		if len(order) == 0 {
+			return fmt.Errorf("list: orders.%s: says no columns, and an order that is the key alone is the default already", name)
 		}
-
-		v.Order = append(v.Order, Order{Field: name, Desc: o.GetDesc()})
-	}
-	switch {
-	case len(v.Order) == 0:
-		// The key alone, which is always correct and rarely what somebody
-		// wanted to read.
-		v.Order = []Order{{Field: key}}
-	case v.Order[len(v.Order)-1].Field != key:
-		return fmt.Errorf(
-			"list: order ends in %q and has to end in the key, %q.\n"+
-				"a cursor cannot tell apart two rows equal in every column of the order, so the page "+
-				"after the first of them repeats the second or skips it -- and rows written by one "+
-				"request are stamped a moment apart at best",
-			v.Order[len(v.Order)-1].Field, key)
+		v.Orders = append(v.Orders, NamedOrder{Name: name, Order: order})
 	}
 
 	for _, w := range opts.GetBy() {
@@ -1051,6 +1073,46 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 
 	e.List = v
 	return nil
+}
+
+// orderName is what a request names an order by, which becomes a value of an
+// enum: lower case, words joined by `_`.
+var orderName = regexp.MustCompile(`^[a-z][a-z0-9]*(_[a-z0-9]+)*$`)
+
+// readOrder reads one order of a list, and refuses one that does not end in
+// the key.
+//
+// A cursor cannot tell apart two rows equal in every column of the order, so
+// the page after the first of them repeats the second or skips it -- and rows
+// written by one request are stamped a moment apart at best. That is as true of
+// an order a request names as of the one it gets by naming none.
+func readOrder(e *Entity, os []*pdpb.Entity_Order, at string) ([]Order, error) {
+	out := []Order{}
+	for _, o := range os {
+		name, err := named(e.Entity, o.GetField(), at)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := field(e.Entity, name); !ok {
+			return nil, fmt.Errorf("list: %s: %s has no field %q", at, e.FullName(), name)
+		}
+
+		out = append(out, Order{Field: name, Desc: o.GetDesc()})
+	}
+	if len(out) == 0 {
+		return out, nil
+	}
+
+	if key := e.Key().Name(); out[len(out)-1].Field != key {
+		return nil, fmt.Errorf(
+			"list: %s ends in %q and has to end in the key, %q.\n"+
+				"a cursor cannot tell apart two rows equal in every column of the order, so the page "+
+				"after the first of them repeats the second or skips it -- and rows written by one "+
+				"request are stamped a moment apart at best",
+			at, out[len(out)-1].Field, key)
+	}
+
+	return out, nil
 }
 
 // isStringMap reports whether f is a `map<string, string>`.
