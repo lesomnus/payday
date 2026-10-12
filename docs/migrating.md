@@ -3,6 +3,33 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A key in a device is a line of configuration
+
+**Applies if** you hand in a `crypto.Signer` for a TPM, an HSM, Vault or a
+cloud KMS as `trail.Policy.Signer`, or would rather not have to.
+
+Nothing changes for a key in a file or the PEM document. `audit.checkpoints.key`
+also names a key in a device now, by its URI, once the app imports what speaks
+to the device — see [the runtime](runtime.md#keys-in-a-device):
+
+- **Import the one you use**, in `cmd` beside the database driver:
+  `config/signerpkcs11` (which needs cgo), `config/signertpm` or
+  `config/signervault`. AWS KMS is a module of its own: require
+  `github.com/lesomnus/payday/trail/trailawskms` and register it,
+  `config.RegisterSigner(trailawskms.Scheme, trailawskms.Open)`.
+- **A signer of your own** is registered the same way, under a scheme of its
+  own, and is then configuration too; the code that set `Policy.Signer` can go.
+- **A key the device would hand out is refused at start**: a PKCS #11 key that
+  is extractable or not sensitive, a TPM key that is not `fixedtpm` and
+  `fixedparent`, a Transit key that is exportable or allows a plaintext
+  backup. Make one that is not; what the old key signed stays verifiable by
+  its public half in `audit.checkpoints.trust`.
+- **A key in a device signs every row of the manifest an act writes**, as the
+  key in a file does, and not only a checkpoint: one across the network is a
+  request a row, which a pass that moves many chunks makes many of.
+- **A value that begins with a scheme an imported package registered** is that
+  device's key, and not a file of that name.
+
 ## The trail's manifest is signed, and its checkpoints chained
 
 **Applies if** you sign checkpoints — `audit.checkpoints.key` or

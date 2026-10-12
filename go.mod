@@ -10,6 +10,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/goccy/go-yaml v1.19.2
+	github.com/google/go-tpm v0.9.8
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/lesomnus/flob v0.0.0-20261010120939-21f89e60609e
 	github.com/lesomnus/mkot v0.0.0-20260907012347-f3fd02e2da01
@@ -21,6 +22,7 @@ require (
 	github.com/lesomnus/xli v0.0.0-20261006051808-dadaa2417a76
 	github.com/lesomnus/xli/cfg v0.1.2
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
+	github.com/miekg/pkcs11 v1.1.2
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260906212449-04c0cd58f10a
 	github.com/stretchr/testify v1.11.1
