@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"filippo.io/age"
 	"github.com/lesomnus/flob"
 
 	"github.com/lesomnus/payday/pdid"
@@ -150,14 +149,20 @@ type AuditKeysConfig struct {
 
 	// Master is the public key each tenant's key is sealed to, as
 	// `age-keygen` prints one (`age1…`), or several for more than one way
-	// back. Its private half is kept offline.
+	// back. Its private half is kept offline -- or in a device, through the
+	// age plugin that speaks to it: `age1yubikey1…`, `age1tpm1…`, which the
+	// process seals to by running `age-plugin-<name>` from PATH, and without
+	// the device. It is sealed to once where the process comes up, so a
+	// plugin that will not run is a process that does not start.
 	Master []string `yaml:"master"`
 
 	// Identity is the master's private half, for a process that reads what
 	// rows say -- an export, an operator at a shell -- and for no other: never
 	// set where the process serves. Named by the file it is in, which is how a
 	// secret is mounted, or the key itself (`AGE-SECRET-KEY-1…`), which is how
-	// one comes through the environment for one command.
+	// one comes through the environment for one command. A plugin's identity
+	// (`AGE-PLUGIN-YUBIKEY-1…`) names the device instead, which opens what the
+	// command reads and asks the terminal for what it wants: a PIN, a touch.
 	Identity string `yaml:"identity"`
 }
 
@@ -182,17 +187,22 @@ func (c AuditKeysConfig) keys(archive string) (*trail.Keys, error) {
 	}
 
 	for i, v := range c.Master {
-		rs, err := age.ParseRecipients(strings.NewReader(v))
+		rs, err := recipientsOf(v)
 		if err != nil {
 			return nil, fmt.Errorf("master[%d]: %w", i, err)
 		}
 
 		k.Master = append(k.Master, rs...)
 	}
+	if len(k.Master) > 0 {
+		if err := sealable(k.Master); err != nil {
+			return nil, fmt.Errorf("master: %w", err)
+		}
+	}
 
 	if v := strings.TrimSpace(c.Identity); v != "" {
 		doc := v
-		if !strings.HasPrefix(v, "AGE-SECRET-KEY-") {
+		if !strings.HasPrefix(v, "AGE-SECRET-KEY-") && !strings.HasPrefix(v, "AGE-PLUGIN-") {
 			b, err := os.ReadFile(v)
 			if err != nil {
 				return nil, fmt.Errorf("identity: %w", err)
@@ -201,7 +211,7 @@ func (c AuditKeysConfig) keys(archive string) (*trail.Keys, error) {
 			doc = string(b)
 		}
 
-		ids, err := age.ParseIdentities(strings.NewReader(doc))
+		ids, err := identitiesOf(doc)
 		if err != nil {
 			return nil, fmt.Errorf("identity: %w", err)
 		}
@@ -236,16 +246,23 @@ type AuditCheckpointsConfig struct {
 	// in the directory as before, and this keeps nothing from them.
 	WriteOnce bool `yaml:"write_once"`
 
-	// Key is the key checkpoints are signed with -- Ed25519, ECDSA or RSA,
-	// as `openssl genpkey` writes one -- named by the file it is in, which is
-	// how a secret is mounted, or the PEM document itself, which is how one is
-	// given through the environment (`<APP>_AUDIT_CHECKPOINTS_KEY`). Empty
-	// signs nothing.
+	// Key is what checkpoints and the manifest's rows are signed with --
+	// Ed25519, ECDSA or RSA -- and empty signs nothing. It is one of three
+	// things, told apart by how it begins:
 	//
-	// Read where the process comes up, so a key that does not read is a
-	// process that does not start rather than checkpoints that stop being
-	// signed. A key in a TPM, an HSM or a cloud KMS is not configured here:
-	// the app hands its signer in as `trail.Policy.Signer`.
+	//   - `-----BEGIN`: the PEM document of a key, as `openssl genpkey`
+	//     writes one, which is how a secret is given through the environment
+	//     (`<APP>_AUDIT_CHECKPOINTS_KEY`);
+	//   - a scheme that something registered with [RegisterSigner]: a key in
+	//     a device, which signs and does not give its private half out --
+	//     `pkcs11:` for an HSM, `tpm:`, `hashivault://`, `awskms://`;
+	//   - anything else: the file such a document is in, which is how a
+	//     secret is mounted.
+	//
+	// Read, and a device's key made to sign once, where the process comes up:
+	// a key that does not read is a process that does not start rather than
+	// checkpoints that stop being signed, or are signed by something nobody
+	// can verify.
 	Key string `yaml:"key"`
 
 	// Trust is the public keys besides Key's own whose signatures a
@@ -257,26 +274,6 @@ type AuditCheckpointsConfig struct {
 
 // keys is the checkpoints' keys, read.
 func (c AuditCheckpointsConfig) keys() (crypto.Signer, []crypto.PublicKey, error) {
-	var key crypto.Signer
-	if v := strings.TrimSpace(c.Key); v != "" {
-		doc := []byte(v)
-		if !strings.HasPrefix(v, "-----BEGIN") {
-			b, err := os.ReadFile(v)
-			if err != nil {
-				return nil, nil, fmt.Errorf("key: %w", err)
-			}
-
-			doc = b
-		}
-
-		k, err := trail.ParseKey(doc)
-		if err != nil {
-			return nil, nil, fmt.Errorf("key: %w", err)
-		}
-
-		key = k
-	}
-
 	trust := []crypto.PublicKey{}
 	for i, v := range c.Trust {
 		k, err := trail.ParsePublicKey(v)
@@ -285,6 +282,12 @@ func (c AuditCheckpointsConfig) keys() (crypto.Signer, []crypto.PublicKey, error
 		}
 
 		trust = append(trust, k)
+	}
+
+	// Last, since a key in a device is a session opened; see [signerOf].
+	key, err := signerOf(c.Key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("key: %w", err)
 	}
 
 	return key, trust, nil

@@ -78,12 +78,15 @@ type Keys struct {
 	// Master is who a tenant's key is sealed to, as `age-keygen` writes a
 	// public key -- one recipient, or several to have more than one way back.
 	// A post-quantum hybrid one (`age1pq1…`) is sealed to once per tenant and
-	// is not what the rows carry.
+	// is not what the rows carry. A device's, through the age plugin that
+	// speaks to it (`age1yubikey1…`), seals by running the plugin, and
+	// without the device.
 	Master []age.Recipient
 
 	// Identities is the master's private half, which opens a tenant's key: for
 	// a process that reads what rows said, and for no other. Empty is a
-	// process that writes the archive and cannot read what it wrote.
+	// process that writes the archive and cannot read what it wrote. A
+	// plugin's opens with the device, and asks for what it asks for.
 	Identities []age.Identity
 }
 

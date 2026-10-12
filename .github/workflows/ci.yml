@@ -146,6 +146,94 @@ jobs:
         run: go test ./... -count=1
         working-directory: internal/apptest
 
+  # The keys in devices (#52), each against an emulator of its device.
+  #
+  # An adapter for a device is the code in payday most likely to compile, pass
+  # every test a desk runs, and be wrong: the suite above has no HSM and no TPM,
+  # so all it can say about one is that the URI parses. What goes wrong with a
+  # device is the device's -- r and s where a verifier reads ASN.1, a session a
+  # token dropped, a scheme a key was made with, a key Transit would hand out --
+  # and only a device says so. Each of these is the real thing's protocol: a
+  # PKCS #11 library, a TPM's command stream, Transit's HTTP API, KMS's.
+  #
+  # Every test skips itself without its emulator, which is why they are named
+  # here rather than left to `scripts/test.sh`: a skip is a pass, and a run in
+  # which every device test skipped is a run that says nothing about devices.
+  #
+  # - SoftHSM is a library, and the tests make their own tokens in a directory
+  #   of their own (`SOFTHSM2_CONF`); `pkcs11-tool` makes a key the way an
+  #   operator would.
+  # - swtpm is a process, on a Unix socket, with its control socket beside it
+  #   where tpm2-tools look for it (`<path>.ctrl`).
+  # - Vault and OpenBao are one API in two codebases, and both are tried, since
+  #   a deployment has one or the other and nothing keeps the two the same.
+  # - local-kms is the KMS emulator that signs a digest as KMS does. LocalStack
+  #   now wants an account, and moto hashes what it is told is a digest, which
+  #   no signature it makes survives.
+  #
+  # `-p 1`, because both TPM packages share the one swtpm, which holds a few
+  # objects at a time and has no resource manager to share them out.
+  signers:
+    runs-on: ubuntu-latest
+
+    env:
+      PDTEST_SOFTHSM2: /usr/lib/softhsm/libsofthsm2.so
+      PDTEST_SWTPM: /tmp/swtpm/sock
+      PDTEST_VAULT: http://127.0.0.1:8200
+      PDTEST_AWSKMS: http://127.0.0.1:8080
+
+    services:
+      vault:
+        image: hashicorp/vault:2.1.2
+        env:
+          VAULT_DEV_ROOT_TOKEN_ID: root
+        ports: ["8200:8200"]
+        options: >-
+          --cap-add=IPC_LOCK
+          --health-cmd "vault status -address=http://127.0.0.1:8200"
+          --health-interval 2s
+          --health-retries 30
+      openbao:
+        image: openbao/openbao:2.7.1
+        env:
+          BAO_DEV_ROOT_TOKEN_ID: root
+        ports: ["8201:8200"]
+        options: >-
+          --health-cmd "bao status -address=http://127.0.0.1:8200"
+          --health-interval 2s
+          --health-retries 30
+      kms:
+        image: nsmithuk/local-kms:3.11.7
+        ports: ["8080:8080"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: the emulators that are not containers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends softhsm2 opensc swtpm swtpm-tools tpm2-tools
+          mkdir -p /tmp/swtpm
+          swtpm socket --tpm2 --daemon \
+            --server type=unixio,path=/tmp/swtpm/sock \
+            --ctrl type=unixio,path=/tmp/swtpm/sock.ctrl \
+            --tpmstate dir=/tmp/swtpm --flags not-need-init,startup-clear
+          # local-kms has no health check of its own to give the service.
+          for _ in $(seq 30); do curl -s -o /dev/null http://127.0.0.1:8080 && break; sleep 1; done
+
+      - name: payday's
+        run: go test -p 1 -count=1 ./config/... ./trail/...
+      - name: and Transit on OpenBao
+        run: go test -count=1 ./trail/trailvault/ ./config/signervault/
+        env:
+          PDTEST_VAULT: http://127.0.0.1:8201
+      - name: and KMS, a module of its own
+        run: go test -count=1 ./...
+        working-directory: trail/trailawskms
+
   # A brand new app, generated and built.
   #
   # `internal/apptest` does not cover this: it was written by hand and has been

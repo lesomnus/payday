@@ -447,8 +447,10 @@ type Policy struct {
 	// the archive's credentials is worth. A key read from a file --
 	// `audit.checkpoints.key`, which is how a secret is mounted, and
 	// [ParseKey] -- is in the process, beside them, and held by whoever holds
-	// the process. One in a TPM, an HSM or a cloud KMS is not: hand in its
-	// [crypto.Signer], and the private half never comes out.
+	// the process. One in a TPM, an HSM, Vault or a cloud KMS is not, and its
+	// private half never comes out: `audit.checkpoints.key` names one by its
+	// URI, through the adapters beside this package (`trail/trailpkcs11` and
+	// its siblings), and any other [crypto.Signer] is handed in here.
 	Signer crypto.Signer
 
 	// Trust is the keys besides [Policy.Signer]'s whose signatures on a

@@ -474,12 +474,12 @@ away to sign anything after.
 What signs is a `crypto.Signer`, `Policy.Signer`: a key read at start from
 `audit.checkpoints.key` (`<APP>_AUDIT_CHECKPOINTS_KEY`) — a file, or the PEM
 document itself; Ed25519, ECDSA or RSA, as `openssl genpkey` or
-`trail.GenerateKey` writes one — or one an app hands in for a TPM, an HSM or a
-cloud KMS, whose private half never comes out. Ed25519 signs a checkpoint's
-bytes, ECDSA and RSA their SHA-256, and a signature is verified by the kind of
-key that made it. `audit.checkpoints.trust` is the public keys besides the
-signer's that a verification believes: one rotated out, or each replica's when
-each has a device of its own.
+`trail.GenerateKey` writes one — or a key in a device, named there by its URI
+([below](#keys-in-a-device)), whose private half never comes out. Ed25519
+signs a checkpoint's bytes, ECDSA and RSA their SHA-256, and a signature is
+verified by the kind of key that made it. `audit.checkpoints.trust` is the
+public keys besides the signer's that a verification believes: one rotated
+out, or each replica's when each has a device of its own.
 
 An operator who has looked at what verification found and decided the archive
 is right — a crash, a blob restored from a backup, rows from before the
@@ -568,6 +568,88 @@ covered from the next pass's checkpoint. And a key read into the process is the
 process's: whoever holds the process can have it sign what they like while they
 do, and with a key from a file, after.
 
+#### Keys in a device
+
+A key in a device is named in `audit.checkpoints.key` by a URI, once the app
+links in what speaks to the device. Each is a package of its own that the app
+imports, as a database driver is, so that a binary carries the one client it
+uses and none of the others:
+
+| | `audit.checkpoints.key` | the app imports | signs with | tried against |
+| --- | --- | --- | --- | --- |
+| a PKCS #11 token | `pkcs11:token=payday;object=checkpoints?module-path=…&pin-source=…` | `config/signerpkcs11` | Ed25519, ECDSA P-256/384/521, RSA | SoftHSM 2.6 |
+| a TPM 2.0 | `tpm:0x81000100` | `config/signertpm` | ECDSA P-256 (P-384/521), RSA 2048 (3072) | swtpm 0.7 |
+| Vault's Transit | `hashivault://checkpoints` | `config/signervault` | Ed25519, ECDSA P-256/384/521, RSA | Vault 2.1, OpenBao 2.7 |
+| AWS KMS | `awskms:///alias/payday-checkpoints` | `trail/trailawskms` | ECDSA P-256/384/521, RSA | local-kms |
+
+- **PKCS #11** is an HSM on the network or in the machine, a cloud's HSM
+  through the library its vendor ships — AWS CloudHSM, Google Cloud KMS
+  through `kmsp11`, Thales Luna, YubiHSM — or a smart card. The URI is RFC
+  7512's: the token's label, the key's label or `CKA_ID`, the library, and the
+  file the PIN is in. It loads a C library, so it needs cgo; built without, it
+  refuses at start rather than not building.
+- **A TPM** is the machine's, or a virtual machine's vTPM. The key is made in
+  it and kept at a persistent handle (`trail/trailtpm` has the two
+  `tpm2-tools` commands), reached through the kernel's resource manager,
+  `/dev/tpmrm0`. P-384, P-521 and RSA 3072 are there where the TPM has them;
+  Ed25519 is in no TPM.
+- **Transit** is Vault's, or OpenBao's, over HTTP and no SDK. The address and
+  the token are where Vault's own tools read them, `VAULT_ADDR` and
+  `VAULT_TOKEN`; a Vault Agent's token file (`token-file=`) or its proxy is
+  what keeps a token alive for longer than it lives. The version that was
+  latest at start is the one that signs, until the next start.
+- **KMS** is its own module, `github.com/lesomnus/payday/trail/trailawskms`,
+  so the AWS SDK is in no `go.mod` but its own, and the app registers it with
+  one line, `config.RegisterSigner(trailawskms.Scheme, trailawskms.Open)`.
+  Credentials and the region are the SDK's to find. An alias is resolved at
+  start. KMS's Ed25519 keys are refused: KMS signs a message itself of 4 KiB
+  at most, and a checkpoint is longer.
+
+**What "cannot give the key away" means** is each device's own guarantee, and
+a key that does not have it is refused at start rather than trusted for one:
+
+| | refused | so whoever holds the process |
+| --- | --- | --- |
+| PKCS #11 | `CKA_EXTRACTABLE`, or not `CKA_SENSITIVE` | holds a session, and the token gives the key out to nobody, in the clear or wrapped |
+| TPM | not `fixedTPM` and `fixedParent` | holds the device, and the key cannot be duplicated out of the TPM, so it is nowhere else |
+| Transit | `exportable`, or `allow_plaintext_backup` | holds a token — give it `update` on `transit/sign/<key>` and `read` on `transit/keys/<key>` and nothing else — and Transit hands the key to nobody |
+| KMS | — | holds credentials, and KMS hands a key's private half to nobody |
+
+In every case that is the bargain [checkpoints](#checkpoints) make: whoever
+holds the process can have the key sign while they hold it, and cannot take it
+away to sign anything after, so a compromise cleaned up is over rather than a
+key to rotate and a trail to doubt. What it does not cover is the device's own
+administrators — Vault's with its storage and unseal keys, an HSM's security
+officer — and a key that was made outside and imported, which the device
+records (`CKA_LOCAL` on a token, KMS's `EXTERNAL` origin; a TPM key that is
+`fixedTPM` was made in the TPM) and which is the operator's to decide about.
+Make the key in the device.
+
+**A device is made to sign once at start**, the way a checkpoint is signed and
+verified the way `Policy.Verify` verifies one (`trail.TrySigner`), so a PIN that
+is wrong, a mechanism the token lacks, or a public half that is not the private
+half's is a process that does not start rather than a checkpoint called
+`forged` a day later. **And every signature is verified** against the public
+half the device gave at start before it is handed over: a key made again under
+the same name, a persistent handle given another key, a token whose objects
+disagree, each fails to sign rather than signing what nobody can verify.
+
+**A device signs every row an act writes**, as a key from a file does
+([above](#after-the-latest-checkpoint)), and not only the checkpoint a pass
+ends with. One across the network — Transit, KMS, an HSM on the network — is a
+request a row: a pass that moves many chunks takes as long as that many
+requests, and for KMS counts against its request quota and its bill.
+
+A key rotated is a new public half: keep the old one in
+`audit.checkpoints.trust` for as long as there are checkpoints it signed.
+`trust` reads PKIX, as base64 or PEM — what `tpm2_readpublic -f pem`,
+`pkcs11-tool --read-object --type pubkey` (DER, so through `base64 -w0`) and
+`aws kms get-public-key` write, and what Transit's `keys` endpoint answers for an
+ECDSA or RSA key. A device of another kind is an app's own `crypto.Signer`,
+registered under a scheme of its own with `config.RegisterSigner`. Google Cloud
+KMS and Azure Key Vault are not here yet, for want of something to try them
+against; the first is reachable through PKCS #11 today.
+
 #### Sealed contents
 
 Encryption at rest is the storage's — S3's server-side encryption with a KMS
@@ -594,6 +676,15 @@ kept as long as the archive is and which no purge reaches. `trail.Keys`
   configuration. The master's private half, `Keys.Identities`
   (`audit.keys.identity`), is given to a process that reads what rows say — an
   export, an operator at a shell — and to no other.
+- **The master may be in a device**, as age has one: a plugin, `age-plugin-<name>`
+  on PATH — age-plugin-yubikey for a YubiKey's PIV slot, age-plugin-tpm for a
+  TPM. Its recipient (`age1yubikey1…`) is the master, and the process that
+  serves seals to it by running the plugin, which needs no device to seal; its
+  identity (`AGE-PLUGIN-YUBIKEY-1…`) is what a reading command is given, and
+  opening takes the device and whatever it asks the terminal for, a PIN or a
+  touch. So the master's private half is in no file at all. The master is sealed
+  to once where the process comes up, and a plugin that is not on PATH, or
+  will not seal, is a process that does not start.
 - **A tenant leaving takes its key first.** `Policy.PurgeTenant` destroys the
   tenant's keys before anything else, writes the receipt for it at once, and
   then its rows. From then on what was its alone cannot be read from any copy:
