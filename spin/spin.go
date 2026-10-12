@@ -37,6 +37,15 @@
 // it. A pass that should be tolerated logs and answers nil; an error means
 // giving up.
 //
+// # One process of many
+//
+// Without a [Lease] every process that calls [Run] runs every loop, which is
+// right for one replica and silently wrong for two. [WithLease] runs a loop
+// only in the process of the deployment that holds its lease -- every loop but
+// an [Everywhere] one -- and a loop that lost its hold waits to hold it again
+// rather than counting as a failure. It is at most one at a time but for a
+// moment around a failover, not exactly once; see [Lease].
+//
 // # It is not readiness
 //
 // Nothing here touches a health check, and that is deliberate rather than
@@ -105,27 +114,49 @@ type Named interface {
 // set of layers hands over the one that owns the background work rather than
 // both: there is no deduplication here, since a layer is a struct an app wrote
 // and is not required to be comparable.
-func Run[T any](ctx context.Context, layers iter.Seq[T]) error {
+//
+// Given [WithLease], a loop runs only in the process of the deployment that
+// holds its lease, and every loop but an [Everywhere] one is such a loop. Run
+// refuses, before starting anything, one of them with no name of its own or
+// two of them with one name; see [Lease].
+func Run[T any](ctx context.Context, layers iter.Seq[T], opts ...Option) error {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	ss := []Spinner{}
+	for v := range layers {
+		if s, ok := any(v).(Spinner); ok {
+			ss = append(ss, s)
+		}
+	}
+	if o.lease != nil {
+		if err := agree(ss); err != nil {
+			return err
+		}
+	}
+
 	// The group's context is what the loops are handed, so the first failure
 	// stops the others instead of leaving them running under a process that is
 	// on its way out.
 	g, ctx := errgroup.WithContext(ctx)
 
-	n := 0
-	for v := range layers {
-		s, ok := any(v).(Spinner)
-		if !ok {
+	leased := 0
+	for _, s := range ss {
+		if o.lease == nil || isEverywhere(s) {
+			g.Go(func() error { return run(ctx, s) })
 			continue
 		}
 
-		n++
-		g.Go(func() error { return run(ctx, s) })
+		leased++
+		g.Go(func() error { return lead(ctx, o.lease, s) })
 	}
 
 	// How many there were is worth saying once. A deployment that expected its
 	// sweep to be running and finds zero here is one whose layer was left out
 	// of the build, and nothing else would ever mention it.
-	log.From(ctx).DebugContext(ctx, "spinning", slog.Int("spin.count", n))
+	log.From(ctx).DebugContext(ctx, "spinning", slog.Int("spin.count", len(ss)), slog.Int("spin.leased", leased))
 
 	return g.Wait()
 }
@@ -168,10 +199,18 @@ func run(ctx context.Context, s Spinner) error {
 	}
 }
 
-// name is what a loop is called in the log and in the error.
+// name is what a loop is called in the log and in the error: the name it, or a
+// loop it wraps, gave itself, and its type otherwise.
 func name(s Spinner) string {
-	if v, ok := s.(Named); ok {
-		return v.SpinName()
+	if v, ok := explicit(s); ok {
+		return v
+	}
+	for {
+		u, ok := s.(interface{ Unwrap() Spinner })
+		if !ok {
+			break
+		}
+		s = u.Unwrap()
 	}
 
 	return fmt.Sprintf("%T", s)

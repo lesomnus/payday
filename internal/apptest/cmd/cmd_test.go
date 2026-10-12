@@ -34,6 +34,9 @@ func TestConfigEnvIsReadFromTheStruct(t *testing.T) {
 		// The one this app added since the list would have been written, which
 		// is the whole point.
 		"APPTEST_WATCH_BROKER",
+		// And the lease that says which process runs the loops only one of
+		// them may (#54).
+		"APPTEST_SPIN_LEASE",
 	} {
 		x.Contains(got, want)
 	}

@@ -29,6 +29,7 @@ type Config struct {
 	Db     config.DbConfig     `yaml:"db"`
 	Otel   config.OtelConfig   `yaml:"otel"`
 	Watch  config.WatchConfig  `yaml:"watch"`
+	Spin   config.SpinConfig   `yaml:"spin"`
 
 	// How long the trail keeps a row, per kind of thing. Empty is forever,
 	// which is what this app is: nothing here is regulated and a test that

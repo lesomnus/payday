@@ -28,6 +28,7 @@ type Config struct {
 	Db     config.DbConfig     `yaml:"db"`
 	Otel   config.OtelConfig   `yaml:"otel"`
 	Watch  config.WatchConfig  `yaml:"watch"`
+	Spin   config.SpinConfig   `yaml:"spin"`
 
 	// How long the trail keeps a row, per kind of thing. Every write this app
 	// makes is recorded, and nothing else applies a window, so a deployment

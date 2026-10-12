@@ -33,6 +33,14 @@ watch:
   # hears about a write that landed on another, and nothing reports it.
   broker: memory
 
+spin:
+  # Named for the same reason: which process of the deployment runs the loops
+  # only one of them may -- the sweeps, the outbox drain. `local` runs them all
+  # in this process, which is right for one replica and silently wrong for two:
+  # each would run every sweep. `postgres` (config/leasepg) holds them across
+  # processes on the app's own database; `none` runs none of them here.
+  lease: local
+
 # How long the trail keeps a row. Every write this app makes is recorded, and
 # **nothing else applies a window**: with no block here the table is kept whole,
 # forever, and it is the one that grows without anybody writing to it.
