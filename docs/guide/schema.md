@@ -495,6 +495,13 @@ of those directions; an ordinary `(alias, id)` serves `(alias, id)` both ways
 round and not that. Nothing is checked for the named orders; the warning above
 is about `order` alone.
 
+**An order is over columns that are always there.** A cursor carries on from
+the last row by comparing, and a column that may be null compares as neither
+greater nor less: a row whose column is empty is skipped by the page after it,
+or never reached, and the databases do not agree on where nulls sort either.
+Order by a column that is `default`ed rather than `nullable`, or keep a
+nullable one out of the order and read the rows it would sort some other way.
+
 A cursor is of the order it was read in and the way: carried on in another, or
 the other way round, it is refused, since it names a place in a sequence it is
 not in. The cursor of `order` read forwards is the same shape it always was, so
