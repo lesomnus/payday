@@ -435,11 +435,12 @@ type Policy struct {
 	// S3 Object Lock -- and apart from the archive, they are the archive's
 	// contents day by day beyond the reach of anybody who can write both the
 	// database and the archive; in the archive itself they say what it held to
-	// whoever has not rewritten it.
+	// whoever has not rewritten it. Hand one in as [WriteOnce], which is the
+	// process keeping its half of that.
 	Checkpoints flob.Store
 
-	// Signer signs checkpoints: Ed25519, ECDSA or RSA. Nil leaves them
-	// unsigned.
+	// Signer signs checkpoints, and every row of the manifest an act writes
+	// ([Signature]): Ed25519, ECDSA or RSA. Nil leaves both unsigned.
 	//
 	// What it adds is that a checkpoint cannot be written by somebody without
 	// it, and that is worth what keeping the key apart from the database's and
@@ -451,9 +452,9 @@ type Policy struct {
 	Signer crypto.Signer
 
 	// Trust is the keys besides [Policy.Signer]'s whose signatures on a
-	// checkpoint [Policy.Verify] believes: a key rotated out, each replica's
-	// own when each has a device of its own, or the deployment's for a
-	// verifier that is not given the signer. [ParsePublicKey] reads one.
+	// checkpoint or a row [Policy.Verify] believes: a key rotated out, each
+	// replica's own when each has a device of its own, or the deployment's for
+	// a verifier that is not given the signer. [ParsePublicKey] reads one.
 	Trust []crypto.PublicKey
 
 	// Keys seals what the archive's rows say, a key per tenant; see [Keys].
@@ -652,8 +653,34 @@ func (p Policy) String() string {
 	if p.Keys != nil {
 		out = append(out, p.Keys.String())
 	}
+	if p.Archive != nil {
+		out = append(out, p.accounted())
+	}
 
 	return strings.Join(out, "; ")
+}
+
+// accounted is what the archive's account is worth, said where the process
+// comes up -- above all when it is worth less: without a key, whoever can write
+// both the database and the archive can change the two after the latest
+// checkpoint and nothing says so, and checkpoints in the archive are as easy
+// to rewrite as the archive is.
+func (p Policy) accounted() string {
+	v := "the archive's account and its checkpoints unsigned"
+	if p.Signer != nil {
+		v = "the archive's account and its checkpoints signed"
+	}
+
+	switch {
+	case p.Checkpoints == nil:
+		v += ", the checkpoints kept in the archive"
+	case IsWriteOnce(p.Checkpoints):
+		v += ", the checkpoints kept on a store that says it is write-once"
+	default:
+		v += ", the checkpoints kept on a store of their own"
+	}
+
+	return v
 }
 
 func (p Policy) every() time.Duration {

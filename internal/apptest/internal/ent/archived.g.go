@@ -20,5 +20,7 @@ func (e *Archived) Proto() *apptest.Archived {
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	x.SetGone(e.Gone)
+	x.SetSignature(e.Signature)
+	x.SetSignedBy(e.SignedBy)
 	return x
 }

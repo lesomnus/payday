@@ -3,6 +3,41 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The trail's manifest is signed, and its checkpoints chained
+
+**Applies if** you sign checkpoints — `audit.checkpoints.key` or
+`trail.Policy.Signer` — keep them on a store of your own, call `trail.Archive`,
+or wrote a `trail.Store` of your own (a test double counts).
+
+Every row of the manifest is now signed by the key that signs checkpoints, so
+that a row changed after the latest checkpoint is found too, and each
+checkpoint names the one before it — see
+[the runtime](runtime.md#after-the-latest-checkpoint). For an app:
+
+- **Regenerate, and migrate once.** `Archived` has two more columns,
+  `signature` and `signed_by`. They are nullable, so a table that has rows
+  takes them, and they are empty on every row there.
+- **With a key, accept those rows once.** A row with no signature is `unsigned`
+  until an operator accepts it: `policy.Accept(ctx, store, why)` signs each as
+  it stands, and needs the key to. Until then a pass says so, and does not act
+  on their chunks — nothing of theirs is destroyed or folded, and
+  `Policy.Read` leaves them out. Without a key nothing changes.
+- **A `trail.Store` of your own** is handed a `trail.Sign` with every write —
+  `Adding`, `Added`, `Mark`, `Label` — and asks it for the signature to write
+  beside each row, a row at a time, with every field the signature is over in
+  the same write. `Mark` from a state to itself signs rows again as they are.
+  The generated store does all of it.
+- **`trail.Archive` signs nothing**, since it is handed no policy: with a key,
+  the rows it writes are findings until accepted. A pass moves that
+  deployment's rows.
+- **On a store that refuses deletion, say so**: hand it in as
+  `trail.WriteOnce(store)`, or set `audit.checkpoints.write_once` beside
+  `audit.checkpoints.dir` on a WORM mount.
+- **The findings** `unsigned` and `forged` are about rows too; `reordered` is
+  new; `unkept`, `rewritten` and `relabelled` are about the chain as well.
+
+Checkpoints written before name nothing, and the chain starts after them.
+
 ## The trail's archive can seal what its rows say
 
 **Applies if** you want a tenant that leaves to take its trail out of the

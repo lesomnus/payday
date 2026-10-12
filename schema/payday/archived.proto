@@ -41,6 +41,12 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 // row, with the zero identifier and no namespace, is the counter they are
 // numbered by; its row lock is what keeps two checkpoints from sharing a
 // number.
+//
+// # Signed
+//
+// What happens after the latest checkpoint is what a checkpoint cannot cover,
+// so each row carries a signature by the deployment's key over what it says.
+// A row is written whole with its signature, never a field of it alone.
 message Archived {
   bytes id = 1 [(orm.field) = {
     type: TYPE_UUID
@@ -80,6 +86,17 @@ message Archived {
   // The first checkpoint the row was not in, once it was erased, and zero
   // while it is in them.
   uint32 gone = 16;
+
+  // The deployment's key's signature over what the row says, and the public
+  // half of that key, PKIX: what keeps a row changed after the latest
+  // checkpoint from passing for one the deployment wrote. See
+  // `trail.Signature`.
+  //
+  // Empty on a row written without a key, and on every row from before rows
+  // were signed -- which is also why they have a default: a column nothing
+  // can be left out of cannot be added to a table that has rows.
+  bytes signature = 17 [(orm.field) = {default: ""}];
+  bytes signed_by = 18 [(orm.field) = {default: ""}];
 
   // No RPCs, for the reason `Outbox` has none: this is the deployment's record
   // of its own archive, and a caller that could write it could hide a chunk

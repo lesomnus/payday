@@ -95,6 +95,16 @@ func Gone(v uint32) predicate.Archived {
 	return predicate.Archived(sql.FieldEQ(FieldGone, v))
 }
 
+// Signature applies equality check predicate on the "signature" field. It's identical to SignatureEQ.
+func Signature(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldEQ(FieldSignature, v))
+}
+
+// SignedBy applies equality check predicate on the "signed_by" field. It's identical to SignedByEQ.
+func SignedBy(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldEQ(FieldSignedBy, v))
+}
+
 // LabelsIsNil applies the IsNil predicate on the "labels" field.
 func LabelsIsNil() predicate.Archived {
 	return predicate.Archived(sql.FieldIsNull(FieldLabels))
@@ -533,6 +543,106 @@ func GoneLT(v uint32) predicate.Archived {
 // GoneLTE applies the LTE predicate on the "gone" field.
 func GoneLTE(v uint32) predicate.Archived {
 	return predicate.Archived(sql.FieldLTE(FieldGone, v))
+}
+
+// SignatureEQ applies the EQ predicate on the "signature" field.
+func SignatureEQ(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldEQ(FieldSignature, v))
+}
+
+// SignatureNEQ applies the NEQ predicate on the "signature" field.
+func SignatureNEQ(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldNEQ(FieldSignature, v))
+}
+
+// SignatureIn applies the In predicate on the "signature" field.
+func SignatureIn(vs ...[]byte) predicate.Archived {
+	return predicate.Archived(sql.FieldIn(FieldSignature, vs...))
+}
+
+// SignatureNotIn applies the NotIn predicate on the "signature" field.
+func SignatureNotIn(vs ...[]byte) predicate.Archived {
+	return predicate.Archived(sql.FieldNotIn(FieldSignature, vs...))
+}
+
+// SignatureGT applies the GT predicate on the "signature" field.
+func SignatureGT(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldGT(FieldSignature, v))
+}
+
+// SignatureGTE applies the GTE predicate on the "signature" field.
+func SignatureGTE(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldGTE(FieldSignature, v))
+}
+
+// SignatureLT applies the LT predicate on the "signature" field.
+func SignatureLT(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldLT(FieldSignature, v))
+}
+
+// SignatureLTE applies the LTE predicate on the "signature" field.
+func SignatureLTE(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldLTE(FieldSignature, v))
+}
+
+// SignatureIsNil applies the IsNil predicate on the "signature" field.
+func SignatureIsNil() predicate.Archived {
+	return predicate.Archived(sql.FieldIsNull(FieldSignature))
+}
+
+// SignatureNotNil applies the NotNil predicate on the "signature" field.
+func SignatureNotNil() predicate.Archived {
+	return predicate.Archived(sql.FieldNotNull(FieldSignature))
+}
+
+// SignedByEQ applies the EQ predicate on the "signed_by" field.
+func SignedByEQ(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldEQ(FieldSignedBy, v))
+}
+
+// SignedByNEQ applies the NEQ predicate on the "signed_by" field.
+func SignedByNEQ(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldNEQ(FieldSignedBy, v))
+}
+
+// SignedByIn applies the In predicate on the "signed_by" field.
+func SignedByIn(vs ...[]byte) predicate.Archived {
+	return predicate.Archived(sql.FieldIn(FieldSignedBy, vs...))
+}
+
+// SignedByNotIn applies the NotIn predicate on the "signed_by" field.
+func SignedByNotIn(vs ...[]byte) predicate.Archived {
+	return predicate.Archived(sql.FieldNotIn(FieldSignedBy, vs...))
+}
+
+// SignedByGT applies the GT predicate on the "signed_by" field.
+func SignedByGT(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldGT(FieldSignedBy, v))
+}
+
+// SignedByGTE applies the GTE predicate on the "signed_by" field.
+func SignedByGTE(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldGTE(FieldSignedBy, v))
+}
+
+// SignedByLT applies the LT predicate on the "signed_by" field.
+func SignedByLT(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldLT(FieldSignedBy, v))
+}
+
+// SignedByLTE applies the LTE predicate on the "signed_by" field.
+func SignedByLTE(v []byte) predicate.Archived {
+	return predicate.Archived(sql.FieldLTE(FieldSignedBy, v))
+}
+
+// SignedByIsNil applies the IsNil predicate on the "signed_by" field.
+func SignedByIsNil() predicate.Archived {
+	return predicate.Archived(sql.FieldIsNull(FieldSignedBy))
+}
+
+// SignedByNotNil applies the NotNil predicate on the "signed_by" field.
+func SignedByNotNil() predicate.Archived {
+	return predicate.Archived(sql.FieldNotNull(FieldSignedBy))
 }
 
 // And groups predicates with the AND operator between them.

@@ -55,6 +55,12 @@ const (
 // row, with the zero identifier and no namespace, is the counter they are
 // numbered by; its row lock is what keeps two checkpoints from sharing a
 // number.
+//
+// # Signed
+//
+// What happens after the latest checkpoint is what a checkpoint cannot cover,
+// so each row carries a signature by the deployment's key over what it says.
+// A row is written whole with its signature, never a field of it alone.
 type Archived struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
@@ -67,6 +73,8 @@ type Archived struct {
 	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	xxx_hidden_Gone        uint32                 `protobuf:"varint,16,opt,name=gone"`
+	xxx_hidden_Signature   []byte                 `protobuf:"bytes,17,opt,name=signature"`
+	xxx_hidden_SignedBy    []byte                 `protobuf:"bytes,18,opt,name=signed_by,json=signedBy"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -166,6 +174,20 @@ func (x *Archived) GetGone() uint32 {
 	return 0
 }
 
+func (x *Archived) GetSignature() []byte {
+	if x != nil {
+		return x.xxx_hidden_Signature
+	}
+	return nil
+}
+
+func (x *Archived) GetSignedBy() []byte {
+	if x != nil {
+		return x.xxx_hidden_SignedBy
+	}
+	return nil
+}
+
 func (x *Archived) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -207,6 +229,20 @@ func (x *Archived) SetDateCreated(v *timestamppb.Timestamp) {
 
 func (x *Archived) SetGone(v uint32) {
 	x.xxx_hidden_Gone = v
+}
+
+func (x *Archived) SetSignature(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Signature = v
+}
+
+func (x *Archived) SetSignedBy(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_SignedBy = v
 }
 
 func (x *Archived) HasDateUpdated() bool {
@@ -257,6 +293,16 @@ type Archived_builder struct {
 	// The first checkpoint the row was not in, once it was erased, and zero
 	// while it is in them.
 	Gone uint32
+	// The deployment's key's signature over what the row says, and the public
+	// half of that key, PKIX: what keeps a row changed after the latest
+	// checkpoint from passing for one the deployment wrote. See
+	// `trail.Signature`.
+	//
+	// Empty on a row written without a key, and on every row from before rows
+	// were signed -- which is also why they have a default: a column nothing
+	// can be left out of cannot be added to a table that has rows.
+	Signature []byte
+	SignedBy  []byte
 }
 
 func (b0 Archived_builder) Build() *Archived {
@@ -273,6 +319,8 @@ func (b0 Archived_builder) Build() *Archived {
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_Gone = b.Gone
+	x.xxx_hidden_Signature = b.Signature
+	x.xxx_hidden_SignedBy = b.SignedBy
 	return m0
 }
 
@@ -280,7 +328,7 @@ var File_app_payday_archived_proto protoreflect.FileDescriptor
 
 const file_app_payday_archived_proto_rawDesc = "" +
 	"\n" +
-	"\x19app/payday/archived.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x80\x04\n" +
+	"\x19app/payday/archived.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xcd\x04\n" +
 	"\bArchived\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x121\n" +
 	"\x06labels\x18\a \x03(\v2\x19.app.Archived.LabelsEntryR\x06labels\x12\x1c\n" +
@@ -292,7 +340,9 @@ const file_app_payday_archived_proto_rawDesc = "" +
 	"\x05since\x18\f \x01(\rR\x05since\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12\x12\n" +
-	"\x04gone\x18\x10 \x01(\rR\x04gone\x1a9\n" +
+	"\x04gone\x18\x10 \x01(\rR\x04gone\x12%\n" +
+	"\tsignature\x18\x11 \x01(\fB\a\xea\x82\x16\x03\x82\x01\x00R\tsignature\x12$\n" +
+	"\tsigned_by\x18\x12 \x01(\fB\a\xea\x82\x16\x03\x82\x01\x00R\bsignedBy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:I\xca\xfc\x157\x1a!\x12\x04blob\x1a\r\n" +

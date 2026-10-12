@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/archived.proto.
  */
 export const file_app_payday_archived: GenFile = /*@__PURE__*/
-  fileDesc("ChlhcHAvcGF5ZGF5L2FyY2hpdmVkLnByb3RvEgNhcHAinwMKCEFyY2hpdmVkEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIpCgZsYWJlbHMYByADKAsyGS5hcHAuQXJjaGl2ZWQuTGFiZWxzRW50cnkSEQoJbmFtZXNwYWNlGAggASgJEg4KBmRpZ2VzdBgJIAEoCRIOCgZpbnRlbnQYCiABKAkSDQoFc3RhdGUYCyABKAkSDQoFc2luY2UYDCABKA0SOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASDAoEZ29uZRgQIAEoDRotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBOknK/BU3GiESBGJsb2IaDQoJbmFtZXNwYWNlEAgaCgoGZGlnZXN0EAkaEhIFc3RhdGUaCQoFc3RhdGUQC4q7FgoIBUICCgBIBSoAQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("ChlhcHAvcGF5ZGF5L2FyY2hpdmVkLnByb3RvEgNhcHAi1wMKCEFyY2hpdmVkEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIpCgZsYWJlbHMYByADKAsyGS5hcHAuQXJjaGl2ZWQuTGFiZWxzRW50cnkSEQoJbmFtZXNwYWNlGAggASgJEg4KBmRpZ2VzdBgJIAEoCRIOCgZpbnRlbnQYCiABKAkSDQoFc3RhdGUYCyABKAkSDQoFc2luY2UYDCABKA0SOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASDAoEZ29uZRgQIAEoDRIaCglzaWduYXR1cmUYESABKAxCB+qCFgOCAQASGgoJc2lnbmVkX2J5GBIgASgMQgfqghYDggEAGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAE6Scr8FTcaIRIEYmxvYhoNCgluYW1lc3BhY2UQCBoKCgZkaWdlc3QQCRoSEgVzdGF0ZRoJCgVzdGF0ZRALirsWCggFQgIKAEgFKgBCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Archived is one blob of the trail's archive, as the database keeps the
@@ -50,6 +50,12 @@ export const file_app_payday_archived: GenFile = /*@__PURE__*/
  * row, with the zero identifier and no namespace, is the counter they are
  * numbered by; its row lock is what keeps two checkpoints from sharing a
  * number.
+ *
+ * # Signed
+ *
+ * What happens after the latest checkpoint is what a checkpoint cannot cover,
+ * so each row carries a signature by the deployment's key over what it says.
+ * A row is written whole with its signature, never a field of it alone.
  *
  * @generated from message app.Archived
  */
@@ -123,6 +129,25 @@ export type Archived = Message<"app.Archived"> & {
    * @generated from field: uint32 gone = 16;
    */
   gone: number;
+
+  /**
+   * The deployment's key's signature over what the row says, and the public
+   * half of that key, PKIX: what keeps a row changed after the latest
+   * checkpoint from passing for one the deployment wrote. See
+   * `trail.Signature`.
+   *
+   * Empty on a row written without a key, and on every row from before rows
+   * were signed -- which is also why they have a default: a column nothing
+   * can be left out of cannot be added to a table that has rows.
+   *
+   * @generated from field: bytes signature = 17;
+   */
+  signature: Uint8Array;
+
+  /**
+   * @generated from field: bytes signed_by = 18;
+   */
+  signedBy: Uint8Array;
 };
 
 /**

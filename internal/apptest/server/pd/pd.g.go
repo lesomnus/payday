@@ -4664,9 +4664,15 @@ func numbers(ds []pdid.Domain) []uint32 {
 // from taking one number.
 var archivedCounter = uuid.Nil()
 
-func (s trailStore) Adding(ctx context.Context, ns, intent string, labels map[string]string) (any, error) {
+func (s trailStore) Adding(ctx context.Context, ns, intent string, labels map[string]string, sign trail.Sign) (any, error) {
+	id := pdid.New(ArchivedDomain).Uuid()
+	sig, err := sign(trail.Archived{}, trail.Archived{Key: id, Namespace: ns, Intent: intent, Labels: labels, State: trail.Adding})
+	if err != nil {
+		return nil, err
+	}
+
 	v, err := s.db.Archived.Create().
-		SetId(pdid.New(ArchivedDomain).Uuid()).
+		SetId(id).
 		SetNamespace(ns).
 		SetDigest("").
 		SetIntent(intent).
@@ -4674,6 +4680,8 @@ func (s trailStore) Adding(ctx context.Context, ns, intent string, labels map[st
 		SetState(trail.Adding).
 		SetSince(0).
 		SetGone(0).
+		SetSignature(sig.Sig).
+		SetSignedBy(sig.Key).
 		SetDateUpdated(time.Now()).
 		Save(ctx)
 	if err != nil {
@@ -4683,18 +4691,22 @@ func (s trailStore) Adding(ctx context.Context, ns, intent string, labels map[st
 	return v.Id, nil
 }
 
-func (s trailStore) Added(ctx context.Context, key any, digest string, labels map[string]string) error {
+func (s trailStore) Added(ctx context.Context, key any, digest string, labels map[string]string, sign trail.Sign) error {
 	id, ok := key.(uuid.UUID)
 	if !ok {
 		return fmt.Errorf("trail: %T is not a key this store gave out", key)
 	}
 
-	return s.db.Archived.UpdateOneId(id).
-		SetDigest(digest).
-		SetLabels(labels).
-		SetState(trail.Present).
-		SetDateUpdated(time.Now()).
-		Exec(ctx)
+	v, err := s.db.Archived.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	was := archivedRow(v)
+	is := was
+	is.Digest, is.Labels, is.State = digest, labels, trail.Present
+
+	return s.archivedWrite(ctx, id, was, is, sign)
 }
 
 func (s trailStore) Drop(ctx context.Context, key any) error {
@@ -4707,19 +4719,65 @@ func (s trailStore) Drop(ctx context.Context, key any) error {
 	return err
 }
 
-func (s trailStore) Mark(ctx context.Context, ns, digest, from, to string) error {
-	_, err := s.db.Archived.Update().
+// Mark is a row at a time, each signed as it is about to be.
+func (s trailStore) Mark(ctx context.Context, ns, digest, from, to string, sign trail.Sign) error {
+	vs, err := s.db.Archived.Query().
 		Where(archived.NamespaceEQ(ns), archived.DigestEQ(digest), archived.StateEQ(from)).
-		SetState(to).
-		SetDateUpdated(time.Now()).
-		Save(ctx)
-	return err
+		All(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range vs {
+		was := archivedRow(v)
+		is := was
+		is.State = to
+		if err := s.archivedWrite(ctx, v.Id, was, is, sign); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (s trailStore) Label(ctx context.Context, ns, digest string, labels map[string]string) error {
-	_, err := s.db.Archived.Update().
+func (s trailStore) Label(ctx context.Context, ns, digest string, labels map[string]string, sign trail.Sign) error {
+	vs, err := s.db.Archived.Query().
 		Where(archived.NamespaceEQ(ns), archived.DigestEQ(digest), archived.StateNEQ(trail.Erased)).
-		SetLabels(labels).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range vs {
+		was := archivedRow(v)
+		is := was
+		is.Labels = labels
+		if err := s.archivedWrite(ctx, v.Id, was, is, sign); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// archivedWrite writes one row whole -- every field its signature is over,
+// and the signature -- so that what a row says is what was signed, whichever
+// of two writers is last. Only while the row is still in the state it was
+// read in: one another act moved meanwhile is that act's.
+func (s trailStore) archivedWrite(ctx context.Context, id uuid.UUID, was, is trail.Archived, sign trail.Sign) error {
+	sig, err := sign(was, is)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.db.Archived.Update().
+		Where(archived.IdEQ(id), archived.StateEQ(was.State)).
+		SetDigest(is.Digest).
+		SetLabels(is.Labels).
+		SetState(is.State).
+		SetSignature(sig.Sig).
+		SetSignedBy(sig.Key).
+		SetDateUpdated(time.Now()).
 		Save(ctx)
 	return err
 }
@@ -4840,21 +4898,26 @@ func archivedAt(k uint32) predicate.Archived {
 	)
 }
 
+func archivedRow(v *ent.Archived) trail.Archived {
+	return trail.Archived{
+		Key:       v.Id,
+		Namespace: v.Namespace,
+		Digest:    v.Digest,
+		Intent:    v.Intent,
+		Labels:    v.Labels,
+		State:     v.State,
+		Since:     int(v.Since),
+		Gone:      int(v.Gone),
+		Created:   v.DateCreated,
+		Updated:   v.DateUpdated,
+		Signature: trail.Signature{Key: v.SignedBy, Sig: v.Signature},
+	}
+}
+
 func archivedRows(vs []*ent.Archived) []trail.Archived {
 	out := make([]trail.Archived, 0, len(vs))
 	for _, v := range vs {
-		out = append(out, trail.Archived{
-			Key:       v.Id,
-			Namespace: v.Namespace,
-			Digest:    v.Digest,
-			Intent:    v.Intent,
-			Labels:    v.Labels,
-			State:     v.State,
-			Since:     int(v.Since),
-			Gone:      int(v.Gone),
-			Created:   v.DateCreated,
-			Updated:   v.DateUpdated,
-		})
+		out = append(out, archivedRow(v))
 	}
 
 	return out

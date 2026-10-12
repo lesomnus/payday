@@ -36,7 +36,11 @@ type Archived struct {
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
 	// Gone holds the value of the "gone" field.
-	Gone         uint32 `json:"gone,omitempty"`
+	Gone uint32 `json:"gone,omitempty"`
+	// Signature holds the value of the "signature" field.
+	Signature []byte `json:"signature,omitempty"`
+	// SignedBy holds the value of the "signed_by" field.
+	SignedBy     []byte `json:"signed_by,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -45,7 +49,7 @@ func (*Archived) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case archived.FieldLabels:
+		case archived.FieldLabels, archived.FieldSignature, archived.FieldSignedBy:
 			values[i] = new([]byte)
 		case archived.FieldSince, archived.FieldGone:
 			values[i] = new(sql.NullInt64)
@@ -132,6 +136,18 @@ func (_m *Archived) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Gone = uint32(value.Int64)
 			}
+		case archived.FieldSignature:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field signature", values[i])
+			} else if value != nil {
+				_m.Signature = *value
+			}
+		case archived.FieldSignedBy:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field signed_by", values[i])
+			} else if value != nil {
+				_m.SignedBy = *value
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -194,6 +210,12 @@ func (_m *Archived) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("gone=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Gone))
+	builder.WriteString(", ")
+	builder.WriteString("signature=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Signature))
+	builder.WriteString(", ")
+	builder.WriteString("signed_by=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SignedBy))
 	builder.WriteByte(')')
 	return builder.String()
 }

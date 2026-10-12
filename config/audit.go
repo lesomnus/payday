@@ -226,6 +226,16 @@ type AuditCheckpointsConfig struct {
 	// among them, is handed in by the app as `trail.Policy.Checkpoints`.
 	Dir string `yaml:"dir"`
 
+	// WriteOnce says the storage `dir` is on keeps what it is given -- a WORM
+	// mount -- and has the process keep to it as well: it never erases a
+	// checkpoint or changes its labels, and says where it comes up that they
+	// are kept on a store that says it is write-once. See `trail.WriteOnce`.
+	//
+	// It is the process's promise and not the disk's. On an ordinary disk,
+	// whoever holds the process's user, or root, removes or rewrites any file
+	// in the directory as before, and this keeps nothing from them.
+	WriteOnce bool `yaml:"write_once"`
+
 	// Key is the key checkpoints are signed with -- Ed25519, ECDSA or RSA,
 	// as `openssl genpkey` writes one -- named by the file it is in, which is
 	// how a secret is mounted, or the PEM document itself, which is how one is
@@ -402,6 +412,12 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 	}
 	if c.Checkpoints.Dir != "" {
 		p.Checkpoints = flob.NewOsStores(c.Checkpoints.Dir).Use(trail.CheckpointNamespace)
+		if c.Checkpoints.WriteOnce {
+			p.Checkpoints = trail.WriteOnce(p.Checkpoints)
+		}
+	} else if c.Checkpoints.WriteOnce {
+		return trail.Policy{}, errors.New("audit.checkpoints.write_once: the checkpoints are kept in the archive, " +
+			"which a pass erases from; give them a dir of their own")
 	}
 	if p.Keys, err = c.Keys.keys(c.Archive); err != nil {
 		return trail.Policy{}, fmt.Errorf("audit.keys.%w", err)

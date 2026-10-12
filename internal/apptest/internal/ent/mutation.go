@@ -315,6 +315,40 @@ func (m *ArchivedMutation) OldGone(ctx context.Context) (v uint32, err error) {
 	return oldValue.Gone, nil
 }
 
+// OldSignature returns the old "signature" field's value of the Archived entity.
+// If the Archived object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ArchivedMutation) OldSignature(ctx context.Context) (v []byte, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldSignature is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldSignature requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSignature: %w", err)
+	}
+	return oldValue.Signature, nil
+}
+
+// OldSignedBy returns the old "signed_by" field's value of the Archived entity.
+// If the Archived object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ArchivedMutation) OldSignedBy(ctx context.Context) (v []byte, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldSignedBy is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldSignedBy requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSignedBy: %w", err)
+	}
+	return oldValue.SignedBy, nil
+}
+
 // OldField returns the old value of the field from the database. An error is
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
@@ -338,6 +372,10 @@ func (m *ArchivedMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldDateCreated(ctx)
 	case archived.FieldGone:
 		return m.OldGone(ctx)
+	case archived.FieldSignature:
+		return m.OldSignature(ctx)
+	case archived.FieldSignedBy:
+		return m.OldSignedBy(ctx)
 	}
 	return nil, fmt.Errorf("unknown Archived field %s", name)
 }

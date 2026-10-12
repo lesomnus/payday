@@ -84,6 +84,18 @@ func (_c *ArchivedCreate) SetGone(v uint32) *ArchivedCreate {
 	return _c
 }
 
+// SetSignature sets the "signature" field.
+func (_c *ArchivedCreate) SetSignature(v []byte) *ArchivedCreate {
+	_c.mutation.SetSignature(v)
+	return _c
+}
+
+// SetSignedBy sets the "signed_by" field.
+func (_c *ArchivedCreate) SetSignedBy(v []byte) *ArchivedCreate {
+	_c.mutation.SetSignedBy(v)
+	return _c
+}
+
 // SetId sets the "id" field.
 func (_c *ArchivedCreate) SetId(v uuid.UUID) *ArchivedCreate {
 	_c.mutation.SetId(v)
@@ -219,6 +231,14 @@ func (_c *ArchivedCreate) createSpec() (*Archived, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Gone(); ok {
 		_spec.SetField(archived.FieldGone, field.TypeUint32, value)
 		_node.Gone = value
+	}
+	if value, ok := _c.mutation.Signature(); ok {
+		_spec.SetField(archived.FieldSignature, field.TypeBytes, value)
+		_node.Signature = value
+	}
+	if value, ok := _c.mutation.SignedBy(); ok {
+		_spec.SetField(archived.FieldSignedBy, field.TypeBytes, value)
+		_node.SignedBy = value
 	}
 	return _node, _spec
 }

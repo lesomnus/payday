@@ -95,27 +95,37 @@ type Archived struct {
 	// has.
 	Created time.Time
 	Updated time.Time
+
+	// Signature is the deployment's key's signature over what the row says,
+	// and empty on a row written without a key; see [Signature].
+	Signature Signature
 }
 
 // Manifest is the database's half of the archive: its account of what the
 // archive holds. The generated store keeps it on payday's `Archived` entity.
+//
+// Every write is handed a [Sign], and asks it for the signature to write beside
+// each row it writes, one row at a time: a row is signed over which row it is,
+// so a key must print the same every time fmt prints it.
 type Manifest interface {
 	// Adding adds a row for a blob about to be written into a namespace,
 	// labelled `intent`, and answers the row's key.
-	Adding(ctx context.Context, namespace, intent string, labels map[string]string) (any, error)
+	Adding(ctx context.Context, namespace, intent string, labels map[string]string, sign Sign) (any, error)
 
 	// Added says the row's blob is in the archive, by its digest and the labels
 	// it carries.
-	Added(ctx context.Context, key any, digest string, labels map[string]string) error
+	Added(ctx context.Context, key any, digest string, labels map[string]string, sign Sign) error
 
 	// Drop removes a row whose blob was never written.
 	Drop(ctx context.Context, key any) error
 
-	// Mark moves every row of a blob that is in state `from` to state `to`.
-	Mark(ctx context.Context, namespace, digest, from, to string) error
+	// Mark moves every row of a blob that is in state `from` to state `to`,
+	// each only while it is still in `from`. From a state to itself, it signs
+	// the rows again as they are.
+	Mark(ctx context.Context, namespace, digest, from, to string, sign Sign) error
 
 	// Label records the labels a blob carries now.
-	Label(ctx context.Context, namespace, digest string, labels map[string]string) error
+	Label(ctx context.Context, namespace, digest string, labels map[string]string, sign Sign) error
 
 	// Rows answers every row that is not erased.
 	Rows(ctx context.Context) ([]Archived, error)
@@ -146,8 +156,9 @@ type Manifest interface {
 // a chunk's month, its kind, whose it is -- and not the ones on the blob, which
 // anybody who can write the archive can change.
 type manifested struct {
-	a flob.Stores
-	m Manifest
+	a    flob.Stores
+	m    Manifest
+	sign Sign
 
 	mu sync.Mutex
 
@@ -163,6 +174,7 @@ func (p Policy) manifested(m Manifest) *manifested {
 	return &manifested{
 		a:       p.Archive,
 		m:       m,
+		sign:    p.signing(),
 		known:   map[blobKey]map[string]string{},
 		intents: map[string]map[string]string{},
 		added:   map[blobKey]map[string]string{},
@@ -264,7 +276,7 @@ func (s manifestedStore) Add(ctx context.Context, m flob.Meta, r io.Reader) (flo
 	}
 	l.Set(labelIntent, intent)
 
-	key, err := s.r.m.Adding(ctx, s.ns, intent, labelsOf(l))
+	key, err := s.r.m.Adding(ctx, s.ns, intent, labelsOf(l), s.r.sign)
 	if err != nil {
 		return flob.Meta{}, fmt.Errorf("the manifest: %w", err)
 	}
@@ -278,7 +290,7 @@ func (s manifestedStore) Add(ctx context.Context, m flob.Meta, r io.Reader) (flo
 		return v, err
 	}
 
-	if merr := s.r.m.Added(ctx, key, string(v.Digest), labelsOf(l)); merr != nil {
+	if merr := s.r.m.Added(ctx, key, string(v.Digest), labelsOf(l), s.r.sign); merr != nil {
 		// The blob is there and its row says adding, which the next pass
 		// settles by the intent it is labelled with.
 		log.From(ctx).WarnContext(ctx, "trail: the manifest", "err", merr)
@@ -296,18 +308,18 @@ func (s manifestedStore) Label(ctx context.Context, d flob.Digest, l flob.Labels
 
 	s.r.relabel(blobKey{s.ns, d}, labelsOf(l))
 
-	return s.r.m.Label(ctx, s.ns, string(d), labelsOf(l))
+	return s.r.m.Label(ctx, s.ns, string(d), labelsOf(l), s.r.sign)
 }
 
 // Erase marks the row first. An erase the store refused is marked back, for
 // the act that asked to decide again.
 func (s manifestedStore) Erase(ctx context.Context, d flob.Digest) error {
-	if err := s.r.m.Mark(ctx, s.ns, string(d), Present, Erasing); err != nil {
+	if err := s.r.m.Mark(ctx, s.ns, string(d), Present, Erasing, s.r.sign); err != nil {
 		return fmt.Errorf("the manifest: %w", err)
 	}
 
 	if err := s.Store.Erase(ctx, d); err != nil {
-		if merr := s.r.m.Mark(ctx, s.ns, string(d), Erasing, Present); merr != nil {
+		if merr := s.r.m.Mark(ctx, s.ns, string(d), Erasing, Present, s.r.sign); merr != nil {
 			log.From(ctx).WarnContext(ctx, "trail: the manifest", "err", merr)
 		}
 
@@ -316,7 +328,7 @@ func (s manifestedStore) Erase(ctx context.Context, d flob.Digest) error {
 
 	s.r.forget(blobKey{s.ns, d})
 
-	return s.r.m.Mark(ctx, s.ns, string(d), Erasing, Erased)
+	return s.r.m.Mark(ctx, s.ns, string(d), Erasing, Erased, s.r.sign)
 }
 
 // adopted records a blob put into the archive beneath the manifest -- a hard
@@ -327,11 +339,11 @@ func adopted(ctx context.Context, s flob.Store, d flob.Digest, l flob.Labels) er
 		return nil
 	}
 
-	key, err := r.r.m.Adding(ctx, r.ns, "", labelsOf(l))
+	key, err := r.r.m.Adding(ctx, r.ns, "", labelsOf(l), r.r.sign)
 	if err != nil {
 		return err
 	}
-	if err := r.r.m.Added(ctx, key, string(d), labelsOf(l)); err != nil {
+	if err := r.r.m.Added(ctx, key, string(d), labelsOf(l), r.r.sign); err != nil {
 		return err
 	}
 
@@ -420,8 +432,8 @@ func inventory(ctx context.Context, a flob.Stores) (map[blobKey]map[string]strin
 // trust loads what the manifest accounts for, for an act that is not a pass --
 // a pass has it from verifying; see [pass.verify]: every blob it has a row for,
 // present or being erased, and the adds in flight, by the intent their blobs
-// are labelled with. A manifest with no rows is filled first, as the first
-// pass would; see [Policy.fill].
+// are labelled with -- each by a row whose signature is no finding. A manifest
+// with no rows is filled first, as the first pass would; see [Policy.fill].
 func (x *pass) trust(ctx context.Context) error {
 	if x.m == nil {
 		return nil
@@ -446,9 +458,14 @@ func (x *pass) trust(ctx context.Context) error {
 		}
 	}
 
+	trusted := x.p.trusted()
 	known := map[blobKey]map[string]string{}
 	intents := map[string]map[string]string{}
 	for _, v := range rows {
+		if kind, _ := x.p.rowFinding(v, trusted); kind != "" {
+			continue
+		}
+
 		switch v.State {
 		case Adding:
 			if v.Intent != "" {
@@ -567,6 +584,10 @@ func (x *pass) chunks(ctx context.Context, nss []string, fresh bool) ([]Chunk, [
 // database alone can never make a pass destroy anything. What is younger may be
 // another pass between marking and erasing, and undoing that one would leave
 // its row present and its blob gone.
+//
+// A row whose signature is a finding is not settled: settling is the
+// deployment saying what the row says next, and [Policy.Verify] says what is
+// wrong with it instead.
 func (p Policy) settle(ctx context.Context, m Manifest) error {
 	rows, err := m.Rows(ctx)
 	if err != nil {
@@ -588,19 +609,24 @@ func (p Policy) settle(ctx context.Context, m Manifest) error {
 		}
 	}
 
+	sign, trusted := p.signing(), p.trusted()
 	for _, v := range rows {
+		if kind, _ := p.rowFinding(v, trusted); kind != "" {
+			continue
+		}
+
 		switch v.State {
 		case Adding:
 			if k, ok := intents[v.Namespace+"\x00"+v.Intent]; ok && v.Intent != "" {
-				err = errors.Join(err, m.Added(ctx, v.Key, string(k.d), inv[k]))
+				err = errors.Join(err, m.Added(ctx, v.Key, string(k.d), inv[k], sign))
 			} else if time.Since(v.Created) > Swept {
 				err = errors.Join(err, m.Drop(ctx, v.Key))
 			}
 		case Erasing:
 			if _, ok := inv[blobKey{v.Namespace, flob.Digest(v.Digest)}]; !ok {
-				err = errors.Join(err, m.Mark(ctx, v.Namespace, v.Digest, Erasing, Erased))
+				err = errors.Join(err, m.Mark(ctx, v.Namespace, v.Digest, Erasing, Erased, sign))
 			} else if time.Since(v.Updated) > Swept {
-				err = errors.Join(err, m.Mark(ctx, v.Namespace, v.Digest, Erasing, Present))
+				err = errors.Join(err, m.Mark(ctx, v.Namespace, v.Digest, Erasing, Present, sign))
 			}
 		}
 	}
@@ -630,12 +656,13 @@ func (p Policy) fill(ctx context.Context, m Manifest, inv map[blobKey]map[string
 		return nil
 	}
 
+	sign := p.signing()
 	for _, k := range slices.SortedFunc(maps.Keys(inv), blobOrder) {
-		key, err := m.Adding(ctx, k.ns, "", inv[k])
+		key, err := m.Adding(ctx, k.ns, "", inv[k], sign)
 		if err != nil {
 			return err
 		}
-		if err := m.Added(ctx, key, string(k.d), inv[k]); err != nil {
+		if err := m.Added(ctx, key, string(k.d), inv[k], sign); err != nil {
 			return err
 		}
 	}
@@ -652,14 +679,24 @@ type Finding struct {
 	//
 	//	missing      a blob the manifest says the archive holds, and it does not
 	//	unaccounted  a blob the archive holds that the manifest never added
-	//	relabelled   a blob whose labels are not the ones the manifest recorded
+	//	relabelled   a blob whose labels are not the ones the manifest recorded,
+	//	             or a checkpoint whose labels do not say which it is
 	//	altered      a blob whose bytes are not its digest any more
-	//	rewritten    a checkpoint the manifest's rows no longer add up to
-	//	unkept       a checkpoint the database numbered that the store does not keep
-	//	forged       a checkpoint whose signature is bad, or made by a key nobody trusts
-	//	unsigned     a checkpoint with no signature, after one that had one
+	//	forged       a row or a checkpoint whose signature is bad, or made by a
+	//	             key nobody trusts
+	//	unsigned     a row with no signature, when the policy names a key; a
+	//	             checkpoint with none, after one that had one
+	//	rewritten    a checkpoint the manifest's rows no longer add up to, or one
+	//	             of two the store keeps under one number
+	//	reordered    a checkpoint that names one after it as the one before
+	//	unkept       a checkpoint the database numbered, or the one after it
+	//	             names, that the store does not keep
 	//	emptied      a manifest with no rows beside an archive with checkpoints
 	//	behind       a checkpoint the store keeps that the database never numbered
+	//
+	// A finding about a row is under the blob it is the row of. One about a
+	// checkpoint has its number, and the digest it is kept under or named by
+	// where that says more.
 	Kind string `json:"kind"`
 
 	Namespace string      `json:"ns,omitempty"`
@@ -669,6 +706,18 @@ type Finding struct {
 	Checkpoint int `json:"checkpoint,omitempty"`
 
 	Note string `json:"note,omitempty"`
+}
+
+// findingOrder puts findings in an order that does not hang on the order a
+// store answered in.
+func findingOrder(a, b Finding) int {
+	return cmp.Or(
+		cmp.Compare(a.Namespace, b.Namespace),
+		cmp.Compare(a.Digest, b.Digest),
+		cmp.Compare(a.Checkpoint, b.Checkpoint),
+		cmp.Compare(a.Kind, b.Kind),
+		cmp.Compare(a.Note, b.Note),
+	)
 }
 
 func (f Finding) String() string {
@@ -722,12 +771,16 @@ func (v Verified) Ok() bool { return len(v.Findings) == 0 }
 // [Erasing]. Neither is a finding, and no clock is asked. `full` also reads
 // every blob whole and checks its bytes against its digest.
 //
-// # Which checkpoint signatures count
+// # Which signatures count
 //
-// The ones made by [Policy.Signer] or by a key in [Policy.Trust]; one signed by
-// any other key is forged. One with no signature is a finding only after one
-// that had a signature: a deployment that gave itself a key later has
-// checkpoints that begin unsigned.
+// The ones made by [Policy.Signer] or by a key in [Policy.Trust]; one by any
+// other key is forged. A row with no signature is a finding whenever the policy
+// names a key, and a checkpoint with none only after one that had a signature:
+// a deployment that gave itself a key later has checkpoints that begin
+// unsigned, and rows an operator accepts once (see [Policy.keyed]). A row whose
+// signature is a finding is reported for itself, and is not what the archive is
+// compared with -- what it says is nobody's word -- so its blob is no other
+// finding.
 func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error) {
 	out := Verified{trusted: map[blobKey]map[string]string{}}
 	if p.Archive == nil {
@@ -752,12 +805,33 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 	type held struct{ before, after map[blobKey]Archived }
 	live := held{map[blobKey]Archived{}, map[blobKey]Archived{}}
 	intents := map[string]Archived{}
+
+	// The rows whose signatures are findings, as the second reading has them,
+	// and the blobs and intents they are the rows of.
+	trusted := p.trusted()
+	unvouched := []Finding{}
+	nobodys := map[blobKey]bool{}
+	nobodysIntent := map[string]bool{}
 	for i, rows := range [][]Archived{before, after} {
 		m := live.before
 		if i == 1 {
 			m = live.after
 		}
 		for _, v := range rows {
+			if kind, note := p.rowFinding(v, trusted); kind != "" {
+				if i == 1 {
+					unvouched = append(unvouched, rowFindingOf(v, kind, note))
+					switch v.State {
+					case Adding:
+						nobodysIntent[v.Namespace+"\x00"+v.Intent] = true
+					default:
+						nobodys[blobKey{v.Namespace, flob.Digest(v.Digest)}] = true
+					}
+				}
+
+				continue
+			}
+
 			switch v.State {
 			case Adding:
 				intents[v.Namespace+"\x00"+v.Intent] = v
@@ -766,6 +840,8 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 			}
 		}
 	}
+	slices.SortFunc(unvouched, findingOrder)
+	out.Findings = append(out.Findings, unvouched...)
 
 	for _, k := range slices.SortedFunc(maps.Keys(inv), blobOrder) {
 		l := inv[k]
@@ -783,6 +859,9 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		case l[labelIntent] != "" && adding:
 			// Being written, or written by an act a crash stopped.
 			out.trusted[k] = intent.Labels
+		case nobodys[k] || (l[labelIntent] != "" && nobodysIntent[k.ns+"\x00"+l[labelIntent]]):
+			// Its row is a finding of its own, and the blob nothing an act
+			// trusts.
 		default:
 			out.Findings = append(out.Findings, Finding{Kind: "unaccounted", Namespace: k.ns, Digest: k.d})
 		}
@@ -843,8 +922,12 @@ func (p Policy) relabelled(ctx context.Context, s Store, a flob.Stores, k blobKe
 	if err != nil {
 		return true
 	}
+	trusted := p.trusted()
 	for _, r := range rows {
-		if r.Namespace == k.ns && r.Digest == string(k.d) && r.State == Present {
+		if r.Namespace != k.ns || r.Digest != string(k.d) || r.State != Present {
+			continue
+		}
+		if kind, _ := p.rowFinding(r, trusted); kind == "" {
 			v = r
 		}
 	}
@@ -897,8 +980,23 @@ func intact(ctx context.Context, s flob.Store, d flob.Digest) (bool, error) {
 // every blob the manifest had, which a store that refuses deletion keeps
 // beyond the reach of anybody who can write the database and the archive.
 type Checkpoint struct {
-	K      int         `json:"k"`
-	At     time.Time   `json:"at"`
+	K  int       `json:"k"`
+	At time.Time `json:"at"`
+
+	// Prev is the one before it, by its digest in the checkpoint store, which
+	// is what makes the checkpoints a chain: one taken away, or written again
+	// as something else, is one the checkpoint after it names and the store
+	// does not keep -- whatever its labels say, and whether or not the
+	// database has been made to agree. Empty on the first, and on one written
+	// before checkpoints were chained.
+	//
+	// It is the store's newest when this one is written, which is the one
+	// numbered just before but for two cases: that one was numbered and never
+	// kept, by a pass a crash stopped, or a pass at once with this one has not
+	// written it yet. Then the chain goes past it, and nothing is a finding
+	// for it, since nothing names a checkpoint the store does not keep.
+	Prev flob.Digest `json:"prev,omitempty"`
+
 	Count  int         `json:"count"`
 	Digest flob.Digest `json:"digest"`
 	Blobs  []Kept      `json:"blobs"`
@@ -964,13 +1062,15 @@ func (p Policy) checkpoints() flob.Store {
 var errBehind = errors.New("the checkpoint store has checkpoints the database never numbered: a database restored from before them; see `trail verify`")
 
 // checkpoint ends a pass: the next number, and every blob the manifest has,
-// written to the checkpoint store and signed when the policy has a key.
+// written to the checkpoint store naming the one before it, and signed when the
+// policy has a key.
 //
 // Not while the store keeps a checkpoint the database has not numbered yet.
 // That is a database restored from before it, and a checkpoint written then
 // would take a number one already has.
 func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) {
-	ks, err := checkpointsIn(ctx, p.checkpoints())
+	store := p.checkpoints()
+	ls, err := listCheckpoints(ctx, store)
 	if err != nil {
 		return Checkpoint{}, err
 	}
@@ -978,8 +1078,18 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) 
 	if err != nil {
 		return Checkpoint{}, err
 	}
-	if len(ks) > 0 && slices.Max(slices.Collect(maps.Keys(ks))) > latest {
-		return Checkpoint{}, errBehind
+
+	// By what a checkpoint says, which is signed, and not its labels, which
+	// are not: one relabelled ahead of the database is a finding of its own,
+	// and no reason to stop keeping checkpoints. Only what the labels put
+	// ahead is read.
+	for _, v := range ls {
+		if v.k <= latest {
+			continue
+		}
+		if was, err := readCheckpoint(ctx, store, v.d); err == nil && was.c.K > latest {
+			return Checkpoint{}, errBehind
+		}
 	}
 
 	k, rows, err := m.Checkpoint(ctx)
@@ -988,6 +1098,10 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) 
 	}
 
 	c := checkpointOf(k, time.Now(), rows)
+	if c.Prev, err = prevOf(ctx, store, k); err != nil {
+		return c, err
+	}
+
 	b, err := json.Marshal(c)
 	if err != nil {
 		return c, err
@@ -1024,6 +1138,29 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest) (Checkpoint, error) 
 	return c, nil
 }
 
+// prevOf is the checkpoint the one numbered k names as the one before it: the
+// store's newest below it, by what each says it is, which the labels only put
+// in the order to read them in. Listed after k is taken, since one numbered
+// before it may have been kept since a pass first looked.
+func prevOf(ctx context.Context, s flob.Store, k int) (flob.Digest, error) {
+	ls, err := listCheckpoints(ctx, s)
+	if err != nil {
+		return "", err
+	}
+
+	slices.SortFunc(ls, func(a, b listed) int { return cmp.Compare(b.k, a.k) })
+	for _, v := range ls {
+		if v.k == 0 || v.k >= k {
+			continue
+		}
+		if was, err := readCheckpoint(ctx, s, v.d); err == nil && was.c.K == v.k {
+			return v.d, nil
+		}
+	}
+
+	return "", nil
+}
+
 // stored is a checkpoint as it was read back.
 type stored struct {
 	c Checkpoint
@@ -1031,14 +1168,22 @@ type stored struct {
 	d flob.Digest
 }
 
-// checkpointsIn is every checkpoint a store keeps, by number.
-func checkpointsIn(ctx context.Context, s flob.Store) (map[int]flob.Digest, error) {
+// listed is a checkpoint as a store lists it: its digest, and the number its
+// labels give it, which is zero for none.
+type listed struct {
+	k int
+	d flob.Digest
+}
+
+// listCheckpoints is every blob a store keeps that its labels say is a
+// checkpoint, two of one number among them if the store keeps two.
+func listCheckpoints(ctx context.Context, s flob.Store) ([]listed, error) {
 	w, ok := flob.AsWalker(s)
 	if !ok {
 		return nil, errUnwalkable
 	}
 
-	out := map[int]flob.Digest{}
+	out := []listed{}
 	for v, err := range w.Walk(ctx) {
 		if err != nil {
 			return nil, err
@@ -1055,12 +1200,159 @@ func checkpointsIn(ctx context.Context, s flob.Store) (map[int]flob.Digest, erro
 		if l.Get(labelFormat) != formatCheckpoint {
 			continue
 		}
-		if k, err := strconv.Atoi(l.Get(labelK)); err == nil {
-			out[k] = v.Digest()
+
+		k, err := strconv.Atoi(l.Get(labelK))
+		if err != nil || k < 0 {
+			k = 0
+		}
+		out = append(out, listed{k, v.Digest()})
+	}
+
+	return out, nil
+}
+
+// checkpointsIn is every checkpoint a store keeps, by the number its labels
+// give it: what a pass goes by to write the next one, which is only ever
+// compared, and never believed -- see [readChain].
+func checkpointsIn(ctx context.Context, s flob.Store) (map[int]flob.Digest, error) {
+	ls, err := listCheckpoints(ctx, s)
+	if err != nil {
+		return nil, err
+	}
+
+	out := map[int]flob.Digest{}
+	for _, v := range ls {
+		if v.k > 0 {
+			out[v.k] = v.d
 		}
 	}
 
 	return out, nil
+}
+
+// chain is every checkpoint a store keeps, read, by digest; the number the
+// store's labels give each one it lists; and what reading them found.
+type chain struct {
+	kept     map[flob.Digest]stored
+	labelled map[flob.Digest]int
+	findings []Finding
+}
+
+// readChain reads every checkpoint the store lists, and follows each one's
+// [Checkpoint.Prev] to the ones the listing does not show: a checkpoint whose
+// labels were changed or taken off is not listed as itself, and is still in
+// the store under its digest. A checkpoint's number is what it says, which is
+// signed, and not what its labels say, which is not.
+//
+// What it finds of the chain: one named as the one before and not kept, which
+// is one taken away -- or written again as something else, which the store
+// then keeps under another digest; two of one number, which is one written
+// again beside the first on a store that keeps both; one that names a later one
+// as the one before it; and one whose labels do not say which it is.
+func readChain(ctx context.Context, s flob.Store) (chain, error) {
+	ls, err := listCheckpoints(ctx, s)
+	if err != nil {
+		return chain{}, err
+	}
+
+	ch := chain{kept: map[flob.Digest]stored{}, labelled: map[flob.Digest]int{}}
+	todo := []flob.Digest{}
+	for _, v := range ls {
+		ch.labelled[v.d] = v.k
+		todo = append(todo, v.d)
+	}
+
+	// Which checkpoint names one the listing did not show, for when the store
+	// does not keep it either.
+	named := map[flob.Digest]int{}
+	seen := map[flob.Digest]bool{}
+	for len(todo) > 0 {
+		d := todo[0]
+		todo = todo[1:]
+		if seen[d] {
+			continue
+		}
+		seen[d] = true
+
+		_, listedAs := ch.labelled[d]
+		v, err := readCheckpoint(ctx, s, d)
+		switch {
+		case errors.Is(err, flob.ErrNotExist) && !listedAs:
+			ch.findings = append(ch.findings, Finding{Kind: "unkept", Digest: d,
+				Note: fmt.Sprintf("checkpoint %d names it as the one before it, and the store does not keep it", named[d])})
+			continue
+
+		case errors.Is(err, flob.ErrNotExist):
+			// Erased between the listing and the read. If anything names it,
+			// it is found when that is.
+			continue
+
+		case err != nil:
+			ch.findings = append(ch.findings, Finding{Kind: "forged", Checkpoint: ch.labelled[d], Digest: d, Note: "it does not read: " + err.Error()})
+			continue
+		}
+
+		ch.kept[d] = v
+		if p := v.c.Prev; p != "" && !seen[p] {
+			if _, ok := named[p]; !ok {
+				named[p] = v.c.K
+			}
+			todo = append(todo, p)
+		}
+	}
+
+	byK := map[int]int{}
+	for _, v := range ch.kept {
+		byK[v.c.K]++
+	}
+	for _, k := range slices.Sorted(maps.Keys(byK)) {
+		if byK[k] > 1 {
+			ch.findings = append(ch.findings, Finding{Kind: "rewritten", Checkpoint: k,
+				Note: fmt.Sprintf("the store keeps %d checkpoints numbered %d", byK[k], k)})
+		}
+	}
+
+	for _, v := range ch.ordered() {
+		switch l, listedAs := ch.labelled[v.d]; {
+		case !listedAs:
+			ch.findings = append(ch.findings, Finding{Kind: "relabelled", Checkpoint: v.c.K, Digest: v.d,
+				Note: "its labels do not say it is a checkpoint, and the one after it names it"})
+		case l != v.c.K:
+			ch.findings = append(ch.findings, Finding{Kind: "relabelled", Checkpoint: v.c.K, Digest: v.d,
+				Note: fmt.Sprintf("its labels say it is checkpoint %d", l)})
+		}
+
+		if prev, ok := ch.kept[v.c.Prev]; ok && prev.c.K >= v.c.K {
+			ch.findings = append(ch.findings, Finding{Kind: "reordered", Checkpoint: v.c.K, Digest: v.d,
+				Note: fmt.Sprintf("it names checkpoint %d as the one before it", prev.c.K)})
+		}
+	}
+
+	return ch, nil
+}
+
+// ordered is the checkpoints kept, by the number each says it is.
+func (ch chain) ordered() []stored {
+	out := slices.Collect(maps.Values(ch.kept))
+	slices.SortFunc(out, func(a, b stored) int { return cmp.Or(cmp.Compare(a.c.K, b.c.K), cmp.Compare(a.d, b.d)) })
+
+	return out
+}
+
+// numbered is the checkpoints kept that say they are number k.
+func (ch chain) numbered(k int) []stored {
+	return slices.DeleteFunc(ch.ordered(), func(v stored) bool { return v.c.K != k })
+}
+
+// newest is the highest number a checkpoint kept says it is, and zero for
+// none.
+func (ch chain) newest() int {
+	n := 0
+	for _, v := range ch.kept {
+		n = max(n, v.c.K)
+	}
+
+	return n
 }
 
 func readCheckpoint(ctx context.Context, s flob.Store, d flob.Digest) (stored, error) {
@@ -1148,8 +1440,7 @@ func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out 
 func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out *Verified) ([]Finding, int, error) {
 	fs := []Finding{}
 
-	store := p.checkpoints()
-	ks, err := checkpointsIn(ctx, store)
+	ch, err := readChain(ctx, p.checkpoints())
 	if err != nil {
 		return nil, 0, err
 	}
@@ -1158,34 +1449,21 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out
 		return nil, 0, fmt.Errorf("the manifest: %w", err)
 	}
 
-	if empty && len(ks) > 0 {
-		fs = append(fs, Finding{Kind: "emptied", Note: fmt.Sprintf("the archive has %d checkpoints and the manifest no rows: a database restored from before them?", len(ks))})
+	if n := len(ch.labelled); empty && n > 0 {
+		fs = append(fs, Finding{Kind: "emptied", Note: fmt.Sprintf("the archive has %d checkpoints and the manifest no rows: a database restored from before them?", n)})
 	}
-	if len(ks) > 0 {
-		if k := slices.Max(slices.Collect(maps.Keys(ks))); k > latest {
-			fs = append(fs, Finding{Kind: "behind", Checkpoint: k, Note: fmt.Sprintf("the database has numbered %d checkpoints, and the store keeps one numbered %d: a database restored from before it", latest, k)})
-		}
+	if k := ch.newest(); k > latest {
+		fs = append(fs, Finding{Kind: "behind", Checkpoint: k, Note: fmt.Sprintf("the database has numbered %d checkpoints, and the store keeps one numbered %d: a database restored from before it", latest, k)})
 	}
-	if latest > 0 && time.Since(at) > checkpointing {
-		if _, ok := ks[latest]; !ok {
-			fs = append(fs, Finding{Kind: "unkept", Checkpoint: latest, Note: "the database numbered it, and the checkpoint store does not keep it"})
-		}
+	if latest > 0 && time.Since(at) > checkpointing && len(ch.numbered(latest)) == 0 {
+		fs = append(fs, Finding{Kind: "unkept", Checkpoint: latest, Note: "the database numbered it, and the checkpoint store does not keep it"})
 	}
+	fs = append(fs, ch.findings...)
 
-	trusted := slices.Clone(p.Trust)
-	if p.Signer != nil {
-		trusted = append(trusted, p.Signer.Public())
-	}
-
+	trusted := p.trusted()
 	signedOnce := false
-	newest := 0
-	for _, k := range slices.Sorted(maps.Keys(ks)) {
-		v, err := readCheckpoint(ctx, store, ks[k])
-		if err != nil {
-			fs = append(fs, Finding{Kind: "forged", Checkpoint: k, Note: "it does not read: " + err.Error()})
-			continue
-		}
-
+	for _, v := range ch.ordered() {
+		k := v.c.K
 		switch has, good := signature(v.s); {
 		case has && !good:
 			fs = append(fs, Finding{Kind: "forged", Checkpoint: k, Note: "its signature is not good"})
@@ -1196,20 +1474,41 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out
 		case signedOnce:
 			fs = append(fs, Finding{Kind: "unsigned", Checkpoint: k, Note: "unsigned, after one that was signed"})
 		}
+	}
 
-		// The latest two are what the manifest's rows still add up to.
-		if k < latest-1 || k > latest {
-			continue
-		}
+	// The latest two are what the manifest's rows still add up to. And the
+	// rows erased since the one before the latest are read here and nowhere
+	// else, so this is where an erase nobody signed is found: a chunk taken
+	// away beneath a row marked erased to match.
+	newest := 0
+	erased := []Finding{}
+	seen := map[string]bool{}
+	for k := max(1, latest-1); latest > 0 && k <= latest; k++ {
 		rows, err := s.At(ctx, k)
 		if err != nil {
 			return nil, 0, fmt.Errorf("the manifest: %w", err)
 		}
-		if got := checkpointOf(k, v.c.At, rows); got.Digest != v.c.Digest {
-			fs = append(fs, Finding{Kind: "rewritten", Checkpoint: k, Note: checkpointDiff(v.c, got)})
+
+		for _, r := range rows {
+			if r.State != Erased || seen[fmt.Sprint(r.Key)] {
+				continue
+			}
+			seen[fmt.Sprint(r.Key)] = true
+
+			if kind, note := p.rowFinding(r, trusted); kind != "" {
+				erased = append(erased, rowFindingOf(r, kind, note))
+			}
 		}
-		newest = max(newest, k)
+
+		for _, v := range ch.numbered(k) {
+			if got := checkpointOf(k, v.c.At, rows); got.Digest != v.c.Digest {
+				fs = append(fs, Finding{Kind: "rewritten", Checkpoint: k, Note: checkpointDiff(v.c, got)})
+			}
+			newest = max(newest, k)
+		}
 	}
+	slices.SortFunc(erased, findingOrder)
+	fs = append(fs, erased...)
 	out.Checkpoint = newest
 
 	return fs, latest, nil
@@ -1253,15 +1552,25 @@ func checkpointDiff(was, is Checkpoint) string {
 
 // Accept makes the manifest say what the archive holds, for an operator who
 // has looked at what [Policy.Verify] found and decided the archive is right:
-// a pass a crash stopped, a blob restored from a backup.
+// a pass a crash stopped, a blob restored from a backup, rows written before
+// rows were signed.
 //
-// It adds the blobs the archive holds and the manifest does not, takes out the
-// ones it says the archive holds and it does not, and records the labels the
-// archive's blobs carry. A checkpoint is what it is, and Accept does nothing
-// about one; the next checkpoint is taken over the manifest as it is now.
+// It signs, as they stand, the rows whose signatures are findings -- the
+// deployment saying after all what they say -- and then adds the blobs the
+// archive holds and the manifest does not, takes out the ones it says the
+// archive holds and it does not, and records the labels the archive's blobs
+// carry. Each of those is a row written and signed as a pass writes one, so a
+// policy that names a key has to have [Policy.Signer] to accept anything:
+// accepting is signing, and an acceptance without the key is refused.
+//
+// A checkpoint is what it is, and Accept does nothing about one; the next
+// checkpoint is taken over the manifest as it is now.
 func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, error) {
 	if strings.TrimSpace(why) == "" {
 		return Verified{}, errors.New("an acceptance says why")
+	}
+	if p.keyed() && p.Signer == nil {
+		return Verified{}, errors.New("accepting is signing what is accepted, and the policy names a key and has none to sign with")
 	}
 
 	v, err := p.Verify(ctx, s, false)
@@ -1269,28 +1578,92 @@ func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, erro
 		return v, err
 	}
 
+	// The rows first: what the archive holds is compared with rows whose word
+	// counts, and these did not until now.
+	act := v
+	if slices.ContainsFunc(v.Findings, isRowFinding) {
+		if err := p.vouch(ctx, s); err != nil {
+			return v, err
+		}
+		if act, err = p.Verify(ctx, s, false); err != nil {
+			return v, err
+		}
+		for _, f := range act.Findings {
+			if !slices.Contains(v.Findings, f) {
+				v.Findings = append(v.Findings, f)
+			}
+		}
+	}
+
 	inv, err := inventory(ctx, unwrapStores(p.Archive))
 	if err != nil {
 		return v, err
 	}
 
-	for _, f := range v.Findings {
+	sign := p.signing()
+	for _, f := range act.Findings {
 		k := blobKey{f.Namespace, f.Digest}
 		switch f.Kind {
 		case "unaccounted":
-			key, aerr := s.Adding(ctx, k.ns, "", inv[k])
+			key, aerr := s.Adding(ctx, k.ns, "", inv[k], sign)
 			if aerr == nil {
-				aerr = s.Added(ctx, key, string(k.d), inv[k])
+				aerr = s.Added(ctx, key, string(k.d), inv[k], sign)
 			}
 			err = errors.Join(err, aerr)
 		case "relabelled":
-			err = errors.Join(err, s.Label(ctx, k.ns, string(k.d), inv[k]))
+			err = errors.Join(err, s.Label(ctx, k.ns, string(k.d), inv[k], sign))
 		case "missing":
-			err = errors.Join(err, s.Mark(ctx, k.ns, string(k.d), Present, Erased))
+			err = errors.Join(err, s.Mark(ctx, k.ns, string(k.d), Present, Erased, sign))
 		}
 	}
 
 	log.From(ctx).InfoContext(ctx, "trail: the manifest, made to say what the archive holds", "why", why, "findings", len(v.Findings))
 
 	return v, err
+}
+
+// isRowFinding answers whether a finding is about a row's signature.
+func isRowFinding(f Finding) bool {
+	return f.Namespace != "" && (f.Kind == "unsigned" || f.Kind == "forged")
+}
+
+// vouch signs, as they stand, the rows whose signatures are findings: the
+// manifest's rows, and the erased ones the latest two checkpoints still read
+// back.
+func (p Policy) vouch(ctx context.Context, s Store) error {
+	rows, err := s.Rows(ctx)
+	if err != nil {
+		return fmt.Errorf("the manifest: %w", err)
+	}
+	latest, _, err := s.Latest(ctx)
+	if err != nil {
+		return fmt.Errorf("the manifest: %w", err)
+	}
+	for k := max(1, latest-1); latest > 0 && k <= latest; k++ {
+		vs, err := s.At(ctx, k)
+		if err != nil {
+			return fmt.Errorf("the manifest: %w", err)
+		}
+
+		rows = append(rows, slices.DeleteFunc(vs, func(v Archived) bool { return v.State != Erased })...)
+	}
+
+	type of struct{ ns, d, state string }
+	todo := map[of]bool{}
+	trusted := p.trusted()
+	for _, v := range rows {
+		if kind, _ := p.rowFinding(v, trusted); kind != "" {
+			todo[of{v.Namespace, v.Digest, v.State}] = true
+		}
+	}
+
+	sign := p.vouching()
+	order := func(a, b of) int {
+		return cmp.Or(cmp.Compare(a.ns, b.ns), cmp.Compare(a.d, b.d), cmp.Compare(a.state, b.state))
+	}
+	for _, v := range slices.SortedFunc(maps.Keys(todo), order) {
+		err = errors.Join(err, s.Mark(ctx, v.ns, v.d, v.state, v.state, sign))
+	}
+
+	return err
 }
