@@ -154,6 +154,19 @@ message Robot {
           }
         ]
         unique: true
+      },
+      {
+        name: "by_alias"
+        refs: [
+          {
+            name: "alias"
+            number: 4
+          },
+          {
+            name: "id"
+            number: 1
+          }
+        ]
       }
     ]
   };
@@ -171,6 +184,20 @@ message Robot {
       by: [{name: "ref"}, {name: "tenant"}, {name: "thing"}]
       size: 50
       max: 100
+      // Orders a request may name beside the one above: `alias` reads robots
+      // by name, and `alias_desc` by name the other way with the key still
+      // forwards -- an order of mixed directions, which `reverse` turns round
+      // as a whole. `by_alias` is the index both walk, one from each end.
+      orders: [
+        {
+          name: "alias"
+          order: [{field: {name: "alias"}}, {field: {name: "id"}}]
+        },
+        {
+          name: "alias_desc"
+          order: [{field: {name: "alias"}, desc: true}, {field: {name: "id"}}]
+        }
+      ]
     }
     watch: {}
   };

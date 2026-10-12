@@ -131,7 +131,7 @@ Six verbs, and only where the schema declared them:
 | | |
 | --- | --- |
 | `get <REF>` | one row |
-| `ls` | a page, with `--size` and `--next` |
+| `ls` | a page, with `--size` and `--next`; `--reverse` reads the order the other way round, and `--order NAME` in another order the schema declared |
 | `watch [REF]` | the same rows, kept current — see [below](#watch-and-what-an-ending-means) |
 | `add [NAME]` | a new row |
 | `patch <REF>` | change one |

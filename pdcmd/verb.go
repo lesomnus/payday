@@ -273,9 +273,12 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 //
 // `--size` and `--next` rather than a page number, because that is what the
 // schema offers: a list carries on from the last row of the answer before, so
-// that a row added ahead of a page does not shift it. Anything else the request
-// can hold -- filters, ordering -- is the trailing protojson, for the reason
-// given on [argRaw]: a flag per filter would be a second copy of the schema.
+// that a row added ahead of a page does not shift it. `--reverse` reads the
+// list's order the other way round and `--order` names another order the schema
+// declared, by the name it was declared with, since every list has the one and
+// the other is a name rather than a copy of anything. Anything else the request
+// can hold -- filters -- is the trailing protojson, for the reason given on
+// [argRaw]: a flag per filter would be a second copy of the schema.
 func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
 	return &xli.Command{
 		Name:  "ls",
@@ -286,6 +289,8 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 			flgInput(),
 			&flg.Int{Name: "size", Alias: 'n', Brief: "how many to answer with"},
 			&flg.String{Name: "next", Brief: `carry on from the "next" of an earlier answer`},
+			&flg.Switch{Name: "reverse", Brief: "read the order the other way round"},
+			&flg.String{Name: "order", Brief: "read in another order the schema declared, by its name"},
 		},
 		Args: arg.Args{argRaw()},
 
@@ -322,6 +327,22 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 
 				m.Set(fd, protoreflect.ValueOfString(v))
 			}
+			if v, ok := flg.Find[bool](cmd, "reverse"); ok && v {
+				fd := fs.ByName("reverse")
+				if fd == nil || fd.Kind() != protoreflect.BoolKind {
+					return fmt.Errorf("%s: cannot be read the other way round", m.Descriptor().FullName())
+				}
+
+				m.Set(fd, protoreflect.ValueOfBool(true))
+			}
+			if v, ok := flg.Find[string](cmd, "order"); ok && v != "" {
+				n, err := orderNamed(m.Descriptor(), v)
+				if err != nil {
+					return err
+				}
+
+				m.Set(m.Descriptor().Fields().ByName("order"), protoreflect.ValueOfEnum(n))
+			}
 
 			if err := r.run(ctx, cmd, md, in); err != nil {
 				return err
@@ -330,6 +351,35 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 			return next(ctx)
 		})),
 	}
+}
+
+// orderNamed is the value of a list request's `order` that an order the schema
+// declared as `name` is: the one whose name ends in it, as the generated enum
+// writes `<ENTITY>_LIST_ORDER_<NAME>`.
+func orderNamed(md protoreflect.MessageDescriptor, name string) (protoreflect.EnumNumber, error) {
+	fd := md.Fields().ByName("order")
+	if fd == nil || fd.Kind() != protoreflect.EnumKind {
+		return 0, fmt.Errorf("%s: declares no orders to name", md.FullName())
+	}
+
+	want := "_LIST_ORDER_" + strings.ToUpper(name)
+	names := []string{}
+	vs := fd.Enum().Values()
+	for i := range vs.Len() {
+		ev := vs.Get(i)
+		if ev.Number() == 0 {
+			continue
+		}
+		n := string(ev.Name())
+		if strings.HasSuffix(n, want) {
+			return ev.Number(), nil
+		}
+		if j := strings.Index(n, "_LIST_ORDER_"); j >= 0 {
+			names = append(names, strings.ToLower(n[j+len("_LIST_ORDER_"):]))
+		}
+	}
+
+	return 0, fmt.Errorf("--order: %q is not an order of %s; it has %s", name, md.FullName(), strings.Join(names, ", "))
 }
 
 // cmdWatch is `ls`, kept current, and the only command here that does not end

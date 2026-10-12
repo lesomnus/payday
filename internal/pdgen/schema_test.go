@@ -693,6 +693,30 @@ message Robot {
 		what: "a ref by a number that names nothing",
 		list: `order: [{field: {number: 9}}, {field: {name: "id"}}], max: 100`,
 		says: "has nothing at 9",
+	}, {
+		what: "an order a request names that does not end in the key",
+		list: `order: [{field: {name: "id"}}], max: 100, orders: [{name: "alias", order: [{field: {name: "alias"}}]}]`,
+		says: "has to end in the key",
+	}, {
+		what: "an order a request names on a column that is not there",
+		list: `order: [{field: {name: "id"}}], max: 100, orders: [{name: "nope", order: [{field: {name: "nope"}}, {field: {name: "id"}}]}]`,
+		says: `no field "nope"`,
+	}, {
+		what: "an order named as a request cannot say it",
+		list: `order: [{field: {name: "id"}}], max: 100, orders: [{name: "ByAlias", order: [{field: {name: "alias"}}, {field: {name: "id"}}]}]`,
+		says: "not a name a request can say",
+	}, {
+		what: "an order named as the one a request gets by naming none",
+		list: `order: [{field: {name: "id"}}], max: 100, orders: [{name: "unspecified", order: [{field: {name: "alias"}}, {field: {name: "id"}}]}]`,
+		says: "names no order",
+	}, {
+		what: "two orders of one name",
+		list: `order: [{field: {name: "id"}}], max: 100, orders: [{name: "alias", order: [{field: {name: "alias"}}, {field: {name: "id"}}]}, {name: "alias", order: [{field: {name: "alias"}, desc: true}, {field: {name: "id"}}]}]`,
+		says: `two orders are called "alias"`,
+	}, {
+		what: "an order a request names that says no columns",
+		list: `order: [{field: {name: "date_created"}}, {field: {name: "id"}}], max: 100, orders: [{name: "nothing"}]`,
+		says: "says no columns",
 	}} {
 		t.Run(tt.what+" is refused", func(t *testing.T) {
 			_, err := read(t, robot(tt.list))
@@ -705,6 +729,22 @@ message Robot {
 			t.Log(err)
 		})
 	}
+
+	t.Run("the orders a request may name read, in the order they were declared", func(t *testing.T) {
+		s, err := read(t, robot(`order: [{field: {name: "date_created"}}, {field: {name: "id"}}], max: 100, `+
+			`orders: [{name: "alias", order: [{field: {name: "alias"}}, {field: {name: "id"}}]}, `+
+			`{name: "alias_desc", order: [{field: {name: "alias"}, desc: true}, {field: {name: "id"}}]}]`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		os := list(t, s).Orders
+		if len(os) != 2 || os[0].Name != "alias" || os[1].Name != "alias_desc" {
+			t.Fatalf("orders: %+v", os)
+		}
+		if o := os[1].Order; len(o) != 2 || o[0].Field != "alias" || !o[0].Desc || o[1].Field != "id" || o[1].Desc {
+			t.Fatalf("alias_desc: %+v", o)
+		}
+	})
 
 	t.Run("an order no index covers is a warning and not a refusal", func(t *testing.T) {
 		// A warning because a small table is a real thing: a hundred rows of

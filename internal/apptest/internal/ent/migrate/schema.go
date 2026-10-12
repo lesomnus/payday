@@ -342,6 +342,11 @@ var (
 					Where: "date_erased IS NULL",
 				},
 			},
+			{
+				Name:    "robot_alias_id",
+				Unique:  false,
+				Columns: []*schema.Column{RobotColumns[1], RobotColumns[0]},
+			},
 		},
 	}
 	// SealColumns holds the columns for the "seal" table.

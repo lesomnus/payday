@@ -3,6 +3,28 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A list reads the other way round, and in orders the schema names
+
+**Applies if** an entity declares `list:`. Regenerate, and nothing else has to
+change.
+
+- **Every List request has `reverse`** (field 4), which reads the order every
+  column the other way round. The index the order walks walks from the other
+  end, so nothing has to be declared for it. The generated commands' `ls`
+  (`pdcmd`) takes it as `--reverse`.
+- **`list.orders`** declares more orders a request may name, each by a name
+  and each ending in the key. A list that declares any has an `order` enum in
+  its request (field 5); `--order NAME` names one at a terminal. Declare an
+  index for each, in its directions; nothing checks that one is there.
+- **A cursor is of the order and the way it was read**, and one carried on in
+  another is refused. The cursor of the list's own order read forwards keeps
+  the shape it had, so clients paging across the upgrade carry on.
+- `list.orders` is a field of `payday.proto`. An app that takes payday's buf
+  module from the registry (`buf.build/payday/payday`) can declare named
+  orders once the registry has a version with it, and `buf dep update`
+  brings it in. `reverse` needs nothing from the registry: it is a field of
+  the generated contract.
+
 ## Every act ends in a checkpoint, and `trail.Archive` takes the policy
 
 **Applies if** you call `trail.Archive`, or any act on the trail's archive —

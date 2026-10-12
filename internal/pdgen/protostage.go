@@ -23,6 +23,71 @@ import (
 // is a query surface nobody chose: every column becomes something a caller can
 // make the database sort and scan by, and which of those are indexed is not
 // something the declaration said.
+// orderField is the request's `order`, for a list that declares orders a
+// request may name; nothing for one that declares none.
+func orderField(v *Entity) string {
+	if len(v.List.Orders) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(`
+  // Which of the orders the schema declares to read in. Unspecified is the one
+  // it reads in otherwise.
+  %sListOrder order = 5 [features.field_presence = IMPLICIT];
+`, v.GoName())
+}
+
+// orderEnum is what the request's `order` is of.
+//
+// Its first value is the order a request gets by naming none, which is
+// `list.order`, and the rest are the declared ones in the order they were
+// declared, so a value keeps its number for as long as its order is there.
+func orderEnum(v *Entity) string {
+	if len(v.List.Orders) == 0 {
+		return ""
+	}
+
+	e := v.GoName()
+	prefix := orderPrefix(v)
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf(`
+// %sListOrder names an order a list of %ss may be read in.
+enum %sListOrder {
+  // The list's own order, which a request that names none gets.
+  %sUNSPECIFIED = 0;
+`, e, e, e, prefix))
+	for i, o := range v.List.Orders {
+		b.WriteString(fmt.Sprintf("  %s%s = %d;\n", prefix, strings.ToUpper(o.Name), i+1))
+	}
+	b.WriteString("}\n")
+
+	return b.String()
+}
+
+// orderPrefix is what every value of a list's order enum begins with, since an
+// enum's values are names in the package and not in the enum.
+func orderPrefix(v *Entity) string { return screaming(v.GoName()) + "_LIST_ORDER_" }
+
+// screaming is `StockMovement` as `STOCK_MOVEMENT`.
+func screaming(v string) string {
+	var b strings.Builder
+	rs := []rune(v)
+	for i, r := range rs {
+		up := r >= 'A' && r <= 'Z'
+		if up && i > 0 {
+			prevLow := rs[i-1] >= 'a' && rs[i-1] <= 'z' || rs[i-1] >= '0' && rs[i-1] <= '9'
+			nextLow := i+1 < len(rs) && rs[i+1] >= 'a' && rs[i+1] <= 'z'
+			if prevLow || (nextLow && rs[i-1] >= 'A' && rs[i-1] <= 'Z') {
+				b.WriteByte('_')
+			}
+		}
+		b.WriteString(strings.ToUpper(string(r)))
+	}
+
+	return b.String()
+}
+
 func Proto(vs []*Entity, pkg string) string {
 	var b strings.Builder
 	n := 0
@@ -72,8 +137,14 @@ message %sListRequest {
   // ahead of the page does not shift it and a caller reading through never sees
   // one twice or misses one.
   string after = 3 [features.field_presence = IMPLICIT];
-}
 
+  // Read the order the other way round, every column of it at once -- newest
+  // first where it is oldest first -- which the index the order walks walks
+  // from the other end. A cursor is of the way it was read, so the next page
+  // carries on that way, and one of the other way is refused.
+  bool reverse = 4 [features.field_presence = IMPLICIT];
+%s}
+%s
 message %sListResponse {
   repeated %s items = 1;
 
@@ -86,7 +157,7 @@ message %sListResponse {
   // looked.
   string next = 2 [features.field_presence = IMPLICIT];
 }
-`, e, e, e, e))
+`, e, e, orderField(v), orderEnum(v), e, e))
 
 		if v.Watch {
 			b.WriteString(fmt.Sprintf(`

@@ -942,3 +942,51 @@ func TestACommandOfTheAppsOwnGetsTheSameConnection(t *testing.T) {
 type connectorFunc func(ctx context.Context) (pdcmd.Conn, func(), error)
 
 func (f connectorFunc) Connect(ctx context.Context) (pdcmd.Conn, func(), error) { return f(ctx) }
+
+// TestLsReadsTheOtherWayAndInANamedOrder: `--reverse` reads the list's order
+// the other way round and `--order` names one the schema declared, and the two
+// go together. A name the schema did not declare is refused, saying which ones
+// it did.
+func TestLsReadsTheOtherWayAndInANamedOrder(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	for _, alias := range []string{"m-c", "m-a", "m-b"} {
+		_, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  alias,
+		}.Build())
+		x.NoError(err)
+	}
+
+	conn := b.dialed(t, ctx)
+	as := b.travels(ctx)
+	ls := func(flags ...string) []string {
+		t.Helper()
+
+		got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, append([]string{"robot", "ls", "-o", "json"}, flags...)...)
+		x.NoError(got.Err)
+
+		var res struct {
+			Items []struct {
+				Alias string `json:"alias"`
+			} `json:"items"`
+		}
+		x.NoError(json.Unmarshal([]byte(got.Stdout), &res))
+		aliases := []string{}
+		for _, v := range res.Items {
+			aliases = append(aliases, v.Alias)
+		}
+
+		return aliases
+	}
+
+	x.Equal([]string{"m-c", "m-a", "m-b"}, ls())
+	x.Equal([]string{"m-b", "m-a", "m-c"}, ls("--reverse"))
+	x.Equal([]string{"m-a", "m-b", "m-c"}, ls("--order", "alias"))
+	x.Equal([]string{"m-c", "m-b", "m-a"}, ls("--order", "alias", "--reverse"))
+
+	got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, "robot", "ls", "--order", "height")
+	x.ErrorContains(got.Err, `"height"`)
+	x.ErrorContains(got.Err, "alias_desc", "and which orders there are")
+}
