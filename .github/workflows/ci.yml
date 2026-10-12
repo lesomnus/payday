@@ -236,6 +236,51 @@ jobs:
         run: go test -count=1 ./...
         working-directory: trail/trailawskms
 
+  # The write-once claims (#61), against the storage that makes them: an S3
+  # bucket with Object Lock in compliance mode, on MinIO, and the closest a
+  # runner has to a WORM mount -- a tmpfs whose files are made immutable and
+  # whose directories append-only as checkpoints are written into it, which
+  # only root can do.
+  #
+  # Both tests skip themselves without what they are tried against, so each
+  # step asks that its test ran: a skip is a pass.
+  write-once:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # MinIO publishes no images of its own any more. Chainguard builds it
+      # from source, and the tag it gives away is `latest`.
+      - name: MinIO
+        run: |
+          docker run -d --name minio -p 127.0.0.1:9000:9000 \
+            --tmpfs /data:rw,uid=65532,gid=65532 \
+            -e MINIO_ROOT_USER=pdtest -e MINIO_ROOT_PASSWORD=pdtest-secret \
+            cgr.dev/chainguard/minio:latest server /data
+          for _ in $(seq 30); do curl -sf -o /dev/null http://127.0.0.1:9000/minio/health/live && break; sleep 1; done
+
+      - name: on an S3 bucket with Object Lock
+        shell: bash
+        env:
+          PDTEST_S3_OBJECT_LOCK: http://pdtest:pdtest-secret@127.0.0.1:9000
+        run: |
+          go test -count=1 -run '^TestCheckpointsOnS3ObjectLock$' -v ./trail/ | tee "$RUNNER_TEMP/s3.out"
+          grep -q -- '--- PASS: TestCheckpointsOnS3ObjectLock' "$RUNNER_TEMP/s3.out"
+
+      - name: in a directory that keeps what it is given
+        shell: bash
+        run: |
+          go test -c -o "$RUNNER_TEMP/trail.test" ./trail/
+          sudo mkdir -p /mnt/worm
+          sudo mount -t tmpfs tmpfs /mnt/worm
+          sudo PDTEST_WRITE_ONCE_DIR=/mnt/worm "$RUNNER_TEMP/trail.test" \
+            -test.run '^TestCheckpointsInADirectoryThatKeepsWhatItIsGiven$' -test.count 1 -test.v | tee "$RUNNER_TEMP/worm.out"
+          grep -q -- '--- PASS: TestCheckpointsInADirectoryThatKeepsWhatItIsGiven' "$RUNNER_TEMP/worm.out"
+
   # A brand new app, generated and built.
   #
   # `internal/apptest` does not cover this: it was written by hand and has been

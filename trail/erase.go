@@ -82,14 +82,16 @@ func (h *Held) unanswered(id pdid.Id) {
 // the two are different acts and one of them is irreversible. A deployment
 // that means it says so.
 //
-// It writes a [Receipt] when there is an archive to keep one in.
-func (p Policy) Collect(ctx context.Context, s Store, of Kinds, before time.Time) (int, Held, error) {
+// It writes a [Receipt] when there is an archive to keep one in, and ends in a
+// checkpoint when it did; see [pass.cover].
+func (p Policy) Collect(ctx context.Context, s Store, of Kinds, before time.Time) (_ int, _ Held, err error) {
 	h := Held{}
 
 	x, err := p.start(s)
 	if err != nil {
 		return 0, h, err
 	}
+	defer x.cover(ctx, "discard", &err)
 
 	_, gone, err := drain(ctx, s, Scope{Kinds: of}, before, nil, "", nil, func(v Row) fate {
 		if x.held(ctx, v.Tenants, v.Domain, true, &h) {
@@ -172,7 +174,7 @@ func (p Policy) Purge(ctx context.Context, s Store, cut func(kind string) (time.
 	return p.purge(ctx, s, cut, false)
 }
 
-func (p Policy) purge(ctx context.Context, s Store, cut func(kind string) (time.Time, bool), dry bool) ([]Chunk, Held, error) {
+func (p Policy) purge(ctx context.Context, s Store, cut func(kind string) (time.Time, bool), dry bool) (_ []Chunk, _ Held, err error) {
 	h := Held{}
 	if p.Archive == nil {
 		return nil, h, errors.New("no archive to destroy from")
@@ -181,6 +183,9 @@ func (p Policy) purge(ctx context.Context, s Store, cut func(kind string) (time.
 	x, err := p.start(s)
 	if err != nil {
 		return nil, h, err
+	}
+	if !dry {
+		defer x.cover(ctx, "purge", &err)
 	}
 
 	nss, err := chunkNamespaces(ctx, x.raw())
@@ -307,7 +312,7 @@ type Forgotten struct {
 // Is blanked all the same: whatever it is, it holds what it holds about the
 // person. It is written again beneath the manifest, so that what it became is
 // as unaccounted for as what it was, and [Policy.Verify] still finds it.
-func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (Forgotten, error) {
+func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgotten, err error) {
 	out := Forgotten{}
 	if len(objects) == 0 {
 		return out, nil
@@ -317,6 +322,7 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (Forgott
 	if err != nil {
 		return out, err
 	}
+	defer x.cover(ctx, "forget", &err)
 
 	// The database.
 	at := Cursor{}
@@ -509,7 +515,7 @@ func (p Policy) PlanTenantPurge(ctx context.Context, s Store, tenant pdid.Id) (T
 	return p.purgeTenant(ctx, s, tenant, true)
 }
 
-func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bool) (TenantPurge, error) {
+func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bool) (_ TenantPurge, err error) {
 	out := TenantPurge{}
 	if tenant.IsZero() {
 		return out, errors.New("no tenant")
@@ -518,6 +524,9 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 	x, err := p.start(s)
 	if err != nil {
 		return out, err
+	}
+	if !dry {
+		defer x.cover(ctx, "purge-tenant", &err)
 	}
 
 	if p.Tenants != nil {

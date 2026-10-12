@@ -19,7 +19,7 @@ import (
 //
 // # Why a row is signed
 //
-// A checkpoint is what the archive held when a pass ended, and [Policy.Verify]
+// A checkpoint is what the archive held when an act ended, and [Policy.Verify]
 // recomputes the latest one from the rows it was taken over, so nothing in the
 // manifest changes unseen **up to** the latest checkpoint. After it, somebody
 // who can write both the database and the archive can change the two together,

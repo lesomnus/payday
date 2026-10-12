@@ -104,8 +104,8 @@ func (s *fakeStore) state(ns string, d flob.Digest) string {
 // TestEveryChangeIsInTheManifest.
 //
 // A pass and each of the acts taken by hand go through the manifest, so that
-// it says what the archive holds after every one; and a pass ends with a
-// checkpoint, signed.
+// it says what the archive holds after every one; and each of them ends with a
+// checkpoint, signed (#60).
 func TestEveryChangeIsInTheManifest(t *testing.T) {
 	x := require.New(t)
 	ctx := t.Context()
@@ -137,11 +137,19 @@ func TestEveryChangeIsInTheManifest(t *testing.T) {
 	x.NoError(err)
 	x.True(v.Ok(), "%v", v.Findings)
 
-	// Signed, and believed by the half of the key a verifier is given.
+	// One for the pass and one for each act, each naming the one before it,
+	// signed, and believed by the half of the key a verifier is given.
 	cs := []Checkpoint{}
 	x.NoError(p.ReadCheckpoints(ctx, func(c Checkpoint) error { cs = append(cs, c); return nil }))
-	x.Len(cs, 1)
-	x.Equal(cs[0].Count, len(cs[0].Blobs))
+	x.Len(cs, 4)
+	for i, c := range cs {
+		x.Equal(i+1, c.K)
+		x.Equal(c.Count, len(c.Blobs))
+		if i > 0 {
+			x.NotEmpty(c.Prev, "checkpoint %d names none before it", c.K)
+		}
+	}
+	x.Equal(4, v.Checkpoint)
 	v, err = Policy{Archive: p.Archive, Trust: []crypto.PublicKey{key.Public()}}.Verify(ctx, s, false)
 	x.NoError(err)
 	x.True(v.Ok(), "%v", v.Findings)
@@ -151,7 +159,7 @@ func TestEveryChangeIsInTheManifest(t *testing.T) {
 	v, err = p.Verify(ctx, s, false)
 	x.NoError(err)
 	x.True(v.Ok(), "%v", v.Findings)
-	x.Equal(2, v.Checkpoint)
+	x.Equal(5, v.Checkpoint)
 }
 
 // TestAnArchiveFromBeforeTheManifestIsTakenAsItIs.
@@ -220,10 +228,10 @@ func TestWhatChangesBehindTheManifestsBackIsFound(t *testing.T) {
 		s := &fakeStore{}
 		p := Policy{Archive: flob.NewMemStores()}
 		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: month.Add(10 * day), value: "a"})
-		_, err := Archive(ctx, s, Kinds{}, time.Now(), p.Archive)
+		_, err := Archive(ctx, s, p, Kinds{}, time.Now())
 		x.NoError(err)
 		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: month.Add(12 * day), value: "b"})
-		_, err = Archive(ctx, s, Kinds{}, time.Now(), p.Archive)
+		_, err = Archive(ctx, s, p, Kinds{}, time.Now())
 		x.NoError(err)
 
 		cs, err := chunksIn(ctx, p.Archive, tenant.String())
