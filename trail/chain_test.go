@@ -234,7 +234,7 @@ func TestEachCheckpointNamesTheOneBefore(t *testing.T) {
 
 		// Numbered and never kept: the next one goes past it, and names the
 		// one before.
-		_, _, err := s.Checkpoint(ctx)
+		_, _, err := s.Checkpoint(ctx, 0)
 		x.NoError(err)
 		p.Pass(ctx, s)
 		x.Equal(numbered(t, p, 2).d, numbered(t, p, 4).c.Prev)

@@ -134,7 +134,11 @@ type Manifest interface {
 	// it: every row present or erasing at that moment. Two checkpoints never
 	// share a number, and the rows read back by [Manifest.At] for the latest
 	// two are the same rows.
-	Checkpoint(ctx context.Context) (int, []Archived, error)
+	//
+	// The next is after the latest, and after `after` as well when that is
+	// higher: an acceptance of a database restored from before checkpoints
+	// the store keeps is numbered past them (see [Policy.Accept]).
+	Checkpoint(ctx context.Context, after int) (int, []Archived, error)
 
 	// At answers the rows a checkpoint was taken over, for the latest two.
 	At(ctx context.Context, k int) ([]Archived, error)
@@ -1092,12 +1096,17 @@ var errRewritten = errors.New("the manifest no longer adds up to the latest chec
 // would take a number one already has.
 //
 // Nor while the rows the latest checkpoint was taken over no longer add up to
-// it, unless `accepted` says why an operator has accepted the manifest as it
-// is. [Policy.Verify] recomputes the latest two checkpoints from their rows,
+// it. [Policy.Verify] recomputes the latest two checkpoints from their rows,
 // and with a checkpoint at the end of every act the latest two are soon
 // others: a checkpoint taken over rows somebody changed would put what they
 // changed out of reach two acts later. Refused, it stays the latest, and
 // stays found.
+//
+// Both but when `accepted` says why an operator has accepted the manifest as
+// it is. That one is numbered after every checkpoint the store keeps, by what
+// each says, and names the newest of them as the one before it: a database
+// restored from before them goes on from there, and they stay what the
+// archive held meanwhile.
 func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted string) (Checkpoint, error) {
 	store := p.checkpoints()
 	ls, err := listCheckpoints(ctx, store)
@@ -1109,25 +1118,35 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted string) (Ch
 		return Checkpoint{}, err
 	}
 
-	// By what a checkpoint says, which is signed, and not its labels, which
-	// are not: one relabelled ahead of the database is a finding of its own,
-	// and no reason to stop keeping checkpoints. Only what the labels put
-	// ahead is read.
-	for _, v := range ls {
-		if v.k <= latest {
-			continue
+	after := 0
+	if accepted != "" {
+		// Every one, the way [Policy.Verify] finds the database behind: a
+		// checkpoint relabelled to look older, or not listed at all, is still
+		// one the next must be numbered after.
+		ch, err := readChain(ctx, store)
+		if err != nil {
+			return Checkpoint{}, err
 		}
-		if was, err := readCheckpoint(ctx, store, v.d); err == nil && was.c.K > latest {
-			return Checkpoint{}, errBehind
+		after = ch.newest()
+	} else {
+		// By what a checkpoint says, which is signed, and not its labels,
+		// which are not: one relabelled ahead of the database is a finding of
+		// its own, and no reason to stop keeping checkpoints. Only what the
+		// labels put ahead is read.
+		for _, v := range ls {
+			if v.k <= latest {
+				continue
+			}
+			if was, err := readCheckpoint(ctx, store, v.d); err == nil && was.c.K > latest {
+				return Checkpoint{}, errBehind
+			}
 		}
-	}
-	if accepted == "" {
 		if err := addsUp(ctx, m, store, ls, latest); err != nil {
 			return Checkpoint{}, err
 		}
 	}
 
-	k, rows, err := m.Checkpoint(ctx)
+	k, rows, err := m.Checkpoint(ctx, after)
 	if err != nil {
 		return Checkpoint{}, err
 	}
@@ -1571,10 +1590,20 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out
 		}
 	}
 
-	// The latest two are what the manifest's rows still add up to. And the
-	// rows erased since the one before the latest are read here and nowhere
-	// else, so this is where an erase nobody signed is found: a chunk taken
-	// away beneath a row marked erased to match.
+	// The latest two are what the manifest's rows still add up to -- but for
+	// the one before an acceptance, which is what an operator looked at and
+	// decided the rows no longer had to: the acceptance is the rows as they
+	// are, and the ones after it are compared with it. And the rows erased
+	// since the one before the latest are read here and nowhere else, so this
+	// is where an erase nobody signed is found: a chunk taken away beneath a
+	// row marked erased to match.
+	from := max(1, latest-1)
+	for _, v := range ch.numbered(latest) {
+		if v.c.Accepted != "" {
+			from = latest
+		}
+	}
+
 	newest := 0
 	erased := []Finding{}
 	seen := map[string]bool{}
@@ -1595,6 +1624,9 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out
 			}
 		}
 
+		if k < from {
+			continue
+		}
 		for _, v := range ch.numbered(k) {
 			if got := checkpointOf(k, v.c.At, rows); got.Digest != v.c.Digest {
 				fs = append(fs, Finding{Kind: "rewritten", Checkpoint: k, Note: checkpointDiff(v.c, got)})
@@ -1662,7 +1694,10 @@ func checkpointDiff(was, is Checkpoint) string {
 // own, taken over the manifest as it accepted it and saying why
 // ([Checkpoint.Accepted]): the one kind taken whether or not the rows add up to
 // the one before -- no other is taken over rows that do not (see
-// [Policy.checkpoint]) -- and the checkpoints after it are compared with it.
+// [Policy.checkpoint]) -- and the checkpoints after it are compared with it,
+// and not the one before. It is also the one taken when the database is
+// behind the store, restored from a backup older than the latest checkpoint:
+// numbered after the newest the store keeps, and naming it as the one before.
 func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, error) {
 	if strings.TrimSpace(why) == "" {
 		return Verified{}, errors.New("an acceptance says why")

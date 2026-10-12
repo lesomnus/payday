@@ -5036,7 +5036,7 @@ func (s trailStore) Rows(ctx context.Context) ([]trail.Archived, error) {
 // Checkpoint is one transaction, and the counter's row is the first thing it
 // writes: a second checkpoint waits on that row until the first has
 // committed, and then takes the next number.
-func (s trailStore) Checkpoint(ctx context.Context) (int, []trail.Archived, error) {
+func (s trailStore) Checkpoint(ctx context.Context, after int) (int, []trail.Archived, error) {
 	tx, err := s.db.Tx(ctx)
 	if err != nil {
 		return 0, nil, err
@@ -5069,6 +5069,18 @@ func (s trailStore) Checkpoint(ctx context.Context) (int, []trail.Archived, erro
 		return 0, nil, err
 	}
 	k := c.Since
+
+	// Past `after` as well: an acceptance of a database restored from before
+	// checkpoints the store keeps.
+	if int64(after) >= int64(k) {
+		if int64(after) >= 1<<32-1 {
+			return 0, nil, fmt.Errorf("checkpoint %d: past what the manifest numbers", after)
+		}
+		k = uint32(after) + 1
+		if _, err := tx.Archived.Update().Where(archived.IdEQ(archivedCounter)).SetSince(k).Save(ctx); err != nil {
+			return 0, nil, err
+		}
+	}
 
 	// In it from now on: what was added since the last one.
 	if _, err := tx.Archived.Update().
