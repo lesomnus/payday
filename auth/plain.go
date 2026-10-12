@@ -52,6 +52,35 @@ func Plain() Handler {
 			slog.String("scheme", PlainScheme))
 	})
 
+	return plain()
+}
+
+// PlainInProcess is [Plain] for a server nothing outside this process can
+// reach: one served on an in-memory listener (`bufconn`), as an app does when it
+// runs another payday app inside itself and calls it the way it would a
+// library.
+//
+// It believes its callers exactly as Plain does. What differs is what it says.
+// Plain's warning is about a port anybody might reach, and said of a server that
+// has none it reads as a hole that is not there -- with nothing in it to say
+// which of a process's servers it is about, an operator cannot tell it from the
+// one that matters. So this says, once a process and at info, that a server in
+// it believes its callers and that only the process reaches it.
+//
+// Hand it only to a server served that way. On a listener anybody can dial it
+// is Plain with its warning taken away, which is the failure the warning exists
+// for -- and why this is a function an app calls, and never a setting.
+func PlainInProcess() Handler {
+	plainInProcessSaid.Do(func() {
+		slog.Info("auth: serving with Plain on a connection only this process reaches; every caller is believed to be whoever it says",
+			slog.String("scheme", PlainScheme))
+	})
+
+	return plain()
+}
+
+// plain is what both of them believe.
+func plain() Handler {
 	return HandlerFunc(func(ctx context.Context) (Identity, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
@@ -93,8 +122,13 @@ func Plain() Handler {
 // to "who is calling" is not twice as much information; it is a question with
 // no answer, and the one that would win is whichever came first.
 // plainSaid keeps the warning to one a process, however many handlers are made
-// -- a test binary makes one per test.
-var plainSaid sync.Once
+// -- a test binary makes one per test. plainInProcessSaid is the same for
+// [PlainInProcess], apart, so that a process with a server of each kind says
+// both.
+var (
+	plainSaid          sync.Once
+	plainInProcessSaid sync.Once
+)
 
 func PlainProvider(v string) Provider {
 	return ProviderFunc(func(ctx context.Context) context.Context {
