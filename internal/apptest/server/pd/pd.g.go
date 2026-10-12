@@ -4279,13 +4279,14 @@ const DrainSize = 256
 // travels is state and not a delta, and it is why an outbox is a table and a
 // loop here rather than a project.
 //
-// # Two replicas publish twice
+// # Under a lease, one replica drains
 //
-// Nothing here takes a lock, so two of these drain the same rows and publish
-// them each. By the paragraph above that is not a correctness problem, and
-// it is real work: a deployment that minds runs this on one replica, which
-// is a line of wiring rather than a lease to get wrong. Said out loud here
-// because the alternative is somebody discovering it from a graph.
+// It is `payday.outbox`, and takes no lock of its own. Under `spin.WithLease`
+// -- `spin.lease: postgres` -- one process of a deployment runs it; without a
+// lease every process does, and two of these drain the same rows and publish
+// them each. By the paragraph above neither is a correctness problem, which
+// matters since even under a lease two may drain at once around a failover:
+// what the lease saves is the work, and a subscriber reading each state twice.
 func Drain(db *ent.Client, b watch.Broker, every time.Duration) spin.Spinner {
 	return drain{db, b, every}
 }
@@ -4299,7 +4300,7 @@ type drain struct {
 var _ spin.Spinner = drain{}
 var _ spin.Named = drain{}
 
-func (drain) SpinName() string { return "outbox" }
+func (drain) SpinName() string { return "payday.outbox" }
 
 func (d drain) Spin(ctx context.Context) error {
 	return spin.Every(d.every, d.pass)(ctx)

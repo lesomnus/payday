@@ -164,6 +164,8 @@ Everything payday enforces is placed as far left as it goes.
 | identifiers are domain-tagged UUIDs | the minter, in every generated `Add`: an identifier of another kind, or one this app did not make, is refused before a statement is built |
 | a `Watch` with no filter | the generated implementation answers `InvalidArgument` — a watch that says nothing is the whole table, for as long as it is open |
 | the watch broker is named | required config field — an unnamed one is right for one replica and silently wrong for two |
+| the spin lease is named | required config field, for the same reason: without one every process runs every loop — every sweep twice once there are two |
+| a loop one process of a deployment runs has a name of its own | `spin.Run` refuses it under a lease, before anything starts — the name is what the processes agree on |
 | generated code and linked payday agree | `version.Same`, refused at `NewSink` |
 | the database is not behind the schema | `entschema.Check`, before anything is served on it |
 | the runtime assumes no file system | CI builds `GOOS=js GOARCH=wasm` |
@@ -213,6 +215,41 @@ omission: one dead loop should not pull a whole replica out of the load balancer
 while every request it was answering was fine. A deployment that wants otherwise
 says so where it reads `Run`'s error, which is one deployment deciding rather
 than payday deciding for all of them.
+
+### One process of many (#54)
+
+Without a lease every process that calls `Run` runs every loop, which is right
+for one replica and **silently wrong for two**: each sweeps what the other is
+sweeping, a notification goes out twice, the outbox is published twice, and
+nothing reports it. `spin.Run(ctx, layers, spin.WithLease(l))` runs a loop only
+in the process that holds its lease, and the serve command builds the lease from
+`spin.lease` — required, for the reason `watch.broker` is.
+
+- **Exclusive is the default.** Every loop is one process's under a lease but the
+  ones that say they are each process's own — a cache it keeps, a stream it holds
+  to keep one — with `spin.InEveryProcess`. Of the two mistakes, a per-process
+  loop left unmarked is found the day the other processes go stale; a deployment
+  loop marked by mistake is the duplicate sweep this is for.
+- **A loop is named.** The name is what the processes agree on, so `Run` refuses
+  an exclusive loop with none of its own and two with one name, before anything
+  starts. A `spin.Func` is called by its type and so has none; `spin.Called`
+  names one. `payday.outbox` and `payday.trail` are payday's.
+- **A lost hold is not a failure.** The loop's context ends, and the process waits
+  to hold the lease again; shutting down while waiting is an ordinary stop.
+- **The leases.** `local` holds everything in this process, for a deployment of
+  one; `none` holds nothing, for a process that only answers requests; `postgres`
+  (`config/leasepg`, `spin/spinpg`) holds a session advisory lock on the app's
+  own database — no table, no clock, released when the session ends — on one
+  connection per process that asks for TCP keepalives of its own and pings what it
+  holds. It does not go through a transaction pooler, for the reason `LISTEN`
+  does not; `spin.dsn` is for a direct address.
+
+**It is at most one at a time, but for a moment around a failover — not exactly
+once.** A process that lost its hold goes on until it notices, and one cut off
+from the database goes on with whatever it had already sent. A lease takes
+duplicate work from always to rarely, so a loop still has to be safe to run
+twice; one that cannot wants fencing or a queue, which `spin` is not (see what
+payday does not do, below).
 
 ### The trail's retention is one of them, and it is the loud one
 
@@ -575,6 +612,10 @@ because a reader cannot tell them apart.
 - **A runtime schema-compatibility probe.** Breaking the wire is a migration and
   `buf breaking` is what says so, at build time where there is enough
   information to tell a breaking change from a compatible one.
+
+**Background work that crosses replicas** is `config/leasepg`: `spin.lease:
+postgres`, an advisory lock on the rows' own database, so one process of the
+deployment runs each loop; see [one process of many](#one-process-of-many-54).
 
 **A watch that crosses replicas** is `config/brokerpg`: `watch.broker: postgres`,
 `LISTEN`/`NOTIFY` on the rows' own database. There is nothing to store — a

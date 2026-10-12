@@ -673,17 +673,18 @@ func (p Policy) every() time.Duration {
 // keeping records it said it would not -- which is why every pass that fails
 // says so rather than being counted.
 //
-// It takes no lock, and neither does the generated drain, whose comment says
-// so. Two replicas each apply the window: what that costs is duplicate rows in
-// the archive, which [Read] drops and a merge folds, and a `Forget` that finds
-// nothing, which is not an error. What it must not cost is a chunk half
-// written, which is why a chunk is written whole.
-func Sweep(s Store, p Policy) spin.Func {
-	return spin.Every(p.every(), func(ctx context.Context) error {
+// It is `payday.trail`, and under a lease (`spin.WithLease`) one process of a
+// deployment runs it. Without one each does, and so may two at once around a
+// failover with one: two replicas each apply the window, and what that costs is
+// duplicate rows in the archive, which [Read] drops and a merge folds, and a
+// `Forget` that finds nothing, which is not an error. What it must not cost is a
+// chunk half written, which is why a chunk is written whole.
+func Sweep(s Store, p Policy) spin.Spinner {
+	return spin.Called("payday.trail", spin.Every(p.every(), func(ctx context.Context) error {
 		p.Pass(ctx, s)
 
 		return nil
-	})
+	}))
 }
 
 // Pass applies the policy once, which is what a tick of [Sweep] does and what

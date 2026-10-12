@@ -720,6 +720,18 @@ fails. A required field makes that a thing somebody decided. `none` is the other
 answer, and it is loud: a deployment that names it refuses a subscriber outright
 rather than handing back a stream that never speaks.
 
+```yaml
+spin:
+  lease: local
+```
+
+`spin.lease` is required for the same reason. `local` runs every loop in this
+process, which is right for one replica and silently wrong for two: each would
+run every sweep. `postgres` (blank import `config/leasepg`) holds each loop in one
+process of the deployment, on the app's own database; `none` runs none of them
+here. It is read by the serve command, not by `cmd.Build`, so a test that builds a
+server has nothing to name.
+
 ## 6. Background work
 
 A layer with something to do on a clock answers `spin.Spinner`:
@@ -737,6 +749,21 @@ that do are found. An error from `Spin` takes the process down and nil stops
 nothing else, so a pass that should be tolerated logs and answers nil. Why it is
 found rather than declared, and why giving up is fatal, is in
 [background work](../runtime.md#6-background-work).
+
+The serve command passes `spin.WithLease` with the lease `spin.lease` built, and
+then a loop runs in one process of the deployment — so it has to have a name of
+its own, and one that is each process's own work says so:
+
+```go
+s.Spin = append(s.Spin,
+	spin.Called("acme.sweep", spin.Every(time.Minute, sweep)),
+	spin.InEveryProcess(cache), // this process's own, in every process
+)
+```
+
+A lease is at most one at a time but for a moment around a failover, not exactly
+once, so a loop is still written to be safe run twice; see
+[one process of many](../runtime.md#one-process-of-many-54).
 
 ## 7. The database
 

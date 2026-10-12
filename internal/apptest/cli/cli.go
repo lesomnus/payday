@@ -135,13 +135,22 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 
 			log.From(ctx).InfoContext(ctx, "grpc", slog.String("addr", l.Addr().String()))
 
+			// Which process of the deployment runs the loops only one of them
+			// may -- the sweeps, the outbox drain -- named rather than defaulted
+			// for the reason the broker is: the default would be right for one
+			// replica and silently wrong for two.
+			lease, err := c.Spin.Build(c.Db)
+			if err != nil {
+				return err
+			}
+
 			// The background work and the server, together: whichever stops
 			// first stops the other. A loop that keeps running under a server
 			// that is going down is a process that will not exit, and a server
 			// that goes on answering after its outbox drain has died is one
 			// that accepts writes it will never publish.
 			g, ctx := errgroup.WithContext(ctx)
-			g.Go(func() error { return spin.Run(ctx, slices.Values(s.Spin)) })
+			g.Go(func() error { return spin.Run(ctx, slices.Values(s.Spin), spin.WithLease(lease)) })
 			g.Go(func() error { return s.Serve(ctx, *c, l) })
 
 			return g.Wait()
