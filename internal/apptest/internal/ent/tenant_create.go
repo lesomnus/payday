@@ -66,6 +66,12 @@ func (_c *TenantCreate) SetNillableDateCreated(v *time.Time) *TenantCreate {
 	return _c
 }
 
+// SetRegion sets the "region" field.
+func (_c *TenantCreate) SetRegion(v string) *TenantCreate {
+	_c.mutation.SetRegion(v)
+	return _c
+}
+
 // SetId sets the "id" field.
 func (_c *TenantCreate) SetId(v uuid.UUID) *TenantCreate {
 	_c.mutation.SetId(v)
@@ -117,6 +123,9 @@ func (_c *TenantCreate) check() error {
 	}
 	if _, ok := _c.mutation.DateUpdated(); !ok {
 		return &ValidationError{Name: "date_updated", err: errors.New(`ent: missing required field "Tenant.date_updated"`)}
+	}
+	if _, ok := _c.mutation.Region(); !ok {
+		return &ValidationError{Name: "region", err: errors.New(`ent: missing required field "Tenant.region"`)}
 	}
 	return nil
 }
@@ -180,6 +189,10 @@ func (_c *TenantCreate) createSpec() (*Tenant, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DateCreated(); ok {
 		_spec.SetField(tenant.FieldDateCreated, field.TypeTime, value)
 		_node.DateCreated = value
+	}
+	if value, ok := _c.mutation.Region(); ok {
+		_spec.SetField(tenant.FieldRegion, field.TypeString, value)
+		_node.Region = value
 	}
 	return _node, _spec
 }

@@ -1370,3 +1370,119 @@ func TestAStampIsNotAssertedByARequest(t *testing.T) {
 		x.NoError(err, "the stamp cannot be written at all, which is not what stamped means")
 	})
 }
+
+// TestAStampOnPaydaysHolderIsNotAssertedEither: the same word on a field an
+// app's overlay added to payday's own holder, which once did not compile
+// (#29).
+//
+// Twice over. The holder's gate is written out by hand -- its `Add` reads the
+// tenant through the wall -- and the stamp's refusal came out as a second gate
+// of the same name beside it; and it asked `HasDirectory()` of a string the
+// request declares without presence, which has no such method. That this app
+// builds is most of the test, and the rest is that the one gate says both.
+func TestAStampOnPaydaysHolderIsNotAssertedEither(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	_, err := b.Walled.Holder().Add(b.as(ctx), app.HolderAddRequest_builder{
+		Tenant:    app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:     "asserted",
+		Directory: "elsewhere",
+	}.Build())
+	x.Equal(codes.InvalidArgument, status.Code(err),
+		"a request asserted where a holder came from")
+	x.Contains(status.Convert(err).Message(), "directory")
+
+	t.Run("and the same write without it is fine", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := b.Walled.Holder().Add(b.as(ctx), app.HolderAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  "not-asserted",
+		}.Build())
+		x.NoError(err)
+	})
+
+	t.Run("and the deployment's own work still stamps it", func(t *testing.T) {
+		x := require.New(t)
+
+		v, err := b.Ungated.Holder().Add(ctx, app.HolderAddRequest_builder{
+			Tenant:    app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:     "imported",
+			Directory: "elsewhere",
+		}.Build())
+		x.NoError(err)
+		x.Equal("elsewhere", v.GetDirectory())
+	})
+
+	t.Run("and a tenant's goes with the rest of its Add", func(t *testing.T) {
+		x := require.New(t)
+
+		// Nobody inside a tenant puts one up at all, so a tenant's stamp needs
+		// no refusal of its own -- and a second gate for one was the other
+		// half of the same failure.
+		_, err := b.Walled.Tenant().Add(b.as(ctx), app.TenantAddRequest_builder{
+			Alias:  "other",
+			Region: "kr",
+		}.Build())
+		x.Equal(codes.Unimplemented, status.Code(err))
+
+		v, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{
+			Alias:  "other",
+			Region: "kr",
+		}.Build())
+		x.NoError(err)
+		x.Equal("kr", v.GetRegion())
+	})
+}
+
+// TestAnEdgeAnOverlayGivesTheHolderIsARead is [TestAnEdgeIsARead] for payday's
+// own holder, whose gate is written by hand and once asked about its tenant and
+// nothing else -- so an edge an app's overlay added was a foreign key with
+// nothing consulted, at `Add` and again when it moved.
+func TestAnEdgeAnOverlayGivesTheHolderIsARead(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	mine, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "mine",
+	}.Build())
+	x.NoError(err)
+
+	other, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "elsewhere"}.Build())
+	x.NoError(err)
+
+	theirs, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: other.GetId()}.Build(),
+		Alias:  "not-yours",
+	}.Build())
+	x.NoError(err)
+
+	_, err = b.Walled.Holder().Add(b.as(ctx), app.HolderAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "intruder",
+		Robot:  app.RobotRef_builder{Id: theirs.GetId()}.Build(),
+	}.Build())
+	x.Equal(codes.NotFound, status.Code(err),
+		"a holder was pointed at a robot in a tenant this caller cannot see")
+
+	v, err := b.Walled.Holder().Add(b.as(ctx), app.HolderAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "minder",
+		Robot:  app.RobotRef_builder{Id: mine.GetId()}.Build(),
+	}.Build())
+	x.NoError(err, "the check refuses what it should allow")
+
+	t.Run("and when it moves", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := b.Walled.Holder().Patch(b.as(ctx), app.HolderPatchRequest_builder{
+			Ref:              app.HolderRef_builder{Id: v.GetId()}.Build(),
+			Robot:            app.RobotRef_builder{Id: theirs.GetId()}.Build(),
+			DateUpdatedForce: z.Ptr(true),
+		}.Build())
+		x.Equal(codes.NotFound, status.Code(err),
+			"a holder's edge was moved onto a robot in a tenant this caller cannot see")
+	})
+}

@@ -7,6 +7,8 @@ import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Profile } from "../profile_pb.js";
 import { file_app_profile } from "../profile_pb.js";
+import type { Robot } from "../robot_pb.js";
+import { file_app_robot } from "../robot_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../../orm_pb.js";
@@ -19,7 +21,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/holder.proto.
  */
 export const file_app_payday_holder: GenFile = /*@__PURE__*/
-  fileDesc("ChdhcHAvcGF5ZGF5L2hvbGRlci5wcm90bxIDYXBwIp8ECgZIb2xkZXISFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRIMCgRuYW1lGAUgASgJEgwKBGRlc2MYBiABKAkSJwoGbGFiZWxzGAcgAygLMhcuYXBwLkhvbGRlci5MYWJlbHNFbnRyeRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASEwoLaWRwX3N1YmplY3QYCCABKAkSHQoHcHJvZmlsZRgJIAEoCzIMLmFwcC5Qcm9maWxlGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAE6bsr8FSUSAhABGh8SBHNsdWcaCQoFYWxpYXMQBBoKCgZ0ZW5hbnQQAjABirsWQQgCMjkKEAoOCgxkYXRlX2NyZWF0ZWQKBgoECgJpZBoFCgNyZWYaCAoGdGVuYW50GggKBmxhYmVscyAUKGQ6AEgCQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_app_profile, file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
+  fileDesc("ChdhcHAvcGF5ZGF5L2hvbGRlci5wcm90bxIDYXBwIt0ECgZIb2xkZXISFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARINCgVhbGlhcxgEIAEoCRIMCgRuYW1lGAUgASgJEgwKBGRlc2MYBiABKAkSJwoGbGFiZWxzGAcgAygLMhcuYXBwLkhvbGRlci5MYWJlbHNFbnRyeRI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASEwoLaWRwX3N1YmplY3QYCCABKAkSHQoHcHJvZmlsZRgJIAEoCzIMLmFwcC5Qcm9maWxlEhkKCWRpcmVjdG9yeRgKIAEoCUIGqsEWAhABEiEKBXJvYm90GAsgASgLMgouYXBwLlJvYm90QgbyghYCOAEaLQoLTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ATpuyvwVJRICEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAGKuxZBCAIyOQoQCg4KDGRhdGVfY3JlYXRlZAoGCgQKAmlkGgUKA3JlZhoICgZ0ZW5hbnQaCAoGbGFiZWxzIBQoZDoASAJCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_app_profile, file_app_robot, file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
 
 /**
  * Holder is who a request is from.
@@ -121,6 +123,27 @@ export type Holder = Message<"app.Holder"> & {
    * @generated from field: app.Profile profile = 9;
    */
   profile?: Profile | undefined;
+
+  /**
+   * A scalar stamped on payday's own entity, which once did not compile
+   * (payday#29): the refusal came out as a second gate beside the one the
+   * holder's tenant read already is, and asked `HasDirectory()` of a field
+   * the request declares without presence. Which directory a holder came
+   * from is the deployment's to say -- an import names it, a request does not.
+   *
+   * @generated from field: string directory = 10;
+   */
+  directory: string;
+
+  /**
+   * And an edge an overlay adds, to a row behind the wall. The holder's gate
+   * is written by hand and once asked about its tenant and nothing else, so an
+   * edge like this one was a foreign key with nothing consulted: a holder
+   * pointed at another tenant's robot, and read it back through itself.
+   *
+   * @generated from field: app.Robot robot = 11;
+   */
+  robot?: Robot | undefined;
 };
 
 /**

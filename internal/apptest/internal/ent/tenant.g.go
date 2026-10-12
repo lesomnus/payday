@@ -17,5 +17,6 @@ func (e *Tenant) Proto() *apptest.Tenant {
 	x.SetLabels(e.Labels)
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
+	x.SetRegion(e.Region)
 	return x
 }

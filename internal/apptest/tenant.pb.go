@@ -44,6 +44,7 @@ type Tenant struct {
 	xxx_hidden_Labels      map[string]string      `protobuf:"bytes,7,rep,name=labels" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_Region      string                 `protobuf:"bytes,8,opt,name=region"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -122,6 +123,13 @@ func (x *Tenant) GetDateCreated() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Tenant) GetRegion() string {
+	if x != nil {
+		return x.xxx_hidden_Region
+	}
+	return ""
+}
+
 func (x *Tenant) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -151,6 +159,10 @@ func (x *Tenant) SetDateUpdated(v *timestamppb.Timestamp) {
 
 func (x *Tenant) SetDateCreated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateCreated = v
+}
+
+func (x *Tenant) SetRegion(v string) {
+	x.xxx_hidden_Region = v
 }
 
 func (x *Tenant) HasDateUpdated() bool {
@@ -194,6 +206,9 @@ type Tenant_builder struct {
 	// that is built because adding it later is every app's migration.
 	DateUpdated *timestamppb.Timestamp
 	DateCreated *timestamppb.Timestamp
+	// Where the deployment keeps this tenant's rows. The deployment's to say,
+	// and never a request's.
+	Region string
 }
 
 func (b0 Tenant_builder) Build() *Tenant {
@@ -207,6 +222,7 @@ func (b0 Tenant_builder) Build() *Tenant {
 	x.xxx_hidden_Labels = b.Labels
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
+	x.xxx_hidden_Region = b.Region
 	return m0
 }
 
@@ -214,7 +230,7 @@ var File_app_payday_tenant_proto protoreflect.FileDescriptor
 
 const file_app_payday_tenant_proto_rawDesc = "" +
 	"\n" +
-	"\x17app/payday/tenant.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xa8\x03\n" +
+	"\x17app/payday/tenant.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xc8\x03\n" +
 	"\x06Tenant\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x1c\n" +
 	"\x05alias\x18\x04 \x01(\tB\x06\xea\x82\x16\x020\x01R\x05alias\x12\x12\n" +
@@ -222,7 +238,8 @@ const file_app_payday_tenant_proto_rawDesc = "" +
 	"\x04desc\x18\x06 \x01(\tR\x04desc\x12/\n" +
 	"\x06labels\x18\a \x03(\v2\x17.app.Tenant.LabelsEntryR\x06labels\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x1a9\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12\x1e\n" +
+	"\x06region\x18\b \x01(\tB\x06\xaa\xc1\x16\x02\x10\x01R\x06region\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:=\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x161\b\x012%\n" +

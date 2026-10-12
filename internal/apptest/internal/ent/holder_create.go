@@ -11,6 +11,7 @@ import (
 
 	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/protobuf-orm/ent/dialect/sql"
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -94,9 +95,29 @@ func (_c *HolderCreate) SetProfile(v *apptest.Profile) *HolderCreate {
 	return _c
 }
 
+// SetDirectory sets the "directory" field.
+func (_c *HolderCreate) SetDirectory(v string) *HolderCreate {
+	_c.mutation.SetDirectory(v)
+	return _c
+}
+
 // SetTenantId sets the "tenant_id" field.
 func (_c *HolderCreate) SetTenantId(v uuid.UUID) *HolderCreate {
 	_c.mutation.SetTenantId(v)
+	return _c
+}
+
+// SetRobotId sets the "robot_id" field.
+func (_c *HolderCreate) SetRobotId(v uuid.UUID) *HolderCreate {
+	_c.mutation.SetRobotId(v)
+	return _c
+}
+
+// SetNillableRobotId sets the "robot_id" field if the given value is not nil.
+func (_c *HolderCreate) SetNillableRobotId(v *uuid.UUID) *HolderCreate {
+	if v != nil {
+		_c.SetRobotId(*v)
+	}
 	return _c
 }
 
@@ -109,6 +130,11 @@ func (_c *HolderCreate) SetId(v uuid.UUID) *HolderCreate {
 // SetTenant sets the "tenant" edge to the Tenant entity.
 func (_c *HolderCreate) SetTenant(v *Tenant) *HolderCreate {
 	return _c.SetTenantId(v.Id)
+}
+
+// SetRobot sets the "robot" edge to the Robot entity.
+func (_c *HolderCreate) SetRobot(v *Robot) *HolderCreate {
+	return _c.SetRobotId(v.Id)
 }
 
 // Mutation returns the HolderMutation object of the builder.
@@ -159,6 +185,9 @@ func (_c *HolderCreate) check() error {
 	}
 	if _, ok := _c.mutation.IdpSubject(); !ok {
 		return &ValidationError{Name: "idp_subject", err: errors.New(`ent: missing required field "Holder.idp_subject"`)}
+	}
+	if _, ok := _c.mutation.Directory(); !ok {
+		return &ValidationError{Name: "directory", err: errors.New(`ent: missing required field "Holder.directory"`)}
 	}
 	if _, ok := _c.mutation.TenantId(); !ok {
 		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Holder.tenant_id"`)}
@@ -251,6 +280,10 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec, error) {
 		_spec.SetField(holder.FieldProfile, field.TypeJson, vv)
 		_node.Profile = value
 	}
+	if value, ok := _c.mutation.Directory(); ok {
+		_spec.SetField(holder.FieldDirectory, field.TypeString, value)
+		_node.Directory = value
+	}
 	if nodes := _c.mutation.TenantIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -266,6 +299,23 @@ func (_c *HolderCreate) createSpec() (*Holder, *sqlgraph.CreateSpec, error) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.TenantId = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.RobotIds(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   holder.RobotTable,
+			Columns: []string{holder.RobotColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(robot.FieldId, field.TypeUuid),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.RobotId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec, nil

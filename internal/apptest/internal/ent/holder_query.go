@@ -10,6 +10,7 @@ import (
 
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/protobuf-orm/ent"
 	"github.com/protobuf-orm/ent/dialect/sql"
@@ -25,6 +26,7 @@ type HolderQuery struct {
 	inters     []Interceptor
 	predicates []predicate.Holder
 	withTenant *TenantQuery
+	withRobot  *RobotQuery
 	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -77,6 +79,28 @@ func (_q *HolderQuery) QueryTenant() *TenantQuery {
 			sqlgraph.From(holder.Table, holder.FieldId, selector),
 			sqlgraph.To(tenant.Table, tenant.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, holder.TenantTable, holder.TenantColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRobot chains the current query on the "robot" edge.
+func (_q *HolderQuery) QueryRobot() *RobotQuery {
+	query := (&RobotClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(holder.Table, holder.FieldId, selector),
+			sqlgraph.To(robot.Table, robot.FieldId),
+			sqlgraph.Edge(sqlgraph.M2O, false, holder.RobotTable, holder.RobotColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -277,6 +301,7 @@ func (_q *HolderQuery) Clone() *HolderQuery {
 		inters:     append([]Interceptor{}, _q.inters...),
 		predicates: append([]predicate.Holder{}, _q.predicates...),
 		withTenant: _q.withTenant.Clone(),
+		withRobot:  _q.withRobot.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -292,6 +317,17 @@ func (_q *HolderQuery) WithTenant(opts ...func(*TenantQuery)) *HolderQuery {
 		opt(query)
 	}
 	_q.withTenant = query
+	return _q
+}
+
+// WithRobot tells the query-builder to eager-load the nodes that are connected to
+// the "robot" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *HolderQuery) WithRobot(opts ...func(*RobotQuery)) *HolderQuery {
+	query := (&RobotClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withRobot = query
 	return _q
 }
 
@@ -373,8 +409,9 @@ func (_q *HolderQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Holde
 	var (
 		nodes       = []*Holder{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withTenant != nil,
+			_q.withRobot != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -404,6 +441,12 @@ func (_q *HolderQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Holde
 			return nil, err
 		}
 	}
+	if query := _q.withRobot; query != nil {
+		if err := _q.loadRobot(ctx, query, nodes, nil,
+			func(n *Holder, e *Robot) { n.Edges.Robot = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
 }
 
@@ -429,6 +472,35 @@ func (_q *HolderQuery) loadTenant(ctx context.Context, query *TenantQuery, nodes
 		nodes, ok := nodeids[n.Id]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "tenant_id" returned %v`, n.Id)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *HolderQuery) loadRobot(ctx context.Context, query *RobotQuery, nodes []*Holder, init func(*Holder), assign func(*Holder, *Robot)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Holder)
+	for i := range nodes {
+		fk := nodes[i].RobotId
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(robot.IdIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.Id]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "robot_id" returned %v`, n.Id)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -467,6 +539,9 @@ func (_q *HolderQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if _q.withTenant != nil {
 			_spec.Node.AddColumnOnce(holder.FieldTenantId)
+		}
+		if _q.withRobot != nil {
+			_spec.Node.AddColumnOnce(holder.FieldRobotId)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

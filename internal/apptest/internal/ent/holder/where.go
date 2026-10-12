@@ -91,9 +91,19 @@ func IdpSubject(v string) predicate.Holder {
 	return predicate.Holder(sql.FieldEQ(FieldIdpSubject, v))
 }
 
+// Directory applies equality check predicate on the "directory" field. It's identical to DirectoryEQ.
+func Directory(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldEQ(FieldDirectory, v))
+}
+
 // TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
 func TenantId(v uuid.UUID) predicate.Holder {
 	return predicate.Holder(sql.FieldEQ(FieldTenantId, v))
+}
+
+// RobotId applies equality check predicate on the "robot_id" field. It's identical to RobotIdEQ.
+func RobotId(v uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldEQ(FieldRobotId, v))
 }
 
 // AliasEQ applies the EQ predicate on the "alias" field.
@@ -516,6 +526,71 @@ func ProfileNotNil() predicate.Holder {
 	return predicate.Holder(sql.FieldNotNull(FieldProfile))
 }
 
+// DirectoryEQ applies the EQ predicate on the "directory" field.
+func DirectoryEQ(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldEQ(FieldDirectory, v))
+}
+
+// DirectoryNEQ applies the NEQ predicate on the "directory" field.
+func DirectoryNEQ(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldNEQ(FieldDirectory, v))
+}
+
+// DirectoryIn applies the In predicate on the "directory" field.
+func DirectoryIn(vs ...string) predicate.Holder {
+	return predicate.Holder(sql.FieldIn(FieldDirectory, vs...))
+}
+
+// DirectoryNotIn applies the NotIn predicate on the "directory" field.
+func DirectoryNotIn(vs ...string) predicate.Holder {
+	return predicate.Holder(sql.FieldNotIn(FieldDirectory, vs...))
+}
+
+// DirectoryGT applies the GT predicate on the "directory" field.
+func DirectoryGT(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldGT(FieldDirectory, v))
+}
+
+// DirectoryGTE applies the GTE predicate on the "directory" field.
+func DirectoryGTE(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldGTE(FieldDirectory, v))
+}
+
+// DirectoryLT applies the LT predicate on the "directory" field.
+func DirectoryLT(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldLT(FieldDirectory, v))
+}
+
+// DirectoryLTE applies the LTE predicate on the "directory" field.
+func DirectoryLTE(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldLTE(FieldDirectory, v))
+}
+
+// DirectoryContains applies the Contains predicate on the "directory" field.
+func DirectoryContains(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldContains(FieldDirectory, v))
+}
+
+// DirectoryHasPrefix applies the HasPrefix predicate on the "directory" field.
+func DirectoryHasPrefix(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldHasPrefix(FieldDirectory, v))
+}
+
+// DirectoryHasSuffix applies the HasSuffix predicate on the "directory" field.
+func DirectoryHasSuffix(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldHasSuffix(FieldDirectory, v))
+}
+
+// DirectoryEqualFold applies the EqualFold predicate on the "directory" field.
+func DirectoryEqualFold(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldEqualFold(FieldDirectory, v))
+}
+
+// DirectoryContainsFold applies the ContainsFold predicate on the "directory" field.
+func DirectoryContainsFold(v string) predicate.Holder {
+	return predicate.Holder(sql.FieldContainsFold(FieldDirectory, v))
+}
+
 // TenantIdEQ applies the EQ predicate on the "tenant_id" field.
 func TenantIdEQ(v uuid.UUID) predicate.Holder {
 	return predicate.Holder(sql.FieldEQ(FieldTenantId, v))
@@ -536,6 +611,36 @@ func TenantIdNotIn(vs ...uuid.UUID) predicate.Holder {
 	return predicate.Holder(sql.FieldNotIn(FieldTenantId, vs...))
 }
 
+// RobotIdEQ applies the EQ predicate on the "robot_id" field.
+func RobotIdEQ(v uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldEQ(FieldRobotId, v))
+}
+
+// RobotIdNEQ applies the NEQ predicate on the "robot_id" field.
+func RobotIdNEQ(v uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldNEQ(FieldRobotId, v))
+}
+
+// RobotIdIn applies the In predicate on the "robot_id" field.
+func RobotIdIn(vs ...uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldIn(FieldRobotId, vs...))
+}
+
+// RobotIdNotIn applies the NotIn predicate on the "robot_id" field.
+func RobotIdNotIn(vs ...uuid.UUID) predicate.Holder {
+	return predicate.Holder(sql.FieldNotIn(FieldRobotId, vs...))
+}
+
+// RobotIdIsNil applies the IsNil predicate on the "robot_id" field.
+func RobotIdIsNil() predicate.Holder {
+	return predicate.Holder(sql.FieldIsNull(FieldRobotId))
+}
+
+// RobotIdNotNil applies the NotNil predicate on the "robot_id" field.
+func RobotIdNotNil() predicate.Holder {
+	return predicate.Holder(sql.FieldNotNull(FieldRobotId))
+}
+
 // HasTenant applies the HasEdge predicate on the "tenant" edge.
 func HasTenant() predicate.Holder {
 	return predicate.Holder(func(s *sql.Selector) {
@@ -551,6 +656,29 @@ func HasTenant() predicate.Holder {
 func HasTenantWith(preds ...predicate.Tenant) predicate.Holder {
 	return predicate.Holder(func(s *sql.Selector) {
 		step := newTenantStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasRobot applies the HasEdge predicate on the "robot" edge.
+func HasRobot() predicate.Holder {
+	return predicate.Holder(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldId),
+			sqlgraph.Edge(sqlgraph.M2O, false, RobotTable, RobotColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRobotWith applies the HasEdge predicate on the "robot" edge with a given conditions (other predicates).
+func HasRobotWith(preds ...predicate.Robot) predicate.Holder {
+	return predicate.Holder(func(s *sql.Selector) {
+		step := newRobotStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

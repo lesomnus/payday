@@ -11,6 +11,7 @@ import (
 
 	"github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/protobuf-orm/ent"
 	"github.com/protobuf-orm/ent/dialect/sql"
@@ -39,8 +40,12 @@ type Holder struct {
 	IdpSubject string `json:"idp_subject,omitempty"`
 	// Profile holds the value of the "profile" field.
 	Profile *apptest.Profile `json:"profile,omitempty"`
+	// Directory holds the value of the "directory" field.
+	Directory string `json:"directory,omitempty"`
 	// TenantId holds the value of the "tenant_id" field.
 	TenantId uuid.UUID `json:"tenant_id,omitempty"`
+	// RobotId holds the value of the "robot_id" field.
+	RobotId uuid.UUID `json:"robot_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the HolderQuery when eager-loading is set.
 	Edges        HolderEdges `json:"edges"`
@@ -51,9 +56,11 @@ type Holder struct {
 type HolderEdges struct {
 	// Tenant holds the value of the tenant edge.
 	Tenant *Tenant `json:"tenant,omitempty"`
+	// Robot holds the value of the robot edge.
+	Robot *Robot `json:"robot,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // TenantOrErr returns the Tenant value or an error if the edge
@@ -67,6 +74,17 @@ func (e HolderEdges) TenantOrErr() (*Tenant, error) {
 	return nil, &NotLoadedError{edge: "tenant"}
 }
 
+// RobotOrErr returns the Robot value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e HolderEdges) RobotOrErr() (*Robot, error) {
+	if e.Robot != nil {
+		return e.Robot, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: robot.Label}
+	}
+	return nil, &NotLoadedError{edge: "robot"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Holder) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -74,10 +92,12 @@ func (*Holder) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case holder.FieldLabels:
 			values[i] = new([]byte)
-		case holder.FieldAlias, holder.FieldName, holder.FieldDesc, holder.FieldIdpSubject:
+		case holder.FieldAlias, holder.FieldName, holder.FieldDesc, holder.FieldIdpSubject, holder.FieldDirectory:
 			values[i] = new(sql.NullString)
 		case holder.FieldDateUpdated, holder.FieldDateErased, holder.FieldDateCreated:
 			values[i] = new(sql.NullTime)
+		case holder.FieldRobotId:
+			values[i] = new(sql.Null[uuid.UUID])
 		case holder.FieldId, holder.FieldTenantId:
 			values[i] = new(uuid.UUID)
 		case holder.FieldProfile:
@@ -160,11 +180,23 @@ func (_m *Holder) assignValues(columns []string, values []any) error {
 			} else {
 				_m.Profile = value
 			}
+		case holder.FieldDirectory:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field directory", values[i])
+			} else if value.Valid {
+				_m.Directory = value.String
+			}
 		case holder.FieldTenantId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
 			} else if value != nil {
 				_m.TenantId = *value
+			}
+		case holder.FieldRobotId:
+			if value, ok := values[i].(*sql.Null[uuid.UUID]); !ok {
+				return fmt.Errorf("unexpected type %T for field robot_id", values[i])
+			} else if value.Valid {
+				_m.RobotId = value.V
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -182,6 +214,11 @@ func (_m *Holder) Value(name string) (ent.Value, error) {
 // QueryTenant queries the "tenant" edge of the Holder entity.
 func (_m *Holder) QueryTenant() *TenantQuery {
 	return NewHolderClient(_m.config).QueryTenant(_m)
+}
+
+// QueryRobot queries the "robot" edge of the Holder entity.
+func (_m *Holder) QueryRobot() *RobotQuery {
+	return NewHolderClient(_m.config).QueryRobot(_m)
 }
 
 // Update returns a builder for updating this Holder.
@@ -236,8 +273,14 @@ func (_m *Holder) String() string {
 	builder.WriteString("profile=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Profile))
 	builder.WriteString(", ")
+	builder.WriteString("directory=")
+	builder.WriteString(_m.Directory)
+	builder.WriteString(", ")
 	builder.WriteString("tenant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TenantId))
+	builder.WriteString(", ")
+	builder.WriteString("robot_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RobotId))
 	builder.WriteByte(')')
 	return builder.String()
 }

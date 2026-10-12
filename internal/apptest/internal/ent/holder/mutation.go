@@ -27,9 +27,12 @@ type Mutation struct {
 	date_created  *time.Time
 	idp_subject   *string
 	profile       **apptest.Profile
+	directory     *string
 	clearedFields map[string]struct{}
 	tenant        *uuid.UUID
 	clearedtenant bool
+	robot         *uuid.UUID
+	clearedrobot  bool
 	predicates    []predicate.Holder
 }
 
@@ -270,6 +273,25 @@ func (m *Mutation) ResetProfile() {
 	delete(m.clearedFields, FieldProfile)
 }
 
+// SetDirectory sets the "directory" field.
+func (m *Mutation) SetDirectory(s string) {
+	m.directory = &s
+}
+
+// Directory returns the value of the "directory" field in the mutation.
+func (m *Mutation) Directory() (r string, exists bool) {
+	v := m.directory
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDirectory resets all changes to the "directory" field.
+func (m *Mutation) ResetDirectory() {
+	m.directory = nil
+}
+
 // SetTenantId sets the "tenant_id" field.
 func (m *Mutation) SetTenantId(u uuid.UUID) {
 	m.tenant = &u
@@ -287,6 +309,38 @@ func (m *Mutation) TenantId() (r uuid.UUID, exists bool) {
 // ResetTenantId resets all changes to the "tenant_id" field.
 func (m *Mutation) ResetTenantId() {
 	m.tenant = nil
+}
+
+// SetRobotId sets the "robot_id" field.
+func (m *Mutation) SetRobotId(u uuid.UUID) {
+	m.robot = &u
+}
+
+// RobotId returns the value of the "robot_id" field in the mutation.
+func (m *Mutation) RobotId() (r uuid.UUID, exists bool) {
+	v := m.robot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearRobotId clears the value of the "robot_id" field.
+func (m *Mutation) ClearRobotId() {
+	m.robot = nil
+	m.clearedFields[FieldRobotId] = struct{}{}
+}
+
+// RobotIdCleared returns if the "robot_id" field was cleared in this mutation.
+func (m *Mutation) RobotIdCleared() bool {
+	_, ok := m.clearedFields[FieldRobotId]
+	return ok
+}
+
+// ResetRobotId resets all changes to the "robot_id" field.
+func (m *Mutation) ResetRobotId() {
+	m.robot = nil
+	delete(m.clearedFields, FieldRobotId)
 }
 
 // ClearTenant clears the "tenant" edge to the Tenant entity.
@@ -314,6 +368,33 @@ func (m *Mutation) TenantIds() (ids []uuid.UUID) {
 func (m *Mutation) ResetTenant() {
 	m.tenant = nil
 	m.clearedtenant = false
+}
+
+// ClearRobot clears the "robot" edge to the Robot entity.
+func (m *Mutation) ClearRobot() {
+	m.clearedrobot = true
+	m.clearedFields[FieldRobotId] = struct{}{}
+}
+
+// RobotCleared reports if the "robot" edge to the Robot entity was cleared.
+func (m *Mutation) RobotCleared() bool {
+	return m.RobotIdCleared() || m.clearedrobot
+}
+
+// RobotIds returns the "robot" edge Ids in the mutation.
+// Note that Ids always returns len(Ids) <= 1 for unique edges, and you should use
+// RobotId instead. It exists only for internal usage by the builders.
+func (m *Mutation) RobotIds() (ids []uuid.UUID) {
+	if id := m.robot; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRobot resets all changes to the "robot" edge.
+func (m *Mutation) ResetRobot() {
+	m.robot = nil
+	m.clearedrobot = false
 }
 
 // Where appends a list predicates to the Mutation builder.
@@ -350,7 +431,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 12)
 	if m.alias != nil {
 		fields = append(fields, FieldAlias)
 	}
@@ -378,8 +459,14 @@ func (m *Mutation) Fields() []string {
 	if m.profile != nil {
 		fields = append(fields, FieldProfile)
 	}
+	if m.directory != nil {
+		fields = append(fields, FieldDirectory)
+	}
 	if m.tenant != nil {
 		fields = append(fields, FieldTenantId)
+	}
+	if m.robot != nil {
+		fields = append(fields, FieldRobotId)
 	}
 	return fields
 }
@@ -407,8 +494,12 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.IdpSubject()
 	case FieldProfile:
 		return m.Profile()
+	case FieldDirectory:
+		return m.Directory()
 	case FieldTenantId:
 		return m.TenantId()
+	case FieldRobotId:
+		return m.RobotId()
 	}
 	return nil, false
 }
@@ -488,12 +579,26 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetProfile(v)
 		return nil
+	case FieldDirectory:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDirectory(v)
+		return nil
 	case FieldTenantId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTenantId(v)
+		return nil
+	case FieldRobotId:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRobotId(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Holder field %s", name)
@@ -537,6 +642,9 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldProfile) {
 		fields = append(fields, FieldProfile)
 	}
+	if m.FieldCleared(FieldRobotId) {
+		fields = append(fields, FieldRobotId)
+	}
 	return fields
 }
 
@@ -562,6 +670,9 @@ func (m *Mutation) ClearField(name string) error {
 		return nil
 	case FieldProfile:
 		m.ClearProfile()
+		return nil
+	case FieldRobotId:
+		m.ClearRobotId()
 		return nil
 	}
 	return fmt.Errorf("unknown Holder nullable field %s", name)
@@ -598,8 +709,14 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldProfile:
 		m.ResetProfile()
 		return nil
+	case FieldDirectory:
+		m.ResetDirectory()
+		return nil
 	case FieldTenantId:
 		m.ResetTenantId()
+		return nil
+	case FieldRobotId:
+		m.ResetRobotId()
 		return nil
 	}
 	return fmt.Errorf("unknown Holder field %s", name)
@@ -607,9 +724,12 @@ func (m *Mutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *Mutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.tenant != nil {
 		edges = append(edges, EdgeTenant)
+	}
+	if m.robot != nil {
+		edges = append(edges, EdgeRobot)
 	}
 	return edges
 }
@@ -622,13 +742,17 @@ func (m *Mutation) AddedIds(name string) []ent.Value {
 		if id := m.tenant; id != nil {
 			return []ent.Value{*id}
 		}
+	case EdgeRobot:
+		if id := m.robot; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *Mutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	return edges
 }
 
@@ -640,9 +764,12 @@ func (m *Mutation) RemovedIds(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *Mutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedtenant {
 		edges = append(edges, EdgeTenant)
+	}
+	if m.clearedrobot {
+		edges = append(edges, EdgeRobot)
 	}
 	return edges
 }
@@ -653,6 +780,8 @@ func (m *Mutation) EdgeCleared(name string) bool {
 	switch name {
 	case EdgeTenant:
 		return m.clearedtenant
+	case EdgeRobot:
+		return m.clearedrobot
 	}
 	return false
 }
@@ -664,6 +793,9 @@ func (m *Mutation) ClearEdge(name string) error {
 	case EdgeTenant:
 		m.ClearTenant()
 		return nil
+	case EdgeRobot:
+		m.ClearRobot()
+		return nil
 	}
 	return fmt.Errorf("unknown Holder unique edge %s", name)
 }
@@ -674,6 +806,9 @@ func (m *Mutation) ResetEdge(name string) error {
 	switch name {
 	case EdgeTenant:
 		m.ResetTenant()
+		return nil
+	case EdgeRobot:
+		m.ResetRobot()
 		return nil
 	}
 	return fmt.Errorf("unknown Holder edge %s", name)

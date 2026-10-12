@@ -153,7 +153,9 @@ var (
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "idp_subject", Type: field.TypeString},
 		{Name: "profile", Type: field.TypeJson, Nullable: true},
+		{Name: "directory", Type: field.TypeString},
 		{Name: "tenant_id", Type: field.TypeUuid},
+		{Name: "robot_id", Type: field.TypeUuid, Nullable: true},
 	}
 	// HolderTable holds the schema information for the "holder" table.
 	HolderTable = &schema.Table{
@@ -163,16 +165,22 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "holder_tenant_tenant",
-				Columns:    []*schema.Column{HolderColumns[10]},
+				Columns:    []*schema.Column{HolderColumns[11]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "holder_robot_robot",
+				Columns:    []*schema.Column{HolderColumns[12]},
+				RefColumns: []*schema.Column{RobotColumns[0]},
+				OnDelete:   schema.SetNull,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "holder_alias_tenant_id",
 				Unique:  true,
-				Columns: []*schema.Column{HolderColumns[1], HolderColumns[10]},
+				Columns: []*schema.Column{HolderColumns[1], HolderColumns[11]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "date_erased IS NULL",
 				},
@@ -358,6 +366,7 @@ var (
 		{Name: "labels", Type: field.TypeJson, Nullable: true},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "region", Type: field.TypeString},
 	}
 	// TenantTable holds the schema information for the "tenant" table.
 	TenantTable = &schema.Table{
@@ -411,6 +420,7 @@ func init() {
 		Table: "fleet",
 	}
 	HolderTable.ForeignKeys[0].RefTable = TenantTable
+	HolderTable.ForeignKeys[1].RefTable = RobotTable
 	HolderTable.Annotation = &entsql.Annotation{
 		Table: "holder",
 	}

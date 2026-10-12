@@ -29,6 +29,7 @@ message TenantAddRequest {
   string desc = 6 [features.field_presence = IMPLICIT];
   map<string, string> labels = 7;
   google.protobuf.Timestamp date_created = 15;
+  string region = 8 [features.field_presence = IMPLICIT];
 }
 
 message TenantGetRequest {
@@ -51,6 +52,7 @@ message TenantSelect {
   bool labels = 7;
   bool date_updated = 13;
   bool date_created = 15;
+  bool region = 8;
 }
 
 message TenantPatchRequest {
@@ -73,6 +75,7 @@ message TenantPatchRequest {
   // refused rather than assumed, because an unset field cannot be told
   // apart from a caller who never considered locking at all.
   bool date_updated_force = 27;
+  string region = 16;
 }
 
 message TenantApplyRequest {

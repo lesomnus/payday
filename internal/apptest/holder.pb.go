@@ -46,6 +46,8 @@ type Holder struct {
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	xxx_hidden_IdpSubject  string                 `protobuf:"bytes,8,opt,name=idp_subject,json=idpSubject"`
 	xxx_hidden_Profile     *Profile               `protobuf:"bytes,9,opt,name=profile"`
+	xxx_hidden_Directory   string                 `protobuf:"bytes,10,opt,name=directory"`
+	xxx_hidden_Robot       *Robot                 `protobuf:"bytes,11,opt,name=robot"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -152,6 +154,20 @@ func (x *Holder) GetProfile() *Profile {
 	return nil
 }
 
+func (x *Holder) GetDirectory() string {
+	if x != nil {
+		return x.xxx_hidden_Directory
+	}
+	return ""
+}
+
+func (x *Holder) GetRobot() *Robot {
+	if x != nil {
+		return x.xxx_hidden_Robot
+	}
+	return nil
+}
+
 func (x *Holder) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -199,6 +215,14 @@ func (x *Holder) SetProfile(v *Profile) {
 	x.xxx_hidden_Profile = v
 }
 
+func (x *Holder) SetDirectory(v string) {
+	x.xxx_hidden_Directory = v
+}
+
+func (x *Holder) SetRobot(v *Robot) {
+	x.xxx_hidden_Robot = v
+}
+
 func (x *Holder) HasTenant() bool {
 	if x == nil {
 		return false
@@ -234,6 +258,13 @@ func (x *Holder) HasProfile() bool {
 	return x.xxx_hidden_Profile != nil
 }
 
+func (x *Holder) HasRobot() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Robot != nil
+}
+
 func (x *Holder) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
@@ -252,6 +283,10 @@ func (x *Holder) ClearDateCreated() {
 
 func (x *Holder) ClearProfile() {
 	x.xxx_hidden_Profile = nil
+}
+
+func (x *Holder) ClearRobot() {
+	x.xxx_hidden_Robot = nil
 }
 
 type Holder_builder struct {
@@ -293,6 +328,17 @@ type Holder_builder struct {
 	// patch. Its existence pins the shape that once failed silently -- see
 	// [Profile] for what the failure was and what its two fields are for.
 	Profile *Profile
+	// A scalar stamped on payday's own entity, which once did not compile
+	// (payday#29): the refusal came out as a second gate beside the one the
+	// holder's tenant read already is, and asked `HasDirectory()` of a field
+	// the request declares without presence. Which directory a holder came
+	// from is the deployment's to say -- an import names it, a request does not.
+	Directory string
+	// And an edge an overlay adds, to a row behind the wall. The holder's gate
+	// is written by hand and once asked about its tenant and nothing else, so an
+	// edge like this one was a foreign key with nothing consulted: a holder
+	// pointed at another tenant's robot, and read it back through itself.
+	Robot *Robot
 }
 
 func (b0 Holder_builder) Build() *Holder {
@@ -310,6 +356,8 @@ func (b0 Holder_builder) Build() *Holder {
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_IdpSubject = b.IdpSubject
 	x.xxx_hidden_Profile = b.Profile
+	x.xxx_hidden_Directory = b.Directory
+	x.xxx_hidden_Robot = b.Robot
 	return m0
 }
 
@@ -317,7 +365,7 @@ var File_app_payday_holder_proto protoreflect.FileDescriptor
 
 const file_app_payday_holder_proto_rawDesc = "" +
 	"\n" +
-	"\x17app/payday/holder.proto\x12\x03app\x1a\x11app/profile.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\x8d\x05\n" +
+	"\x17app/payday/holder.proto\x12\x03app\x1a\x11app/profile.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xdd\x05\n" +
 	"\x06Holder\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
@@ -331,7 +379,11 @@ const file_app_payday_holder_proto_rawDesc = "" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12\x1f\n" +
 	"\vidp_subject\x18\b \x01(\tR\n" +
 	"idpSubject\x12&\n" +
-	"\aprofile\x18\t \x01(\v2\f.app.ProfileR\aprofile\x1a9\n" +
+	"\aprofile\x18\t \x01(\v2\f.app.ProfileR\aprofile\x12$\n" +
+	"\tdirectory\x18\n" +
+	" \x01(\tB\x06\xaa\xc1\x16\x02\x10\x01R\tdirectory\x12(\n" +
+	"\x05robot\x18\v \x01(\v2\n" +
+	".app.RobotB\x06\xf2\x82\x16\x028\x01R\x05robot\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:n\xca\xfc\x15%\x12\x02\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
@@ -355,6 +407,7 @@ var file_app_payday_holder_proto_goTypes = []any{
 	(*Tenant)(nil),                // 2: app.Tenant
 	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
 	(*Profile)(nil),               // 4: app.Profile
+	(*Robot)(nil),                 // 5: app.Robot
 }
 var file_app_payday_holder_proto_depIdxs = []int32{
 	2, // 0: app.Holder.tenant:type_name -> app.Tenant
@@ -363,11 +416,12 @@ var file_app_payday_holder_proto_depIdxs = []int32{
 	3, // 3: app.Holder.date_erased:type_name -> google.protobuf.Timestamp
 	3, // 4: app.Holder.date_created:type_name -> google.protobuf.Timestamp
 	4, // 5: app.Holder.profile:type_name -> app.Profile
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 6: app.Holder.robot:type_name -> app.Robot
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_holder_proto_init() }
@@ -376,6 +430,7 @@ func file_app_payday_holder_proto_init() {
 		return
 	}
 	file_app_profile_proto_init()
+	file_app_robot_proto_init()
 	file_app_payday_tenant_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{

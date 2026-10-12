@@ -598,6 +598,14 @@ InvalidArgument: date_verified: is established by this deployment and not
 asserted by a request
 ```
 
+The refusal asks the question the request can answer. A field with presence in
+the `Add` request (a message, an edge, or a scalar that is `nullable` or has a
+`default`) is refused when it is set at all. A scalar the row cannot do without
+has no presence there (the ORM declares it `IMPLICIT`), so it is refused when it
+is not zero, and a list or a map when it is not empty. The same holds for a
+field an overlay adds to one of payday's entities (`proto/ext/payday/`), which
+once generated a gate that did not compile (#29).
+
 **`immutable:` is not this, and reaching for it is the mistake this exists to
 end.** `orm.field.immutable` takes a field out of the **patch** request and
 leaves it in `Add`, which is right for a tenancy stamp — set once, never moved —
