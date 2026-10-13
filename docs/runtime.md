@@ -652,7 +652,7 @@ uses and none of the others:
 | | `audit.checkpoints.key` | the app imports | signs with | tried against |
 | --- | --- | --- | --- | --- |
 | a PKCS #11 token | `pkcs11:token=payday;object=checkpoints?module-path=…&pin-source=…` | `config/signerpkcs11` | Ed25519, ECDSA P-256/384/521, RSA | SoftHSM 2.6 |
-| a TPM 2.0 | `tpm:0x81000100` | `config/signertpm` | ECDSA P-256 (P-384/521), RSA 2048 (3072) | swtpm 0.7 |
+| a TPM 2.0 | `tpm:0x81000100` | `config/signertpm` | ECDSA P-256 (P-384/521), RSA 2048 (3072) | swtpm 0.7; an AMD fTPM, a key made for the run |
 | Vault's Transit | `hashivault://checkpoints` | `config/signervault` | Ed25519, ECDSA P-256/384/521, RSA | Vault 2.1, OpenBao 2.7 |
 | AWS KMS | `awskms:///alias/payday-checkpoints` | `trail/trailawskms` | ECDSA P-256/384/521, RSA | local-kms |
 
@@ -714,6 +714,18 @@ ends with. One across the network — Transit, KMS, an HSM on the network — is
 request a row: a pass that moves many chunks takes as long as that many
 requests, and for KMS counts against its request quota and its bill.
 
+**What each was tried against** is the table's last column, and it is
+emulators but for one chip: an AMD fTPM signed through `trailtpm.New` with a
+key made for the run and flushed after it, so no persistent handle was opened
+(#62). A device's first start is the first time it is asked, and the try at
+start makes what goes wrong there a process that does not start; before one
+is relied on, a scratch archive taken through a pass and `Policy.Verify` says
+the rest. Three have not been asked at all: **KMS on P-384 or P-521**, whose
+digest goes padded as `trailawskms` says, which local-kms signs and KMS itself
+has not been given; **an HSM on the network**, which is also where a request a
+row is felt; and **a YubiKey as the master**, since the plugins were tried
+with one the tests make.
+
 A key rotated is a new public half: keep the old one in
 `audit.checkpoints.trust` for as long as there are checkpoints it signed.
 `trust` reads PKIX, as base64 or PEM — what `tpm2_readpublic -f pem`,
@@ -722,7 +734,14 @@ A key rotated is a new public half: keep the old one in
 ECDSA or RSA key. A device of another kind is an app's own `crypto.Signer`,
 registered under a scheme of its own with `config.RegisterSigner`. Google Cloud
 KMS and Azure Key Vault are not here yet, for want of something to try them
-against; the first is reachable through PKCS #11 today.
+against; the first is reachable through PKCS #11 today. Nor, for want of
+somebody who needs them, are a TPM key whose use is a policy, or that is kept
+in a TSS2 key file; a TPM on Windows named by `tpm:` (TBS, which `trailtpm.New`
+reaches through what go-tpm's `windowstpm` opens); and Transit asked with
+anything but a token: a client certificate (`VAULT_CLIENT_CERT`),
+`VAULT_CAPATH`, an auth method of Vault's own (#63). The device tests run at a
+desk with what CI's `signers` job starts: each skips itself without its
+emulator, and its file says how the emulator is started.
 
 #### Sealed contents
 
