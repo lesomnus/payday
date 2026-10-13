@@ -7,7 +7,7 @@ import (
 
 	"github.com/lesomnus/otx/otxtest"
 	"github.com/stretchr/testify/require"
-	otellog "go.opentelemetry.io/otel/log"
+	"go.opentelemetry.io/otel/attribute"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -56,8 +56,8 @@ func attr(r sdklog.Record, key string) (string, bool) {
 		v     string
 		found bool
 	)
-	r.WalkAttributes(func(kv otellog.KeyValue) bool {
-		if kv.Key != key {
+	r.WalkAttributes(func(kv attribute.KeyValue) bool {
+		if string(kv.Key) != key {
 			return true
 		}
 
