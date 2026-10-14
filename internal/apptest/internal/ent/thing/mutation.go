@@ -17,6 +17,7 @@ type Mutation struct {
 	op            ent.Op
 	typ           string
 	alias         *string
+	description   *string
 	date_erased   *time.Time
 	date_created  *time.Time
 	clearedFields map[string]struct{}
@@ -54,6 +55,38 @@ func (m *Mutation) Alias() (r string, exists bool) {
 // ResetAlias resets all changes to the "alias" field.
 func (m *Mutation) ResetAlias() {
 	m.alias = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *Mutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *Mutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearDescription clears the value of the "description" field.
+func (m *Mutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[FieldDescription] = struct{}{}
+}
+
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *Mutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[FieldDescription]
+	return ok
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *Mutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, FieldDescription)
 }
 
 // SetDateErased sets the "date_erased" field.
@@ -154,9 +187,12 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
 	if m.alias != nil {
 		fields = append(fields, FieldAlias)
+	}
+	if m.description != nil {
+		fields = append(fields, FieldDescription)
 	}
 	if m.date_erased != nil {
 		fields = append(fields, FieldDateErased)
@@ -174,6 +210,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case FieldAlias:
 		return m.Alias()
+	case FieldDescription:
+		return m.Description()
 	case FieldDateErased:
 		return m.DateErased()
 	case FieldDateCreated:
@@ -200,6 +238,13 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAlias(v)
+		return nil
+	case FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
 		return nil
 	case FieldDateErased:
 		v, ok := value.(time.Time)
@@ -245,6 +290,9 @@ func (m *Mutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *Mutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(FieldDescription) {
+		fields = append(fields, FieldDescription)
+	}
 	if m.FieldCleared(FieldDateErased) {
 		fields = append(fields, FieldDateErased)
 	}
@@ -265,6 +313,9 @@ func (m *Mutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *Mutation) ClearField(name string) error {
 	switch name {
+	case FieldDescription:
+		m.ClearDescription()
+		return nil
 	case FieldDateErased:
 		m.ClearDateErased()
 		return nil
@@ -281,6 +332,9 @@ func (m *Mutation) ResetField(name string) error {
 	switch name {
 	case FieldAlias:
 		m.ResetAlias()
+		return nil
+	case FieldDescription:
+		m.ResetDescription()
 		return nil
 	case FieldDateErased:
 		m.ResetDateErased()

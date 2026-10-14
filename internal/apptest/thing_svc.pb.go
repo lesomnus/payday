@@ -26,6 +26,7 @@ type ThingAddRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Description *string                `protobuf:"bytes,8,opt,name=description"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
@@ -72,6 +73,16 @@ func (x *ThingAddRequest) GetAlias() string {
 	return ""
 }
 
+func (x *ThingAddRequest) GetDescription() string {
+	if x != nil {
+		if x.xxx_hidden_Description != nil {
+			return *x.xxx_hidden_Description
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *ThingAddRequest) GetDateCreated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateCreated
@@ -84,11 +95,16 @@ func (x *ThingAddRequest) SetId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
 }
 
 func (x *ThingAddRequest) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
+}
+
+func (x *ThingAddRequest) SetDescription(v string) {
+	x.xxx_hidden_Description = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
 }
 
 func (x *ThingAddRequest) SetDateCreated(v *timestamppb.Timestamp) {
@@ -100,6 +116,13 @@ func (x *ThingAddRequest) HasId() bool {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ThingAddRequest) HasDescription() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
 func (x *ThingAddRequest) HasDateCreated() bool {
@@ -114,6 +137,11 @@ func (x *ThingAddRequest) ClearId() {
 	x.xxx_hidden_Id = nil
 }
 
+func (x *ThingAddRequest) ClearDescription() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Description = nil
+}
+
 func (x *ThingAddRequest) ClearDateCreated() {
 	x.xxx_hidden_DateCreated = nil
 }
@@ -123,6 +151,7 @@ type ThingAddRequest_builder struct {
 
 	Id          []byte
 	Alias       string
+	Description *string
 	DateCreated *timestamppb.Timestamp
 }
 
@@ -131,10 +160,14 @@ func (b0 ThingAddRequest_builder) Build() *ThingAddRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
 		x.xxx_hidden_Id = b.Id
 	}
 	x.xxx_hidden_Alias = b.Alias
+	if b.Description != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_Description = b.Description
+	}
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
 }
@@ -362,6 +395,7 @@ type ThingSelect struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
 	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
+	xxx_hidden_Description bool                   `protobuf:"varint,8,opt,name=description"`
 	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
 	xxx_hidden_DateCreated bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
@@ -409,6 +443,13 @@ func (x *ThingSelect) GetAlias() bool {
 	return false
 }
 
+func (x *ThingSelect) GetDescription() bool {
+	if x != nil {
+		return x.xxx_hidden_Description
+	}
+	return false
+}
+
 func (x *ThingSelect) GetDateErased() bool {
 	if x != nil {
 		return x.xxx_hidden_DateErased
@@ -425,22 +466,27 @@ func (x *ThingSelect) GetDateCreated() bool {
 
 func (x *ThingSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
 }
 
 func (x *ThingSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
+}
+
+func (x *ThingSelect) SetDescription(v bool) {
+	x.xxx_hidden_Description = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
 }
 
 func (x *ThingSelect) SetDateErased(v bool) {
 	x.xxx_hidden_DateErased = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
 }
 
 func (x *ThingSelect) SetDateCreated(v bool) {
 	x.xxx_hidden_DateCreated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
 }
 
 func (x *ThingSelect) HasAll() bool {
@@ -457,18 +503,25 @@ func (x *ThingSelect) HasAlias() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
-func (x *ThingSelect) HasDateErased() bool {
+func (x *ThingSelect) HasDescription() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
-func (x *ThingSelect) HasDateCreated() bool {
+func (x *ThingSelect) HasDateErased() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *ThingSelect) HasDateCreated() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
 func (x *ThingSelect) ClearAll() {
@@ -481,13 +534,18 @@ func (x *ThingSelect) ClearAlias() {
 	x.xxx_hidden_Alias = false
 }
 
-func (x *ThingSelect) ClearDateErased() {
+func (x *ThingSelect) ClearDescription() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Description = false
+}
+
+func (x *ThingSelect) ClearDateErased() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
 	x.xxx_hidden_DateErased = false
 }
 
 func (x *ThingSelect) ClearDateCreated() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
 	x.xxx_hidden_DateCreated = false
 }
 
@@ -496,6 +554,7 @@ type ThingSelect_builder struct {
 
 	All         *bool
 	Alias       *bool
+	Description *bool
 	DateErased  *bool
 	DateCreated *bool
 }
@@ -505,19 +564,23 @@ func (b0 ThingSelect_builder) Build() *ThingSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
 		x.xxx_hidden_All = *b.All
 	}
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
 		x.xxx_hidden_Alias = *b.Alias
 	}
+	if b.Description != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		x.xxx_hidden_Description = *b.Description
+	}
 	if b.DateErased != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
 		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	if b.DateCreated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
 		x.xxx_hidden_DateCreated = *b.DateCreated
 	}
 	return m0
@@ -527,6 +590,7 @@ type ThingPatchRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Ref         *ThingRef              `protobuf:"bytes,1,opt,name=ref"`
 	xxx_hidden_Alias       *string                `protobuf:"bytes,8,opt,name=alias"`
+	xxx_hidden_Description *string                `protobuf:"bytes,16,opt,name=description"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -575,13 +639,28 @@ func (x *ThingPatchRequest) GetAlias() string {
 	return ""
 }
 
+func (x *ThingPatchRequest) GetDescription() string {
+	if x != nil {
+		if x.xxx_hidden_Description != nil {
+			return *x.xxx_hidden_Description
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *ThingPatchRequest) SetRef(v *ThingRef) {
 	x.xxx_hidden_Ref = v
 }
 
 func (x *ThingPatchRequest) SetAlias(v string) {
 	x.xxx_hidden_Alias = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *ThingPatchRequest) SetDescription(v string) {
+	x.xxx_hidden_Description = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
 }
 
 func (x *ThingPatchRequest) HasRef() bool {
@@ -598,6 +677,13 @@ func (x *ThingPatchRequest) HasAlias() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
+func (x *ThingPatchRequest) HasDescription() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
 func (x *ThingPatchRequest) ClearRef() {
 	x.xxx_hidden_Ref = nil
 }
@@ -607,11 +693,17 @@ func (x *ThingPatchRequest) ClearAlias() {
 	x.xxx_hidden_Alias = nil
 }
 
+func (x *ThingPatchRequest) ClearDescription() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Description = nil
+}
+
 type ThingPatchRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Ref   *ThingRef
-	Alias *string
+	Ref         *ThingRef
+	Alias       *string
+	Description *string
 }
 
 func (b0 ThingPatchRequest_builder) Build() *ThingPatchRequest {
@@ -620,8 +712,12 @@ func (b0 ThingPatchRequest_builder) Build() *ThingPatchRequest {
 	_, _ = b, x
 	x.xxx_hidden_Ref = b.Ref
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
 		x.xxx_hidden_Alias = b.Alias
+	}
+	if b.Description != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Description = b.Description
 	}
 	return m0
 }
@@ -1065,26 +1161,29 @@ var File_shared_thing_svc_g_proto protoreflect.FileDescriptor
 
 const file_shared_thing_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x18shared/thing_svc.g.proto\x12\x06shared\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x12shared/thing.proto\"}\n" +
+	"\x18shared/thing_svc.g.proto\x12\x06shared\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x12shared/thing.proto\"\x9f\x01\n" +
 	"\x0fThingAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\x1b\n" +
-	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12=\n" +
+	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12 \n" +
+	"\vdescription\x18\b \x01(\tR\vdescription\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"b\n" +
 	"\x0fThingGetRequest\x12\"\n" +
 	"\x03ref\x18\x01 \x01(\v2\x10.shared.ThingRefR\x03ref\x12+\n" +
 	"\x06select\x18\x02 \x01(\v2\x13.shared.ThingSelectR\x06select\"#\n" +
 	"\bThingRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
-	"\x03key\"y\n" +
+	"\x03key\"\x9b\x01\n" +
 	"\vThingSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x1f\n" +
+	"\x05alias\x18\x04 \x01(\bR\x05alias\x12 \n" +
+	"\vdescription\x18\b \x01(\bR\vdescription\x12\x1f\n" +
 	"\vdate_erased\x18\x0e \x01(\bR\n" +
 	"dateErased\x12!\n" +
-	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"M\n" +
+	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"o\n" +
 	"\x11ThingPatchRequest\x12\"\n" +
 	"\x03ref\x18\x01 \x01(\v2\x10.shared.ThingRefR\x03ref\x12\x14\n" +
-	"\x05alias\x18\b \x01(\tR\x05alias\"[\n" +
+	"\x05alias\x18\b \x01(\tR\x05alias\x12 \n" +
+	"\vdescription\x18\x10 \x01(\tR\vdescription\"[\n" +
 	"\x11ThingApplyRequest\x12\"\n" +
 	"\x03ref\x18\x01 \x01(\v2\x10.shared.ThingRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +

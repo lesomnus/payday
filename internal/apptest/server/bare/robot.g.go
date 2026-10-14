@@ -15,9 +15,12 @@ import (
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
+	dialect "github.com/protobuf-orm/ent/dialect"
+	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	graph "github.com/protobuf-orm/protobuf-orm/graph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
@@ -25,6 +28,7 @@ import (
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	proto "google.golang.org/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	uuid "uuid"
 )
@@ -88,6 +92,38 @@ func (s CellServiceServer) narrow(ctx context.Context, p predicate.Cell) (predic
 	return CellNarrow(ctx, s.Scope, p)
 }
 
+func (s CellServiceServer) snapshot(ctx context.Context, p predicate.Cell, lock bool) (*ent.Cell, error) {
+	q := s.Db.Cell.Query().Where(p)
+	q.WithTenant(func(q *ent.TenantQuery) { q.Select(tenant.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if lock && s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s CellServiceServer) image(v *apptest.Cell) *apptest.Cell {
+	if v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Cell)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -136,9 +172,22 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 		return nil, err
 	}
 
+	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
+	var value *apptest.Cell
+	if snapshotOptions(s.Rec, apptest.CellService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, cell.IdEQ(u.Id), false)
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.CellService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.CellService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -146,10 +195,6 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 		return nil, err
 	}
 
-	v := u.Proto()
-	for _, d := range ds {
-		d(v)
-	}
 	return v, nil
 }
 
@@ -316,6 +361,18 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 		return nil, err
 	}
 
+	var previous *apptest.Cell
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = s.image(u.Proto())
+	}
 	if mod == nil {
 		q := st.Db.Cell.Query().Where(p)
 		if pred != nil {
@@ -361,20 +418,25 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
+		var value *apptest.Cell
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -401,8 +463,16 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Cell
 	if s.Rec != nil {
-		v, err := st.Db.Cell.Query().Where(p).OnlyId(ctx)
+		images := snapshotOptions(s.Rec, apptest.CellService_Erase_FullMethodName)
+		var v *ent.Cell
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Cell.Query().Where(p).Select(cell.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.CellEraseResponse{}, nil
@@ -410,8 +480,11 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 			return nil, err
 		}
 
-		k = v
-		p = cell.And(p, cell.IdEQ(v))
+		k = v.Id
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
+		p = cell.And(p, cell.IdEQ(v.Id))
 	}
 
 	u := st.Db.Cell.Update().Where(p)
@@ -422,8 +495,9 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.CellService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.CellService_Erase_FullMethodName,
+			Key:      k,
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}
@@ -529,6 +603,68 @@ func (s RobotServiceServer) narrow(ctx context.Context, p predicate.Robot) (pred
 	return RobotNarrow(ctx, s.Scope, p)
 }
 
+func (s RobotServiceServer) snapshot(ctx context.Context, p predicate.Robot, lock bool) (*ent.Robot, error) {
+	q := s.Db.Robot.Query().Where(p)
+	q.WithTenant(func(q *ent.TenantQuery) { q.Select(tenant.FieldId) })
+	q.WithThing(func(q *ent.ThingQuery) { q.Select(thing.FieldId) })
+	q.WithCell(func(q *ent.CellQuery) { q.Select(cell.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if lock && s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s RobotServiceServer) image(v *apptest.Robot) *apptest.Robot {
+	if v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Robot)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	{
+		f := m.Descriptor().Fields().ByNumber(30)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	{
+		f := m.Descriptor().Fields().ByNumber(3)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -611,9 +747,22 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		return nil, err
 	}
 
+	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
+	var value *apptest.Robot
+	if snapshotOptions(s.Rec, apptest.RobotService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, robot.IdEQ(u.Id), false)
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.RobotService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.RobotService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -621,10 +770,6 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		return nil, err
 	}
 
-	v := u.Proto()
-	for _, d := range ds {
-		d(v)
-	}
 	return v, nil
 }
 
@@ -833,6 +978,18 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 		return nil, err
 	}
 
+	var previous *apptest.Robot
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = s.image(u.Proto())
+	}
 	if mod == nil {
 		q := st.Db.Robot.Query().Where(p)
 		if pred != nil {
@@ -881,20 +1038,25 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
+		var value *apptest.Robot
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -921,8 +1083,16 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Robot
 	if s.Rec != nil {
-		v, err := st.Db.Robot.Query().Where(p).OnlyId(ctx)
+		images := snapshotOptions(s.Rec, apptest.RobotService_Erase_FullMethodName)
+		var v *ent.Robot
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Robot.Query().Where(p).Select(robot.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.RobotEraseResponse{}, nil
@@ -930,8 +1100,11 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 			return nil, err
 		}
 
-		k = v
-		p = robot.And(p, robot.IdEQ(v))
+		k = v.Id
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
+		p = robot.And(p, robot.IdEQ(v.Id))
 	}
 
 	u := st.Db.Robot.Update().Where(p)
@@ -943,8 +1116,9 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.RobotService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.RobotService_Erase_FullMethodName,
+			Key:      k,
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}
@@ -1056,6 +1230,53 @@ func (s PairingServiceServer) narrow(ctx context.Context, p predicate.Pairing) (
 	return PairingNarrow(ctx, s.Scope, p)
 }
 
+func (s PairingServiceServer) snapshot(ctx context.Context, p predicate.Pairing, lock bool) (*ent.Pairing, error) {
+	q := s.Db.Pairing.Query().Where(p)
+	q.WithLead(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
+	q.WithFollow(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if lock && s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s PairingServiceServer) image(v *apptest.Pairing) *apptest.Pairing {
+	if v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Pairing)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	{
+		f := m.Descriptor().Fields().ByNumber(8)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -1116,9 +1337,22 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 		return nil, err
 	}
 
+	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
+	var value *apptest.Pairing
+	if snapshotOptions(s.Rec, apptest.PairingService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, pairing.IdEQ(u.Id), false)
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.PairingService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.PairingService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -1126,10 +1360,6 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 		return nil, err
 	}
 
-	v := u.Proto()
-	for _, d := range ds {
-		d(v)
-	}
 	return v, nil
 }
 
@@ -1301,6 +1531,18 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 		return nil, err
 	}
 
+	var previous *apptest.Pairing
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = s.image(u.Proto())
+	}
 	if mod == nil {
 		q := st.Db.Pairing.Query().Where(p)
 		if pred != nil {
@@ -1346,20 +1588,25 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
+		var value *apptest.Pairing
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -1386,8 +1633,16 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Pairing
 	if s.Rec != nil {
-		v, err := st.Db.Pairing.Query().Where(p).OnlyId(ctx)
+		images := snapshotOptions(s.Rec, apptest.PairingService_Erase_FullMethodName)
+		var v *ent.Pairing
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Pairing.Query().Where(p).Select(pairing.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.PairingEraseResponse{}, nil
@@ -1395,8 +1650,11 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 			return nil, err
 		}
 
-		k = v
-		p = pairing.And(p, pairing.IdEQ(v))
+		k = v.Id
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
+		p = pairing.And(p, pairing.IdEQ(v.Id))
 	}
 
 	n, err := st.Db.Pairing.Delete().Where(p).Exec(ctx)
@@ -1405,8 +1663,9 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.PairingService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.PairingService_Erase_FullMethodName,
+			Key:      k,
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}
@@ -1494,6 +1753,38 @@ func (s JointServiceServer) narrow(ctx context.Context, p predicate.Joint) (pred
 	return JointNarrow(ctx, s.Scope, p)
 }
 
+func (s JointServiceServer) snapshot(ctx context.Context, p predicate.Joint, lock bool) (*ent.Joint, error) {
+	q := s.Db.Joint.Query().Where(p)
+	q.WithRobot(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if lock && s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s JointServiceServer) image(v *apptest.Joint) *apptest.Joint {
+	if v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Joint)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -1544,9 +1835,22 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 		return nil, err
 	}
 
+	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
+	var value *apptest.Joint
+	if snapshotOptions(s.Rec, apptest.JointService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, joint.IdEQ(u.Id), false)
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.JointService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.JointService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -1554,10 +1858,6 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 		return nil, err
 	}
 
-	v := u.Proto()
-	for _, d := range ds {
-		d(v)
-	}
 	return v, nil
 }
 
@@ -1725,6 +2025,18 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 		return nil, err
 	}
 
+	var previous *apptest.Joint
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = s.image(u.Proto())
+	}
 	if mod == nil {
 		q := st.Db.Joint.Query().Where(p)
 		if pred != nil {
@@ -1770,20 +2082,25 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
+		var value *apptest.Joint
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -1810,8 +2127,16 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Joint
 	if s.Rec != nil {
-		v, err := st.Db.Joint.Query().Where(p).OnlyId(ctx)
+		images := snapshotOptions(s.Rec, apptest.JointService_Erase_FullMethodName)
+		var v *ent.Joint
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Joint.Query().Where(p).Select(joint.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.JointEraseResponse{}, nil
@@ -1819,8 +2144,11 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 			return nil, err
 		}
 
-		k = v
-		p = joint.And(p, joint.IdEQ(v))
+		k = v.Id
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
+		p = joint.And(p, joint.IdEQ(v.Id))
 	}
 
 	u := st.Db.Joint.Update().Where(p)
@@ -1831,8 +2159,9 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.JointService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.JointService_Erase_FullMethodName,
+			Key:      k,
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}
@@ -1938,6 +2267,22 @@ func (s FleetServiceServer) narrow(ctx context.Context, p predicate.Fleet) (pred
 	return FleetNarrow(ctx, s.Scope, p)
 }
 
+func (s FleetServiceServer) snapshot(ctx context.Context, p predicate.Fleet, lock bool) (*ent.Fleet, error) {
+	q := s.Db.Fleet.Query().Where(p)
+	q.Modify(func(q *sql.Selector) {
+		if lock && s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s FleetServiceServer) image(v *apptest.Fleet) *apptest.Fleet {
+	if v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Fleet)
+	return out
+}
 func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -1977,9 +2322,19 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 		return nil, err
 	}
 
+	v := u.Proto()
+	var value *apptest.Fleet
+	if snapshotOptions(s.Rec, apptest.FleetService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, fleet.IdEQ(u.Id), false)
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.FleetService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.FleetService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -1987,7 +2342,7 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 		return nil, err
 	}
 
-	return u.Proto(), nil
+	return v, nil
 }
 
 func (s FleetServiceServer) Get(ctx context.Context, req *apptest.FleetGetRequest) (*apptest.Fleet, error) {
@@ -2147,6 +2502,18 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 		return nil, err
 	}
 
+	var previous *apptest.Fleet
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = s.image(u.Proto())
+	}
 	if mod == nil {
 		q := st.Db.Fleet.Query().Where(p)
 		if pred != nil {
@@ -2192,20 +2559,25 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
+		var value *apptest.Fleet
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -2232,8 +2604,16 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Fleet
 	if s.Rec != nil {
-		v, err := st.Db.Fleet.Query().Where(p).OnlyId(ctx)
+		images := snapshotOptions(s.Rec, apptest.FleetService_Erase_FullMethodName)
+		var v *ent.Fleet
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Fleet.Query().Where(p).Select(fleet.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.FleetEraseResponse{}, nil
@@ -2241,8 +2621,11 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 			return nil, err
 		}
 
-		k = v
-		p = fleet.And(p, fleet.IdEQ(v))
+		k = v.Id
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
+		p = fleet.And(p, fleet.IdEQ(v.Id))
 	}
 
 	u := st.Db.Fleet.Update().Where(p)
@@ -2253,8 +2636,9 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.FleetService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.FleetService_Erase_FullMethodName,
+			Key:      k,
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}
@@ -2358,6 +2742,38 @@ func (s ReadingServiceServer) narrow(ctx context.Context, p predicate.Reading) (
 	return ReadingNarrow(ctx, s.Scope, p)
 }
 
+func (s ReadingServiceServer) snapshot(ctx context.Context, p predicate.Reading, lock bool) (*ent.Reading, error) {
+	q := s.Db.Reading.Query().Where(p)
+	q.WithRobot(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if lock && s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s ReadingServiceServer) image(v *apptest.Reading) *apptest.Reading {
+	if v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Reading)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -2416,9 +2832,22 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 		return nil, err
 	}
 
+	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
+	var value *apptest.Reading
+	if snapshotOptions(s.Rec, apptest.ReadingService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, reading.IdEQ(u.Id), false)
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.ReadingService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.ReadingService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -2426,10 +2855,6 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 		return nil, err
 	}
 
-	v := u.Proto()
-	for _, d := range ds {
-		d(v)
-	}
 	return v, nil
 }
 
@@ -2600,6 +3025,18 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 		return nil, err
 	}
 
+	var previous *apptest.Reading
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = s.image(u.Proto())
+	}
 	if mod == nil {
 		q := st.Db.Reading.Query().Where(p)
 		if pred != nil {
@@ -2645,20 +3082,25 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
+		var value *apptest.Reading
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -2685,8 +3127,16 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Reading
 	if s.Rec != nil {
-		v, err := st.Db.Reading.Query().Where(p).OnlyId(ctx)
+		images := snapshotOptions(s.Rec, apptest.ReadingService_Erase_FullMethodName)
+		var v *ent.Reading
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Reading.Query().Where(p).Select(reading.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.ReadingEraseResponse{}, nil
@@ -2694,8 +3144,11 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 			return nil, err
 		}
 
-		k = v
-		p = reading.And(p, reading.IdEQ(v))
+		k = v.Id
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
+		p = reading.And(p, reading.IdEQ(v.Id))
 	}
 
 	n, err := st.Db.Reading.Delete().Where(p).Exec(ctx)
@@ -2704,8 +3157,9 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.ReadingService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.ReadingService_Erase_FullMethodName,
+			Key:      k,
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}

@@ -20,6 +20,8 @@ type Thing struct {
 	Id uuid.UUID `json:"id,omitempty"`
 	// Alias holds the value of the "alias" field.
 	Alias string `json:"alias,omitempty"`
+	// Description holds the value of the "description" field.
+	Description string `json:"description,omitempty"`
 	// DateErased holds the value of the "date_erased" field.
 	DateErased *time.Time `json:"date_erased,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
@@ -32,7 +34,7 @@ func (*Thing) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case thing.FieldAlias:
+		case thing.FieldAlias, thing.FieldDescription:
 			values[i] = new(sql.NullString)
 		case thing.FieldDateErased, thing.FieldDateCreated:
 			values[i] = new(sql.NullTime)
@@ -64,6 +66,12 @@ func (_m *Thing) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field alias", values[i])
 			} else if value.Valid {
 				_m.Alias = value.String
+			}
+		case thing.FieldDescription:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field description", values[i])
+			} else if value.Valid {
+				_m.Description = value.String
 			}
 		case thing.FieldDateErased:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -116,6 +124,9 @@ func (_m *Thing) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.Id))
 	builder.WriteString("alias=")
 	builder.WriteString(_m.Alias)
+	builder.WriteString(", ")
+	builder.WriteString("description=")
+	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
 	if v := _m.DateErased; v != nil {
 		builder.WriteString("date_erased=")

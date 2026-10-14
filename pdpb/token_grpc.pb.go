@@ -22,9 +22,9 @@ const (
 	TokenService_Introspect_FullMethodName = "/payday.TokenService/Introspect"
 )
 
-// TokenServiceClient is the client Api for TokenService service.
+// TokenServiceClient is the client API for TokenService service.
 //
-// For semantics around ctx use and closing/ending streaming Rpcs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // TokenService says who an opaque token stands for.
 //
@@ -97,7 +97,7 @@ func (c *tokenServiceClient) Introspect(ctx context.Context, in *TokenIntrospect
 	return out, nil
 }
 
-// TokenServiceServer is the server Api for TokenService service.
+// TokenServiceServer is the server API for TokenService service.
 // All implementations must embed UnimplementedTokenServiceServer
 // for forward compatibility.
 //

@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/batch.proto.
  */
 export const file_payday_batch: GenFile = /*@__PURE__*/
-  fileDesc("ChJwYXlkYXkvYmF0Y2gucHJvdG8SBnBheWRheSInCgxCYXRjaFJlcXVlc3QSFwoDb3BzGAEgAygLMgoucGF5ZGF5Lk9wIjsKAk9wEg4KBm1ldGhvZBgBIAEoCRIlCgdyZXF1ZXN0GAIgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueSI2Cg1CYXRjaFJlc3BvbnNlEiUKB3Jlc3VsdHMYASADKAsyFC5nb29nbGUucHJvdG9idWYuQW55MkEKDEJhdGNoU2VydmljZRIxCgJEbxIULnBheWRheS5CYXRjaFJlcXVlc3QaFS5wYXlkYXkuQmF0Y2hSZXNwb25zZUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_any]);
+  fileDesc("ChJwYXlkYXkvYmF0Y2gucHJvdG8SBnBheWRheSInCgxCYXRjaFJlcXVlc3QSFwoDb3BzGAEgAygLMgoucGF5ZGF5Lk9wIjsKAk9wEg4KBm1ldGhvZBgBIAEoCRIlCgdyZXF1ZXN0GAIgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueSI2Cg1CYXRjaFJlc3BvbnNlEiUKB3Jlc3VsdHMYASADKAsyFC5nb29nbGUucHJvdG9idWYuQW55MkYKDEJhdGNoU2VydmljZRI2CgJEbxIULnBheWRheS5CYXRjaFJlcXVlc3QaFS5wYXlkYXkuQmF0Y2hSZXNwb25zZSIDiAIBQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_any]);
 
 /**
  * @generated from message payday.BatchRequest
@@ -111,7 +111,11 @@ export const BatchResponseSchema: GenMessage<BatchResponse> = /*@__PURE__*/
  */
 export const BatchService: GenService<{
   /**
+   * Deprecated: use ResourceService.Batch. The request and transaction semantics
+   * are identical; this endpoint remains available for existing clients.
+   *
    * @generated from rpc payday.BatchService.Do
+   * @deprecated
    */
   do: {
     methodKind: "unary";

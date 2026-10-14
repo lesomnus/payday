@@ -21,7 +21,11 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 // which are checked per operation rather than against this RPC; see
 // `payday/batch`.
 service BatchService {
-  rpc Do(BatchRequest) returns (BatchResponse);
+  // Deprecated: use ResourceService.Batch. The request and transaction semantics
+  // are identical; this endpoint remains available for existing clients.
+  rpc Do(BatchRequest) returns (BatchResponse) {
+    option deprecated = true;
+  }
 }
 
 message BatchRequest {

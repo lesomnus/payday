@@ -41,6 +41,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/lesomnus/payday/pdid"
+	"github.com/lesomnus/payday/pdpb"
 )
 
 // Change is one write, as an event carries it.
@@ -63,6 +64,10 @@ type Change struct {
 	// Patch is the document the write was compiled from, marshaled, and empty
 	// for a write that was not one.
 	Patch []byte
+
+	// Resource is the immutable mutation envelope for ResourceService.Watch.
+	// Nil identifies a legacy key-only notification.
+	Resource *pdpb.WatchEvent
 }
 
 // Event is one call that changed something.

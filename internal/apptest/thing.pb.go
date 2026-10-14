@@ -46,6 +46,7 @@ type Thing struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Description string                 `protobuf:"bytes,8,opt,name=description"`
 	xxx_hidden_DateErased  *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields          protoimpl.UnknownFields
@@ -91,6 +92,13 @@ func (x *Thing) GetAlias() string {
 	return ""
 }
 
+func (x *Thing) GetDescription() string {
+	if x != nil {
+		return x.xxx_hidden_Description
+	}
+	return ""
+}
+
 func (x *Thing) GetDateErased() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateErased
@@ -114,6 +122,10 @@ func (x *Thing) SetId(v []byte) {
 
 func (x *Thing) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
+}
+
+func (x *Thing) SetDescription(v string) {
+	x.xxx_hidden_Description = v
 }
 
 func (x *Thing) SetDateErased(v *timestamppb.Timestamp) {
@@ -149,8 +161,10 @@ func (x *Thing) ClearDateCreated() {
 type Thing_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Id          []byte
-	Alias       string
+	Id    []byte
+	Alias string
+	// A public payload used to exercise resource events larger than one NOTIFY.
+	Description string
 	DateErased  *timestamppb.Timestamp
 	DateCreated *timestamppb.Timestamp
 }
@@ -161,6 +175,7 @@ func (b0 Thing_builder) Build() *Thing {
 	_, _ = b, x
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_Description = b.Description
 	x.xxx_hidden_DateErased = b.DateErased
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
@@ -170,10 +185,11 @@ var File_shared_thing_proto protoreflect.FileDescriptor
 
 const file_shared_thing_proto_rawDesc = "" +
 	"\n" +
-	"\x12shared/thing.proto\x12\x06shared\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x83\x02\n" +
+	"\x12shared/thing.proto\x12\x06shared\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xae\x02\n" +
 	"\x05Thing\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12)\n" +
+	"\vdescription\x18\b \x01(\tB\a\xea\x82\x16\x03\x82\x01\x00R\vdescription\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:7\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16+\b\r2%\n" +

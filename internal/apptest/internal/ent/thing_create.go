@@ -28,6 +28,20 @@ func (_c *ThingCreate) SetAlias(v string) *ThingCreate {
 	return _c
 }
 
+// SetDescription sets the "description" field.
+func (_c *ThingCreate) SetDescription(v string) *ThingCreate {
+	_c.mutation.SetDescription(v)
+	return _c
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_c *ThingCreate) SetNillableDescription(v *string) *ThingCreate {
+	if v != nil {
+		_c.SetDescription(*v)
+	}
+	return _c
+}
+
 // SetDateErased sets the "date_erased" field.
 func (_c *ThingCreate) SetDateErased(v time.Time) *ThingCreate {
 	_c.mutation.SetDateErased(v)
@@ -141,6 +155,10 @@ func (_c *ThingCreate) createSpec() (*Thing, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Alias(); ok {
 		_spec.SetField(thing.FieldAlias, field.TypeString, value)
 		_node.Alias = value
+	}
+	if value, ok := _c.mutation.Description(); ok {
+		_spec.SetField(thing.FieldDescription, field.TypeString, value)
+		_node.Description = value
 	}
 	if value, ok := _c.mutation.DateErased(); ok {
 		_spec.SetField(thing.FieldDateErased, field.TypeTime, value)

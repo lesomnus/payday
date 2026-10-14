@@ -1,0 +1,18 @@
+edition = "2023";
+
+package payday;
+
+import "payday/batch.proto";
+import "payday/watch.proto";
+
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// ResourceService provides operations across the application's resource types.
+service ResourceService {
+  // Runs operations in order in one transaction, checking access for each one.
+  rpc Batch(BatchRequest) returns (BatchResponse);
+
+  // Subscribes to committed changes. Response headers signal that the live
+  // subscription is ready. There is no initial snapshot or replay on reconnect.
+  rpc Watch(WatchRequest) returns (stream WatchEvent);
+}

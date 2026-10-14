@@ -220,6 +220,7 @@ var (
 		{Name: "object_id", Type: field.TypeUuid},
 		{Name: "patch", Type: field.TypeBytes},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "event", Type: field.TypeBytes, Nullable: true},
 	}
 	// OutboxTable holds the schema information for the "outbox" table.
 	OutboxTable = &schema.Table{
@@ -385,6 +386,7 @@ var (
 	ThingColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Nullable: true},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 	}

@@ -12,12 +12,15 @@ import (
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
+	dialect "github.com/protobuf-orm/ent/dialect"
+	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	proto "google.golang.org/protobuf/proto"
 	uuid "uuid"
 )
 
@@ -80,6 +83,22 @@ func (s ThingServiceServer) narrow(ctx context.Context, p predicate.Thing) (pred
 	return ThingNarrow(ctx, s.Scope, p)
 }
 
+func (s ThingServiceServer) snapshot(ctx context.Context, p predicate.Thing, lock bool) (*ent.Thing, error) {
+	q := s.Db.Thing.Query().Where(p)
+	q.Modify(func(q *sql.Selector) {
+		if lock && s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s ThingServiceServer) image(v *apptest.Thing) *apptest.Thing {
+	if v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Thing)
+	return out
+}
 func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -105,6 +124,11 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 		q.SetId(v)
 	}
 	q.SetAlias(req.GetAlias())
+	if req.HasDescription() {
+		q.SetDescription(req.GetDescription())
+	} else {
+		q.SetDescription("")
+	}
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
@@ -124,9 +148,19 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 		return nil, err
 	}
 
+	v := u.Proto()
+	var value *apptest.Thing
+	if snapshotOptions(s.Rec, apptest.ThingService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, thing.IdEQ(u.Id), false)
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.ThingService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.ThingService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -134,7 +168,7 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 		return nil, err
 	}
 
-	return u.Proto(), nil
+	return v, nil
 }
 
 func (s ThingServiceServer) Get(ctx context.Context, req *apptest.ThingGetRequest) (*apptest.Thing, error) {
@@ -175,6 +209,9 @@ func ThingSelectedFields(m *apptest.ThingSelect) []string {
 	}
 	if m.GetAlias() {
 		vs = append(vs, thing.FieldAlias)
+	}
+	if m.GetDescription() {
+		vs = append(vs, thing.FieldDescription)
 	}
 	if m.GetDateErased() {
 		vs = append(vs, thing.FieldDateErased)
@@ -247,7 +284,7 @@ func ThingGetKey(ctx context.Context, db *ent.Client, ref *apptest.ThingRef) (uu
 var thingOrmEntity = ormpatch.MustEntityOf(apptest.File_shared_thing_proto, "Thing")
 
 var thingPatchColumns = entpatch.Columns{
-	1: thing.FieldId, 4: thing.FieldAlias, 14: thing.FieldDateErased, 15: thing.FieldDateCreated}
+	1: thing.FieldId, 4: thing.FieldAlias, 8: thing.FieldDescription, 14: thing.FieldDateErased, 15: thing.FieldDateCreated}
 
 func (s ThingServiceServer) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
 	if !req.HasPatch() {
@@ -297,6 +334,18 @@ func (s ThingServiceServer) apply(ctx context.Context, ref *apptest.ThingRef, do
 		return nil, err
 	}
 
+	var previous *apptest.Thing
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = s.image(u.Proto())
+	}
 	if mod == nil {
 		q := st.Db.Thing.Query().Where(p)
 		if pred != nil {
@@ -342,20 +391,25 @@ func (s ThingServiceServer) apply(ctx context.Context, ref *apptest.ThingRef, do
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
+		var value *apptest.Thing
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -382,8 +436,16 @@ func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Thing
 	if s.Rec != nil {
-		v, err := st.Db.Thing.Query().Where(p).OnlyId(ctx)
+		images := snapshotOptions(s.Rec, apptest.ThingService_Erase_FullMethodName)
+		var v *ent.Thing
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Thing.Query().Where(p).Select(thing.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.ThingEraseResponse{}, nil
@@ -391,8 +453,11 @@ func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*
 			return nil, err
 		}
 
-		k = v
-		p = thing.And(p, thing.IdEQ(v))
+		k = v.Id
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
+		p = thing.And(p, thing.IdEQ(v.Id))
 	}
 
 	u := st.Db.Thing.Update().Where(p)
@@ -403,8 +468,9 @@ func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.ThingService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.ThingService_Erase_FullMethodName,
+			Key:      k,
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}
