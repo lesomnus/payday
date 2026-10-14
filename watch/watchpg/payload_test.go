@@ -17,7 +17,7 @@ func TestResourcePayloadAcrossNotifications(t *testing.T) {
 	x := require.New(t)
 	id := pdid.New(3)
 	image := pdpb.WatchEvent_builder{Id: id[:], Method: strings.Repeat("large-resource", 10000)}.Build()
-	event, err := resource.Event(id[:], time.Now(), "/app.RobotService/Add", "/payday.ResourceService/Batch", nil, image)
+	event, err := resource.Event(id[:], time.Now(), "/app.RobotService/Add", "/payday.ResourceService/Batch", pdpb.ChangeKind_CHANGE_KIND_CREATED, nil, image)
 	x.NoError(err)
 	input := watch.Event{Method: event.GetCallMethod(), Changes: []watch.Change{{By: "/app.RobotService/Add", Method: event.GetMethod(), Key: id, Resource: event}}}
 	chunks, err := packets(input)

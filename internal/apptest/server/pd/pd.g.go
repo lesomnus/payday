@@ -6562,17 +6562,131 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 
 // ResourceRecorder selects and constructs one envelope for both publication paths.
 // Install it in place of WatchRecorder + OutboxRecorder. Audit stays separate.
-func ResourceRecorder(w *watch.Watch, outbox bool, selectEvent resource.Select) bare.Recorder {
-	return resourceRecorder{w, outbox, selectEvent}
+func ResourceRecorder(w *watch.Watch, outbox bool, selectEvent resource.Select, options resource.RecorderOptions) bare.Recorder {
+	return resourceRecorder{w, outbox, selectEvent, options}
 }
 
 type resourceRecorder struct {
 	w           *watch.Watch
 	outbox      bool
 	selectEvent resource.Select
+	options     resource.RecorderOptions
 }
 
+// Snapshots requests only images this publisher uses; ordinary audit recorders
+// need none. Deletes retain their only image for historical authorization.
+func (r resourceRecorder) Snapshots(method string) bare.SnapshotOptions {
+	switch resourceChangeKind(method) {
+	case pdpb.ChangeKind_CHANGE_KIND_CREATED:
+		return bare.SnapshotOptions{Value: true}
+	case pdpb.ChangeKind_CHANGE_KIND_UPDATED:
+		return bare.SnapshotOptions{Value: true, Previous: r.options.Previous}
+	case pdpb.ChangeKind_CHANGE_KIND_DELETED:
+		return bare.SnapshotOptions{Previous: true}
+	default:
+		return bare.SnapshotOptions{}
+	}
+}
+func resourceChangeKind(method string) pdpb.ChangeKind {
+	switch method {
+	case apptest.AuditService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.AuditService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.AuditService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.AuditService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.CellService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.CellService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.CellService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.CellService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.FleetService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.FleetService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.FleetService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.FleetService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.HolderService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.HolderService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.HolderService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.HolderService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.JointService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.JointService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.JointService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.JointService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.PairingService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.PairingService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.PairingService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.PairingService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.ReadingService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.ReadingService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.ReadingService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.ReadingService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.RobotService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.RobotService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.RobotService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.RobotService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.SealService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.SealService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.SealService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.SealService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.TenantService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.TenantService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.TenantService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.TenantService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.ThingService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.ThingService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.ThingService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.ThingService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	default:
+		return pdpb.ChangeKind_CHANGE_KIND_UNSPECIFIED
+	}
+}
 func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
+	kind := resourceChangeKind(c.By)
+	previous := c.Previous
+	if kind == pdpb.ChangeKind_CHANGE_KIND_UPDATED && !r.options.Previous {
+		previous = nil
+	}
 	image := c.Value
 	if image == nil {
 		image = c.Previous
@@ -6591,7 +6705,7 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 	}
 	id := pdid.New(OutboxDomain)
 	at := time.Now().UTC()
-	event, err := resource.Event(id[:], at, c.Method, watch.CallMethod(ctx, c.Method), publicResource(c.Previous), publicResource(c.Value))
+	event, err := resource.Event(id[:], at, c.Method, watch.CallMethod(ctx, c.Method), kind, publicResource(previous), publicResource(c.Value))
 	if err != nil {
 		return err
 	}

@@ -40,6 +40,14 @@ type Project func(context.Context, proto.Message) (proto.Message, error)
 // supported resources. Audit recording is independent of this policy.
 type Select func(context.Context, *pdpb.WatchEvent) (bool, error)
 
+// RecorderOptions controls the generated ResourceRecorder's capture cost.
+type RecorderOptions struct {
+	// Previous captures the preimage of updates using a row lock. By default,
+	// updates include only Value. Deletions always capture Previous because it
+	// is their only payload for authorization and CEL; creations have no Previous.
+	Previous bool
+}
+
 type Server struct {
 	pdpb.UnimplementedResourceServiceServer
 	batch   pdpb.BatchServiceServer
@@ -167,8 +175,8 @@ func (s *Server) public(ctx context.Context, source *pdpb.WatchEvent) (*pdpb.Wat
 		if err != nil {
 			return nil, status.Error(codes.Internal, "watch resource authorization failed")
 		}
-		// Both images must be readable. A move must not disclose the other tenant's
-		// data merely because the caller can read one side of the transition.
+		// Every included image must be readable. When update preimages are enabled,
+		// a move must not disclose the other tenant's side of the transition.
 		if projected == nil {
 			return nil, nil
 		}

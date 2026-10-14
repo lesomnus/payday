@@ -1,8 +1,10 @@
 package cmd_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/config/brokerpg"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
@@ -25,6 +27,7 @@ import (
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/pdtest"
+	"github.com/lesomnus/payday/resource"
 	"github.com/lesomnus/payday/watch"
 )
 
@@ -56,8 +59,8 @@ func TestResourceWatchImages(t *testing.T) {
 		old, new string
 	}{
 		{pdpb.ChangeKind_CHANGE_KIND_CREATED, "", "first"},
-		{pdpb.ChangeKind_CHANGE_KIND_UPDATED, "first", "second"},
-		{pdpb.ChangeKind_CHANGE_KIND_UPDATED, "second", "third"},
+		{pdpb.ChangeKind_CHANGE_KIND_UPDATED, "", "second"},
+		{pdpb.ChangeKind_CHANGE_KIND_UPDATED, "", "third"},
 		{pdpb.ChangeKind_CHANGE_KIND_DELETED, "third", ""},
 	} {
 		event, err := stream.Recv()
@@ -84,6 +87,83 @@ func TestResourceWatchImages(t *testing.T) {
 				x.Empty(v.GetSecret())
 			}
 		}
+	}
+}
+
+// Another recorder may need Previous; that must not implicitly turn it on in
+// the public event stream or increase the authorization requirements of updates.
+type previousConsumer struct{}
+
+func (previousConsumer) Snapshots(string) bare.SnapshotOptions {
+	return bare.SnapshotOptions{Previous: true}
+}
+func (previousConsumer) Record(context.Context, bare.Server, bare.Change) error { return nil }
+
+func TestResourceWatchPreviousOptIn(t *testing.T) {
+	for _, previous := range []bool{false, true} {
+		t.Run(fmt.Sprint(previous), func(t *testing.T) {
+			x := require.New(t)
+			b, ctx := build(t)
+			ctx, cancel := context.WithTimeout(b.travels(ctx), 10*time.Second)
+			defer cancel()
+			client := pdpb.NewResourceServiceClient(pdtest.Serve(t, b.grpc(t)))
+			stream, err := client.Watch(ctx, pdpb.WatchRequest_builder{Filter: `event.kind == payday.CHANGE_KIND_UPDATED && has(event.value) && type(event.value) == app.Robot`}.Build())
+			x.NoError(err)
+			_, err = stream.Header()
+			x.NoError(err)
+			r := pd.ResourceRecorder(b.Watch, true, nil, resource.RecorderOptions{Previous: previous})
+			s, err := bare.NewServer(b.Ent, bare.WithMinter(pd.Minter()), bare.WithRecorder(bare.Recorders{previousConsumer{}, r}))
+			x.NoError(err)
+			var original *app.Robot
+			x.NoError(b.Watch.Transaction(ctx, "/jobs/change", func(ctx context.Context) error {
+				tx, err := b.Ent.Tx(ctx)
+				if err != nil {
+					return err
+				}
+				defer tx.Rollback()
+				writer, err := s.WithDriver(tx.Client().Driver())
+				if err != nil {
+					return err
+				}
+				v, err := writer.Robot().Add(ctx, app.RobotAddRequest_builder{Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(), Alias: "before"}.Build())
+				if err != nil {
+					return err
+				}
+				original = v
+				_, err = writer.Robot().Patch(ctx, app.RobotPatchRequest_builder{Ref: v.Ref(), DateUpdated: v.GetDateUpdated(), Alias: z.Ptr("after")}.Build())
+				if err != nil {
+					return err
+				}
+				return tx.Commit()
+			}))
+			event, err := stream.Recv()
+			x.NoError(err)
+			x.Equal(pdpb.ChangeKind_CHANGE_KIND_UPDATED, event.GetKind())
+			x.Equal(previous, event.HasPrevious())
+			current := &app.Robot{}
+			x.NoError(event.GetValue().UnmarshalTo(current))
+			x.Equal("after", current.GetAlias())
+			if previous {
+				old := &app.Robot{}
+				x.NoError(event.GetPrevious().UnmarshalTo(old))
+				x.Equal(original.GetAlias(), old.GetAlias())
+			}
+			rows, err := b.Ent.Outbox.Query().All(t.Context())
+			x.NoError(err)
+			found := false
+			for _, row := range rows {
+				if row.Event == nil {
+					continue
+				}
+				stored := &pdpb.WatchEvent{}
+				x.NoError(proto.Unmarshal(*row.Event, stored))
+				if bytes.Equal(stored.GetId(), event.GetId()) {
+					found = true
+					x.True(proto.Equal(event, stored))
+				}
+			}
+			x.True(found, "live and outbox must share the optional-image envelope")
+		})
 	}
 }
 
@@ -239,7 +319,7 @@ func TestResourcePublicationPolicyAppliesToBothPaths(t *testing.T) {
 			return false, err
 		}
 		return v.GetAlias() == "published", nil
-	})
+	}, resource.RecorderOptions{})
 	s, err := bare.NewServer(b.Ent, bare.WithMinter(pd.Minter()), bare.WithRecorder(bare.Recorders{pd.Recorder(), recorder}))
 	x.NoError(err)
 	events, stop := b.Watch.Subscribe()

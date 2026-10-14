@@ -30,8 +30,12 @@ that caused the mutation, including an operation inside Batch. `event.call_metho
 names the outer RPC, such as `/payday.ResourceService/Batch`. Direct writes use the
 generated write method unless their transaction names another origin.
 
-`value` is the mutation's postimage, absent on deletion. `previous` is its preimage,
-absent on creation. Both contain the same resource ID and type on update. The
+`value` is the mutation's postimage, absent on deletion. Updates omit `previous`
+by default. Applications can enable update preimages with
+`resource.RecorderOptions{Previous: true}`. Deletions always carry `previous`: it
+is their only payload for filtering and historical authorization. Creations never
+carry it. When both images are present they identify the same resource. Use
+`event.kind` to distinguish creation from an update without a preimage. The
 `Any` payload supplies the resource type; CEL unwraps it, so use `type(event.value)
 == app.Robot` and guard presence before reading dynamic fields. Relationships in
 images contain keys, without expanded related resources.
@@ -68,8 +72,9 @@ scope. `ResourceProjector` applies Get restrictions in the subscription credenti
 the current application method policy,
 then evaluates that scope against a derived SQL row containing the recorded image.
 It does not depend on the current root row existing. Related-resource predicates
-use current related rows; removing a required parent denies access. Both sides of
-an update must be readable, including a move between tenants.
+use current related rows; removing a required parent denies access. Every included image must be readable. Default updates are authorized against
+the postimage only. With update preimages enabled, both sides must be readable,
+including a move between tenants. The stream never exposes an unreadable preimage.
 
 A custom Get layer that adds read rules or field projections must supply their
 historical equivalent by wrapping the projector. `Resources` requires this
@@ -94,9 +99,36 @@ selectEvent := func(ctx context.Context, event *pdpb.WatchEvent) (bool, error) {
 }
 rec := bare.Recorders{
     pd.Recorder(),
-    pd.ResourceRecorder(w, c.Watch.Outbox, selectEvent),
+    pd.ResourceRecorder(w, c.Watch.Outbox, selectEvent, resource.RecorderOptions{}),
 }
 ```
+
+To include exact update preimages, pass `resource.RecorderOptions{Previous: true}`.
+This is an application/server setting, not a subscription request: subscribers
+cannot turn additional database work on. Guard `has(event.previous)` in CEL when
+using the optional field.
+
+The ORM's optional `bare.SnapshotRecorder` interface declares `Snapshots(method)`
+requirements independently for each generated write method (`Change.By`). Plain
+Recorders, including audit-only and legacy key-notification recorders, keep their
+existing SQL path. `bare.Recorders` unions requests and captures each image once.
+An unrelated recorder requesting preimages does not expose them in Watch unless
+the resource recorder explicitly enables them too.
+
+For a resource without relationships, the additional work is:
+
+| Recorder | Add | Patch / Apply | Erase |
+| --- | --- | --- | --- |
+| Plain / audit-only | None | None | None; existing key lookup remains |
+| Default ResourceRecorder | One persisted-value read, no explicit lock | Reuse existing read-back; no preimage read or explicit lock | Replace key lookup with locked preimage read |
+| ResourceRecorder with Previous | Same as default | One preimage read with a row lock | Same as default |
+
+Requested images also cost protobuf conversion/copying and relationship-key
+queries. Preimage row locks last until transaction completion, including an outer
+Batch transaction; SQLite instead relies on its write serialization/conflict
+behavior. The root-row lock is not an atomic snapshot of all related tables.
+The selector below runs after capture, so rejecting publication does not avoid
+capture costs. No subscribers being connected does not disable capture either.
 
 A nil selector selects changes to every resource with a generated Get API,
 regardless of its resource-specific `watch` option. Selection happens once inside

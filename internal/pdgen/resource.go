@@ -96,15 +96,44 @@ func EmitResources(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 		g.P("if err!=nil || !ok {return nil,err};return publicResource(v),nil")
 	}
 	g.P("default:return nil,nil\n}\n}\n}")
-	emitResourceRecorder(g, s, p)
+	emitResourceRecorder(g, s, p, root)
 }
 
-func emitResourceRecorder(g *protogen.GeneratedFile, s *Schema, p Paths) {
+func emitResourceRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	g.P("// ResourceRecorder selects and constructs one envelope for both publication paths.")
 	g.P("// Install it in place of WatchRecorder + OutboxRecorder. Audit stays separate.")
-	g.P("func ResourceRecorder(w *", pkgWatch.Ident("Watch"), ", outbox bool, selectEvent ", pkgResource.Ident("Select"), ") ", p.Bare.Ident("Recorder"), " {return resourceRecorder{w,outbox,selectEvent}}")
-	g.P("type resourceRecorder struct{w *", pkgWatch.Ident("Watch"), "; outbox bool; selectEvent ", pkgResource.Ident("Select"), "}")
+	g.P("func ResourceRecorder(w *", pkgWatch.Ident("Watch"), ", outbox bool, selectEvent ", pkgResource.Ident("Select"), ", options ", pkgResource.Ident("RecorderOptions"), ") ", p.Bare.Ident("Recorder"), " {return resourceRecorder{w,outbox,selectEvent,options}}")
+	g.P("type resourceRecorder struct{w *", pkgWatch.Ident("Watch"), "; outbox bool; selectEvent ", pkgResource.Ident("Select"), "; options ", pkgResource.Ident("RecorderOptions"), "}")
+	g.P("// Snapshots requests only images this publisher uses; ordinary audit recorders")
+	g.P("// need none. Deletes retain their only image for historical authorization.")
+	g.P("func(r resourceRecorder) Snapshots(method string) ", p.Bare.Ident("SnapshotOptions"), " {")
+	g.P("switch resourceChangeKind(method) {")
+	g.P("case ", pkgPdpb.Ident("ChangeKind_CHANGE_KIND_CREATED"), ":return ", p.Bare.Ident("SnapshotOptions"), "{Value:true}")
+	g.P("case ", pkgPdpb.Ident("ChangeKind_CHANGE_KIND_UPDATED"), ":return ", p.Bare.Ident("SnapshotOptions"), "{Value:true,Previous:r.options.Previous}")
+	g.P("case ", pkgPdpb.Ident("ChangeKind_CHANGE_KIND_DELETED"), ":return ", p.Bare.Ident("SnapshotOptions"), "{Previous:true}")
+	g.P("default:return ", p.Bare.Ident("SnapshotOptions"), "{} } }")
+	g.P("func resourceChangeKind(method string) ", pkgPdpb.Ident("ChangeKind"), " {switch method {")
+	for _, e := range s.Sorted() {
+		if !e.Rpcs().HasGet() {
+			continue
+		}
+		for _, op := range []struct {
+			name, kind string
+			enabled    bool
+		}{
+			{"Add", "CREATED", e.Rpcs().HasAdd()},
+			{"Patch", "UPDATED", e.Rpcs().HasPatch()},
+			{"Apply", "UPDATED", e.Rpcs().HasPatch()},
+			{"Erase", "DELETED", e.Rpcs().HasErase()},
+		} {
+			if op.enabled {
+				g.P("case ", root.Ident(e.GoName()+"Service_"+op.name+"_FullMethodName"), ":return ", pkgPdpb.Ident("ChangeKind_CHANGE_KIND_"+op.kind))
+			}
+		}
+	}
+	g.P("default:return ", pkgPdpb.Ident("ChangeKind_CHANGE_KIND_UNSPECIFIED"), "} }")
 	g.P("func(r resourceRecorder) Record(ctx ", pkgCtx.Ident("Context"), ",s ", p.Bare.Ident("Server"), ",c ", p.Bare.Ident("Change"), ") error {")
+	g.P("kind:=resourceChangeKind(c.By);previous:=c.Previous;if kind==", pkgPdpb.Ident("ChangeKind_CHANGE_KIND_UPDATED"), " && !r.options.Previous {previous=nil}")
 	g.P("image:=c.Value;if image==nil {image=c.Previous};if image==nil{return nil}")
 	g.P("switch image.ProtoReflect().Descriptor().FullName(){")
 	var supported []string
@@ -116,7 +145,7 @@ func emitResourceRecorder(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("case ", strings.Join(supported, ","), ":\ndefault:return nil\n}")
 	g.P("k,err:=", pkgPdid.Ident("From"), "(keyBytes(c.Key));if err!=nil{return err}")
 	g.P("id:=", pkgPdid.Ident("New"), "(OutboxDomain);at:=", pkgTime.Ident("Now"), "().UTC()")
-	g.P("event,err:=", pkgResource.Ident("Event"), "(id[:],at,c.Method,", pkgWatch.Ident("CallMethod"), "(ctx,c.Method),publicResource(c.Previous),publicResource(c.Value));if err!=nil{return err}")
+	g.P("event,err:=", pkgResource.Ident("Event"), "(id[:],at,c.Method,", pkgWatch.Ident("CallMethod"), "(ctx,c.Method),kind,publicResource(previous),publicResource(c.Value));if err!=nil{return err}")
 	g.P("if r.selectEvent!=nil {ok,err:=r.selectEvent(ctx,", pkgProto.Ident("Clone"), "(event).(*", pkgPdpb.Ident("WatchEvent"), "));if err!=nil || !ok{return err}}")
 	g.P("doc:=[]byte{};if v:=hidden(k,c.Patch);v!=nil{doc,err=", pkgProto.Ident("Marshal"), "(v);if err!=nil{return err}}")
 	g.P("if r.outbox {")

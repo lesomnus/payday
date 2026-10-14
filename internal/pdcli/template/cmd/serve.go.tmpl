@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/lesomnus/payday/resource"
 	"context"
 	"database/sql"
 	"errors"
@@ -133,7 +134,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// because `WithRecorder` refuses to be given twice: neither losing one nor
 	// quietly appending in call order is a thing a framework should decide, so
 	// the order is written here where it can be read.
-	rec := bare.Recorders{pd.Recorder(), pd.ResourceRecorder(w, c.Watch.Outbox, nil)}
+	rec := bare.Recorders{pd.Recorder(), pd.ResourceRecorder(w, c.Watch.Outbox, nil, resource.RecorderOptions{})}
 
 	opts := []bare.Option{bare.WithMinter(pd.Minter()), bare.WithRecorder(rec)}
 

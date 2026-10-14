@@ -34,7 +34,8 @@ message WatchEvent {
   ChangeKind kind = 5;
   // Outermost RPC; for example /payday.ResourceService/Batch.
   string call_method = 7;
-  // Mutation preimage, absent on creation.
+  // Mutation preimage. Present on deletion; on updates only when the application's
+  // recorder enables it. Absent on creation. Guard presence in CEL filters.
   google.protobuf.Any previous = 8;
   // Time recorded in the write transaction, not delivery or database commit time.
   google.protobuf.Timestamp date_created = 15;

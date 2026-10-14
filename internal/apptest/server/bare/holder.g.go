@@ -87,19 +87,19 @@ func (s HolderServiceServer) narrow(ctx context.Context, p predicate.Holder) (pr
 	return HolderNarrow(ctx, s.Scope, p)
 }
 
-func (s HolderServiceServer) snapshot(ctx context.Context, p predicate.Holder) (*ent.Holder, error) {
+func (s HolderServiceServer) snapshot(ctx context.Context, p predicate.Holder, lock bool) (*ent.Holder, error) {
 	q := s.Db.Holder.Query().Where(p)
 	q.WithTenant(func(q *ent.TenantQuery) { q.Select(tenant.FieldId) })
 	q.WithRobot(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
 	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
+		if lock && s.Db.Dialect() != dialect.SQLite {
 			q.ForUpdate()
 		}
 	})
 	return q.Only(ctx)
 }
 func (s HolderServiceServer) image(v *apptest.Holder) *apptest.Holder {
-	if s.Rec == nil || v == nil {
+	if v == nil {
 		return nil
 	}
 	out := proto.Clone(v).(*apptest.Holder)
@@ -213,8 +213,8 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 		d(v)
 	}
 	var value *apptest.Holder
-	if s.Rec != nil {
-		stored, err := st.snapshot(ctx, holder.IdEQ(u.Id))
+	if snapshotOptions(s.Rec, apptest.HolderService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, holder.IdEQ(u.Id), false)
 		if err != nil {
 			return nil, err
 		}
@@ -439,15 +439,16 @@ func (s HolderServiceServer) apply(ctx context.Context, ref *apptest.HolderRef, 
 	}
 
 	var previous *apptest.Holder
-	if s.Rec != nil && mod != nil {
-		u, err := st.snapshot(ctx, p)
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return nil, status.Error(codes.NotFound, "resource not found")
 			}
 			return nil, err
 		}
-		previous = u.Proto()
+		previous = s.image(u.Proto())
 	}
 	if mod == nil {
 		q := st.Db.Holder.Query().Where(p)
@@ -502,11 +503,15 @@ func (s HolderServiceServer) apply(ctx context.Context, ref *apptest.HolderRef, 
 		return nil, err
 	}
 	if mod != nil {
+		var value *apptest.Holder
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
 			By:       by,
 			Key:      k,
 			Patch:    doc,
-			Previous: s.image(previous), Value: s.image(out),
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
@@ -540,7 +545,14 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 	var k any
 	var previous *apptest.Holder
 	if s.Rec != nil {
-		v, err := st.snapshot(ctx, p)
+		images := snapshotOptions(s.Rec, apptest.HolderService_Erase_FullMethodName)
+		var v *ent.Holder
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Holder.Query().Where(p).Select(holder.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.HolderEraseResponse{}, nil
@@ -549,7 +561,9 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 		}
 
 		k = v.Id
-		previous = v.Proto()
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
 		p = holder.And(p, holder.IdEQ(v.Id))
 	}
 
@@ -564,7 +578,7 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 		if err := record(ctx, s.Rec, st.Db, Change{
 			By:       apptest.HolderService_Erase_FullMethodName,
 			Key:      k,
-			Previous: s.image(previous),
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}

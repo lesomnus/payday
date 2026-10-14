@@ -13,7 +13,7 @@ import (
 
 // Event builds one envelope before the live and outbox paths diverge. Inputs must
 // already have secrets removed. The packed values no longer alias the caller.
-func Event(id []byte, at time.Time, method, call string, previous, value proto.Message) (*pdpb.WatchEvent, error) {
+func Event(id []byte, at time.Time, method, call string, kind pdpb.ChangeKind, previous, value proto.Message) (*pdpb.WatchEvent, error) {
 	valid := func(m proto.Message) bool { return m != nil && m.ProtoReflect().IsValid() }
 	if len(id) != 16 {
 		return nil, errors.New("resource: event ID must be sixteen bytes")
@@ -23,8 +23,18 @@ func Event(id []byte, at time.Time, method, call string, previous, value proto.M
 		return nil, errors.New("resource: invalid event timestamp")
 	}
 	old, new := valid(previous), valid(value)
-	if !old && !new {
-		return nil, errors.New("resource: an event requires a resource image")
+	// Update preimages are optional, so payload presence cannot determine kind.
+	validImages := false
+	switch kind {
+	case pdpb.ChangeKind_CHANGE_KIND_CREATED:
+		validImages = !old && new
+	case pdpb.ChangeKind_CHANGE_KIND_UPDATED:
+		validImages = new
+	case pdpb.ChangeKind_CHANGE_KIND_DELETED:
+		validImages = old && !new
+	}
+	if !validImages {
+		return nil, errors.New("resource: images do not match change kind")
 	}
 	key := func(m proto.Message) []byte {
 		r := m.ProtoReflect()
@@ -42,13 +52,6 @@ func Event(id []byte, at time.Time, method, call string, previous, value proto.M
 	}
 	if old && new && (previous.ProtoReflect().Descriptor().FullName() != value.ProtoReflect().Descriptor().FullName() || !bytes.Equal(key(previous), key(value))) {
 		return nil, errors.New("resource: images identify different resources")
-	}
-	kind := pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	if !old {
-		kind = pdpb.ChangeKind_CHANGE_KIND_CREATED
-	}
-	if !new {
-		kind = pdpb.ChangeKind_CHANGE_KIND_DELETED
 	}
 	event := pdpb.WatchEvent_builder{Id: bytes.Clone(id), DateCreated: stamp, Method: method, CallMethod: call, Kind: kind}.Build()
 	if old {

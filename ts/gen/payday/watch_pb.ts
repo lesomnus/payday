@@ -77,7 +77,8 @@ export type WatchEvent = Message<"payday.WatchEvent"> & {
   callMethod: string;
 
   /**
-   * Mutation preimage, absent on creation.
+   * Mutation preimage. Present on deletion; on updates only when the application's
+   * recorder enables it. Absent on creation. Guard presence in CEL filters.
    *
    * @generated from field: google.protobuf.Any previous = 8;
    */

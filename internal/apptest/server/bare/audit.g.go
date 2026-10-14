@@ -79,17 +79,17 @@ func (s AuditServiceServer) narrow(ctx context.Context, p predicate.Audit) (pred
 	return AuditNarrow(ctx, s.Scope, p)
 }
 
-func (s AuditServiceServer) snapshot(ctx context.Context, p predicate.Audit) (*ent.Audit, error) {
+func (s AuditServiceServer) snapshot(ctx context.Context, p predicate.Audit, lock bool) (*ent.Audit, error) {
 	q := s.Db.Audit.Query().Where(p)
 	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
+		if lock && s.Db.Dialect() != dialect.SQLite {
 			q.ForUpdate()
 		}
 	})
 	return q.Only(ctx)
 }
 func (s AuditServiceServer) image(v *apptest.Audit) *apptest.Audit {
-	if s.Rec == nil || v == nil {
+	if v == nil {
 		return nil
 	}
 	out := proto.Clone(v).(*apptest.Audit)
@@ -176,8 +176,8 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 
 	v := u.Proto()
 	var value *apptest.Audit
-	if s.Rec != nil {
-		stored, err := st.snapshot(ctx, audit.IdEQ(u.Id))
+	if snapshotOptions(s.Rec, apptest.AuditService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, audit.IdEQ(u.Id), false)
 		if err != nil {
 			return nil, err
 		}
@@ -382,15 +382,16 @@ func (s AuditServiceServer) apply(ctx context.Context, ref *apptest.AuditRef, do
 	}
 
 	var previous *apptest.Audit
-	if s.Rec != nil && mod != nil {
-		u, err := st.snapshot(ctx, p)
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return nil, status.Error(codes.NotFound, "resource not found")
 			}
 			return nil, err
 		}
-		previous = u.Proto()
+		previous = s.image(u.Proto())
 	}
 	if mod == nil {
 		q := st.Db.Audit.Query().Where(p)
@@ -442,11 +443,15 @@ func (s AuditServiceServer) apply(ctx context.Context, ref *apptest.AuditRef, do
 		return nil, err
 	}
 	if mod != nil {
+		var value *apptest.Audit
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
 			By:       by,
 			Key:      k,
 			Patch:    doc,
-			Previous: s.image(previous), Value: s.image(out),
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
@@ -480,7 +485,14 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 	var k any
 	var previous *apptest.Audit
 	if s.Rec != nil {
-		v, err := st.snapshot(ctx, p)
+		images := snapshotOptions(s.Rec, apptest.AuditService_Erase_FullMethodName)
+		var v *ent.Audit
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Audit.Query().Where(p).Select(audit.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.AuditEraseResponse{}, nil
@@ -489,7 +501,9 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 		}
 
 		k = v.Id
-		previous = v.Proto()
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
 		p = audit.And(p, audit.IdEQ(v.Id))
 	}
 
@@ -501,7 +515,7 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 		if err := record(ctx, s.Rec, st.Db, Change{
 			By:       apptest.AuditService_Erase_FullMethodName,
 			Key:      k,
-			Previous: s.image(previous),
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}

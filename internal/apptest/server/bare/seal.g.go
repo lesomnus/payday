@@ -83,17 +83,17 @@ func (s SealServiceServer) narrow(ctx context.Context, p predicate.Seal) (predic
 	return SealNarrow(ctx, s.Scope, p)
 }
 
-func (s SealServiceServer) snapshot(ctx context.Context, p predicate.Seal) (*ent.Seal, error) {
+func (s SealServiceServer) snapshot(ctx context.Context, p predicate.Seal, lock bool) (*ent.Seal, error) {
 	q := s.Db.Seal.Query().Where(p)
 	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
+		if lock && s.Db.Dialect() != dialect.SQLite {
 			q.ForUpdate()
 		}
 	})
 	return q.Only(ctx)
 }
 func (s SealServiceServer) image(v *apptest.Seal) *apptest.Seal {
-	if s.Rec == nil || v == nil {
+	if v == nil {
 		return nil
 	}
 	out := proto.Clone(v).(*apptest.Seal)
@@ -147,8 +147,8 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 
 	v := u.Proto()
 	var value *apptest.Seal
-	if s.Rec != nil {
-		stored, err := st.snapshot(ctx, seal.IdEQ(u.Id))
+	if snapshotOptions(s.Rec, apptest.SealService_Add_FullMethodName).Value {
+		stored, err := st.snapshot(ctx, seal.IdEQ(u.Id), false)
 		if err != nil {
 			return nil, err
 		}
@@ -335,15 +335,16 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 	}
 
 	var previous *apptest.Seal
-	if s.Rec != nil && mod != nil {
-		u, err := st.snapshot(ctx, p)
+	images := snapshotOptions(s.Rec, by)
+	if images.Previous && mod != nil {
+		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return nil, status.Error(codes.NotFound, "resource not found")
 			}
 			return nil, err
 		}
-		previous = u.Proto()
+		previous = s.image(u.Proto())
 	}
 	if mod == nil {
 		q := st.Db.Seal.Query().Where(p)
@@ -395,11 +396,15 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 		return nil, err
 	}
 	if mod != nil {
+		var value *apptest.Seal
+		if images.Value {
+			value = s.image(out)
+		}
 		if err := record(ctx, s.Rec, st.Db, Change{
 			By:       by,
 			Key:      k,
 			Patch:    doc,
-			Previous: s.image(previous), Value: s.image(out),
+			Previous: previous, Value: value,
 		}); err != nil {
 			return nil, err
 		}
@@ -433,7 +438,14 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 	var k any
 	var previous *apptest.Seal
 	if s.Rec != nil {
-		v, err := st.snapshot(ctx, p)
+		images := snapshotOptions(s.Rec, apptest.SealService_Erase_FullMethodName)
+		var v *ent.Seal
+		var err error
+		if images.Previous {
+			v, err = st.snapshot(ctx, p, true)
+		} else {
+			v, err = st.Db.Seal.Query().Where(p).Select(seal.FieldId).Only(ctx)
+		}
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.SealEraseResponse{}, nil
@@ -442,7 +454,9 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 		}
 
 		k = v.Id
-		previous = v.Proto()
+		if images.Previous {
+			previous = s.image(v.Proto())
+		}
 		p = seal.And(p, seal.IdEQ(v.Id))
 	}
 
@@ -456,7 +470,7 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 		if err := record(ctx, s.Rec, st.Db, Change{
 			By:       apptest.SealService_Erase_FullMethodName,
 			Key:      k,
-			Previous: s.image(previous),
+			Previous: previous,
 		}); err != nil {
 			return nil, err
 		}

@@ -50,7 +50,7 @@ func testServer(t *testing.T) (*Server, *watch.Watch, *pdpb.WatchEvent) {
 	s, err := New(&pdpb.UnimplementedBatchServiceServer{}, w, func(_ context.Context, v proto.Message) (proto.Message, error) { return v, nil })
 	require.NoError(t, err)
 	id := pdid.New(1)
-	v, err := Event(id[:], time.Now(), "/app/Add", "/app/Add", nil, pdpb.WatchEvent_builder{Id: id[:], Method: "public"}.Build())
+	v, err := Event(id[:], time.Now(), "/app/Add", "/app/Add", pdpb.ChangeKind_CHANGE_KIND_CREATED, nil, pdpb.WatchEvent_builder{Id: id[:], Method: "public"}.Build())
 	require.NoError(t, err)
 	return s, w, v
 }
@@ -128,7 +128,7 @@ func TestDeniedImagesNeverReachCEL(t *testing.T) {
 	done := start(t, s, `event.value.method == "visible" || event.value.missing == 1`, stream)
 	publish(w, event)
 	id := pdid.New(1)
-	visible, err := Event(id[:], time.Now(), "/app/Add", "/app/Add", nil, pdpb.WatchEvent_builder{Id: id[:], Method: "visible"}.Build())
+	visible, err := Event(id[:], time.Now(), "/app/Add", "/app/Add", pdpb.ChangeKind_CHANGE_KIND_CREATED, nil, pdpb.WatchEvent_builder{Id: id[:], Method: "visible"}.Build())
 	require.NoError(t, err)
 	publish(w, visible)
 	select {
@@ -169,7 +169,7 @@ func TestAnUpdateRequiresBothImages(t *testing.T) {
 	require.NoError(t, created.GetValue().UnmarshalTo(old))
 	next := proto.Clone(old).(*pdpb.WatchEvent)
 	next.SetMethod("another-tenant")
-	update, err := Event(created.GetId(), time.Now(), "/app/Move", "/app/Move", old, next)
+	update, err := Event(created.GetId(), time.Now(), "/app/Move", "/app/Move", pdpb.ChangeKind_CHANGE_KIND_UPDATED, old, next)
 	require.NoError(t, err)
 	s.project = func(_ context.Context, v proto.Message) (proto.Message, error) {
 		if v.(*pdpb.WatchEvent).GetMethod() == "another-tenant" {
