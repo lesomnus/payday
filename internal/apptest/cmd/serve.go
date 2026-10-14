@@ -273,10 +273,13 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 	// same configuration rather than written out again, which is the only way
 	// the two stay in step. What they enforce by looking at the method gRPC
 	// dispatched, this enforces per operation.
-	if b, err := pd.Batch(s.Walled, s.Drv, c.Server.Guard(s.Policy)); err == nil {
+	// Both endpoints share the operation limiter, so switching API names cannot
+	// replenish a caller's Batch budget.
+	guard := c.Server.Guard(s.Policy)
+	if b, err := pd.Batch(s.Walled, s.Drv, guard); err == nil {
 		pdpb.RegisterBatchServiceServer(g, b)
-		resources, err := pd.Resources(s.Walled, s.Drv, c.Server.Guard(s.Policy), s.Watch,
-			pd.ResourceProjector(s.Ent, pd.Wall(), c.Server.Guard(s.Policy)))
+		resources, err := pd.Resources(s.Walled, s.Drv, guard, s.Watch,
+			pd.ResourceProjector(s.Ent, pd.Wall(), guard))
 		if err != nil {
 			return nil, err
 		}

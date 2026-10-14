@@ -391,3 +391,27 @@ func TestResourceOutboxRetainsFailedPublication(t *testing.T) {
 	replayed := <-events
 	x.True(proto.Equal(attempted.Changes[0].Resource, replayed.Changes[0].Resource))
 }
+
+func TestResourceAndLegacyBatchShareOperationLimit(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+	cfg := cmd0
+	cfg.Server.Limit = config.LimitConfig{Rate: 0.000001, Burst: 3}
+	server, err := b.Grpc(ctx, cfg)
+	x.NoError(err)
+	conn := pdtest.Serve(t, server)
+	request := func(names ...string) *pdpb.BatchRequest {
+		ops := make([]*pdpb.Op, 0, len(names))
+		for _, alias := range names {
+			ops = append(ops, op(t, app.RobotService_Add_FullMethodName, app.RobotAddRequest_builder{Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(), Alias: alias}.Build()))
+		}
+		return pdpb.BatchRequest_builder{Ops: ops}.Build()
+	}
+	_, err = pdpb.NewBatchServiceClient(conn).Do(b.travels(ctx), request("one", "two"))
+	x.NoError(err)
+	_, err = pdpb.NewResourceServiceClient(conn).Batch(b.travels(ctx), request("three", "four"))
+	x.Equal(codes.ResourceExhausted, status.Code(err))
+	n, err := b.Ent.Robot.Query().Count(ctx)
+	x.NoError(err)
+	x.Equal(2, n)
+}
