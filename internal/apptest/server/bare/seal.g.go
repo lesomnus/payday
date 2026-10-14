@@ -83,6 +83,22 @@ func (s SealServiceServer) narrow(ctx context.Context, p predicate.Seal) (predic
 	return SealNarrow(ctx, s.Scope, p)
 }
 
+func (s SealServiceServer) snapshot(ctx context.Context, p predicate.Seal) (*ent.Seal, error) {
+	q := s.Db.Seal.Query().Where(p)
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s SealServiceServer) image(v *apptest.Seal) *apptest.Seal {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Seal)
+	return out
+}
 func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -130,10 +146,18 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 	}
 
 	v := u.Proto()
+	var value *apptest.Seal
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, seal.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.SealService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -167,23 +191,6 @@ func (s SealServiceServer) Get(ctx context.Context, req *apptest.SealGetRequest)
 	return v.Proto(), nil
 }
 
-func (s SealServiceServer) snapshot(ctx context.Context, p predicate.Seal) (*ent.Seal, error) {
-	q := s.Db.Seal.Query().Where(p)
-	SealSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s SealServiceServer) image(v *apptest.Seal) *apptest.Seal {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Seal)
-	return out
-}
 func selectSealKey(q *ent.SealQuery) {
 	q.Select(seal.FieldId)
 }

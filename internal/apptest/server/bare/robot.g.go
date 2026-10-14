@@ -15,6 +15,7 @@ import (
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
@@ -91,6 +92,38 @@ func (s CellServiceServer) narrow(ctx context.Context, p predicate.Cell) (predic
 	return CellNarrow(ctx, s.Scope, p)
 }
 
+func (s CellServiceServer) snapshot(ctx context.Context, p predicate.Cell) (*ent.Cell, error) {
+	q := s.Db.Cell.Query().Where(p)
+	q.WithTenant(func(q *ent.TenantQuery) { q.Select(tenant.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s CellServiceServer) image(v *apptest.Cell) *apptest.Cell {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Cell)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -143,10 +176,18 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	for _, d := range ds {
 		d(v)
 	}
+	var value *apptest.Cell
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, cell.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.CellService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -180,38 +221,6 @@ func (s CellServiceServer) Get(ctx context.Context, req *apptest.CellGetRequest)
 	return v.Proto(), nil
 }
 
-func (s CellServiceServer) snapshot(ctx context.Context, p predicate.Cell) (*ent.Cell, error) {
-	q := s.Db.Cell.Query().Where(p)
-	CellSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s CellServiceServer) image(v *apptest.Cell) *apptest.Cell {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Cell)
-	m := out.ProtoReflect()
-	{
-		f := m.Descriptor().Fields().ByNumber(2)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	return out
-}
 func selectCellKey(q *ent.CellQuery) {
 	q.Select(cell.FieldId)
 }
@@ -580,6 +589,68 @@ func (s RobotServiceServer) narrow(ctx context.Context, p predicate.Robot) (pred
 	return RobotNarrow(ctx, s.Scope, p)
 }
 
+func (s RobotServiceServer) snapshot(ctx context.Context, p predicate.Robot) (*ent.Robot, error) {
+	q := s.Db.Robot.Query().Where(p)
+	q.WithTenant(func(q *ent.TenantQuery) { q.Select(tenant.FieldId) })
+	q.WithThing(func(q *ent.ThingQuery) { q.Select(thing.FieldId) })
+	q.WithCell(func(q *ent.CellQuery) { q.Select(cell.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s RobotServiceServer) image(v *apptest.Robot) *apptest.Robot {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Robot)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	{
+		f := m.Descriptor().Fields().ByNumber(30)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	{
+		f := m.Descriptor().Fields().ByNumber(3)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -666,10 +737,18 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	for _, d := range ds {
 		d(v)
 	}
+	var value *apptest.Robot
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, robot.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.RobotService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -703,66 +782,6 @@ func (s RobotServiceServer) Get(ctx context.Context, req *apptest.RobotGetReques
 	return v.Proto(), nil
 }
 
-func (s RobotServiceServer) snapshot(ctx context.Context, p predicate.Robot) (*ent.Robot, error) {
-	q := s.Db.Robot.Query().Where(p)
-	RobotSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s RobotServiceServer) image(v *apptest.Robot) *apptest.Robot {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Robot)
-	m := out.ProtoReflect()
-	{
-		f := m.Descriptor().Fields().ByNumber(2)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	{
-		f := m.Descriptor().Fields().ByNumber(30)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	{
-		f := m.Descriptor().Fields().ByNumber(3)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	return out
-}
 func selectRobotKey(q *ent.RobotQuery) {
 	q.Select(robot.FieldId)
 }
@@ -1183,6 +1202,53 @@ func (s PairingServiceServer) narrow(ctx context.Context, p predicate.Pairing) (
 	return PairingNarrow(ctx, s.Scope, p)
 }
 
+func (s PairingServiceServer) snapshot(ctx context.Context, p predicate.Pairing) (*ent.Pairing, error) {
+	q := s.Db.Pairing.Query().Where(p)
+	q.WithLead(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
+	q.WithFollow(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s PairingServiceServer) image(v *apptest.Pairing) *apptest.Pairing {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Pairing)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	{
+		f := m.Descriptor().Fields().ByNumber(8)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -1247,10 +1313,18 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 	for _, d := range ds {
 		d(v)
 	}
+	var value *apptest.Pairing
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, pairing.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.PairingService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -1284,52 +1358,6 @@ func (s PairingServiceServer) Get(ctx context.Context, req *apptest.PairingGetRe
 	return v.Proto(), nil
 }
 
-func (s PairingServiceServer) snapshot(ctx context.Context, p predicate.Pairing) (*ent.Pairing, error) {
-	q := s.Db.Pairing.Query().Where(p)
-	PairingSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s PairingServiceServer) image(v *apptest.Pairing) *apptest.Pairing {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Pairing)
-	m := out.ProtoReflect()
-	{
-		f := m.Descriptor().Fields().ByNumber(2)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	{
-		f := m.Descriptor().Fields().ByNumber(8)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	return out
-}
 func selectPairingKey(q *ent.PairingQuery) {
 	q.Select(pairing.FieldId)
 }
@@ -1683,6 +1711,38 @@ func (s JointServiceServer) narrow(ctx context.Context, p predicate.Joint) (pred
 	return JointNarrow(ctx, s.Scope, p)
 }
 
+func (s JointServiceServer) snapshot(ctx context.Context, p predicate.Joint) (*ent.Joint, error) {
+	q := s.Db.Joint.Query().Where(p)
+	q.WithRobot(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s JointServiceServer) image(v *apptest.Joint) *apptest.Joint {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Joint)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -1737,10 +1797,18 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	for _, d := range ds {
 		d(v)
 	}
+	var value *apptest.Joint
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, joint.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.JointService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -1774,38 +1842,6 @@ func (s JointServiceServer) Get(ctx context.Context, req *apptest.JointGetReques
 	return v.Proto(), nil
 }
 
-func (s JointServiceServer) snapshot(ctx context.Context, p predicate.Joint) (*ent.Joint, error) {
-	q := s.Db.Joint.Query().Where(p)
-	JointSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s JointServiceServer) image(v *apptest.Joint) *apptest.Joint {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Joint)
-	m := out.ProtoReflect()
-	{
-		f := m.Descriptor().Fields().ByNumber(2)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	return out
-}
 func selectJointKey(q *ent.JointQuery) {
 	q.Select(joint.FieldId)
 }
@@ -2175,6 +2211,22 @@ func (s FleetServiceServer) narrow(ctx context.Context, p predicate.Fleet) (pred
 	return FleetNarrow(ctx, s.Scope, p)
 }
 
+func (s FleetServiceServer) snapshot(ctx context.Context, p predicate.Fleet) (*ent.Fleet, error) {
+	q := s.Db.Fleet.Query().Where(p)
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s FleetServiceServer) image(v *apptest.Fleet) *apptest.Fleet {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Fleet)
+	return out
+}
 func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -2215,10 +2267,18 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	}
 
 	v := u.Proto()
+	var value *apptest.Fleet
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, fleet.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.FleetService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -2252,23 +2312,6 @@ func (s FleetServiceServer) Get(ctx context.Context, req *apptest.FleetGetReques
 	return v.Proto(), nil
 }
 
-func (s FleetServiceServer) snapshot(ctx context.Context, p predicate.Fleet) (*ent.Fleet, error) {
-	q := s.Db.Fleet.Query().Where(p)
-	FleetSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s FleetServiceServer) image(v *apptest.Fleet) *apptest.Fleet {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Fleet)
-	return out
-}
 func selectFleetKey(q *ent.FleetQuery) {
 	q.Select(fleet.FieldId)
 }
@@ -2629,6 +2672,38 @@ func (s ReadingServiceServer) narrow(ctx context.Context, p predicate.Reading) (
 	return ReadingNarrow(ctx, s.Scope, p)
 }
 
+func (s ReadingServiceServer) snapshot(ctx context.Context, p predicate.Reading) (*ent.Reading, error) {
+	q := s.Db.Reading.Query().Where(p)
+	q.WithRobot(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s ReadingServiceServer) image(v *apptest.Reading) *apptest.Reading {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Reading)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -2691,10 +2766,18 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	for _, d := range ds {
 		d(v)
 	}
+	var value *apptest.Reading
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, reading.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.ReadingService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -2728,38 +2811,6 @@ func (s ReadingServiceServer) Get(ctx context.Context, req *apptest.ReadingGetRe
 	return v.Proto(), nil
 }
 
-func (s ReadingServiceServer) snapshot(ctx context.Context, p predicate.Reading) (*ent.Reading, error) {
-	q := s.Db.Reading.Query().Where(p)
-	ReadingSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s ReadingServiceServer) image(v *apptest.Reading) *apptest.Reading {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Reading)
-	m := out.ProtoReflect()
-	{
-		f := m.Descriptor().Fields().ByNumber(2)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	return out
-}
 func selectReadingKey(q *ent.ReadingQuery) {
 	q.Select(reading.FieldId)
 }

@@ -83,6 +83,22 @@ func (s ThingServiceServer) narrow(ctx context.Context, p predicate.Thing) (pred
 	return ThingNarrow(ctx, s.Scope, p)
 }
 
+func (s ThingServiceServer) snapshot(ctx context.Context, p predicate.Thing) (*ent.Thing, error) {
+	q := s.Db.Thing.Query().Where(p)
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s ThingServiceServer) image(v *apptest.Thing) *apptest.Thing {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Thing)
+	return out
+}
 func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -133,10 +149,18 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 	}
 
 	v := u.Proto()
+	var value *apptest.Thing
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, thing.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.ThingService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -170,23 +194,6 @@ func (s ThingServiceServer) Get(ctx context.Context, req *apptest.ThingGetReques
 	return v.Proto(), nil
 }
 
-func (s ThingServiceServer) snapshot(ctx context.Context, p predicate.Thing) (*ent.Thing, error) {
-	q := s.Db.Thing.Query().Where(p)
-	ThingSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s ThingServiceServer) image(v *apptest.Thing) *apptest.Thing {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Thing)
-	return out
-}
 func selectThingKey(q *ent.ThingQuery) {
 	q.Select(thing.FieldId)
 }

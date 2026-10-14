@@ -79,6 +79,22 @@ func (s AuditServiceServer) narrow(ctx context.Context, p predicate.Audit) (pred
 	return AuditNarrow(ctx, s.Scope, p)
 }
 
+func (s AuditServiceServer) snapshot(ctx context.Context, p predicate.Audit) (*ent.Audit, error) {
+	q := s.Db.Audit.Query().Where(p)
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s AuditServiceServer) image(v *apptest.Audit) *apptest.Audit {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Audit)
+	return out
+}
 func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -159,10 +175,18 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	}
 
 	v := u.Proto()
+	var value *apptest.Audit
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, audit.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.AuditService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -196,23 +220,6 @@ func (s AuditServiceServer) Get(ctx context.Context, req *apptest.AuditGetReques
 	return v.Proto(), nil
 }
 
-func (s AuditServiceServer) snapshot(ctx context.Context, p predicate.Audit) (*ent.Audit, error) {
-	q := s.Db.Audit.Query().Where(p)
-	AuditSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s AuditServiceServer) image(v *apptest.Audit) *apptest.Audit {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Audit)
-	return out
-}
 func selectAuditKey(q *ent.AuditQuery) {
 	q.Select(audit.FieldId)
 }

@@ -11,6 +11,7 @@ import (
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
@@ -86,6 +87,53 @@ func (s HolderServiceServer) narrow(ctx context.Context, p predicate.Holder) (pr
 	return HolderNarrow(ctx, s.Scope, p)
 }
 
+func (s HolderServiceServer) snapshot(ctx context.Context, p predicate.Holder) (*ent.Holder, error) {
+	q := s.Db.Holder.Query().Where(p)
+	q.WithTenant(func(q *ent.TenantQuery) { q.Select(tenant.FieldId) })
+	q.WithRobot(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s HolderServiceServer) image(v *apptest.Holder) *apptest.Holder {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Holder)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	{
+		f := m.Descriptor().Fields().ByNumber(11)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -164,10 +212,18 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 	for _, d := range ds {
 		d(v)
 	}
+	var value *apptest.Holder
+	if s.Rec != nil {
+		stored, err := st.snapshot(ctx, holder.IdEQ(u.Id))
+		if err != nil {
+			return nil, err
+		}
+		value = s.image(stored.Proto())
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
 		By:    apptest.HolderService_Add_FullMethodName,
 		Key:   u.Id,
-		Value: s.image(v),
+		Value: value,
 	}); err != nil {
 		return nil, err
 	}
@@ -201,52 +257,6 @@ func (s HolderServiceServer) Get(ctx context.Context, req *apptest.HolderGetRequ
 	return v.Proto(), nil
 }
 
-func (s HolderServiceServer) snapshot(ctx context.Context, p predicate.Holder) (*ent.Holder, error) {
-	q := s.Db.Holder.Query().Where(p)
-	HolderSelectInit(q, nil)
-	q.Modify(func(q *sql.Selector) {
-		if s.Db.Dialect() != dialect.SQLite {
-			q.ForUpdate()
-		}
-	})
-	return q.Only(ctx)
-}
-func (s HolderServiceServer) image(v *apptest.Holder) *apptest.Holder {
-	if s.Rec == nil || v == nil {
-		return nil
-	}
-	out := proto.Clone(v).(*apptest.Holder)
-	m := out.ProtoReflect()
-	{
-		f := m.Descriptor().Fields().ByNumber(2)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	{
-		f := m.Descriptor().Fields().ByNumber(11)
-		if m.Has(f) {
-			trim := func(r protoreflect.Message) {
-				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
-					if f.Number() != 1 {
-						r.Clear(f)
-					}
-					return true
-				})
-			}
-			trim(m.Get(f).Message())
-		}
-	}
-	return out
-}
 func selectHolderKey(q *ent.HolderQuery) {
 	q.Select(holder.FieldId)
 }
