@@ -20,6 +20,8 @@ func (Thing) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 		field.String("alias"),
+		field.String("description").
+			Optional(),
 		field.Time("date_erased").
 			Nillable().
 			Optional(),

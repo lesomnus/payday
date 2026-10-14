@@ -38,8 +38,8 @@
 			"import": "./dist/src/slug/index.js"
 		},
 		"./pdpb": {
-			"types": "./dist/gen/payday/batch_pb.d.ts",
-			"import": "./dist/gen/payday/batch_pb.js"
+			"types": "./dist/src/pdpb.d.ts",
+			"import": "./dist/src/pdpb.js"
 		},
 		"./package.json": "./package.json",
 		"./store": {

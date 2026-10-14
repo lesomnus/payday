@@ -15,6 +15,7 @@ inputs:
 plugins:
   - local: [ts/node_modules/.bin/protoc-gen-es]
     out: ts/gen
+    include_imports: true
     opt:
       - target=ts
       - import_extension=js

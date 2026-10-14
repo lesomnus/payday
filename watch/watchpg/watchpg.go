@@ -12,20 +12,13 @@
 // store: a notification is delivered to whoever is listening at the time and
 // then forgotten, which is exactly the guarantee `watch` already gives.
 //
-// # What travels, and what deliberately does not
+// # What travels
 //
-// The identity of what changed: the RPC, and for each write the entity's method
-// and the row's key. Not the row.
-//
-// That is not a size compromise, though it helps. What a subscriber may see is
-// decided **per subscriber**, by re-reading each row through their own
-// narrowing -- see `watch.Stream` and the generated `watchRead`. Putting the
-// row's content on a channel every replica reads would be answering that
-// question once, in the wrong place, for everybody.
-//
-// `Event.Request` and `Event.Response` do not travel either, and could not:
-// they are the app's own messages and mean something only in the process that
-// handled the call. Nothing reads them from a subscription.
+// Legacy key/method notifications and optional public mutation envelopes travel
+// between replicas. Resource envelopes have secrets removed before publication;
+// each subscriber's read authorization and CEL filter are applied after receipt.
+// Large envelopes are fragmented and reassembled with bounded memory and time.
+// Request and Response do not travel.
 //
 // # What it does when it loses the connection
 //
@@ -69,7 +62,8 @@ const Channel = "payday_watch"
 // either way.
 const Payload = 8000
 
-// Queue is how many notifications may be waiting to reach the database.
+// Queue is how many publications may be waiting to reach the database.
+// The aggregate encoded queue is additionally bounded by MaxWire bytes.
 //
 // Its own number and not [watch.Backlog], which is a **subscriber's** patience.
 // This one is the deployment's write rate against one round trip per event on
@@ -101,15 +95,16 @@ func New(ctx context.Context, dsn string) (watch.Broker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("watchpg: %w", err)
 	}
-	if err := c.Close(ctx); err != nil {
+	if _, err := c.Exec(ctx, "listen "+Channel); err != nil {
+		_ = c.Close(ctx)
 		return nil, fmt.Errorf("watchpg: %w", err)
 	}
 
-	b := &broker{dsn: dsn, to: map[chan watch.Event]struct{}{}, out: make(chan string, Queue)}
+	b := &broker{dsn: dsn, to: map[chan watch.Event]struct{}{}, out: make(chan []string, Queue), ready: true}
 
 	// Detached from the caller's context on purpose: a broker outlives the call
 	// that built it, and the one that built it is a server starting up.
-	go b.listen(context.WithoutCancel(ctx))
+	go b.listen(context.WithoutCancel(ctx), c)
 	go b.publish(context.WithoutCancel(ctx))
 
 	return b, nil
@@ -118,8 +113,9 @@ func New(ctx context.Context, dsn string) (watch.Broker, error) {
 type broker struct {
 	dsn string
 
-	mu sync.Mutex
-	to map[chan watch.Event]struct{}
+	mu    sync.Mutex
+	to    map[chan watch.Event]struct{}
+	ready bool
 
 	// out is what has been published and not yet notified.
 	//
@@ -137,14 +133,19 @@ type broker struct {
 	// writes it as a row inside the transaction that made it. With this broker
 	// that composes properly: the drain publishes here, so it crosses replicas
 	// -- which it does not with `memory`.
-	out chan string
+	out    chan []string
+	queued int
 }
 
 func (b *broker) Subscribe() (<-chan watch.Event, func()) {
 	c := make(chan watch.Event, watch.Backlog)
 
 	b.mu.Lock()
-	b.to[c] = struct{}{}
+	if b.ready {
+		b.to[c] = struct{}{}
+	} else {
+		close(c)
+	}
 	b.mu.Unlock()
 
 	var once sync.Once
@@ -169,17 +170,61 @@ func (b *broker) Subscribe() (<-chan watch.Event, func()) {
 // the same order, and it means the round trip is exercised by every deployment
 // rather than only by the ones with two replicas.
 func (b *broker) Publish(ctx context.Context, v watch.Event) {
-	for _, s := range encode(v) {
+	packets, err := packets(v)
+	if err != nil {
+		log.From(ctx).ErrorContext(ctx, "watchpg: cannot encode event", "err", err)
+		b.cut()
+		return
+	}
+	size := 0
+	for _, p := range packets {
+		size += len(p)
+	}
+	b.mu.Lock()
+	accepted := false
+	if b.queued+size <= MaxWire {
 		select {
-		case b.out <- s:
+		case b.out <- packets:
+			b.queued += size
+			accepted = true
 		default:
-			log.From(ctx).ErrorContext(ctx, "watchpg: a change was not published",
-				"why", "the queue to the database is full",
-				"method", v.Method)
-
-			b.cut()
 		}
 	}
+	b.mu.Unlock()
+	if !accepted {
+		log.From(ctx).ErrorContext(ctx, "watchpg: publication queue is full")
+		b.cut()
+	}
+}
+
+// PublishConfirmed waits for PostgreSQL to commit all notification fragments. It
+// acknowledges broker acceptance, not subscriber receipt. Outbox drain uses this
+// so a failed send leaves the row available for retry.
+func (b *broker) PublishConfirmed(ctx context.Context, v watch.Event) error {
+	packets, err := packets(v)
+	if err != nil {
+		return err
+	}
+	c, err := pgx.Connect(ctx, b.dsn)
+	if err != nil {
+		return err
+	}
+	defer c.Close(context.WithoutCancel(ctx))
+	return send(ctx, c, packets)
+}
+
+func send(ctx context.Context, c *pgx.Conn, packets []string) error {
+	tx, err := c.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx))
+	for _, p := range packets {
+		if _, err := tx.Exec(ctx, "select pg_notify($1, $2)", Channel, p); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 // publish drains the queue.
@@ -187,17 +232,26 @@ func (b *broker) publish(ctx context.Context) {
 	var c *pgx.Conn
 
 	for {
-		var s string
+		var packets []string
 		select {
 		case <-ctx.Done():
 			return
-		case s = <-b.out:
+		case packets = <-b.out:
 		}
+
+		size := 0
+		for _, p := range packets {
+			size += len(p)
+		}
+		b.mu.Lock()
+		b.queued -= size
+		b.mu.Unlock()
 
 		if c == nil {
 			v, err := pgx.Connect(ctx, b.dsn)
 			if err != nil {
 				log.From(ctx).ErrorContext(ctx, "watchpg: cannot reach the database to publish", "err", err)
+				b.cut()
 				b.wait(ctx)
 
 				continue
@@ -206,7 +260,7 @@ func (b *broker) publish(ctx context.Context) {
 			c = v
 		}
 
-		if _, err := c.Exec(ctx, "select pg_notify($1, $2)", Channel, s); err != nil {
+		if err := send(ctx, c, packets); err != nil {
 			log.From(ctx).ErrorContext(ctx, "watchpg: a change was not published", "err", err)
 
 			// Dropped rather than retried, and the reason is the alternative:
@@ -225,12 +279,16 @@ func (b *broker) publish(ctx context.Context) {
 }
 
 // listen holds the connection everything arrives on.
-func (b *broker) listen(ctx context.Context) {
+func (b *broker) listen(ctx context.Context, first *pgx.Conn) {
 	for ctx.Err() == nil {
-		if err := b.once(ctx); err != nil && ctx.Err() == nil {
+		if err := b.once(ctx, first); err != nil && ctx.Err() == nil {
 			log.From(ctx).WarnContext(ctx, "watchpg: listening stopped", "err", err)
 		}
 
+		first = nil
+		b.mu.Lock()
+		b.ready = false
+		b.mu.Unlock()
 		// Whatever ended it, every subscriber has a hole in what it was told
 		// and no way to find out how big. See the note at the top of this file.
 		b.cut()
@@ -238,35 +296,43 @@ func (b *broker) listen(ctx context.Context) {
 	}
 }
 
-func (b *broker) once(ctx context.Context) error {
-	c, err := pgx.Connect(ctx, b.dsn)
-	if err != nil {
-		return err
+func (b *broker) once(ctx context.Context, c *pgx.Conn) error {
+	if c == nil {
+		var err error
+		c, err = pgx.Connect(ctx, b.dsn)
+		if err != nil {
+			return err
+		}
+		if _, err := c.Exec(ctx, "listen "+Channel); err != nil {
+			_ = c.Close(context.WithoutCancel(ctx))
+			return err
+		}
 	}
 	defer c.Close(context.WithoutCancel(ctx))
+	b.mu.Lock()
+	b.ready = true
+	b.mu.Unlock()
 
-	if _, err := c.Exec(ctx, "listen "+Channel); err != nil {
-		return err
-	}
-
+	var incoming receiver
 	for {
-		n, err := c.WaitForNotification(ctx)
+		waiting := ctx
+		cancel := func() {}
+		if deadline, ok := incoming.deadline(); ok {
+			waiting, cancel = context.WithDeadline(ctx, deadline)
+		}
+		n, err := c.WaitForNotification(waiting)
+		cancel()
 		if err != nil {
 			return err
 		}
 
-		v, err := decode(n.Payload)
+		v, err := incoming.accept(n.Payload)
 		if err != nil {
-			// A payload this cannot read is a deployment running two versions
-			// of payday against one database. Said and skipped: the alternative
-			// is cutting every subscriber on every notification, which turns a
-			// rolling deploy into an outage.
-			log.From(ctx).WarnContext(ctx, "watchpg: a notification could not be read", "err", err)
-
-			continue
+			return err
 		}
-
-		b.fan(v)
+		if v != nil {
+			b.fan(*v)
+		}
 	}
 }
 
@@ -323,62 +389,10 @@ type wire struct {
 }
 
 type change struct {
-	By  string `json:"b"`
-	Key string `json:"k"`
-}
-
-// encode is the event as notifications, split so each one fits.
-//
-// A call that changed more rows than [Payload] holds becomes several, which a
-// subscriber cannot tell from several calls: `watch.Next` gathers keys until
-// there is nothing queued and answers with the set.
-func encode(v watch.Event) []string {
-	cs := make([]change, 0, len(v.Changes))
-	for _, c := range v.Changes {
-		cs = append(cs, change{By: c.By, Key: c.Key.String()})
-	}
-	if len(cs) == 0 {
-		// A read is most of what a server does and is not news.
-		return nil
-	}
-
-	head := wire{Method: v.Method}
-	if v.Actor != pdid.Nil {
-		head.Actor = v.Actor.String()
-	}
-	if v.Tenant != pdid.Nil {
-		head.Tenant = v.Tenant.String()
-	}
-
-	var out []string
-	for len(cs) > 0 {
-		n := len(cs)
-		for {
-			w := head
-			w.Changes = cs[:n]
-
-			b, err := json.Marshal(w)
-			if err != nil {
-				return out
-			}
-			if len(b) <= Payload {
-				out = append(out, string(b))
-				break
-			}
-			if n == 1 {
-				// One change that does not fit, which takes a method name of
-				// several kilobytes. Nothing to split, and dropping it silently
-				// is the one thing this package will not do.
-				return out
-			}
-
-			n /= 2
-		}
-
-		cs = cs[n:]
-	}
-
-	return out
+	Method   string `json:"m,omitempty"`
+	Resource []byte `json:"r,omitempty"`
+	By       string `json:"b"`
+	Key      string `json:"k"`
 }
 
 func decode(s string) (watch.Event, error) {
@@ -394,7 +408,15 @@ func decode(s string) (watch.Event, error) {
 			return watch.Event{}, fmt.Errorf("key %q: %w", c.Key, err)
 		}
 
-		v.Changes = append(v.Changes, watch.Change{By: c.By, Method: w.Method, Key: k})
+		method := c.Method
+		if method == "" {
+			method = w.Method
+		}
+		resource, err := decodeResource(c.Resource)
+		if err != nil {
+			return watch.Event{}, err
+		}
+		v.Changes = append(v.Changes, watch.Change{By: c.By, Method: method, Key: k, Resource: resource})
 	}
 
 	for _, p := range []struct {

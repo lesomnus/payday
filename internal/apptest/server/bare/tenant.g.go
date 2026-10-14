@@ -12,12 +12,15 @@ import (
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
+	dialect "github.com/protobuf-orm/ent/dialect"
+	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	proto "google.golang.org/protobuf/proto"
 	uuid "uuid"
 )
 
@@ -127,9 +130,11 @@ func (s TenantServiceServer) Add(ctx context.Context, req *apptest.TenantAddRequ
 		return nil, err
 	}
 
+	v := u.Proto()
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.TenantService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.TenantService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: s.image(v),
 	}); err != nil {
 		return nil, err
 	}
@@ -137,7 +142,7 @@ func (s TenantServiceServer) Add(ctx context.Context, req *apptest.TenantAddRequ
 		return nil, err
 	}
 
-	return u.Proto(), nil
+	return v, nil
 }
 
 func (s TenantServiceServer) Get(ctx context.Context, req *apptest.TenantGetRequest) (*apptest.Tenant, error) {
@@ -163,6 +168,23 @@ func (s TenantServiceServer) Get(ctx context.Context, req *apptest.TenantGetRequ
 	return v.Proto(), nil
 }
 
+func (s TenantServiceServer) snapshot(ctx context.Context, p predicate.Tenant) (*ent.Tenant, error) {
+	q := s.Db.Tenant.Query().Where(p)
+	TenantSelectInit(q, nil)
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s TenantServiceServer) image(v *apptest.Tenant) *apptest.Tenant {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Tenant)
+	return out
+}
 func selectTenantKey(q *ent.TenantQuery) {
 	q.Select(tenant.FieldId)
 }
@@ -312,6 +334,17 @@ func (s TenantServiceServer) apply(ctx context.Context, ref *apptest.TenantRef, 
 		return nil, err
 	}
 
+	var previous *apptest.Tenant
+	if s.Rec != nil && mod != nil {
+		u, err := st.snapshot(ctx, p)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = u.Proto()
+	}
 	if mod == nil {
 		q := st.Db.Tenant.Query().Where(p)
 		if pred != nil {
@@ -360,20 +393,21 @@ func (s TenantServiceServer) apply(ctx context.Context, ref *apptest.TenantRef, 
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: s.image(previous), Value: s.image(out),
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -400,8 +434,9 @@ func (s TenantServiceServer) Erase(ctx context.Context, req *apptest.TenantRef) 
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Tenant
 	if s.Rec != nil {
-		v, err := st.Db.Tenant.Query().Where(p).OnlyId(ctx)
+		v, err := st.snapshot(ctx, p)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.TenantEraseResponse{}, nil
@@ -409,8 +444,9 @@ func (s TenantServiceServer) Erase(ctx context.Context, req *apptest.TenantRef) 
 			return nil, err
 		}
 
-		k = v
-		p = tenant.And(p, tenant.IdEQ(v))
+		k = v.Id
+		previous = v.Proto()
+		p = tenant.And(p, tenant.IdEQ(v.Id))
 	}
 
 	n, err := st.Db.Tenant.Delete().Where(p).Exec(ctx)
@@ -419,8 +455,9 @@ func (s TenantServiceServer) Erase(ctx context.Context, req *apptest.TenantRef) 
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.TenantService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.TenantService_Erase_FullMethodName,
+			Key:      k,
+			Previous: s.image(previous),
 		}); err != nil {
 			return nil, err
 		}

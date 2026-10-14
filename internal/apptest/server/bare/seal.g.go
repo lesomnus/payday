@@ -12,12 +12,15 @@ import (
 	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
+	dialect "github.com/protobuf-orm/ent/dialect"
+	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	proto "google.golang.org/protobuf/proto"
 	uuid "uuid"
 )
 
@@ -126,9 +129,11 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 		return nil, err
 	}
 
+	v := u.Proto()
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.SealService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.SealService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: s.image(v),
 	}); err != nil {
 		return nil, err
 	}
@@ -136,7 +141,7 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 		return nil, err
 	}
 
-	return u.Proto(), nil
+	return v, nil
 }
 
 func (s SealServiceServer) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {
@@ -162,6 +167,23 @@ func (s SealServiceServer) Get(ctx context.Context, req *apptest.SealGetRequest)
 	return v.Proto(), nil
 }
 
+func (s SealServiceServer) snapshot(ctx context.Context, p predicate.Seal) (*ent.Seal, error) {
+	q := s.Db.Seal.Query().Where(p)
+	SealSelectInit(q, nil)
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s SealServiceServer) image(v *apptest.Seal) *apptest.Seal {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Seal)
+	return out
+}
 func selectSealKey(q *ent.SealQuery) {
 	q.Select(seal.FieldId)
 }
@@ -305,6 +327,17 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 		return nil, err
 	}
 
+	var previous *apptest.Seal
+	if s.Rec != nil && mod != nil {
+		u, err := st.snapshot(ctx, p)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = u.Proto()
+	}
 	if mod == nil {
 		q := st.Db.Seal.Query().Where(p)
 		if pred != nil {
@@ -350,20 +383,21 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: s.image(previous), Value: s.image(out),
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -390,8 +424,9 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Seal
 	if s.Rec != nil {
-		v, err := st.Db.Seal.Query().Where(p).OnlyId(ctx)
+		v, err := st.snapshot(ctx, p)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.SealEraseResponse{}, nil
@@ -399,8 +434,9 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 			return nil, err
 		}
 
-		k = v
-		p = seal.And(p, seal.IdEQ(v))
+		k = v.Id
+		previous = v.Proto()
+		p = seal.And(p, seal.IdEQ(v.Id))
 	}
 
 	u := st.Db.Seal.Update().Where(p)
@@ -411,8 +447,9 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.SealService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.SealService_Erase_FullMethodName,
+			Key:      k,
+			Previous: s.image(previous),
 		}); err != nil {
 			return nil, err
 		}

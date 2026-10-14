@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file shared/thing_svc.g.proto.
  */
 export const file_shared_thing_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChhzaGFyZWQvdGhpbmdfc3ZjLmcucHJvdG8SBnNoYXJlZCJlCg9UaGluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSFAoFYWxpYXMYBCABKAlCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoPVGhpbmdHZXRSZXF1ZXN0Eh0KA3JlZhgBIAEoCzIQLnNoYXJlZC5UaGluZ1JlZhIjCgZzZWxlY3QYAiABKAsyEy5zaGFyZWQuVGhpbmdTZWxlY3QiHwoIVGhpbmdSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiVAoLVGhpbmdTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJBChFUaGluZ1BhdGNoUmVxdWVzdBIdCgNyZWYYASABKAsyEC5zaGFyZWQuVGhpbmdSZWYSDQoFYWxpYXMYCCABKAkiTwoRVGhpbmdBcHBseVJlcXVlc3QSHQoDcmVmGAEgASgLMhAuc2hhcmVkLlRoaW5nUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giJAoSVGhpbmdFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCJ7ChBUaGluZ0xpc3RSZXF1ZXN0EiQKB2ZpbHRlcnMYASADKAsyEy5zaGFyZWQuVGhpbmdGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCEhYKB3JldmVyc2UYBCABKAhCBaoBAggCIkYKEVRoaW5nTGlzdFJlc3BvbnNlEhwKBWl0ZW1zGAEgAygLMg0uc2hhcmVkLlRoaW5nEhMKBG5leHQYAiABKAlCBaoBAggCIiwKC1RoaW5nRmlsdGVyEh0KA3JlZhgBIAEoCzIQLnNoYXJlZC5UaGluZ1JlZjLGAgoMVGhpbmdTZXJ2aWNlEi0KA0FkZBIXLnNoYXJlZC5UaGluZ0FkZFJlcXVlc3QaDS5zaGFyZWQuVGhpbmcSLQoDR2V0Ehcuc2hhcmVkLlRoaW5nR2V0UmVxdWVzdBoNLnNoYXJlZC5UaGluZxIxCgVQYXRjaBIZLnNoYXJlZC5UaGluZ1BhdGNoUmVxdWVzdBoNLnNoYXJlZC5UaGluZxIxCgVBcHBseRIZLnNoYXJlZC5UaGluZ0FwcGx5UmVxdWVzdBoNLnNoYXJlZC5UaGluZxI1CgVFcmFzZRIQLnNoYXJlZC5UaGluZ1JlZhoaLnNoYXJlZC5UaGluZ0VyYXNlUmVzcG9uc2USOwoETGlzdBIYLnNoYXJlZC5UaGluZ0xpc3RSZXF1ZXN0Ghkuc2hhcmVkLlRoaW5nTGlzdFJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_patch_patch, file_shared_thing]);
+  fileDesc("ChhzaGFyZWQvdGhpbmdfc3ZjLmcucHJvdG8SBnNoYXJlZCJ6Cg9UaGluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSFAoFYWxpYXMYBCABKAlCBaoBAggCEhMKC2Rlc2NyaXB0aW9uGAggASgJEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoPVGhpbmdHZXRSZXF1ZXN0Eh0KA3JlZhgBIAEoCzIQLnNoYXJlZC5UaGluZ1JlZhIjCgZzZWxlY3QYAiABKAsyEy5zaGFyZWQuVGhpbmdTZWxlY3QiHwoIVGhpbmdSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkiaQoLVGhpbmdTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIEhMKC2Rlc2NyaXB0aW9uGAggASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJWChFUaGluZ1BhdGNoUmVxdWVzdBIdCgNyZWYYASABKAsyEC5zaGFyZWQuVGhpbmdSZWYSDQoFYWxpYXMYCCABKAkSEwoLZGVzY3JpcHRpb24YECABKAkiTwoRVGhpbmdBcHBseVJlcXVlc3QSHQoDcmVmGAEgASgLMhAuc2hhcmVkLlRoaW5nUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giJAoSVGhpbmdFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCJ7ChBUaGluZ0xpc3RSZXF1ZXN0EiQKB2ZpbHRlcnMYASADKAsyEy5zaGFyZWQuVGhpbmdGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCEhYKB3JldmVyc2UYBCABKAhCBaoBAggCIkYKEVRoaW5nTGlzdFJlc3BvbnNlEhwKBWl0ZW1zGAEgAygLMg0uc2hhcmVkLlRoaW5nEhMKBG5leHQYAiABKAlCBaoBAggCIiwKC1RoaW5nRmlsdGVyEh0KA3JlZhgBIAEoCzIQLnNoYXJlZC5UaGluZ1JlZjLGAgoMVGhpbmdTZXJ2aWNlEi0KA0FkZBIXLnNoYXJlZC5UaGluZ0FkZFJlcXVlc3QaDS5zaGFyZWQuVGhpbmcSLQoDR2V0Ehcuc2hhcmVkLlRoaW5nR2V0UmVxdWVzdBoNLnNoYXJlZC5UaGluZxIxCgVQYXRjaBIZLnNoYXJlZC5UaGluZ1BhdGNoUmVxdWVzdBoNLnNoYXJlZC5UaGluZxIxCgVBcHBseRIZLnNoYXJlZC5UaGluZ0FwcGx5UmVxdWVzdBoNLnNoYXJlZC5UaGluZxI1CgVFcmFzZRIQLnNoYXJlZC5UaGluZ1JlZhoaLnNoYXJlZC5UaGluZ0VyYXNlUmVzcG9uc2USOwoETGlzdBIYLnNoYXJlZC5UaGluZ0xpc3RSZXF1ZXN0Ghkuc2hhcmVkLlRoaW5nTGlzdFJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_patch_patch, file_shared_thing]);
 
 /**
  * @generated from message shared.ThingAddRequest
@@ -31,6 +31,11 @@ export type ThingAddRequest = Message<"shared.ThingAddRequest"> & {
    * @generated from field: string alias = 4 [features.field_presence = IMPLICIT];
    */
   alias: string;
+
+  /**
+   * @generated from field: string description = 8;
+   */
+  description: string;
 
   /**
    * @generated from field: google.protobuf.Timestamp date_created = 15;
@@ -105,6 +110,11 @@ export type ThingSelect = Message<"shared.ThingSelect"> & {
   alias: boolean;
 
   /**
+   * @generated from field: bool description = 8;
+   */
+  description: boolean;
+
+  /**
    * @generated from field: bool date_erased = 14;
    */
   dateErased: boolean;
@@ -135,6 +145,11 @@ export type ThingPatchRequest = Message<"shared.ThingPatchRequest"> & {
    * @generated from field: string alias = 8;
    */
   alias: string;
+
+  /**
+   * @generated from field: string description = 16;
+   */
+  description: string;
 };
 
 /**

@@ -23,6 +23,7 @@ import (
 	archived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
@@ -30,12 +31,15 @@ import (
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
 	pderr "github.com/lesomnus/payday/pderr"
 	pdid "github.com/lesomnus/payday/pdid"
 	pdpb "github.com/lesomnus/payday/pdpb"
+	resource "github.com/lesomnus/payday/resource"
+	resourcesql "github.com/lesomnus/payday/resource/resourcesql"
 	slug "github.com/lesomnus/payday/slug"
 	spin "github.com/lesomnus/payday/spin"
 	trail "github.com/lesomnus/payday/trail"
@@ -4632,17 +4636,29 @@ func (d drain) once(ctx context.Context) (int, error) {
 	ks := make([]uuid.UUID, len(vs))
 	for i, v := range vs {
 		ks[i] = v.Id
-		d.b.Publish(ctx, watch.Event{
+		var resource *pdpb.WatchEvent
+		call := v.Method
+		if v.Event != nil && len(*v.Event) > 0 {
+			resource = &pdpb.WatchEvent{}
+			if err := proto.Unmarshal(*v.Event, resource); err != nil {
+				return 0, err
+			}
+			call = resource.GetCallMethod()
+		}
+		if err := watch.Confirm(ctx, d.b, watch.Event{
 			Actor:  pdid.Id(v.ActorId),
 			Tenant: pdid.Id(v.TenantId),
-			Method: v.Method,
+			Method: call,
 			Changes: []watch.Change{{
-				Method: v.Method,
-				By:     v.By,
-				Key:    pdid.Id(v.ObjectId),
-				Patch:  v.Patch,
+				Method:   v.Method,
+				By:       v.By,
+				Key:      pdid.Id(v.ObjectId),
+				Patch:    v.Patch,
+				Resource: resource,
 			}},
-		})
+		}); err != nil {
+			return 0, err
+		}
 	}
 
 	// And only then. A row deleted before it was published is an event that
@@ -6122,4 +6138,492 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		// here to call. Unimplemented says exactly that.
 		return nil, batch.ErrNoMethod(m)
 	}
+}
+
+// Resources serves the common Batch and Watch API. project is required so custom
+// read layers cannot silently disappear from historical reads. ResourceProjector
+// handles bare.Scope and declared secrets; compose any additional read rules.
+func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch.Watch, project resource.Project) (*resource.Server, error) {
+	b, err := Batch(s, drv, guard)
+	if err != nil {
+		return nil, err
+	}
+	return resource.New(b, w, project,
+		&apptest.Archived{},
+		&apptest.Audit{},
+		&apptest.Cell{},
+		&apptest.Fleet{},
+		&apptest.Holder{},
+		&apptest.Joint{},
+		&apptest.Outbox{},
+		&apptest.Pairing{},
+		&apptest.Reading{},
+		&apptest.Robot{},
+		&apptest.Seal{},
+		&apptest.Tenant{},
+		&apptest.Thing{},
+	)
+}
+
+var resourceSecrets = map[protoreflect.FullName][]protoreflect.FieldNumber{
+	"app.Robot": {
+		8,
+	},
+	"app.Seal": {
+		8,
+		9,
+	},
+}
+
+func publicResource(v proto.Message) proto.Message { return resource.Redact(v, resourceSecrets) }
+
+// ResourceProjector applies current Get authorization and scope to the historical
+// root row. Relations are checked against current rows, failing closed if gone.
+// Scope must be the one installed on the serving stack. Custom Get layers must
+// wrap this projector with their historical equivalent before serving Resources.
+func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) resource.Project {
+	return func(ctx context.Context, message proto.Message) (proto.Message, error) {
+		if guard.IsZero() {
+			return nil, batch.ErrNoGuard
+		}
+		read := guard
+		read.Limiter = nil
+		read.By = nil
+		switch v := message.(type) {
+		case *apptest.Audit:
+			ctx, err := read.Allow(ctx, apptest.AuditService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.AuditNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), audit.Table, []resourcesql.Column{
+				{Number: 1, Name: audit.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: audit.FieldTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 8, Name: audit.FieldActorId, Type: 64, Nullable: false, Key: 0},
+				{Number: 9, Name: audit.FieldTraceId, Type: 12, Nullable: false, Key: 0},
+				{Number: 10, Name: audit.FieldAction, Type: 9, Nullable: false, Key: 0},
+				{Number: 11, Name: audit.FieldObjectId, Type: 64, Nullable: false, Key: 0},
+				{Number: 12, Name: audit.FieldPatch, Type: 12, Nullable: false, Key: 0},
+				{Number: 15, Name: audit.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 16, Name: audit.FieldActorTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 17, Name: audit.FieldValue, Type: 12, Nullable: false, Key: 0},
+				{Number: 19, Name: audit.FieldDomain, Type: 13, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Audit.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Cell:
+			ctx, err := read.Allow(ctx, apptest.CellService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.CellNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), cell.Table, []resourcesql.Column{
+				{Number: 1, Name: cell.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: cell.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 4, Name: cell.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: cell.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Cell.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Fleet:
+			ctx, err := read.Allow(ctx, apptest.FleetService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.FleetNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), fleet.Table, []resourcesql.Column{
+				{Number: 1, Name: fleet.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 4, Name: fleet.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: fleet.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Fleet.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Holder:
+			ctx, err := read.Allow(ctx, apptest.HolderService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.HolderNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), holder.Table, []resourcesql.Column{
+				{Number: 1, Name: holder.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: holder.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 4, Name: holder.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 5, Name: holder.FieldName, Type: 9, Nullable: false, Key: 0},
+				{Number: 6, Name: holder.FieldDesc, Type: 9, Nullable: false, Key: 0},
+				{Number: 13, Name: holder.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 14, Name: holder.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+				{Number: 15, Name: holder.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 8, Name: holder.FieldIdpSubject, Type: 9, Nullable: false, Key: 0},
+				{Number: 10, Name: holder.FieldDirectory, Type: 9, Nullable: false, Key: 0},
+				{Number: 11, Name: holder.RobotColumn, Type: 64, Nullable: true, Key: 1},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Holder.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Joint:
+			ctx, err := read.Allow(ctx, apptest.JointService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.JointNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), joint.Table, []resourcesql.Column{
+				{Number: 1, Name: joint.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: joint.RobotColumn, Type: 64, Nullable: true, Key: 1},
+				{Number: 4, Name: joint.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: joint.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Joint.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Pairing:
+			ctx, err := read.Allow(ctx, apptest.PairingService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.PairingNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), pairing.Table, []resourcesql.Column{
+				{Number: 1, Name: pairing.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: pairing.LeadColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 8, Name: pairing.FollowColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 15, Name: pairing.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Pairing.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Reading:
+			ctx, err := read.Allow(ctx, apptest.ReadingService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.ReadingNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), reading.Table, []resourcesql.Column{
+				{Number: 1, Name: reading.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: reading.RobotColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 9, Name: reading.FieldTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 8, Name: reading.FieldCelsius, Type: 1, Nullable: false, Key: 0},
+				{Number: 15, Name: reading.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Reading.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Robot:
+			ctx, err := read.Allow(ctx, apptest.RobotService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.RobotNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), robot.Table, []resourcesql.Column{
+				{Number: 1, Name: robot.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: robot.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 30, Name: robot.ThingColumn, Type: 64, Nullable: true, Key: 1},
+				{Number: 3, Name: robot.CellColumn, Type: 64, Nullable: true, Key: 1},
+				{Number: 4, Name: robot.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 31, Name: robot.FieldDateAttested, Type: 65, Nullable: true, Key: 0},
+				{Number: 13, Name: robot.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 15, Name: robot.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 14, Name: robot.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Robot.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Seal:
+			ctx, err := read.Allow(ctx, apptest.SealService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.SealNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), seal.Table, []resourcesql.Column{
+				{Number: 1, Name: seal.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 4, Name: seal.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: seal.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+				{Number: 15, Name: seal.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Seal.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Tenant:
+			ctx, err := read.Allow(ctx, apptest.TenantService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.TenantNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), tenant.Table, []resourcesql.Column{
+				{Number: 1, Name: tenant.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 4, Name: tenant.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 5, Name: tenant.FieldName, Type: 9, Nullable: false, Key: 0},
+				{Number: 6, Name: tenant.FieldDesc, Type: 9, Nullable: false, Key: 0},
+				{Number: 13, Name: tenant.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 15, Name: tenant.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 8, Name: tenant.FieldRegion, Type: 9, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Tenant.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Thing:
+			ctx, err := read.Allow(ctx, apptest.ThingService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.ThingNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), thing.Table, []resourcesql.Column{
+				{Number: 1, Name: thing.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 4, Name: thing.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 8, Name: thing.FieldDescription, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: thing.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+				{Number: 15, Name: thing.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Thing.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		default:
+			return nil, nil
+		}
+	}
+}
+
+// ResourceRecorder selects and constructs one envelope for both publication paths.
+// Install it in place of WatchRecorder + OutboxRecorder. Audit stays separate.
+func ResourceRecorder(w *watch.Watch, outbox bool, selectEvent resource.Select) bare.Recorder {
+	return resourceRecorder{w, outbox, selectEvent}
+}
+
+type resourceRecorder struct {
+	w           *watch.Watch
+	outbox      bool
+	selectEvent resource.Select
+}
+
+func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
+	image := c.Value
+	if image == nil {
+		image = c.Previous
+	}
+	if image == nil {
+		return nil
+	}
+	switch image.ProtoReflect().Descriptor().FullName() {
+	case "app.Audit", "app.Cell", "app.Fleet", "app.Holder", "app.Joint", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Tenant", "shared.Thing":
+	default:
+		return nil
+	}
+	k, err := pdid.From(keyBytes(c.Key))
+	if err != nil {
+		return err
+	}
+	id := pdid.New(OutboxDomain)
+	at := time.Now().UTC()
+	event, err := resource.Event(id[:], at, c.Method, watch.CallMethod(ctx, c.Method), publicResource(c.Previous), publicResource(c.Value))
+	if err != nil {
+		return err
+	}
+	if r.selectEvent != nil {
+		ok, err := r.selectEvent(ctx, proto.Clone(event).(*pdpb.WatchEvent))
+		if err != nil || !ok {
+			return err
+		}
+	}
+	doc := []byte{}
+	if v := hidden(k, c.Patch); v != nil {
+		doc, err = proto.Marshal(v)
+		if err != nil {
+			return err
+		}
+	}
+	if r.outbox {
+		data, err := proto.Marshal(event)
+		if err != nil {
+			return err
+		}
+		var actor, tenant pdid.Id
+		if f, ok := frame.From(ctx); ok {
+			actor = f.Actor
+			tenant = f.Tenant
+		}
+		if err := s.Db.Outbox.Create().SetId(id.Uuid()).SetDateCreated(at).SetActorId(actor.Uuid()).SetTenantId(tenant.Uuid()).SetMethod(c.Method).SetBy(c.By).SetObjectId(k.Uuid()).SetPatch(doc).SetEvent(data).Exec(ctx); err != nil {
+			return err
+		}
+	}
+	if r.w != nil {
+		r.w.Note(ctx, watch.Change{Method: c.Method, By: c.By, Key: k, Patch: doc, Resource: event})
+	}
+	return nil
 }

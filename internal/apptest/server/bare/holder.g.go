@@ -13,6 +13,8 @@ import (
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
+	dialect "github.com/protobuf-orm/ent/dialect"
+	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	graph "github.com/protobuf-orm/protobuf-orm/graph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
@@ -20,6 +22,7 @@ import (
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	proto "google.golang.org/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	uuid "uuid"
 )
@@ -157,9 +160,14 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 		return nil, err
 	}
 
+	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.HolderService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.HolderService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: s.image(v),
 	}); err != nil {
 		return nil, err
 	}
@@ -167,10 +175,6 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 		return nil, err
 	}
 
-	v := u.Proto()
-	for _, d := range ds {
-		d(v)
-	}
 	return v, nil
 }
 
@@ -197,6 +201,52 @@ func (s HolderServiceServer) Get(ctx context.Context, req *apptest.HolderGetRequ
 	return v.Proto(), nil
 }
 
+func (s HolderServiceServer) snapshot(ctx context.Context, p predicate.Holder) (*ent.Holder, error) {
+	q := s.Db.Holder.Query().Where(p)
+	HolderSelectInit(q, nil)
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s HolderServiceServer) image(v *apptest.Holder) *apptest.Holder {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Holder)
+	m := out.ProtoReflect()
+	{
+		f := m.Descriptor().Fields().ByNumber(2)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	{
+		f := m.Descriptor().Fields().ByNumber(11)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
+	return out
+}
 func selectHolderKey(q *ent.HolderQuery) {
 	q.Select(holder.FieldId)
 }
@@ -378,6 +428,17 @@ func (s HolderServiceServer) apply(ctx context.Context, ref *apptest.HolderRef, 
 		return nil, err
 	}
 
+	var previous *apptest.Holder
+	if s.Rec != nil && mod != nil {
+		u, err := st.snapshot(ctx, p)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = u.Proto()
+	}
 	if mod == nil {
 		q := st.Db.Holder.Query().Where(p)
 		if pred != nil {
@@ -426,20 +487,21 @@ func (s HolderServiceServer) apply(ctx context.Context, ref *apptest.HolderRef, 
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: s.image(previous), Value: s.image(out),
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -466,8 +528,9 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Holder
 	if s.Rec != nil {
-		v, err := st.Db.Holder.Query().Where(p).OnlyId(ctx)
+		v, err := st.snapshot(ctx, p)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.HolderEraseResponse{}, nil
@@ -475,8 +538,9 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 			return nil, err
 		}
 
-		k = v
-		p = holder.And(p, holder.IdEQ(v))
+		k = v.Id
+		previous = v.Proto()
+		p = holder.And(p, holder.IdEQ(v.Id))
 	}
 
 	u := st.Db.Holder.Update().Where(p)
@@ -488,8 +552,9 @@ func (s HolderServiceServer) Erase(ctx context.Context, req *apptest.HolderRef) 
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.HolderService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.HolderService_Erase_FullMethodName,
+			Key:      k,
+			Previous: s.image(previous),
 		}); err != nil {
 			return nil, err
 		}

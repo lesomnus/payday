@@ -1,11 +1,11 @@
 # Several writes at once
 
-`payday.BatchService` runs a list of operations as one transaction. They hold or
+`payday.ResourceService.Batch` runs a list of operations as one transaction. They hold or
 they fall together.
 
 ```proto
-service BatchService {
-  rpc Do(BatchRequest) returns (BatchResponse);
+service ResourceService {
+  rpc Batch(BatchRequest) returns (BatchResponse);
 }
 
 message Op {
@@ -22,7 +22,7 @@ your app has it — a browser, a CLI, another service.
 - [3. The guard, and why it is refused rather than defaulted](#3-the-guard-and-why-it-is-refused-rather-than-defaulted)
 - [4. Referring to a row you are creating in the same batch](#4-referring-to-a-row-you-are-creating-in-the-same-batch)
 - [5. What it does not guarantee](#5-what-it-does-not-guarantee)
-- [6. The name stays `payday.BatchService`](#6-the-name-stays-paydaybatchservice)
+- [6. Service compatibility](#6-service-compatibility)
 
 ## 1. Why this does not undo the doctrine
 
@@ -35,21 +35,12 @@ names a field and a value and the server has no rule about the pair. Every
 operation of a batch is a real RPC with its own validation, its own layers and
 its own audit. What a batch adds is that they commit together.
 
-The trail and `Watch` come out right, and they answer different questions. Each
-operation is filed on the trail under **its own** method name — the one the
-caller wrote in the `Op` — so a batch of N writes is N lines, and the envelope
-is none of them: `/payday.BatchService/Do` wrote no row and renames nothing. The
-batch shows whole in the other place, as **one** `Watch` event — which is
-correct, since a UI should see a transaction whole. That event's method is the
-batch, because a batch is what the caller asked for; each change inside it names
-the operation that made it.
-
-That is the publish this process makes, once the handler has answered. Where the
-outbox is on there is a second one and it is not whole: the queue takes a row
-per write — the call only ends after the commit, so no row written inside the
-transaction could hold the whole of one — so what the drainer publishes is an
-event per operation, each with its single change and the operation's method as
-the event's. Read the grouping off the immediate event; the queue never had it.
+Each operation is filed on the trail under its own method name. The shared
+Watch API sends one event per mutation after commit, with the operation in
+`method` and the outer RPC in `call_method`. Outbox retries preserve both names
+and the same event ID, time and mutation images. Batch does not promise atomic
+receipt by a Watch client; authorization, filtering and transport may separate
+its events. See [the resource API guide](resources.md).
 
 The seam is `batch.AsOp`. The recorder below the write sites fills in what was
 asked for by asking gRPC, because the sites cannot know it — one call writes
@@ -220,18 +211,10 @@ Each operation can be individually legitimate and the combination can still
 produce a state your app never allowed. If you have a cross-row invariant, you
 still write the RPC that means it. The doctrine narrowed; it did not disappear.
 
-## 6. The name stays `payday.BatchService`
+## 6. Service compatibility
 
-Every other payday message is rewritten into your proto package — your app has
-`app.Tenant`, not `payday.Tenant`. A batch keeps the framework's name
-deliberately, because it is not a message describing your domain but a
-**transport**: anything that speaks batch to any payday app speaks the same one,
-and a generic client should not need a per-app name for it. Which names survive
-the rewrite and why is [the generation contract](../schema.md#3-whose-names-these-are).
-
-## Where to go next
-
-- [The server](server.md) — the stack a batch rebinds, and where the guard's
-  configuration comes from.
-- [Permissions and the wall](permissions.md) — the four rules as the transport
-  enforces them, when nothing is wrapping them.
+New clients use `/payday.ResourceService/Batch`, alongside the shared Watch API.
+`/payday.BatchService/Do` remains registered with the same request, response and
+transaction behavior, and is marked deprecated in protobuf. Both call the same
+dispatcher. Method-based credentials and policies must allow the endpoint a client
+actually calls; migration does not silently alias authorization rules.

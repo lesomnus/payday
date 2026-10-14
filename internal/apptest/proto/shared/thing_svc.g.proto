@@ -25,6 +25,7 @@ service ThingService {
 message ThingAddRequest {
   bytes id = 1;
   string alias = 4 [features.field_presence = IMPLICIT];
+  string description = 8;
   google.protobuf.Timestamp date_created = 15;
 }
 
@@ -42,6 +43,7 @@ message ThingRef {
 message ThingSelect {
   bool all = 1;
   bool alias = 4;
+  bool description = 8;
   bool date_erased = 14;
   bool date_created = 15;
 }
@@ -49,6 +51,7 @@ message ThingSelect {
 message ThingPatchRequest {
   ThingRef ref = 1;
   string alias = 8;
+  string description = 16;
 }
 
 message ThingApplyRequest {

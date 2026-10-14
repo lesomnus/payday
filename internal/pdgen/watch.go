@@ -227,16 +227,6 @@ func emitWatch(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoIm
 // with it -- and that is right for a trail and wrong for this: an event nobody
 // could publish is not a reason to undo the thing it was about.
 func EmitWatchRecorder(g *protogen.GeneratedFile, s *Schema, p Paths) {
-	any := false
-	for _, v := range s.Entities {
-		if v.Watch {
-			any = true
-			break
-		}
-	}
-	if !any {
-		return
-	}
 
 	g.P("// WatchRecorder answers with the recorder that remembers a write for `w`.")
 	g.P("//")

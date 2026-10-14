@@ -133,15 +133,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// `WithRecorder` refuses to be given twice: neither losing one nor quietly
 	// appending in call order is a thing a framework should decide, so the order
 	// is written here where it can be read against the comment explaining it.
-	rec := bare.Recorders{pd.Recorder(), pd.WatchRecorder(w)}
-	if c.Watch.Outbox {
-		// Last, so that a queue this could not be written to undoes a write
-		// which the trail and the in-process publish have already agreed to
-		// rather than the other way round. It makes no difference to what is
-		// committed -- either way nothing is -- and it makes the log read in
-		// the order things were tried.
-		rec = append(rec, pd.OutboxRecorder())
-	}
+	rec := bare.Recorders{pd.Recorder(), pd.ResourceRecorder(w, c.Watch.Outbox, nil)}
 
 	opts := []bare.Option{bare.WithMinter(pd.Minter()), bare.WithRecorder(rec)}
 
@@ -283,6 +275,12 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 	// dispatched, this enforces per operation.
 	if b, err := pd.Batch(s.Walled, s.Drv, c.Server.Guard(s.Policy)); err == nil {
 		pdpb.RegisterBatchServiceServer(g, b)
+		resources, err := pd.Resources(s.Walled, s.Drv, c.Server.Guard(s.Policy), s.Watch,
+			pd.ResourceProjector(s.Ent, pd.Wall(), c.Server.Guard(s.Policy)))
+		if err != nil {
+			return nil, err
+		}
+		pdpb.RegisterResourceServiceServer(g, resources)
 	} else {
 		// A deployment that closed nothing, limits nothing and has no policy.
 		// It is a real thing to be and it is also what a guard nobody filled in

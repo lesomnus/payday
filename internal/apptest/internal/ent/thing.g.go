@@ -12,6 +12,7 @@ func (e *Thing) Proto() *apptest.Thing {
 	x := &apptest.Thing{}
 	x.SetId(e.Id[:])
 	x.SetAlias(e.Alias)
+	x.SetDescription(e.Description)
 	if e.DateErased != nil {
 		x.SetDateErased(timestamppb.New(*e.DateErased))
 	}

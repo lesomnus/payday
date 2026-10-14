@@ -43,6 +43,26 @@ func (_u *ThingUpdate) SetNillableAlias(v *string) *ThingUpdate {
 	return _u
 }
 
+// SetDescription sets the "description" field.
+func (_u *ThingUpdate) SetDescription(v string) *ThingUpdate {
+	_u.mutation.SetDescription(v)
+	return _u
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *ThingUpdate) SetNillableDescription(v *string) *ThingUpdate {
+	if v != nil {
+		_u.SetDescription(*v)
+	}
+	return _u
+}
+
+// ClearDescription clears the value of the "description" field.
+func (_u *ThingUpdate) ClearDescription() *ThingUpdate {
+	_u.mutation.ClearDescription()
+	return _u
+}
+
 // SetDateErased sets the "date_erased" field.
 func (_u *ThingUpdate) SetDateErased(v time.Time) *ThingUpdate {
 	_u.mutation.SetDateErased(v)
@@ -113,6 +133,12 @@ func (_u *ThingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(thing.FieldAlias, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(thing.FieldDescription, field.TypeString, value)
+	}
+	if _u.mutation.DescriptionCleared() {
+		_spec.ClearField(thing.FieldDescription, field.TypeString)
+	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(thing.FieldDateErased, field.TypeTime, value)
 	}
@@ -155,6 +181,26 @@ func (_u *ThingUpdateOne) SetNillableAlias(v *string) *ThingUpdateOne {
 	if v != nil {
 		_u.SetAlias(*v)
 	}
+	return _u
+}
+
+// SetDescription sets the "description" field.
+func (_u *ThingUpdateOne) SetDescription(v string) *ThingUpdateOne {
+	_u.mutation.SetDescription(v)
+	return _u
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *ThingUpdateOne) SetNillableDescription(v *string) *ThingUpdateOne {
+	if v != nil {
+		_u.SetDescription(*v)
+	}
+	return _u
+}
+
+// ClearDescription clears the value of the "description" field.
+func (_u *ThingUpdateOne) ClearDescription() *ThingUpdateOne {
+	_u.mutation.ClearDescription()
 	return _u
 }
 
@@ -257,6 +303,12 @@ func (_u *ThingUpdateOne) sqlSave(ctx context.Context) (_node *Thing, err error)
 	}
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(thing.FieldAlias, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(thing.FieldDescription, field.TypeString, value)
+	}
+	if _u.mutation.DescriptionCleared() {
+		_spec.ClearField(thing.FieldDescription, field.TypeString)
 	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(thing.FieldDateErased, field.TypeTime, value)

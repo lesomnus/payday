@@ -58,7 +58,7 @@ func (w *Watch) Interceptor() grpcx.Chain {
 func (w *Watch) Unary() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		vs := &changes{}
-		ctx = into(ctx, vs)
+		ctx = into(context.WithValue(ctx, callKey{}, info.FullMethod), vs)
 
 		res, err := handler(ctx, req)
 		if err != nil {

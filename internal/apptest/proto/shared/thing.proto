@@ -37,6 +37,9 @@ message Thing {
 
   string alias = 4;
 
+  // A public payload used to exercise resource events larger than one NOTIFY.
+  string description = 8 [(orm.field) = {default: ""}];
+
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 

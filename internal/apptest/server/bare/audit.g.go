@@ -12,12 +12,15 @@ import (
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
+	dialect "github.com/protobuf-orm/ent/dialect"
+	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
 	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	entpatch "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpatch"
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	proto "google.golang.org/protobuf/proto"
 	uuid "uuid"
 )
 
@@ -155,9 +158,11 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 		return nil, err
 	}
 
+	v := u.Proto()
 	if err := record(ctx, s.Rec, st.Db, Change{
-		By:  apptest.AuditService_Add_FullMethodName,
-		Key: u.Id,
+		By:    apptest.AuditService_Add_FullMethodName,
+		Key:   u.Id,
+		Value: s.image(v),
 	}); err != nil {
 		return nil, err
 	}
@@ -165,7 +170,7 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 		return nil, err
 	}
 
-	return u.Proto(), nil
+	return v, nil
 }
 
 func (s AuditServiceServer) Get(ctx context.Context, req *apptest.AuditGetRequest) (*apptest.Audit, error) {
@@ -191,6 +196,23 @@ func (s AuditServiceServer) Get(ctx context.Context, req *apptest.AuditGetReques
 	return v.Proto(), nil
 }
 
+func (s AuditServiceServer) snapshot(ctx context.Context, p predicate.Audit) (*ent.Audit, error) {
+	q := s.Db.Audit.Query().Where(p)
+	AuditSelectInit(q, nil)
+	q.Modify(func(q *sql.Selector) {
+		if s.Db.Dialect() != dialect.SQLite {
+			q.ForUpdate()
+		}
+	})
+	return q.Only(ctx)
+}
+func (s AuditServiceServer) image(v *apptest.Audit) *apptest.Audit {
+	if s.Rec == nil || v == nil {
+		return nil
+	}
+	out := proto.Clone(v).(*apptest.Audit)
+	return out
+}
 func selectAuditKey(q *ent.AuditQuery) {
 	q.Select(audit.FieldId)
 }
@@ -352,6 +374,17 @@ func (s AuditServiceServer) apply(ctx context.Context, ref *apptest.AuditRef, do
 		return nil, err
 	}
 
+	var previous *apptest.Audit
+	if s.Rec != nil && mod != nil {
+		u, err := st.snapshot(ctx, p)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return nil, status.Error(codes.NotFound, "resource not found")
+			}
+			return nil, err
+		}
+		previous = u.Proto()
+	}
 	if mod == nil {
 		q := st.Db.Audit.Query().Where(p)
 		if pred != nil {
@@ -397,20 +430,21 @@ func (s AuditServiceServer) apply(ctx context.Context, ref *apptest.AuditRef, do
 		}
 	}
 
+	out, err := st.Get(ctx, at.Pick())
+	if err != nil {
+		return nil, err
+	}
 	if mod != nil {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    by,
-			Key:   k,
-			Patch: doc,
+			By:       by,
+			Key:      k,
+			Patch:    doc,
+			Previous: s.image(previous), Value: s.image(out),
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := st.Get(ctx, at.Pick())
-	if err != nil {
-		return nil, err
-	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -437,8 +471,9 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 	st.Db = tx.Db
 
 	var k any
+	var previous *apptest.Audit
 	if s.Rec != nil {
-		v, err := st.Db.Audit.Query().Where(p).OnlyId(ctx)
+		v, err := st.snapshot(ctx, p)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return &apptest.AuditEraseResponse{}, nil
@@ -446,8 +481,9 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 			return nil, err
 		}
 
-		k = v
-		p = audit.And(p, audit.IdEQ(v))
+		k = v.Id
+		previous = v.Proto()
+		p = audit.And(p, audit.IdEQ(v.Id))
 	}
 
 	n, err := st.Db.Audit.Delete().Where(p).Exec(ctx)
@@ -456,8 +492,9 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 	}
 	if n > 0 {
 		if err := record(ctx, s.Rec, st.Db, Change{
-			By:  apptest.AuditService_Erase_FullMethodName,
-			Key: k,
+			By:       apptest.AuditService_Erase_FullMethodName,
+			Key:      k,
+			Previous: s.image(previous),
 		}); err != nil {
 			return nil, err
 		}

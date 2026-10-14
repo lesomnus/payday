@@ -22,9 +22,9 @@ const (
 	BatchService_Do_FullMethodName = "/payday.BatchService/Do"
 )
 
-// BatchServiceClient is the client Api for BatchService service.
+// BatchServiceClient is the client API for BatchService service.
 //
-// For semantics around ctx use and closing/ending streaming Rpcs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // BatchService runs several writes as one transaction.
 //
@@ -40,6 +40,9 @@ const (
 // which are checked per operation rather than against this RPC; see
 // `payday/batch`.
 type BatchServiceClient interface {
+	// Deprecated: Do not use.
+	// Deprecated: use ResourceService.Batch. The request and transaction semantics
+	// are identical; this endpoint remains available for existing clients.
 	Do(ctx context.Context, in *BatchRequest, opts ...grpc.CallOption) (*BatchResponse, error)
 }
 
@@ -51,6 +54,7 @@ func NewBatchServiceClient(cc grpc.ClientConnInterface) BatchServiceClient {
 	return &batchServiceClient{cc}
 }
 
+// Deprecated: Do not use.
 func (c *batchServiceClient) Do(ctx context.Context, in *BatchRequest, opts ...grpc.CallOption) (*BatchResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BatchResponse)
@@ -61,7 +65,7 @@ func (c *batchServiceClient) Do(ctx context.Context, in *BatchRequest, opts ...g
 	return out, nil
 }
 
-// BatchServiceServer is the server Api for BatchService service.
+// BatchServiceServer is the server API for BatchService service.
 // All implementations must embed UnimplementedBatchServiceServer
 // for forward compatibility.
 //
@@ -79,6 +83,9 @@ func (c *batchServiceClient) Do(ctx context.Context, in *BatchRequest, opts ...g
 // which are checked per operation rather than against this RPC; see
 // `payday/batch`.
 type BatchServiceServer interface {
+	// Deprecated: Do not use.
+	// Deprecated: use ResourceService.Batch. The request and transaction semantics
+	// are identical; this endpoint remains available for existing clients.
 	Do(context.Context, *BatchRequest) (*BatchResponse, error)
 	mustEmbedUnimplementedBatchServiceServer()
 }

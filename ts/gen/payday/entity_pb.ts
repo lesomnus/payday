@@ -3,15 +3,17 @@
 // option features.field_presence = IMPLICIT;
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Ref } from "../orm/ref_pb.js";
+import { file_orm_ref } from "../orm/ref_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki1gMKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gaCAoGVGVuYW50GiYKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAEoCRoICgZHbG9iYWwacQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISDAoEd2l0aBgCIAMoCRIKCgJieRgDIAMoCRIMCgRzaXplGAQgASgNEgsKA21heBgFIAEoDRIPCgdmaWx0ZXJzGAYgASgNGgcKBVdhdGNoGiQKBU9yZGVyEg0KBWZpZWxkGAEgASgJEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki8wUKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GkUKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRINCgVzdGFtcBgDIAEoCRIOCgZhZ3JlZXMYBCADKAkaCAoGR2xvYmFsGioKBUVyYXNlEiEKBGhhcmQYASABKAsyEy5wYXlkYXkuRW50aXR5LkhhcmQaBgoESGFyZBqwAQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISFgoEd2l0aBgCIAMoCzIILm9ybS5SZWYSFAoCYnkYAyADKAsyCC5vcm0uUmVmEgwKBHNpemUYBCABKA0SCwoDbWF4GAUgASgNEg8KB2ZpbHRlcnMYBiABKA0SKQoGb3JkZXJzGAcgAygLMhkucGF5ZGF5LkVudGl0eS5OYW1lZE9yZGVyGj8KCk5hbWVkT3JkZXISDAoEbmFtZRgBIAEoCRIjCgVvcmRlchgCIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXIaBwoFV2F0Y2gaLgoFT3JkZXISFwoFZmllbGQYASABKAsyCC5vcm0uUmVmEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeSIoCgVGaWVsZBIOCgZzZWNyZXQYASABKAgSDwoHc3RhbXBlZBgCIAEoCCprCgNPd24SEwoPT1dOX1VOU1BFQ0lGSUVEEAASDgoKT1dOX1RFTkFOVBABEg4KCk9XTl9IT0xERVIQAhINCglPV05fQVVESVQQAxIOCgpPV05fT1VUQk9YEAQSEAoMT1dOX0FSQ0hJVkVEEAVCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_orm_ref]);
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -57,19 +59,26 @@ export type Entity = Message<"payday.Entity"> & {
   name: string;
 
   /**
-   * Tenancy says whether rows of this entity are behind the tenant wall, and
-   * **one of the two must be said**. There is no default, and that is the whole
-   * reason this field exists.
+   * Tenancy says whether rows of this entity are behind the tenant wall.
    *
-   * The alternative -- assume one -- is wrong whichever one is assumed.
-   * Assuming an entity is walled makes an entity that is not disappear from
-   * every read until somebody notices. Assuming it is not makes an entity that
-   * should be walled readable by everybody, and *nobody notices*: nothing fails,
-   * no test goes red, and the first sign of it is a caller reading another
-   * tenant's rows.
+   * **Saying nothing is `tenanted: {via: "tenant"}`** -- behind the wall, by the
+   * edge of that name -- and the two failures are why that is the default rather
+   * than a refusal. Assuming a wall makes an entity that should not have one
+   * disappear from every read, which is noticed within minutes because the
+   * screen is empty. Assuming none makes an entity that should be walled
+   * readable by everybody, and *nobody notices*: nothing fails, no test goes
+   * red, and the first sign of it is a caller reading another tenant's rows.
    *
-   * So it is neither, and generation stops until it is said. Saying it costs a
-   * line; the second mistake costs more than that.
+   * So the assumption is the loud one, and it cannot even be wrong quietly: an
+   * entity whose `tenant` edge goes somewhere that is not the tenant is refused,
+   * and one with no such edge is refused. The default produces the correct
+   * predicate or a refusal, never a wall that narrows to the wrong rows.
+   *
+   * What that buys is the shape a rule should have: **the dangerous answer is
+   * the one written down.** Every entity outside the wall says `global: {}` and
+   * can be found by searching for it; the ordinary case says nothing, because
+   * writing it on six entities out of eight is boilerplate rather than a
+   * decision.
    *
    * @generated from oneof payday.Entity.tenancy
    */
@@ -121,6 +130,47 @@ export type Entity = Message<"payday.Entity"> & {
    * @generated from field: payday.Entity.Watch watch = 7;
    */
   watch?: Entity_Watch | undefined;
+
+  /**
+   * Erase is what `Erase` does to a row, and it is only ever said to declare
+   * the destructive answer.
+   *
+   * Saying nothing means **softly**: the row is stamped and stays, so it cannot
+   * be read, cannot be changed, and its alias comes free again -- and the trail
+   * can still say what it held, because it is still there to be read. Which is
+   * what an entity gets by carrying a field marked `erased:`.
+   *
+   * An entity with no such field loses the row for good, and that is refused
+   * unless it is written here. The two failures are not alike: assuming soft
+   * wrongly leaves rows somebody meant to be gone, which is noticed by looking;
+   * assuming hard wrongly destroys them, which is noticed by somebody asking
+   * for one back.
+   *
+   * @generated from field: payday.Entity.Erase erase = 8;
+   */
+  erase?: Entity_Erase | undefined;
+
+  /**
+   * Own says this is one of payday's own entities, and is written **only in
+   * payday's own schema.** An app never writes it; `pd gen` copies these files
+   * in whole, and the line comes with them.
+   *
+   * It exists so that generation can find them without reading their names.
+   * Three things are built out of them -- the Gate layer, which is the whole of
+   * the `Add` tenant check; the layer that refuses a hand-written trail row;
+   * and the outbox drain -- and each used to look for `payday.Tenant`,
+   * `payday.Holder`, `payday.Audit`, `payday.Outbox` by full name.
+   *
+   * That made the proto package payday's rather than the app's, and it did so
+   * in the worst way available: renaming it did not fail, it made those layers
+   * **not be generated**, so reads stayed walled and writes stopped being.
+   *
+   * With the marker the name is free. An app may put payday's entities in its
+   * own package, and what a caller of that app sees is that app's namespace.
+   *
+   * @generated from field: payday.Own own = 9;
+   */
+  own: Own;
 };
 
 /**
@@ -178,11 +228,93 @@ export type Entity_Tenanted = Message<"payday.Entity.Tenanted"> & {
    * trail row wants exactly the second: what it records happened, and it goes
    * on being true after the tenant it happened in is gone.
    *
-   * Say one or the other, never both.
+   * Say this or `via`, never both.
    *
-   * @generated from field: string field = 2;
+   * # Several of them is OR, and it widens
+   *
+   * A row with more than one is behind the wall of **any** of them: readable
+   * by every tenant it names. That is the trail and nothing else -- one write
+   * has a tenant whose row changed and a tenant whose actor made it, and both
+   * are parties to the record.
+   *
+   * It is the one construct here that makes a row *more* visible, so it is
+   * worth saying what it is not for. Two tenants sharing a row is not a thing
+   * payday models: there is no owner, no answer to who may erase it, and the
+   * wall stops being the sentence "a row belongs to a tenant". A record of
+   * something that happened between two of them is a different shape, and it
+   * is the only one this is for.
+   *
+   * @generated from field: repeated string field = 2;
    */
-  field: string;
+  field: string[];
+
+  /**
+   * Stamp is a column on this row holding what [Tenanted.via] reaches, and
+   * payday writes it.
+   *
+   * It is the word `date_updated` is described with, and for the same reason:
+   * **stamped by the server on every write and refused to a patch**. It is
+   * not a field of a request and never becomes one. A caller that could write
+   * it could put a row behind a wall its edge does not agree with, and then
+   * the row is readable by a tenant that does not hold it.
+   *
+   * # What it is for
+   *
+   * A `via` of more than one step is a subquery in the wall, on every read:
+   *
+   * 	identity.HasHolderWith(holder.TenantIdIn(vs...))   // via "holder.tenant"
+   * 	role.TenantIdIn(vs...)                             // a direct edge
+   *
+   * With a stamp the second line is what an entity gets whatever its path is.
+   * It is also what makes `list: {by: [{name: "tenant"}]}` possible at all --
+   * a filter reaches one hop, and a path of two has nothing to name.
+   *
+   * # It is not a cache
+   *
+   * Nothing refreshes it, because nothing can move it: every edge on the
+   * `via` path has to be immutable, and generation refuses a path that is
+   * not. So the value is decided once, when the row is written, and the
+   * question "is it still right" has no way to be asked.
+   *
+   * Say this with `via`. There is nothing to derive it from otherwise.
+   *
+   * @generated from field: string stamp = 3;
+   */
+  stamp: string;
+
+  /**
+   * Agrees are other paths from this row to a tenant that must reach the same
+   * one, checked when the row is written.
+   *
+   * # Why it is opt-in
+   *
+   * A row can hold two edges that each reach a tenant, and payday cannot know
+   * which disagreements are mistakes: its own trail holds two on purpose. So
+   * there is no rule that they agree, and this is how an app says it wants
+   * one for a path it names. A path nobody named is an ordinary edge and
+   * nothing is said about it, ever.
+   *
+   * # What it adds to what is already refused
+   *
+   * The generated gate reads every edge of an `Add` **through the wall**, and
+   * every edge a `Patch` moves: the first hop of the `via` path and the
+   * field-3 set edge because that is where the row itself lands, and every
+   * other edge because an edge is a read -- one pointing out of the caller's
+   * scope is a way through the wall one hop later.
+   *
+   * What it asks of each is "may this caller see it", and that is not a
+   * comparison: a caller who can see both tenants passes it with one edge in
+   * each -- an operator whose scope is several -- as does a deployment
+   * writing through a server the wall was never installed on. So a second
+   * path to a tenant is checked against the first by nothing until it is
+   * named here.
+   *
+   * Each is a path like `via` -- an edge, or a dotted one. What is compared
+   * is the tenant each reaches.
+   *
+   * @generated from field: repeated string agrees = 4;
+   */
+  agrees: string[];
 };
 
 /**
@@ -211,6 +343,62 @@ export type Entity_Global = Message<"payday.Entity.Global"> & {
  */
 export const Entity_GlobalSchema: GenMessage<Entity_Global> = /*@__PURE__*/
   messageDesc(file_payday_entity, 0, 2);
+
+/**
+ * Erase says the row goes. See [Entity.erase].
+ *
+ * @generated from message payday.Entity.Erase
+ */
+export type Entity_Erase = Message<"payday.Entity.Erase"> & {
+  /**
+   * Hard is losing the row, said out loud.
+   *
+   * It is a real answer and not a mistake to allow: a table of readings, of
+   * events, of anything that arrives faster than anybody reads it, cannot be
+   * one nothing may ever be removed from.
+   *
+   * The second half of that sentence used to be *and payday has no retention
+   * story to offer instead*. It has one now -- `trail`, named through
+   * `config.AuditConfig` -- and it is deliberately only about `Audit`: the
+   * trail is payday's own table, and what to do with an app's table of
+   * readings is the app's, which is what `hard:` is for.
+   *
+   * What it costs is what the trail then cannot say. `Audit.value` is read
+   * off the row **after** the write, so for a row that is gone there is
+   * nothing to read: the trail records that the erase happened and not what
+   * was destroyed, and the record is filed under the actor's tenant rather
+   * than the row's, because that is the last thing known about it.
+   *
+   * Do not answer this by going to the database instead. A `DELETE` run
+   * outside the app skips the trail, the version and the `Watch` -- and a
+   * watch says a row is gone by sending its identifier with no value, which
+   * only a write through the app publishes, so a row removed behind the app's
+   * back is one every client that has it keeps forever.
+   *
+   * @generated from field: payday.Entity.Hard hard = 1;
+   */
+  hard?: Entity_Hard | undefined;
+};
+
+/**
+ * Describes the message payday.Entity.Erase.
+ * Use `create(Entity_EraseSchema)` to create a new message.
+ */
+export const Entity_EraseSchema: GenMessage<Entity_Erase> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 0, 3);
+
+/**
+ * @generated from message payday.Entity.Hard
+ */
+export type Entity_Hard = Message<"payday.Entity.Hard"> & {
+};
+
+/**
+ * Describes the message payday.Entity.Hard.
+ * Use `create(Entity_HardSchema)` to create a new message.
+ */
+export const Entity_HardSchema: GenMessage<Entity_Hard> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 0, 4);
 
 /**
  * List is how this entity is read a page at a time.
@@ -247,22 +435,27 @@ export type Entity_List = Message<"payday.Entity.List"> & {
    * With names edges to read along with each row, since almost everything
    * that reads a list wants to know whose the rows are.
    *
-   * @generated from field: repeated string with = 2;
+   * @generated from field: repeated orm.Ref with = 2;
    */
-  with: string[];
+  with: Ref[];
 
   /**
-   * By names what a filter may be about: a field, compared for equality, or
-   * "ref" for the reference that names a row.
+   * By names what a filter may be about: a field or an edge, compared for
+   * equality, or the name "ref" for the reference that names a row.
+   *
+   * An edge is a foreign key, so a filter on one is a comparison against an
+   * indexed column rather than a join. A **one-to-many** edge is refused for
+   * the same reason: there is no column on this row to compare, and that
+   * genuinely is a join.
    *
    * A filter that cannot be written this way is an RPC somebody writes. That
    * is not a limitation being apologised for: a rule about what a caller may
    * ask has a reason, and a reason belongs beside the code that acts on it
    * rather than in a declaration that can only carry the number.
    *
-   * @generated from field: repeated string by = 3;
+   * @generated from field: repeated orm.Ref by = 3;
    */
-  by: string[];
+  by: Ref[];
 
   /**
    * Size is how many rows a request that did not say gets, and Max is the
@@ -292,6 +485,26 @@ export type Entity_List = Message<"payday.Entity.List"> & {
    * @generated from field: uint32 filters = 6;
    */
   filters: number;
+
+  /**
+   * Orders are the other orders a request may read the list in, each by its
+   * name: the request's `order` names one, and `order` above is what one
+   * that names none gets.
+   *
+   * Declared rather than asked for, column by column, at the request,
+   * because an order is a walk of an index and a request does not know
+   * which indexes there are. Each is held to what `order` is held to -- the
+   * last column is the key -- and each wants an index that begins with its
+   * columns, in its directions or all of them the other way, or reading a
+   * page is a scan and a sort.
+   *
+   * Any order can also be read backwards, every column the other way round
+   * at once (the request's `reverse`), which the same index walks from the
+   * other end; that one needs declaring nowhere.
+   *
+   * @generated from field: repeated payday.Entity.NamedOrder orders = 7;
+   */
+  orders: Entity_NamedOrder[];
 };
 
 /**
@@ -299,7 +512,33 @@ export type Entity_List = Message<"payday.Entity.List"> & {
  * Use `create(Entity_ListSchema)` to create a new message.
  */
 export const Entity_ListSchema: GenMessage<Entity_List> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 3);
+  messageDesc(file_payday_entity, 0, 5);
+
+/**
+ * NamedOrder is an order of a list a request names.
+ *
+ * @generated from message payday.Entity.NamedOrder
+ */
+export type Entity_NamedOrder = Message<"payday.Entity.NamedOrder"> & {
+  /**
+   * Name is what a request names it by: lower case, words joined by `_`.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: repeated payday.Entity.Order order = 2;
+   */
+  order: Entity_Order[];
+};
+
+/**
+ * Describes the message payday.Entity.NamedOrder.
+ * Use `create(Entity_NamedOrderSchema)` to create a new message.
+ */
+export const Entity_NamedOrderSchema: GenMessage<Entity_NamedOrder> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 0, 6);
 
 /**
  * Watch is how this entity is read as it changes.
@@ -321,18 +560,29 @@ export type Entity_Watch = Message<"payday.Entity.Watch"> & {
  * Use `create(Entity_WatchSchema)` to create a new message.
  */
 export const Entity_WatchSchema: GenMessage<Entity_Watch> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 4);
+  messageDesc(file_payday_entity, 0, 7);
 
 /**
  * Order is one column of a list's order.
+ * Every one of these names a field or an edge as `{name, number}`, which is
+ * `orm.Ref` and is how the rest of a schema already points at one -- an index
+ * does, and a schema with two ways of saying the same thing is one somebody
+ * has to remember which is which for.
+ *
+ * The **number** is the identity. A proto field is renamed without the wire
+ * changing, so a declaration that carried only the label would follow a
+ * rename onto whatever took the old name. Carrying both lets generation
+ * resolve by the number and refuse when the label no longer matches, which is
+ * the failure this is for: not "that field is gone" -- which is loud already
+ * -- but "that field is a different field now", which is not.
  *
  * @generated from message payday.Entity.Order
  */
 export type Entity_Order = Message<"payday.Entity.Order"> & {
   /**
-   * @generated from field: string field = 1;
+   * @generated from field: orm.Ref field = 1;
    */
-  field: string;
+  field?: Ref | undefined;
 
   /**
    * Desc reads the list backwards, which is what a trail wants: what it is
@@ -348,5 +598,171 @@ export type Entity_Order = Message<"payday.Entity.Order"> & {
  * Use `create(Entity_OrderSchema)` to create a new message.
  */
 export const Entity_OrderSchema: GenMessage<Entity_Order> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 5);
+  messageDesc(file_payday_entity, 0, 8);
+
+/**
+ * Field is what payday adds to one field of an entity.
+ *
+ * There was nothing here for a long time and the absence had a cost. A password
+ * hash and an API key hash are both **written and never read**, and no schema
+ * could say so -- so an app said it at registration instead, by leaving the
+ * generated service off its server. That works, is checkable, and is said in
+ * the app that happens to hold the field rather than beside the field. The next
+ * app storing a verifier rediscovers the whole argument.
+ *
+ * @generated from message payday.Field
+ */
+export type Field = Message<"payday.Field"> & {
+  /**
+   * Secret marks a field that is assigned and never answered with.
+   *
+   * # What it does
+   *
+   * A generated layer clears it on the way out: out of the entity message a
+   * `Get` answers with, out of every item of a `List`, out of the one an `Add`
+   * echoes back, and out of what a `Watch` streams -- which is the read nobody
+   * could have narrowed by asking, since a watch has no `Select`.
+   *
+   * The field itself stays in the generated types, and that is not payday's to
+   * change: the entity message and its `Select` come from the ORM's generators,
+   * upstream of anything here. So a caller may still ask for the column and is
+   * answered with nothing rather than refused -- `Select{All: true}` is how a
+   * row is ordinarily asked for, and an error there would make the common call
+   * the failing one. What it costs is that this is a line in a deployment's
+   * stack rather than a property of the message: leave the layer out and the
+   * value goes out with the row.
+   *
+   * The **write** side is untouched. It is still in `Add` and in `Patch`,
+   * because writing is the half that works: somebody sets a password, and
+   * nothing about that requires reading it back.
+   *
+   * # Why it is not encryption, and not a permission
+   *
+   * It says nothing about who may see the value, because the answer is nobody:
+   * there is no caller, no role and no deployment for which handing out a
+   * verifier is right. A permission would imply there is a level at which it
+   * becomes acceptable.
+   *
+   * It is also not confidentiality at rest. The column holds what it holds, and
+   * an operator with the database has it. What this removes is the far more
+   * likely accident -- a field appearing in an ordinary read because somebody
+   * asked for every column and nothing said no.
+   *
+   * # What it cannot do
+   *
+   * A field the server compares still has to be read **in process**, and the
+   * generated servers read whatever the ORM was told to. So this narrows the
+   * wire and not the database, and an app that wants a secret never loaded into
+   * a query it did not mean to write still has to write the query.
+   *
+   * @generated from field: bool secret = 1;
+   */
+  secret: boolean;
+
+  /**
+   * Stamped marks a field a caller may not set when the row is created.
+   *
+   * # The gap it fills, which took two apps to notice
+   *
+   * A stamp is a fact the deployment establishes and not one a request asserts:
+   * when an address was checked, when a device was attested, when a review was
+   * signed off. The ORM has `immutable`, which takes a field out of the
+   * **patch** request and leaves it in `Add` -- exactly the wrong way round for
+   * this, because what a stamp wants is the opposite: nobody asserts it when
+   * the row is created, and something writes it when the thing it records
+   * actually happens.
+   *
+   * Without a word for that, an app is left refusing the field in a layer of
+   * its own. That works and it is invisible: it is a line in a stack rather
+   * than a property of the message, so the next app writes the same field and
+   * does not know to write the same refusal.
+   *
+   * # What it does
+   *
+   * The generated `Add` refuses a request that sets it, with `InvalidArgument`
+   * naming the field. `Patch` is untouched, because that is the road the stamp
+   * is written by -- a deployment's own call, through a server it holds, on the
+   * day the thing happened.
+   *
+   * # Why a refusal and not a removal
+   *
+   * The field could be taken out of `AddRequest` entirely, and that would be
+   * the stronger shape -- `05792f6`'s *the test asserts there is no field to
+   * try*. It is not available here: the request messages come from the ORM's
+   * generators, upstream of anything payday says, and `payday.field` is read
+   * after they are written. Refusing is what is reachable, and it is refused in
+   * the **generated** server rather than in an app's layer, which is the half
+   * that makes it a property of the schema again.
+   *
+   * # And what it deliberately does not decide
+   *
+   * Who may write it afterwards. That is a permission, and permissions are an
+   * app's: a stamp being server-set says the request cannot assert it, and says
+   * nothing about which of the deployment's own calls is allowed to.
+   *
+   * @generated from field: bool stamped = 2;
+   */
+  stamped: boolean;
+};
+
+/**
+ * Describes the message payday.Field.
+ * Use `create(FieldSchema)` to create a new message.
+ */
+export const FieldSchema: GenMessage<Field> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 1);
+
+/**
+ * Own names one of payday's own entities, so that generation can find it
+ * whatever the proto package is called.
+ *
+ * The numbers are of the same kind as a field number: chosen once and never
+ * given to something else. They are **not** domains -- a domain is what an
+ * identifier carries and an app declares, and these are what payday declares
+ * about its own.
+ *
+ * @generated from enum payday.Own
+ */
+export enum Own {
+  /**
+   * The app's own entity, which is everything an app writes.
+   *
+   * @generated from enum value: OWN_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: OWN_TENANT = 1;
+   */
+  TENANT = 1,
+
+  /**
+   * @generated from enum value: OWN_HOLDER = 2;
+   */
+  HOLDER = 2,
+
+  /**
+   * @generated from enum value: OWN_AUDIT = 3;
+   */
+  AUDIT = 3,
+
+  /**
+   * @generated from enum value: OWN_OUTBOX = 4;
+   */
+  OUTBOX = 4,
+
+  /**
+   * The trail archive's manifest: what the archive holds, as the database
+   * keeps the account of it. See `trail.Manifest`.
+   *
+   * @generated from enum value: OWN_ARCHIVED = 5;
+   */
+  ARCHIVED = 5,
+}
+
+/**
+ * Describes the enum payday.Own.
+ */
+export const OwnSchema: GenEnum<Own> = /*@__PURE__*/
+  enumDesc(file_payday_entity, 0);
 

@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file shared/thing.proto.
  */
 export const file_shared_thing: GenFile = /*@__PURE__*/
-  fileDesc("ChJzaGFyZWQvdGhpbmcucHJvdG8SBnNoYXJlZCLfAQoFVGhpbmcSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEg0KBWFsaWFzGAQgASgJEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6N8r8FQQSAhABirsWKwgNMiUKEAoOCgxkYXRlX2NyZWF0ZWQKBgoECgJpZBoFCgNyZWYgFChkKgBCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("ChJzaGFyZWQvdGhpbmcucHJvdG8SBnNoYXJlZCL9AQoFVGhpbmcSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEg0KBWFsaWFzGAQgASgJEhwKC2Rlc2NyaXB0aW9uGAggASgJQgfqghYDggEAEjgKC2RhdGVfZXJhc2VkGA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA5IBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6N8r8FQQSAhABirsWKwgNMiUKEAoOCgxkYXRlX2NyZWF0ZWQKBgoECgJpZBoFCgNyZWYgFChkKgBCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Thing is an entity in a package that is **not** the app's.
@@ -50,6 +50,13 @@ export type Thing = Message<"shared.Thing"> & {
    * @generated from field: string alias = 4;
    */
   alias: string;
+
+  /**
+   * A public payload used to exercise resource events larger than one NOTIFY.
+   *
+   * @generated from field: string description = 8;
+   */
+  description: string;
 
   /**
    * @generated from field: google.protobuf.Timestamp date_erased = 14;
