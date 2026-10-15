@@ -69,6 +69,32 @@ func Covers(held string, want string) bool {
 	return true
 }
 
+// IntersectMethod is the pattern covering exactly the methods covered by both
+// inputs. It is used when an authority's roles are narrowed by a credential.
+// The components are independent: /app.*/Get intersected with /app.Robot/*
+// is /app.Robot/Get, even though neither input covers the other.
+func IntersectMethod(a, b string) (string, bool) {
+	if a == b {
+		return a, true
+	}
+	x, ok := parts(a)
+	if !ok {
+		return "", false
+	}
+	y, ok := parts(b)
+	if !ok {
+		return "", false
+	}
+	for i := range x {
+		if x[i] == "*" {
+			x[i] = y[i]
+		} else if y[i] != "*" && x[i] != y[i] {
+			return "", false
+		}
+	}
+	return "/" + x[0] + "." + x[1] + "/" + x[2], true
+}
+
 // parts splits "/pkg.Service/Method" into its three, and reports whether it was
 // one at all.
 //

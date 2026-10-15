@@ -73,6 +73,10 @@ func InterceptorUnary(h Handler, r Resolver, public Public) grpc.UnaryServerInte
 // exist anyway.
 var ErrExpired = errors.New("the credential this stream was opened with has expired")
 
+// ErrChanged asks a stream to authenticate again after its credential or
+// authorization configuration was replaced.
+var ErrChanged = errors.New("the credential or its authorization changed; reconnect")
+
 // InterceptorStream is [InterceptorUnary] for a stream, plus the one thing a
 // stream needs and a call does not.
 //
@@ -114,10 +118,28 @@ func InterceptorStream(h Handler, r Resolver, public Public) grpc.StreamServerIn
 			t := time.AfterFunc(time.Until(id.Expires), func() { cancel(ErrExpired) })
 			defer t.Stop()
 		}
+		if id.Changed != nil {
+			var cancel context.CancelCauseFunc
+			ctx, cancel = context.WithCancelCause(ctx)
+			defer cancel(nil)
+			done := make(chan struct{})
+			defer close(done)
+			go func() {
+				select {
+				case <-id.Changed:
+					cancel(ErrChanged)
+				case <-ctx.Done():
+				case <-done:
+				}
+			}()
+		}
 
 		err = handler(srv, grpcx.StreamWithContext(ss, ctx))
 		if errors.Is(context.Cause(ctx), ErrExpired) {
 			return status.Error(codes.Unauthenticated, ErrExpired.Error())
+		}
+		if errors.Is(context.Cause(ctx), ErrChanged) {
+			return status.Error(codes.Unauthenticated, ErrChanged.Error())
 		}
 
 		return err
@@ -142,6 +164,11 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 
 		id, err := h.Handle(ctx)
 		if err == nil {
+			select {
+			case <-id.Changed:
+				return nil, Identity{}, status.Error(codes.Unauthenticated, ErrChanged.Error())
+			default:
+			}
 			f, err := r.Resolve(ctx, id)
 			if err == nil {
 				if f == nil {
@@ -204,6 +231,7 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				// deployment keeps, is. See `docs/guide/permissions.md`.
 				log.From(ctx).InfoContext(ctx, "authenticated",
 					slog.String("auth.method", id.Method),
+					slog.String("actor.name", f.Name),
 					slog.String("actor.id", f.Actor.String()),
 					slog.String("actor.tenant", f.Tenant.String()),
 				)

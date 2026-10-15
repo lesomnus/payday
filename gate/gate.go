@@ -97,6 +97,9 @@ func ByTenant() func(ctx context.Context, method string) string {
 			return ""
 		}
 
+		if f.Tenant.IsZero() && f.TenantName != "" {
+			return "name:" + f.TenantName
+		}
 		return f.Tenant.String()
 	}
 }
@@ -107,6 +110,9 @@ type Call struct {
 	// by.
 	Actor  pdid.Id
 	Tenant pdid.Id
+	// Name is the verified name carried by the frame, including when the
+	// caller has no persistent Actor identifier.
+	Name string
 
 	// Row is the actor as it was read, for a policy that knows what kind of
 	// thing that is. It is the app's own type and the app owns both sides of

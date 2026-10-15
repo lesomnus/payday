@@ -70,7 +70,7 @@ func Decide(ctx context.Context, p Policy, method string) (context.Context, erro
 		return ctx, nil
 	}
 
-	c := Call{Actor: f.Actor, Tenant: f.Tenant, Row: f.Row, Action: method}
+	c := Call{Actor: f.Actor, Tenant: f.Tenant, Name: f.Name, Row: f.Row, Action: method}
 	if p != nil {
 		if err := p.May(ctx, c); err != nil {
 			return nil, err
@@ -98,5 +98,8 @@ func holds(ctx context.Context, p Policy, f *frame.Frame, c Call) (frame.Tenants
 		return p.Where(ctx, c)
 	}
 
+	if f.Tenant.IsZero() {
+		return frame.Only(), nil
+	}
 	return frame.Only(f.Tenant), nil
 }
