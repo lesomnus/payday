@@ -19,6 +19,7 @@ require (
 	github.com/lesomnus/mkot/pretty v0.0.0-20261013182918-46d8b05a79b3
 	github.com/lesomnus/otx v0.0.0-20261013182912-d2af55df512e
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20261013182912-d2af55df512e
+	github.com/lesomnus/pwr/cel v0.0.0-20261015172325-de464a5ef1fa
 	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e
 	github.com/lesomnus/xli v0.0.0-20261006051808-dadaa2417a76
 	github.com/lesomnus/xli/cfg v0.1.2
@@ -62,6 +63,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/lesomnus/pwr v0.0.0-20261015171245-2ec220d490d1 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect

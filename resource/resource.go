@@ -10,6 +10,7 @@ import (
 	"cel.dev/cel-go/cel"
 	"cel.dev/cel-go/common/types"
 	"cel.dev/cel-go/interpreter"
+	pwrcel "github.com/lesomnus/pwr/cel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -60,16 +61,24 @@ func New(batch pdpb.BatchServiceServer, w *watch.Watch, project Project, message
 	if batch == nil || project == nil {
 		return nil, errors.New("resource: batch and historical read projector are required")
 	}
-	descriptors := []any{&pdpb.WatchEvent{}}
+	descriptors := []protoreflect.MessageDescriptor{(&pdpb.WatchEvent{}).ProtoReflect().Descriptor()}
 	for _, m := range messages {
-		descriptors = append(descriptors, m)
+		if m == nil {
+			return nil, errors.New("resource: nil message type")
+		}
+		descriptors = append(descriptors, m.ProtoReflect().Descriptor())
 	}
-	env, err := cel.NewEnv(cel.Types(descriptors...), cel.Variable("event", cel.ObjectType("payday.WatchEvent")),
+	adapter, err := pwrcel.New(descriptors...)
+	if err != nil {
+		return nil, err
+	}
+	options := append(adapter.EnvOptions(), cel.Variable("event", cel.ObjectType("payday.WatchEvent")),
 		cel.ParserExpressionSizeLimit(MaxExpression), cel.ParserRecursionLimit(MaxDepth),
 		cel.Constant("payday.CHANGE_KIND_UNSPECIFIED", cel.IntType, types.Int(pdpb.ChangeKind_CHANGE_KIND_UNSPECIFIED)),
 		cel.Constant("payday.CHANGE_KIND_CREATED", cel.IntType, types.Int(pdpb.ChangeKind_CHANGE_KIND_CREATED)),
 		cel.Constant("payday.CHANGE_KIND_UPDATED", cel.IntType, types.Int(pdpb.ChangeKind_CHANGE_KIND_UPDATED)),
 		cel.Constant("payday.CHANGE_KIND_DELETED", cel.IntType, types.Int(pdpb.ChangeKind_CHANGE_KIND_DELETED)))
+	env, err := cel.NewEnv(options...)
 	if err != nil {
 		return nil, err
 	}
@@ -134,6 +143,9 @@ func (s *Server) Watch(req *pdpb.WatchRequest, out grpc.ServerStreamingServer[pd
 				if event == nil {
 					continue
 				}
+				// Project first: CEL must only see this subscriber's public image.
+				// The adapter reads its Any bytes through pwr, avoiding a second
+				// full payload decode without serializing the event envelope.
 				v, _, err := p.ContextEval(ctx, map[string]any{"event": event})
 				if err != nil {
 					if ctx.Err() != nil {

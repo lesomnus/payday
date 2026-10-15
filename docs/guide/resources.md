@@ -51,6 +51,14 @@ contract. Reconcile state with List after reconnecting. Outbox retries retain th
 same ID, timestamp and payload; they do not recover a disconnected subscriber's
 history. Existing resource-specific Watch RPCs retain their current-state behavior.
 
+Filtering uses the `pwr/cel` adapter to read the authorized `Any` payload without
+unpacking the whole resource a second time. Historical authorization and projection
+still run first, and CEL sees the same public image that is sent to the client.
+The default wire reader preserves protobuf duplicate-field semantics; no unique-field
+input assumption is required. Message equality and well-known-type conversions
+may use a full native decode. This reduces selective filter work, not the database
+or projection cost, and does not change the resource-specific Watch implementation.
+
 ## Wire the server
 
 The generated application template registers both service endpoints. For an
