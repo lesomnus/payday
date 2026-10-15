@@ -5,6 +5,8 @@ it is generated rather than remembered.
 
 - [**Permissions and the wall**](docs/guide/permissions.md) — who sees what, and
   where each part of that answer is enforced. Start here.
+- [**Read-only method policies**](docs/guide/file-policy.md) — roles, groups,
+  bindings and safe reloads from a shared source.
 - [**Declaring an entity**](docs/guide/schema.md) — the options, the field
   numbers, `list:` and `watch:`, and everything generation refuses.
 - [**The server**](docs/guide/server.md) — the stack and why it is ordered that

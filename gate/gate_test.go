@@ -253,3 +253,19 @@ type stream struct {
 }
 
 func (s stream) Context() context.Context { return s.ctx }
+
+func TestNamedPrincipalHasNoTenantRows(t *testing.T) {
+	f := frame.New(pdid.Nil, pdid.Nil, frame.Whole())
+	f.Name = "@acme/reader"
+	f.TenantName = "acme"
+	ctx := frame.Into(t.Context(), f)
+	decided, err := gate.Decide(ctx, nil, "/app.ManifestService/Get")
+	require.NoError(t, err)
+	require.False(t, frame.Must(decided).Scope.All())
+	require.Empty(t, frame.Must(decided).Scope.Ids())
+	require.Equal(t, "name:acme", gate.ByTenant()(ctx, "/app.ManifestService/Get"))
+	p := &policy{where: frame.Only()}
+	_, err = gate.Decide(ctx, p, "/app.ManifestService/Get")
+	require.NoError(t, err)
+	require.Equal(t, f.Name, p.asked[0].Name)
+}

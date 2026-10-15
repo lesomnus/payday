@@ -115,11 +115,21 @@ var ErrUnavailable = errors.New("auth: cannot say whether the credential is good
 
 // Identity is who a caller claims to be, before anything has been looked up.
 //
-// It holds text and nothing else, which is the whole of what a credential can
-// say: an actor is named either by its identifier or by its alias within a
-// tenant, and both of those are what somebody wrote. Nothing here has read a
-// row, so nothing here is a row.
+// The actor is named by identifier or alias within a tenant. A trusted handler
+// may also attach local authority and change notifications. The resolver still
+// decides what those verified claims mean in this application.
 type Identity struct {
+	// Authority is the trusted credential store that vouched for this
+	// identity, when the application needs different resolution rules for
+	// configuration and directory identities. Handlers set it after verifying
+	// the credential; it is never accepted from an incoming claim by payday.
+	Authority string
+
+	// Changed closes when this credential or the policy attached to it changes.
+	// Streams end and must authenticate again. Nil means the store does not
+	// provide change notifications. This is process-local and not serialized
+	// by TokenService.
+	Changed <-chan struct{}
 	// Method is what the claim was read from, for the log and for nothing
 	// else. A rule that turns on the way somebody authenticated is a rule that
 	// will be wrong one day.
@@ -251,9 +261,10 @@ func Seq(hs ...Handler) Handler {
 // What the frame must carry:
 //
 //   - [frame.Frame.Actor] and [frame.Frame.Tenant], which is the whole reason
-//     for asking. They are read from the database and never from the claim: a
-//     caller who says "@acme/admin" is telling this app where to look, not what
-//     to answer.
+//     for asking for a persistent actor. They come from the app's trusted
+//     directory, not an unverified claim. A configuration principal may have
+//     no rows: its resolver sets Name and TenantName instead, leaves missing
+//     identifiers Nil, and its app must refuse writes requiring those rows.
 //   - [frame.Frame.Row], if the app has a policy that wants the row it read.
 //     Nothing in payday looks inside it.
 //

@@ -213,3 +213,24 @@ func TestGrantTakesPatterns(t *testing.T) {
 		x.False(frame.Grant{}.Allows(get))
 	})
 }
+
+func TestIntersectMethod(t *testing.T) {
+	for _, tt := range []struct {
+		a, b, want string
+		ok         bool
+	}{
+		{"/app.*/Get", "/app.RobotService/*", get, true},
+		{"/*.*/*", get, get, true},
+		{get, get, get, true},
+		{get, other, "", false},
+		{get, list, "", false},
+		{"/google.protobuf.*/Pack", "/*.Any/*", "/google.protobuf.Any/Pack", true},
+	} {
+		got, ok := frame.IntersectMethod(tt.a, tt.b)
+		require.Equal(t, tt.want, got)
+		require.Equal(t, tt.ok, ok)
+		reverse, ok2 := frame.IntersectMethod(tt.b, tt.a)
+		require.Equal(t, got, reverse)
+		require.Equal(t, ok, ok2)
+	}
+}

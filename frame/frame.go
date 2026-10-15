@@ -30,12 +30,20 @@ type key struct{}
 
 // Frame is what is known about a request other than what it asks for.
 type Frame struct {
-	// Actor is who the request is from, by identifier. It is what was read
-	// from the database rather than what the caller said about itself.
+	// Actor is who the request is from, by identifier. A verified configuration
+	// principal can have no persistent actor; then Actor is Nil and Name
+	// identifies it. Applications must require a persistent actor for writes
+	// that record an owner or an audit identity.
 	Actor pdid.Id
 
 	// Tenant is who the actor is held by.
 	Tenant pdid.Id
+
+	// Name and TenantName are trusted names established by the resolver, never
+	// unverified request headers. They let configuration principals be logged,
+	// rate limited and authorized without manufacturing database identifiers.
+	Name       string
+	TenantName string
 
 	// Row is the actor as it was read, for whatever knows what kind of thing
 	// that is. It is nil for a request that has an identifier and nothing
