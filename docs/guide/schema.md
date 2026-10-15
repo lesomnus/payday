@@ -303,10 +303,14 @@ a row it has no type for can still read the parts every row has.
 | **15** | `date_created` |
 | **16+** | yours |
 
-An entity that does not want one of 4–7 **leaves the number empty** rather than
-spending it on something else, and one that declares `alias`, `name` or `desc`
-somewhere else is refused. Holding the numbers is what lets payday add a header
-field later without every app having already spent it.
+An entity that does not want one of 4–7 or 13–15 **leaves the number empty**
+rather than spending it on something else. `pd gen` and `pd doctor` refuse
+fields in these slots unless they have the listed name and protobuf shape,
+including singular strings, string-to-string labels and singular timestamps.
+Declaring `alias`, `name` or `desc` somewhere else is also refused. Holding the
+numbers is what lets payday add a header field later without every app having
+already spent it. Payday-owned entities use their shipped schema, which is
+checked separately.
 
 What `header.Of` reads a row by is the **name**, not the number — which is why a
 `name` that is not a string is refused as well. A reflective read of one finds

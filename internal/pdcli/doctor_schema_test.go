@@ -3,6 +3,7 @@ package pdcli_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -58,6 +59,20 @@ func TestDoctorRefusesWhatGenRefuses(t *testing.T) {
 
 	// The same words `pd gen` uses, because it is the same reader.
 	x.Contains(found(t, l), "both declare domain 14")
+}
+
+func TestDoctorRefusesAnAppFieldInAReservedHeaderSlot(t *testing.T) {
+	x := require.New(t)
+	l := apptest(t, x)
+	at := l.Path(pdcli.DirProto, "app", "reserved_header.proto")
+	src := strings.Replace(clash, "message Clash", "message Binding", 1)
+	src = strings.Replace(src, "domain: 14", "domain: 200", 1)
+	src = strings.Replace(src, "global: {}", "global: {}\n    erase: {hard: {}}", 1)
+	src = strings.Replace(src, "  google.protobuf.Timestamp", "  string binding_id = 4;\n\n  google.protobuf.Timestamp", 1)
+	x.NoError(os.WriteFile(at, []byte(src), 0o644))
+	t.Cleanup(func() { _ = os.Remove(at) })
+
+	x.Contains(found(t, l), "reserved for alias")
 }
 
 // clash is `Seal`'s domain, on a second entity.

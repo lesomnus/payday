@@ -34,6 +34,7 @@ import (
 
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdpb"
+	"github.com/lesomnus/payday/schema"
 )
 
 // Entity is one entity of the schema, with what the schema declared to payday
@@ -1246,9 +1247,7 @@ func Warnings(s *Schema) []string {
 // header is the shape a reflective reader expects of the fields every entity
 // can have; see `payday/header`.
 //
-// It is matched by **name**. A number is what an overlay guard compares and
-// what a wire format is made of; what a generic reader needs is only that two
-// schemas calling something `name` mean the same thing by it.
+// Named header fields must also occupy their reserved numbers.
 var header = []struct {
 	Name string
 	Type ormpb.Type
@@ -1262,31 +1261,12 @@ var header = []struct {
 	{"desc", ormpb.Type_TYPE_STRING, 6},
 }
 
-// checkHeader refuses a header field that is not the kind a reader will look
-// for.
-//
-// # Why the type is refused
-//
-// A reflective read matches on the name and then on the kind, so a `name` that
-// is an int is a field that **silently reads as absent** -- a page falls back
-// to the alias, or to the identifier, and nothing anywhere says why. That is
-// the class payday refuses.
-//
-// # Why the number is refused too
-//
-// The read does not use numbers, so a `name` at 9 costs nothing today. What
-// they buy is tomorrow: 4..7 are reserved so that payday can add a header field
-// later without every app having spent that number on something else, and a
-// reservation nothing enforces reserves nothing.
-//
-// # Why presence is not required
-//
-// payday's own `Audit` and `Outbox` have none of these, and their early fields
-// are structural rather than descriptive -- a trail row's 4..7 are the trace,
-// the action, the object and the patch. A rule that made every entity carry a
-// name would be a rule payday exempts itself from twice on the first day, and
-// that is the shape of a rule that is wrong.
+// checkHeader allows omitted header fields, but not app fields in their slots.
 func (s *Schema) checkHeader() error {
+	owned, err := schema.Owned()
+	if err != nil {
+		return err
+	}
 	for _, v := range s.Entities {
 		for f := range v.Fields() {
 			for _, want := range header {
@@ -1318,9 +1298,50 @@ func (s *Schema) checkHeader() error {
 				}
 			}
 		}
+		fields := v.Descriptor().Fields()
+		for i := 0; i < fields.Len(); i++ {
+			f := fields.Get(i)
+			// CheckOverlay already checked shipped fields. Added fields must
+			// still respect slots that the shipped entity leaves empty.
+			if _, ok := owned[v.Own][int32(f.Number())]; ok {
+				continue
+			}
+			if err := checkHeaderSlot(f); err != nil {
+				return fmt.Errorf("%s: %w", v.FullName(), err)
+			}
+		}
 	}
 
 	return nil
+}
+
+func checkHeaderSlot(f protoreflect.FieldDescriptor) error {
+	var name, shape string
+	var valid bool
+	for _, want := range header {
+		if int(f.Number()) == want.At {
+			name, shape = want.Name, "string"
+			valid = f.Kind() == protoreflect.StringKind && !f.IsList()
+		}
+	}
+	switch f.Number() {
+	case 7:
+		name, shape = "labels", "map<string, string>"
+		valid = f.IsMap() && f.MapKey().Kind() == protoreflect.StringKind &&
+			f.MapValue().Kind() == protoreflect.StringKind
+	case 13, 14, 15:
+		name = map[protoreflect.FieldNumber]string{
+			13: "date_updated", 14: "date_erased", 15: "date_created",
+		}[f.Number()]
+		shape = "google.protobuf.Timestamp"
+		valid = f.Kind() == protoreflect.MessageKind && !f.IsList() &&
+			f.Message().FullName() == "google.protobuf.Timestamp"
+	}
+	if name == "" || (string(f.Name()) == name && valid) {
+		return nil
+	}
+	return fmt.Errorf("%s: field number %d is reserved for %s (%s); leave it empty or declare %s %s = %d; app fields belong at 8..12 or 16+",
+		f.Name(), f.Number(), name, shape, shape, name, f.Number())
 }
 
 // setAt is the field number the second axis lives at; see [Schema.Set].

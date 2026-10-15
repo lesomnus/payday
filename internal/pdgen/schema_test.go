@@ -949,12 +949,7 @@ func TestAHeaderFieldOfTheWrongKindIsRefused(t *testing.T) {
 	}
 }
 
-// TestAnEntityWithNoHeaderIsFine, which is payday's own Audit and Outbox.
-//
-// Their early fields are structural rather than descriptive -- a trail row's
-// 4..7 are the trace, the action, the object and the patch. A rule that made
-// every entity carry a name would be one payday exempts itself from twice on
-// the first day, and that is the shape of a rule that is wrong.
+// Header fields are optional; their slots stay empty when omitted.
 func TestAnEntityWithNoHeaderIsFine(t *testing.T) {
 	_, err := read(t, `
 		message Tenant {
@@ -966,14 +961,14 @@ func TestAnEntityWithNoHeaderIsFine(t *testing.T) {
 		message Trail {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
-			string action = 5;
-			bytes object_id = 6 [(orm.field) = {type: TYPE_UUID}];
+			string action = 8;
+			bytes object_id = 9 [(orm.field) = {type: TYPE_UUID}];
 			option (orm.message) = {rpc: {crud: true}};
 			option (payday.entity) = {domain: 8, tenanted: {field: "tenant_id"}, erase: {hard: {}}};
 		}
 	`)
 	if err != nil {
-		t.Fatalf("an entity whose early fields are structural was refused: %s", err)
+		t.Fatalf("an entity without header fields was refused: %s", err)
 	}
 }
 
