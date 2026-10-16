@@ -34,6 +34,7 @@ import (
 
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdpb"
+	"github.com/lesomnus/payday/schema"
 )
 
 // Entity is one entity of the schema, with what the schema declared to payday
@@ -1243,27 +1244,56 @@ func Warnings(s *Schema) []string {
 	return vs
 }
 
-// header is the shape a reflective reader expects of the fields every entity
-// can have; see `payday/header`.
+// header is every number payday holds in an entity, and the one field that may
+// sit there; see `payday/header`.
 //
-// It is matched by **name**. A number is what an overlay guard compares and
-// what a wire format is made of; what a generic reader needs is only that two
-// schemas calling something `name` mean the same thing by it.
+// One table for both questions [Schema.checkHeader] asks -- what may sit at a
+// held number, and where a field of a header name may sit -- so that a header
+// field added later is added once.
 var header = []struct {
 	Name string
-	Type ormpb.Type
 	// At is where payday's own entities put it, and where every entity is held
 	// to put it -- see [Schema.checkHeader] for why the number is part of the
 	// rule and not a convention.
 	At int
+	// Shape is the field as it is declared, for a refusal to show.
+	Shape string
+	// Fits is whether a field at At is of that shape.
+	Fits func(protoreflect.FieldDescriptor) bool
+	// Type is what a field of this name is held to wherever it is declared,
+	// for the ones a reflective reader finds by **name**; unspecified for the
+	// rest, which are held to their numbers only.
+	//
+	// By name because a number is what an overlay guard compares and what a
+	// wire format is made of; what a generic reader needs is only that two
+	// schemas calling something `name` mean the same thing by it.
+	Type ormpb.Type
 }{
-	{"alias", ormpb.Type_TYPE_STRING, 4},
-	{"name", ormpb.Type_TYPE_STRING, 5},
-	{"desc", ormpb.Type_TYPE_STRING, 6},
+	{"alias", 4, "string", isString, ormpb.Type_TYPE_STRING},
+	{"name", 5, "string", isString, ormpb.Type_TYPE_STRING},
+	{"desc", 6, "string", isString, ormpb.Type_TYPE_STRING},
+	{"labels", 7, "map<string, string>", isLabels, ormpb.Type_TYPE_UNSPECIFIED},
+	{"date_updated", 13, "google.protobuf.Timestamp", isTimestamp, ormpb.Type_TYPE_UNSPECIFIED},
+	{"date_erased", 14, "google.protobuf.Timestamp", isTimestamp, ormpb.Type_TYPE_UNSPECIFIED},
+	{"date_created", 15, "google.protobuf.Timestamp", isTimestamp, ormpb.Type_TYPE_UNSPECIFIED},
+}
+
+func isString(f protoreflect.FieldDescriptor) bool {
+	return f.Kind() == protoreflect.StringKind && !f.IsList()
+}
+
+func isLabels(f protoreflect.FieldDescriptor) bool {
+	return f.IsMap() && f.MapKey().Kind() == protoreflect.StringKind &&
+		f.MapValue().Kind() == protoreflect.StringKind
+}
+
+func isTimestamp(f protoreflect.FieldDescriptor) bool {
+	return f.Kind() == protoreflect.MessageKind && !f.IsList() &&
+		f.Message().FullName() == "google.protobuf.Timestamp"
 }
 
 // checkHeader refuses a header field that is not the kind a reader will look
-// for.
+// for, and anything else at a number the header holds.
 //
 // # Why the type is refused
 //
@@ -1275,9 +1305,12 @@ var header = []struct {
 // # Why the number is refused too
 //
 // The read does not use numbers, so a `name` at 9 costs nothing today. What
-// they buy is tomorrow: 4..7 are reserved so that payday can add a header field
-// later without every app having spent that number on something else, and a
-// reservation nothing enforces reserves nothing.
+// they buy is tomorrow: 4..7 and 13..15 are reserved so that payday can add a
+// header field later without every app having spent that number on something
+// else, and a reservation nothing enforces reserves nothing. Asking only where
+// the header's names sit did not enforce it -- `string binding_id = 4` is
+// another name, so it passed, and spent the number -- so each held number is
+// asked what sits there, by name and by shape.
 //
 // # Why presence is not required
 //
@@ -1286,11 +1319,23 @@ var header = []struct {
 // the action, the object and the patch. A rule that made every entity carry a
 // name would be a rule payday exempts itself from twice on the first day, and
 // that is the shape of a rule that is wrong.
+//
+// # Why payday's own fields are not asked
+//
+// Those structural fields are also why the held numbers are not asked of what
+// payday ships: `Audit`'s 4..7 are not a header and never were. Its entities
+// are held to the schema they shipped with by `CheckOverlay`, so what is asked
+// here of one of them is only what an overlay added -- which still leaves
+// empty the numbers the shipped entity left empty.
 func (s *Schema) checkHeader() error {
+	owned, err := schema.Owned()
+	if err != nil {
+		return err
+	}
 	for _, v := range s.Entities {
 		for f := range v.Fields() {
 			for _, want := range header {
-				if string(f.Name()) != want.Name {
+				if want.Type == ormpb.Type_TYPE_UNSPECIFIED || string(f.Name()) != want.Name {
 					continue
 				}
 				if f.Type() != want.Type {
@@ -1318,6 +1363,37 @@ func (s *Schema) checkHeader() error {
 				}
 			}
 		}
+		fields := v.Descriptor().Fields()
+		for i := 0; i < fields.Len(); i++ {
+			f := fields.Get(i)
+			// CheckOverlay already checked shipped fields. Added fields must
+			// still respect slots that the shipped entity leaves empty.
+			if _, ok := owned[v.Own][int32(f.Number())]; ok {
+				continue
+			}
+			if err := checkHeaderSlot(f); err != nil {
+				return fmt.Errorf("%s: %w", v.FullName(), err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// checkHeaderSlot is [Schema.checkHeader]'s question of one field: whether it
+// sits at a number the header holds, and if so, whether it is the field the
+// number is held for.
+func checkHeaderSlot(f protoreflect.FieldDescriptor) error {
+	for _, want := range header {
+		if int(f.Number()) != want.At {
+			continue
+		}
+		if string(f.Name()) == want.Name && want.Fits(f) {
+			return nil
+		}
+
+		return fmt.Errorf("%s: field number %d is reserved for %s (%s); leave it empty or declare %s %s = %d; app fields belong at 8..12 or 16+",
+			f.Name(), f.Number(), want.Name, want.Shape, want.Shape, want.Name, f.Number())
 	}
 
 	return nil
