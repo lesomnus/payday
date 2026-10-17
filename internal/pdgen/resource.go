@@ -122,6 +122,8 @@ func emitResourceRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root pr
 			enabled    bool
 		}{
 			{"Add", "CREATED", e.Rpcs().HasAdd()},
+			// A row each, and each of them made: see `bare.Change.By`.
+			{"AddMany", "CREATED", e.Rpcs().HasAddMany()},
 			{"Patch", "UPDATED", e.Rpcs().HasPatch()},
 			{"Apply", "UPDATED", e.Rpcs().HasPatch()},
 			{"Erase", "DELETED", e.Rpcs().HasErase()},

@@ -71,12 +71,12 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	// joined says this server was put on somebody else's transaction, and")
 	g.P("	// is set by [Sink.WithDriver] because that is the only way it happens.")
 	g.P("	//")
-	g.P("	// What it is read for is the retry in Add. A constraint violation ends")
-	g.P("	// the transaction it happened in -- PostgreSQL refuses everything after")
-	g.P("	// one until it is rolled back -- so a second attempt inside a")
-	g.P("	// transaction this server did not open would fail for a reason that has")
-	g.P("	// nothing to do with names, and would take the caller's other writes")
-	g.P("	// with it.")
+	g.P("	// What it is read for is the retry in Add and AddMany. A constraint")
+	g.P("	// violation ends the transaction it happened in -- PostgreSQL refuses")
+	g.P("	// everything after one until it is rolled back -- so a second attempt")
+	g.P("	// inside a transaction this server did not open would fail for a reason")
+	g.P("	// that has nothing to do with names, and would take the caller's other")
+	g.P("	// writes with it.")
 	g.P("	joined bool")
 	g.P("}")
 	g.P("")
@@ -150,10 +150,15 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 		g.P("	joined bool")
 		g.P("}")
 		g.P("")
-		g.P("func (s Sink) ", e, "() ", root.Ident(e+"ServiceServer"), " {")
-		g.P("	return sink", e, "{s.Server.", e, "(), s.Server.Store, s.w, s.namer, s.joined}")
-		g.P("}")
-		g.P("")
+		if admits(v) {
+			ruled(g, p, root, "Sink", e, "s.Server."+e+"(), s.Server.Store, s.w, s.namer, s.joined")
+			emitSinkAdmit(g, v, root)
+		} else {
+			g.P("func (s Sink) ", e, "() ", root.Ident(e+"ServiceServer"), " {")
+			g.P("	return sink", e, "{s.Server.", e, "(), s.Server.Store, s.w, s.namer, s.joined}")
+			g.P("}")
+			g.P("")
+		}
 
 		if v.Alias {
 			emitAlias(g, v, root)
@@ -226,8 +231,100 @@ func emitCursor(g *protogen.GeneratedFile) {
 	g.P("")
 }
 
-// emitAlias writes the two overrides that put a name through the rules before
-// it reaches a column.
+// admits is whether the Sink says anything about a row being added: what it
+// is named, or which tenant it is in.
+func admits(v *Entity) bool { return v.Alias || v.Stamp != "" || len(v.Agrees) > 0 }
+
+// emitSinkAdmit writes what the Sink says about a row an Add would write: its
+// name ([emitAlias]) and then its tenancy ([emitTenancy]), as the rule
+// [ruled] puts on the server behind.
+//
+// A rule, for the reason the gate's is one: an AddMany writes the rows an Add
+// of each of its items would have, and each of them has to be named and placed
+// as that Add would have named and placed it. Said as an Add, it was not said
+// of them at all -- an AddMany inherited from the server behind wrote a name
+// nobody folded into a row nobody stamped.
+//
+// And one rule for both, where there used to be an Add for each: an entity
+// that had a name and a tenancy both wrote its Add once, for the name, and
+// the tenancy it declared was never asked.
+func emitSinkAdmit(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
+	e := v.GoName()
+	tenancy := v.Stamp != "" || len(v.Agrees) > 0
+
+	// What it says, in the order it says it.
+	row := "a row an Add of " + e + " writes"
+	var tenant string
+	switch {
+	case v.Stamp != "" && len(v.Agrees) > 0:
+		tenant = "stamps its tenant, refusing it when its other paths to a tenant do not agree"
+	case v.Stamp != "":
+		tenant = "stamps its tenant"
+	case len(v.Agrees) > 0:
+		tenant = "refuses it when its paths to a tenant do not agree"
+	}
+	switch {
+	case v.Alias && tenant != "":
+		comment(g, "admit decides the name of "+row+", refusing one that was given and cannot be one, and then "+tenant+".")
+	case v.Alias:
+		comment(g, "admit decides the name of "+row+", refusing one that was given and cannot be one.")
+	default:
+		comment(g, "admit is what is said of the tenancy of "+row+": it "+tenant+".")
+	}
+	g.P("//")
+	g.P("// It is asked of an Add and of every item of an AddMany; see [Sink.", e, "].")
+	if v.Alias {
+		g.P("//")
+		g.P("// The name goes through [Sink.WithNamer], which is unset in most")
+		g.P("// deployments and then means: fold what was given, and make a name up")
+		g.P("// when nothing was -- for the reason `bare.Minter` makes a key up. An app")
+		g.P("// whose rows have to be named says so with `slug.Required`; see")
+		g.P("// `slug.Names` for why that is the way round it is.")
+	}
+	g.P("func (s sink", e, ") admit(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"AddRequest"),
+		") (*", root.Ident(e+"AddRequest"), ", error) {")
+	g.P("	// Copied rather than written to: the request belongs to whoever called,")
+	g.P("	// and for a call made in this process that is a message they may still")
+	g.P("	// be holding -- a server that changed a caller's own field would be")
+	g.P("	// changing a value they can read back.")
+	g.P("	r := ", pkgProto.Ident("CloneOf"), "(req)")
+	if v.Alias {
+		g.P("")
+		g.P("	v, err := ", pkgSlug.Ident("NameWith"), "(ctx, s.namer, \"", v.FullName(), "\", req.GetAlias(), req)")
+		g.P("	if err != nil {")
+		g.P("		return nil, ", pkgPderr.Ident("At"), "(\"alias\", err)")
+		g.P("	}")
+		g.P("	r.SetAlias(v)")
+	}
+	if tenancy {
+		g.P("")
+		g.P("	if err := s.tenancy(ctx, r); err != nil {")
+		g.P("		return nil, err")
+		g.P("	}")
+	}
+	g.P("")
+	g.P("	return r, nil")
+	g.P("}")
+	g.P("")
+}
+
+// comment writes `text` as a comment wrapped to the width of the rest of the
+// generated code, for a sentence put together out of parts.
+func comment(g *protogen.GeneratedFile, text string) {
+	line := "//"
+	for _, w := range strings.Fields(text) {
+		if line != "//" && len(line)+1+len(w) > 76 {
+			g.P(line)
+			line = "//"
+		}
+		line += " " + w
+	}
+	g.P(line)
+}
+
+// emitAlias writes the overrides that keep a name what the rules allow: Add
+// and AddMany try again when a name made up was taken, and Patch folds one it
+// was given.
 //
 // It is on the Sink rather than in a layer in front, and that is the whole
 // point of where it sits: the Sink is what *both* stacks are built on, so the
@@ -241,25 +338,17 @@ func emitCursor(g *protogen.GeneratedFile) {
 // index, and the only place the difference can be closed once is on the way in.
 // Refusing is what keeps `@acme/arm-01` able to name anything at all -- a row
 // called "Not An Alias!!" is reachable by identifier and by nothing a person
-// writes.
+// writes. Both are [emitSinkAdmit]'s, which every try goes through.
 //
 // What it does with a row nobody named is `slug.Namer`'s, and by default it
 // makes a name up; see there.
 func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
 	e := v.GoName()
 
-	g.P("// Add decides the name, and refuses one that was given and cannot be one.")
+	g.P("// Add tries again when the name it made up was taken.")
 	g.P("//")
-	g.P("// It goes through [Sink.WithNamer], which is unset in most deployments and")
-	g.P("// then means: fold what was given, and make a name up when nothing was --")
-	g.P("// for the reason `bare.Minter` makes a key up. An app whose rows have to")
-	g.P("// be named says so with `slug.Required`; see `slug.Names` for why that is")
-	g.P("// the way round it is.")
-	g.P("//")
-	g.P("// The request is copied rather than written to. It belongs to whoever")
-	g.P("// called, and for a call made in this process that is a message they may")
-	g.P("// still be holding -- a server that folded a caller's own field would be")
-	g.P("// changing a value they can read back.")
+	g.P("// The name is [sink", e, ".admit]'s, and every try goes through it, so a")
+	g.P("// name made up is made up again and a name given is the same each time.")
 	g.P("func (s sink", e, ") Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"AddRequest"),
 		") (*", root.Ident(e), ", error) {")
 
@@ -275,18 +364,7 @@ func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath)
 	g.P("	}")
 	g.P("")
 	g.P("	for try := 0; ; try++ {")
-	g.P("		v, err := ", pkgSlug.Ident("NameWith"), "(ctx, s.namer, \"", v.FullName(), "\", req.GetAlias(), req)")
-	g.P("		if err != nil {")
-	g.P("			return nil, ", pkgPderr.Ident("At"), "(\"alias\", err)")
-	g.P("		}")
-	g.P("")
-	g.P("		// The request is copied rather than written to, and copied again on")
-	g.P("		// each try: it belongs to whoever called, and for a call made in this")
-	g.P("		// process that is a message they may still be holding.")
-	g.P("		r := ", pkgProto.Ident("CloneOf"), "(req)")
-	g.P("		r.SetAlias(v)")
-	g.P("")
-	g.P("		res, err := s.", e, "ServiceServer.Add(ctx, r)")
+	g.P("		res, err := s.", e, "ServiceServer.Add(ctx, req)")
 	g.P("		if err == nil || try+1 >= tries || ", pkgStatus.Ident("Code"), "(err) != ",
 		pkgCodes.Ident("AlreadyExists"), " {")
 	g.P("			// Whatever it was, said in the words it was said in. Rewriting")
@@ -298,6 +376,39 @@ func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath)
 	g.P("	}")
 	g.P("}")
 	g.P("")
+
+	if v.Rpcs().HasAddMany() {
+		g.P("// AddMany tries again, as Add does, when it made up the name of an item and")
+		g.P("// the call was refused AlreadyExists -- the whole call, with every name it")
+		g.P("// made up made up again, since a refusal of a statement does not say which")
+		g.P("// of its rows it was about. A name an item was given is the same each time.")
+		g.P("//")
+		g.P("// Every name made up is a chance to collide, so a call of many is refused")
+		g.P("// more often than an Add of one; `slug.Tries` says how much more.")
+		g.P("func (s sink", e, ") AddMany(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"AddManyRequest"),
+			") (*", root.Ident(e+"AddManyResponse"), ", error) {")
+		g.P("	// More than one try only when some item was named by nobody, and only")
+		g.P("	// in a transaction of its own; see Add.")
+		g.P("	tries := 1")
+		g.P("	if !s.joined {")
+		g.P("		for _, v := range req.GetItems() {")
+		g.P("			if v.GetAlias() == \"\" {")
+		g.P("				tries = ", pkgSlug.Ident("Tries"))
+		g.P("				break")
+		g.P("			}")
+		g.P("		}")
+		g.P("	}")
+		g.P("")
+		g.P("	for try := 0; ; try++ {")
+		g.P("		res, err := s.", e, "ServiceServer.AddMany(ctx, req)")
+		g.P("		if err == nil || try+1 >= tries || ", pkgStatus.Ident("Code"), "(err) != ",
+			pkgCodes.Ident("AlreadyExists"), " {")
+		g.P("			return res, err")
+		g.P("		}")
+		g.P("	}")
+		g.P("}")
+		g.P("")
+	}
 
 	g.P("// Patch folds a name it was given, and says nothing about one it was not.")
 	g.P("//")
@@ -820,25 +931,6 @@ func emitTenancy(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root 
 	g.P("}")
 	g.P("")
 
-	if v.Alias {
-		// `Add` is emitted by [emitAlias], which calls the above.
-		return
-	}
-
-	g.P("// Add stamps this row's tenant before writing it.")
-	g.P("func (s sink", e, ") Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"AddRequest"),
-		") (*", root.Ident(e), ", error) {")
-	g.P("	// Copied rather than written to: the request belongs to whoever called,")
-	g.P("	// and for a call made in this process that is a message they may still")
-	g.P("	// be holding.")
-	g.P("	r := ", pkgProto.Ident("CloneOf"), "(req)")
-	g.P("	if err := s.tenancy(ctx, r); err != nil {")
-	g.P("		return nil, err")
-	g.P("	}")
-	g.P("")
-	g.P("	return s.", e, "ServiceServer.Add(ctx, r)")
-	g.P("}")
-	g.P("")
 }
 
 // emitTenantAt writes the reader for one path: the tenant it arrives at, read

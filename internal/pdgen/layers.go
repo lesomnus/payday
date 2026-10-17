@@ -141,14 +141,12 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	", root.Ident("TenantServiceServer"))
 	g.P("}")
 	g.P("")
-	g.P("func (s Gate) Tenant() ", root.Ident("TenantServiceServer"), " {")
-	g.P("	return gateTenant{s, s.Next().Tenant()}")
-	g.P("}")
-	g.P("")
-	g.P("// Add is not served. A tenant is put up by whoever runs the deployment,")
-	g.P("// through a server this layer is not in front of.")
-	g.P("func (s gateTenant) Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("TenantAddRequest"),
-		") (*", root.Ident("Tenant"), ", error) {")
+	ruled(g, p, root, "Gate", "Tenant", "s, s.Next().Tenant()")
+	g.P("// admit refuses every row: no tenant is served by an Add, nor by an")
+	g.P("// AddMany if the entity had one. A tenant is put up by whoever runs the")
+	g.P("// deployment, through a server this layer is not in front of.")
+	g.P("func (s gateTenant) admit(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("TenantAddRequest"),
+		") (*", root.Ident("TenantAddRequest"), ", error) {")
 	g.P("	return nil, ", pkgGate.Ident("ErrDeployment"), "(\"put up\")")
 	g.P("}")
 	g.P("")
@@ -166,11 +164,8 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	", root.Ident("HolderServiceServer"))
 	g.P("}")
 	g.P("")
-	g.P("func (s Gate) Holder() ", root.Ident("HolderServiceServer"), " {")
-	g.P("	return gateHolder{s, s.Next().Holder()}")
-	g.P("}")
-	g.P("")
-	g.P("// Add is the one thing about a holder this layer still says, and it is here")
+	ruled(g, p, root, "Gate", "Holder", "s, s.Next().Holder()")
+	g.P("// admit is the one thing about a holder this layer still says, and it is here")
 	g.P("// because it is the one that is not a predicate: the row does not exist yet,")
 	g.P("// so there is nothing to narrow. Reading one, changing one and erasing one")
 	g.P("// are all the wall.")
@@ -190,8 +185,11 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("// And what an app's overlay added to the holder is asked here with it, as it")
 	g.P("// is of the app's own entities: a stamp a request may not assert, and an")
 	g.P("// edge, which is a read of whatever it names.")
-	g.P("func (s gateHolder) Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("HolderAddRequest"),
-		") (*", root.Ident("Holder"), ", error) {")
+	g.P("//")
+	g.P("// It is what an Add of a holder is asked, and an AddMany of every item it")
+	g.P("// carries if the entity had one; see [ruled].")
+	g.P("func (s gateHolder) admit(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("HolderAddRequest"),
+		") (*", root.Ident("HolderAddRequest"), ", error) {")
 	g.P("	if _, err := ", pkgGate.Ident("Actor"), "(ctx); err != nil {")
 	g.P("		return nil, err")
 	g.P("	}")
@@ -214,17 +212,43 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	// a promise about what an app adds to it.
 	others(g, s, root, holder, "tenant")
 
-	g.P("	return s.HolderServiceServer.Add(ctx, req)")
+	g.P("	return req, nil")
 	g.P("}")
 	g.P("")
 
 	emitAdmitPatch(g, holder, s, root)
 
-	emitAdmit(g, s, root)
+	emitAdmit(g, s, p, root)
+}
+
+// ruled writes the accessor of a layer's server for one entity, with the
+// layer's `admit` put on the server behind as the rule of the RPCs that add
+// (`bare.<E>WithAddRule`).
+//
+// A rule rather than an `Add` the layer overrides, because what the layer says
+// about a row an Add would write it has to say about every row an AddMany
+// writes. Written as an Add it is said in one of the two places, and the
+// AddMany inherited from the server behind writes past it the day the entity
+// asks for one. As a rule both are asked -- an AddMany once for each of its
+// items, refused naming the first it refuses -- and what reaches the server
+// behind is still one call.
+//
+// The rule is a method of the layer's server as it was before the rule was
+// put on, so that it has everything the layer holds and calls nothing that
+// would ask it again.
+func ruled(g *protogen.GeneratedFile, p Paths, root protogen.GoImportPath, recv string, name string, fields string) {
+	svc := root.Ident(name + "ServiceServer")
+
+	g.P("func (s ", recv, ") ", name, "() ", svc, " {")
+	g.P("	v := ", strings.ToLower(recv), name, "{", fields, "}")
+	g.P("	v.", name, "ServiceServer = ", p.Bare.Ident(name+"WithAddRule"), "(v.", name, "ServiceServer, v.admit)")
+	g.P("	return v")
+	g.P("}")
+	g.P("")
 }
 
 // emitAdmit writes, for every other entity behind the wall, the check
-// `gateHolder.Add` has always made for payday's own.
+// payday's own holder has always had (`gateHolder.admit`).
 //
 // # The hole this closes
 //
@@ -247,7 +271,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 // tenant through another row it is that row, and reading it is narrowed for the
 // same reason. Either way the question is "may this caller see the thing it
 // says this row belongs to", and a read is how it is asked -- see the comment
-// on `gateHolder.Add` for why a comparison against the scope is not enough.
+// on `gateHolder.admit` for why a comparison against the scope is not enough.
 //
 // **Every** edge whose target is behind the wall, and not only the first hop.
 // That is a change, and the reasoning it replaces is worth keeping because it
@@ -285,7 +309,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 //
 // An edge to a **global** entity is not checked, because there is nothing to
 // see past: a global row belongs to no tenant and is readable by everybody.
-func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath) {
+func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	for _, v := range s.Sorted() {
 		// The tenant is refused outright above and the holder's gate is written
 		// out there too, with whatever an overlay added to it: a gate here as
@@ -325,13 +349,10 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 		g.P("	", root.Ident(name+"ServiceServer"))
 		g.P("}")
 		g.P("")
-		g.P("func (s Gate) ", name, "() ", root.Ident(name+"ServiceServer"), " {")
-		g.P("	return gate", name, "{s, s.Next().", name, "()}")
-		g.P("}")
-		g.P("")
+		ruled(g, p, root, "Gate", name, "s, s.Next()."+name+"()")
 
 		if walled {
-			g.P("// Add refuses a ", name, " put into a ", to.GoName(), " this caller cannot see.")
+			g.P("// admit refuses a ", name, " put into a ", to.GoName(), " this caller cannot see.")
 			g.P("//")
 			g.P("// The wall is a predicate and an Add has no query, so without this the")
 			g.P("// identifier in `", hop, "` becomes a foreign key with nothing consulted.")
@@ -339,14 +360,17 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 			g.P("// holds that ", to.GoName(), ", which is the shape of the bug rather than a")
 			g.P("// mitigation of it.")
 			g.P("//")
-			g.P("// NotFound rather than a refusal, for the reason on `gateHolder.Add`:")
+			g.P("// NotFound rather than a refusal, for the reason on `gateHolder.admit`:")
 			g.P("// that a row exists is itself something a caller who may not see it")
 			g.P("// should not be told.")
 		} else {
-			g.P("// Add refuses a ", name, " whose request asserts a stamp.")
+			g.P("// admit refuses a ", name, " whose request asserts a stamp.")
 		}
-		g.P("func (s gate", name, ") Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"AddRequest"),
-			") (*", root.Ident(name), ", error) {")
+		g.P("//")
+		g.P("// It is what an Add is asked, and an AddMany of every item it carries;")
+		g.P("// see [Gate.", name, "].")
+		g.P("func (s gate", name, ") admit(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"AddRequest"),
+			") (*", root.Ident(name+"AddRequest"), ", error) {")
 
 		// The stamps first, because they are a fact about the **request** and
 		// cost no read: a request that asserts one is malformed whether or not
@@ -371,7 +395,7 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath)
 			others(g, s, root, v, hop, v.Set)
 		}
 
-		g.P("	return s.", name, "ServiceServer.Add(ctx, req)")
+		g.P("	return req, nil")
 		g.P("}")
 		g.P("")
 
@@ -560,7 +584,7 @@ func seen(g *protogen.GeneratedFile, root protogen.GoImportPath, edge string, to
 // with `dialect.BeginTx` -- which the gate learns from the driver it was put on
 // (`Gate.drv`): a write that names the same row as the write before it asks
 // the same question, and the answer is the one it got then. That is not the
-// comparison against the scope `gateHolder.Add` refuses to make -- it is this
+// comparison against the scope `gateHolder.admit` refuses to make -- it is this
 // read, remembered -- and `payday/seen` says why remembering it neither waits
 // on a write nor reaches past the wall. A row named some other way is read
 // every time, since the name may be another row's by then.
@@ -1507,8 +1531,8 @@ func EmitSecret(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	g.P("//")
 	g.P("// Every field marked `(payday.field).secret` is cleared on the way out:")
 	g.P("// from what an `Add` echoes, what a `Get` answers, and every item of a")
-	g.P("// `List`. The write side is untouched, because writing is the half that")
-	g.P("// works.")
+	g.P("// `List` or an `AddMany`. The write side is untouched, because writing is")
+	g.P("// the half that works.")
 	g.P("//")
 	g.P("//	app.Build(walled, core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())")
 	g.P("//")
@@ -1580,6 +1604,20 @@ func emitSecretOf(g *protogen.GeneratedFile, e *Entity, root protogen.GoImportPa
 		g.P("	v, err := s.", name, "ServiceServer.", m.rpc, "(ctx, req)")
 		g.P("")
 		g.P("	return hide", name, "(v), err")
+		g.P("}")
+		g.P("")
+	}
+
+	// And every row an AddMany answers with, for an entity that has one.
+	if e.Rpcs().HasAddMany() {
+		g.P("func (s ", lower, ") AddMany(ctx ", pkgCtx.Ident("Context"),
+			", req *", root.Ident(name+"AddManyRequest"), ") (*", root.Ident(name+"AddManyResponse"), ", error) {")
+		g.P("	v, err := s.", name, "ServiceServer.AddMany(ctx, req)")
+		g.P("	for _, w := range v.GetItems() {")
+		g.P("		hide", name, "(w)")
+		g.P("	}")
+		g.P("")
+		g.P("	return v, err")
 		g.P("}")
 		g.P("")
 	}
