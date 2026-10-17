@@ -758,6 +758,36 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	// write always knows, so it always says.
 	g.P("	domain := uint32(v.Object.Domain())")
 	g.P("")
+	if keepsTrail(s) {
+		// The same row as the one below, decided here as that one is -- its
+		// key, the moment it was recorded -- and written with the rest of what
+		// the transaction recorded rather than now. See [emitKeptTrail].
+		g.P("	// Kept for the commit, when the transaction keeps anything: written")
+		g.P("	// there with the rest of what it recorded, a statement for every few")
+		g.P("	// hundred rows rather than one each. The row is decided here, as the")
+		g.P("	// one below is -- its key, the moment it was recorded -- and only the")
+		g.P("	// writing waits. See [keptTrail].")
+		g.P("	if k, ok := ", pkgDialect.Ident("KeepOf"), "(s.Store.Db.Driver()); ok {")
+		g.P("		q := s.Store.Db.Audit.Create().")
+		g.P("			SetId(", pkgUuid.Ident("New"), "()).")
+		g.P("			SetTenantId(tenant).")
+		g.P("			SetActorTenantId(", pkgUuid.Ident("UUID"), "(v.Tenant)).")
+		g.P("			SetActorId(", pkgUuid.Ident("UUID"), "(v.Actor)).")
+		g.P("			SetTraceId(notNull(v.Trace)).")
+		g.P("			SetAction(v.Action).")
+		g.P("			SetObjectId(", pkgUuid.Ident("UUID"), "(v.Object)).")
+		g.P("			SetDomain(domain).")
+		g.P("			SetPatch(notNull(v.Patch)).")
+		g.P("			SetValue(notNull(value)).")
+		g.P("			SetDateCreated(", pkgTime.Ident("Now"), "().UTC())")
+		g.P("		if !v.Counterpart.IsZero() {")
+		g.P("			q.SetCounterpartTenantId(", pkgUuid.Ident("UUID"), "(v.Counterpart))")
+		g.P("		}")
+		g.P("")
+		g.P("		return keptTrailOf(k, s.Store.Db).add(ctx, q)")
+		g.P("	}")
+		g.P("")
+	}
 	g.P("	_, err = s.Audit().Add(ctx, ", root.Ident("AuditAddRequest_builder"), "{")
 	g.P("		TenantId:      tenant[:],")
 	g.P("		ActorTenantId: v.Tenant.Bytes(),")
@@ -787,9 +817,159 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	emitNotNull(g)
 	emitHidden(g, s)
 	emitSubject(g, s, p, root)
+	if keepsTrail(s) {
+		emitKeptTrail(g, s, p)
+	}
 
 	// Referenced only so that the import is kept when a schema has no patch.
 	g.P("var _ *", pkgPatchpb.Ident("Patch"))
+	g.P("")
+}
+
+// keepsTrail is whether the recorder writes a row of the trail itself, which is
+// how it keeps one for the commit of a transaction that keeps anything.
+//
+// It can when the trail is payday's own and nothing more, so that every column
+// is one it knows how to fill. An overlay may add to payday's entities, and a
+// column added to the trail is one only the server that was generated with it
+// can fill -- so that trail is written a row at a time as it always was, a
+// statement each, rather than with a column missing.
+func keepsTrail(s *Schema) bool {
+	v := s.Own(pdpb.Own_OWN_AUDIT)
+	if v == nil {
+		return false
+	}
+
+	own := map[string]bool{
+		"id": true, "tenant_id": true, "actor_id": true, "trace_id": true,
+		"action": true, "object_id": true, "patch": true, "date_created": true,
+		"actor_tenant_id": true, "value": true, "counterpart_tenant_id": true,
+		"domain": true,
+	}
+	n := 0
+	for p := range v.Props() {
+		if _, ok := p.(graph.Field); !ok || !own[p.Name()] {
+			return false
+		}
+		n++
+	}
+
+	return n == len(own)
+}
+
+// emitKeptTrail writes where a transaction keeps the trail it records until it
+// commits.
+//
+// # Why
+//
+// Every write is a row of the trail, written by the recorder inside the
+// transaction that makes it -- and so a statement of its own, a round trip
+// each. A transaction that writes many rows, which is what an import is, spent
+// a quarter of what it sent on those (#84). They are written together instead,
+// as [dialect.Keep] lets a transaction do: before it commits, a statement for
+// every few hundred rows.
+//
+// # What it does not change
+//
+// That the row and the write hold or fall together: the rows are written in
+// the transaction, by its commit, and an error doing so is the commit's -- the
+// transaction is rolled back and nothing in it holds. That a write is on the
+// trail: the commit is what writes them, so whoever ends the transaction cannot
+// leave them out. What a row says: it is decided when the write is recorded,
+// its moment included, and only the writing waits.
+//
+// Nor what a statement about the trail finds inside that transaction. A row
+// kept to be written is a row the table does not have yet, and erasure is the
+// write that showed what that costs: it blanks what the trail holds of a person
+// in the same transaction as the writes that put it there, and blanked a table
+// the newest of those rows were not in -- they were written after it, whole.
+// So any statement about the trail in the transaction -- counting it, blanking
+// it, reading it back -- has what is kept written first
+// ([dialect.Keep.BeforeStatement]), and finds the table as if every row had
+// been written when it was recorded. A transaction that sends none, which is
+// what writing many rows is, has them written by its commit alone.
+//
+// It is the statement that is asked rather than the code that sends it,
+// because that is where every way of reaching the table meets: a client built
+// any way, a query or a count or an update, payday's trail store and an app's
+// own erasure alike. A statement is about the trail when the table's name is a
+// word of it, which is how a builder writes a table whatever it quotes it with.
+//
+// # Every few hundred
+//
+// Rather than all at once, because a statement holds only so many arguments --
+// SQLite and PostgreSQL both stop somewhere near sixty thousand, and a row here
+// is a dozen -- and because what is kept is held in memory until it is
+// written. A few hundred rows a statement is already a few hundred times fewer
+// statements.
+func emitKeptTrail(g *protogen.GeneratedFile, s *Schema, p Paths) {
+	table := (p.Ent + "/" + protogen.GoImportPath(s.Own(pdpb.Own_OWN_AUDIT).EntPkg())).Ident("Table")
+
+	g.P("// keptTrail is the trail a transaction has recorded and not written yet.")
+	g.P("//")
+	g.P("// It is kept by the transaction ([dialect.Keep]) and written by its commit,")
+	g.P("// or a few hundred rows at a time before that, or ahead of any statement")
+	g.P("// about the trail the transaction sends. The commit is what writes it, so")
+	g.P("// a transaction cannot be ended with any of it left out, and one rolled")
+	g.P("// back takes it along unwritten.")
+	g.P("type keptTrail struct {")
+	g.P("	// db is the client of the first write the transaction recorded, which")
+	g.P("	// is as good as any other's: every one of them is that transaction.")
+	g.P("	db   *", p.Ent.Ident("Client"))
+	g.P("	rows []*", p.Ent.Ident("AuditCreate"))
+	g.P("")
+	g.P("	// writing is the rows being written, by a statement that is itself")
+	g.P("	// about the trail: asked to write them first, it finds them on the way.")
+	g.P("	writing bool")
+	g.P("}")
+	g.P("")
+	g.P("// keptTrailKey is what a transaction keeps its [keptTrail] under.")
+	g.P("type keptTrailKey struct{}")
+	g.P("")
+	g.P("// keptTrailRows is how many rows of the trail one statement writes.")
+	g.P("const keptTrailRows = 500")
+	g.P("")
+	g.P("// keptTrailAbout is whether a statement is about the trail: the table's")
+	g.P("// name as a word of it. Every statement that is about it has what is kept")
+	g.P("// written first, so that it finds every row the transaction recorded.")
+	g.P("var keptTrailAbout = ", pkgRegexp.Ident("MustCompile"), "(`\\b` + ", pkgRegexp.Ident("QuoteMeta"), "(", table, ") + `\\b`).MatchString")
+	g.P("")
+	g.P("func keptTrailOf(k *", pkgDialect.Ident("Keep"), ", db *", p.Ent.Ident("Client"), ") *keptTrail {")
+	g.P("	return k.Value(keptTrailKey{}, func() any {")
+	g.P("		v := &keptTrail{db: db}")
+	g.P("		k.BeforeCommit(v.write)")
+	g.P("		k.BeforeStatement(keptTrailAbout, v.write)")
+	g.P("		return v")
+	g.P("	}).(*keptTrail)")
+	g.P("}")
+	g.P("")
+	g.P("func (v *keptTrail) add(ctx ", pkgCtx.Ident("Context"), ", q *", p.Ent.Ident("AuditCreate"), ") error {")
+	g.P("	v.rows = append(v.rows, q)")
+	g.P("	if len(v.rows) < keptTrailRows {")
+	g.P("		return nil")
+	g.P("	}")
+	g.P("")
+	g.P("	return v.write(ctx)")
+	g.P("}")
+	g.P("")
+	g.P("// write writes what is kept, a statement for each few hundred rows.")
+	g.P("func (v *keptTrail) write(ctx ", pkgCtx.Ident("Context"), ") error {")
+	g.P("	if v.writing {")
+	g.P("		return nil")
+	g.P("	}")
+	g.P("	v.writing = true")
+	g.P("	defer func() { v.writing = false }()")
+	g.P("")
+	g.P("	for len(v.rows) > 0 {")
+	g.P("		n := min(len(v.rows), keptTrailRows)")
+	g.P("		if err := v.db.Audit.CreateBulk(v.rows[:n]...).Exec(ctx); err != nil {")
+	g.P("			return ", pkgFmt.Ident("Errorf"), "(\"write the trail: %w\", err)")
+	g.P("		}")
+	g.P("		v.rows = v.rows[n:]")
+	g.P("	}")
+	g.P("")
+	g.P("	return nil")
+	g.P("}")
 	g.P("")
 }
 

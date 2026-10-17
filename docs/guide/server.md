@@ -589,7 +589,11 @@ being conventions:
 - **The wall** is a predicate in the innermost server. There is no layer above
   it that can turn it off, and that is the point of it being there.
 - **The trail** is written inside the transaction that makes the write, so it
-  cannot be a layer that forgets.
+  cannot be a layer that forgets. In a transaction begun with
+  `dialect.BeginTx` — a batch, a layer that writes several rows — it is
+  written together, a statement for every few hundred rows rather than one
+  each: by the commit, and ahead of any statement in the transaction that
+  names the trail's table, which so finds every row of it.
 - **The generated `Gate`** is rewritten by `pd gen`. Put your authorization in
   front of it or in the `gate.Policy` you inject, never in it.
 

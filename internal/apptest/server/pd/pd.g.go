@@ -61,6 +61,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	slog "log/slog"
+	regexp "regexp"
 	slices "slices"
 	sort "sort"
 	time "time"
@@ -3304,6 +3305,31 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 
 	domain := uint32(v.Object.Domain())
 
+	// Kept for the commit, when the transaction keeps anything: written
+	// there with the rest of what it recorded, a statement for every few
+	// hundred rows rather than one each. The row is decided here, as the
+	// one below is -- its key, the moment it was recorded -- and only the
+	// writing waits. See [keptTrail].
+	if k, ok := dialect.KeepOf(s.Store.Db.Driver()); ok {
+		q := s.Store.Db.Audit.Create().
+			SetId(uuid.New()).
+			SetTenantId(tenant).
+			SetActorTenantId(uuid.UUID(v.Tenant)).
+			SetActorId(uuid.UUID(v.Actor)).
+			SetTraceId(notNull(v.Trace)).
+			SetAction(v.Action).
+			SetObjectId(uuid.UUID(v.Object)).
+			SetDomain(domain).
+			SetPatch(notNull(v.Patch)).
+			SetValue(notNull(value)).
+			SetDateCreated(time.Now().UTC())
+		if !v.Counterpart.IsZero() {
+			q.SetCounterpartTenantId(uuid.UUID(v.Counterpart))
+		}
+
+		return keptTrailOf(k, s.Store.Db).add(ctx, q)
+	}
+
 	_, err = s.Audit().Add(ctx, apptest.AuditAddRequest_builder{
 		TenantId:            tenant[:],
 		ActorTenantId:       v.Tenant.Bytes(),
@@ -3818,6 +3844,72 @@ func erasedRobot(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Robo
 	}
 
 	return v.Proto(), nil
+}
+
+// keptTrail is the trail a transaction has recorded and not written yet.
+//
+// It is kept by the transaction ([dialect.Keep]) and written by its commit,
+// or a few hundred rows at a time before that, or ahead of any statement
+// about the trail the transaction sends. The commit is what writes it, so
+// a transaction cannot be ended with any of it left out, and one rolled
+// back takes it along unwritten.
+type keptTrail struct {
+	// db is the client of the first write the transaction recorded, which
+	// is as good as any other's: every one of them is that transaction.
+	db   *ent.Client
+	rows []*ent.AuditCreate
+
+	// writing is the rows being written, by a statement that is itself
+	// about the trail: asked to write them first, it finds them on the way.
+	writing bool
+}
+
+// keptTrailKey is what a transaction keeps its [keptTrail] under.
+type keptTrailKey struct{}
+
+// keptTrailRows is how many rows of the trail one statement writes.
+const keptTrailRows = 500
+
+// keptTrailAbout is whether a statement is about the trail: the table's
+// name as a word of it. Every statement that is about it has what is kept
+// written first, so that it finds every row the transaction recorded.
+var keptTrailAbout = regexp.MustCompile(`\b` + regexp.QuoteMeta(audit.Table) + `\b`).MatchString
+
+func keptTrailOf(k *dialect.Keep, db *ent.Client) *keptTrail {
+	return k.Value(keptTrailKey{}, func() any {
+		v := &keptTrail{db: db}
+		k.BeforeCommit(v.write)
+		k.BeforeStatement(keptTrailAbout, v.write)
+		return v
+	}).(*keptTrail)
+}
+
+func (v *keptTrail) add(ctx context.Context, q *ent.AuditCreate) error {
+	v.rows = append(v.rows, q)
+	if len(v.rows) < keptTrailRows {
+		return nil
+	}
+
+	return v.write(ctx)
+}
+
+// write writes what is kept, a statement for each few hundred rows.
+func (v *keptTrail) write(ctx context.Context) error {
+	if v.writing {
+		return nil
+	}
+	v.writing = true
+	defer func() { v.writing = false }()
+
+	for len(v.rows) > 0 {
+		n := min(len(v.rows), keptTrailRows)
+		if err := v.db.Audit.CreateBulk(v.rows[:n]...).Exec(ctx); err != nil {
+			return fmt.Errorf("write the trail: %w", err)
+		}
+		v.rows = v.rows[n:]
+	}
+
+	return nil
 }
 
 var _ *patchpb.Patch

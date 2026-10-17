@@ -3,6 +3,31 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A transaction's trail is written by its commit
+
+**Applies if** a layer of yours writes several rows in a transaction begun with
+`dialect.BeginTx`, or reads or changes the trail inside one. Regenerate;
+nothing else has to change.
+
+- **The rows of the trail a transaction begun with `dialect.BeginTx` records
+  are written together** (#84): five hundred to a statement as they are
+  recorded, and the rest by its commit, where each was a statement of its own.
+  In rove's import, with the row each write hands over (below), that was a
+  third of what a row sent: 27.8 statements a row, and 18.8 now.
+- **They hold or fall with the transaction as before.** The commit is what
+  writes them, so a transaction cannot be ended with any left out, and one
+  rolled back takes them along. What a row says is decided when the write is
+  recorded, its `date_created` included.
+- **A statement about the trail inside that transaction finds every row it
+  recorded**, since what is kept is written ahead of it: a count, a list, the
+  blanking an erasure does to a person's rows in the transaction that wrote
+  them. What is asked is the statement's SQL, for the trail table's name as a
+  word. A statement that reaches the table some other way -- through a view, or
+  a function of your own -- finds only what has been written.
+- **A trail an overlay added a column to is written a row at a time**, as it
+  was: the recorder fills only payday's own columns, and a column it cannot
+  fill is one only the generated server can.
+
 ## A write hands the trail the row it left
 
 **Applies if** you generate with `pd gen`. Regenerate; nothing else has to
