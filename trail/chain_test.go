@@ -233,7 +233,8 @@ func TestEachCheckpointNamesTheOneBefore(t *testing.T) {
 		s, p := chained(t, 2, nil)
 
 		// Numbered and never kept: the next one goes past it, and names the
-		// one before.
+		// one before. The number it went past is a finding, since one taken
+		// away looks the same (#80).
 		_, _, err := s.Checkpoint(ctx, 0)
 		x.NoError(err)
 		p.Pass(ctx, s)
@@ -241,7 +242,50 @@ func TestEachCheckpointNamesTheOneBefore(t *testing.T) {
 
 		v, err := p.Verify(ctx, s, false)
 		x.NoError(err)
+		x.Equal([]string{"unkept"}, kinds(v))
+		x.Equal(3, v.Findings[0].Checkpoint)
+		x.Contains(v.Findings[0].Note, "checkpoint 4 names 2")
+
+		// Until an operator, who knows of the crash, accepts it.
+		_, err = p.Accept(ctx, s, "a pass the deployment's restart stopped")
+		x.NoError(err)
+		v, err = p.Verify(ctx, s, false)
+		x.NoError(err)
 		x.True(v.Ok(), "%v", v.Findings)
+	})
+
+	t.Run("one the store lost, and the next went past it", func(t *testing.T) {
+		x := require.New(t)
+		s, p := chained(t, 3, nil)
+
+		// The store restored from a copy made before its latest checkpoint,
+		// and the restored deployment's first pass taken at once (#80): the
+		// one it takes names the newest the store keeps.
+		x.NoError(p.checkpoints().Erase(ctx, numbered(t, p, 3).d))
+		p.Pass(ctx, s)
+		x.Equal(numbered(t, p, 2).d, numbered(t, p, 4).c.Prev)
+
+		v, err := p.Verify(ctx, s, true)
+		x.NoError(err)
+		x.Equal([]string{"unkept"}, kinds(v))
+		x.Equal(3, v.Findings[0].Checkpoint)
+
+		_, err = p.Accept(ctx, s, "the checkpoint store restored from a copy made before checkpoint 3")
+		x.NoError(err)
+		v, err = p.Verify(ctx, s, true)
+		x.NoError(err)
+		x.True(v.Ok(), "%v", v.Findings)
+
+		// One lost after the acceptance is found again.
+		p.Pass(ctx, s)
+		x.NoError(p.checkpoints().Erase(ctx, numbered(t, p, 6).d))
+		p.Pass(ctx, s)
+		x.Equal(numbered(t, p, 5).d, numbered(t, p, 7).c.Prev)
+
+		v, err = p.Verify(ctx, s, true)
+		x.NoError(err)
+		x.Equal([]string{"unkept"}, kinds(v))
+		x.Equal(6, v.Findings[0].Checkpoint)
 	})
 }
 

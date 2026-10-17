@@ -701,7 +701,8 @@ type Finding struct {
 	//	             of two the store keeps under one number
 	//	reordered    a checkpoint that names one after it as the one before
 	//	unkept       a checkpoint the database numbered, or the one after it
-	//	             names, that the store does not keep
+	//	             names, that the store does not keep; or the numbers a
+	//	             checkpoint skips over to the one it names
 	//	emptied      a manifest with no rows beside checkpoints of an archive
 	//	             that held something
 	//	behind       a checkpoint the store keeps that the database never numbered
@@ -1443,7 +1444,50 @@ func readChain(ctx context.Context, s flob.Store) (chain, error) {
 		}
 	}
 
+	ch.findings = append(ch.findings, ch.skipped()...)
+
 	return ch, nil
+}
+
+// skipped is the numbers between a checkpoint kept and the one it names as
+// the one before it, which the store does not keep (#80).
+//
+// A checkpoint names the newest one the store keeps when it is taken, so a
+// number between them was numbered by the database and is not in the store:
+// taken away, or written over by a copy made before it -- a store restored
+// from a backup -- and the next pass went past it; or numbered by a pass a
+// crash stopped before the store kept it. Nothing else says so once a later
+// one is numbered: the database's own `unkept` is only of the latest it
+// numbered, and the one before a later checkpoint is one the store keeps.
+// What it cannot tell apart, an operator can, and accepts; the numbers
+// skipped before an acceptance are what the operator looked at.
+//
+// Only between two checkpoints the store keeps: one that names nothing is
+// the first, or one from before the checkpoints were chained.
+func (ch chain) skipped() []Finding {
+	accepted := 0
+	for _, v := range ch.kept {
+		if v.c.Accepted != "" {
+			accepted = max(accepted, v.c.K)
+		}
+	}
+
+	out := []Finding{}
+	for _, v := range ch.ordered() {
+		prev, ok := ch.kept[v.c.Prev]
+		if !ok || v.c.K <= accepted || prev.c.K >= v.c.K-1 {
+			continue
+		}
+
+		missing := strconv.Itoa(prev.c.K + 1)
+		if prev.c.K+1 < v.c.K-1 {
+			missing = fmt.Sprintf("%d to %d", prev.c.K+1, v.c.K-1)
+		}
+		out = append(out, Finding{Kind: "unkept", Checkpoint: prev.c.K + 1, Digest: v.d,
+			Note: fmt.Sprintf("checkpoint %d names %d as the one before it, and the store does not keep %s", v.c.K, prev.c.K, missing)})
+	}
+
+	return out
 }
 
 // ordered is the checkpoints kept, by the number each says it is.
