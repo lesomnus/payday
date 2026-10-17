@@ -25,6 +25,8 @@ service CellService {
 service RobotService {
   // Add creates a new Robot
   rpc Add(RobotAddRequest) returns (Robot);
+  // AddMany creates up to 1000 new Robot rows in one call, all of them or none
+  rpc AddMany(RobotAddManyRequest) returns (RobotAddManyResponse);
   // Get retrieves a Robot
   rpc Get(RobotGetRequest) returns (Robot);
   // Patch updates an existing Robot
@@ -109,6 +111,8 @@ service FleetService {
 service ReadingService {
   // Add creates a new Reading
   rpc Add(ReadingAddRequest) returns (Reading);
+  // AddMany creates up to 1000 new Reading rows in one call, all of them or none
+  rpc AddMany(ReadingAddManyRequest) returns (ReadingAddManyResponse);
   // Get retrieves a Reading
   rpc Get(ReadingGetRequest) returns (Reading);
   // Patch updates an existing Reading
@@ -171,6 +175,14 @@ message RobotAddRequest {
   bytes secret = 8;
   google.protobuf.Timestamp date_attested = 31;
   google.protobuf.Timestamp date_created = 15;
+}
+
+message RobotAddManyRequest {
+  repeated RobotAddRequest items = 1;
+}
+
+message RobotAddManyResponse {
+  repeated Robot items = 1;
 }
 
 message RobotGetRequest {
@@ -506,6 +518,14 @@ message ReadingAddRequest {
   bytes tenant_id = 9 [features.field_presence = IMPLICIT];
   double celsius = 8 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_created = 15;
+}
+
+message ReadingAddManyRequest {
+  repeated ReadingAddRequest items = 1;
+}
+
+message ReadingAddManyResponse {
+  repeated Reading items = 1;
 }
 
 message ReadingGetRequest {

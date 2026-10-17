@@ -99,27 +99,23 @@ func (s ThingServiceServer) image(v *apptest.Thing) *apptest.Thing {
 	out := proto.Clone(v).(*apptest.Thing)
 	return out
 }
-func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Close()
 
-	st := s
-	st.Db = tx.Db
-
+// create is the row an Add of `req` writes, as a builder not yet saved,
+// and what the answer says about its edges. Add and AddMany both write
+// with it, so that an item of an AddMany is the row an Add of it would be.
+func (st ThingServiceServer) create(ctx context.Context, req *apptest.ThingAddRequest) (*ent.ThingCreate, []func(v *apptest.Thing), error) {
+	var ds []func(v *apptest.Thing)
 	q := st.Db.Thing.Create()
 	var k uuid.UUID
 	if req.HasId() {
 		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+			return nil, nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
 		}
 	}
-	if v, err := mint(ctx, s.Mint, "shared.Thing", k, req.HasId()); err != nil {
-		return nil, err
+	if v, err := mint(ctx, st.Mint, "shared.Thing", k, req.HasId()); err != nil {
+		return nil, nil, err
 	} else {
 		q.SetId(v)
 	}
@@ -133,6 +129,23 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
 		q.SetDateCreated(st.now())
+	}
+	return q, ds, nil
+}
+
+func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	q, ds, err := st.create(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 
 	var stored *ent.Thing
@@ -154,6 +167,9 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 	}
 
 	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
 	var value *apptest.Thing
 	if stored != nil {
 		value = s.image(stored.Proto())
@@ -170,6 +186,38 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 	}
 
 	return v, nil
+}
+
+// ThingAddRule is what a layer in front says about one row an Add of Thing
+// would write: the request to write it with -- the one it was handed, or a
+// copy it changed -- or a refusal. Nil is the request it was handed.
+type ThingAddRule func(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.ThingAddRequest, error)
+
+// ThingWithAddRule answers with `next` behind `rule` for the RPCs that add.
+// An Add is asked about, and every item of an AddMany in order, and the
+// call is refused for the first one that is -- an AddMany naming the item.
+// What reaches `next` is one call either way: an AddMany stays one AddMany.
+//
+// A layer that overrides Add itself, for something an Add does that a rule
+// cannot say, still has its AddMany asked through this.
+func ThingWithAddRule(next apptest.ThingServiceServer, rule ThingAddRule) apptest.ThingServiceServer {
+	return thingAddRuled{next, rule}
+}
+
+type thingAddRuled struct {
+	apptest.ThingServiceServer
+	rule ThingAddRule
+}
+
+func (s thingAddRuled) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
+	r, err := s.rule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		r = req
+	}
+	return s.ThingServiceServer.Add(ctx, r)
 }
 
 func (s ThingServiceServer) Get(ctx context.Context, req *apptest.ThingGetRequest) (*apptest.Thing, error) {

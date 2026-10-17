@@ -121,7 +121,7 @@ say.
 layer reads, *through the wall*, before letting the insert through:
 
 ```go
-func (s gateRobot) Add(ctx context.Context, req *RobotAddRequest) (*Robot, error) {
+func (s gateRobot) admit(ctx context.Context, req *RobotAddRequest) (*RobotAddRequest, error) {
 	if ref := req.GetTenant(); ref != nil {
 		if _, err := s.Gate.Next().Tenant().Get(ctx, /* … */); err != nil {
 			// NotFound, for the same reason as above
@@ -132,13 +132,20 @@ func (s gateRobot) Add(ctx context.Context, req *RobotAddRequest) (*Robot, error
 		// … and the same read, when the app declared a set at field 3; see §7
 	}
 
-	return s.RobotServiceServer.Add(ctx, req)
+	return req, nil
 }
 ```
 
 Without it, the identifier in `tenant` becomes a foreign key with nothing
 consulted: the row is invisible to whoever planted it and visible to whoever
 holds that tenant. That is the shape of the bug, not a mitigation of it.
+
+It is a **rule** and not an `Add` the gate overrides, and that is the half
+that matters to an entity with an `AddMany`. The gate puts it on the server
+behind with `bare.RobotWithAddRule`, so an `Add` is asked it and an `AddMany`
+asks it of every item -- refused `items[2]: …` for the third, with nothing of
+the call written. Overriding `Add` would have said it of one RPC and left the
+other to write the same rows past it.
 
 ### What the gate reads, and what it does not
 

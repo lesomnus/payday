@@ -64,6 +64,16 @@ Two options, and they answer different questions.
 from [protobuf-orm](https://github.com/protobuf-orm/protobuf-orm). It says which
 RPCs exist and what the table is indexed by.
 
+One of those RPCs is worth knowing about before a schema has many rows to
+write: `rpc: {crud: true, add: {many: {}}}` adds an `AddMany` beside the `Add`,
+which takes up to a thousand `Add` requests (`many: {max: N}` for another
+bound) and writes them in one transaction, a statement for every few hundred
+rows. Each item is the row an `Add` of it would be, and payday asks of each
+what it asks of an `Add` -- the gate, the names and the tenancy the Sink
+gives a row, the Secret layer on what it answers with; see
+[permissions](permissions.md#what-the-gate-reads-and-what-it-does-not). None
+of payday's own entities has one.
+
 **`(payday.entity)`** is payday's, and it says the things that **fail quietly**
 when left to be worked out later: what an identifier names, whether a row is
 behind the wall, and what `Erase` does to it.

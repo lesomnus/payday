@@ -95,44 +95,40 @@ func (s AuditServiceServer) image(v *apptest.Audit) *apptest.Audit {
 	out := proto.Clone(v).(*apptest.Audit)
 	return out
 }
-func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Close()
 
-	st := s
-	st.Db = tx.Db
-
+// create is the row an Add of `req` writes, as a builder not yet saved,
+// and what the answer says about its edges. Add and AddMany both write
+// with it, so that an item of an AddMany is the row an Add of it would be.
+func (st AuditServiceServer) create(ctx context.Context, req *apptest.AuditAddRequest) (*ent.AuditCreate, []func(v *apptest.Audit), error) {
+	var ds []func(v *apptest.Audit)
 	q := st.Db.Audit.Create()
 	var k uuid.UUID
 	if req.HasId() {
 		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+			return nil, nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
 		}
 	}
-	if v, err := mint(ctx, s.Mint, "app.Audit", k, req.HasId()); err != nil {
-		return nil, err
+	if v, err := mint(ctx, st.Mint, "app.Audit", k, req.HasId()); err != nil {
+		return nil, nil, err
 	} else {
 		q.SetId(v)
 	}
 	if v, err := entuuid.FromBytes(req.GetTenantId()); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
+		return nil, nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
 	} else {
 		q.SetTenantId(v)
 	}
 	if v, err := entuuid.FromBytes(req.GetActorId()); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
+		return nil, nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
 	} else {
 		q.SetActorId(v)
 	}
 	q.SetTraceId(req.GetTraceId())
 	q.SetAction(req.GetAction())
 	if v, err := entuuid.FromBytes(req.GetObjectId()); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "object_id: %s", err)
+		return nil, nil, status.Errorf(codes.InvalidArgument, "object_id: %s", err)
 	} else {
 		q.SetObjectId(v)
 	}
@@ -143,14 +139,14 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 		q.SetDateCreated(st.now())
 	}
 	if v, err := entuuid.FromBytes(req.GetActorTenantId()); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
+		return nil, nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
 	} else {
 		q.SetActorTenantId(v)
 	}
 	q.SetValue(req.GetValue())
 	if req.HasCounterpartTenantId() {
 		if v, err := entuuid.FromBytes(req.GetCounterpartTenantId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
+			return nil, nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
 		} else {
 			q.SetCounterpartTenantId(v)
 		}
@@ -159,6 +155,23 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 		q.SetDomain(req.GetDomain())
 	} else {
 		q.SetDomain(0)
+	}
+	return q, ds, nil
+}
+
+func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	q, ds, err := st.create(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 
 	var stored *ent.Audit
@@ -180,6 +193,9 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	}
 
 	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
 	var value *apptest.Audit
 	if stored != nil {
 		value = s.image(stored.Proto())
@@ -196,6 +212,38 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 	}
 
 	return v, nil
+}
+
+// AuditAddRule is what a layer in front says about one row an Add of Audit
+// would write: the request to write it with -- the one it was handed, or a
+// copy it changed -- or a refusal. Nil is the request it was handed.
+type AuditAddRule func(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.AuditAddRequest, error)
+
+// AuditWithAddRule answers with `next` behind `rule` for the RPCs that add.
+// An Add is asked about, and every item of an AddMany in order, and the
+// call is refused for the first one that is -- an AddMany naming the item.
+// What reaches `next` is one call either way: an AddMany stays one AddMany.
+//
+// A layer that overrides Add itself, for something an Add does that a rule
+// cannot say, still has its AddMany asked through this.
+func AuditWithAddRule(next apptest.AuditServiceServer, rule AuditAddRule) apptest.AuditServiceServer {
+	return auditAddRuled{next, rule}
+}
+
+type auditAddRuled struct {
+	apptest.AuditServiceServer
+	rule AuditAddRule
+}
+
+func (s auditAddRuled) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
+	r, err := s.rule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		r = req
+	}
+	return s.AuditServiceServer.Add(ctx, r)
 }
 
 func (s AuditServiceServer) Get(ctx context.Context, req *apptest.AuditGetRequest) (*apptest.Audit, error) {

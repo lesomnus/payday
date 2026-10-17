@@ -142,6 +142,13 @@ otherwise a way to do a thousand calls' worth of work for the price of one.
 `Max` caps the list itself: an unbounded batch is an unbounded transaction, and
 that holds locks for a long time.
 
+An `AddMany` is one operation, however many rows it carries: what bounds it is
+its own `max` (a thousand unless the schema says otherwise), which it refuses
+past before anything is asked. And a batch is where an `AddMany` sent by a
+caller costs least -- in a transaction begun with `dialect.BeginTx` each row
+its items name is asked about once, and the trail is written by the commit;
+sent alone, it asks of each item, as that many `Add`s would.
+
 ## 4. Referring to a row you are creating in the same batch
 
 The classic problem: create a tenant, then create a holder inside it — and the

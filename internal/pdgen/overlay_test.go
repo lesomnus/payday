@@ -144,3 +144,36 @@ func ownAll(t *testing.T) string {
 
 	return b.String()
 }
+
+// TestPaydaysOwnHaveNoAddMany.
+//
+// What payday says of a write to one of its own entities -- that no tenant is
+// put up from inside one, which tenant a holder may be added to, that nobody
+// writes the trail by hand -- it says of the RPCs it was written for, a row at
+// a time. An AddMany on one of them would be a write none of that was written
+// with in mind, and nothing has a use for one.
+func TestPaydaysOwnHaveNoAddMany(t *testing.T) {
+	many := func(v string) string {
+		return strings.Replace(v, "rpc: {crud: true}", "rpc: {crud: true, add: {many: {}}}", 1)
+	}
+
+	_, err := readAs(t, "payday", many(tenantOf("payday")))
+	if err == nil {
+		t.Fatal("payday's tenant was given an AddMany")
+	}
+	if !strings.Contains(err.Error(), "payday.Tenant asks for AddMany") {
+		t.Fatalf("the refusal does not name the entity:\n%v", err)
+	}
+
+	// And an app's own entity may have one.
+	s, err := read(t, tenant+many(entity("Robot", `domain: 7, tenanted: {via: "tenant"}`,
+		`Tenant tenant = 2 [(orm.edge) = {}];`)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range s.Entities {
+		if v.GoName() == "Robot" && !v.Rpcs().HasAddMany() {
+			t.Fatal("the app's entity asked for AddMany and does not have it")
+		}
+	}
+}

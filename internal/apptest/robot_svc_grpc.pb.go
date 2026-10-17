@@ -283,14 +283,15 @@ var CellService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	RobotService_Add_FullMethodName   = "/app.RobotService/Add"
-	RobotService_Get_FullMethodName   = "/app.RobotService/Get"
-	RobotService_Patch_FullMethodName = "/app.RobotService/Patch"
-	RobotService_Apply_FullMethodName = "/app.RobotService/Apply"
-	RobotService_Erase_FullMethodName = "/app.RobotService/Erase"
-	RobotService_List_FullMethodName  = "/app.RobotService/List"
-	RobotService_Watch_FullMethodName = "/app.RobotService/Watch"
-	RobotService_Move_FullMethodName  = "/app.RobotService/Move"
+	RobotService_Add_FullMethodName     = "/app.RobotService/Add"
+	RobotService_AddMany_FullMethodName = "/app.RobotService/AddMany"
+	RobotService_Get_FullMethodName     = "/app.RobotService/Get"
+	RobotService_Patch_FullMethodName   = "/app.RobotService/Patch"
+	RobotService_Apply_FullMethodName   = "/app.RobotService/Apply"
+	RobotService_Erase_FullMethodName   = "/app.RobotService/Erase"
+	RobotService_List_FullMethodName    = "/app.RobotService/List"
+	RobotService_Watch_FullMethodName   = "/app.RobotService/Watch"
+	RobotService_Move_FullMethodName    = "/app.RobotService/Move"
 )
 
 // RobotServiceClient is the client API for RobotService service.
@@ -299,6 +300,8 @@ const (
 type RobotServiceClient interface {
 	// Add creates a new Robot
 	Add(ctx context.Context, in *RobotAddRequest, opts ...grpc.CallOption) (*Robot, error)
+	// AddMany creates up to 1000 new Robot rows in one call, all of them or none
+	AddMany(ctx context.Context, in *RobotAddManyRequest, opts ...grpc.CallOption) (*RobotAddManyResponse, error)
 	// Get retrieves a Robot
 	Get(ctx context.Context, in *RobotGetRequest, opts ...grpc.CallOption) (*Robot, error)
 	// Patch updates an existing Robot
@@ -353,6 +356,16 @@ func (c *robotServiceClient) Add(ctx context.Context, in *RobotAddRequest, opts 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Robot)
 	err := c.cc.Invoke(ctx, RobotService_Add_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *robotServiceClient) AddMany(ctx context.Context, in *RobotAddManyRequest, opts ...grpc.CallOption) (*RobotAddManyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RobotAddManyResponse)
+	err := c.cc.Invoke(ctx, RobotService_AddMany_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -444,6 +457,8 @@ func (c *robotServiceClient) Move(ctx context.Context, in *RobotMoveRequest, opt
 type RobotServiceServer interface {
 	// Add creates a new Robot
 	Add(context.Context, *RobotAddRequest) (*Robot, error)
+	// AddMany creates up to 1000 new Robot rows in one call, all of them or none
+	AddMany(context.Context, *RobotAddManyRequest) (*RobotAddManyResponse, error)
 	// Get retrieves a Robot
 	Get(context.Context, *RobotGetRequest) (*Robot, error)
 	// Patch updates an existing Robot
@@ -496,6 +511,9 @@ type UnimplementedRobotServiceServer struct{}
 
 func (UnimplementedRobotServiceServer) Add(context.Context, *RobotAddRequest) (*Robot, error) {
 	return nil, status.Error(codes.Unimplemented, "method Add not implemented")
+}
+func (UnimplementedRobotServiceServer) AddMany(context.Context, *RobotAddManyRequest) (*RobotAddManyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddMany not implemented")
 }
 func (UnimplementedRobotServiceServer) Get(context.Context, *RobotGetRequest) (*Robot, error) {
 	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
@@ -553,6 +571,24 @@ func _RobotService_Add_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RobotServiceServer).Add(ctx, req.(*RobotAddRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RobotService_AddMany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RobotAddManyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RobotServiceServer).AddMany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RobotService_AddMany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RobotServiceServer).AddMany(ctx, req.(*RobotAddManyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -686,6 +722,10 @@ var RobotService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Add",
 			Handler:    _RobotService_Add_Handler,
+		},
+		{
+			MethodName: "AddMany",
+			Handler:    _RobotService_AddMany_Handler,
 		},
 		{
 			MethodName: "Get",
@@ -1515,11 +1555,12 @@ var FleetService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	ReadingService_Add_FullMethodName   = "/app.ReadingService/Add"
-	ReadingService_Get_FullMethodName   = "/app.ReadingService/Get"
-	ReadingService_Patch_FullMethodName = "/app.ReadingService/Patch"
-	ReadingService_Apply_FullMethodName = "/app.ReadingService/Apply"
-	ReadingService_Erase_FullMethodName = "/app.ReadingService/Erase"
+	ReadingService_Add_FullMethodName     = "/app.ReadingService/Add"
+	ReadingService_AddMany_FullMethodName = "/app.ReadingService/AddMany"
+	ReadingService_Get_FullMethodName     = "/app.ReadingService/Get"
+	ReadingService_Patch_FullMethodName   = "/app.ReadingService/Patch"
+	ReadingService_Apply_FullMethodName   = "/app.ReadingService/Apply"
+	ReadingService_Erase_FullMethodName   = "/app.ReadingService/Erase"
 )
 
 // ReadingServiceClient is the client API for ReadingService service.
@@ -1528,6 +1569,8 @@ const (
 type ReadingServiceClient interface {
 	// Add creates a new Reading
 	Add(ctx context.Context, in *ReadingAddRequest, opts ...grpc.CallOption) (*Reading, error)
+	// AddMany creates up to 1000 new Reading rows in one call, all of them or none
+	AddMany(ctx context.Context, in *ReadingAddManyRequest, opts ...grpc.CallOption) (*ReadingAddManyResponse, error)
 	// Get retrieves a Reading
 	Get(ctx context.Context, in *ReadingGetRequest, opts ...grpc.CallOption) (*Reading, error)
 	// Patch updates an existing Reading
@@ -1550,6 +1593,16 @@ func (c *readingServiceClient) Add(ctx context.Context, in *ReadingAddRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Reading)
 	err := c.cc.Invoke(ctx, ReadingService_Add_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *readingServiceClient) AddMany(ctx context.Context, in *ReadingAddManyRequest, opts ...grpc.CallOption) (*ReadingAddManyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReadingAddManyResponse)
+	err := c.cc.Invoke(ctx, ReadingService_AddMany_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1602,6 +1655,8 @@ func (c *readingServiceClient) Erase(ctx context.Context, in *ReadingRef, opts .
 type ReadingServiceServer interface {
 	// Add creates a new Reading
 	Add(context.Context, *ReadingAddRequest) (*Reading, error)
+	// AddMany creates up to 1000 new Reading rows in one call, all of them or none
+	AddMany(context.Context, *ReadingAddManyRequest) (*ReadingAddManyResponse, error)
 	// Get retrieves a Reading
 	Get(context.Context, *ReadingGetRequest) (*Reading, error)
 	// Patch updates an existing Reading
@@ -1622,6 +1677,9 @@ type UnimplementedReadingServiceServer struct{}
 
 func (UnimplementedReadingServiceServer) Add(context.Context, *ReadingAddRequest) (*Reading, error) {
 	return nil, status.Error(codes.Unimplemented, "method Add not implemented")
+}
+func (UnimplementedReadingServiceServer) AddMany(context.Context, *ReadingAddManyRequest) (*ReadingAddManyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddMany not implemented")
 }
 func (UnimplementedReadingServiceServer) Get(context.Context, *ReadingGetRequest) (*Reading, error) {
 	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
@@ -1670,6 +1728,24 @@ func _ReadingService_Add_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ReadingServiceServer).Add(ctx, req.(*ReadingAddRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ReadingService_AddMany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadingAddManyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReadingServiceServer).AddMany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReadingService_AddMany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReadingServiceServer).AddMany(ctx, req.(*ReadingAddManyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1756,6 +1832,10 @@ var ReadingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Add",
 			Handler:    _ReadingService_Add_Handler,
+		},
+		{
+			MethodName: "AddMany",
+			Handler:    _ReadingService_AddMany_Handler,
 		},
 		{
 			MethodName: "Get",

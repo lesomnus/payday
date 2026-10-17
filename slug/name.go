@@ -213,4 +213,15 @@ func NameWith(ctx context.Context, n Namer, entity string, given string, req pro
 // That is also why the refusal is passed through rather than rewritten. Saying
 // "no free name after 3 tries" would be asserting the one thing this cannot
 // know, and it would say it loudest exactly when it is wrong.
+//
+// # An AddMany
+//
+// Tries the whole call again, with every name it made up made up again: the
+// refusal of a statement does not say which of its rows it was about. So a
+// call is as likely to collide as all of its made-up names together -- a
+// thousand of them into the tenant above about one call in four, and about one
+// in sixty after three tries, where an Add of one was one in 4e10. A caller
+// that writes that many into that many is told so as AlreadyExists, and the
+// answers are the ones above: name the rows, make the calls smaller, or make
+// the names longer.
 const Tries = 3

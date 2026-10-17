@@ -427,12 +427,12 @@ type Sink struct {
 	// joined says this server was put on somebody else's transaction, and
 	// is set by [Sink.WithDriver] because that is the only way it happens.
 	//
-	// What it is read for is the retry in Add. A constraint violation ends
-	// the transaction it happened in -- PostgreSQL refuses everything after
-	// one until it is rolled back -- so a second attempt inside a
-	// transaction this server did not open would fail for a reason that has
-	// nothing to do with names, and would take the caller's other writes
-	// with it.
+	// What it is read for is the retry in Add and AddMany. A constraint
+	// violation ends the transaction it happened in -- PostgreSQL refuses
+	// everything after one until it is rolled back -- so a second attempt
+	// inside a transaction this server did not open would fail for a reason
+	// that has nothing to do with names, and would take the caller's other
+	// writes with it.
 	joined bool
 }
 
@@ -707,21 +707,41 @@ type sinkCell struct {
 }
 
 func (s Sink) Cell() apptest.CellServiceServer {
-	return sinkCell{s.Server.Cell(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkCell{s.Server.Cell(), s.Server.Store, s.w, s.namer, s.joined}
+	v.CellServiceServer = bare.CellWithAddRule(v.CellServiceServer, v.admit)
+	return v
 }
 
-// Add decides the name, and refuses one that was given and cannot be one.
+// admit decides the name of a row an Add of Cell writes, refusing one that
+// was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments and
-// then means: fold what was given, and make a name up when nothing was --
-// for the reason `bare.Minter` makes a key up. An app whose rows have to
-// be named says so with `slug.Required`; see `slug.Names` for why that is
-// the way round it is.
+// It is asked of an Add and of every item of an AddMany; see [Sink.Cell].
 //
-// The request is copied rather than written to. It belongs to whoever
-// called, and for a call made in this process that is a message they may
-// still be holding -- a server that folded a caller's own field would be
-// changing a value they can read back.
+// The name goes through [Sink.WithNamer], which is unset in most
+// deployments and then means: fold what was given, and make a name up
+// when nothing was -- for the reason `bare.Minter` makes a key up. An app
+// whose rows have to be named says so with `slug.Required`; see
+// `slug.Names` for why that is the way round it is.
+func (s sinkCell) admit(ctx context.Context, req *apptest.CellAddRequest) (*apptest.CellAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	v, err := slug.NameWith(ctx, s.namer, "app.Cell", req.GetAlias(), req)
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+	r.SetAlias(v)
+
+	return r, nil
+}
+
+// Add tries again when the name it made up was taken.
+//
+// The name is [sinkCell.admit]'s, and every try goes through it, so a
+// name made up is made up again and a name given is the same each time.
 func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
 	// How many names to try. More than one only when the caller named
 	// nothing -- then the name is this server's and a collision is this
@@ -735,18 +755,7 @@ func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptes
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Cell", req.GetAlias(), req)
-		if err != nil {
-			return nil, pderr.At("alias", err)
-		}
-
-		// The request is copied rather than written to, and copied again on
-		// each try: it belongs to whoever called, and for a call made in this
-		// process that is a message they may still be holding.
-		r := proto.CloneOf(req)
-		r.SetAlias(v)
-
-		res, err := s.CellServiceServer.Add(ctx, r)
+		res, err := s.CellServiceServer.Add(ctx, req)
 		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
 			// Whatever it was, said in the words it was said in. Rewriting
 			// it into "no free name" would assert the one thing this cannot
@@ -793,21 +802,41 @@ type sinkFleet struct {
 }
 
 func (s Sink) Fleet() apptest.FleetServiceServer {
-	return sinkFleet{s.Server.Fleet(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkFleet{s.Server.Fleet(), s.Server.Store, s.w, s.namer, s.joined}
+	v.FleetServiceServer = bare.FleetWithAddRule(v.FleetServiceServer, v.admit)
+	return v
 }
 
-// Add decides the name, and refuses one that was given and cannot be one.
+// admit decides the name of a row an Add of Fleet writes, refusing one that
+// was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments and
-// then means: fold what was given, and make a name up when nothing was --
-// for the reason `bare.Minter` makes a key up. An app whose rows have to
-// be named says so with `slug.Required`; see `slug.Names` for why that is
-// the way round it is.
+// It is asked of an Add and of every item of an AddMany; see [Sink.Fleet].
 //
-// The request is copied rather than written to. It belongs to whoever
-// called, and for a call made in this process that is a message they may
-// still be holding -- a server that folded a caller's own field would be
-// changing a value they can read back.
+// The name goes through [Sink.WithNamer], which is unset in most
+// deployments and then means: fold what was given, and make a name up
+// when nothing was -- for the reason `bare.Minter` makes a key up. An app
+// whose rows have to be named says so with `slug.Required`; see
+// `slug.Names` for why that is the way round it is.
+func (s sinkFleet) admit(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.FleetAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	v, err := slug.NameWith(ctx, s.namer, "app.Fleet", req.GetAlias(), req)
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+	r.SetAlias(v)
+
+	return r, nil
+}
+
+// Add tries again when the name it made up was taken.
+//
+// The name is [sinkFleet.admit]'s, and every try goes through it, so a
+// name made up is made up again and a name given is the same each time.
 func (s sinkFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
 	// How many names to try. More than one only when the caller named
 	// nothing -- then the name is this server's and a collision is this
@@ -821,18 +850,7 @@ func (s sinkFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*appt
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Fleet", req.GetAlias(), req)
-		if err != nil {
-			return nil, pderr.At("alias", err)
-		}
-
-		// The request is copied rather than written to, and copied again on
-		// each try: it belongs to whoever called, and for a call made in this
-		// process that is a message they may still be holding.
-		r := proto.CloneOf(req)
-		r.SetAlias(v)
-
-		res, err := s.FleetServiceServer.Add(ctx, r)
+		res, err := s.FleetServiceServer.Add(ctx, req)
 		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
 			// Whatever it was, said in the words it was said in. Rewriting
 			// it into "no free name" would assert the one thing this cannot
@@ -879,21 +897,41 @@ type sinkHolder struct {
 }
 
 func (s Sink) Holder() apptest.HolderServiceServer {
-	return sinkHolder{s.Server.Holder(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkHolder{s.Server.Holder(), s.Server.Store, s.w, s.namer, s.joined}
+	v.HolderServiceServer = bare.HolderWithAddRule(v.HolderServiceServer, v.admit)
+	return v
 }
 
-// Add decides the name, and refuses one that was given and cannot be one.
+// admit decides the name of a row an Add of Holder writes, refusing one
+// that was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments and
-// then means: fold what was given, and make a name up when nothing was --
-// for the reason `bare.Minter` makes a key up. An app whose rows have to
-// be named says so with `slug.Required`; see `slug.Names` for why that is
-// the way round it is.
+// It is asked of an Add and of every item of an AddMany; see [Sink.Holder].
 //
-// The request is copied rather than written to. It belongs to whoever
-// called, and for a call made in this process that is a message they may
-// still be holding -- a server that folded a caller's own field would be
-// changing a value they can read back.
+// The name goes through [Sink.WithNamer], which is unset in most
+// deployments and then means: fold what was given, and make a name up
+// when nothing was -- for the reason `bare.Minter` makes a key up. An app
+// whose rows have to be named says so with `slug.Required`; see
+// `slug.Names` for why that is the way round it is.
+func (s sinkHolder) admit(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.HolderAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	v, err := slug.NameWith(ctx, s.namer, "app.Holder", req.GetAlias(), req)
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+	r.SetAlias(v)
+
+	return r, nil
+}
+
+// Add tries again when the name it made up was taken.
+//
+// The name is [sinkHolder.admit]'s, and every try goes through it, so a
+// name made up is made up again and a name given is the same each time.
 func (s sinkHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
 	// How many names to try. More than one only when the caller named
 	// nothing -- then the name is this server's and a collision is this
@@ -907,18 +945,7 @@ func (s sinkHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Holder", req.GetAlias(), req)
-		if err != nil {
-			return nil, pderr.At("alias", err)
-		}
-
-		// The request is copied rather than written to, and copied again on
-		// each try: it belongs to whoever called, and for a call made in this
-		// process that is a message they may still be holding.
-		r := proto.CloneOf(req)
-		r.SetAlias(v)
-
-		res, err := s.HolderServiceServer.Add(ctx, r)
+		res, err := s.HolderServiceServer.Add(ctx, req)
 		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
 			// Whatever it was, said in the words it was said in. Rewriting
 			// it into "no free name" would assert the one thing this cannot
@@ -1349,21 +1376,41 @@ type sinkJoint struct {
 }
 
 func (s Sink) Joint() apptest.JointServiceServer {
-	return sinkJoint{s.Server.Joint(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkJoint{s.Server.Joint(), s.Server.Store, s.w, s.namer, s.joined}
+	v.JointServiceServer = bare.JointWithAddRule(v.JointServiceServer, v.admit)
+	return v
 }
 
-// Add decides the name, and refuses one that was given and cannot be one.
+// admit decides the name of a row an Add of Joint writes, refusing one that
+// was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments and
-// then means: fold what was given, and make a name up when nothing was --
-// for the reason `bare.Minter` makes a key up. An app whose rows have to
-// be named says so with `slug.Required`; see `slug.Names` for why that is
-// the way round it is.
+// It is asked of an Add and of every item of an AddMany; see [Sink.Joint].
 //
-// The request is copied rather than written to. It belongs to whoever
-// called, and for a call made in this process that is a message they may
-// still be holding -- a server that folded a caller's own field would be
-// changing a value they can read back.
+// The name goes through [Sink.WithNamer], which is unset in most
+// deployments and then means: fold what was given, and make a name up
+// when nothing was -- for the reason `bare.Minter` makes a key up. An app
+// whose rows have to be named says so with `slug.Required`; see
+// `slug.Names` for why that is the way round it is.
+func (s sinkJoint) admit(ctx context.Context, req *apptest.JointAddRequest) (*apptest.JointAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	v, err := slug.NameWith(ctx, s.namer, "app.Joint", req.GetAlias(), req)
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+	r.SetAlias(v)
+
+	return r, nil
+}
+
+// Add tries again when the name it made up was taken.
+//
+// The name is [sinkJoint.admit]'s, and every try goes through it, so a
+// name made up is made up again and a name given is the same each time.
 func (s sinkJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
 	// How many names to try. More than one only when the caller named
 	// nothing -- then the name is this server's and a collision is this
@@ -1377,18 +1424,7 @@ func (s sinkJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*appt
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Joint", req.GetAlias(), req)
-		if err != nil {
-			return nil, pderr.At("alias", err)
-		}
-
-		// The request is copied rather than written to, and copied again on
-		// each try: it belongs to whoever called, and for a call made in this
-		// process that is a message they may still be holding.
-		r := proto.CloneOf(req)
-		r.SetAlias(v)
-
-		res, err := s.JointServiceServer.Add(ctx, r)
+		res, err := s.JointServiceServer.Add(ctx, req)
 		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
 			// Whatever it was, said in the words it was said in. Rewriting
 			// it into "no free name" would assert the one thing this cannot
@@ -1435,7 +1471,27 @@ type sinkPairing struct {
 }
 
 func (s Sink) Pairing() apptest.PairingServiceServer {
-	return sinkPairing{s.Server.Pairing(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkPairing{s.Server.Pairing(), s.Server.Store, s.w, s.namer, s.joined}
+	v.PairingServiceServer = bare.PairingWithAddRule(v.PairingServiceServer, v.admit)
+	return v
+}
+
+// admit is what is said of the tenancy of a row an Add of Pairing writes:
+// it refuses it when its paths to a tenant do not agree.
+//
+// It is asked of an Add and of every item of an AddMany; see [Sink.Pairing].
+func (s sinkPairing) admit(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.PairingAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	if err := s.tenancy(ctx, r); err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
 
 // tenantAtLeadTenant is the tenant "lead.tenant" arrives at.
@@ -1521,19 +1577,6 @@ func (s sinkPairing) tenancy(ctx context.Context, req *apptest.PairingAddRequest
 	return nil
 }
 
-// Add stamps this row's tenant before writing it.
-func (s sinkPairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
-	// Copied rather than written to: the request belongs to whoever called,
-	// and for a call made in this process that is a message they may still
-	// be holding.
-	r := proto.CloneOf(req)
-	if err := s.tenancy(ctx, r); err != nil {
-		return nil, err
-	}
-
-	return s.PairingServiceServer.Add(ctx, r)
-}
-
 type sinkReading struct {
 	apptest.ReadingServiceServer
 	store  bare.Store
@@ -1543,7 +1586,27 @@ type sinkReading struct {
 }
 
 func (s Sink) Reading() apptest.ReadingServiceServer {
-	return sinkReading{s.Server.Reading(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkReading{s.Server.Reading(), s.Server.Store, s.w, s.namer, s.joined}
+	v.ReadingServiceServer = bare.ReadingWithAddRule(v.ReadingServiceServer, v.admit)
+	return v
+}
+
+// admit is what is said of the tenancy of a row an Add of Reading writes:
+// it stamps its tenant.
+//
+// It is asked of an Add and of every item of an AddMany; see [Sink.Reading].
+func (s sinkReading) admit(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.ReadingAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	if err := s.tenancy(ctx, r); err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
 
 // tenantAtRobotTenant is the tenant "robot.tenant" arrives at.
@@ -1592,19 +1655,6 @@ func (s sinkReading) tenancy(ctx context.Context, req *apptest.ReadingAddRequest
 	return nil
 }
 
-// Add stamps this row's tenant before writing it.
-func (s sinkReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
-	// Copied rather than written to: the request belongs to whoever called,
-	// and for a call made in this process that is a message they may still
-	// be holding.
-	r := proto.CloneOf(req)
-	if err := s.tenancy(ctx, r); err != nil {
-		return nil, err
-	}
-
-	return s.ReadingServiceServer.Add(ctx, r)
-}
-
 type sinkRobot struct {
 	apptest.RobotServiceServer
 	store  bare.Store
@@ -1614,21 +1664,41 @@ type sinkRobot struct {
 }
 
 func (s Sink) Robot() apptest.RobotServiceServer {
-	return sinkRobot{s.Server.Robot(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkRobot{s.Server.Robot(), s.Server.Store, s.w, s.namer, s.joined}
+	v.RobotServiceServer = bare.RobotWithAddRule(v.RobotServiceServer, v.admit)
+	return v
 }
 
-// Add decides the name, and refuses one that was given and cannot be one.
+// admit decides the name of a row an Add of Robot writes, refusing one that
+// was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments and
-// then means: fold what was given, and make a name up when nothing was --
-// for the reason `bare.Minter` makes a key up. An app whose rows have to
-// be named says so with `slug.Required`; see `slug.Names` for why that is
-// the way round it is.
+// It is asked of an Add and of every item of an AddMany; see [Sink.Robot].
 //
-// The request is copied rather than written to. It belongs to whoever
-// called, and for a call made in this process that is a message they may
-// still be holding -- a server that folded a caller's own field would be
-// changing a value they can read back.
+// The name goes through [Sink.WithNamer], which is unset in most
+// deployments and then means: fold what was given, and make a name up
+// when nothing was -- for the reason `bare.Minter` makes a key up. An app
+// whose rows have to be named says so with `slug.Required`; see
+// `slug.Names` for why that is the way round it is.
+func (s sinkRobot) admit(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.RobotAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	v, err := slug.NameWith(ctx, s.namer, "app.Robot", req.GetAlias(), req)
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+	r.SetAlias(v)
+
+	return r, nil
+}
+
+// Add tries again when the name it made up was taken.
+//
+// The name is [sinkRobot.admit]'s, and every try goes through it, so a
+// name made up is made up again and a name given is the same each time.
 func (s sinkRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
 	// How many names to try. More than one only when the caller named
 	// nothing -- then the name is this server's and a collision is this
@@ -1642,23 +1712,40 @@ func (s sinkRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Robot", req.GetAlias(), req)
-		if err != nil {
-			return nil, pderr.At("alias", err)
-		}
-
-		// The request is copied rather than written to, and copied again on
-		// each try: it belongs to whoever called, and for a call made in this
-		// process that is a message they may still be holding.
-		r := proto.CloneOf(req)
-		r.SetAlias(v)
-
-		res, err := s.RobotServiceServer.Add(ctx, r)
+		res, err := s.RobotServiceServer.Add(ctx, req)
 		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
 			// Whatever it was, said in the words it was said in. Rewriting
 			// it into "no free name" would assert the one thing this cannot
 			// know -- a duplicate key is the same code -- and would say it
 			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
+}
+
+// AddMany tries again, as Add does, when it made up the name of an item and
+// the call was refused AlreadyExists -- the whole call, with every name it
+// made up made up again, since a refusal of a statement does not say which
+// of its rows it was about. A name an item was given is the same each time.
+//
+// Every name made up is a chance to collide, so a call of many is refused
+// more often than an Add of one; `slug.Tries` says how much more.
+func (s sinkRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	// More than one try only when some item was named by nobody, and only
+	// in a transaction of its own; see Add.
+	tries := 1
+	if !s.joined {
+		for _, v := range req.GetItems() {
+			if v.GetAlias() == "" {
+				tries = slug.Tries
+				break
+			}
+		}
+	}
+
+	for try := 0; ; try++ {
+		res, err := s.RobotServiceServer.AddMany(ctx, req)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
 			return res, err
 		}
 	}
@@ -2148,21 +2235,41 @@ type sinkSeal struct {
 }
 
 func (s Sink) Seal() apptest.SealServiceServer {
-	return sinkSeal{s.Server.Seal(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkSeal{s.Server.Seal(), s.Server.Store, s.w, s.namer, s.joined}
+	v.SealServiceServer = bare.SealWithAddRule(v.SealServiceServer, v.admit)
+	return v
 }
 
-// Add decides the name, and refuses one that was given and cannot be one.
+// admit decides the name of a row an Add of Seal writes, refusing one that
+// was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments and
-// then means: fold what was given, and make a name up when nothing was --
-// for the reason `bare.Minter` makes a key up. An app whose rows have to
-// be named says so with `slug.Required`; see `slug.Names` for why that is
-// the way round it is.
+// It is asked of an Add and of every item of an AddMany; see [Sink.Seal].
 //
-// The request is copied rather than written to. It belongs to whoever
-// called, and for a call made in this process that is a message they may
-// still be holding -- a server that folded a caller's own field would be
-// changing a value they can read back.
+// The name goes through [Sink.WithNamer], which is unset in most
+// deployments and then means: fold what was given, and make a name up
+// when nothing was -- for the reason `bare.Minter` makes a key up. An app
+// whose rows have to be named says so with `slug.Required`; see
+// `slug.Names` for why that is the way round it is.
+func (s sinkSeal) admit(ctx context.Context, req *apptest.SealAddRequest) (*apptest.SealAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	v, err := slug.NameWith(ctx, s.namer, "app.Seal", req.GetAlias(), req)
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+	r.SetAlias(v)
+
+	return r, nil
+}
+
+// Add tries again when the name it made up was taken.
+//
+// The name is [sinkSeal.admit]'s, and every try goes through it, so a
+// name made up is made up again and a name given is the same each time.
 func (s sinkSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
 	// How many names to try. More than one only when the caller named
 	// nothing -- then the name is this server's and a collision is this
@@ -2176,18 +2283,7 @@ func (s sinkSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptes
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Seal", req.GetAlias(), req)
-		if err != nil {
-			return nil, pderr.At("alias", err)
-		}
-
-		// The request is copied rather than written to, and copied again on
-		// each try: it belongs to whoever called, and for a call made in this
-		// process that is a message they may still be holding.
-		r := proto.CloneOf(req)
-		r.SetAlias(v)
-
-		res, err := s.SealServiceServer.Add(ctx, r)
+		res, err := s.SealServiceServer.Add(ctx, req)
 		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
 			// Whatever it was, said in the words it was said in. Rewriting
 			// it into "no free name" would assert the one thing this cannot
@@ -2234,21 +2330,41 @@ type sinkTenant struct {
 }
 
 func (s Sink) Tenant() apptest.TenantServiceServer {
-	return sinkTenant{s.Server.Tenant(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkTenant{s.Server.Tenant(), s.Server.Store, s.w, s.namer, s.joined}
+	v.TenantServiceServer = bare.TenantWithAddRule(v.TenantServiceServer, v.admit)
+	return v
 }
 
-// Add decides the name, and refuses one that was given and cannot be one.
+// admit decides the name of a row an Add of Tenant writes, refusing one
+// that was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments and
-// then means: fold what was given, and make a name up when nothing was --
-// for the reason `bare.Minter` makes a key up. An app whose rows have to
-// be named says so with `slug.Required`; see `slug.Names` for why that is
-// the way round it is.
+// It is asked of an Add and of every item of an AddMany; see [Sink.Tenant].
 //
-// The request is copied rather than written to. It belongs to whoever
-// called, and for a call made in this process that is a message they may
-// still be holding -- a server that folded a caller's own field would be
-// changing a value they can read back.
+// The name goes through [Sink.WithNamer], which is unset in most
+// deployments and then means: fold what was given, and make a name up
+// when nothing was -- for the reason `bare.Minter` makes a key up. An app
+// whose rows have to be named says so with `slug.Required`; see
+// `slug.Names` for why that is the way round it is.
+func (s sinkTenant) admit(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.TenantAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	v, err := slug.NameWith(ctx, s.namer, "app.Tenant", req.GetAlias(), req)
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+	r.SetAlias(v)
+
+	return r, nil
+}
+
+// Add tries again when the name it made up was taken.
+//
+// The name is [sinkTenant.admit]'s, and every try goes through it, so a
+// name made up is made up again and a name given is the same each time.
 func (s sinkTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
 	// How many names to try. More than one only when the caller named
 	// nothing -- then the name is this server's and a collision is this
@@ -2262,18 +2378,7 @@ func (s sinkTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*ap
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "app.Tenant", req.GetAlias(), req)
-		if err != nil {
-			return nil, pderr.At("alias", err)
-		}
-
-		// The request is copied rather than written to, and copied again on
-		// each try: it belongs to whoever called, and for a call made in this
-		// process that is a message they may still be holding.
-		r := proto.CloneOf(req)
-		r.SetAlias(v)
-
-		res, err := s.TenantServiceServer.Add(ctx, r)
+		res, err := s.TenantServiceServer.Add(ctx, req)
 		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
 			// Whatever it was, said in the words it was said in. Rewriting
 			// it into "no free name" would assert the one thing this cannot
@@ -2481,21 +2586,41 @@ type sinkThing struct {
 }
 
 func (s Sink) Thing() apptest.ThingServiceServer {
-	return sinkThing{s.Server.Thing(), s.Server.Store, s.w, s.namer, s.joined}
+	v := sinkThing{s.Server.Thing(), s.Server.Store, s.w, s.namer, s.joined}
+	v.ThingServiceServer = bare.ThingWithAddRule(v.ThingServiceServer, v.admit)
+	return v
 }
 
-// Add decides the name, and refuses one that was given and cannot be one.
+// admit decides the name of a row an Add of Thing writes, refusing one that
+// was given and cannot be one.
 //
-// It goes through [Sink.WithNamer], which is unset in most deployments and
-// then means: fold what was given, and make a name up when nothing was --
-// for the reason `bare.Minter` makes a key up. An app whose rows have to
-// be named says so with `slug.Required`; see `slug.Names` for why that is
-// the way round it is.
+// It is asked of an Add and of every item of an AddMany; see [Sink.Thing].
 //
-// The request is copied rather than written to. It belongs to whoever
-// called, and for a call made in this process that is a message they may
-// still be holding -- a server that folded a caller's own field would be
-// changing a value they can read back.
+// The name goes through [Sink.WithNamer], which is unset in most
+// deployments and then means: fold what was given, and make a name up
+// when nothing was -- for the reason `bare.Minter` makes a key up. An app
+// whose rows have to be named says so with `slug.Required`; see
+// `slug.Names` for why that is the way round it is.
+func (s sinkThing) admit(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.ThingAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	v, err := slug.NameWith(ctx, s.namer, "shared.Thing", req.GetAlias(), req)
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+	r.SetAlias(v)
+
+	return r, nil
+}
+
+// Add tries again when the name it made up was taken.
+//
+// The name is [sinkThing.admit]'s, and every try goes through it, so a
+// name made up is made up again and a name given is the same each time.
 func (s sinkThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
 	// How many names to try. More than one only when the caller named
 	// nothing -- then the name is this server's and a collision is this
@@ -2509,18 +2634,7 @@ func (s sinkThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*appt
 	}
 
 	for try := 0; ; try++ {
-		v, err := slug.NameWith(ctx, s.namer, "shared.Thing", req.GetAlias(), req)
-		if err != nil {
-			return nil, pderr.At("alias", err)
-		}
-
-		// The request is copied rather than written to, and copied again on
-		// each try: it belongs to whoever called, and for a call made in this
-		// process that is a message they may still be holding.
-		r := proto.CloneOf(req)
-		r.SetAlias(v)
-
-		res, err := s.ThingServiceServer.Add(ctx, r)
+		res, err := s.ThingServiceServer.Add(ctx, req)
 		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
 			// Whatever it was, said in the words it was said in. Rewriting
 			// it into "no free name" would assert the one thing this cannot
@@ -2813,12 +2927,15 @@ type gateTenant struct {
 }
 
 func (s Gate) Tenant() apptest.TenantServiceServer {
-	return gateTenant{s, s.Next().Tenant()}
+	v := gateTenant{s, s.Next().Tenant()}
+	v.TenantServiceServer = bare.TenantWithAddRule(v.TenantServiceServer, v.admit)
+	return v
 }
 
-// Add is not served. A tenant is put up by whoever runs the deployment,
-// through a server this layer is not in front of.
-func (s gateTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
+// admit refuses every row: no tenant is served by an Add, nor by an
+// AddMany if the entity had one. A tenant is put up by whoever runs the
+// deployment, through a server this layer is not in front of.
+func (s gateTenant) admit(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.TenantAddRequest, error) {
 	return nil, gate.ErrDeployment("put up")
 }
 
@@ -2834,10 +2951,12 @@ type gateHolder struct {
 }
 
 func (s Gate) Holder() apptest.HolderServiceServer {
-	return gateHolder{s, s.Next().Holder()}
+	v := gateHolder{s, s.Next().Holder()}
+	v.HolderServiceServer = bare.HolderWithAddRule(v.HolderServiceServer, v.admit)
+	return v
 }
 
-// Add is the one thing about a holder this layer still says, and it is here
+// admit is the one thing about a holder this layer still says, and it is here
 // because it is the one that is not a predicate: the row does not exist yet,
 // so there is nothing to narrow. Reading one, changing one and erasing one
 // are all the wall.
@@ -2857,7 +2976,10 @@ func (s Gate) Holder() apptest.HolderServiceServer {
 // And what an app's overlay added to the holder is asked here with it, as it
 // is of the app's own entities: a stamp a request may not assert, and an
 // edge, which is a read of whatever it names.
-func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
+//
+// It is what an Add of a holder is asked, and an AddMany of every item it
+// carries if the entity had one; see [ruled].
+func (s gateHolder) admit(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.HolderAddRequest, error) {
 	if _, err := gate.Actor(ctx); err != nil {
 		return nil, err
 	}
@@ -2894,7 +3016,7 @@ func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 		}
 	}
 
-	return s.HolderServiceServer.Add(ctx, req)
+	return req, nil
 }
 
 // Patch refuses an edge moved onto a row this caller cannot see.
@@ -2928,10 +3050,12 @@ type gateCell struct {
 }
 
 func (s Gate) Cell() apptest.CellServiceServer {
-	return gateCell{s, s.Next().Cell()}
+	v := gateCell{s, s.Next().Cell()}
+	v.CellServiceServer = bare.CellWithAddRule(v.CellServiceServer, v.admit)
+	return v
 }
 
-// Add refuses a Cell put into a Tenant this caller cannot see.
+// admit refuses a Cell put into a Tenant this caller cannot see.
 //
 // The wall is a predicate and an Add has no query, so without this the
 // identifier in `tenant` becomes a foreign key with nothing consulted.
@@ -2939,10 +3063,13 @@ func (s Gate) Cell() apptest.CellServiceServer {
 // holds that Tenant, which is the shape of the bug rather than a
 // mitigation of it.
 //
-// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
 // that a row exists is itself something a caller who may not see it
 // should not be told.
-func (s gateCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Cell].
+func (s gateCell) admit(ctx context.Context, req *apptest.CellAddRequest) (*apptest.CellAddRequest, error) {
 	if ref := req.GetTenant(); ref != nil {
 		if err := seen.Visible(ctx, s.Gate.drv, "Tenant", ref, func() error {
 			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
@@ -2958,7 +3085,7 @@ func (s gateCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptes
 		}
 	}
 
-	return s.CellServiceServer.Add(ctx, req)
+	return req, nil
 }
 
 type gateJoint struct {
@@ -2967,10 +3094,12 @@ type gateJoint struct {
 }
 
 func (s Gate) Joint() apptest.JointServiceServer {
-	return gateJoint{s, s.Next().Joint()}
+	v := gateJoint{s, s.Next().Joint()}
+	v.JointServiceServer = bare.JointWithAddRule(v.JointServiceServer, v.admit)
+	return v
 }
 
-// Add refuses a Joint put into a Robot this caller cannot see.
+// admit refuses a Joint put into a Robot this caller cannot see.
 //
 // The wall is a predicate and an Add has no query, so without this the
 // identifier in `robot` becomes a foreign key with nothing consulted.
@@ -2978,10 +3107,13 @@ func (s Gate) Joint() apptest.JointServiceServer {
 // holds that Robot, which is the shape of the bug rather than a
 // mitigation of it.
 //
-// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
 // that a row exists is itself something a caller who may not see it
 // should not be told.
-func (s gateJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Joint].
+func (s gateJoint) admit(ctx context.Context, req *apptest.JointAddRequest) (*apptest.JointAddRequest, error) {
 	if ref := req.GetRobot(); ref != nil {
 		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
@@ -2997,7 +3129,7 @@ func (s gateJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*appt
 		}
 	}
 
-	return s.JointServiceServer.Add(ctx, req)
+	return req, nil
 }
 
 type gatePairing struct {
@@ -3006,10 +3138,12 @@ type gatePairing struct {
 }
 
 func (s Gate) Pairing() apptest.PairingServiceServer {
-	return gatePairing{s, s.Next().Pairing()}
+	v := gatePairing{s, s.Next().Pairing()}
+	v.PairingServiceServer = bare.PairingWithAddRule(v.PairingServiceServer, v.admit)
+	return v
 }
 
-// Add refuses a Pairing put into a Robot this caller cannot see.
+// admit refuses a Pairing put into a Robot this caller cannot see.
 //
 // The wall is a predicate and an Add has no query, so without this the
 // identifier in `lead` becomes a foreign key with nothing consulted.
@@ -3017,10 +3151,13 @@ func (s Gate) Pairing() apptest.PairingServiceServer {
 // holds that Robot, which is the shape of the bug rather than a
 // mitigation of it.
 //
-// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
 // that a row exists is itself something a caller who may not see it
 // should not be told.
-func (s gatePairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Pairing].
+func (s gatePairing) admit(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.PairingAddRequest, error) {
 	if ref := req.GetLead(); ref != nil {
 		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
@@ -3051,7 +3188,7 @@ func (s gatePairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*
 		}
 	}
 
-	return s.PairingServiceServer.Add(ctx, req)
+	return req, nil
 }
 
 type gateReading struct {
@@ -3060,10 +3197,12 @@ type gateReading struct {
 }
 
 func (s Gate) Reading() apptest.ReadingServiceServer {
-	return gateReading{s, s.Next().Reading()}
+	v := gateReading{s, s.Next().Reading()}
+	v.ReadingServiceServer = bare.ReadingWithAddRule(v.ReadingServiceServer, v.admit)
+	return v
 }
 
-// Add refuses a Reading put into a Robot this caller cannot see.
+// admit refuses a Reading put into a Robot this caller cannot see.
 //
 // The wall is a predicate and an Add has no query, so without this the
 // identifier in `robot` becomes a foreign key with nothing consulted.
@@ -3071,10 +3210,13 @@ func (s Gate) Reading() apptest.ReadingServiceServer {
 // holds that Robot, which is the shape of the bug rather than a
 // mitigation of it.
 //
-// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
 // that a row exists is itself something a caller who may not see it
 // should not be told.
-func (s gateReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Reading].
+func (s gateReading) admit(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.ReadingAddRequest, error) {
 	if ref := req.GetRobot(); ref != nil {
 		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
@@ -3090,7 +3232,7 @@ func (s gateReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*
 		}
 	}
 
-	return s.ReadingServiceServer.Add(ctx, req)
+	return req, nil
 }
 
 type gateRobot struct {
@@ -3099,10 +3241,12 @@ type gateRobot struct {
 }
 
 func (s Gate) Robot() apptest.RobotServiceServer {
-	return gateRobot{s, s.Next().Robot()}
+	v := gateRobot{s, s.Next().Robot()}
+	v.RobotServiceServer = bare.RobotWithAddRule(v.RobotServiceServer, v.admit)
+	return v
 }
 
-// Add refuses a Robot put into a Tenant this caller cannot see.
+// admit refuses a Robot put into a Tenant this caller cannot see.
 //
 // The wall is a predicate and an Add has no query, so without this the
 // identifier in `tenant` becomes a foreign key with nothing consulted.
@@ -3110,10 +3254,13 @@ func (s Gate) Robot() apptest.RobotServiceServer {
 // holds that Tenant, which is the shape of the bug rather than a
 // mitigation of it.
 //
-// NotFound rather than a refusal, for the reason on `gateHolder.Add`:
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
 // that a row exists is itself something a caller who may not see it
 // should not be told.
-func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Robot].
+func (s gateRobot) admit(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.RobotAddRequest, error) {
 	if req.HasDateAttested() {
 		return nil, pderr.Invalidf("date_attested", "is established by this deployment and not asserted by a request")
 	}
@@ -3148,7 +3295,7 @@ func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 		}
 	}
 
-	return s.RobotServiceServer.Add(ctx, req)
+	return req, nil
 }
 
 // Patch refuses an edge moved onto a row this caller cannot see.
@@ -3923,8 +4070,8 @@ var _ *patchpb.Patch
 //
 // Every field marked `(payday.field).secret` is cleared on the way out:
 // from what an `Add` echoes, what a `Get` answers, and every item of a
-// `List`. The write side is untouched, because writing is the half that
-// works.
+// `List` or an `AddMany`. The write side is untouched, because writing is
+// the half that works.
 //
 //	app.Build(walled, core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())
 //
@@ -3994,6 +4141,15 @@ func (s secretRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) 
 	v, err := s.RobotServiceServer.Apply(ctx, req)
 
 	return hideRobot(v), err
+}
+
+func (s secretRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	v, err := s.RobotServiceServer.AddMany(ctx, req)
+	for _, w := range v.GetItems() {
+		hideRobot(w)
+	}
+
+	return v, err
 }
 
 func (s secretRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*apptest.RobotListResponse, error) {
@@ -4367,6 +4523,11 @@ func (s interceptRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (
 		apptest.RobotService_Add_FullMethodName, req, s.RobotServiceServer.Add)
 }
 
+func (s interceptRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_AddMany_FullMethodName, req, s.RobotServiceServer.AddMany)
+}
+
 func (s interceptRobot) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
 		apptest.RobotService_Get_FullMethodName, req, s.RobotServiceServer.Get)
@@ -4516,6 +4677,11 @@ type interceptReading struct {
 func (s interceptReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
 		apptest.ReadingService_Add_FullMethodName, req, s.ReadingServiceServer.Add)
+}
+
+func (s interceptReading) AddMany(ctx context.Context, req *apptest.ReadingAddManyRequest) (*apptest.ReadingAddManyResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
+		apptest.ReadingService_AddMany_FullMethodName, req, s.ReadingServiceServer.AddMany)
 }
 
 func (s interceptReading) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
@@ -5845,6 +6011,19 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 
 		return anypb.New(res)
 
+	case apptest.RobotService_AddMany_FullMethodName:
+		v := &apptest.RobotAddManyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Robot().AddMany(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
 	case apptest.RobotService_Get_FullMethodName:
 		v := &apptest.RobotGetRequest{}
 		if err := op.GetRequest().UnmarshalTo(v); err != nil {
@@ -6125,6 +6304,19 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Reading().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ReadingService_AddMany_FullMethodName:
+		v := &apptest.ReadingAddManyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Reading().AddMany(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -6833,6 +7025,8 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.ReadingService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.ReadingService_AddMany_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.ReadingService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.ReadingService_Apply_FullMethodName:
@@ -6840,6 +7034,8 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 	case apptest.ReadingService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.RobotService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.RobotService_AddMany_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.RobotService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
