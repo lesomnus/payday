@@ -99,27 +99,23 @@ func (s SealServiceServer) image(v *apptest.Seal) *apptest.Seal {
 	out := proto.Clone(v).(*apptest.Seal)
 	return out
 }
-func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Close()
 
-	st := s
-	st.Db = tx.Db
-
+// create is the row an Add of `req` writes, as a builder not yet saved,
+// and what the answer says about its edges. Add and AddMany both write
+// with it, so that an item of an AddMany is the row an Add of it would be.
+func (st SealServiceServer) create(ctx context.Context, req *apptest.SealAddRequest) (*ent.SealCreate, []func(v *apptest.Seal), error) {
+	var ds []func(v *apptest.Seal)
 	q := st.Db.Seal.Create()
 	var k uuid.UUID
 	if req.HasId() {
 		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+			return nil, nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
 		}
 	}
-	if v, err := mint(ctx, s.Mint, "app.Seal", k, req.HasId()); err != nil {
-		return nil, err
+	if v, err := mint(ctx, st.Mint, "app.Seal", k, req.HasId()); err != nil {
+		return nil, nil, err
 	} else {
 		q.SetId(v)
 	}
@@ -130,6 +126,23 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
 		q.SetDateCreated(st.now())
+	}
+	return q, ds, nil
+}
+
+func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	q, ds, err := st.create(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 
 	var stored *ent.Seal
@@ -151,6 +164,9 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 	}
 
 	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
 	var value *apptest.Seal
 	if stored != nil {
 		value = s.image(stored.Proto())
@@ -167,6 +183,38 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 	}
 
 	return v, nil
+}
+
+// SealAddRule is what a layer in front says about one row an Add of Seal
+// would write: the request to write it with -- the one it was handed, or a
+// copy it changed -- or a refusal. Nil is the request it was handed.
+type SealAddRule func(ctx context.Context, req *apptest.SealAddRequest) (*apptest.SealAddRequest, error)
+
+// SealWithAddRule answers with `next` behind `rule` for the RPCs that add.
+// An Add is asked about, and every item of an AddMany in order, and the
+// call is refused for the first one that is -- an AddMany naming the item.
+// What reaches `next` is one call either way: an AddMany stays one AddMany.
+//
+// A layer that overrides Add itself, for something an Add does that a rule
+// cannot say, still has its AddMany asked through this.
+func SealWithAddRule(next apptest.SealServiceServer, rule SealAddRule) apptest.SealServiceServer {
+	return sealAddRuled{next, rule}
+}
+
+type sealAddRuled struct {
+	apptest.SealServiceServer
+	rule SealAddRule
+}
+
+func (s sealAddRuled) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
+	r, err := s.rule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		r = req
+	}
+	return s.SealServiceServer.Add(ctx, r)
 }
 
 func (s SealServiceServer) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {

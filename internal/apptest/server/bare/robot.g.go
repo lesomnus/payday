@@ -122,6 +122,38 @@ func (s CellServiceServer) image(v *apptest.Cell) *apptest.Cell {
 	}
 	return out
 }
+
+// create is the row an Add of `req` writes, as a builder not yet saved,
+// and what the answer says about its edges. Add and AddMany both write
+// with it, so that an item of an AddMany is the row an Add of it would be.
+func (st CellServiceServer) create(ctx context.Context, req *apptest.CellAddRequest) (*ent.CellCreate, []func(v *apptest.Cell), error) {
+	ds := make([]func(v *apptest.Cell), 0, 1)
+	q := st.Db.Cell.Create()
+	var k uuid.UUID
+	if req.HasId() {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			k = v
+		}
+	}
+	if v, err := mint(ctx, st.Mint, "app.Cell", k, req.HasId()); err != nil {
+		return nil, nil, err
+	} else {
+		q.SetId(v)
+	}
+	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
+		return nil, nil, err
+	} else {
+		q.SetTenantId(k)
+		ds = append(ds, func(v *apptest.Cell) {
+			v.SetTenant(apptest.Tenant_builder{Id: k[:]}.Build())
+		})
+	}
+	q.SetAlias(req.GetAlias())
+	return q, ds, nil
+}
+
 func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -132,30 +164,10 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	st := s
 	st.Db = tx.Db
 
-	ds := make([]func(v *apptest.Cell), 0, 1)
-	q := st.Db.Cell.Create()
-	var k uuid.UUID
-	if req.HasId() {
-		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
-		} else {
-			k = v
-		}
-	}
-	if v, err := mint(ctx, s.Mint, "app.Cell", k, req.HasId()); err != nil {
+	q, ds, err := st.create(ctx, req)
+	if err != nil {
 		return nil, err
-	} else {
-		q.SetId(v)
 	}
-	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
-		return nil, err
-	} else {
-		q.SetTenantId(k)
-		ds = append(ds, func(v *apptest.Cell) {
-			v.SetTenant(apptest.Tenant_builder{Id: k[:]}.Build())
-		})
-	}
-	q.SetAlias(req.GetAlias())
 
 	var stored *ent.Cell
 	if snapshotOptions(s.Rec, apptest.CellService_Add_FullMethodName).Value {
@@ -195,6 +207,38 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	}
 
 	return v, nil
+}
+
+// CellAddRule is what a layer in front says about one row an Add of Cell
+// would write: the request to write it with -- the one it was handed, or a
+// copy it changed -- or a refusal. Nil is the request it was handed.
+type CellAddRule func(ctx context.Context, req *apptest.CellAddRequest) (*apptest.CellAddRequest, error)
+
+// CellWithAddRule answers with `next` behind `rule` for the RPCs that add.
+// An Add is asked about, and every item of an AddMany in order, and the
+// call is refused for the first one that is -- an AddMany naming the item.
+// What reaches `next` is one call either way: an AddMany stays one AddMany.
+//
+// A layer that overrides Add itself, for something an Add does that a rule
+// cannot say, still has its AddMany asked through this.
+func CellWithAddRule(next apptest.CellServiceServer, rule CellAddRule) apptest.CellServiceServer {
+	return cellAddRuled{next, rule}
+}
+
+type cellAddRuled struct {
+	apptest.CellServiceServer
+	rule CellAddRule
+}
+
+func (s cellAddRuled) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
+	r, err := s.rule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		r = req
+	}
+	return s.CellServiceServer.Add(ctx, r)
 }
 
 func (s CellServiceServer) Get(ctx context.Context, req *apptest.CellGetRequest) (*apptest.Cell, error) {
@@ -659,33 +703,28 @@ func (s RobotServiceServer) image(v *apptest.Robot) *apptest.Robot {
 	}
 	return out
 }
-func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Close()
 
-	st := s
-	st.Db = tx.Db
-
+// create is the row an Add of `req` writes, as a builder not yet saved,
+// and what the answer says about its edges. Add and AddMany both write
+// with it, so that an item of an AddMany is the row an Add of it would be.
+func (st RobotServiceServer) create(ctx context.Context, req *apptest.RobotAddRequest) (*ent.RobotCreate, []func(v *apptest.Robot), error) {
 	ds := make([]func(v *apptest.Robot), 0, 3)
 	q := st.Db.Robot.Create()
 	var k uuid.UUID
 	if req.HasId() {
 		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+			return nil, nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
 		}
 	}
-	if v, err := mint(ctx, s.Mint, "app.Robot", k, req.HasId()); err != nil {
-		return nil, err
+	if v, err := mint(ctx, st.Mint, "app.Robot", k, req.HasId()); err != nil {
+		return nil, nil, err
 	} else {
 		q.SetId(v)
 	}
 	if k, err := TenantGetKey(ctx, st.Db, req.GetTenant()); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else {
 		q.SetTenantId(k)
 		ds = append(ds, func(v *apptest.Robot) {
@@ -694,7 +733,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	}
 	if req.HasThing() {
 		if k, err := ThingGetKey(ctx, st.Db, req.GetThing()); err != nil {
-			return nil, err
+			return nil, nil, err
 		} else {
 			q.SetThingId(k)
 			ds = append(ds, func(v *apptest.Robot) {
@@ -704,7 +743,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	}
 	if req.HasCell() {
 		if k, err := CellGetKey(ctx, st.Db, req.GetCell()); err != nil {
-			return nil, err
+			return nil, nil, err
 		} else {
 			q.SetCellId(k)
 			ds = append(ds, func(v *apptest.Robot) {
@@ -726,6 +765,23 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
 		q.SetDateCreated(st.now())
+	}
+	return q, ds, nil
+}
+
+func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	q, ds, err := st.create(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 
 	var stored *ent.Robot
@@ -766,6 +822,38 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	}
 
 	return v, nil
+}
+
+// RobotAddRule is what a layer in front says about one row an Add of Robot
+// would write: the request to write it with -- the one it was handed, or a
+// copy it changed -- or a refusal. Nil is the request it was handed.
+type RobotAddRule func(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.RobotAddRequest, error)
+
+// RobotWithAddRule answers with `next` behind `rule` for the RPCs that add.
+// An Add is asked about, and every item of an AddMany in order, and the
+// call is refused for the first one that is -- an AddMany naming the item.
+// What reaches `next` is one call either way: an AddMany stays one AddMany.
+//
+// A layer that overrides Add itself, for something an Add does that a rule
+// cannot say, still has its AddMany asked through this.
+func RobotWithAddRule(next apptest.RobotServiceServer, rule RobotAddRule) apptest.RobotServiceServer {
+	return robotAddRuled{next, rule}
+}
+
+type robotAddRuled struct {
+	apptest.RobotServiceServer
+	rule RobotAddRule
+}
+
+func (s robotAddRuled) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+	r, err := s.rule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		r = req
+	}
+	return s.RobotServiceServer.Add(ctx, r)
 }
 
 func (s RobotServiceServer) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
@@ -1266,33 +1354,28 @@ func (s PairingServiceServer) image(v *apptest.Pairing) *apptest.Pairing {
 	}
 	return out
 }
-func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Close()
 
-	st := s
-	st.Db = tx.Db
-
+// create is the row an Add of `req` writes, as a builder not yet saved,
+// and what the answer says about its edges. Add and AddMany both write
+// with it, so that an item of an AddMany is the row an Add of it would be.
+func (st PairingServiceServer) create(ctx context.Context, req *apptest.PairingAddRequest) (*ent.PairingCreate, []func(v *apptest.Pairing), error) {
 	ds := make([]func(v *apptest.Pairing), 0, 2)
 	q := st.Db.Pairing.Create()
 	var k uuid.UUID
 	if req.HasId() {
 		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+			return nil, nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
 		} else {
 			k = v
 		}
 	}
-	if v, err := mint(ctx, s.Mint, "app.Pairing", k, req.HasId()); err != nil {
-		return nil, err
+	if v, err := mint(ctx, st.Mint, "app.Pairing", k, req.HasId()); err != nil {
+		return nil, nil, err
 	} else {
 		q.SetId(v)
 	}
 	if k, err := RobotGetKey(ctx, st.Db, req.GetLead()); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else {
 		q.SetLeadId(k)
 		ds = append(ds, func(v *apptest.Pairing) {
@@ -1300,7 +1383,7 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 		})
 	}
 	if k, err := RobotGetKey(ctx, st.Db, req.GetFollow()); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else {
 		q.SetFollowId(k)
 		ds = append(ds, func(v *apptest.Pairing) {
@@ -1311,6 +1394,23 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
 		q.SetDateCreated(st.now())
+	}
+	return q, ds, nil
+}
+
+func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	q, ds, err := st.create(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 
 	var stored *ent.Pairing
@@ -1351,6 +1451,38 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 	}
 
 	return v, nil
+}
+
+// PairingAddRule is what a layer in front says about one row an Add of Pairing
+// would write: the request to write it with -- the one it was handed, or a
+// copy it changed -- or a refusal. Nil is the request it was handed.
+type PairingAddRule func(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.PairingAddRequest, error)
+
+// PairingWithAddRule answers with `next` behind `rule` for the RPCs that add.
+// An Add is asked about, and every item of an AddMany in order, and the
+// call is refused for the first one that is -- an AddMany naming the item.
+// What reaches `next` is one call either way: an AddMany stays one AddMany.
+//
+// A layer that overrides Add itself, for something an Add does that a rule
+// cannot say, still has its AddMany asked through this.
+func PairingWithAddRule(next apptest.PairingServiceServer, rule PairingAddRule) apptest.PairingServiceServer {
+	return pairingAddRuled{next, rule}
+}
+
+type pairingAddRuled struct {
+	apptest.PairingServiceServer
+	rule PairingAddRule
+}
+
+func (s pairingAddRuled) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+	r, err := s.rule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		r = req
+	}
+	return s.PairingServiceServer.Add(ctx, r)
 }
 
 func (s PairingServiceServer) Get(ctx context.Context, req *apptest.PairingGetRequest) (*apptest.Pairing, error) {
@@ -1771,6 +1903,40 @@ func (s JointServiceServer) image(v *apptest.Joint) *apptest.Joint {
 	}
 	return out
 }
+
+// create is the row an Add of `req` writes, as a builder not yet saved,
+// and what the answer says about its edges. Add and AddMany both write
+// with it, so that an item of an AddMany is the row an Add of it would be.
+func (st JointServiceServer) create(ctx context.Context, req *apptest.JointAddRequest) (*ent.JointCreate, []func(v *apptest.Joint), error) {
+	ds := make([]func(v *apptest.Joint), 0, 1)
+	q := st.Db.Joint.Create()
+	var k uuid.UUID
+	if req.HasId() {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			k = v
+		}
+	}
+	if v, err := mint(ctx, st.Mint, "app.Joint", k, req.HasId()); err != nil {
+		return nil, nil, err
+	} else {
+		q.SetId(v)
+	}
+	if req.HasRobot() {
+		if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
+			return nil, nil, err
+		} else {
+			q.SetRobotId(k)
+			ds = append(ds, func(v *apptest.Joint) {
+				v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
+			})
+		}
+	}
+	q.SetAlias(req.GetAlias())
+	return q, ds, nil
+}
+
 func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -1781,32 +1947,10 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	st := s
 	st.Db = tx.Db
 
-	ds := make([]func(v *apptest.Joint), 0, 1)
-	q := st.Db.Joint.Create()
-	var k uuid.UUID
-	if req.HasId() {
-		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
-		} else {
-			k = v
-		}
-	}
-	if v, err := mint(ctx, s.Mint, "app.Joint", k, req.HasId()); err != nil {
+	q, ds, err := st.create(ctx, req)
+	if err != nil {
 		return nil, err
-	} else {
-		q.SetId(v)
 	}
-	if req.HasRobot() {
-		if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
-			return nil, err
-		} else {
-			q.SetRobotId(k)
-			ds = append(ds, func(v *apptest.Joint) {
-				v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
-			})
-		}
-	}
-	q.SetAlias(req.GetAlias())
 
 	var stored *ent.Joint
 	if snapshotOptions(s.Rec, apptest.JointService_Add_FullMethodName).Value {
@@ -1846,6 +1990,38 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	}
 
 	return v, nil
+}
+
+// JointAddRule is what a layer in front says about one row an Add of Joint
+// would write: the request to write it with -- the one it was handed, or a
+// copy it changed -- or a refusal. Nil is the request it was handed.
+type JointAddRule func(ctx context.Context, req *apptest.JointAddRequest) (*apptest.JointAddRequest, error)
+
+// JointWithAddRule answers with `next` behind `rule` for the RPCs that add.
+// An Add is asked about, and every item of an AddMany in order, and the
+// call is refused for the first one that is -- an AddMany naming the item.
+// What reaches `next` is one call either way: an AddMany stays one AddMany.
+//
+// A layer that overrides Add itself, for something an Add does that a rule
+// cannot say, still has its AddMany asked through this.
+func JointWithAddRule(next apptest.JointServiceServer, rule JointAddRule) apptest.JointServiceServer {
+	return jointAddRuled{next, rule}
+}
+
+type jointAddRuled struct {
+	apptest.JointServiceServer
+	rule JointAddRule
+}
+
+func (s jointAddRuled) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
+	r, err := s.rule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		r = req
+	}
+	return s.JointServiceServer.Add(ctx, r)
 }
 
 func (s JointServiceServer) Get(ctx context.Context, req *apptest.JointGetRequest) (*apptest.Joint, error) {
@@ -2268,6 +2444,30 @@ func (s FleetServiceServer) image(v *apptest.Fleet) *apptest.Fleet {
 	out := proto.Clone(v).(*apptest.Fleet)
 	return out
 }
+
+// create is the row an Add of `req` writes, as a builder not yet saved,
+// and what the answer says about its edges. Add and AddMany both write
+// with it, so that an item of an AddMany is the row an Add of it would be.
+func (st FleetServiceServer) create(ctx context.Context, req *apptest.FleetAddRequest) (*ent.FleetCreate, []func(v *apptest.Fleet), error) {
+	var ds []func(v *apptest.Fleet)
+	q := st.Db.Fleet.Create()
+	var k uuid.UUID
+	if req.HasId() {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			k = v
+		}
+	}
+	if v, err := mint(ctx, st.Mint, "app.Fleet", k, req.HasId()); err != nil {
+		return nil, nil, err
+	} else {
+		q.SetId(v)
+	}
+	q.SetAlias(req.GetAlias())
+	return q, ds, nil
+}
+
 func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -2278,21 +2478,10 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	st := s
 	st.Db = tx.Db
 
-	q := st.Db.Fleet.Create()
-	var k uuid.UUID
-	if req.HasId() {
-		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
-		} else {
-			k = v
-		}
-	}
-	if v, err := mint(ctx, s.Mint, "app.Fleet", k, req.HasId()); err != nil {
+	q, ds, err := st.create(ctx, req)
+	if err != nil {
 		return nil, err
-	} else {
-		q.SetId(v)
 	}
-	q.SetAlias(req.GetAlias())
 
 	var stored *ent.Fleet
 	if snapshotOptions(s.Rec, apptest.FleetService_Add_FullMethodName).Value {
@@ -2313,6 +2502,9 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	}
 
 	v := u.Proto()
+	for _, d := range ds {
+		d(v)
+	}
 	var value *apptest.Fleet
 	if stored != nil {
 		value = s.image(stored.Proto())
@@ -2329,6 +2521,38 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	}
 
 	return v, nil
+}
+
+// FleetAddRule is what a layer in front says about one row an Add of Fleet
+// would write: the request to write it with -- the one it was handed, or a
+// copy it changed -- or a refusal. Nil is the request it was handed.
+type FleetAddRule func(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.FleetAddRequest, error)
+
+// FleetWithAddRule answers with `next` behind `rule` for the RPCs that add.
+// An Add is asked about, and every item of an AddMany in order, and the
+// call is refused for the first one that is -- an AddMany naming the item.
+// What reaches `next` is one call either way: an AddMany stays one AddMany.
+//
+// A layer that overrides Add itself, for something an Add does that a rule
+// cannot say, still has its AddMany asked through this.
+func FleetWithAddRule(next apptest.FleetServiceServer, rule FleetAddRule) apptest.FleetServiceServer {
+	return fleetAddRuled{next, rule}
+}
+
+type fleetAddRuled struct {
+	apptest.FleetServiceServer
+	rule FleetAddRule
+}
+
+func (s fleetAddRuled) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
+	r, err := s.rule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		r = req
+	}
+	return s.FleetServiceServer.Add(ctx, r)
 }
 
 func (s FleetServiceServer) Get(ctx context.Context, req *apptest.FleetGetRequest) (*apptest.Fleet, error) {
@@ -2758,6 +2982,48 @@ func (s ReadingServiceServer) image(v *apptest.Reading) *apptest.Reading {
 	}
 	return out
 }
+
+// create is the row an Add of `req` writes, as a builder not yet saved,
+// and what the answer says about its edges. Add and AddMany both write
+// with it, so that an item of an AddMany is the row an Add of it would be.
+func (st ReadingServiceServer) create(ctx context.Context, req *apptest.ReadingAddRequest) (*ent.ReadingCreate, []func(v *apptest.Reading), error) {
+	ds := make([]func(v *apptest.Reading), 0, 1)
+	q := st.Db.Reading.Create()
+	var k uuid.UUID
+	if req.HasId() {
+		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
+		} else {
+			k = v
+		}
+	}
+	if v, err := mint(ctx, st.Mint, "app.Reading", k, req.HasId()); err != nil {
+		return nil, nil, err
+	} else {
+		q.SetId(v)
+	}
+	if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
+		return nil, nil, err
+	} else {
+		q.SetRobotId(k)
+		ds = append(ds, func(v *apptest.Reading) {
+			v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
+		})
+	}
+	if v, err := entuuid.FromBytes(req.GetTenantId()); err != nil {
+		return nil, nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
+	} else {
+		q.SetTenantId(v)
+	}
+	q.SetCelsius(req.GetCelsius())
+	if req.HasDateCreated() {
+		q.SetDateCreated(req.GetDateCreated().AsTime())
+	} else {
+		q.SetDateCreated(st.now())
+	}
+	return q, ds, nil
+}
+
 func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
 	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
 	if err != nil {
@@ -2768,39 +3034,9 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	st := s
 	st.Db = tx.Db
 
-	ds := make([]func(v *apptest.Reading), 0, 1)
-	q := st.Db.Reading.Create()
-	var k uuid.UUID
-	if req.HasId() {
-		if v, err := entuuid.FromBytes(req.GetId()); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "id: %s", err)
-		} else {
-			k = v
-		}
-	}
-	if v, err := mint(ctx, s.Mint, "app.Reading", k, req.HasId()); err != nil {
+	q, ds, err := st.create(ctx, req)
+	if err != nil {
 		return nil, err
-	} else {
-		q.SetId(v)
-	}
-	if k, err := RobotGetKey(ctx, st.Db, req.GetRobot()); err != nil {
-		return nil, err
-	} else {
-		q.SetRobotId(k)
-		ds = append(ds, func(v *apptest.Reading) {
-			v.SetRobot(apptest.Robot_builder{Id: k[:]}.Build())
-		})
-	}
-	if v, err := entuuid.FromBytes(req.GetTenantId()); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
-	} else {
-		q.SetTenantId(v)
-	}
-	q.SetCelsius(req.GetCelsius())
-	if req.HasDateCreated() {
-		q.SetDateCreated(req.GetDateCreated().AsTime())
-	} else {
-		q.SetDateCreated(st.now())
 	}
 
 	var stored *ent.Reading
@@ -2841,6 +3077,38 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	}
 
 	return v, nil
+}
+
+// ReadingAddRule is what a layer in front says about one row an Add of Reading
+// would write: the request to write it with -- the one it was handed, or a
+// copy it changed -- or a refusal. Nil is the request it was handed.
+type ReadingAddRule func(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.ReadingAddRequest, error)
+
+// ReadingWithAddRule answers with `next` behind `rule` for the RPCs that add.
+// An Add is asked about, and every item of an AddMany in order, and the
+// call is refused for the first one that is -- an AddMany naming the item.
+// What reaches `next` is one call either way: an AddMany stays one AddMany.
+//
+// A layer that overrides Add itself, for something an Add does that a rule
+// cannot say, still has its AddMany asked through this.
+func ReadingWithAddRule(next apptest.ReadingServiceServer, rule ReadingAddRule) apptest.ReadingServiceServer {
+	return readingAddRuled{next, rule}
+}
+
+type readingAddRuled struct {
+	apptest.ReadingServiceServer
+	rule ReadingAddRule
+}
+
+func (s readingAddRuled) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
+	r, err := s.rule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		r = req
+	}
+	return s.ReadingServiceServer.Add(ctx, r)
 }
 
 func (s ReadingServiceServer) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {

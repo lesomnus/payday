@@ -160,6 +160,13 @@ func (_c *FleetCreate) createSpec() (*Fleet, *sqlgraph.CreateSpec) {
 // INSERT ran on, so inside a transaction it is that transaction's row. Its
 // edges are not loaded.
 //
+// In a CreateBulk, the Stored of each builder is honoured and the batch's one
+// INSERT reads all of their rows back: each is matched to its builder by the
+// Id the builder was given, or by its place when the database made the Ids up.
+// A column some builders of a batch set and others do not is NULL for the
+// others, as it is in any batch; the database's default is for a column no
+// builder sets.
+//
 // `v` is written only by a Save that wrote the row: one that failed, or that a
 // hook answered without writing, leaves it as it was.
 func (_c *FleetCreate) Stored(v **Fleet) *FleetCreate {
