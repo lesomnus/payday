@@ -3,6 +3,29 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A write hands the trail the row it left
+
+**Applies if** you generate with `pd gen`. Regenerate; nothing else has to
+change. An app that runs `ent generate` itself adds one feature.
+
+- **A line of the trail holds the row its write handed over, rather than one
+  it read again** (#84). The recorder read the row after every write, which the
+  write had just read itself -- a statement for every write. An Add's INSERT
+  answers with the row now, in the same statement where the dialect has
+  `RETURNING` (PostgreSQL and SQLite; on MySQL it is still a query), and a
+  Patch or an Apply hands over the row it read back to answer with. Only an
+  Erase is read as before. An import into rove sent 37 statements a row and
+  sends 28.
+- **ent generates with `sql/returning`**: the generated servers ask a create
+  builder for the row it stored (`Stored`), which only a client generated with
+  that feature has. `pd gen` passes it. Anything that runs `ent generate` over
+  payday's schema itself adds `--feature sql/returning` beside `sql/modifier`.
+- **A recorder of yours beside the trail is handed the row too**, since a
+  `bare.Recorders` asks for every image any of its recorders asks for: an Add's
+  and an Apply's `Change.Value` is set whether or not yours asked. It is the
+  row whole -- the trail keeps a `secret:` field out of what it holds on a
+  copy -- and the ORM's word holds: treat it as read-only.
+
 ## A transaction asks about each row it names once
 
 **Applies if** a layer of yours begins a transaction and writes several rows in

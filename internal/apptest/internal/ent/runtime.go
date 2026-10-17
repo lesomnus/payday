@@ -4,8 +4,10 @@ package ent
 
 import (
 	"github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/schema"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 
 	"github.com/protobuf-orm/ent/schema/field"
 )
@@ -14,9 +16,21 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	auditFields := schema.Audit{}.Fields()
+	_ = auditFields
+	// auditDescDomain is the schema descriptor for domain field.
+	auditDescDomain := auditFields[11].Descriptor()
+	// audit.DefaultDomain holds the default value on creation for the domain field.
+	audit.DefaultDomain = auditDescDomain.Default.(uint32)
 	holderFields := schema.Holder{}.Fields()
 	_ = holderFields
 	// holderDescProfile is the schema descriptor for profile field.
 	holderDescProfile := holderFields[9].Descriptor()
 	holder.ValueScanner.Profile = holderDescProfile.ValueScanner.(field.TypeValueScanner[*apptest.Profile])
+	thingFields := schema.Thing{}.Fields()
+	_ = thingFields
+	// thingDescDescription is the schema descriptor for description field.
+	thingDescDescription := thingFields[2].Descriptor()
+	// thing.DefaultDescription holds the default value on creation for the description field.
+	thing.DefaultDescription = thingDescDescription.Default.(string)
 }

@@ -20,6 +20,7 @@ type ThingCreate struct {
 	config
 	mutation *ThingMutation
 	hooks    []Hook
+	stored   **Thing
 }
 
 // SetAlias sets the "alias" field.
@@ -83,6 +84,7 @@ func (_c *ThingCreate) Mutation() *ThingMutation {
 
 // Save creates the Thing in the database.
 func (_c *ThingCreate) Save(ctx context.Context) (*Thing, error) {
+	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -105,6 +107,14 @@ func (_c *ThingCreate) Exec(ctx context.Context) error {
 func (_c *ThingCreate) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (_c *ThingCreate) defaults() {
+	if _, ok := _c.mutation.Description(); !ok {
+		v := thing.DefaultDescription
+		_c.mutation.SetDescription(v)
 	}
 }
 
@@ -148,6 +158,18 @@ func (_c *ThingCreate) createSpec() (*Thing, *sqlgraph.CreateSpec) {
 		_node = &Thing{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(thing.Table, sqlgraph.NewFieldSpec(thing.FieldId, field.TypeUuid))
 	)
+	if _c.stored != nil {
+		_stored := &Thing{config: _c.config}
+		_spec.Returning = thing.Columns
+		_spec.ScanValues = _stored.scanValues
+		_spec.Assign = func(columns []string, values []any) error {
+			if err := _stored.assignValues(columns, values); err != nil {
+				return err
+			}
+			*_c.stored = _stored
+			return nil
+		}
+	}
 	if id, ok := _c.mutation.Id(); ok {
 		_node.Id = id
 		_spec.Id.Value = &id
@@ -171,6 +193,25 @@ func (_c *ThingCreate) createSpec() (*Thing, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// Stored has Save read the Thing back, into `v`, as the database stored
+// it: at the precision of its columns, with the defaults the database filled
+// in and what a trigger before the write made of it. Save itself answers with
+// the Thing as this builder had it.
+//
+// The INSERT reads it, with RETURNING, where the dialect has it, so that the
+// row and the reading of it are one statement. MySQL has none, and an INSERT
+// with a conflict clause may have written nothing, so for those it is a query
+// by the Id just after the INSERT. Either way it is read on the driver the
+// INSERT ran on, so inside a transaction it is that transaction's row. Its
+// edges are not loaded.
+//
+// `v` is written only by a Save that wrote the row: one that failed, or that a
+// hook answered without writing, leaves it as it was.
+func (_c *ThingCreate) Stored(v **Thing) *ThingCreate {
+	_c.stored = v
+	return _c
+}
+
 // ThingCreateBulk is the builder for creating many Thing entities in bulk.
 type ThingCreateBulk struct {
 	config
@@ -189,6 +230,7 @@ func (_c *ThingCreateBulk) Save(ctx context.Context) ([]*Thing, error) {
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*ThingMutation)
 				if !ok {

@@ -63,6 +63,11 @@ func ValidColumn(column string) bool {
 	return false
 }
 
+var (
+	// DefaultDomain holds the default value on creation for the "domain" field.
+	DefaultDomain uint32
+)
+
 // OrderOption defines the ordering options for the Audit queries.
 type OrderOption func(*sql.Selector)
 

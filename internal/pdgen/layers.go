@@ -695,7 +695,20 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("")
 	g.P("type recorder struct{}")
 	g.P("")
-	g.P("var _ ", p.Bare.Ident("Recorder"), " = recorder{}")
+	g.P("var _ ", p.Bare.Ident("SnapshotRecorder"), " = recorder{}")
+	g.P("")
+	// Every write's, since every write is a line of the trail: the method is
+	// not asked about. An Erase is handed no row whatever is asked -- what an
+	// erase leaves is not a row the write read -- and [subject] reads one for
+	// it, as it did for every write before this.
+	g.P("// Snapshots asks for the row each write leaves, which is what a line of the")
+	g.P("// trail holds. The write has it already: an Add's INSERT reads it back, in")
+	g.P("// the same statement where the dialect has RETURNING, and a Patch or an")
+	g.P("// Apply reads it back to answer with. So Record reads it again only for an")
+	g.P("// Erase, which hands none over.")
+	g.P("func (recorder) Snapshots(string) ", p.Bare.Ident("SnapshotOptions"), " {")
+	g.P("	return ", p.Bare.Ident("SnapshotOptions"), "{Value: true}")
+	g.P("}")
 	g.P("")
 	g.P("// Record writes what happened. It runs inside the write's transaction, so an")
 	g.P("// error here takes the write with it -- which is the answer wanted: a write")
@@ -725,9 +738,10 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("	}")
 	g.P("")
 	g.P("	// The row this happened to, which is where the object's tenant and the")
-	g.P("	// state after the write both come from. Absent for an Erase that took")
-	g.P("	// the row with it; see [subject].")
-	g.P("	tenant, value, err := subject(ctx, s, v.Object)")
+	g.P("	// state after the write both come from: the one the write handed over,")
+	g.P("	// or read when it handed none. Absent for an Erase that took the row")
+	g.P("	// with it; see [subject].")
+	g.P("	tenant, value, err := subject(ctx, s, v.Object, c.Value)")
 	g.P("	if err != nil {")
 	g.P("		return err")
 	g.P("	}")
@@ -1003,9 +1017,16 @@ func emitViaAbsent(g *protogen.GeneratedFile, via string) {
 //
 // # And what it costs
 //
-// One read per write, and a second for an entity that reaches its tenant
-// through another row. That is the price of a trail two parties can read, and
-// it is paid on the write path rather than on the read path.
+// Nothing for the row of an Add, a Patch or an Apply: the write hands it over
+// (see [recorder.Snapshots] in what this emits), an Add's INSERT having read
+// it back in the same statement where the dialect has RETURNING. What is read
+// here is an Erase's row, which no write hands over, and a second row for an
+// entity that reaches its tenant through another one. That is the price of a
+// trail two parties can read, and it is paid on the write path rather than on
+// the read path.
+//
+// It was a read for every write, which on Rove's import was nine statements of
+// every row's thirty-seven (lesomnus/payday#84).
 //
 // A soft Erase is one read more -- the bare Get misses the row it has just
 // stamped and the erased-inclusive read follows it -- and a soft Erase of an
@@ -1031,8 +1052,11 @@ func emitViaAbsent(g *protogen.GeneratedFile, via string) {
 func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	g.P("// subject is the tenant of the row `key` names and the row itself, and the")
 	g.P("// nil identifier when there is no such row any more.")
+	g.P("//")
+	g.P("// The row is `image` when the write handed one over -- see")
+	g.P("// [recorder.Snapshots] -- and is read when it did not.")
 	g.P("func subject(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
-		", key ", pkgPdid.Ident("Id"), ") (", pkgUuid.Ident("UUID"), ", []byte, error) {")
+		", key ", pkgPdid.Ident("Id"), ", image ", pkgProto.Ident("Message"), ") (", pkgUuid.Ident("UUID"), ", []byte, error) {")
 	g.P("	switch key.Domain() {")
 
 	for _, v := range s.Sorted() {
@@ -1042,9 +1066,17 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		}
 
 		g.P("	case ", v.GoName(), "Domain:")
-		g.P("		row, err := s.", v.GoName(), "().Get(ctx, ", root.Ident(v.GoName()+"GetRequest_builder"), "{")
-		g.P("			Ref: ", root.Ident(v.GoName()+"Ref_builder"), "{Id: key.Bytes()}.Build(),")
-		g.P("		}.Build())")
+		// The row the write handed over is the one a Get here would answer
+		// with: read in the write's own transaction, just after it, its edges
+		// as keys -- by the INSERT itself, for an Add. Taking it is a statement
+		// fewer for every write, and on an import of a few thousand rows that
+		// was a few thousand round trips.
+		g.P("		row, handed := image.(*", root.Ident(v.GoName()), ")")
+		g.P("		if !handed {")
+		g.P("			var err error")
+		g.P("			row, err = s.", v.GoName(), "().Get(ctx, ", root.Ident(v.GoName()+"GetRequest_builder"), "{")
+		g.P("				Ref: ", root.Ident(v.GoName()+"Ref_builder"), "{Id: key.Bytes()}.Build(),")
+		g.P("			}.Build())")
 		if !v.IsHard {
 			// Keyed off the entity's shape and not the action, because the
 			// action answers less. This server has no scope and runs inside
@@ -1055,22 +1087,23 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 			// write recorded through an erased parent, whose trail row
 			// belongs to that parent's tenant no less than an Erase's does,
 			// and no test of the action would have caught it.
-			g.P("		// Erased softly is still a row; see [erased", v.GoName(), "].")
-			g.P("		if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
-			g.P("			row, err = erased", v.GoName(), "(ctx, s, key)")
-			g.P("		}")
+			g.P("			// Erased softly is still a row; see [erased", v.GoName(), "].")
+			g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
+			g.P("				row, err = erased", v.GoName(), "(ctx, s, key)")
+			g.P("			}")
 		}
-		g.P("		if err != nil {")
-		g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
+		g.P("			if err != nil {")
+		g.P("				if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
 		// Empty rather than nil: the trail's `value` is NOT NULL, and a nil
 		// `[]byte` is SQL NULL to pgx while the SQLite driver makes it an empty
 		// blob. A row that is really gone is the one case that reaches here --
 		// erased hard, for a soft entity nothing at all -- and it is exactly
 		// the case no SQLite test can fail on.
-		g.P("				return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
-		g.P("			}")
+		g.P("					return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
+		g.P("				}")
 		g.P("")
-		g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
+		g.P("				return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
+		g.P("			}")
 		g.P("		}")
 		g.P("")
 		if len(v.Secrets) > 0 {
@@ -1089,8 +1122,14 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 			// deployment whose `CredentialService` is unregistered and closed
 			// precisely so that it could not be read.
 			//
-			// The row is the one `Get` just answered with and nothing else
-			// holds it, so clearing in place costs no copy.
+			// A row `Get` just answered with is nobody else's, and is cleared
+			// in place. One the write handed over is every recorder's -- a
+			// `Recorders` hands each of them the same one -- and is cleared on
+			// a copy, or the next recorder would be told of a row without the
+			// column it wrote.
+			g.P("		if handed {")
+			g.P("			row = ", pkgProto.Ident("Clone"), "(row).(*", root.Ident(v.GoName()), ")")
+			g.P("		}")
 			g.P("		hide", v.GoName(), "(row)")
 			g.P("")
 		}
@@ -1126,7 +1165,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("		}")
 			g.P("")
-			g.P("		k, _, err := subject(ctx, s, up)")
+			g.P("		k, _, err := subject(ctx, s, up, nil)")
 			g.P("		if err != nil {")
 			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("		}")

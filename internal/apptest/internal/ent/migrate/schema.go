@@ -55,7 +55,7 @@ var (
 		{Name: "actor_tenant_id", Type: field.TypeUuid},
 		{Name: "value", Type: field.TypeBytes},
 		{Name: "counterpart_tenant_id", Type: field.TypeUuid, Nullable: true},
-		{Name: "domain", Type: field.TypeUint32, Nullable: true},
+		{Name: "domain", Type: field.TypeUint32, Nullable: true, Default: 0},
 	}
 	// AuditTable holds the schema information for the "audit" table.
 	AuditTable = &schema.Table{
@@ -386,7 +386,7 @@ var (
 	ThingColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "alias", Type: field.TypeString},
-		{Name: "description", Type: field.TypeString, Nullable: true},
+		{Name: "description", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 	}

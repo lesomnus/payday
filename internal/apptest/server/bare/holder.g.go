@@ -11,7 +11,6 @@ import (
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
-	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
@@ -89,8 +88,6 @@ func (s HolderServiceServer) narrow(ctx context.Context, p predicate.Holder) (pr
 
 func (s HolderServiceServer) snapshot(ctx context.Context, p predicate.Holder, lock bool) (*ent.Holder, error) {
 	q := s.Db.Holder.Query().Where(p)
-	q.WithTenant(func(q *ent.TenantQuery) { q.Select(tenant.FieldId) })
-	q.WithRobot(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
 	q.Modify(func(q *sql.Selector) {
 		if lock && s.Db.Dialect() != dialect.SQLite {
 			q.ForUpdate()
@@ -195,6 +192,11 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 		}
 	}
 
+	var stored *ent.Holder
+	if snapshotOptions(s.Rec, apptest.HolderService_Add_FullMethodName).Value {
+		q.Stored(&stored)
+	}
+
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -213,11 +215,7 @@ func (s HolderServiceServer) Add(ctx context.Context, req *apptest.HolderAddRequ
 		d(v)
 	}
 	var value *apptest.Holder
-	if snapshotOptions(s.Rec, apptest.HolderService_Add_FullMethodName).Value {
-		stored, err := st.snapshot(ctx, holder.IdEQ(u.Id), false)
-		if err != nil {
-			return nil, err
-		}
+	if stored != nil {
 		value = s.image(stored.Proto())
 	}
 	if err := record(ctx, s.Rec, st.Db, Change{
@@ -325,9 +323,6 @@ func HolderSelect(q *ent.HolderQuery, m *apptest.HolderSelect) {
 func HolderSelectInit(q *ent.HolderQuery, m *apptest.HolderSelect) {
 	if m != nil {
 		HolderSelect(q, m)
-	} else {
-		q.WithTenant(selectTenantKey)
-		q.WithRobot(selectRobotKey)
 	}
 }
 

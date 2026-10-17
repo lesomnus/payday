@@ -26,7 +26,7 @@ require (
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/miekg/pkcs11 v1.1.2
 	github.com/ncruces/go-sqlite3 v0.35.3
-	github.com/protobuf-orm/ent v0.0.0-20261010083551-979efcebf01a
+	github.com/protobuf-orm/ent v0.0.0-20261017174831-c860506f95cd
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20260906212449-04c0cd58f10a
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/otel v1.47.0
@@ -72,7 +72,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/protobuf-orm/protobuf-merge v0.0.0-20261009205601-8502fad9e678 // indirect
-	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20261014175108-4698cb92c79b // indirect
+	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20261017175217-c90b390a6470 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20261010065542-f9ac5b66df3e // indirect
 	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20260906213434-46a5916d5339 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

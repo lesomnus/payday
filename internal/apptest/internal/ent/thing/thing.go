@@ -42,6 +42,11 @@ func ValidColumn(column string) bool {
 	return false
 }
 
+var (
+	// DefaultDescription holds the default value on creation for the "description" field.
+	DefaultDescription string
+)
+
 // OrderOption defines the ordering options for the Thing queries.
 type OrderOption func(*sql.Selector)
 

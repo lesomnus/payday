@@ -15,7 +15,6 @@ import (
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
-	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
@@ -94,7 +93,6 @@ func (s CellServiceServer) narrow(ctx context.Context, p predicate.Cell) (predic
 
 func (s CellServiceServer) snapshot(ctx context.Context, p predicate.Cell, lock bool) (*ent.Cell, error) {
 	q := s.Db.Cell.Query().Where(p)
-	q.WithTenant(func(q *ent.TenantQuery) { q.Select(tenant.FieldId) })
 	q.Modify(func(q *sql.Selector) {
 		if lock && s.Db.Dialect() != dialect.SQLite {
 			q.ForUpdate()
@@ -159,6 +157,11 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	}
 	q.SetAlias(req.GetAlias())
 
+	var stored *ent.Cell
+	if snapshotOptions(s.Rec, apptest.CellService_Add_FullMethodName).Value {
+		q.Stored(&stored)
+	}
+
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -177,11 +180,7 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 		d(v)
 	}
 	var value *apptest.Cell
-	if snapshotOptions(s.Rec, apptest.CellService_Add_FullMethodName).Value {
-		stored, err := st.snapshot(ctx, cell.IdEQ(u.Id), false)
-		if err != nil {
-			return nil, err
-		}
+	if stored != nil {
 		value = s.image(stored.Proto())
 	}
 	if err := record(ctx, s.Rec, st.Db, Change{
@@ -259,8 +258,6 @@ func CellSelect(q *ent.CellQuery, m *apptest.CellSelect) {
 func CellSelectInit(q *ent.CellQuery, m *apptest.CellSelect) {
 	if m != nil {
 		CellSelect(q, m)
-	} else {
-		q.WithTenant(selectTenantKey)
 	}
 }
 
@@ -605,9 +602,6 @@ func (s RobotServiceServer) narrow(ctx context.Context, p predicate.Robot) (pred
 
 func (s RobotServiceServer) snapshot(ctx context.Context, p predicate.Robot, lock bool) (*ent.Robot, error) {
 	q := s.Db.Robot.Query().Where(p)
-	q.WithTenant(func(q *ent.TenantQuery) { q.Select(tenant.FieldId) })
-	q.WithThing(func(q *ent.ThingQuery) { q.Select(thing.FieldId) })
-	q.WithCell(func(q *ent.CellQuery) { q.Select(cell.FieldId) })
 	q.Modify(func(q *sql.Selector) {
 		if lock && s.Db.Dialect() != dialect.SQLite {
 			q.ForUpdate()
@@ -734,6 +728,11 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		q.SetDateCreated(st.now())
 	}
 
+	var stored *ent.Robot
+	if snapshotOptions(s.Rec, apptest.RobotService_Add_FullMethodName).Value {
+		q.Stored(&stored)
+	}
+
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -752,11 +751,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		d(v)
 	}
 	var value *apptest.Robot
-	if snapshotOptions(s.Rec, apptest.RobotService_Add_FullMethodName).Value {
-		stored, err := st.snapshot(ctx, robot.IdEQ(u.Id), false)
-		if err != nil {
-			return nil, err
-		}
+	if stored != nil {
 		value = s.image(stored.Proto())
 	}
 	if err := record(ctx, s.Rec, st.Db, Change{
@@ -858,10 +853,6 @@ func RobotSelect(q *ent.RobotQuery, m *apptest.RobotSelect) {
 func RobotSelectInit(q *ent.RobotQuery, m *apptest.RobotSelect) {
 	if m != nil {
 		RobotSelect(q, m)
-	} else {
-		q.WithTenant(selectTenantKey)
-		q.WithThing(selectThingKey)
-		q.WithCell(selectCellKey)
 	}
 }
 
@@ -1232,8 +1223,6 @@ func (s PairingServiceServer) narrow(ctx context.Context, p predicate.Pairing) (
 
 func (s PairingServiceServer) snapshot(ctx context.Context, p predicate.Pairing, lock bool) (*ent.Pairing, error) {
 	q := s.Db.Pairing.Query().Where(p)
-	q.WithLead(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
-	q.WithFollow(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
 	q.Modify(func(q *sql.Selector) {
 		if lock && s.Db.Dialect() != dialect.SQLite {
 			q.ForUpdate()
@@ -1324,6 +1313,11 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 		q.SetDateCreated(st.now())
 	}
 
+	var stored *ent.Pairing
+	if snapshotOptions(s.Rec, apptest.PairingService_Add_FullMethodName).Value {
+		q.Stored(&stored)
+	}
+
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -1342,11 +1336,7 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 		d(v)
 	}
 	var value *apptest.Pairing
-	if snapshotOptions(s.Rec, apptest.PairingService_Add_FullMethodName).Value {
-		stored, err := st.snapshot(ctx, pairing.IdEQ(u.Id), false)
-		if err != nil {
-			return nil, err
-		}
+	if stored != nil {
 		value = s.image(stored.Proto())
 	}
 	if err := record(ctx, s.Rec, st.Db, Change{
@@ -1428,9 +1418,6 @@ func PairingSelect(q *ent.PairingQuery, m *apptest.PairingSelect) {
 func PairingSelectInit(q *ent.PairingQuery, m *apptest.PairingSelect) {
 	if m != nil {
 		PairingSelect(q, m)
-	} else {
-		q.WithLead(selectRobotKey)
-		q.WithFollow(selectRobotKey)
 	}
 }
 
@@ -1755,7 +1742,6 @@ func (s JointServiceServer) narrow(ctx context.Context, p predicate.Joint) (pred
 
 func (s JointServiceServer) snapshot(ctx context.Context, p predicate.Joint, lock bool) (*ent.Joint, error) {
 	q := s.Db.Joint.Query().Where(p)
-	q.WithRobot(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
 	q.Modify(func(q *sql.Selector) {
 		if lock && s.Db.Dialect() != dialect.SQLite {
 			q.ForUpdate()
@@ -1822,6 +1808,11 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	}
 	q.SetAlias(req.GetAlias())
 
+	var stored *ent.Joint
+	if snapshotOptions(s.Rec, apptest.JointService_Add_FullMethodName).Value {
+		q.Stored(&stored)
+	}
+
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -1840,11 +1831,7 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 		d(v)
 	}
 	var value *apptest.Joint
-	if snapshotOptions(s.Rec, apptest.JointService_Add_FullMethodName).Value {
-		stored, err := st.snapshot(ctx, joint.IdEQ(u.Id), false)
-		if err != nil {
-			return nil, err
-		}
+	if stored != nil {
 		value = s.image(stored.Proto())
 	}
 	if err := record(ctx, s.Rec, st.Db, Change{
@@ -1923,8 +1910,6 @@ func JointSelect(q *ent.JointQuery, m *apptest.JointSelect) {
 func JointSelectInit(q *ent.JointQuery, m *apptest.JointSelect) {
 	if m != nil {
 		JointSelect(q, m)
-	} else {
-		q.WithRobot(selectRobotKey)
 	}
 }
 
@@ -2309,6 +2294,11 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	}
 	q.SetAlias(req.GetAlias())
 
+	var stored *ent.Fleet
+	if snapshotOptions(s.Rec, apptest.FleetService_Add_FullMethodName).Value {
+		q.Stored(&stored)
+	}
+
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -2324,11 +2314,7 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 
 	v := u.Proto()
 	var value *apptest.Fleet
-	if snapshotOptions(s.Rec, apptest.FleetService_Add_FullMethodName).Value {
-		stored, err := st.snapshot(ctx, fleet.IdEQ(u.Id), false)
-		if err != nil {
-			return nil, err
-		}
+	if stored != nil {
 		value = s.image(stored.Proto())
 	}
 	if err := record(ctx, s.Rec, st.Db, Change{
@@ -2401,7 +2387,6 @@ func FleetSelect(q *ent.FleetQuery, m *apptest.FleetSelect) {
 func FleetSelectInit(q *ent.FleetQuery, m *apptest.FleetSelect) {
 	if m != nil {
 		FleetSelect(q, m)
-	} else {
 	}
 }
 
@@ -2744,7 +2729,6 @@ func (s ReadingServiceServer) narrow(ctx context.Context, p predicate.Reading) (
 
 func (s ReadingServiceServer) snapshot(ctx context.Context, p predicate.Reading, lock bool) (*ent.Reading, error) {
 	q := s.Db.Reading.Query().Where(p)
-	q.WithRobot(func(q *ent.RobotQuery) { q.Select(robot.FieldId) })
 	q.Modify(func(q *sql.Selector) {
 		if lock && s.Db.Dialect() != dialect.SQLite {
 			q.ForUpdate()
@@ -2819,6 +2803,11 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 		q.SetDateCreated(st.now())
 	}
 
+	var stored *ent.Reading
+	if snapshotOptions(s.Rec, apptest.ReadingService_Add_FullMethodName).Value {
+		q.Stored(&stored)
+	}
+
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -2837,11 +2826,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 		d(v)
 	}
 	var value *apptest.Reading
-	if snapshotOptions(s.Rec, apptest.ReadingService_Add_FullMethodName).Value {
-		stored, err := st.snapshot(ctx, reading.IdEQ(u.Id), false)
-		if err != nil {
-			return nil, err
-		}
+	if stored != nil {
 		value = s.image(stored.Proto())
 	}
 	if err := record(ctx, s.Rec, st.Db, Change{
@@ -2923,8 +2908,6 @@ func ReadingSelect(q *ent.ReadingQuery, m *apptest.ReadingSelect) {
 func ReadingSelectInit(q *ent.ReadingQuery, m *apptest.ReadingSelect) {
 	if m != nil {
 		ReadingSelect(q, m)
-	} else {
-		q.WithRobot(selectRobotKey)
 	}
 }
 
