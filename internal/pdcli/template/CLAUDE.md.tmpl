@@ -88,6 +88,11 @@ such method.
 **Do not edit the generated `Gate`.** Your authorization goes in your own layer
 in front of it, or into the `gate.Policy` you inject.
 
+A rule about the row an `Add` writes goes on the server behind with
+`bare.<E>WithAddRule` rather than in an `Add` you override: an entity that asks
+for `AddMany` is written by both, and an override says it of one
+(`docs/guide/server.md` in payday).
+
 ## Two servers, and one of them has no wall
 
 `cmd/serve.go` builds `Walled` and `Ungated`. `Ungated` is not a privilege — it
@@ -100,8 +105,8 @@ flag to check; the wiring is the whole of the control.
 ## The wall is a predicate, so it only applies to reads
 
 `Add` has no row to narrow, so it is gated in the generated `Gate` layer
-instead. If you are reasoning about who may create something, that is where it
-is decided.
+instead -- and an `AddMany`, each item as an `Add`. If you are reasoning about
+who may create something, that is where it is decided.
 
 ## Running
 

@@ -3,6 +3,43 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An entity may ask for AddMany
+
+**Applies if** you generate with `pd gen`. Regenerate; nothing else has to
+change -- unless a layer of yours overrides `Add` on an entity you then give
+an `AddMany`.
+
+- **`rpc: {crud: true, add: {many: {}}}` adds `AddMany`** (#84): up to a
+  thousand of an entity's `Add` requests in one call, written in one
+  transaction, a statement for every few hundred rows. Each item is the row an
+  `Add` of it would have been, and each is asked what an `Add` is: the gate,
+  the Sink's name and tenancy, the Secret layer on the answer, a line of the
+  trail. It comes from protobuf-orm (`orm`'s `rpc.add.many`), so the module's
+  pin moves: `buf dep update` once `buf.build/orm/orm` has it.
+- **What payday's layers say of an `Add` is a rule now**, put on the server
+  behind with `bare.<E>WithAddRule`, so an `AddMany` asks it of every item. The
+  generated `gate<E>.Add` and `sink<E>.Add` are `admit`; an `Add` that tries
+  again for a name it made up is still an override, and so is an `AddMany`'s.
+- **A layer of yours that overrides `Add`** says nothing about an `AddMany`,
+  which comes from the server behind it. Write the rule with
+  `bare.<E>WithAddRule` ([server guide](guide/server.md#a-rule-about-the-rows-an-add-writes)),
+  or override `AddMany` as well.
+- **Alone, an `AddMany` asks of each item**, as that many `Add`s would, and
+  writes the trail a row at a time; in a transaction begun with
+  `dialect.BeginTx` -- an operation of your own, or a batch -- each row named
+  is asked once and the trail is written by the commit. A batch counts it as
+  one operation.
+- **An `AddMany` tries again for a name it made up**, as an `Add` does, but as
+  a whole call, so a call of many is refused more often than an `Add` of one;
+  see `slug.Tries`.
+- **`pd gen` refuses an RPC `protoc-gen-orm-service` writes that payday does
+  not know**: a layer inherits what it does not override, so a new one would
+  have been served past the gate. And none of payday's own entities may ask for
+  `AddMany`.
+- **An entity with both an alias and a `stamp:` or `agrees:`** had only its
+  name decided at `Add`, and its tenancy never asked. Both are now. Nothing
+  this repository knows of declared both.
+
 ## A transaction remembers what it asked without being told to
 
 **Applies if** a layer of yours calls `seen.For`. Delete the line and

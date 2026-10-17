@@ -140,6 +140,41 @@ func (s coreRobot) Add(ctx context.Context, req *api.RobotAddRequest) (*api.Robo
 }
 ```
 
+### A rule about the rows an `Add` writes
+
+An entity that asks for `AddMany` (`rpc: {crud: true, add: {many: {}}}`) is
+written to by two RPCs, and the `Add` above is said of one of them. Its
+`AddMany` comes from the server behind, past the override, and writes the rows
+the rule was there to refuse.
+
+So a rule about the row an `Add` writes is better written as the rule the
+generated server takes, which is asked of an `Add` and of every item of an
+`AddMany` -- refused naming the item, with nothing of the call written:
+
+```go
+func (s Core) Robot() api.RobotServiceServer {
+	v := coreRobot{s, s.Next().Robot()}
+	v.RobotServiceServer = bare.RobotWithAddRule(v.RobotServiceServer, v.admit)
+	return v
+}
+
+// admit is what this layer says about a robot an Add would write: the request
+// to write it with, or a refusal.
+func (s coreRobot) admit(ctx context.Context, req *api.RobotAddRequest) (*api.RobotAddRequest, error) {
+	// your rule. A request this changes is a copy: proto.CloneOf(req).
+	return req, nil
+}
+```
+
+What reaches the server behind is one call either way, so an `AddMany` stays
+one `AddMany`. It is how payday's own layers say theirs: the gate, and the
+names and tenancy the Sink gives a row.
+
+A rule is a thing to say about one row. An `Add` that does more than that --
+writes the rows below as well -- stays an override, and an `AddMany` beside it
+is then a second road to the same act that writes none of them: override it
+too, or do not ask for one.
+
 ### Completing a generated verb
 
 The `Add` above guards: it checks a rule and passes the same write on. A layer

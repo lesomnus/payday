@@ -268,7 +268,9 @@ Six things are worth knowing before relying on it:
   write is then sent again, so queue writes that mean the same thing twice. An
   `Add` with an identifier minted here is the case payday knows: the second one
   is refused `AlreadyExists`, and the queue reads the row by that identifier
-  instead. An `Erase` is the same write by nature. A `Patch` that names the
+  instead. An `AddMany` whose every item carries one is that many of them, read
+  back a row at a time; one with an item that does not is a refusal that
+  stands. An `Erase` is the same write by nature. A `Patch` that names the
   version it read is refused the second time, which is correct about the row
   and misleading about the write.
 - **Whether the server takes that identifier is your app's call.** `pd.Minter()`
@@ -288,7 +290,8 @@ Six things are worth knowing before relying on it:
   losing them matters.
 - **A secret is not kept.** A write that sets a field declared
   `(payday.field).secret` is refused by `send` before anything is stored, because
-  waiting would keep the secret on disk in the clear. Send it with `call`. A
+  waiting would keep the secret on disk in the clear -- and so is an `AddMany`
+  one of whose items does. Send it with `call`. A
   secret in a batch or in an RPC of your own, such as a password, is not visible
   here, so keep those out of `send` yourself.
 - **One tab sends.** Two tabs on one store both hold its queue. The one sending
