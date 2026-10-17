@@ -461,6 +461,17 @@ func (s *Schema) check() error {
 					u.FullName(), v.FullName(), v.Own)
 			}
 			byOwn[v.Own] = v
+
+			// What payday says about a write to one of its own -- that no
+			// tenant is put up from inside one, who a holder may be added
+			// to, that the trail is written by what happened -- it says of
+			// the RPCs it knows, and it was written one row at a time.
+			if v.Rpcs().HasAddMany() {
+				return fmt.Errorf(
+					"%s asks for AddMany, and it is payday's: its rules are written for an Add "+
+						"of one row, and none of payday's entities has one -- an app adds "+
+						"them one at a time, or in a batch", v.FullName())
+			}
 		}
 		if u, ok := byDomain[v.Domain]; ok {
 			return fmt.Errorf(

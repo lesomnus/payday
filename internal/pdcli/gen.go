@@ -330,6 +330,12 @@ func (r run) walk(ctx context.Context, used map[string]bool) error {
 			return err
 		}
 
+		// What the generator wrote, before anything is merged onto it: the
+		// RPCs here are its own and nobody else's.
+		if err := checkContractRpcs(b, rel); err != nil {
+			return err
+		}
+
 		for _, overlay := range []string{
 			filepath.Join(r.pd, stem+"_svc.pd.proto"),
 			r.Layout.Path(DirExt, stem+"_svc.ext.proto"),
@@ -429,6 +435,62 @@ func CheckOverlayFile(p string) error {
 
 // rpcName finds the rpcs a proto file declares.
 var rpcName = regexp.MustCompile(`(?m)^\s*rpc\s+(\w+)\s*\(`)
+
+// ormRpcs is every RPC of a contract `protoc-gen-orm-service` writes that
+// payday knows what to put in front of.
+var ormRpcs = map[string]bool{
+	"Add":     true,
+	"AddMany": true,
+	"Get":     true,
+	"Patch":   true,
+	"Apply":   true,
+	"Erase":   true,
+}
+
+// checkContractRpcs refuses a contract with an RPC that payday's layers were
+// not written for.
+//
+// # Why nothing else does
+//
+// What payday puts in front of an entity's server is written RPC by RPC,
+// because what it says depends on what the RPC does: the gate refuses a row
+// put into a tenant the caller cannot see, the Sink names a row and stamps its
+// tenant, the Secret layer clears what a row is never answered with, and the
+// trail is refused a row written by hand. A layer overrides the RPCs it knows,
+// and an RPC it does not know it inherits from the server behind -- the
+// generated one, with none of the above in front of it.
+//
+// So an RPC the generator learns before payday does is served past every
+// rule, it compiles, and every test of the RPCs payday does know goes on
+// passing. AddMany was the first: written as an Add the gate overrides, its
+// rule would have been asked of an Add and not of an AddMany, which writes the
+// same rows.
+//
+// # What it compares against
+//
+// The contract as the generator wrote it, before payday's half and the app's
+// are merged onto it -- so what is asked is about the generator alone, and an
+// app's own RPCs, which are the domain layer's to serve, are not refused.
+func checkContractRpcs(b []byte, contract string) error {
+	for _, m := range rpcName.FindAllSubmatch(b, -1) {
+		name := string(m[1])
+		if ormRpcs[name] {
+			continue
+		}
+
+		return fmt.Errorf(
+			"%s: protoc-gen-orm-service wrote `rpc %s`, which this payday does not know.\n\n"+
+				"What payday puts in front of an entity -- the gate, the Sink, the Secret layer, "+
+				"the trail -- is written for the RPCs it knows, and one it does not would be "+
+				"served with none of it: no row refused for a tenant the caller cannot see, "+
+				"nothing named or stamped, no secret cleared. Nothing would say so.\n\n"+
+				"Use the protoc-gen-orm-service this payday is released with -- the one its "+
+				"go.mod names -- or a payday that knows %s",
+			contract, name, name)
+	}
+
+	return nil
+}
 
 // checkOverlayRpcs refuses an overlay that redeclares an rpc already in the
 // contract.
