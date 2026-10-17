@@ -426,7 +426,7 @@ way through is no finding, and no clock is asked. What it finds:
 | `reordered` | a checkpoint that names one after it as the one before |
 | `unkept` | a checkpoint the database numbered, or the one after it names, that the store does not keep |
 | `behind` | a checkpoint the store keeps that the database never numbered: a database restored from before it, until an operator accepts |
-| `emptied` | a manifest with no rows beside an archive with checkpoints |
+| `emptied` | a manifest with no rows beside checkpoints of an archive that held something (a checkpoint over nothing, a deployment's first pass, is not one) |
 
 Every pass starts with the light half — names and labels, no bytes read —
 settles what was in flight, says what it found (a warning, and a receipt,

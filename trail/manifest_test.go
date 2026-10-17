@@ -827,6 +827,26 @@ func TestACheckpointIsWhatTheArchiveHeld(t *testing.T) {
 		x.True(v.Ok(), "%v", v.Findings)
 	})
 
+	t.Run("a deployment with nothing to archive yet", func(t *testing.T) {
+		x := require.New(t)
+
+		// Its first pass takes a checkpoint over nothing, and that is no
+		// emptied manifest: it is the one the checkpoint says (#81).
+		s := &fakeStore{}
+		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Signer: newKey(t)}
+		p.Pass(ctx, s)
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.True(v.Ok(), "%v", v.Findings)
+
+		p.Pass(ctx, s)
+		v, err = p.Verify(ctx, s, true)
+		x.NoError(err)
+		x.True(v.Ok(), "%v", v.Findings)
+		x.Equal(2, v.Checkpoint)
+	})
+
 	t.Run("a manifest emptied beside checkpoints", func(t *testing.T) {
 		x := require.New(t)
 		s, p, _ := manifestedArchive(t, nil)

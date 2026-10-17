@@ -702,7 +702,8 @@ type Finding struct {
 	//	reordered    a checkpoint that names one after it as the one before
 	//	unkept       a checkpoint the database numbered, or the one after it
 	//	             names, that the store does not keep
-	//	emptied      a manifest with no rows beside an archive with checkpoints
+	//	emptied      a manifest with no rows beside checkpoints of an archive
+	//	             that held something
 	//	behind       a checkpoint the store keeps that the database never numbered
 	//
 	// A finding about a row is under the blob it is the row of. One about a
@@ -1458,6 +1459,18 @@ func (ch chain) numbered(k int) []stored {
 	return slices.DeleteFunc(ch.ordered(), func(v stored) bool { return v.c.K != k })
 }
 
+// holding is how many of the checkpoints kept say the archive held a blob.
+func (ch chain) holding() int {
+	n := 0
+	for _, v := range ch.kept {
+		if v.c.Count > 0 {
+			n++
+		}
+	}
+
+	return n
+}
+
 // newest is the highest number a checkpoint kept says it is, and zero for
 // none.
 func (ch chain) newest() int {
@@ -1563,8 +1576,11 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out
 		return nil, 0, fmt.Errorf("the manifest: %w", err)
 	}
 
-	if n := len(ch.labelled); empty && n > 0 {
-		fs = append(fs, Finding{Kind: "emptied", Note: fmt.Sprintf("the archive has %d checkpoints and the manifest no rows: a database restored from before them?", n)})
+	// A checkpoint over nothing is what an empty manifest adds up to: the
+	// first pass of a deployment with nothing to archive yet takes one, and
+	// the second would otherwise find its own deployment emptied (#81).
+	if n := ch.holding(); empty && n > 0 {
+		fs = append(fs, Finding{Kind: "emptied", Note: fmt.Sprintf("the archive has %d checkpoints of blobs it held, and the manifest no rows: a database restored from before them?", n)})
 	}
 	if k := ch.newest(); k > latest {
 		fs = append(fs, Finding{Kind: "behind", Checkpoint: k, Note: fmt.Sprintf("the database has numbered %d checkpoints, and the store keeps one numbered %d: a database restored from before it", latest, k)})
