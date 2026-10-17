@@ -123,7 +123,12 @@ message Robot {
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
   option (orm.message) = {
-    rpc: {crud: true}
+    // And AddMany, which is here to be asked what an Add is: every item
+    // through the gate and the Sink, each answer through the Secret layer.
+    rpc: {
+      crud: true
+      add: {many: {}}
+    }
     indexes: [
       // The order a List reads in. Without it a page scans the table and sorts
       // what it finds, which is a cost on the one table that grows -- and it is
@@ -335,7 +340,12 @@ message Reading {
   }];
 
   option (orm.message) = {
-    rpc: {crud: true}
+    // And AddMany, which readings are the case for: they arrive many at a
+    // time, and each is stamped as an Add of it would be.
+    rpc: {
+      crud: true
+      add: {many: {}}
+    }
     indexes: [
       // The stamp leads, which is what makes it worth keeping: the wall on this
       // entity is `tenant_id IN (...)`, and a predicate on the first column of

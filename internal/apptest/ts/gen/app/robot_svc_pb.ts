@@ -6,7 +6,7 @@ import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobu
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { TenantRef, TenantSelect } from "./payday/tenant_svc_pb.js";
 import { file_app_payday_tenant_svc_g } from "./payday/tenant_svc_pb.js";
-import type { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, Robot, RobotSchema } from "./robot_pb.js";
+import type { CellSchema, FleetSchema, JointSchema, PairingSchema, Reading, ReadingSchema, Robot, RobotSchema } from "./robot_pb.js";
 import { file_app_robot } from "./robot_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot_svc.g.proto.
  */
 export const file_app_robot_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCJSCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5ImAKCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiEKBnRlbmFudBgCIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giIwoRQ2VsbEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIIoUCCg9Sb2JvdEFkZFJlcXVlc3QSCgoCaWQYASABKAwSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIfCgV0aGluZxgeIAEoCzIQLnNoYXJlZC5UaGluZ1JlZhIaCgRjZWxsGAMgASgLMgwuYXBwLkNlbGxSZWYSFAoFYWxpYXMYBCABKAlCBaoBAggCEg4KBnNlY3JldBgIIAEoDBIxCg1kYXRlX2F0dGVzdGVkGB8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIk8KD1JvYm90R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0IkQKCFJvYm90UmVmEgwKAmlkGAEgASgMSAASIwoEc2x1ZxgEIAEoCzITLmFwcC5Sb2JvdFJlZkJ5U2x1Z0gAQgUKA2tleSI/Cg5Sb2JvdFJlZkJ5U2x1ZxINCgVhbGlhcxgEIAEoCRIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmIvcBCgtSb2JvdFNlbGVjdBILCgNhbGwYASABKAgSIQoGdGVuYW50GAIgASgLMhEuYXBwLlRlbmFudFNlbGVjdBIiCgV0aGluZxgeIAEoCzITLnNoYXJlZC5UaGluZ1NlbGVjdBIdCgRjZWxsGAMgASgLMg8uYXBwLkNlbGxTZWxlY3QSDQoFYWxpYXMYBCABKAgSDgoGc2VjcmV0GAggASgIEhUKDWRhdGVfYXR0ZXN0ZWQYHyABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCCLPAgoRUm9ib3RQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEh8KBXRoaW5nGDwgASgLMhAuc2hhcmVkLlRoaW5nUmVmEhIKCnRoaW5nX251bGwYPSABKAgSGgoEY2VsbBgGIAEoCzIMLmFwcC5DZWxsUmVmEhEKCWNlbGxfbnVsbBgHIAEoCBINCgVhbGlhcxgIIAEoCRIOCgZzZWNyZXQYECABKAwSMQoNZGF0ZV9hdHRlc3RlZBg+IAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV9hdHRlc3RlZF9udWxsGD8gASgIEjAKDGRhdGVfdXBkYXRlZBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV91cGRhdGVkX2ZvcmNlGBsgASgIIkwKEVJvYm90QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiQKElJvYm90RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgiowEKEFJvYm90TGlzdFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5Sb2JvdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAISFgoHcmV2ZXJzZRgEIAEoCEIFqgECCAISKQoFb3JkZXIYBSABKA4yEy5hcHAuUm9ib3RMaXN0T3JkZXJCBaoBAggCIkMKEVJvYm90TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90EhMKBG5leHQYAiABKAlCBaoBAggCImoKC1JvYm90RmlsdGVyEhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh8KBXRoaW5nGAMgASgLMhAuc2hhcmVkLlRoaW5nUmVmIlQKEVJvYm90V2F0Y2hSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuUm9ib3RGaWx0ZXISHAoNc2tpcF9zbmFwc2hvdBgCIAEoCEIFqgECCAIiOAoSUm9ib3RXYXRjaFJlc3BvbnNlEiIKBWl0ZW1zGAEgAygLMhMuYXBwLlJvYm90V2F0Y2hJdGVtIk4KDlJvYm90V2F0Y2hJdGVtEgoKAmlkGAEgASgMEhkKBXZhbHVlGAIgASgLMgouYXBwLlJvYm90EhUKBmFjdGlvbhgDIAEoCUIFqgECCAIiSAoQUm9ib3RNb3ZlUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSGAoCdG8YAiABKAsyDC5hcHAuQ2VsbFJlZiKNAQoRUGFpcmluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSGwoEbGVhZBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIdCgZmb2xsb3cYCCABKAsyDS5hcHAuUm9ib3RSZWYSMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJVChFQYWlyaW5nR2V0UmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUGFpcmluZ1JlZhIiCgZzZWxlY3QYAiABKAsyEi5hcHAuUGFpcmluZ1NlbGVjdCIhCgpQYWlyaW5nUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5InQKDVBhaXJpbmdTZWxlY3QSCwoDYWxsGAEgASgIEh4KBGxlYWQYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSIAoGZm9sbG93GAggASgLMhAuYXBwLlJvYm90U2VsZWN0EhQKDGRhdGVfY3JlYXRlZBgPIAEoCCIzChNQYWlyaW5nUGF0Y2hSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5QYWlyaW5nUmVmIlAKE1BhaXJpbmdBcHBseVJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlBhaXJpbmdSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCImChRQYWlyaW5nRXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgiUQoPSm9pbnRBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhwKBXJvYm90GAIgASgLMg0uYXBwLlJvYm90UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJPCg9Kb2ludEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5Kb2ludFNlbGVjdCIfCghKb2ludFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJfCgtKb2ludFNlbGVjdBILCgNhbGwYASABKAgSHwoFcm9ib3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRSm9pbnRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEg0KBWFsaWFzGAggASgJIkwKEUpvaW50QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiQKEkpvaW50RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgiMwoPRmxlZXRBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJPCg9GbGVldEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkZsZWV0UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5GbGVldFNlbGVjdCIwCghGbGVldFJlZhIMCgJpZBgBIAEoDEgAEg8KBWFsaWFzGAQgASgJSABCBQoDa2V5Ij4KC0ZsZWV0U2VsZWN0EgsKA2FsbBgBIAEoCBINCgVhbGlhcxgEIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCCI+ChFGbGVldFBhdGNoUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSDQoFYWxpYXMYCCABKAkiTAoRRmxlZXRBcHBseVJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkZsZWV0UmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giJAoSRmxlZXRFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCKhAQoRUmVhZGluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSHAoFcm9ib3QYAiABKAsyDS5hcHAuUm9ib3RSZWYSGAoJdGVuYW50X2lkGAkgASgMQgWqAQIIAhIWCgdjZWxzaXVzGAggASgBQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIlUKEVJlYWRpbmdHZXRSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEiIKBnNlbGVjdBgCIAEoCzISLmFwcC5SZWFkaW5nU2VsZWN0IiEKClJlYWRpbmdSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkidwoNUmVhZGluZ1NlbGVjdBILCgNhbGwYASABKAgSHwoFcm9ib3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSEQoJdGVuYW50X2lkGAkgASgIEg8KB2NlbHNpdXMYCCABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIlcKE1JlYWRpbmdQYXRjaFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSEQoJdGVuYW50X2lkGBIgASgMEg8KB2NlbHNpdXMYECABKAEiUAoTUmVhZGluZ0FwcGx5UmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUmVhZGluZ1JlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiYKFFJlYWRpbmdFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCpvCg5Sb2JvdExpc3RPcmRlchIgChxST0JPVF9MSVNUX09SREVSX1VOU1BFQ0lGSUVEEAASGgoWUk9CT1RfTElTVF9PUkRFUl9BTElBUxABEh8KG1JPQk9UX0xJU1RfT1JERVJfQUxJQVNfREVTQxACMuABCgtDZWxsU2VydmljZRIlCgNBZGQSEy5hcHAuQ2VsbEFkZFJlcXVlc3QaCS5hcHAuQ2VsbBIlCgNHZXQSEy5hcHAuQ2VsbEdldFJlcXVlc3QaCS5hcHAuQ2VsbBIpCgVQYXRjaBIVLmFwcC5DZWxsUGF0Y2hSZXF1ZXN0GgkuYXBwLkNlbGwSKQoFQXBwbHkSFS5hcHAuQ2VsbEFwcGx5UmVxdWVzdBoJLmFwcC5DZWxsEi0KBUVyYXNlEgwuYXBwLkNlbGxSZWYaFi5hcHAuQ2VsbEVyYXNlUmVzcG9uc2UyiQMKDFJvYm90U2VydmljZRInCgNBZGQSFC5hcHAuUm9ib3RBZGRSZXF1ZXN0GgouYXBwLlJvYm90EicKA0dldBIULmFwcC5Sb2JvdEdldFJlcXVlc3QaCi5hcHAuUm9ib3QSKwoFUGF0Y2gSFi5hcHAuUm9ib3RQYXRjaFJlcXVlc3QaCi5hcHAuUm9ib3QSKwoFQXBwbHkSFi5hcHAuUm9ib3RBcHBseVJlcXVlc3QaCi5hcHAuUm9ib3QSLwoFRXJhc2USDS5hcHAuUm9ib3RSZWYaFy5hcHAuUm9ib3RFcmFzZVJlc3BvbnNlEjUKBExpc3QSFS5hcHAuUm9ib3RMaXN0UmVxdWVzdBoWLmFwcC5Sb2JvdExpc3RSZXNwb25zZRI6CgVXYXRjaBIWLmFwcC5Sb2JvdFdhdGNoUmVxdWVzdBoXLmFwcC5Sb2JvdFdhdGNoUmVzcG9uc2UwARIpCgRNb3ZlEhUuYXBwLlJvYm90TW92ZVJlcXVlc3QaCi5hcHAuUm9ib3QygQIKDlBhaXJpbmdTZXJ2aWNlEisKA0FkZBIWLmFwcC5QYWlyaW5nQWRkUmVxdWVzdBoMLmFwcC5QYWlyaW5nEisKA0dldBIWLmFwcC5QYWlyaW5nR2V0UmVxdWVzdBoMLmFwcC5QYWlyaW5nEi8KBVBhdGNoEhguYXBwLlBhaXJpbmdQYXRjaFJlcXVlc3QaDC5hcHAuUGFpcmluZxIvCgVBcHBseRIYLmFwcC5QYWlyaW5nQXBwbHlSZXF1ZXN0GgwuYXBwLlBhaXJpbmcSMwoFRXJhc2USDy5hcHAuUGFpcmluZ1JlZhoZLmFwcC5QYWlyaW5nRXJhc2VSZXNwb25zZTLrAQoMSm9pbnRTZXJ2aWNlEicKA0FkZBIULmFwcC5Kb2ludEFkZFJlcXVlc3QaCi5hcHAuSm9pbnQSJwoDR2V0EhQuYXBwLkpvaW50R2V0UmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVQYXRjaBIWLmFwcC5Kb2ludFBhdGNoUmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVBcHBseRIWLmFwcC5Kb2ludEFwcGx5UmVxdWVzdBoKLmFwcC5Kb2ludBIvCgVFcmFzZRINLmFwcC5Kb2ludFJlZhoXLmFwcC5Kb2ludEVyYXNlUmVzcG9uc2Uy6wEKDEZsZWV0U2VydmljZRInCgNBZGQSFC5hcHAuRmxlZXRBZGRSZXF1ZXN0GgouYXBwLkZsZWV0EicKA0dldBIULmFwcC5GbGVldEdldFJlcXVlc3QaCi5hcHAuRmxlZXQSKwoFUGF0Y2gSFi5hcHAuRmxlZXRQYXRjaFJlcXVlc3QaCi5hcHAuRmxlZXQSKwoFQXBwbHkSFi5hcHAuRmxlZXRBcHBseVJlcXVlc3QaCi5hcHAuRmxlZXQSLwoFRXJhc2USDS5hcHAuRmxlZXRSZWYaFy5hcHAuRmxlZXRFcmFzZVJlc3BvbnNlMoECCg5SZWFkaW5nU2VydmljZRIrCgNBZGQSFi5hcHAuUmVhZGluZ0FkZFJlcXVlc3QaDC5hcHAuUmVhZGluZxIrCgNHZXQSFi5hcHAuUmVhZGluZ0dldFJlcXVlc3QaDC5hcHAuUmVhZGluZxIvCgVQYXRjaBIYLmFwcC5SZWFkaW5nUGF0Y2hSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSLwoFQXBwbHkSGC5hcHAuUmVhZGluZ0FwcGx5UmVxdWVzdBoMLmFwcC5SZWFkaW5nEjMKBUVyYXNlEg8uYXBwLlJlYWRpbmdSZWYaGS5hcHAuUmVhZGluZ0VyYXNlUmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_tenant_svc_g, file_app_robot, file_google_protobuf_timestamp, file_patch_patch, file_shared_thing_svc_g]);
+  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCJSCg5DZWxsQWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCIeCgdDZWxsUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5ImAKCkNlbGxTZWxlY3QSCwoDYWxsGAEgASgIEiEKBnRlbmFudBgCIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPAoQQ2VsbFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhINCgVhbGlhcxgIIAEoCSJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giIwoRQ2VsbEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIIoUCCg9Sb2JvdEFkZFJlcXVlc3QSCgoCaWQYASABKAwSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIfCgV0aGluZxgeIAEoCzIQLnNoYXJlZC5UaGluZ1JlZhIaCgRjZWxsGAMgASgLMgwuYXBwLkNlbGxSZWYSFAoFYWxpYXMYBCABKAlCBaoBAggCEg4KBnNlY3JldBgIIAEoDBIxCg1kYXRlX2F0dGVzdGVkGB8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjoKE1JvYm90QWRkTWFueVJlcXVlc3QSIwoFaXRlbXMYASADKAsyFC5hcHAuUm9ib3RBZGRSZXF1ZXN0IjEKFFJvYm90QWRkTWFueVJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90Ik8KD1JvYm90R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0IkQKCFJvYm90UmVmEgwKAmlkGAEgASgMSAASIwoEc2x1ZxgEIAEoCzITLmFwcC5Sb2JvdFJlZkJ5U2x1Z0gAQgUKA2tleSI/Cg5Sb2JvdFJlZkJ5U2x1ZxINCgVhbGlhcxgEIAEoCRIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmIvcBCgtSb2JvdFNlbGVjdBILCgNhbGwYASABKAgSIQoGdGVuYW50GAIgASgLMhEuYXBwLlRlbmFudFNlbGVjdBIiCgV0aGluZxgeIAEoCzITLnNoYXJlZC5UaGluZ1NlbGVjdBIdCgRjZWxsGAMgASgLMg8uYXBwLkNlbGxTZWxlY3QSDQoFYWxpYXMYBCABKAgSDgoGc2VjcmV0GAggASgIEhUKDWRhdGVfYXR0ZXN0ZWQYHyABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCCLPAgoRUm9ib3RQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEh8KBXRoaW5nGDwgASgLMhAuc2hhcmVkLlRoaW5nUmVmEhIKCnRoaW5nX251bGwYPSABKAgSGgoEY2VsbBgGIAEoCzIMLmFwcC5DZWxsUmVmEhEKCWNlbGxfbnVsbBgHIAEoCBINCgVhbGlhcxgIIAEoCRIOCgZzZWNyZXQYECABKAwSMQoNZGF0ZV9hdHRlc3RlZBg+IAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV9hdHRlc3RlZF9udWxsGD8gASgIEjAKDGRhdGVfdXBkYXRlZBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV91cGRhdGVkX2ZvcmNlGBsgASgIIkwKEVJvYm90QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiQKElJvYm90RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgiowEKEFJvYm90TGlzdFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5Sb2JvdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAISFgoHcmV2ZXJzZRgEIAEoCEIFqgECCAISKQoFb3JkZXIYBSABKA4yEy5hcHAuUm9ib3RMaXN0T3JkZXJCBaoBAggCIkMKEVJvYm90TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90EhMKBG5leHQYAiABKAlCBaoBAggCImoKC1JvYm90RmlsdGVyEhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh8KBXRoaW5nGAMgASgLMhAuc2hhcmVkLlRoaW5nUmVmIlQKEVJvYm90V2F0Y2hSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuUm9ib3RGaWx0ZXISHAoNc2tpcF9zbmFwc2hvdBgCIAEoCEIFqgECCAIiOAoSUm9ib3RXYXRjaFJlc3BvbnNlEiIKBWl0ZW1zGAEgAygLMhMuYXBwLlJvYm90V2F0Y2hJdGVtIk4KDlJvYm90V2F0Y2hJdGVtEgoKAmlkGAEgASgMEhkKBXZhbHVlGAIgASgLMgouYXBwLlJvYm90EhUKBmFjdGlvbhgDIAEoCUIFqgECCAIiSAoQUm9ib3RNb3ZlUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSGAoCdG8YAiABKAsyDC5hcHAuQ2VsbFJlZiKNAQoRUGFpcmluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSGwoEbGVhZBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIdCgZmb2xsb3cYCCABKAsyDS5hcHAuUm9ib3RSZWYSMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJVChFQYWlyaW5nR2V0UmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUGFpcmluZ1JlZhIiCgZzZWxlY3QYAiABKAsyEi5hcHAuUGFpcmluZ1NlbGVjdCIhCgpQYWlyaW5nUmVmEgwKAmlkGAEgASgMSABCBQoDa2V5InQKDVBhaXJpbmdTZWxlY3QSCwoDYWxsGAEgASgIEh4KBGxlYWQYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSIAoGZm9sbG93GAggASgLMhAuYXBwLlJvYm90U2VsZWN0EhQKDGRhdGVfY3JlYXRlZBgPIAEoCCIzChNQYWlyaW5nUGF0Y2hSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5QYWlyaW5nUmVmIlAKE1BhaXJpbmdBcHBseVJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlBhaXJpbmdSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCImChRQYWlyaW5nRXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgiUQoPSm9pbnRBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhwKBXJvYm90GAIgASgLMg0uYXBwLlJvYm90UmVmEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJPCg9Kb2ludEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5Kb2ludFNlbGVjdCIfCghKb2ludFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJfCgtKb2ludFNlbGVjdBILCgNhbGwYASABKAgSHwoFcm9ib3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRSm9pbnRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEg0KBWFsaWFzGAggASgJIkwKEUpvaW50QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiQKEkpvaW50RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgiMwoPRmxlZXRBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEhQKBWFsaWFzGAQgASgJQgWqAQIIAiJPCg9GbGVldEdldFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkZsZWV0UmVmEiAKBnNlbGVjdBgCIAEoCzIQLmFwcC5GbGVldFNlbGVjdCIwCghGbGVldFJlZhIMCgJpZBgBIAEoDEgAEg8KBWFsaWFzGAQgASgJSABCBQoDa2V5Ij4KC0ZsZWV0U2VsZWN0EgsKA2FsbBgBIAEoCBINCgVhbGlhcxgEIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCCI+ChFGbGVldFBhdGNoUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSDQoFYWxpYXMYCCABKAkiTAoRRmxlZXRBcHBseVJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkZsZWV0UmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giJAoSRmxlZXRFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCKhAQoRUmVhZGluZ0FkZFJlcXVlc3QSCgoCaWQYASABKAwSHAoFcm9ib3QYAiABKAsyDS5hcHAuUm9ib3RSZWYSGAoJdGVuYW50X2lkGAkgASgMQgWqAQIIAhIWCgdjZWxzaXVzGAggASgBQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIj4KFVJlYWRpbmdBZGRNYW55UmVxdWVzdBIlCgVpdGVtcxgBIAMoCzIWLmFwcC5SZWFkaW5nQWRkUmVxdWVzdCI1ChZSZWFkaW5nQWRkTWFueVJlc3BvbnNlEhsKBWl0ZW1zGAEgAygLMgwuYXBwLlJlYWRpbmciVQoRUmVhZGluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlJlYWRpbmdTZWxlY3QiIQoKUmVhZGluZ1JlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSJ3Cg1SZWFkaW5nU2VsZWN0EgsKA2FsbBgBIAEoCBIfCgVyb2JvdBgCIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdBIRCgl0ZW5hbnRfaWQYCSABKAgSDwoHY2Vsc2l1cxgIIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgiVwoTUmVhZGluZ1BhdGNoUmVxdWVzdBIcCgNyZWYYASABKAsyDy5hcHAuUmVhZGluZ1JlZhIRCgl0ZW5hbnRfaWQYEiABKAwSDwoHY2Vsc2l1cxgQIAEoASJQChNSZWFkaW5nQXBwbHlSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giJgoUUmVhZGluZ0VyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIKm8KDlJvYm90TGlzdE9yZGVyEiAKHFJPQk9UX0xJU1RfT1JERVJfVU5TUEVDSUZJRUQQABIaChZST0JPVF9MSVNUX09SREVSX0FMSUFTEAESHwobUk9CT1RfTElTVF9PUkRFUl9BTElBU19ERVNDEAIy4AEKC0NlbGxTZXJ2aWNlEiUKA0FkZBITLmFwcC5DZWxsQWRkUmVxdWVzdBoJLmFwcC5DZWxsEiUKA0dldBITLmFwcC5DZWxsR2V0UmVxdWVzdBoJLmFwcC5DZWxsEikKBVBhdGNoEhUuYXBwLkNlbGxQYXRjaFJlcXVlc3QaCS5hcHAuQ2VsbBIpCgVBcHBseRIVLmFwcC5DZWxsQXBwbHlSZXF1ZXN0GgkuYXBwLkNlbGwSLQoFRXJhc2USDC5hcHAuQ2VsbFJlZhoWLmFwcC5DZWxsRXJhc2VSZXNwb25zZTLJAwoMUm9ib3RTZXJ2aWNlEicKA0FkZBIULmFwcC5Sb2JvdEFkZFJlcXVlc3QaCi5hcHAuUm9ib3QSPgoHQWRkTWFueRIYLmFwcC5Sb2JvdEFkZE1hbnlSZXF1ZXN0GhkuYXBwLlJvYm90QWRkTWFueVJlc3BvbnNlEicKA0dldBIULmFwcC5Sb2JvdEdldFJlcXVlc3QaCi5hcHAuUm9ib3QSKwoFUGF0Y2gSFi5hcHAuUm9ib3RQYXRjaFJlcXVlc3QaCi5hcHAuUm9ib3QSKwoFQXBwbHkSFi5hcHAuUm9ib3RBcHBseVJlcXVlc3QaCi5hcHAuUm9ib3QSLwoFRXJhc2USDS5hcHAuUm9ib3RSZWYaFy5hcHAuUm9ib3RFcmFzZVJlc3BvbnNlEjUKBExpc3QSFS5hcHAuUm9ib3RMaXN0UmVxdWVzdBoWLmFwcC5Sb2JvdExpc3RSZXNwb25zZRI6CgVXYXRjaBIWLmFwcC5Sb2JvdFdhdGNoUmVxdWVzdBoXLmFwcC5Sb2JvdFdhdGNoUmVzcG9uc2UwARIpCgRNb3ZlEhUuYXBwLlJvYm90TW92ZVJlcXVlc3QaCi5hcHAuUm9ib3QygQIKDlBhaXJpbmdTZXJ2aWNlEisKA0FkZBIWLmFwcC5QYWlyaW5nQWRkUmVxdWVzdBoMLmFwcC5QYWlyaW5nEisKA0dldBIWLmFwcC5QYWlyaW5nR2V0UmVxdWVzdBoMLmFwcC5QYWlyaW5nEi8KBVBhdGNoEhguYXBwLlBhaXJpbmdQYXRjaFJlcXVlc3QaDC5hcHAuUGFpcmluZxIvCgVBcHBseRIYLmFwcC5QYWlyaW5nQXBwbHlSZXF1ZXN0GgwuYXBwLlBhaXJpbmcSMwoFRXJhc2USDy5hcHAuUGFpcmluZ1JlZhoZLmFwcC5QYWlyaW5nRXJhc2VSZXNwb25zZTLrAQoMSm9pbnRTZXJ2aWNlEicKA0FkZBIULmFwcC5Kb2ludEFkZFJlcXVlc3QaCi5hcHAuSm9pbnQSJwoDR2V0EhQuYXBwLkpvaW50R2V0UmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVQYXRjaBIWLmFwcC5Kb2ludFBhdGNoUmVxdWVzdBoKLmFwcC5Kb2ludBIrCgVBcHBseRIWLmFwcC5Kb2ludEFwcGx5UmVxdWVzdBoKLmFwcC5Kb2ludBIvCgVFcmFzZRINLmFwcC5Kb2ludFJlZhoXLmFwcC5Kb2ludEVyYXNlUmVzcG9uc2Uy6wEKDEZsZWV0U2VydmljZRInCgNBZGQSFC5hcHAuRmxlZXRBZGRSZXF1ZXN0GgouYXBwLkZsZWV0EicKA0dldBIULmFwcC5GbGVldEdldFJlcXVlc3QaCi5hcHAuRmxlZXQSKwoFUGF0Y2gSFi5hcHAuRmxlZXRQYXRjaFJlcXVlc3QaCi5hcHAuRmxlZXQSKwoFQXBwbHkSFi5hcHAuRmxlZXRBcHBseVJlcXVlc3QaCi5hcHAuRmxlZXQSLwoFRXJhc2USDS5hcHAuRmxlZXRSZWYaFy5hcHAuRmxlZXRFcmFzZVJlc3BvbnNlMsUCCg5SZWFkaW5nU2VydmljZRIrCgNBZGQSFi5hcHAuUmVhZGluZ0FkZFJlcXVlc3QaDC5hcHAuUmVhZGluZxJCCgdBZGRNYW55EhouYXBwLlJlYWRpbmdBZGRNYW55UmVxdWVzdBobLmFwcC5SZWFkaW5nQWRkTWFueVJlc3BvbnNlEisKA0dldBIWLmFwcC5SZWFkaW5nR2V0UmVxdWVzdBoMLmFwcC5SZWFkaW5nEi8KBVBhdGNoEhguYXBwLlJlYWRpbmdQYXRjaFJlcXVlc3QaDC5hcHAuUmVhZGluZxIvCgVBcHBseRIYLmFwcC5SZWFkaW5nQXBwbHlSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSMwoFRXJhc2USDy5hcHAuUmVhZGluZ1JlZhoZLmFwcC5SZWFkaW5nRXJhc2VSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_tenant_svc_g, file_app_robot, file_google_protobuf_timestamp, file_patch_patch, file_shared_thing_svc_g]);
 
 /**
  * @generated from message app.CellAddRequest
@@ -246,6 +246,40 @@ export const RobotAddRequestSchema: GenMessage<RobotAddRequest> = /*@__PURE__*/
   messageDesc(file_app_robot_svc_g, 7);
 
 /**
+ * @generated from message app.RobotAddManyRequest
+ */
+export type RobotAddManyRequest = Message<"app.RobotAddManyRequest"> & {
+  /**
+   * @generated from field: repeated app.RobotAddRequest items = 1;
+   */
+  items: RobotAddRequest[];
+};
+
+/**
+ * Describes the message app.RobotAddManyRequest.
+ * Use `create(RobotAddManyRequestSchema)` to create a new message.
+ */
+export const RobotAddManyRequestSchema: GenMessage<RobotAddManyRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 8);
+
+/**
+ * @generated from message app.RobotAddManyResponse
+ */
+export type RobotAddManyResponse = Message<"app.RobotAddManyResponse"> & {
+  /**
+   * @generated from field: repeated app.Robot items = 1;
+   */
+  items: Robot[];
+};
+
+/**
+ * Describes the message app.RobotAddManyResponse.
+ * Use `create(RobotAddManyResponseSchema)` to create a new message.
+ */
+export const RobotAddManyResponseSchema: GenMessage<RobotAddManyResponse> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 9);
+
+/**
  * @generated from message app.RobotGetRequest
  */
 export type RobotGetRequest = Message<"app.RobotGetRequest"> & {
@@ -265,7 +299,7 @@ export type RobotGetRequest = Message<"app.RobotGetRequest"> & {
  * Use `create(RobotGetRequestSchema)` to create a new message.
  */
 export const RobotGetRequestSchema: GenMessage<RobotGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 8);
+  messageDesc(file_app_robot_svc_g, 10);
 
 /**
  * @generated from message app.RobotRef
@@ -294,7 +328,7 @@ export type RobotRef = Message<"app.RobotRef"> & {
  * Use `create(RobotRefSchema)` to create a new message.
  */
 export const RobotRefSchema: GenMessage<RobotRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 9);
+  messageDesc(file_app_robot_svc_g, 11);
 
 /**
  * @generated from message app.RobotRefBySlug
@@ -316,7 +350,7 @@ export type RobotRefBySlug = Message<"app.RobotRefBySlug"> & {
  * Use `create(RobotRefBySlugSchema)` to create a new message.
  */
 export const RobotRefBySlugSchema: GenMessage<RobotRefBySlug> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 10);
+  messageDesc(file_app_robot_svc_g, 12);
 
 /**
  * @generated from message app.RobotSelect
@@ -378,7 +412,7 @@ export type RobotSelect = Message<"app.RobotSelect"> & {
  * Use `create(RobotSelectSchema)` to create a new message.
  */
 export const RobotSelectSchema: GenMessage<RobotSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 11);
+  messageDesc(file_app_robot_svc_g, 13);
 
 /**
  * @generated from message app.RobotPatchRequest
@@ -474,7 +508,7 @@ export type RobotPatchRequest = Message<"app.RobotPatchRequest"> & {
  * Use `create(RobotPatchRequestSchema)` to create a new message.
  */
 export const RobotPatchRequestSchema: GenMessage<RobotPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 12);
+  messageDesc(file_app_robot_svc_g, 14);
 
 /**
  * @generated from message app.RobotApplyRequest
@@ -496,7 +530,7 @@ export type RobotApplyRequest = Message<"app.RobotApplyRequest"> & {
  * Use `create(RobotApplyRequestSchema)` to create a new message.
  */
 export const RobotApplyRequestSchema: GenMessage<RobotApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 13);
+  messageDesc(file_app_robot_svc_g, 15);
 
 /**
  * @generated from message app.RobotEraseResponse
@@ -519,7 +553,7 @@ export type RobotEraseResponse = Message<"app.RobotEraseResponse"> & {
  * Use `create(RobotEraseResponseSchema)` to create a new message.
  */
 export const RobotEraseResponseSchema: GenMessage<RobotEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 14);
+  messageDesc(file_app_robot_svc_g, 16);
 
 /**
  * @generated from message app.RobotListRequest
@@ -576,7 +610,7 @@ export type RobotListRequest = Message<"app.RobotListRequest"> & {
  * Use `create(RobotListRequestSchema)` to create a new message.
  */
 export const RobotListRequestSchema: GenMessage<RobotListRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 15);
+  messageDesc(file_app_robot_svc_g, 17);
 
 /**
  * @generated from message app.RobotListResponse
@@ -606,7 +640,7 @@ export type RobotListResponse = Message<"app.RobotListResponse"> & {
  * Use `create(RobotListResponseSchema)` to create a new message.
  */
 export const RobotListResponseSchema: GenMessage<RobotListResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 16);
+  messageDesc(file_app_robot_svc_g, 18);
 
 /**
  * @generated from message app.RobotFilter
@@ -633,7 +667,7 @@ export type RobotFilter = Message<"app.RobotFilter"> & {
  * Use `create(RobotFilterSchema)` to create a new message.
  */
 export const RobotFilterSchema: GenMessage<RobotFilter> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 17);
+  messageDesc(file_app_robot_svc_g, 19);
 
 /**
  * @generated from message app.RobotWatchRequest
@@ -669,7 +703,7 @@ export type RobotWatchRequest = Message<"app.RobotWatchRequest"> & {
  * Use `create(RobotWatchRequestSchema)` to create a new message.
  */
 export const RobotWatchRequestSchema: GenMessage<RobotWatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 18);
+  messageDesc(file_app_robot_svc_g, 20);
 
 /**
  * @generated from message app.RobotWatchResponse
@@ -688,7 +722,7 @@ export type RobotWatchResponse = Message<"app.RobotWatchResponse"> & {
  * Use `create(RobotWatchResponseSchema)` to create a new message.
  */
 export const RobotWatchResponseSchema: GenMessage<RobotWatchResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 19);
+  messageDesc(file_app_robot_svc_g, 21);
 
 /**
  * @generated from message app.RobotWatchItem
@@ -735,7 +769,7 @@ export type RobotWatchItem = Message<"app.RobotWatchItem"> & {
  * Use `create(RobotWatchItemSchema)` to create a new message.
  */
 export const RobotWatchItemSchema: GenMessage<RobotWatchItem> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 20);
+  messageDesc(file_app_robot_svc_g, 22);
 
 /**
  * @generated from message app.RobotMoveRequest
@@ -768,7 +802,7 @@ export type RobotMoveRequest = Message<"app.RobotMoveRequest"> & {
  * Use `create(RobotMoveRequestSchema)` to create a new message.
  */
 export const RobotMoveRequestSchema: GenMessage<RobotMoveRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 21);
+  messageDesc(file_app_robot_svc_g, 23);
 
 /**
  * @generated from message app.PairingAddRequest
@@ -800,7 +834,7 @@ export type PairingAddRequest = Message<"app.PairingAddRequest"> & {
  * Use `create(PairingAddRequestSchema)` to create a new message.
  */
 export const PairingAddRequestSchema: GenMessage<PairingAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 22);
+  messageDesc(file_app_robot_svc_g, 24);
 
 /**
  * @generated from message app.PairingGetRequest
@@ -822,7 +856,7 @@ export type PairingGetRequest = Message<"app.PairingGetRequest"> & {
  * Use `create(PairingGetRequestSchema)` to create a new message.
  */
 export const PairingGetRequestSchema: GenMessage<PairingGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 23);
+  messageDesc(file_app_robot_svc_g, 25);
 
 /**
  * @generated from message app.PairingRef
@@ -845,7 +879,7 @@ export type PairingRef = Message<"app.PairingRef"> & {
  * Use `create(PairingRefSchema)` to create a new message.
  */
 export const PairingRefSchema: GenMessage<PairingRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 24);
+  messageDesc(file_app_robot_svc_g, 26);
 
 /**
  * @generated from message app.PairingSelect
@@ -877,7 +911,7 @@ export type PairingSelect = Message<"app.PairingSelect"> & {
  * Use `create(PairingSelectSchema)` to create a new message.
  */
 export const PairingSelectSchema: GenMessage<PairingSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 25);
+  messageDesc(file_app_robot_svc_g, 27);
 
 /**
  * @generated from message app.PairingPatchRequest
@@ -894,7 +928,7 @@ export type PairingPatchRequest = Message<"app.PairingPatchRequest"> & {
  * Use `create(PairingPatchRequestSchema)` to create a new message.
  */
 export const PairingPatchRequestSchema: GenMessage<PairingPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 26);
+  messageDesc(file_app_robot_svc_g, 28);
 
 /**
  * @generated from message app.PairingApplyRequest
@@ -916,7 +950,7 @@ export type PairingApplyRequest = Message<"app.PairingApplyRequest"> & {
  * Use `create(PairingApplyRequestSchema)` to create a new message.
  */
 export const PairingApplyRequestSchema: GenMessage<PairingApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 27);
+  messageDesc(file_app_robot_svc_g, 29);
 
 /**
  * @generated from message app.PairingEraseResponse
@@ -939,7 +973,7 @@ export type PairingEraseResponse = Message<"app.PairingEraseResponse"> & {
  * Use `create(PairingEraseResponseSchema)` to create a new message.
  */
 export const PairingEraseResponseSchema: GenMessage<PairingEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 28);
+  messageDesc(file_app_robot_svc_g, 30);
 
 /**
  * @generated from message app.JointAddRequest
@@ -966,7 +1000,7 @@ export type JointAddRequest = Message<"app.JointAddRequest"> & {
  * Use `create(JointAddRequestSchema)` to create a new message.
  */
 export const JointAddRequestSchema: GenMessage<JointAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 29);
+  messageDesc(file_app_robot_svc_g, 31);
 
 /**
  * @generated from message app.JointGetRequest
@@ -988,7 +1022,7 @@ export type JointGetRequest = Message<"app.JointGetRequest"> & {
  * Use `create(JointGetRequestSchema)` to create a new message.
  */
 export const JointGetRequestSchema: GenMessage<JointGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 30);
+  messageDesc(file_app_robot_svc_g, 32);
 
 /**
  * @generated from message app.JointRef
@@ -1011,7 +1045,7 @@ export type JointRef = Message<"app.JointRef"> & {
  * Use `create(JointRefSchema)` to create a new message.
  */
 export const JointRefSchema: GenMessage<JointRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 31);
+  messageDesc(file_app_robot_svc_g, 33);
 
 /**
  * @generated from message app.JointSelect
@@ -1043,7 +1077,7 @@ export type JointSelect = Message<"app.JointSelect"> & {
  * Use `create(JointSelectSchema)` to create a new message.
  */
 export const JointSelectSchema: GenMessage<JointSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 32);
+  messageDesc(file_app_robot_svc_g, 34);
 
 /**
  * @generated from message app.JointPatchRequest
@@ -1065,7 +1099,7 @@ export type JointPatchRequest = Message<"app.JointPatchRequest"> & {
  * Use `create(JointPatchRequestSchema)` to create a new message.
  */
 export const JointPatchRequestSchema: GenMessage<JointPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 33);
+  messageDesc(file_app_robot_svc_g, 35);
 
 /**
  * @generated from message app.JointApplyRequest
@@ -1087,7 +1121,7 @@ export type JointApplyRequest = Message<"app.JointApplyRequest"> & {
  * Use `create(JointApplyRequestSchema)` to create a new message.
  */
 export const JointApplyRequestSchema: GenMessage<JointApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 34);
+  messageDesc(file_app_robot_svc_g, 36);
 
 /**
  * @generated from message app.JointEraseResponse
@@ -1110,7 +1144,7 @@ export type JointEraseResponse = Message<"app.JointEraseResponse"> & {
  * Use `create(JointEraseResponseSchema)` to create a new message.
  */
 export const JointEraseResponseSchema: GenMessage<JointEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 35);
+  messageDesc(file_app_robot_svc_g, 37);
 
 /**
  * @generated from message app.FleetAddRequest
@@ -1132,7 +1166,7 @@ export type FleetAddRequest = Message<"app.FleetAddRequest"> & {
  * Use `create(FleetAddRequestSchema)` to create a new message.
  */
 export const FleetAddRequestSchema: GenMessage<FleetAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 36);
+  messageDesc(file_app_robot_svc_g, 38);
 
 /**
  * @generated from message app.FleetGetRequest
@@ -1154,7 +1188,7 @@ export type FleetGetRequest = Message<"app.FleetGetRequest"> & {
  * Use `create(FleetGetRequestSchema)` to create a new message.
  */
 export const FleetGetRequestSchema: GenMessage<FleetGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 37);
+  messageDesc(file_app_robot_svc_g, 39);
 
 /**
  * @generated from message app.FleetRef
@@ -1183,7 +1217,7 @@ export type FleetRef = Message<"app.FleetRef"> & {
  * Use `create(FleetRefSchema)` to create a new message.
  */
 export const FleetRefSchema: GenMessage<FleetRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 38);
+  messageDesc(file_app_robot_svc_g, 40);
 
 /**
  * @generated from message app.FleetSelect
@@ -1210,7 +1244,7 @@ export type FleetSelect = Message<"app.FleetSelect"> & {
  * Use `create(FleetSelectSchema)` to create a new message.
  */
 export const FleetSelectSchema: GenMessage<FleetSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 39);
+  messageDesc(file_app_robot_svc_g, 41);
 
 /**
  * @generated from message app.FleetPatchRequest
@@ -1232,7 +1266,7 @@ export type FleetPatchRequest = Message<"app.FleetPatchRequest"> & {
  * Use `create(FleetPatchRequestSchema)` to create a new message.
  */
 export const FleetPatchRequestSchema: GenMessage<FleetPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 40);
+  messageDesc(file_app_robot_svc_g, 42);
 
 /**
  * @generated from message app.FleetApplyRequest
@@ -1254,7 +1288,7 @@ export type FleetApplyRequest = Message<"app.FleetApplyRequest"> & {
  * Use `create(FleetApplyRequestSchema)` to create a new message.
  */
 export const FleetApplyRequestSchema: GenMessage<FleetApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 41);
+  messageDesc(file_app_robot_svc_g, 43);
 
 /**
  * @generated from message app.FleetEraseResponse
@@ -1277,7 +1311,7 @@ export type FleetEraseResponse = Message<"app.FleetEraseResponse"> & {
  * Use `create(FleetEraseResponseSchema)` to create a new message.
  */
 export const FleetEraseResponseSchema: GenMessage<FleetEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 42);
+  messageDesc(file_app_robot_svc_g, 44);
 
 /**
  * @generated from message app.ReadingAddRequest
@@ -1314,7 +1348,41 @@ export type ReadingAddRequest = Message<"app.ReadingAddRequest"> & {
  * Use `create(ReadingAddRequestSchema)` to create a new message.
  */
 export const ReadingAddRequestSchema: GenMessage<ReadingAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 43);
+  messageDesc(file_app_robot_svc_g, 45);
+
+/**
+ * @generated from message app.ReadingAddManyRequest
+ */
+export type ReadingAddManyRequest = Message<"app.ReadingAddManyRequest"> & {
+  /**
+   * @generated from field: repeated app.ReadingAddRequest items = 1;
+   */
+  items: ReadingAddRequest[];
+};
+
+/**
+ * Describes the message app.ReadingAddManyRequest.
+ * Use `create(ReadingAddManyRequestSchema)` to create a new message.
+ */
+export const ReadingAddManyRequestSchema: GenMessage<ReadingAddManyRequest> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 46);
+
+/**
+ * @generated from message app.ReadingAddManyResponse
+ */
+export type ReadingAddManyResponse = Message<"app.ReadingAddManyResponse"> & {
+  /**
+   * @generated from field: repeated app.Reading items = 1;
+   */
+  items: Reading[];
+};
+
+/**
+ * Describes the message app.ReadingAddManyResponse.
+ * Use `create(ReadingAddManyResponseSchema)` to create a new message.
+ */
+export const ReadingAddManyResponseSchema: GenMessage<ReadingAddManyResponse> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 47);
 
 /**
  * @generated from message app.ReadingGetRequest
@@ -1336,7 +1404,7 @@ export type ReadingGetRequest = Message<"app.ReadingGetRequest"> & {
  * Use `create(ReadingGetRequestSchema)` to create a new message.
  */
 export const ReadingGetRequestSchema: GenMessage<ReadingGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 44);
+  messageDesc(file_app_robot_svc_g, 48);
 
 /**
  * @generated from message app.ReadingRef
@@ -1359,7 +1427,7 @@ export type ReadingRef = Message<"app.ReadingRef"> & {
  * Use `create(ReadingRefSchema)` to create a new message.
  */
 export const ReadingRefSchema: GenMessage<ReadingRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 45);
+  messageDesc(file_app_robot_svc_g, 49);
 
 /**
  * @generated from message app.ReadingSelect
@@ -1396,7 +1464,7 @@ export type ReadingSelect = Message<"app.ReadingSelect"> & {
  * Use `create(ReadingSelectSchema)` to create a new message.
  */
 export const ReadingSelectSchema: GenMessage<ReadingSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 46);
+  messageDesc(file_app_robot_svc_g, 50);
 
 /**
  * @generated from message app.ReadingPatchRequest
@@ -1423,7 +1491,7 @@ export type ReadingPatchRequest = Message<"app.ReadingPatchRequest"> & {
  * Use `create(ReadingPatchRequestSchema)` to create a new message.
  */
 export const ReadingPatchRequestSchema: GenMessage<ReadingPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 47);
+  messageDesc(file_app_robot_svc_g, 51);
 
 /**
  * @generated from message app.ReadingApplyRequest
@@ -1445,7 +1513,7 @@ export type ReadingApplyRequest = Message<"app.ReadingApplyRequest"> & {
  * Use `create(ReadingApplyRequestSchema)` to create a new message.
  */
 export const ReadingApplyRequestSchema: GenMessage<ReadingApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 48);
+  messageDesc(file_app_robot_svc_g, 52);
 
 /**
  * @generated from message app.ReadingEraseResponse
@@ -1468,7 +1536,7 @@ export type ReadingEraseResponse = Message<"app.ReadingEraseResponse"> & {
  * Use `create(ReadingEraseResponseSchema)` to create a new message.
  */
 export const ReadingEraseResponseSchema: GenMessage<ReadingEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 49);
+  messageDesc(file_app_robot_svc_g, 53);
 
 /**
  * RobotListOrder names an order a list of Robots may be read in.
@@ -1570,6 +1638,16 @@ export const RobotService: GenService<{
     methodKind: "unary";
     input: typeof RobotAddRequestSchema;
     output: typeof RobotSchema;
+  },
+  /**
+   * AddMany creates up to 1000 new Robot rows in one call, all of them or none
+   *
+   * @generated from rpc app.RobotService.AddMany
+   */
+  addMany: {
+    methodKind: "unary";
+    input: typeof RobotAddManyRequestSchema;
+    output: typeof RobotAddManyResponseSchema;
   },
   /**
    * Get retrieves a Robot
@@ -1854,6 +1932,16 @@ export const ReadingService: GenService<{
     methodKind: "unary";
     input: typeof ReadingAddRequestSchema;
     output: typeof ReadingSchema;
+  },
+  /**
+   * AddMany creates up to 1000 new Reading rows in one call, all of them or none
+   *
+   * @generated from rpc app.ReadingService.AddMany
+   */
+  addMany: {
+    methodKind: "unary";
+    input: typeof ReadingAddManyRequestSchema;
+    output: typeof ReadingAddManyResponseSchema;
   },
   /**
    * Get retrieves a Reading

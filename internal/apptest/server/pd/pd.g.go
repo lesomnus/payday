@@ -1723,6 +1723,34 @@ func (s sinkRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 	}
 }
 
+// AddMany tries again, as Add does, when it made up the name of an item and
+// the call was refused AlreadyExists -- the whole call, with every name it
+// made up made up again, since a refusal of a statement does not say which
+// of its rows it was about. A name an item was given is the same each time.
+//
+// Every name made up is a chance to collide, so a call of many is refused
+// more often than an Add of one; `slug.Tries` says how much more.
+func (s sinkRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	// More than one try only when some item was named by nobody, and only
+	// in a transaction of its own; see Add.
+	tries := 1
+	if !s.joined {
+		for _, v := range req.GetItems() {
+			if v.GetAlias() == "" {
+				tries = slug.Tries
+				break
+			}
+		}
+	}
+
+	for try := 0; ; try++ {
+		res, err := s.RobotServiceServer.AddMany(ctx, req)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			return res, err
+		}
+	}
+}
+
 // Patch folds a name it was given, and says nothing about one it was not.
 //
 // The presence is the whole of the difference from [sinkRobot.Add]: a patch
@@ -4115,6 +4143,15 @@ func (s secretRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) 
 	return hideRobot(v), err
 }
 
+func (s secretRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	v, err := s.RobotServiceServer.AddMany(ctx, req)
+	for _, w := range v.GetItems() {
+		hideRobot(w)
+	}
+
+	return v, err
+}
+
 func (s secretRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*apptest.RobotListResponse, error) {
 	v, err := s.RobotServiceServer.List(ctx, req)
 	if v == nil {
@@ -4486,6 +4523,11 @@ func (s interceptRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (
 		apptest.RobotService_Add_FullMethodName, req, s.RobotServiceServer.Add)
 }
 
+func (s interceptRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_AddMany_FullMethodName, req, s.RobotServiceServer.AddMany)
+}
+
 func (s interceptRobot) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
 		apptest.RobotService_Get_FullMethodName, req, s.RobotServiceServer.Get)
@@ -4635,6 +4677,11 @@ type interceptReading struct {
 func (s interceptReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
 		apptest.ReadingService_Add_FullMethodName, req, s.ReadingServiceServer.Add)
+}
+
+func (s interceptReading) AddMany(ctx context.Context, req *apptest.ReadingAddManyRequest) (*apptest.ReadingAddManyResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
+		apptest.ReadingService_AddMany_FullMethodName, req, s.ReadingServiceServer.AddMany)
 }
 
 func (s interceptReading) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
@@ -5964,6 +6011,19 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 
 		return anypb.New(res)
 
+	case apptest.RobotService_AddMany_FullMethodName:
+		v := &apptest.RobotAddManyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Robot().AddMany(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
 	case apptest.RobotService_Get_FullMethodName:
 		v := &apptest.RobotGetRequest{}
 		if err := op.GetRequest().UnmarshalTo(v); err != nil {
@@ -6244,6 +6304,19 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 		}
 
 		res, err := s.Reading().Add(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.ReadingService_AddMany_FullMethodName:
+		v := &apptest.ReadingAddManyRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Reading().AddMany(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -6952,6 +7025,8 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.ReadingService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.ReadingService_AddMany_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.ReadingService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.ReadingService_Apply_FullMethodName:
@@ -6959,6 +7034,8 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 	case apptest.ReadingService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.RobotService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.RobotService_AddMany_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.RobotService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED

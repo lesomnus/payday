@@ -824,6 +824,97 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	return v, nil
 }
 
+// RobotAddManyMax is the most items one AddMany of Robot carries.
+const RobotAddManyMax = 1000
+
+// robotAddManyRows is how many rows one INSERT of an AddMany
+// writes: as many as fit in what a statement binds on every engine, and
+// no more than a few hundred.
+const robotAddManyRows = 500
+
+// AddMany adds every item as Add would add it, in one transaction: all of
+// the rows or none of them. The rows come back in the order of the items.
+//
+// An item that cannot be a row is refused naming the item, before anything
+// is written. A refusal by the database is the whole statement's, and does
+// not say which row it was about.
+func (s RobotServiceServer) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	items := req.GetItems()
+	if len(items) > RobotAddManyMax {
+		return nil, status.Errorf(codes.InvalidArgument, "items: at most %d in one call, and there are %d", RobotAddManyMax, len(items))
+	}
+	if len(items) == 0 {
+		return apptest.RobotAddManyResponse_builder{}.Build(), nil
+	}
+
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	images := snapshotOptions(s.Rec, apptest.RobotService_AddMany_FullMethodName).Value
+	qs := make([]*ent.RobotCreate, len(items))
+	dss := make([][]func(v *apptest.Robot), len(items))
+	stored := make([]*ent.Robot, len(items))
+	for i, item := range items {
+		q, ds, err := st.create(ctx, item)
+		if err != nil {
+			return nil, ItemError(i, err)
+		}
+		if images {
+			q.Stored(&stored[i])
+		}
+		qs[i], dss[i] = q, ds
+	}
+
+	us := make([]*ent.Robot, 0, len(qs))
+	for lo := 0; lo < len(qs); lo += robotAddManyRows {
+		vs, err := st.Db.Robot.CreateBulk(qs[lo:min(lo+robotAddManyRows, len(qs))]...).Save(ctx)
+		if err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Error(codes.AlreadyExists, "Robot already exists")
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Error(codes.NotFound, "Robot: referenced entity not found")
+				}
+			}
+			return nil, err
+		}
+		us = append(us, vs...)
+	}
+
+	out := make([]*apptest.Robot, len(us))
+	for i, u := range us {
+		v := u.Proto()
+		for _, d := range dss[i] {
+			d(v)
+		}
+		out[i] = v
+
+		var value *apptest.Robot
+		if stored[i] != nil {
+			value = s.image(stored[i].Proto())
+		}
+		if err := record(ctx, s.Rec, st.Db, Change{
+			By:    apptest.RobotService_AddMany_FullMethodName,
+			Key:   u.Id,
+			Value: value,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return apptest.RobotAddManyResponse_builder{Items: out}.Build(), nil
+}
+
 // RobotAddRule is what a layer in front says about one row an Add of Robot
 // would write: the request to write it with -- the one it was handed, or a
 // copy it changed -- or a refusal. Nil is the request it was handed.
@@ -854,6 +945,26 @@ func (s robotAddRuled) Add(ctx context.Context, req *apptest.RobotAddRequest) (*
 		r = req
 	}
 	return s.RobotServiceServer.Add(ctx, r)
+}
+
+func (s robotAddRuled) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	items := req.GetItems()
+	if len(items) > RobotAddManyMax {
+		return nil, status.Errorf(codes.InvalidArgument, "items: at most %d in one call, and there are %d", RobotAddManyMax, len(items))
+	}
+
+	rs := make([]*apptest.RobotAddRequest, len(items))
+	for i, item := range items {
+		r, err := s.rule(ctx, item)
+		if err != nil {
+			return nil, ItemError(i, err)
+		}
+		if r == nil {
+			r = item
+		}
+		rs[i] = r
+	}
+	return s.RobotServiceServer.AddMany(ctx, apptest.RobotAddManyRequest_builder{Items: rs}.Build())
 }
 
 func (s RobotServiceServer) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
@@ -3079,6 +3190,97 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	return v, nil
 }
 
+// ReadingAddManyMax is the most items one AddMany of Reading carries.
+const ReadingAddManyMax = 1000
+
+// readingAddManyRows is how many rows one INSERT of an AddMany
+// writes: as many as fit in what a statement binds on every engine, and
+// no more than a few hundred.
+const readingAddManyRows = 500
+
+// AddMany adds every item as Add would add it, in one transaction: all of
+// the rows or none of them. The rows come back in the order of the items.
+//
+// An item that cannot be a row is refused naming the item, before anything
+// is written. A refusal by the database is the whole statement's, and does
+// not say which row it was about.
+func (s ReadingServiceServer) AddMany(ctx context.Context, req *apptest.ReadingAddManyRequest) (*apptest.ReadingAddManyResponse, error) {
+	items := req.GetItems()
+	if len(items) > ReadingAddManyMax {
+		return nil, status.Errorf(codes.InvalidArgument, "items: at most %d in one call, and there are %d", ReadingAddManyMax, len(items))
+	}
+	if len(items) == 0 {
+		return apptest.ReadingAddManyResponse_builder{}.Build(), nil
+	}
+
+	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	st := s
+	st.Db = tx.Db
+
+	images := snapshotOptions(s.Rec, apptest.ReadingService_AddMany_FullMethodName).Value
+	qs := make([]*ent.ReadingCreate, len(items))
+	dss := make([][]func(v *apptest.Reading), len(items))
+	stored := make([]*ent.Reading, len(items))
+	for i, item := range items {
+		q, ds, err := st.create(ctx, item)
+		if err != nil {
+			return nil, ItemError(i, err)
+		}
+		if images {
+			q.Stored(&stored[i])
+		}
+		qs[i], dss[i] = q, ds
+	}
+
+	us := make([]*ent.Reading, 0, len(qs))
+	for lo := 0; lo < len(qs); lo += readingAddManyRows {
+		vs, err := st.Db.Reading.CreateBulk(qs[lo:min(lo+readingAddManyRows, len(qs))]...).Save(ctx)
+		if err != nil {
+			if err, ok := err.(*ent.ConstraintError); ok {
+				if sqlgraph.IsUniqueConstraintError(err) {
+					return nil, status.Error(codes.AlreadyExists, "Reading already exists")
+				}
+				if sqlgraph.IsForeignKeyConstraintError(err) {
+					return nil, status.Error(codes.NotFound, "Reading: referenced entity not found")
+				}
+			}
+			return nil, err
+		}
+		us = append(us, vs...)
+	}
+
+	out := make([]*apptest.Reading, len(us))
+	for i, u := range us {
+		v := u.Proto()
+		for _, d := range dss[i] {
+			d(v)
+		}
+		out[i] = v
+
+		var value *apptest.Reading
+		if stored[i] != nil {
+			value = s.image(stored[i].Proto())
+		}
+		if err := record(ctx, s.Rec, st.Db, Change{
+			By:    apptest.ReadingService_AddMany_FullMethodName,
+			Key:   u.Id,
+			Value: value,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return apptest.ReadingAddManyResponse_builder{Items: out}.Build(), nil
+}
+
 // ReadingAddRule is what a layer in front says about one row an Add of Reading
 // would write: the request to write it with -- the one it was handed, or a
 // copy it changed -- or a refusal. Nil is the request it was handed.
@@ -3109,6 +3311,26 @@ func (s readingAddRuled) Add(ctx context.Context, req *apptest.ReadingAddRequest
 		r = req
 	}
 	return s.ReadingServiceServer.Add(ctx, r)
+}
+
+func (s readingAddRuled) AddMany(ctx context.Context, req *apptest.ReadingAddManyRequest) (*apptest.ReadingAddManyResponse, error) {
+	items := req.GetItems()
+	if len(items) > ReadingAddManyMax {
+		return nil, status.Errorf(codes.InvalidArgument, "items: at most %d in one call, and there are %d", ReadingAddManyMax, len(items))
+	}
+
+	rs := make([]*apptest.ReadingAddRequest, len(items))
+	for i, item := range items {
+		r, err := s.rule(ctx, item)
+		if err != nil {
+			return nil, ItemError(i, err)
+		}
+		if r == nil {
+			r = item
+		}
+		rs[i] = r
+	}
+	return s.ReadingServiceServer.AddMany(ctx, apptest.ReadingAddManyRequest_builder{Items: rs}.Build())
 }
 
 func (s ReadingServiceServer) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
