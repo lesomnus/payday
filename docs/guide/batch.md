@@ -67,6 +67,11 @@ begun on a driver and a client does not hand out the one it holds. That driver
 is what the whole stack gets rebound onto — which is why every layer has to
 answer `WithDriver`; see [the server guide](server.md#the-one-thing-that-is-easy-to-forget).
 
+A batch is begun with `seen.For`, so the sink asks which tenant a row is in once
+for the whole batch, however many of its operations name that row. The gate
+asks once per operation: each one is narrowed into a frame of its own, and what
+one frame may see is not an answer about the next. See [`seen`](../../seen).
+
 ## 3. The guard, and why it is refused rather than defaulted
 
 This is the part worth understanding before you turn it on.

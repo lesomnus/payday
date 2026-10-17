@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/protobuf-orm/protobuf-orm/graph"
 	"github.com/protobuf-orm/protobuf-orm/ormpb"
 	"google.golang.org/protobuf/compiler/protogen"
 )
@@ -766,7 +767,7 @@ func emitTenancy(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root 
 	paths = append(paths, v.Agrees...)
 
 	for _, path := range paths {
-		emitTenantAt(g, v, path, p, root)
+		emitTenantAt(g, v, path, s, p, root)
 	}
 
 	g.P("// tenancy fills what the schema says this row's tenant is, and refuses a")
@@ -850,7 +851,7 @@ func emitTenancy(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root 
 // It is one query. ent traverses an edge in the statement rather than by
 // fetching the row and asking again, so a path of any depth is a join and not a
 // round trip per hop.
-func emitTenantAt(g *protogen.GeneratedFile, v *Entity, path []string, p Paths, root protogen.GoImportPath) {
+func emitTenantAt(g *protogen.GeneratedFile, v *Entity, path []string, s *Schema, p Paths, root protogen.GoImportPath) {
 	e := v.GoName()
 
 	first, ok := edge(v.Entity, path[0])
@@ -868,11 +869,28 @@ func emitTenantAt(g *protogen.GeneratedFile, v *Entity, path []string, p Paths, 
 		"\", \"required: it is what says which tenant this belongs to\")")
 	g.P("	}")
 	g.P("")
-	g.P("	// The row the edge names, picked the way every other reference is.")
-	g.P("	pick, err := ", p.Bare.Ident(head+"Pick"), "(ref)")
-	g.P("	if err != nil {")
-	g.P("		return nil, ", pkgPderr.Ident("At"), "(\"", path[0], "\", err)")
-	g.P("	}")
+
+	// Once a transaction, when nothing past the first step can be repointed:
+	// then the tenant this walk arrives at from a row is decided for good, and
+	// the next write naming the same row asks what the last one was told. The
+	// first step is not part of it -- it is the edge of the row being written,
+	// and what is remembered starts at the row that edge names, so it is shared
+	// by every edge onto that row: `Robot.tenant` and not `lead.tenant`.
+	in := "	"
+	walk, kept := rest(first.Target(), path[1:])
+	if to, ok := s.of(first.Target().FullName()); kept && ok && byKey(to) {
+		g.P("	// Asked once a transaction: no step past the first can be repointed, so")
+		g.P("	// where this walk arrives from a row is decided for good. See")
+		g.P("	// [seen.Tenant].")
+		g.P("	return ", pkgSeen.Ident("Tenant"), "(ctx, ", strconv.Quote(walk), ", ref, func() ([]byte, error) {")
+		in = "		"
+	}
+
+	g.P(in, "// The row the edge names, picked the way every other reference is.")
+	g.P(in, "pick, err := ", p.Bare.Ident(head+"Pick"), "(ref)")
+	g.P(in, "if err != nil {")
+	g.P(in, "	return nil, ", pkgPderr.Ident("At"), "(\"", path[0], "\", err)")
+	g.P(in, "}")
 	g.P("")
 
 	q := "s.store.Db." + head + ".Query().Where(pick)"
@@ -880,17 +898,42 @@ func emitTenantAt(g *protogen.GeneratedFile, v *Entity, path []string, p Paths, 
 		q += ".Query" + camel(step) + "()"
 	}
 
-	g.P("	k, err := ", q, ".OnlyId(ctx)")
-	g.P("	if err != nil {")
-	g.P("		// Not there, or more than one -- both are the reference being wrong,")
-	g.P("		// and both are the caller's to fix.")
-	g.P("		return nil, ", pkgPderr.Ident("Invalidf"), "(\"", path[0],
+	g.P(in, "k, err := ", q, ".OnlyId(ctx)")
+	g.P(in, "if err != nil {")
+	g.P(in, "	// Not there, or more than one -- both are the reference being wrong,")
+	g.P(in, "	// and both are the caller's to fix.")
+	g.P(in, "	return nil, ", pkgPderr.Ident("Invalidf"), "(\"", path[0],
 		"\", \"it does not name one row\")")
-	g.P("	}")
+	g.P(in, "}")
 	g.P("")
-	g.P("	return k[:], nil")
+	g.P(in, "return k[:], nil")
+	if in != "	" {
+		g.P("	})")
+	}
 	g.P("}")
 	g.P("")
+}
+
+// rest is the walk from `at` along `steps`, as `payday/seen` names it -- the
+// entity it starts at and the edges it takes -- and whether every one of those
+// edges is immutable.
+func rest(at graph.Entity, steps []string) (string, bool) {
+	walk := []string{string(at.FullName().Name())}
+	kept := true
+	for _, step := range steps {
+		e, ok := edge(at, step)
+		if !ok {
+			return "", false
+		}
+		if !e.IsImmutable() {
+			kept = false
+		}
+
+		walk = append(walk, step)
+		at = e.Target()
+	}
+
+	return strings.Join(walk, "."), kept
 }
 
 // pathName is a path as one Go identifier: "holder.tenant" is "HolderTenant".

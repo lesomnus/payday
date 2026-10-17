@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/protobuf-orm/protobuf-orm/graph"
+	"github.com/protobuf-orm/protobuf-orm/ormpb"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
@@ -197,15 +198,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	holder := s.Own(pdpb.Own_OWN_HOLDER)
 	stamps(g, holder)
 
-	g.P("	if _, err := s.Gate.Next().Tenant().Get(ctx, ", root.Ident("TenantGetRequest_builder"), "{")
-	g.P("		Ref: req.GetTenant(),")
-	g.P("	}.Build()); err != nil {")
-	g.P("		if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
-	g.P("			return nil, ", pkgGate.Ident("ErrNotFound"), "(\"Tenant\")")
-	g.P("		}")
-	g.P("")
-	g.P("		return nil, err")
-	g.P("	}")
+	readThrough(g, root, "req.GetTenant()", s.Own(pdpb.Own_OWN_TENANT), "	")
 	g.P("")
 
 	// And every edge an overlay gave it, for the reason on [emitAdmit]: an
@@ -275,6 +268,12 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 // two, and an `Add` is not the path a server spends its time on. The old
 // weighing dismissed this cost against a benefit it did not believe in; the
 // benefit has since been demonstrated, so the weighing changes.
+//
+// Until a transaction writes a great many rows about the same few, which is
+// what an import is: then it was the same read again for every one of them,
+// and most of what the transaction sent (lesomnus/payday#84). So a read of a
+// row named by key is asked once in a transaction begun with `seen.For` -- see
+// [readThrough].
 //
 // An edge to a **global** entity is not checked, because there is nothing to
 // see past: a global row belongs to no tenant and is readable by everybody.
@@ -541,18 +540,57 @@ func others(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath, v 
 // against one of them and missing the other.
 func seen(g *protogen.GeneratedFile, root protogen.GoImportPath, edge string, to *Entity) {
 	g.P("	if ref := req.Get", pascal(edge), "(); ref != nil {")
-	g.P("		if _, err := s.Gate.Next().", to.GoName(), "().Get(ctx, ",
-		root.Ident(to.GoName()+"GetRequest_builder"), "{")
-	g.P("			Ref: ref,")
-	g.P("		}.Build()); err != nil {")
-	g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
-	g.P("				return nil, ", pkgGate.Ident("ErrNotFound"), "(", strconv.Quote(to.GoName()), ")")
-	g.P("			}")
-	g.P("")
-	g.P("			return nil, err")
-	g.P("		}")
+	readThrough(g, root, "ref", to, "		")
 	g.P("	}")
 	g.P("")
+}
+
+// readThrough writes the read itself, of the `to` that `ref` names, through the
+// wall, and what it is answered with when it finds nothing.
+//
+// Once a transaction for a row named by key, when the transaction was begun
+// with `seen.For`: a write that names the same row as the write before it asks
+// the same question, and the answer is the one it got then. That is not the
+// comparison against the scope `gateHolder.Add` refuses to make -- it is this
+// read, remembered -- and `payday/seen` says why remembering it neither waits
+// on a write nor reaches past the wall. A row named some other way is read
+// every time, since the name may be another row's by then.
+func readThrough(g *protogen.GeneratedFile, root protogen.GoImportPath, ref string, to *Entity, in string) {
+	get := func(in string) {
+		g.P(in, "_, err := s.Gate.Next().", to.GoName(), "().Get(ctx, ",
+			root.Ident(to.GoName()+"GetRequest_builder"), "{")
+		g.P(in, "	Ref: ", ref, ",")
+		g.P(in, "}.Build())")
+	}
+
+	if byKey(to) {
+		g.P(in, "if err := ", pkgSeen.Ident("Visible"), "(ctx, ", strconv.Quote(to.GoName()), ", ", ref, ", func() error {")
+		get(in + "	")
+		g.P(in, "	return err")
+		g.P(in, "}); err != nil {")
+	} else {
+		g.P(in, "if _, err := s.Gate.Next().", to.GoName(), "().Get(ctx, ",
+			root.Ident(to.GoName()+"GetRequest_builder"), "{")
+		g.P(in, "	Ref: ", ref, ",")
+		g.P(in, "}.Build()); err != nil {")
+	}
+	g.P(in, "	if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
+	g.P(in, "		return nil, ", pkgGate.Ident("ErrNotFound"), "(", strconv.Quote(to.GoName()), ")")
+	g.P(in, "	}")
+	g.P("")
+	g.P(in, "	return nil, err")
+	g.P(in, "}")
+}
+
+// byKey is whether a reference to `v` can name its row by identifier, which is
+// what `payday/seen` remembers an answer for.
+//
+// Every entity behind the wall can -- payday names those rows by identifier,
+// as [emitSubject] does -- and this is the check that it still holds rather
+// than a reference that stopped compiling.
+func byKey(v *Entity) bool {
+	k := v.Key()
+	return k != nil && k.Name() == "id" && k.Type() == ormpb.Type_TYPE_UUID
 }
 
 // EmitAudit writes the layer that refuses hand-written trail rows, and the
