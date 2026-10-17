@@ -252,6 +252,44 @@ describe('a write sent twice is the same write', () => {
 		expect(store.row(Robot.typeName, id)?.['alias']).toBe(alias)
 	})
 
+	it('reads the rows an AddMany already made, when its answer was lost', async () => {
+		const { store, queries } = await opened()
+		const ref = await tenantRef()
+		const items = [named('w'), named('w')].map((alias) => ({ id: pdid.newId(RobotDomain).bytes, tenant: ref, alias }))
+
+		lose = true
+		await queries.send(RobotService.method.addMany, { items })
+		await queries.flush()
+
+		// Refused `AlreadyExists` the second time, and every row read by the
+		// identifier this side minted for it.
+		expect(calls).toEqual(['AddMany', 'AddMany', 'Get', 'Get'])
+		expect(queries.writes()).toEqual([])
+		for (const v of items) expect(store.row(Robot.typeName, v.id)?.['alias']).toBe(v.alias)
+	})
+
+	it('is not an AddMany a row of which is not there', async () => {
+		const ref = await tenantRef()
+		const alias = named('w')
+		await createClient(RobotService, transport).add({ tenant: ref, alias })
+
+		// Its second row's alias is a robot's that is not this one. The first
+		// row is not there, so the call never happened, and the refusal stands.
+		const { queries } = await opened()
+		await queries.send(RobotService.method.addMany, {
+			items: [
+				{ id: pdid.newId(RobotDomain).bytes, tenant: ref, alias: named('w') },
+				{ id: pdid.newId(RobotDomain).bytes, tenant: ref, alias },
+			],
+		})
+		await queries.flush()
+
+		const [w] = queries.writes()
+		expect(w?.state).toBe('refused')
+		expect(w?.error?.code).toBe(Code.AlreadyExists)
+		expect(calls).toEqual(['AddMany', 'Get'])
+	})
+
 	it('is sent once by two pages on one store', async () => {
 		const ref = await tenantRef()
 		const id = pdid.newId(RobotDomain).bytes
@@ -400,6 +438,16 @@ describe('a write that carries a secret', () => {
 			queries.send(RobotService.method.patch, {
 				ref: { key: { case: 'id', value: pdid.newId(RobotDomain).bytes } },
 				secret: new Uint8Array([1, 2, 3]),
+			}),
+		).rejects.toThrow(/secret/)
+
+		// And one row of many, which is the same secret on the same disk.
+		await expect(
+			queries.send(RobotService.method.addMany, {
+				items: [
+					{ id: pdid.newId(RobotDomain).bytes, tenant: ref, alias: named('w') },
+					{ id: pdid.newId(RobotDomain).bytes, tenant: ref, alias: named('w'), secret: new Uint8Array([1, 2, 3]) },
+				],
 			}),
 		).rejects.toThrow(/secret/)
 

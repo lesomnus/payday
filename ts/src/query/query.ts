@@ -352,8 +352,9 @@ export class Queries {
 	 * So what is worth queueing is a write that is the same write twice, and an
 	 * `Add` that names its row is the case this knows: the identifier is minted
 	 * here, the second `Add` is refused `AlreadyExists`, and the row is read by
-	 * that identifier instead -- which is the answer the first one never got. An
-	 * `Erase` is the same write by nature. A `Patch` that names the version it
+	 * that identifier instead -- which is the answer the first one never got.
+	 * An `AddMany` whose every item names its row is that many of them, read
+	 * back a row at a time. An `Erase` is the same write by nature. A `Patch` that names the version it
 	 * read is refused the second time, which is right about the row and wrong
 	 * about the write; and an app's own RPC is the same write twice when its
 	 * request carries an identifier the server knows it by.
@@ -660,8 +661,27 @@ export class Queries {
 	 * is read by the identifier this side minted: there, it is the answer the
 	 * first send never got; not there, the refusal was about something else and
 	 * stands.
+	 *
+	 * An `AddMany` is every row it names or none of them, so it happened only
+	 * if each of its rows is there -- each read as its `Add` would be, and one
+	 * that names none, or is not there, is a refusal that stands.
 	 */
 	private async already(method: DescMethod, req: Message): Promise<Message | undefined | null> {
+		if (method.name === 'AddMany') {
+			const add = method.parent.methods.find((m) => m.name === 'Add' && m.methodKind === 'unary')
+			const items = itemsOf(method, req)?.items
+			if (add === undefined || items === undefined || items.length === 0) return undefined
+
+			const rows: Message[] = []
+			for (const item of items) {
+				const was = await this.already(add, item)
+				if (was === undefined || was === null) return was
+
+				rows.push(was)
+			}
+
+			return create(method.output, { items: rows } as never) as Message
+		}
 		if (method.name !== 'Add') return undefined
 
 		const id = (req as unknown as { id?: unknown }).id
@@ -687,17 +707,26 @@ export class Queries {
 	 * carries an entity's fields under their own names, and not their options.
 	 */
 	private refuseSecret(method: DescMethod, req: Message): void {
+		// An `AddMany` carries the request of an `Add` for each row it writes,
+		// and a secret one of them sets would wait on disk the same as one a
+		// request of its own did.
+		const many = itemsOf(method, req)
+		const asked: [DescMessage, Message][] =
+			many === undefined ? [[method.input, req]] : many.items.map((v) => [many.desc, v])
+
 		for (const e of this.entities.values()) {
 			if (e.service?.typeName !== method.parent.typeName) continue
 
-			for (const name of e.secrets ?? []) {
-				const f = method.input.fields.find((v) => v.localName === name)
-				if (f === undefined || !isFieldSet(req, f)) continue
+			for (const [desc, m] of asked) {
+				for (const name of e.secrets ?? []) {
+					const f = desc.fields.find((v) => v.localName === name)
+					if (f === undefined || !isFieldSet(m, f)) continue
 
-				throw new Error(
-					`query: ${nameOf(method)} sets ${name}, which ${e.typeName} keeps secret; ` +
-						'a write that waits is kept on disk, so this one goes with call()',
-				)
+					throw new Error(
+						`query: ${nameOf(method)} sets ${name}, which ${e.typeName} keeps secret; ` +
+							'a write that waits is kept on disk, so this one goes with call()',
+					)
+				}
 			}
 		}
 	}
@@ -1203,6 +1232,22 @@ function stable(v: unknown): string {
  * version of this walk skip every list -- so `items` was never looked in, and a
  * `List` normalized nothing at all.
  */
+/**
+ * itemsOf is the `Add` requests an `AddMany` carries, and what they are, or
+ * undefined for any other method.
+ *
+ * By name and shape, as `Erase` and `Watch` are found: the ORM generates an
+ * `AddMany` beside an entity's `Add` taking its `Add` requests as `items`.
+ */
+function itemsOf(method: DescMethod, req: Message): { desc: DescMessage; items: Message[] } | undefined {
+	if (method.name !== 'AddMany') return undefined
+
+	const f = method.input.fields.find((v) => v.localName === 'items')
+	if (f === undefined || f.fieldKind !== 'list' || f.listKind !== 'message') return undefined
+
+	return { desc: f.message, items: (req as unknown as Record<string, Message[]>)[f.localName] ?? [] }
+}
+
 function messageOf(f: DescField): DescMessage | undefined {
 	if (f.fieldKind === 'message') return f.message
 	if (f.fieldKind === 'list' && f.listKind === 'message') return f.message
