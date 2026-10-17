@@ -424,7 +424,7 @@ way through is no finding, and no clock is asked. What it finds:
 | `unsigned` | a row with no signature when the policy names a key; a checkpoint with none after one that had one |
 | `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to (not the one before an acceptance); or one of two the store keeps under one number |
 | `reordered` | a checkpoint that names one after it as the one before |
-| `unkept` | a checkpoint the database numbered, or the one after it names, that the store does not keep |
+| `unkept` | a checkpoint the database numbered, or the one after it names, that the store does not keep; or the numbers a checkpoint skips over to the one it names — taken away, lost to a store restored from an older copy, or numbered by a pass a crash stopped — until an operator accepts |
 | `behind` | a checkpoint the store keeps that the database never numbered: a database restored from before it, until an operator accepts |
 | `emptied` | a manifest with no rows beside checkpoints of an archive that held something (a checkpoint over nothing, a deployment's first pass, is not one) |
 
