@@ -83,10 +83,18 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("//	s, err := app.Build(walled, core.Build(), pd.AuditBuild(), pd.GateBuild())")
 	g.P("type Gate struct {")
 	g.P("	", root.Ident("Overlay"))
+	g.P("")
+	// The layers behind are asked through `Next()`, which has no driver to
+	// give; this is the one [Gate.WithDriver] was handed, kept so that what
+	// the gate asks about a row is asked once in the transaction it names.
+	g.P("	// drv is the driver this stack was put on, and nil for one that was not:")
+	g.P("	// a transaction it runs in keeps what the gate has asked, for the rest")
+	g.P("	// of it. See [seen].")
+	g.P("	drv ", pkgDialect.Ident("Driver"))
 	g.P("}")
 	g.P("")
 	g.P("func NewGate(next ", root.Ident("Server"), ") Gate {")
-	g.P("	return Gate{", root.Ident("NewOverlay"), "(next)}")
+	g.P("	return Gate{Overlay: ", root.Ident("NewOverlay"), "(next)}")
 	g.P("}")
 	g.P("")
 	g.P("var _ ", root.Ident("Server"), " = Gate{}")
@@ -113,7 +121,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("		return nil, err")
 	g.P("	}")
 	g.P("")
-	g.P("	return NewGate(next), nil")
+	g.P("	return Gate{Overlay: ", root.Ident("NewOverlay"), "(next), drv: drv}, nil")
 	g.P("}")
 	g.P("")
 	g.P("// GateBuild makes a builder of this layer so that it can be stacked.")
@@ -272,8 +280,8 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 // Until a transaction writes a great many rows about the same few, which is
 // what an import is: then it was the same read again for every one of them,
 // and most of what the transaction sent (lesomnus/payday#84). So a read of a
-// row named by key is asked once in a transaction begun with `seen.For` -- see
-// [readThrough].
+// row named by key is asked once in a transaction begun with `dialect.BeginTx`
+// -- see [readThrough].
 //
 // An edge to a **global** entity is not checked, because there is nothing to
 // see past: a global row belongs to no tenant and is readable by everybody.
@@ -549,7 +557,8 @@ func seen(g *protogen.GeneratedFile, root protogen.GoImportPath, edge string, to
 // wall, and what it is answered with when it finds nothing.
 //
 // Once a transaction for a row named by key, when the transaction was begun
-// with `seen.For`: a write that names the same row as the write before it asks
+// with `dialect.BeginTx` -- which the gate learns from the driver it was put on
+// (`Gate.drv`): a write that names the same row as the write before it asks
 // the same question, and the answer is the one it got then. That is not the
 // comparison against the scope `gateHolder.Add` refuses to make -- it is this
 // read, remembered -- and `payday/seen` says why remembering it neither waits
@@ -564,7 +573,7 @@ func readThrough(g *protogen.GeneratedFile, root protogen.GoImportPath, ref stri
 	}
 
 	if byKey(to) {
-		g.P(in, "if err := ", pkgSeen.Ident("Visible"), "(ctx, ", strconv.Quote(to.GoName()), ", ", ref, ", func() error {")
+		g.P(in, "if err := ", pkgSeen.Ident("Visible"), "(ctx, s.Gate.drv, ", strconv.Quote(to.GoName()), ", ", ref, ", func() error {")
 		get(in + "	")
 		g.P(in, "	return err")
 		g.P(in, "}); err != nil {")

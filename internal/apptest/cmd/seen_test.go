@@ -16,7 +16,6 @@ import (
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/pdtest"
-	"github.com/lesomnus/payday/seen"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
@@ -74,12 +73,12 @@ func reading(robot []byte, celsius float64) *app.ReadingAddRequest {
 // each: the same two questions, with the same two answers.
 func TestATransactionAsksAboutARowOnce(t *testing.T) {
 	for _, tc := range []struct {
-		what     string
-		remember bool
-		want     int
+		what  string
+		begun bool
+		want  int
 	}{
-		{"begun with seen.For", true, 1},
-		{"and without it, every time, as before", false, 10},
+		{"in a transaction begun with dialect.BeginTx", true, 1},
+		{"and in none, every time, as before", false, 10},
 	} {
 		t.Run(tc.what, func(t *testing.T) {
 			x := require.New(t)
@@ -87,23 +86,25 @@ func TestATransactionAsksAboutARowOnce(t *testing.T) {
 			robot := b.robot(t, ctx, b.Tenant, "arm")
 
 			a := &asked{}
-			on := a.on(b.Drv)
-			drv, tx, err := dialect.BeginTx(ctx, on)
-			x.NoError(err)
-			defer tx.Rollback()
+			drv := a.on(b.Drv)
+			if tc.begun {
+				v, tx, err := dialect.BeginTx(ctx, drv)
+				x.NoError(err)
+				defer tx.Commit()
+				drv = v
+			}
 
+			// Nothing said beside the transaction: it keeps what it was told
+			// itself.
 			s, err := enttx.Rebind(b.Walled, drv)
 			x.NoError(err)
 
+			// One caller, so one frame: what the gate remembers is per frame.
 			in := b.as(ctx)
-			if tc.remember {
-				in = seen.For(in, on)
-			}
 			for i := range 10 {
 				_, err := s.Reading().Add(in, reading(robot, float64(i)))
 				x.NoError(err)
 			}
-			x.NoError(tx.Commit())
 
 			x.Equal(tc.want, a.walled, "the gate's read through the wall")
 			x.Equal(tc.want, a.tenancy, "the sink's read of the robot's tenant")
@@ -131,7 +132,7 @@ func TestWhatOneFrameSawIsNotAnotherFramesAnswer(t *testing.T) {
 	s, err := enttx.Rebind(b.Walled, drv)
 	x.NoError(err)
 
-	in := seen.For(ctx, b.Drv)
+	in := ctx
 	_, err = s.Reading().Add(b.as(in), reading(robot, 1))
 	x.NoError(err)
 
@@ -172,7 +173,7 @@ func TestTheSinkComparesWhatItRemembers(t *testing.T) {
 	// Somebody who holds both, which is the caller the gate lets through and
 	// only the comparison refuses.
 	f := frame.New(b.Holder, b.Tenant, frame.Whole()).WithScope(frame.Only(b.Tenant, bk))
-	in := seen.For(frame.Into(ctx, f), b.Drv)
+	in := frame.Into(ctx, f)
 
 	_, err = s.Pairing().Add(in, pair(mine, also))
 	x.NoError(err)
