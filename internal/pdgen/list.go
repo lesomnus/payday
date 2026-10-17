@@ -882,7 +882,7 @@ func emitTenantAt(g *protogen.GeneratedFile, v *Entity, path []string, s *Schema
 		g.P("	// Asked once a transaction: no step past the first can be repointed, so")
 		g.P("	// where this walk arrives from a row is decided for good. See")
 		g.P("	// [seen.Tenant].")
-		g.P("	return ", pkgSeen.Ident("Tenant"), "(ctx, ", strconv.Quote(walk), ", ref, func() ([]byte, error) {")
+		g.P("	return ", pkgSeen.Ident("Tenant"), "(s.store.Db.Driver(), ", strconv.Quote(walk), ", ref, func() ([]byte, error) {")
 		in = "		"
 	}
 

@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/lesomnus/payday/pdpb"
-	"github.com/lesomnus/payday/seen"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
@@ -113,8 +112,6 @@ func (s jointsRobot) Add(ctx context.Context, req *app.RobotAddRequest) (*app.Ro
 		return nil, err
 	}
 	defer tx.Rollback()
-
-	ctx = seen.For(ctx, s.drv)
 
 	next, err := enttx.Rebind(s.Next(), drv)
 	if err != nil {

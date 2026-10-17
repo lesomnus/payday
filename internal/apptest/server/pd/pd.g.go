@@ -1447,7 +1447,7 @@ func (s sinkPairing) tenantAtLeadTenant(ctx context.Context, ref *apptest.RobotR
 	// Asked once a transaction: no step past the first can be repointed, so
 	// where this walk arrives from a row is decided for good. See
 	// [seen.Tenant].
-	return seen.Tenant(ctx, "Robot.tenant", ref, func() ([]byte, error) {
+	return seen.Tenant(s.store.Db.Driver(), "Robot.tenant", ref, func() ([]byte, error) {
 		// The row the edge names, picked the way every other reference is.
 		pick, err := bare.RobotPick(ref)
 		if err != nil {
@@ -1474,7 +1474,7 @@ func (s sinkPairing) tenantAtFollowTenant(ctx context.Context, ref *apptest.Robo
 	// Asked once a transaction: no step past the first can be repointed, so
 	// where this walk arrives from a row is decided for good. See
 	// [seen.Tenant].
-	return seen.Tenant(ctx, "Robot.tenant", ref, func() ([]byte, error) {
+	return seen.Tenant(s.store.Db.Driver(), "Robot.tenant", ref, func() ([]byte, error) {
 		// The row the edge names, picked the way every other reference is.
 		pick, err := bare.RobotPick(ref)
 		if err != nil {
@@ -1555,7 +1555,7 @@ func (s sinkReading) tenantAtRobotTenant(ctx context.Context, ref *apptest.Robot
 	// Asked once a transaction: no step past the first can be repointed, so
 	// where this walk arrives from a row is decided for good. See
 	// [seen.Tenant].
-	return seen.Tenant(ctx, "Robot.tenant", ref, func() ([]byte, error) {
+	return seen.Tenant(s.store.Db.Driver(), "Robot.tenant", ref, func() ([]byte, error) {
 		// The row the edge names, picked the way every other reference is.
 		pick, err := bare.RobotPick(ref)
 		if err != nil {
@@ -2767,10 +2767,15 @@ func pdReverse(by []sqlpage.Order) []sqlpage.Order {
 //	s, err := app.Build(walled, core.Build(), pd.AuditBuild(), pd.GateBuild())
 type Gate struct {
 	apptest.Overlay
+
+	// drv is the driver this stack was put on, and nil for one that was not:
+	// a transaction it runs in keeps what the gate has asked, for the rest
+	// of it. See [seen].
+	drv dialect.Driver
 }
 
 func NewGate(next apptest.Server) Gate {
-	return Gate{apptest.NewOverlay(next)}
+	return Gate{Overlay: apptest.NewOverlay(next)}
 }
 
 var _ apptest.Server = Gate{}
@@ -2790,7 +2795,7 @@ func (s Gate) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 		return nil, err
 	}
 
-	return NewGate(next), nil
+	return Gate{Overlay: apptest.NewOverlay(next), drv: drv}, nil
 }
 
 // GateBuild makes a builder of this layer so that it can be stacked.
@@ -2861,7 +2866,7 @@ func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 		return nil, pderr.Invalidf("directory", "is established by this deployment and not asserted by a request")
 	}
 
-	if err := seen.Visible(ctx, "Tenant", req.GetTenant(), func() error {
+	if err := seen.Visible(ctx, s.Gate.drv, "Tenant", req.GetTenant(), func() error {
 		_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
 			Ref: req.GetTenant(),
 		}.Build())
@@ -2875,7 +2880,7 @@ func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 	}
 
 	if ref := req.GetRobot(); ref != nil {
-		if err := seen.Visible(ctx, "Robot", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -2900,7 +2905,7 @@ func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 // exactly as it would have been at `Add`.
 func (s gateHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
 	if ref := req.GetRobot(); ref != nil {
-		if err := seen.Visible(ctx, "Robot", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -2939,7 +2944,7 @@ func (s Gate) Cell() apptest.CellServiceServer {
 // should not be told.
 func (s gateCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
 	if ref := req.GetTenant(); ref != nil {
-		if err := seen.Visible(ctx, "Tenant", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Tenant", ref, func() error {
 			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -2978,7 +2983,7 @@ func (s Gate) Joint() apptest.JointServiceServer {
 // should not be told.
 func (s gateJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
 	if ref := req.GetRobot(); ref != nil {
-		if err := seen.Visible(ctx, "Robot", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -3017,7 +3022,7 @@ func (s Gate) Pairing() apptest.PairingServiceServer {
 // should not be told.
 func (s gatePairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
 	if ref := req.GetLead(); ref != nil {
-		if err := seen.Visible(ctx, "Robot", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -3032,7 +3037,7 @@ func (s gatePairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*
 	}
 
 	if ref := req.GetFollow(); ref != nil {
-		if err := seen.Visible(ctx, "Robot", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -3071,7 +3076,7 @@ func (s Gate) Reading() apptest.ReadingServiceServer {
 // should not be told.
 func (s gateReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
 	if ref := req.GetRobot(); ref != nil {
-		if err := seen.Visible(ctx, "Robot", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -3114,7 +3119,7 @@ func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 	}
 
 	if ref := req.GetTenant(); ref != nil {
-		if err := seen.Visible(ctx, "Tenant", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Tenant", ref, func() error {
 			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -3129,7 +3134,7 @@ func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 	}
 
 	if ref := req.GetCell(); ref != nil {
-		if err := seen.Visible(ctx, "Cell", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Cell", ref, func() error {
 			_, err := s.Gate.Next().Cell().Get(ctx, apptest.CellGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -3154,7 +3159,7 @@ func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 // exactly as it would have been at `Add`.
 func (s gateRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
 	if ref := req.GetCell(); ref != nil {
-		if err := seen.Visible(ctx, "Cell", ref, func() error {
+		if err := seen.Visible(ctx, s.Gate.drv, "Cell", ref, func() error {
 			_, err := s.Gate.Next().Cell().Get(ctx, apptest.CellGetRequest_builder{
 				Ref: ref,
 			}.Build())
@@ -5466,11 +5471,6 @@ func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.Batc
 	if err := b.guard.Check(len(ops)); err != nil {
 		return nil, err
 	}
-
-	// One transaction, so one memory of what it has asked: a batch of writes
-	// naming the same rows asks about each of them once. Before the guard
-	// narrows each operation, so that every one of them carries it.
-	ctx = seen.For(ctx, b.drv)
 
 	// Every rule for every operation, before anything is written. The
 	// transaction would undo the work of a batch refused halfway, but the

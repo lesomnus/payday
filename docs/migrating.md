@@ -3,6 +3,22 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A transaction remembers what it asked without being told to
+
+**Applies if** a layer of yours calls `seen.For`. Delete the line and
+regenerate.
+
+- **`seen.For` is gone** (#84). What the gate and the sink were told about a
+  row is kept by the transaction `dialect.BeginTx` began (`dialect.Keep`), so
+  every such transaction asks each question once for the rows it names. Nothing
+  is said beside `BeginTx` for it -- and a layer that left the line out asked
+  everything again, with nothing to say it had.
+- **The generated `Gate` keeps the driver it was put on**, in `WithDriver`:
+  that is how it finds the transaction. A gate that was not put on one asks
+  every time, as before.
+- **`seen.Visible` and `seen.Tenant` take that driver**, and `Tenant` takes no
+  context. Only generated code calls them.
+
 ## A transaction's trail is written by its commit
 
 **Applies if** a layer of yours writes several rows in a transaction begun with

@@ -168,11 +168,10 @@ asks it again of every edge it moves; an immutable edge cannot be moved, so it
 is asked once, at `Add`. That is a read per edge per write, which is what
 keeping the wall whole costs.
 
-Inside one transaction it is a read per edge per **row**, once the transaction
-was begun with `seen.For`: the second write naming a row asks what the first
-was told, and the answer is the one it got. A generated batch begins its own
-that way, and a layer that writes several rows says so beside its
-`dialect.BeginTx` ([server guide](server.md#completing-a-generated-verb)).
+Inside one transaction begun with `dialect.BeginTx` it is a read per edge per
+**row**: the second write naming a row asks what the first was told, and the
+answer is the one it got. A generated batch is such a transaction, and so is a
+layer's that writes several rows ([server guide](server.md#completing-a-generated-verb)).
 It is the same read, remembered for the caller who asked it and only for a
 row named by identifier; [`seen`](../../seen) says why remembering it waits on
 no write and cannot reach past the wall.

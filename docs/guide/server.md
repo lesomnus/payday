@@ -189,9 +189,6 @@ func (s coreRobot) Add(ctx context.Context, req *api.RobotAddRequest) (*api.Robo
 	}
 	defer tx.Rollback()
 
-	// What this transaction asks about the rows it names, asked once.
-	ctx = seen.For(ctx, s.drv)
-
 	// This layer again, over a rebound one below it.
 	next, err := enttx.Rebind(s.Next(), drv)
 	if err != nil {
@@ -237,14 +234,11 @@ each:
   stack overflow it ends in is at run time and in a test that was passing an
   hour ago. It is the one of the three no compiler catches.
 
-`seen.For` is not one of the three: leave it out and every write still asks the
-gate's question and the sink's, once per reference, as each would alone. With
-it, a transaction asks each of them once per row it names -- which is the
-difference between a write that names a robot and a hundred that do. It takes
-the driver the transaction is begun **on**, `s.drv` and not the one `BeginTx`
-answered with: inside a batch that is already a transaction, and what the batch
-asked carries on into this one, where any other driver starts a transaction --
-and a memory -- of its own.
+Nothing has to be said for the writes to be cheap. A transaction `BeginTx`
+began keeps what the gate and the sink were told about the rows it names, and
+asks each of them once per row rather than once per reference -- the difference
+between a write that names a robot and a hundred that do. Inside a batch, this
+one is the batch's, and what the batch asked carries on into it.
 
 And the reason `WithDriver` above hands on the driver it was given: inside a
 batch, this `Add` is already running in somebody else's transaction, because a

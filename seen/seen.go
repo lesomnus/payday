@@ -13,9 +13,10 @@
 // the caller could see their own tenant nine times and the asset it had just
 // added seven (lesomnus/payday#84).
 //
-// Asked once in a transaction, the answer is the same answer. [For] is what a
-// transaction is begun with, and the generated layers ask [Visible] and
-// [Tenant] rather than the database.
+// Asked once in a transaction, the answer is the same answer. A transaction
+// begun with `dialect.BeginTx` keeps what it was told (`dialect.Keep`), and
+// the generated layers ask [Visible] and [Tenant], with the driver they run
+// on, rather than the database.
 //
 // # What is remembered
 //
@@ -53,12 +54,22 @@
 // for. A transaction that adds rows writes between every two questions it
 // asks, so it would ask each of them every time, as it does now.
 //
-// # Who begins one
+// # Whose it is
 //
-// Whoever begins the transaction, beside `dialect.BeginTx`. A generated batch
-// does; a layer that writes several rows in one transaction says it itself --
-// docs/guide/server.md § Completing a generated verb. A context that went
-// through neither asks every question, as before.
+// The transaction's, and nobody begins it: what a transaction begun with
+// `dialect.BeginTx` was told is kept with it, and goes with its commit or its
+// rollback. One begun inside another is that one, and shares what it was
+// told, so an operation made of other operations asks each question once for
+// all of them. One begun afresh starts with nothing, whatever the call that
+// began it was inside -- that may be another transaction, one that may yet be
+// rolled back, and what that one saw is not this one's to know.
+//
+// It was the context's, and whoever began a transaction had to say so beside
+// `dialect.BeginTx`. A layer that did not asked every question as before, and
+// nothing said it had not; a transaction cannot forget what it keeps itself.
+//
+// A write in no transaction, or in one a generated `Client.Tx` began, keeps
+// nothing and asks every question, as before.
 package seen
 
 import (
@@ -71,38 +82,6 @@ import (
 	"github.com/lesomnus/payday/frame"
 )
 
-// For answers with `ctx` carrying what the transaction begun on `drv` has asked
-// so far.
-//
-// `drv` is the driver the transaction is begun **on**, not the one
-// `dialect.BeginTx` answers with. When it is already inside a transaction, that
-// transaction is an enclosing call's, and so is what `ctx` carries: both are
-// kept, so an operation made of other operations asks each question once for
-// all of them. Any other driver begins a transaction of its own and it starts
-// with nothing, whatever `ctx` carried -- the call that handed it on may be in
-// another transaction, one that may yet be rolled back, and what that one saw
-// is not this one's to know.
-//
-//	drv, tx, err := dialect.BeginTx(ctx, s.drv)
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer tx.Rollback()
-//
-//	ctx = seen.For(ctx, s.drv)
-func For(ctx context.Context, drv dialect.Driver) context.Context {
-	if dialect.InTx(drv) {
-		if _, ok := memoOf(ctx); ok {
-			return ctx
-		}
-	}
-
-	return context.WithValue(ctx, key{}, &memo{
-		visible: map[visibleKey]struct{}{},
-		tenant:  map[tenantKey][]byte{},
-	})
-}
-
 // Ref is a reference that may name its row by key, which is the only kind
 // whose answer is remembered.
 //
@@ -114,13 +93,14 @@ type Ref interface {
 }
 
 // Visible answers what `ask` does about whether the caller may see the row of
-// `entity` that `ref` names, asking it once in a transaction for each frame and
-// row, and answering from memory after the first time it found the row.
+// `entity` that `ref` names, asking it once for each frame and row in the
+// transaction `drv` runs in, and answering from memory after the first time it
+// found the row.
 //
 // `ask` is the read through the wall, and its error is answered as it is: a
 // refusal is not remembered, so it is asked again next time.
-func Visible(ctx context.Context, entity string, ref Ref, ask func() error) error {
-	m, ok := memoOf(ctx)
+func Visible(ctx context.Context, drv dialect.Driver, entity string, ref Ref, ask func() error) error {
+	m, ok := memoOf(drv)
 	if !ok || !ref.HasId() {
 		return ask()
 	}
@@ -145,15 +125,16 @@ func Visible(ctx context.Context, entity string, ref Ref, ask func() error) erro
 }
 
 // Tenant answers what `ask` does about which tenant `path` arrives at from the
-// row `ref` names, asking it once in a transaction for each path and row.
+// row `ref` names, asking it once for each path and row in the transaction
+// `drv` runs in.
 //
 // `path` names where the walk starts and where it goes -- `Robot.tenant`, not
 // the edge that reached the robot -- so two edges onto the same row share an
 // answer. Only a path whose every step is immutable may be asked here; one that
 // can be repointed arrives somewhere else after a write, and the generated sink
 // asks the database for those every time.
-func Tenant(ctx context.Context, path string, ref Ref, ask func() ([]byte, error)) ([]byte, error) {
-	m, ok := memoOf(ctx)
+func Tenant(drv dialect.Driver, path string, ref Ref, ask func() ([]byte, error)) ([]byte, error) {
+	m, ok := memoOf(drv)
 	if !ok || !ref.HasId() {
 		return ask()
 	}
@@ -174,16 +155,31 @@ func Tenant(ctx context.Context, path string, ref Ref, ask func() ([]byte, error
 
 type key struct{}
 
-func memoOf(ctx context.Context) (*memo, bool) {
-	v, ok := ctx.Value(key{}).(*memo)
-	return v, ok
+// memoOf is what the transaction `drv` runs in has been told, made the first
+// time it is asked for. A driver in no transaction that keeps anything has
+// none.
+func memoOf(drv dialect.Driver) (*memo, bool) {
+	if drv == nil {
+		return nil, false
+	}
+	k, ok := dialect.KeepOf(drv)
+	if !ok {
+		return nil, false
+	}
+
+	return k.Value(key{}, func() any {
+		return &memo{
+			visible: map[visibleKey]struct{}{},
+			tenant:  map[tenantKey][]byte{},
+		}
+	}).(*memo), true
 }
 
 // memo is one transaction's.
 //
-// Guarded, though a transaction is used from one goroutine at a time: what is
-// in a context is reachable by anything handed it, and a lock nobody contends
-// costs nothing next to the read it saves.
+// Guarded, though a transaction is used from one goroutine at a time: what a
+// transaction keeps is reachable by anything running on it, and a lock nobody
+// contends costs nothing next to the read it saves.
 type memo struct {
 	mu      sync.Mutex
 	visible map[visibleKey]struct{}

@@ -74,7 +74,7 @@ message Fixed {
 	if v := body("tenantAtLooseTenant"); strings.Contains(v, "seen.Tenant") {
 		t.Errorf("a walk through an edge that can be repointed is remembered:\n%s", v)
 	}
-	if v := body("tenantAtFixedTenant"); !strings.Contains(v, `seen.Tenant(ctx, "Fixed.tenant", ref,`) {
+	if v := body("tenantAtFixedTenant"); !strings.Contains(v, `seen.Tenant(s.store.Db.Driver(), "Fixed.tenant", ref,`) {
 		t.Errorf("a walk that cannot move is asked every time:\n%s", v)
 	}
 }
