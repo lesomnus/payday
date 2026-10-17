@@ -95,6 +95,11 @@ func EmitBatch(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		return nil, err")
 	g.P("	}")
 	g.P("")
+	g.P("	// One transaction, so one memory of what it has asked: a batch of writes")
+	g.P("	// naming the same rows asks about each of them once. Before the guard")
+	g.P("	// narrows each operation, so that every one of them carries it.")
+	g.P("	ctx = ", pkgSeen.Ident("For"), "(ctx, b.drv)")
+	g.P("")
 
 	// Every rule is applied before anything is written. A batch whose eighth
 	// operation is refused should not have run the first seven, and although

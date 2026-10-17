@@ -39,6 +39,7 @@ const (
 	pkgEntSql  = protogen.GoImportPath("github.com/protobuf-orm/ent/dialect/sql")
 	pkgSqlJson = protogen.GoImportPath("github.com/protobuf-orm/ent/dialect/sql/sqljson")
 	pkgSort    = protogen.GoImportPath("sort")
+	pkgSeen    = protogen.GoImportPath("github.com/lesomnus/payday/seen")
 )
 
 // EmitPayday writes which payday this file came out of, and the check that

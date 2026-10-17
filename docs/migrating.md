@@ -3,6 +3,31 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A transaction asks about each row it names once
+
+**Applies if** a layer of yours begins a transaction and writes several rows in
+it. Regenerate; nothing has to change, and one line makes it cheaper.
+
+- **The gate's read of a reference, and the sink's read of its tenant, are
+  asked once in a transaction begun with `seen.For`** (#84). Each was asked for
+  every reference of every write -- an import into rove sent 68 statements a
+  row, 33 of them those two questions, and sends 37. A generated batch
+  begins its transaction that way already. A layer of your own adds the line
+  beside its `dialect.BeginTx`, with the driver it began **on**:
+
+  ```go
+  drv, tx, err := dialect.BeginTx(ctx, s.drv)
+  if err != nil {
+  	return nil, err
+  }
+  defer tx.Rollback()
+
+  ctx = seen.For(ctx, s.drv)
+  ```
+
+  Without it every question is asked as before. `seen` says what is remembered
+  and why a write does not make it forget.
+
 ## An acceptance carries a restored database on, and is clean at once
 
 **Applies if** you restore an app's database from a backup, or accept what

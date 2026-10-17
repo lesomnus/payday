@@ -66,6 +66,15 @@ func inPkg(pkg, src string) string {
 func readFiles(t *testing.T, files map[string]string) (*pdgen.Schema, error) {
 	t.Helper()
 
+	s, _, err := readPlugin(t, files)
+	return s, err
+}
+
+// readPlugin is [readFiles], and the plugin it read the schema out of -- for a
+// test that wants what an emitter writes rather than what the reader says.
+func readPlugin(t *testing.T, files map[string]string) (*pdgen.Schema, *protogen.Plugin, error) {
+	t.Helper()
+
 	names := slices.Sorted(maps.Keys(files))
 
 	c := protocompile.Compiler{
@@ -119,10 +128,11 @@ func readFiles(t *testing.T, files map[string]string) (*pdgen.Schema, error) {
 
 	g := graph.NewGraph()
 	if err := gogen.ParseFiles(context.Background(), g, p.Files); err != nil {
-		return nil, fmt.Errorf("orm: %w", err)
+		return nil, nil, fmt.Errorf("orm: %w", err)
 	}
 
-	return pdgen.Read(g, p.Files)
+	v, err := pdgen.Read(g, p.Files)
+	return v, p, err
 }
 
 // rebuild round-trips a descriptor through its wire form so that the custom

@@ -40,6 +40,7 @@ import (
 	pdpb "github.com/lesomnus/payday/pdpb"
 	resource "github.com/lesomnus/payday/resource"
 	resourcesql "github.com/lesomnus/payday/resource/resourcesql"
+	seen "github.com/lesomnus/payday/seen"
 	slug "github.com/lesomnus/payday/slug"
 	spin "github.com/lesomnus/payday/spin"
 	trail "github.com/lesomnus/payday/trail"
@@ -1442,20 +1443,25 @@ func (s sinkPairing) tenantAtLeadTenant(ctx context.Context, ref *apptest.RobotR
 		return nil, pderr.Invalidf("lead", "required: it is what says which tenant this belongs to")
 	}
 
-	// The row the edge names, picked the way every other reference is.
-	pick, err := bare.RobotPick(ref)
-	if err != nil {
-		return nil, pderr.At("lead", err)
-	}
+	// Asked once a transaction: no step past the first can be repointed, so
+	// where this walk arrives from a row is decided for good. See
+	// [seen.Tenant].
+	return seen.Tenant(ctx, "Robot.tenant", ref, func() ([]byte, error) {
+		// The row the edge names, picked the way every other reference is.
+		pick, err := bare.RobotPick(ref)
+		if err != nil {
+			return nil, pderr.At("lead", err)
+		}
 
-	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyId(ctx)
-	if err != nil {
-		// Not there, or more than one -- both are the reference being wrong,
-		// and both are the caller's to fix.
-		return nil, pderr.Invalidf("lead", "it does not name one row")
-	}
+		k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyId(ctx)
+		if err != nil {
+			// Not there, or more than one -- both are the reference being wrong,
+			// and both are the caller's to fix.
+			return nil, pderr.Invalidf("lead", "it does not name one row")
+		}
 
-	return k[:], nil
+		return k[:], nil
+	})
 }
 
 // tenantAtFollowTenant is the tenant "follow.tenant" arrives at.
@@ -1464,20 +1470,25 @@ func (s sinkPairing) tenantAtFollowTenant(ctx context.Context, ref *apptest.Robo
 		return nil, pderr.Invalidf("follow", "required: it is what says which tenant this belongs to")
 	}
 
-	// The row the edge names, picked the way every other reference is.
-	pick, err := bare.RobotPick(ref)
-	if err != nil {
-		return nil, pderr.At("follow", err)
-	}
+	// Asked once a transaction: no step past the first can be repointed, so
+	// where this walk arrives from a row is decided for good. See
+	// [seen.Tenant].
+	return seen.Tenant(ctx, "Robot.tenant", ref, func() ([]byte, error) {
+		// The row the edge names, picked the way every other reference is.
+		pick, err := bare.RobotPick(ref)
+		if err != nil {
+			return nil, pderr.At("follow", err)
+		}
 
-	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyId(ctx)
-	if err != nil {
-		// Not there, or more than one -- both are the reference being wrong,
-		// and both are the caller's to fix.
-		return nil, pderr.Invalidf("follow", "it does not name one row")
-	}
+		k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyId(ctx)
+		if err != nil {
+			// Not there, or more than one -- both are the reference being wrong,
+			// and both are the caller's to fix.
+			return nil, pderr.Invalidf("follow", "it does not name one row")
+		}
 
-	return k[:], nil
+		return k[:], nil
+	})
 }
 
 // tenancy fills what the schema says this row's tenant is, and refuses a
@@ -1540,20 +1551,25 @@ func (s sinkReading) tenantAtRobotTenant(ctx context.Context, ref *apptest.Robot
 		return nil, pderr.Invalidf("robot", "required: it is what says which tenant this belongs to")
 	}
 
-	// The row the edge names, picked the way every other reference is.
-	pick, err := bare.RobotPick(ref)
-	if err != nil {
-		return nil, pderr.At("robot", err)
-	}
+	// Asked once a transaction: no step past the first can be repointed, so
+	// where this walk arrives from a row is decided for good. See
+	// [seen.Tenant].
+	return seen.Tenant(ctx, "Robot.tenant", ref, func() ([]byte, error) {
+		// The row the edge names, picked the way every other reference is.
+		pick, err := bare.RobotPick(ref)
+		if err != nil {
+			return nil, pderr.At("robot", err)
+		}
 
-	k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyId(ctx)
-	if err != nil {
-		// Not there, or more than one -- both are the reference being wrong,
-		// and both are the caller's to fix.
-		return nil, pderr.Invalidf("robot", "it does not name one row")
-	}
+		k, err := s.store.Db.Robot.Query().Where(pick).QueryTenant().OnlyId(ctx)
+		if err != nil {
+			// Not there, or more than one -- both are the reference being wrong,
+			// and both are the caller's to fix.
+			return nil, pderr.Invalidf("robot", "it does not name one row")
+		}
 
-	return k[:], nil
+		return k[:], nil
+	})
 }
 
 // tenancy fills what the schema says this row's tenant is, and refuses a
@@ -2844,9 +2860,12 @@ func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 		return nil, pderr.Invalidf("directory", "is established by this deployment and not asserted by a request")
 	}
 
-	if _, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
-		Ref: req.GetTenant(),
-	}.Build()); err != nil {
+	if err := seen.Visible(ctx, "Tenant", req.GetTenant(), func() error {
+		_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+			Ref: req.GetTenant(),
+		}.Build())
+		return err
+	}); err != nil {
 		if status.Code(err) == codes.NotFound {
 			return nil, gate.ErrNotFound("Tenant")
 		}
@@ -2855,9 +2874,12 @@ func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 	}
 
 	if ref := req.GetRobot(); ref != nil {
-		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Robot", ref, func() error {
+			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Robot")
 			}
@@ -2877,9 +2899,12 @@ func (s gateHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 // exactly as it would have been at `Add`.
 func (s gateHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
 	if ref := req.GetRobot(); ref != nil {
-		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Robot", ref, func() error {
+			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Robot")
 			}
@@ -2913,9 +2938,12 @@ func (s Gate) Cell() apptest.CellServiceServer {
 // should not be told.
 func (s gateCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
 	if ref := req.GetTenant(); ref != nil {
-		if _, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Tenant", ref, func() error {
+			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Tenant")
 			}
@@ -2949,9 +2977,12 @@ func (s Gate) Joint() apptest.JointServiceServer {
 // should not be told.
 func (s gateJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
 	if ref := req.GetRobot(); ref != nil {
-		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Robot", ref, func() error {
+			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Robot")
 			}
@@ -2985,9 +3016,12 @@ func (s Gate) Pairing() apptest.PairingServiceServer {
 // should not be told.
 func (s gatePairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
 	if ref := req.GetLead(); ref != nil {
-		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Robot", ref, func() error {
+			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Robot")
 			}
@@ -2997,9 +3031,12 @@ func (s gatePairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*
 	}
 
 	if ref := req.GetFollow(); ref != nil {
-		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Robot", ref, func() error {
+			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Robot")
 			}
@@ -3033,9 +3070,12 @@ func (s Gate) Reading() apptest.ReadingServiceServer {
 // should not be told.
 func (s gateReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
 	if ref := req.GetRobot(); ref != nil {
-		if _, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Robot", ref, func() error {
+			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Robot")
 			}
@@ -3073,9 +3113,12 @@ func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 	}
 
 	if ref := req.GetTenant(); ref != nil {
-		if _, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Tenant", ref, func() error {
+			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Tenant")
 			}
@@ -3085,9 +3128,12 @@ func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 	}
 
 	if ref := req.GetCell(); ref != nil {
-		if _, err := s.Gate.Next().Cell().Get(ctx, apptest.CellGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Cell", ref, func() error {
+			_, err := s.Gate.Next().Cell().Get(ctx, apptest.CellGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Cell")
 			}
@@ -3107,9 +3153,12 @@ func (s gateRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*appt
 // exactly as it would have been at `Add`.
 func (s gateRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
 	if ref := req.GetCell(); ref != nil {
-		if _, err := s.Gate.Next().Cell().Get(ctx, apptest.CellGetRequest_builder{
-			Ref: ref,
-		}.Build()); err != nil {
+		if err := seen.Visible(ctx, "Cell", ref, func() error {
+			_, err := s.Gate.Next().Cell().Get(ctx, apptest.CellGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return nil, gate.ErrNotFound("Cell")
 			}
@@ -5277,6 +5326,11 @@ func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.Batc
 	if err := b.guard.Check(len(ops)); err != nil {
 		return nil, err
 	}
+
+	// One transaction, so one memory of what it has asked: a batch of writes
+	// naming the same rows asks about each of them once. Before the guard
+	// narrows each operation, so that every one of them carries it.
+	ctx = seen.For(ctx, b.drv)
 
 	// Every rule for every operation, before anything is written. The
 	// transaction would undo the work of a batch refused halfway, but the
