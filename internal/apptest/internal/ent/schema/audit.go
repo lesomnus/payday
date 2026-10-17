@@ -35,7 +35,8 @@ func (Audit) Fields() []ent.Field {
 			Nillable().
 			Optional(),
 		field.Uint32("domain").
-			Optional(),
+			Optional().
+			Default(0),
 	}
 }
 

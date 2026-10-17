@@ -635,6 +635,12 @@ func (g Gen) entRuntime(ctx context.Context) error {
 		"--feature", "sql/modifier",
 		"--feature", "sql/versioned-migration",
 
+		// A create that reads back the row it stored, which the generated
+		// servers ask for: the trail holds every write's row, and an Add's
+		// INSERT answers with it, in the same statement, where the dialect
+		// has RETURNING. They do not compile against a client without it.
+		"--feature", "sql/returning",
+
 		// The migration engine, off the generated `Client`.
 		//
 		// `Client.Schema` is a `*migrate.Schema` and `NewClient` builds one,

@@ -161,6 +161,11 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 		q.SetDomain(0)
 	}
 
+	var stored *ent.Audit
+	if snapshotOptions(s.Rec, apptest.AuditService_Add_FullMethodName).Value {
+		q.Stored(&stored)
+	}
+
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -176,11 +181,7 @@ func (s AuditServiceServer) Add(ctx context.Context, req *apptest.AuditAddReques
 
 	v := u.Proto()
 	var value *apptest.Audit
-	if snapshotOptions(s.Rec, apptest.AuditService_Add_FullMethodName).Value {
-		stored, err := st.snapshot(ctx, audit.IdEQ(u.Id), false)
-		if err != nil {
-			return nil, err
-		}
+	if stored != nil {
 		value = s.image(stored.Proto())
 	}
 	if err := record(ctx, s.Rec, st.Db, Change{
@@ -280,7 +281,6 @@ func AuditSelect(q *ent.AuditQuery, m *apptest.AuditSelect) {
 func AuditSelectInit(q *ent.AuditQuery, m *apptest.AuditSelect) {
 	if m != nil {
 		AuditSelect(q, m)
-	} else {
 	}
 }
 

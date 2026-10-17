@@ -21,7 +21,8 @@ func (Thing) Fields() []ent.Field {
 			Immutable(),
 		field.String("alias"),
 		field.String("description").
-			Optional(),
+			Optional().
+			Default(""),
 		field.Time("date_erased").
 			Nillable().
 			Optional(),

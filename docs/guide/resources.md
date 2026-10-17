@@ -127,9 +127,15 @@ For a resource without relationships, the additional work is:
 
 | Recorder | Add | Patch / Apply | Erase |
 | --- | --- | --- | --- |
-| Plain / audit-only | None | None | None; existing key lookup remains |
-| Default ResourceRecorder | One persisted-value read, no explicit lock | Reuse existing read-back; no preimage read or explicit lock | Replace key lookup with locked preimage read |
+| Plain | None | None | None; existing key lookup remains |
+| The trail (`pd.Recorder`) | None: the INSERT answers with the row; one read where the dialect has no `RETURNING` (MySQL) | Reuse existing read-back | None; existing key lookup remains |
+| Default ResourceRecorder | Same as the trail | Reuse existing read-back; no preimage read or explicit lock | Replace key lookup with locked preimage read |
 | ResourceRecorder with Previous | Same as default | One preimage read with a row lock | Same as default |
+
+The trail's row is the one capture hands over, so it is not read a second time:
+asking for it is what removed the read the trail made of every row it wrote.
+An Add's is read by its own INSERT through ent's `sql/returning`, which `pd gen`
+turns on.
 
 Requested images also cost protobuf conversion/copying and relationship-key
 queries. Preimage row locks last until transaction completion, including an outer

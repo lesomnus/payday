@@ -3250,7 +3250,16 @@ func Recorder() bare.Recorder { return recorder{} }
 
 type recorder struct{}
 
-var _ bare.Recorder = recorder{}
+var _ bare.SnapshotRecorder = recorder{}
+
+// Snapshots asks for the row each write leaves, which is what a line of the
+// trail holds. The write has it already: an Add's INSERT reads it back, in
+// the same statement where the dialect has RETURNING, and a Patch or an
+// Apply reads it back to answer with. So Record reads it again only for an
+// Erase, which hands none over.
+func (recorder) Snapshots(string) bare.SnapshotOptions {
+	return bare.SnapshotOptions{Value: true}
+}
 
 // Record writes what happened. It runs inside the write's transaction, so an
 // error here takes the write with it -- which is the answer wanted: a write
@@ -3279,9 +3288,10 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 	}
 
 	// The row this happened to, which is where the object's tenant and the
-	// state after the write both come from. Absent for an Erase that took
-	// the row with it; see [subject].
-	tenant, value, err := subject(ctx, s, v.Object)
+	// state after the write both come from: the one the write handed over,
+	// or read when it handed none. Absent for an Erase that took the row
+	// with it; see [subject].
+	tenant, value, err := subject(ctx, s, v.Object, c.Value)
 	if err != nil {
 		return err
 	}
@@ -3405,18 +3415,25 @@ func named(p *patchpb.Path, ns []uint32) bool {
 
 // subject is the tenant of the row `key` names and the row itself, and the
 // nil identifier when there is no such row any more.
-func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte, error) {
+//
+// The row is `image` when the write handed one over -- see
+// [recorder.Snapshots] -- and is read when it did not.
+func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) (uuid.UUID, []byte, error) {
 	switch key.Domain() {
 	case AuditDomain:
-		row, err := s.Audit().Get(ctx, apptest.AuditGetRequest_builder{
-			Ref: apptest.AuditRef_builder{Id: key.Bytes()}.Build(),
-		}.Build())
-		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				return uuid.Nil(), []byte{}, nil
-			}
+		row, handed := image.(*apptest.Audit)
+		if !handed {
+			var err error
+			row, err = s.Audit().Get(ctx, apptest.AuditGetRequest_builder{
+				Ref: apptest.AuditRef_builder{Id: key.Bytes()}.Build(),
+			}.Build())
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return uuid.Nil(), []byte{}, nil
+				}
 
-			return uuid.Nil(), nil, err
+				return uuid.Nil(), nil, err
+			}
 		}
 
 		b, err := proto.Marshal(row)
@@ -3432,19 +3449,23 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		return k, b, nil
 
 	case CellDomain:
-		row, err := s.Cell().Get(ctx, apptest.CellGetRequest_builder{
-			Ref: apptest.CellRef_builder{Id: key.Bytes()}.Build(),
-		}.Build())
-		// Erased softly is still a row; see [erasedCell].
-		if status.Code(err) == codes.NotFound {
-			row, err = erasedCell(ctx, s, key)
-		}
-		if err != nil {
+		row, handed := image.(*apptest.Cell)
+		if !handed {
+			var err error
+			row, err = s.Cell().Get(ctx, apptest.CellGetRequest_builder{
+				Ref: apptest.CellRef_builder{Id: key.Bytes()}.Build(),
+			}.Build())
+			// Erased softly is still a row; see [erasedCell].
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil(), []byte{}, nil
+				row, err = erasedCell(ctx, s, key)
 			}
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return uuid.Nil(), []byte{}, nil
+				}
 
-			return uuid.Nil(), nil, err
+				return uuid.Nil(), nil, err
+			}
 		}
 
 		b, err := proto.Marshal(row)
@@ -3464,19 +3485,23 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		return k, b, nil
 
 	case HolderDomain:
-		row, err := s.Holder().Get(ctx, apptest.HolderGetRequest_builder{
-			Ref: apptest.HolderRef_builder{Id: key.Bytes()}.Build(),
-		}.Build())
-		// Erased softly is still a row; see [erasedHolder].
-		if status.Code(err) == codes.NotFound {
-			row, err = erasedHolder(ctx, s, key)
-		}
-		if err != nil {
+		row, handed := image.(*apptest.Holder)
+		if !handed {
+			var err error
+			row, err = s.Holder().Get(ctx, apptest.HolderGetRequest_builder{
+				Ref: apptest.HolderRef_builder{Id: key.Bytes()}.Build(),
+			}.Build())
+			// Erased softly is still a row; see [erasedHolder].
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil(), []byte{}, nil
+				row, err = erasedHolder(ctx, s, key)
 			}
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return uuid.Nil(), []byte{}, nil
+				}
 
-			return uuid.Nil(), nil, err
+				return uuid.Nil(), nil, err
+			}
 		}
 
 		b, err := proto.Marshal(row)
@@ -3496,19 +3521,23 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		return k, b, nil
 
 	case JointDomain:
-		row, err := s.Joint().Get(ctx, apptest.JointGetRequest_builder{
-			Ref: apptest.JointRef_builder{Id: key.Bytes()}.Build(),
-		}.Build())
-		// Erased softly is still a row; see [erasedJoint].
-		if status.Code(err) == codes.NotFound {
-			row, err = erasedJoint(ctx, s, key)
-		}
-		if err != nil {
+		row, handed := image.(*apptest.Joint)
+		if !handed {
+			var err error
+			row, err = s.Joint().Get(ctx, apptest.JointGetRequest_builder{
+				Ref: apptest.JointRef_builder{Id: key.Bytes()}.Build(),
+			}.Build())
+			// Erased softly is still a row; see [erasedJoint].
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil(), []byte{}, nil
+				row, err = erasedJoint(ctx, s, key)
 			}
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return uuid.Nil(), []byte{}, nil
+				}
 
-			return uuid.Nil(), nil, err
+				return uuid.Nil(), nil, err
+			}
 		}
 
 		b, err := proto.Marshal(row)
@@ -3525,7 +3554,7 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 			return uuid.Nil(), nil, err
 		}
 
-		k, _, err := subject(ctx, s, up)
+		k, _, err := subject(ctx, s, up, nil)
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -3533,15 +3562,19 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		return k, b, nil
 
 	case PairingDomain:
-		row, err := s.Pairing().Get(ctx, apptest.PairingGetRequest_builder{
-			Ref: apptest.PairingRef_builder{Id: key.Bytes()}.Build(),
-		}.Build())
-		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				return uuid.Nil(), []byte{}, nil
-			}
+		row, handed := image.(*apptest.Pairing)
+		if !handed {
+			var err error
+			row, err = s.Pairing().Get(ctx, apptest.PairingGetRequest_builder{
+				Ref: apptest.PairingRef_builder{Id: key.Bytes()}.Build(),
+			}.Build())
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return uuid.Nil(), []byte{}, nil
+				}
 
-			return uuid.Nil(), nil, err
+				return uuid.Nil(), nil, err
+			}
 		}
 
 		b, err := proto.Marshal(row)
@@ -3558,7 +3591,7 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 			return uuid.Nil(), nil, err
 		}
 
-		k, _, err := subject(ctx, s, up)
+		k, _, err := subject(ctx, s, up, nil)
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -3566,15 +3599,19 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		return k, b, nil
 
 	case ReadingDomain:
-		row, err := s.Reading().Get(ctx, apptest.ReadingGetRequest_builder{
-			Ref: apptest.ReadingRef_builder{Id: key.Bytes()}.Build(),
-		}.Build())
-		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				return uuid.Nil(), []byte{}, nil
-			}
+		row, handed := image.(*apptest.Reading)
+		if !handed {
+			var err error
+			row, err = s.Reading().Get(ctx, apptest.ReadingGetRequest_builder{
+				Ref: apptest.ReadingRef_builder{Id: key.Bytes()}.Build(),
+			}.Build())
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return uuid.Nil(), []byte{}, nil
+				}
 
-			return uuid.Nil(), nil, err
+				return uuid.Nil(), nil, err
+			}
 		}
 
 		b, err := proto.Marshal(row)
@@ -3591,7 +3628,7 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 			return uuid.Nil(), nil, err
 		}
 
-		k, _, err := subject(ctx, s, up)
+		k, _, err := subject(ctx, s, up, nil)
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -3599,21 +3636,28 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		return k, b, nil
 
 	case RobotDomain:
-		row, err := s.Robot().Get(ctx, apptest.RobotGetRequest_builder{
-			Ref: apptest.RobotRef_builder{Id: key.Bytes()}.Build(),
-		}.Build())
-		// Erased softly is still a row; see [erasedRobot].
-		if status.Code(err) == codes.NotFound {
-			row, err = erasedRobot(ctx, s, key)
-		}
-		if err != nil {
+		row, handed := image.(*apptest.Robot)
+		if !handed {
+			var err error
+			row, err = s.Robot().Get(ctx, apptest.RobotGetRequest_builder{
+				Ref: apptest.RobotRef_builder{Id: key.Bytes()}.Build(),
+			}.Build())
+			// Erased softly is still a row; see [erasedRobot].
 			if status.Code(err) == codes.NotFound {
-				return uuid.Nil(), []byte{}, nil
+				row, err = erasedRobot(ctx, s, key)
 			}
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return uuid.Nil(), []byte{}, nil
+				}
 
-			return uuid.Nil(), nil, err
+				return uuid.Nil(), nil, err
+			}
 		}
 
+		if handed {
+			row = proto.Clone(row).(*apptest.Robot)
+		}
 		hideRobot(row)
 
 		b, err := proto.Marshal(row)
@@ -3633,15 +3677,19 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id) (uuid.UUID, []byte
 		return k, b, nil
 
 	case TenantDomain:
-		row, err := s.Tenant().Get(ctx, apptest.TenantGetRequest_builder{
-			Ref: apptest.TenantRef_builder{Id: key.Bytes()}.Build(),
-		}.Build())
-		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				return uuid.Nil(), []byte{}, nil
-			}
+		row, handed := image.(*apptest.Tenant)
+		if !handed {
+			var err error
+			row, err = s.Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+				Ref: apptest.TenantRef_builder{Id: key.Bytes()}.Build(),
+			}.Build())
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return uuid.Nil(), []byte{}, nil
+				}
 
-			return uuid.Nil(), nil, err
+				return uuid.Nil(), nil, err
+			}
 		}
 
 		b, err := proto.Marshal(row)
