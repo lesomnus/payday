@@ -279,7 +279,9 @@ func TestAnAddManyTriesAgainForANameItMadeUp(t *testing.T) {
 // with -- and the trail, which is a second copy nothing erases.
 func TestAnAddManyAnswersWithNoSecret(t *testing.T) {
 	x := require.New(t)
-	b, ctx := build(t)
+	// At the content level that keeps the row (#92): what is under test is
+	// what the trail holds of one.
+	b, ctx := keeping(t, "value")
 
 	secret := []byte("hunter2-and-something-long-enough-to-find")
 

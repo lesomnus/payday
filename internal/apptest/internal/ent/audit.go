@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -39,7 +40,9 @@ type Audit struct {
 	// CounterpartTenantId holds the value of the "counterpart_tenant_id" field.
 	CounterpartTenantId *uuid.UUID `json:"counterpart_tenant_id,omitempty"`
 	// Domain holds the value of the "domain" field.
-	Domain       uint32 `json:"domain,omitempty"`
+	Domain uint32 `json:"domain,omitempty"`
+	// Fields holds the value of the "fields" field.
+	Fields       []uint32 `json:"fields,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -48,7 +51,7 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case audit.FieldTraceId, audit.FieldPatch, audit.FieldValue:
+		case audit.FieldTraceId, audit.FieldPatch, audit.FieldValue, audit.FieldFields:
 			values[i] = new([]byte)
 		case audit.FieldDomain:
 			values[i] = new(sql.NullInt64)
@@ -157,6 +160,14 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Domain = uint32(value.Int64)
 			}
+		case audit.FieldFields:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field fields", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Fields); err != nil {
+					return fmt.Errorf("unmarshal field fields: %w", err)
+				}
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -227,6 +238,9 @@ func (_m *Audit) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("domain=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Domain))
+	builder.WriteString(", ")
+	builder.WriteString("fields=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Fields))
 	builder.WriteByte(')')
 	return builder.String()
 }

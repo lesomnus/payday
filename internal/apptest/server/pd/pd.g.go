@@ -3391,17 +3391,22 @@ func errTrail() error {
 }
 
 // Recorder writes one row of the trail for every write the generated
-// servers make.
+// servers make, keeping as much of each as `content` says of its kind.
 //
 // It is not a layer and it does not override an Rpc. The servers call it
 // from inside the transaction that makes the write, so the row and the
 // record of it hold or fall together -- and so every Rpc that changes
 // anything is on the trail without anybody having listed them.
 //
-//	sink, err := bare.NewServer(db, bare.WithRecorder(pd.Recorder()))
-func Recorder() bare.Recorder { return recorder{} }
+//	content, err := c.Audit.Contents()
+//	sink, err := bare.NewServer(db, bare.WithRecorder(pd.Recorder(content)))
+//
+// The content is asked for rather than defaulted, so that a deployment's
+// `audit.content` is not something an app can configure and then forget to
+// hand over: the zero value is the default, and passing it says so.
+func Recorder(content audit1.Contents) bare.Recorder { return recorder{content} }
 
-type recorder struct{}
+type recorder struct{ content audit1.Contents }
 
 var _ bare.SnapshotRecorder = recorder{}
 
@@ -3421,18 +3426,38 @@ func (recorder) Snapshots(string) bare.SnapshotOptions {
 // It writes through the server it was handed, which runs on that transaction
 // and does not record; a recorder that recorded its own writes would not
 // stop.
-func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
+func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
 	// Which entity this is about, before anything decides what of the
-	// patch may be kept: a field declared `secret:` belongs to one entity,
-	// and the identifier's domain byte is the only thing that says which.
+	// write may be kept: a field declared `secret:` or `personal:` belongs
+	// to one entity, and the identifier's domain byte is the only thing
+	// that says which.
 	key, err := audit1.Identifier(c.Key)
 	if err != nil {
 		return err
 	}
 
+	level := r.content.Of(key.Domain())
+	md, secret, personal := described(key)
+
+	// What the write said: the document it was compiled from, and for an
+	// Add, which was compiled from none, the row it made as a patch from
+	// the empty row.
+	doc := c.Patch
+	if doc == nil && c.Value != nil && added(c.By) {
+		if doc, err = audit1.Created(c.Value); err != nil {
+			return status.Errorf(codes.Internal, "the trail of %s: %s", c.Method, err)
+		}
+	}
+	fields := []uint32{}
+	if md != nil {
+		fields = audit1.FieldsOf(doc, md)
+	}
+
 	var patch proto.Message
-	if v := hidden(key, c.Patch); v != nil {
-		patch = v
+	if level != audit1.ContentFields {
+		if v := audit1.Withhold(doc, slices.Concat(secret, personal)); v != nil {
+			patch = v
+		}
 	}
 
 	v, err := audit1.Of(ctx, c.Method, c.Key, patch)
@@ -3444,7 +3469,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 	// state after the write both come from: the one the write handed over,
 	// or read when it handed none. Absent for an Erase that took the row
 	// with it; see [subject].
-	tenant, value, err := subject(ctx, s, v.Object, c.Value)
+	tenant, value, err := subject(ctx, s, v.Object, c.Value, level == audit1.ContentValue)
 	if err != nil {
 		return err
 	}
@@ -3474,6 +3499,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 			SetDomain(domain).
 			SetPatch(notNull(v.Patch)).
 			SetValue(notNull(value)).
+			SetFields(fields).
 			SetDateCreated(time.Now().UTC())
 		if !v.Counterpart.IsZero() {
 			q.SetCounterpartTenantId(uuid.UUID(v.Counterpart))
@@ -3492,6 +3518,7 @@ func (recorder) Record(ctx context.Context, s bare.Server, c bare.Change) error 
 		Domain:              &domain,
 		Patch:               notNull(v.Patch),
 		Value:               notNull(value),
+		Fields:              fields,
 		CounterpartTenantId: v.CounterpartBytes(),
 	}.Build())
 
@@ -3518,85 +3545,155 @@ func notNull(v []byte) []byte {
 	return v
 }
 
-// hidden is `p` with the entries the schema said are never answered with
-// taken out, or nil when there is nothing to record.
+// described is the message the rows of `key`'s entity are, and the fields of
+// it a row of the trail holds no value of: the ones it declared `secret`,
+// which nothing answers with, and the ones it declared `personal`, which the
+// trail records the setting of and not the value (#92). Nil for a domain
+// this app does not have.
 //
 // Which entity it is comes from the identifier, as everywhere else here: a
 // `pdid` carries its domain, so one switch answers it for every entity
 // there will ever be.
-func hidden(key pdid.Id, p *patchpb.Patch) *patchpb.Patch {
-	if p == nil {
-		return nil
-	}
-
-	var secret []uint32
+func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.FieldDescriptor, []protoreflect.FieldDescriptor) {
 	switch key.Domain() {
+	case ArchivedDomain:
+		return describedArchived.md, describedArchived.secret, describedArchived.personal
+	case AuditDomain:
+		return describedAudit.md, describedAudit.secret, describedAudit.personal
+	case CellDomain:
+		return describedCell.md, describedCell.secret, describedCell.personal
+	case FleetDomain:
+		return describedFleet.md, describedFleet.secret, describedFleet.personal
+	case HolderDomain:
+		return describedHolder.md, describedHolder.secret, describedHolder.personal
+	case JointDomain:
+		return describedJoint.md, describedJoint.secret, describedJoint.personal
+	case OutboxDomain:
+		return describedOutbox.md, describedOutbox.secret, describedOutbox.personal
+	case PairingDomain:
+		return describedPairing.md, describedPairing.secret, describedPairing.personal
+	case ReadingDomain:
+		return describedReading.md, describedReading.secret, describedReading.personal
 	case RobotDomain:
-		secret = []uint32{8}
+		return describedRobot.md, describedRobot.secret, describedRobot.personal
 	case SealDomain:
-		secret = []uint32{8, 9}
-	}
-	if len(secret) == 0 {
-		// An entity that declared none, which is nearly all of them.
-		return p
-	}
-
-	kept := []*patchpb.Entry{}
-	for _, e := range p.GetDelta().GetEntries() {
-		// Two shapes, because an entry says where it applies in one of
-		// two ways: a `path`, which names one place, and `targets`,
-		// which is a list of selectors. A generated `Patch` writes the
-		// second even for one field, and reading only the first is how
-		// this looked like it worked while letting everything through.
-		if named(e.GetPath(), secret) {
-			continue
-		}
-
-		hit := false
-		for _, t := range e.GetTargets().GetSelectors() {
-			if slices.Contains(secret, t.GetKey().GetField().GetNumber()) {
-				hit = true
-				break
-			}
-		}
-		if hit {
-			continue
-		}
-
-		kept = append(kept, e)
-	}
-	if len(kept) == len(p.GetDelta().GetEntries()) {
-		return p
+		return describedSeal.md, describedSeal.secret, describedSeal.personal
+	case TenantDomain:
+		return describedTenant.md, describedTenant.secret, describedTenant.personal
+	case ThingDomain:
+		return describedThing.md, describedThing.secret, describedThing.personal
 	}
 
-	// A copy, because the document is the caller's and the write below this
-	// is still going to apply it.
-	out := proto.CloneOf(p)
-	out.GetDelta().SetEntries(kept)
+	return nil, nil, nil
+}
+
+// description is what [described] answers for one entity.
+type description struct {
+	md               protoreflect.MessageDescriptor
+	secret, personal []protoreflect.FieldDescriptor
+}
+
+func describe(m proto.Message, secret, personal []protoreflect.FieldNumber) description {
+	md := m.ProtoReflect().Descriptor()
+	out := description{md: md}
+	for _, n := range secret {
+		out.secret = append(out.secret, md.Fields().ByNumber(n))
+	}
+	for _, n := range personal {
+		out.personal = append(out.personal, md.Fields().ByNumber(n))
+	}
 
 	return out
 }
 
-// named is whether a path's first segment is one of `ns`.
+var (
+	describedArchived = describe((*apptest.Archived)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedAudit = describe((*apptest.Audit)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedCell = describe((*apptest.Cell)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedFleet = describe((*apptest.Fleet)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedHolder = describe((*apptest.Holder)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{4, 5, 6, 7})
+	describedJoint = describe((*apptest.Joint)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedOutbox = describe((*apptest.Outbox)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedPairing = describe((*apptest.Pairing)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedReading = describe((*apptest.Reading)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedRobot = describe((*apptest.Robot)(nil),
+		[]protoreflect.FieldNumber{8},
+		[]protoreflect.FieldNumber{32})
+	describedSeal = describe((*apptest.Seal)(nil),
+		[]protoreflect.FieldNumber{8, 9},
+		[]protoreflect.FieldNumber{})
+	describedTenant = describe((*apptest.Tenant)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedThing = describe((*apptest.Thing)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+)
+
+// hidden is `p` without the entries the schema said are never answered with,
+// or nil when there is nothing left to say.
 //
-// The first and no other: a deeper segment is inside a message-valued
-// field, and a message field cannot be declared `secret:` -- the
-// declaration is on the column.
-func named(p *patchpb.Path, ns []uint32) bool {
-	ss := p.GetSegments()
-	if len(ss) == 0 {
-		return false
+// It is the redactor of every copy of a write that leaves the write -- the
+// trail's, the outbox's and the in-process publish's -- and what it takes
+// out is a `secret:` and nothing else. The trail takes a `personal:` field
+// out as well, and does that itself: the outbox and the publish carry the
+// row they are about, which whoever may read the row reads the person in.
+func hidden(key pdid.Id, p *patchpb.Patch) *patchpb.Patch {
+	_, secret, _ := described(key)
+
+	return audit1.Withhold(p, secret)
+}
+
+// added is whether `by`, the write a server made, made a row: an Add, or an
+// AddMany's for one of its items. See `bare.Change.By`.
+func added(by string) bool {
+	switch by {
+	case apptest.AuditService_Add_FullMethodName,
+		apptest.CellService_Add_FullMethodName,
+		apptest.FleetService_Add_FullMethodName,
+		apptest.HolderService_Add_FullMethodName,
+		apptest.JointService_Add_FullMethodName,
+		apptest.PairingService_Add_FullMethodName,
+		apptest.ReadingService_Add_FullMethodName,
+		apptest.ReadingService_AddMany_FullMethodName,
+		apptest.RobotService_Add_FullMethodName,
+		apptest.RobotService_AddMany_FullMethodName,
+		apptest.SealService_Add_FullMethodName,
+		apptest.TenantService_Add_FullMethodName,
+		apptest.ThingService_Add_FullMethodName:
+		return true
 	}
 
-	return slices.Contains(ns, ss[0].GetField().GetNumber())
+	return false
 }
 
 // subject is the tenant of the row `key` names and the row itself, and the
 // nil identifier when there is no such row any more.
 //
 // The row is `image` when the write handed one over -- see
-// [recorder.Snapshots] -- and is read when it did not.
-func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) (uuid.UUID, []byte, error) {
+// [recorder.Snapshots] -- and is read when it did not. It is answered with
+// only when `keep` says the trail keeps it, which is the `value` content
+// level, and then without what the entity declared `secret` or `personal`;
+// otherwise the bytes are empty, and the row is read for its tenant alone.
+func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message, keep bool) (uuid.UUID, []byte, error) {
 	switch key.Domain() {
 	case AuditDomain:
 		row, handed := image.(*apptest.Audit)
@@ -3614,9 +3711,13 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			}
 		}
 
-		b, err := proto.Marshal(row)
-		if err != nil {
-			return uuid.Nil(), nil, err
+		b := []byte{}
+		if keep {
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
 		}
 
 		k, err := entuuid.FromBytes(row.GetTenantId())
@@ -3646,9 +3747,13 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			}
 		}
 
-		b, err := proto.Marshal(row)
-		if err != nil {
-			return uuid.Nil(), nil, err
+		b := []byte{}
+		if keep {
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
 		}
 
 		if !row.HasTenant() {
@@ -3682,9 +3787,20 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			}
 		}
 
-		b, err := proto.Marshal(row)
-		if err != nil {
-			return uuid.Nil(), nil, err
+		b := []byte{}
+		if keep {
+			if handed {
+				row = proto.Clone(row).(*apptest.Holder)
+			}
+			_, secret, personal := described(key)
+			audit1.Clear(row, secret)
+			audit1.Clear(row, personal)
+
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
 		}
 
 		if !row.HasTenant() {
@@ -3718,9 +3834,13 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			}
 		}
 
-		b, err := proto.Marshal(row)
-		if err != nil {
-			return uuid.Nil(), nil, err
+		b := []byte{}
+		if keep {
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
 		}
 
 		if !row.HasRobot() {
@@ -3732,7 +3852,7 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			return uuid.Nil(), nil, err
 		}
 
-		k, _, err := subject(ctx, s, up, nil)
+		k, _, err := subject(ctx, s, up, nil, false)
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -3755,9 +3875,13 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			}
 		}
 
-		b, err := proto.Marshal(row)
-		if err != nil {
-			return uuid.Nil(), nil, err
+		b := []byte{}
+		if keep {
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
 		}
 
 		if !row.HasLead() {
@@ -3769,7 +3893,7 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			return uuid.Nil(), nil, err
 		}
 
-		k, _, err := subject(ctx, s, up, nil)
+		k, _, err := subject(ctx, s, up, nil, false)
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -3792,9 +3916,13 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			}
 		}
 
-		b, err := proto.Marshal(row)
-		if err != nil {
-			return uuid.Nil(), nil, err
+		b := []byte{}
+		if keep {
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
 		}
 
 		if !row.HasRobot() {
@@ -3806,7 +3934,7 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			return uuid.Nil(), nil, err
 		}
 
-		k, _, err := subject(ctx, s, up, nil)
+		k, _, err := subject(ctx, s, up, nil, false)
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -3833,14 +3961,20 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			}
 		}
 
-		if handed {
-			row = proto.Clone(row).(*apptest.Robot)
-		}
-		hideRobot(row)
+		b := []byte{}
+		if keep {
+			if handed {
+				row = proto.Clone(row).(*apptest.Robot)
+			}
+			_, secret, personal := described(key)
+			audit1.Clear(row, secret)
+			audit1.Clear(row, personal)
 
-		b, err := proto.Marshal(row)
-		if err != nil {
-			return uuid.Nil(), nil, err
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
 		}
 
 		if !row.HasTenant() {
@@ -3870,9 +4004,13 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			}
 		}
 
-		b, err := proto.Marshal(row)
-		if err != nil {
-			return uuid.Nil(), nil, err
+		b := []byte{}
+		if keep {
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
 		}
 
 		k, err := entuuid.FromBytes(row.GetId())
@@ -6827,6 +6965,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				{Number: 3, Name: robot.CellColumn, Type: 64, Nullable: true, Key: 1},
 				{Number: 4, Name: robot.FieldAlias, Type: 9, Nullable: false, Key: 0},
 				{Number: 31, Name: robot.FieldDateAttested, Type: 65, Nullable: true, Key: 0},
+				{Number: 32, Name: robot.FieldKeeper, Type: 9, Nullable: false, Key: 0},
 				{Number: 13, Name: robot.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
 				{Number: 15, Name: robot.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 				{Number: 14, Name: robot.FieldDateErased, Type: 65, Nullable: true, Key: 0},

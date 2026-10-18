@@ -105,6 +105,12 @@ message Robot {
     (payday.field) = {stamped: true}
   ];
 
+  // Keeper is the address of the person who looks after the robot: what a
+  // field about a person is, on a row that is not one. It is personal (#92) --
+  // answered with like any other field, and on the trail as a value at no
+  // content level, which is what the trail's tests hold it to.
+  string keeper = 32 [(payday.field) = {personal: true}];
+
   // Stamped on every write and refused to a patch document, so it is a version
   // and not a field. It is here because this entity declares a `watch:`, and
   // the generator refuses one without it: a watch sends state, so a client

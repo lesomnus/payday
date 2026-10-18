@@ -163,6 +163,7 @@ type Robot struct {
 	xxx_hidden_Alias        string                 `protobuf:"bytes,4,opt,name=alias"`
 	xxx_hidden_Secret       []byte                 `protobuf:"bytes,8,opt,name=secret"`
 	xxx_hidden_DateAttested *timestamppb.Timestamp `protobuf:"bytes,31,opt,name=date_attested,json=dateAttested"`
+	xxx_hidden_Keeper       string                 `protobuf:"bytes,32,opt,name=keeper"`
 	xxx_hidden_DateUpdated  *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated  *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	xxx_hidden_DateErased   *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
@@ -244,6 +245,13 @@ func (x *Robot) GetDateAttested() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Robot) GetKeeper() string {
+	if x != nil {
+		return x.xxx_hidden_Keeper
+	}
+	return ""
+}
+
 func (x *Robot) GetDateUpdated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateUpdated
@@ -297,6 +305,10 @@ func (x *Robot) SetSecret(v []byte) {
 
 func (x *Robot) SetDateAttested(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateAttested = v
+}
+
+func (x *Robot) SetKeeper(v string) {
+	x.xxx_hidden_Keeper = v
 }
 
 func (x *Robot) SetDateUpdated(v *timestamppb.Timestamp) {
@@ -439,6 +451,11 @@ type Robot_builder struct {
 	// may not assert -- so an app's own work, through a server the gate is not
 	// on, writes it without anybody having listed those callers.
 	DateAttested *timestamppb.Timestamp
+	// Keeper is the address of the person who looks after the robot: what a
+	// field about a person is, on a row that is not one. It is personal (#92) --
+	// answered with like any other field, and on the trail as a value at no
+	// content level, which is what the trail's tests hold it to.
+	Keeper string
 	// Stamped on every write and refused to a patch document, so it is a version
 	// and not a field. It is here because this entity declares a `watch:`, and
 	// the generator refuses one without it: a watch sends state, so a client
@@ -463,6 +480,7 @@ func (b0 Robot_builder) Build() *Robot {
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_Secret = b.Secret
 	x.xxx_hidden_DateAttested = b.DateAttested
+	x.xxx_hidden_Keeper = b.Keeper
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_DateErased = b.DateErased
@@ -1033,7 +1051,7 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
-	"\"\x88\x06\n" +
+	"\"\xa8\x06\n" +
 	"\x05Robot\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12+\n" +
@@ -1041,7 +1059,8 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x04cell\x18\x03 \x01(\v2\t.app.CellB\x06\xf2\x82\x16\x028\x01R\x04cell\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12%\n" +
 	"\x06secret\x18\b \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\b\x01R\x06secret\x12M\n" +
-	"\rdate_attested\x18\x1f \x01(\v2\x1a.google.protobuf.TimestampB\f\xea\x82\x16\x028\x01\xaa\xc1\x16\x02\x10\x01R\fdateAttested\x12F\n" +
+	"\rdate_attested\x18\x1f \x01(\v2\x1a.google.protobuf.TimestampB\f\xea\x82\x16\x028\x01\xaa\xc1\x16\x02\x10\x01R\fdateAttested\x12\x1e\n" +
+	"\x06keeper\x18  \x01(\tB\x06\xaa\xc1\x16\x02\x18\x01R\x06keeper\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +

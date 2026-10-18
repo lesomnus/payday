@@ -61,6 +61,7 @@ func (Robot) Fields() []ent.Field {
 		field.Time("date_attested").
 			Nillable().
 			Optional(),
+		field.String("keeper"),
 		field.Time("date_updated"),
 		field.Time("date_created").
 			Immutable().

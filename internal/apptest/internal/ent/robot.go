@@ -27,6 +27,8 @@ type Robot struct {
 	Secret []byte `json:"secret,omitempty"`
 	// DateAttested holds the value of the "date_attested" field.
 	DateAttested *time.Time `json:"date_attested,omitempty"`
+	// Keeper holds the value of the "keeper" field.
+	Keeper string `json:"keeper,omitempty"`
 	// DateUpdated holds the value of the "date_updated" field.
 	DateUpdated time.Time `json:"date_updated,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
@@ -98,7 +100,7 @@ func (*Robot) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case robot.FieldSecret:
 			values[i] = new([]byte)
-		case robot.FieldAlias:
+		case robot.FieldAlias, robot.FieldKeeper:
 			values[i] = new(sql.NullString)
 		case robot.FieldDateAttested, robot.FieldDateUpdated, robot.FieldDateCreated, robot.FieldDateErased:
 			values[i] = new(sql.NullTime)
@@ -145,6 +147,12 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DateAttested = new(time.Time)
 				*_m.DateAttested = value.Time
+			}
+		case robot.FieldKeeper:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field keeper", values[i])
+			} else if value.Valid {
+				_m.Keeper = value.String
 			}
 		case robot.FieldDateUpdated:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -244,6 +252,9 @@ func (_m *Robot) String() string {
 		builder.WriteString("date_attested=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("keeper=")
+	builder.WriteString(_m.Keeper)
 	builder.WriteString(", ")
 	builder.WriteString("date_updated=")
 	builder.WriteString(_m.DateUpdated.Format(time.ANSIC))

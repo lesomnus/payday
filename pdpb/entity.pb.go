@@ -520,11 +520,12 @@ func (*entity_Global_) isEntity_Tenancy() {}
 // the app that happens to hold the field rather than beside the field. The next
 // app storing a verifier rediscovers the whole argument.
 type Field struct {
-	state              protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Secret  bool                   `protobuf:"varint,1,opt,name=secret"`
-	xxx_hidden_Stamped bool                   `protobuf:"varint,2,opt,name=stamped"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Secret   bool                   `protobuf:"varint,1,opt,name=secret"`
+	xxx_hidden_Stamped  bool                   `protobuf:"varint,2,opt,name=stamped"`
+	xxx_hidden_Personal bool                   `protobuf:"varint,3,opt,name=personal"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Field) Reset() {
@@ -566,12 +567,23 @@ func (x *Field) GetStamped() bool {
 	return false
 }
 
+func (x *Field) GetPersonal() bool {
+	if x != nil {
+		return x.xxx_hidden_Personal
+	}
+	return false
+}
+
 func (x *Field) SetSecret(v bool) {
 	x.xxx_hidden_Secret = v
 }
 
 func (x *Field) SetStamped(v bool) {
 	x.xxx_hidden_Stamped = v
+}
+
+func (x *Field) SetPersonal(v bool) {
+	x.xxx_hidden_Personal = v
 }
 
 type Field_builder struct {
@@ -658,6 +670,66 @@ type Field_builder struct {
 	// app's: a stamp being server-set says the request cannot assert it, and says
 	// nothing about which of the deployment's own calls is allowed to.
 	Stamped bool
+	// Personal marks a field that says something about a person: a name, an
+	// address, a phone number. It is answered with like any other field, and the
+	// trail never holds what it was set to (#92).
+	//
+	// # What it does
+	//
+	// The trail records **that** the field was set and not what it was set to.
+	// Its entries are taken out of `Audit.patch` and it is cleared out of
+	// `Audit.value`, at every content level, as a `secret` is; its number stays
+	// in `Audit.fields`, so who changed whose address, and when, is still on the
+	// record.
+	//
+	// # Why the trail and nothing else
+	//
+	// Because the trail is the one copy of a row that nothing rewrites. The row
+	// itself is the person's to correct and erase, and whatever erases a person
+	// erases them there; the trail is appended to, signed and archived, and a
+	// value in it outlives every correction made to the row. Before this, the
+	// only way to take a person out of it was to blank what it held of them
+	// (`trail.Policy.Forget`) -- in the database and in the archive both,
+	// rewriting chunks somebody had signed -- and every write to a person's row
+	// copied the whole of it in again: a change of team carried their address.
+	//
+	// So the person's values have one home, which is the row, and the trail
+	// keeps who did what to it.
+	//
+	// # How it differs from `secret`
+	//
+	// A secret is never answered with, to anybody; a personal field is read like
+	// any other, by whoever may read the row -- a screen shows it and a mail goes
+	// to it. What the two share is the trail: neither is ever on it as a value.
+	// A field is one or the other, and generation refuses both on one field:
+	// `secret` already says everything `personal` would.
+	//
+	// # What it is for, and what it is not
+	//
+	// A value that identifies or describes somebody: what they are called, how
+	// they are reached, what another system calls them, a picture of them, what
+	// is written about them. **Not** what they may do or where they stand -- a
+	// role, a suspension, a date they leave. Those are about a person too, and
+	// they are what a trail is kept to say with their values: who made somebody
+	// an administrator, and when, is the record, and a trail that kept only
+	// "role set" would be keeping the wrong half.
+	//
+	// # What it does not decide
+	//
+	// Whether a value is about a person, which is the schema's to say and which
+	// payday cannot tell from a type. An entity that holds people and things in
+	// one table declares the shared field personal: a field that is sometimes
+	// about a person is about a person, as far as an obligation to erase one
+	// goes, and there is no declaration that depends on the row -- a condition
+	// read at the moment of the write is one more thing to get right forever.
+	//
+	// Nor what the trail does with a value nobody declared. Free text is the
+	// case no declaration reaches -- a name typed into a description -- and
+	// `trail.Policy.Forget` is still what takes it out.
+	//
+	// An edge, and the key, cannot be personal: they are identifiers, which is
+	// the one thing the trail is made of.
+	Personal bool
 }
 
 func (b0 Field_builder) Build() *Field {
@@ -666,6 +738,7 @@ func (b0 Field_builder) Build() *Field {
 	_, _ = b, x
 	x.xxx_hidden_Secret = b.Secret
 	x.xxx_hidden_Stamped = b.Stamped
+	x.xxx_hidden_Personal = b.Personal
 	return m0
 }
 
@@ -1560,10 +1633,11 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05Order\x12\x1e\n" +
 	"\x05field\x18\x01 \x01(\v2\b.orm.RefR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
-	"\atenancy\"9\n" +
+	"\atenancy\"U\n" +
 	"\x05Field\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
-	"\astamped\x18\x02 \x01(\bR\astamped*k\n" +
+	"\astamped\x18\x02 \x01(\bR\astamped\x12\x1a\n" +
+	"\bpersonal\x18\x03 \x01(\bR\bpersonal*k\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

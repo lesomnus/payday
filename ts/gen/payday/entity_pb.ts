@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki8wUKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GkUKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRINCgVzdGFtcBgDIAEoCRIOCgZhZ3JlZXMYBCADKAkaCAoGR2xvYmFsGioKBUVyYXNlEiEKBGhhcmQYASABKAsyEy5wYXlkYXkuRW50aXR5LkhhcmQaBgoESGFyZBqwAQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISFgoEd2l0aBgCIAMoCzIILm9ybS5SZWYSFAoCYnkYAyADKAsyCC5vcm0uUmVmEgwKBHNpemUYBCABKA0SCwoDbWF4GAUgASgNEg8KB2ZpbHRlcnMYBiABKA0SKQoGb3JkZXJzGAcgAygLMhkucGF5ZGF5LkVudGl0eS5OYW1lZE9yZGVyGj8KCk5hbWVkT3JkZXISDAoEbmFtZRgBIAEoCRIjCgVvcmRlchgCIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXIaBwoFV2F0Y2gaLgoFT3JkZXISFwoFZmllbGQYASABKAsyCC5vcm0uUmVmEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeSIoCgVGaWVsZBIOCgZzZWNyZXQYASABKAgSDwoHc3RhbXBlZBgCIAEoCCprCgNPd24SEwoPT1dOX1VOU1BFQ0lGSUVEEAASDgoKT1dOX1RFTkFOVBABEg4KCk9XTl9IT0xERVIQAhINCglPV05fQVVESVQQAxIOCgpPV05fT1VUQk9YEAQSEAoMT1dOX0FSQ0hJVkVEEAVCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_orm_ref]);
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki8wUKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GkUKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRINCgVzdGFtcBgDIAEoCRIOCgZhZ3JlZXMYBCADKAkaCAoGR2xvYmFsGioKBUVyYXNlEiEKBGhhcmQYASABKAsyEy5wYXlkYXkuRW50aXR5LkhhcmQaBgoESGFyZBqwAQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISFgoEd2l0aBgCIAMoCzIILm9ybS5SZWYSFAoCYnkYAyADKAsyCC5vcm0uUmVmEgwKBHNpemUYBCABKA0SCwoDbWF4GAUgASgNEg8KB2ZpbHRlcnMYBiABKA0SKQoGb3JkZXJzGAcgAygLMhkucGF5ZGF5LkVudGl0eS5OYW1lZE9yZGVyGj8KCk5hbWVkT3JkZXISDAoEbmFtZRgBIAEoCRIjCgVvcmRlchgCIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXIaBwoFV2F0Y2gaLgoFT3JkZXISFwoFZmllbGQYASABKAsyCC5vcm0uUmVmEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeSI6CgVGaWVsZBIOCgZzZWNyZXQYASABKAgSDwoHc3RhbXBlZBgCIAEoCBIQCghwZXJzb25hbBgDIAEoCCprCgNPd24SEwoPT1dOX1VOU1BFQ0lGSUVEEAASDgoKT1dOX1RFTkFOVBABEg4KCk9XTl9IT0xERVIQAhINCglPV05fQVVESVQQAxIOCgpPV05fT1VUQk9YEAQSEAoMT1dOX0FSQ0hJVkVEEAVCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_orm_ref]);
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -703,6 +703,71 @@ export type Field = Message<"payday.Field"> & {
    * @generated from field: bool stamped = 2;
    */
   stamped: boolean;
+
+  /**
+   * Personal marks a field that says something about a person: a name, an
+   * address, a phone number. It is answered with like any other field, and the
+   * trail never holds what it was set to (#92).
+   *
+   * # What it does
+   *
+   * The trail records **that** the field was set and not what it was set to.
+   * Its entries are taken out of `Audit.patch` and it is cleared out of
+   * `Audit.value`, at every content level, as a `secret` is; its number stays
+   * in `Audit.fields`, so who changed whose address, and when, is still on the
+   * record.
+   *
+   * # Why the trail and nothing else
+   *
+   * Because the trail is the one copy of a row that nothing rewrites. The row
+   * itself is the person's to correct and erase, and whatever erases a person
+   * erases them there; the trail is appended to, signed and archived, and a
+   * value in it outlives every correction made to the row. Before this, the
+   * only way to take a person out of it was to blank what it held of them
+   * (`trail.Policy.Forget`) -- in the database and in the archive both,
+   * rewriting chunks somebody had signed -- and every write to a person's row
+   * copied the whole of it in again: a change of team carried their address.
+   *
+   * So the person's values have one home, which is the row, and the trail
+   * keeps who did what to it.
+   *
+   * # How it differs from `secret`
+   *
+   * A secret is never answered with, to anybody; a personal field is read like
+   * any other, by whoever may read the row -- a screen shows it and a mail goes
+   * to it. What the two share is the trail: neither is ever on it as a value.
+   * A field is one or the other, and generation refuses both on one field:
+   * `secret` already says everything `personal` would.
+   *
+   * # What it is for, and what it is not
+   *
+   * A value that identifies or describes somebody: what they are called, how
+   * they are reached, what another system calls them, a picture of them, what
+   * is written about them. **Not** what they may do or where they stand -- a
+   * role, a suspension, a date they leave. Those are about a person too, and
+   * they are what a trail is kept to say with their values: who made somebody
+   * an administrator, and when, is the record, and a trail that kept only
+   * "role set" would be keeping the wrong half.
+   *
+   * # What it does not decide
+   *
+   * Whether a value is about a person, which is the schema's to say and which
+   * payday cannot tell from a type. An entity that holds people and things in
+   * one table declares the shared field personal: a field that is sometimes
+   * about a person is about a person, as far as an obligation to erase one
+   * goes, and there is no declaration that depends on the row -- a condition
+   * read at the moment of the write is one more thing to get right forever.
+   *
+   * Nor what the trail does with a value nobody declared. Free text is the
+   * case no declaration reaches -- a name typed into a description -- and
+   * `trail.Policy.Forget` is still what takes it out.
+   *
+   * An edge, and the key, cannot be personal: they are identifiers, which is
+   * the one thing the trail is made of.
+   *
+   * @generated from field: bool personal = 3;
+   */
+  personal: boolean;
 };
 
 /**

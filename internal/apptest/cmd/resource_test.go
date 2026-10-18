@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/config/brokerpg"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
@@ -321,7 +322,7 @@ func TestResourcePublicationPolicyAppliesToBothPaths(t *testing.T) {
 		}
 		return v.GetAlias() == "published", nil
 	}, resource.RecorderOptions{})
-	s, err := bare.NewServer(b.Ent, bare.WithMinter(pd.Minter()), bare.WithRecorder(bare.Recorders{pd.Recorder(), recorder}))
+	s, err := bare.NewServer(b.Ent, bare.WithMinter(pd.Minter()), bare.WithRecorder(bare.Recorders{pd.Recorder(audit.Contents{}), recorder}))
 	x.NoError(err)
 	events, stop := b.Watch.Subscribe()
 	defer stop()

@@ -12,6 +12,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	"github.com/protobuf-orm/ent/dialect/sql"
 	"github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
+	"github.com/protobuf-orm/ent/dialect/sql/sqljson"
 	"github.com/protobuf-orm/ent/schema/field"
 )
 
@@ -164,6 +165,24 @@ func (_u *AuditUpdate) ClearDomain() *AuditUpdate {
 	return _u
 }
 
+// SetFields sets the "fields" field.
+func (_u *AuditUpdate) SetFields(v []uint32) *AuditUpdate {
+	_u.mutation.SetFields(v)
+	return _u
+}
+
+// AppendFields appends value to the "fields" field.
+func (_u *AuditUpdate) AppendFields(v []uint32) *AuditUpdate {
+	_u.mutation.AppendFields(v)
+	return _u
+}
+
+// ClearFields clears the value of the "fields" field.
+func (_u *AuditUpdate) ClearFields() *AuditUpdate {
+	_u.mutation.ClearFields()
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdate) Mutation() *AuditMutation {
 	return _u.mutation
@@ -252,6 +271,17 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DomainCleared() {
 		_spec.ClearField(audit.FieldDomain, field.TypeUint32)
+	}
+	if value, ok := _u.mutation.GetFields(); ok {
+		_spec.SetField(audit.FieldFields, field.TypeJson, value)
+	}
+	if value, ok := _u.mutation.AppendedFields(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, audit.FieldFields, value)
+		})
+	}
+	if _u.mutation.FieldsCleared() {
+		_spec.ClearField(audit.FieldFields, field.TypeJson)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -410,6 +440,24 @@ func (_u *AuditUpdateOne) ClearDomain() *AuditUpdateOne {
 	return _u
 }
 
+// SetFields sets the "fields" field.
+func (_u *AuditUpdateOne) SetFields(v []uint32) *AuditUpdateOne {
+	_u.mutation.SetFields(v)
+	return _u
+}
+
+// AppendFields appends value to the "fields" field.
+func (_u *AuditUpdateOne) AppendFields(v []uint32) *AuditUpdateOne {
+	_u.mutation.AppendFields(v)
+	return _u
+}
+
+// ClearFields clears the value of the "fields" field.
+func (_u *AuditUpdateOne) ClearFields() *AuditUpdateOne {
+	_u.mutation.ClearFields()
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdateOne) Mutation() *AuditMutation {
 	return _u.mutation
@@ -528,6 +576,17 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 	}
 	if _u.mutation.DomainCleared() {
 		_spec.ClearField(audit.FieldDomain, field.TypeUint32)
+	}
+	if value, ok := _u.mutation.GetFields(); ok {
+		_spec.SetField(audit.FieldFields, field.TypeJson, value)
+	}
+	if value, ok := _u.mutation.AppendedFields(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, audit.FieldFields, value)
+		})
+	}
+	if _u.mutation.FieldsCleared() {
+		_spec.ClearField(audit.FieldFields, field.TypeJson)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Audit{config: _u.config}

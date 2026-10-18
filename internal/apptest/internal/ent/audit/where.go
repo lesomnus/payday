@@ -605,6 +605,16 @@ func DomainNotNil() predicate.Audit {
 	return predicate.Audit(sql.FieldNotNull(FieldDomain))
 }
 
+// FieldsIsNil applies the IsNil predicate on the "fields" field.
+func FieldsIsNil() predicate.Audit {
+	return predicate.Audit(sql.FieldIsNull(FieldFields))
+}
+
+// FieldsNotNil applies the NotNil predicate on the "fields" field.
+func FieldsNotNil() predicate.Audit {
+	return predicate.Audit(sql.FieldNotNull(FieldFields))
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Audit) predicate.Audit {
 	return predicate.Audit(sql.AndPredicates(predicates...))

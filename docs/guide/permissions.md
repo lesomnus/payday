@@ -542,7 +542,7 @@ claiming about their schemas, is
 ```go
 // The innermost servers: one behind the wall, one not.
 walled,  err := pd.NewSink(db, bare.WithMinter(pd.Minter()),
-	bare.WithRecorder(bare.Recorders{pd.Recorder(), pd.WatchRecorder(w)}),
+	bare.WithRecorder(bare.Recorders{pd.Recorder(content), pd.WatchRecorder(w)}), // content: c.Audit.Contents()
 	bare.WithScope(bare.Scopes{pd.Wall(), pd.Grouped(sitesOf)}))
 ungated, err := pd.NewSink(db, bare.WithMinter(pd.Minter()), /* … */)
 

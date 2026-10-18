@@ -716,17 +716,22 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 // emitRecorder writes what turns a write into a line of the trail.
 func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	g.P("// Recorder writes one row of the trail for every write the generated")
-	g.P("// servers make.")
+	g.P("// servers make, keeping as much of each as `content` says of its kind.")
 	g.P("//")
 	g.P("// It is not a layer and it does not override an Rpc. The servers call it")
 	g.P("// from inside the transaction that makes the write, so the row and the")
 	g.P("// record of it hold or fall together -- and so every Rpc that changes")
 	g.P("// anything is on the trail without anybody having listed them.")
 	g.P("//")
-	g.P("//	sink, err := bare.NewServer(db, bare.WithRecorder(pd.Recorder()))")
-	g.P("func Recorder() ", p.Bare.Ident("Recorder"), " { return recorder{} }")
+	g.P("//	content, err := c.Audit.Contents()")
+	g.P("//	sink, err := bare.NewServer(db, bare.WithRecorder(pd.Recorder(content)))")
+	g.P("//")
+	g.P("// The content is asked for rather than defaulted, so that a deployment's")
+	g.P("// `audit.content` is not something an app can configure and then forget to")
+	g.P("// hand over: the zero value is the default, and passing it says so.")
+	g.P("func Recorder(content ", pkgAudit.Ident("Contents"), ") ", p.Bare.Ident("Recorder"), " { return recorder{content} }")
 	g.P("")
-	g.P("type recorder struct{}")
+	g.P("type recorder struct{ content ", pkgAudit.Ident("Contents"), " }")
 	g.P("")
 	g.P("var _ ", p.Bare.Ident("SnapshotRecorder"), " = recorder{}")
 	g.P("")
@@ -750,19 +755,43 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("// It writes through the server it was handed, which runs on that transaction")
 	g.P("// and does not record; a recorder that recorded its own writes would not")
 	g.P("// stop.")
-	g.P("func (recorder) Record(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
+	g.P("func (r recorder) Record(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
 		", c ", p.Bare.Ident("Change"), ") error {")
 	g.P("	// Which entity this is about, before anything decides what of the")
-	g.P("	// patch may be kept: a field declared `secret:` belongs to one entity,")
-	g.P("	// and the identifier's domain byte is the only thing that says which.")
+	g.P("	// write may be kept: a field declared `secret:` or `personal:` belongs")
+	g.P("	// to one entity, and the identifier's domain byte is the only thing")
+	g.P("	// that says which.")
 	g.P("	key, err := ", pkgAudit.Ident("Identifier"), "(c.Key)")
 	g.P("	if err != nil {")
 	g.P("		return err")
 	g.P("	}")
 	g.P("")
+	// How much the deployment keeps of this kind is its to say, and which
+	// values are never kept at all is the schema's; see `audit.Content`.
+	g.P("	level := r.content.Of(key.Domain())")
+	g.P("	md, secret, personal := described(key)")
+	g.P("")
+	// Read before anything is taken out of it, which is what lets the trail
+	// say a field was set when it may not say what to.
+	g.P("	// What the write said: the document it was compiled from, and for an")
+	g.P("	// Add, which was compiled from none, the row it made as a patch from")
+	g.P("	// the empty row.")
+	g.P("	doc := c.Patch")
+	g.P("	if doc == nil && c.Value != nil && added(c.By) {")
+	g.P("		if doc, err = ", pkgAudit.Ident("Created"), "(c.Value); err != nil {")
+	g.P("			return ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("Internal"), ", \"the trail of %s: %s\", c.Method, err)")
+	g.P("		}")
+	g.P("	}")
+	g.P("	fields := []uint32{}")
+	g.P("	if md != nil {")
+	g.P("		fields = ", pkgAudit.Ident("FieldsOf"), "(doc, md)")
+	g.P("	}")
+	g.P("")
 	g.P("	var patch ", pkgProto.Ident("Message"))
-	g.P("	if v := hidden(key, c.Patch); v != nil {")
-	g.P("		patch = v")
+	g.P("	if level != ", pkgAudit.Ident("ContentFields"), " {")
+	g.P("		if v := ", pkgAudit.Ident("Withhold"), "(doc, ", pkgSlices.Ident("Concat"), "(secret, personal)); v != nil {")
+	g.P("			patch = v")
+	g.P("		}")
 	g.P("	}")
 	g.P("")
 	g.P("	v, err := ", pkgAudit.Ident("Of"), "(ctx, c.Method, c.Key, patch)")
@@ -774,7 +803,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("	// state after the write both come from: the one the write handed over,")
 	g.P("	// or read when it handed none. Absent for an Erase that took the row")
 	g.P("	// with it; see [subject].")
-	g.P("	tenant, value, err := subject(ctx, s, v.Object, c.Value)")
+	g.P("	tenant, value, err := subject(ctx, s, v.Object, c.Value, level == ", pkgAudit.Ident("ContentValue"), ")")
 	g.P("	if err != nil {")
 	g.P("		return err")
 	g.P("	}")
@@ -812,6 +841,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 		g.P("			SetDomain(domain).")
 		g.P("			SetPatch(notNull(v.Patch)).")
 		g.P("			SetValue(notNull(value)).")
+		g.P("			SetFields(fields).")
 		g.P("			SetDateCreated(", pkgTime.Ident("Now"), "().UTC())")
 		g.P("		if !v.Counterpart.IsZero() {")
 		g.P("			q.SetCounterpartTenantId(", pkgUuid.Ident("UUID"), "(v.Counterpart))")
@@ -837,6 +867,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		Domain:        &domain,")
 	g.P("		Patch:         notNull(v.Patch),")
 	g.P("		Value:         notNull(value),")
+	g.P("		Fields:        fields,")
 	// Zero unless a layer said otherwise, which is nearly every write. It is
 	// the other tenant this one was about, and the wall on the trail counts
 	// it; see `audit.Concerning`.
@@ -848,7 +879,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("")
 
 	emitNotNull(g)
-	emitHidden(g, s)
+	emitHidden(g, s, root)
 	emitSubject(g, s, p, root)
 	if keepsTrail(s) {
 		emitKeptTrail(g, s, p)
@@ -877,7 +908,7 @@ func keepsTrail(s *Schema) bool {
 		"id": true, "tenant_id": true, "actor_id": true, "trace_id": true,
 		"action": true, "object_id": true, "patch": true, "date_created": true,
 		"actor_tenant_id": true, "value": true, "counterpart_tenant_id": true,
-		"domain": true,
+		"domain": true, "fields": true,
 	}
 	n := 0
 	for p := range v.Props() {
@@ -1042,97 +1073,112 @@ func emitKeptTrail(g *protogen.GeneratedFile, s *Schema, p Paths) {
 // declared `secret` -- the declaration is on the column. Matching the first
 // segment by **number** rather than by name is the same choice `pdgen` makes
 // everywhere: a name is a label and the number is the field.
-func emitHidden(g *protogen.GeneratedFile, s *Schema) {
-	g.P("// hidden is `p` with the entries the schema said are never answered with")
-	g.P("// taken out, or nil when there is nothing to record.")
+func emitHidden(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath) {
+	g.P("// described is the message the rows of `key`'s entity are, and the fields of")
+	g.P("// it a row of the trail holds no value of: the ones it declared `secret`,")
+	g.P("// which nothing answers with, and the ones it declared `personal`, which the")
+	g.P("// trail records the setting of and not the value (#92). Nil for a domain")
+	g.P("// this app does not have.")
 	g.P("//")
 	g.P("// Which entity it is comes from the identifier, as everywhere else here: a")
 	g.P("// `pdid` carries its domain, so one switch answers it for every entity")
 	g.P("// there will ever be.")
-	g.P("func hidden(key ", pkgPdid.Ident("Id"), ", p *", pkgPatchpb.Ident("Patch"), ") *", pkgPatchpb.Ident("Patch"), " {")
-	g.P("	if p == nil {")
-	g.P("		return nil")
-	g.P("	}")
-	g.P("")
-	g.P("	var secret []uint32")
+	g.P("func described(key ", pkgPdid.Ident("Id"), ") (", pkgReflect.Ident("MessageDescriptor"), ", []", pkgReflect.Ident("FieldDescriptor"), ", []", pkgReflect.Ident("FieldDescriptor"), ") {")
 	g.P("	switch key.Domain() {")
-
-	any := false
 	for _, v := range s.Sorted() {
-		if len(v.Secrets) == 0 {
-			continue
-		}
-
-		any = true
-
-		ns := make([]string, 0, len(v.SecretNumbers))
-		for _, n := range v.SecretNumbers {
-			ns = append(ns, strconv.FormatUint(uint64(n), 10))
-		}
-
 		g.P("	case ", v.GoName(), "Domain:")
-		g.P("		secret = []uint32{", strings.Join(ns, ", "), "}")
+		g.P("		return described", v.GoName(), ".md, described", v.GoName(), ".secret, described", v.GoName(), ".personal")
 	}
+	g.P("	}")
+	g.P("")
+	g.P("	return nil, nil, nil")
+	g.P("}")
+	g.P("")
 
-	g.P("	}")
-	g.P("	if len(secret) == 0 {")
-	g.P("		// An entity that declared none, which is nearly all of them.")
-	g.P("		return p")
-	g.P("	}")
+	g.P("// description is what [described] answers for one entity.")
+	g.P("type description struct {")
+	g.P("	md               ", pkgReflect.Ident("MessageDescriptor"))
+	g.P("	secret, personal []", pkgReflect.Ident("FieldDescriptor"))
+	g.P("}")
 	g.P("")
-	g.P("	kept := []*", pkgPatchpb.Ident("Entry"), "{}")
-	g.P("	for _, e := range p.GetDelta().GetEntries() {")
-	g.P("		// Two shapes, because an entry says where it applies in one of")
-	g.P("		// two ways: a `path`, which names one place, and `targets`,")
-	g.P("		// which is a list of selectors. A generated `Patch` writes the")
-	g.P("		// second even for one field, and reading only the first is how")
-	g.P("		// this looked like it worked while letting everything through.")
-	g.P("		if named(e.GetPath(), secret) {")
-	g.P("			continue")
-	g.P("		}")
-	g.P("")
-	g.P("		hit := false")
-	g.P("		for _, t := range e.GetTargets().GetSelectors() {")
-	g.P("			if ", pkgSlices.Ident("Contains"), "(secret, t.GetKey().GetField().GetNumber()) {")
-	g.P("				hit = true")
-	g.P("				break")
-	g.P("			}")
-	g.P("		}")
-	g.P("		if hit {")
-	g.P("			continue")
-	g.P("		}")
-	g.P("")
-	g.P("		kept = append(kept, e)")
+	g.P("func describe(m ", pkgProto.Ident("Message"), ", secret, personal []", pkgReflect.Ident("FieldNumber"), ") description {")
+	g.P("	md := m.ProtoReflect().Descriptor()")
+	g.P("	out := description{md: md}")
+	g.P("	for _, n := range secret {")
+	g.P("		out.secret = append(out.secret, md.Fields().ByNumber(n))")
 	g.P("	}")
-	g.P("	if len(kept) == len(p.GetDelta().GetEntries()) {")
-	g.P("		return p")
+	g.P("	for _, n := range personal {")
+	g.P("		out.personal = append(out.personal, md.Fields().ByNumber(n))")
 	g.P("	}")
-	g.P("")
-	g.P("	// A copy, because the document is the caller's and the write below this")
-	g.P("	// is still going to apply it.")
-	g.P("	out := ", pkgProto.Ident("CloneOf"), "(p)")
-	g.P("	out.GetDelta().SetEntries(kept)")
 	g.P("")
 	g.P("	return out")
 	g.P("}")
 	g.P("")
 
-	g.P("// named is whether a path's first segment is one of `ns`.")
-	g.P("//")
-	g.P("// The first and no other: a deeper segment is inside a message-valued")
-	g.P("// field, and a message field cannot be declared `secret:` -- the")
-	g.P("// declaration is on the column.")
-	g.P("func named(p *", pkgPatchpb.Ident("Path"), ", ns []uint32) bool {")
-	g.P("	ss := p.GetSegments()")
-	g.P("	if len(ss) == 0 {")
-	g.P("		return false")
-	g.P("	}")
+	numbers := func(ns []uint32) string {
+		out := make([]string, 0, len(ns))
+		for _, n := range ns {
+			out = append(out, strconv.FormatUint(uint64(n), 10))
+		}
+		return strings.Join(out, ", ")
+	}
+	g.P("var (")
+	for _, v := range s.Sorted() {
+		// By number, which is what a document names a field by and what the
+		// declaration is about; see SecretNumbers.
+		g.P("	described", v.GoName(), " = describe((*", root.Ident(v.GoName()), ")(nil),")
+		g.P("		[]", pkgReflect.Ident("FieldNumber"), "{", numbers(v.SecretNumbers), "},")
+		g.P("		[]", pkgReflect.Ident("FieldNumber"), "{", numbers(v.PersonalNumbers), "})")
+	}
+	g.P(")")
 	g.P("")
-	g.P("	return ", pkgSlices.Ident("Contains"), "(ns, ss[0].GetField().GetNumber())")
+
+	g.P("// hidden is `p` without the entries the schema said are never answered with,")
+	g.P("// or nil when there is nothing left to say.")
+	g.P("//")
+	g.P("// It is the redactor of every copy of a write that leaves the write -- the")
+	g.P("// trail's, the outbox's and the in-process publish's -- and what it takes")
+	g.P("// out is a `secret:` and nothing else. The trail takes a `personal:` field")
+	g.P("// out as well, and does that itself: the outbox and the publish carry the")
+	g.P("// row they are about, which whoever may read the row reads the person in.")
+	g.P("func hidden(key ", pkgPdid.Ident("Id"), ", p *", pkgPatchpb.Ident("Patch"), ") *", pkgPatchpb.Ident("Patch"), " {")
+	g.P("	_, secret, _ := described(key)")
+	g.P("")
+	g.P("	return ", pkgAudit.Ident("Withhold"), "(p, secret)")
 	g.P("}")
 	g.P("")
 
-	_ = any
+	g.P("// added is whether `by`, the write a server made, made a row: an Add, or an")
+	g.P("// AddMany's for one of its items. See `bare.Change.By`.")
+	g.P("func added(by string) bool {")
+	adds := []any{}
+	for _, v := range s.Sorted() {
+		for _, rpc := range []struct {
+			name string
+			has  bool
+		}{
+			{"Add", v.Rpcs().HasAdd()},
+			{"AddMany", v.Rpcs().HasAddMany()},
+		} {
+			if !rpc.has {
+				continue
+			}
+			if len(adds) > 0 {
+				adds = append(adds, ",\n\t\t")
+			}
+			adds = append(adds, root.Ident(v.GoName()+"Service_"+rpc.name+"_FullMethodName"))
+		}
+	}
+	if len(adds) > 0 {
+		g.P("	switch by {")
+		g.P(append(append([]any{"	case "}, adds...), ":")...)
+		g.P("		return true")
+		g.P("	}")
+		g.P("")
+	}
+	g.P("	return false")
+	g.P("}")
+	g.P("")
 }
 
 // emitNotNull writes the one place a value passes through before the trail's
@@ -1267,9 +1313,12 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	g.P("// nil identifier when there is no such row any more.")
 	g.P("//")
 	g.P("// The row is `image` when the write handed one over -- see")
-	g.P("// [recorder.Snapshots] -- and is read when it did not.")
+	g.P("// [recorder.Snapshots] -- and is read when it did not. It is answered with")
+	g.P("// only when `keep` says the trail keeps it, which is the `value` content")
+	g.P("// level, and then without what the entity declared `secret` or `personal`;")
+	g.P("// otherwise the bytes are empty, and the row is read for its tenant alone.")
 	g.P("func subject(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
-		", key ", pkgPdid.Ident("Id"), ", image ", pkgProto.Ident("Message"), ") (", pkgUuid.Ident("UUID"), ", []byte, error) {")
+		", key ", pkgPdid.Ident("Id"), ", image ", pkgProto.Ident("Message"), ", keep bool) (", pkgUuid.Ident("UUID"), ", []byte, error) {")
 	g.P("	switch key.Domain() {")
 
 	for _, v := range s.Sorted() {
@@ -1319,37 +1368,46 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		g.P("			}")
 		g.P("		}")
 		g.P("")
-		if len(v.Secrets) > 0 {
-			// What the entity declared it never answers with, cleared before
-			// the trail holds a copy.
-			//
-			// The layer that does this on the way out is in front of the sink
-			// and this is behind it -- the recorder reads the bare server on
-			// purpose, so that a row is recorded as it was written rather than
-			// as somebody was allowed to see it. Which is right for every
-			// column but these: a verifier written into `value` is a second
-			// copy of it, in the one table nothing erases, reachable by anybody
-			// who may read the trail.
-			//
-			// Found by writing it: an argon2id hash sat in the trail of a
-			// deployment whose `CredentialService` is unregistered and closed
-			// precisely so that it could not be read.
-			//
-			// A row `Get` just answered with is nobody else's, and is cleared
-			// in place. One the write handed over is every recorder's -- a
-			// `Recorders` hands each of them the same one -- and is cleared on
-			// a copy, or the next recorder would be told of a row without the
-			// column it wrote.
-			g.P("		if handed {")
-			g.P("			row = ", pkgProto.Ident("Clone"), "(row).(*", root.Ident(v.GoName()), ")")
-			g.P("		}")
-			g.P("		hide", v.GoName(), "(row)")
+		// What the entity declared the trail never holds a value of, cleared
+		// before it holds a copy: a `secret:`, which the layer that does this
+		// on the way out of a read clears too, and a `personal:`, which that
+		// layer leaves for whoever may read the row (#92).
+		//
+		// The layer that clears a secret on the way out is in front of the sink
+		// and this is behind it -- the recorder reads the bare server on
+		// purpose, so that a row is recorded as it was written rather than as
+		// somebody was allowed to see it. Which is right for every column but
+		// these: a verifier written into `value` is a second copy of it, in the
+		// one table nothing erases, reachable by anybody who may read the trail.
+		// Found by writing it: an argon2id hash sat in the trail of a deployment
+		// whose `CredentialService` is unregistered and closed precisely so that
+		// it could not be read. A person's address is the same copy, of a value
+		// that is theirs to have corrected and erased.
+		//
+		// A row `Get` just answered with is nobody else's, and is cleared in
+		// place. One the write handed over is every recorder's -- a `Recorders`
+		// hands each of them the same one -- and is cleared on a copy, or the
+		// next recorder would be told of a row without the column it wrote.
+		//
+		// And none of it unless the trail keeps the row, which is the `value`
+		// content level: at the others the row is read for its tenant and
+		// nothing of it is kept, so there is nothing to copy or to clear.
+		g.P("		b := []byte{}")
+		g.P("		if keep {")
+		if len(v.Secrets)+len(v.Personal) > 0 {
+			g.P("			if handed {")
+			g.P("				row = ", pkgProto.Ident("Clone"), "(row).(*", root.Ident(v.GoName()), ")")
+			g.P("			}")
+			g.P("			_, secret, personal := described(key)")
+			g.P("			", pkgAudit.Ident("Clear"), "(row, secret)")
+			g.P("			", pkgAudit.Ident("Clear"), "(row, personal)")
 			g.P("")
 		}
-
-		g.P("		b, err := ", pkgProto.Ident("Marshal"), "(row)")
-		g.P("		if err != nil {")
-		g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
+		g.P("			v, err := ", pkgProto.Ident("Marshal"), "(row)")
+		g.P("			if err != nil {")
+		g.P("				return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
+		g.P("			}")
+		g.P("			b = v")
 		g.P("		}")
 		g.P("")
 
@@ -1378,7 +1436,7 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("		}")
 			g.P("")
-			g.P("		k, _, err := subject(ctx, s, up, nil)")
+			g.P("		k, _, err := subject(ctx, s, up, nil, false)")
 			g.P("		if err != nil {")
 			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("		}")

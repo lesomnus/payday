@@ -299,6 +299,13 @@ type Holder_builder struct {
 	Tenant *Tenant
 	// Alias is what a person writes this holder as, within its tenant:
 	// `@acme/admin`. It is unique inside a tenant and not across the deployment.
+	//
+	// It and the three after it are **personal** (#92): a holder is somebody, and
+	// what they are called, what is said of them and what is labelled on them are
+	// theirs. The trail records that one of them was set, and never what to --
+	// the row is where a person is corrected and erased, and the trail is the
+	// copy nothing rewrites. Who a line of the trail is about stays on it: that
+	// is `actor_id` and `object_id`, which are identifiers.
 	Alias  string
 	Name   string
 	Desc   string
@@ -365,14 +372,14 @@ var File_app_payday_holder_proto protoreflect.FileDescriptor
 
 const file_app_payday_holder_proto_rawDesc = "" +
 	"\n" +
-	"\x17app/payday/holder.proto\x12\x03app\x1a\x11app/profile.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xdd\x05\n" +
+	"\x17app/payday/holder.proto\x12\x03app\x1a\x11app/profile.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xfd\x05\n" +
 	"\x06Holder\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
-	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12\x12\n" +
-	"\x04name\x18\x05 \x01(\tR\x04name\x12\x12\n" +
-	"\x04desc\x18\x06 \x01(\tR\x04desc\x12/\n" +
-	"\x06labels\x18\a \x03(\v2\x17.app.Holder.LabelsEntryR\x06labels\x12F\n" +
+	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x1c\n" +
+	"\x05alias\x18\x04 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x01R\x05alias\x12\x1a\n" +
+	"\x04name\x18\x05 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x01R\x04name\x12\x1a\n" +
+	"\x04desc\x18\x06 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x01R\x04desc\x127\n" +
+	"\x06labels\x18\a \x03(\v2\x17.app.Holder.LabelsEntryB\x06\xaa\xc1\x16\x02\x18\x01R\x06labels\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased\x12H\n" +

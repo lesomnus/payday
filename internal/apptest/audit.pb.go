@@ -64,6 +64,7 @@ type Audit struct {
 	xxx_hidden_Value               []byte                 `protobuf:"bytes,17,opt,name=value"`
 	xxx_hidden_CounterpartTenantId []byte                 `protobuf:"bytes,18,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
 	xxx_hidden_Domain              uint32                 `protobuf:"varint,19,opt,name=domain"`
+	xxx_hidden_Fields              []uint32               `protobuf:"varint,20,rep,packed,name=fields"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
 }
@@ -177,6 +178,13 @@ func (x *Audit) GetDomain() uint32 {
 	return 0
 }
 
+func (x *Audit) GetFields() []uint32 {
+	if x != nil {
+		return x.xxx_hidden_Fields
+	}
+	return nil
+}
+
 func (x *Audit) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -252,6 +260,10 @@ func (x *Audit) SetDomain(v uint32) {
 	x.xxx_hidden_Domain = v
 }
 
+func (x *Audit) SetFields(v []uint32) {
+	x.xxx_hidden_Fields = v
+}
+
 func (x *Audit) HasDateCreated() bool {
 	if x == nil {
 		return false
@@ -321,9 +333,19 @@ type Audit_builder struct {
 	// to say it did not need to be. That was true of the question it was
 	// answering.
 	ObjectId []byte
-	// The patch document the write was compiled from, as it was marshaled, and
-	// empty for a write that was not one -- an Add or an Erase says everything it
-	// did in `action` and `object_id`.
+	// The patch document the write was compiled from, as it was marshaled -- and
+	// for an Add, the row it made as a patch from the empty row: an entry for
+	// every field the row holds, and an edge by the key of the row it names, as a
+	// Patch of the same fields says it (#92). An Add had no document once, and
+	// `value` was the whole record of what it made; at the default content level
+	// this is that record, and `value` is the one a deployment asks for.
+	//
+	// Empty for a write that was not one -- an Erase says everything it did in
+	// `action` and `object_id` -- and at the `fields` content level, which keeps
+	// which fields a write set and nothing they were set to. What a field
+	// declared `secret` or `personal` was set to is never in it, at any level:
+	// its entries are taken out before the document is kept, and its number is
+	// in `fields`.
 	//
 	// Stored as bytes rather than read back as a document, because that is what a
 	// trail is for: written once, read by somebody asking what happened, and
@@ -343,7 +365,18 @@ type Audit_builder struct {
 	// when neither is true.
 	ActorTenantId []byte
 	// The row this happened to, marshaled, as it was when the event was over --
-	// an Erase included. An entity erased softly keeps its row, so the value of
+	// an Erase included -- and kept only where a deployment asked for it: the
+	// `value` content level, for the whole trail or for one kind of thing
+	// (`audit.content`, `audit.by.<kind>.content`). Empty at the others, of which
+	// `patch` is the default (#92). A field declared `secret` or `personal` is
+	// cleared out of it before it is kept.
+	//
+	// It is not the default because it is the whole row on every write, and the
+	// trail is the one table nothing rewrites: a write that changed a person's
+	// team copied their address in again, and erasing them meant blanking every
+	// copy, in the database and in the archive. The patch is what was written,
+	// and the row in its own table is what it became.
+	// An entity erased softly keeps its row, so the value of
 	// its Erase is the whole of that row with the erase stamp on: everything of
 	// the moment before, plus what the erase wrote -- the stamp, and the version
 	// column beside it for an entity that carries one, since an erase is a write
@@ -352,11 +385,12 @@ type Audit_builder struct {
 	// exists, and a copy taken earlier could be stale by the time the stamp
 	// lands.
 	//
-	// `patch` is the delta and this is the state, and the trail needs both for a
-	// reason each of them cannot answer alone. A patch says what changed and not
-	// what it became; and an Add and an Erase have no patch at all, so without
-	// this the two events that matter most -- what was created, what was
-	// destroyed -- record nothing but their own names.
+	// `patch` is the delta and this is the state, and a deployment that asks for
+	// both has a reason each cannot answer alone. A patch says what changed and
+	// not what it became: the version stamp, a default, a stamped field are the
+	// server's and in no document. An Add's patch says what it made, and an
+	// Erase's row is in its own table while the erase is soft -- the two events
+	// the trail once had nothing else to record for.
 	//
 	// The hard Erase is the one with nothing to read: the row is gone before the
 	// recorder runs, so the value is **empty** and the record is filed under the
@@ -377,9 +411,10 @@ type Audit_builder struct {
 	// version upgrade is not the right thing to decide how long somebody's
 	// evidence lasts.
 	//
-	// What it does **not** answer is erasing one person from the trail. That is
-	// about a subject rather than about age, and what it should blank is a
-	// decision an app's obligations make and payday cannot.
+	// Erasing one person from the trail is about a subject rather than about age,
+	// and is what `personal` is for: a field that holds them is never on the
+	// trail as a value. What no declaration reaches -- free text, and rows written
+	// before #92 -- `trail.Policy.Forget` still blanks.
 	Value []byte
 	// The **other** tenant this write was about, and unset for nearly every one.
 	//
@@ -458,6 +493,20 @@ type Audit_builder struct {
 	// app this was written against hit it on the first run after the column
 	// existed.
 	Domain uint32
+	// The numbers of the fields the write set, each once and in order: the first
+	// segment of every entry of its document, read before anything is taken out
+	// of it -- for an Add, the fields of the row it made (#92).
+	//
+	// It is what says a field was set when the trail may not say what to. A field
+	// declared `personal` or `secret` is never here as a value, so without this
+	// the record of somebody changing a person's address is a write to the person
+	// and nothing more -- and an entry with its value taken out has no shape a
+	// document can hold (see the recorder's `hidden`). It is kept at every content
+	// level, and at `fields` it is all a row says beyond who, what and when.
+	//
+	// Numbers rather than names, as everywhere else the trail names a field: a
+	// name is a label, and a field renamed is the same column.
+	Fields []uint32
 }
 
 func (b0 Audit_builder) Build() *Audit {
@@ -476,6 +525,7 @@ func (b0 Audit_builder) Build() *Audit {
 	x.xxx_hidden_Value = b.Value
 	x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
 	x.xxx_hidden_Domain = b.Domain
+	x.xxx_hidden_Fields = b.Fields
 	return m0
 }
 
@@ -483,7 +533,7 @@ var File_app_payday_audit_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xe2\a\n" +
+	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xfa\a\n" +
 	"\x05Audit\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
@@ -497,7 +547,8 @@ const file_app_payday_audit_proto_rawDesc = "" +
 	"\x0factor_tenant_id\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10@R\ractorTenantId\x12\x14\n" +
 	"\x05value\x18\x11 \x01(\fR\x05value\x12<\n" +
 	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\x13counterpartTenantId\x12\x1f\n" +
-	"\x06domain\x18\x13 \x01(\rB\a\xea\x82\x16\x03\x82\x01\x00R\x06domain:\x96\x04\xca\xfc\x15\xd8\x02\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
+	"\x06domain\x18\x13 \x01(\rB\a\xea\x82\x16\x03\x82\x01\x00R\x06domain\x12\x16\n" +
+	"\x06fields\x18\x14 \x03(\rR\x06fields:\x96\x04\xca\xfc\x15\xd8\x02\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
 	"\tobject_id\x10\v\x1a(\x12\x05trail\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a8\x12\x0fby_actor_tenant\x1a\x13\n" +

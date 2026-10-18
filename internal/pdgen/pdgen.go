@@ -68,6 +68,13 @@ type Entity struct {
 	// never answered with. Empty for nearly every entity.
 	Secrets []string
 
+	// Personal are the fields declared `(payday.field).personal`: answered
+	// with like any other, and on the trail as a value at no level (#92). By
+	// name, and by number in PersonalNumbers, for the reason SecretNumbers
+	// gives.
+	Personal        []string
+	PersonalNumbers []uint32
+
 	// Domain is what identifiers of this entity carry.
 	Domain uint8
 
@@ -271,6 +278,8 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 	// `EmitSecret`, and `payday.Field`.
 	var secrets []string
 	var secretNumbers []uint32
+	var personal []string
+	var personalNumbers []uint32
 	var stamped []string
 	for prop := range e.Props() {
 		f, _ := proto.GetExtension(prop.Descriptor().Options(), pdpb.E_Field).(*pdpb.Field)
@@ -278,20 +287,38 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 			secrets = append(secrets, prop.Name())
 			secretNumbers = append(secretNumbers, uint32(prop.Descriptor().Number()))
 		}
+		if f.GetPersonal() {
+			// Refused here rather than ignored, as everything `payday.field`
+			// says is: a declaration that does nothing is one somebody relies
+			// on.
+			switch {
+			case f.GetSecret():
+				return nil, fmt.Errorf("%s: declared secret and personal; secret keeps it off the trail and off every read, which is everything personal would", prop.FullName())
+			case prop.Number() == e.Key().Number():
+				return nil, fmt.Errorf("%s: the key cannot be personal: it is the identifier the trail names the row by", prop.FullName())
+			}
+			if _, ok := prop.(graph.Edge); ok {
+				return nil, fmt.Errorf("%s: an edge cannot be personal: it is the key of another row, and what that row holds is declared there", prop.FullName())
+			}
+			personal = append(personal, prop.Name())
+			personalNumbers = append(personalNumbers, uint32(prop.Descriptor().Number()))
+		}
 		if f.GetStamped() {
 			stamped = append(stamped, prop.Name())
 		}
 	}
 
 	v := &Entity{
-		Entity:        e,
-		Opts:          opts,
-		Secrets:       secrets,
-		SecretNumbers: secretNumbers,
-		Stamped:       stamped,
-		Domain:        uint8(d),
-		Name:          pdid.Name(opts.GetName(), string(e.FullName().Name())),
-		Own:           opts.GetOwn(),
+		Entity:          e,
+		Opts:            opts,
+		Secrets:         secrets,
+		SecretNumbers:   secretNumbers,
+		Personal:        personal,
+		PersonalNumbers: personalNumbers,
+		Stamped:         stamped,
+		Domain:          uint8(d),
+		Name:            pdid.Name(opts.GetName(), string(e.FullName().Name())),
+		Own:             opts.GetOwn(),
 	}
 
 	switch {
