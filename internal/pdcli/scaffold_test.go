@@ -170,6 +170,8 @@ func TestWhatIsWrittenIsWhatTheGeneratorWillTake(t *testing.T) {
 	x.Contains(src, `by: [{name: "ref"}]`,
 		"a watch has no way to name the rows it is about")
 	x.Contains(src, `name: "page"`, "a list with no index scans the table")
+	x.Regexp(`name: "page"\s+refs: \[\s+\{\s+name: "tenant"`, src,
+		"a list read narrowed to a tenant by an index that does not begin with it reads every tenant's rows")
 	x.Contains(src, `option go_package = "github.com/acme/thing"`)
 
 	// The tenant, where a generation puts it. payday's entities are copied

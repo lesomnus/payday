@@ -87,6 +87,27 @@ message Holder {
           }
         ]
         unique: true
+      },
+      // The order its list reads in, the tenant first: every read of the
+      // people is narrowed to the tenants a caller may see, so an index that
+      // began with the time would read every tenant's people to find one's
+      // (lesomnus/rove#122).
+      {
+        name: "page"
+        refs: [
+          {
+            name: "tenant"
+            number: 2
+          },
+          {
+            name: "date_created"
+            number: 15
+          },
+          {
+            name: "id"
+            number: 1
+          }
+        ]
       }
     ]
   };

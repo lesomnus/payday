@@ -21,6 +21,7 @@ package pdgen
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1210,48 +1211,89 @@ func field(e graph.Entity, name string) (graph.Field, bool) {
 // would be a framework insisting on a cost nobody is paying.
 //
 // The order is covered when some index begins with it: an index on (a, b, c)
-// serves an order of (a) and (a, b), and not one of (b) or (b, a).
-func checkListIndex(e *Entity) string {
-	if e.List == nil || len(e.List.Order) == 0 {
-		return ""
-	}
-	// The key alone is the primary index, which every table has.
-	if len(e.List.Order) == 1 && e.List.Order[0].Field == e.Key().Name() {
-		return ""
+// serves an order of (a) and (a, b), and not one of (b) or (b, a). Every order
+// is asked about, the list's own and each one a request may name.
+//
+// An entity behind the wall is read narrowed to its tenants every time, so the
+// index that serves its list begins with what the wall narrows by -- the edge
+// to the tenant, or the column that stands for it -- and then the order. One
+// that begins with the order reads every tenant's rows to find one tenant's,
+// and is fast only for the tenant that owns most of them: a workspace of two
+// hundred rows in a deployment of a million read its newest page in 82 ms
+// that way, and in 0.09 ms with the tenant first (lesomnus/rove#122).
+func checkListIndex(e *Entity) []string {
+	if e.List == nil {
+		return nil
 	}
 
-	want := make([]string, len(e.List.Order))
-	for i, o := range e.List.Order {
-		want[i] = o.Field
+	lead := []string{}
+	switch {
+	case len(e.Columns) > 1:
+		// Narrowed by the OR of its columns -- the trail -- which no one
+		// index serves in order: each column has its own, and a page is read
+		// from all of them at once. Nothing here can ask for an index that
+		// would answer it.
+		return nil
+	case e.Stamp != "":
+		lead = []string{e.Stamp}
+	case len(e.Via) == 1:
+		lead = []string{e.Via[0]}
+	case len(e.Columns) == 1:
+		lead = []string{e.Columns[0]}
 	}
 
+	vs := []string{}
+	for _, o := range append([]NamedOrder{{Order: e.List.Order}}, e.List.Orders...) {
+		if len(o.Order) == 0 {
+			continue
+		}
+		want := slices.Clone(lead)
+		for _, c := range o.Order {
+			want = append(want, c.Field)
+		}
+		// The key alone is the primary index, which every table has.
+		if len(want) == 1 && want[0] == e.Key().Name() {
+			continue
+		}
+		if covered(e, want) {
+			continue
+		}
+
+		what := "list"
+		if o.Name != "" {
+			what = fmt.Sprintf("list: order %q", o.Name)
+		}
+		why := ""
+		if len(lead) > 0 {
+			why = fmt.Sprintf("  every read of it is narrowed by %s first, so that is where the index begins:\n"+
+				"  one that begins with the order reads every tenant's rows to find one tenant's.\n", lead[0])
+		}
+		vs = append(vs, fmt.Sprintf(
+			"%s: %s: no index begins with (%s), so reading a page scans the table and sorts what it finds.\n"+
+				"%s"+
+				"  that cost is on the table a List is pointed at, which is the one that grows.\n"+
+				"  declare it beside the entity, or say out loud that this table stays small:\n\n"+
+				"    indexes: [{name: %q, refs: [%s]}]",
+			e.FullName(), what, strings.Join(want, ", "), why, strings.Join(want, "_"), refsOf(e, want)))
+	}
+
+	return vs
+}
+
+// covered says some index of the entity begins with the props `want` names, in
+// that order.
+func covered(e *Entity, want []string) bool {
 	for idx := range e.Indexes() {
 		var has []string
 		for p := range idx.Props() {
 			has = append(has, p.Name())
 		}
-		if len(has) < len(want) {
-			continue
-		}
-
-		covers := true
-		for i := range want {
-			if has[i] != want[i] {
-				covers = false
-				break
-			}
-		}
-		if covers {
-			return ""
+		if len(has) >= len(want) && slices.Equal(has[:len(want)], want) {
+			return true
 		}
 	}
 
-	return fmt.Sprintf(
-		"%s: list: no index begins with (%s), so reading a page scans the table and sorts what it finds.\n"+
-			"  that cost is on the table a List is pointed at, which is the one that grows.\n"+
-			"  declare it beside the entity, or say out loud that this table stays small:\n\n"+
-			"    indexes: [{name: %q, refs: [%s]}]",
-		e.FullName(), strings.Join(want, ", "), strings.Join(want, "_"), refsOf(e, want))
+	return false
 }
 
 // refsOf writes the index the check is asking for, so that the answer to it is
@@ -1274,9 +1316,7 @@ func refsOf(e *Entity, names []string) string {
 func Warnings(s *Schema) []string {
 	vs := []string{}
 	for _, v := range s.Sorted() {
-		if w := checkListIndex(v); w != "" {
-			vs = append(vs, w)
-		}
+		vs = append(vs, checkListIndex(v)...)
 	}
 
 	return vs

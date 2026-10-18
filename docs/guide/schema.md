@@ -41,7 +41,7 @@ message Robot {
   option (orm.message) = {
     rpc: {crud: true}
     indexes: [
-      {name: "page", refs: [{name: "date_created", number: 15}, {name: "id", number: 1}]},
+      {name: "page", refs: [{name: "tenant", number: 2}, {name: "date_created", number: 15}, {name: "id", number: 1}]},
       {name: "slug", refs: [{name: "alias", number: 4}, {name: "tenant", number: 2}], unique: true}
     ]
   };
@@ -510,6 +510,22 @@ table that never stops growing and sort what it found. Covered means some index
 **begins** with the order: one on `(a, b, c)` serves an order of `(a)` and
 `(a, b)`, and neither `(b)` nor `(b, a)`.
 
+**Behind the wall, the index begins with the tenant.** Every read of a tenanted
+entity is narrowed to the tenants its caller may see, so the index a page walks
+is `(tenant, <the order>)` -- the edge `tenant`, or the column a `stamp:` or a
+single `field:` names. One that begins with the order instead serves the tenant
+that owns most of the rows and makes every other one read past them: a
+workspace of two hundred rows in a deployment of a million read its newest page
+in 82 ms that way and in 0.09 ms with the tenant first (lesomnus/rove#122). The
+warning asks for it so. A trail-shaped entity narrowed by the OR of several
+columns is not asked about, since no one index serves that read.
+
+An index's columns are in the order its refs are, an edge's among the fields':
+`refs: [tenant, date_created, id]` is `(tenant_id, date_created, id)`.
+protoc-gen-orm-ent once wrote every edge after every field, which turned
+`(tenant, date_created)` into `(date_created, tenant_id)`; an index generated
+before it kept its order comes out different, and the migration moves it.
+
 `with:` names edges to load alongside, so a page can render without a second
 round trip per row.
 
@@ -539,8 +555,8 @@ each one walks**: some index has to begin with its columns, in its directions or
 in all of them the other way, or reading a page scans the table and sorts it. An
 order of mixed directions, `alias` backwards and `id` forwards, wants an index
 of those directions; an ordinary `(alias, id)` serves `(alias, id)` both ways
-round and not that. Nothing is checked for the named orders; the warning above
-is about `order` alone.
+round and not that. The warning above asks about each named order as it does
+about `order`.
 
 **An order is over columns that are always there.** A cursor carries on from
 the last row by comparing, and a column that may be null compares as neither
@@ -769,7 +785,11 @@ only test for whether it belongs on this list.
 | generated code from a different payday | a wall written by one version, read by another |
 | the database not matching the schema | a server up on a table that is not there |
 
-And one **warning**: a `list:` whose order no index covers.
+And one **warning**: a `list:` whose order, or one of its named orders, no
+index covers -- behind the wall, an index that begins with the tenant. `pd gen`
+prints it; it used to be dropped with the rest of what the plugins said of a
+generation that succeeded, which is how an app could go on generating dozens of
+them without a word.
 
 ---
 
@@ -794,8 +814,8 @@ Options:
 
 `--tenanted` writes **no** tenancy line, because that is the declaration: what
 gets written out is the answer that leaks when it is wrong. `--watch` writes the
-version field, `ref` among the filters and an index over the order, so the watch
-generates and nothing warns.
+version field, `ref` among the filters and an index over the order -- the tenant
+first, for a tenanted one -- so the watch generates and nothing warns.
 
 What comes back is a draft to finish rather than a finished entity: it ends in a
 `TODO` for this entity's own fields. What it does not leave for you is anything

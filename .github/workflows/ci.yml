@@ -334,7 +334,12 @@ jobs:
         working-directory: widget
         run: |
           go tool pd doctor .
-          go tool pd gen .
+          go tool pd gen . > gen.log 2>&1 || { cat gen.log; exit 1; }
+          cat gen.log
+          # What `pd new` writes generates with nothing to warn about: an app
+          # starts from it, and a warning in a fresh app is one every app has.
+          if grep -q '^protoc-gen-pd:' gen.log; then echo 'a fresh app is warned about' >&2; exit 1; fi
+          rm gen.log
           go mod tidy
           go build ./...
 

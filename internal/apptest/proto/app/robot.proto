@@ -138,10 +138,15 @@ message Robot {
     indexes: [
       // The order a List reads in. Without it a page scans the table and sorts
       // what it finds, which is a cost on the one table that grows -- and it is
-      // here because the generator asked for it by name.
+      // here because the generator asked for it by name. The tenant first,
+      // since every read of a Robot is narrowed to one (lesomnus/rove#122).
       {
         name: "page"
         refs: [
+          {
+            name: "tenant"
+            number: 2
+          },
           {
             name: "date_created"
             number: 15
@@ -169,6 +174,10 @@ message Robot {
       {
         name: "by_alias"
         refs: [
+          {
+            name: "tenant"
+            number: 2
+          },
           {
             name: "alias"
             number: 4

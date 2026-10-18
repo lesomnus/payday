@@ -379,7 +379,17 @@ func (e Entity) message(domain int) string {
 		b.WriteString("    indexes: [\n")
 		b.WriteString("      // The order a List reads in. Generation warns without it, because\n")
 		b.WriteString("      // the read it names would scan the table and sort what it found.\n")
+		if e.Tenanted {
+			// The tenant first: every read is narrowed to one, and an index
+			// that begins with the order reads every tenant's rows to find
+			// it -- fast for the tenant that owns most of them and nobody
+			// else (lesomnus/rove#122).
+			b.WriteString("      // The tenant first, since every read is narrowed to one.\n")
+		}
 		b.WriteString("      {\n        name: \"page\"\n        refs: [\n")
+		if e.Tenanted {
+			b.WriteString("          {\n            name: \"tenant\"\n            number: 2\n          },\n")
+		}
 		b.WriteString("          {\n            name: \"date_created\"\n            number: 15\n          },\n")
 		b.WriteString("          {\n            name: \"id\"\n            number: 1\n          }\n")
 		b.WriteString("        ]\n      }\n")

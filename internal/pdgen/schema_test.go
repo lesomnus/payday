@@ -820,7 +820,8 @@ message Robot {
 		if len(ws) != 1 {
 			t.Fatalf("warnings: %v", ws)
 		}
-		if !strings.Contains(ws[0], "no index begins with (date_created, id)") {
+		// The tenant first: every read of a Robot is narrowed to one.
+		if !strings.Contains(ws[0], "no index begins with (tenant, date_created, id)") {
 			t.Errorf("the warning does not say what is missing:\n%s", ws[0])
 		}
 		// And it says what to write, since a warning somebody has to go and
@@ -832,6 +833,33 @@ message Robot {
 	})
 
 	t.Run("and is silent once the index is there", func(t *testing.T) {
+		s, err := read(t, tenant+`
+message Robot {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+  option (orm.message) = {
+    rpc: {crud: true}
+    indexes: [{name: "page", refs: [{name: "tenant", number: 2}, {name: "date_created", number: 15}, {name: "id", number: 1}]}]
+  };
+  option (payday.entity) = {
+    domain: 7
+    tenanted: {via: "tenant"}
+    list: {order: [{field: {name: "date_created"}}, {field: {name: "id"}}], max: 100}
+    erase: {hard: {}}
+  };
+}`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ws := pdgen.Warnings(s); len(ws) != 0 {
+			t.Fatalf("warnings: %v", ws)
+		}
+	})
+
+	// lesomnus/rove#122: an index that begins with the order serves the tenant
+	// that owns most of the rows, and makes every other one read past them.
+	t.Run("an index of a tenanted entity that begins with the order is not its index", func(t *testing.T) {
 		s, err := read(t, tenant+`
 message Robot {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
@@ -851,7 +879,63 @@ message Robot {
 		if err != nil {
 			t.Fatal(err)
 		}
+		ws := pdgen.Warnings(s)
+		if len(ws) != 1 || !strings.Contains(ws[0], "(tenant, date_created, id)") || !strings.Contains(ws[0], "narrowed by tenant") {
+			t.Fatalf("warnings: %v", ws)
+		}
+	})
+
+	t.Run("and one of an entity nothing walls is", func(t *testing.T) {
+		s, err := read(t, tenant+`
+message Robot {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+  option (orm.message) = {
+    rpc: {crud: true}
+    indexes: [{name: "page", refs: [{name: "date_created", number: 15}, {name: "id", number: 1}]}]
+  };
+  option (payday.entity) = {
+    domain: 7
+    global: {}
+    list: {order: [{field: {name: "date_created"}}, {field: {name: "id"}}], max: 100}
+    erase: {hard: {}}
+  };
+}`)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if ws := pdgen.Warnings(s); len(ws) != 0 {
+			t.Fatalf("warnings: %v", ws)
+		}
+	})
+
+	t.Run("every order a request may name is asked about", func(t *testing.T) {
+		s, err := read(t, tenant+`
+message Robot {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  string alias = 4;
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+  option (orm.message) = {
+    rpc: {crud: true}
+    indexes: [{name: "page", refs: [{name: "tenant", number: 2}, {name: "date_created", number: 15}, {name: "id", number: 1}]}]
+  };
+  option (payday.entity) = {
+    domain: 7
+    tenanted: {via: "tenant"}
+    list: {
+      order: [{field: {name: "date_created"}}, {field: {name: "id"}}]
+      orders: [{name: "alias", order: [{field: {name: "alias"}}, {field: {name: "id"}}]}]
+      max: 100
+    }
+    erase: {hard: {}}
+  };
+}`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ws := pdgen.Warnings(s)
+		if len(ws) != 1 || !strings.Contains(ws[0], `order "alias"`) || !strings.Contains(ws[0], "(tenant, alias, id)") {
 			t.Fatalf("warnings: %v", ws)
 		}
 	})

@@ -797,6 +797,15 @@ func (g Gen) buf(ctx context.Context, template string, args ...string) error {
 		return fmt.Errorf("buf generate: %w\n%s%s", err, stderr.String(), whyStale(stderr.Bytes()))
 	}
 
+	// What a plugin says of a generation that succeeds is a warning -- a list
+	// that would scan its table for every page, say -- and this run is the one
+	// place anybody would hear it. It was kept in this buffer and dropped with
+	// it, which is how an app went on generating thirty of those without a
+	// word (lesomnus/rove#122).
+	if v := strings.TrimSpace(stderr.String()); v != "" {
+		g.say("%s", v)
+	}
+
 	return nil
 }
 
