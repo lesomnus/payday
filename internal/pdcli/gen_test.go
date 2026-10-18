@@ -186,7 +186,7 @@ func TestAnOverlayAddsAnIndexToPaydaysEntity(t *testing.T) {
 
 	b, err = os.ReadFile(filepath.Join(l.Path(pdcli.DirEnt), "schema", "holder.go"))
 	x.NoError(err)
-	x.Contains(string(b), `index.Fields("idp_subject")`, "the merged proto has the index and the ent schema does not")
+	x.Contains(string(b), `index.Fields("idp_subject", "tenant_id")`, "the merged proto has the index and the ent schema does not")
 
 	t.Run("and one that adds to payday's declaration is refused", func(t *testing.T) {
 		x := require.New(t)

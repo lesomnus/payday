@@ -61,11 +61,17 @@ message Thing {
   option (orm.message) = {
     rpc: {crud: true}
     indexes: [
-      // The order a List reads in. Generation warns without it, because the
-      // read it names would scan the table and sort what it found.
+      // The order a List reads in, the tenant first since every read is
+      // narrowed to one. Generation warns without it, because the read it
+      // names would scan the table -- every tenant's rows -- and sort what it
+      // found.
       {
         name: "page"
         refs: [
+          {
+            name: "tenant"
+            number: 2
+          },
           {
             name: "date_created"
             number: 15

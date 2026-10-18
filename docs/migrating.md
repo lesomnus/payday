@@ -3,6 +3,40 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An index is in the order it declares, and a tenanted list's begins with the tenant
+
+**Applies if** you generate with `pd gen`, which is every app: the ent schema
+of any index that declared an edge before a field changes, and so does the
+database the migration makes (lesomnus/rove#122).
+
+- **An index's columns are in the order its refs are.** protoc-gen-orm-ent wrote
+  every edge after every field, so an index declared `(party, issued_at)` was
+  `(issued_at, party_id)` -- the wrong one for the reads it was declared for.
+  After `pd gen` it is `(party_id, issued_at)`, under the name of those columns,
+  and the next migration drops the old index and makes the new one. An index
+  whose fields all came before its edges -- `(alias, tenant)`, say -- is as it
+  was.
+- **`pd gen` prints the warnings it was given.** The generation's own warnings
+  were dropped whenever it succeeded, so an app may see a list of them the
+  first time. The one that matters here is the list index:
+
+  ```
+  protoc-gen-pd: app.Robot: list: no index begins with (tenant, date_created, id), ...
+  ```
+
+  An entity behind the wall is read narrowed to its tenants, so the index its
+  list walks begins with the tenant. Put `tenant` first in its `page` index --
+  `refs: [{name: "tenant", number: 2}, {name: "date_created", number: 15}, {name:
+  "id", number: 1}]` -- and do the same for the index of each named order.
+- **payday's own Holder and Tenant have a list index now**: `(tenant,
+  date_created, id)` and `(date_created, id)`. They come with the copy `pd gen`
+  makes; the migration adds them.
+
+On a database with rows, each of these is an index built while the table is
+locked for writes. PostgreSQL builds one on a million rows in seconds; a
+deployment that cannot pause writes for that long builds them `CONCURRENTLY` by
+hand first, under the names the migration expects.
+
 ## The trail keeps what a write said, and no value about a person
 
 **Applies if** you generate with `pd gen`, which is every app: `pd.Recorder`

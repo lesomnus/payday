@@ -43,7 +43,11 @@ message Thing {
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {
+    rpc: {crud: true}
+    // The order its list reads in. Outside the wall, so nothing comes before it.
+    indexes: [{name: "page", refs: [{name: "date_created", number: 15}, {name: "id", number: 1}]}]
+  };
   option (payday.entity) = {
     domain: 13
     global: {}

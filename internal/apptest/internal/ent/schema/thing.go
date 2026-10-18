@@ -8,6 +8,7 @@ import (
 	entsql "github.com/protobuf-orm/ent/dialect/entsql"
 	schema "github.com/protobuf-orm/ent/schema"
 	field "github.com/protobuf-orm/ent/schema/field"
+	index "github.com/protobuf-orm/ent/schema/index"
 )
 
 type Thing struct {
@@ -29,6 +30,12 @@ func (Thing) Fields() []ent.Field {
 		field.Time("date_created").
 			Immutable().
 			Optional(),
+	}
+}
+
+func (Thing) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("date_created", "id"),
 	}
 }
 

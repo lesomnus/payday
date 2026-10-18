@@ -185,14 +185,16 @@ var File_shared_thing_proto protoreflect.FileDescriptor
 
 const file_shared_thing_proto_rawDesc = "" +
 	"\n" +
-	"\x12shared/thing.proto\x12\x06shared\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xae\x02\n" +
+	"\x12shared/thing.proto\x12\x06shared\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xd0\x02\n" +
 	"\x05Thing\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12)\n" +
 	"\vdescription\x18\b \x01(\tB\a\xea\x82\x16\x03\x82\x01\x00R\vdescription\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:7\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16+\b\r2%\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:Y\xca\xfc\x15&\x12\x02\x10\x01\x1a \x12\x04page\x1a\x10\n" +
+	"\fdate_created\x10\x0f\x1a\x06\n" +
+	"\x02id\x10\x01\x8a\xbb\x16+\b\r2%\n" +
 	"\x10\n" +
 	"\x0e\n" +
 	"\fdate_created\n" +

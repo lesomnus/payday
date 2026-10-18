@@ -188,6 +188,11 @@ var (
 					Where: "date_erased IS NULL",
 				},
 			},
+			{
+				Name:    "holder_tenant_id_date_created_id",
+				Unique:  false,
+				Columns: []*schema.Column{HolderColumns[11], HolderColumns[7], HolderColumns[0]},
+			},
 		},
 	}
 	// JointColumns holds the columns for the "joint" table.
@@ -333,9 +338,9 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "robot_date_created_id",
+				Name:    "robot_tenant_id_date_created_id",
 				Unique:  false,
-				Columns: []*schema.Column{RobotColumns[6], RobotColumns[0]},
+				Columns: []*schema.Column{RobotColumns[8], RobotColumns[6], RobotColumns[0]},
 			},
 			{
 				Name:    "robot_alias_tenant_id",
@@ -346,9 +351,9 @@ var (
 				},
 			},
 			{
-				Name:    "robot_alias_id",
+				Name:    "robot_tenant_id_alias_id",
 				Unique:  false,
-				Columns: []*schema.Column{RobotColumns[1], RobotColumns[0]},
+				Columns: []*schema.Column{RobotColumns[8], RobotColumns[1], RobotColumns[0]},
 			},
 		},
 	}
@@ -383,6 +388,13 @@ var (
 		Name:       "tenant",
 		Columns:    TenantColumns,
 		PrimaryKey: []*schema.Column{TenantColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "tenant_date_created_id",
+				Unique:  false,
+				Columns: []*schema.Column{TenantColumns[6], TenantColumns[0]},
+			},
+		},
 	}
 	// ThingColumns holds the columns for the "thing" table.
 	ThingColumns = []*schema.Column{
@@ -397,6 +409,13 @@ var (
 		Name:       "thing",
 		Columns:    ThingColumns,
 		PrimaryKey: []*schema.Column{ThingColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "thing_date_created_id",
+				Unique:  false,
+				Columns: []*schema.Column{ThingColumns[4], ThingColumns[0]},
+			},
+		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
