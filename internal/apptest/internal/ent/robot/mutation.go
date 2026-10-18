@@ -20,6 +20,7 @@ type Mutation struct {
 	alias         *string
 	secret        *[]byte
 	date_attested *time.Time
+	keeper        *string
 	date_updated  *time.Time
 	date_created  *time.Time
 	date_erased   *time.Time
@@ -128,6 +129,25 @@ func (m *Mutation) DateAttestedCleared() bool {
 func (m *Mutation) ResetDateAttested() {
 	m.date_attested = nil
 	delete(m.clearedFields, FieldDateAttested)
+}
+
+// SetKeeper sets the "keeper" field.
+func (m *Mutation) SetKeeper(s string) {
+	m.keeper = &s
+}
+
+// Keeper returns the value of the "keeper" field in the mutation.
+func (m *Mutation) Keeper() (r string, exists bool) {
+	v := m.keeper
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetKeeper resets all changes to the "keeper" field.
+func (m *Mutation) ResetKeeper() {
+	m.keeper = nil
 }
 
 // SetDateUpdated sets the "date_updated" field.
@@ -411,7 +431,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.alias != nil {
 		fields = append(fields, FieldAlias)
 	}
@@ -420,6 +440,9 @@ func (m *Mutation) Fields() []string {
 	}
 	if m.date_attested != nil {
 		fields = append(fields, FieldDateAttested)
+	}
+	if m.keeper != nil {
+		fields = append(fields, FieldKeeper)
 	}
 	if m.date_updated != nil {
 		fields = append(fields, FieldDateUpdated)
@@ -453,6 +476,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.Secret()
 	case FieldDateAttested:
 		return m.DateAttested()
+	case FieldKeeper:
+		return m.Keeper()
 	case FieldDateUpdated:
 		return m.DateUpdated()
 	case FieldDateCreated:
@@ -501,6 +526,13 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDateAttested(v)
+		return nil
+	case FieldKeeper:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeeper(v)
 		return nil
 	case FieldDateUpdated:
 		v, ok := value.(time.Time)
@@ -640,6 +672,9 @@ func (m *Mutation) ResetField(name string) error {
 		return nil
 	case FieldDateAttested:
 		m.ResetDateAttested()
+		return nil
+	case FieldKeeper:
+		m.ResetKeeper()
 		return nil
 	case FieldDateUpdated:
 		m.ResetDateUpdated()

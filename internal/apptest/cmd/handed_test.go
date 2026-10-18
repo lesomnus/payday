@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/lesomnus/payday/audit"
 	app "github.com/lesomnus/payday/internal/apptest"
 	entaudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
@@ -94,7 +95,9 @@ func (*capture) Snapshots(string) bare.SnapshotOptions {
 func TestTheTrailIsTheRowTheWriteRead(t *testing.T) {
 	t.Run("an Add's is the row its INSERT answered with", func(t *testing.T) {
 		x := require.New(t)
-		b, ctx := build(t)
+		// At the content level that keeps the row (#92): what is under test is
+		// what the trail holds of one.
+		b, ctx := keeping(t, "value")
 		robot := b.robot(t, ctx, b.Tenant, "arm")
 
 		r := &rowReads{table: "reading"}
@@ -116,7 +119,9 @@ func TestTheTrailIsTheRowTheWriteRead(t *testing.T) {
 
 	t.Run("a Patch's is the row it read back to answer with", func(t *testing.T) {
 		x := require.New(t)
-		b, ctx := build(t)
+		// At the content level that keeps the row (#92): what is under test is
+		// what the trail holds of one.
+		b, ctx := keeping(t, "value")
 		v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
 			Tenant: app.TenantRef_builder{Id: b.Tenant[:]}.Build(),
 			Alias:  "arm",
@@ -152,12 +157,16 @@ func TestTheTrailIsTheRowTheWriteRead(t *testing.T) {
 	// would be told of a row without the column the write wrote.
 	t.Run("and every recorder is handed it whole", func(t *testing.T) {
 		x := require.New(t)
-		b, ctx := build(t)
+		// At the content level that keeps the row (#92): what is under test is
+		// what the trail holds of one.
+		b, ctx := keeping(t, "value")
 
 		// Payday's minter, as the deployment's servers have it: the trail
 		// learns which entity a row is from the domain its key carries.
+		// At the content level that keeps the row, which is the one this is
+		// about: at the others the trail holds no copy to take a secret out of.
 		c := &capture{}
-		s, err := bare.NewServer(b.Ent, bare.WithMinter(pd.Minter()), bare.WithRecorder(bare.Recorders{pd.Recorder(), c}))
+		s, err := bare.NewServer(b.Ent, bare.WithMinter(pd.Minter()), bare.WithRecorder(bare.Recorders{pd.Recorder(audit.Contents{Default: audit.ContentValue}), c}))
 		x.NoError(err)
 
 		secret := []byte("hunter2-and-something-long-enough-to-find")

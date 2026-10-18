@@ -18,6 +18,8 @@ const (
 	FieldSecret = "secret"
 	// FieldDateAttested holds the string denoting the date_attested field in the database.
 	FieldDateAttested = "date_attested"
+	// FieldKeeper holds the string denoting the keeper field in the database.
+	FieldKeeper = "keeper"
 	// FieldDateUpdated holds the string denoting the date_updated field in the database.
 	FieldDateUpdated = "date_updated"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
@@ -67,6 +69,7 @@ var Columns = []string{
 	FieldAlias,
 	FieldSecret,
 	FieldDateAttested,
+	FieldKeeper,
 	FieldDateUpdated,
 	FieldDateCreated,
 	FieldDateErased,
@@ -101,6 +104,11 @@ func ByAlias(opts ...sql.OrderTermOption) OrderOption {
 // ByDateAttested orders the results by the date_attested field.
 func ByDateAttested(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateAttested, opts...).ToFunc()
+}
+
+// ByKeeper orders the results by the keeper field.
+func ByKeeper(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKeeper, opts...).ToFunc()
 }
 
 // ByDateUpdated orders the results by the date_updated field.

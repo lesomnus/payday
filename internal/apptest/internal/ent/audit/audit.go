@@ -33,6 +33,8 @@ const (
 	FieldCounterpartTenantId = "counterpart_tenant_id"
 	// FieldDomain holds the string denoting the domain field in the database.
 	FieldDomain = "domain"
+	// FieldFields holds the string denoting the fields field in the database.
+	FieldFields = "fields"
 	// Table holds the table name of the audit in the database.
 	Table = "audit"
 )
@@ -51,6 +53,7 @@ var Columns = []string{
 	FieldValue,
 	FieldCounterpartTenantId,
 	FieldDomain,
+	FieldFields,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

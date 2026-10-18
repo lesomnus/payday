@@ -330,6 +330,28 @@ message Robot {
 			entity("Robot", `domain: 7, tenanted: {via: "tenant"}`, `Tenant tenant = 2 [(orm.edge) = {}];`) +
 			entity("Joint", `domain: 8, tenanted: {via: "robot"}`, `Robot robot = 2 [(orm.edge) = {}];`),
 		says: "arrives at test.Robot",
+	}, {
+		// `secret` already keeps it off the trail and off every read, so the
+		// two together say one thing twice, and the second is read as a
+		// difference somebody meant.
+		what: "a field declared secret and personal",
+		src: tenant + entity("Robot", `domain: 7, global: {}`,
+			`string email = 8 [(payday.field) = {secret: true, personal: true}];`),
+		says: "declared secret and personal",
+	}, {
+		what: "an edge declared personal, which is another row's key",
+		src: tenant + entity("Robot", `domain: 7, global: {}`,
+			`Robot buddy = 8 [(orm.edge) = {nullable: true}, (payday.field) = {personal: true}];`),
+		says: "an edge cannot be personal",
+	}, {
+		what: "a key declared personal, which is what the trail names a row by",
+		src: tenant + `
+message Robot {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}, (payday.field) = {personal: true}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 7, global: {}, erase: {hard: {}}};
+}`,
+		says: "the key cannot be personal",
 	}} {
 		t.Run(tt.what, func(t *testing.T) {
 			_, err := read(t, tt.src)
@@ -341,6 +363,35 @@ message Robot {
 			}
 			t.Log(err)
 		})
+	}
+}
+
+// TestPersonalIsRead: what an entity declared personal is read by name and by
+// number, beside what it declared secret, and only for the entity it is on.
+func TestPersonalIsRead(t *testing.T) {
+	s, err := read(t, tenant+entity("Robot", `domain: 7, global: {}`,
+		`string email = 8 [(payday.field) = {personal: true}];`,
+		`bytes hash = 9 [(payday.field) = {secret: true}];`,
+		`map<string, string> notes = 10 [(payday.field) = {personal: true}];`,
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, v := range s.Sorted() {
+		switch v.GoName() {
+		case "Robot":
+			if !slices.Equal(v.Personal, []string{"email", "notes"}) || !slices.Equal(v.PersonalNumbers, []uint32{8, 10}) {
+				t.Errorf("Robot is personal in %v %v", v.Personal, v.PersonalNumbers)
+			}
+			if !slices.Equal(v.SecretNumbers, []uint32{9}) {
+				t.Errorf("Robot is secret in %v", v.SecretNumbers)
+			}
+		default:
+			if len(v.Personal) > 0 {
+				t.Errorf("%s is personal in %v, and declared nothing", v.GoName(), v.Personal)
+			}
+		}
 	}
 }
 

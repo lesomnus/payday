@@ -3,6 +3,69 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The trail keeps what a write said, and no value about a person
+
+**Applies if** you generate with `pd gen`, which is every app: `pd.Recorder`
+takes an argument now, so `cmd/serve.go` does not compile until it is given one
+(#92).
+
+- **`pd.Recorder` takes what the trail keeps of each kind's writes**, which is
+  the deployment's to say (`audit.content`). It is asked for rather than
+  defaulted, so that a setting is not something an app can read and then forget
+  to hand over:
+
+  ```diff
+  -rec := bare.Recorders{pd.Recorder(), pd.ResourceRecorder(w, c.Watch.Outbox, nil, resource.RecorderOptions{})}
+  +content, err := c.Audit.Contents()
+  +if err != nil {
+  +	return nil, err
+  +}
+  +rec := bare.Recorders{pd.Recorder(content), pd.ResourceRecorder(w, c.Watch.Outbox, nil, resource.RecorderOptions{})}
+  ```
+
+  `audit.Contents{}` is the default, for a test that builds a server of its own.
+- **By default a row of the trail is the write's patch, and not its row.**
+  `Audit.patch` is the document the write was compiled from, and an Add -- which
+  was compiled from none -- is recorded as the row it made, written as a patch
+  from the empty row; `Audit.value` is empty. A deployment that wants the row
+  asks for it, for the whole trail or for one kind:
+
+  ```yaml
+  audit:
+    content: patch            # fields | patch | value; empty is patch
+    by:
+      reading:
+        content: value        # a machine's record, kept whole
+  ```
+
+  `fields` keeps which fields a write set and nothing they were set to. Anything
+  of yours that read `Audit.value` for what an Add made reads `Audit.patch` now:
+  applied to an empty row, it is that row less its key.
+- **`Audit.fields`** is a new column, the numbers of the fields each write set.
+  Migrate. Rows written before it have none.
+- **`(payday.field).personal`** marks a field about a person -- a name, an
+  address, a phone number. It is answered with like any other field, and on the
+  trail as a value at **no** level: what it was set to is taken out of `patch`
+  and cleared out of `value`, and its number is in `fields`. Declare yours. An
+  entity that holds people and things in one table declares the shared field:
+  there is no declaration that depends on the row. It is refused on an edge, on
+  the key, and beside `secret`, which already says everything it would.
+- **payday's `Holder` declares `alias`, `name`, `desc` and `labels` personal**,
+  so after regenerating, a holder's trail says what was set and not to what. Who
+  a line is about is still on it: `actor_id` and `object_id`.
+- **A `secret` is matched by its name as well as its number.** A document an
+  `Apply` was handed that named a secret field by its name or its JSON name
+  carried the value onto the trail, the outbox and the in-process publish; it
+  does not now.
+- **`trail.Policy.Forget` is still what takes out what no declaration reaches**:
+  free text, rows written before this, and a field nobody declared on a kind
+  kept at `value`.
+
+**Ordering**: `personal` is in payday's buf module, like `secret` was, so an app
+depending on `buf.build/payday/payday` needs a version of it that has this
+before its copy of `Holder` compiles. Until then the compile says the field
+`personal` is not in `payday.Field`.
+
 ## An entity may ask for AddMany
 
 **Applies if** you generate with `pd gen`. Regenerate; nothing else has to

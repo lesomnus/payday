@@ -422,11 +422,24 @@ inside the transaction that makes the write — that is what keeps `Patch` and
 the recorder, and the recorder is assembled in your `cmd/serve.go`:
 
 ```go
-rec := bare.Recorders{pd.Recorder(), pd.WatchRecorder(w)}
+content, err := c.Audit.Contents()
+if err != nil {
+	return nil, err
+}
+rec := bare.Recorders{pd.Recorder(content), pd.WatchRecorder(w)}
 ```
 
-`bare.Recorder` is one method and `pd.Recorder()` is a value like any other, so
-a recorder that drops a class of writes is a wrapper around it:
+**How much** of each write the trail keeps is not a recorder of your own: it is
+configuration, per kind of thing -- `audit.content`, `audit.by.<kind>.content`
+-- and the generated recorder is handed it. By default a row holds the document
+the write was compiled from, an Add's being the row it made; `value` keeps the
+row as well, and `fields` only which fields were set. A field the schema
+declared `personal` or `secret` is on the trail as a value at none of them
+(#92; see [the trail's retention](../runtime.md#what-a-row-holds-is-the-other-setting-92)).
+
+**Which** writes are on it is the recorder's. `bare.Recorder` is one method and
+`pd.Recorder(content)` is a value like any other, so a recorder that drops a
+class of writes is a wrapper around it:
 
 ```go
 // The trail is for what somebody did. A fleet reporting its own temperature
@@ -442,7 +455,7 @@ func (r unlessMachine) Record(ctx context.Context, s bare.Server, c bare.Change)
 ```
 
 ```go
-rec := bare.Recorders{unlessMachine{pd.Recorder()}, pd.WatchRecorder(w)}
+rec := bare.Recorders{unlessMachine{pd.Recorder(content)}, pd.WatchRecorder(w)}
 ```
 
 Answering nil means *nothing to record*, and the write carries on. Answering an

@@ -678,6 +678,23 @@ func (m *AuditMutation) OldDomain(ctx context.Context) (v uint32, err error) {
 	return oldValue.Domain, nil
 }
 
+// OldFields returns the old "fields" field's value of the Audit entity.
+// If the Audit object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditMutation) OldFields(ctx context.Context) (v []uint32, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldFields is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldFields requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFields: %w", err)
+	}
+	return oldValue.Fields, nil
+}
+
 // OldField returns the old value of the field from the database. An error is
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
@@ -705,6 +722,8 @@ func (m *AuditMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldCounterpartTenantId(ctx)
 	case audit.FieldDomain:
 		return m.OldDomain(ctx)
+	case audit.FieldFields:
+		return m.OldFields(ctx)
 	}
 	return nil, fmt.Errorf("unknown Audit field %s", name)
 }
@@ -2376,6 +2395,23 @@ func (m *RobotMutation) OldDateAttested(ctx context.Context) (v *time.Time, err 
 	return oldValue.DateAttested, nil
 }
 
+// OldKeeper returns the old "keeper" field's value of the Robot entity.
+// If the Robot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RobotMutation) OldKeeper(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldKeeper is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldKeeper requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeeper: %w", err)
+	}
+	return oldValue.Keeper, nil
+}
+
 // OldDateUpdated returns the old "date_updated" field's value of the Robot entity.
 // If the Robot object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
@@ -2489,6 +2525,8 @@ func (m *RobotMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldSecret(ctx)
 	case robot.FieldDateAttested:
 		return m.OldDateAttested(ctx)
+	case robot.FieldKeeper:
+		return m.OldKeeper(ctx)
 	case robot.FieldDateUpdated:
 		return m.OldDateUpdated(ctx)
 	case robot.FieldDateCreated:

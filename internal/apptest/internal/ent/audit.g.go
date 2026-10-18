@@ -24,5 +24,6 @@ func (e *Audit) Proto() *apptest.Audit {
 		x.SetCounterpartTenantId(e.CounterpartTenantId[:])
 	}
 	x.SetDomain(e.Domain)
+	x.SetFields(e.Fields)
 	return x
 }

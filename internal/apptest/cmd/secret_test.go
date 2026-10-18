@@ -128,7 +128,9 @@ func TestTheWriteHalfStillWorks(t *testing.T) {
 // closed precisely so that it could not be read.
 func TestASecretIsNotInTheTrail(t *testing.T) {
 	x := require.New(t)
-	b, ctx := build(t)
+	// At the content level that keeps the row (#92): what is under test is
+	// what the trail holds of one.
+	b, ctx := keeping(t, "value")
 
 	secret := []byte("hunter2-and-something-long-enough-to-find")
 

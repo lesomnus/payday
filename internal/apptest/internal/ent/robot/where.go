@@ -71,6 +71,11 @@ func DateAttested(v time.Time) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldDateAttested, v))
 }
 
+// Keeper applies equality check predicate on the "keeper" field. It's identical to KeeperEQ.
+func Keeper(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldKeeper, v))
+}
+
 // DateUpdated applies equality check predicate on the "date_updated" field. It's identical to DateUpdatedEQ.
 func DateUpdated(v time.Time) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldDateUpdated, v))
@@ -264,6 +269,71 @@ func DateAttestedIsNil() predicate.Robot {
 // DateAttestedNotNil applies the NotNil predicate on the "date_attested" field.
 func DateAttestedNotNil() predicate.Robot {
 	return predicate.Robot(sql.FieldNotNull(FieldDateAttested))
+}
+
+// KeeperEQ applies the EQ predicate on the "keeper" field.
+func KeeperEQ(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldKeeper, v))
+}
+
+// KeeperNEQ applies the NEQ predicate on the "keeper" field.
+func KeeperNEQ(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldKeeper, v))
+}
+
+// KeeperIn applies the In predicate on the "keeper" field.
+func KeeperIn(vs ...string) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldKeeper, vs...))
+}
+
+// KeeperNotIn applies the NotIn predicate on the "keeper" field.
+func KeeperNotIn(vs ...string) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldKeeper, vs...))
+}
+
+// KeeperGT applies the GT predicate on the "keeper" field.
+func KeeperGT(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldGT(FieldKeeper, v))
+}
+
+// KeeperGTE applies the GTE predicate on the "keeper" field.
+func KeeperGTE(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldGTE(FieldKeeper, v))
+}
+
+// KeeperLT applies the LT predicate on the "keeper" field.
+func KeeperLT(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldLT(FieldKeeper, v))
+}
+
+// KeeperLTE applies the LTE predicate on the "keeper" field.
+func KeeperLTE(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldLTE(FieldKeeper, v))
+}
+
+// KeeperContains applies the Contains predicate on the "keeper" field.
+func KeeperContains(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldContains(FieldKeeper, v))
+}
+
+// KeeperHasPrefix applies the HasPrefix predicate on the "keeper" field.
+func KeeperHasPrefix(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldHasPrefix(FieldKeeper, v))
+}
+
+// KeeperHasSuffix applies the HasSuffix predicate on the "keeper" field.
+func KeeperHasSuffix(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldHasSuffix(FieldKeeper, v))
+}
+
+// KeeperEqualFold applies the EqualFold predicate on the "keeper" field.
+func KeeperEqualFold(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldEqualFold(FieldKeeper, v))
+}
+
+// KeeperContainsFold applies the ContainsFold predicate on the "keeper" field.
+func KeeperContainsFold(v string) predicate.Robot {
+	return predicate.Robot(sql.FieldContainsFold(FieldKeeper, v))
 }
 
 // DateUpdatedEQ applies the EQ predicate on the "date_updated" field.

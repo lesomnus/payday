@@ -258,7 +258,9 @@ func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 // exemption is an exemption *for*.
 func TestOnePersonLeavesTheTrailWithoutTakingTheEventWithThem(t *testing.T) {
 	x := require.New(t)
-	b, ctx := build(t)
+	// At the content level that keeps the row (#92): what is under test is
+	// what the trail holds of one.
+	b, ctx := keeping(t, "value")
 
 	v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
 		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
@@ -336,7 +338,9 @@ func TestOnePersonLeavesTheTrailWithoutTakingTheEventWithThem(t *testing.T) {
 // one is held.
 func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 	x := require.New(t)
-	b, ctx := build(t)
+	// At the content level that keeps the row (#92): what is under test is
+	// what the trail holds of one.
+	b, ctx := keeping(t, "value")
 
 	v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
 		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
@@ -1220,7 +1224,9 @@ func TestTheGeneratedManifestWritesARowWholeWithItsSignature(t *testing.T) {
 // read back by that name.
 func TestWhatTheTrailSaysIsSealedThroughTheAppsOwnStore(t *testing.T) {
 	x := require.New(t)
-	b, ctx := build(t)
+	// At the content level that keeps the row (#92): what is under test is
+	// what the trail holds of one.
+	b, ctx := keeping(t, "value")
 
 	fs := (&app.Audit{}).ProtoReflect().Descriptor().Fields()
 	x.Nil(fs.ByJSONName("sealed"), "a field of Audit is named what a sealed row keeps its contents under")

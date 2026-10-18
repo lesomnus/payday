@@ -388,6 +388,39 @@ If you do need to reach inside from SQL, ent's `sqljson` predicates work on the
 column — and the path is protojson's spelling, so `Path("displayName")` and
 `Path("howMany")` find the row while `Path("how_many")` finds nothing.
 
+### A field about a person
+
+A name, an address, a phone number — a value that is somebody's, on a row that
+may or may not be about them — is declared personal:
+
+```proto
+string email = 8 [(payday.field) = {personal: true}];
+```
+
+It is answered with like any other field: a screen shows it, a mail goes to it,
+and whoever may read the row reads it. What it changes is the **trail**, which
+records that the field was set and never what to, at every content level, in
+the patch and in the row (#92). The row is where a person is corrected and
+erased, and the trail is the copy nothing rewrites, so their values have one
+home.
+
+What it is for is a value that identifies or describes somebody — what they are
+called, how they are reached, what another system calls them, a picture, what
+is written about them. Not what they may do or where they stand: a role, a
+suspension, a date they leave are what a trail is kept to say **with** their
+values, since who made somebody an administrator is the record.
+
+Declare every field that identifies or describes a person, including one that
+only sometimes does: an entity that holds people and teams in one table declares the shared
+`name`, and a team renamed is on the trail as `name` having been set. There is
+no declaration that depends on the row. payday's own `Holder` declares its
+`alias`, `name`, `desc` and `labels`.
+
+It is not `secret`. A secret is never answered with, to anybody; a personal
+field is read like any other. Generation refuses the two on one field, and
+refuses `personal` on an edge or on the key — those are identifiers, which is
+what the trail is made of.
+
 ---
 
 ## 4. `alias` — the name a person writes
@@ -722,6 +755,7 @@ only test for whether it belongs on this list.
 | `via:` and `field:` together | an edge says the tenant is still there; a column says only what its identifier was |
 | `stamp:` over one hop, or off the front of every index | a wall that scans the table it is read from most |
 | `stamp:` through a mutable or nullable step | a column that goes on saying where the row used to belong |
+| `personal` beside `secret`, on an edge, or on the key | one thing said twice, or a declaration on what the trail names a row by |
 | `agrees:` through a mutable step | an agreement true only until somebody repoints it |
 | `list:` with no `max` | an answer with no cap |
 | `list:` order not ending in the key | a cursor that repeats or skips a row |

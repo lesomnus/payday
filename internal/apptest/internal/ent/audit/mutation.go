@@ -29,6 +29,8 @@ type Mutation struct {
 	counterpart_tenant_id *uuid.UUID
 	domain                *uint32
 	adddomain             *int32
+	fields                *[]uint32
+	appendfields          []uint32
 	clearedFields         map[string]struct{}
 	predicates            []predicate.Audit
 }
@@ -316,6 +318,54 @@ func (m *Mutation) ResetDomain() {
 	delete(m.clearedFields, FieldDomain)
 }
 
+// SetFields sets the "fields" field.
+func (m *Mutation) SetFields(u []uint32) {
+	m.fields = &u
+	m.appendfields = nil
+}
+
+// GetFields returns the value of the "fields" field in the mutation.
+func (m *Mutation) GetFields() (r []uint32, exists bool) {
+	v := m.fields
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// AppendFields adds u to the "fields" field.
+func (m *Mutation) AppendFields(u []uint32) {
+	m.appendfields = append(m.appendfields, u...)
+}
+
+// AppendedFields returns the list of values that were appended to the "fields" field in this mutation.
+func (m *Mutation) AppendedFields() ([]uint32, bool) {
+	if len(m.appendfields) == 0 {
+		return nil, false
+	}
+	return m.appendfields, true
+}
+
+// ClearFields clears the value of the "fields" field.
+func (m *Mutation) ClearFields() {
+	m.fields = nil
+	m.appendfields = nil
+	m.clearedFields[FieldFields] = struct{}{}
+}
+
+// FieldsCleared returns if the "fields" field was cleared in this mutation.
+func (m *Mutation) FieldsCleared() bool {
+	_, ok := m.clearedFields[FieldFields]
+	return ok
+}
+
+// ResetFields resets all changes to the "fields" field.
+func (m *Mutation) ResetFields() {
+	m.fields = nil
+	m.appendfields = nil
+	delete(m.clearedFields, FieldFields)
+}
+
 // Where appends a list predicates to the Mutation builder.
 func (m *Mutation) Where(ps ...predicate.Audit) {
 	m.predicates = append(m.predicates, ps...)
@@ -350,7 +400,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.tenant_id != nil {
 		fields = append(fields, FieldTenantId)
 	}
@@ -384,6 +434,9 @@ func (m *Mutation) Fields() []string {
 	if m.domain != nil {
 		fields = append(fields, FieldDomain)
 	}
+	if m.fields != nil {
+		fields = append(fields, FieldFields)
+	}
 	return fields
 }
 
@@ -414,6 +467,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.CounterpartTenantId()
 	case FieldDomain:
 		return m.Domain()
+	case FieldFields:
+		return m.GetFields()
 	}
 	return nil, false
 }
@@ -507,6 +562,13 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDomain(v)
 		return nil
+	case FieldFields:
+		v, ok := value.([]uint32)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFields(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Audit field %s", name)
 }
@@ -561,6 +623,9 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldDomain) {
 		fields = append(fields, FieldDomain)
 	}
+	if m.FieldCleared(FieldFields) {
+		fields = append(fields, FieldFields)
+	}
 	return fields
 }
 
@@ -583,6 +648,9 @@ func (m *Mutation) ClearField(name string) error {
 		return nil
 	case FieldDomain:
 		m.ClearDomain()
+		return nil
+	case FieldFields:
+		m.ClearFields()
 		return nil
 	}
 	return fmt.Errorf("unknown Audit nullable field %s", name)
@@ -624,6 +692,9 @@ func (m *Mutation) ResetField(name string) error {
 		return nil
 	case FieldDomain:
 		m.ResetDomain()
+		return nil
+	case FieldFields:
+		m.ResetFields()
 		return nil
 	}
 	return fmt.Errorf("unknown Audit field %s", name)

@@ -113,6 +113,12 @@ func (_c *AuditCreate) SetNillableDomain(v *uint32) *AuditCreate {
 	return _c
 }
 
+// SetFields sets the "fields" field.
+func (_c *AuditCreate) SetFields(v []uint32) *AuditCreate {
+	_c.mutation.SetFields(v)
+	return _c
+}
+
 // SetId sets the "id" field.
 func (_c *AuditCreate) SetId(v uuid.UUID) *AuditCreate {
 	_c.mutation.SetId(v)
@@ -280,6 +286,10 @@ func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Domain(); ok {
 		_spec.SetField(audit.FieldDomain, field.TypeUint32, value)
 		_node.Domain = value
+	}
+	if value, ok := _c.mutation.GetFields(); ok {
+		_spec.SetField(audit.FieldFields, field.TypeJson, value)
+		_node.Fields = value
 	}
 	return _node, _spec
 }

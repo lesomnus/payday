@@ -78,6 +78,20 @@ func (_u *RobotUpdate) ClearDateAttested() *RobotUpdate {
 	return _u
 }
 
+// SetKeeper sets the "keeper" field.
+func (_u *RobotUpdate) SetKeeper(v string) *RobotUpdate {
+	_u.mutation.SetKeeper(v)
+	return _u
+}
+
+// SetNillableKeeper sets the "keeper" field if the given value is not nil.
+func (_u *RobotUpdate) SetNillableKeeper(v *string) *RobotUpdate {
+	if v != nil {
+		_u.SetKeeper(*v)
+	}
+	return _u
+}
+
 // SetDateUpdated sets the "date_updated" field.
 func (_u *RobotUpdate) SetDateUpdated(v time.Time) *RobotUpdate {
 	_u.mutation.SetDateUpdated(v)
@@ -247,6 +261,9 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DateAttestedCleared() {
 		_spec.ClearField(robot.FieldDateAttested, field.TypeTime)
 	}
+	if value, ok := _u.mutation.Keeper(); ok {
+		_spec.SetField(robot.FieldKeeper, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
 	}
@@ -382,6 +399,20 @@ func (_u *RobotUpdateOne) SetNillableDateAttested(v *time.Time) *RobotUpdateOne 
 // ClearDateAttested clears the value of the "date_attested" field.
 func (_u *RobotUpdateOne) ClearDateAttested() *RobotUpdateOne {
 	_u.mutation.ClearDateAttested()
+	return _u
+}
+
+// SetKeeper sets the "keeper" field.
+func (_u *RobotUpdateOne) SetKeeper(v string) *RobotUpdateOne {
+	_u.mutation.SetKeeper(v)
+	return _u
+}
+
+// SetNillableKeeper sets the "keeper" field if the given value is not nil.
+func (_u *RobotUpdateOne) SetNillableKeeper(v *string) *RobotUpdateOne {
+	if v != nil {
+		_u.SetKeeper(*v)
+	}
 	return _u
 }
 
@@ -583,6 +614,9 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	}
 	if _u.mutation.DateAttestedCleared() {
 		_spec.ClearField(robot.FieldDateAttested, field.TypeTime)
+	}
+	if value, ok := _u.mutation.Keeper(); ok {
+		_spec.SetField(robot.FieldKeeper, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)

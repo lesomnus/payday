@@ -106,7 +106,7 @@ selectEvent := func(ctx context.Context, event *pdpb.WatchEvent) (bool, error) {
     return event.GetMethod() != "/app.RobotService/Touch", nil
 }
 rec := bare.Recorders{
-    pd.Recorder(),
+    pd.Recorder(content), // what the trail keeps: c.Audit.Contents()
     pd.ResourceRecorder(w, c.Watch.Outbox, selectEvent, resource.RecorderOptions{}),
 }
 ```

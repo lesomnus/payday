@@ -6,6 +6,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/lesomnus/protobuf-patch/patchpb"
+	"github.com/lesomnus/protobuf-patch/patchproto"
 	"github.com/lesomnus/z"
 	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	"github.com/stretchr/testify/require"
@@ -76,13 +78,30 @@ func buildWith(t *testing.T, w config.WatchConfig) (*built, context.Context) {
 // and holder the first one made.
 func buildOn(t *testing.T, db config.DbConfig, w config.WatchConfig) (*built, context.Context) {
 	t.Helper()
+
+	return buildFrom(t, cmd.Config{Db: db, Watch: w})
+}
+
+// keeping is [build] with the trail keeping `content` of every write -- `value`
+// for a test about what the trail holds of a row, which is the one level that
+// holds one (#92).
+func keeping(t *testing.T, content string) (*built, context.Context) {
+	t.Helper()
+
+	return buildFrom(t, cmd.Config{
+		Db:    dbOf(t),
+		Watch: config.WatchConfig{Broker: config.BrokerMemory},
+		Audit: config.AuditConfig{Content: content},
+	})
+}
+
+// buildFrom is [buildOn] from a whole configuration.
+func buildFrom(t *testing.T, c cmd.Config) (*built, context.Context) {
+	t.Helper()
 	x := require.New(t)
 	ctx := t.Context()
 
-	s, err := cmd.Build(ctx, cmd.Config{
-		Db:    db,
-		Watch: w,
-	})
+	s, err := cmd.Build(ctx, c)
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })
 	x.NoError(cli.Migrate(ctx, s))
@@ -315,12 +334,15 @@ func TestTheTrailIsFiledUnderWhatChanged(t *testing.T) {
 	// has no tenant at all -- what matters is that the column is its own.
 	x.NotEqual(row.GetTenantId(), row.GetActorTenantId())
 
-	// The state after the write, which is the only record of what an Add
-	// created: `patch` is empty for one, and for an Erase the row is gone.
-	x.NotEmpty(row.GetValue())
+	// What the Add created, which is on the trail as the row it made written
+	// as a patch from the empty row (#92); the row itself is kept only at the
+	// `value` content level.
+	x.Empty(row.GetValue())
 
-	var got app.Robot
-	x.NoError(proto.Unmarshal(row.GetValue(), &got))
+	var doc patchpb.Patch
+	x.NoError(proto.Unmarshal(row.GetPatch(), &doc))
+	got, err := patchproto.Apply(&app.Robot{}, &doc)
+	x.NoError(err)
 	x.Equal("theirs", got.GetAlias())
 }
 
@@ -335,7 +357,9 @@ func TestTheTrailIsFiledUnderWhatChanged(t *testing.T) {
 // what it held, with the stamp on.
 func TestTheTrailOfASoftEraseIsFiledUnderWhatWasErased(t *testing.T) {
 	x := require.New(t)
-	b, ctx := build(t)
+	// At the content level that keeps the row (#92): what is under test is
+	// what the trail holds of one.
+	b, ctx := keeping(t, "value")
 
 	// A headquarters shape: an operator held by one tenant, scoped to reach
 	// another, erasing the other's row.
@@ -481,7 +505,9 @@ func TestTheTrailOfAHardEraseIsFiledUnderTheActor(t *testing.T) {
 // to their row.
 func TestTheTrailOfAWriteThroughAnErasedParentIsFiledUnderThatParent(t *testing.T) {
 	x := require.New(t)
-	b, ctx := build(t)
+	// At the content level that keeps the row (#92): what is under test is
+	// what the trail holds of one.
+	b, ctx := keeping(t, "value")
 
 	hq, err := b.Ungated.Tenant().Add(ctx, app.TenantAddRequest_builder{Alias: "hq"}.Build())
 	x.NoError(err)
@@ -613,11 +639,23 @@ func TestEveryWriteIsOnTheTrail(t *testing.T) {
 	// The action is what the caller asked for, by the name gRPC knows it by.
 	x.Equal(app.RobotService_Add_FullMethodName, row.Action)
 
-	// An Add says everything it did in the action and the object, so there is
-	// no document -- and the column holds bytes rather than a null, which is a
-	// difference one driver keeps and another does not.
-	x.NotNil(row.Patch)
-	x.Empty(row.Patch)
+	// An Add is compiled from no document, so it is recorded as the row it
+	// made, written as a patch from the empty row (#92): applied to an empty
+	// row, it is that row less its key, which is `object_id`. The row itself
+	// is kept only at the `value` content level -- and its column holds bytes
+	// rather than a null, which is a difference one driver keeps and another
+	// does not.
+	var doc patchpb.Patch
+	x.NoError(proto.Unmarshal(row.Patch, &doc))
+	made, err := patchproto.Apply(&app.Robot{}, &doc)
+	x.NoError(err)
+	x.Equal("arm-01", made.GetAlias())
+	x.Equal(b.Tenant.Bytes(), made.GetTenant().GetId())
+	x.Empty(made.GetId(), "the key is the object, and not a field the document sets")
+	x.Contains(row.Fields, uint32(4), "that it set the alias")
+
+	x.NotNil(row.Value)
+	x.Empty(row.Value)
 }
 
 // TestTheTrailTakesNoNullFromPayday is the column's contract rather than the
@@ -625,8 +663,8 @@ func TestEveryWriteIsOnTheTrail(t *testing.T) {
 // `trace_id`, `patch` and `value` are NOT NULL, and payday computes all three.
 //
 // Every one of them is **empty** for some ordinary write -- a call nobody
-// traced, an Add that was not compiled from a document, a row that is not
-// there to be read back -- and empty is the one value the two databases
+// traced, an Erase, which is compiled from no document, a row that is not
+// there to be read back or that the trail does not keep -- and empty is the one value the two databases
 // disagree about: pgx sends a nil `[]byte` as SQL NULL, and the SQLite driver
 // makes it an empty blob. So the assertion below is really the write
 // **succeeding**, and it can only fail on PostgreSQL: without `PDTEST_POSTGRES`
@@ -726,7 +764,7 @@ func TestAWriteNothingCouldRecordIsUndone(t *testing.T) {
 
 		s, err := pd.NewSink(b.Ent,
 			bare.WithMinter(pd.Minter()),
-			bare.WithRecorder(bare.Recorders{pd.Recorder(), rec}),
+			bare.WithRecorder(bare.Recorders{pd.Recorder(audit.Contents{}), rec}),
 		)
 		require.NoError(t, err)
 
@@ -810,7 +848,7 @@ func TestARecorderMayDropAWriteItIsNotFor(t *testing.T) {
 
 	s, err := pd.NewSink(b.Ent,
 		bare.WithMinter(pd.Minter()),
-		bare.WithRecorder(bare.Recorders{unless(pd.Recorder(), app.RobotService_Add_FullMethodName)}),
+		bare.WithRecorder(bare.Recorders{unless(pd.Recorder(audit.Contents{}), app.RobotService_Add_FullMethodName)}),
 	)
 	require.NoError(t, err)
 

@@ -134,7 +134,15 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// because `WithRecorder` refuses to be given twice: neither losing one nor
 	// quietly appending in call order is a thing a framework should decide, so
 	// the order is written here where it can be read.
-	rec := bare.Recorders{pd.Recorder(), pd.ResourceRecorder(w, c.Watch.Outbox, nil, resource.RecorderOptions{})}
+	// What the trail keeps of each kind's writes is the deployment's to say,
+	// `audit.content` -- read here, where the trail is wired, so that a
+	// setting nobody handed over is not a setting that does nothing.
+	content, err := c.Audit.Contents()
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	rec := bare.Recorders{pd.Recorder(content), pd.ResourceRecorder(w, c.Watch.Outbox, nil, resource.RecorderOptions{})}
 
 	opts := []bare.Option{bare.WithMinter(pd.Minter()), bare.WithRecorder(rec)}
 

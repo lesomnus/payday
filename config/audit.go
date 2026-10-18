@@ -11,6 +11,7 @@ import (
 
 	"github.com/lesomnus/flob"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/trail"
 )
@@ -106,6 +107,17 @@ type AuditConfig struct {
 	// Every is how often the policy is applied, for every kind. Empty is
 	// [trail.Swept], a day.
 	Every time.Duration `yaml:"every"`
+
+	// Content is how much of a write a row of the trail holds -- `fields`,
+	// `patch` or `value` -- for every kind `by:` does not name otherwise. Empty
+	// is `patch`. See [audit.Content] (#92).
+	//
+	// `value` keeps the whole row as each write left it, which is a copy of the
+	// row on every write in the one table nothing rewrites. A deployment asks
+	// for it where it has a reason to, and best by kind: a record of what a
+	// machine did, say. A field the schema declared `personal` or `secret` is
+	// on the trail at no level, and no setting here puts it back.
+	Content string `yaml:"content"`
 
 	// Min is the deployment's own floor: the least it keeps of every kind,
 	// whatever a tenant answers. See [AuditMinConfig].
@@ -339,6 +351,50 @@ type AuditKeepConfig struct {
 
 	// Min is this kind's floor, on top of `audit.min`.
 	Min AuditMinConfig `yaml:"min"`
+
+	// Content is how much of a write to this kind a row of the trail holds,
+	// over `audit.content`. See [AuditConfig.Content].
+	Content string `yaml:"content"`
+}
+
+// Contents is what the recorder keeps of each kind's writes, read and checked:
+// the generated `Recorder` takes it, which is how `content:` reaches the trail.
+//
+// A method of its own rather than a part of [AuditConfig.Policy], because the
+// two are read by different things: the policy by what moves and destroys the
+// trail's rows, this by what writes them, inside every write. What it refuses
+// is the same as there -- a word that is not a level, and a kind this app does
+// not have -- for the same reason: a trail told to keep more than it keeps is
+// found out by somebody looking for what is not there.
+func (c AuditConfig) Contents() (audit.Contents, error) {
+	out := audit.Contents{}
+
+	v, err := audit.ParseContent(c.Content)
+	if err != nil {
+		return out, fmt.Errorf("content: %w", err)
+	}
+	out.Default = v
+
+	for name, k := range c.By {
+		if strings.TrimSpace(k.Content) == "" {
+			continue
+		}
+
+		d, err := trail.DomainOf(name)
+		if err != nil {
+			return out, fmt.Errorf("by.%s: %w", name, err)
+		}
+		v, err := audit.ParseContent(k.Content)
+		if err != nil {
+			return out, fmt.Errorf("by.%s.content: %w", name, err)
+		}
+		if out.By == nil {
+			out.By = map[pdid.Domain]audit.Content{}
+		}
+		out.By[d] = v
+	}
+
+	return out, nil
 }
 
 // Policy is this block as the thing that applies it, resolved and checked.

@@ -292,6 +292,32 @@ for whom, and payday knows neither.
 Empty is forever, which is the only honest default. A version upgrade is not the
 right thing to decide how long somebody's evidence lasts.
 
+#### What a row holds is the other setting (#92)
+
+How long is one question and **how much** is another, and the second is
+answered per kind too -- `audit.content`, `audit.by.<kind>.content`:
+
+| level | a row of the trail holds, beside who, what, which row and when |
+| --- | --- |
+| `fields` | the numbers of the fields the write set |
+| `patch` (default) | the above, and the document the write was compiled from -- for an Add, the row it made, as a patch from the empty row |
+| `value` | the above, and the row as the write left it |
+
+The default is the patch because the trail is the one table nothing rewrites:
+the whole row on every write was a copy of it in the place no correction
+reaches, and a write that changed a person's team copied their address in
+again. What a write said is what a trail is for, and the row it left is in its
+own table. A deployment asks for the row where it has a reason to -- a record
+of what a machine did, say -- and the generated `Recorder` is handed the answer
+(`config.AuditConfig.Contents`), which is how a setting cannot be read and then
+not passed on.
+
+Whatever the level, a field the schema declared `personal` or `secret` is on the
+trail as a value at none of them: what it was set to is taken out of the patch
+and cleared out of the row, and that it was set is in `Audit.fields`. That is
+the schema's to say and not a setting's, because the obligation it answers --
+to correct and to erase a person -- is not a deployment's to opt out of.
+
 #### And per tenant, when the app answers for them
 
 A deployment whose customers keep their history for different lengths of time —
@@ -862,12 +888,17 @@ because a reader cannot tell them apart.
 - **Deciding when one person leaves the trail.** The retention policy above is
   about **age** and reaches everybody's rows at once. A right-to-erasure request
   is about a subject — *which* rows, and *when*, is what an app owes somebody
-  under a regime payday cannot know. What payday does supply is the half with no
+  under a regime payday cannot know. Most of it is answered before the request
+  arrives: a field declared `personal` is never on the trail as a value (#92),
+  so what an erasure would have blanked of a person's name and address was
+  never written there. What payday supplies for the rest is the half with no
   judgement in it but one: `trail.Policy.Forget` blanks `value` and `patch` for
   a set the caller chose, in the database and in the archive in one call —
   a mechanism that stopped at the database would destroy the copy an operator
   can see and leave the copy in the archive beside it — and leaves the rows a
-  legal hold is on, answering with them.
+  legal hold is on, answering with them. The rest is what no declaration
+  reaches: free text, rows written before #92, and a field nobody declared on a
+  kind kept at `value`.
 
   Everything else stays — who acted, what they did, which object, when. That is
   the record a trail exists to be and what a legal-obligation exemption is an

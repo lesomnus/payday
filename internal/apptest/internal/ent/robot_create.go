@@ -52,6 +52,12 @@ func (_c *RobotCreate) SetNillableDateAttested(v *time.Time) *RobotCreate {
 	return _c
 }
 
+// SetKeeper sets the "keeper" field.
+func (_c *RobotCreate) SetKeeper(v string) *RobotCreate {
+	_c.mutation.SetKeeper(v)
+	return _c
+}
+
 // SetDateUpdated sets the "date_updated" field.
 func (_c *RobotCreate) SetDateUpdated(v time.Time) *RobotCreate {
 	_c.mutation.SetDateUpdated(v)
@@ -178,6 +184,9 @@ func (_c *RobotCreate) check() error {
 	if _, ok := _c.mutation.Alias(); !ok {
 		return &ValidationError{Name: "alias", err: errors.New(`ent: missing required field "Robot.alias"`)}
 	}
+	if _, ok := _c.mutation.Keeper(); !ok {
+		return &ValidationError{Name: "keeper", err: errors.New(`ent: missing required field "Robot.keeper"`)}
+	}
 	if _, ok := _c.mutation.DateUpdated(); !ok {
 		return &ValidationError{Name: "date_updated", err: errors.New(`ent: missing required field "Robot.date_updated"`)}
 	}
@@ -249,6 +258,10 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DateAttested(); ok {
 		_spec.SetField(robot.FieldDateAttested, field.TypeTime, value)
 		_node.DateAttested = &value
+	}
+	if value, ok := _c.mutation.Keeper(); ok {
+		_spec.SetField(robot.FieldKeeper, field.TypeString, value)
+		_node.Keeper = value
 	}
 	if value, ok := _c.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
