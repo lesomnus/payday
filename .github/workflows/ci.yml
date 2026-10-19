@@ -58,7 +58,7 @@ jobs:
       # at two thirds of it.
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
       - run: npm ci --prefix ts
       - run: npm ci --prefix internal/apptest/ts
 
@@ -358,7 +358,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       # The page the template ships, built the way somebody who ran `pd new`
       # would build it -- and against **this** checkout rather than the last
@@ -400,7 +400,7 @@ jobs:
           cache: true
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - run: npm ci
         working-directory: ts
