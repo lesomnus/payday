@@ -17,6 +17,26 @@
         "digest"
       ],
       "groupName": "non-major"
+    },
+    {
+      "matchPackageNames": [
+        "vite",
+        "@vitejs/plugin-react"
+      ],
+      "groupName": "vite"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^internal/pdcli/template/ts/package\\.json\\.tmpl$/"
+      ],
+      "matchStrings": [
+        "\"(?<depName>@?[a-z0-9][a-z0-9._/-]*)\": \"(?<currentValue>[~^][0-9][^\"]*)\""
+      ],
+      "datasourceTemplate": "npm",
+      "versioningTemplate": "npm"
     }
   ],
   "vulnerabilityAlerts": {
