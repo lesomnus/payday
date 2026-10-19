@@ -245,10 +245,18 @@ func TestAnUpgradeToAnotherPaydayIsThatPaydays(t *testing.T) {
 		l.Root + " get github.com/lesomnus/payday@v0.9.0",
 		l.Root + " mod tidy",
 		l.Root + " tool pd upgrade " + l.Root,
-		l.Root + " tool pd gen " + l.Root,
 		l.Root + " tool pd gen --ts " + l.Root,
-	}, goes())
+	}, goes(), "one generation: --ts is the Go half as well")
 	x.Contains(log.String(), "nothing is committed")
+
+	t.Run("and one whose page has no generator is generated without --ts", func(t *testing.T) {
+		x := require.New(t)
+		l := page(t, app(t, "github.com/acme/thing"), nil, map[string]string{"typescript": "~5.9.3"}, nil)
+
+		goes := fake(t, "go")
+		x.NoError(pdcli.Upgrade{Layout: l, Payday: "latest"}.Run(context.Background()))
+		x.Equal(l.Root+" tool pd gen "+l.Root, goes()[3])
+	})
 }
 
 // TestTheGeneratorBelowItsFloorIsRefused: `pd gen --ts` writes nothing with a

@@ -87,7 +87,8 @@ of `package.json` the page keeps them in, so a dev dependency stays one.
 1. `go get github.com/lesomnus/payday@VERSION`;
 2. `go mod tidy`;
 3. `go tool pd upgrade`;
-4. `go tool pd gen`, and `go tool pd gen --ts` when the app has a page.
+4. `go tool pd gen --ts` when the app has a page, which writes the Go half as
+   well; `go tool pd gen` when it has none.
 
 Steps 3 and 4 run the payday that step 1 fetched, not the one you started
 with. Its floors are the ones the page has to meet, and code that payday's

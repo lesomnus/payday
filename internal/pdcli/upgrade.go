@@ -104,13 +104,15 @@ func (u Upgrade) payday(ctx context.Context) error {
 	if err := u.exec(ctx, dir, "go", append(args, dir)...); err != nil {
 		return err
 	}
-	if err := u.exec(ctx, dir, "go", "tool", "pd", "gen", dir); err != nil {
-		return err
-	}
+
+	// One generation: `--ts` is the Go half and then the page's, so an app
+	// with a page asks for that alone rather than writing the Go half twice.
+	gen := []string{"tool", "pd", "gen"}
 	if _, err := TsPlugin(u.Layout); err == nil {
-		if err := u.exec(ctx, dir, "go", "tool", "pd", "gen", "--ts", dir); err != nil {
-			return err
-		}
+		gen = append(gen, "--ts")
+	}
+	if err := u.exec(ctx, dir, "go", append(gen, dir)...); err != nil {
+		return err
 	}
 
 	if !u.DryRun {
