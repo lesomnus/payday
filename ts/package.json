@@ -90,7 +90,7 @@
 		"@lesomnus/grpc-dgram": "^0.1.0",
 		"@types/react": "^19.2.2",
 		"typescript": "~7.0.2",
-		"vitest": "^4.1.10"
+		"vitest": "^5.0.5"
 	},
 	"peerDependencies": {
 		"@bufbuild/protobuf": "^2",
