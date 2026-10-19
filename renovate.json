@@ -2,30 +2,14 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    ":dependencyDashboard"
+    ":dependencyDashboard",
+    "github>lesomnus/payday//renovate/app"
   ],
   "timezone": "Asia/Seoul",
   "schedule": [
     "* 0-8 * * 1"
   ],
   "prConcurrentLimit": 5,
-  "packageRules": [
-    {
-      "matchUpdateTypes": [
-        "patch",
-        "minor",
-        "digest"
-      ],
-      "groupName": "non-major"
-    },
-    {
-      "matchPackageNames": [
-        "vite",
-        "@vitejs/plugin-react"
-      ],
-      "groupName": "vite"
-    }
-  ],
   "customManagers": [
     {
       "customType": "regex",

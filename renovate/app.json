@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "What Renovate has to know about an app made with payday. An app extends github>lesomnus/payday//renovate/app and keeps the rest of its configuration its own.",
+  "packageRules": [
+    {
+      "description": "What cannot break goes in one pull request: patches and digests.",
+      "matchUpdateTypes": ["patch", "digest"],
+      "groupName": "non-major"
+    },
+    {
+      "description": "And minors from 1.0 on. Before 1.0 a minor is allowed to break, and one that did would hold every other update in the group back, so it is a pull request of its own.",
+      "matchUpdateTypes": ["minor"],
+      "matchCurrentVersion": ">=1.0.0",
+      "groupName": "non-major"
+    },
+    {
+      "description": "A major of @vitejs/plugin-react follows a major of Vite, and npm refuses the half of the pair that moved alone.",
+      "matchPackageNames": ["vite", "@vitejs/plugin-react"],
+      "groupName": "vite"
+    },
+    {
+      "description": "payday, and the protobuf-orm generators and runtimes it pins, move with `go tool pd upgrade --payday`: an upgrade has to generate again, which Renovate cannot do, and code another payday generated is refused when it runs.",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["github.com/lesomnus/payday", "github.com/lesomnus/payday/**", "github.com/protobuf-orm/**"],
+      "enabled": false
+    }
+  ]
+}

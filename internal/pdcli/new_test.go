@@ -61,6 +61,7 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 		"proto/app/thing.proto",
 		"thing.yaml",
 		"ts/src/client.ts",
+		"renovate.json",
 	} {
 		x.Contains(vs, want)
 	}
