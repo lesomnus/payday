@@ -112,12 +112,23 @@ requires and no further.
 Keeping current above the floors is Renovate's. An app made with `pd new` has a
 `renovate.json` that extends payday's preset, `github>lesomnus/payday//renovate/app`
 (`renovate/app.json` in this repository). An app made before that can extend the
-same preset. The preset does three things:
+same preset. The preset does four things:
 
 - **It leaves payday and protobuf-orm to `pd upgrade --payday`.** An upgrade of
   either has to generate the app's code again. Renovate cannot generate, and
   code another payday generated is refused when it runs, so a pull request that
   only moves `go.mod` would fail every time.
+- **It holds the generators until somebody asks for them.** `protoc-gen-go`,
+  `protoc-gen-go-grpc` and `protoc-gen-es` write their version into every file
+  they write, so a pull request that moves one fails `pd gen --check` until it
+  is generated on. They wait on the dependency dashboard, and a tick there opens
+  their pull request, `generators`, which says to run `go tool pd gen --ts .`
+  on its branch. `@bufbuild/protobuf` waits with them: `protoc-gen-es` names
+  its own release of it exactly. In roster's `non-major`, `protoc-gen-es` 2.15
+  to 2.16 held twenty other updates back.
+
+  The Go two also move with payday. `pd upgrade --payday` runs `go get`, which
+  raises them to what payday requires when that is newer, and then generates.
 - **It keeps vite and @vitejs/plugin-react in one pull request**, for the reason
   in §2.
 - **It groups patches, digests, and minors from 1.0 on, into one `non-major`
