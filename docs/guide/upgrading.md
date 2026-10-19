@@ -106,3 +106,27 @@ requires and no further.
   read. A range like `latest` with nothing installed is one it leaves alone.
 - **Move Node, a Dockerfile's base image, or the Node your CI runs.** Those are
   files and machines payday does not own.
+
+## 6. Renovate, for the rest
+
+Keeping current above the floors is Renovate's. An app made with `pd new` has a
+`renovate.json` that extends payday's preset, `github>lesomnus/payday//renovate/app`
+(`renovate/app.json` in this repository). An app made before that can extend the
+same preset. The preset does three things:
+
+- **It leaves payday and protobuf-orm to `pd upgrade --payday`.** An upgrade of
+  either has to generate the app's code again. Renovate cannot generate, and
+  code another payday generated is refused when it runs, so a pull request that
+  only moves `go.mod` would fail every time.
+- **It keeps vite and @vitejs/plugin-react in one pull request**, for the reason
+  in §2.
+- **It groups patches, digests, and minors from 1.0 on, into one `non-major`
+  pull request.** A minor of a package before 1.0 is allowed to break, so it
+  gets a pull request of its own and cannot hold the rest of the group back.
+  go-webauthn's 0.17 to 0.18 changed `Verify` under roster, and held every
+  other update in its group back.
+
+The rest of a Renovate configuration stays the app's: its schedule, its
+reviewers, and rules of its own. A rule in the app's own `packageRules` is read
+after the preset's and wins.
+
