@@ -3,6 +3,23 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The page is held to payday's floors, and `pd upgrade` meets them
+
+**Applies if** `go tool pd versions` marks `@bufbuild/protobuf` or
+`@bufbuild/protoc-gen-es` with `!`: `pd gen --ts` refuses to write until they
+are at payday's floor (`pdcli.ErrBelowFloor`).
+
+- `go tool pd upgrade` moves every page package that is below its floor to the
+  version `pd new` writes, along with the packages it moves with. It runs
+  `npm` and commits nothing. `pd doctor` lists the other floors, and those
+  refuse nothing ([upgrading](guide/upgrading.md)).
+- Upgrading payday is `go tool pd upgrade --payday latest` now. It runs
+  `go get` and `go mod tidy`, then the new payday's own upgrade and
+  generation.
+- The template's lower bounds are real releases now. The old `vite: ^7.1.14`
+  named a version npm never published, so an app still declaring it with
+  nothing installed is read as below Vite's floor (7.2.0).
+
 ## An index is in the order it declares, and a tenanted list's begins with the tenant
 
 **Applies if** you generate with `pd gen`, which is every app: the ent schema

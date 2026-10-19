@@ -136,6 +136,58 @@ func Doctor(ctx context.Context, l Layout) []Finding {
 	}
 	vs = append(vs, doctorLayers(l)...)
 	vs = append(vs, doctorSandbox(ctx, l)...)
+	vs = append(vs, doctorVersions(ctx, l)...)
+
+	return vs
+}
+
+// doctorVersions holds the page to payday's floors (see [Floors]): a package
+// below one, and the Node the page is built with. None of it stops a Go
+// generation, and the generator's own packages stop `pd gen --ts`.
+func doctorVersions(ctx context.Context, l Layout) []Finding {
+	page, ok, err := Page(l)
+	if err != nil {
+		return []Finding{{What: fmt.Sprintf("cannot read the page's packages: %s", err)}}
+	}
+	if !ok {
+		return nil
+	}
+
+	var vs []Finding
+
+	steps, err := Upgrades(l)
+	if err != nil {
+		vs = append(vs, Finding{What: fmt.Sprintf("cannot hold the page to payday's floors: %s", err)})
+	}
+	fix := "go tool pd upgrade"
+	if r := l.Rel(); r != "." {
+		fix += " " + r
+	}
+	for _, v := range steps {
+		if v.Partner {
+			continue
+		}
+		vs = append(vs, Finding{
+			What: fmt.Sprintf("%s has %s %s, older than %s -- %s", l.Rel(DirTs), v.Name, v.From, v.Floor, v.Why),
+			Fix:  fix,
+		})
+	}
+
+	// Asked only of an app with a page, since nothing else here runs Node.
+	if len(page) > 0 {
+		switch v := NodeVersion(ctx); {
+		case v == "":
+			vs = append(vs, Finding{
+				What: "node is not on PATH, and the page is built with it",
+				Fix:  "install Node " + NodeFloor + " or later",
+			})
+		case older(v, NodeFloor):
+			vs = append(vs, Finding{
+				What: fmt.Sprintf("node %s is older than %s -- %s", v, NodeFloor, NodeWhy),
+				Fix:  "install Node " + NodeFloor + " or later",
+			})
+		}
+	}
 
 	return vs
 }

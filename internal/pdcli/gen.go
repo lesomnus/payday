@@ -953,6 +953,21 @@ func (g Gen) Ts(ctx context.Context) error {
 		return err
 	}
 
+	// Refused below a floor rather than written: what comes out is the
+	// generator's, committed, and imported against the runtime -- so an older
+	// one writes code the rest of the page was not built with, and it is
+	// found out at somebody else's compile.
+	if vs, err := Below(g.Layout); err != nil {
+		return err
+	} else if len(vs) > 0 {
+		names := make([]string, 0, len(vs))
+		for _, v := range vs {
+			names = append(names, fmt.Sprintf("%s %s is older than %s", v.Name, v.From, v.Floor))
+		}
+		return fmt.Errorf("%w: %s; `go tool pd upgrade` moves them to what payday builds with",
+			ErrBelowFloor, strings.Join(names, ", "))
+	}
+
 	g.say("pd: typescript, with %s", plugin)
 
 	// Removed rather than written over: a message taken out of the schema
@@ -1009,6 +1024,10 @@ func renameTs(root string) error {
 
 // ErrNoTsPlugin is a working copy with no protobuf-es to generate with.
 var ErrNoTsPlugin = errors.New("protoc-gen-es is not installed")
+
+// ErrBelowFloor is a page whose generator, or the runtime its code imports, is
+// older than the oldest this payday builds with (see [Floors]).
+var ErrBelowFloor = errors.New("the page's generator is older than payday builds with")
 
 // TsPlugin finds the protobuf-es plugin.
 //

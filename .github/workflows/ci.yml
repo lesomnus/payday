@@ -386,6 +386,76 @@ jobs:
           cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ts/public/
           GOOS=js GOARCH=wasm go build -tags grpcnotrace -o ts/public/app.wasm ./wasm
 
+  # The oldest versions payday holds a page to (`pd versions`), proved: the app
+  # `pd new` writes, with every package with a floor written down at exactly
+  # its floor and installed from nothing, on the oldest Node, generated and
+  # built. So a floor is a version payday has built with and not a guess --
+  # the first run found one that was never published. Then the same page from
+  # below two of them, which `pd upgrade` has to move to what `new` builds.
+  floor:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: payday
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: payday/go.mod
+          cache: true
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - run: go tool pd new github.com/acme/widget "${GITHUB_WORKSPACE}/widget"
+        working-directory: payday
+
+      - name: as an app would be set up
+        working-directory: widget
+        run: |
+          go mod edit -replace github.com/lesomnus/payday="${GITHUB_WORKSPACE}/payday"
+          while read -r t; do go get -tool "$t"; done <<'EOF'
+          github.com/lesomnus/payday/cmd/pd
+          google.golang.org/protobuf/cmd/protoc-gen-go
+          google.golang.org/grpc/cmd/protoc-gen-go-grpc
+          github.com/protobuf-orm/protobuf-merge
+          github.com/protobuf-orm/protoc-gen-orm-service
+          github.com/protobuf-orm/protoc-gen-orm-go
+          github.com/protobuf-orm/protoc-gen-orm-ent
+          github.com/lesomnus/payday/cmd/protoc-gen-pd
+          github.com/protobuf-orm/ent/cmd/ent
+          EOF
+          go mod tidy -e
+          go tool pd gen .
+          go mod tidy
+
+      - name: at its floors
+        working-directory: widget/ts
+        run: |
+          go tool pd versions --json .. > "${RUNNER_TEMP}/floors.json"
+          jq --slurpfile f "${RUNNER_TEMP}/floors.json" \
+            'reduce ($f[0][] | select(.section != null)) as $v (.; .[$v.section][$v.name] = $v.floor)' \
+            package.json > "${RUNNER_TEMP}/package.json"
+          mv "${RUNNER_TEMP}/package.json" package.json
+          npm install
+          go tool pd versions ..
+          (cd .. && go tool pd gen --ts .)
+          npm run build
+
+      - name: and from below them
+        working-directory: widget/ts
+        run: |
+          npm install --save-exact --save-dev typescript@5.8.3 vite@7.0.0
+          (cd .. && go tool pd upgrade .)
+          go tool pd versions ..
+          if go tool pd versions --json .. | jq -e '.[] | select(.below)' > /dev/null; then
+            echo 'pd upgrade left the page below a floor' >&2
+            exit 1
+          fi
+          npm run build
+
   # The TypeScript, twice: payday's own half, and the app's -- which is where
   # the two halves are checked against each other. That job starts the real
   # server and sends it bytes, so it needs Go as well; a mock would agree with
