@@ -2,6 +2,7 @@ package pdcli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,6 +26,8 @@ func NewCmdRoot() *xli.Command {
 			NewCmdEntity(),
 			NewCmdNew(),
 			NewCmdSandbox(),
+			NewCmdUpgrade(),
+			NewCmdVersions(),
 		},
 
 		Handler: xli.RequireSubcommand(),
@@ -153,6 +156,147 @@ func NewCmdDoctor() *xli.Command {
 			return fmt.Errorf("%d of %d would stop a generation", fatal, len(vs))
 		}),
 	}
+}
+
+// NewCmdUpgrade is `pd upgrade`: what this payday needs of an app, met by the
+// tools that own it.
+func NewCmdUpgrade() *xli.Command {
+	return &xli.Command{
+		Name:  "upgrade",
+		Brief: "move what the app's page has below payday's floors to what payday builds with",
+		Synop: "pd upgrade [--dry-run] [--payday VERSION] [DIR]",
+
+		Flags: flg.Flags{
+			&flg.Switch{
+				Name:  "dry-run",
+				Brief: "say what would run, and run none of it",
+			},
+			&flg.String{
+				Name:  "payday",
+				Brief: "first move the app to this payday -- a version, a commit or latest -- and then meet its floors and generate with it",
+			},
+		},
+		Args: arg.Args{
+			&arg.String{
+				Name:     "DIR",
+				Brief:    "the app; the working directory by default",
+				Optional: true,
+			},
+		},
+
+		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			l, err := discover(cmd)
+			if err != nil {
+				return err
+			}
+
+			dry, _ := flg.Find[bool](cmd, "dry-run")
+			payday, _ := flg.Find[string](cmd, "payday")
+
+			return Upgrade{Layout: l, Log: cmd, DryRun: dry, Payday: payday}.Run(ctx)
+		}),
+	}
+}
+
+// NewCmdVersions is `pd versions`: the floors and targets this payday holds a
+// page to, and what the app has of each.
+func NewCmdVersions() *xli.Command {
+	return &xli.Command{
+		Name:  "versions",
+		Brief: "the oldest versions of the page's packages this payday builds with, and what it moves them to",
+		Synop: "pd versions [--json] [DIR]",
+
+		Flags: flg.Flags{
+			&flg.Switch{
+				Name:  "json",
+				Brief: "one object per package, for a script",
+			},
+		},
+		Args: arg.Args{
+			&arg.String{
+				Name:     "DIR",
+				Brief:    "the app, whose versions are said beside them; the working directory by default",
+				Optional: true,
+			},
+		},
+
+		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			vs, err := versions(ctx, cmd)
+			if err != nil {
+				return err
+			}
+
+			if v, _ := flg.Find[bool](cmd, "json"); v {
+				b, err := json.MarshalIndent(vs, "", "  ")
+				if err != nil {
+					return err
+				}
+				cmd.Println(string(b))
+				return nil
+			}
+
+			cmd.Printf("%-26s %-9s %-9s %-9s %s\n", "package", "floor", "target", "have", "why")
+			for _, v := range vs {
+				have := v.Have
+				switch {
+				case have == "":
+					have = "-"
+				case v.Below:
+					have += " !"
+				}
+				target := v.Target
+				if target == "" {
+					target = "-"
+				}
+				cmd.Printf("%-26s %-9s %-9s %-9s %s\n", v.Name, v.Floor, target, have, v.Why)
+			}
+
+			return nil
+		}),
+	}
+}
+
+// versionRow is one row of `pd versions`.
+type versionRow struct {
+	Name    string `json:"name"`
+	Floor   string `json:"floor"`
+	Target  string `json:"target,omitempty"`
+	Section string `json:"section,omitempty"`
+	Have    string `json:"have,omitempty"`
+	Below   bool   `json:"below,omitempty"`
+	Why     string `json:"why"`
+}
+
+func versions(ctx context.Context, cmd *xli.Command) ([]versionRow, error) {
+	targets, err := Targets()
+	if err != nil {
+		return nil, err
+	}
+
+	// An app is optional here: the floors are this payday's, and asked from
+	// anywhere they are still the answer.
+	var page map[string]Have
+	if l, err := discover(cmd); err == nil {
+		if page, _, err = Page(l); err != nil {
+			return nil, err
+		}
+	}
+
+	vs := []versionRow{}
+	for _, f := range Floors {
+		t := targets[f.Name]
+		v := versionRow{Name: f.Name, Floor: f.Minimum, Target: t.Range, Section: t.Section, Why: f.Why}
+		if h, ok := page[f.Name]; ok {
+			v.Have = h.Version()
+			v.Below = v.Have != "" && older(v.Have, f.Minimum)
+		}
+		vs = append(vs, v)
+	}
+
+	node := versionRow{Name: "node", Floor: NodeFloor, Why: NodeWhy, Have: NodeVersion(ctx)}
+	node.Below = node.Have != "" && older(node.Have, NodeFloor)
+
+	return append(vs, node), nil
 }
 
 // NewCmdNew is `pd new`: an app to start from.

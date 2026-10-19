@@ -19,8 +19,8 @@ it is generated rather than remembered.
   own.
 - [docs/](docs/) — the rest: [batch](docs/guide/batch.md),
   [more than one proto package](docs/guide/packages.md),
-  [refusals](docs/guide/errors.md), [signing somebody in](docs/guide/signing-in.md)
-  and [testing](docs/guide/testing.md), and the
+  [refusals](docs/guide/errors.md), [signing somebody in](docs/guide/signing-in.md),
+  [testing](docs/guide/testing.md) and [upgrading](docs/guide/upgrading.md), and the
   references behind all of it — [the runtime](docs/runtime.md),
   [tenancy](docs/tenancy.md), [the generation contract](docs/schema.md),
   [the browser](docs/client.md).
