@@ -140,11 +140,10 @@ not a fatal one: nothing about the app is broken, and the fix is a rename.
 person's values off the trail (#92), and a field nobody declared is copied onto
 it as a value — so `pd doctor` asks of every field of free text on an entity
 that has a personal field, and of any field whose name is about somebody
-(`email`, `address`, `first_name`), whether it is personal. `impersonal` is the
-other answer, a field of `payday.Field` of its own: `personal: false` would have
-said it, but `personal` has no presence and giving it some changes the message's
-shape under every app. A finding and not a fatal one: the trail does what it
-did, and the decision is the schema's.
+(`email`, `address`, `first_name`), whether it is personal. `personal: false` is
+the other answer, which is why that field of `payday.Field` has presence. A
+finding and not a fatal one: the trail does what it did, and the decision is
+the schema's.
 
 ### The number ranges
 

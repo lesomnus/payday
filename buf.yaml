@@ -34,3 +34,14 @@ lint:
 breaking:
   use:
     - FILE
+  # One change, on purpose and before any app wrote either half of it:
+  # `(payday.field).personal` has presence, so that `personal: false` says
+  # something, and the `impersonal` field that said it for a few hours is gone.
+  # An option an app writes and the generator reads, so nothing generated
+  # against it moves. This goes once main and the registry's `dev` both have
+  # the change -- left here, it is a hole in the check.
+  ignore_only:
+    FIELD_SAME_CARDINALITY:
+      - proto/payday/entity.proto
+    FIELD_NO_DELETE:
+      - proto/payday/entity.proto

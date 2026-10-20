@@ -22,8 +22,8 @@ import (
 //
 //   - An entity with a personal field holds people, so every field of free text
 //     on it is one somebody could have meant to declare. Each says which it is:
-//     `personal`, or `impersonal` for a role, a state, the name of a provider --
-//     looked at, and about no one.
+//     `personal: true`, or `personal: false` for a role, a state, the name of a
+//     provider -- looked at, and about no one.
 //   - A field anywhere whose name is about somebody -- an address, a phone, a
 //     birthday -- is asked about the same way, so that an entity that holds
 //     people and declares nothing at all is not the one that gets through.
@@ -34,7 +34,7 @@ func doctorPersonal(s *pdgen.Schema) []Finding {
 	var vs []Finding
 	for _, e := range s.Sorted() {
 		decided := map[string]bool{}
-		for _, names := range [][]string{e.Personal, e.Impersonal, e.Secrets} {
+		for _, names := range [][]string{e.Personal, e.NotPersonal, e.Secrets} {
 			for _, v := range names {
 				decided[v] = true
 			}
@@ -79,8 +79,8 @@ func personalFinding(e *pdgen.Entity, people bool, asked []graph.Prop) Finding {
 
 	fix := &strings.Builder{}
 	fix.WriteString("A field nobody declared is kept on the trail as a value. Declare each beside it:\n\n")
-	fix.WriteString("    [(payday.field) = {personal: true}]    about a person: never on the trail as a value\n")
-	fix.WriteString("    [(payday.field) = {impersonal: true}]  about no one: kept, and now on purpose\n")
+	fix.WriteString("    [(payday.field) = {personal: true}]   about a person: never on the trail as a value\n")
+	fix.WriteString("    [(payday.field) = {personal: false}]  about no one: kept, and now on purpose\n")
 	for _, p := range asked {
 		fmt.Fprintf(fix, "\n%s  %s", where(p), p.Name())
 	}

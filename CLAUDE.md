@@ -66,9 +66,12 @@ root does not reach it.
 locally before changing a `.proto`:
 
 ```sh
-buf breaking --against '.git#ref=origin/main'
-buf breaking --against buf.build/payday/payday:dev
+buf breaking --against '.git#ref=origin/main' --exclude-imports
+buf breaking proto --against buf.build/payday/payday:dev
 ```
+
+A break that is meant goes in `buf.yaml`'s `breaking.ignore_only`, for that one
+change, and comes out once main and the registry's `dev` both have it.
 
 ## Do not edit
 

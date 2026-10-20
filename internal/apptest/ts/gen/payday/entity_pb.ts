@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki8wUKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GkUKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRINCgVzdGFtcBgDIAEoCRIOCgZhZ3JlZXMYBCADKAkaCAoGR2xvYmFsGioKBUVyYXNlEiEKBGhhcmQYASABKAsyEy5wYXlkYXkuRW50aXR5LkhhcmQaBgoESGFyZBqwAQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISFgoEd2l0aBgCIAMoCzIILm9ybS5SZWYSFAoCYnkYAyADKAsyCC5vcm0uUmVmEgwKBHNpemUYBCABKA0SCwoDbWF4GAUgASgNEg8KB2ZpbHRlcnMYBiABKA0SKQoGb3JkZXJzGAcgAygLMhkucGF5ZGF5LkVudGl0eS5OYW1lZE9yZGVyGj8KCk5hbWVkT3JkZXISDAoEbmFtZRgBIAEoCRIjCgVvcmRlchgCIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXIaBwoFV2F0Y2gaLgoFT3JkZXISFwoFZmllbGQYASABKAsyCC5vcm0uUmVmEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeSJOCgVGaWVsZBIOCgZzZWNyZXQYASABKAgSDwoHc3RhbXBlZBgCIAEoCBIQCghwZXJzb25hbBgDIAEoCBISCgppbXBlcnNvbmFsGAQgASgIKmsKA093bhITCg9PV05fVU5TUEVDSUZJRUQQABIOCgpPV05fVEVOQU5UEAESDgoKT1dOX0hPTERFUhACEg0KCU9XTl9BVURJVBADEg4KCk9XTl9PVVRCT1gQBBIQCgxPV05fQVJDSElWRUQQBUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_orm_ref]);
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki8wUKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GkUKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRINCgVzdGFtcBgDIAEoCRIOCgZhZ3JlZXMYBCADKAkaCAoGR2xvYmFsGioKBUVyYXNlEiEKBGhhcmQYASABKAsyEy5wYXlkYXkuRW50aXR5LkhhcmQaBgoESGFyZBqwAQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISFgoEd2l0aBgCIAMoCzIILm9ybS5SZWYSFAoCYnkYAyADKAsyCC5vcm0uUmVmEgwKBHNpemUYBCABKA0SCwoDbWF4GAUgASgNEg8KB2ZpbHRlcnMYBiABKA0SKQoGb3JkZXJzGAcgAygLMhkucGF5ZGF5LkVudGl0eS5OYW1lZE9yZGVyGj8KCk5hbWVkT3JkZXISDAoEbmFtZRgBIAEoCRIjCgVvcmRlchgCIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXIaBwoFV2F0Y2gaLgoFT3JkZXISFwoFZmllbGQYASABKAsyCC5vcm0uUmVmEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeSJBCgVGaWVsZBIOCgZzZWNyZXQYASABKAgSDwoHc3RhbXBlZBgCIAEoCBIXCghwZXJzb25hbBgDIAEoCEIFqgECCAEqawoDT3duEhMKD09XTl9VTlNQRUNJRklFRBAAEg4KCk9XTl9URU5BTlQQARIOCgpPV05fSE9MREVSEAISDQoJT1dOX0FVRElUEAMSDgoKT1dOX09VVEJPWBAEEhAKDE9XTl9BUkNISVZFRBAFQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac", [file_orm_ref]);
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -765,41 +765,20 @@ export type Field = Message<"payday.Field"> & {
    * An edge, and the key, cannot be personal: they are identifiers, which is
    * the one thing the trail is made of.
    *
-   * @generated from field: bool personal = 3;
+   * # Saying a field is not personal
+   *
+   * `personal: false` says the field was looked at and is about no one in
+   * particular: a role, a state, a kind, the name of a provider. The trail
+   * keeps its values, as it keeps those of a field nobody declared; what the
+   * declaration adds is that the schema decided, which is what `pd doctor` asks
+   * of each field of free text on an entity that holds people, and of a field
+   * anywhere whose name is about somebody. So this field has presence where
+   * the rest of the message has none: unset and false are different
+   * statements, and the doctor has to tell them apart.
+   *
+   * @generated from field: bool personal = 3 [features.field_presence = EXPLICIT];
    */
   personal: boolean;
-
-  /**
-   * Impersonal marks a field somebody looked at and found to be about no one
-   * in particular: a role, a state, a kind, the name of a provider.
-   *
-   * # What it does
-   *
-   * Nothing to the trail, which keeps a value of it as it keeps one of a field
-   * nobody declared -- and that is the point of it. The two read alike to the
-   * trail, and only this one is a decision. An entity that holds people is one
-   * whose undecided fields are the ones that leak a person onto the trail, so
-   * `pd doctor` asks each field of free text on it to say which it is, this or
-   * `personal`, and asks the same of a field anywhere whose name is about
-   * somebody.
-   *
-   * # Why a field of its own
-   *
-   * `personal: false` would have said it, and cannot: `personal` has no
-   * presence, so false and unset are the same bytes, and giving it presence is
-   * a change to this message's shape that every app compiled against it
-   * would be told about.
-   *
-   * # What it is refused beside
-   *
-   * `personal`, which says the opposite; `secret`, which keeps the field off
-   * the trail already; and an edge or the key, which are never personal. Each
-   * would be a declaration that does nothing, and a declaration that does
-   * nothing is one somebody relies on.
-   *
-   * @generated from field: bool impersonal = 4;
-   */
-  impersonal: boolean;
 };
 
 /**

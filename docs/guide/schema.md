@@ -423,10 +423,11 @@ what the trail is made of.
 
 #### Saying a field is about no one
 
-`impersonal` says a field was looked at and is about no one in particular:
+`personal: false` says a field was looked at and is about no one in
+particular:
 
 ```proto
-string role = 9 [(payday.field) = {impersonal: true}];
+string role = 9 [(payday.field) = {personal: false}];
 ```
 
 The trail keeps it as it keeps any field nobody declared. What the declaration
@@ -443,9 +444,7 @@ places:
   this is what reaches it.
 
 It is advice and not a refusal. Generation does what it always did, and which a
-field is stays the schema's to say. Generation does refuse `impersonal` beside
-`personal`, beside `secret`, and on an edge or the key: each is a declaration
-that does nothing.
+field is stays the schema's to say.
 
 ---
 
