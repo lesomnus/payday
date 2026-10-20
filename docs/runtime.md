@@ -370,10 +370,14 @@ ignore. Three things make sure there is nothing else:
   whoever the context is framed as, keeping the digest of the row as a Get reads
   it and nothing of what it holds. It is the one way onto the trail that is not
   a write through the servers.
-- **A kind that is only ever written by hand has no RPC to write it.** The check
-  reads the kinds whose generated contract has an `Add` or a `Patch`, since those
-  are the ones the recorder sees; a kind the app writes through ent and also
-  generated a contract for is, row by row, not on the trail.
+- **A kind no server writes says how its writes reach the trail.** One with no
+  `Add`, `AddMany` or `Patch` is written by the app's own code, and declares
+  which of two it is: `trail: {recorded: {}}`, each write recorded with
+  `pd.Record` and the kind checked as any is; or `trail: {off: {why: "..."}}`,
+  kept off the trail and not checked -- a session's idle clock, a lock, a queue.
+  `pd gen` refuses one that says neither, so leaving a kind out of the check is
+  always written down, with a reason. Whether it has RPCs is a separate question,
+  about its API.
 
 A column a migration adds is outside every digest made before it, so the rows
 under it still match. A column a migration rewrote is a difference, which is

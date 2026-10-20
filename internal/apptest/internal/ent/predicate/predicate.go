@@ -41,6 +41,9 @@ type Outbox func(*sql.Selector)
 // Pairing is the predicate function for pairing builders.
 type Pairing func(*sql.Selector)
 
+// Pulse is the predicate function for pulse builders.
+type Pulse func(*sql.Selector)
+
 // Reading is the predicate function for reading builders.
 type Reading func(*sql.Selector)
 

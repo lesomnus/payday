@@ -17,6 +17,7 @@ import (
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	pulse "github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
@@ -387,6 +388,7 @@ type Scope interface {
 	OutboxScope(ctx context.Context) (predicate.Outbox, error)
 	SealScope(ctx context.Context) (predicate.Seal, error)
 	TallyScope(ctx context.Context) (predicate.Tally, error)
+	PulseScope(ctx context.Context) (predicate.Pulse, error)
 }
 
 // Unscoped is a [Scope] that narrows nothing. Embed it and write out the
@@ -441,6 +443,9 @@ func (Unscoped) SealScope(_ context.Context) (predicate.Seal, error) {
 	return nil, nil
 }
 func (Unscoped) TallyScope(_ context.Context) (predicate.Tally, error) {
+	return nil, nil
+}
+func (Unscoped) PulseScope(_ context.Context) (predicate.Pulse, error) {
 	return nil, nil
 }
 
@@ -743,6 +748,26 @@ func (ss Scopes) TallyScope(ctx context.Context) (predicate.Tally, error) {
 	return tally.And(ps...), nil
 }
 
+func (ss Scopes) PulseScope(ctx context.Context) (predicate.Pulse, error) {
+	ps := make([]predicate.Pulse, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.PulseScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return pulse.And(ps...), nil
+}
+
 // Minter decides the key a row is stored under. It is asked once per Add,
 // for an entity whose key is a uuid, and only for those.
 //
@@ -932,3 +957,4 @@ func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceSer
 func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }
 func (s Server) Seal() apptest.SealServiceServer       { return SealServiceServer{Store: s.Store} }
 func (s Server) Tally() apptest.TallyServiceServer     { return TallyServiceServer{Store: s.Store} }
+func (s Server) Pulse() apptest.PulseServiceServer     { return PulseServiceServer{Store: s.Store} }

@@ -36,6 +36,9 @@ export const OutboxDomain = 4
 /** The domain identifiers of app.Pairing carry. */
 export const PairingDomain = 12
 
+/** The domain identifiers of app.Pulse carry. */
+export const PulseDomain = 16
+
 /** The domain identifiers of app.Reading carry. */
 export const ReadingDomain = 11
 
@@ -64,6 +67,7 @@ pdid.register("app.Holder", HolderDomain, "holder")
 pdid.register("app.Joint", JointDomain, "joint")
 pdid.register("app.Outbox", OutboxDomain, "outbox")
 pdid.register("app.Pairing", PairingDomain, "pairing")
+pdid.register("app.Pulse", PulseDomain, "pulse")
 pdid.register("app.Reading", ReadingDomain, "reading")
 pdid.register("app.Robot", RobotDomain, "robot")
 pdid.register("app.Seal", SealDomain, "seal")

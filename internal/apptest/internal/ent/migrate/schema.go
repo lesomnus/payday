@@ -270,6 +270,19 @@ var (
 			},
 		},
 	}
+	// PulseColumns holds the columns for the "pulse" table.
+	PulseColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "process", Type: field.TypeString},
+		{Name: "date_seen", Type: field.TypeTime, Nullable: true},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+	}
+	// PulseTable holds the schema information for the "pulse" table.
+	PulseTable = &schema.Table{
+		Name:       "pulse",
+		Columns:    PulseColumns,
+		PrimaryKey: []*schema.Column{PulseColumns[0]},
+	}
 	// ReadingColumns holds the columns for the "reading" table.
 	ReadingColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -452,6 +465,7 @@ var (
 		JointTable,
 		OutboxTable,
 		PairingTable,
+		PulseTable,
 		ReadingTable,
 		RobotTable,
 		SealTable,
@@ -491,6 +505,9 @@ func init() {
 	PairingTable.ForeignKeys[1].RefTable = RobotTable
 	PairingTable.Annotation = &entsql.Annotation{
 		Table: "pairing",
+	}
+	PulseTable.Annotation = &entsql.Annotation{
+		Table: "pulse",
 	}
 	ReadingTable.ForeignKeys[0].RefTable = RobotTable
 	ReadingTable.Annotation = &entsql.Annotation{

@@ -25,3 +25,11 @@ func (e *Tally) Proto() *apptest.Tally {
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	return x
 }
+func (e *Pulse) Proto() *apptest.Pulse {
+	x := &apptest.Pulse{}
+	x.SetId(e.Id[:])
+	x.SetProcess(e.Process)
+	x.SetDateSeen(timestamppb.New(e.DateSeen))
+	x.SetDateCreated(timestamppb.New(e.DateCreated))
+	return x
+}

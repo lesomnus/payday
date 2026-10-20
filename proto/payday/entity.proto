@@ -226,6 +226,55 @@ message Entity {
   // own package, and what a caller of that app sees is that app's namespace.
   Own own = 9;
 
+  // Trail says how the writes of an entity **no server writes** reach the
+  // trail (payday#108), and it is said only for one: an entity with an `Add`,
+  // an `AddMany` or a `Patch` is written through its servers, and the recorder
+  // puts every such write on the trail already. `pd gen` refuses it there.
+  //
+  // # Why it is said at all
+  //
+  // A check of the rows against the trail (`pd.Digests`) reads **every** kind
+  // but the ones that say `off`, so that a row nothing on the trail accounts
+  // for is a finding: that is what a row somebody added in the database past
+  // the servers looks like. A kind the app writes through ent is such a row,
+  // row after row, unless its writes are recorded -- so `pd gen` refuses an
+  // entity with no write a server makes and nothing said here. Leaving a kind
+  // out of the check is the dangerous answer, and it is the one written down,
+  // with a reason; a kind added to the schema cannot arrive without somebody
+  // having decided.
+  //
+  // It is not about RPCs. Whether an entity has any is what its API offers;
+  // this is whether a record of each write is kept, and the two used to be one
+  // rule -- "no write a server makes, so not checked" -- which left a consent,
+  // a record kept to prove something, out of the check for having no RPC.
+  Trail trail = 10;
+
+  // Trail is one of the two answers. See [Entity.trail].
+  message Trail {
+    oneof how {
+      // Recorded is written by the app's own code, and each write is put on
+      // the trail as the act it is -- `pd.Record`, in the transaction that
+      // wrote it. A check reads it as any kind, and a write that was not
+      // recorded is a row nothing on the trail is about.
+      Recorded recorded = 1;
+
+      // Off is written by the app's own code and kept off the trail: a
+      // session's idle clock, which moves on every request; a lock; a queue a
+      // loop empties within seconds. A check does not read it, and
+      // `pd.Record` passes over it.
+      Off off = 2;
+    }
+
+    message Recorded {}
+
+    message Off {
+      // Why says what the rows are and why no record of each write is wanted.
+      // Required, and the schema is where it is read: it is the one place a
+      // kind is said not to be checked.
+      string why = 1;
+    }
+  }
+
   // Global is an entity that is not behind the wall -- a table the whole
   // deployment shares.
   //

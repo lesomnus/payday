@@ -352,11 +352,11 @@ func TestRecordIsRefusedWhatItCannotSayAnythingTrueAbout(t *testing.T) {
 	x.Empty(b.trailOf(t, ctx, id.Bytes()))
 }
 
-// TestAKindNoServerWritesIsNotRead: a tally is written through ent alone, so it
-// is never on the trail and a check has nothing to say about it -- it is not
-// read at all, rather than read and found on nothing -- and `Record` passes
-// over it.
-func TestAKindNoServerWritesIsNotRead(t *testing.T) {
+// TestAKindTheAppRecordsIsChecked: a tally is written through ent alone, and
+// says its writes are recorded (`trail: {recorded: {}}`), so a check reads it
+// as any kind. Written and not recorded, it is a row nothing on the trail is
+// about; recorded, it is on the trail under its own tenant, and matches.
+func TestAKindTheAppRecordsIsChecked(t *testing.T) {
 	x := require.New(t)
 	b, ctx, d := digesting(t)
 
@@ -373,9 +373,43 @@ func TestAKindNoServerWritesIsNotRead(t *testing.T) {
 
 	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
 	x.NoError(err)
+	x.Equal([]pdid.Id{id}, got.NotOnTrail, "a write the app did not record")
+
+	n, err := pd.Record(ctx, b.Ent, audit.Contents{Digest: d}, "/test/Count", []pdid.Id{id})
+	x.NoError(err)
+	x.Equal(1, n)
+
+	got, err = pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
 	x.True(got.Ok(), "%+v", got)
 
-	n, err := pd.Record(ctx, b.Ent, audit.Contents{Digest: d}, "/test/Restore", []pdid.Id{id})
+	rows := b.trailOf(t, ctx, id.Bytes())
+	x.Len(rows, 1)
+	x.Equal(b.Tenant.Uuid(), rows[0].TenantId, "filed under the row's own tenant")
+	x.NotContains(rows[0].DigestFields, uint32(9), "the token is a secret")
+}
+
+// TestAKindKeptOffTheTrailIsNotRead: a pulse says its writes are kept off the
+// trail, with why (`trail: {off: ...}`), so a check does not read it, and
+// `Record` passes over it.
+func TestAKindKeptOffTheTrailIsNotRead(t *testing.T) {
+	x := require.New(t)
+	b, ctx, d := digesting(t)
+
+	now := time.Now()
+	id := pdid.New(pd.PulseDomain)
+	x.NoError(b.Ent.Pulse.Create().
+		SetId(id.Uuid()).
+		SetProcess("one").
+		SetDateSeen(now).
+		SetDateCreated(now).
+		Exec(ctx))
+
+	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.True(got.Ok(), "%+v", got)
+
+	n, err := pd.Record(ctx, b.Ent, audit.Contents{Digest: d}, "/test/Beat", []pdid.Id{id})
 	x.NoError(err)
 	x.Zero(n)
 	x.Empty(b.trailOf(t, ctx, id.Bytes()))

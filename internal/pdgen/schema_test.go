@@ -1475,6 +1475,96 @@ message Note {
 	})
 }
 
+// TestAnEntityNoServerWritesSaysHowItsWritesReachTheTrail (payday#108).
+//
+// A check of the rows reads every kind but one kept off the trail, so a kind
+// the app writes by hand is, row by row, a row nothing on the trail is about --
+// unless its writes are recorded. Which of the two it is, is a decision, and a
+// decision left unsaid is found by the first check rather than by the
+// generator. So the generator asks.
+func TestAnEntityNoServerWritesSaysHowItsWritesReachTheTrail(t *testing.T) {
+	lock := func(rpc, trail string) string {
+		return tenant + `
+message Lock {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {}];
+  option (orm.message) = {` + rpc + `};
+  option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}, erase: {hard: {}}` + trail + `};
+}`
+	}
+	checked := func(t *testing.T, s *pdgen.Schema) bool {
+		t.Helper()
+		for _, v := range s.Entities {
+			if v.GoName() == "Lock" {
+				return v.Checked()
+			}
+		}
+		t.Fatal("no Lock")
+		return false
+	}
+
+	t.Run("one a server writes says nothing, and is checked", func(t *testing.T) {
+		s, err := read(t, lock(`rpc: {crud: true}`, ``))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !checked(t, s) {
+			t.Fatal("a kind a server writes was left out of the check")
+		}
+	})
+
+	t.Run("one no server writes and nothing said is refused", func(t *testing.T) {
+		_, err := read(t, lock(``, ``))
+		if err == nil {
+			t.Fatal("a kind written by hand arrived without anybody deciding whether it is checked")
+		}
+		for _, want := range []string{"no server writes it", "trail: {recorded: {}}", "trail: {off: {why:"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("wanted %q; said: %s", want, err)
+			}
+		}
+	})
+
+	t.Run("recorded is checked", func(t *testing.T) {
+		s, err := read(t, lock(``, `, trail: {recorded: {}}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !checked(t, s) {
+			t.Fatal("a kind whose writes are recorded was left out of the check")
+		}
+	})
+
+	t.Run("off is not, and says why", func(t *testing.T) {
+		s, err := read(t, lock(``, `, trail: {off: {why: "a lock, and its version"}}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if checked(t, s) {
+			t.Fatal("a kind kept off the trail is checked")
+		}
+
+		_, err = read(t, lock(``, `, trail: {off: {}}`))
+		if err == nil || !strings.Contains(err.Error(), "why") {
+			t.Fatalf("a kind was kept off the check with no reason: %v", err)
+		}
+	})
+
+	t.Run("and neither, or either on one a server writes, is refused", func(t *testing.T) {
+		_, err := read(t, lock(``, `, trail: {}`))
+		if err == nil || !strings.Contains(err.Error(), "neither") {
+			t.Fatalf("a trail that says nothing was taken: %v", err)
+		}
+
+		for _, v := range []string{`, trail: {recorded: {}}`, `, trail: {off: {why: "x"}}`} {
+			_, err := read(t, lock(`rpc: {crud: true}`, v))
+			if err == nil || !strings.Contains(err.Error(), "a server writes it") {
+				t.Fatalf("%s: a kind a server writes was given a second answer: %v", v, err)
+			}
+		}
+	})
+}
+
 // TestAnEntityHasToSayWhatEraseDoes.
 //
 // The two failures are not alike, which is why this is a refusal rather than a

@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki8wUKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24aCAoGVGVuYW50GkUKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRINCgVzdGFtcBgDIAEoCRIOCgZhZ3JlZXMYBCADKAkaCAoGR2xvYmFsGioKBUVyYXNlEiEKBGhhcmQYASABKAsyEy5wYXlkYXkuRW50aXR5LkhhcmQaBgoESGFyZBqwAQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISFgoEd2l0aBgCIAMoCzIILm9ybS5SZWYSFAoCYnkYAyADKAsyCC5vcm0uUmVmEgwKBHNpemUYBCABKA0SCwoDbWF4GAUgASgNEg8KB2ZpbHRlcnMYBiABKA0SKQoGb3JkZXJzGAcgAygLMhkucGF5ZGF5LkVudGl0eS5OYW1lZE9yZGVyGj8KCk5hbWVkT3JkZXISDAoEbmFtZRgBIAEoCRIjCgVvcmRlchgCIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXIaBwoFV2F0Y2gaLgoFT3JkZXISFwoFZmllbGQYASABKAsyCC5vcm0uUmVmEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeSJBCgVGaWVsZBIOCgZzZWNyZXQYASABKAgSDwoHc3RhbXBlZBgCIAEoCBIXCghwZXJzb25hbBgDIAEoCEIFqgECCAEqawoDT3duEhMKD09XTl9VTlNQRUNJRklFRBAAEg4KCk9XTl9URU5BTlQQARIOCgpPV05fSE9MREVSEAISDQoJT1dOX0FVRElUEAMSDgoKT1dOX09VVEJPWBAEEhAKDE9XTl9BUkNISVZFRBAFQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac", [file_orm_ref]);
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXkipQcKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24SIwoFdHJhaWwYCiABKAsyFC5wYXlkYXkuRW50aXR5LlRyYWlsGggKBlRlbmFudBpFCghUZW5hbnRlZBILCgN2aWEYASABKAkSDQoFZmllbGQYAiADKAkSDQoFc3RhbXAYAyABKAkSDgoGYWdyZWVzGAQgAygJGooBCgVUcmFpbBIxCghyZWNvcmRlZBgBIAEoCzIdLnBheWRheS5FbnRpdHkuVHJhaWwuUmVjb3JkZWRIABInCgNvZmYYAiABKAsyGC5wYXlkYXkuRW50aXR5LlRyYWlsLk9mZkgAGgoKCFJlY29yZGVkGhIKA09mZhILCgN3aHkYASABKAlCBQoDaG93GggKBkdsb2JhbBoqCgVFcmFzZRIhCgRoYXJkGAEgASgLMhMucGF5ZGF5LkVudGl0eS5IYXJkGgYKBEhhcmQasAEKBExpc3QSIwoFb3JkZXIYASADKAsyFC5wYXlkYXkuRW50aXR5Lk9yZGVyEhYKBHdpdGgYAiADKAsyCC5vcm0uUmVmEhQKAmJ5GAMgAygLMggub3JtLlJlZhIMCgRzaXplGAQgASgNEgsKA21heBgFIAEoDRIPCgdmaWx0ZXJzGAYgASgNEikKBm9yZGVycxgHIAMoCzIZLnBheWRheS5FbnRpdHkuTmFtZWRPcmRlcho/CgpOYW1lZE9yZGVyEgwKBG5hbWUYASABKAkSIwoFb3JkZXIYAiADKAsyFC5wYXlkYXkuRW50aXR5Lk9yZGVyGgcKBVdhdGNoGi4KBU9yZGVyEhcKBWZpZWxkGAEgASgLMggub3JtLlJlZhIMCgRkZXNjGAIgASgIQgkKB3RlbmFuY3kiQQoFRmllbGQSDgoGc2VjcmV0GAEgASgIEg8KB3N0YW1wZWQYAiABKAgSFwoIcGVyc29uYWwYAyABKAhCBaoBAggBKmsKA093bhITCg9PV05fVU5TUEVDSUZJRUQQABIOCgpPV05fVEVOQU5UEAESDgoKT1dOX0hPTERFUhACEg0KCU9XTl9BVURJVBADEg4KCk9XTl9PVVRCT1gQBBIQCgxPV05fQVJDSElWRUQQBUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_orm_ref]);
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -171,6 +171,33 @@ export type Entity = Message<"payday.Entity"> & {
    * @generated from field: payday.Own own = 9;
    */
   own: Own;
+
+  /**
+   * Trail says how the writes of an entity **no server writes** reach the
+   * trail (payday#108), and it is said only for one: an entity with an `Add`,
+   * an `AddMany` or a `Patch` is written through its servers, and the recorder
+   * puts every such write on the trail already. `pd gen` refuses it there.
+   *
+   * # Why it is said at all
+   *
+   * A check of the rows against the trail (`pd.Digests`) reads **every** kind
+   * but the ones that say `off`, so that a row nothing on the trail accounts
+   * for is a finding: that is what a row somebody added in the database past
+   * the servers looks like. A kind the app writes through ent is such a row,
+   * row after row, unless its writes are recorded -- so `pd gen` refuses an
+   * entity with no write a server makes and nothing said here. Leaving a kind
+   * out of the check is the dangerous answer, and it is the one written down,
+   * with a reason; a kind added to the schema cannot arrive without somebody
+   * having decided.
+   *
+   * It is not about RPCs. Whether an entity has any is what its API offers;
+   * this is whether a record of each write is kept, and the two used to be one
+   * rule -- "no write a server makes, so not checked" -- which left a consent,
+   * a record kept to prove something, out of the check for having no RPC.
+   *
+   * @generated from field: payday.Entity.Trail trail = 10;
+   */
+  trail?: Entity_Trail | undefined;
 };
 
 /**
@@ -325,6 +352,81 @@ export const Entity_TenantedSchema: GenMessage<Entity_Tenanted> = /*@__PURE__*/
   messageDesc(file_payday_entity, 0, 1);
 
 /**
+ * Trail is one of the two answers. See [Entity.trail].
+ *
+ * @generated from message payday.Entity.Trail
+ */
+export type Entity_Trail = Message<"payday.Entity.Trail"> & {
+  /**
+   * @generated from oneof payday.Entity.Trail.how
+   */
+  how: {
+    /**
+     * Recorded is written by the app's own code, and each write is put on
+     * the trail as the act it is -- `pd.Record`, in the transaction that
+     * wrote it. A check reads it as any kind, and a write that was not
+     * recorded is a row nothing on the trail is about.
+     *
+     * @generated from field: payday.Entity.Trail.Recorded recorded = 1;
+     */
+    value: Entity_Trail_Recorded;
+    case: "recorded";
+  } | {
+    /**
+     * Off is written by the app's own code and kept off the trail: a
+     * session's idle clock, which moves on every request; a lock; a queue a
+     * loop empties within seconds. A check does not read it, and
+     * `pd.Record` passes over it.
+     *
+     * @generated from field: payday.Entity.Trail.Off off = 2;
+     */
+    value: Entity_Trail_Off;
+    case: "off";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message payday.Entity.Trail.
+ * Use `create(Entity_TrailSchema)` to create a new message.
+ */
+export const Entity_TrailSchema: GenMessage<Entity_Trail> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 0, 2);
+
+/**
+ * @generated from message payday.Entity.Trail.Recorded
+ */
+export type Entity_Trail_Recorded = Message<"payday.Entity.Trail.Recorded"> & {
+};
+
+/**
+ * Describes the message payday.Entity.Trail.Recorded.
+ * Use `create(Entity_Trail_RecordedSchema)` to create a new message.
+ */
+export const Entity_Trail_RecordedSchema: GenMessage<Entity_Trail_Recorded> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 0, 2, 0);
+
+/**
+ * @generated from message payday.Entity.Trail.Off
+ */
+export type Entity_Trail_Off = Message<"payday.Entity.Trail.Off"> & {
+  /**
+   * Why says what the rows are and why no record of each write is wanted.
+   * Required, and the schema is where it is read: it is the one place a
+   * kind is said not to be checked.
+   *
+   * @generated from field: string why = 1;
+   */
+  why: string;
+};
+
+/**
+ * Describes the message payday.Entity.Trail.Off.
+ * Use `create(Entity_Trail_OffSchema)` to create a new message.
+ */
+export const Entity_Trail_OffSchema: GenMessage<Entity_Trail_Off> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 0, 2, 1);
+
+/**
  * Global is an entity that is not behind the wall -- a table the whole
  * deployment shares.
  *
@@ -342,7 +444,7 @@ export type Entity_Global = Message<"payday.Entity.Global"> & {
  * Use `create(Entity_GlobalSchema)` to create a new message.
  */
 export const Entity_GlobalSchema: GenMessage<Entity_Global> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 2);
+  messageDesc(file_payday_entity, 0, 3);
 
 /**
  * Erase says the row goes. See [Entity.erase].
@@ -385,7 +487,7 @@ export type Entity_Erase = Message<"payday.Entity.Erase"> & {
  * Use `create(Entity_EraseSchema)` to create a new message.
  */
 export const Entity_EraseSchema: GenMessage<Entity_Erase> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 3);
+  messageDesc(file_payday_entity, 0, 4);
 
 /**
  * @generated from message payday.Entity.Hard
@@ -398,7 +500,7 @@ export type Entity_Hard = Message<"payday.Entity.Hard"> & {
  * Use `create(Entity_HardSchema)` to create a new message.
  */
 export const Entity_HardSchema: GenMessage<Entity_Hard> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 4);
+  messageDesc(file_payday_entity, 0, 5);
 
 /**
  * List is how this entity is read a page at a time.
@@ -512,7 +614,7 @@ export type Entity_List = Message<"payday.Entity.List"> & {
  * Use `create(Entity_ListSchema)` to create a new message.
  */
 export const Entity_ListSchema: GenMessage<Entity_List> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 5);
+  messageDesc(file_payday_entity, 0, 6);
 
 /**
  * NamedOrder is an order of a list a request names.
@@ -538,7 +640,7 @@ export type Entity_NamedOrder = Message<"payday.Entity.NamedOrder"> & {
  * Use `create(Entity_NamedOrderSchema)` to create a new message.
  */
 export const Entity_NamedOrderSchema: GenMessage<Entity_NamedOrder> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 6);
+  messageDesc(file_payday_entity, 0, 7);
 
 /**
  * Watch is how this entity is read as it changes.
@@ -560,7 +662,7 @@ export type Entity_Watch = Message<"payday.Entity.Watch"> & {
  * Use `create(Entity_WatchSchema)` to create a new message.
  */
 export const Entity_WatchSchema: GenMessage<Entity_Watch> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 7);
+  messageDesc(file_payday_entity, 0, 8);
 
 /**
  * Order is one column of a list's order.
@@ -598,7 +700,7 @@ export type Entity_Order = Message<"payday.Entity.Order"> & {
  * Use `create(Entity_OrderSchema)` to create a new message.
  */
 export const Entity_OrderSchema: GenMessage<Entity_Order> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 8);
+  messageDesc(file_payday_entity, 0, 9);
 
 /**
  * Field is what payday adds to one field of an entity.

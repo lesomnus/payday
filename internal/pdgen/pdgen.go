@@ -539,6 +539,9 @@ func (s *Schema) check() error {
 	if err := s.checkErase(); err != nil {
 		return err
 	}
+	if err := s.checkTrail(); err != nil {
+		return err
+	}
 
 	for _, v := range s.Entities {
 		if len(v.Via) == 0 && len(v.Columns) == 0 {
@@ -919,14 +922,33 @@ func (e *Entity) GoName() string { return string(e.FullName().Name()) }
 // which is its type name folded down.
 func (e *Entity) EntPkg() string { return strings.ToLower(e.GoName()) }
 
-// Serves answers whether the entity has a service: a method its schema asks
-// for, or a `List` or `Watch` payday adds. One that asks for none is written
-// by hand -- through ent, by the app's own code -- and no layer wraps a
-// service it does not have (payday#108): a write no server makes is never
-// on the trail, so a kind no server writes should have no write to offer.
+// Serves answers whether the entity has a service with a method in it: one its
+// schema asks for, or a `List` or `Watch` payday adds. A layer wraps only what
+// an entity has, and one with none has nothing to wrap. Whether its writes are
+// on the trail is another question; see [Entity.Checked].
 func (e *Entity) Serves() bool {
 	r := e.Rpcs()
 	return r.HasAdd() || r.HasAddMany() || r.HasGet() || r.HasPatch() || r.HasErase() || e.List != nil || e.Watch
+}
+
+// Writes answers whether a server writes the entity: an Add, an AddMany or a
+// Patch, each of which the recorder puts on the trail.
+func (e *Entity) Writes() bool {
+	r := e.Rpcs()
+	return r.HasAdd() || r.HasAddMany() || r.HasPatch()
+}
+
+// Checked answers whether a check of the rows against the trail reads the
+// entity (payday#108): every one but payday's own trail, outbox and archive
+// manifest, which record writes rather than being what is recorded, and one
+// whose writes are kept off the trail -- `trail: {off: {why: ...}}`.
+func (e *Entity) Checked() bool {
+	switch e.Own {
+	case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED:
+		return false
+	}
+
+	return !e.Opts.GetTrail().HasOff()
 }
 
 var _ protoreflect.FullName = protoreflect.FullName("")
@@ -1623,6 +1645,54 @@ func setName(s *Schema, to *Entity) protoreflect.FullName {
 // rather than a default. Assuming soft wrongly leaves rows somebody meant to be
 // gone, and that is noticed by looking at them. Assuming hard wrongly destroys
 // them, and that is noticed by somebody asking for one back.
+// checkTrail refuses an entity whose writes reach no record the schema says,
+// and a record it says of writes that are on the trail already (payday#108;
+// see `payday.Entity.trail`).
+//
+// An entity no server writes -- no Add, AddMany or Patch -- is written by the
+// app's own code, and a check of the rows reads every kind but one kept off
+// the trail. So such an entity says which it is: its writes recorded as acts,
+// or kept off with a reason. Left unsaid it would be a row nothing on the
+// trail is about, every one of them, found by the first check rather than by
+// the generator -- and the generator is cheaper.
+func (s *Schema) checkTrail() error {
+	for _, v := range s.Entities {
+		t := v.Opts.GetTrail()
+		switch v.Own {
+		case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED:
+			// What records writes, rather than what is recorded.
+			if v.Opts.HasTrail() {
+				return fmt.Errorf("%s: trail: is one of payday's own, which records what is written rather than being what a record is about", v.FullName())
+			}
+			continue
+		}
+
+		switch {
+		case v.Writes() && v.Opts.HasTrail():
+			return fmt.Errorf(
+				"%s: trail: a server writes it -- it has an Add, an AddMany or a Patch -- and the recorder puts every such write "+
+					"on the trail already; `trail` says how the writes of an entity no server writes reach it", v.FullName())
+
+		case !v.Writes() && !v.Opts.HasTrail():
+			return fmt.Errorf(
+				"%s: no server writes it -- it has no Add, AddMany or Patch -- so its writes are the app's own, and the schema "+
+					"says how they reach the trail. Each recorded as the act it is, with `pd.Record`:\n\n"+
+					"    option (payday.entity) = {... trail: {recorded: {}}};\n\n"+
+					"or kept off it, which a check of the rows then does not read:\n\n"+
+					"    option (payday.entity) = {... trail: {off: {why: \"what the rows are, and why no record of each write\"}}};",
+				v.FullName())
+
+		case v.Opts.HasTrail() && !t.HasRecorded() && !t.HasOff():
+			return fmt.Errorf("%s: trail: says neither `recorded: {}` nor `off: {why: ...}`", v.FullName())
+
+		case t.HasOff() && strings.TrimSpace(t.GetOff().GetWhy()) == "":
+			return fmt.Errorf("%s: trail: off: says no `why`, and it is the one place the schema says a kind is not checked", v.FullName())
+		}
+	}
+
+	return nil
+}
+
 func (s *Schema) checkErase() error {
 	for _, v := range s.Entities {
 		var at graph.Field

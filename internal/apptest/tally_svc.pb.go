@@ -28,7 +28,8 @@ var File_app_tally_svc_g_proto protoreflect.FileDescriptor
 const file_app_tally_svc_g_proto_rawDesc = "" +
 	"\n" +
 	"\x15app/tally_svc.g.proto\x12\x03app2\x0e\n" +
-	"\fTallyServiceB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
+	"\fTallyService2\x0e\n" +
+	"\fPulseServiceB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
 var file_app_tally_svc_g_proto_goTypes = []any{}
 var file_app_tally_svc_g_proto_depIdxs = []int32{
@@ -52,7 +53,7 @@ func file_app_tally_svc_g_proto_init() {
 			NumEnums:      0,
 			NumMessages:   0,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_app_tally_svc_g_proto_goTypes,
 		DependencyIndexes: file_app_tally_svc_g_proto_depIdxs,

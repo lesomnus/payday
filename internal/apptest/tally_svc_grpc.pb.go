@@ -77,3 +77,63 @@ var TallyService_ServiceDesc = grpc.ServiceDesc{
 	Streams:     []grpc.StreamDesc{},
 	Metadata:    "app/tally_svc.g.proto",
 }
+
+// PulseServiceClient is the client API for PulseService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type PulseServiceClient interface {
+}
+
+type pulseServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewPulseServiceClient(cc grpc.ClientConnInterface) PulseServiceClient {
+	return &pulseServiceClient{cc}
+}
+
+// PulseServiceServer is the server API for PulseService service.
+// All implementations must embed UnimplementedPulseServiceServer
+// for forward compatibility.
+type PulseServiceServer interface {
+	mustEmbedUnimplementedPulseServiceServer()
+}
+
+// UnimplementedPulseServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedPulseServiceServer struct{}
+
+func (UnimplementedPulseServiceServer) mustEmbedUnimplementedPulseServiceServer() {}
+func (UnimplementedPulseServiceServer) testEmbeddedByValue()                      {}
+
+// UnsafePulseServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PulseServiceServer will
+// result in compilation errors.
+type UnsafePulseServiceServer interface {
+	mustEmbedUnimplementedPulseServiceServer()
+}
+
+func RegisterPulseServiceServer(s grpc.ServiceRegistrar, srv PulseServiceServer) {
+	// If the following call panics, it indicates UnimplementedPulseServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&PulseService_ServiceDesc, srv)
+}
+
+// PulseService_ServiceDesc is the grpc.ServiceDesc for PulseService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var PulseService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "app.PulseService",
+	HandlerType: (*PulseServiceServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams:     []grpc.StreamDesc{},
+	Metadata:    "app/tally_svc.g.proto",
+}

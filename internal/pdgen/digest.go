@@ -14,9 +14,10 @@ var (
 
 // emitDigests writes `Digests`, the check of the live rows against the trail
 // (payday#102, #108), and `Record`, the one way onto the trail that is not a
-// write through the servers: every row of every kind written through them,
-// read a page at a time the way a Get reads it, beside the newest row of the
-// trail about it -- in the database, and in the archive for what has left.
+// write through the servers: every row of every kind on the trail -- written
+// through the servers, or by the app and recorded -- read a page at a time the
+// way a Get reads it, beside the newest row of the trail about it, in the
+// database and in the archive for what has left.
 //
 // Comparing is the audit package's (`audit.CheckKind`), and reading the archive
 // the trail package's (`trail.Newest`). What only generation knows is the
@@ -31,26 +32,20 @@ func emitDigests(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	pred := p.Ent + "/predicate"
 	archive := s.Has(pdpb.Own_OWN_ARCHIVED)
 
-	// The kinds a write reaches through a server, which is what the recorder
-	// sees. payday's own tables of the trail, the outbox and the archive are
-	// written beneath it, and a kind with no RPC to write it is written by
-	// hand, if at all, and never recorded.
+	// Every kind but the ones kept off the trail, and payday's own tables of
+	// the trail, the outbox and the archive, which are written beneath it: a
+	// kind a server writes, which the recorder sees, and a kind the app writes
+	// and records (`trail: {recorded: {}}`). See [Entity.Checked].
 	var kinds []*Entity
 	for _, v := range s.Sorted() {
-		switch v.Own {
-		case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED:
-			continue
+		if v.Checked() {
+			kinds = append(kinds, v)
 		}
-		if !v.Rpcs().HasAdd() && !v.Rpcs().HasPatch() {
-			continue
-		}
-
-		kinds = append(kinds, v)
 	}
 
-	g.P("// Digests checks every live row of every kind written through the servers")
-	g.P("// against the trail (payday#102, #108): each digested again, as a Get reads")
-	g.P("// it, and compared with the digest the newest row of the trail about it")
+	g.P("// Digests checks every live row of every kind on the trail -- every kind but")
+	g.P("// the ones kept off it -- against the trail (payday#102, #108): each digested")
+	g.P("// again, as a Get reads it, and compared with the digest the newest row of the trail about it")
 	g.P("// keeps -- in the database, or in the archive `p` names once it has left. A")
 	g.P("// row somebody changed past the servers is one that differs, and a row")
 	g.P("// somebody added past them is one nothing on the trail is about.")
@@ -128,7 +123,11 @@ func emitDigests(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		} else {
 			g.P("	q := db.", e, ".Query().Where(ps...)")
 		}
-		g.P("	", p.Bare.Ident(e+"SelectInit"), "(q, nil)")
+		if v.Rpcs().HasGet() {
+			// As its Get reads it, which is what the recorder digests: the
+			// row a write handed over is that Get's.
+			g.P("	", p.Bare.Ident(e+"SelectInit"), "(q, nil)")
+		}
 		g.P("")
 		g.P("	vs, err := q.Order(", entPkg.Ident("ById"), "()).Limit(", pkgAudit.Ident("RowsPage"), ").All(ctx)")
 		g.P("	if err != nil {")
@@ -271,8 +270,8 @@ func emitRecord(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	g.P("//")
 	g.P("// It is the one way onto the trail that is not a write through the servers,")
 	g.P("// and it writes nothing but the trail. `db` is the transaction that wrote the")
-	g.P("// rows, or the database. A row of a kind no server writes is never on the")
-	g.P("// trail and is passed over; one that is no live row is an error. It answers")
+	g.P("// rows, or the database. A row of a kind kept off the trail (`trail: {off:")
+	g.P("// ...}}`) is passed over; one that is no live row is an error. It answers")
 	g.P("// how many it recorded.")
 	g.P("func Record(ctx ", pkgCtx.Ident("Context"), ", db *", p.Ent.Ident("Client"), ", content ", pkgAudit.Ident("Contents"), ", action string, ids []", pkgPdid.Ident("Id"), ") (int, error) {")
 	g.P("	if action == \"\" {")
@@ -305,7 +304,7 @@ func emitRecord(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 		g.P("				rows, err = live", e, "(ctx, db, ", entPkg.Ident("IdIn"), "(uuids(page)...))")
 	}
 	g.P("			default:")
-	g.P("				// Written by hand, if at all, and never on the trail.")
+	g.P("				// Kept off the trail, so no act on it is recorded.")
 	g.P("				continue")
 	g.P("			}")
 	g.P("			if err != nil {")

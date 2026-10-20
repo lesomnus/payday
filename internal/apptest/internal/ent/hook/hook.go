@@ -105,6 +105,18 @@ func (f PairingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PairingMutation", m)
 }
 
+// The PulseFunc type is an adapter to allow the use of ordinary
+// function as Pulse mutator.
+type PulseFunc func(context.Context, *ent.PulseMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PulseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PulseMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PulseMutation", m)
+}
+
 // The ReadingFunc type is an adapter to allow the use of ordinary
 // function as Reading mutator.
 type ReadingFunc func(context.Context, *ent.ReadingMutation) (ent.Value, error)
