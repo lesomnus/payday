@@ -421,7 +421,9 @@ type Robot_builder struct {
 	// would mean no app could ever add one. A row in no set is then invisible to
 	// a read narrowed to one -- fail-closed, and surprising enough to be pinned
 	// by a test.
-	Cell  *Cell
+	Cell *Cell
+	// A robot's own handle. Robot holds people -- `keeper` is one -- so each of
+	// its fields of free text says which it is, and this one is about no one.
 	Alias string
 	// A secret this robot proves itself with, and the reason it is here is the
 	// declaration rather than the robot: `(payday.field).secret` says a field is
@@ -1051,13 +1053,13 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
-	"\"\xc1\x06\n" +
+	"\"\xc9\x06\n" +
 	"\x05Robot\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12+\n" +
 	"\x05thing\x18\x1e \x01(\v2\r.shared.ThingB\x06\xf2\x82\x16\x028\x01R\x05thing\x12%\n" +
-	"\x04cell\x18\x03 \x01(\v2\t.app.CellB\x06\xf2\x82\x16\x028\x01R\x04cell\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12%\n" +
+	"\x04cell\x18\x03 \x01(\v2\t.app.CellB\x06\xf2\x82\x16\x028\x01R\x04cell\x12\x1c\n" +
+	"\x05alias\x18\x04 \x01(\tB\x06\xaa\xc1\x16\x02 \x01R\x05alias\x12%\n" +
 	"\x06secret\x18\b \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\b\x01R\x06secret\x12M\n" +
 	"\rdate_attested\x18\x1f \x01(\v2\x1a.google.protobuf.TimestampB\f\xea\x82\x16\x028\x01\xaa\xc1\x16\x02\x10\x01R\fdateAttested\x12\x1e\n" +
 	"\x06keeper\x18  \x01(\tB\x06\xaa\xc1\x16\x02\x18\x01R\x06keeper\x12F\n" +
