@@ -214,8 +214,13 @@ its URI once the app imports what speaks to it (see
 The live rows can be checked as well. With `audit.digest.key`, each row of the
 trail keeps a keyed digest of the row its write left. The key is a file of
 `openssl rand -base64 32`, mounted as a secret, as the checkpoint key is. The
-generated `pd.Digests` finds a row somebody changed in the database past the
-servers: give the operator a command that runs it, on a schedule too. See
+generated `pd.Digests`, handed the policy so that it reads the archive too,
+finds a row somebody changed in the database past the servers and a row
+somebody added there: give the operator a command that runs it, on a schedule
+too. And one that accepts what an operator has looked at -- rows a migration
+rewrote, rows written before the trail could say anything about them -- by
+recording them, `pd.Record(ctx, db, contents, action, ids)`, with a reason the
+command logs. See
 [a digest of the row the write left](../runtime.md#a-digest-of-the-row-the-write-left).
 
 The key signs every row of the manifest as well, so that a row changed after

@@ -50,6 +50,9 @@ type Robot func(*sql.Selector)
 // Seal is the predicate function for seal builders.
 type Seal func(*sql.Selector)
 
+// Tally is the predicate function for tally builders.
+type Tally func(*sql.Selector)
+
 // Tenant is the predicate function for tenant builders.
 type Tenant func(*sql.Selector)
 

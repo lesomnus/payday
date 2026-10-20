@@ -329,13 +329,21 @@ over, so it costs no statement.
 
 A live row is checked against it. The generated `pd.Digests` reads every live
 row of every kind written through the servers, digests it again, and compares
-it with the newest row of the trail in the database about it:
+it with the newest row of the trail about it -- in the database, or in the
+archive once it has left (payday#108):
 
 ```go
-rows, err := pd.Digests(ctx, db, contents.Digest)
+rows, err := pd.Digests(ctx, db, contents.Digest, policy)
 // rows.Differs: rows that are not what the last write the trail recorded
 // left -- changed in the database past the servers.
+// rows.NotOnTrail: rows nothing on the trail is about -- added past them.
 ```
+
+Both are findings, and `rows.Ok()` is neither. A page of rows is read with the
+trail about it in one read-only transaction, so a write between the two reads is
+not a difference. The archive is read through its manifest, as an export reads
+it, and only the rows' digests: they are in the clear, so no tenant's key is
+opened.
 
 It is keyed because a row of the trail is signed only when a pass archives it.
 A digest anybody can compute is one whoever can write the database computes
@@ -344,13 +352,28 @@ checkpoint key is, and kept out of the database and its backups. A digest names
 the key it was made under, and `audit.digest.previous` checks the ones made
 before a rotation.
 
-It does not see three things:
+It does not see a field declared `personal`. A keyed hash of it would outlive
+the person's erasure for as long as the key does.
 
-- **A field declared `personal`.** A keyed hash of it would outlive the person's
-  erasure for as long as the key does.
-- **A row whose newest line of the trail has left the database for the archive.**
-  The check counts it as `NotOnTrail`.
-- **A kind written beneath the servers,** which the trail never recorded.
+**What nothing accounts for is a finding.** A row somebody added past the
+servers is one the trail says nothing about, so anything else the check cannot
+account for would hide it, and the count would be the one an operator learns to
+ignore. Three things make sure there is nothing else:
+
+- **The archive is read,** for a row whose newest line of the trail has left the
+  database. A deployment that discards its trail past the window rather than
+  archiving it cannot tell a row nobody wrote since from one somebody added.
+- **A row an app writes beneath the servers on purpose is recorded** as the act
+  that wrote it -- a workspace restored from its export, rows a migration
+  rewrote and an operator accepted. `pd.Record(ctx, db, contents, action, ids)`
+  writes one line of the trail for each, in the transaction that wrote them, by
+  whoever the context is framed as, keeping the digest of the row as a Get reads
+  it and nothing of what it holds. It is the one way onto the trail that is not
+  a write through the servers.
+- **A kind that is only ever written by hand has no RPC to write it.** The check
+  reads the kinds whose generated contract has an `Add` or a `Patch`, since those
+  are the ones the recorder sees; a kind the app writes through ent and also
+  generated a contract for is, row by row, not on the trail.
 
 A column a migration adds is outside every digest made before it, so the rows
 under it still match. A column a migration rewrote is a difference, which is

@@ -1,0 +1,49 @@
+edition = "2023";
+
+package app;
+
+import "app/payday/tenant.proto";
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// Tally is a row the app writes through ent alone -- a lock, a counter, a queue
+// of work -- and so declares no RPC. No server writes it, so nothing of a
+// service it does not have is generated, and a check of the rows against the
+// trail does not read it: a write no server makes is never on the trail, and a
+// kind no server writes is not one a check can say anything about (payday#108).
+//
+// Like `Seal`, it is a test by existing. It is behind the wall and it has a
+// secret, which are the two things a layer was written for every entity
+// assuming a service: the gate's rule for an Add, and the layer that clears a
+// secret on the way out. Either written out for this one names a request type
+// that is not there, and the package does not compile.
+message Tally {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+
+  uint64 count = 8;
+
+  // Held for the app to read back, and never answered with -- there is no
+  // answer to clear it from.
+  bytes token = 9 [
+    (orm.field) = {type: TYPE_BYTES},
+    (payday.field) = {secret: true}
+  ];
+
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+
+  option (orm.message) = {};
+  option (payday.entity) = {
+    domain: 15
+    erase: {hard: {}}
+  };
+}

@@ -21,6 +21,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	"github.com/protobuf-orm/ent"
@@ -54,6 +55,8 @@ type Client struct {
 	Robot *RobotClient
 	// Seal is the client for interacting with the Seal builders.
 	Seal *SealClient
+	// Tally is the client for interacting with the Tally builders.
+	Tally *TallyClient
 	// Tenant is the client for interacting with the Tenant builders.
 	Tenant *TenantClient
 	// Thing is the client for interacting with the Thing builders.
@@ -79,6 +82,7 @@ func (c *Client) init() {
 	c.Reading = NewReadingClient(c.config)
 	c.Robot = NewRobotClient(c.config)
 	c.Seal = NewSealClient(c.config)
+	c.Tally = NewTallyClient(c.config)
 	c.Tenant = NewTenantClient(c.config)
 	c.Thing = NewThingClient(c.config)
 }
@@ -184,6 +188,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Reading:  NewReadingClient(cfg),
 		Robot:    NewRobotClient(cfg),
 		Seal:     NewSealClient(cfg),
+		Tally:    NewTallyClient(cfg),
 		Tenant:   NewTenantClient(cfg),
 		Thing:    NewThingClient(cfg),
 	}, nil
@@ -216,6 +221,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Reading:  NewReadingClient(cfg),
 		Robot:    NewRobotClient(cfg),
 		Seal:     NewSealClient(cfg),
+		Tally:    NewTallyClient(cfg),
 		Tenant:   NewTenantClient(cfg),
 		Thing:    NewThingClient(cfg),
 	}, nil
@@ -294,7 +300,7 @@ func (c *Client) InTx() bool {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing,
-		c.Reading, c.Robot, c.Seal, c.Tenant, c.Thing,
+		c.Reading, c.Robot, c.Seal, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -305,7 +311,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing,
-		c.Reading, c.Robot, c.Seal, c.Tenant, c.Thing,
+		c.Reading, c.Robot, c.Seal, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -336,6 +342,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Robot.mutate(ctx, m)
 	case *SealMutation:
 		return c.Seal.mutate(ctx, m)
+	case *TallyMutation:
+		return c.Tally.mutate(ctx, m)
 	case *TenantMutation:
 		return c.Tenant.mutate(ctx, m)
 	case *ThingMutation:
@@ -1968,6 +1976,155 @@ func (c *SealClient) mutate(ctx context.Context, m *SealMutation) (Value, error)
 	}
 }
 
+// TallyClient is a client for the Tally schema.
+type TallyClient struct {
+	config
+}
+
+// NewTallyClient returns a client for the Tally from the given config.
+func NewTallyClient(c config) *TallyClient {
+	return &TallyClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `tally.Hooks(f(g(h())))`.
+func (c *TallyClient) Use(hooks ...Hook) {
+	c.hooks.Tally = append(c.hooks.Tally, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `tally.Intercept(f(g(h())))`.
+func (c *TallyClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Tally = append(c.inters.Tally, interceptors...)
+}
+
+// Create returns a builder for creating a Tally entity.
+func (c *TallyClient) Create() *TallyCreate {
+	mutation := newTallyMutation(c.config, OpCreate)
+	return &TallyCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Tally entities.
+func (c *TallyClient) CreateBulk(builders ...*TallyCreate) *TallyCreateBulk {
+	return &TallyCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TallyClient) MapCreateBulk(slice any, setFunc func(*TallyCreate, int)) *TallyCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TallyCreateBulk{err: fmt.Errorf("calling to TallyClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TallyCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TallyCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Tally.
+func (c *TallyClient) Update() *TallyUpdate {
+	mutation := newTallyMutation(c.config, OpUpdate)
+	return &TallyUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TallyClient) UpdateOne(_m *Tally) *TallyUpdateOne {
+	mutation := newTallyMutation(c.config, OpUpdateOne, withTally(_m))
+	return &TallyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneId returns an update builder for the given id.
+func (c *TallyClient) UpdateOneId(id uuid.UUID) *TallyUpdateOne {
+	mutation := newTallyMutation(c.config, OpUpdateOne, withTallyId(id))
+	return &TallyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Tally.
+func (c *TallyClient) Delete() *TallyDelete {
+	mutation := newTallyMutation(c.config, OpDelete)
+	return &TallyDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TallyClient) DeleteOne(_m *Tally) *TallyDeleteOne {
+	return c.DeleteOneId(_m.Id)
+}
+
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *TallyClient) DeleteOneId(id uuid.UUID) *TallyDeleteOne {
+	builder := c.Delete().Where(tally.Id(id))
+	builder.mutation.id = &id
+	builder.mutation.SetOp(OpDeleteOne)
+	return &TallyDeleteOne{builder}
+}
+
+// Query returns a query builder for Tally.
+func (c *TallyClient) Query() *TallyQuery {
+	return &TallyQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTally},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Tally entity by its id.
+func (c *TallyClient) Get(ctx context.Context, id uuid.UUID) (*Tally, error) {
+	return c.Query().Where(tally.Id(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TallyClient) GetX(ctx context.Context, id uuid.UUID) *Tally {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTenant queries the tenant edge of a Tally.
+func (c *TallyClient) QueryTenant(_m *Tally) *TenantQuery {
+	query := (&TenantClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.Id
+		step := sqlgraph.NewStep(
+			sqlgraph.From(tally.Table, tally.FieldId, id),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
+			sqlgraph.Edge(sqlgraph.M2O, false, tally.TenantTable, tally.TenantColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *TallyClient) Hooks() []Hook {
+	return c.hooks.Tally
+}
+
+// Interceptors returns the client interceptors.
+func (c *TallyClient) Interceptors() []Interceptor {
+	return c.inters.Tally
+}
+
+func (c *TallyClient) mutate(ctx context.Context, m *TallyMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TallyCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TallyUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TallyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TallyDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Tally mutation op: %q", m.Op())
+	}
+}
+
 // TenantClient is a client for the Tenant schema.
 type TenantClient struct {
 	config
@@ -2238,10 +2395,10 @@ func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, erro
 type (
 	hooks struct {
 		Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot,
-		Seal, Tenant, Thing []ent.Hook
+		Seal, Tally, Tenant, Thing []ent.Hook
 	}
 	inters struct {
 		Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot,
-		Seal, Tenant, Thing []ent.Interceptor
+		Seal, Tally, Tenant, Thing []ent.Interceptor
 	}
 )

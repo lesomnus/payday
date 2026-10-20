@@ -374,6 +374,29 @@ var (
 		Columns:    SealColumns,
 		PrimaryKey: []*schema.Column{SealColumns[0]},
 	}
+	// TallyColumns holds the columns for the "tally" table.
+	TallyColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "count", Type: field.TypeUint64},
+		{Name: "token", Type: field.TypeBytes},
+		{Name: "date_updated", Type: field.TypeTime},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+	}
+	// TallyTable holds the schema information for the "tally" table.
+	TallyTable = &schema.Table{
+		Name:       "tally",
+		Columns:    TallyColumns,
+		PrimaryKey: []*schema.Column{TallyColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "tally_tenant_tenant",
+				Columns:    []*schema.Column{TallyColumns[5]},
+				RefColumns: []*schema.Column{TenantColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// TenantColumns holds the columns for the "tenant" table.
 	TenantColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -432,6 +455,7 @@ var (
 		ReadingTable,
 		RobotTable,
 		SealTable,
+		TallyTable,
 		TenantTable,
 		ThingTable,
 	}
@@ -480,6 +504,10 @@ func init() {
 	}
 	SealTable.Annotation = &entsql.Annotation{
 		Table: "seal",
+	}
+	TallyTable.ForeignKeys[0].RefTable = TenantTable
+	TallyTable.Annotation = &entsql.Annotation{
+		Table: "tally",
 	}
 	TenantTable.Annotation = &entsql.Annotation{
 		Table: "tenant",

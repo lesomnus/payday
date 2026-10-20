@@ -20,6 +20,7 @@ import (
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	tally "github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
@@ -385,6 +386,7 @@ type Scope interface {
 	HolderScope(ctx context.Context) (predicate.Holder, error)
 	OutboxScope(ctx context.Context) (predicate.Outbox, error)
 	SealScope(ctx context.Context) (predicate.Seal, error)
+	TallyScope(ctx context.Context) (predicate.Tally, error)
 }
 
 // Unscoped is a [Scope] that narrows nothing. Embed it and write out the
@@ -436,6 +438,9 @@ func (Unscoped) OutboxScope(_ context.Context) (predicate.Outbox, error) {
 	return nil, nil
 }
 func (Unscoped) SealScope(_ context.Context) (predicate.Seal, error) {
+	return nil, nil
+}
+func (Unscoped) TallyScope(_ context.Context) (predicate.Tally, error) {
 	return nil, nil
 }
 
@@ -718,6 +723,26 @@ func (ss Scopes) SealScope(ctx context.Context) (predicate.Seal, error) {
 	return seal.And(ps...), nil
 }
 
+func (ss Scopes) TallyScope(ctx context.Context) (predicate.Tally, error) {
+	ps := make([]predicate.Tally, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.TallyScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return tally.And(ps...), nil
+}
+
 // Minter decides the key a row is stored under. It is asked once per Add,
 // for an entity whose key is a uuid, and only for those.
 //
@@ -906,3 +931,4 @@ func (s Server) Reading() apptest.ReadingServiceServer { return ReadingServiceSe
 func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceServer{Store: s.Store} }
 func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }
 func (s Server) Seal() apptest.SealServiceServer       { return SealServiceServer{Store: s.Store} }
+func (s Server) Tally() apptest.TallyServiceServer     { return TallyServiceServer{Store: s.Store} }

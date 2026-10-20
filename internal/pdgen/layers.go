@@ -318,6 +318,12 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 			continue
 		}
 
+		// No Add, nothing to admit: the gate is the Add's rule. An entity no
+		// server writes is one of these.
+		if !v.Rpcs().HasAdd() && !v.Rpcs().HasAddMany() {
+			continue
+		}
+
 		// An entity that is not behind the wall has nothing to check. An entity
 		// that names its tenant with a column (`field:`) is refused a
 		// hand-written row by the audit layer.
@@ -906,7 +912,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	if keepsTrail(s) {
 		emitKeptTrail(g, s, p)
 	}
-	emitDigests(g, s, p)
+	emitDigests(g, s, p, root)
 
 	// Referenced only so that the import is kept when a schema has no patch.
 	g.P("var _ *", pkgPatchpb.Ident("Patch"))
@@ -1349,6 +1355,10 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 			// Not behind the wall, so there is no tenant to file it under.
 			continue
 		}
+		if !v.Serves() {
+			// Written by hand, and never recorded, so never asked about.
+			continue
+		}
 
 		g.P("	case ", v.GoName(), "Domain:")
 		// The row the write handed over is the one a Get here would answer
@@ -1357,39 +1367,47 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		// fewer for every write, and on an import of a few thousand rows that
 		// was a few thousand round trips.
 		g.P("		row, handed := image.(*", root.Ident(v.GoName()), ")")
-		g.P("		if !handed {")
-		g.P("			var err error")
-		g.P("			row, err = s.", v.GoName(), "().Get(ctx, ", root.Ident(v.GoName()+"GetRequest_builder"), "{")
-		g.P("				Ref: ", root.Ident(v.GoName()+"Ref_builder"), "{Id: key.Bytes()}.Build(),")
-		g.P("			}.Build())")
-		if !v.IsHard {
-			// Keyed off the entity's shape and not the action, because the
-			// action answers less. This server has no scope and runs inside
-			// the write's own transaction, on rows that write just touched,
-			// so for a soft entity a NotFound has one meaning: erased --
-			// stamped by the Erase this record is for, or sitting on the path
-			// a still-live row reaches its tenant through. The second is a
-			// write recorded through an erased parent, whose trail row
-			// belongs to that parent's tenant no less than an Erase's does,
-			// and no test of the action would have caught it.
-			g.P("			// Erased softly is still a row; see [erased", v.GoName(), "].")
-			g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
-			g.P("				row, err = erased", v.GoName(), "(ctx, s, key)")
+		if !v.Rpcs().HasGet() {
+			// Served with no Get, so a row that was not handed over is not
+			// one this can read, and is filed as a global one is.
+			g.P("		if !handed {")
+			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
+			g.P("		}")
+		} else {
+			g.P("		if !handed {")
+			g.P("			var err error")
+			g.P("			row, err = s.", v.GoName(), "().Get(ctx, ", root.Ident(v.GoName()+"GetRequest_builder"), "{")
+			g.P("				Ref: ", root.Ident(v.GoName()+"Ref_builder"), "{Id: key.Bytes()}.Build(),")
+			g.P("			}.Build())")
+			if !v.IsHard {
+				// Keyed off the entity's shape and not the action, because the
+				// action answers less. This server has no scope and runs inside
+				// the write's own transaction, on rows that write just touched,
+				// so for a soft entity a NotFound has one meaning: erased --
+				// stamped by the Erase this record is for, or sitting on the path
+				// a still-live row reaches its tenant through. The second is a
+				// write recorded through an erased parent, whose trail row
+				// belongs to that parent's tenant no less than an Erase's does,
+				// and no test of the action would have caught it.
+				g.P("			// Erased softly is still a row; see [erased", v.GoName(), "].")
+				g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
+				g.P("				row, err = erased", v.GoName(), "(ctx, s, key)")
+				g.P("			}")
+			}
+			g.P("			if err != nil {")
+			g.P("				if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
+			// Empty rather than nil: the trail's `value` is NOT NULL, and a nil
+			// `[]byte` is SQL NULL to pgx while the SQLite driver makes it an empty
+			// blob. A row that is really gone is the one case that reaches here --
+			// erased hard, for a soft entity nothing at all -- and it is exactly
+			// the case no SQLite test can fail on.
+			g.P("					return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
+			g.P("				}")
+			g.P("")
+			g.P("				return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("			}")
+			g.P("		}")
 		}
-		g.P("			if err != nil {")
-		g.P("				if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
-		// Empty rather than nil: the trail's `value` is NOT NULL, and a nil
-		// `[]byte` is SQL NULL to pgx while the SQLite driver makes it an empty
-		// blob. A row that is really gone is the one case that reaches here --
-		// erased hard, for a soft entity nothing at all -- and it is exactly
-		// the case no SQLite test can fail on.
-		g.P("					return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
-		g.P("				}")
-		g.P("")
-		g.P("				return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
-		g.P("			}")
-		g.P("		}")
 		g.P("")
 		// What the entity declared the trail never holds a value of, cleared
 		// before it holds a copy: a `secret:`, which the layer that does this
@@ -1598,7 +1616,9 @@ func emitErased(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoI
 func EmitSecret(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	var vs []*Entity
 	for _, v := range s.Entities {
-		if len(v.Secrets) > 0 {
+		// One that declared a secret and is served: a secret no server answers
+		// with is nothing for a layer to clear.
+		if len(v.Secrets) > 0 && v.Serves() {
 			vs = append(vs, v)
 		}
 	}
@@ -1673,13 +1693,20 @@ func emitSecretOf(g *protogen.GeneratedFile, e *Entity, root protogen.GoImportPa
 	g.P("}")
 	g.P("")
 
-	// The four that answer with the entity.
-	for _, m := range []struct{ rpc, req string }{
-		{"Add", name + "AddRequest"},
-		{"Get", name + "GetRequest"},
-		{"Patch", name + "PatchRequest"},
-		{"Apply", name + "ApplyRequest"},
+	// The four that answer with the entity, of the ones it has.
+	for _, m := range []struct {
+		rpc, req string
+		has      bool
+	}{
+		{"Add", name + "AddRequest", e.Rpcs().HasAdd()},
+		{"Get", name + "GetRequest", e.Rpcs().HasGet()},
+		{"Patch", name + "PatchRequest", e.Rpcs().HasPatch()},
+		{"Apply", name + "ApplyRequest", e.Rpcs().HasPatch()},
 	} {
+		if !m.has {
+			continue
+		}
+
 		g.P("func (s ", lower, ") ", m.rpc, "(ctx ", pkgCtx.Ident("Context"),
 			", req *", root.Ident(m.req), ") (*", root.Ident(name), ", error) {")
 		g.P("	v, err := s.", name, "ServiceServer.", m.rpc, "(ctx, req)")

@@ -39,6 +39,7 @@ type Server interface {
 	Holder() HolderServiceServer
 	Outbox() OutboxServiceServer
 	Seal() SealServiceServer
+	Tally() TallyServiceServer
 }
 
 // RegisterServer registers every service of `s` with `g`.
@@ -59,6 +60,7 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterHolderServiceServer(g, s.Holder())
 	RegisterOutboxServiceServer(g, s.Outbox())
 	RegisterSealServiceServer(g, s.Seal())
+	RegisterTallyServiceServer(g, s.Tally())
 }
 
 type UnimplementedServer struct {
@@ -75,6 +77,7 @@ type UnimplementedServer struct {
 	HolderServer   HolderServiceServer
 	OutboxServer   OutboxServiceServer
 	SealServer     SealServiceServer
+	TallyServer    TallyServiceServer
 }
 
 func (UnimplementedServer) Archived() ArchivedServiceServer {
@@ -92,6 +95,7 @@ func (UnimplementedServer) Reading() ReadingServiceServer { return Unimplemented
 func (UnimplementedServer) Holder() HolderServiceServer   { return UnimplementedHolderServiceServer{} }
 func (UnimplementedServer) Outbox() OutboxServiceServer   { return UnimplementedOutboxServiceServer{} }
 func (UnimplementedServer) Seal() SealServiceServer       { return UnimplementedSealServiceServer{} }
+func (UnimplementedServer) Tally() TallyServiceServer     { return UnimplementedTallyServiceServer{} }
 
 type StaticServer struct {
 	ArchivedServer ArchivedServiceServer
@@ -107,6 +111,7 @@ type StaticServer struct {
 	HolderServer   HolderServiceServer
 	OutboxServer   OutboxServiceServer
 	SealServer     SealServiceServer
+	TallyServer    TallyServiceServer
 }
 
 func (s StaticServer) Archived() ArchivedServiceServer { return s.ArchivedServer }
@@ -122,6 +127,7 @@ func (s StaticServer) Reading() ReadingServiceServer   { return s.ReadingServer 
 func (s StaticServer) Holder() HolderServiceServer     { return s.HolderServer }
 func (s StaticServer) Outbox() OutboxServiceServer     { return s.OutboxServer }
 func (s StaticServer) Seal() SealServiceServer         { return s.SealServer }
+func (s StaticServer) Tally() TallyServiceServer       { return s.TallyServer }
 
 type Client interface {
 	Archived() ArchivedServiceClient
@@ -137,6 +143,7 @@ type Client interface {
 	Holder() HolderServiceClient
 	Outbox() OutboxServiceClient
 	Seal() SealServiceClient
+	Tally() TallyServiceClient
 }
 
 func NewClient(c *grpc.ClientConn) Client {
@@ -154,6 +161,7 @@ func NewClient(c *grpc.ClientConn) Client {
 		_Holder:   NewHolderServiceClient(c),
 		_Outbox:   NewOutboxServiceClient(c),
 		_Seal:     NewSealServiceClient(c),
+		_Tally:    NewTallyServiceClient(c),
 	}
 }
 
@@ -171,6 +179,7 @@ type client struct {
 	_Holder   HolderServiceClient
 	_Outbox   OutboxServiceClient
 	_Seal     SealServiceClient
+	_Tally    TallyServiceClient
 }
 
 func (c *client) Archived() ArchivedServiceClient { return c._Archived }
@@ -186,6 +195,7 @@ func (c *client) Reading() ReadingServiceClient   { return c._Reading }
 func (c *client) Holder() HolderServiceClient     { return c._Holder }
 func (c *client) Outbox() OutboxServiceClient     { return c._Outbox }
 func (c *client) Seal() SealServiceClient         { return c._Seal }
+func (c *client) Tally() TallyServiceClient       { return c._Tally }
 
 // Middleware is a server that delegates to another server.
 type Middleware interface {
