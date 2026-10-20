@@ -8,6 +8,7 @@ import (
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	pulse "github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	tally "github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 )
 
@@ -64,4 +65,59 @@ func TallyNarrow(ctx context.Context, scope Scope, p predicate.Tally) (predicate
 // narrow is [TallyNarrow] with this server's own scope.
 func (s TallyServiceServer) narrow(ctx context.Context, p predicate.Tally) (predicate.Tally, error) {
 	return TallyNarrow(ctx, s.Scope, p)
+}
+
+type PulseServiceServer struct {
+	Store
+
+	apptest.UnimplementedPulseServiceServer
+}
+
+// NewPulseServiceServer answers with a server that runs its queries with `db`.
+//
+// It takes the options of [Server] so that what is built here can be told
+// where to report its writes and what it may see. Built without them, it
+// reports nowhere and sees everything.
+func NewPulseServiceServer(db *ent.Client, opts ...Option) apptest.PulseServiceServer {
+	s := Server{Store: Store{Db: db}}
+	for _, opt := range opts {
+		opt(&s)
+	}
+	return PulseServiceServer{Store: s.Store}
+}
+
+// PulseNarrow answers with `p` and everything else that narrows a
+// read of a Pulse, which is whatever `scope` says.
+//
+// Every read this package makes goes through it, and a read written by
+// hand should too -- a List is the one read nothing generates, and so the
+// one that would otherwise answer with rows nobody should be given.
+func PulseNarrow(ctx context.Context, scope Scope, p predicate.Pulse) (predicate.Pulse, error) {
+	ps := make([]predicate.Pulse, 0, 2)
+	if p != nil {
+		ps = append(ps, p)
+	}
+	if scope != nil {
+		q, err := scope.PulseScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if q != nil {
+			ps = append(ps, q)
+		}
+	}
+
+	switch len(ps) {
+	case 0:
+		return nil, nil
+	case 1:
+		return ps[0], nil
+	default:
+		return pulse.And(ps...), nil
+	}
+}
+
+// narrow is [PulseNarrow] with this server's own scope.
+func (s PulseServiceServer) narrow(ctx context.Context, p predicate.Pulse) (predicate.Pulse, error) {
+	return PulseNarrow(ctx, s.Scope, p)
 }

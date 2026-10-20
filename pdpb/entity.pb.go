@@ -102,6 +102,7 @@ type Entity struct {
 	xxx_hidden_Watch   *Entity_Watch          `protobuf:"bytes,7,opt,name=watch"`
 	xxx_hidden_Erase   *Entity_Erase          `protobuf:"bytes,8,opt,name=erase"`
 	xxx_hidden_Own     Own                    `protobuf:"varint,9,opt,name=own,enum=payday.Own"`
+	xxx_hidden_Trail   *Entity_Trail          `protobuf:"bytes,10,opt,name=trail"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -200,6 +201,13 @@ func (x *Entity) GetOwn() Own {
 	return Own_OWN_UNSPECIFIED
 }
 
+func (x *Entity) GetTrail() *Entity_Trail {
+	if x != nil {
+		return x.xxx_hidden_Trail
+	}
+	return nil
+}
+
 func (x *Entity) SetDomain(v uint32) {
 	x.xxx_hidden_Domain = v
 }
@@ -246,6 +254,10 @@ func (x *Entity) SetErase(v *Entity_Erase) {
 
 func (x *Entity) SetOwn(v Own) {
 	x.xxx_hidden_Own = v
+}
+
+func (x *Entity) SetTrail(v *Entity_Trail) {
+	x.xxx_hidden_Trail = v
 }
 
 func (x *Entity) HasTenancy() bool {
@@ -300,6 +312,13 @@ func (x *Entity) HasErase() bool {
 	return x.xxx_hidden_Erase != nil
 }
 
+func (x *Entity) HasTrail() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Trail != nil
+}
+
 func (x *Entity) ClearTenancy() {
 	x.xxx_hidden_Tenancy = nil
 }
@@ -332,6 +351,10 @@ func (x *Entity) ClearWatch() {
 
 func (x *Entity) ClearErase() {
 	x.xxx_hidden_Erase = nil
+}
+
+func (x *Entity) ClearTrail() {
+	x.xxx_hidden_Trail = nil
 }
 
 const Entity_Tenancy_not_set_case case_Entity_Tenancy = 0
@@ -450,6 +473,28 @@ type Entity_builder struct {
 	// With the marker the name is free. An app may put payday's entities in its
 	// own package, and what a caller of that app sees is that app's namespace.
 	Own Own
+	// Trail says how the writes of an entity **no server writes** reach the
+	// trail (payday#108), and it is said only for one: an entity with an `Add`,
+	// an `AddMany` or a `Patch` is written through its servers, and the recorder
+	// puts every such write on the trail already. `pd gen` refuses it there.
+	//
+	// # Why it is said at all
+	//
+	// A check of the rows against the trail (`pd.Digests`) reads **every** kind
+	// but the ones that say `off`, so that a row nothing on the trail accounts
+	// for is a finding: that is what a row somebody added in the database past
+	// the servers looks like. A kind the app writes through ent is such a row,
+	// row after row, unless its writes are recorded -- so `pd gen` refuses an
+	// entity with no write a server makes and nothing said here. Leaving a kind
+	// out of the check is the dangerous answer, and it is the one written down,
+	// with a reason; a kind added to the schema cannot arrive without somebody
+	// having decided.
+	//
+	// It is not about RPCs. Whether an entity has any is what its API offers;
+	// this is whether a record of each write is kept, and the two used to be one
+	// rule -- "no write a server makes, so not checked" -- which left a consent,
+	// a record kept to prove something, out of the check for having no RPC.
+	Trail *Entity_Trail
 }
 
 func (b0 Entity_builder) Build() *Entity {
@@ -471,6 +516,7 @@ func (b0 Entity_builder) Build() *Entity {
 	x.xxx_hidden_Watch = b.Watch
 	x.xxx_hidden_Erase = b.Erase
 	x.xxx_hidden_Own = b.Own
+	x.xxx_hidden_Trail = b.Trail
 	return m0
 }
 
@@ -1006,6 +1052,194 @@ func (b0 Entity_Tenanted_builder) Build() *Entity_Tenanted {
 	return m0
 }
 
+// Trail is one of the two answers. See [Entity.trail].
+type Entity_Trail struct {
+	state          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_How isEntity_Trail_How     `protobuf_oneof:"how"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *Entity_Trail) Reset() {
+	*x = Entity_Trail{}
+	mi := &file_payday_entity_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entity_Trail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entity_Trail) ProtoMessage() {}
+
+func (x *Entity_Trail) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Entity_Trail) GetRecorded() *Entity_Trail_Recorded {
+	if x != nil {
+		if x, ok := x.xxx_hidden_How.(*entity_Trail_Recorded_); ok {
+			return x.Recorded
+		}
+	}
+	return nil
+}
+
+func (x *Entity_Trail) GetOff() *Entity_Trail_Off {
+	if x != nil {
+		if x, ok := x.xxx_hidden_How.(*entity_Trail_Off_); ok {
+			return x.Off
+		}
+	}
+	return nil
+}
+
+func (x *Entity_Trail) SetRecorded(v *Entity_Trail_Recorded) {
+	if v == nil {
+		x.xxx_hidden_How = nil
+		return
+	}
+	x.xxx_hidden_How = &entity_Trail_Recorded_{v}
+}
+
+func (x *Entity_Trail) SetOff(v *Entity_Trail_Off) {
+	if v == nil {
+		x.xxx_hidden_How = nil
+		return
+	}
+	x.xxx_hidden_How = &entity_Trail_Off_{v}
+}
+
+func (x *Entity_Trail) HasHow() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_How != nil
+}
+
+func (x *Entity_Trail) HasRecorded() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_How.(*entity_Trail_Recorded_)
+	return ok
+}
+
+func (x *Entity_Trail) HasOff() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_How.(*entity_Trail_Off_)
+	return ok
+}
+
+func (x *Entity_Trail) ClearHow() {
+	x.xxx_hidden_How = nil
+}
+
+func (x *Entity_Trail) ClearRecorded() {
+	if _, ok := x.xxx_hidden_How.(*entity_Trail_Recorded_); ok {
+		x.xxx_hidden_How = nil
+	}
+}
+
+func (x *Entity_Trail) ClearOff() {
+	if _, ok := x.xxx_hidden_How.(*entity_Trail_Off_); ok {
+		x.xxx_hidden_How = nil
+	}
+}
+
+const Entity_Trail_How_not_set_case case_Entity_Trail_How = 0
+const Entity_Trail_Recorded_case case_Entity_Trail_How = 1
+const Entity_Trail_Off_case case_Entity_Trail_How = 2
+
+func (x *Entity_Trail) WhichHow() case_Entity_Trail_How {
+	if x == nil {
+		return Entity_Trail_How_not_set_case
+	}
+	switch x.xxx_hidden_How.(type) {
+	case *entity_Trail_Recorded_:
+		return Entity_Trail_Recorded_case
+	case *entity_Trail_Off_:
+		return Entity_Trail_Off_case
+	default:
+		return Entity_Trail_How_not_set_case
+	}
+}
+
+type Entity_Trail_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Fields of oneof xxx_hidden_How:
+	// Recorded is written by the app's own code, and each write is put on
+	// the trail as the act it is -- `pd.Record`, in the transaction that
+	// wrote it. A check reads it as any kind, and a write that was not
+	// recorded is a row nothing on the trail is about.
+	Recorded *Entity_Trail_Recorded
+	// Off is written by the app's own code and kept off the trail: a
+	// session's idle clock, which moves on every request; a lock; a queue a
+	// loop empties within seconds. A check does not read it, and
+	// `pd.Record` passes over it.
+	Off *Entity_Trail_Off
+	// -- end of xxx_hidden_How
+}
+
+func (b0 Entity_Trail_builder) Build() *Entity_Trail {
+	m0 := &Entity_Trail{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Recorded != nil {
+		x.xxx_hidden_How = &entity_Trail_Recorded_{b.Recorded}
+	}
+	if b.Off != nil {
+		x.xxx_hidden_How = &entity_Trail_Off_{b.Off}
+	}
+	return m0
+}
+
+type case_Entity_Trail_How protoreflect.FieldNumber
+
+func (x case_Entity_Trail_How) String() string {
+	md := file_payday_entity_proto_msgTypes[4].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
+type isEntity_Trail_How interface {
+	isEntity_Trail_How()
+}
+
+type entity_Trail_Recorded_ struct {
+	// Recorded is written by the app's own code, and each write is put on
+	// the trail as the act it is -- `pd.Record`, in the transaction that
+	// wrote it. A check reads it as any kind, and a write that was not
+	// recorded is a row nothing on the trail is about.
+	Recorded *Entity_Trail_Recorded `protobuf:"bytes,1,opt,name=recorded,oneof"`
+}
+
+type entity_Trail_Off_ struct {
+	// Off is written by the app's own code and kept off the trail: a
+	// session's idle clock, which moves on every request; a lock; a queue a
+	// loop empties within seconds. A check does not read it, and
+	// `pd.Record` passes over it.
+	Off *Entity_Trail_Off `protobuf:"bytes,2,opt,name=off,oneof"`
+}
+
+func (*entity_Trail_Recorded_) isEntity_Trail_How() {}
+
+func (*entity_Trail_Off_) isEntity_Trail_How() {}
+
 // Global is an entity that is not behind the wall -- a table the whole
 // deployment shares.
 //
@@ -1020,7 +1254,7 @@ type Entity_Global struct {
 
 func (x *Entity_Global) Reset() {
 	*x = Entity_Global{}
-	mi := &file_payday_entity_proto_msgTypes[4]
+	mi := &file_payday_entity_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1032,7 +1266,7 @@ func (x *Entity_Global) String() string {
 func (*Entity_Global) ProtoMessage() {}
 
 func (x *Entity_Global) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[4]
+	mi := &file_payday_entity_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1065,7 +1299,7 @@ type Entity_Erase struct {
 
 func (x *Entity_Erase) Reset() {
 	*x = Entity_Erase{}
-	mi := &file_payday_entity_proto_msgTypes[5]
+	mi := &file_payday_entity_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1077,7 +1311,7 @@ func (x *Entity_Erase) String() string {
 func (*Entity_Erase) ProtoMessage() {}
 
 func (x *Entity_Erase) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[5]
+	mi := &file_payday_entity_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1155,7 +1389,7 @@ type Entity_Hard struct {
 
 func (x *Entity_Hard) Reset() {
 	*x = Entity_Hard{}
-	mi := &file_payday_entity_proto_msgTypes[6]
+	mi := &file_payday_entity_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1167,7 +1401,7 @@ func (x *Entity_Hard) String() string {
 func (*Entity_Hard) ProtoMessage() {}
 
 func (x *Entity_Hard) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[6]
+	mi := &file_payday_entity_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1215,7 +1449,7 @@ type Entity_List struct {
 
 func (x *Entity_List) Reset() {
 	*x = Entity_List{}
-	mi := &file_payday_entity_proto_msgTypes[7]
+	mi := &file_payday_entity_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1227,7 +1461,7 @@ func (x *Entity_List) String() string {
 func (*Entity_List) ProtoMessage() {}
 
 func (x *Entity_List) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[7]
+	mi := &file_payday_entity_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1410,7 +1644,7 @@ type Entity_NamedOrder struct {
 
 func (x *Entity_NamedOrder) Reset() {
 	*x = Entity_NamedOrder{}
-	mi := &file_payday_entity_proto_msgTypes[8]
+	mi := &file_payday_entity_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1422,7 +1656,7 @@ func (x *Entity_NamedOrder) String() string {
 func (*Entity_NamedOrder) ProtoMessage() {}
 
 func (x *Entity_NamedOrder) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[8]
+	mi := &file_payday_entity_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1490,7 +1724,7 @@ type Entity_Watch struct {
 
 func (x *Entity_Watch) Reset() {
 	*x = Entity_Watch{}
-	mi := &file_payday_entity_proto_msgTypes[9]
+	mi := &file_payday_entity_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1502,7 +1736,7 @@ func (x *Entity_Watch) String() string {
 func (*Entity_Watch) ProtoMessage() {}
 
 func (x *Entity_Watch) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[9]
+	mi := &file_payday_entity_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1547,7 +1781,7 @@ type Entity_Order struct {
 
 func (x *Entity_Order) Reset() {
 	*x = Entity_Order{}
-	mi := &file_payday_entity_proto_msgTypes[10]
+	mi := &file_payday_entity_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1559,7 +1793,7 @@ func (x *Entity_Order) String() string {
 func (*Entity_Order) ProtoMessage() {}
 
 func (x *Entity_Order) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_entity_proto_msgTypes[10]
+	mi := &file_payday_entity_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1621,11 +1855,114 @@ func (b0 Entity_Order_builder) Build() *Entity_Order {
 	return m0
 }
 
+type Entity_Trail_Recorded struct {
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Entity_Trail_Recorded) Reset() {
+	*x = Entity_Trail_Recorded{}
+	mi := &file_payday_entity_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entity_Trail_Recorded) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entity_Trail_Recorded) ProtoMessage() {}
+
+func (x *Entity_Trail_Recorded) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+type Entity_Trail_Recorded_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 Entity_Trail_Recorded_builder) Build() *Entity_Trail_Recorded {
+	m0 := &Entity_Trail_Recorded{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
+}
+
+type Entity_Trail_Off struct {
+	state          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Why string                 `protobuf:"bytes,1,opt,name=why"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *Entity_Trail_Off) Reset() {
+	*x = Entity_Trail_Off{}
+	mi := &file_payday_entity_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entity_Trail_Off) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entity_Trail_Off) ProtoMessage() {}
+
+func (x *Entity_Trail_Off) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_entity_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Entity_Trail_Off) GetWhy() string {
+	if x != nil {
+		return x.xxx_hidden_Why
+	}
+	return ""
+}
+
+func (x *Entity_Trail_Off) SetWhy(v string) {
+	x.xxx_hidden_Why = v
+}
+
+type Entity_Trail_Off_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Why says what the rows are and why no record of each write is wanted.
+	// Required, and the schema is where it is read: it is the one place a
+	// kind is said not to be checked.
+	Why string
+}
+
+func (b0 Entity_Trail_Off_builder) Build() *Entity_Trail_Off {
+	m0 := &Entity_Trail_Off{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Why = b.Why
+	return m0
+}
+
 var File_payday_entity_proto protoreflect.FileDescriptor
 
 const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/entity.proto\x12\x06payday\x1a\rorm/ref.proto\"\x9c\a\n" +
+	"\x13payday/entity.proto\x12\x06payday\x1a\rorm/ref.proto\"\xe9\b\n" +
 	"\x06Entity\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domain\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
@@ -1635,13 +1972,23 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x04list\x18\x06 \x01(\v2\x13.payday.Entity.ListR\x04list\x12*\n" +
 	"\x05watch\x18\a \x01(\v2\x14.payday.Entity.WatchR\x05watch\x12*\n" +
 	"\x05erase\x18\b \x01(\v2\x14.payday.Entity.EraseR\x05erase\x12\x1d\n" +
-	"\x03own\x18\t \x01(\x0e2\v.payday.OwnR\x03own\x1a\b\n" +
+	"\x03own\x18\t \x01(\x0e2\v.payday.OwnR\x03own\x12*\n" +
+	"\x05trail\x18\n" +
+	" \x01(\v2\x14.payday.Entity.TrailR\x05trail\x1a\b\n" +
 	"\x06Tenant\x1a`\n" +
 	"\bTenanted\x12\x10\n" +
 	"\x03via\x18\x01 \x01(\tR\x03via\x12\x14\n" +
 	"\x05field\x18\x02 \x03(\tR\x05field\x12\x14\n" +
 	"\x05stamp\x18\x03 \x01(\tR\x05stamp\x12\x16\n" +
-	"\x06agrees\x18\x04 \x03(\tR\x06agrees\x1a\b\n" +
+	"\x06agrees\x18\x04 \x03(\tR\x06agrees\x1a\x9e\x01\n" +
+	"\x05Trail\x12;\n" +
+	"\brecorded\x18\x01 \x01(\v2\x1d.payday.Entity.Trail.RecordedH\x00R\brecorded\x12,\n" +
+	"\x03off\x18\x02 \x01(\v2\x18.payday.Entity.Trail.OffH\x00R\x03off\x1a\n" +
+	"\n" +
+	"\bRecorded\x1a\x17\n" +
+	"\x03Off\x12\x10\n" +
+	"\x03why\x18\x01 \x01(\tR\x03whyB\x05\n" +
+	"\x03how\x1a\b\n" +
 	"\x06Global\x1a0\n" +
 	"\x05Erase\x12'\n" +
 	"\x04hard\x18\x01 \x01(\v2\x13.payday.Entity.HardR\x04hard\x1a\x06\n" +
@@ -1679,42 +2026,48 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\fOWN_ARCHIVED\x10\x05B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_payday_entity_proto_goTypes = []any{
-	(Own)(0),                  // 0: payday.Own
-	(*Entity)(nil),            // 1: payday.Entity
-	(*Field)(nil),             // 2: payday.Field
-	(*Entity_Tenant)(nil),     // 3: payday.Entity.Tenant
-	(*Entity_Tenanted)(nil),   // 4: payday.Entity.Tenanted
-	(*Entity_Global)(nil),     // 5: payday.Entity.Global
-	(*Entity_Erase)(nil),      // 6: payday.Entity.Erase
-	(*Entity_Hard)(nil),       // 7: payday.Entity.Hard
-	(*Entity_List)(nil),       // 8: payday.Entity.List
-	(*Entity_NamedOrder)(nil), // 9: payday.Entity.NamedOrder
-	(*Entity_Watch)(nil),      // 10: payday.Entity.Watch
-	(*Entity_Order)(nil),      // 11: payday.Entity.Order
-	(*ormpb.Ref)(nil),         // 12: orm.Ref
+	(Own)(0),                      // 0: payday.Own
+	(*Entity)(nil),                // 1: payday.Entity
+	(*Field)(nil),                 // 2: payday.Field
+	(*Entity_Tenant)(nil),         // 3: payday.Entity.Tenant
+	(*Entity_Tenanted)(nil),       // 4: payday.Entity.Tenanted
+	(*Entity_Trail)(nil),          // 5: payday.Entity.Trail
+	(*Entity_Global)(nil),         // 6: payday.Entity.Global
+	(*Entity_Erase)(nil),          // 7: payday.Entity.Erase
+	(*Entity_Hard)(nil),           // 8: payday.Entity.Hard
+	(*Entity_List)(nil),           // 9: payday.Entity.List
+	(*Entity_NamedOrder)(nil),     // 10: payday.Entity.NamedOrder
+	(*Entity_Watch)(nil),          // 11: payday.Entity.Watch
+	(*Entity_Order)(nil),          // 12: payday.Entity.Order
+	(*Entity_Trail_Recorded)(nil), // 13: payday.Entity.Trail.Recorded
+	(*Entity_Trail_Off)(nil),      // 14: payday.Entity.Trail.Off
+	(*ormpb.Ref)(nil),             // 15: orm.Ref
 }
 var file_payday_entity_proto_depIdxs = []int32{
 	3,  // 0: payday.Entity.tenant:type_name -> payday.Entity.Tenant
 	4,  // 1: payday.Entity.tenanted:type_name -> payday.Entity.Tenanted
-	5,  // 2: payday.Entity.global:type_name -> payday.Entity.Global
-	8,  // 3: payday.Entity.list:type_name -> payday.Entity.List
-	10, // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
-	6,  // 5: payday.Entity.erase:type_name -> payday.Entity.Erase
+	6,  // 2: payday.Entity.global:type_name -> payday.Entity.Global
+	9,  // 3: payday.Entity.list:type_name -> payday.Entity.List
+	11, // 4: payday.Entity.watch:type_name -> payday.Entity.Watch
+	7,  // 5: payday.Entity.erase:type_name -> payday.Entity.Erase
 	0,  // 6: payday.Entity.own:type_name -> payday.Own
-	7,  // 7: payday.Entity.Erase.hard:type_name -> payday.Entity.Hard
-	11, // 8: payday.Entity.List.order:type_name -> payday.Entity.Order
-	12, // 9: payday.Entity.List.with:type_name -> orm.Ref
-	12, // 10: payday.Entity.List.by:type_name -> orm.Ref
-	9,  // 11: payday.Entity.List.orders:type_name -> payday.Entity.NamedOrder
-	11, // 12: payday.Entity.NamedOrder.order:type_name -> payday.Entity.Order
-	12, // 13: payday.Entity.Order.field:type_name -> orm.Ref
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	5,  // 7: payday.Entity.trail:type_name -> payday.Entity.Trail
+	13, // 8: payday.Entity.Trail.recorded:type_name -> payday.Entity.Trail.Recorded
+	14, // 9: payday.Entity.Trail.off:type_name -> payday.Entity.Trail.Off
+	8,  // 10: payday.Entity.Erase.hard:type_name -> payday.Entity.Hard
+	12, // 11: payday.Entity.List.order:type_name -> payday.Entity.Order
+	15, // 12: payday.Entity.List.with:type_name -> orm.Ref
+	15, // 13: payday.Entity.List.by:type_name -> orm.Ref
+	10, // 14: payday.Entity.List.orders:type_name -> payday.Entity.NamedOrder
+	12, // 15: payday.Entity.NamedOrder.order:type_name -> payday.Entity.Order
+	15, // 16: payday.Entity.Order.field:type_name -> orm.Ref
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_payday_entity_proto_init() }
@@ -1727,13 +2080,17 @@ func file_payday_entity_proto_init() {
 		(*entity_Tenanted_)(nil),
 		(*entity_Global_)(nil),
 	}
+	file_payday_entity_proto_msgTypes[4].OneofWrappers = []any{
+		(*entity_Trail_Recorded_)(nil),
+		(*entity_Trail_Off_)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_entity_proto_rawDesc), len(file_payday_entity_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

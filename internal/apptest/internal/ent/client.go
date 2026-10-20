@@ -18,6 +18,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
@@ -49,6 +50,8 @@ type Client struct {
 	Outbox *OutboxClient
 	// Pairing is the client for interacting with the Pairing builders.
 	Pairing *PairingClient
+	// Pulse is the client for interacting with the Pulse builders.
+	Pulse *PulseClient
 	// Reading is the client for interacting with the Reading builders.
 	Reading *ReadingClient
 	// Robot is the client for interacting with the Robot builders.
@@ -79,6 +82,7 @@ func (c *Client) init() {
 	c.Joint = NewJointClient(c.config)
 	c.Outbox = NewOutboxClient(c.config)
 	c.Pairing = NewPairingClient(c.config)
+	c.Pulse = NewPulseClient(c.config)
 	c.Reading = NewReadingClient(c.config)
 	c.Robot = NewRobotClient(c.config)
 	c.Seal = NewSealClient(c.config)
@@ -185,6 +189,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Joint:    NewJointClient(cfg),
 		Outbox:   NewOutboxClient(cfg),
 		Pairing:  NewPairingClient(cfg),
+		Pulse:    NewPulseClient(cfg),
 		Reading:  NewReadingClient(cfg),
 		Robot:    NewRobotClient(cfg),
 		Seal:     NewSealClient(cfg),
@@ -218,6 +223,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Joint:    NewJointClient(cfg),
 		Outbox:   NewOutboxClient(cfg),
 		Pairing:  NewPairingClient(cfg),
+		Pulse:    NewPulseClient(cfg),
 		Reading:  NewReadingClient(cfg),
 		Robot:    NewRobotClient(cfg),
 		Seal:     NewSealClient(cfg),
@@ -300,7 +306,7 @@ func (c *Client) InTx() bool {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing,
-		c.Reading, c.Robot, c.Seal, c.Tally, c.Tenant, c.Thing,
+		c.Pulse, c.Reading, c.Robot, c.Seal, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -311,7 +317,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox, c.Pairing,
-		c.Reading, c.Robot, c.Seal, c.Tally, c.Tenant, c.Thing,
+		c.Pulse, c.Reading, c.Robot, c.Seal, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -336,6 +342,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Outbox.mutate(ctx, m)
 	case *PairingMutation:
 		return c.Pairing.mutate(ctx, m)
+	case *PulseMutation:
+		return c.Pulse.mutate(ctx, m)
 	case *ReadingMutation:
 		return c.Reading.mutate(ctx, m)
 	case *RobotMutation:
@@ -1513,6 +1521,139 @@ func (c *PairingClient) mutate(ctx context.Context, m *PairingMutation) (Value, 
 	}
 }
 
+// PulseClient is a client for the Pulse schema.
+type PulseClient struct {
+	config
+}
+
+// NewPulseClient returns a client for the Pulse from the given config.
+func NewPulseClient(c config) *PulseClient {
+	return &PulseClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `pulse.Hooks(f(g(h())))`.
+func (c *PulseClient) Use(hooks ...Hook) {
+	c.hooks.Pulse = append(c.hooks.Pulse, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `pulse.Intercept(f(g(h())))`.
+func (c *PulseClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Pulse = append(c.inters.Pulse, interceptors...)
+}
+
+// Create returns a builder for creating a Pulse entity.
+func (c *PulseClient) Create() *PulseCreate {
+	mutation := newPulseMutation(c.config, OpCreate)
+	return &PulseCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Pulse entities.
+func (c *PulseClient) CreateBulk(builders ...*PulseCreate) *PulseCreateBulk {
+	return &PulseCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PulseClient) MapCreateBulk(slice any, setFunc func(*PulseCreate, int)) *PulseCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PulseCreateBulk{err: fmt.Errorf("calling to PulseClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PulseCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PulseCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Pulse.
+func (c *PulseClient) Update() *PulseUpdate {
+	mutation := newPulseMutation(c.config, OpUpdate)
+	return &PulseUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PulseClient) UpdateOne(_m *Pulse) *PulseUpdateOne {
+	mutation := newPulseMutation(c.config, OpUpdateOne, withPulse(_m))
+	return &PulseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneId returns an update builder for the given id.
+func (c *PulseClient) UpdateOneId(id uuid.UUID) *PulseUpdateOne {
+	mutation := newPulseMutation(c.config, OpUpdateOne, withPulseId(id))
+	return &PulseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Pulse.
+func (c *PulseClient) Delete() *PulseDelete {
+	mutation := newPulseMutation(c.config, OpDelete)
+	return &PulseDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PulseClient) DeleteOne(_m *Pulse) *PulseDeleteOne {
+	return c.DeleteOneId(_m.Id)
+}
+
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *PulseClient) DeleteOneId(id uuid.UUID) *PulseDeleteOne {
+	builder := c.Delete().Where(pulse.Id(id))
+	builder.mutation.id = &id
+	builder.mutation.SetOp(OpDeleteOne)
+	return &PulseDeleteOne{builder}
+}
+
+// Query returns a query builder for Pulse.
+func (c *PulseClient) Query() *PulseQuery {
+	return &PulseQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePulse},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Pulse entity by its id.
+func (c *PulseClient) Get(ctx context.Context, id uuid.UUID) (*Pulse, error) {
+	return c.Query().Where(pulse.Id(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PulseClient) GetX(ctx context.Context, id uuid.UUID) *Pulse {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PulseClient) Hooks() []Hook {
+	return c.hooks.Pulse
+}
+
+// Interceptors returns the client interceptors.
+func (c *PulseClient) Interceptors() []Interceptor {
+	return c.inters.Pulse
+}
+
+func (c *PulseClient) mutate(ctx context.Context, m *PulseMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PulseCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PulseUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PulseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PulseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Pulse mutation op: %q", m.Op())
+	}
+}
+
 // ReadingClient is a client for the Reading schema.
 type ReadingClient struct {
 	config
@@ -2394,11 +2535,11 @@ func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, erro
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot,
-		Seal, Tally, Tenant, Thing []ent.Hook
+		Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse, Reading,
+		Robot, Seal, Tally, Tenant, Thing []ent.Hook
 	}
 	inters struct {
-		Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Reading, Robot,
-		Seal, Tally, Tenant, Thing []ent.Interceptor
+		Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse, Reading,
+		Robot, Seal, Tally, Tenant, Thing []ent.Interceptor
 	}
 )

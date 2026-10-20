@@ -1355,8 +1355,9 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 			// Not behind the wall, so there is no tenant to file it under.
 			continue
 		}
-		if !v.Serves() {
-			// Written by hand, and never recorded, so never asked about.
+		if !v.Serves() && !v.Checked() {
+			// Written by hand and kept off the trail, so never asked about:
+			// no server writes it, and `Record` passes over it.
 			continue
 		}
 
@@ -1368,8 +1369,9 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		// was a few thousand round trips.
 		g.P("		row, handed := image.(*", root.Ident(v.GoName()), ")")
 		if !v.Rpcs().HasGet() {
-			// Served with no Get, so a row that was not handed over is not
-			// one this can read, and is filed as a global one is.
+			// No Get to read it by, so a row that was not handed over is not
+			// one this can read, and is filed as a global one is. `Record`
+			// always hands its rows over.
 			g.P("		if !handed {")
 			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
 			g.P("		}")

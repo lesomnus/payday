@@ -17,20 +17,20 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/tally.proto.
  */
 export const file_app_tally: GenFile = /*@__PURE__*/
-  fileDesc("Cg9hcHAvdGFsbHkucHJvdG8SA2FwcCL5AQoFVGFsbHkSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARINCgVjb3VudBgIIAEoBBIbCgV0b2tlbhgJIAEoDEIM6oIWAhAMqsEWAggBEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOg7K/BUAirsWBggPQgIKAEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Cg9hcHAvdGFsbHkucHJvdG8SA2FwcCL9AQoFVGFsbHkSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARINCgVjb3VudBgIIAEoBBIbCgV0b2tlbhgJIAEoDEIM6oIWAhAMqsEWAggBEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOhLK/BUAirsWCggPQgIKAFICCgAiigIKBVB1bHNlEhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIPCgdwcm9jZXNzGAggASgJEjYKCWRhdGVfc2VlbhgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOCAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOmLK/BUAirsWWggQQgIKAFJQEk4KTGEgaGVhcnRiZWF0IGVhY2ggcHJvY2VzcyB3cml0ZXMgZXZlcnkgZmV3IHNlY29uZHM7IGEgcmVjb3JkIG9mIGVhY2ggaXMgbm9pc2UqAEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
- * Tally is a row the app writes through ent alone -- a lock, a counter, a queue
- * of work -- and so declares no RPC. No server writes it, so nothing of a
- * service it does not have is generated, and a check of the rows against the
- * trail does not read it: a write no server makes is never on the trail, and a
- * kind no server writes is not one a check can say anything about (payday#108).
+ * Tally is a row the app writes through ent alone -- a counter it keeps, a
+ * record it makes itself -- and so declares no RPC, and records each write as
+ * the act it is (`trail: {recorded: {}}`, `pd.Record`): a check of the rows
+ * reads it as it reads any kind (payday#108).
  *
  * Like `Seal`, it is a test by existing. It is behind the wall and it has a
  * secret, which are the two things a layer was written for every entity
  * assuming a service: the gate's rule for an Add, and the layer that clears a
  * secret on the way out. Either written out for this one names a request type
- * that is not there, and the package does not compile.
+ * that is not there, and the package does not compile. `Pulse` is the other
+ * answer, a kind kept off the trail.
  *
  * @generated from message app.Tally
  */
@@ -75,4 +75,41 @@ export type Tally = Message<"app.Tally"> & {
  */
 export const TallySchema: GenMessage<Tally> = /*@__PURE__*/
   messageDesc(file_app_tally, 0);
+
+/**
+ * Pulse is a row the app writes through ent and keeps off the trail -- a
+ * heartbeat each process writes, whose every write recorded would be noise --
+ * and so says so, with why: a check of the rows does not read it, and
+ * `pd.Record` passes over it (payday#108).
+ *
+ * @generated from message app.Pulse
+ */
+export type Pulse = Message<"app.Pulse"> & {
+  /**
+   * @generated from field: bytes id = 1;
+   */
+  id: Uint8Array;
+
+  /**
+   * @generated from field: string process = 8;
+   */
+  process: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp date_seen = 9;
+   */
+  dateSeen?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp date_created = 15;
+   */
+  dateCreated?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message app.Pulse.
+ * Use `create(PulseSchema)` to create a new message.
+ */
+export const PulseSchema: GenMessage<Pulse> = /*@__PURE__*/
+  messageDesc(file_app_tally, 1);
 

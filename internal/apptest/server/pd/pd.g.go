@@ -103,6 +103,7 @@ const (
 	JointDomain    pdid.Domain = 8  // "joint"
 	OutboxDomain   pdid.Domain = 4  // "outbox"
 	PairingDomain  pdid.Domain = 12 // "pairing"
+	PulseDomain    pdid.Domain = 16 // "pulse"
 	ReadingDomain  pdid.Domain = 11 // "reading"
 	RobotDomain    pdid.Domain = 7  // "robot"
 	SealDomain     pdid.Domain = 14 // "seal"
@@ -120,6 +121,7 @@ func init() {
 	pdid.Register("app.Joint", JointDomain, "joint")
 	pdid.Register("app.Outbox", OutboxDomain, "outbox")
 	pdid.Register("app.Pairing", PairingDomain, "pairing")
+	pdid.Register("app.Pulse", PulseDomain, "pulse")
 	pdid.Register("app.Reading", ReadingDomain, "reading")
 	pdid.Register("app.Robot", RobotDomain, "robot")
 	pdid.Register("app.Seal", SealDomain, "seal")
@@ -141,6 +143,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Joint":    JointDomain,
 	"app.Outbox":   OutboxDomain,
 	"app.Pairing":  PairingDomain,
+	"app.Pulse":    PulseDomain,
 	"app.Reading":  ReadingDomain,
 	"app.Robot":    RobotDomain,
 	"app.Seal":     SealDomain,
@@ -254,6 +257,11 @@ func (wall) PairingScope(ctx context.Context) (predicate.Pairing, error) {
 	}
 
 	return pairing.HasLeadWith(robot.TenantIdIn(vs...)), nil
+}
+
+// PulseScope: declared `global`, so it is not behind the wall at all.
+func (wall) PulseScope(ctx context.Context) (predicate.Pulse, error) {
+	return nil, nil
 }
 
 // ReadingScope: a row belongs to the tenant its "robot.tenant" reaches, read off "tenant_id" -- which the
@@ -385,6 +393,11 @@ func (x grouped) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
 
 // PairingScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) PairingScope(ctx context.Context) (predicate.Pairing, error) {
+	return nil, nil
+}
+
+// PulseScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) PulseScope(ctx context.Context) (predicate.Pulse, error) {
 	return nil, nil
 }
 
@@ -3612,6 +3625,8 @@ func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.Fiel
 		return describedOutbox.md, describedOutbox.secret, describedOutbox.personal
 	case PairingDomain:
 		return describedPairing.md, describedPairing.secret, describedPairing.personal
+	case PulseDomain:
+		return describedPulse.md, describedPulse.secret, describedPulse.personal
 	case ReadingDomain:
 		return describedReading.md, describedReading.secret, describedReading.personal
 	case RobotDomain:
@@ -3671,6 +3686,9 @@ var (
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
 	describedPairing = describe((*apptest.Pairing)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedPulse = describe((*apptest.Pulse)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
 	describedReading = describe((*apptest.Reading)(nil),
@@ -4033,6 +4051,39 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 
 		return k, b, nil
 
+	case TallyDomain:
+		row, handed := image.(*apptest.Tally)
+		if !handed {
+			return uuid.Nil(), []byte{}, nil
+		}
+
+		b := []byte{}
+		if keep {
+			if handed {
+				row = proto.Clone(row).(*apptest.Tally)
+			}
+			_, secret, personal := described(key)
+			audit1.Clear(row, secret)
+			audit1.Clear(row, personal)
+
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		if !row.HasTenant() {
+			return uuid.Nil(), b, nil
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
 	case TenantDomain:
 		row, handed := image.(*apptest.Tenant)
 		if !handed {
@@ -4247,9 +4298,9 @@ func (v *keptTrail) write(ctx context.Context) error {
 	return nil
 }
 
-// Digests checks every live row of every kind written through the servers
-// against the trail (payday#102, #108): each digested again, as a Get reads
-// it, and compared with the digest the newest row of the trail about it
+// Digests checks every live row of every kind on the trail -- every kind but
+// the ones kept off it -- against the trail (payday#102, #108): each digested
+// again, as a Get reads it, and compared with the digest the newest row of the trail about it
 // keeps -- in the database, or in the archive `p` names once it has left. A
 // row somebody changed past the servers is one that differs, and a row
 // somebody added past them is one nothing on the trail is about.
@@ -4292,6 +4343,9 @@ func Digests(ctx context.Context, db *ent.Client, d *audit1.Digest, p trail.Poli
 	}
 	if err := audit1.CheckKind(ctx, d, checkedSeal(db), archived, &out); err != nil {
 		return out, fmt.Errorf("seal: %w", err)
+	}
+	if err := audit1.CheckKind(ctx, d, checkedTally(db), archived, &out); err != nil {
+		return out, fmt.Errorf("tally: %w", err)
 	}
 	if err := audit1.CheckKind(ctx, d, checkedTenant(db), archived, &out); err != nil {
 		return out, fmt.Errorf("tenant: %w", err)
@@ -4687,6 +4741,53 @@ func liveSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audi
 	return out, nil
 }
 
+// checkedTally is what a check of the rows reads of the tally kind.
+func checkedTally(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Tally) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := liveTally(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, rows)
+			out = audit1.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: TallyDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, tally.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, tally.IdIn(uuids(ids)...))
+		},
+	}
+}
+
+// liveTally is the live rows `ps` says of the tally kind, at most a page of
+// them in identifier order, each as a Get reads it.
+func liveTally(ctx context.Context, db *ent.Client, ps ...predicate.Tally) ([]audit1.Live, error) {
+	q := db.Tally.Query().Where(ps...)
+
+	vs, err := q.Order(tally.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
 // checkedTenant is what a check of the rows reads of the tenant kind.
 func checkedTenant(db *ent.Client) audit1.Kind {
 	read := func(ctx context.Context, ps ...predicate.Tenant) (audit1.Page, error) {
@@ -4872,8 +4973,8 @@ func uuids(ids []pdid.Id) []uuid.UUID {
 //
 // It is the one way onto the trail that is not a write through the servers,
 // and it writes nothing but the trail. `db` is the transaction that wrote the
-// rows, or the database. A row of a kind no server writes is never on the
-// trail and is passed over; one that is no live row is an error. It answers
+// rows, or the database. A row of a kind kept off the trail (`trail: {off:
+// ...}}`) is passed over; one that is no live row is an error. It answers
 // how many it recorded.
 func Record(ctx context.Context, db *ent.Client, content audit1.Contents, action string, ids []pdid.Id) (int, error) {
 	if action == "" {
@@ -4915,12 +5016,14 @@ func Record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 				rows, err = liveRobot(ctx, db, robot.IdIn(uuids(page)...))
 			case SealDomain:
 				rows, err = liveSeal(ctx, db, seal.IdIn(uuids(page)...))
+			case TallyDomain:
+				rows, err = liveTally(ctx, db, tally.IdIn(uuids(page)...))
 			case TenantDomain:
 				rows, err = liveTenant(ctx, db, tenant.IdIn(uuids(page)...))
 			case ThingDomain:
 				rows, err = liveThing(ctx, db, thing.IdIn(uuids(page)...))
 			default:
-				// Written by hand, if at all, and never on the trail.
+				// Kept off the trail, so no act on it is recorded.
 				continue
 			}
 			if err != nil {
@@ -7491,6 +7594,7 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		&apptest.Joint{},
 		&apptest.Outbox{},
 		&apptest.Pairing{},
+		&apptest.Pulse{},
 		&apptest.Reading{},
 		&apptest.Robot{},
 		&apptest.Seal{},

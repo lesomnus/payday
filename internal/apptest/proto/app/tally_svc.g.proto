@@ -9,3 +9,6 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 
 service TallyService {
 }
+
+service PulseService {
+}

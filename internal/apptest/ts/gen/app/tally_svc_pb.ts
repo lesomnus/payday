@@ -12,7 +12,7 @@ import { fileDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
  * Describes the file app/tally_svc.g.proto.
  */
 export const file_app_tally_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChVhcHAvdGFsbHlfc3ZjLmcucHJvdG8SA2FwcDIOCgxUYWxseVNlcnZpY2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac");
+  fileDesc("ChVhcHAvdGFsbHlfc3ZjLmcucHJvdG8SA2FwcDIOCgxUYWxseVNlcnZpY2UyDgoMUHVsc2VTZXJ2aWNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH");
 
 /**
  * @generated from service app.TallyService
@@ -20,4 +20,11 @@ export const file_app_tally_svc_g: GenFile = /*@__PURE__*/
 export const TallyService: GenService<{
 }> = /*@__PURE__*/
   serviceDesc(file_app_tally_svc_g, 0);
+
+/**
+ * @generated from service app.PulseService
+ */
+export const PulseService: GenService<{
+}> = /*@__PURE__*/
+  serviceDesc(file_app_tally_svc_g, 1);
 

@@ -3,6 +3,26 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An entity no server writes says how its writes reach the trail
+
+**Applies if** an entity of yours has no `Add`, `AddMany` or `Patch`: `pd gen`
+refuses it until it says (payday#108).
+
+- **`trail: {recorded: {}}`**: the app writes it through ent and records each
+  write with `pd.Record`, in the transaction that wrote it. A check of the rows
+  reads it as any kind, and a write that was not recorded is a row nothing on
+  the trail is about.
+- **`trail: {off: {why: "..."}}`**: the app writes it and keeps it off the trail
+  -- a session's idle clock, a lock, a queue a loop empties. A check does not
+  read it, `pd.Record` passes over it, and `why` is required.
+- **On an entity a server writes**, `trail` is refused: the recorder puts its
+  writes on the trail already. A write of yours through ent on such an entity
+  is still recorded with `pd.Record`.
+- **This replaces the rule the entry below came with** -- a kind with no `Add`
+  or `Patch` was left out of the check for having none, which left out a kind
+  kept to prove something, such as a consent. Whether an entity has RPCs is now
+  only what its API offers.
+
 ## A check of the rows reads the archive, and what nothing accounts for is a finding
 
 **Applies if** you call the generated `pd.Digests`, or write rows beneath your
@@ -21,12 +41,10 @@ generated `Add` or `Patch` (payday#108).
   the servers on the trail as the act that wrote them: call it in the
   transaction that wrote them. Give the operator a command that records what
   `pd.Digests` found once somebody has looked.
-- **A kind you only ever write through ent** declares no RPC -- `option
-  (orm.message) = {}`, with no `rpc` -- and is then not read by the check: no
-  server writes it, so the trail never holds it. No layer wraps a method it does
-  not have (the gate, the secret layer, the recorder's reads), which is new;
-  before this such an entity did not compile. While it declares an `Add` or a
-  `Patch` it is read, and each of its rows is not on the trail.
+- **An entity may declare no RPC** -- `option (orm.message) = {}`, with no
+  `rpc` -- and no layer wraps a method it does not have (the gate, the secret
+  layer, the recorder's reads), which is new; before this such an entity did
+  not compile. How its writes reach the trail is the entry above.
 - **`audit.CheckRows` and `audit.Newest` are gone**; `audit.CheckKind` is what
   the generated code calls.
 

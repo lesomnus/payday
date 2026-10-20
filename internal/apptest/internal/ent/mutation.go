@@ -19,6 +19,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
@@ -45,6 +46,7 @@ const (
 	TypeJoint    = "Joint"
 	TypeOutbox   = "Outbox"
 	TypePairing  = "Pairing"
+	TypePulse    = "Pulse"
 	TypeReading  = "Reading"
 	TypeRobot    = "Robot"
 	TypeSeal     = "Seal"
@@ -2075,6 +2077,183 @@ func (m *PairingMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldFollowId(ctx)
 	}
 	return nil, fmt.Errorf("unknown Pairing field %s", name)
+}
+
+// PulseMutation represents an operation that mutates the Pulse nodes in the graph.
+type PulseMutation struct {
+	pulse.Mutation
+	config
+	id       *uuid.UUID
+	done     bool
+	oldValue func(context.Context) (*Pulse, error)
+}
+
+var _ ent.Mutation = (*PulseMutation)(nil)
+
+// pulseOption allows management of the mutation configuration using functional options.
+type pulseOption func(*PulseMutation)
+
+// newPulseMutation creates new mutation for the Pulse entity.
+func newPulseMutation(c config, op Op, opts ...pulseOption) *PulseMutation {
+	m := &PulseMutation{
+		Mutation: *pulse.NewMutation(op),
+		config:   c,
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// SetId sets the value of the id field. Note that this
+// operation is only accepted on creation of Pulse entities.
+func (m *PulseMutation) SetId(id uuid.UUID) {
+	m.id = &id
+}
+
+// Id returns the Id value in the mutation. Note that the Id is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PulseMutation) Id() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// withPulseId sets the Id field of the mutation.
+func withPulseId(id uuid.UUID) pulseOption {
+	return func(m *PulseMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Pulse
+		)
+		m.oldValue = func(ctx context.Context) (*Pulse, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Pulse.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPulse sets the old Pulse of the mutation.
+func withPulse(node *Pulse) pulseOption {
+	return func(m *PulseMutation) {
+		m.oldValue = func(context.Context) (*Pulse, error) {
+			return node, nil
+		}
+		m.id = &node.Id
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PulseMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PulseMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// Ids queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PulseMutation) Ids(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.Op().Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.Id()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.Op().Is(OpUpdate | OpDelete):
+		return m.Client().Pulse.Query().Where(m.Predicates()...).Ids(ctx)
+	default:
+		return nil, fmt.Errorf("Ids is not allowed on %s operations", m.Op())
+	}
+}
+
+// OldProcess returns the old "process" field's value of the Pulse entity.
+// If the Pulse object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PulseMutation) OldProcess(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldProcess is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldProcess requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProcess: %w", err)
+	}
+	return oldValue.Process, nil
+}
+
+// OldDateSeen returns the old "date_seen" field's value of the Pulse entity.
+// If the Pulse object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PulseMutation) OldDateSeen(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateSeen is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateSeen requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateSeen: %w", err)
+	}
+	return oldValue.DateSeen, nil
+}
+
+// OldDateCreated returns the old "date_created" field's value of the Pulse entity.
+// If the Pulse object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PulseMutation) OldDateCreated(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateCreated is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateCreated requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateCreated: %w", err)
+	}
+	return oldValue.DateCreated, nil
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PulseMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case pulse.FieldProcess:
+		return m.OldProcess(ctx)
+	case pulse.FieldDateSeen:
+		return m.OldDateSeen(ctx)
+	case pulse.FieldDateCreated:
+		return m.OldDateCreated(ctx)
+	}
+	return nil, fmt.Errorf("unknown Pulse field %s", name)
 }
 
 // ReadingMutation represents an operation that mutates the Reading nodes in the graph.

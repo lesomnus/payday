@@ -46,3 +46,27 @@ func (Tally) Annotations() []schema.Annotation {
 		entsql.Annotation{Table: "tally"},
 	}
 }
+
+type Pulse struct {
+	ent.Schema
+}
+
+func (Pulse) Fields() []ent.Field {
+	return []ent.Field{
+		field.Uuid("id").
+			Unique().
+			Immutable(),
+		field.String("process"),
+		field.Time("date_seen").
+			Optional(),
+		field.Time("date_created").
+			Immutable().
+			Optional(),
+	}
+}
+
+func (Pulse) Annotations() []schema.Annotation {
+	return []schema.Annotation{
+		entsql.Annotation{Table: "pulse"},
+	}
+}
