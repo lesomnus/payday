@@ -76,6 +76,11 @@ type Entity struct {
 	Personal        []string
 	PersonalNumbers []uint32
 
+	// Impersonal are the fields declared `(payday.field).impersonal`: looked
+	// at, and about no one. They go on the trail as an undeclared field does,
+	// and what the declaration changes is that `pd doctor` stops asking.
+	Impersonal []string
+
 	// Domain is what identifiers of this entity carry.
 	Domain uint8
 
@@ -281,6 +286,7 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 	var secretNumbers []uint32
 	var personal []string
 	var personalNumbers []uint32
+	var impersonal []string
 	var stamped []string
 	for prop := range e.Props() {
 		f, _ := proto.GetExtension(prop.Descriptor().Options(), pdpb.E_Field).(*pdpb.Field)
@@ -304,6 +310,22 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 			personal = append(personal, prop.Name())
 			personalNumbers = append(personalNumbers, uint32(prop.Descriptor().Number()))
 		}
+		if f.GetImpersonal() {
+			// Refused beside what makes it say nothing, for the reason the
+			// refusals above give.
+			switch {
+			case f.GetPersonal():
+				return nil, fmt.Errorf("%s: declared personal and impersonal; a field is about a person or it is not", prop.FullName())
+			case f.GetSecret():
+				return nil, fmt.Errorf("%s: declared secret and impersonal; secret keeps it off the trail already, so impersonal says nothing", prop.FullName())
+			case prop.Number() == e.Key().Number():
+				return nil, fmt.Errorf("%s: the key is never personal, so there is nothing to declare impersonal", prop.FullName())
+			}
+			if _, ok := prop.(graph.Edge); ok {
+				return nil, fmt.Errorf("%s: an edge is never personal -- what the row it names holds is declared there -- so there is nothing to declare impersonal", prop.FullName())
+			}
+			impersonal = append(impersonal, prop.Name())
+		}
 		if f.GetStamped() {
 			stamped = append(stamped, prop.Name())
 		}
@@ -316,6 +338,7 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		SecretNumbers:   secretNumbers,
 		Personal:        personal,
 		PersonalNumbers: personalNumbers,
+		Impersonal:      impersonal,
 		Stamped:         stamped,
 		Domain:          uint8(d),
 		Name:            pdid.Name(opts.GetName(), string(e.FullName().Name())),

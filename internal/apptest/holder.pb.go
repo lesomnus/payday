@@ -328,18 +328,22 @@ type Holder_builder struct {
 	// the alias comes free again.
 	DateErased  *timestamppb.Timestamp
 	DateCreated *timestamppb.Timestamp
-	// The subject an external identity provider knows this holder by.
+	// The subject an external identity provider knows this holder by: what
+	// another system calls them, so personal (#92). `pd doctor` asked, because
+	// Holder holds people and this said nothing.
 	IdpSubject string
 	// The other kind of field an overlay can add: a message, stored as the
 	// canonical protobuf JSON in one jsonb column and replaced whole by a
 	// patch. Its existence pins the shape that once failed silently -- see
-	// [Profile] for what the failure was and what its two fields are for.
+	// [Profile] for what the failure was and what its two fields are for. It
+	// carries what the holder is called, so it is personal as a whole.
 	Profile *Profile
 	// A scalar stamped on payday's own entity, which once did not compile
 	// (payday#29): the refusal came out as a second gate beside the one the
 	// holder's tenant read already is, and asked `HasDirectory()` of a field
 	// the request declares without presence. Which directory a holder came
 	// from is the deployment's to say -- an import names it, a request does not.
+	// Not personal: it names a directory, and which one is the record.
 	Directory string
 	// And an edge an overlay adds, to a row behind the wall. The holder's gate
 	// is written by hand and once asked about its tenant and nothing else, so an
@@ -372,7 +376,7 @@ var File_app_payday_holder_proto protoreflect.FileDescriptor
 
 const file_app_payday_holder_proto_rawDesc = "" +
 	"\n" +
-	"\x17app/payday/holder.proto\x12\x03app\x1a\x11app/profile.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xac\x06\n" +
+	"\x17app/payday/holder.proto\x12\x03app\x1a\x11app/profile.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xbe\x06\n" +
 	"\x06Holder\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x1c\n" +
@@ -383,12 +387,12 @@ const file_app_payday_holder_proto_rawDesc = "" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12\x1f\n" +
-	"\vidp_subject\x18\b \x01(\tR\n" +
-	"idpSubject\x12&\n" +
-	"\aprofile\x18\t \x01(\v2\f.app.ProfileR\aprofile\x12$\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12'\n" +
+	"\vidp_subject\x18\b \x01(\tB\x06\xaa\xc1\x16\x02\x18\x01R\n" +
+	"idpSubject\x12.\n" +
+	"\aprofile\x18\t \x01(\v2\f.app.ProfileB\x06\xaa\xc1\x16\x02\x18\x01R\aprofile\x12&\n" +
 	"\tdirectory\x18\n" +
-	" \x01(\tB\x06\xaa\xc1\x16\x02\x10\x01R\tdirectory\x12(\n" +
+	" \x01(\tB\b\xaa\xc1\x16\x04\x10\x01 \x01R\tdirectory\x12(\n" +
 	"\x05robot\x18\v \x01(\v2\n" +
 	".app.RobotB\x06\xf2\x82\x16\x028\x01R\x05robot\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +

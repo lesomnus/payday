@@ -41,7 +41,45 @@ func apptest(t *testing.T, x *require.Assertions) pdcli.Layout {
 func TestTheReferenceAppIsWell(t *testing.T) {
 	x := require.New(t)
 
-	x.NotContains(found(t, apptest(t, x)), "pd gen would refuse")
+	v := found(t, apptest(t, x))
+	x.NotContains(v, "pd gen would refuse")
+	x.NotContains(v, "says nothing of", "every field of the reference app that may hold a person says which it is")
+}
+
+// TestDoctorAsksWhatAFieldOfAnEntityThatHoldsPeopleIs: an entity with a
+// personal field holds people, and a field of free text on it that says
+// nothing is one the trail keeps as a value. `impersonal` is the answer that
+// is not "personal", and it is an answer.
+func TestDoctorAsksWhatAFieldOfAnEntityThatHoldsPeopleIs(t *testing.T) {
+	x := require.New(t)
+	l := apptest(t, x)
+	at := l.Path(pdcli.DirProto, "app", "visit.proto")
+	t.Cleanup(func() { _ = os.Remove(at) })
+
+	x.NoError(os.WriteFile(at, []byte(visit("string purpose = 8;")), 0o644))
+	v := found(t, l)
+	x.Contains(v, "app.Visit holds people and says nothing of purpose")
+	x.Contains(v, "proto/app/visit.proto:18  purpose", "where it is declared, to the line")
+
+	x.NoError(os.WriteFile(at, []byte(visit("string purpose = 8 [(payday.field) = {impersonal: true}];")), 0o644))
+	x.NotContains(found(t, l), "app.Visit")
+}
+
+// TestDoctorAsksAboutAFieldNamedForSomebody: an entity that declares nothing
+// is not one the rule above reaches, and a field whose name is about a person
+// is asked about anyway -- a word of the name, and not a part of a word.
+func TestDoctorAsksAboutAFieldNamedForSomebody(t *testing.T) {
+	x := require.New(t)
+	l := apptest(t, x)
+	at := l.Path(pdcli.DirProto, "app", "visit.proto")
+	t.Cleanup(func() { _ = os.Remove(at) })
+
+	src := visit("string host_email = 8;\n  string hotel = 10;")
+	src = strings.Replace(src, "string visitor = 9 [(payday.field) = {personal: true}];", "", 1)
+	x.NoError(os.WriteFile(at, []byte(src), 0o644))
+	v := found(t, l)
+	x.Contains(v, "app.Visit says nothing of host_email, which is named for something about a person")
+	x.NotContains(v, "hotel")
 }
 
 // TestDoctorRefusesWhatGenRefuses, on the one kind of mistake that is cheapest
@@ -103,3 +141,37 @@ message Clash {
   };
 }
 `
+
+// visit is an entity with a personal field, and `field` beside it.
+func visit(field string) string {
+	return `edition = "2023";
+
+package app;
+
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+message Visit {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  ` + field + `
+  string visitor = 9 [(payday.field) = {personal: true}];
+
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {
+    domain: 201
+    global: {}
+    erase: {hard: {}}
+  };
+}
+`
+}

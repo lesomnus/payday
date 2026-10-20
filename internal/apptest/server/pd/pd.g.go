@@ -3621,7 +3621,7 @@ var (
 		[]protoreflect.FieldNumber{})
 	describedHolder = describe((*apptest.Holder)(nil),
 		[]protoreflect.FieldNumber{},
-		[]protoreflect.FieldNumber{4, 5, 6, 7})
+		[]protoreflect.FieldNumber{4, 5, 6, 7, 8, 9})
 	describedJoint = describe((*apptest.Joint)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})

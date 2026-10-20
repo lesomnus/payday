@@ -11,21 +11,25 @@ import "app/robot.proto";
 // 8..12 and 16.. are the app's -- 3 held for the set edge -- and payday keeps
 // 1, 2, 4..7 and 13..15 and promises not to grow past them.
 message Holder {
-  // The subject an external identity provider knows this holder by.
-  string idp_subject = 8;
+  // The subject an external identity provider knows this holder by: what
+  // another system calls them, so personal (#92). `pd doctor` asked, because
+  // Holder holds people and this said nothing.
+  string idp_subject = 8 [(payday.field) = {personal: true}];
 
   // The other kind of field an overlay can add: a message, stored as the
   // canonical protobuf JSON in one jsonb column and replaced whole by a
   // patch. Its existence pins the shape that once failed silently -- see
-  // [Profile] for what the failure was and what its two fields are for.
-  Profile profile = 9;
+  // [Profile] for what the failure was and what its two fields are for. It
+  // carries what the holder is called, so it is personal as a whole.
+  Profile profile = 9 [(payday.field) = {personal: true}];
 
   // A scalar stamped on payday's own entity, which once did not compile
   // (payday#29): the refusal came out as a second gate beside the one the
   // holder's tenant read already is, and asked `HasDirectory()` of a field
   // the request declares without presence. Which directory a holder came
   // from is the deployment's to say -- an import names it, a request does not.
-  string directory = 10 [(payday.field) = {stamped: true}];
+  // Not personal: it names a directory, and which one is the record.
+  string directory = 10 [(payday.field) = {stamped: true, impersonal: true}];
 
   // And an edge an overlay adds, to a row behind the wall. The holder's gate
   // is written by hand and once asked about its tenant and nothing else, so an

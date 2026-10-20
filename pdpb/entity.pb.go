@@ -520,12 +520,13 @@ func (*entity_Global_) isEntity_Tenancy() {}
 // the app that happens to hold the field rather than beside the field. The next
 // app storing a verifier rediscovers the whole argument.
 type Field struct {
-	state               protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Secret   bool                   `protobuf:"varint,1,opt,name=secret"`
-	xxx_hidden_Stamped  bool                   `protobuf:"varint,2,opt,name=stamped"`
-	xxx_hidden_Personal bool                   `protobuf:"varint,3,opt,name=personal"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Secret     bool                   `protobuf:"varint,1,opt,name=secret"`
+	xxx_hidden_Stamped    bool                   `protobuf:"varint,2,opt,name=stamped"`
+	xxx_hidden_Personal   bool                   `protobuf:"varint,3,opt,name=personal"`
+	xxx_hidden_Impersonal bool                   `protobuf:"varint,4,opt,name=impersonal"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Field) Reset() {
@@ -574,6 +575,13 @@ func (x *Field) GetPersonal() bool {
 	return false
 }
 
+func (x *Field) GetImpersonal() bool {
+	if x != nil {
+		return x.xxx_hidden_Impersonal
+	}
+	return false
+}
+
 func (x *Field) SetSecret(v bool) {
 	x.xxx_hidden_Secret = v
 }
@@ -584,6 +592,10 @@ func (x *Field) SetStamped(v bool) {
 
 func (x *Field) SetPersonal(v bool) {
 	x.xxx_hidden_Personal = v
+}
+
+func (x *Field) SetImpersonal(v bool) {
+	x.xxx_hidden_Impersonal = v
 }
 
 type Field_builder struct {
@@ -730,6 +742,33 @@ type Field_builder struct {
 	// An edge, and the key, cannot be personal: they are identifiers, which is
 	// the one thing the trail is made of.
 	Personal bool
+	// Impersonal marks a field somebody looked at and found to be about no one
+	// in particular: a role, a state, a kind, the name of a provider.
+	//
+	// # What it does
+	//
+	// Nothing to the trail, which keeps a value of it as it keeps one of a field
+	// nobody declared -- and that is the point of it. The two read alike to the
+	// trail, and only this one is a decision. An entity that holds people is one
+	// whose undecided fields are the ones that leak a person onto the trail, so
+	// `pd doctor` asks each field of free text on it to say which it is, this or
+	// `personal`, and asks the same of a field anywhere whose name is about
+	// somebody.
+	//
+	// # Why a field of its own
+	//
+	// `personal: false` would have said it, and cannot: `personal` has no
+	// presence, so false and unset are the same bytes, and giving it presence is
+	// a change to this message's shape that every app compiled against it
+	// would be told about.
+	//
+	// # What it is refused beside
+	//
+	// `personal`, which says the opposite; `secret`, which keeps the field off
+	// the trail already; and an edge or the key, which are never personal. Each
+	// would be a declaration that does nothing, and a declaration that does
+	// nothing is one somebody relies on.
+	Impersonal bool
 }
 
 func (b0 Field_builder) Build() *Field {
@@ -739,6 +778,7 @@ func (b0 Field_builder) Build() *Field {
 	x.xxx_hidden_Secret = b.Secret
 	x.xxx_hidden_Stamped = b.Stamped
 	x.xxx_hidden_Personal = b.Personal
+	x.xxx_hidden_Impersonal = b.Impersonal
 	return m0
 }
 
@@ -1633,11 +1673,14 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05Order\x12\x1e\n" +
 	"\x05field\x18\x01 \x01(\v2\b.orm.RefR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
-	"\atenancy\"U\n" +
+	"\atenancy\"u\n" +
 	"\x05Field\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
 	"\astamped\x18\x02 \x01(\bR\astamped\x12\x1a\n" +
-	"\bpersonal\x18\x03 \x01(\bR\bpersonal*k\n" +
+	"\bpersonal\x18\x03 \x01(\bR\bpersonal\x12\x1e\n" +
+	"\n" +
+	"impersonal\x18\x04 \x01(\bR\n" +
+	"impersonal*k\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

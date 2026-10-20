@@ -3,6 +3,26 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## `pd doctor` asks about a field that may hold a person
+
+**Applies if** an entity of yours has a field declared `personal`, or a field
+whose name is about somebody (`email`, `phone`, `address`, `birthday`,
+`first_name`, ...). Nothing refuses anything; `pd doctor` says more than it did.
+
+- **`(payday.field).impersonal`** says a field was looked at and is about no
+  one in particular: a role, a state, a kind. The trail treats it as it treats a
+  field nobody declared. Generation refuses it beside `personal`, beside
+  `secret`, and on an edge or the key.
+- **`pd doctor` asks of every field of free text on an entity that holds people**
+  -- one with a personal field -- and of any field named for something about a
+  person, whether it is one. Answer each, beside it: `personal: true` or
+  `impersonal: true`. The finding names the file and line.
+
+**Ordering**: `impersonal` is in payday's buf module, like `personal` was, so an
+app needs a version of it that has the field before a schema that writes it
+compiles. Until then the compile says the field `impersonal` is not in
+`payday.Field`. `buf dep update` moves the pin.
+
 ## The page is held to payday's floors, and `pd upgrade` meets them
 
 **Applies if** `go tool pd versions` marks `@bufbuild/protobuf` or

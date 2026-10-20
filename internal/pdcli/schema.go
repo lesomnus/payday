@@ -46,10 +46,10 @@ import (
 // build`, which is the cheapest thing `pd gen` already does on every run.
 
 // doctorEntities reads the app's schema and answers with what `pd gen` would
-// refuse.
+// refuse, and then with what it would accept and still keep too much of.
 //
-// One finding, not many: `pdgen.Read` stops at the first thing it cannot
-// accept, so a list here would be a list of one wearing a plural.
+// One refusal, not many: `pdgen.Read` stops at the first thing it cannot
+// accept, so a list of them would be a list of one wearing a plural.
 func doctorEntities(ctx context.Context, l Layout) []Finding {
 	// An app that has never generated has no `buf.lock`, so its imports do not
 	// resolve and there is no schema here to read -- only the same list of
@@ -81,14 +81,17 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 		return []Finding{{What: fmt.Sprintf("cannot read %s/: %s", DirProto, err), Fatal: true}}
 	}
 
-	if _, err := read(fs, generate); err != nil {
+	schema, err := read(fs, generate)
+	if err != nil {
 		return []Finding{{
 			What:  "pd gen would refuse this schema: " + err.Error(),
 			Fatal: true,
 		}}
 	}
 
-	return nil
+	// What it accepts and the trail still keeps too much of: a field that may
+	// hold a person and that the schema says nothing about. See personal.go.
+	return doctorPersonal(schema)
 }
 
 // describe is the app's schema as descriptors, from buf.

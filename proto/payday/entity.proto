@@ -551,4 +551,32 @@ message Field {
   // An edge, and the key, cannot be personal: they are identifiers, which is
   // the one thing the trail is made of.
   bool personal = 3;
+
+  // Impersonal marks a field somebody looked at and found to be about no one
+  // in particular: a role, a state, a kind, the name of a provider.
+  //
+  // # What it does
+  //
+  // Nothing to the trail, which keeps a value of it as it keeps one of a field
+  // nobody declared -- and that is the point of it. The two read alike to the
+  // trail, and only this one is a decision. An entity that holds people is one
+  // whose undecided fields are the ones that leak a person onto the trail, so
+  // `pd doctor` asks each field of free text on it to say which it is, this or
+  // `personal`, and asks the same of a field anywhere whose name is about
+  // somebody.
+  //
+  // # Why a field of its own
+  //
+  // `personal: false` would have said it, and cannot: `personal` has no
+  // presence, so false and unset are the same bytes, and giving it presence is
+  // a change to this message's shape that every app compiled against it
+  // would be told about.
+  //
+  // # What it is refused beside
+  //
+  // `personal`, which says the opposite; `secret`, which keeps the field off
+  // the trail already; and an edge or the key, which are never personal. Each
+  // would be a declaration that does nothing, and a declaration that does
+  // nothing is one somebody relies on.
+  bool impersonal = 4;
 }

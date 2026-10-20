@@ -21,7 +21,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/holder.proto.
  */
 export const file_app_payday_holder: GenFile = /*@__PURE__*/
-  fileDesc("ChdhcHAvcGF5ZGF5L2hvbGRlci5wcm90bxIDYXBwIqwFCgZIb2xkZXISFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARIVCgVhbGlhcxgEIAEoCUIGqsEWAhgBEhQKBG5hbWUYBSABKAlCBqrBFgIYARIUCgRkZXNjGAYgASgJQgaqwRYCGAESLwoGbGFiZWxzGAcgAygLMhcuYXBwLkhvbGRlci5MYWJlbHNFbnRyeUIGqsEWAhgBEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBABITCgtpZHBfc3ViamVjdBgIIAEoCRIdCgdwcm9maWxlGAkgASgLMgwuYXBwLlByb2ZpbGUSGQoJZGlyZWN0b3J5GAogASgJQgaqwRYCEAESIQoFcm9ib3QYCyABKAsyCi5hcHAuUm9ib3RCBvKCFgI4ARotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBOpwByvwVUxICEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAEaLBIEcGFnZRoKCgZ0ZW5hbnQQAhoQCgxkYXRlX2NyZWF0ZWQQDxoGCgJpZBABirsWQQgCMjkKEAoOCgxkYXRlX2NyZWF0ZWQKBgoECgJpZBoFCgNyZWYaCAoGdGVuYW50GggKBmxhYmVscyAUKGQ6AEgCQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_app_profile, file_app_robot, file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
+  fileDesc("ChdhcHAvcGF5ZGF5L2hvbGRlci5wcm90bxIDYXBwIr4FCgZIb2xkZXISFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARIVCgVhbGlhcxgEIAEoCUIGqsEWAhgBEhQKBG5hbWUYBSABKAlCBqrBFgIYARIUCgRkZXNjGAYgASgJQgaqwRYCGAESLwoGbGFiZWxzGAcgAygLMhcuYXBwLkhvbGRlci5MYWJlbHNFbnRyeUIGqsEWAhgBEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBABIbCgtpZHBfc3ViamVjdBgIIAEoCUIGqsEWAhgBEiUKB3Byb2ZpbGUYCSABKAsyDC5hcHAuUHJvZmlsZUIGqsEWAhgBEhsKCWRpcmVjdG9yeRgKIAEoCUIIqsEWBBABIAESIQoFcm9ib3QYCyABKAsyCi5hcHAuUm9ib3RCBvKCFgI4ARotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBOpwByvwVUxICEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAEaLBIEcGFnZRoKCgZ0ZW5hbnQQAhoQCgxkYXRlX2NyZWF0ZWQQDxoGCgJpZBABirsWQQgCMjkKEAoOCgxkYXRlX2NyZWF0ZWQKBgoECgJpZBoFCgNyZWYaCAoGdGVuYW50GggKBmxhYmVscyAUKGQ6AEgCQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_app_profile, file_app_robot, file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
 
 /**
  * Holder is who a request is from.
@@ -115,7 +115,9 @@ export type Holder = Message<"app.Holder"> & {
   dateCreated?: Timestamp | undefined;
 
   /**
-   * The subject an external identity provider knows this holder by.
+   * The subject an external identity provider knows this holder by: what
+   * another system calls them, so personal (#92). `pd doctor` asked, because
+   * Holder holds people and this said nothing.
    *
    * @generated from field: string idp_subject = 8;
    */
@@ -125,7 +127,8 @@ export type Holder = Message<"app.Holder"> & {
    * The other kind of field an overlay can add: a message, stored as the
    * canonical protobuf JSON in one jsonb column and replaced whole by a
    * patch. Its existence pins the shape that once failed silently -- see
-   * [Profile] for what the failure was and what its two fields are for.
+   * [Profile] for what the failure was and what its two fields are for. It
+   * carries what the holder is called, so it is personal as a whole.
    *
    * @generated from field: app.Profile profile = 9;
    */
@@ -137,6 +140,7 @@ export type Holder = Message<"app.Holder"> & {
    * holder's tenant read already is, and asked `HasDirectory()` of a field
    * the request declares without presence. Which directory a holder came
    * from is the deployment's to say -- an import names it, a request does not.
+   * Not personal: it names a directory, and which one is the record.
    *
    * @generated from field: string directory = 10;
    */

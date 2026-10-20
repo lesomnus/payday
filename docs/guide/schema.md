@@ -421,6 +421,32 @@ field is read like any other. Generation refuses the two on one field, and
 refuses `personal` on an edge or on the key — those are identifiers, which is
 what the trail is made of.
 
+#### Saying a field is about no one
+
+`impersonal` says a field was looked at and is about no one in particular:
+
+```proto
+string role = 9 [(payday.field) = {impersonal: true}];
+```
+
+The trail keeps it as it keeps any field nobody declared. What the declaration
+changes is that `pd doctor` stops asking, and it asks about a field in two
+places:
+
+- **Free text on an entity that holds people.** An entity with a personal field
+  holds people, so each of its strings, bytes and documents — and lists and maps
+  of them — says which it is. The one nobody declared is the one that copies a
+  person onto the trail.
+- **A name about somebody, on any entity:** `email`, `phone`, `address`,
+  `birthday`, `first_name` and the like, as whole words of the name. An entity
+  that holds people and declares nothing at all is not reached by the first, and
+  this is what reaches it.
+
+It is advice and not a refusal. Generation does what it always did, and which a
+field is stays the schema's to say. Generation does refuse `impersonal` beside
+`personal`, beside `secret`, and on an edge or the key: each is a declaration
+that does nothing.
+
 ---
 
 ## 4. `alias` — the name a person writes

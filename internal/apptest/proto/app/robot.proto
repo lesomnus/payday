@@ -67,7 +67,9 @@ message Robot {
   // by a test.
   Cell cell = 3 [(orm.edge) = {nullable: true}];
 
-  string alias = 4;
+  // A robot's own handle. Robot holds people -- `keeper` is one -- so each of
+  // its fields of free text says which it is, and this one is about no one.
+  string alias = 4 [(payday.field) = {impersonal: true}];
 
   // A secret this robot proves itself with, and the reason it is here is the
   // declaration rather than the robot: `(payday.field).secret` says a field is
