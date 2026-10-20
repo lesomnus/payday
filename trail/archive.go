@@ -736,7 +736,15 @@ func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, 
 				keep = func(h head) bool { return h.names(tenant) }
 			}
 		}
-		if err := readChunk(ctx, a, c, seen, keep, verify, open, fn); err != nil {
+		err := readChunk(ctx, a, c, seen, keep, verify, func(h head, doc []byte) error {
+			doc, err := open.open(ctx, doc, h)
+			if err != nil {
+				return err
+			}
+
+			return fn(doc)
+		})
+		if err != nil {
 			return err
 		}
 	}
@@ -749,8 +757,10 @@ var errAltered = errors.New("its bytes are not its digest any more; see `trail v
 
 // readChunk is one chunk's rows, less the ones `seen` has, and less the ones
 // `keep` declines when there is one. `verify` reads it whole first, and refuses
-// it when its bytes are not its digest. A sealed row is opened by `open`.
-func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool, keep func(head) bool, verify bool, open *opener, fn func([]byte) error) error {
+// it when its bytes are not its digest. Each row is handed over as it is
+// stored, sealed or not, beside what its head says; a nil `seen` hands over a
+// row however often it was seen.
+func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool, keep func(head) bool, verify bool, fn func(head, []byte) error) error {
 	r, _, err := a.Use(c.Namespace).Open(ctx, c.Digest)
 	if err != nil {
 		if errors.Is(err, flob.ErrNotExist) {
@@ -795,13 +805,11 @@ func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool
 		if keep != nil && !keep(h) {
 			return nil
 		}
-		seen[h.Id] = true
-
-		if doc, err = open.open(ctx, doc, h); err != nil {
-			return err
+		if seen != nil {
+			seen[h.Id] = true
 		}
 
-		return fn(doc)
+		return fn(h, doc)
 	})
 	if err != nil {
 		return fmt.Errorf("%s: %w", c, err)

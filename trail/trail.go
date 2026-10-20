@@ -644,6 +644,13 @@ type head struct {
 	// Sealed is `value` and `patch` sealed together, in their place; see
 	// [Keys].
 	Sealed string `json:"sealed"`
+
+	// Digest and DigestFields are the keyed digest of the row the write left
+	// and the fields it covers (payday#102). Never sealed: they say nothing
+	// without the key, and a check of the live rows reads them with none of
+	// the tenants' keys; see [Newest].
+	Digest       string   `json:"digest"`
+	DigestFields []uint32 `json:"digestFields"`
 }
 
 func headOf(doc []byte) (head, error) {

@@ -906,7 +906,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	if keepsTrail(s) {
 		emitKeptTrail(g, s, p)
 	}
-	emitDigests(g, s, p)
+	emitDigests(g, s, p, root)
 
 	// Referenced only so that the import is kept when a schema has no patch.
 	g.P("var _ *", pkgPatchpb.Ident("Patch"))

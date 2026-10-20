@@ -3,6 +3,29 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A check of the rows reads the archive, and what nothing accounts for is a finding
+
+**Applies if** you call the generated `pd.Digests`, or write rows beneath your
+servers -- a restore, a migration, anything through ent on a kind that has a
+generated `Add` or `Patch` (payday#108).
+
+- **`pd.Digests(ctx, db, digest, policy)`** takes the trail's policy, and reads
+  its archive for a row whose newest line of the trail has left the database.
+  `trail.Policy{}` reads none. `db` is the database: each page is read in a
+  read-only transaction of its own.
+- **`Rows.NotOnTrail` is the rows, not a count**, and `Rows.Ok()` is false while
+  there are any: a row nothing on the trail is about is what a row added past
+  the servers looks like. `Rows.Archived` says how many were checked against the
+  archive.
+- **`pd.Record(ctx, db, contents, action, ids)`** puts rows you wrote beneath
+  the servers on the trail as the act that wrote them: call it in the
+  transaction that wrote them. Give the operator a command that records what
+  `pd.Digests` found once somebody has looked.
+- **A kind you only ever write through ent** should not generate an `Add` or a
+  `Patch`; while it does, each of its rows is not on the trail.
+- **`audit.CheckRows` and `audit.Newest` are gone**; `audit.CheckKind` is what
+  the generated code calls.
+
 ## A row of the trail keeps a digest of the row its write left
 
 **Applies if** you generate with `pd gen`. `Audit` has two new columns,
