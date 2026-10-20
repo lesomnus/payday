@@ -352,33 +352,6 @@ message Robot {
   option (payday.entity) = {domain: 7, global: {}, erase: {hard: {}}};
 }`,
 		says: "the key cannot be personal",
-	}, {
-		// Each of these is a declaration that does nothing, which is one
-		// somebody relies on: the field is about a person or it is not, a
-		// secret is off the trail already, and an identifier is never personal.
-		what: "a field declared personal and impersonal",
-		src: tenant + entity("Robot", `domain: 7, global: {}`,
-			`string email = 8 [(payday.field) = {personal: true, impersonal: true}];`),
-		says: "declared personal and impersonal",
-	}, {
-		what: "a field declared secret and impersonal",
-		src: tenant + entity("Robot", `domain: 7, global: {}`,
-			`bytes hash = 8 [(payday.field) = {secret: true, impersonal: true}];`),
-		says: "declared secret and impersonal",
-	}, {
-		what: "an edge declared impersonal",
-		src: tenant + entity("Robot", `domain: 7, global: {}`,
-			`Robot buddy = 8 [(orm.edge) = {nullable: true}, (payday.field) = {impersonal: true}];`),
-		says: "an edge is never personal",
-	}, {
-		what: "a key declared impersonal",
-		src: tenant + `
-message Robot {
-  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}, (payday.field) = {impersonal: true}];
-  option (orm.message) = {rpc: {crud: true}};
-  option (payday.entity) = {domain: 7, global: {}, erase: {hard: {}}};
-}`,
-		says: "the key is never personal",
 	}} {
 		t.Run(tt.what, func(t *testing.T) {
 			_, err := read(t, tt.src)
@@ -394,14 +367,14 @@ message Robot {
 }
 
 // TestPersonalIsRead: what an entity declared personal is read by name and by
-// number, beside what it declared secret and what it declared impersonal, and
+// number, beside what it declared secret and what it said is not personal, and
 // only for the entity it is on.
 func TestPersonalIsRead(t *testing.T) {
 	s, err := read(t, tenant+entity("Robot", `domain: 7, global: {}`,
 		`string email = 8 [(payday.field) = {personal: true}];`,
 		`bytes hash = 9 [(payday.field) = {secret: true}];`,
 		`map<string, string> notes = 10 [(payday.field) = {personal: true}];`,
-		`string role = 11 [(payday.field) = {impersonal: true}];`,
+		`string role = 11 [(payday.field) = {personal: false}];`,
 	))
 	if err != nil {
 		t.Fatal(err)
@@ -413,8 +386,8 @@ func TestPersonalIsRead(t *testing.T) {
 			if !slices.Equal(v.Personal, []string{"email", "notes"}) || !slices.Equal(v.PersonalNumbers, []uint32{8, 10}) {
 				t.Errorf("Robot is personal in %v %v", v.Personal, v.PersonalNumbers)
 			}
-			if !slices.Equal(v.Impersonal, []string{"role"}) {
-				t.Errorf("Robot is impersonal in %v", v.Impersonal)
+			if !slices.Equal(v.NotPersonal, []string{"role"}) {
+				t.Errorf("Robot is said not personal in %v", v.NotPersonal)
 			}
 			if !slices.Equal(v.SecretNumbers, []uint32{9}) {
 				t.Errorf("Robot is secret in %v", v.SecretNumbers)

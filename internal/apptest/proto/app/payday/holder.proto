@@ -184,7 +184,7 @@ message Holder {
   // Not personal: it names a directory, and which one is the record.
   string directory = 10 [(payday.field) = {
     stamped: true
-    impersonal: true
+    personal: false
   }];
   // And an edge an overlay adds, to a row behind the wall. The holder's gate
   // is written by hand and once asked about its tenant and nothing else, so an

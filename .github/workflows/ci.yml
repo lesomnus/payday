@@ -48,9 +48,17 @@ jobs:
       #
       # A change that breaks the wire on purpose is a migration, and it fails
       # here. That is the point -- it should be argued for in a review rather
-      # than noticed by an app. Push the baseline first, or say so and skip.
-      - run: buf breaking --against '.git#ref=origin/main'
-      - run: buf breaking --against buf.build/payday/payday:dev
+      # than noticed by an app. Push the baseline first, or say so in
+      # buf.yaml's `breaking.ignore_only` for the one change, and take it out
+      # once both baselines have it.
+      #
+      # Each file is checked in the module it belongs to (`--exclude-imports`):
+      # apptest imports payday's schema, and checked again there as an import
+      # it is out of reach of an exception made for payday's own module. And
+      # the registry holds payday's module and nothing else, so that module is
+      # what is compared with it.
+      - run: buf breaking --against '.git#ref=origin/main' --exclude-imports
+      - run: buf breaking proto --against buf.build/payday/payday:dev
 
       # Before the suite, because the suite ends by regenerating the app from
       # its schema and the TypeScript half of that needs the plugin. A run

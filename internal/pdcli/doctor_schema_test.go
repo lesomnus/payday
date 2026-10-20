@@ -48,8 +48,8 @@ func TestTheReferenceAppIsWell(t *testing.T) {
 
 // TestDoctorAsksWhatAFieldOfAnEntityThatHoldsPeopleIs: an entity with a
 // personal field holds people, and a field of free text on it that says
-// nothing is one the trail keeps as a value. `impersonal` is the answer that
-// is not "personal", and it is an answer.
+// nothing is one the trail keeps as a value. `personal: false` is the answer
+// that is not "personal", and it is an answer.
 func TestDoctorAsksWhatAFieldOfAnEntityThatHoldsPeopleIs(t *testing.T) {
 	x := require.New(t)
 	l := apptest(t, x)
@@ -61,7 +61,7 @@ func TestDoctorAsksWhatAFieldOfAnEntityThatHoldsPeopleIs(t *testing.T) {
 	x.Contains(v, "app.Visit holds people and says nothing of purpose")
 	x.Contains(v, "proto/app/visit.proto:18  purpose", "where it is declared, to the line")
 
-	x.NoError(os.WriteFile(at, []byte(visit("string purpose = 8 [(payday.field) = {impersonal: true}];")), 0o644))
+	x.NoError(os.WriteFile(at, []byte(visit("string purpose = 8 [(payday.field) = {personal: false}];")), 0o644))
 	x.NotContains(found(t, l), "app.Visit")
 }
 

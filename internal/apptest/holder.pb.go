@@ -392,7 +392,7 @@ const file_app_payday_holder_proto_rawDesc = "" +
 	"idpSubject\x12.\n" +
 	"\aprofile\x18\t \x01(\v2\f.app.ProfileB\x06\xaa\xc1\x16\x02\x18\x01R\aprofile\x12&\n" +
 	"\tdirectory\x18\n" +
-	" \x01(\tB\b\xaa\xc1\x16\x04\x10\x01 \x01R\tdirectory\x12(\n" +
+	" \x01(\tB\b\xaa\xc1\x16\x04\x10\x01\x18\x00R\tdirectory\x12(\n" +
 	"\x05robot\x18\v \x01(\v2\n" +
 	".app.RobotB\x06\xf2\x82\x16\x028\x01R\x05robot\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
