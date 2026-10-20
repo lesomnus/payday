@@ -520,12 +520,14 @@ func (*entity_Global_) isEntity_Tenancy() {}
 // the app that happens to hold the field rather than beside the field. The next
 // app storing a verifier rediscovers the whole argument.
 type Field struct {
-	state               protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Secret   bool                   `protobuf:"varint,1,opt,name=secret"`
-	xxx_hidden_Stamped  bool                   `protobuf:"varint,2,opt,name=stamped"`
-	xxx_hidden_Personal bool                   `protobuf:"varint,3,opt,name=personal"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Secret      bool                   `protobuf:"varint,1,opt,name=secret"`
+	xxx_hidden_Stamped     bool                   `protobuf:"varint,2,opt,name=stamped"`
+	xxx_hidden_Personal    bool                   `protobuf:"varint,3,opt,name=personal"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Field) Reset() {
@@ -584,6 +586,19 @@ func (x *Field) SetStamped(v bool) {
 
 func (x *Field) SetPersonal(v bool) {
 	x.xxx_hidden_Personal = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *Field) HasPersonal() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Field) ClearPersonal() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Personal = false
 }
 
 type Field_builder struct {
@@ -729,7 +744,18 @@ type Field_builder struct {
 	//
 	// An edge, and the key, cannot be personal: they are identifiers, which is
 	// the one thing the trail is made of.
-	Personal bool
+	//
+	// # Saying a field is not personal
+	//
+	// Unset says nothing, and `personal: false` says the field was looked at and
+	// is not about a person: a role, a state, the name of a provider. The trail
+	// treats the two alike and keeps a value of either; only the second is a
+	// decision, and a schema that holds people is one whose undecided fields are
+	// the ones that leak. So this field has presence where the rest of the
+	// message has none: an unset bool and a false one are different statements,
+	// and a tool that asks a schema whether it has decided needs to tell them
+	// apart.
+	Personal *bool
 }
 
 func (b0 Field_builder) Build() *Field {
@@ -738,7 +764,10 @@ func (b0 Field_builder) Build() *Field {
 	_, _ = b, x
 	x.xxx_hidden_Secret = b.Secret
 	x.xxx_hidden_Stamped = b.Stamped
-	x.xxx_hidden_Personal = b.Personal
+	if b.Personal != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Personal = *b.Personal
+	}
 	return m0
 }
 
@@ -1633,11 +1662,11 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05Order\x12\x1e\n" +
 	"\x05field\x18\x01 \x01(\v2\b.orm.RefR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
-	"\atenancy\"U\n" +
+	"\atenancy\"\\\n" +
 	"\x05Field\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
-	"\astamped\x18\x02 \x01(\bR\astamped\x12\x1a\n" +
-	"\bpersonal\x18\x03 \x01(\bR\bpersonal*k\n" +
+	"\astamped\x18\x02 \x01(\bR\astamped\x12!\n" +
+	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonal*k\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

@@ -550,5 +550,16 @@ message Field {
   //
   // An edge, and the key, cannot be personal: they are identifiers, which is
   // the one thing the trail is made of.
-  bool personal = 3;
+  //
+  // # Saying a field is not personal
+  //
+  // Unset says nothing, and `personal: false` says the field was looked at and
+  // is not about a person: a role, a state, the name of a provider. The trail
+  // treats the two alike and keeps a value of either; only the second is a
+  // decision, and a schema that holds people is one whose undecided fields are
+  // the ones that leak. So this field has presence where the rest of the
+  // message has none: an unset bool and a false one are different statements,
+  // and a tool that asks a schema whether it has decided needs to tell them
+  // apart.
+  bool personal = 3 [features.field_presence = EXPLICIT];
 }
