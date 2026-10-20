@@ -37,6 +37,8 @@ type AuditAddRequest struct {
 	xxx_hidden_CounterpartTenantId []byte                 `protobuf:"bytes,18,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
 	xxx_hidden_Domain              uint32                 `protobuf:"varint,19,opt,name=domain"`
 	xxx_hidden_Fields              []uint32               `protobuf:"varint,20,rep,packed,name=fields"`
+	xxx_hidden_Digest              []byte                 `protobuf:"bytes,21,opt,name=digest"`
+	xxx_hidden_DigestFields        []uint32               `protobuf:"varint,22,rep,packed,name=digest_fields,json=digestFields"`
 	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
 	XXX_presence                   [1]uint32
 	unknownFields                  protoimpl.UnknownFields
@@ -159,12 +161,26 @@ func (x *AuditAddRequest) GetFields() []uint32 {
 	return nil
 }
 
+func (x *AuditAddRequest) GetDigest() []byte {
+	if x != nil {
+		return x.xxx_hidden_Digest
+	}
+	return nil
+}
+
+func (x *AuditAddRequest) GetDigestFields() []uint32 {
+	if x != nil {
+		return x.xxx_hidden_DigestFields
+	}
+	return nil
+}
+
 func (x *AuditAddRequest) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
 	}
 	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 15)
 }
 
 func (x *AuditAddRequest) SetTenantId(v []byte) {
@@ -229,16 +245,28 @@ func (x *AuditAddRequest) SetCounterpartTenantId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_CounterpartTenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 15)
 }
 
 func (x *AuditAddRequest) SetDomain(v uint32) {
 	x.xxx_hidden_Domain = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 15)
 }
 
 func (x *AuditAddRequest) SetFields(v []uint32) {
 	x.xxx_hidden_Fields = v
+}
+
+func (x *AuditAddRequest) SetDigest(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Digest = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 15)
+}
+
+func (x *AuditAddRequest) SetDigestFields(v []uint32) {
+	x.xxx_hidden_DigestFields = v
 }
 
 func (x *AuditAddRequest) HasId() bool {
@@ -269,6 +297,13 @@ func (x *AuditAddRequest) HasDomain() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
 }
 
+func (x *AuditAddRequest) HasDigest() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
+}
+
 func (x *AuditAddRequest) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -288,6 +323,11 @@ func (x *AuditAddRequest) ClearDomain() {
 	x.xxx_hidden_Domain = 0
 }
 
+func (x *AuditAddRequest) ClearDigest() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
+	x.xxx_hidden_Digest = nil
+}
+
 type AuditAddRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -304,6 +344,8 @@ type AuditAddRequest_builder struct {
 	CounterpartTenantId []byte
 	Domain              *uint32
 	Fields              []uint32
+	Digest              []byte
+	DigestFields        []uint32
 }
 
 func (b0 AuditAddRequest_builder) Build() *AuditAddRequest {
@@ -311,7 +353,7 @@ func (b0 AuditAddRequest_builder) Build() *AuditAddRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 15)
 		x.xxx_hidden_Id = b.Id
 	}
 	x.xxx_hidden_TenantId = b.TenantId
@@ -324,14 +366,19 @@ func (b0 AuditAddRequest_builder) Build() *AuditAddRequest {
 	x.xxx_hidden_ActorTenantId = b.ActorTenantId
 	x.xxx_hidden_Value = b.Value
 	if b.CounterpartTenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 15)
 		x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
 	}
 	if b.Domain != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 15)
 		x.xxx_hidden_Domain = *b.Domain
 	}
 	x.xxx_hidden_Fields = b.Fields
+	if b.Digest != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 15)
+		x.xxx_hidden_Digest = b.Digest
+	}
+	x.xxx_hidden_DigestFields = b.DigestFields
 	return m0
 }
 
@@ -569,6 +616,8 @@ type AuditSelect struct {
 	xxx_hidden_CounterpartTenantId bool                   `protobuf:"varint,18,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
 	xxx_hidden_Domain              bool                   `protobuf:"varint,19,opt,name=domain"`
 	xxx_hidden_Fields              bool                   `protobuf:"varint,20,opt,name=fields"`
+	xxx_hidden_Digest              bool                   `protobuf:"varint,21,opt,name=digest"`
+	xxx_hidden_DigestFields        bool                   `protobuf:"varint,22,opt,name=digest_fields,json=digestFields"`
 	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
 	XXX_presence                   [1]uint32
 	unknownFields                  protoimpl.UnknownFields
@@ -691,69 +740,93 @@ func (x *AuditSelect) GetFields() bool {
 	return false
 }
 
+func (x *AuditSelect) GetDigest() bool {
+	if x != nil {
+		return x.xxx_hidden_Digest
+	}
+	return false
+}
+
+func (x *AuditSelect) GetDigestFields() bool {
+	if x != nil {
+		return x.xxx_hidden_DigestFields
+	}
+	return false
+}
+
 func (x *AuditSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 15)
 }
 
 func (x *AuditSelect) SetTenantId(v bool) {
 	x.xxx_hidden_TenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 15)
 }
 
 func (x *AuditSelect) SetActorId(v bool) {
 	x.xxx_hidden_ActorId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 15)
 }
 
 func (x *AuditSelect) SetTraceId(v bool) {
 	x.xxx_hidden_TraceId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 15)
 }
 
 func (x *AuditSelect) SetAction(v bool) {
 	x.xxx_hidden_Action = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 15)
 }
 
 func (x *AuditSelect) SetObjectId(v bool) {
 	x.xxx_hidden_ObjectId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 15)
 }
 
 func (x *AuditSelect) SetPatch(v bool) {
 	x.xxx_hidden_Patch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 15)
 }
 
 func (x *AuditSelect) SetDateCreated(v bool) {
 	x.xxx_hidden_DateCreated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 15)
 }
 
 func (x *AuditSelect) SetActorTenantId(v bool) {
 	x.xxx_hidden_ActorTenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 15)
 }
 
 func (x *AuditSelect) SetValue(v bool) {
 	x.xxx_hidden_Value = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 15)
 }
 
 func (x *AuditSelect) SetCounterpartTenantId(v bool) {
 	x.xxx_hidden_CounterpartTenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 15)
 }
 
 func (x *AuditSelect) SetDomain(v bool) {
 	x.xxx_hidden_Domain = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 15)
 }
 
 func (x *AuditSelect) SetFields(v bool) {
 	x.xxx_hidden_Fields = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 15)
+}
+
+func (x *AuditSelect) SetDigest(v bool) {
+	x.xxx_hidden_Digest = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 15)
+}
+
+func (x *AuditSelect) SetDigestFields(v bool) {
+	x.xxx_hidden_DigestFields = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 15)
 }
 
 func (x *AuditSelect) HasAll() bool {
@@ -847,6 +920,20 @@ func (x *AuditSelect) HasFields() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
 }
 
+func (x *AuditSelect) HasDigest() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
+}
+
+func (x *AuditSelect) HasDigestFields() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 14)
+}
+
 func (x *AuditSelect) ClearAll() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_All = false
@@ -912,6 +999,16 @@ func (x *AuditSelect) ClearFields() {
 	x.xxx_hidden_Fields = false
 }
 
+func (x *AuditSelect) ClearDigest() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
+	x.xxx_hidden_Digest = false
+}
+
+func (x *AuditSelect) ClearDigestFields() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 14)
+	x.xxx_hidden_DigestFields = false
+}
+
 type AuditSelect_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -928,6 +1025,8 @@ type AuditSelect_builder struct {
 	CounterpartTenantId *bool
 	Domain              *bool
 	Fields              *bool
+	Digest              *bool
+	DigestFields        *bool
 }
 
 func (b0 AuditSelect_builder) Build() *AuditSelect {
@@ -935,56 +1034,64 @@ func (b0 AuditSelect_builder) Build() *AuditSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 15)
 		x.xxx_hidden_All = *b.All
 	}
 	if b.TenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 15)
 		x.xxx_hidden_TenantId = *b.TenantId
 	}
 	if b.ActorId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 15)
 		x.xxx_hidden_ActorId = *b.ActorId
 	}
 	if b.TraceId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 15)
 		x.xxx_hidden_TraceId = *b.TraceId
 	}
 	if b.Action != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 15)
 		x.xxx_hidden_Action = *b.Action
 	}
 	if b.ObjectId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 15)
 		x.xxx_hidden_ObjectId = *b.ObjectId
 	}
 	if b.Patch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 15)
 		x.xxx_hidden_Patch = *b.Patch
 	}
 	if b.DateCreated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 15)
 		x.xxx_hidden_DateCreated = *b.DateCreated
 	}
 	if b.ActorTenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 15)
 		x.xxx_hidden_ActorTenantId = *b.ActorTenantId
 	}
 	if b.Value != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 15)
 		x.xxx_hidden_Value = *b.Value
 	}
 	if b.CounterpartTenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 15)
 		x.xxx_hidden_CounterpartTenantId = *b.CounterpartTenantId
 	}
 	if b.Domain != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 15)
 		x.xxx_hidden_Domain = *b.Domain
 	}
 	if b.Fields != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 15)
 		x.xxx_hidden_Fields = *b.Fields
+	}
+	if b.Digest != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 15)
+		x.xxx_hidden_Digest = *b.Digest
+	}
+	if b.DigestFields != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 15)
+		x.xxx_hidden_DigestFields = *b.DigestFields
 	}
 	return m0
 }
@@ -1004,6 +1111,8 @@ type AuditPatchRequest struct {
 	xxx_hidden_CounterpartTenantIdNull bool                   `protobuf:"varint,37,opt,name=counterpart_tenant_id_null,json=counterpartTenantIdNull"`
 	xxx_hidden_Domain                  uint32                 `protobuf:"varint,38,opt,name=domain"`
 	xxx_hidden_Fields                  []uint32               `protobuf:"varint,40,rep,packed,name=fields"`
+	xxx_hidden_Digest                  []byte                 `protobuf:"bytes,42,opt,name=digest"`
+	xxx_hidden_DigestFields            []uint32               `protobuf:"varint,44,rep,packed,name=digest_fields,json=digestFields"`
 	XXX_raceDetectHookData             protoimpl.RaceDetectHookData
 	XXX_presence                       [1]uint32
 	unknownFields                      protoimpl.UnknownFields
@@ -1129,6 +1238,20 @@ func (x *AuditPatchRequest) GetFields() []uint32 {
 	return nil
 }
 
+func (x *AuditPatchRequest) GetDigest() []byte {
+	if x != nil {
+		return x.xxx_hidden_Digest
+	}
+	return nil
+}
+
+func (x *AuditPatchRequest) GetDigestFields() []uint32 {
+	if x != nil {
+		return x.xxx_hidden_DigestFields
+	}
+	return nil
+}
+
 func (x *AuditPatchRequest) SetRef(v *AuditRef) {
 	x.xxx_hidden_Ref = v
 }
@@ -1138,7 +1261,7 @@ func (x *AuditPatchRequest) SetTenantId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_TenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 15)
 }
 
 func (x *AuditPatchRequest) SetActorId(v []byte) {
@@ -1146,7 +1269,7 @@ func (x *AuditPatchRequest) SetActorId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_ActorId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 15)
 }
 
 func (x *AuditPatchRequest) SetTraceId(v []byte) {
@@ -1154,12 +1277,12 @@ func (x *AuditPatchRequest) SetTraceId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_TraceId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 15)
 }
 
 func (x *AuditPatchRequest) SetAction(v string) {
 	x.xxx_hidden_Action = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 15)
 }
 
 func (x *AuditPatchRequest) SetObjectId(v []byte) {
@@ -1167,7 +1290,7 @@ func (x *AuditPatchRequest) SetObjectId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_ObjectId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 15)
 }
 
 func (x *AuditPatchRequest) SetPatch(v []byte) {
@@ -1175,7 +1298,7 @@ func (x *AuditPatchRequest) SetPatch(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Patch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 15)
 }
 
 func (x *AuditPatchRequest) SetActorTenantId(v []byte) {
@@ -1183,7 +1306,7 @@ func (x *AuditPatchRequest) SetActorTenantId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_ActorTenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 15)
 }
 
 func (x *AuditPatchRequest) SetValue(v []byte) {
@@ -1191,7 +1314,7 @@ func (x *AuditPatchRequest) SetValue(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Value = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 15)
 }
 
 func (x *AuditPatchRequest) SetCounterpartTenantId(v []byte) {
@@ -1199,21 +1322,33 @@ func (x *AuditPatchRequest) SetCounterpartTenantId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_CounterpartTenantId = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 15)
 }
 
 func (x *AuditPatchRequest) SetCounterpartTenantIdNull(v bool) {
 	x.xxx_hidden_CounterpartTenantIdNull = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 15)
 }
 
 func (x *AuditPatchRequest) SetDomain(v uint32) {
 	x.xxx_hidden_Domain = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 15)
 }
 
 func (x *AuditPatchRequest) SetFields(v []uint32) {
 	x.xxx_hidden_Fields = v
+}
+
+func (x *AuditPatchRequest) SetDigest(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Digest = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 15)
+}
+
+func (x *AuditPatchRequest) SetDigestFields(v []uint32) {
+	x.xxx_hidden_DigestFields = v
 }
 
 func (x *AuditPatchRequest) HasRef() bool {
@@ -1300,6 +1435,13 @@ func (x *AuditPatchRequest) HasDomain() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
 }
 
+func (x *AuditPatchRequest) HasDigest() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
+}
+
 func (x *AuditPatchRequest) ClearRef() {
 	x.xxx_hidden_Ref = nil
 }
@@ -1359,6 +1501,11 @@ func (x *AuditPatchRequest) ClearDomain() {
 	x.xxx_hidden_Domain = 0
 }
 
+func (x *AuditPatchRequest) ClearDigest() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
+	x.xxx_hidden_Digest = nil
+}
+
 type AuditPatchRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1379,6 +1526,8 @@ type AuditPatchRequest_builder struct {
 	CounterpartTenantIdNull *bool
 	Domain                  *uint32
 	Fields                  []uint32
+	Digest                  []byte
+	DigestFields            []uint32
 }
 
 func (b0 AuditPatchRequest_builder) Build() *AuditPatchRequest {
@@ -1387,50 +1536,55 @@ func (b0 AuditPatchRequest_builder) Build() *AuditPatchRequest {
 	_, _ = b, x
 	x.xxx_hidden_Ref = b.Ref
 	if b.TenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 15)
 		x.xxx_hidden_TenantId = b.TenantId
 	}
 	if b.ActorId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 15)
 		x.xxx_hidden_ActorId = b.ActorId
 	}
 	if b.TraceId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 15)
 		x.xxx_hidden_TraceId = b.TraceId
 	}
 	if b.Action != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 15)
 		x.xxx_hidden_Action = b.Action
 	}
 	if b.ObjectId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 15)
 		x.xxx_hidden_ObjectId = b.ObjectId
 	}
 	if b.Patch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 15)
 		x.xxx_hidden_Patch = b.Patch
 	}
 	if b.ActorTenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 15)
 		x.xxx_hidden_ActorTenantId = b.ActorTenantId
 	}
 	if b.Value != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 15)
 		x.xxx_hidden_Value = b.Value
 	}
 	if b.CounterpartTenantId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 15)
 		x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
 	}
 	if b.CounterpartTenantIdNull != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 15)
 		x.xxx_hidden_CounterpartTenantIdNull = *b.CounterpartTenantIdNull
 	}
 	if b.Domain != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 15)
 		x.xxx_hidden_Domain = *b.Domain
 	}
 	x.xxx_hidden_Fields = b.Fields
+	if b.Digest != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 15)
+		x.xxx_hidden_Digest = b.Digest
+	}
+	x.xxx_hidden_DigestFields = b.DigestFields
 	return m0
 }
 
@@ -2015,7 +2169,7 @@ var File_app_payday_audit_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xd8\x03\n" +
+	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\x95\x04\n" +
 	"\x0fAuditAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\"\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x05\xaa\x01\x02\b\x02R\btenantId\x12 \n" +
@@ -2030,13 +2184,15 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x05value\x18\x11 \x01(\fB\x05\xaa\x01\x02\b\x02R\x05value\x122\n" +
 	"\x15counterpart_tenant_id\x18\x12 \x01(\fR\x13counterpartTenantId\x12\x16\n" +
 	"\x06domain\x18\x13 \x01(\rR\x06domain\x12\x16\n" +
-	"\x06fields\x18\x14 \x03(\rR\x06fields\"\\\n" +
+	"\x06fields\x18\x14 \x03(\rR\x06fields\x12\x16\n" +
+	"\x06digest\x18\x15 \x01(\fR\x06digest\x12#\n" +
+	"\rdigest_fields\x18\x16 \x03(\rR\fdigestFields\"\\\n" +
 	"\x0fAuditGetRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12(\n" +
 	"\x06select\x18\x02 \x01(\v2\x10.app.AuditSelectR\x06select\"#\n" +
 	"\bAuditRef\x12\x10\n" +
 	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
-	"\x03key\"\x82\x03\n" +
+	"\x03key\"\xbf\x03\n" +
 	"\vAuditSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\bR\btenantId\x12\x19\n" +
@@ -2051,7 +2207,9 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x05value\x18\x11 \x01(\bR\x05value\x122\n" +
 	"\x15counterpart_tenant_id\x18\x12 \x01(\bR\x13counterpartTenantId\x12\x16\n" +
 	"\x06domain\x18\x13 \x01(\bR\x06domain\x12\x16\n" +
-	"\x06fields\x18\x14 \x01(\bR\x06fields\"\xb1\x03\n" +
+	"\x06fields\x18\x14 \x01(\bR\x06fields\x12\x16\n" +
+	"\x06digest\x18\x15 \x01(\bR\x06digest\x12#\n" +
+	"\rdigest_fields\x18\x16 \x01(\bR\fdigestFields\"\xee\x03\n" +
 	"\x11AuditPatchRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12\x1b\n" +
 	"\ttenant_id\x18\x04 \x01(\fR\btenantId\x12\x19\n" +
@@ -2065,7 +2223,9 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x15counterpart_tenant_id\x18$ \x01(\fR\x13counterpartTenantId\x12;\n" +
 	"\x1acounterpart_tenant_id_null\x18% \x01(\bR\x17counterpartTenantIdNull\x12\x16\n" +
 	"\x06domain\x18& \x01(\rR\x06domain\x12\x16\n" +
-	"\x06fields\x18( \x03(\rR\x06fields\"X\n" +
+	"\x06fields\x18( \x03(\rR\x06fields\x12\x16\n" +
+	"\x06digest\x18* \x01(\fR\x06digest\x12#\n" +
+	"\rdigest_fields\x18, \x03(\rR\fdigestFields\"X\n" +
 	"\x11AuditApplyRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +

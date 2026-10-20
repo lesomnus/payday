@@ -3453,6 +3453,20 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 		fields = audit1.FieldsOf(doc, md)
 	}
 
+	// A keyed digest of the row the write left, when the deployment keeps
+	// them: of the row it handed over, without what the entity declared
+	// `secret:` or `personal:`, and over the fields this build knows.
+	digest, covered := []byte{}, []uint32{}
+	if d := r.content.Digest; d != nil && c.Value != nil && md != nil {
+		row := proto.Clone(c.Value)
+		audit1.Clear(row, secret)
+		audit1.Clear(row, personal)
+		covered = audit1.Covered(md, slices.Concat(secret, personal))
+		if digest, err = d.Of(key, row, covered); err != nil {
+			return status.Errorf(codes.Internal, "the trail of %s: %s", c.Method, err)
+		}
+	}
+
 	var patch proto.Message
 	if level != audit1.ContentFields {
 		if v := audit1.Withhold(doc, slices.Concat(secret, personal)); v != nil {
@@ -3500,6 +3514,8 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 			SetPatch(notNull(v.Patch)).
 			SetValue(notNull(value)).
 			SetFields(fields).
+			SetDigest(digest).
+			SetDigestFields(covered).
 			SetDateCreated(time.Now().UTC())
 		if !v.Counterpart.IsZero() {
 			q.SetCounterpartTenantId(uuid.UUID(v.Counterpart))
@@ -3519,6 +3535,8 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 		Patch:               notNull(v.Patch),
 		Value:               notNull(value),
 		Fields:              fields,
+		Digest:              digest,
+		DigestFields:        covered,
 		CounterpartTenantId: v.CounterpartBytes(),
 	}.Build())
 
@@ -4200,6 +4218,338 @@ func (v *keptTrail) write(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// Digests checks every live row of every kind written through the servers
+// against the newest row of the trail in the database about it
+// (payday#102): each digested again, as a Get reads it, and compared with
+// the digest that row keeps. A row somebody changed past the servers is one
+// that differs. It changes nothing, and reads a page of a kind at a time.
+func Digests(ctx context.Context, db *ent.Client, d *audit1.Digest) (audit1.Rows, error) {
+	out := audit1.Rows{}
+	if err := digestsCell(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("cell: %w", err)
+	}
+	if err := digestsFleet(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("fleet: %w", err)
+	}
+	if err := digestsHolder(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("holder: %w", err)
+	}
+	if err := digestsJoint(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("joint: %w", err)
+	}
+	if err := digestsPairing(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("pairing: %w", err)
+	}
+	if err := digestsReading(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("reading: %w", err)
+	}
+	if err := digestsRobot(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("robot: %w", err)
+	}
+	if err := digestsSeal(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("seal: %w", err)
+	}
+	if err := digestsTenant(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("tenant: %w", err)
+	}
+	if err := digestsThing(ctx, db, d, &out); err != nil {
+		return out, fmt.Errorf("thing: %w", err)
+	}
+
+	return out, nil
+}
+
+func digestsCell(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Cell.Query().Where(cell.IdGT(after), cell.DateErasedIsNil())
+		bare.CellSelectInit(q, nil)
+
+		vs, err := q.Order(cell.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+func digestsFleet(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Fleet.Query().Where(fleet.IdGT(after), fleet.DateErasedIsNil())
+		bare.FleetSelectInit(q, nil)
+
+		vs, err := q.Order(fleet.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+func digestsHolder(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Holder.Query().Where(holder.IdGT(after), holder.DateErasedIsNil())
+		bare.HolderSelectInit(q, nil)
+
+		vs, err := q.Order(holder.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+func digestsJoint(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Joint.Query().Where(joint.IdGT(after), joint.DateErasedIsNil())
+		bare.JointSelectInit(q, nil)
+
+		vs, err := q.Order(joint.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+func digestsPairing(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Pairing.Query().Where(pairing.IdGT(after))
+		bare.PairingSelectInit(q, nil)
+
+		vs, err := q.Order(pairing.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+func digestsReading(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Reading.Query().Where(reading.IdGT(after))
+		bare.ReadingSelectInit(q, nil)
+
+		vs, err := q.Order(reading.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+func digestsRobot(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Robot.Query().Where(robot.IdGT(after), robot.DateErasedIsNil())
+		bare.RobotSelectInit(q, nil)
+
+		vs, err := q.Order(robot.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+func digestsSeal(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Seal.Query().Where(seal.IdGT(after), seal.DateErasedIsNil())
+		bare.SealSelectInit(q, nil)
+
+		vs, err := q.Order(seal.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+func digestsTenant(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Tenant.Query().Where(tenant.IdGT(after))
+		bare.TenantSelectInit(q, nil)
+
+		vs, err := q.Order(tenant.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+func digestsThing(ctx context.Context, db *ent.Client, d *audit1.Digest, out *audit1.Rows) error {
+	var after uuid.UUID
+	for {
+		q := db.Thing.Query().Where(thing.IdGT(after), thing.DateErasedIsNil())
+		bare.ThingSelectInit(q, nil)
+
+		vs, err := q.Order(thing.ById()).Limit(audit1.RowsPage).All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		rows := make([]audit1.Live, len(vs))
+		for i, v := range vs {
+			rows[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		}
+		if err := audit1.CheckRows(ctx, d, rows, newestDigests(db), out); err != nil {
+			return err
+		}
+
+		after = vs[len(vs)-1].Id
+	}
+}
+
+// newestDigests is what the newest row of the trail in the database about
+// each thing keeps of its digest: the rows about them read newest first, and
+// the first of each thing's kept.
+func newestDigests(db *ent.Client) audit1.Newest {
+	return func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]audit1.Recorded, error) {
+		ks := make([]uuid.UUID, len(ids))
+		for i, v := range ids {
+			ks[i] = uuid.UUID(v)
+		}
+
+		vs, err := db.Audit.Query().
+			Where(audit.ObjectIdIn(ks...)).
+			Order(audit.ByDateCreated(sql.OrderDesc()), audit.ById(sql.OrderDesc())).
+			Select(audit.FieldObjectId, audit.FieldDigest, audit.FieldDigestFields).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		out := map[pdid.Id]audit1.Recorded{}
+		for _, v := range vs {
+			k := pdid.Id(v.ObjectId)
+			if _, ok := out[k]; !ok {
+				out[k] = audit1.Recorded{Digest: v.Digest, Fields: v.DigestFields}
+			}
+		}
+
+		return out, nil
+	}
 }
 
 var _ *patchpb.Patch
@@ -6739,6 +7089,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				{Number: 16, Name: audit.FieldActorTenantId, Type: 64, Nullable: false, Key: 0},
 				{Number: 17, Name: audit.FieldValue, Type: 12, Nullable: false, Key: 0},
 				{Number: 19, Name: audit.FieldDomain, Type: 13, Nullable: false, Key: 0},
+				{Number: 21, Name: audit.FieldDigest, Type: 12, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err

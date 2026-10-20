@@ -211,6 +211,13 @@ its URI once the app imports what speaks to it (see
 [keys in a device](../runtime.md#keys-in-a-device)), and any other
 `crypto.Signer` is handed in as `trail.Policy.Signer`.
 
+The live rows can be checked as well. With `audit.digest.key`, each row of the
+trail keeps a keyed digest of the row its write left. The key is a file of
+`openssl rand -base64 32`, mounted as a secret, as the checkpoint key is. The
+generated `pd.Digests` finds a row somebody changed in the database past the
+servers: give the operator a command that runs it, on a schedule too. See
+[a digest of the row the write left](../runtime.md#a-digest-of-the-row-the-write-left).
+
 The key signs every row of the manifest as well, so that a row changed after
 the latest checkpoint is found too, and each checkpoint names the one before
 it. On a WORM mount, say so — `audit.checkpoints.write_once: true` — and the

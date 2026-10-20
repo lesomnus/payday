@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -135,6 +136,92 @@ type AuditConfig struct {
 	// Keys seals what the archive's rows say, a key per tenant. See
 	// [AuditKeysConfig].
 	Keys AuditKeysConfig `yaml:"keys"`
+
+	// Digest keys the digest each row of the trail keeps of the row its write
+	// left. See [AuditDigestConfig].
+	Digest AuditDigestConfig `yaml:"digest"`
+}
+
+// AuditDigestConfig keys the digest each row of the trail keeps of the row its
+// write left (`Audit.digest`, payday#102): what lets a live row be checked
+// against the trail, so that one changed in the database past the servers is
+// found.
+//
+//	audit:
+//	  digest:
+//	    key: /run/secrets/audit-digest   # openssl rand -base64 32
+//
+// The key is kept out of the database and out of its backups -- mounted as a
+// secret, as `audit.checkpoints.key` is -- since a digest is worth what it
+// keeps from somebody who can write the database, and that is a key they do
+// not have. Empty digests nothing, which is what a trail was before.
+type AuditDigestConfig struct {
+	// Key is at least 32 random bytes in base64, as `openssl rand -base64 32`
+	// prints them. It is one of two things, told apart by how it begins:
+	//
+	//   - `base64:`, and then the key, which is how a secret is given through
+	//     the environment (`<APP>_AUDIT_DIGEST_KEY`);
+	//   - anything else: the file the key is in, which is how a secret is
+	//     mounted.
+	Key string `yaml:"key"`
+
+	// Previous is the keys Key has replaced, in either form, for checking the
+	// digests made under them. A digest says which key it was made under, and
+	// one under a key in neither is said to be so rather than to differ.
+	Previous []string `yaml:"previous"`
+}
+
+// digest is the block, read: nil for none.
+func (c AuditDigestConfig) digest() (*audit.Digest, error) {
+	if strings.TrimSpace(c.Key) == "" {
+		if len(c.Previous) > 0 {
+			return nil, errors.New("previous: names keys a digest is checked with, and there is no key to make one")
+		}
+
+		return nil, nil
+	}
+
+	key, err := digestKeyOf(c.Key)
+	if err != nil {
+		return nil, fmt.Errorf("key: %w", err)
+	}
+
+	previous := make([][]byte, len(c.Previous))
+	for i, v := range c.Previous {
+		if previous[i], err = digestKeyOf(v); err != nil {
+			return nil, fmt.Errorf("previous[%d]: %w", i, err)
+		}
+	}
+
+	return audit.NewDigest(key, previous...)
+}
+
+// digestKeyOf reads what `audit.digest.key` says: the key itself after
+// `base64:`, or the file it is in.
+func digestKeyOf(v string) ([]byte, error) {
+	v = strings.TrimSpace(v)
+
+	text, inline := strings.CutPrefix(v, "base64:")
+	if !inline {
+		b, err := os.ReadFile(v)
+		if err != nil {
+			return nil, err
+		}
+		text = string(b)
+	}
+
+	text = strings.TrimSpace(text)
+	b, err := base64.StdEncoding.DecodeString(text)
+	if err != nil {
+		if b, err = base64.RawStdEncoding.DecodeString(text); err != nil {
+			return nil, errors.New("not base64: write one with `openssl rand -base64 32`")
+		}
+	}
+	if len(b) < 32 {
+		return nil, fmt.Errorf("%d bytes, and a key is at least 32: write one with `openssl rand -base64 32`", len(b))
+	}
+
+	return b, nil
 }
 
 // AuditKeysConfig seals what the archive's rows say: a key per tenant, each
@@ -393,6 +480,12 @@ func (c AuditConfig) Contents() (audit.Contents, error) {
 		}
 		out.By[d] = v
 	}
+
+	d, err := c.Digest.digest()
+	if err != nil {
+		return out, fmt.Errorf("digest: %w", err)
+	}
+	out.Digest = d
 
 	return out, nil
 }
