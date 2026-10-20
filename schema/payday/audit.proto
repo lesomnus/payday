@@ -289,6 +289,36 @@ message Audit {
   // name is a label, and a field renamed is the same column.
   repeated uint32 fields = 20;
 
+  // A keyed digest of the row this write left (payday#102): HMAC-SHA256,
+  // under the deployment's `audit.digest.key`, of the row as `value` would
+  // hold it -- a field declared `secret` or `personal` cleared -- restricted
+  // to the fields in `digest_fields`, and of which thing it is and of that
+  // list. It is what says a live row is the one the last write the trail
+  // recorded left: digest the row again, and one somebody changed in the
+  // database past the servers does not match.
+  //
+  // Keyed, because a row of the trail in the database is not signed until a
+  // pass archives it, and a digest anybody can compute is one whoever can
+  // write the database computes again for the row they changed. The key is a
+  // file the process is given, not a row anything reads.
+  //
+  // A byte of version, eight of the key's fingerprint -- so a digest made
+  // before a rotation is checked with the key it was made under -- and the
+  // HMAC. Empty for a deployment with no key, for an Erase, which hands no
+  // row over, and for a row written before this.
+  //
+  // Defaulted, for the reason `domain` gives: the recorder is not the only
+  // writer of this table, and a column another writer must fill in is one it
+  // learns about from a refusal at run time.
+  bytes digest = 21 [(orm.field) = {default: ""}];
+
+  // The fields `digest` covers, by number: the entity's fields as the build
+  // that wrote it knew them, less what it cleared. So a column a later
+  // migration adds is outside every digest made before it, and an old row
+  // still matches; a column it covers that a migration rewrote does not,
+  // which is the point.
+  repeated uint32 digest_fields = 22;
+
   option (orm.message) = {
     rpc: {crud: true}
     indexes: [

@@ -1,10 +1,12 @@
 package config_test
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"os"
 	"path/filepath"
@@ -61,6 +63,40 @@ func TestTheCheckpointsKeyIsAFileOrTheDocumentItself(t *testing.T) {
 	x.ErrorContains(err, "audit.checkpoints.key")
 	_, err = config.AuditConfig{Checkpoints: config.AuditCheckpointsConfig{Trust: []string{"short"}}}.Policy()
 	x.ErrorContains(err, "audit.checkpoints.trust[0]")
+}
+
+// TestTheDigestKeyIsAFileOrTheKeyItself: base64 of at least 32 bytes, in the
+// file a secret is mounted as or after `base64:` for one that comes through the
+// environment -- and anything else refused where the process comes up, not
+// found when the rows are checked.
+func TestTheDigestKeyIsAFileOrTheKeyItself(t *testing.T) {
+	x := require.New(t)
+
+	key := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))
+	path := filepath.Join(t.TempDir(), "digest")
+	x.NoError(os.WriteFile(path, []byte(key+"\n"), 0o600))
+
+	for _, v := range []string{path, "base64:" + key, "base64:" + base64.RawStdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))} {
+		cs, err := config.AuditConfig{Digest: config.AuditDigestConfig{Key: v}}.Contents()
+		x.NoError(err, v)
+		x.NotNil(cs.Digest)
+	}
+
+	cs, err := config.AuditConfig{}.Contents()
+	x.NoError(err)
+	x.Nil(cs.Digest, "no key digests nothing")
+
+	for _, v := range []string{
+		"base64:" + base64.StdEncoding.EncodeToString([]byte("short")),
+		"base64:not base64!",
+		filepath.Join(t.TempDir(), "nothing"),
+	} {
+		_, err := config.AuditConfig{Digest: config.AuditDigestConfig{Key: v}}.Contents()
+		x.ErrorContains(err, "digest: key", v)
+	}
+
+	_, err = config.AuditConfig{Digest: config.AuditDigestConfig{Previous: []string{"base64:" + key}}}.Contents()
+	x.ErrorContains(err, "previous", "keys to check with and none to make a digest")
 }
 
 // TestCheckpointsGoWhereTheyAreToldTo.

@@ -695,6 +695,40 @@ func (m *AuditMutation) OldFields(ctx context.Context) (v []uint32, err error) {
 	return oldValue.Fields, nil
 }
 
+// OldDigest returns the old "digest" field's value of the Audit entity.
+// If the Audit object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditMutation) OldDigest(ctx context.Context) (v []byte, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDigest is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDigest requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDigest: %w", err)
+	}
+	return oldValue.Digest, nil
+}
+
+// OldDigestFields returns the old "digest_fields" field's value of the Audit entity.
+// If the Audit object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditMutation) OldDigestFields(ctx context.Context) (v []uint32, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDigestFields is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDigestFields requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDigestFields: %w", err)
+	}
+	return oldValue.DigestFields, nil
+}
+
 // OldField returns the old value of the field from the database. An error is
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
@@ -724,6 +758,10 @@ func (m *AuditMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDomain(ctx)
 	case audit.FieldFields:
 		return m.OldFields(ctx)
+	case audit.FieldDigest:
+		return m.OldDigest(ctx)
+	case audit.FieldDigestFields:
+		return m.OldDigestFields(ctx)
 	}
 	return nil, fmt.Errorf("unknown Audit field %s", name)
 }

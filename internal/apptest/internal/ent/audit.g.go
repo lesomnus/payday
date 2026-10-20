@@ -25,5 +25,7 @@ func (e *Audit) Proto() *apptest.Audit {
 	}
 	x.SetDomain(e.Domain)
 	x.SetFields(e.Fields)
+	x.SetDigest(e.Digest)
+	x.SetDigestFields(e.DigestFields)
 	return x
 }

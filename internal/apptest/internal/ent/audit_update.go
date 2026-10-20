@@ -183,6 +183,36 @@ func (_u *AuditUpdate) ClearFields() *AuditUpdate {
 	return _u
 }
 
+// SetDigest sets the "digest" field.
+func (_u *AuditUpdate) SetDigest(v []byte) *AuditUpdate {
+	_u.mutation.SetDigest(v)
+	return _u
+}
+
+// ClearDigest clears the value of the "digest" field.
+func (_u *AuditUpdate) ClearDigest() *AuditUpdate {
+	_u.mutation.ClearDigest()
+	return _u
+}
+
+// SetDigestFields sets the "digest_fields" field.
+func (_u *AuditUpdate) SetDigestFields(v []uint32) *AuditUpdate {
+	_u.mutation.SetDigestFields(v)
+	return _u
+}
+
+// AppendDigestFields appends value to the "digest_fields" field.
+func (_u *AuditUpdate) AppendDigestFields(v []uint32) *AuditUpdate {
+	_u.mutation.AppendDigestFields(v)
+	return _u
+}
+
+// ClearDigestFields clears the value of the "digest_fields" field.
+func (_u *AuditUpdate) ClearDigestFields() *AuditUpdate {
+	_u.mutation.ClearDigestFields()
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdate) Mutation() *AuditMutation {
 	return _u.mutation
@@ -282,6 +312,23 @@ func (_u *AuditUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.FieldsCleared() {
 		_spec.ClearField(audit.FieldFields, field.TypeJson)
+	}
+	if value, ok := _u.mutation.Digest(); ok {
+		_spec.SetField(audit.FieldDigest, field.TypeBytes, value)
+	}
+	if _u.mutation.DigestCleared() {
+		_spec.ClearField(audit.FieldDigest, field.TypeBytes)
+	}
+	if value, ok := _u.mutation.DigestFields(); ok {
+		_spec.SetField(audit.FieldDigestFields, field.TypeJson, value)
+	}
+	if value, ok := _u.mutation.AppendedDigestFields(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, audit.FieldDigestFields, value)
+		})
+	}
+	if _u.mutation.DigestFieldsCleared() {
+		_spec.ClearField(audit.FieldDigestFields, field.TypeJson)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -458,6 +505,36 @@ func (_u *AuditUpdateOne) ClearFields() *AuditUpdateOne {
 	return _u
 }
 
+// SetDigest sets the "digest" field.
+func (_u *AuditUpdateOne) SetDigest(v []byte) *AuditUpdateOne {
+	_u.mutation.SetDigest(v)
+	return _u
+}
+
+// ClearDigest clears the value of the "digest" field.
+func (_u *AuditUpdateOne) ClearDigest() *AuditUpdateOne {
+	_u.mutation.ClearDigest()
+	return _u
+}
+
+// SetDigestFields sets the "digest_fields" field.
+func (_u *AuditUpdateOne) SetDigestFields(v []uint32) *AuditUpdateOne {
+	_u.mutation.SetDigestFields(v)
+	return _u
+}
+
+// AppendDigestFields appends value to the "digest_fields" field.
+func (_u *AuditUpdateOne) AppendDigestFields(v []uint32) *AuditUpdateOne {
+	_u.mutation.AppendDigestFields(v)
+	return _u
+}
+
+// ClearDigestFields clears the value of the "digest_fields" field.
+func (_u *AuditUpdateOne) ClearDigestFields() *AuditUpdateOne {
+	_u.mutation.ClearDigestFields()
+	return _u
+}
+
 // Mutation returns the AuditMutation object of the builder.
 func (_u *AuditUpdateOne) Mutation() *AuditMutation {
 	return _u.mutation
@@ -587,6 +664,23 @@ func (_u *AuditUpdateOne) sqlSave(ctx context.Context) (_node *Audit, err error)
 	}
 	if _u.mutation.FieldsCleared() {
 		_spec.ClearField(audit.FieldFields, field.TypeJson)
+	}
+	if value, ok := _u.mutation.Digest(); ok {
+		_spec.SetField(audit.FieldDigest, field.TypeBytes, value)
+	}
+	if _u.mutation.DigestCleared() {
+		_spec.ClearField(audit.FieldDigest, field.TypeBytes)
+	}
+	if value, ok := _u.mutation.DigestFields(); ok {
+		_spec.SetField(audit.FieldDigestFields, field.TypeJson, value)
+	}
+	if value, ok := _u.mutation.AppendedDigestFields(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, audit.FieldDigestFields, value)
+		})
+	}
+	if _u.mutation.DigestFieldsCleared() {
+		_spec.ClearField(audit.FieldDigestFields, field.TypeJson)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Audit{config: _u.config}

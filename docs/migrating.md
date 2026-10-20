@@ -3,6 +3,19 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A row of the trail keeps a digest of the row its write left
+
+**Applies if** you generate with `pd gen`. `Audit` has two new columns,
+`digest` and `digest_fields`, so migrate. Rows written before keep neither, and
+nothing is digested until `audit.digest.key` names a key.
+
+- **`audit.digest.key`** (`<APP>_AUDIT_DIGEST_KEY`) is base64 of at least 32
+  random bytes (`openssl rand -base64 32`). Give it as the file it is in, or as
+  `base64:` and the key. Keys rotated out go in `audit.digest.previous`.
+- **The generated `pd.Digests(ctx, db, digest)`** checks the live rows against
+  the trail. Give the operator a command that runs it.
+- **An overlay on `Audit`** is written a row at a time, as before.
+
 ## `pd doctor` asks about a field that may hold a person
 
 **Applies if** an entity of yours has a field declared `personal`, or a field

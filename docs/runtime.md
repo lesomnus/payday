@@ -318,6 +318,44 @@ and cleared out of the row, and that it was set is in `Audit.fields`. That is
 the schema's to say and not a setting's, because the obligation it answers --
 to correct and to erase a person -- is not a deployment's to opt out of.
 
+#### A digest of the row the write left
+
+With `audit.digest.key`, each row of the trail also keeps a keyed digest of the
+row its write left (`Audit.digest`, payday#102). It is HMAC-SHA256 of the row as
+`value` would hold it, with `personal` and `secret` cleared, over the fields the
+build that wrote it knew. Those fields are recorded beside it
+(`Audit.digest_fields`). The recorder makes it from the row the write handed
+over, so it costs no statement.
+
+A live row is checked against it. The generated `pd.Digests` reads every live
+row of every kind written through the servers, digests it again, and compares
+it with the newest row of the trail in the database about it:
+
+```go
+rows, err := pd.Digests(ctx, db, contents.Digest)
+// rows.Differs: rows that are not what the last write the trail recorded
+// left -- changed in the database past the servers.
+```
+
+It is keyed because a row of the trail is signed only when a pass archives it.
+A digest anybody can compute is one whoever can write the database computes
+again for the row they changed. So the key is a file mounted as a secret, as the
+checkpoint key is, and kept out of the database and its backups. A digest names
+the key it was made under, and `audit.digest.previous` checks the ones made
+before a rotation.
+
+It does not see three things:
+
+- **A field declared `personal`.** A keyed hash of it would outlive the person's
+  erasure for as long as the key does.
+- **A row whose newest line of the trail has left the database for the archive.**
+  The check counts it as `NotOnTrail`.
+- **A kind written beneath the servers,** which the trail never recorded.
+
+A column a migration adds is outside every digest made before it, so the rows
+under it still match. A column a migration rewrote is a difference, which is
+the point.
+
 #### And per tenant, when the app answers for them
 
 A deployment whose customers keep their history for different lengths of time —

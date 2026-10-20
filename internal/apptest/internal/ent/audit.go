@@ -42,7 +42,11 @@ type Audit struct {
 	// Domain holds the value of the "domain" field.
 	Domain uint32 `json:"domain,omitempty"`
 	// Fields holds the value of the "fields" field.
-	Fields       []uint32 `json:"fields,omitempty"`
+	Fields []uint32 `json:"fields,omitempty"`
+	// Digest holds the value of the "digest" field.
+	Digest []byte `json:"digest,omitempty"`
+	// DigestFields holds the value of the "digest_fields" field.
+	DigestFields []uint32 `json:"digest_fields,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -51,7 +55,7 @@ func (*Audit) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case audit.FieldTraceId, audit.FieldPatch, audit.FieldValue, audit.FieldFields:
+		case audit.FieldTraceId, audit.FieldPatch, audit.FieldValue, audit.FieldFields, audit.FieldDigest, audit.FieldDigestFields:
 			values[i] = new([]byte)
 		case audit.FieldDomain:
 			values[i] = new(sql.NullInt64)
@@ -168,6 +172,20 @@ func (_m *Audit) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field fields: %w", err)
 				}
 			}
+		case audit.FieldDigest:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field digest", values[i])
+			} else if value != nil {
+				_m.Digest = *value
+			}
+		case audit.FieldDigestFields:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field digest_fields", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.DigestFields); err != nil {
+					return fmt.Errorf("unmarshal field digest_fields: %w", err)
+				}
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -241,6 +259,12 @@ func (_m *Audit) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("fields=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Fields))
+	builder.WriteString(", ")
+	builder.WriteString("digest=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Digest))
+	builder.WriteString(", ")
+	builder.WriteString("digest_fields=")
+	builder.WriteString(fmt.Sprintf("%v", _m.DigestFields))
 	builder.WriteByte(')')
 	return builder.String()
 }

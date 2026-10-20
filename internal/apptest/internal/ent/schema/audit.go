@@ -39,6 +39,10 @@ func (Audit) Fields() []ent.Field {
 			Default(0),
 		field.Json("fields", []uint32{}).
 			Optional(),
+		field.Bytes("digest").
+			Optional(),
+		field.Json("digest_fields", []uint32{}).
+			Optional(),
 	}
 }
 

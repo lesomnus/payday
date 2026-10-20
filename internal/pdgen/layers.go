@@ -787,6 +787,24 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		fields = ", pkgAudit.Ident("FieldsOf"), "(doc, md)")
 	g.P("	}")
 	g.P("")
+	// The digest of the row the write left (payday#102), made from the one it
+	// handed over -- so no statement more than the write already made. Every
+	// write but an Erase hands one, and the newest line of the trail about a
+	// live row is never an Erase's, which is what a check of the rows asks.
+	g.P("	// A keyed digest of the row the write left, when the deployment keeps")
+	g.P("	// them: of the row it handed over, without what the entity declared")
+	g.P("	// `secret:` or `personal:`, and over the fields this build knows.")
+	g.P("	digest, covered := []byte{}, []uint32{}")
+	g.P("	if d := r.content.Digest; d != nil && c.Value != nil && md != nil {")
+	g.P("		row := ", pkgProto.Ident("Clone"), "(c.Value)")
+	g.P("		", pkgAudit.Ident("Clear"), "(row, secret)")
+	g.P("		", pkgAudit.Ident("Clear"), "(row, personal)")
+	g.P("		covered = ", pkgAudit.Ident("Covered"), "(md, ", pkgSlices.Ident("Concat"), "(secret, personal))")
+	g.P("		if digest, err = d.Of(key, row, covered); err != nil {")
+	g.P("			return ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("Internal"), ", \"the trail of %s: %s\", c.Method, err)")
+	g.P("		}")
+	g.P("	}")
+	g.P("")
 	g.P("	var patch ", pkgProto.Ident("Message"))
 	g.P("	if level != ", pkgAudit.Ident("ContentFields"), " {")
 	g.P("		if v := ", pkgAudit.Ident("Withhold"), "(doc, ", pkgSlices.Ident("Concat"), "(secret, personal)); v != nil {")
@@ -842,6 +860,8 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 		g.P("			SetPatch(notNull(v.Patch)).")
 		g.P("			SetValue(notNull(value)).")
 		g.P("			SetFields(fields).")
+		g.P("			SetDigest(digest).")
+		g.P("			SetDigestFields(covered).")
 		g.P("			SetDateCreated(", pkgTime.Ident("Now"), "().UTC())")
 		g.P("		if !v.Counterpart.IsZero() {")
 		g.P("			q.SetCounterpartTenantId(", pkgUuid.Ident("UUID"), "(v.Counterpart))")
@@ -868,6 +888,8 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		Patch:         notNull(v.Patch),")
 	g.P("		Value:         notNull(value),")
 	g.P("		Fields:        fields,")
+	g.P("		Digest:        digest,")
+	g.P("		DigestFields:  covered,")
 	// Zero unless a layer said otherwise, which is nearly every write. It is
 	// the other tenant this one was about, and the wall on the trail counts
 	// it; see `audit.Concerning`.
@@ -884,6 +906,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	if keepsTrail(s) {
 		emitKeptTrail(g, s, p)
 	}
+	emitDigests(g, s, p)
 
 	// Referenced only so that the import is kept when a schema has no patch.
 	g.P("var _ *", pkgPatchpb.Ident("Patch"))
@@ -908,7 +931,7 @@ func keepsTrail(s *Schema) bool {
 		"id": true, "tenant_id": true, "actor_id": true, "trace_id": true,
 		"action": true, "object_id": true, "patch": true, "date_created": true,
 		"actor_tenant_id": true, "value": true, "counterpart_tenant_id": true,
-		"domain": true, "fields": true,
+		"domain": true, "fields": true, "digest": true, "digest_fields": true,
 	}
 	n := 0
 	for p := range v.Props() {

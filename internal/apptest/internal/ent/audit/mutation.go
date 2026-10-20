@@ -31,6 +31,9 @@ type Mutation struct {
 	adddomain             *int32
 	fields                *[]uint32
 	appendfields          []uint32
+	digest                *[]byte
+	digest_fields         *[]uint32
+	appenddigest_fields   []uint32
 	clearedFields         map[string]struct{}
 	predicates            []predicate.Audit
 }
@@ -366,6 +369,86 @@ func (m *Mutation) ResetFields() {
 	delete(m.clearedFields, FieldFields)
 }
 
+// SetDigest sets the "digest" field.
+func (m *Mutation) SetDigest(b []byte) {
+	m.digest = &b
+}
+
+// Digest returns the value of the "digest" field in the mutation.
+func (m *Mutation) Digest() (r []byte, exists bool) {
+	v := m.digest
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearDigest clears the value of the "digest" field.
+func (m *Mutation) ClearDigest() {
+	m.digest = nil
+	m.clearedFields[FieldDigest] = struct{}{}
+}
+
+// DigestCleared returns if the "digest" field was cleared in this mutation.
+func (m *Mutation) DigestCleared() bool {
+	_, ok := m.clearedFields[FieldDigest]
+	return ok
+}
+
+// ResetDigest resets all changes to the "digest" field.
+func (m *Mutation) ResetDigest() {
+	m.digest = nil
+	delete(m.clearedFields, FieldDigest)
+}
+
+// SetDigestFields sets the "digest_fields" field.
+func (m *Mutation) SetDigestFields(u []uint32) {
+	m.digest_fields = &u
+	m.appenddigest_fields = nil
+}
+
+// DigestFields returns the value of the "digest_fields" field in the mutation.
+func (m *Mutation) DigestFields() (r []uint32, exists bool) {
+	v := m.digest_fields
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// AppendDigestFields adds u to the "digest_fields" field.
+func (m *Mutation) AppendDigestFields(u []uint32) {
+	m.appenddigest_fields = append(m.appenddigest_fields, u...)
+}
+
+// AppendedDigestFields returns the list of values that were appended to the "digest_fields" field in this mutation.
+func (m *Mutation) AppendedDigestFields() ([]uint32, bool) {
+	if len(m.appenddigest_fields) == 0 {
+		return nil, false
+	}
+	return m.appenddigest_fields, true
+}
+
+// ClearDigestFields clears the value of the "digest_fields" field.
+func (m *Mutation) ClearDigestFields() {
+	m.digest_fields = nil
+	m.appenddigest_fields = nil
+	m.clearedFields[FieldDigestFields] = struct{}{}
+}
+
+// DigestFieldsCleared returns if the "digest_fields" field was cleared in this mutation.
+func (m *Mutation) DigestFieldsCleared() bool {
+	_, ok := m.clearedFields[FieldDigestFields]
+	return ok
+}
+
+// ResetDigestFields resets all changes to the "digest_fields" field.
+func (m *Mutation) ResetDigestFields() {
+	m.digest_fields = nil
+	m.appenddigest_fields = nil
+	delete(m.clearedFields, FieldDigestFields)
+}
+
 // Where appends a list predicates to the Mutation builder.
 func (m *Mutation) Where(ps ...predicate.Audit) {
 	m.predicates = append(m.predicates, ps...)
@@ -400,7 +483,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 14)
 	if m.tenant_id != nil {
 		fields = append(fields, FieldTenantId)
 	}
@@ -437,6 +520,12 @@ func (m *Mutation) Fields() []string {
 	if m.fields != nil {
 		fields = append(fields, FieldFields)
 	}
+	if m.digest != nil {
+		fields = append(fields, FieldDigest)
+	}
+	if m.digest_fields != nil {
+		fields = append(fields, FieldDigestFields)
+	}
 	return fields
 }
 
@@ -469,6 +558,10 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.Domain()
 	case FieldFields:
 		return m.GetFields()
+	case FieldDigest:
+		return m.Digest()
+	case FieldDigestFields:
+		return m.DigestFields()
 	}
 	return nil, false
 }
@@ -569,6 +662,20 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetFields(v)
 		return nil
+	case FieldDigest:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDigest(v)
+		return nil
+	case FieldDigestFields:
+		v, ok := value.([]uint32)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDigestFields(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Audit field %s", name)
 }
@@ -626,6 +733,12 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldFields) {
 		fields = append(fields, FieldFields)
 	}
+	if m.FieldCleared(FieldDigest) {
+		fields = append(fields, FieldDigest)
+	}
+	if m.FieldCleared(FieldDigestFields) {
+		fields = append(fields, FieldDigestFields)
+	}
 	return fields
 }
 
@@ -651,6 +764,12 @@ func (m *Mutation) ClearField(name string) error {
 		return nil
 	case FieldFields:
 		m.ClearFields()
+		return nil
+	case FieldDigest:
+		m.ClearDigest()
+		return nil
+	case FieldDigestFields:
+		m.ClearDigestFields()
 		return nil
 	}
 	return fmt.Errorf("unknown Audit nullable field %s", name)
@@ -695,6 +814,12 @@ func (m *Mutation) ResetField(name string) error {
 		return nil
 	case FieldFields:
 		m.ResetFields()
+		return nil
+	case FieldDigest:
+		m.ResetDigest()
+		return nil
+	case FieldDigestFields:
+		m.ResetDigestFields()
 		return nil
 	}
 	return fmt.Errorf("unknown Audit field %s", name)

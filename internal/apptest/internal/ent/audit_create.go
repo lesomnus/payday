@@ -119,6 +119,18 @@ func (_c *AuditCreate) SetFields(v []uint32) *AuditCreate {
 	return _c
 }
 
+// SetDigest sets the "digest" field.
+func (_c *AuditCreate) SetDigest(v []byte) *AuditCreate {
+	_c.mutation.SetDigest(v)
+	return _c
+}
+
+// SetDigestFields sets the "digest_fields" field.
+func (_c *AuditCreate) SetDigestFields(v []uint32) *AuditCreate {
+	_c.mutation.SetDigestFields(v)
+	return _c
+}
+
 // SetId sets the "id" field.
 func (_c *AuditCreate) SetId(v uuid.UUID) *AuditCreate {
 	_c.mutation.SetId(v)
@@ -290,6 +302,14 @@ func (_c *AuditCreate) createSpec() (*Audit, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.GetFields(); ok {
 		_spec.SetField(audit.FieldFields, field.TypeJson, value)
 		_node.Fields = value
+	}
+	if value, ok := _c.mutation.Digest(); ok {
+		_spec.SetField(audit.FieldDigest, field.TypeBytes, value)
+		_node.Digest = value
+	}
+	if value, ok := _c.mutation.DigestFields(); ok {
+		_spec.SetField(audit.FieldDigestFields, field.TypeJson, value)
+		_node.DigestFields = value
 	}
 	return _node, _spec
 }

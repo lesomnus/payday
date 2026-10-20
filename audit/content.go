@@ -87,9 +87,14 @@ func ParseContent(v string) (Content, error) {
 // Contents is the content of each kind of thing's rows of the trail: Default
 // for every kind By does not name. The zero value is [ContentPatch] for all of
 // them.
+//
+// Digest is the key a row's digest of the row its write left is made under,
+// and nil for none (payday#102). It is here because it is the other thing a
+// row of the trail holds of a write, and every recorder is handed this.
 type Contents struct {
 	Default Content
 	By      map[pdid.Domain]Content
+	Digest  *Digest
 }
 
 // Of is the content of the rows about a thing of domain `d`.

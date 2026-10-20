@@ -65,6 +65,8 @@ type Audit struct {
 	xxx_hidden_CounterpartTenantId []byte                 `protobuf:"bytes,18,opt,name=counterpart_tenant_id,json=counterpartTenantId"`
 	xxx_hidden_Domain              uint32                 `protobuf:"varint,19,opt,name=domain"`
 	xxx_hidden_Fields              []uint32               `protobuf:"varint,20,rep,packed,name=fields"`
+	xxx_hidden_Digest              []byte                 `protobuf:"bytes,21,opt,name=digest"`
+	xxx_hidden_DigestFields        []uint32               `protobuf:"varint,22,rep,packed,name=digest_fields,json=digestFields"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
 }
@@ -185,6 +187,20 @@ func (x *Audit) GetFields() []uint32 {
 	return nil
 }
 
+func (x *Audit) GetDigest() []byte {
+	if x != nil {
+		return x.xxx_hidden_Digest
+	}
+	return nil
+}
+
+func (x *Audit) GetDigestFields() []uint32 {
+	if x != nil {
+		return x.xxx_hidden_DigestFields
+	}
+	return nil
+}
+
 func (x *Audit) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -262,6 +278,17 @@ func (x *Audit) SetDomain(v uint32) {
 
 func (x *Audit) SetFields(v []uint32) {
 	x.xxx_hidden_Fields = v
+}
+
+func (x *Audit) SetDigest(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Digest = v
+}
+
+func (x *Audit) SetDigestFields(v []uint32) {
+	x.xxx_hidden_DigestFields = v
 }
 
 func (x *Audit) HasDateCreated() bool {
@@ -507,6 +534,34 @@ type Audit_builder struct {
 	// Numbers rather than names, as everywhere else the trail names a field: a
 	// name is a label, and a field renamed is the same column.
 	Fields []uint32
+	// A keyed digest of the row this write left (payday#102): HMAC-SHA256,
+	// under the deployment's `audit.digest.key`, of the row as `value` would
+	// hold it -- a field declared `secret` or `personal` cleared -- restricted
+	// to the fields in `digest_fields`, and of which thing it is and of that
+	// list. It is what says a live row is the one the last write the trail
+	// recorded left: digest the row again, and one somebody changed in the
+	// database past the servers does not match.
+	//
+	// Keyed, because a row of the trail in the database is not signed until a
+	// pass archives it, and a digest anybody can compute is one whoever can
+	// write the database computes again for the row they changed. The key is a
+	// file the process is given, not a row anything reads.
+	//
+	// A byte of version, eight of the key's fingerprint -- so a digest made
+	// before a rotation is checked with the key it was made under -- and the
+	// HMAC. Empty for a deployment with no key, for an Erase, which hands no
+	// row over, and for a row written before this.
+	//
+	// Defaulted, for the reason `domain` gives: the recorder is not the only
+	// writer of this table, and a column another writer must fill in is one it
+	// learns about from a refusal at run time.
+	Digest []byte
+	// The fields `digest` covers, by number: the entity's fields as the build
+	// that wrote it knew them, less what it cleared. So a column a later
+	// migration adds is outside every digest made before it, and an old row
+	// still matches; a column it covers that a migration rewrote does not,
+	// which is the point.
+	DigestFields []uint32
 }
 
 func (b0 Audit_builder) Build() *Audit {
@@ -526,6 +581,8 @@ func (b0 Audit_builder) Build() *Audit {
 	x.xxx_hidden_CounterpartTenantId = b.CounterpartTenantId
 	x.xxx_hidden_Domain = b.Domain
 	x.xxx_hidden_Fields = b.Fields
+	x.xxx_hidden_Digest = b.Digest
+	x.xxx_hidden_DigestFields = b.DigestFields
 	return m0
 }
 
@@ -533,7 +590,7 @@ var File_app_payday_audit_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xfa\a\n" +
+	"\x16app/payday/audit.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xc0\b\n" +
 	"\x05Audit\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
@@ -548,7 +605,9 @@ const file_app_payday_audit_proto_rawDesc = "" +
 	"\x05value\x18\x11 \x01(\fR\x05value\x12<\n" +
 	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\x13counterpartTenantId\x12\x1f\n" +
 	"\x06domain\x18\x13 \x01(\rB\a\xea\x82\x16\x03\x82\x01\x00R\x06domain\x12\x16\n" +
-	"\x06fields\x18\x14 \x03(\rR\x06fields:\x96\x04\xca\xfc\x15\xd8\x02\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
+	"\x06fields\x18\x14 \x03(\rR\x06fields\x12\x1f\n" +
+	"\x06digest\x18\x15 \x01(\fB\a\xea\x82\x16\x03\x82\x01\x00R\x06digest\x12#\n" +
+	"\rdigest_fields\x18\x16 \x03(\rR\fdigestFields:\x96\x04\xca\xfc\x15\xd8\x02\x12\x02\x10\x01\x1a\x17\x12\x06object\x1a\r\n" +
 	"\tobject_id\x10\v\x1a(\x12\x05trail\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a8\x12\x0fby_actor_tenant\x1a\x13\n" +
