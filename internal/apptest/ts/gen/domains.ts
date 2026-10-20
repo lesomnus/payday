@@ -45,6 +45,9 @@ export const RobotDomain = 7
 /** The domain identifiers of app.Seal carry. */
 export const SealDomain = 14
 
+/** The domain identifiers of app.Tally carry. */
+export const TallyDomain = 15
+
 /** The domain identifiers of app.Tenant carry. */
 export const TenantDomain = 1
 
@@ -64,6 +67,7 @@ pdid.register("app.Pairing", PairingDomain, "pairing")
 pdid.register("app.Reading", ReadingDomain, "reading")
 pdid.register("app.Robot", RobotDomain, "robot")
 pdid.register("app.Seal", SealDomain, "seal")
+pdid.register("app.Tally", TallyDomain, "tally")
 pdid.register("app.Tenant", TenantDomain, "tenant")
 pdid.register("shared.Thing", ThingDomain, "thing")
 

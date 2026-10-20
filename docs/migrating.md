@@ -21,8 +21,12 @@ generated `Add` or `Patch` (payday#108).
   the servers on the trail as the act that wrote them: call it in the
   transaction that wrote them. Give the operator a command that records what
   `pd.Digests` found once somebody has looked.
-- **A kind you only ever write through ent** should not generate an `Add` or a
-  `Patch`; while it does, each of its rows is not on the trail.
+- **A kind you only ever write through ent** declares no RPC -- `option
+  (orm.message) = {}`, with no `rpc` -- and is then not read by the check: no
+  server writes it, so the trail never holds it. No layer wraps a method it does
+  not have (the gate, the secret layer, the recorder's reads), which is new;
+  before this such an entity did not compile. While it declares an `Add` or a
+  `Patch` it is read, and each of its rows is not on the trail.
 - **`audit.CheckRows` and `audit.Newest` are gone**; `audit.CheckKind` is what
   the generated code calls.
 

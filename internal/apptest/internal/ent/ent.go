@@ -20,6 +20,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	"github.com/protobuf-orm/ent"
@@ -96,6 +97,7 @@ func checkColumn(t, c string) error {
 			reading.Table:  reading.ValidColumn,
 			robot.Table:    robot.ValidColumn,
 			seal.Table:     seal.ValidColumn,
+			tally.Table:    tally.ValidColumn,
 			tenant.Table:   tenant.ValidColumn,
 			thing.Table:    thing.ValidColumn,
 		})

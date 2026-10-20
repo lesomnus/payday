@@ -351,3 +351,32 @@ func TestRecordIsRefusedWhatItCannotSayAnythingTrueAbout(t *testing.T) {
 	x.ErrorContains(err, "no live row")
 	x.Empty(b.trailOf(t, ctx, id.Bytes()))
 }
+
+// TestAKindNoServerWritesIsNotRead: a tally is written through ent alone, so it
+// is never on the trail and a check has nothing to say about it -- it is not
+// read at all, rather than read and found on nothing -- and `Record` passes
+// over it.
+func TestAKindNoServerWritesIsNotRead(t *testing.T) {
+	x := require.New(t)
+	b, ctx, d := digesting(t)
+
+	now := time.Now()
+	id := pdid.New(pd.TallyDomain)
+	x.NoError(b.Ent.Tally.Create().
+		SetId(id.Uuid()).
+		SetTenantId(b.Tenant.Uuid()).
+		SetCount(1).
+		SetToken([]byte("held for readback")).
+		SetDateCreated(now).
+		SetDateUpdated(now).
+		Exec(ctx))
+
+	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.True(got.Ok(), "%+v", got)
+
+	n, err := pd.Record(ctx, b.Ent, audit.Contents{Digest: d}, "/test/Restore", []pdid.Id{id})
+	x.NoError(err)
+	x.Zero(n)
+	x.Empty(b.trailOf(t, ctx, id.Bytes()))
+}

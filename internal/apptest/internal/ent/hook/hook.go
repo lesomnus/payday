@@ -141,6 +141,18 @@ func (f SealFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SealMutation", m)
 }
 
+// The TallyFunc type is an adapter to allow the use of ordinary
+// function as Tally mutator.
+type TallyFunc func(context.Context, *ent.TallyMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TallyFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.TallyMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TallyMutation", m)
+}
+
 // The TenantFunc type is an adapter to allow the use of ordinary
 // function as Tenant mutator.
 type TenantFunc func(context.Context, *ent.TenantMutation) (ent.Value, error)

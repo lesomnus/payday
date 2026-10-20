@@ -34,6 +34,7 @@ import (
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	tally "github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
@@ -105,6 +106,7 @@ const (
 	ReadingDomain  pdid.Domain = 11 // "reading"
 	RobotDomain    pdid.Domain = 7  // "robot"
 	SealDomain     pdid.Domain = 14 // "seal"
+	TallyDomain    pdid.Domain = 15 // "tally"
 	TenantDomain   pdid.Domain = 1  // "tenant"
 	ThingDomain    pdid.Domain = 13 // "thing"
 )
@@ -121,6 +123,7 @@ func init() {
 	pdid.Register("app.Reading", ReadingDomain, "reading")
 	pdid.Register("app.Robot", RobotDomain, "robot")
 	pdid.Register("app.Seal", SealDomain, "seal")
+	pdid.Register("app.Tally", TallyDomain, "tally")
 	pdid.Register("app.Tenant", TenantDomain, "tenant")
 	pdid.Register("shared.Thing", ThingDomain, "thing")
 
@@ -141,6 +144,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Reading":  ReadingDomain,
 	"app.Robot":    RobotDomain,
 	"app.Seal":     SealDomain,
+	"app.Tally":    TallyDomain,
 	"app.Tenant":   TenantDomain,
 	"shared.Thing": ThingDomain,
 }
@@ -278,6 +282,16 @@ func (wall) SealScope(ctx context.Context) (predicate.Seal, error) {
 	return nil, nil
 }
 
+// TallyScope: a row belongs to the tenant its "tenant" reaches.
+func (wall) TallyScope(ctx context.Context) (predicate.Tally, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return tally.TenantIdIn(vs...), nil
+}
+
 // TenantScope: a tenant is inside itself, which is what a tenant being a wall comes down to.
 func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	vs, all, err := frame.Narrow(ctx)
@@ -391,6 +405,11 @@ func (x grouped) RobotScope(ctx context.Context) (predicate.Robot, error) {
 
 // SealScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) SealScope(ctx context.Context) (predicate.Seal, error) {
+	return nil, nil
+}
+
+// TallyScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) TallyScope(ctx context.Context) (predicate.Tally, error) {
 	return nil, nil
 }
 
@@ -3599,6 +3618,8 @@ func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.Fiel
 		return describedRobot.md, describedRobot.secret, describedRobot.personal
 	case SealDomain:
 		return describedSeal.md, describedSeal.secret, describedSeal.personal
+	case TallyDomain:
+		return describedTally.md, describedTally.secret, describedTally.personal
 	case TenantDomain:
 		return describedTenant.md, describedTenant.secret, describedTenant.personal
 	case ThingDomain:
@@ -3660,6 +3681,9 @@ var (
 		[]protoreflect.FieldNumber{32})
 	describedSeal = describe((*apptest.Seal)(nil),
 		[]protoreflect.FieldNumber{8, 9},
+		[]protoreflect.FieldNumber{})
+	describedTally = describe((*apptest.Tally)(nil),
+		[]protoreflect.FieldNumber{9},
 		[]protoreflect.FieldNumber{})
 	describedTenant = describe((*apptest.Tenant)(nil),
 		[]protoreflect.FieldNumber{},
@@ -7470,6 +7494,7 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		&apptest.Reading{},
 		&apptest.Robot{},
 		&apptest.Seal{},
+		&apptest.Tally{},
 		&apptest.Tenant{},
 		&apptest.Thing{},
 	)
@@ -7481,6 +7506,9 @@ var resourceSecrets = map[protoreflect.FullName][]protoreflect.FieldNumber{
 	},
 	"app.Seal": {
 		8,
+		9,
+	},
+	"app.Tally": {
 		9,
 	},
 }

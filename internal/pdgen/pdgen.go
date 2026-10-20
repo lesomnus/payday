@@ -919,6 +919,16 @@ func (e *Entity) GoName() string { return string(e.FullName().Name()) }
 // which is its type name folded down.
 func (e *Entity) EntPkg() string { return strings.ToLower(e.GoName()) }
 
+// Serves answers whether the entity has a service: a method its schema asks
+// for, or a `List` or `Watch` payday adds. One that asks for none is written
+// by hand -- through ent, by the app's own code -- and no layer wraps a
+// service it does not have (payday#108): a write no server makes is never
+// on the trail, so a kind no server writes should have no write to offer.
+func (e *Entity) Serves() bool {
+	r := e.Rpcs()
+	return r.HasAdd() || r.HasAddMany() || r.HasGet() || r.HasPatch() || r.HasErase() || e.List != nil || e.Watch
+}
+
 var _ protoreflect.FullName = protoreflect.FullName("")
 
 // List is what a schema said about reading this entity a page at a time, and
