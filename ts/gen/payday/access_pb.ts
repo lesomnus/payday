@@ -41,7 +41,7 @@ export type AccessDetail = Message<"payday.AccessDetail"> & {
   request: Uint8Array;
 
   /**
-   * Reason is what a download said it was for (`payday-reason`).
+   * Reason is what a download said it was for (`payday-reason-bin`).
    *
    * @generated from field: string reason = 3;
    */
