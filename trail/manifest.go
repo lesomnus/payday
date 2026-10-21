@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"compress/gzip"
 	"context"
+	"crypto"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -686,6 +687,10 @@ func (p Policy) fill(ctx context.Context, m Manifest, inv map[blobKey]map[string
 // -- because there is nothing yet to say what it held before. From the first
 // on, a blob or a file nobody wrote through the manifest is a finding, and only
 // an operator's acceptance takes it in.
+//
+// Any blob the store labels a checkpoint counts, the deployment's word or not
+// (see [Policy.readChain]): what this decides is whether the archive is taken
+// as it is, and one nobody vouches for can only make that less likely.
 func (p Policy) unchecked(ctx context.Context, m Manifest) (bool, error) {
 	if k, _, err := m.Latest(ctx); err != nil || k > 0 {
 		return false, err
@@ -1071,11 +1076,15 @@ type Checkpoint struct {
 	// database has been made to agree. Empty on the first, and on one written
 	// before checkpoints were chained.
 	//
-	// It is the store's newest when this one is written, which is the one
-	// numbered just before but for two cases: that one was numbered and never
-	// kept, by a pass a crash stopped, or a pass at once with this one has not
-	// written it yet. Then the chain goes past it, and nothing is a finding
-	// for it, since nothing names a checkpoint the store does not keep.
+	// It is the newest the store keeps below it when this one is written --
+	// of the checkpoints that are the deployment's word, by what each says
+	// (see [Policy.readChain]) -- which is the one numbered just before but
+	// for two cases. That one was numbered and never kept, by a pass a crash
+	// stopped, or it was taken away since: then the number between the two is
+	// one no checkpoint the store keeps says it is, `unkept` until an operator
+	// accepts (#80). Or an act at the same moment numbered it and has not
+	// written it yet: then both name the one before, the store keeps each,
+	// and that is no finding.
 	Prev flob.Digest `json:"prev,omitempty"`
 
 	Count  int         `json:"count"`
@@ -1173,9 +1182,15 @@ var errRewritten = errors.New("the manifest no longer adds up to the latest chec
 // each says, and names the newest of them as the one before it: a database
 // restored from before them goes on from there, and they stay what the
 // archive held meanwhile.
+//
+// Every one of those is decided by the checkpoints that are the deployment's
+// word, and by no other (see [Policy.readChain]). A checkpoint nobody signed,
+// or one by a key the policy does not trust, is found, and that is all it
+// does: put in the store numbered ahead of the database, it would otherwise
+// stop every act, and be what the next acceptance is numbered after and
+// names as the one before it.
 func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted string) (Checkpoint, error) {
-	store := p.checkpoints()
-	ls, err := listCheckpoints(ctx, store)
+	ch, err := p.readChain(ctx)
 	if err != nil {
 		return Checkpoint{}, err
 	}
@@ -1189,25 +1204,15 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted string) (Ch
 		// Every one, the way [Policy.Verify] finds the database behind: a
 		// checkpoint relabelled to look older, or not listed at all, is still
 		// one the next must be numbered after.
-		ch, err := readChain(ctx, store)
-		if err != nil {
-			return Checkpoint{}, err
-		}
 		after = ch.newest()
 	} else {
 		// By what a checkpoint says, which is signed, and not its labels,
 		// which are not: one relabelled ahead of the database is a finding of
-		// its own, and no reason to stop keeping checkpoints. Only what the
-		// labels put ahead is read.
-		for _, v := range ls {
-			if v.k <= latest {
-				continue
-			}
-			if was, err := readCheckpoint(ctx, store, v.d); err == nil && was.c.K > latest {
-				return Checkpoint{}, errBehind
-			}
+		// its own, and no reason to stop keeping checkpoints.
+		if ch.newest() > latest {
+			return Checkpoint{}, errBehind
 		}
-		if err := addsUp(ctx, m, store, ls, latest); err != nil {
+		if err := ch.addsUp(ctx, m, latest); err != nil {
 			return Checkpoint{}, err
 		}
 	}
@@ -1219,7 +1224,7 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted string) (Ch
 
 	c := checkpointOf(k, time.Now(), rows)
 	c.Accepted = accepted
-	if c.Prev, err = prevOf(ctx, store, k); err != nil {
+	if c.Prev, err = p.prevOf(ctx, ch, k); err != nil {
 		return c, err
 	}
 
@@ -1262,30 +1267,24 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted string) (Ch
 // addsUp answers whether the rows the latest checkpoint was taken over still
 // add up to what the store keeps of it: [errRewritten] when they do not.
 //
-// By what a checkpoint says, which is signed, and of the ones whose labels say
-// they are the latest: one not kept yet -- being written, or numbered by a
-// pass a crash stopped -- is nothing to compare, and is `unkept` to
-// [Policy.Verify] once it is old enough.
+// By what a checkpoint says, which is signed, and of the ones that are the
+// deployment's word: one not kept yet -- being written, or numbered by a pass
+// a crash stopped -- is nothing to compare, and is `unkept` to
+// [Policy.Verify] once it is old enough. Nor is one nobody can vouch for,
+// which would otherwise be a way to stop every act by putting a checkpoint of
+// the latest number in the store.
 //
 // The rows a checkpoint was taken over do not change with anything an act
 // does after it: a row added since is in none yet, and one erased since is
 // still in it until the next is numbered. So a difference is a row somebody
 // changed beneath the deployment -- a blob taken away with its row, or a row
 // put back into a state the checkpoint did not have it in.
-func addsUp(ctx context.Context, m Manifest, s flob.Store, ls []listed, latest int) error {
+func (ch chain) addsUp(ctx context.Context, m Manifest, latest int) error {
 	if latest == 0 {
 		return nil
 	}
 
-	kept := []stored{}
-	for _, v := range ls {
-		if v.k != latest {
-			continue
-		}
-		if was, err := readCheckpoint(ctx, s, v.d); err == nil && was.c.K == latest {
-			kept = append(kept, was)
-		}
-	}
+	kept := ch.numbered(latest)
 	if len(kept) == 0 {
 		return nil
 	}
@@ -1303,10 +1302,10 @@ func addsUp(ctx context.Context, m Manifest, s flob.Store, ls []listed, latest i
 	return nil
 }
 
-// addsUpToLatest is [addsUp] for the checkpoint the database numbered last.
+// addsUpToLatest is [chain.addsUp] for the checkpoint the database numbered
+// last.
 func (p Policy) addsUpToLatest(ctx context.Context, m Manifest) error {
-	store := p.checkpoints()
-	ls, err := listCheckpoints(ctx, store)
+	ch, err := p.readChain(ctx)
 	if err != nil {
 		return err
 	}
@@ -1315,30 +1314,50 @@ func (p Policy) addsUpToLatest(ctx context.Context, m Manifest) error {
 		return fmt.Errorf("the manifest: %w", err)
 	}
 
-	return addsUp(ctx, m, store, ls, latest)
+	return ch.addsUp(ctx, m, latest)
 }
 
-// prevOf is the checkpoint the one numbered k names as the one before it: the
-// store's newest below it, by what each says it is, which the labels only put
-// in the order to read them in. Listed after k is taken, since one numbered
-// before it may have been kept since a pass first looked.
-func prevOf(ctx context.Context, s flob.Store, k int) (flob.Digest, error) {
+// prevOf is the checkpoint the one numbered k names as the one before it: of
+// the ones that are the deployment's word, the newest below it, by what each
+// says it is and whatever its labels say. The store is listed again once k is
+// taken, since one numbered before it -- by an act at the same moment -- may
+// have been kept since the chain was read.
+func (p Policy) prevOf(ctx context.Context, ch chain, k int) (flob.Digest, error) {
+	var best *stored
+	take := func(v stored) {
+		if v.c.K < 1 || v.c.K >= k {
+			return
+		}
+		if best == nil || v.c.K > best.c.K || (v.c.K == best.c.K && v.d < best.d) {
+			best = &v
+		}
+	}
+	for _, v := range ch.ordered() {
+		if ch.vouched[v.d] {
+			take(v)
+		}
+	}
+
+	s := p.checkpoints()
 	ls, err := listCheckpoints(ctx, s)
 	if err != nil {
 		return "", err
 	}
-
-	slices.SortFunc(ls, func(a, b listed) int { return cmp.Compare(b.k, a.k) })
+	trusted := p.trusted()
 	for _, v := range ls {
-		if v.k == 0 || v.k >= k {
+		if _, ok := ch.kept[v.d]; ok {
 			continue
 		}
-		if was, err := readCheckpoint(ctx, s, v.d); err == nil && was.c.K == v.k {
-			return v.d, nil
+		if was, err := readCheckpoint(ctx, s, v.d); err == nil && p.vouches(was, trusted, ch.signed) {
+			take(was)
 		}
 	}
 
-	return "", nil
+	if best == nil {
+		return "", nil
+	}
+
+	return best.d, nil
 }
 
 // stored is a checkpoint as it was read back.
@@ -1392,8 +1411,8 @@ func listCheckpoints(ctx context.Context, s flob.Store) ([]listed, error) {
 }
 
 // checkpointsIn is every checkpoint a store keeps, by the number its labels
-// give it: what a pass goes by to write the next one, which is only ever
-// compared, and never believed -- see [readChain].
+// give it, which is only ever compared, and never believed -- see
+// [Policy.readChain].
 func checkpointsIn(ctx context.Context, s flob.Store) (map[int]flob.Digest, error) {
 	ls, err := listCheckpoints(ctx, s)
 	if err != nil {
@@ -1411,40 +1430,78 @@ func checkpointsIn(ctx context.Context, s flob.Store) (map[int]flob.Digest, erro
 }
 
 // chain is every checkpoint a store keeps, read, by digest; the number the
-// store's labels give each one it lists; and what reading them found.
+// store's labels give each one it lists; which of them are the deployment's
+// word; and what reading them found.
 type chain struct {
 	kept     map[flob.Digest]stored
 	labelled map[flob.Digest]int
 	findings []Finding
+
+	// vouched is the checkpoints kept that are the deployment's word, which
+	// alone decide anything -- see [Policy.readChain] -- and signed is
+	// whether the store keeps one signed by a key the policy trusts.
+	vouched map[flob.Digest]bool
+	signed  bool
 }
 
-// readChain reads every checkpoint the store lists, and follows each one's
-// [Checkpoint.Prev] to the ones the listing does not show: a checkpoint whose
-// labels were changed or taken off is not listed as itself, and is still in
-// the store under its digest. A checkpoint's number is what it says, which is
-// signed, and not what its labels say, which is not.
+// readChain reads every checkpoint the policy's checkpoint store lists, and
+// follows each one's [Checkpoint.Prev] to the ones the listing does not show:
+// a checkpoint whose labels were changed or taken off is not listed as
+// itself, and is still in the store under its digest. A checkpoint's number is
+// what it says, which is signed, and not what its labels say, which is not.
 //
-// What it finds of the chain: one named as the one before and not kept, which
-// is one taken away -- or written again as something else, which the store
-// then keeps under another digest; two of one number, which is one written
-// again beside the first on a store that keeps both; one that names a later one
-// as the one before it; and one whose labels do not say which it is.
-func readChain(ctx context.Context, s flob.Store) (chain, error) {
+// # Which checkpoints are the deployment's word
+//
+// What it says is signed only when somebody can tell who signed it. With a
+// key, a checkpoint is the deployment's word when its signature is good and
+// by a key the policy trusts, and so is every checkpoint such a one names as
+// the one before it, and so on down the chain: what a checkpoint names, it
+// names by digest, and a checkpoint is read only when its bytes are its
+// digest, so the one named is exactly what was there when the one naming it
+// was signed -- whatever signed it, if anything did. That is how the
+// checkpoints a key signed before it was rotated out stay what they were
+// once the key is no longer trusted, and the ones from before the deployment
+// had a key, once it has one.
+//
+// Only those decide what the next checkpoint is numbered, names and is
+// refused for, and which of the numbers between two is a finding. One
+// nobody signed, or signed by a key nobody trusts, and named by none of them
+// is found -- `unsigned`, `forged` -- and decides nothing: whoever can write
+// the checkpoint store can put one there, numbered as they like, and it would
+// otherwise stop every act, be what the next acceptance is numbered after,
+// and say which gaps are accepted.
+//
+// Until the store keeps one checkpoint a trusted key signed -- a deployment
+// that gave itself a key, until its next act takes one -- the unsigned ones
+// are all there is, and decide as they did. Without a key nothing is signed
+// and nothing is held to a signature, and every checkpoint that reads decides.
+//
+// # What it finds of the chain
+//
+// Of the checkpoints that decide: one named as the one before and not kept,
+// which is one taken away -- or written again as something else, which the
+// store then keeps under another digest; one that names a later one as the
+// one before it; one whose labels do not say which it is; and the numbers one
+// skips over. Of every checkpoint kept: two of one number, which is one
+// written again beside the first on a store that keeps both.
+func (p Policy) readChain(ctx context.Context) (chain, error) {
+	s := p.checkpoints()
 	ls, err := listCheckpoints(ctx, s)
 	if err != nil {
 		return chain{}, err
 	}
 
-	ch := chain{kept: map[flob.Digest]stored{}, labelled: map[flob.Digest]int{}}
+	ch := chain{kept: map[flob.Digest]stored{}, labelled: map[flob.Digest]int{}, vouched: map[flob.Digest]bool{}}
 	todo := []flob.Digest{}
 	for _, v := range ls {
 		ch.labelled[v.d] = v.k
 		todo = append(todo, v.d)
 	}
 
-	// Which checkpoint names one the listing did not show, for when the store
-	// does not keep it either.
-	named := map[flob.Digest]int{}
+	// Which checkpoints name each one the listing did not show, for when the
+	// store does not keep it either.
+	named := map[flob.Digest][]flob.Digest{}
+	unread := map[flob.Digest]error{}
 	seen := map[flob.Digest]bool{}
 	for len(todo) > 0 {
 		d := todo[0]
@@ -1454,30 +1511,65 @@ func readChain(ctx context.Context, s flob.Store) (chain, error) {
 		}
 		seen[d] = true
 
-		_, listedAs := ch.labelled[d]
 		v, err := readCheckpoint(ctx, s, d)
-		switch {
-		case errors.Is(err, flob.ErrNotExist) && !listedAs:
-			ch.findings = append(ch.findings, Finding{Kind: "unkept", Digest: d,
-				Note: fmt.Sprintf("checkpoint %d names it as the one before it, and the store does not keep it", named[d])})
-			continue
-
-		case errors.Is(err, flob.ErrNotExist):
-			// Erased between the listing and the read. If anything names it,
-			// it is found when that is.
-			continue
-
-		case err != nil:
-			ch.findings = append(ch.findings, Finding{Kind: "forged", Checkpoint: ch.labelled[d], Digest: d, Note: "it does not read: " + err.Error()})
+		if err != nil {
+			unread[d] = err
 			continue
 		}
 
 		ch.kept[d] = v
-		if p := v.c.Prev; p != "" && !seen[p] {
-			if _, ok := named[p]; !ok {
-				named[p] = v.c.K
+		if prev := v.c.Prev; prev != "" {
+			named[prev] = append(named[prev], d)
+			if !seen[prev] {
+				todo = append(todo, prev)
 			}
-			todo = append(todo, p)
+		}
+	}
+
+	trusted := p.trusted()
+	for _, v := range ch.kept {
+		if p.keyed() && signedBy(v, trusted) {
+			ch.signed = true
+		}
+	}
+	todo = todo[:0]
+	for d, v := range ch.kept {
+		if p.vouches(v, trusted, ch.signed) {
+			ch.vouched[d] = true
+			todo = append(todo, d)
+		}
+	}
+	for len(todo) > 0 {
+		d := todo[0]
+		todo = todo[1:]
+		if prev := ch.kept[d].c.Prev; prev != "" && !ch.vouched[prev] {
+			if _, ok := ch.kept[prev]; ok {
+				ch.vouched[prev] = true
+				todo = append(todo, prev)
+			}
+		}
+	}
+
+	// What does not read is found when the store lists it as a checkpoint, or
+	// a checkpoint that decides names it; what only a checkpoint nobody
+	// vouches for names is that one's word, which is nothing.
+	for _, d := range slices.Sorted(maps.Keys(unread)) {
+		_, listedAs := ch.labelled[d]
+		by := slices.DeleteFunc(slices.Clone(named[d]), func(v flob.Digest) bool { return !ch.vouched[v] })
+		err := unread[d]
+		switch {
+		case errors.Is(err, flob.ErrNotExist) && !listedAs:
+			if len(by) > 0 {
+				ch.findings = append(ch.findings, Finding{Kind: "unkept", Digest: d,
+					Note: fmt.Sprintf("checkpoint %d names it as the one before it, and the store does not keep it", ch.kept[by[0]].c.K)})
+			}
+
+		case errors.Is(err, flob.ErrNotExist):
+			// Erased between the listing and the read. If anything names it,
+			// it is found when that is.
+
+		case listedAs || len(by) > 0:
+			ch.findings = append(ch.findings, Finding{Kind: "forged", Checkpoint: ch.labelled[d], Digest: d, Note: "it does not read: " + err.Error()})
 		}
 	}
 
@@ -1492,7 +1584,7 @@ func readChain(ctx context.Context, s flob.Store) (chain, error) {
 		}
 	}
 
-	for _, v := range ch.ordered() {
+	for _, v := range ch.decided() {
 		switch l, listedAs := ch.labelled[v.d]; {
 		case !listedAs:
 			ch.findings = append(ch.findings, Finding{Kind: "relabelled", Checkpoint: v.c.K, Digest: v.d,
@@ -1513,8 +1605,33 @@ func readChain(ctx context.Context, s flob.Store) (chain, error) {
 	return ch, nil
 }
 
-// skipped is the numbers between a checkpoint kept and the one it names as
-// the one before it, which the store does not keep (#80).
+// signedBy answers whether a checkpoint's signature is good and by one of
+// these keys.
+func signedBy(v stored, trusted []crypto.PublicKey) bool {
+	has, good := signature(v.s)
+	return has && good && trusts(trusted, v.s.Key)
+}
+
+// vouches answers whether a checkpoint is the deployment's word by itself,
+// rather than by a later one naming it; `signed` is whether the store keeps
+// a checkpoint a trusted key signed. See [Policy.readChain].
+func (p Policy) vouches(v stored, trusted []crypto.PublicKey, signed bool) bool {
+	has, good := signature(v.s)
+	switch {
+	case has && !good:
+		return false
+	case !p.keyed():
+		return true
+	case has:
+		return trusts(trusted, v.s.Key)
+	default:
+		return !signed
+	}
+}
+
+// skipped is, for each checkpoint that decides, the numbers between it and
+// the one it names as the one before it that no checkpoint that decides says
+// it is (#80).
 //
 // A checkpoint names the newest one the store keeps when it is taken, so a
 // number between them was numbered by the database and is not in the store:
@@ -1526,29 +1643,68 @@ func readChain(ctx context.Context, s flob.Store) (chain, error) {
 // What it cannot tell apart, an operator can, and accepts; the numbers
 // skipped before an acceptance are what the operator looked at.
 //
+// A number the store keeps is no finding, whatever names it. Two acts that
+// take a checkpoint at the same moment are numbered one after the other, and
+// the second can be written before the first: then both name the one before
+// the first, and the first is kept, named by none -- no finding while it is
+// there, and the number skipped over once it is taken away.
+//
 // Only between two checkpoints the store keeps: one that names nothing is
 // the first, or one from before the checkpoints were chained.
 func (ch chain) skipped() []Finding {
 	accepted := 0
-	for _, v := range ch.kept {
+	says := []int{}
+	for _, v := range ch.decided() {
+		says = append(says, v.c.K)
 		if v.c.Accepted != "" {
 			accepted = max(accepted, v.c.K)
 		}
 	}
+	says = slices.Compact(says)
 
 	out := []Finding{}
-	for _, v := range ch.ordered() {
+	for _, v := range ch.decided() {
 		prev, ok := ch.kept[v.c.Prev]
 		if !ok || v.c.K <= accepted || prev.c.K >= v.c.K-1 {
 			continue
 		}
 
-		missing := strconv.Itoa(prev.c.K + 1)
-		if prev.c.K+1 < v.c.K-1 {
-			missing = fmt.Sprintf("%d to %d", prev.c.K+1, v.c.K-1)
+		gaps := unsaid(says, prev.c.K+1, v.c.K-1)
+		if len(gaps) == 0 {
+			continue
 		}
-		out = append(out, Finding{Kind: "unkept", Checkpoint: prev.c.K + 1, Digest: v.d,
-			Note: fmt.Sprintf("checkpoint %d names %d as the one before it, and the store does not keep %s", v.c.K, prev.c.K, missing)})
+
+		missing := make([]string, len(gaps))
+		for i, g := range gaps {
+			missing[i] = strconv.Itoa(g[0])
+			if g[0] < g[1] {
+				missing[i] = fmt.Sprintf("%d to %d", g[0], g[1])
+			}
+		}
+		out = append(out, Finding{Kind: "unkept", Checkpoint: gaps[0][0], Digest: v.d,
+			Note: fmt.Sprintf("checkpoint %d names %d as the one before it, and the store does not keep %s", v.c.K, prev.c.K, strings.Join(missing, ", "))})
+	}
+
+	return out
+}
+
+// unsaid is the runs of the numbers from `from` to `to` that are not in
+// `says`, which is in order: each as its first and its last.
+func unsaid(says []int, from, to int) [][2]int {
+	out := [][2]int{}
+	i, _ := slices.BinarySearch(says, from)
+	for n := from; n <= to; {
+		if i < len(says) && says[i] <= to {
+			if says[i] > n {
+				out = append(out, [2]int{n, says[i] - 1})
+			}
+			n = says[i] + 1
+			i++
+			continue
+		}
+
+		out = append(out, [2]int{n, to})
+		break
 	}
 
 	return out
@@ -1562,15 +1718,22 @@ func (ch chain) ordered() []stored {
 	return out
 }
 
-// numbered is the checkpoints kept that say they are number k.
-func (ch chain) numbered(k int) []stored {
-	return slices.DeleteFunc(ch.ordered(), func(v stored) bool { return v.c.K != k })
+// decided is the checkpoints kept that are the deployment's word, by the
+// number each says it is.
+func (ch chain) decided() []stored {
+	return slices.DeleteFunc(ch.ordered(), func(v stored) bool { return !ch.vouched[v.d] })
 }
 
-// holding is how many of the checkpoints kept say the archive held a blob.
+// numbered is the checkpoints that decide and say they are number k.
+func (ch chain) numbered(k int) []stored {
+	return slices.DeleteFunc(ch.decided(), func(v stored) bool { return v.c.K != k })
+}
+
+// holding is how many of the checkpoints that decide say the archive held a
+// blob.
 func (ch chain) holding() int {
 	n := 0
-	for _, v := range ch.kept {
+	for _, v := range ch.decided() {
 		if v.c.Count > 0 {
 			n++
 		}
@@ -1579,19 +1742,25 @@ func (ch chain) holding() int {
 	return n
 }
 
-// newest is the highest number a checkpoint kept says it is, and zero for
-// none.
+// newest is the highest number a checkpoint that decides says it is, and
+// zero for none.
 func (ch chain) newest() int {
 	n := 0
-	for _, v := range ch.kept {
+	for _, v := range ch.decided() {
 		n = max(n, v.c.K)
 	}
 
 	return n
 }
 
+// readCheckpoint reads one checkpoint, and only while its bytes are its
+// digest: what a checkpoint names as the one before it is that digest, and
+// the one read under it has to be what was named.
 func readCheckpoint(ctx context.Context, s flob.Store, d flob.Digest) (stored, error) {
 	out := stored{d: d}
+	if _, err := d.Sanitize(); err != nil {
+		return out, err
+	}
 
 	r, _, err := s.Open(ctx, d)
 	if err != nil {
@@ -1599,7 +1768,17 @@ func readCheckpoint(ctx context.Context, s flob.Store, d flob.Digest) (stored, e
 	}
 	defer r.Close()
 
-	z, err := gzip.NewReader(r)
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return out, err
+	}
+	v := d.Verifier()
+	_, _ = v.Write(raw)
+	if !v.Verified() {
+		return out, ErrAltered
+	}
+
+	z, err := gzip.NewReader(bytes.NewReader(raw))
 	if err != nil {
 		return out, err
 	}
@@ -1619,20 +1798,16 @@ func readCheckpoint(ctx context.Context, s flob.Store, d flob.Digest) (stored, e
 	return out, nil
 }
 
-// ReadCheckpoints reads every checkpoint the policy's checkpoint store keeps,
-// oldest first: what the archive held, day by day.
+// ReadCheckpoints reads every checkpoint the policy's checkpoint store keeps
+// that is the deployment's word (see [Policy.readChain]), oldest first: what
+// the archive held, day by day.
 func (p Policy) ReadCheckpoints(ctx context.Context, fn func(Checkpoint) error) error {
-	s := p.checkpoints()
-	ks, err := checkpointsIn(ctx, s)
+	ch, err := p.readChain(ctx)
 	if err != nil {
 		return err
 	}
 
-	for _, k := range slices.Sorted(maps.Keys(ks)) {
-		v, err := readCheckpoint(ctx, s, ks[k])
-		if err != nil {
-			return fmt.Errorf("checkpoint %d: %w", k, err)
-		}
+	for _, v := range ch.decided() {
 		if err := fn(v.c); err != nil {
 			return err
 		}
@@ -1675,7 +1850,7 @@ func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out 
 func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out *Verified) ([]Finding, int, error) {
 	fs := []Finding{}
 
-	ch, err := readChain(ctx, p.checkpoints())
+	ch, err := p.readChain(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -1698,6 +1873,11 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out
 	}
 	fs = append(fs, ch.findings...)
 
+	// A signature by a key nobody trusts is no finding on a checkpoint the
+	// chain vouches for: a later one the deployment's key signed names it, so
+	// it is what the archive held whoever signed it -- a key rotated out,
+	// which need not be trusted for this. One the chain does not reach is
+	// forged, and decides nothing.
 	trusted := p.trusted()
 	signedOnce := false
 	for _, v := range ch.ordered() {
@@ -1705,7 +1885,7 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out
 		switch has, good := signature(v.s); {
 		case has && !good:
 			fs = append(fs, Finding{Kind: "forged", Checkpoint: k, Note: "its signature is not good"})
-		case has && len(trusted) > 0 && !trusts(trusted, v.s.Key):
+		case has && len(trusted) > 0 && !trusts(trusted, v.s.Key) && !ch.vouched[v.d]:
 			fs = append(fs, Finding{Kind: "forged", Checkpoint: k, Note: "signed by a key nobody trusts: " + base64.StdEncoding.EncodeToString(v.s.Key)})
 		case has:
 			signedOnce = true

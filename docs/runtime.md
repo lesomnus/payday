@@ -585,11 +585,11 @@ way through is no finding, and no clock is asked. What it finds:
 | `unaccounted` | a blob that is there, and the manifest never added; or a file of the directory format in the archive's directory after its first checkpoint |
 | `relabelled` | a blob whose labels are not the ones the manifest recorded, or a checkpoint whose labels do not say which it is |
 | `altered` | a blob whose bytes are no longer its digest (`full` only) |
-| `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts |
+| `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts — but not a checkpoint a later one the deployment signed names, whatever signed it (a key rotated out) |
 | `unsigned` | a row with no signature when the policy names a key; a checkpoint with none after one that had one |
 | `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to (not the one before an acceptance); or one of two the store keeps under one number |
 | `reordered` | a checkpoint that names one after it as the one before |
-| `unkept` | a checkpoint the database numbered, or the one after it names, that the store does not keep; or the numbers a checkpoint skips over to the one it names — taken away, lost to a store restored from an older copy, or numbered by a pass a crash stopped — until an operator accepts |
+| `unkept` | a checkpoint the database numbered, or the one after it names, that the store does not keep; or the numbers a checkpoint skips over to the one it names that no checkpoint the store keeps says it is — taken away, lost to a store restored from an older copy, or numbered by a pass a crash stopped — until an operator accepts |
 | `behind` | a checkpoint the store keeps that the database never numbered: a database restored from before it, until an operator accepts |
 | `emptied` | a manifest with no rows beside checkpoints of an archive that held something (a checkpoint over nothing, a deployment's first pass, is not one) |
 
@@ -643,6 +643,21 @@ taken while it read. The number comes before the write, so one the database
 numbered and the store does not keep is `unkept` only once it is ten minutes
 old.
 
+**What decides is the deployment's word.** Whoever can write the checkpoint
+store — the archive's own, by default — can put a checkpoint there, numbered as
+they like. With a key, a checkpoint counts when its signature is good and by a
+key the policy trusts, and so does every one such a checkpoint names as the one
+before it, down the chain: it names it by digest, and a checkpoint is read only
+while its bytes are its digest, so the one named is what was there when the
+one naming it was signed. Only those decide whether the database is `behind`,
+what the latest rows are compared with, what the next checkpoint is numbered
+after and names, and which numbers an acceptance quieted. Any other is
+`unsigned` or `forged`, and that is all it is: one numbered ahead of the
+database stops no act, and an acceptance is not numbered after it. Until the
+store keeps one a trusted key signed — a deployment that gave itself a key,
+until its next act — the unsigned ones are all there is, and count as they
+did.
+
 **No checkpoint is taken over rows that no longer add up to the latest one.**
 `Verify` recomputes the latest two, and with a checkpoint at the end of every
 act the latest two are soon others: one taken over rows somebody changed would
@@ -679,8 +694,10 @@ document itself; Ed25519, ECDSA or RSA, as `openssl genpkey` or
 ([below](#keys-in-a-device)), whose private half never comes out. Ed25519
 signs a checkpoint's bytes, ECDSA and RSA their SHA-256, and a signature is
 verified by the kind of key that made it. `audit.checkpoints.trust` is the
-public keys besides the signer's that a verification believes: one rotated
-out, or each replica's when each has a device of its own.
+public keys besides the signer's that a verification believes: each replica's
+when each has a device of its own, and one rotated out until the next key has
+signed a checkpoint and the rows the old one signed are accepted again
+([below](#keys-in-a-device)).
 
 An operator who has looked at what verification found and decided the archive
 is right — a crash, a blob restored from a backup, rows from before the
@@ -730,9 +747,12 @@ Two things are there for that, and a third that is the storage's:
   number is what it says, which is signed, and not what its labels say: one
   whose labels were changed or taken off is found through the chain, and is
   `relabelled`. One a crash numbered and never wrote is gone past, and the next
-  names the one before it, so it is no finding once the next is written.
-  Checkpoints from before they were chained name nothing, and the chain starts
-  after them.
+  names the one before it: the number between is one no checkpoint the store
+  keeps says it is, `unkept` until an operator accepts. Two acts taking a
+  checkpoint at the same moment can be written the other way round, and then
+  both name the one before the first: the store keeps the number between, and
+  that is no finding. Checkpoints from before they were chained name nothing,
+  and the chain starts after them.
 - **The store refuses deletion.** That is the storage's to promise, beneath the
   process. S3 Object Lock in compliance mode keeps every version of every
   object it is given for its retention, whoever's credentials ask — a delete
@@ -845,8 +865,12 @@ uses and none of the others:
 - **Transit** is Vault's, or OpenBao's, over HTTP and no SDK. The address and
   the token are where Vault's own tools read them, `VAULT_ADDR` and
   `VAULT_TOKEN`; a Vault Agent's token file (`token-file=`) or its proxy is
-  what keeps a token alive for longer than it lives. The version that was
-  latest at start is the one that signs, until the next start.
+  what keeps a token alive for longer than it lives. The address is
+  `https://`, but for a Vault on this machine — `localhost`, a loopback address:
+  a dev server, an agent's proxy beside the process — since across a network
+  plain `http` would carry the token, and the key's public half the process
+  trusts, in the clear. The version that was latest at start is the one that
+  signs, until the next start.
 - **KMS** is its own module, `github.com/lesomnus/payday/trail/trailawskms`,
   so the AWS SDK is in no `go.mod` but its own, and the app registers it with
   one line, `config.RegisterSigner(trailawskms.Scheme, trailawskms.Open)`.
@@ -901,9 +925,14 @@ has not been given; **an HSM on the network**, which is also where a request a
 row is felt; and **a YubiKey as the master**, since the plugins were tried
 with one the tests make.
 
-A key rotated is a new public half: keep the old one in
-`audit.checkpoints.trust` for as long as there are checkpoints it signed.
-`trust` reads PKIX, as base64 or PEM — what `tpm2_readpublic -f pem`,
+A key rotated is a new public half. Keep the old one in
+`audit.checkpoints.trust` until the next key has signed a checkpoint — the
+first names the last one the old key signed, and with it every one before —
+and an operator has accepted the rows the old key signed, which signs them
+again; then take it out. The checkpoints it signed are what the chain says they
+were without it, and what it signs after that is `forged` and decides nothing:
+a key rotated out because it leaked stops vouching for anything. `trust` reads
+PKIX, as base64 or PEM — what `tpm2_readpublic -f pem`,
 `pkcs11-tool --read-object --type pubkey` (DER, so through `base64 -w0`) and
 `aws kms get-public-key` write, and what Transit's `keys` endpoint answers for an
 ECDSA or RSA key. A device of another kind is an app's own `crypto.Signer`,
