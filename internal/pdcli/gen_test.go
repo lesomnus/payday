@@ -3,6 +3,7 @@ package pdcli_test
 import (
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -46,6 +47,14 @@ func genApp(t *testing.T) pdcli.Layout {
 	// node_modules.
 	x.NoError(copyDir(filepath.Join(payday, "internal", "apptest"), app, "ts"))
 	x.NoError(copyDir(filepath.Join(payday, "proto"), filepath.Join(root, "payday-proto")))
+
+	// The app's go.mod replaces payday with the checkout two directories up,
+	// which is true of internal/apptest and of nothing here: so it is said
+	// where the checkout is.
+	edit := exec.Command("go", "mod", "edit", "-replace", "github.com/lesomnus/payday="+payday)
+	edit.Dir = app
+	out, err := edit.CombinedOutput()
+	x.NoError(err, "%s", out)
 
 	// This checkout's own go directive, so the temporary workspace never
 	// claims less than the modules it uses.
