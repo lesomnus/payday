@@ -923,6 +923,16 @@ _, err = extra.Apply(ctx, s.Db, s.Dialect)  // then what stands on it
   earlier release.
 - **`entschema.Check` leaves what it made alone**, the same as an index or a
   foreign key you added by hand.
+- **It stands on these files, not on `Schema.Create`.** Create -- the
+  `db.migrate` path below -- drops a foreign key or a check the schema does not
+  declare, because that is how it retires one the schema stopped declaring: an
+  edge pointed at another table is a foreign key of a new name, and the old
+  one, left, would refuse every row the new one allows. It cannot tell those
+  from what this directory made, so it drops both, and the directory's history
+  says the file ran. On SQLite, most changes rebuild a table from the schema,
+  which drops them too. An app that migrates with Create says what the schema
+  cannot in statements it runs after every Create, each safe to run again --
+  rove's `cli/pg.sql` is one.
 
 Mounting these as commands is yours to do, and they belong on **your** binary
 rather than on `pd`: they have to link your ent schema, and a deployment should
@@ -951,7 +961,10 @@ payday owns part of your schema, so a field added upstream arrives in
 `internal/ent` the next time you generate and has no symptom until the one
 handler that reads it runs. It asks only whether the database is missing
 something. An index, a foreign key or a check you added beside the schema is
-left alone, and a column the schema has and the database does not is refused. This check is what turns that into a server that
+left alone, and a column the schema has and the database does not is refused.
+`Create` is not as patient: it drops no index and no column, and drops a
+foreign key or a check the schema does not declare -- see
+[what the ent schema cannot state](#what-the-ent-schema-cannot-state). This check is what turns that into a server that
 does not start; the other two moments it is caught at are in
 [the cost](../schema.md#the-cost).
 
