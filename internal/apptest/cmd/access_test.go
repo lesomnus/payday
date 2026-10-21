@@ -2,7 +2,10 @@ package cmd_test
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 	"uuid"
@@ -19,6 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/lesomnus/payday/access"
+	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdpb"
@@ -387,6 +391,28 @@ func TestADownloadSaysWhatItIsFor(t *testing.T) {
 	x.Equal("download", rs[0].Kind)
 	x.Equal("October's payroll", detail(t, rs[0]).GetReason())
 	x.EqualValues(2, rs[0].SubjectCount)
+
+	// A header is ASCII, and a browser sends no other: a reason is a `-bin`
+	// key, base64 on the wire and the text again by the time it arrives.
+	t.Run("in any words, from a page", func(t *testing.T) {
+		x := require.New(t)
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+			b.serving(t).URL+app.HolderService_List_FullMethodName, strings.NewReader(`{}`))
+		x.NoError(err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Connect-Protocol-Version", "1")
+		req.Header.Set(auth.Header, auth.PlainScheme+" @acme/admin")
+		req.Header.Set(access.ReasonKey, base64.RawStdEncoding.EncodeToString([]byte("10월 급여 정산")))
+
+		res, err := http.DefaultClient.Do(req)
+		x.NoError(err)
+		res.Body.Close()
+		x.Equal(http.StatusOK, res.StatusCode)
+
+		rs := b.accessed(t, ctx)
+		x.Equal("10월 급여 정산", detail(t, rs[len(rs)-1]).GetReason())
+	})
 
 	t.Run("and refused when it cannot be recorded", func(t *testing.T) {
 		x := require.New(t)

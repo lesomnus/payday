@@ -57,7 +57,14 @@ const (
 
 // ReasonKey is the metadata a download says what it is for in. A download
 // without one is refused; see [Config.Downloads].
-const ReasonKey = "payday-reason"
+//
+// Binary metadata, so that a reason is any text a person writes, in any
+// language: a header carries ASCII and nothing else, and a browser refuses
+// to send one that is not. gRPC carries a `-bin` key base64 and hands it over
+// decoded, so a gRPC client sets the text; a client that writes the header
+// itself -- Connect from a page, `curl` -- writes it base64, as connect-es's
+// `encodeBinaryHeader` does.
+const ReasonKey = "payday-reason-bin"
 
 // MaxSubjects is how many subjects one row names: past it, the rest are
 // counted and not named. A list of a hundred people names a hundred; an export

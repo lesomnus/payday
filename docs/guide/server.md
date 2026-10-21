@@ -696,7 +696,7 @@ app's:
   deployment trusts of its forwarding headers.
 - **`Downloads`**, in `s.Downloads`: the methods that hand personal data out to
   be kept somewhere else -- an export, a file. Each is refused without a
-  `payday-reason` header saying what it is for, and its row is written before
+  `payday-reason-bin` header saying what it is for -- any text, base64 on the wire as a `-bin` key is, so a page sends it with connect-es's `encodeBinaryHeader` --, and its row is written before
   its answer leaves.
 
 And one is the app's code: what shows a person's data where no `personal`

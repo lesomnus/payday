@@ -105,7 +105,7 @@ type AccessDetail_builder struct {
 	// people came to be shown. Empty for a write, whose trail holds what it
 	// asked.
 	Request []byte
-	// Reason is what a download said it was for (`payday-reason`).
+	// Reason is what a download said it was for (`payday-reason-bin`).
 	Reason string
 }
 

@@ -20,8 +20,10 @@ in like `Audit`, so migrate. Nothing is recorded until it is wired (payday#111).
   which is the caller's only when nothing stands in front of the app; behind a
   proxy, answer with what the deployment trusts of its headers.
 - **`Downloads`** are your methods that hand personal data out to be kept
-  somewhere else, by full name. Each is refused without a `payday-reason`
-  header, so a client of one sends it.
+  somewhere else, by full name. Each is refused without a `payday-reason-bin`
+  header, so a client of one sends it: a gRPC client sets the text, and a
+  page or `curl` writes it base64, since it is a `-bin` key (connect-es has
+  `encodeBinaryHeader`).
 - **`access.Saw(ctx, ...)`** in whatever shows a person's data where no
   `personal` field carries it: a name rendered into text, a column of a file.
 - **Retention**: rows are a kind of the trail's, `access`, on `audit.by.access`.

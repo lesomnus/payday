@@ -174,7 +174,7 @@ Everything payday enforces is placed as far left as it goes.
 | the runtime assumes no file system | CI builds `GOOS=js GOARCH=wasm` |
 | every layer is an `enttx.Binder` | `pd doctor` finds one that is not — a missing `WithDriver` is nothing until the first transaction |
 | the access record is wired | `pd doctor` says which of its interceptor, writer and recorder the app's code does not name — missing, nothing fails and nothing is recorded |
-| a download says what it is for | the access interceptor refuses one without `payday-reason`, and one whose row cannot be written |
+| a download says what it is for | the access interceptor refuses one without `payday-reason-bin`, and one whose row cannot be written |
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
 | `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
 | the wire does not break | `buf breaking` in CI, against the published label and the branch |
@@ -984,8 +984,10 @@ call that carried nobody's data leaves nothing.
 - a **write** is recorded in its own transaction, at its commit, as the trail
   is: what holds the write holds its record, and a rollback takes both;
 - a **download** -- a method the app names in `access.Config.Downloads` -- says
-  what it is for in the `payday-reason` header or is refused, and its row is
-  written before its answer leaves; one that cannot be recorded is refused;
+  what it is for in the `payday-reason-bin` header or is refused, and its row
+  is written before its answer leaves; one that cannot be recorded is refused.
+  The reason is any text: a `-bin` key is base64 on the wire, which is what
+  lets a browser send words a plain header cannot carry;
 - a **read** is queued and written a second later with the others of its
   second (`access.Writer`, a loop each process runs for itself). A page is a
   dozen reads, and a statement in front of each would be the cost. The queue is

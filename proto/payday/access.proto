@@ -20,6 +20,6 @@ message AccessDetail {
   // asked.
   bytes request = 2;
 
-  // Reason is what a download said it was for (`payday-reason`).
+  // Reason is what a download said it was for (`payday-reason-bin`).
   string reason = 3;
 }
