@@ -4,9 +4,12 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -37,21 +40,119 @@ import (
 // are recorded beside it (`Audit.digest_fields`) and bound into it -- so a
 // column a later migration adds is outside every digest made before it, and a
 // column a migration rewrote is a difference, which is the point.
+//
+// # Bound to the line that keeps it (payday#115)
+//
+// A digest says what a row was; the row of the trail that keeps it -- its
+// line, [Line] -- says which line it is, when it was written and what was
+// done. Version 1 bound nothing of the line, so a digest could be copied from
+// an older line onto the newest, and a check compared the row with whatever
+// the copy said: a row put back to what it once was, and the trail made to
+// agree, by anybody who can write the database. So a digest is two MACs now.
+// One is of the row, as before. The other is of the line, over the first: its
+// key, its moment, its action, the thing it is about. A digest copied onto
+// another line is then not that line's, which is a finding of its own.
+//
+// Two MACs rather than one of everything, because of what a pass does at the
+// end of a window: a chunk of the archive is destroyed while the row its
+// newest line vouched for is still there, and what that line said of the row
+// is carried onto a line of the pass's own ([Digest.Carry]). The row's MAC is
+// carried as it was recorded and the line's is made for the new line. Made
+// again of the row as it is now, it would be a pass accepting whatever the row
+// had been made into.
+//
+// # A write that left no row
+//
+// An erase that took its row keeps a digest of its line alone ([Digest.Gone]):
+// that the row went is what it says. A check that finds the row there anyway
+// finds that, and so does one that finds no row where the trail says one was
+// left.
+//
+// # The keys
+//
+// Each MAC names the key it was made under by a [Fingerprint]. One under a key
+// the check holds is checked; one under a key the deployment said it let go
+// ([Digest.Retire]) is counted; one under any other is a finding. A check
+// handed a key other than the one the trail was written under finds every
+// row, and not none of them.
 type Digest struct {
 	key      []byte
-	print    [8]byte
-	previous map[[8]byte][]byte
+	print    Fingerprint
+	previous map[Fingerprint][]byte
+	retired  map[Fingerprint]bool
+	since    time.Time
 }
 
 // DigestVersion is the first byte of every digest [Digest.Of] makes.
-const DigestVersion byte = 1
+//
+// 2 is a digest bound to its line. 1, the row's MAC alone, is still checked
+// and no longer made: a line that keeps one is the line it was written as, or
+// the database's word for it, which is all version 1 ever had.
+const DigestVersion byte = 2
 
-// digestLen is a digest's length: the version, the key's fingerprint and the
-// HMAC.
-const digestLen = 1 + 8 + sha256.Size
+const (
+	// part is a fingerprint and a MAC, which is what each half of a digest
+	// is.
+	part = 8 + sha256.Size
+
+	// onlyRow is a version-1 digest: the version and the row's part.
+	onlyRow = 1 + part
+
+	// onlyLine is a version-2 digest of a write that left no row: the
+	// version and the line's part.
+	onlyLine = 1 + part
+
+	// lineAndRow is a version-2 digest of the row a write left: the line's
+	// part, then the row's.
+	lineAndRow = 1 + 2*part
+)
 
 // minDigestKey is the least a key may be: the HMAC's own block of entropy.
 const minDigestKey = 32
+
+// Fingerprint names a key in the digests made under it: eight bytes of a
+// SHA-256 of the key, under a label of its own. It says which key, and nothing
+// of what the key is.
+type Fingerprint [8]byte
+
+// FingerprintOf is the fingerprint of `key`, which is what an operator writes
+// into `audit.digest.retired` before letting the key go.
+func FingerprintOf(key []byte) Fingerprint {
+	h := sha256.New()
+	h.Write([]byte("payday.trail.digest.key\x00"))
+	h.Write(key)
+
+	var v Fingerprint
+	copy(v[:], h.Sum(nil))
+	return v
+}
+
+// String is the fingerprint in hexadecimal, as configuration writes one.
+func (f Fingerprint) String() string { return hex.EncodeToString(f[:]) }
+
+// ParseFingerprint reads a fingerprint as [Fingerprint.String] writes one.
+func ParseFingerprint(v string) (Fingerprint, error) {
+	b, err := hex.DecodeString(v)
+	if err != nil || len(b) != len(Fingerprint{}) {
+		return Fingerprint{}, fmt.Errorf("%q is not a key's fingerprint: sixteen hexadecimal digits", v)
+	}
+
+	return Fingerprint(b), nil
+}
+
+// Line is the row of the trail a digest is bound to, as far as the digest is
+// concerned: the line's own key, when it was written, and what it says was
+// done.
+//
+// Its moment is bound to the microsecond, which is what every database a trail
+// is kept in holds, so that the moment a digest was made over is the one read
+// back. A writer stores it truncated to that, rather than leaving a database
+// to round.
+type Line struct {
+	Id      [16]byte
+	Created time.Time
+	Action  string
+}
 
 // NewDigest is a digest under `key`, which checks digests made under any of
 // `previous` too -- the keys it has replaced, kept for checking alone.
@@ -60,42 +161,119 @@ func NewDigest(key []byte, previous ...[]byte) (*Digest, error) {
 		return nil, fmt.Errorf("a digest key is at least %d bytes, and this is %d", minDigestKey, len(key))
 	}
 
-	d := &Digest{key: slices.Clone(key), print: fingerprint(key), previous: map[[8]byte][]byte{}}
+	d := &Digest{key: slices.Clone(key), print: FingerprintOf(key), previous: map[Fingerprint][]byte{}}
 	for i, v := range previous {
 		if len(v) < minDigestKey {
 			return nil, fmt.Errorf("previous[%d]: a digest key is at least %d bytes, and this is %d", i, minDigestKey, len(v))
 		}
 
-		d.previous[fingerprint(v)] = slices.Clone(v)
+		d.previous[FingerprintOf(v)] = slices.Clone(v)
 	}
 
 	return d, nil
 }
 
-// fingerprint is what names a key in the digests made under it, so that one
-// made before a rotation is checked with the key it was made with.
-func fingerprint(key []byte) [8]byte {
-	h := sha256.New()
-	h.Write([]byte("payday.trail.digest.key\x00"))
-	h.Write(key)
+// Fingerprint is the fingerprint of the key this makes digests under.
+func (d *Digest) Fingerprint() Fingerprint { return d.print }
 
-	var v [8]byte
-	copy(v[:], h.Sum(nil))
-	return v
+// Since is this digest, told that its deployment began keeping digests at
+// `at`: a line written before then that keeps none was written before there
+// was anything to keep, and a check counts it rather than finding it. Zero is
+// from the beginning, which is where a deployment that had a key from its
+// first write is, and what nothing said is.
+//
+// # Why it is told, and not read off the trail
+//
+// Whatever the database says of when digests began, whoever can write the
+// database can say. Take the digests off a kind's first lines, or put a
+// marker row back by a month, and every row they were about reads as from
+// before -- unchecked, by a check that says it checked. Configuration is
+// beside the key, out of that reach, and a moment an operator wrote down is
+// one they can be asked about.
+//
+// What it cannot do is tell a line from before apart from one somebody made
+// look like it: a row whose whole trail was put back before `at`, with no
+// digest, reads as from before. That is the price of saying anything about a
+// deployment that had rows before it had a key, and it ends when those rows
+// are accepted once and this is taken out.
+func (d *Digest) Since(at time.Time) *Digest {
+	v := *d
+	v.since = at
+
+	return &v
 }
 
-// Of is the digest of `row`, the message of the thing `object` names, over the
-// fields `covered` lists. `row` is the caller's, and is not changed.
-func (d *Digest) Of(object pdid.Id, row proto.Message, covered []uint32) ([]byte, error) {
-	mac, err := d.mac(d.key, object, row, covered)
+// Retire is this digest, told that the keys `prints` name were let go: a
+// digest made under one is counted rather than found, since nothing can check
+// it and the deployment said why. Any other key it does not hold is a finding.
+//
+// A key is held or let go, so the fingerprint of one this holds is refused.
+func (d *Digest) Retire(prints ...Fingerprint) (*Digest, error) {
+	v := *d
+	v.retired = maps.Clone(d.retired)
+	if v.retired == nil {
+		v.retired = map[Fingerprint]bool{}
+	}
+	for _, p := range prints {
+		if _, held := d.previous[p]; held || p == d.print {
+			return nil, fmt.Errorf("%s is the fingerprint of a key this holds; a key is held or let go, not both", p)
+		}
+
+		v.retired[p] = true
+	}
+
+	return &v, nil
+}
+
+// Of is the digest the line `line` keeps of the row its write left: `row`, the
+// message of the thing `object` names, over the fields `covered` lists. `row`
+// is the caller's, and is not changed.
+func (d *Digest) Of(object pdid.Id, row proto.Message, covered []uint32, line Line) ([]byte, error) {
+	mac, err := rowMAC(d.key, object, row, covered)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]byte, 0, digestLen)
+	r := make([]byte, 0, part)
+	r = append(r, d.print[:]...)
+	r = append(r, mac...)
+
+	return d.bind(object, line, r), nil
+}
+
+// Gone is the digest the line `line` keeps of a write that left no row of
+// `object`: an erase that took it.
+func (d *Digest) Gone(object pdid.Id, line Line) []byte {
+	return d.bind(object, line, nil)
+}
+
+// Carry is `sum` -- the digest an older line keeps of `object` -- bound to
+// `line` instead, which is what a pass writes for a row whose newest line it
+// is about to destroy. What it says of the row is what the older line said:
+// the row's MAC is copied as it was recorded, never made again, and only the
+// line's is new. One of version 1 is carried as version 2.
+func (d *Digest) Carry(sum []byte, object pdid.Id, line Line) ([]byte, error) {
+	switch {
+	case len(sum) == onlyRow && sum[0] == 1:
+		return d.bind(object, line, sum[1:]), nil
+	case len(sum) == onlyLine && sum[0] == DigestVersion:
+		return d.bind(object, line, nil), nil
+	case len(sum) == lineAndRow && sum[0] == DigestVersion:
+		return d.bind(object, line, sum[onlyLine:]), nil
+	}
+
+	return nil, ErrDigest
+}
+
+// bind is a version-2 digest: the line's part, made now, and `r`, the row's,
+// or nothing for a write that left no row.
+func (d *Digest) bind(object pdid.Id, line Line, r []byte) []byte {
+	out := make([]byte, 0, lineAndRow)
 	out = append(out, DigestVersion)
 	out = append(out, d.print[:]...)
-	return append(out, mac...), nil
+	out = append(out, lineMAC(d.key, object, line, r)...)
+
+	return append(out, r...)
 }
 
 // Verdict is what [Digest.Check] found.
@@ -106,12 +284,22 @@ const (
 	Matches Verdict = iota
 
 	// Differs is a row that is not: changed since, by something the trail
-	// did not record.
+	// did not record. To [Digest.CheckGone], a row that is not there where
+	// the trail says one was left.
 	Differs
 
-	// KeyNotHeld is a digest made under a key this was not given, so it says
-	// nothing either way.
+	// KeyNotHeld is a digest made under a key this was not given and was not
+	// told was let go: a check with the wrong key, or a digest nobody here
+	// made.
 	KeyNotHeld
+
+	// Retired is a digest made under a key the deployment let go
+	// ([Digest.Retire]), so nothing can check it.
+	Retired
+
+	// Forged is a digest that is not the line's that keeps it: copied there
+	// from another line, or not one payday makes at all.
+	Forged
 )
 
 func (v Verdict) String() string {
@@ -122,51 +310,112 @@ func (v Verdict) String() string {
 		return "differs"
 	case KeyNotHeld:
 		return "key not held"
+	case Retired:
+		return "retired"
+	case Forged:
+		return "forged"
 	}
 
 	return fmt.Sprintf("Verdict(%d)", int(v))
 }
 
-// ErrDigest is a digest that is not one [Digest.Of] makes: of another version,
-// or of the wrong length.
-var ErrDigest = errors.New("not a digest this version of payday makes")
+// ErrDigest is a digest that is not one any version of payday makes: of a
+// version nothing made, or of the wrong length.
+var ErrDigest = errors.New("not a digest any version of payday makes")
 
-// Check says whether `sum` is the digest of `row` -- the live row of the
-// thing `object` names -- over the fields `covered` lists, by the key `sum`
-// names.
-func (d *Digest) Check(sum []byte, object pdid.Id, row proto.Message, covered []uint32) (Verdict, error) {
-	if len(sum) != digestLen || sum[0] != DigestVersion {
-		return Differs, ErrDigest
+// Check says whether `sum`, the digest the line `line` keeps, is the digest of
+// `row` -- the row of the thing `object` names, as it is now -- over the
+// fields `covered` lists.
+func (d *Digest) Check(sum []byte, object pdid.Id, row proto.Message, covered []uint32, line Line) (Verdict, error) {
+	r, v, err := d.open(sum, object, line)
+	switch {
+	case v != Matches:
+		return v, err
+	case len(r) == 0:
+		// The line says the write took the row, and here it is: brought back
+		// by something that is not on the trail.
+		return Differs, nil
 	}
 
-	var print [8]byte
-	copy(print[:], sum[1:9])
-
-	key := d.key
-	if print != d.print {
-		v, ok := d.previous[print]
-		if !ok {
-			return KeyNotHeld, nil
-		}
-		key = v
+	key, v := d.keyOf(Fingerprint(r[:8]))
+	if v != Matches {
+		return v, nil
 	}
 
-	mac, err := d.mac(key, object, row, covered)
+	mac, err := rowMAC(key, object, row, covered)
 	if err != nil {
 		return Differs, err
 	}
-	if !hmac.Equal(mac, sum[9:]) {
+	if !hmac.Equal(mac, r[8:]) {
 		return Differs, nil
 	}
 
 	return Matches, nil
 }
 
-// mac is the HMAC itself: of what it is about and what it covers, and then of
+// CheckGone says whether `sum`, the digest the line `line` keeps of `object`,
+// says what is so of a thing that is no row: that the write it was took it.
+// One that says a row was left is [Differs] -- the row went past the trail --
+// whatever key that row was digested under.
+func (d *Digest) CheckGone(sum []byte, object pdid.Id, line Line) (Verdict, error) {
+	r, v, err := d.open(sum, object, line)
+	switch {
+	case v != Matches:
+		return v, err
+	case len(r) > 0:
+		return Differs, nil
+	}
+
+	return Matches, nil
+}
+
+// open checks the line's part of `sum` and answers with the row's: the whole
+// of a version-1 digest, which is bound to no line, and nothing for one of a
+// write that left no row.
+func (d *Digest) open(sum []byte, object pdid.Id, line Line) ([]byte, Verdict, error) {
+	switch {
+	case len(sum) == onlyRow && sum[0] == 1:
+		return sum[1:], Matches, nil
+
+	case (len(sum) == onlyLine || len(sum) == lineAndRow) && sum[0] == DigestVersion:
+		key, v := d.keyOf(Fingerprint(sum[1:9]))
+		if v != Matches {
+			return nil, v, nil
+		}
+
+		r := sum[onlyLine:]
+		if !hmac.Equal(lineMAC(key, object, line, r), sum[9:onlyLine]) {
+			return nil, Forged, nil
+		}
+
+		return r, Matches, nil
+	}
+
+	return nil, Forged, ErrDigest
+}
+
+// keyOf is the key a fingerprint names, and why there is none: let go, or
+// never held.
+func (d *Digest) keyOf(p Fingerprint) ([]byte, Verdict) {
+	if p == d.print {
+		return d.key, Matches
+	}
+	if v, ok := d.previous[p]; ok {
+		return v, Matches
+	}
+	if d.retired[p] {
+		return nil, Retired
+	}
+
+	return nil, KeyNotHeld
+}
+
+// rowMAC is the row's MAC: of what it is about and what it covers, and then of
 // the row restricted to that, marshalled deterministically. The list it covers
 // is bound into it, so that taking a field out of the list does not take a
-// change to that field out of the comparison.
-func (d *Digest) mac(key []byte, object pdid.Id, row proto.Message, covered []uint32) ([]byte, error) {
+// change to that field out of the comparison. It is version 1's whole digest,
+// unchanged, which is what lets a version-1 digest be carried.
+func rowMAC(key []byte, object pdid.Id, row proto.Message, covered []uint32) ([]byte, error) {
 	m := proto.Clone(row)
 	restrict(m.ProtoReflect(), covered)
 
@@ -189,6 +438,27 @@ func (d *Digest) mac(key []byte, object pdid.Id, row proto.Message, covered []ui
 
 	h.Write(b)
 	return h.Sum(nil), nil
+}
+
+// lineMAC is the line's MAC: of which line it is, when it was written, what it
+// says was done and what it is about, and then of the row's part -- `r`, or
+// nothing for a write that left no row. Everything before `r` is of a fixed
+// length or says its own, so no two lines are one input.
+func lineMAC(key []byte, object pdid.Id, line Line, r []byte) []byte {
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte("payday.trail.line\x00"))
+	h.Write(line.Id[:])
+
+	n := make([]byte, 8)
+	binary.BigEndian.PutUint64(n, uint64(line.Created.UnixMicro()))
+	h.Write(n)
+	binary.BigEndian.PutUint32(n[:4], uint32(len(line.Action)))
+	h.Write(n[:4])
+	h.Write([]byte(line.Action))
+
+	h.Write(object.Bytes())
+	h.Write(r)
+	return h.Sum(nil)
 }
 
 // restrict clears every field of `m` that `covered` does not list, and what it

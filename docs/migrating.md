@@ -3,6 +3,56 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A check of the rows finds what a database writer can make of the trail
+
+**Applies if** you call the generated `pd.Digests`, give an operator a command
+that runs it, or write or remove rows beneath your servers (payday#115). The
+schema is unchanged and nothing needs migrating; regenerate.
+
+- **What used to be counted is found.** `Rows.NoDigest` and `Rows.KeyNotHeld`
+  are the rows now, not counts, and `Rows.Ok()` is false while there are any:
+  a line with no digest, and a digest under a key the check was not given, are
+  what anybody who can write the database can make of a line. A check given the
+  wrong key, or of a deployment that wrote without one, no longer passes.
+  Have the command exit non-zero on every list `Rows` has, and print
+  `Rows.Unheld`, the keys those were under.
+- **What may be counted is said beside the key.** `audit.digest.since` is when
+  the deployment began keeping digests: a line written before it with none is
+  counted in `Rows.BeforeDigests`. A deployment that was given a key after its
+  first write sets it, to the moment it did -- the earliest digested line of the
+  trail is no later -- and takes it out once those rows are accepted. A since
+  later than a line that keeps a digest is refused by the check.
+  `audit.digest.retired` is the fingerprints of keys let go; their digests are
+  counted in `Rows.Retired`.
+- **A digest is bound to its line** (version 2): its key, its moment, its
+  action. One copied onto another line is `Rows.Forged`. Version 1 is still
+  checked and no longer made; nothing has to be rewritten.
+- **An erased row is read.** A soft Erase keeps a digest of the row it left, and
+  a check reads erased rows as it reads live ones, so one brought back or
+  changed past the servers is in `Rows.Differs`. A hard Erase keeps a digest
+  that says the row went. An erase recorded by a build before this keeps none,
+  so a row erased since the key was given is in `Rows.NoDigest`, or in
+  `Rows.Missing` when it was erased hard, until it is accepted once.
+- **What was removed is found.** `Rows.Missing` is the things the trail says
+  are rows and that are no row. **`pd.RecordErased(ctx, db, contents, action,
+  ids)`** is `pd.Record` for rows you removed beneath the servers -- what a
+  person forgotten took with them, a workspace destroyed -- called in the
+  transaction that removed them. `pd.Record` takes a row erased softly now, and
+  refuses one that is no row (`is no row`; that is `RecordErased`'s).
+- **A pass carries forward** the newest line about a row that is still there
+  before it destroys it at the end of its window, so a row nobody wrote since is
+  still on the trail. It needs the key: `trail.Policy.Digest`, which
+  `config.AuditConfig.Policy` sets from `audit.digest`. A policy made by hand
+  sets it. `trail.Store` has a method more, `Carry`, which `pd gen` writes.
+- **`Rows.Skipped`** names every kind kept off the trail, with its why: print
+  it, so that a check that found nothing says what it did not look at. `pd
+  doctor` asks about a kind kept off the trail that holds a `secret`.
+- **`(payday.field)` on a field of a message that is not an entity**, or on one
+  the ORM does not map, is refused: nothing read it, and a `personal: true`
+  there kept nobody off the trail. Say it on the entity's column that holds the
+  message.
+- **Field 4 of `payday.Field`** and the name `impersonal` are reserved.
+
 ## A transaction's end is its owner's: a write that fails partway refuses its commit
 
 **Applies if** you generate with `pd gen`, or call `dialect.BeginTx`.

@@ -12,6 +12,7 @@ import (
 	"github.com/lesomnus/flob"
 	"github.com/lesomnus/otx/log"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/pdid"
 )
 
@@ -51,16 +52,29 @@ type Newest struct {
 }
 
 // Last is what the newest row of the archive about one thing keeps of the row
-// its write left: its digest, and the fields the digest covers. Nothing of what
-// it sealed.
+// its write left: its digest, the fields the digest covers, and the line the
+// digest is bound to (payday#115). Nothing of what it sealed.
 type Last struct {
 	Created      time.Time
+	Action       string
 	Digest       []byte
 	DigestFields []uint32
+
+	// Tenant is the tenant the line is filed under, which is where a line
+	// carried forward from it is filed too.
+	Tenant pdid.Id
 
 	// row is its identifier, which orders two rows written at one moment as
 	// the database orders them.
 	row []byte
+}
+
+// Line is the line of the trail this was, as its digest is bound to it.
+func (v Last) Line() audit.Line {
+	var id [16]byte
+	copy(id[:], v.row)
+
+	return audit.Line{Id: id, Created: v.Created, Action: v.Action}
 }
 
 // after answers whether `v` is a newer row than `was`.
@@ -126,10 +140,34 @@ func (n *Newest) Of(ctx context.Context, kind pdid.Domain, ids []pdid.Id) (map[p
 		want[encoded(v)] = v
 	}
 
+	return n.lines(ctx, kind, func(h head) (pdid.Id, bool) {
+		id, ok := want[h.Object]
+		return id, ok
+	})
+}
+
+// All is the newest row the archive holds about every thing of `kind` it holds
+// a row about: what a check of the rows reads to find a thing the trail says
+// is a row and is not (payday#115), which no list of identifiers it already
+// has could name.
+func (n *Newest) All(ctx context.Context, kind pdid.Domain) (map[pdid.Id]Last, error) {
+	return n.lines(ctx, kind, func(h head) (pdid.Id, bool) {
+		id, err := objectOf(h)
+		if err != nil || id.Domain() != kind {
+			return pdid.Nil, false
+		}
+
+		return id, true
+	})
+}
+
+// lines is the newest row of the chunks of `kind` about each thing `which`
+// names.
+func (n *Newest) lines(ctx context.Context, kind pdid.Domain, which func(head) (pdid.Id, bool)) (map[pdid.Id]Last, error) {
 	out := map[pdid.Id]Last{}
 	for _, c := range slices.Concat(n.chunks[nameOf(kind)], n.chunks[""]) {
 		err := readChunk(ctx, n.a, c, nil, nil, true, func(h head, _ []byte) error {
-			id, ok := want[h.Object]
+			id, ok := which(h)
 			if !ok {
 				return nil
 			}
@@ -153,6 +191,16 @@ func (n *Newest) Of(ctx context.Context, kind pdid.Domain, ids []pdid.Id) (map[p
 	return out, nil
 }
 
+// objectOf is the thing a row's head is about.
+func objectOf(h head) (pdid.Id, error) {
+	b, err := base64.StdEncoding.DecodeString(h.Object)
+	if err != nil || len(b) != 16 {
+		return pdid.Nil, fmt.Errorf("a row about %q, which is no identifier", h.Object)
+	}
+
+	return pdid.Id(b), nil
+}
+
 // lastOf is what a row's head says of the row its write left.
 func lastOf(h head) (Last, error) {
 	created, err := time.Parse(time.RFC3339Nano, h.Created)
@@ -170,10 +218,39 @@ func lastOf(h head) (Last, error) {
 		return Last{}, fmt.Errorf("its digest: %w", err)
 	}
 
+	var tenant pdid.Id
+	if h.Tenant != "" {
+		b, err := base64.StdEncoding.DecodeString(h.Tenant)
+		if err != nil || len(b) != 16 {
+			return Last{}, fmt.Errorf("its tenant: %q is no identifier", h.Tenant)
+		}
+		tenant = pdid.Id(b)
+	}
+
 	return Last{
 		Created:      created,
+		Action:       h.Action,
 		Digest:       digest,
 		DigestFields: h.DigestFields,
+		Tenant:       tenant,
 		row:          row,
 	}, nil
 }
+
+// Carried is a line a pass writes before it destroys the newest line about a
+// thing that is still a row (payday#115): what that line said of the row,
+// carried onto a line of the database's own, so that a row nobody wrote since
+// its window ran out is still one the trail accounts for. See [Store.Carry].
+//
+// Sum is the destroyed line's digest, and the store binds it to the line it
+// writes ([audit.Digest.Carry]) once it has minted it: the row's MAC is
+// carried as it was recorded, and only the line's is new.
+type Carried struct {
+	Object       pdid.Id
+	Tenant       pdid.Id
+	Sum          []byte
+	DigestFields []uint32
+}
+
+// CarriedAction is what a line a pass carries forward says was done.
+const CarriedAction = "payday.trail.carry"

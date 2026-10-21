@@ -215,13 +215,19 @@ The live rows can be checked as well. With `audit.digest.key`, each row of the
 trail keeps a keyed digest of the row its write left. The key is a file of
 `openssl rand -base64 32`, mounted as a secret, as the checkpoint key is. The
 generated `pd.Digests`, handed the policy so that it reads the archive too,
-finds a row somebody changed in the database past the servers and a row
-somebody added there: give the operator a command that runs it, on a schedule
-too. And one that accepts what an operator has looked at -- rows a migration
-rewrote, rows written before the trail could say anything about them -- by
-recording them, `pd.Record(ctx, db, contents, action, ids)`, with a reason the
-command logs. See
+finds a row somebody changed in the database past the servers, one somebody
+added there and one somebody removed: give the operator a command that runs
+it, on a schedule too, and that fails on every list it answers with and prints
+the kinds it skipped. And one that accepts what an operator has looked at --
+rows a migration rewrote, rows written before the trail could say anything
+about them -- by recording them, `pd.Record(ctx, db, contents, action, ids)`,
+or `pd.RecordErased` for ones that are gone. See
 [a digest of the row the write left](../runtime.md#a-digest-of-the-row-the-write-left).
+
+A deployment that was given its digest key after its first write says when, in
+`audit.digest.since`, and a key it lets go goes into `audit.digest.retired` by
+its fingerprint (`audit.FingerprintOf`) rather than out of the configuration:
+otherwise every row is a finding, which is what a check with the wrong key is.
 
 The key signs every row of the manifest as well, so that a row changed after
 the latest checkpoint is found too, and each checkpoint names the one before

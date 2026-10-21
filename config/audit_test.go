@@ -11,10 +11,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"filippo.io/age"
 	"github.com/stretchr/testify/require"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/trail"
 )
@@ -97,6 +99,40 @@ func TestTheDigestKeyIsAFileOrTheKeyItself(t *testing.T) {
 
 	_, err = config.AuditConfig{Digest: config.AuditDigestConfig{Previous: []string{"base64:" + key}}}.Contents()
 	x.ErrorContains(err, "previous", "keys to check with and none to make a digest")
+}
+
+// TestWhatTheDigestsBeganWithIsSaidBesideTheKey: when digests began, and the
+// keys let go, are what a check of the rows counts rather than finds -- read
+// where the process comes up, refused when they cannot be true, and handed to
+// the pass that carries digests forward too (payday#115).
+func TestWhatTheDigestsBeganWithIsSaidBesideTheKey(t *testing.T) {
+	x := require.New(t)
+
+	key := "base64:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))
+	gone := audit.FingerprintOf(bytes.Repeat([]byte{8}, 32))
+
+	for _, since := range []string{"2026-10-19", "2026-10-19T09:00:00+09:00"} {
+		c := config.AuditConfig{Digest: config.AuditDigestConfig{Key: key, Since: since, Retired: []string{gone.String()}}}
+		cs, err := c.Contents()
+		x.NoError(err, since)
+		x.NotNil(cs.Digest)
+
+		p, err := c.Policy()
+		x.NoError(err)
+		x.Equal(cs.Digest.Fingerprint(), p.Digest.Fingerprint(), "the pass carries with the key the recorder makes them with")
+	}
+
+	for name, c := range map[string]config.AuditDigestConfig{
+		"since":       {Key: key, Since: "last tuesday"},
+		"after now":   {Key: key, Since: time.Now().Add(time.Hour).Format(time.RFC3339)},
+		"retired":     {Key: key, Retired: []string{"not a fingerprint"}},
+		"held":        {Key: key, Retired: []string{audit.FingerprintOf(bytes.Repeat([]byte{7}, 32)).String()}},
+		"no key":      {Since: "2026-10-19"},
+		"no key, yet": {Retired: []string{gone.String()}},
+	} {
+		_, err := config.AuditConfig{Digest: c}.Contents()
+		x.Error(err, name)
+	}
 }
 
 // TestCheckpointsGoWhereTheyAreToldTo.

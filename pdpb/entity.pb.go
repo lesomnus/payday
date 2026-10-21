@@ -570,6 +570,11 @@ func (*entity_Global_) isEntity_Tenancy() {}
 // generated service off its server. That works, is checkable, and is said in
 // the app that happens to hold the field rather than beside the field. The next
 // app storing a verifier rediscovers the whole argument.
+//
+// It is read on an entity's own columns and nowhere else, and generation refuses
+// it anywhere else: on a field of a message a column holds, which is withheld or
+// kept as the column it is in, it would be a declaration nothing reads
+// (payday#115).
 type Field struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Secret      bool                   `protobuf:"varint,1,opt,name=secret"`
@@ -2014,11 +2019,12 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05Order\x12\x1e\n" +
 	"\x05field\x18\x01 \x01(\v2\b.orm.RefR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
-	"\atenancy\"\\\n" +
+	"\atenancy\"n\n" +
 	"\x05Field\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
 	"\astamped\x18\x02 \x01(\bR\astamped\x12!\n" +
-	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonal*{\n" +
+	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonalJ\x04\b\x04\x10\x05R\n" +
+	"impersonal*{\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

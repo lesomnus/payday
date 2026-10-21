@@ -113,6 +113,61 @@ func TestDoctorRefusesAnAppFieldInAReservedHeaderSlot(t *testing.T) {
 	x.Contains(found(t, l), "reserved for alias")
 }
 
+// TestDoctorAsksAboutAKindKeptOffTheTrailThatHoldsASecret: a kind a check of
+// the rows does not read, whose rows are a way in, is one whose row added in
+// the database nothing finds (payday#115). The doctor says so, with the reason
+// the schema gave and where the secret is; recorded instead, it says nothing.
+func TestDoctorAsksAboutAKindKeptOffTheTrailThatHoldsASecret(t *testing.T) {
+	x := require.New(t)
+	l := apptest(t, x)
+	at := l.Path(pdcli.DirProto, "app", "token.proto")
+	t.Cleanup(func() { _ = os.Remove(at) })
+
+	x.NoError(os.WriteFile(at, []byte(keyed(`off: {why: "a key, rotated every hour"}`)), 0o644))
+	v := found(t, l)
+	x.Contains(v, "app.Token is kept off the trail and holds a secret (secret)")
+	x.Contains(v, `off: {why: "a key, rotated every hour"}`)
+	x.Contains(v, "proto/app/token.proto:", "where the secret is declared")
+
+	x.NoError(os.WriteFile(at, []byte(keyed(`recorded: {}`)), 0o644))
+	x.NotContains(found(t, l), "app.Token")
+}
+
+// keyed is an entity no server writes, holding a secret, and saying `trail`
+// how its writes reach the trail.
+func keyed(trail string) string {
+	return `edition = "2023";
+
+package app;
+
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+message Token {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  bytes secret = 8 [(payday.field) = {secret: true}];
+
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
+
+  option (orm.message) = {};
+  option (payday.entity) = {
+    domain: 202
+    global: {}
+    erase: {hard: {}}
+    trail: {` + trail + `}
+  };
+}
+`
+}
+
 // clash is `Seal`'s domain, on a second entity.
 const clash = `edition = "2023";
 

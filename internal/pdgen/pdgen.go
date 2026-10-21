@@ -208,6 +208,10 @@ type Schema struct {
 func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	s := &Schema{}
 
+	if err := checkFieldOptions(g, files); err != nil {
+		return nil, err
+	}
+
 	// By file and then by declaration, so that the output does not move about
 	// between runs for reasons nobody asked for.
 	for _, f := range files {
@@ -250,6 +254,75 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	}
 
 	return s, nil
+}
+
+// checkFieldOptions refuses `(payday.field)` where nothing reads it: on a field
+// of a message that is not an entity -- a message one of an entity's columns
+// holds, a request, anything else -- and on a field of an entity that the ORM
+// does not map to a column.
+//
+// Everything `payday.field` says is read off an entity's own columns, and only
+// there: the trail withholds a column, a read clears one, an Add refuses one.
+// A `personal: true` on a field inside a message a column holds was silently
+// nothing -- the column was copied onto the trail whole, the person in it
+// included -- and a declaration that does nothing is one somebody relies on
+// (payday#115). So it is refused, and the refusal says where it goes: on the
+// column of the entity that holds the message, which is the whole of what
+// the trail can withhold.
+func checkFieldOptions(g *graph.Graph, files []*protogen.File) error {
+	var walk func(ms []*protogen.Message) error
+	walk = func(ms []*protogen.Message) error {
+		for _, m := range ms {
+			e, entity := g.Entities[m.Desc.FullName()]
+			for _, f := range m.Fields {
+				opts := f.Desc.Options()
+				if opts == nil || !proto.HasExtension(opts, pdpb.E_Field) {
+					continue
+				}
+
+				switch {
+				case !entity:
+					return fmt.Errorf(
+						"%s: (payday.field) is read on an entity's own columns, and %s is not an entity; "+
+							"say it on the column of the entity that holds this message",
+						f.Desc.FullName(), m.Desc.FullName())
+
+				case !mapped(e, f.Desc):
+					return fmt.Errorf(
+						"%s: (payday.field) on a field the ORM maps to no column, which no row holds and nothing reads",
+						f.Desc.FullName())
+				}
+			}
+
+			if err := walk(m.Messages); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	for _, f := range files {
+		if !f.Generate {
+			continue
+		}
+		if err := walk(f.Messages); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// mapped is whether `fd` is one of the columns or edges of `e`.
+func mapped(e graph.Entity, fd protoreflect.FieldDescriptor) bool {
+	for p := range e.Props() {
+		if p.Descriptor().Number() == fd.Number() {
+			return true
+		}
+	}
+
+	return false
 }
 
 // written is a top-level message's options as the file declares them: the
