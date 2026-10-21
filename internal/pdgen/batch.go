@@ -166,13 +166,20 @@ type batchOp struct {
 // It reads the service definitions, so an RPC payday adds to a contract -- a
 // `List`, and whatever comes after it -- is batchable without anybody having
 // come back here. What it leaves out is the streaming ones, which have no
-// single request and no single answer and so are not an operation.
+// single request and no single answer and so are not an operation, and the
+// records payday keeps -- the trail, the outbox, the archive's account, the
+// access record: what writes them is the servers, and what reads one is
+// served as an RPC of its own or not at all, never as an operation a batch
+// reaches by a name its app did not serve.
 func batchOps(s *Schema, files []*protogen.File) []batchOp {
 	// The entities, by the name of the service they are served under, so that a
 	// service which is not one of theirs is skipped: `Server` has an accessor
 	// per entity and nothing else.
 	by := map[string]*Entity{}
 	for _, v := range s.Sorted() {
+		if v.Records() {
+			continue
+		}
 		by[v.GoName()+"Service"] = v
 	}
 

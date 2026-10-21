@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -42,6 +43,20 @@ type Writer struct {
 	// spun is whether [Writer.Spin] has begun; told, whether the log has
 	// heard that it had not, with this much waiting.
 	spun, told bool
+
+	// log is the process's log as [Writer.Spin] was handed it, which is
+	// where a loss is said: the one a context with nothing in it reaches is
+	// the global, and nothing installs that.
+	log *slog.Logger
+}
+
+// logger is where the writer says what it lost.
+func (w *Writer) logger() *slog.Logger {
+	if w.log != nil {
+		return w.log
+	}
+
+	return log.From(context.Background())
 }
 
 // unspun is how many reads may wait with nothing writing them before the log
@@ -61,11 +76,11 @@ func (w *Writer) Queue(rs ...Record) {
 	w.queue = append(w.queue, rs...)
 	if !w.spun && !w.told && len(w.queue) >= unspun {
 		w.told = true
-		log.From(context.Background()).Error("access: reads are waiting and nothing writes them; hand the writer to spin.Run", "rows", len(w.queue))
+		w.logger().Error("access: reads are waiting and nothing writes them; hand the writer to spin.Run", "rows", len(w.queue))
 	}
 	if over := len(w.queue) - w.max(); over > 0 {
 		w.queue = w.queue[over:]
-		log.From(context.Background()).Error("access: the record could not be written, and the oldest reads waiting for it were dropped", "dropped", over)
+		w.logger().Error("access: the record could not be written, and the oldest reads waiting for it were dropped", "dropped", over)
 	}
 }
 
@@ -134,9 +149,14 @@ func (w *Writer) SpinEverywhere() {}
 // stopped: a process being stopped is the moment a queue is most worth
 // writing, and the context it was given is gone by then, so the last write
 // has a few seconds of its own.
+//
+// What a server answers while it drains is queued after that, since the two
+// stop together: whatever stops the server writes the queue once more when it
+// has ([Writer.Flush]), as the template's `serve` does.
 func (w *Writer) Spin(ctx context.Context) error {
 	w.mu.Lock()
 	w.spun = true
+	w.log = log.From(ctx)
 	w.mu.Unlock()
 
 	t := time.NewTicker(w.every())

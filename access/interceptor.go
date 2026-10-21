@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/lesomnus/otx/log"
 	"go.opentelemetry.io/otel/trace"
@@ -16,6 +17,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/grpcx"
@@ -71,8 +73,7 @@ func (c Config) Unary() grpc.UnaryServerInterceptor {
 			return nil, err
 		}
 
-		ctx, call := Into(ctx, info.FullMethod)
-		call.address = c.address(ctx)
+		ctx, call := c.into(ctx, info.FullMethod)
 		res, herr := handler(ctx, req)
 
 		var answer, asked proto.Message
@@ -102,15 +103,15 @@ func (c Config) Stream() grpc.StreamServerInterceptor {
 			return err
 		}
 
-		ctx, call := Into(ss.Context(), info.FullMethod)
-		call.address = c.address(ctx)
+		ctx, call := c.into(ss.Context(), info.FullMethod)
 		w := &watched{ServerStream: ss, ctx: ctx, c: c, call: call, reason: reason}
 		herr := handler(srv, w)
 		w.stop()
+		call.Settle(herr == nil)
 
 		// What it sent is sent: a row that cannot be written now is said in
 		// the log, since there is nothing left to refuse.
-		if err := c.record(ctx, call, nil, herr, reason); err != nil {
+		if err := c.record(ctx, call, w.request(), herr, reason); err != nil {
 			log.From(ctx).ErrorContext(ctx, "access: a stream's record could not be written", "method", info.FullMethod, "err", err)
 		}
 
@@ -127,9 +128,34 @@ type watched struct {
 
 	mu   sync.Mutex
 	soon *time.Timer
+
+	// asked is the request the handler read, which is what the stream was
+	// asked for.
+	asked proto.Message
 }
 
 func (w *watched) Context() context.Context { return w.ctx }
+
+func (w *watched) RecvMsg(m any) error {
+	if err := w.ServerStream.RecvMsg(m); err != nil {
+		return err
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if v, ok := m.(proto.Message); ok && w.asked == nil {
+		w.asked = v
+	}
+
+	return nil
+}
+
+func (w *watched) request() proto.Message {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	return w.asked
+}
 
 func (w *watched) SendMsg(m any) error {
 	if v, ok := m.(proto.Message); ok && w.c.Subjects != nil {
@@ -140,7 +166,7 @@ func (w *watched) SendMsg(m any) error {
 	// statement for each message that carries anybody: what hands out many
 	// rows sends them in few messages.
 	if w.reason != "" {
-		if err := w.c.record(w.ctx, w.call, nil, nil, w.reason); err != nil {
+		if err := w.c.record(w.ctx, w.call, w.request(), nil, w.reason); err != nil {
 			return err
 		}
 	} else {
@@ -165,7 +191,7 @@ func (w *watched) later() {
 		w.soon = nil
 		w.mu.Unlock()
 
-		if err := w.c.record(w.ctx, w.call, nil, nil, ""); err != nil {
+		if err := w.c.record(w.ctx, w.call, w.request(), nil, ""); err != nil {
 			log.From(w.ctx).ErrorContext(w.ctx, "access: a stream's record could not be written", "method", w.call.Method(), "err", err)
 		}
 	})
@@ -180,8 +206,17 @@ func (w *watched) stop() {
 	}
 }
 
+// into is the call's [Call], as this configuration makes it.
+func (c Config) into(ctx context.Context, method string) (context.Context, *Call) {
+	ctx, call := Into(ctx, method)
+	call.address = c.address(ctx)
+	call.downloads = c.Downloads
+
+	return ctx, call
+}
+
 // reason is what a download says it is for, and a refusal for one that says
-// nothing. Anything else needs none.
+// nothing, or nothing a row can hold. Anything else needs none.
 func (c Config) reason(ctx context.Context, method string) (string, error) {
 	if !slices.Contains(c.Downloads, method) {
 		return "", nil
@@ -189,9 +224,15 @@ func (c Config) reason(ctx context.Context, method string) (string, error) {
 
 	md, _ := metadata.FromIncomingContext(ctx)
 	v := strings.TrimSpace(strings.Join(md.Get(ReasonKey), " "))
-	if v == "" {
+	switch {
+	case v == "":
 		return "", status.Errorf(codes.InvalidArgument,
 			"%s hands personal data out: say what it is for, in %q", method, ReasonKey)
+	case !utf8.ValidString(v):
+		return "", status.Errorf(codes.InvalidArgument, "%s: what it is for is not text", ReasonKey)
+	case len(v) > MaxReason:
+		return "", status.Errorf(codes.InvalidArgument,
+			"%s: what it is for is %d bytes, and a row holds %d", ReasonKey, len(v), MaxReason)
 	}
 
 	return v, nil
@@ -201,6 +242,7 @@ func (c Config) reason(ctx context.Context, method string) (string, error) {
 // or, for a call that was refused, what its request named -- and of whatever
 // else it carried that no row says yet.
 func (c Config) done(ctx context.Context, call *Call, answer, asked proto.Message, herr error, reason string) error {
+	call.Settle(herr == nil)
 	switch {
 	case answer != nil && c.Subjects != nil:
 		call.add(false, c.Subjects(answer)...)
@@ -241,10 +283,8 @@ func (c Config) record(ctx context.Context, call *Call, asked proto.Message, her
 	// What a read or a download asked for is what it was: which rows, by what
 	// it was searched with. A write's is on the trail.
 	d := pdpb.AccessDetail_builder{Address: call.Address(), Reason: reason}.Build()
-	if asked != nil {
-		if b, err := proto.Marshal(asked); err == nil {
-			d.SetRequest(b)
-		}
+	if b := c.request(ctx, call, asked, herr); b != nil {
+		d.SetRequest(b)
 	}
 
 	if reason == "" {
@@ -269,6 +309,70 @@ func (c Config) record(ctx context.Context, call *Call, asked proto.Message, her
 
 	call.Said(false, others...)
 	return nil
+}
+
+// request is what a row keeps of what the call asked for: a read's or a
+// download's request, which is what says how a page of people came to be
+// shown -- and nothing of one that wrote, or was refused.
+//
+// A write's request is the write, whose trail holds what it said and none of
+// what the schema declared `personal`. A refused call carried nothing but
+// what it asked for, and that is somebody's data as often as not -- the name
+// and the number a refused write tried to write -- so its row names the rows
+// it asked about (`Config.Refs`) and keeps no more. And it is the request as
+// its message has it: what this build does not know of it is not kept, and
+// one larger than [MaxRequest] is not kept at all, since a list or a search
+// that size is not one a review reads and a row that size is a way to fill
+// the database.
+func (c Config) request(ctx context.Context, call *Call, asked proto.Message, herr error) []byte {
+	if asked == nil || herr != nil || call.Writes() {
+		return nil
+	}
+
+	v := proto.Clone(asked)
+	dropUnknown(v.ProtoReflect())
+	b, err := proto.Marshal(v)
+	if err != nil {
+		return nil
+	}
+	if len(b) > MaxRequest {
+		log.From(ctx).WarnContext(ctx, "access: a request too large to keep", "method", call.Method(), "size", len(b))
+		return nil
+	}
+
+	return b
+}
+
+// dropUnknown clears what `m` holds that its message does not declare, all the
+// way down.
+func dropUnknown(m protoreflect.Message) {
+	if !m.IsValid() {
+		return
+	}
+
+	m.SetUnknown(nil)
+	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		switch {
+		case fd.IsList():
+			if fd.Message() != nil {
+				l := v.List()
+				for i := range l.Len() {
+					dropUnknown(l.Get(i).Message())
+				}
+			}
+		case fd.IsMap():
+			if fd.MapValue().Message() != nil {
+				v.Map().Range(func(_ protoreflect.MapKey, v protoreflect.Value) bool {
+					dropUnknown(v.Message())
+					return true
+				})
+			}
+		case fd.Message() != nil:
+			dropUnknown(v.Message())
+		}
+
+		return true
+	})
 }
 
 // Peer is where a call came from as its connection says: the address at the

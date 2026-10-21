@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/lesomnus/otx/log"
 	"github.com/protobuf-orm/ent/dialect"
@@ -343,7 +344,8 @@ func (s *Server) accessed() access.Config {
 	}
 }
 
-// Serve answers on `l` until the context is done.
+// Serve answers on `l` until the context is done, and lets what it is
+// answering end before it returns.
 func (s *Server) Serve(ctx context.Context, c Config, l net.Listener) error {
 	g, err := s.Grpc(ctx, c)
 	if err != nil {
@@ -356,12 +358,29 @@ func (s *Server) Serve(ctx context.Context, c Config, l net.Listener) error {
 	}
 	defer stop()
 
+	stopped := make(chan struct{})
 	go func() {
 		<-ctx.Done()
 		g.GracefulStop()
+		close(stopped)
 	}()
 
-	return g.Serve(l)
+	err = g.Serve(l)
+	if ctx.Err() == nil {
+		return err
+	}
+
+	// Asked to stop: what was being answered ends first, and what it read is
+	// written after it -- the access record's own last write, as its loop
+	// stops, is too early for a call that answers while the server drains.
+	<-stopped
+	last, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if err := s.Access.Flush(last); err != nil {
+		log.From(ctx).ErrorContext(ctx, "access: the record waiting to be written was lost as the server stopped", "rows", s.Access.Pending(), "err", err)
+	}
+
+	return err
 }
 
 // serveHttp is the second listener, for whatever cannot speak gRPC -- which is

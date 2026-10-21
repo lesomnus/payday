@@ -30,12 +30,34 @@
 //
 // # When it is written
 //
-// A write is recorded in its own transaction, at its commit, as the trail is:
-// what holds the write holds its record. A download is recorded before its
-// answer leaves, and refused when it cannot be. A read is queued and written a
-// second later with the others ([Writer]), which is the one loss there is: a
-// process killed outright takes the last second's reads with it. One stopped
-// writes what it has first.
+// A write is recorded in its own transaction, as the trail is: at its commit
+// where the transaction keeps one, as the write is made where it keeps none --
+// what holds the write holds its record, and a write whose row cannot be
+// written is not made either. Its row is said once the call has answered: a
+// transaction refused at its commit takes the row along, and the call that
+// ends in that refusal writes it again as the refusal. A download is recorded
+// before its answer leaves, and refused when it cannot be; it is called by
+// itself, and refused as an operation of a batch, which can neither say what
+// it is for nor hold its answer back. A read is queued and written a second
+// later with the others ([Writer]), which is the one loss there is: a process
+// killed outright takes the last second's reads with it. One stopped writes
+// what it has first, and again once its server has stopped.
+//
+// # What a row keeps
+//
+// Who, when, from where, what was done to whose data, and how it ended. Of
+// what the call asked for, only a read's and a download's request, which is
+// what says how a page of people came to be shown: a write's is the write,
+// on the trail, and a refused call's is what it tried, which is somebody's
+// data as often as not. See [MaxRequest].
+//
+// # What it reads a message for
+//
+// The messages a call's answer and request are made of, and what payday
+// packs into an `Any` for a batch and a watch, unpacked once. An `Any` an app
+// keeps in its own rows is its data, which no declaration describes, and is
+// not unpacked: a message packed in one packed in another is work that grows
+// with the square of its size, for whoever sent it.
 package access
 
 import (
@@ -70,6 +92,14 @@ const ReasonKey = "payday-reason-bin"
 // counted and not named. A list of a hundred people names a hundred; an export
 // of a hundred thousand says how many it was.
 const MaxSubjects = 1000
+
+// MaxReason is how long, in bytes, what a download says it is for may be: a
+// sentence, in any language, and not a document.
+const MaxReason = 1 << 10
+
+// MaxRequest is the largest request a row keeps, in bytes. A read's request
+// is a filter or a search; one larger is not kept, and the log says so.
+const MaxRequest = 8 << 10
 
 // Subject is one person whose data a call carried: the key of the row that
 // holds it, and the tenant that row is in -- zero for a row behind no wall, or

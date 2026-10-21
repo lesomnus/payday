@@ -19,7 +19,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/lesomnus/payday/access"
 	"github.com/lesomnus/payday/auth"
@@ -262,18 +264,18 @@ func TestAWriteIsRecordedInItsOwnTransaction(t *testing.T) {
 		alice := b.person(t, ctx, "alice")
 		bob := b.person(t, ctx, "bob")
 
-		c := access.Config{Subjects: pd.Subjects, Refs: pd.SubjectRefs, Writer: b.Access}
-		_, err := c.Unary()(b.as(ctx), nil, &grpc.UnaryServerInfo{FullMethod: "/test.Writes/Rename"},
-			func(ctx context.Context, _ any) (any, error) {
-				// In no transaction of anybody's: the write's row is the
-				// interceptor's, once the call has answered.
-				_, err := b.Walled.Holder().Patch(ctx, app.HolderPatchRequest_builder{
-					Ref:  app.HolderRef_builder{Id: alice.Bytes()}.Build(),
-					Name: z.Ptr("Alice"),
+		rename := app.HolderPatchRequest_builder{
+			Ref:  app.HolderRef_builder{Id: alice.Bytes()}.Build(),
+			Name: z.Ptr("Alice"),
 
-					DateUpdatedForce: z.Ptr(true),
-				}.Build())
-				if err != nil {
+			DateUpdatedForce: z.Ptr(true),
+		}.Build()
+		c := access.Config{Subjects: pd.Subjects, Refs: pd.SubjectRefs, Writer: b.Access}
+		_, err := c.Unary()(b.as(ctx), rename, &grpc.UnaryServerInfo{FullMethod: "/test.Writes/Rename"},
+			func(ctx context.Context, _ any) (any, error) {
+				// In no transaction of anybody's: the write's row is written
+				// in the one the write makes for itself.
+				if _, err := b.Walled.Holder().Patch(ctx, rename); err != nil {
 					return nil, err
 				}
 
@@ -287,8 +289,82 @@ func TestAWriteIsRecordedInItsOwnTransaction(t *testing.T) {
 		kinds := map[string][][]byte{}
 		for _, r := range rs {
 			kinds[r.Kind] = r.Subjects
+			x.Empty(detail(t, r).GetRequest(), "what a call that wrote asked for is the write, and on the trail")
 		}
 		x.Equal(map[string][][]byte{"write": subjects(alice), "read": subjects(bob)}, kinds)
+	})
+
+	// Where the transaction keeps nothing for a commit, the row is written as
+	// the write is made, in it: a write whose row cannot be written is not
+	// made either, rather than made and recorded nowhere.
+	t.Run("and one whose row cannot be written is not made", func(t *testing.T) {
+		x := require.New(t)
+		b, ctx := build(t)
+		alice := b.person(t, ctx, "alice")
+
+		_, err := b.Db.ExecContext(ctx, "ALTER TABLE access RENAME TO access_gone")
+		x.NoError(err)
+
+		conn := pdtest.Serve(t, b.grpc(t))
+		_, err = app.NewHolderServiceClient(conn).Patch(b.travels(ctx), app.HolderPatchRequest_builder{
+			Ref:  app.HolderRef_builder{Id: alice.Bytes()}.Build(),
+			Name: z.Ptr("Alice"),
+
+			DateUpdatedForce: z.Ptr(true),
+		}.Build())
+		x.Error(err)
+
+		v, err := b.Ungated.Holder().Get(ctx, app.HolderGetRequest_builder{
+			Ref: app.HolderRef_builder{Id: alice.Bytes()}.Build(),
+		}.Build())
+		x.NoError(err)
+		x.NotEqual("Alice", v.GetName(), "the write was made, and its record was not")
+	})
+
+	// A commit can still refuse after the rows ahead of it are written -- a
+	// check deferred to it -- and takes them along. The call that ends in that
+	// refusal is then the one to say what its writes wrote.
+	t.Run("and one refused at its commit is the refusal it ended in", func(t *testing.T) {
+		x := require.New(t)
+		b, ctx := build(t)
+		alice := b.person(t, ctx, "alice")
+
+		c := access.Config{Subjects: pd.Subjects, Refs: pd.SubjectRefs, Writer: b.Access}
+		_, err := c.Unary()(b.as(ctx), nil, &grpc.UnaryServerInfo{FullMethod: "/test.Writes/Rename"},
+			func(ctx context.Context, _ any) (any, error) {
+				drv, tx, err := dialect.BeginTx(ctx, b.Drv)
+				if err != nil {
+					return nil, err
+				}
+				s, err := enttx.Rebind(b.Walled, drv)
+				if err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+				if _, err := s.Holder().Patch(ctx, app.HolderPatchRequest_builder{
+					Ref:  app.HolderRef_builder{Id: alice.Bytes()}.Build(),
+					Name: z.Ptr("Alice"),
+
+					DateUpdatedForce: z.Ptr(true),
+				}.Build()); err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+
+				k, _ := dialect.KeepOf(drv)
+				k.BeforeCommit(func(context.Context) error {
+					return status.Error(codes.Aborted, "refused at the commit")
+				})
+
+				return nil, tx.Commit()
+			})
+		x.Equal(codes.Aborted, status.Code(err))
+
+		rs := b.accessed(t, ctx)
+		x.Len(rs, 1, "the row the refused commit took along is not written again as its refusal")
+		x.Equal("write", rs[0].Kind)
+		x.Equal(codes.Aborted.String(), rs[0].Result)
+		x.Equal(subjects(alice), rs[0].Subjects)
 	})
 
 	t.Run("and an erase is a write of what it erased", func(t *testing.T) {
@@ -357,6 +433,120 @@ func TestARefusedCallIsRecordedWithWhatItNamed(t *testing.T) {
 	x.Equal("read", rs[1].Kind)
 	x.Equal(codes.PermissionDenied.String(), rs[1].Result)
 	x.Equal(subjects(alice), rs[1].Subjects)
+
+	// And names them, and keeps nothing of what it tried: the name a refused
+	// write tried to write is somebody's, and no row of it is the place for
+	// that.
+	for _, r := range rs {
+		x.Empty(detail(t, r).GetRequest(), "what a refused call asked for was kept")
+	}
+}
+
+// TestARowKeepsWhatAReadAskedForAndNoMore is what a row holds of a request: a
+// read's, as its message declares it, and none of one larger than a row
+// keeps.
+func TestARowKeepsWhatAReadAskedForAndNoMore(t *testing.T) {
+	b, ctx := build(t)
+	alice := b.person(t, ctx, "alice")
+	shown, err := b.Ungated.Holder().Get(ctx, app.HolderGetRequest_builder{
+		Ref: app.HolderRef_builder{Id: alice.Bytes()}.Build(),
+	}.Build())
+	require.NoError(t, err)
+
+	c := access.Config{Subjects: pd.Subjects, Refs: pd.SubjectRefs, Writer: b.Access}
+	read := func(t *testing.T, req proto.Message) *pdpb.AccessDetail {
+		t.Helper()
+
+		_, err := c.Unary()(b.as(ctx), req, &grpc.UnaryServerInfo{FullMethod: app.HolderService_List_FullMethodName},
+			func(context.Context, any) (any, error) {
+				return app.HolderListResponse_builder{Items: []*app.Holder{shown}}.Build(), nil
+			})
+		require.NoError(t, err)
+
+		rs := b.accessed(t, ctx)
+		require.NotEmpty(t, rs)
+		return detail(t, rs[len(rs)-1])
+	}
+
+	t.Run("as its message declares it", func(t *testing.T) {
+		x := require.New(t)
+
+		req := app.HolderListRequest_builder{Size: 10}.Build()
+		req.ProtoReflect().SetUnknown(protowire.AppendBytes(protowire.AppendTag(nil, 99, protowire.BytesType), []byte("what this build does not know")))
+
+		asked := &app.HolderListRequest{}
+		x.NoError(proto.Unmarshal(read(t, req).GetRequest(), asked))
+		x.EqualValues(10, asked.GetSize())
+		x.Empty(asked.ProtoReflect().GetUnknown(), "what the request's message does not declare was kept")
+	})
+
+	t.Run("and none of one larger than a row keeps", func(t *testing.T) {
+		x := require.New(t)
+
+		req := app.HolderListRequest_builder{After: strings.Repeat("x", access.MaxRequest)}.Build()
+		x.Empty(read(t, req).GetRequest())
+	})
+}
+
+// TestAnAnyIsReadOnlyWherePaydayPackedOne is what the access record reads a
+// message for: a batch's operations and answers, unpacked once, and no `Any`
+// of the app's own. A message packed in one packed in another is work that
+// grows with the square of its size, for whoever sent it, and a tenant named
+// inside an app's `Any` is whatever its writer wrote.
+func TestAnAnyIsReadOnlyWherePaydayPackedOne(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+	alice := b.person(t, ctx, "alice")
+
+	get := app.HolderGetRequest_builder{Ref: app.HolderRef_builder{Id: alice.Bytes()}.Build()}.Build()
+	shown, err := b.Ungated.Holder().Get(ctx, get)
+	x.NoError(err)
+
+	batched := func(v *anypb.Any) *pdpb.BatchRequest {
+		return pdpb.BatchRequest_builder{
+			Ops: []*pdpb.Op{pdpb.Op_builder{Method: app.HolderService_Get_FullMethodName, Request: v}.Build()},
+		}.Build()
+	}
+	packed := must(anypb.New(get))
+	x.Equal([]access.Subject{{Id: alice}}, pd.SubjectRefs(batched(packed)), "an operation's request is read unpacked")
+	x.Empty(pd.SubjectRefs(batched(must(anypb.New(packed)))), "an Any packed in it is unpacked")
+	x.Empty(pd.SubjectRefs(batched(must(anypb.New(batched(packed))))), "a batch packed in it is unpacked")
+
+	answered := func(v *anypb.Any) *pdpb.BatchResponse {
+		return pdpb.BatchResponse_builder{Results: []*anypb.Any{v}}.Build()
+	}
+	held := must(anypb.New(shown))
+	x.Equal([]access.Subject{{Id: alice, Tenant: b.Tenant}}, pd.Subjects(answered(held)), "a batch's answer is read unpacked")
+	x.Empty(pd.Subjects(answered(must(anypb.New(held)))), "an Any packed in it is unpacked")
+	x.Empty(pd.Subjects(answered(must(anypb.New(answered(held))))), "an answer packed in it is unpacked")
+	x.Empty(pd.Subjects(held), "an Any of the app's own is read")
+}
+
+// TestADownloadIsNotAnOperationOfABatch: a download says what it is for, and
+// its row is written before its answer leaves -- neither of which an
+// operation of a batch can do -- so a batch refuses one rather than let it out
+// as the batch's read.
+func TestADownloadIsNotAnOperationOfABatch(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+	b.person(t, ctx, "alice")
+
+	b.Downloads = []string{app.HolderService_List_FullMethodName}
+	conn := pdtest.Serve(t, b.grpc(t))
+	why := metadata.AppendToOutgoingContext(b.travels(ctx), access.ReasonKey, "October's payroll")
+	req := pdpb.BatchRequest_builder{
+		Ops: []*pdpb.Op{op(t, app.HolderService_List_FullMethodName, app.HolderListRequest_builder{}.Build())},
+	}.Build()
+
+	_, err := pdpb.NewBatchServiceClient(conn).Do(why, req)
+	x.Equal(codes.InvalidArgument, status.Code(err))
+	x.Contains(err.Error(), "by itself")
+
+	_, err = pdpb.NewResourceServiceClient(conn).Batch(why, req)
+	x.Equal(codes.InvalidArgument, status.Code(err))
+	x.Contains(err.Error(), "by itself")
+
+	x.Empty(b.accessed(t, ctx), "a refused batch carried somebody")
 }
 
 // TestADownloadSaysWhatItIsFor is the rule a download is under (payday#111):
@@ -412,6 +602,15 @@ func TestADownloadSaysWhatItIsFor(t *testing.T) {
 
 		rs := b.accessed(t, ctx)
 		x.Equal("10월 급여 정산", detail(t, rs[len(rs)-1]).GetReason())
+	})
+
+	t.Run("and refused when what it says is not a sentence of text", func(t *testing.T) {
+		x := require.New(t)
+
+		for _, v := range []string{"\xff\xfe", strings.Repeat("가", access.MaxReason/3+1)} {
+			_, err := c.List(metadata.AppendToOutgoingContext(as, access.ReasonKey, v), app.HolderListRequest_builder{}.Build())
+			x.Equal(codes.InvalidArgument, status.Code(err))
+		}
 	})
 
 	t.Run("and refused when it cannot be recorded", func(t *testing.T) {

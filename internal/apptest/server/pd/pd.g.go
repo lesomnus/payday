@@ -7151,7 +7151,7 @@ func init() {
 func Subjects(m proto.Message) []access1.Subject {
 	out := []access1.Subject{}
 	if m != nil {
-		subjectsIn(m.ProtoReflect(), &out)
+		subjectsIn(m.ProtoReflect(), true, &out)
 	}
 
 	return out
@@ -7162,21 +7162,50 @@ func Subjects(m proto.Message) []access1.Subject {
 func SubjectRefs(m proto.Message) []access1.Subject {
 	out := []access1.Subject{}
 	if m != nil {
-		refsIn(m.ProtoReflect(), &out)
+		refsIn(m.ProtoReflect(), true, &out)
 	}
 
 	return out
 }
 
-func subjectsIn(m protoreflect.Message, out *[]access1.Subject) {
-	if !m.IsValid() {
-		return
+// envelopes are the fields payday packs a message into an `Any` in: a
+// batch's operations and answers, and a watch's events. What one holds is
+// read unpacked, and nothing inside it is unpacked again. An `Any` anywhere
+// else is the app's own data, which no declaration describes: it is passed
+// over, and a tenant it names is never taken for whose a row is.
+var envelopes = map[protoreflect.FullName]bool{
+	(&pdpb.Op{}).ProtoReflect().Descriptor().Fields().ByName("request").FullName():            true,
+	(&pdpb.BatchResponse{}).ProtoReflect().Descriptor().Fields().ByName("results").FullName(): true,
+	(&pdpb.WatchEvent{}).ProtoReflect().Descriptor().Fields().ByName("value").FullName():      true,
+	(&pdpb.WatchEvent{}).ProtoReflect().Descriptor().Fields().ByName("previous").FullName():   true,
+}
+
+// unpacked is what the `Any` the field `fd` holds carries, when `fd` is an
+// envelope and unpacking is still allowed; nil otherwise.
+func unpacked(fd protoreflect.FieldDescriptor, m protoreflect.Message, unpack bool) protoreflect.Message {
+	if !unpack || !envelopes[fd.FullName()] {
+		return nil
 	}
-	if v, ok := m.Interface().(*anypb.Any); ok {
-		// A batch's answers are packed, and what they carry is read unpacked.
-		if u, err := v.UnmarshalNew(); err == nil {
-			subjectsIn(u.ProtoReflect(), out)
-		}
+	v, ok := m.Interface().(*anypb.Any)
+	if !ok {
+		return nil
+	}
+	u, err := v.UnmarshalNew()
+	if err != nil {
+		return nil
+	}
+
+	return u.ProtoReflect()
+}
+
+// isAny answers whether `m` is an `Any`, which is read only as an envelope.
+func isAny(m protoreflect.Message) bool {
+	_, ok := m.Interface().(*anypb.Any)
+	return ok
+}
+
+func subjectsIn(m protoreflect.Message, unpack bool, out *[]access1.Subject) {
+	if !m.IsValid() || isAny(m) {
 		return
 	}
 	if p, ok := personals[m.Descriptor().FullName()]; ok && p.carries(m) {
@@ -7190,20 +7219,19 @@ func subjectsIn(m protoreflect.Message, out *[]access1.Subject) {
 	}
 
 	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-		eachMessage(fd, v, func(m protoreflect.Message) { subjectsIn(m, out) })
+		eachMessage(fd, v, func(m protoreflect.Message) {
+			if u := unpacked(fd, m, unpack); u != nil {
+				subjectsIn(u, false, out)
+				return
+			}
+			subjectsIn(m, unpack, out)
+		})
 		return true
 	})
 }
 
-func refsIn(m protoreflect.Message, out *[]access1.Subject) {
-	if !m.IsValid() {
-		return
-	}
-	if v, ok := m.Interface().(*anypb.Any); ok {
-		// A batch's operations are packed, and what they name is read unpacked.
-		if u, err := v.UnmarshalNew(); err == nil {
-			refsIn(u.ProtoReflect(), out)
-		}
+func refsIn(m protoreflect.Message, unpack bool, out *[]access1.Subject) {
+	if !m.IsValid() || isAny(m) {
 		return
 	}
 	if fd, ok := refs[m.Descriptor().FullName()]; ok && fd != nil && m.Has(fd) {
@@ -7213,7 +7241,13 @@ func refsIn(m protoreflect.Message, out *[]access1.Subject) {
 	}
 
 	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-		eachMessage(fd, v, func(m protoreflect.Message) { refsIn(m, out) })
+		eachMessage(fd, v, func(m protoreflect.Message) {
+			if u := unpacked(fd, m, unpack); u != nil {
+				refsIn(u, false, out)
+				return
+			}
+			refsIn(m, unpack, out)
+		})
 		return true
 	})
 }
@@ -7334,9 +7368,12 @@ func writeAccess(ctx context.Context, db *ent.Client, rs []access1.Record) error
 //
 // It is told of every write of the call the interceptor put in the context,
 // and writes a row at each commit of the data the call's writes wrote that
-// no row says yet. Where the transaction keeps nothing, the interceptor
-// writes it once the call has ended; what the call showed is the
-// interceptor's to record either way.
+// no row says yet. Where the transaction keeps nothing, it writes the row
+// as the write is made, in the write's transaction all the same: what holds
+// the write holds its record, and a write whose row cannot be written is
+// refused with it. Either way the call says the row once it has answered
+// (`access.Call.Settle`); what the call showed is the interceptor's to
+// record.
 func AccessRecorder() bare.Recorder { return accessRecorder{} }
 
 type accessRecorder struct{}
@@ -7382,12 +7419,25 @@ func (accessRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) 
 	}
 	call.Wrote(written...)
 
-	k, ok := dialect.KeepOf(s.Store.Db.Driver())
+	db := s.Store.Db
+	k, ok := dialect.KeepOf(db.Driver())
 	if !ok {
+		// Nothing waits for a commit here: written now, in the write's
+		// transaction, which takes the row along if it goes.
+		now := call.Unkept(written...)
+		if len(now) == 0 {
+			return nil
+		}
+
+		d := pdpb.AccessDetail_builder{Address: call.Address()}.Build()
+		if err := writeAccess(ctx, db, access1.Records(ctx, call.Method(), access1.Write, "ok", now, d, time.Now())); err != nil {
+			return err
+		}
+
+		call.Kept(now...)
 		return nil
 	}
 
-	db := s.Store.Db
 	k.Value(accessKept{call}, func() any {
 		k.BeforeCommit(func(at context.Context) error {
 			wrote, _ := call.Unsaid()
@@ -7401,7 +7451,9 @@ func (accessRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) 
 				return err
 			}
 
-			call.Said(true, wrote...)
+			// Kept, not said: the commit these rows are written ahead of
+			// may still be refused, and takes them along if it is.
+			call.Kept(wrote...)
 			return nil
 		})
 		return struct{}{}
@@ -7578,110 +7630,6 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 	ctx = batch.AsOp(ctx, m)
 
 	switch m {
-	case apptest.AccessService_Get_FullMethodName:
-		v := &apptest.AccessGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Access().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AccessService_List_FullMethodName:
-		v := &apptest.AccessListRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Access().List(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Add_FullMethodName:
-		v := &apptest.AuditAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Get_FullMethodName:
-		v := &apptest.AuditGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Patch_FullMethodName:
-		v := &apptest.AuditPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Apply_FullMethodName:
-		v := &apptest.AuditApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_Erase_FullMethodName:
-		v := &apptest.AuditRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
-	case apptest.AuditService_List_FullMethodName:
-		v := &apptest.AuditListRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Audit().List(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
 	case apptest.TenantService_Add_FullMethodName:
 		v := &apptest.TenantAddRequest{}
 		if err := op.GetRequest().UnmarshalTo(v); err != nil {

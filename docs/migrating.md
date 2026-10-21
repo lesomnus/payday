@@ -3,6 +3,32 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The access record: a write's row in its transaction, a download alone, a read's request only
+
+**Applies if** you wired the access record (the entry below). Regenerate; what
+changes is what it does, and one thing of your `serve` (payday#111).
+
+- **A write's row is in its transaction even where nothing waits for a
+  commit** -- a write the servers make in a transaction of their own. A write
+  whose row cannot be written is refused, rather than made and recorded
+  nowhere.
+- **A download is refused as an operation of a batch.** It says what it is
+  for and is recorded before its answer leaves, which an operation cannot do.
+  Call it by itself.
+- **A row keeps a read's or a download's request, and nothing of a call that
+  wrote or was refused.** What the request's message does not declare is
+  dropped, and one larger than `access.MaxRequest` is not kept.
+- **A reason is text**, at most `access.MaxReason` bytes; anything else is
+  refused.
+- **An `Any` is read only where payday packs one** -- a batch's operations and
+  answers, a watch's events -- and once. One your rows hold is not read for
+  whose data it carries.
+- **The records payday keeps are no operation of a batch**: the trail, the
+  outbox, the archive's account, the access record.
+- **Write the queue once more after the server has stopped.** `pd new`'s
+  `Serve` waits for `GracefulStop` and calls `s.Access.Flush`: what the server
+  answers while it drains is queued after the writer's own last write.
+
 ## An access record beside the trail
 
 **Applies if** you generate with `pd gen`: `Access` is a new payday entity, copied
