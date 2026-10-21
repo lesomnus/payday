@@ -888,24 +888,6 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		fields = ", pkgAudit.Ident("FieldsOf"), "(doc, md)")
 	g.P("	}")
 	g.P("")
-	// The digest of the row the write left (payday#102), made from the one it
-	// handed over -- so no statement more than the write already made. Every
-	// write but an Erase hands one, and the newest line of the trail about a
-	// live row is never an Erase's, which is what a check of the rows asks.
-	g.P("	// A keyed digest of the row the write left, when the deployment keeps")
-	g.P("	// them: of the row it handed over, without what the entity declared")
-	g.P("	// `secret:` or `personal:`, and over the fields this build knows.")
-	g.P("	digest, covered := []byte{}, []uint32{}")
-	g.P("	if d := r.content.Digest; d != nil && c.Value != nil && md != nil {")
-	g.P("		row := ", pkgProto.Ident("Clone"), "(c.Value)")
-	g.P("		", pkgAudit.Ident("Clear"), "(row, secret)")
-	g.P("		", pkgAudit.Ident("Clear"), "(row, personal)")
-	g.P("		covered = ", pkgAudit.Ident("Covered"), "(md, ", pkgSlices.Ident("Concat"), "(secret, personal))")
-	g.P("		if digest, err = d.Of(key, row, covered); err != nil {")
-	g.P("			return ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("Internal"), ", \"the trail of %s: %s\", c.Method, err)")
-	g.P("		}")
-	g.P("	}")
-	g.P("")
 	g.P("	var patch ", pkgProto.Ident("Message"))
 	g.P("	if level != ", pkgAudit.Ident("ContentFields"), " {")
 	g.P("		if v := ", pkgAudit.Ident("Withhold"), "(doc, ", pkgSlices.Ident("Concat"), "(secret, personal)); v != nil {")
@@ -918,11 +900,19 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		return err")
 	g.P("	}")
 	g.P("")
-	g.P("	// The row this happened to, which is where the object's tenant and the")
-	g.P("	// state after the write both come from: the one the write handed over,")
-	g.P("	// or read when it handed none. Absent for an Erase that took the row")
-	g.P("	// with it; see [subject].")
-	g.P("	tenant, value, err := subject(ctx, s, v.Object, c.Value, level == ", pkgAudit.Ident("ContentValue"), ")")
+	// The row is read here, once, for everything that needs it: whose it is,
+	// what `value` keeps of it, and its digest. For every write but an Erase
+	// the write handed it over, so this reads nothing.
+	g.P("	// The row this happened to, which is where the object's tenant, the")
+	g.P("	// state after the write and its digest all come from: the one the write")
+	g.P("	// handed over, or the one there is now when it handed none -- an Erase.")
+	g.P("	// Nil for an Erase that took the row with it; see [left].")
+	g.P("	row, err := left(ctx, s, v.Object, c.Value)")
+	g.P("	if err != nil {")
+	g.P("		return err")
+	g.P("	}")
+	g.P("")
+	g.P("	tenant, value, err := subject(ctx, s, v.Object, row, level == ", pkgAudit.Ident("ContentValue"), ")")
 	g.P("	if err != nil {")
 	g.P("		return err")
 	g.P("	}")
@@ -939,6 +929,19 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	// write always knows, so it always says.
 	g.P("	domain := uint32(v.Object.Domain())")
 	g.P("")
+	// The digest of the row the write left (payday#102), bound to the line
+	// that keeps it (payday#115) -- which is why the line's key and moment are
+	// decided here rather than by the write that stores them.
+	g.P("	// The line this is, decided before it is written, and the keyed digest")
+	g.P("	// it keeps of the row the write left, bound to it: of the row without")
+	g.P("	// what the entity declared `secret:` or `personal:`, over the fields")
+	g.P("	// this build knows, or of the line alone for a write that took the row.")
+	g.P("	at := line(s, v.Action)")
+	g.P("	digest, covered, err := digested(r.content.Digest, v.Object, row, at)")
+	g.P("	if err != nil {")
+	g.P("		return ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("Internal"), ", \"the trail of %s: %s\", c.Method, err)")
+	g.P("	}")
+	g.P("")
 	if keepsTrail(s) {
 		// The same row as the one below, decided here as that one is -- its
 		// key, the moment it was recorded -- and written with the rest of what
@@ -950,7 +953,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 		g.P("	// writing waits. See [keptTrail].")
 		g.P("	if k, ok := ", pkgDialect.Ident("KeepOf"), "(s.Store.Db.Driver()); ok {")
 		g.P("		q := s.Store.Db.Audit.Create().")
-		g.P("			SetId(", pkgUuid.Ident("New"), "()).")
+		g.P("			SetId(", pkgUuid.Ident("UUID"), "(at.Id)).")
 		g.P("			SetTenantId(tenant).")
 		g.P("			SetActorTenantId(", pkgUuid.Ident("UUID"), "(v.Tenant)).")
 		g.P("			SetActorId(", pkgUuid.Ident("UUID"), "(v.Actor)).")
@@ -963,7 +966,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 		g.P("			SetFields(fields).")
 		g.P("			SetDigest(digest).")
 		g.P("			SetDigestFields(covered).")
-		g.P("			SetDateCreated(", pkgTime.Ident("Now"), "().UTC())")
+		g.P("			SetDateCreated(at.Created)")
 		g.P("		if !v.Counterpart.IsZero() {")
 		g.P("			q.SetCounterpartTenantId(", pkgUuid.Ident("UUID"), "(v.Counterpart))")
 		g.P("		}")
@@ -973,6 +976,8 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 		g.P("")
 	}
 	g.P("	_, err = s.Audit().Add(ctx, ", root.Ident("AuditAddRequest_builder"), "{")
+	g.P("		Id:            at.Id[:],")
+	g.P("		DateCreated:   ", pkgTimestamppb.Ident("New"), "(at.Created),")
 	g.P("		TenantId:      tenant[:],")
 	g.P("		ActorTenantId: v.Tenant.Bytes(),")
 	g.P("		ActorId:       v.Actor.Bytes(),")
@@ -1383,8 +1388,8 @@ func emitViaAbsent(g *protogen.GeneratedFile, via string) {
 	g.P("")
 }
 
-// emitSubject writes the read that answers, for a row that just changed, which
-// tenant it belonged to and what it looked like.
+// emitSubject writes what answers, for a row that just changed, which tenant
+// it belonged to and what the trail keeps of it.
 //
 // # Why the recorder reads at all
 //
@@ -1403,20 +1408,14 @@ func emitViaAbsent(g *protogen.GeneratedFile, via string) {
 // Nothing for the row of an Add, a Patch or an Apply: the write hands it over
 // (see [recorder.Snapshots] in what this emits), an Add's INSERT having read
 // it back in the same statement where the dialect has RETURNING. What is read
-// here is an Erase's row, which no write hands over, and a second row for an
-// entity that reaches its tenant through another one. That is the price of a
-// trail two parties can read, and it is paid on the write path rather than on
-// the read path.
+// is an Erase's row, which no write hands over -- once, by [emitLeft], for this
+// and for the digest the line keeps of it -- and a second row for an entity
+// that reaches its tenant through another one. That is the price of a trail
+// two parties can read, and it is paid on the write path rather than on the
+// read path.
 //
 // It was a read for every write, which on Rove's import was nine statements of
 // every row's thirty-seven (lesomnus/payday#84).
-//
-// A soft Erase is one read more -- the bare Get misses the row it has just
-// stamped and the erased-inclusive read follows it -- and a soft Erase of an
-// entity that reaches its tenant through another row is one more again. An
-// ordinary write pays neither, since the retry is behind a NotFound and a live
-// row's Get does not miss; the one that does pay is the write whose `via`
-// parent is already erased, and it pays on the hop rather than on itself.
 //
 // # The Erase that took the row with it
 //
@@ -1430,17 +1429,20 @@ func emitViaAbsent(g *protogen.GeneratedFile, via string) {
 // still here, so the row a soft Erase had just stamped was NotFound to the
 // record of that very erase, and the record took the hard path -- the actor's
 // tenant, an empty value -- which is precisely the row the erased side cannot
-// read. So a NotFound for a softly erased entity is retried past the erased
-// filter; see [emitErased] for the seam, and for the one that was rejected.
+// read. So the row is read past the erased filter, and a row reached through a
+// parent erased softly is reached the same way; see [emitLeft] for the seam,
+// and for the one that was rejected.
 func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
-	g.P("// subject is the tenant of the row `key` names and the row itself, and the")
-	g.P("// nil identifier when there is no such row any more.")
+	g.P("// subject is the tenant of `row`, the row `key` names as the write left it,")
+	g.P("// and what the trail keeps of it; the nil identifier when there is no row")
+	g.P("// any more -- an erase that took it, which the caller files under the")
+	g.P("// actor's tenant.")
 	g.P("//")
-	g.P("// The row is `image` when the write handed one over -- see")
-	g.P("// [recorder.Snapshots] -- and is read when it did not. It is answered with")
-	g.P("// only when `keep` says the trail keeps it, which is the `value` content")
-	g.P("// level, and then without what the entity declared `secret` or `personal`;")
-	g.P("// otherwise the bytes are empty, and the row is read for its tenant alone.")
+	g.P("// The row is answered with only when `keep` says the trail keeps it, which")
+	g.P("// is the `value` content level, and then without what the entity declared")
+	g.P("// `secret` or `personal`; otherwise the bytes are empty, and the row is")
+	g.P("// read for its tenant alone. It is not changed: it is the write's, handed")
+	g.P("// to every recorder, and the digest of it is made after this.")
 	g.P("func subject(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
 		", key ", pkgPdid.Ident("Id"), ", image ", pkgProto.Ident("Message"), ", keep bool) (", pkgUuid.Ident("UUID"), ", []byte, error) {")
 	g.P("	switch key.Domain() {")
@@ -1457,54 +1459,10 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		}
 
 		g.P("	case ", v.GoName(), "Domain:")
-		// The row the write handed over is the one a Get here would answer
-		// with: read in the write's own transaction, just after it, its edges
-		// as keys -- by the INSERT itself, for an Add. Taking it is a statement
-		// fewer for every write, and on an import of a few thousand rows that
-		// was a few thousand round trips.
-		g.P("		row, handed := image.(*", root.Ident(v.GoName()), ")")
-		if !v.Rpcs().HasGet() {
-			// No Get to read it by, so a row that was not handed over is not
-			// one this can read, and is filed as a global one is. `Record`
-			// always hands its rows over.
-			g.P("		if !handed {")
-			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
-			g.P("		}")
-		} else {
-			g.P("		if !handed {")
-			g.P("			var err error")
-			g.P("			row, err = s.", v.GoName(), "().Get(ctx, ", root.Ident(v.GoName()+"GetRequest_builder"), "{")
-			g.P("				Ref: ", root.Ident(v.GoName()+"Ref_builder"), "{Id: key.Bytes()}.Build(),")
-			g.P("			}.Build())")
-			if !v.IsHard {
-				// Keyed off the entity's shape and not the action, because the
-				// action answers less. This server has no scope and runs inside
-				// the write's own transaction, on rows that write just touched,
-				// so for a soft entity a NotFound has one meaning: erased --
-				// stamped by the Erase this record is for, or sitting on the path
-				// a still-live row reaches its tenant through. The second is a
-				// write recorded through an erased parent, whose trail row
-				// belongs to that parent's tenant no less than an Erase's does,
-				// and no test of the action would have caught it.
-				g.P("			// Erased softly is still a row; see [erased", v.GoName(), "].")
-				g.P("			if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
-				g.P("				row, err = erased", v.GoName(), "(ctx, s, key)")
-				g.P("			}")
-			}
-			g.P("			if err != nil {")
-			g.P("				if ", pkgStatus.Ident("Code"), "(err) == ", pkgCodes.Ident("NotFound"), " {")
-			// Empty rather than nil: the trail's `value` is NOT NULL, and a nil
-			// `[]byte` is SQL NULL to pgx while the SQLite driver makes it an empty
-			// blob. A row that is really gone is the one case that reaches here --
-			// erased hard, for a soft entity nothing at all -- and it is exactly
-			// the case no SQLite test can fail on.
-			g.P("					return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
-			g.P("				}")
-			g.P("")
-			g.P("				return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
-			g.P("			}")
-			g.P("		}")
-		}
+		g.P("		row, ok := image.(*", root.Ident(v.GoName()), ")")
+		g.P("		if !ok {")
+		g.P("			return ", pkgUuid.Ident("Nil"), "()", ", []byte{}, nil")
+		g.P("		}")
 		g.P("")
 		// What the entity declared the trail never holds a value of, cleared
 		// before it holds a copy: a `secret:`, which the layer that does this
@@ -1522,26 +1480,25 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		// it could not be read. A person's address is the same copy, of a value
 		// that is theirs to have corrected and erased.
 		//
-		// A row `Get` just answered with is nobody else's, and is cleared in
-		// place. One the write handed over is every recorder's -- a `Recorders`
-		// hands each of them the same one -- and is cleared on a copy, or the
-		// next recorder would be told of a row without the column it wrote.
+		// On a copy, always: the row is the write's and every recorder's -- a
+		// `Recorders` hands each of them the same one -- and the digest the
+		// line keeps is made of it after this, over what the entity declared
+		// its digest covers rather than over what `value` keeps.
 		//
 		// And none of it unless the trail keeps the row, which is the `value`
 		// content level: at the others the row is read for its tenant and
 		// nothing of it is kept, so there is nothing to copy or to clear.
 		g.P("		b := []byte{}")
 		g.P("		if keep {")
+		g.P("			kept := row")
 		if len(v.Secrets)+len(v.Personal) > 0 {
-			g.P("			if handed {")
-			g.P("				row = ", pkgProto.Ident("Clone"), "(row).(*", root.Ident(v.GoName()), ")")
-			g.P("			}")
+			g.P("			kept = ", pkgProto.Ident("Clone"), "(row).(*", root.Ident(v.GoName()), ")")
 			g.P("			_, secret, personal := described(key)")
-			g.P("			", pkgAudit.Ident("Clear"), "(row, secret)")
-			g.P("			", pkgAudit.Ident("Clear"), "(row, personal)")
+			g.P("			", pkgAudit.Ident("Clear"), "(kept, secret)")
+			g.P("			", pkgAudit.Ident("Clear"), "(kept, personal)")
 			g.P("")
 		}
-		g.P("			v, err := ", pkgProto.Ident("Marshal"), "(row)")
+		g.P("			v, err := ", pkgProto.Ident("Marshal"), "(kept)")
 		g.P("			if err != nil {")
 		g.P("				return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 		g.P("			}")
@@ -1574,7 +1531,12 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("		}")
 			g.P("")
-			g.P("		k, _, err := subject(ctx, s, up, nil, false)")
+			g.P("		parent, err := left(ctx, s, up, nil)")
+			g.P("		if err != nil {")
+			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
+			g.P("		}")
+			g.P("")
+			g.P("		k, _, err := subject(ctx, s, up, parent, false)")
 			g.P("		if err != nil {")
 			g.P("			return ", pkgUuid.Ident("Nil"), "()", ", nil, err")
 			g.P("		}")
@@ -1608,19 +1570,22 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	g.P("}")
 	g.P("")
 
-	for _, v := range s.Sorted() {
-		if v.IsGlobal || v.IsHard {
-			// Nothing behind the wall to file, or no row left to read; the
-			// caller's fallback is the whole of the answer for both.
-			continue
-		}
-
-		emitErased(g, v, p, root)
-	}
+	emitLeft(g, s, p)
 }
 
-// emitErased writes the read [emitSubject]'s switch falls back to when the
-// bare one answers NotFound: the same row, among the ones already erased.
+// emitLeft writes `left`: the row a write left, which the recorder files its
+// line under the tenant of, keeps in `value`, and digests (payday#102).
+//
+// # Read as a check of the rows reads it
+//
+// The digest a line keeps is compared, later, with the row read by the check
+// -- so the row it is made of is read the same way: every row there is, live
+// or erased softly, through the Select a Get uses, on the write's own
+// transaction. The row a write handed over is that Get's (see
+// [recorder.Snapshots] in what this emits), so for an Add, a Patch or an Apply
+// nothing is read at all. What is read is an Erase's row, which no write hands
+// over: none for one that took it, and the row as the erase stamped it for one
+// that did not.
 //
 // # Why it reads ent rather than the bare server
 //
@@ -1631,10 +1596,10 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 // write it is recording -- and the bare API has no words for "and the erased
 // ones"; growing some for a single caller would put erased rows within reach
 // of every server built on it. So the recorder steps around the bare server to
-// ent, on the same transaction, through the Select the bare Get itself uses --
-// and keeps the erased filter, inverted: this read is only for rows the bare
-// one cannot see, so between the two every row is found exactly once, and a
-// row found by neither was erased hard.
+// ent, on the same transaction, through the Select the bare Get itself uses.
+// It used to keep the erased filter, inverted, as a fallback behind the bare
+// Get's NotFound; reading as the check reads is one read rather than two, and
+// the same row the check will compare the digest with.
 //
 // # Why not the pre-image
 //
@@ -1646,37 +1611,85 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 // inside the transaction costs the stamp being in `value`, and that is not a
 // cost: the value's contract is the row as the event left it, and a soft
 // erase leaves the row stamped.
-func emitErased(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoImportPath) {
-	e := v.GoName()
-	entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+func emitLeft(g *protogen.GeneratedFile, s *Schema, p Paths) {
+	g.P("// left is the row a write left of the thing `key` names: `image`, the one")
+	g.P("// it handed over, or the row there is now when it handed none -- an")
+	g.P("// Erase's, read as a check of the rows reads it, erased softly or not --")
+	g.P("// and nil for a write that left none: an erase that took the row with it.")
+	g.P("func left(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
+		", key ", pkgPdid.Ident("Id"), ", image ", pkgProto.Ident("Message"), ") (", pkgProto.Ident("Message"), ", error) {")
+	g.P("	if image != nil && image.ProtoReflect().IsValid() {")
+	g.P("		return image, nil")
+	g.P("	}")
+	g.P("")
+	g.P("	var vs []", pkgAudit.Ident("Live"))
+	g.P("	var err error")
+	g.P("	switch key.Domain() {")
+	for _, v := range s.Sorted() {
+		if v.Records() {
+			// What records what happens; nothing records a write to it.
+			continue
+		}
 
-	g.P("// erased", e, " is the row `key` names among the rows already erased, which no")
-	g.P("// bare read answers: erasure is part of every reference that server builds.")
-	g.P("// The recorder is the one caller that has to see past it -- the row it asks")
-	g.P("// about was erased by the very write it is recording, and a trail row built")
-	g.P("// blind was filed under the actor's tenant with an empty value, which the")
-	g.P("// tenant whose row was erased could not read.")
-	g.P("func erased", e, "(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
-		", key ", pkgPdid.Ident("Id"), ") (*", root.Ident(e), ", error) {")
-	g.P("	k, err := ", pkgEntUuid.Ident("FromBytes"), "(key.Bytes())")
-	g.P("	if err != nil {")
+		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		g.P("	case ", v.GoName(), "Domain:")
+		g.P("		vs, err = rows", v.GoName(), "(ctx, s.Db, ", entPkg.Ident("IdEQ"), "(", pkgUuid.Ident("UUID"), "(key)))")
+	}
+	g.P("	default:")
+	g.P("		return nil, nil")
+	g.P("	}")
+	g.P("	if err != nil || len(vs) == 0 {")
 	g.P("		return nil, err")
 	g.P("	}")
 	g.P("")
-	g.P("	q := s.Db.", e, ".Query().Where(", entPkg.Ident("IdEQ"), "(k), ",
-		entPkg.Ident(pascal(v.GetErasedField().Name())+"NotNil"), "())")
-	g.P("	", p.Bare.Ident(e+"SelectInit"), "(q, nil)")
+	g.P("	return vs[0].Row, nil")
+	g.P("}")
 	g.P("")
-	g.P("	v, err := q.Only(ctx)")
-	g.P("	if err != nil {")
-	g.P("		if ", p.Ent.Ident("IsNotFound"), "(err) {")
-	g.P("			return nil, ", pkgStatus.Ident("Error"), "(", pkgCodes.Ident("NotFound"), ", \"", e, " not found\")")
-	g.P("		}")
-	g.P("")
-	g.P("		return nil, err")
+
+	a := s.Own(pdpb.Own_OWN_AUDIT)
+	g.P("// line is the line of the trail a write is about to be recorded as, decided")
+	g.P("// before it is written so that the digest it keeps can be bound to it")
+	g.P("// (payday#115): its key, as the servers mint one for the trail, and its")
+	g.P("// moment by their clock, to the microsecond every database keeps.")
+	g.P("func line(s ", p.Bare.Ident("Server"), ", action string) ", pkgAudit.Ident("Line"), " {")
+	g.P("	at := ", pkgTime.Ident("Now"), "()")
+	g.P("	if s.Now != nil {")
+	g.P("		at = s.Now()")
 	g.P("	}")
 	g.P("")
-	g.P("	return v.Proto(), nil")
+	g.P("	return ", pkgAudit.Ident("Line"), "{")
+	g.P("		Id:      ", pkgPdid.Ident("New"), "(", a.GoName(), "Domain),")
+	g.P("		Created: at.UTC().Truncate(", pkgTime.Ident("Microsecond"), "),")
+	g.P("		Action:  action,")
+	g.P("	}")
+	g.P("}")
+	g.P("")
+
+	g.P("// digested is the digest the line `at` keeps of `row`, the row a write left")
+	g.P("// of the thing `key` names, and the fields it covers: empty for a")
+	g.P("// deployment that keeps none, and of the line alone for a write that left")
+	g.P("// no row (payday#115).")
+	g.P("//")
+	g.P("// What it covers is the entity's fields less the ones it declared `secret`")
+	g.P("// or `personal`, which the digest leaves out however the row it is handed")
+	g.P("// was read.")
+	g.P("func digested(d *", pkgAudit.Ident("Digest"), ", key ", pkgPdid.Ident("Id"), ", row ", pkgProto.Ident("Message"),
+		", at ", pkgAudit.Ident("Line"), ") ([]byte, []uint32, error) {")
+	g.P("	md, secret, personal := described(key)")
+	g.P("	switch {")
+	g.P("	case d == nil || md == nil:")
+	g.P("		return []byte{}, []uint32{}, nil")
+	g.P("	case row == nil:")
+	g.P("		return d.Gone(key, at), []uint32{}, nil")
+	g.P("	}")
+	g.P("")
+	g.P("	covered := ", pkgAudit.Ident("Covered"), "(md, ", pkgSlices.Ident("Concat"), "(secret, personal))")
+	g.P("	sum, err := d.Of(key, row, covered, at)")
+	g.P("	if err != nil {")
+	g.P("		return nil, nil, err")
+	g.P("	}")
+	g.P("")
+	g.P("	return sum, covered, nil")
 	g.P("}")
 	g.P("")
 }

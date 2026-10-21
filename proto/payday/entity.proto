@@ -460,6 +460,11 @@ enum Own {
 // generated service off its server. That works, is checkable, and is said in
 // the app that happens to hold the field rather than beside the field. The next
 // app storing a verifier rediscovers the whole argument.
+//
+// It is read on an entity's own columns and nowhere else, and generation refuses
+// it anywhere else: on a field of a message a column holds, which is withheld or
+// kept as the column it is in, it would be a declaration nothing reads
+// (payday#115).
 message Field {
   // Secret marks a field that is assigned and never answered with.
   //
@@ -615,4 +620,11 @@ message Field {
   // the rest of the message has none: unset and false are different
   // statements, and the doctor has to tell them apart.
   bool personal = 3 [features.field_presence = EXPLICIT];
+
+  // `impersonal`, which said `personal: false` for a few hours before
+  // `personal` had presence (payday#104, #105). Kept out of reach, so that
+  // no later field takes the number or the name and is read off a schema
+  // written against it as something it never meant.
+  reserved 4;
+  reserved impersonal;
 }

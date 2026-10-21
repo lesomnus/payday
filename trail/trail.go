@@ -97,6 +97,7 @@ import (
 	"github.com/lesomnus/flob"
 	"github.com/lesomnus/otx/log"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/pdid"
 )
 
@@ -327,6 +328,16 @@ type Store interface {
 	// Blank empties `value` and `patch` of exactly the rows these keys name,
 	// and answers how many it reached. What the row says happened stays.
 	Blank(ctx context.Context, keys []any) (int, error)
+
+	// Carry writes, of `vs` -- lines about things of kind `d` that a pass is
+	// about to destroy -- a line of the database's own for each thing that is
+	// still a row, live or erased softly, and that the database's trail says
+	// nothing about, keeping what the destroyed line said of the row under
+	// `digest`; see [Carried]. It answers how many it wrote. The rest are
+	// passed over: a thing that is gone has nothing to carry forward to, and
+	// one the database's trail is about has a newer line than any the archive
+	// holds.
+	Carry(ctx context.Context, digest *audit.Digest, d pdid.Domain, vs []Carried) (int, error)
 
 	// Manifest is the database's account of what the archive holds; see
 	// [Archived]. It is in the store because the database is where it has to
@@ -681,6 +692,7 @@ type head struct {
 	Object      string `json:"objectId"`
 	Created     string `json:"dateCreated"`
 	Domain      uint32 `json:"domain"`
+	Action      string `json:"action"`
 	Value       string `json:"value"`
 	Patch       string `json:"patch"`
 

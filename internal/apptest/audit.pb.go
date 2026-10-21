@@ -547,10 +547,16 @@ type Audit_builder struct {
 	// write the database computes again for the row they changed. The key is a
 	// file the process is given, not a row anything reads.
 	//
-	// A byte of version, eight of the key's fingerprint -- so a digest made
-	// before a rotation is checked with the key it was made under -- and the
-	// HMAC. Empty for a deployment with no key, for an Erase, which hands no
-	// row over, and for a row written before this.
+	// A byte of version, and two halves of eight bytes of a key's fingerprint
+	// -- so a digest made before a rotation is checked with the key it was made
+	// under -- and an HMAC each (payday#115). The first is this line's own: of
+	// its `id`, its `date_created` to the microsecond, its `action` and the
+	// thing it is about, and of the second, so that a digest copied onto
+	// another line is not that line's. The second is the row's. An erase that
+	// took its row keeps the first alone, which says the row went; one that
+	// left it, the row as it stamped it. Version 1 is the row's half alone,
+	// bound to no line, and is still checked. Empty for a deployment with no
+	// key, and for a row written before this.
 	//
 	// Defaulted, for the reason `domain` gives: the recorder is not the only
 	// writer of this table, and a column another writer must fill in is one it

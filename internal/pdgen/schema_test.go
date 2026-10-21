@@ -22,9 +22,9 @@ import (
 	"github.com/lesomnus/payday/internal/pdgen"
 
 	// Linked so that their descriptors are in the global registry, which is
-	// what the compiler below resolves imports against. Nothing here calls
-	// them.
-	_ "github.com/lesomnus/payday/pdpb"
+	// what the compiler below resolves imports against -- and pdpb is read
+	// for its own descriptor once, below.
+	"github.com/lesomnus/payday/pdpb"
 	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 )
 
@@ -352,6 +352,29 @@ message Robot {
   option (payday.entity) = {domain: 7, global: {}, erase: {hard: {}}};
 }`,
 		says: "the key cannot be personal",
+	}, {
+		// Read off nothing, it would keep the person in the column it is
+		// inside on the trail while saying it did not (payday#115).
+		what: "a field of a message a column holds declared personal",
+		src: tenant + `
+message Contact {
+  string phone = 1 [(payday.field) = {personal: true}];
+}
+` + entity("Robot", `domain: 7, global: {}`, `Contact contact = 8;`),
+		says: "test.Contact is not an entity",
+	}, {
+		what: "a field of a message nested in an entity declared secret",
+		src: tenant + `
+message Robot {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  message Key {
+    bytes verifier = 1 [(payday.field) = {secret: true}];
+  }
+  Key key = 8;
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 7, global: {}, erase: {hard: {}}};
+}`,
+		says: "test.Robot.Key is not an entity",
 	}} {
 		t.Run(tt.what, func(t *testing.T) {
 			_, err := read(t, tt.src)
@@ -363,6 +386,20 @@ message Robot {
 			}
 			t.Log(err)
 		})
+	}
+}
+
+// TestImpersonalStaysOutOfReach: the number and the name `impersonal` had, for
+// the few hours before `personal` had presence, are reserved -- so no later
+// field takes either and is read off a schema written against it as something
+// it never meant.
+func TestImpersonalStaysOutOfReach(t *testing.T) {
+	md := (&pdpb.Field{}).ProtoReflect().Descriptor()
+	if !md.ReservedRanges().Has(4) {
+		t.Fatal("field 4 of payday.Field is free to be spent again")
+	}
+	if !md.ReservedNames().Has("impersonal") {
+		t.Fatal("the name impersonal is free to be spent again")
 	}
 }
 

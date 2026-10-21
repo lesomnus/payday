@@ -15,6 +15,7 @@ import (
 	"github.com/lesomnus/flob"
 	"github.com/lesomnus/otx/log"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/spin"
 )
@@ -506,6 +507,14 @@ type Policy struct {
 	// up. A lease that holds nothing (`spin.Nowhere`, a replica that runs no
 	// loops) is no lease for this: its acts would wait for ever.
 	Lease spin.Lease
+
+	// Digest is the key the trail's digests are made under (payday#102) --
+	// `audit.digest.key`, the one the recorder is handed -- and what a pass
+	// carries forward with (payday#115): before it destroys the newest line
+	// about a row that is still there, it binds what that line said of the
+	// row to a line of its own ([Store.Carry]). Nil carries nothing, and a
+	// check of the rows then finds each such row not on the trail.
+	Digest *audit.Digest
 }
 
 // Turn is the name a pass and the acts beside it take turns under on
@@ -1486,6 +1495,11 @@ func btoi(v bool) int {
 // archive is the second clock, namespace by namespace: what is past its window
 // is destroyed unless a hold is on it, and the month that can receive no more
 // is folded into one chunk.
+//
+// Decided for every namespace before anything is destroyed in any, because
+// what a chunk about to go says of a row that is still there is carried
+// forward first ([pass.carry]) -- and whether a line in it is the newest about
+// its thing is a question about every chunk of the kind, in every namespace.
 func (x *pass) archive(ctx context.Context) {
 	a := x.p.Archive
 
@@ -1496,6 +1510,21 @@ func (x *pass) archive(ctx context.Context) {
 		return
 	}
 
+	type doom struct {
+		c      Chunk
+		held   bool
+		before time.Time
+	}
+	type plan struct {
+		ns     string
+		judge  func(Chunk, *Held) (Keep, bool, bool)
+		doomed []doom
+		rest   []Chunk
+		kept   *Held
+	}
+
+	plans := []plan{}
+	going := []Chunk{}
 	for _, ns := range nss {
 		if ns == ReceiptNamespace || ns == CheckpointNamespace {
 			continue
@@ -1513,31 +1542,50 @@ func (x *pass) archive(ctx context.Context) {
 			continue
 		}
 
-		type key struct{ kind, month, tenants string }
-		groups := map[key][]Chunk{}
-		destroyed := 0
-		kept := &Held{}
+		v := plan{ns: ns, judge: judge, kept: &Held{}}
 		for _, c := range cs {
-			k, held, ok := judge(c, kept)
+			k, held, ok := judge(c, v.kept)
 			if !ok {
 				continue
 			}
 
 			if before := x.now.Add(-k.end()); k.end() > 0 && c.Before(before) {
-				n, err := x.spend(ctx, c, held, before, "destroy", false, kept)
-				if err != nil {
-					log.From(ctx).WarnContext(ctx, "trail: the archive", "namespace", ns, "chunk", c.String(), "err", err)
+				v.doomed = append(v.doomed, doom{c, held, before})
+				if !held {
+					going = append(going, c)
 				}
-
-				destroyed += n
 
 				continue
 			}
 
 			if ns != LegacyNamespace {
-				g := key{c.Kind, Month(c.Month), joined(c.Tenants)}
-				groups[g] = append(groups[g], c)
+				v.rest = append(v.rest, c)
 			}
+		}
+
+		plans = append(plans, v)
+	}
+
+	x.carry(ctx, going)
+
+	for _, v := range plans {
+		ns, judge, kept := v.ns, v.judge, v.kept
+
+		destroyed := 0
+		for _, d := range v.doomed {
+			n, err := x.spend(ctx, d.c, d.held, d.before, "destroy", false, kept)
+			if err != nil {
+				log.From(ctx).WarnContext(ctx, "trail: the archive", "namespace", ns, "chunk", d.c.String(), "err", err)
+			}
+
+			destroyed += n
+		}
+
+		type key struct{ kind, month, tenants string }
+		groups := map[key][]Chunk{}
+		for _, c := range v.rest {
+			g := key{c.Kind, Month(c.Month), joined(c.Tenants)}
+			groups[g] = append(groups[g], c)
 		}
 		if destroyed > 0 {
 			log.From(ctx).InfoContext(ctx, "trail: the archive", "namespace", ns, "destroyed", destroyed)
@@ -1566,6 +1614,132 @@ func (x *pass) archive(ctx context.Context) {
 				log.From(ctx).WarnContext(ctx, "trail: folding a month of the archive",
 					"namespace", ns, "kind", g.kind, "month", g.month, "err", err)
 			}
+		}
+	}
+}
+
+// carry is what a pass does before it destroys `going`: for every thing whose
+// newest line of the trail is in one of them, and that is still a row, a line
+// of the database's own keeping what that line said of the row (payday#115).
+// Without it a row nobody wrote since its window ran out is, to a check of the
+// rows, one nothing on the trail is about -- which is what a row somebody
+// added past the servers looks like, and a count of those that grows every
+// month is the count an operator learns to ignore.
+//
+// What is carried is the digest as it was recorded: the row's MAC copied, and
+// only the line's made for the new line ([audit.Digest.Carry]). Never one made
+// of the row as it is now, which would be a pass accepting whatever the row
+// had been made into, a year after anybody could have looked.
+//
+// A line that keeps no digest has nothing to carry: a row written before
+// digests, which is accepted once rather than carried forever, and a chunk of
+// [LegacyNamespace], written before there were any. Neither is read.
+//
+// What it cannot do is go wrong quietly. A chunk it cannot read is destroyed
+// all the same -- the window is an obligation, and a check of the rows is what
+// says what went with it -- and said so in the log.
+func (x *pass) carry(ctx context.Context, going []Chunk) {
+	// The newest line about each thing, among the chunks about to go.
+	byKind := map[pdid.Domain]map[pdid.Id]Last{}
+	for _, c := range going {
+		if c.Namespace == LegacyNamespace {
+			continue
+		}
+
+		err := readChunk(ctx, x.raw(), c, nil, nil, true, func(h head, _ []byte) error {
+			if h.Digest == "" {
+				return nil
+			}
+
+			id, err := objectOf(h)
+			if err != nil {
+				return err
+			}
+			v, err := lastOf(h)
+			if err != nil {
+				return fmt.Errorf("a row about %s: %w", id, err)
+			}
+
+			vs := byKind[id.Domain()]
+			if vs == nil {
+				vs = map[pdid.Id]Last{}
+				byKind[id.Domain()] = vs
+			}
+			if was, ok := vs[id]; !ok || v.after(was) {
+				vs[id] = v
+			}
+
+			return nil
+		})
+		if err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: a chunk about to be destroyed, whose rows' digests are not carried forward",
+				"chunk", c.String(), "err", err)
+		}
+	}
+	if len(byKind) == 0 {
+		return
+	}
+	if x.p.Digest == nil {
+		log.From(ctx).WarnContext(ctx, "trail: destroying the newest lines about rows, with no digest key to carry them forward with; "+
+			"a check of the rows will find those rows not on the trail", "see", "audit.digest.key")
+
+		return
+	}
+
+	// The newest line about each in the archive as a whole: one in a chunk
+	// that stays -- a later month, another namespace's longer window, a hold
+	// -- is newer, and there is nothing to carry.
+	nss, err := chunkNamespaces(ctx, x.raw())
+	if err != nil {
+		log.From(ctx).WarnContext(ctx, "trail: carrying forward", "err", err)
+		return
+	}
+	cs, _, err := x.chunks(ctx, nss, false)
+	if err != nil {
+		log.From(ctx).WarnContext(ctx, "trail: carrying forward", "err", err)
+		return
+	}
+	n := &Newest{a: x.raw(), chunks: map[string][]Chunk{}}
+	for _, c := range cs {
+		n.chunks[c.Kind] = append(n.chunks[c.Kind], c)
+	}
+
+	for _, d := range slices.Sorted(maps.Keys(byKind)) {
+		lines := byKind[d]
+		ids := slices.SortedFunc(maps.Keys(lines), func(a, b pdid.Id) int { return strings.Compare(encoded(a), encoded(b)) })
+
+		newest, err := n.Of(ctx, d, ids)
+		if err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: carrying forward", "kind", nameOf(d), "err", err)
+			continue
+		}
+
+		vs := []Carried{}
+		for _, id := range ids {
+			v := lines[id]
+			if w, ok := newest[id]; ok && w.after(v) {
+				continue
+			}
+
+			vs = append(vs, Carried{Object: id, Tenant: v.Tenant, Sum: v.Digest, DigestFields: v.DigestFields})
+		}
+
+		// In the trail's turn, as every write of a pass to the database's
+		// rows is: a tenant's purge between which rows are there and the
+		// writing of their lines would leave lines about a tenant it took.
+		held, give, err := x.turn(ctx)
+		if err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: carrying forward", "kind", nameOf(d), "err", err)
+			continue
+		}
+		k, err := x.s.Carry(held, x.p.Digest, d, vs)
+		give()
+		if err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: carrying forward", "kind", nameOf(d), "err", err)
+			continue
+		}
+		if k > 0 {
+			log.From(ctx).InfoContext(ctx, "trail: carried forward the newest lines about rows still there", "kind", nameOf(d), "rows", k)
 		}
 	}
 }

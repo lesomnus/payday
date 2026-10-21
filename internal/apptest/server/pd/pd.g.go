@@ -34,6 +34,7 @@ import (
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
+	pulse "github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
@@ -67,6 +68,7 @@ import (
 	proto "google.golang.org/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	anypb "google.golang.org/protobuf/types/known/anypb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	slog "log/slog"
 	maps "maps"
 	regexp "regexp"
@@ -4073,20 +4075,6 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 		fields = audit1.FieldsOf(doc, md)
 	}
 
-	// A keyed digest of the row the write left, when the deployment keeps
-	// them: of the row it handed over, without what the entity declared
-	// `secret:` or `personal:`, and over the fields this build knows.
-	digest, covered := []byte{}, []uint32{}
-	if d := r.content.Digest; d != nil && c.Value != nil && md != nil {
-		row := proto.Clone(c.Value)
-		audit1.Clear(row, secret)
-		audit1.Clear(row, personal)
-		covered = audit1.Covered(md, slices.Concat(secret, personal))
-		if digest, err = d.Of(key, row, covered); err != nil {
-			return status.Errorf(codes.Internal, "the trail of %s: %s", c.Method, err)
-		}
-	}
-
 	var patch proto.Message
 	if level != audit1.ContentFields {
 		if v := audit1.Withhold(doc, slices.Concat(secret, personal)); v != nil {
@@ -4099,11 +4087,16 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 		return err
 	}
 
-	// The row this happened to, which is where the object's tenant and the
-	// state after the write both come from: the one the write handed over,
-	// or read when it handed none. Absent for an Erase that took the row
-	// with it; see [subject].
-	tenant, value, err := subject(ctx, s, v.Object, c.Value, level == audit1.ContentValue)
+	// The row this happened to, which is where the object's tenant, the
+	// state after the write and its digest all come from: the one the write
+	// handed over, or the one there is now when it handed none -- an Erase.
+	// Nil for an Erase that took the row with it; see [left].
+	row, err := left(ctx, s, v.Object, c.Value)
+	if err != nil {
+		return err
+	}
+
+	tenant, value, err := subject(ctx, s, v.Object, row, level == audit1.ContentValue)
 	if err != nil {
 		return err
 	}
@@ -4116,6 +4109,16 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 
 	domain := uint32(v.Object.Domain())
 
+	// The line this is, decided before it is written, and the keyed digest
+	// it keeps of the row the write left, bound to it: of the row without
+	// what the entity declared `secret:` or `personal:`, over the fields
+	// this build knows, or of the line alone for a write that took the row.
+	at := line(s, v.Action)
+	digest, covered, err := digested(r.content.Digest, v.Object, row, at)
+	if err != nil {
+		return status.Errorf(codes.Internal, "the trail of %s: %s", c.Method, err)
+	}
+
 	// Kept for the commit, when the transaction keeps anything: written
 	// there with the rest of what it recorded, a statement for every few
 	// hundred rows rather than one each. The row is decided here, as the
@@ -4123,7 +4126,7 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 	// writing waits. See [keptTrail].
 	if k, ok := dialect.KeepOf(s.Store.Db.Driver()); ok {
 		q := s.Store.Db.Audit.Create().
-			SetId(uuid.New()).
+			SetId(uuid.UUID(at.Id)).
 			SetTenantId(tenant).
 			SetActorTenantId(uuid.UUID(v.Tenant)).
 			SetActorId(uuid.UUID(v.Actor)).
@@ -4136,7 +4139,7 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 			SetFields(fields).
 			SetDigest(digest).
 			SetDigestFields(covered).
-			SetDateCreated(time.Now().UTC())
+			SetDateCreated(at.Created)
 		if !v.Counterpart.IsZero() {
 			q.SetCounterpartTenantId(uuid.UUID(v.Counterpart))
 		}
@@ -4145,6 +4148,8 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 	}
 
 	_, err = s.Audit().Add(ctx, apptest.AuditAddRequest_builder{
+		Id:                  at.Id[:],
+		DateCreated:         timestamppb.New(at.Created),
 		TenantId:            tenant[:],
 		ActorTenantId:       v.Tenant.Bytes(),
 		ActorId:             v.Actor.Bytes(),
@@ -4338,35 +4343,28 @@ func added(by string) bool {
 	return false
 }
 
-// subject is the tenant of the row `key` names and the row itself, and the
-// nil identifier when there is no such row any more.
+// subject is the tenant of `row`, the row `key` names as the write left it,
+// and what the trail keeps of it; the nil identifier when there is no row
+// any more -- an erase that took it, which the caller files under the
+// actor's tenant.
 //
-// The row is `image` when the write handed one over -- see
-// [recorder.Snapshots] -- and is read when it did not. It is answered with
-// only when `keep` says the trail keeps it, which is the `value` content
-// level, and then without what the entity declared `secret` or `personal`;
-// otherwise the bytes are empty, and the row is read for its tenant alone.
+// The row is answered with only when `keep` says the trail keeps it, which
+// is the `value` content level, and then without what the entity declared
+// `secret` or `personal`; otherwise the bytes are empty, and the row is
+// read for its tenant alone. It is not changed: it is the write's, handed
+// to every recorder, and the digest of it is made after this.
 func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message, keep bool) (uuid.UUID, []byte, error) {
 	switch key.Domain() {
 	case AccessDomain:
-		row, handed := image.(*apptest.Access)
-		if !handed {
-			var err error
-			row, err = s.Access().Get(ctx, apptest.AccessGetRequest_builder{
-				Ref: apptest.AccessRef_builder{Id: key.Bytes()}.Build(),
-			}.Build())
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return uuid.Nil(), []byte{}, nil
-				}
-
-				return uuid.Nil(), nil, err
-			}
+		row, ok := image.(*apptest.Access)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			v, err := proto.Marshal(row)
+			kept := row
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4381,24 +4379,15 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		return k, b, nil
 
 	case AuditDomain:
-		row, handed := image.(*apptest.Audit)
-		if !handed {
-			var err error
-			row, err = s.Audit().Get(ctx, apptest.AuditGetRequest_builder{
-				Ref: apptest.AuditRef_builder{Id: key.Bytes()}.Build(),
-			}.Build())
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return uuid.Nil(), []byte{}, nil
-				}
-
-				return uuid.Nil(), nil, err
-			}
+		row, ok := image.(*apptest.Audit)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			v, err := proto.Marshal(row)
+			kept := row
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4413,28 +4402,15 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		return k, b, nil
 
 	case CellDomain:
-		row, handed := image.(*apptest.Cell)
-		if !handed {
-			var err error
-			row, err = s.Cell().Get(ctx, apptest.CellGetRequest_builder{
-				Ref: apptest.CellRef_builder{Id: key.Bytes()}.Build(),
-			}.Build())
-			// Erased softly is still a row; see [erasedCell].
-			if status.Code(err) == codes.NotFound {
-				row, err = erasedCell(ctx, s, key)
-			}
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return uuid.Nil(), []byte{}, nil
-				}
-
-				return uuid.Nil(), nil, err
-			}
+		row, ok := image.(*apptest.Cell)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			v, err := proto.Marshal(row)
+			kept := row
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4453,35 +4429,20 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		return k, b, nil
 
 	case HolderDomain:
-		row, handed := image.(*apptest.Holder)
-		if !handed {
-			var err error
-			row, err = s.Holder().Get(ctx, apptest.HolderGetRequest_builder{
-				Ref: apptest.HolderRef_builder{Id: key.Bytes()}.Build(),
-			}.Build())
-			// Erased softly is still a row; see [erasedHolder].
-			if status.Code(err) == codes.NotFound {
-				row, err = erasedHolder(ctx, s, key)
-			}
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return uuid.Nil(), []byte{}, nil
-				}
-
-				return uuid.Nil(), nil, err
-			}
+		row, ok := image.(*apptest.Holder)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			if handed {
-				row = proto.Clone(row).(*apptest.Holder)
-			}
+			kept := row
+			kept = proto.Clone(row).(*apptest.Holder)
 			_, secret, personal := described(key)
-			audit1.Clear(row, secret)
-			audit1.Clear(row, personal)
+			audit1.Clear(kept, secret)
+			audit1.Clear(kept, personal)
 
-			v, err := proto.Marshal(row)
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4500,28 +4461,15 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		return k, b, nil
 
 	case JointDomain:
-		row, handed := image.(*apptest.Joint)
-		if !handed {
-			var err error
-			row, err = s.Joint().Get(ctx, apptest.JointGetRequest_builder{
-				Ref: apptest.JointRef_builder{Id: key.Bytes()}.Build(),
-			}.Build())
-			// Erased softly is still a row; see [erasedJoint].
-			if status.Code(err) == codes.NotFound {
-				row, err = erasedJoint(ctx, s, key)
-			}
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return uuid.Nil(), []byte{}, nil
-				}
-
-				return uuid.Nil(), nil, err
-			}
+		row, ok := image.(*apptest.Joint)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			v, err := proto.Marshal(row)
+			kept := row
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4537,7 +4485,12 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			return uuid.Nil(), nil, err
 		}
 
-		k, _, err := subject(ctx, s, up, nil, false)
+		parent, err := left(ctx, s, up, nil)
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		k, _, err := subject(ctx, s, up, parent, false)
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -4545,24 +4498,15 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		return k, b, nil
 
 	case PairingDomain:
-		row, handed := image.(*apptest.Pairing)
-		if !handed {
-			var err error
-			row, err = s.Pairing().Get(ctx, apptest.PairingGetRequest_builder{
-				Ref: apptest.PairingRef_builder{Id: key.Bytes()}.Build(),
-			}.Build())
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return uuid.Nil(), []byte{}, nil
-				}
-
-				return uuid.Nil(), nil, err
-			}
+		row, ok := image.(*apptest.Pairing)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			v, err := proto.Marshal(row)
+			kept := row
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4578,7 +4522,12 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			return uuid.Nil(), nil, err
 		}
 
-		k, _, err := subject(ctx, s, up, nil, false)
+		parent, err := left(ctx, s, up, nil)
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		k, _, err := subject(ctx, s, up, parent, false)
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -4586,24 +4535,15 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		return k, b, nil
 
 	case ReadingDomain:
-		row, handed := image.(*apptest.Reading)
-		if !handed {
-			var err error
-			row, err = s.Reading().Get(ctx, apptest.ReadingGetRequest_builder{
-				Ref: apptest.ReadingRef_builder{Id: key.Bytes()}.Build(),
-			}.Build())
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return uuid.Nil(), []byte{}, nil
-				}
-
-				return uuid.Nil(), nil, err
-			}
+		row, ok := image.(*apptest.Reading)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			v, err := proto.Marshal(row)
+			kept := row
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4619,7 +4559,12 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			return uuid.Nil(), nil, err
 		}
 
-		k, _, err := subject(ctx, s, up, nil, false)
+		parent, err := left(ctx, s, up, nil)
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		k, _, err := subject(ctx, s, up, parent, false)
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -4627,35 +4572,20 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		return k, b, nil
 
 	case RobotDomain:
-		row, handed := image.(*apptest.Robot)
-		if !handed {
-			var err error
-			row, err = s.Robot().Get(ctx, apptest.RobotGetRequest_builder{
-				Ref: apptest.RobotRef_builder{Id: key.Bytes()}.Build(),
-			}.Build())
-			// Erased softly is still a row; see [erasedRobot].
-			if status.Code(err) == codes.NotFound {
-				row, err = erasedRobot(ctx, s, key)
-			}
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return uuid.Nil(), []byte{}, nil
-				}
-
-				return uuid.Nil(), nil, err
-			}
+		row, ok := image.(*apptest.Robot)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			if handed {
-				row = proto.Clone(row).(*apptest.Robot)
-			}
+			kept := row
+			kept = proto.Clone(row).(*apptest.Robot)
 			_, secret, personal := described(key)
-			audit1.Clear(row, secret)
-			audit1.Clear(row, personal)
+			audit1.Clear(kept, secret)
+			audit1.Clear(kept, personal)
 
-			v, err := proto.Marshal(row)
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4674,21 +4604,20 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		return k, b, nil
 
 	case TallyDomain:
-		row, handed := image.(*apptest.Tally)
-		if !handed {
+		row, ok := image.(*apptest.Tally)
+		if !ok {
 			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			if handed {
-				row = proto.Clone(row).(*apptest.Tally)
-			}
+			kept := row
+			kept = proto.Clone(row).(*apptest.Tally)
 			_, secret, personal := described(key)
-			audit1.Clear(row, secret)
-			audit1.Clear(row, personal)
+			audit1.Clear(kept, secret)
+			audit1.Clear(kept, personal)
 
-			v, err := proto.Marshal(row)
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4707,24 +4636,15 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		return k, b, nil
 
 	case TenantDomain:
-		row, handed := image.(*apptest.Tenant)
-		if !handed {
-			var err error
-			row, err = s.Tenant().Get(ctx, apptest.TenantGetRequest_builder{
-				Ref: apptest.TenantRef_builder{Id: key.Bytes()}.Build(),
-			}.Build())
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return uuid.Nil(), []byte{}, nil
-				}
-
-				return uuid.Nil(), nil, err
-			}
+		row, ok := image.(*apptest.Tenant)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
 		}
 
 		b := []byte{}
 		if keep {
-			v, err := proto.Marshal(row)
+			kept := row
+			v, err := proto.Marshal(kept)
 			if err != nil {
 				return uuid.Nil(), nil, err
 			}
@@ -4746,112 +4666,93 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 	return uuid.Nil(), []byte{}, nil
 }
 
-// erasedCell is the row `key` names among the rows already erased, which no
-// bare read answers: erasure is part of every reference that server builds.
-// The recorder is the one caller that has to see past it -- the row it asks
-// about was erased by the very write it is recording, and a trail row built
-// blind was filed under the actor's tenant with an empty value, which the
-// tenant whose row was erased could not read.
-func erasedCell(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Cell, error) {
-	k, err := entuuid.FromBytes(key.Bytes())
-	if err != nil {
+// left is the row a write left of the thing `key` names: `image`, the one
+// it handed over, or the row there is now when it handed none -- an
+// Erase's, read as a check of the rows reads it, erased softly or not --
+// and nil for a write that left none: an erase that took the row with it.
+func left(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) (proto.Message, error) {
+	if image != nil && image.ProtoReflect().IsValid() {
+		return image, nil
+	}
+
+	var vs []audit1.Live
+	var err error
+	switch key.Domain() {
+	case CellDomain:
+		vs, err = rowsCell(ctx, s.Db, cell.IdEQ(uuid.UUID(key)))
+	case FleetDomain:
+		vs, err = rowsFleet(ctx, s.Db, fleet.IdEQ(uuid.UUID(key)))
+	case HolderDomain:
+		vs, err = rowsHolder(ctx, s.Db, holder.IdEQ(uuid.UUID(key)))
+	case JointDomain:
+		vs, err = rowsJoint(ctx, s.Db, joint.IdEQ(uuid.UUID(key)))
+	case PairingDomain:
+		vs, err = rowsPairing(ctx, s.Db, pairing.IdEQ(uuid.UUID(key)))
+	case PulseDomain:
+		vs, err = rowsPulse(ctx, s.Db, pulse.IdEQ(uuid.UUID(key)))
+	case ReadingDomain:
+		vs, err = rowsReading(ctx, s.Db, reading.IdEQ(uuid.UUID(key)))
+	case RobotDomain:
+		vs, err = rowsRobot(ctx, s.Db, robot.IdEQ(uuid.UUID(key)))
+	case SealDomain:
+		vs, err = rowsSeal(ctx, s.Db, seal.IdEQ(uuid.UUID(key)))
+	case TallyDomain:
+		vs, err = rowsTally(ctx, s.Db, tally.IdEQ(uuid.UUID(key)))
+	case TenantDomain:
+		vs, err = rowsTenant(ctx, s.Db, tenant.IdEQ(uuid.UUID(key)))
+	case ThingDomain:
+		vs, err = rowsThing(ctx, s.Db, thing.IdEQ(uuid.UUID(key)))
+	default:
+		return nil, nil
+	}
+	if err != nil || len(vs) == 0 {
 		return nil, err
 	}
 
-	q := s.Db.Cell.Query().Where(cell.IdEQ(k), cell.DateErasedNotNil())
-	bare.CellSelectInit(q, nil)
-
-	v, err := q.Only(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, status.Error(codes.NotFound, "Cell not found")
-		}
-
-		return nil, err
-	}
-
-	return v.Proto(), nil
+	return vs[0].Row, nil
 }
 
-// erasedHolder is the row `key` names among the rows already erased, which no
-// bare read answers: erasure is part of every reference that server builds.
-// The recorder is the one caller that has to see past it -- the row it asks
-// about was erased by the very write it is recording, and a trail row built
-// blind was filed under the actor's tenant with an empty value, which the
-// tenant whose row was erased could not read.
-func erasedHolder(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Holder, error) {
-	k, err := entuuid.FromBytes(key.Bytes())
-	if err != nil {
-		return nil, err
+// line is the line of the trail a write is about to be recorded as, decided
+// before it is written so that the digest it keeps can be bound to it
+// (payday#115): its key, as the servers mint one for the trail, and its
+// moment by their clock, to the microsecond every database keeps.
+func line(s bare.Server, action string) audit1.Line {
+	at := time.Now()
+	if s.Now != nil {
+		at = s.Now()
 	}
 
-	q := s.Db.Holder.Query().Where(holder.IdEQ(k), holder.DateErasedNotNil())
-	bare.HolderSelectInit(q, nil)
-
-	v, err := q.Only(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, status.Error(codes.NotFound, "Holder not found")
-		}
-
-		return nil, err
+	return audit1.Line{
+		Id:      pdid.New(AuditDomain),
+		Created: at.UTC().Truncate(time.Microsecond),
+		Action:  action,
 	}
-
-	return v.Proto(), nil
 }
 
-// erasedJoint is the row `key` names among the rows already erased, which no
-// bare read answers: erasure is part of every reference that server builds.
-// The recorder is the one caller that has to see past it -- the row it asks
-// about was erased by the very write it is recording, and a trail row built
-// blind was filed under the actor's tenant with an empty value, which the
-// tenant whose row was erased could not read.
-func erasedJoint(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Joint, error) {
-	k, err := entuuid.FromBytes(key.Bytes())
-	if err != nil {
-		return nil, err
+// digested is the digest the line `at` keeps of `row`, the row a write left
+// of the thing `key` names, and the fields it covers: empty for a
+// deployment that keeps none, and of the line alone for a write that left
+// no row (payday#115).
+//
+// What it covers is the entity's fields less the ones it declared `secret`
+// or `personal`, which the digest leaves out however the row it is handed
+// was read.
+func digested(d *audit1.Digest, key pdid.Id, row proto.Message, at audit1.Line) ([]byte, []uint32, error) {
+	md, secret, personal := described(key)
+	switch {
+	case d == nil || md == nil:
+		return []byte{}, []uint32{}, nil
+	case row == nil:
+		return d.Gone(key, at), []uint32{}, nil
 	}
 
-	q := s.Db.Joint.Query().Where(joint.IdEQ(k), joint.DateErasedNotNil())
-	bare.JointSelectInit(q, nil)
-
-	v, err := q.Only(ctx)
+	covered := audit1.Covered(md, slices.Concat(secret, personal))
+	sum, err := d.Of(key, row, covered, at)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, status.Error(codes.NotFound, "Joint not found")
-		}
-
-		return nil, err
+		return nil, nil, err
 	}
 
-	return v.Proto(), nil
-}
-
-// erasedRobot is the row `key` names among the rows already erased, which no
-// bare read answers: erasure is part of every reference that server builds.
-// The recorder is the one caller that has to see past it -- the row it asks
-// about was erased by the very write it is recording, and a trail row built
-// blind was filed under the actor's tenant with an empty value, which the
-// tenant whose row was erased could not read.
-func erasedRobot(ctx context.Context, s bare.Server, key pdid.Id) (*apptest.Robot, error) {
-	k, err := entuuid.FromBytes(key.Bytes())
-	if err != nil {
-		return nil, err
-	}
-
-	q := s.Db.Robot.Query().Where(robot.IdEQ(k), robot.DateErasedNotNil())
-	bare.RobotSelectInit(q, nil)
-
-	v, err := q.Only(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, status.Error(codes.NotFound, "Robot not found")
-		}
-
-		return nil, err
-	}
-
-	return v.Proto(), nil
+	return sum, covered, nil
 }
 
 // keptTrail is the trail a transaction has recorded and not written yet.
@@ -4920,12 +4821,15 @@ func (v *keptTrail) write(ctx context.Context) error {
 	return nil
 }
 
-// Digests checks every live row of every kind on the trail -- every kind but
-// the ones kept off it -- against the trail (payday#102, #108): each digested
-// again, as a Get reads it, and compared with the digest the newest row of the trail about it
-// keeps -- in the database, or in the archive `p` names once it has left. A
-// row somebody changed past the servers is one that differs, and a row
-// somebody added past them is one nothing on the trail is about.
+// Digests checks every row of every kind on the trail -- every kind but the
+// ones kept off it -- against the trail (payday#102, #108, #115): each
+// digested again, as a Get reads it, and compared with the digest the newest
+// line of the trail about it keeps -- in the database, or in the archive `p`
+// names once it has left. A row somebody changed past the servers is one that
+// differs, a row somebody added past them is one nothing on the trail is
+// about, and a row somebody removed past them is a thing the trail says is a
+// row and is not. The kinds it does not read are in what it answers, with
+// why, so that a check that found nothing says what it did not look at.
 //
 // It changes nothing. It reads a page of a kind at a time, each page with the
 // trail about it in one read-only transaction, so `db` is the database and
@@ -4941,7 +4845,9 @@ func Digests(ctx context.Context, db *ent.Client, d *audit1.Digest, p trail.Poli
 		archived = archivedDigests(n)
 	}
 
-	out := audit1.Rows{}
+	out := audit1.Rows{Skipped: []audit1.Skipped{
+		{Kind: "pulse", Why: "a heartbeat each process writes every few seconds; a record of each is noise"},
+	}}
 	if err := audit1.CheckKind(ctx, d, checkedCell(db), archived, &out); err != nil {
 		return out, fmt.Errorf("cell: %w", err)
 	}
@@ -4984,12 +4890,12 @@ func checkedCell(db *ent.Client) audit1.Kind {
 	read := func(ctx context.Context, ps ...predicate.Cell) (audit1.Page, error) {
 		var out audit1.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveCell(ctx, db, ps...)
+			rows, err := rowsCell(ctx, db, ps...)
 			if err != nil {
 				return err
 			}
 
-			recorded, err := newestDigests(ctx, db, rows)
+			recorded, err := newestDigests(ctx, db, objects(rows))
 			out = audit1.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
@@ -5005,26 +4911,24 @@ func checkedCell(db *ent.Client) audit1.Kind {
 		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
 			return read(ctx, cell.IdIn(uuids(ids)...))
 		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, CellDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsCell(ctx, db, cell.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
 	}
-}
-
-// liveCell is the live rows `ps` says of the cell kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveCell(ctx context.Context, db *ent.Client, ps ...predicate.Cell) ([]audit1.Live, error) {
-	q := db.Cell.Query().Where(append(ps, cell.DateErasedIsNil())...)
-	bare.CellSelectInit(q, nil)
-
-	vs, err := q.Order(cell.ById()).Limit(audit1.RowsPage).All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]audit1.Live, len(vs))
-	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
-	}
-
-	return out, nil
 }
 
 // checkedFleet is what a check of the rows reads of the fleet kind.
@@ -5032,12 +4936,12 @@ func checkedFleet(db *ent.Client) audit1.Kind {
 	read := func(ctx context.Context, ps ...predicate.Fleet) (audit1.Page, error) {
 		var out audit1.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveFleet(ctx, db, ps...)
+			rows, err := rowsFleet(ctx, db, ps...)
 			if err != nil {
 				return err
 			}
 
-			recorded, err := newestDigests(ctx, db, rows)
+			recorded, err := newestDigests(ctx, db, objects(rows))
 			out = audit1.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
@@ -5053,26 +4957,24 @@ func checkedFleet(db *ent.Client) audit1.Kind {
 		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
 			return read(ctx, fleet.IdIn(uuids(ids)...))
 		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, FleetDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsFleet(ctx, db, fleet.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
 	}
-}
-
-// liveFleet is the live rows `ps` says of the fleet kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveFleet(ctx context.Context, db *ent.Client, ps ...predicate.Fleet) ([]audit1.Live, error) {
-	q := db.Fleet.Query().Where(append(ps, fleet.DateErasedIsNil())...)
-	bare.FleetSelectInit(q, nil)
-
-	vs, err := q.Order(fleet.ById()).Limit(audit1.RowsPage).All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]audit1.Live, len(vs))
-	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
-	}
-
-	return out, nil
 }
 
 // checkedHolder is what a check of the rows reads of the holder kind.
@@ -5080,12 +4982,12 @@ func checkedHolder(db *ent.Client) audit1.Kind {
 	read := func(ctx context.Context, ps ...predicate.Holder) (audit1.Page, error) {
 		var out audit1.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveHolder(ctx, db, ps...)
+			rows, err := rowsHolder(ctx, db, ps...)
 			if err != nil {
 				return err
 			}
 
-			recorded, err := newestDigests(ctx, db, rows)
+			recorded, err := newestDigests(ctx, db, objects(rows))
 			out = audit1.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
@@ -5101,26 +5003,24 @@ func checkedHolder(db *ent.Client) audit1.Kind {
 		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
 			return read(ctx, holder.IdIn(uuids(ids)...))
 		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, HolderDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsHolder(ctx, db, holder.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
 	}
-}
-
-// liveHolder is the live rows `ps` says of the holder kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveHolder(ctx context.Context, db *ent.Client, ps ...predicate.Holder) ([]audit1.Live, error) {
-	q := db.Holder.Query().Where(append(ps, holder.DateErasedIsNil())...)
-	bare.HolderSelectInit(q, nil)
-
-	vs, err := q.Order(holder.ById()).Limit(audit1.RowsPage).All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]audit1.Live, len(vs))
-	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
-	}
-
-	return out, nil
 }
 
 // checkedJoint is what a check of the rows reads of the joint kind.
@@ -5128,12 +5028,12 @@ func checkedJoint(db *ent.Client) audit1.Kind {
 	read := func(ctx context.Context, ps ...predicate.Joint) (audit1.Page, error) {
 		var out audit1.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveJoint(ctx, db, ps...)
+			rows, err := rowsJoint(ctx, db, ps...)
 			if err != nil {
 				return err
 			}
 
-			recorded, err := newestDigests(ctx, db, rows)
+			recorded, err := newestDigests(ctx, db, objects(rows))
 			out = audit1.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
@@ -5149,26 +5049,24 @@ func checkedJoint(db *ent.Client) audit1.Kind {
 		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
 			return read(ctx, joint.IdIn(uuids(ids)...))
 		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, JointDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsJoint(ctx, db, joint.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
 	}
-}
-
-// liveJoint is the live rows `ps` says of the joint kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveJoint(ctx context.Context, db *ent.Client, ps ...predicate.Joint) ([]audit1.Live, error) {
-	q := db.Joint.Query().Where(append(ps, joint.DateErasedIsNil())...)
-	bare.JointSelectInit(q, nil)
-
-	vs, err := q.Order(joint.ById()).Limit(audit1.RowsPage).All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]audit1.Live, len(vs))
-	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
-	}
-
-	return out, nil
 }
 
 // checkedPairing is what a check of the rows reads of the pairing kind.
@@ -5176,12 +5074,12 @@ func checkedPairing(db *ent.Client) audit1.Kind {
 	read := func(ctx context.Context, ps ...predicate.Pairing) (audit1.Page, error) {
 		var out audit1.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := livePairing(ctx, db, ps...)
+			rows, err := rowsPairing(ctx, db, ps...)
 			if err != nil {
 				return err
 			}
 
-			recorded, err := newestDigests(ctx, db, rows)
+			recorded, err := newestDigests(ctx, db, objects(rows))
 			out = audit1.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
@@ -5197,12 +5095,386 @@ func checkedPairing(db *ent.Client) audit1.Kind {
 		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
 			return read(ctx, pairing.IdIn(uuids(ids)...))
 		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, PairingDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsPairing(ctx, db, pairing.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
 	}
 }
 
-// livePairing is the live rows `ps` says of the pairing kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func livePairing(ctx context.Context, db *ent.Client, ps ...predicate.Pairing) ([]audit1.Live, error) {
+// checkedReading is what a check of the rows reads of the reading kind.
+func checkedReading(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Reading) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsReading(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: ReadingDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, reading.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, reading.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, ReadingDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsReading(ctx, db, reading.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedRobot is what a check of the rows reads of the robot kind.
+func checkedRobot(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Robot) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsRobot(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: RobotDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, robot.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, robot.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, RobotDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsRobot(ctx, db, robot.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedSeal is what a check of the rows reads of the seal kind.
+func checkedSeal(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Seal) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsSeal(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: SealDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, seal.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, seal.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, SealDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsSeal(ctx, db, seal.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedTally is what a check of the rows reads of the tally kind.
+func checkedTally(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Tally) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsTally(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: TallyDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, tally.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, tally.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, TallyDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsTally(ctx, db, tally.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedTenant is what a check of the rows reads of the tenant kind.
+func checkedTenant(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Tenant) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsTenant(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: TenantDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, tenant.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, tenant.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, TenantDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsTenant(ctx, db, tenant.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedThing is what a check of the rows reads of the thing kind.
+func checkedThing(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Thing) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsThing(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: ThingDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, thing.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, thing.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, ThingDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsThing(ctx, db, thing.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// rowsCell is the rows `ps` says of the cell kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsCell(ctx context.Context, db *ent.Client, ps ...predicate.Cell) ([]audit1.Live, error) {
+	q := db.Cell.Query().Where(ps...)
+	bare.CellSelectInit(q, nil)
+
+	vs, err := q.Order(cell.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
+// rowsFleet is the rows `ps` says of the fleet kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsFleet(ctx context.Context, db *ent.Client, ps ...predicate.Fleet) ([]audit1.Live, error) {
+	q := db.Fleet.Query().Where(ps...)
+	bare.FleetSelectInit(q, nil)
+
+	vs, err := q.Order(fleet.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
+// rowsHolder is the rows `ps` says of the holder kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsHolder(ctx context.Context, db *ent.Client, ps ...predicate.Holder) ([]audit1.Live, error) {
+	q := db.Holder.Query().Where(ps...)
+	bare.HolderSelectInit(q, nil)
+
+	vs, err := q.Order(holder.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
+// rowsJoint is the rows `ps` says of the joint kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsJoint(ctx context.Context, db *ent.Client, ps ...predicate.Joint) ([]audit1.Live, error) {
+	q := db.Joint.Query().Where(ps...)
+	bare.JointSelectInit(q, nil)
+
+	vs, err := q.Order(joint.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
+// rowsPairing is the rows `ps` says of the pairing kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsPairing(ctx context.Context, db *ent.Client, ps ...predicate.Pairing) ([]audit1.Live, error) {
 	q := db.Pairing.Query().Where(ps...)
 	bare.PairingSelectInit(q, nil)
 
@@ -5219,38 +5491,29 @@ func livePairing(ctx context.Context, db *ent.Client, ps ...predicate.Pairing) (
 	return out, nil
 }
 
-// checkedReading is what a check of the rows reads of the reading kind.
-func checkedReading(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Reading) (audit1.Page, error) {
-		var out audit1.Page
-		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveReading(ctx, db, ps...)
-			if err != nil {
-				return err
-			}
+// rowsPulse is the rows `ps` says of the pulse kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsPulse(ctx context.Context, db *ent.Client, ps ...predicate.Pulse) ([]audit1.Live, error) {
+	q := db.Pulse.Query().Where(ps...)
 
-			recorded, err := newestDigests(ctx, db, rows)
-			out = audit1.Page{Rows: rows, Recorded: recorded}
-			return err
-		})
-
-		return out, err
+	vs, err := q.Order(pulse.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	return audit1.Kind{
-		Domain: ReadingDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, reading.IdGT(uuid.UUID(after)))
-		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, reading.IdIn(uuids(ids)...))
-		},
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
+
+	return out, nil
 }
 
-// liveReading is the live rows `ps` says of the reading kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveReading(ctx context.Context, db *ent.Client, ps ...predicate.Reading) ([]audit1.Live, error) {
+// rowsReading is the rows `ps` says of the reading kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsReading(ctx context.Context, db *ent.Client, ps ...predicate.Reading) ([]audit1.Live, error) {
 	q := db.Reading.Query().Where(ps...)
 	bare.ReadingSelectInit(q, nil)
 
@@ -5267,39 +5530,11 @@ func liveReading(ctx context.Context, db *ent.Client, ps ...predicate.Reading) (
 	return out, nil
 }
 
-// checkedRobot is what a check of the rows reads of the robot kind.
-func checkedRobot(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Robot) (audit1.Page, error) {
-		var out audit1.Page
-		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveRobot(ctx, db, ps...)
-			if err != nil {
-				return err
-			}
-
-			recorded, err := newestDigests(ctx, db, rows)
-			out = audit1.Page{Rows: rows, Recorded: recorded}
-			return err
-		})
-
-		return out, err
-	}
-
-	return audit1.Kind{
-		Domain: RobotDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, robot.IdGT(uuid.UUID(after)))
-		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, robot.IdIn(uuids(ids)...))
-		},
-	}
-}
-
-// liveRobot is the live rows `ps` says of the robot kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveRobot(ctx context.Context, db *ent.Client, ps ...predicate.Robot) ([]audit1.Live, error) {
-	q := db.Robot.Query().Where(append(ps, robot.DateErasedIsNil())...)
+// rowsRobot is the rows `ps` says of the robot kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsRobot(ctx context.Context, db *ent.Client, ps ...predicate.Robot) ([]audit1.Live, error) {
+	q := db.Robot.Query().Where(ps...)
 	bare.RobotSelectInit(q, nil)
 
 	vs, err := q.Order(robot.ById()).Limit(audit1.RowsPage).All(ctx)
@@ -5315,39 +5550,11 @@ func liveRobot(ctx context.Context, db *ent.Client, ps ...predicate.Robot) ([]au
 	return out, nil
 }
 
-// checkedSeal is what a check of the rows reads of the seal kind.
-func checkedSeal(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Seal) (audit1.Page, error) {
-		var out audit1.Page
-		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveSeal(ctx, db, ps...)
-			if err != nil {
-				return err
-			}
-
-			recorded, err := newestDigests(ctx, db, rows)
-			out = audit1.Page{Rows: rows, Recorded: recorded}
-			return err
-		})
-
-		return out, err
-	}
-
-	return audit1.Kind{
-		Domain: SealDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, seal.IdGT(uuid.UUID(after)))
-		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, seal.IdIn(uuids(ids)...))
-		},
-	}
-}
-
-// liveSeal is the live rows `ps` says of the seal kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audit1.Live, error) {
-	q := db.Seal.Query().Where(append(ps, seal.DateErasedIsNil())...)
+// rowsSeal is the rows `ps` says of the seal kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audit1.Live, error) {
+	q := db.Seal.Query().Where(ps...)
 	bare.SealSelectInit(q, nil)
 
 	vs, err := q.Order(seal.ById()).Limit(audit1.RowsPage).All(ctx)
@@ -5363,38 +5570,10 @@ func liveSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audi
 	return out, nil
 }
 
-// checkedTally is what a check of the rows reads of the tally kind.
-func checkedTally(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Tally) (audit1.Page, error) {
-		var out audit1.Page
-		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveTally(ctx, db, ps...)
-			if err != nil {
-				return err
-			}
-
-			recorded, err := newestDigests(ctx, db, rows)
-			out = audit1.Page{Rows: rows, Recorded: recorded}
-			return err
-		})
-
-		return out, err
-	}
-
-	return audit1.Kind{
-		Domain: TallyDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, tally.IdGT(uuid.UUID(after)))
-		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, tally.IdIn(uuids(ids)...))
-		},
-	}
-}
-
-// liveTally is the live rows `ps` says of the tally kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveTally(ctx context.Context, db *ent.Client, ps ...predicate.Tally) ([]audit1.Live, error) {
+// rowsTally is the rows `ps` says of the tally kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsTally(ctx context.Context, db *ent.Client, ps ...predicate.Tally) ([]audit1.Live, error) {
 	q := db.Tally.Query().Where(ps...)
 
 	vs, err := q.Order(tally.ById()).Limit(audit1.RowsPage).All(ctx)
@@ -5410,38 +5589,10 @@ func liveTally(ctx context.Context, db *ent.Client, ps ...predicate.Tally) ([]au
 	return out, nil
 }
 
-// checkedTenant is what a check of the rows reads of the tenant kind.
-func checkedTenant(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Tenant) (audit1.Page, error) {
-		var out audit1.Page
-		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveTenant(ctx, db, ps...)
-			if err != nil {
-				return err
-			}
-
-			recorded, err := newestDigests(ctx, db, rows)
-			out = audit1.Page{Rows: rows, Recorded: recorded}
-			return err
-		})
-
-		return out, err
-	}
-
-	return audit1.Kind{
-		Domain: TenantDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, tenant.IdGT(uuid.UUID(after)))
-		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, tenant.IdIn(uuids(ids)...))
-		},
-	}
-}
-
-// liveTenant is the live rows `ps` says of the tenant kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveTenant(ctx context.Context, db *ent.Client, ps ...predicate.Tenant) ([]audit1.Live, error) {
+// rowsTenant is the rows `ps` says of the tenant kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsTenant(ctx context.Context, db *ent.Client, ps ...predicate.Tenant) ([]audit1.Live, error) {
 	q := db.Tenant.Query().Where(ps...)
 	bare.TenantSelectInit(q, nil)
 
@@ -5458,39 +5609,11 @@ func liveTenant(ctx context.Context, db *ent.Client, ps ...predicate.Tenant) ([]
 	return out, nil
 }
 
-// checkedThing is what a check of the rows reads of the thing kind.
-func checkedThing(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Thing) (audit1.Page, error) {
-		var out audit1.Page
-		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := liveThing(ctx, db, ps...)
-			if err != nil {
-				return err
-			}
-
-			recorded, err := newestDigests(ctx, db, rows)
-			out = audit1.Page{Rows: rows, Recorded: recorded}
-			return err
-		})
-
-		return out, err
-	}
-
-	return audit1.Kind{
-		Domain: ThingDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, thing.IdGT(uuid.UUID(after)))
-		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, thing.IdIn(uuids(ids)...))
-		},
-	}
-}
-
-// liveThing is the live rows `ps` says of the thing kind, at most a page of
-// them in identifier order, each as a Get reads it.
-func liveThing(ctx context.Context, db *ent.Client, ps ...predicate.Thing) ([]audit1.Live, error) {
-	q := db.Thing.Query().Where(append(ps, thing.DateErasedIsNil())...)
+// rowsThing is the rows `ps` says of the thing kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsThing(ctx context.Context, db *ent.Client, ps ...predicate.Thing) ([]audit1.Live, error) {
+	q := db.Thing.Query().Where(ps...)
 	bare.ThingSelectInit(q, nil)
 
 	vs, err := q.Order(thing.ById()).Limit(audit1.RowsPage).All(ctx)
@@ -5524,24 +5647,29 @@ func snapshot(ctx context.Context, db *ent.Client, fn func(context.Context, *ent
 	return fn(ctx, tx.Client())
 }
 
-// newestDigests is what the newest row of the trail in the database about
-// each of `rows` keeps of its digest: the rows about them read newest first,
-// and the first of each thing's kept.
-func newestDigests(ctx context.Context, db *ent.Client, rows []audit1.Live) (map[pdid.Id]audit1.Recorded, error) {
+// objects is what `rows` are about.
+func objects(rows []audit1.Live) []pdid.Id {
+	out := make([]pdid.Id, len(rows))
+	for i, v := range rows {
+		out[i] = v.Object
+	}
+
+	return out
+}
+
+// newestDigests is what the newest line of the trail in the database about
+// each of `ids` keeps of its digest, and the line itself: the lines about
+// them read newest first, and the first of each thing's kept.
+func newestDigests(ctx context.Context, db *ent.Client, ids []pdid.Id) (map[pdid.Id]audit1.Recorded, error) {
 	out := map[pdid.Id]audit1.Recorded{}
-	if len(rows) == 0 {
+	if len(ids) == 0 {
 		return out, nil
 	}
 
-	ks := make([]uuid.UUID, len(rows))
-	for i, v := range rows {
-		ks[i] = uuid.UUID(v.Object)
-	}
-
 	vs, err := db.Audit.Query().
-		Where(audit.ObjectIdIn(ks...)).
+		Where(audit.ObjectIdIn(uuids(ids)...)).
 		Order(audit.ByDateCreated(sql.OrderDesc()), audit.ById(sql.OrderDesc())).
-		Select(audit.FieldObjectId, audit.FieldDigest, audit.FieldDigestFields).
+		Select(audit.FieldId, audit.FieldDateCreated, audit.FieldAction, audit.FieldObjectId, audit.FieldDigest, audit.FieldDigestFields).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -5550,25 +5678,104 @@ func newestDigests(ctx context.Context, db *ent.Client, rows []audit1.Live) (map
 	for _, v := range vs {
 		k := pdid.Id(v.ObjectId)
 		if _, ok := out[k]; !ok {
-			out[k] = audit1.Recorded{Digest: v.Digest, Fields: v.DigestFields}
+			out[k] = audit1.Recorded{
+				Digest: v.Digest,
+				Fields: v.DigestFields,
+				Line:   audit1.Line{Id: v.Id, Created: v.DateCreated, Action: v.Action},
+			}
 		}
 	}
 
 	return out, nil
 }
 
-// archivedDigests is what the newest row of the archive about each thing
-// keeps, as a check of the rows asks for it; see [trail.Newest].
+// goneOf is, of `ids`, the ones `rows` -- the ones of them that are rows --
+// does not have, each with the newest line of the trail in the database
+// about it, and nil for one the database's trail says nothing about.
+func goneOf(ctx context.Context, db *ent.Client, ids []pdid.Id, rows []audit1.Live) (map[pdid.Id]*audit1.Recorded, error) {
+	there := map[pdid.Id]bool{}
+	for _, v := range rows {
+		there[v.Object] = true
+	}
+
+	absent := []pdid.Id{}
+	for _, id := range ids {
+		if !there[id] {
+			absent = append(absent, id)
+		}
+	}
+
+	lines, err := newestDigests(ctx, db, absent)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[pdid.Id]*audit1.Recorded, len(absent))
+	for _, id := range absent {
+		if r, ok := lines[id]; ok {
+			out[id] = &r
+		} else {
+			out[id] = nil
+		}
+	}
+
+	return out, nil
+}
+
+// trailObjects hands `yield` the things of kind `d` the database's trail is
+// about, a page of its lines at a time, oldest first -- by the index on
+// `(domain, date_created)`, which a DISTINCT over the table would not use.
+// A thing with more than one line is handed more than once.
+func trailObjects(ctx context.Context, db *ent.Client, d pdid.Domain, yield func([]pdid.Id) error) error {
+	var after *ent.Audit
+	for {
+		q := db.Audit.Query().Where(audit.DomainEQ(uint32(d)))
+		if after != nil {
+			q = q.Where(audit.Or(
+				audit.DateCreatedGT(after.DateCreated),
+				audit.And(audit.DateCreatedEQ(after.DateCreated), audit.IdGT(after.Id)),
+			))
+		}
+
+		vs, err := q.
+			Order(audit.ByDateCreated(), audit.ById()).
+			Select(audit.FieldId, audit.FieldDateCreated, audit.FieldObjectId).
+			Limit(audit1.RowsPage).
+			All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(vs) == 0 {
+			return nil
+		}
+
+		ids := make([]pdid.Id, len(vs))
+		for i, v := range vs {
+			ids[i] = pdid.Id(v.ObjectId)
+		}
+		if err := yield(ids); err != nil {
+			return err
+		}
+		if len(vs) < audit1.RowsPage {
+			return nil
+		}
+
+		after = vs[len(vs)-1]
+	}
+}
+
+// archivedDigests is what the newest line of the archive about each thing
+// of a kind keeps, as a check of the rows asks for it; see [trail.Newest].
 func archivedDigests(n *trail.Newest) audit1.Archived {
-	return func(ctx context.Context, kind pdid.Domain, ids []pdid.Id) (map[pdid.Id]audit1.Recorded, error) {
-		vs, err := n.Of(ctx, kind, ids)
+	return func(ctx context.Context, kind pdid.Domain) (map[pdid.Id]audit1.Recorded, error) {
+		vs, err := n.All(ctx, kind)
 		if err != nil {
 			return nil, err
 		}
 
 		out := make(map[pdid.Id]audit1.Recorded, len(vs))
 		for k, v := range vs {
-			out[k] = audit1.Recorded{Digest: v.Digest, Fields: v.DigestFields}
+			out[k] = audit1.Recorded{Digest: v.Digest, Fields: v.DigestFields, Line: v.Line()}
 		}
 
 		return out, nil
@@ -5587,18 +5794,38 @@ func uuids(ids []pdid.Id) []uuid.UUID {
 
 // Record puts on the trail rows that were written beneath the servers on
 // purpose -- a workspace put back from its export, rows a migration rewrote
-// and somebody looked at -- as the act `action` names (payday#108): one row of
-// the trail for each, by whoever `ctx` is framed as and filed under the row's
-// own tenant, keeping the digest of the row as a Get reads it now and nothing
-// of what it holds. A check of the rows then finds each as it is now, and the
-// trail says who put it there, when, and by what.
+// and somebody looked at -- as the act `action` names (payday#108): one line
+// of the trail for each, by whoever `ctx` is framed as and filed under the
+// row's own tenant, keeping the digest of the row as a Get reads it now and
+// nothing of what it holds. A check of the rows then finds each as it is
+// now, and the trail says who put it there, when, and by what.
 //
-// It is the one way onto the trail that is not a write through the servers,
-// and it writes nothing but the trail. `db` is the transaction that wrote the
+// It writes nothing but the trail. `db` is the transaction that wrote the
 // rows, or the database. A row of a kind kept off the trail (`trail: {off:
-// ...}}`) is passed over; one that is no live row is an error. It answers
-// how many it recorded.
+// ...}}`) is passed over; one that is no row at all is an error, since that
+// is [RecordErased]'s. A row erased softly is a row. It answers how many it
+// recorded.
 func Record(ctx context.Context, db *ent.Client, content audit1.Contents, action string, ids []pdid.Id) (int, error) {
+	return record(ctx, db, content, action, ids, true)
+}
+
+// RecordErased puts on the trail rows that were removed beneath the servers
+// on purpose -- what a person forgotten took with them, a workspace
+// destroyed -- as the act `action` names (payday#115): one line of the trail
+// for each, by whoever `ctx` is framed as, keeping a digest that says the row
+// went. Without it a check of the rows finds each a thing the trail says is a
+// row and is not, which is what a row somebody removed past the servers is.
+//
+// There is no row to file it under, so it is filed under the tenant `ctx`
+// is framed as, as the recorder files an erase that took its row. One that
+// is still a row is an error -- that is [Record]'s -- and one of a kind kept
+// off the trail is passed over. It answers how many it recorded.
+func RecordErased(ctx context.Context, db *ent.Client, content audit1.Contents, action string, ids []pdid.Id) (int, error) {
+	return record(ctx, db, content, action, ids, false)
+}
+
+// record is [Record] when `there`, and [RecordErased] when not.
+func record(ctx context.Context, db *ent.Client, content audit1.Contents, action string, ids []pdid.Id, there bool) (int, error) {
 	if action == "" {
 		return 0, errors.New("an act on the trail is named")
 	}
@@ -5623,27 +5850,27 @@ func Record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 			var rows []audit1.Live
 			switch d {
 			case CellDomain:
-				rows, err = liveCell(ctx, db, cell.IdIn(uuids(page)...))
+				rows, err = rowsCell(ctx, db, cell.IdIn(uuids(page)...))
 			case FleetDomain:
-				rows, err = liveFleet(ctx, db, fleet.IdIn(uuids(page)...))
+				rows, err = rowsFleet(ctx, db, fleet.IdIn(uuids(page)...))
 			case HolderDomain:
-				rows, err = liveHolder(ctx, db, holder.IdIn(uuids(page)...))
+				rows, err = rowsHolder(ctx, db, holder.IdIn(uuids(page)...))
 			case JointDomain:
-				rows, err = liveJoint(ctx, db, joint.IdIn(uuids(page)...))
+				rows, err = rowsJoint(ctx, db, joint.IdIn(uuids(page)...))
 			case PairingDomain:
-				rows, err = livePairing(ctx, db, pairing.IdIn(uuids(page)...))
+				rows, err = rowsPairing(ctx, db, pairing.IdIn(uuids(page)...))
 			case ReadingDomain:
-				rows, err = liveReading(ctx, db, reading.IdIn(uuids(page)...))
+				rows, err = rowsReading(ctx, db, reading.IdIn(uuids(page)...))
 			case RobotDomain:
-				rows, err = liveRobot(ctx, db, robot.IdIn(uuids(page)...))
+				rows, err = rowsRobot(ctx, db, robot.IdIn(uuids(page)...))
 			case SealDomain:
-				rows, err = liveSeal(ctx, db, seal.IdIn(uuids(page)...))
+				rows, err = rowsSeal(ctx, db, seal.IdIn(uuids(page)...))
 			case TallyDomain:
-				rows, err = liveTally(ctx, db, tally.IdIn(uuids(page)...))
+				rows, err = rowsTally(ctx, db, tally.IdIn(uuids(page)...))
 			case TenantDomain:
-				rows, err = liveTenant(ctx, db, tenant.IdIn(uuids(page)...))
+				rows, err = rowsTenant(ctx, db, tenant.IdIn(uuids(page)...))
 			case ThingDomain:
-				rows, err = liveThing(ctx, db, thing.IdIn(uuids(page)...))
+				rows, err = rowsThing(ctx, db, thing.IdIn(uuids(page)...))
 			default:
 				// Kept off the trail, so no act on it is recorded.
 				continue
@@ -5651,8 +5878,18 @@ func Record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 			if err != nil {
 				return n, err
 			}
-			if len(rows) != len(page) {
-				return n, fmt.Errorf("%s is no live row", unread(page, rows))
+
+			if there && len(rows) != len(page) {
+				return n, fmt.Errorf("%s is no row", unread(page, rows))
+			}
+			if !there && len(rows) > 0 {
+				return n, fmt.Errorf("%s is still a row", rows[0].Object)
+			}
+			if !there {
+				rows = make([]audit1.Live, len(page))
+				for i, id := range page {
+					rows[i] = audit1.Live{Object: id}
+				}
 			}
 
 			if err := recordRows(ctx, db, s, action, content, rows); err != nil {
@@ -5676,28 +5913,24 @@ func unread(ids []pdid.Id, rows []audit1.Live) pdid.Id {
 	return pdid.Nil
 }
 
-// recordRows writes the row of the trail [Record] says for each of `rows`.
+// recordRows writes the line [Record] says for each of `rows`, and the one
+// [RecordErased] says for each of them that has no row.
 func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action string, content audit1.Contents, rows []audit1.Live) error {
 	qs := make([]*ent.AuditCreate, 0, len(rows))
 	for _, v := range rows {
-		md, secret, personal := described(v.Object)
-		digest, covered := []byte{}, []uint32{}
-		if d := content.Digest; d != nil && md != nil {
-			covered = audit1.Covered(md, slices.Concat(secret, personal))
-
-			var err error
-			if digest, err = d.Of(v.Object, v.Row, covered); err != nil {
-				return fmt.Errorf("the trail of %s: %w", action, err)
-			}
-		}
-
 		w, err := audit1.Of(ctx, action, v.Object, nil)
 		if err != nil {
 			return err
 		}
 
+		at := line(s, action)
+		digest, covered, err := digested(content.Digest, v.Object, v.Row, at)
+		if err != nil {
+			return fmt.Errorf("the trail of %s: %w", action, err)
+		}
+
 		// Filed where the recorder files a write of it: under its tenant, or
-		// the actor's when it is behind no wall.
+		// the actor's when it is behind no wall or is no row.
 		tenant, _, err := subject(ctx, s, v.Object, v.Row, false)
 		if err != nil {
 			return err
@@ -5708,7 +5941,7 @@ func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action strin
 		domain := uint32(v.Object.Domain())
 
 		q := db.Audit.Create().
-			SetId(uuid.New()).
+			SetId(uuid.UUID(at.Id)).
 			SetTenantId(tenant).
 			SetActorTenantId(uuid.UUID(w.Tenant)).
 			SetActorId(uuid.UUID(w.Actor)).
@@ -5721,7 +5954,7 @@ func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action strin
 			SetFields([]uint32{}).
 			SetDigest(digest).
 			SetDigestFields(covered).
-			SetDateCreated(time.Now().UTC())
+			SetDateCreated(at.Created)
 		if !w.Counterpart.IsZero() {
 			q.SetCounterpartTenantId(uuid.UUID(w.Counterpart))
 		}
@@ -5735,6 +5968,107 @@ func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action strin
 	}
 
 	return nil
+}
+
+func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Domain, vs []trail.Carried) (int, error) {
+	n := 0
+	for page := range slices.Chunk(vs, audit1.RowsPage) {
+		ids := make([]pdid.Id, len(page))
+		for i, v := range page {
+			ids[i] = v.Object
+		}
+
+		var rows []audit1.Live
+		var err error
+		switch d {
+		case CellDomain:
+			rows, err = rowsCell(ctx, s.db, cell.IdIn(uuids(ids)...))
+		case FleetDomain:
+			rows, err = rowsFleet(ctx, s.db, fleet.IdIn(uuids(ids)...))
+		case HolderDomain:
+			rows, err = rowsHolder(ctx, s.db, holder.IdIn(uuids(ids)...))
+		case JointDomain:
+			rows, err = rowsJoint(ctx, s.db, joint.IdIn(uuids(ids)...))
+		case PairingDomain:
+			rows, err = rowsPairing(ctx, s.db, pairing.IdIn(uuids(ids)...))
+		case ReadingDomain:
+			rows, err = rowsReading(ctx, s.db, reading.IdIn(uuids(ids)...))
+		case RobotDomain:
+			rows, err = rowsRobot(ctx, s.db, robot.IdIn(uuids(ids)...))
+		case SealDomain:
+			rows, err = rowsSeal(ctx, s.db, seal.IdIn(uuids(ids)...))
+		case TallyDomain:
+			rows, err = rowsTally(ctx, s.db, tally.IdIn(uuids(ids)...))
+		case TenantDomain:
+			rows, err = rowsTenant(ctx, s.db, tenant.IdIn(uuids(ids)...))
+		case ThingDomain:
+			rows, err = rowsThing(ctx, s.db, thing.IdIn(uuids(ids)...))
+		default:
+			// A kind no check reads, so there is nothing to carry forward to.
+			return n, nil
+		}
+		if err != nil {
+			return n, err
+		}
+
+		there := map[pdid.Id]bool{}
+		for _, v := range rows {
+			there[v.Object] = true
+		}
+
+		about, err := s.db.Audit.Query().
+			Where(audit.ObjectIdIn(uuids(ids)...)).
+			Select(audit.FieldObjectId).
+			All(ctx)
+		if err != nil {
+			return n, err
+		}
+		for _, v := range about {
+			delete(there, pdid.Id(v.ObjectId))
+		}
+
+		srv, err := bare.NewServer(s.db)
+		if err != nil {
+			return n, err
+		}
+		qs := []*ent.AuditCreate{}
+		for _, v := range page {
+			if !there[v.Object] {
+				continue
+			}
+
+			at := line(srv, trail.CarriedAction)
+			sum, err := digest.Carry(v.Sum, v.Object, at)
+			if err != nil {
+				return n, fmt.Errorf("carry %s forward: %w", v.Object, err)
+			}
+
+			domain := uint32(d)
+			qs = append(qs, s.db.Audit.Create().
+				SetId(uuid.UUID(at.Id)).
+				SetTenantId(v.Tenant.Uuid()).
+				SetActorTenantId(uuid.Nil()).
+				SetActorId(uuid.Nil()).
+				SetTraceId([]byte{}).
+				SetAction(at.Action).
+				SetObjectId(v.Object.Uuid()).
+				SetDomain(domain).
+				SetPatch([]byte{}).
+				SetValue([]byte{}).
+				SetFields([]uint32{}).
+				SetDigest(sum).
+				SetDigestFields(v.DigestFields).
+				SetDateCreated(at.Created))
+		}
+		for vs := range slices.Chunk(qs, keptTrailRows) {
+			if err := s.db.Audit.CreateBulk(vs...).Exec(ctx); err != nil {
+				return n, fmt.Errorf("write the trail: %w", err)
+			}
+			n += len(vs)
+		}
+	}
+
+	return n, nil
 }
 
 var _ *patchpb.Patch

@@ -21,6 +21,7 @@ import (
 	"github.com/lesomnus/flob"
 	"github.com/stretchr/testify/require"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/pdid"
 )
 
@@ -45,6 +46,11 @@ type fakeRow struct {
 	domain      pdid.Domain
 	created     time.Time
 	value       string
+
+	// action is what the row says was done, and "/test/Write" when nothing
+	// said; digest is the digest it keeps of the row its write left.
+	action string
+	digest []byte
 }
 
 func (r fakeRow) doc() []byte {
@@ -56,8 +62,12 @@ func (r fakeRow) doc() []byte {
 		"actorTenantId": b64(r.actor),
 		"objectId":      b64(r.object),
 		"domain":        r.domain,
-		"action":        "/test/Write",
+		"action":        r.act(),
 		"dateCreated":   r.created.UTC().Format(time.RFC3339Nano),
+	}
+	if len(r.digest) > 0 {
+		m["digest"] = base64.StdEncoding.EncodeToString(r.digest)
+		m["digestFields"] = []uint32{1, 2}
 	}
 	if r.counterpart != nil {
 		m["counterpartTenantId"] = b64(*r.counterpart)
@@ -74,6 +84,19 @@ func (r fakeRow) doc() []byte {
 	return b
 }
 
+func (r fakeRow) act() string {
+	if r.action == "" {
+		return "/test/Write"
+	}
+
+	return r.action
+}
+
+// line is the row as a digest is bound to it.
+func (r fakeRow) line() audit.Line {
+	return audit.Line{Id: r.id, Created: r.created, Action: r.act()}
+}
+
 // fakeStore is the audit table in memory, answering as the generated store
 // does.
 type fakeStore struct {
@@ -85,6 +108,10 @@ type fakeStore struct {
 	keys      int
 	counter   int
 	counterAt time.Time
+
+	// live is the things that are still rows, which is what a line is
+	// carried forward for.
+	live map[uuid.UUID]bool
 }
 
 var _ Store = (*fakeStore)(nil)
@@ -356,6 +383,32 @@ func (s *fakeStore) Heads(ctx context.Context, of Scope, at time.Time, after Cur
 	}
 
 	return vs, err
+}
+
+func (s *fakeStore) Carry(ctx context.Context, digest *audit.Digest, d pdid.Domain, vs []Carried) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	n := 0
+	for _, v := range vs {
+		o := v.Object.Uuid()
+		if !s.live[o] || slices.ContainsFunc(s.rows, func(r fakeRow) bool { return r.object == o }) {
+			continue
+		}
+
+		r := fakeRow{id: uuid.NewV7(), tenant: v.Tenant.Uuid(), object: o, domain: d, action: CarriedAction,
+			created: time.Now().UTC().Truncate(time.Microsecond)}
+		sum, err := digest.Carry(v.Sum, v.Object, r.line())
+		if err != nil {
+			return n, err
+		}
+
+		r.digest = sum
+		s.rows = append(s.rows, r)
+		n++
+	}
+
+	return n, nil
 }
 
 func (s *fakeStore) Blank(ctx context.Context, keys []any) (int, error) {

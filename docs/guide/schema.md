@@ -421,6 +421,11 @@ field is read like any other. Generation refuses the two on one field, and
 refuses `personal` on an edge or on the key — those are identifiers, which is
 what the trail is made of.
 
+It goes on the entity's own column. A message one column holds — a profile, a
+contact — is withheld or kept as the column it is in, so its own fields cannot
+say anything, and generation refuses a `(payday.field)` there rather than
+reading nothing off it: declare the column that holds the message.
+
 #### Saying a field is about no one
 
 `personal: false` says a field was looked at and is about no one in
@@ -818,6 +823,7 @@ only test for whether it belongs on this list.
 | `stamp:` over one hop, or off the front of every index | a wall that scans the table it is read from most |
 | `stamp:` through a mutable or nullable step | a column that goes on saying where the row used to belong |
 | `personal` beside `secret`, on an edge, or on the key | one thing said twice, or a declaration on what the trail names a row by |
+| `(payday.field)` on a field of a message that is not an entity, or one the ORM maps to no column | a declaration nothing reads, kept as if it were |
 | `agrees:` through a mutable step | an agreement true only until somebody repoints it |
 | `list:` with no `max` | an answer with no cap |
 | `list:` order not ending in the key | a cursor that repeats or skips a row |

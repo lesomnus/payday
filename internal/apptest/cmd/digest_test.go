@@ -29,6 +29,11 @@ import (
 // digestKey is a key as configuration gives one through the environment.
 var digestKey = "base64:" + base64.StdEncoding.EncodeToString([]byte("a key of thirty-two bytes, or so"))
 
+// rowDigest is the length of a digest of the row a write left, bound to its
+// line (payday#115): a version byte, and a fingerprint and a MAC each for the
+// line and for the row.
+const rowDigest = 1 + 2*(8+32)
+
 // digesting is the app with a digest key, and that key as a check reads it.
 func digesting(t *testing.T) (*built, context.Context, *audit.Digest) {
 	t.Helper()
@@ -57,7 +62,7 @@ func TestEachRowOfTheTrailKeepsADigestOfTheRowItsWriteLeft(t *testing.T) {
 
 	_, rows := b.kept(t, ctx)
 	for _, row := range rows {
-		x.Len(row.Digest, 1+8+32)
+		x.Len(row.Digest, rowDigest)
 		x.Equal(audit.DigestVersion, row.Digest[0])
 		x.Contains(row.DigestFields, uint32(4), "the alias is the robot's")
 		x.NotContains(row.DigestFields, uint32(8), "the secret is nobody's to read")
@@ -128,7 +133,7 @@ func TestRowsMadeManyAtATimeAreDigestedToo(t *testing.T) {
 	for _, v := range res.GetItems() {
 		rows := b.trailOf(t, ctx, v.GetId())
 		x.Len(rows, 1)
-		x.Len(rows[0].Digest, 1+8+32)
+		x.Len(rows[0].Digest, rowDigest)
 	}
 
 	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
@@ -277,7 +282,7 @@ func TestARowWrittenBeneathTheServersIsRecordedAsTheActThatWroteIt(t *testing.T)
 	x.Len(rows, 1)
 	x.Equal("/test/Restore", rows[0].Action)
 	x.Equal(b.Tenant.Uuid(), rows[0].TenantId, "filed under the row's own tenant")
-	x.Len(rows[0].Digest, 1+8+32)
+	x.Len(rows[0].Digest, rowDigest)
 	x.Empty(rows[0].Patch, "what the act wrote is the export's, not the trail's")
 	x.Empty(rows[0].Value)
 	x.NotContains(rows[0].DigestFields, uint32(32), "the keeper is a person's")
@@ -348,7 +353,7 @@ func TestRecordIsRefusedWhatItCannotSayAnythingTrueAbout(t *testing.T) {
 	robot, ok := pdid.DomainOf("robot")
 	x.True(ok)
 	_, err = pd.Record(ctx, b.Ent, audit.Contents{Digest: d}, "/test/Restore", []pdid.Id{pdid.New(robot)})
-	x.ErrorContains(err, "no live row")
+	x.ErrorContains(err, "is no row")
 	x.Empty(b.trailOf(t, ctx, id.Bytes()))
 }
 
@@ -413,4 +418,211 @@ func TestAKindKeptOffTheTrailIsNotRead(t *testing.T) {
 	x.NoError(err)
 	x.Zero(n)
 	x.Empty(b.trailOf(t, ctx, id.Bytes()))
+}
+
+// The rest is payday#115: what anybody who can write the database can make of
+// a line of the trail, so that the row beside it says nothing, is a finding
+// rather than a count -- and so is what was removed past the servers.
+
+// TestARowBroughtBackFromAnEraseDiffers: a robot erased softly through the
+// servers keeps a line whose digest is of the row the erase left, stamp and
+// all; brought back in the database, it is not that row.
+func TestARowBroughtBackFromAnEraseDiffers(t *testing.T) {
+	x := require.New(t)
+	b, ctx, d := digesting(t)
+
+	v, _ := b.kept(t, ctx)
+	k, err := entuuid.FromBytes(v.GetId())
+	x.NoError(err)
+	_, err = b.Ungated.Robot().Erase(ctx, app.RobotRef_builder{Id: v.GetId()}.Build())
+	x.NoError(err)
+
+	rows := b.trailOf(t, ctx, v.GetId())
+	x.Len(rows[len(rows)-1].Digest, rowDigest, "an erase that left the row keeps a digest of it")
+
+	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.True(got.Ok(), "an erased row is a row the trail accounts for: %+v", got)
+
+	// Changed while it stays erased, it is found: a check reads every row
+	// there is, and a restore would otherwise bring back whatever it was made
+	// into.
+	x.NoError(b.Ent.Robot.UpdateOneId(k).SetAlias("arm-forged").Exec(ctx))
+	got, err = pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.Equal([]pdid.Id{pdid.Id(k)}, got.Differs)
+
+	x.NoError(b.Ent.Robot.UpdateOneId(k).SetAlias(v.GetAlias()).ClearDateErased().Exec(ctx))
+	got, err = pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.Equal([]pdid.Id{pdid.Id(k)}, got.Differs, "brought back")
+}
+
+// TestALineWithoutItsDigestIsAFinding: a row changed in the database, and the
+// digest of its newest line taken off, says nothing -- which is the finding.
+// A deployment told digests began later than a line that keeps one is refused
+// rather than counting everything before then as from before.
+func TestALineWithoutItsDigestIsAFinding(t *testing.T) {
+	x := require.New(t)
+	b, ctx, d := digesting(t)
+
+	v, rows := b.kept(t, ctx)
+	k, err := entuuid.FromBytes(v.GetId())
+	x.NoError(err)
+	x.NoError(b.Ent.Robot.UpdateOneId(k).SetAlias("arm-forged").Exec(ctx))
+	x.NoError(b.Ent.Audit.UpdateOneId(rows[len(rows)-1].Id).SetDigest([]byte{}).Exec(ctx))
+
+	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.Equal([]pdid.Id{pdid.Id(k)}, got.NoDigest)
+	x.False(got.Ok())
+
+	_, err = pd.Digests(ctx, b.Ent, d.Since(time.Now()), trail.Policy{})
+	x.ErrorContains(err, "audit.digest.since")
+}
+
+// TestACheckWithTheWrongKeyFindsEverything: a check handed a key other than
+// the one the trail was written under, or of a deployment that wrote it with
+// none, does not pass -- and one told the key was let go counts the rows.
+func TestACheckWithTheWrongKeyFindsEverything(t *testing.T) {
+	x := require.New(t)
+	b, ctx, d := digesting(t)
+	b.kept(t, ctx)
+
+	other, err := audit.NewDigest([]byte("another key of thirty-two bytes!"))
+	x.NoError(err)
+	got, err := pd.Digests(ctx, b.Ent, other, trail.Policy{})
+	x.NoError(err)
+	x.NotEmpty(got.KeyNotHeld)
+	x.Equal([]audit.Fingerprint{d.Fingerprint()}, got.Unheld)
+	x.False(got.Ok())
+
+	letGo, err := other.Retire(d.Fingerprint())
+	x.NoError(err)
+	got, err = pd.Digests(ctx, b.Ent, letGo, trail.Policy{})
+	x.NoError(err)
+	x.True(got.Ok(), "%+v", got)
+	x.Positive(got.Retired)
+
+	// And a deployment that writes with no key at all.
+	nokey, ctx := build(t)
+	nokey.kept(t, ctx)
+	got, err = pd.Digests(ctx, nokey.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.NotEmpty(got.NoDigest)
+	x.False(got.Ok())
+}
+
+// TestADigestCopiedOntoTheNewestLineIsForged: the robot put back to what its
+// Add left, and the Add's digest copied onto the Patch's line, is a line the
+// digest is not of.
+func TestADigestCopiedOntoTheNewestLineIsForged(t *testing.T) {
+	x := require.New(t)
+	b, ctx, d := digesting(t)
+
+	v, rows := b.kept(t, ctx)
+	k, err := entuuid.FromBytes(v.GetId())
+	x.NoError(err)
+	x.NoError(b.Ent.Robot.UpdateOneId(k).SetAlias(v.GetAlias()).SetDateUpdated(v.GetDateUpdated().AsTime()).Exec(ctx))
+
+	add, patch := rows[0], rows[1]
+	x.NoError(b.Ent.Audit.UpdateOneId(patch.Id).SetDigest(add.Digest).SetDigestFields(add.DigestFields).Exec(ctx))
+
+	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.Equal([]pdid.Id{pdid.Id(k)}, got.Forged)
+	x.False(got.Ok())
+}
+
+// TestARowRemovedPastTheServersIsMissing: a robot deleted in the database is a
+// thing the trail says is a row and is not. One the app removed on purpose,
+// and recorded as the act that removed it, is not; nor is a reading erased
+// hard through the servers, whose line says the row went.
+func TestARowRemovedPastTheServersIsMissing(t *testing.T) {
+	x := require.New(t)
+	b, ctx, d := digesting(t)
+
+	v, _ := b.kept(t, ctx)
+	k, err := entuuid.FromBytes(v.GetId())
+	x.NoError(err)
+
+	r, err := b.Ungated.Reading().Add(ctx, reading(v.GetId(), 21))
+	x.NoError(err)
+	_, err = b.Ungated.Reading().Erase(ctx, app.ReadingRef_builder{Id: r.GetId()}.Build())
+	x.NoError(err)
+
+	x.NoError(b.Ent.Robot.DeleteOneId(k).Exec(ctx))
+
+	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.Equal([]pdid.Id{pdid.Id(k)}, got.Missing)
+	x.False(got.Ok())
+
+	_, err = pd.Record(ctx, b.Ent, audit.Contents{Digest: d}, "/test/Forget", []pdid.Id{pdid.Id(k)})
+	x.ErrorContains(err, "is no row", "that is RecordErased's")
+
+	n, err := pd.RecordErased(ctx, b.Ent, audit.Contents{Digest: d}, "/test/Forget", []pdid.Id{pdid.Id(k)})
+	x.NoError(err)
+	x.Equal(1, n)
+
+	got, err = pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.True(got.Ok(), "%+v", got)
+
+	still, _ := b.kept(t, ctx)
+	_, err = pd.RecordErased(ctx, b.Ent, audit.Contents{Digest: d}, "/test/Forget", []pdid.Id{pdid.Id(still.GetId())})
+	x.ErrorContains(err, "is still a row")
+}
+
+// TestAKindACheckDoesNotReadIsSaidWithWhy: a pulse is kept off the trail, and
+// what a check answers says so, every time, with the reason the schema gave.
+func TestAKindACheckDoesNotReadIsSaidWithWhy(t *testing.T) {
+	x := require.New(t)
+	b, ctx, d := digesting(t)
+
+	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.Contains(got.Skipped, audit.Skipped{Kind: "pulse", Why: "a heartbeat each process writes every few seconds; a record of each is noise"})
+}
+
+// TestARowNobodyWroteSinceItsWindowIsCarriedForward: every line about a robot
+// leaves the database and then the archive at the end of its window, and the
+// pass carries what the newest said of the row onto a line of the database's
+// own -- so a check finds the robot on the trail, and still finds it changed
+// when it is. Without the key the pass carries nothing, and the check finds
+// the robot not on the trail.
+func TestARowNobodyWroteSinceItsWindowIsCarriedForward(t *testing.T) {
+	x := require.New(t)
+
+	for _, carries := range []bool{true, false} {
+		b, ctx, d := digesting(t)
+		v, _ := b.kept(t, ctx)
+		k, err := entuuid.FromBytes(v.GetId())
+		x.NoError(err)
+
+		p := trail.Policy{Archive: flob.NewMemStores(), Keep: trail.Keep{Retain: time.Nanosecond, Destroy: 2 * time.Nanosecond}}
+		if carries {
+			p.Digest = d
+		}
+		x.NoError(p.Valid())
+		p.Pass(ctx, pd.TrailStore(b.Ent))
+
+		got, err := pd.Digests(ctx, b.Ent, d, p)
+		x.NoError(err)
+		if !carries {
+			x.Contains(got.NotOnTrail, pdid.Id(k))
+			continue
+		}
+
+		x.True(got.Ok(), "%+v", got)
+		x.Zero(got.Archived, "every line it read is one the pass carried into the database")
+		rows := b.trailOf(t, ctx, v.GetId())
+		x.Len(rows, 1)
+		x.Equal(trail.CarriedAction, rows[0].Action)
+
+		x.NoError(b.Ent.Robot.UpdateOneId(k).SetAlias("arm-forged").Exec(ctx))
+		got, err = pd.Digests(ctx, b.Ent, d, p)
+		x.NoError(err)
+		x.Equal([]pdid.Id{pdid.Id(k)}, got.Differs, "carried as it was recorded, not made again of the row")
+	}
 }

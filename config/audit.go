@@ -166,16 +166,41 @@ type AuditDigestConfig struct {
 	Key string `yaml:"key"`
 
 	// Previous is the keys Key has replaced, in either form, for checking the
-	// digests made under them. A digest says which key it was made under, and
-	// one under a key in neither is said to be so rather than to differ.
+	// digests made under them. A digest says which key it was made under.
 	Previous []string `yaml:"previous"`
+
+	// Retired is the fingerprints of keys this deployment let go -- lost, or
+	// rotated out because they could not be trusted any more -- as a check of
+	// the rows prints them: sixteen hexadecimal digits each. A digest made
+	// under one is counted, since nothing can check it and the deployment
+	// said why. One under a key in none of Key, Previous and Retired is a
+	// finding: a check handed the wrong key finds every row, and not none of
+	// them (payday#115).
+	Retired []string `yaml:"retired"`
+
+	// Since is when this deployment began keeping digests, RFC 3339 or a
+	// date: a line of the trail written before it that keeps none is counted
+	// rather than found. Empty is from the beginning, which is right for a
+	// deployment that had a key from its first write. One that was given a
+	// key later writes down when, and takes it out once the rows from before
+	// are accepted (payday#115).
+	//
+	// It is said here and not read off the trail, because whatever the
+	// database says of when digests began, whoever can write the database can
+	// say; see [audit.Digest.Since].
+	Since string `yaml:"since"`
 }
 
 // digest is the block, read: nil for none.
 func (c AuditDigestConfig) digest() (*audit.Digest, error) {
 	if strings.TrimSpace(c.Key) == "" {
-		if len(c.Previous) > 0 {
+		switch {
+		case len(c.Previous) > 0:
 			return nil, errors.New("previous: names keys a digest is checked with, and there is no key to make one")
+		case len(c.Retired) > 0:
+			return nil, errors.New("retired: names keys a digest is checked without, and there is no key to check one")
+		case strings.TrimSpace(c.Since) != "":
+			return nil, errors.New("since: says when digests began, and there is no key to make one")
 		}
 
 		return nil, nil
@@ -193,7 +218,49 @@ func (c AuditDigestConfig) digest() (*audit.Digest, error) {
 		}
 	}
 
-	return audit.NewDigest(key, previous...)
+	d, err := audit.NewDigest(key, previous...)
+	if err != nil {
+		return nil, err
+	}
+
+	retired := make([]audit.Fingerprint, len(c.Retired))
+	for i, v := range c.Retired {
+		if retired[i], err = audit.ParseFingerprint(strings.TrimSpace(v)); err != nil {
+			return nil, fmt.Errorf("retired[%d]: %w", i, err)
+		}
+	}
+	if d, err = d.Retire(retired...); err != nil {
+		return nil, fmt.Errorf("retired: %w", err)
+	}
+
+	if v := strings.TrimSpace(c.Since); v != "" {
+		at, err := sinceOf(v)
+		if err != nil {
+			return nil, fmt.Errorf("since: %w", err)
+		}
+		if at.After(time.Now()) {
+			// Every line written between now and then would be counted as
+			// from before digests, by a check that says it checked them.
+			return nil, fmt.Errorf("since: %s is after now, and digests cannot have begun later than the line being written", v)
+		}
+
+		d = d.Since(at)
+	}
+
+	return d, nil
+}
+
+// sinceOf reads `audit.digest.since`: an RFC 3339 moment, or a date, which is
+// that day's first moment in UTC.
+func sinceOf(v string) (time.Time, error) {
+	if at, err := time.Parse(time.RFC3339Nano, v); err == nil {
+		return at, nil
+	}
+	if at, err := time.Parse(time.DateOnly, v); err == nil {
+		return at, nil
+	}
+
+	return time.Time{}, fmt.Errorf("%q is neither an RFC 3339 moment nor a date", v)
 }
 
 // digestKeyOf reads what `audit.digest.key` says: the key itself after
@@ -573,6 +640,9 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 	}
 	if p.Keys, err = c.Keys.keys(c.Archive); err != nil {
 		return trail.Policy{}, fmt.Errorf("audit.keys.%w", err)
+	}
+	if p.Digest, err = c.Digest.digest(); err != nil {
+		return trail.Policy{}, fmt.Errorf("audit.digest.%w", err)
 	}
 
 	if err := p.Valid(); err != nil {

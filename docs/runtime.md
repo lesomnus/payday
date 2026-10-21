@@ -346,25 +346,41 @@ row its write left (`Audit.digest`, payday#102). It is HMAC-SHA256 of the row as
 `value` would hold it, with `personal` and `secret` cleared, over the fields the
 build that wrote it knew. Those fields are recorded beside it
 (`Audit.digest_fields`). The recorder makes it from the row the write handed
-over, so it costs no statement.
+over, so it costs no statement; an Erase hands none, and its row is read once,
+in its transaction -- the row as the erase stamped it, for one that left it.
 
-A live row is checked against it. The generated `pd.Digests` reads every live
-row of every kind written through the servers, digests it again, and compares
-it with the newest row of the trail about it -- in the database, or in the
-archive once it has left (payday#108):
+**A digest is bound to the line that keeps it** (payday#115). It is two MACs:
+one of the row, and one of the line over that -- the line's key, the moment it
+was written, its action and the thing it is about. So a digest copied from an
+older line onto the newest is not that line's, and a row put back to what it
+once was, with the trail made to agree, is a finding. A write that took its row
+-- an erase made hard -- keeps the line's MAC alone, which says the row went.
+
+A row is checked against it. The generated `pd.Digests` reads every row of
+every kind on the trail -- live, or erased softly, which is a row still --
+digests it again, and compares it with the newest line of the trail about it,
+in the database or in the archive once it has left (payday#108). Then it goes
+the other way: every thing the trail is about that is no row, against what its
+newest line says.
 
 ```go
 rows, err := pd.Digests(ctx, db, contents.Digest, policy)
 // rows.Differs: rows that are not what the last write the trail recorded
-// left -- changed in the database past the servers.
+// left -- changed in the database past the servers, or brought back from
+// an erase.
+// rows.Forged: rows whose newest line keeps a digest that is not its own.
+// rows.NoDigest: rows whose newest line keeps none.
+// rows.KeyNotHeld: rows digested under a key the check was not given.
 // rows.NotOnTrail: rows nothing on the trail is about -- added past them.
+// rows.Missing: things the trail says are rows, that are not -- removed.
+// rows.Skipped: the kinds kept off the trail, with why.
 ```
 
-Both are findings, and `rows.Ok()` is neither. A page of rows is read with the
-trail about it in one read-only transaction, so a write between the two reads is
-not a difference. The archive is read through its manifest, as an export reads
-it, and only the rows' digests: they are in the clear, so no tenant's key is
-opened.
+Every list is a finding, and `rows.Ok()` is none of them. A page of rows is read
+with the trail about it in one read-only transaction, so a write between the
+two reads is not a difference. The archive is read through its manifest, as an
+export reads it, and only the rows' digests: they are in the clear, so no
+tenant's key is opened.
 
 It is keyed because a row of the trail is signed only when a pass archives it.
 A digest anybody can compute is one whoever can write the database computes
@@ -373,32 +389,56 @@ checkpoint key is, and kept out of the database and its backups. A digest names
 the key it was made under, and `audit.digest.previous` checks the ones made
 before a rotation.
 
+**Saying nothing is not an answer.** A line with no digest, and a digest under
+a key the check does not hold, say nothing of the row beside them -- and both
+are what whoever can write the database makes of any line in one statement. So
+each is a finding, and a check handed the wrong key, or of a deployment that
+writes with none, finds every row. What a deployment says it cannot check is
+said beside the key, where that writer does not reach: `audit.digest.since` is
+when it began keeping digests, and a line from before with none is counted
+(`rows.BeforeDigests`); `audit.digest.retired` is the fingerprints of keys it
+let go, and their digests are counted (`rows.Retired`). The first cannot tell a
+row from before apart from one whose whole trail was made to look like it, which
+is the price of a deployment that had rows before it had a key: accept those
+once, and take `since` out.
+
 It does not see a field declared `personal`. A keyed hash of it would outlive
 the person's erasure for as long as the key does.
 
 **What nothing accounts for is a finding.** A row somebody added past the
-servers is one the trail says nothing about, so anything else the check cannot
-account for would hide it, and the count would be the one an operator learns to
-ignore. Three things make sure there is nothing else:
+servers is one the trail says nothing about, and a row somebody removed is a
+thing the trail says is there. Anything else the check cannot account for would
+hide them, and the count would be the one an operator learns to ignore. These
+make sure there is nothing else:
 
 - **The archive is read,** for a row whose newest line of the trail has left the
   database. A deployment that discards its trail past the window rather than
   archiving it cannot tell a row nobody wrote since from one somebody added.
+- **Before a pass destroys the newest line about a row that is still there**, at
+  the end of its window, it carries what that line said of the row onto a line
+  of the database's own (`trail.Policy.Digest`, the same key). The row's MAC is
+  carried as it was recorded, never made again of the row as it is, so a row
+  changed past the servers a year ago still differs. A line with no digest has
+  nothing to carry.
 - **A row an app writes beneath the servers on purpose is recorded** as the act
   that wrote it -- a workspace restored from its export, rows a migration
   rewrote and an operator accepted. `pd.Record(ctx, db, contents, action, ids)`
   writes one line of the trail for each, in the transaction that wrote them, by
   whoever the context is framed as, keeping the digest of the row as a Get reads
-  it and nothing of what it holds. It is the one way onto the trail that is not
-  a write through the servers.
+  it and nothing of what it holds. One it removes on purpose -- what a person
+  forgotten took with them -- is `pd.RecordErased`, with a digest that says the
+  row went. They are the ways onto the trail that are not a write through the
+  servers.
 - **A kind no server writes says how its writes reach the trail.** One with no
   `Add`, `AddMany` or `Patch` is written by the app's own code, and declares
   which of two it is: `trail: {recorded: {}}`, each write recorded with
   `pd.Record` and the kind checked as any is; or `trail: {off: {why: "..."}}`,
   kept off the trail and not checked -- a session's idle clock, a lock, a queue.
   `pd gen` refuses one that says neither, so leaving a kind out of the check is
-  always written down, with a reason. Whether it has RPCs is a separate question,
-  about its API.
+  always written down, with a reason, and every check says it again
+  (`rows.Skipped`). Whether it has RPCs is a separate question, about its API.
+  A kind kept off that holds a `secret` is one whose rows let somebody in, and
+  `pd doctor` asks whether that was meant.
 
 A column a migration adds is outside every digest made before it, so the rows
 under it still match. A column a migration rewrote is a difference, which is

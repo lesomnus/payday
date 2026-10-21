@@ -91,7 +91,9 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 
 	// What it accepts and the trail still keeps too much of: a field that may
 	// hold a person and that the schema says nothing about. See personal.go.
-	return doctorPersonal(schema)
+	// And what it accepts and a check of the rows then does not look at: a
+	// kind kept off the trail that holds a secret. See doctor_trail.go.
+	return append(doctorPersonal(schema), doctorTrailOff(schema)...)
 }
 
 // describe is the app's schema as descriptors, from buf.
