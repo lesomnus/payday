@@ -69,7 +69,7 @@ func CheckOwn(s *Schema) error {
 		"%s: nothing in this schema declares it, and payday copies its own entities in "+
 			"whole on every `pd gen`\n\n"+
 			"What is built out of them is the Gate layer -- which is the whole of the `Add` "+
-			"tenant check -- the audit trail's layer, and the outbox drain. Missing, those are "+
+			"tenant check -- the audit trail's layer, the outbox drain and the access record. Missing, those are "+
 			"not generated and nothing else fails: reads stay walled and writes stop being.\n\n"+
 			"They are found by the `own:` each carries and not by name, so renaming the proto "+
 			"package is not what did this. Something removed the entity or the marker.",

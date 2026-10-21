@@ -26,6 +26,7 @@ import (
 )
 
 type Server interface {
+	Access() AccessServiceServer
 	Archived() ArchivedServiceServer
 	Audit() AuditServiceServer
 	Tenant() TenantServiceServer
@@ -48,6 +49,7 @@ type Server interface {
 // It takes a [grpc.ServiceRegistrar] rather than a *grpc.Server so that a
 // server which is not gRPC's own can be handed the same set of services.
 func RegisterServer(g grpc.ServiceRegistrar, s Server) {
+	RegisterAccessServiceServer(g, s.Access())
 	RegisterArchivedServiceServer(g, s.Archived())
 	RegisterAuditServiceServer(g, s.Audit())
 	RegisterTenantServiceServer(g, s.Tenant())
@@ -66,6 +68,7 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 }
 
 type UnimplementedServer struct {
+	AccessServer   AccessServiceServer
 	ArchivedServer ArchivedServiceServer
 	AuditServer    AuditServiceServer
 	TenantServer   TenantServiceServer
@@ -83,6 +86,7 @@ type UnimplementedServer struct {
 	PulseServer    PulseServiceServer
 }
 
+func (UnimplementedServer) Access() AccessServiceServer { return UnimplementedAccessServiceServer{} }
 func (UnimplementedServer) Archived() ArchivedServiceServer {
 	return UnimplementedArchivedServiceServer{}
 }
@@ -102,6 +106,7 @@ func (UnimplementedServer) Tally() TallyServiceServer     { return Unimplemented
 func (UnimplementedServer) Pulse() PulseServiceServer     { return UnimplementedPulseServiceServer{} }
 
 type StaticServer struct {
+	AccessServer   AccessServiceServer
 	ArchivedServer ArchivedServiceServer
 	AuditServer    AuditServiceServer
 	TenantServer   TenantServiceServer
@@ -119,6 +124,7 @@ type StaticServer struct {
 	PulseServer    PulseServiceServer
 }
 
+func (s StaticServer) Access() AccessServiceServer     { return s.AccessServer }
 func (s StaticServer) Archived() ArchivedServiceServer { return s.ArchivedServer }
 func (s StaticServer) Audit() AuditServiceServer       { return s.AuditServer }
 func (s StaticServer) Tenant() TenantServiceServer     { return s.TenantServer }
@@ -136,6 +142,7 @@ func (s StaticServer) Tally() TallyServiceServer       { return s.TallyServer }
 func (s StaticServer) Pulse() PulseServiceServer       { return s.PulseServer }
 
 type Client interface {
+	Access() AccessServiceClient
 	Archived() ArchivedServiceClient
 	Audit() AuditServiceClient
 	Tenant() TenantServiceClient
@@ -155,6 +162,7 @@ type Client interface {
 
 func NewClient(c *grpc.ClientConn) Client {
 	return &client{
+		_Access:   NewAccessServiceClient(c),
 		_Archived: NewArchivedServiceClient(c),
 		_Audit:    NewAuditServiceClient(c),
 		_Tenant:   NewTenantServiceClient(c),
@@ -174,6 +182,7 @@ func NewClient(c *grpc.ClientConn) Client {
 }
 
 type client struct {
+	_Access   AccessServiceClient
 	_Archived ArchivedServiceClient
 	_Audit    AuditServiceClient
 	_Tenant   TenantServiceClient
@@ -191,6 +200,7 @@ type client struct {
 	_Pulse    PulseServiceClient
 }
 
+func (c *client) Access() AccessServiceClient     { return c._Access }
 func (c *client) Archived() ArchivedServiceClient { return c._Archived }
 func (c *client) Audit() AuditServiceClient       { return c._Audit }
 func (c *client) Tenant() TenantServiceClient     { return c._Tenant }
@@ -277,7 +287,7 @@ func SinkOf(s Server) Server {
 //		Overlay
 //	}
 //
-//	func (s Server) Archived() ArchivedServiceServer { ... }
+//	func (s Server) Access() AccessServiceServer { ... }
 type Overlay struct {
 	Server
 }

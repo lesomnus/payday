@@ -6,6 +6,9 @@ import (
 	"github.com/protobuf-orm/ent/dialect/sql"
 )
 
+// Access is the predicate function for access builders.
+type Access func(*sql.Selector)
+
 // Archived is the predicate function for archived builders.
 type Archived func(*sql.Selector)
 

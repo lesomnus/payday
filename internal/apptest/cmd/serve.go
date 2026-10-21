@@ -13,6 +13,7 @@ import (
 	entsql "github.com/protobuf-orm/ent/dialect/sql"
 	"google.golang.org/grpc"
 
+	"github.com/lesomnus/payday/access"
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
@@ -85,6 +86,18 @@ type Server struct {
 	// `docs/tenancy.md`.
 	Policy gate.Policy
 
+	// Access is the access record's writer (payday#111): what a read's row
+	// waits in to be written with the others of its second, and what writes a
+	// download's at once. Its loop is in [Server.Spin], and each process runs
+	// its own, since what it holds is in this one's memory.
+	Access *access.Writer
+
+	// Downloads are the methods that hand personal data out to be kept
+	// somewhere else, which say what for or are refused; see
+	// `access.Config.Downloads`. Which they are is the app's to know: this
+	// one has none of its own, and a test names one.
+	Downloads []string
+
 	// Spin is whatever this deployment has to run besides answering requests.
 	// It is a slice rather than a method because a server with nothing to run
 	// should write nothing at all; see `payday/spin`.
@@ -142,7 +155,13 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		db.Close()
 		return nil, err
 	}
-	rec := bare.Recorders{pd.Recorder(content), pd.ResourceRecorder(w, c.Watch.Outbox, nil, resource.RecorderOptions{})}
+	// The access record's is last: what it writes at the commit is of the
+	// data the call's writes wrote, so it is told of each and writes once.
+	rec := bare.Recorders{
+		pd.Recorder(content),
+		pd.ResourceRecorder(w, c.Watch.Outbox, nil, resource.RecorderOptions{}),
+		pd.AccessRecorder(),
+	}
 
 	opts := []bare.Option{bare.WithMinter(pd.Minter()), bare.WithRecorder(rec)}
 
@@ -198,6 +217,12 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	}
 
 	s := &Server{Db: db, Ent: client, Drv: drv, Dialect: dialect, Watch: w, Walled: stacked, Ungated: ungated}
+
+	// The access record's reads are written a second at a time, by a loop of
+	// each process's own that writes what it holds once more as it stops.
+	s.Access = &access.Writer{Sink: pd.AccessSink(client)}
+	s.Spin = append(s.Spin, s.Access)
+
 	if c.Watch.Outbox && b != nil {
 		// The loop that makes an event durable. It is not a layer and not a
 		// method on any server -- `spin.Run` finds it in whatever is handed
@@ -259,6 +284,7 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 		WithUnary(auth.InterceptorUnary(h, Resolver(s.Ungated), auth.PublicDefault)).
 		WithStream(auth.InterceptorStream(h, Resolver(s.Ungated), auth.PublicDefault)).
 		WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant())).
+		With(s.accessed().Interceptor()).
 		With(gate.Interceptor(s.Policy)).
 		With(s.Watch.Interceptor()).
 		WithUnary(grpcx.ClosedUnary(c.Server.Closed()))
@@ -301,6 +327,20 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 	}
 
 	return g, nil
+}
+
+// accessed is what the access record's interceptor is told of this app: whose
+// data a message carries, read off what its schema declared `personal`; where a
+// call came from, which is the connection's here, since nothing stands in front
+// of this app that it trusts; and which of its calls are downloads.
+func (s *Server) accessed() access.Config {
+	return access.Config{
+		Subjects:  pd.Subjects,
+		Refs:      pd.SubjectRefs,
+		Address:   access.Peer,
+		Downloads: s.Downloads,
+		Writer:    s.Access,
+	}
 }
 
 // Serve answers on `l` until the context is done.

@@ -3,6 +3,31 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An access record beside the trail
+
+**Applies if** you generate with `pd gen`: `Access` is a new payday entity, copied
+in like `Audit`, so migrate. Nothing is recorded until it is wired (payday#111).
+
+- **The recorder**: `pd.AccessRecorder()` in the `bare.Recorders` the servers
+  are built with, after the trail's. It writes a write's row at its commit.
+- **The writer**: `w := &access.Writer{Sink: pd.AccessSink(client)}`, appended
+  to what `spin.Run` is handed -- it is each process's own, and names itself.
+  A read's row waits in it for a second.
+- **The interceptor**: `access.Config{Subjects: pd.Subjects, Refs:
+  pd.SubjectRefs, Address: ..., Downloads: ..., Writer: w}.Interceptor()` in the
+  chain, after `auth` and the limiter and before `gate.Interceptor`.
+- **`Address`** is where a call came from. `access.Peer` is the connection's,
+  which is the caller's only when nothing stands in front of the app; behind a
+  proxy, answer with what the deployment trusts of its headers.
+- **`Downloads`** are your methods that hand personal data out to be kept
+  somewhere else, by full name. Each is refused without a `payday-reason`
+  header, so a client of one sends it.
+- **`access.Saw(ctx, ...)`** in whatever shows a person's data where no
+  `personal` field carries it: a name rendered into text, a column of a file.
+- **Retention**: rows are a kind of the trail's, `access`, on `audit.by.access`.
+  A deployment under PIPA says `profile: pipa` or `pipa-sensitive` there.
+- **`pd new`'s `cmd/serve.go` has all of this**, to compare against.
+
 ## An entity no server writes says how its writes reach the trail
 
 **Applies if** an entity of yours has no `Add`, `AddMany` or `Patch`: `pd gen`

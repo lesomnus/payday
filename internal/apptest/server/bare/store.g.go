@@ -8,6 +8,7 @@ import (
 	fmt "fmt"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
+	access "github.com/lesomnus/payday/internal/apptest/internal/ent/access"
 	archived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
@@ -374,6 +375,7 @@ func snapshotOrNil(v proto.Message) proto.Message {
 // Embed [Unscoped] to write out only the entities there is something to
 // say about.
 type Scope interface {
+	AccessScope(ctx context.Context) (predicate.Access, error)
 	ArchivedScope(ctx context.Context) (predicate.Archived, error)
 	AuditScope(ctx context.Context) (predicate.Audit, error)
 	TenantScope(ctx context.Context) (predicate.Tenant, error)
@@ -403,6 +405,9 @@ type Unscoped struct{}
 
 var _ Scope = Unscoped{}
 
+func (Unscoped) AccessScope(_ context.Context) (predicate.Access, error) {
+	return nil, nil
+}
 func (Unscoped) ArchivedScope(_ context.Context) (predicate.Archived, error) {
 	return nil, nil
 }
@@ -467,6 +472,26 @@ func (Unscoped) PulseScope(_ context.Context) (predicate.Pulse, error) {
 type Scopes []Scope
 
 var _ Scope = Scopes{}
+
+func (ss Scopes) AccessScope(ctx context.Context) (predicate.Access, error) {
+	ps := make([]predicate.Access, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.AccessScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return access.And(ps...), nil
+}
 
 func (ss Scopes) ArchivedScope(ctx context.Context) (predicate.Archived, error) {
 	ps := make([]predicate.Archived, 0, len(ss))
@@ -941,6 +966,7 @@ func (s Server) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	return s, nil
 }
 
+func (s Server) Access() apptest.AccessServiceServer { return AccessServiceServer{Store: s.Store} }
 func (s Server) Archived() apptest.ArchivedServiceServer {
 	return ArchivedServiceServer{Store: s.Store}
 }

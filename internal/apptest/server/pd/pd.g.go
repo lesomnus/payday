@@ -12,9 +12,11 @@ package pd
 import (
 	context "context"
 	sql1 "database/sql"
+	json "encoding/json"
 	errors "errors"
 	fmt "fmt"
 	log "github.com/lesomnus/otx/log"
+	access1 "github.com/lesomnus/payday/access"
 	audit1 "github.com/lesomnus/payday/audit"
 	batch "github.com/lesomnus/payday/batch"
 	frame "github.com/lesomnus/payday/frame"
@@ -22,6 +24,7 @@ import (
 	grpcx "github.com/lesomnus/payday/grpcx"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
+	access "github.com/lesomnus/payday/internal/apptest/internal/ent/access"
 	archived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
@@ -95,6 +98,7 @@ func Check() error { return version.Same(Payday) }
 // trail says what kind of thing it was long after the row is gone. So a
 // number is chosen once and never given to something else.
 const (
+	AccessDomain   pdid.Domain = 6  // "access"
 	ArchivedDomain pdid.Domain = 5  // "archived"
 	AuditDomain    pdid.Domain = 3  // "audit"
 	CellDomain     pdid.Domain = 10 // "cell"
@@ -113,6 +117,7 @@ const (
 )
 
 func init() {
+	pdid.Register("app.Access", AccessDomain, "access")
 	pdid.Register("app.Archived", ArchivedDomain, "archived")
 	pdid.Register("app.Audit", AuditDomain, "audit")
 	pdid.Register("app.Cell", CellDomain, "cell")
@@ -135,6 +140,7 @@ func init() {
 // Domains is the domain of each entity by the full name of its message,
 // which is the name a [Minter] is asked about.
 var Domains = map[string]pdid.Domain{
+	"app.Access":   AccessDomain,
 	"app.Archived": ArchivedDomain,
 	"app.Audit":    AuditDomain,
 	"app.Cell":     CellDomain,
@@ -193,6 +199,16 @@ func Wall() bare.Scope { return wall{} }
 type wall struct{}
 
 var _ bare.Scope = wall{}
+
+// AccessScope: a row is readable by every tenant it names -- tenant_id, actor_tenant_id -- which is the trail.
+func (wall) AccessScope(ctx context.Context) (predicate.Access, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return access.Or(access.TenantIdIn(vs...), access.ActorTenantIdIn(vs...)), nil
+}
 
 // ArchivedScope: declared `global`, so it is not behind the wall at all.
 func (wall) ArchivedScope(ctx context.Context) (predicate.Archived, error) {
@@ -350,6 +366,11 @@ func Grouped(of Sets) bare.Scope { return grouped{of} }
 type grouped struct{ of Sets }
 
 var _ bare.Scope = grouped{}
+
+// AccessScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) AccessScope(ctx context.Context) (predicate.Access, error) {
+	return nil, nil
+}
 
 // ArchivedScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) ArchivedScope(ctx context.Context) (predicate.Archived, error) {
@@ -526,6 +547,198 @@ func (s Sink) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	// is a rule the requests inside a transaction go around, and it fails
 	// only there -- which is the hardest place to notice it.
 	return Sink{Server: v.(bare.Server), w: s.w, namer: s.namer, joined: true}, nil
+}
+
+type sinkAccess struct {
+	apptest.AccessServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Access() apptest.AccessServiceServer {
+	return sinkAccess{s.Server.Access(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// orderAccess is how Accesss come back.
+//
+// The last column is the key, and it is not decoration: a cursor cannot
+// tell apart two rows equal in every column of the order, so the page after
+// the first of them either repeats the second or skips it. Rows written by
+// one request are stamped a moment apart at best.
+var orderAccess = []sqlpage.Order{
+	{Column: access.FieldDateCreated, Desc: true},
+	{Column: access.FieldId, Desc: true},
+}
+
+func afterAccess(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 time.Time
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextAccess(last *ent.Access, tag string) (string, error) {
+	return pdNext(tag, last.DateCreated, last.Id)
+}
+
+// orderByAccess is an order as ent orders a query by it.
+func orderByAccess(by []sqlpage.Order) []access.OrderOption {
+	out := make([]access.OrderOption, len(by))
+	for i, o := range by {
+		if o.Desc {
+			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
+			continue
+		}
+
+		out[i] = sql.OrderByField(o.Column).ToFunc()
+	}
+
+	return out
+}
+
+const (
+	// AccessPageSize is what a request that did not say gets, and
+	// AccessPageLimit is the most it gets however loudly it asks.
+	AccessPageSize  = 50
+	AccessPageLimit = 200
+
+	// AccessFilterLimit is how many filters one request may carry. Each is a
+	// predicate in the same query, so it is what says how much of the
+	// database a request may ask to read -- and it is refused rather than
+	// clamped, because dropping half the filters would answer a question
+	// nobody asked.
+	AccessFilterLimit = 32
+)
+
+// List answers with the Accesss that match any of the given filters, or with
+// every one there is if the request named none, a page at a time.
+func (s sinkAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*apptest.AccessListResponse, error) {
+	q := s.store.Db.Access.Query()
+
+	// Through the same narrowing every generated read goes through, and not
+	// by asking the scope alone: what narrows a read is the wall today and
+	// the wall and something else tomorrow, and a list that reached past it
+	// would be the one read that missed the something else.
+	if p, err := bare.AccessNarrow(ctx, s.store.Scope, nil); err != nil {
+		return nil, err
+	} else if p != nil {
+		q.Where(p)
+	}
+
+	if fs := req.GetFilters(); len(fs) > 0 {
+		if len(fs) > AccessFilterLimit {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"filters: %d of them, and %d is the most one list carries", len(fs), AccessFilterLimit)
+		}
+
+		ps := make([]predicate.Access, 0, len(fs))
+		for i, f := range fs {
+			p, err := filterAccess(f)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "filters[%d]: %s", i, err)
+			}
+
+			ps = append(ps, p)
+		}
+
+		q.Where(access.Or(ps...))
+	}
+
+	// Which order, and which way: one the schema declared, and never one a
+	// request makes up, since an order is a walk of an index.
+	by, after, next, tag := orderAccess, afterAccess, nextAccess, ""
+	if req.GetReverse() {
+		// The same index, walked from the other end.
+		by, tag = pdReverse(by), tag+"/reverse"
+	}
+
+	if v := req.GetAfter(); v != "" {
+		p, err := after(v, by, tag)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
+		}
+
+		q.Where(p)
+	}
+
+	// One row more than the page, which is how "is there another" is answered
+	// without a second query and without a count. The extra is dropped before
+	// the answer is built; it was only ever asked for to see whether it was
+	// there -- so a full last page answers with no cursor rather than sending
+	// the caller back for an empty one.
+	size := sqlpage.Size(int(req.GetSize()), AccessPageSize, AccessPageLimit)
+	us, err := q.Order(orderByAccess(by)...).Limit(size + 1).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	more := len(us) > size
+	if more {
+		us = us[:size]
+	}
+
+	items := make([]*apptest.Access, len(us))
+	for i, u := range us {
+		items[i] = u.Proto()
+	}
+
+	res := apptest.AccessListResponse_builder{Items: items}.Build()
+	if more {
+		v, err := next(us[len(us)-1], tag)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "next: %s", err)
+		}
+
+		res.SetNext(v)
+	}
+
+	return res, nil
+}
+
+// filterAccess turns one filter into the predicate that selects what it
+// names. Naming nothing is refused, since the request asked for "these" and
+// did not say which.
+func filterAccess(f *apptest.AccessFilter) (predicate.Access, error) {
+	ps := make([]predicate.Access, 0, 1)
+	if f.HasActorId() {
+		k, err := entuuid.FromBytes(f.GetActorId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
+		}
+
+		ps = append(ps, access.ActorIdEQ(k))
+	}
+	if f.HasTenantId() {
+		k, err := entuuid.FromBytes(f.GetTenantId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
+		}
+
+		ps = append(ps, access.TenantIdEQ(k))
+	}
+	if f.HasActorTenantId() {
+		k, err := entuuid.FromBytes(f.GetActorTenantId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
+		}
+
+		ps = append(ps, access.ActorTenantIdEQ(k))
+	}
+	if f.HasKind() {
+		ps = append(ps, access.KindEQ(f.GetKind()))
+	}
+	if len(ps) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
+	}
+
+	return access.And(ps...), nil
 }
 
 type sinkAudit struct {
@@ -3609,6 +3822,8 @@ func notNull(v []byte) []byte {
 // there will ever be.
 func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.FieldDescriptor, []protoreflect.FieldDescriptor) {
 	switch key.Domain() {
+	case AccessDomain:
+		return describedAccess.md, describedAccess.secret, describedAccess.personal
 	case ArchivedDomain:
 		return describedArchived.md, describedArchived.secret, describedArchived.personal
 	case AuditDomain:
@@ -3664,6 +3879,9 @@ func describe(m proto.Message, secret, personal []protoreflect.FieldNumber) desc
 }
 
 var (
+	describedAccess = describe((*apptest.Access)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
 	describedArchived = describe((*apptest.Archived)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
@@ -3758,6 +3976,38 @@ func added(by string) bool {
 // otherwise the bytes are empty, and the row is read for its tenant alone.
 func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message, keep bool) (uuid.UUID, []byte, error) {
 	switch key.Domain() {
+	case AccessDomain:
+		row, handed := image.(*apptest.Access)
+		if !handed {
+			var err error
+			row, err = s.Access().Get(ctx, apptest.AccessGetRequest_builder{
+				Ref: apptest.AccessRef_builder{Id: key.Bytes()}.Build(),
+			}.Build())
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return uuid.Nil(), []byte{}, nil
+				}
+
+				return uuid.Nil(), nil, err
+			}
+		}
+
+		b := []byte{}
+		if keep {
+			v, err := proto.Marshal(row)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenantId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
 	case AuditDomain:
 		row, handed := image.(*apptest.Audit)
 		if !handed {
@@ -5409,6 +5659,25 @@ func (s Intercept) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	return Intercept{Overlay: apptest.NewOverlay(next), unary: s.unary, stream: s.stream}, nil
 }
 
+func (s Intercept) Access() apptest.AccessServiceServer {
+	return interceptAccess{s, s.Next().Access()}
+}
+
+type interceptAccess struct {
+	Intercept
+	apptest.AccessServiceServer
+}
+
+func (s interceptAccess) Get(ctx context.Context, req *apptest.AccessGetRequest) (*apptest.Access, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AccessServiceServer,
+		apptest.AccessService_Get_FullMethodName, req, s.AccessServiceServer.Get)
+}
+
+func (s interceptAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*apptest.AccessListResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AccessServiceServer,
+		apptest.AccessService_List_FullMethodName, req, s.AccessServiceServer.List)
+}
+
 func (s Intercept) Audit() apptest.AuditServiceServer {
 	return interceptAudit{s, s.Next().Audit()}
 }
@@ -6163,19 +6432,33 @@ func (s trailStore) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pd
 	out := []pdid.Id{}
 	last := after.Uuid()
 	for len(out) < limit {
+		next, found := uuid.Nil(), false
 		v, err := s.db.Audit.Query().
 			Where(audit.TenantIdGT(last)).
 			Order(ent.Asc(audit.FieldTenantId)).
 			First(ctx)
-		if ent.IsNotFound(err) {
-			break
-		}
-		if err != nil {
+		switch {
+		case err == nil:
+			next, found = v.TenantId, true
+		case !ent.IsNotFound(err):
 			return out, err
 		}
+		w, err := s.db.Access.Query().
+			Where(access.TenantIdGT(last)).
+			Order(ent.Asc(access.FieldTenantId)).
+			First(ctx)
+		switch {
+		case err == nil && (!found || w.TenantId.Compare(next) < 0):
+			next, found = w.TenantId, true
+		case err != nil && !ent.IsNotFound(err):
+			return out, err
+		}
+		if !found {
+			break
+		}
 
-		out = append(out, pdid.Id(v.TenantId))
-		last = v.TenantId
+		out = append(out, pdid.Id(next))
+		last = next
 	}
 
 	return out, nil
@@ -6185,9 +6468,9 @@ func (s trailStore) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pd
 func (s trailStore) older(k trail.Scope, at time.Time, after trail.Cursor, limit int) (*ent.AuditQuery, error) {
 	q := s.of(k).Where(audit.DateCreatedLT(at))
 	if after.Key != nil {
-		id, ok := after.Key.(uuid.UUID)
-		if !ok {
-			return nil, fmt.Errorf("trail: %T is not a key this store gave out", after.Key)
+		id, err := cursorOf(after.Key)
+		if err != nil {
+			return nil, err
 		}
 
 		q = q.Where(audit.Or(
@@ -6228,7 +6511,12 @@ func (s trailStore) Older(ctx context.Context, k trail.Scope, at time.Time, afte
 		})
 	}
 
-	return out, nil
+	b, err := s.accessRows(ctx, k, at, after, limit, true)
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeRows(out, b, limit), nil
 }
 
 // Heads is the same rows with only what a decision about them reads: no
@@ -6261,11 +6549,25 @@ func (s trailStore) Heads(ctx context.Context, k trail.Scope, at time.Time, afte
 		})
 	}
 
-	return out, nil
+	b, err := s.accessRows(ctx, k, at, after, limit, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return mergeRows(out, b, limit), nil
 }
 
 func (s trailStore) Count(ctx context.Context, k trail.Scope, at time.Time) (int, error) {
-	return s.of(k).Where(audit.DateCreatedLT(at)).Count(ctx)
+	n, err := s.of(k).Where(audit.DateCreatedLT(at)).Count(ctx)
+	if err != nil {
+		return n, err
+	}
+	if q := s.accessOf(k); q != nil {
+		m, err := q.Where(access.DateCreatedLT(at)).Count(ctx)
+		return n + m, err
+	}
+
+	return n, nil
 }
 
 // Forget removes exactly the rows these keys name.
@@ -6275,12 +6577,18 @@ func (s trailStore) Count(ctx context.Context, k trail.Scope, at time.Time) (int
 // when it runs, and a row backdated by a clock that stepped is one it
 // removes and the archive does not have.
 func (s trailStore) Forget(ctx context.Context, keys []any) (int, error) {
-	ids, err := trailKeys(keys)
+	ids, accessed, err := trailKeys(keys)
 	if err != nil {
 		return 0, err
 	}
 
-	return s.db.Audit.Delete().Where(audit.IdIn(ids...)).Exec(ctx)
+	n, err := s.db.Audit.Delete().Where(audit.IdIn(ids...)).Exec(ctx)
+	if err != nil || len(accessed) == 0 {
+		return n, err
+	}
+
+	m, err := s.db.Access.Delete().Where(access.IdIn(accessed...)).Exec(ctx)
+	return n + m, err
 }
 
 // Blank empties the two columns that hold contents, for exactly these rows.
@@ -6288,31 +6596,171 @@ func (s trailStore) Forget(ctx context.Context, keys []any) (int, error) {
 // Empty and not nil: nil is SQL NULL, which a NOT NULL column refuses on
 // PostgreSQL and accepts on SQLite.
 func (s trailStore) Blank(ctx context.Context, keys []any) (int, error) {
-	ids, err := trailKeys(keys)
+	ids, accessed, err := trailKeys(keys)
 	if err != nil {
 		return 0, err
 	}
 
-	return s.db.Audit.Update().
+	n, err := s.db.Audit.Update().
 		Where(audit.IdIn(ids...)).
 		SetValue([]byte{}).
 		SetPatch([]byte{}).
 		Save(ctx)
-}
-
-// trailKeys is the keys this store gave out, back as what it deletes by.
-func trailKeys(keys []any) ([]uuid.UUID, error) {
-	ids := make([]uuid.UUID, 0, len(keys))
-	for _, k := range keys {
-		v, ok := k.(uuid.UUID)
-		if !ok {
-			return nil, fmt.Errorf("trail: %T is not a key this store gave out", k)
-		}
-
-		ids = append(ids, v)
+	if err != nil || len(accessed) == 0 {
+		return n, err
 	}
 
-	return ids, nil
+	m, err := s.db.Access.Update().Where(access.IdIn(accessed...)).SetValue([]byte{}).Save(ctx)
+	return n + m, err
+}
+
+// trailKeys is the keys this store gave out, back as what each table deletes
+// by: the trail's, and the access record's.
+func trailKeys(keys []any) (trailed, accessed []uuid.UUID, err error) {
+	for _, k := range keys {
+		switch v := k.(type) {
+		case uuid.UUID:
+			trailed = append(trailed, v)
+		case accessKey:
+			accessed = append(accessed, uuid.UUID(v))
+		default:
+			return nil, nil, fmt.Errorf("trail: %T is not a key this store gave out", k)
+		}
+	}
+
+	return trailed, accessed, nil
+}
+
+// cursorOf is the identifier a key this store gave out holds, which is what
+// a read carries on from in either table: both order by when a row was
+// written, then by its identifier.
+func cursorOf(k any) (uuid.UUID, error) {
+	switch v := k.(type) {
+	case uuid.UUID:
+		return v, nil
+	case accessKey:
+		return uuid.UUID(v), nil
+	}
+
+	return uuid.Nil(), fmt.Errorf("trail: %T is not a key this store gave out", k)
+}
+
+// accessKey is the key of a row of the access record, as this store gives
+// it out: a type of its own, so that what deletes by it deletes from the
+// table it is of.
+type accessKey uuid.UUID
+
+// accessOf narrows the access record to a scope, and is nil for a scope that
+// is not about its kind, or that is about objects: an access row is about
+// none.
+func (s trailStore) accessOf(k trail.Scope) *ent.AccessQuery {
+	if !k.Has(AccessDomain) || len(k.Objects) > 0 {
+		return nil
+	}
+
+	q := s.db.Access.Query()
+	t := k.Tenant.Uuid()
+	switch k.Whose {
+	case trail.FiledUnder:
+		q = q.Where(access.TenantIdEQ(t))
+	case trail.Alone:
+		q = q.Where(accessAlone(t))
+	case trail.Together:
+		q = q.Where(access.Or(access.TenantIdEQ(t), access.ActorTenantIdEQ(t)), access.Not(accessAlone(t)))
+	case trail.Sharing:
+		q = q.Where(access.TenantIdEQ(t), access.Not(accessAlone(t)))
+	}
+
+	return q
+}
+
+// accessAlone is an access row filed under `t` that names no other tenant:
+// the caller is of `t`, or is nobody.
+func accessAlone(t uuid.UUID) predicate.Access {
+	return access.And(access.TenantIdEQ(t), access.ActorTenantIdIn(t, uuid.Nil()))
+}
+
+// accessRows is the access record's rows of a scope written before `at`,
+// past `after`, oldest first: what Older and Heads merge with the trail's.
+// With `docs`, each as the document the archive keeps.
+func (s trailStore) accessRows(ctx context.Context, k trail.Scope, at time.Time, after trail.Cursor, limit int, docs bool) (trail.Rows, error) {
+	q := s.accessOf(k)
+	if q == nil {
+		return nil, nil
+	}
+
+	q = q.Where(access.DateCreatedLT(at))
+	if after.Key != nil {
+		id, err := cursorOf(after.Key)
+		if err != nil {
+			return nil, err
+		}
+
+		q = q.Where(access.Or(
+			access.DateCreatedGT(after.Created),
+			access.And(access.DateCreatedEQ(after.Created), access.IdGT(id)),
+		))
+	}
+	q = q.Order(ent.Asc(access.FieldDateCreated, access.FieldId)).Limit(limit)
+	if !docs {
+		q = q.Select(access.FieldId, access.FieldDateCreated, access.FieldTenantId, access.FieldActorTenantId).AccessQuery
+	}
+
+	vs, err := q.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(trail.Rows, 0, len(vs))
+	for _, v := range vs {
+		r := trail.Row{
+			Key:     accessKey(v.Id),
+			Domain:  AccessDomain,
+			Created: v.DateCreated,
+			Tenants: trail.TenantsOf(v.TenantId, v.ActorTenantId, nil),
+		}
+		if docs {
+			b, err := protojson.Marshal(v.Proto())
+			if err != nil {
+				return nil, err
+			}
+			r.Doc = b
+		}
+
+		out = append(out, r)
+	}
+
+	return out, nil
+}
+
+// mergeRows is two tables' oldest rows as one batch, in the order each was
+// read in, and at most `limit` of them.
+func mergeRows(a, b trail.Rows, limit int) trail.Rows {
+	out := make(trail.Rows, 0, min(len(a)+len(b), limit))
+	for len(out) < limit && (len(a) > 0 || len(b) > 0) {
+		if len(b) == 0 || (len(a) > 0 && rowBefore(a[0], b[0])) {
+			out = append(out, a[0])
+			a = a[1:]
+			continue
+		}
+
+		out = append(out, b[0])
+		b = b[1:]
+	}
+
+	return out
+}
+
+// rowBefore answers whether `a` was written before `b`, by the order a pass
+// reads in: when, then the identifier.
+func rowBefore(a, b trail.Row) bool {
+	if c := a.Created.Compare(b.Created); c != 0 {
+		return c < 0
+	}
+
+	x, _ := cursorOf(a.Key)
+	y, _ := cursorOf(b.Key)
+	return x.Compare(y) < 0
 }
 
 // numbers is what the column holds, which is a domain widened to what
@@ -6618,6 +7066,10 @@ func archivedRows(vs []*ent.Archived) []trail.Archived {
 // would be answering the question at the one moment nobody can.
 func TrailOf(fn func(*apptest.Audit) error) func(doc []byte) error {
 	return func(doc []byte) error {
+		if accessDoc(doc) {
+			return nil
+		}
+
 		v := &apptest.Audit{}
 		if err := protojson.Unmarshal(doc, v); err != nil {
 			return err
@@ -6625,6 +7077,382 @@ func TrailOf(fn func(*apptest.Audit) error) func(doc []byte) error {
 
 		return fn(v)
 	}
+}
+
+// personal is what a message holding a field declared `personal` is to the
+// access record: its key, those fields, and how to read the tenant it is in.
+type personal struct {
+	key    protoreflect.FieldDescriptor
+	fields []protoreflect.FieldDescriptor
+	tenant func(protoreflect.Message) pdid.Id
+}
+
+// carries answers whether `m` holds a value of any of the fields.
+func (p personal) carries(m protoreflect.Message) bool {
+	for _, fd := range p.fields {
+		if m.Has(fd) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// personals is every message that holds a field declared `personal`, by its
+// full name; refs is the reference to each that a request names a row by,
+// and the field of it that is the row's key.
+var (
+	personals = map[protoreflect.FullName]personal{}
+	refs      = map[protoreflect.FullName]protoreflect.FieldDescriptor{}
+)
+
+func init() {
+	{
+		md := (&apptest.Holder{}).ProtoReflect().Descriptor()
+		fs := md.Fields()
+		personals[md.FullName()] = personal{
+			key: fs.ByNumber(1),
+			fields: []protoreflect.FieldDescriptor{
+				fs.ByNumber(4),
+				fs.ByNumber(5),
+				fs.ByNumber(6),
+				fs.ByNumber(7),
+				fs.ByNumber(8),
+				fs.ByNumber(9),
+			},
+			tenant: func(m protoreflect.Message) pdid.Id {
+				return accessKeyOf(m.Get(fs.ByName("tenant")).Message())
+			},
+		}
+		r := (&apptest.HolderRef{}).ProtoReflect().Descriptor()
+		refs[r.FullName()] = r.Fields().ByName("id")
+	}
+	{
+		md := (&apptest.Robot{}).ProtoReflect().Descriptor()
+		fs := md.Fields()
+		personals[md.FullName()] = personal{
+			key: fs.ByNumber(1),
+			fields: []protoreflect.FieldDescriptor{
+				fs.ByNumber(32),
+			},
+			tenant: func(m protoreflect.Message) pdid.Id {
+				return accessKeyOf(m.Get(fs.ByName("tenant")).Message())
+			},
+		}
+		r := (&apptest.RobotRef{}).ProtoReflect().Descriptor()
+		refs[r.FullName()] = r.Fields().ByName("id")
+	}
+}
+
+// Subjects is whose personal data `m` carries (payday#111): the key of every
+// message in it that holds a field declared `personal`, and the tenant that
+// message names -- what the access record's interceptor is handed as
+// `access.Config.Subjects`.
+func Subjects(m proto.Message) []access1.Subject {
+	out := []access1.Subject{}
+	if m != nil {
+		subjectsIn(m.ProtoReflect(), &out)
+	}
+
+	return out
+}
+
+// SubjectRefs is whose rows the request `m` names by key: what a call that
+// was refused carried, having no answer -- `access.Config.Refs`.
+func SubjectRefs(m proto.Message) []access1.Subject {
+	out := []access1.Subject{}
+	if m != nil {
+		refsIn(m.ProtoReflect(), &out)
+	}
+
+	return out
+}
+
+func subjectsIn(m protoreflect.Message, out *[]access1.Subject) {
+	if !m.IsValid() {
+		return
+	}
+	if v, ok := m.Interface().(*anypb.Any); ok {
+		// A batch's answers are packed, and what they carry is read unpacked.
+		if u, err := v.UnmarshalNew(); err == nil {
+			subjectsIn(u.ProtoReflect(), out)
+		}
+		return
+	}
+	if p, ok := personals[m.Descriptor().FullName()]; ok && p.carries(m) {
+		if id := accessIdOf(m.Get(p.key).Bytes()); !id.IsZero() {
+			v := access1.Subject{Id: id}
+			if p.tenant != nil {
+				v.Tenant = p.tenant(m)
+			}
+			*out = append(*out, v)
+		}
+	}
+
+	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		eachMessage(fd, v, func(m protoreflect.Message) { subjectsIn(m, out) })
+		return true
+	})
+}
+
+func refsIn(m protoreflect.Message, out *[]access1.Subject) {
+	if !m.IsValid() {
+		return
+	}
+	if v, ok := m.Interface().(*anypb.Any); ok {
+		// A batch's operations are packed, and what they name is read unpacked.
+		if u, err := v.UnmarshalNew(); err == nil {
+			refsIn(u.ProtoReflect(), out)
+		}
+		return
+	}
+	if fd, ok := refs[m.Descriptor().FullName()]; ok && fd != nil && m.Has(fd) {
+		if id := accessIdOf(m.Get(fd).Bytes()); !id.IsZero() {
+			*out = append(*out, access1.Subject{Id: id})
+		}
+	}
+
+	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		eachMessage(fd, v, func(m protoreflect.Message) { refsIn(m, out) })
+		return true
+	})
+}
+
+// eachMessage calls `fn` for every message the field `fd` holds in `v`.
+func eachMessage(fd protoreflect.FieldDescriptor, v protoreflect.Value, fn func(protoreflect.Message)) {
+	switch {
+	case fd.IsList():
+		if fd.Message() == nil {
+			return
+		}
+		l := v.List()
+		for i := range l.Len() {
+			fn(l.Get(i).Message())
+		}
+	case fd.IsMap():
+		if fd.MapValue().Message() == nil {
+			return
+		}
+		v.Map().Range(func(_ protoreflect.MapKey, v protoreflect.Value) bool {
+			fn(v.Message())
+			return true
+		})
+	case fd.Message() != nil:
+		fn(v.Message())
+	}
+}
+
+// accessIdOf is an identifier as a row holds one, and zero for bytes that
+// are none.
+func accessIdOf(b []byte) pdid.Id {
+	v, err := pdid.From(b)
+	if err != nil {
+		return pdid.Nil
+	}
+
+	return v
+}
+
+// accessKeyOf is the key of the row a message names by its first field, as
+// an edge holds the row it points at, and zero for none.
+func accessKeyOf(m protoreflect.Message) pdid.Id {
+	if !m.IsValid() {
+		return pdid.Nil
+	}
+	fd := m.Descriptor().Fields().ByNumber(1)
+	if fd == nil || fd.Kind() != protoreflect.BytesKind {
+		return pdid.Nil
+	}
+
+	return accessIdOf(m.Get(fd).Bytes())
+}
+
+// AccessSink writes rows of the access record (payday#111): what an app
+// hands its `access.Writer` as `Sink`.
+//
+//	w := &access.Writer{Sink: pd.AccessSink(db)}
+func AccessSink(db *ent.Client) func(context.Context, []access1.Record) error {
+	return func(ctx context.Context, rs []access1.Record) error {
+		return writeAccess(ctx, db, rs)
+	}
+}
+
+// writeAccess writes rows of the access record through `db`, a statement for
+// every few hundred.
+func writeAccess(ctx context.Context, db *ent.Client, rs []access1.Record) error {
+	qs := make([]*ent.AccessCreate, 0, len(rs))
+	for _, r := range rs {
+		id := r.Id
+		if id.IsZero() {
+			id = pdid.New(AccessDomain)
+		}
+
+		// Never nil, for the reason on [notNull].
+		value := []byte{}
+		if r.Detail != nil {
+			b, err := proto.Marshal(r.Detail)
+			if err != nil {
+				return err
+			}
+			value = notNull(b)
+		}
+		subjects := make([][]byte, len(r.Subjects))
+		for i, v := range r.Subjects {
+			subjects[i] = v.Bytes()
+		}
+
+		qs = append(qs, db.Access.Create().
+			SetId(id.Uuid()).
+			SetTenantId(r.Tenant.Uuid()).
+			SetActorId(r.Actor.Uuid()).
+			SetActorTenantId(r.ActorTenant.Uuid()).
+			SetTraceId(notNull(r.Trace)).
+			SetAction(r.Action).
+			SetKind(string(r.Kind)).
+			SetResult(r.Result).
+			SetDateCreated(r.At).
+			SetValue(value).
+			SetDomain(uint32(AccessDomain)).
+			SetSubjects(subjects).
+			SetSubjectCount(uint32(r.Count)))
+	}
+
+	for vs := range slices.Chunk(qs, 500) {
+		if err := db.Access.CreateBulk(vs...).Exec(ctx); err != nil {
+			return fmt.Errorf("write the access record: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// AccessRecorder is the recorder that puts a write's row of the access
+// record in the write's own transaction (payday#111): one of the recorders
+// an app hands its servers, beside `Recorder`.
+//
+//	rec := bare.Recorders{pd.Recorder(content), pd.AccessRecorder()}
+//
+// It is told of every write of the call the interceptor put in the context,
+// and writes a row at each commit of the data the call's writes wrote that
+// no row says yet. Where the transaction keeps nothing, the interceptor
+// writes it once the call has ended; what the call showed is the
+// interceptor's to record either way.
+func AccessRecorder() bare.Recorder { return accessRecorder{} }
+
+type accessRecorder struct{}
+
+// accessKept is what a transaction keeps for a call that writes in it: that
+// the call's row is written at its commit.
+type accessKept struct{ call *access1.Call }
+
+// Snapshots asks for the rows a write of a kind that holds anybody's personal
+// data left and erased, which are what say whose it was.
+func (accessRecorder) Snapshots(method string) bare.SnapshotOptions {
+	switch method {
+	case apptest.HolderService_Add_FullMethodName,
+		apptest.HolderService_Patch_FullMethodName,
+		apptest.HolderService_Apply_FullMethodName,
+		apptest.RobotService_Add_FullMethodName,
+		apptest.RobotService_AddMany_FullMethodName,
+		apptest.RobotService_Patch_FullMethodName,
+		apptest.RobotService_Apply_FullMethodName:
+		return bare.SnapshotOptions{Value: true}
+	case apptest.HolderService_Erase_FullMethodName,
+		apptest.RobotService_Erase_FullMethodName:
+		return bare.SnapshotOptions{Previous: true}
+	}
+
+	return bare.SnapshotOptions{}
+}
+
+func (accessRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
+	call, ok := access1.Of(ctx)
+	if !ok {
+		return nil
+	}
+
+	key, err := audit1.Identifier(c.Key)
+	if err != nil {
+		return err
+	}
+
+	written := slices.Concat(Subjects(c.Previous), Subjects(c.Value))
+	if md, _, personal := described(key); len(written) == 0 && touches(c.Patch, md, personal) {
+		written = []access1.Subject{{Id: key}}
+	}
+	call.Wrote(written...)
+
+	k, ok := dialect.KeepOf(s.Store.Db.Driver())
+	if !ok {
+		return nil
+	}
+
+	db := s.Store.Db
+	k.Value(accessKept{call}, func() any {
+		k.BeforeCommit(func(at context.Context) error {
+			wrote, _ := call.Unsaid()
+			if len(wrote) == 0 {
+				return nil
+			}
+
+			d := pdpb.AccessDetail_builder{Address: call.Address()}.Build()
+			rs := access1.Records(ctx, call.Method(), access1.Write, "ok", wrote, d, time.Now())
+			if err := writeAccess(at, db, rs); err != nil {
+				return err
+			}
+
+			call.Said(true, wrote...)
+			return nil
+		})
+		return struct{}{}
+	})
+
+	return nil
+}
+
+// touches answers whether the patch `p` set or cleared any of `fields`.
+func touches(p *patchpb.Patch, md protoreflect.MessageDescriptor, fields []protoreflect.FieldDescriptor) bool {
+	if p == nil || md == nil {
+		return false
+	}
+	for _, n := range audit1.FieldsOf(p, md) {
+		for _, fd := range fields {
+			if uint32(fd.Number()) == n {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// AccessOf is a reader of the archive's documents that hands over the
+// access record's rows as the messages they are, and passes over the
+// trail's: what `policy.Read` and `policy.ReadTenant` are handed for them.
+// [TrailOf] is the other half, and passes over these.
+func AccessOf(fn func(*apptest.Access) error) func(doc []byte) error {
+	return func(doc []byte) error {
+		if !accessDoc(doc) {
+			return nil
+		}
+
+		v := &apptest.Access{}
+		if err := protojson.Unmarshal(doc, v); err != nil {
+			return err
+		}
+
+		return fn(v)
+	}
+}
+
+// accessDoc answers whether an archived document is a row of the access
+// record, which its domain says.
+func accessDoc(doc []byte) bool {
+	var h struct {
+		Domain uint32 `json:"domain"`
+	}
+
+	return json.Unmarshal(doc, &h) == nil && h.Domain == uint32(AccessDomain)
 }
 
 // Batch answers with the server that runs several writes as one
@@ -6750,6 +7578,32 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 	ctx = batch.AsOp(ctx, m)
 
 	switch m {
+	case apptest.AccessService_Get_FullMethodName:
+		v := &apptest.AccessGetRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Access().Get(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
+	case apptest.AccessService_List_FullMethodName:
+		v := &apptest.AccessListRequest{}
+		if err := op.GetRequest().UnmarshalTo(v); err != nil {
+			return nil, batch.ErrRequest(m, err)
+		}
+
+		res, err := s.Access().List(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return anypb.New(res)
+
 	case apptest.AuditService_Add_FullMethodName:
 		v := &apptest.AuditAddRequest{}
 		if err := op.GetRequest().UnmarshalTo(v); err != nil {
@@ -7586,6 +8440,7 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		return nil, err
 	}
 	return resource.New(b, w, project,
+		&apptest.Access{},
 		&apptest.Archived{},
 		&apptest.Audit{},
 		&apptest.Cell{},
@@ -7632,6 +8487,45 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 		read.Limiter = nil
 		read.By = nil
 		switch v := message.(type) {
+		case *apptest.Access:
+			ctx, err := read.Allow(ctx, apptest.AccessService_Get_FullMethodName)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.AccessNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), access.Table, []resourcesql.Column{
+				{Number: 1, Name: access.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: access.FieldTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 8, Name: access.FieldActorId, Type: 64, Nullable: false, Key: 0},
+				{Number: 9, Name: access.FieldTraceId, Type: 12, Nullable: false, Key: 0},
+				{Number: 10, Name: access.FieldAction, Type: 9, Nullable: false, Key: 0},
+				{Number: 11, Name: access.FieldKind, Type: 9, Nullable: false, Key: 0},
+				{Number: 12, Name: access.FieldResult, Type: 9, Nullable: false, Key: 0},
+				{Number: 15, Name: access.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 16, Name: access.FieldActorTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 17, Name: access.FieldValue, Type: 12, Nullable: false, Key: 0},
+				{Number: 19, Name: access.FieldDomain, Type: 13, Nullable: false, Key: 0},
+				{Number: 21, Name: access.FieldSubjectCount, Type: 13, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Access.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
 		case *apptest.Audit:
 			ctx, err := read.Allow(ctx, apptest.AuditService_Get_FullMethodName)
 			if err != nil {
@@ -8143,7 +9037,7 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 		return nil
 	}
 	switch image.ProtoReflect().Descriptor().FullName() {
-	case "app.Audit", "app.Cell", "app.Fleet", "app.Holder", "app.Joint", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Tenant", "shared.Thing":
+	case "app.Access", "app.Audit", "app.Cell", "app.Fleet", "app.Holder", "app.Joint", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Tenant", "shared.Thing":
 	default:
 		return nil
 	}

@@ -73,6 +73,7 @@ func TestPaydaysOwnEntitiesAreFoundByMarkerNotName(t *testing.T) {
 		{pdpb.Own_OWN_AUDIT, "fleet.Audit"},
 		{pdpb.Own_OWN_OUTBOX, "fleet.Outbox"},
 		{pdpb.Own_OWN_ARCHIVED, "fleet.Archived"},
+		{pdpb.Own_OWN_ACCESS, "fleet.Access"},
 	} {
 		v := s.Own(tc.own)
 		if v == nil {
@@ -129,7 +130,7 @@ func ownAll(t *testing.T) string {
 	drop := regexp.MustCompile(`(?m)^(edition|package|import|option (features|go_package))\b.*$`)
 
 	b := &strings.Builder{}
-	for _, name := range []string{"tenant", "holder", "audit", "outbox", "archived"} {
+	for _, name := range []string{"tenant", "holder", "audit", "outbox", "archived", "access"} {
 		v, err := os.ReadFile(filepath.Join("..", "..", "schema", "payday", name+".proto"))
 		if err != nil {
 			t.Fatal(err)

@@ -50,6 +50,7 @@ table is for finding the right one.
 | [`gate`](../gate) | what the caller may **do**, as against what they may see. Most of the rule is stated here and enforced in the query |
 | [`seen`](../seen) | what a transaction has already asked about the rows it names, so the gate and the sink ask each question once rather than once per write |
 | [`audit`](../audit) | the trail. A recorder inside the transaction, and a layer serving the trail's own RPCs |
+| [`access`](../access) | the access record: who read or wrote whose personal data, from where, and how it ended. An interceptor, and the writer it hands rows to |
 
 ### Naming things
 
@@ -97,6 +98,7 @@ in CI is what keeps that true.
 | the per-entity wall predicates | `tenanted: {via: …}` becomes `predicate.Robot` |
 | `List` and `Watch` — request, response, RPC, implementation | the ent query builder is your type |
 | the batch dispatcher | it has to know every RPC the app has |
+| whose data a message carries (`Subjects`, `SubjectRefs`), and the access record's recorder and writer | they read the app's messages by what its schema declared `personal`, and write its `Access` |
 
 ### `List` and `Watch` are the same machine
 
@@ -171,6 +173,8 @@ Everything payday enforces is placed as far left as it goes.
 | the database is not behind the schema | `entschema.Check`, before anything is served on it |
 | the runtime assumes no file system | CI builds `GOOS=js GOARCH=wasm` |
 | every layer is an `enttx.Binder` | `pd doctor` finds one that is not — a missing `WithDriver` is nothing until the first transaction |
+| the access record is wired | `pd doctor` says which of its interceptor, writer and recorder the app's code does not name — missing, nothing fails and nothing is recorded |
+| a download says what it is for | the access interceptor refuses one without `payday-reason`, and one whose row cannot be written |
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
 | `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
 | the wire does not break | `buf breaking` in CI, against the published label and the branch |
@@ -942,6 +946,73 @@ offboarding gives.
 It refuses a tenant under a hold and one the app has no answer for, goes round
 again until a round finds nothing (a pass can write a chunk after the
 namespace was erased), and writes a receipt.
+
+### The access record (#111)
+
+The trail is what was **written**. A deployment that processes personal data is
+also asked who **saw** it: Korea's PIPA safety measures (art. 8) want a record of
+each access -- the account, when, from where, whose data, and what was done, a
+read, a write or a download -- kept for a year or two, reviewed every month, with
+a reason confirmed for each download. The trail cannot be that. It has no reads
+and no caller's address, and its object is the row that changed rather than the
+person a screen showed: a list of a hundred people is a hundred people and no
+write at all.
+
+So it is a table of its own beside the trail: `Access`, payday's entity, copied
+into every app, domain 6. A row is what one call did to somebody's personal
+data, filed under the tenant that data was in: who called (`actor_id`,
+`actor_tenant_id`), `action` (the RPC), `kind` -- `write`, `download`, or `read`
+for anything else it carried -- `result` (`ok`, or the code it was refused
+with), when, `subjects` (the keys of whose rows, a thousand at most, and
+`subject_count`), and `value` -- where the call came from, what a read or a
+download asked for, a download's reason -- which is what the archive seals. A
+call that wrote one person's data and showed another's is a row of each.
+
+**Whose data a call carried is read off the declarations, not written by each
+app.** A message holds somebody's data when it holds a field declared
+`personal` (#92), and its key is whose; the generated `pd.Subjects` reads any
+answer that way -- a `Get`, a list of a hundred, an edge two hops into a select,
+a batch's packed answers -- so an RPC an app adds is recorded without anybody
+saying what it shows. What no declaration can see, the app says:
+`access.Saw(ctx, ...)` for a name put into a sentence or a column of a file. A
+write is the rows it wrote, before or after it (`pd.AccessRecorder`, which asks
+`bare` for those images); a refused call is the rows its request named by key. A
+call that carried nobody's data leaves nothing.
+
+**When a row is written** depends on what can be lost:
+
+- a **write** is recorded in its own transaction, at its commit, as the trail
+  is: what holds the write holds its record, and a rollback takes both;
+- a **download** -- a method the app names in `access.Config.Downloads` -- says
+  what it is for in the `payday-reason` header or is refused, and its row is
+  written before its answer leaves; one that cannot be recorded is refused;
+- a **read** is queued and written a second later with the others of its
+  second (`access.Writer`, a loop each process runs for itself). A page is a
+  dozen reads, and a statement in front of each would be the cost. The queue is
+  the one loss: a process killed outright loses its last second of reads, and
+  one stopped writes what it holds before it goes. A stream's reads are queued
+  as it sends, so a watch open for an hour is a record of that hour.
+
+**It is kept by the trail's machinery**, not a copy of it. The generated
+`TrailStore` reads both tables, so access rows leave the database on a window,
+are archived, sealed, checkpointed, destroyed, and leave with their tenant, as
+a kind of their own, `access`:
+
+```yaml
+audit:
+  by:
+    access:
+      profile: pipa-sensitive   # two years
+```
+
+A person's erasure leaves it alone. The record names them by key and nothing
+else, and keeping it is what the law that asks for it requires (개인정보보호법
+§21's exception); their name is gone from the row the key points at.
+
+**What payday does not decide**: which methods are downloads, which addresses
+to believe behind a proxy (`access.Config.Address`; `access.Peer` is the
+connection's), who may read the record (the generated `AccessService` is `Get`
+and `List` behind the wall, and the policy says who), and the monthly review.
 
 ## 7. What payday does not do
 

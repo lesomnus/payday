@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/access"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
@@ -87,6 +88,7 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			access.Table:   access.ValidColumn,
 			archived.Table: archived.ValidColumn,
 			audit.Table:    audit.ValidColumn,
 			cell.Table:     cell.ValidColumn,
