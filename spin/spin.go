@@ -44,7 +44,9 @@
 // only in the process of the deployment that holds its lease -- every loop but
 // an [Everywhere] one -- and a loop that lost its hold waits to hold it again
 // rather than counting as a failure. It is at most one at a time but for a
-// moment around a failover, not exactly once; see [Lease].
+// moment around a failover, not exactly once; see [Lease]. The lease is held by
+// the loop's name, so a loop renamed says what it was called ([Formerly]) for
+// as long as a build that calls it that may still be running.
 //
 // # It is not readiness
 //
@@ -118,7 +120,8 @@ type Named interface {
 // Given [WithLease], a loop runs only in the process of the deployment that
 // holds its lease, and every loop but an [Everywhere] one is such a loop. Run
 // refuses, before starting anything, one of them with no name of its own or
-// two of them with one name; see [Lease].
+// two of them with one name -- counting the names a loop was called before
+// ([Formerly]) as its own; see [Lease].
 func Run[T any](ctx context.Context, layers iter.Seq[T], opts ...Option) error {
 	var o options
 	for _, opt := range opts {

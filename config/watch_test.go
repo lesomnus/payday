@@ -20,7 +20,7 @@ import (
 func TestAnUnnamedBrokerIsRefused(t *testing.T) {
 	x := require.New(t)
 
-	_, err := config.WatchConfig{}.Build(config.DbConfig{})
+	_, err := config.WatchConfig{}.Build(t.Context(), config.DbConfig{})
 	x.ErrorContains(err, "watch.broker")
 	x.ErrorContains(err, config.BrokerMemory)
 	x.ErrorContains(err, config.BrokerNone)

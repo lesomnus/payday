@@ -240,6 +240,14 @@ in the process that holds its lease, and the serve command builds the lease from
   an exclusive loop with none of its own and two with one name, before anything
   starts. A `spin.Func` is called by its type and so has none; `spin.Called`
   names one. `payday.outbox` and `payday.trail` are payday's.
+- **A rename is a new lock.** A process of the old build holds the old name and
+  one of the new build the new one, so through a rolling upgrade that runs both
+  the loop runs in one of each, for as long as the upgrade takes.
+  `spin.Formerly(old, s)` says what the loop was called: under a lease it holds
+  that name as well as its own, every name in one order, so the two builds take
+  turns and the loop runs in one process of either. A name a loop was formerly
+  called is refused beside another loop holding it, as its own name is. Once no
+  process of the old build is left, the old name can go.
 - **A lost hold is not a failure.** The loop's context ends, and the process waits
   to hold the lease again; shutting down while waiting is an ordinary stop.
 - **The leases.** `local` holds everything in this process, for a deployment of
@@ -247,8 +255,16 @@ in the process that holds its lease, and the serve command builds the lease from
   (`config/leasepg`, `spin/spinpg`) holds a session advisory lock on the app's
   own database — no table, no clock, released when the session ends — on one
   connection per process that asks for TCP keepalives of its own and pings what it
-  holds. It does not go through a transaction pooler, for the reason `LISTEN`
-  does not; `spin.dsn` is for a direct address.
+  holds. That connection is dialed outside the lock its holds share, under the
+  context of the loop that asked, so a database that does not answer holds up
+  nothing a shutdown waits for. It does not go through a transaction pooler, for
+  the reason `LISTEN` does not; `spin.dsn` is for a direct address.
+- **Built on the process's context.** `c.Spin.Build(ctx, c.Db)` -- in the serve
+  command for the loops, in `cmd.Build` for the trail's turns -- like
+  `c.Watch.Build(ctx, c.Db)`, is given the context the process logs into, and a
+  lease says there which names a lost connection took with it. One built on a
+  context of its own would say it to the OpenTelemetry global, which nothing
+  installs.
 
 **It is at most one at a time, but for a moment around a failover — not exactly
 once.** A process that lost its hold goes on until it notices, and one cut off
