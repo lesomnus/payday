@@ -832,7 +832,7 @@ func TestAClosedMonthIsFoldedIntoOneChunk(t *testing.T) {
 			docs = append(docs, r.doc())
 		}
 
-		_, err := put(ctx, a, c, docs)
+		_, _, err := put(ctx, a, c, docs)
 		x.NoError(err)
 	}
 
@@ -854,7 +854,7 @@ func TestAClosedMonthIsFoldedIntoOneChunk(t *testing.T) {
 		now := time.Now().UTC()
 		for i := range 2 {
 			r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: now.Add(-time.Duration(i) * time.Minute)}
-			_, err := put(ctx, a, Chunk{Namespace: ns, Kind: "person", Month: time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC),
+			_, _, err := put(ctx, a, Chunk{Namespace: ns, Kind: "person", Month: time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC),
 				Rows: 1, First: r.created, Last: r.created}, [][]byte{r.doc()})
 			x.NoError(err)
 		}
@@ -932,6 +932,82 @@ func TestTheFilesOfAVersionBeforeAreAdopted(t *testing.T) {
 		x.False(c.Before(time.Date(2020, 1, 31, 0, 0, 0, 0, time.UTC)), "January went before the month was over")
 		x.True(c.Before(time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC)))
 	})
+}
+
+// TestOnlyTheFirstPassTakesInTheFilesOfAVersionBefore.
+//
+// The first pass over an archive takes it as it is: the manifest filled from
+// what the store holds, and the files a version before wrote into the
+// directory adopted -- signed in as the deployment's. After its checkpoint, a
+// file of that format in the directory is one somebody else put there. It is
+// not adopted, not filed under anybody, not read, and it is a finding until an
+// operator who has looked accepts it.
+func TestOnlyTheFirstPassTakesInTheFilesOfAVersionBefore(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	dir := t.TempDir()
+	tenant := newTenant()
+	file := func(r fakeRow, run string) (string, []byte) {
+		name := "audit-" + Month(r.created) + ".person." + run + Ext
+		b := gz(t, r.doc())
+		x.NoError(os.WriteFile(filepath.Join(dir, name), b, 0o640))
+
+		return name, b
+	}
+
+	// An archive from before the manifest: a chunk in the store, and a file
+	// of the directory format beside it.
+	a := flob.NewOsStores(dir)
+	before := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: uuid.NewV7(),
+		domain: person, created: time.Date(2020, 1, 15, 0, 0, 0, 0, time.UTC), value: "in the store"}
+	_, _, err := put(ctx, a, Chunk{Namespace: tenant.String(), Kind: "person", Month: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		Rows: 1, First: before.created, Last: before.created}, [][]byte{before.doc()})
+	x.NoError(err)
+	old := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: uuid.NewV7(),
+		domain: person, created: time.Date(2020, 2, 15, 0, 0, 0, 0, time.UTC), value: "in a file"}
+	file(old, "0123456789abcdef")
+
+	p := Policy{Archive: a, Signer: newKey(t)}
+	s := &fakeStore{}
+	p.Pass(ctx, s)
+
+	v, err := p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "the first pass did not take the archive as it is: %v", v.Findings)
+	x.Equal([]string{"in a file", "in the store"}, values(t, func(fn func([]byte) error) error { return p.ReadTenant(ctx, s, tenant, fn) }))
+
+	// After it, a file of the same format.
+	later := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: uuid.NewV7(),
+		domain: person, created: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC), value: "put there later"}
+	name, b := file(later, "fedcba9876543210")
+	p.Pass(ctx, s)
+
+	_, err = os.Stat(filepath.Join(dir, name))
+	x.NoError(err, "a pass after the first took a file in")
+	x.Equal([]string{"in a file", "in the store"}, values(t, func(fn func([]byte) error) error { return p.ReadTenant(ctx, s, tenant, fn) }),
+		"a file put in the directory after the first pass was read as the trail")
+
+	for _, full := range []bool{false, true} {
+		v, err = p.Verify(ctx, s, full)
+		x.NoError(err)
+		x.Len(v.Findings, 1)
+		x.Equal("unaccounted", v.Findings[0].Kind)
+		x.Equal(flob.DigestFromBytes(b), v.Findings[0].Digest)
+		x.Contains(v.Findings[0].Note, name)
+	}
+
+	// An operator who has looked takes it in, as the first pass would have.
+	_, err = p.Accept(ctx, s, "the March file was restored from the old directory's backup")
+	x.NoError(err)
+	_, err = os.Stat(filepath.Join(dir, name))
+	x.ErrorIs(err, os.ErrNotExist, "an acceptance left the file in the directory")
+
+	p.Pass(ctx, s)
+	v, err = p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+	x.Equal([]string{"in a file", "in the store", "put there later"}, values(t, func(fn func([]byte) error) error { return p.ReadTenant(ctx, s, tenant, fn) }))
 }
 
 // TestForgettingRewritesOnlyWhatItMust.

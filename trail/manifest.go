@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"maps"
 	"slices"
 	"strconv"
@@ -646,23 +647,17 @@ func (p Policy) settle(ctx context.Context, m Manifest) error {
 }
 
 // fill is the first time: every blob the archive holds goes into the manifest
-// as it is. Refused when the archive has checkpoints, since an empty manifest
-// beside them is a database restored from before them -- which an operator
-// looks at, and [Policy.Accept] is for.
+// as it is. Refused once the archive has had a checkpoint, since an empty
+// manifest after one is a database restored from before it, or emptied --
+// which an operator looks at, and [Policy.Accept] is for.
 func (p Policy) fill(ctx context.Context, m Manifest, inv map[blobKey]map[string]string) error {
-	if k, _, err := m.Latest(ctx); err != nil {
-		return err
-	} else if k > 0 {
-		return nil
-	}
-
-	cs, err := checkpointsIn(ctx, p.checkpoints())
+	first, err := p.unchecked(ctx, m)
 	if err != nil {
 		return err
 	}
-	if len(cs) > 0 {
-		log.From(ctx).WarnContext(ctx, "trail: the manifest is empty and the archive has checkpoints, so it is not filled from what the archive holds",
-			"checkpoints", len(cs), "see", "`trail verify`")
+	if !first {
+		log.From(ctx).WarnContext(ctx, "trail: the manifest is empty and the archive has had checkpoints, so it is not filled from what the archive holds",
+			"see", "`trail verify`")
 
 		return nil
 	}
@@ -683,13 +678,36 @@ func (p Policy) fill(ctx context.Context, m Manifest, inv map[blobKey]map[string
 	return nil
 }
 
+// unchecked answers whether no checkpoint of the archive has ever been taken:
+// none numbered by the database, and none kept by the store.
+//
+// Until the first, the archive is taken as it is -- the manifest filled from
+// what it holds, the files a version before wrote into its directory adopted
+// -- because there is nothing yet to say what it held before. From the first
+// on, a blob or a file nobody wrote through the manifest is a finding, and only
+// an operator's acceptance takes it in.
+func (p Policy) unchecked(ctx context.Context, m Manifest) (bool, error) {
+	if k, _, err := m.Latest(ctx); err != nil || k > 0 {
+		return false, err
+	}
+
+	cs, err := checkpointsIn(ctx, p.checkpoints())
+	if err != nil {
+		return false, err
+	}
+
+	return len(cs) == 0, nil
+}
+
 // Finding is something about the archive that its manifest does not account
 // for.
 type Finding struct {
 	// Kind is what was found:
 	//
 	//	missing      a blob the manifest says the archive holds, and it does not
-	//	unaccounted  a blob the archive holds that the manifest never added
+	//	unaccounted  a blob the archive holds that the manifest never added,
+	//	             or a file of the directory format in the archive's
+	//	             directory once the archive has had a checkpoint
 	//	relabelled   a blob whose labels are not the ones the manifest recorded,
 	//	             or a checkpoint whose labels do not say which it is
 	//	altered      a blob whose bytes are not its digest any more
@@ -895,6 +913,14 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		out.Findings = append(out.Findings, Finding{Kind: "missing", Namespace: k.ns, Digest: k.d})
 	}
 
+	// And the files of the directory format beside the store, which the
+	// archive's first pass takes in and nothing after it does.
+	strays, err := p.looseFindings(ctx, s)
+	if err != nil {
+		return out, err
+	}
+	out.Findings = append(out.Findings, strays...)
+
 	if full {
 		for _, k := range slices.SortedFunc(maps.Keys(inv), blobOrder) {
 			if err := ctx.Err(); err != nil {
@@ -918,6 +944,44 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		return out, err
 	}
 	out.Findings = append(out.Findings, fs...)
+
+	return out, nil
+}
+
+// looseFindings is the files a version before this one would have written into
+// the archive's directory, there after its first checkpoint: each is
+// `unaccounted`, under no namespace, by its digest. Until that checkpoint they
+// are the first pass's to take in, and none.
+func (p Policy) looseFindings(ctx context.Context, m Manifest) ([]Finding, error) {
+	root, ok := rootOf(p.Archive)
+	if !ok {
+		return nil, nil
+	}
+
+	vs, err := looseIn(root)
+	if err != nil || len(vs) == 0 {
+		return nil, err
+	}
+
+	first, err := p.unchecked(ctx, m)
+	if err != nil || first {
+		return nil, err
+	}
+
+	out := []Finding{}
+	for _, v := range vs {
+		d, err := v.digest()
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+
+			return out, err
+		}
+
+		out = append(out, Finding{Kind: "unaccounted", Digest: d,
+			Note: "a file of the directory format in the archive's directory, " + v.name + ", after its first checkpoint"})
+	}
 
 	return out, nil
 }
@@ -1796,16 +1860,20 @@ func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, erro
 	sign := p.signing()
 	for _, f := range act.Findings {
 		k := blobKey{f.Namespace, f.Digest}
-		switch f.Kind {
-		case "unaccounted":
+		switch {
+		case f.Kind == "unaccounted" && f.Namespace == "":
+			// A file of the directory format, taken in as the first pass
+			// would have.
+			err = errors.Join(err, p.adoptLoose(ctx, s, f.Digest))
+		case f.Kind == "unaccounted":
 			key, aerr := s.Adding(ctx, k.ns, "", inv[k], sign)
 			if aerr == nil {
 				aerr = s.Added(ctx, key, string(k.d), inv[k], sign)
 			}
 			err = errors.Join(err, aerr)
-		case "relabelled":
+		case f.Kind == "relabelled":
 			err = errors.Join(err, s.Label(ctx, k.ns, string(k.d), inv[k], sign))
-		case "missing":
+		case f.Kind == "missing":
 			err = errors.Join(err, s.Mark(ctx, k.ns, string(k.d), Present, Erased, sign))
 		}
 	}
@@ -1819,6 +1887,32 @@ func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, erro
 	log.From(ctx).InfoContext(ctx, "trail: a checkpoint", "after", "accept", "k", c.K, "blobs", c.Count)
 
 	return v, err
+}
+
+// adoptLoose takes in the file of the directory format in the archive's
+// directory whose digest this is, through the manifest: what an acceptance does
+// with one, as the archive's first pass did with the files it found.
+func (p Policy) adoptLoose(ctx context.Context, s Store, d flob.Digest) error {
+	root, ok := rootOf(p.Archive)
+	if !ok {
+		return nil
+	}
+
+	vs, err := looseIn(root)
+	if err != nil {
+		return err
+	}
+	for _, v := range vs {
+		if got, err := v.digest(); err != nil || got != d {
+			continue
+		}
+
+		if err := v.adopt(ctx, p.manifested(s)); err != nil {
+			return fmt.Errorf("%s: %w", v.name, err)
+		}
+	}
+
+	return nil
 }
 
 // isRowFinding answers whether a finding is about a row's signature.

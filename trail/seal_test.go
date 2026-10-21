@@ -156,12 +156,12 @@ func TestWhatARowSaysIsSealedAndWhatHappenedIsNot(t *testing.T) {
 		x.NotNil(v, "a row is not in the archive")
 		x.NotContains(v, "value")
 		x.NotContains(v, "patch")
-		x.Contains(v, sealedField)
+		x.Contains(v, SealedMember)
 		for _, f := range []string{"id", "tenantId", "actorTenantId", "objectId", "action", "dateCreated", "domain"} {
 			x.Contains(v, f, "what happened was sealed with what it said")
 		}
 	}
-	x.NotContains(in[quiet.id], sealedField, "a row that says nothing was sealed")
+	x.NotContains(in[quiet.id], SealedMember, "a row that says nothing was sealed")
 
 	all := bytesOf(t, p.Archive)
 	for _, r := range []fakeRow{mine, theirs, shared, nobodys} {
@@ -235,9 +235,9 @@ func TestWhatNeedsNoKeyIsDoneWithout(t *testing.T) {
 	x.NoError(err)
 	x.Equal(1, f.Archived)
 	in := raw(t, arch)
-	x.NotContains(in[forgotten.id], sealedField, "what was sealed outlived the erasure")
+	x.NotContains(in[forgotten.id], SealedMember, "what was sealed outlived the erasure")
 	x.Contains(in[forgotten.id], "objectId", "the erasure took the event with it")
-	x.Contains(in[kept.id], sealedField)
+	x.Contains(in[kept.id], SealedMember)
 
 	// A tenant leaving.
 	_, err = p.PurgeTenant(ctx, s, b)
@@ -393,7 +393,7 @@ func TestAHoldKeepsWhatItHoldsReadable(t *testing.T) {
 	x.Empty(keysOf(t, k, leaving.String()))
 
 	in := raw(t, arch)
-	x.Contains(in[shared.id], sealedField, "the row a hold is on was not kept as it was")
+	x.Contains(in[shared.id], SealedMember, "the row a hold is on was not kept as it was")
 
 	open := p
 	open.Keys = &Keys{Store: k.Store, Master: k.Master, Identities: []age.Identity{master}}
@@ -478,7 +478,7 @@ func TestNothingSetSealsNothing(t *testing.T) {
 
 	in := raw(t, p.Archive)
 	x.Contains(in[r.id], "value")
-	x.NotContains(in[r.id], sealedField)
+	x.NotContains(in[r.id], SealedMember)
 
 	got, err := said(t, func(fn func([]byte) error) error { return Read(ctx, p.Archive, fn) })
 	x.NoError(err)
