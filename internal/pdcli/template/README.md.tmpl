@@ -85,9 +85,12 @@ That is `go get github.com/lesomnus/payday@<commit>` and `go mod tidy`, and then
 the payday it fetched: **its** `pd upgrade` and **its** `pd gen` (`--ts`,
 which is the Go half as well, for an app with a page). Its upgrade holds the page to its floors -- the oldest
 `@bufbuild/protobuf`, `typescript`, `vite` and so on it builds with, which
-`go tool pd versions` lists -- and moves only what is below one, to the version
-`pd new` writes today. Nothing is committed: `git diff` says what moved, and
-`--dry-run` says what would run.
+`go tool pd versions` lists -- and moves only what is below one, to that floor
+in the major it is in, or to the version `pd new` writes today when the floor
+is a later major. Nothing is committed: `git diff` says what moved, and
+`--dry-run` says what would run -- though the last two steps are the fetched
+payday's, and a dry run fetches nothing. A page whose generator is not
+installed is refused before anything moves.
 
 A commit, and not `latest`: payday tags no versions of its Go module, so
 `latest` is whatever its `main` is the moment `go get` asks. Name the one you

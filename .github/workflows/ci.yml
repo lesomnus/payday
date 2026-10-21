@@ -411,7 +411,7 @@ jobs:
   # its floor and installed from nothing, on the oldest Node, generated and
   # built. So a floor is a version payday has built with and not a guess --
   # the first run found one that was never published. Then the same page from
-  # below two of them, which `pd upgrade` has to move to what `new` builds.
+  # below four of them, which `pd upgrade` has to bring back to their floors.
   floor:
     runs-on: ubuntu-26.04
     steps:
@@ -464,16 +464,35 @@ jobs:
           (cd .. && go tool pd gen --ts .)
           npm run build
 
+      # Below four floors. TypeScript and Vite, each still in its floor's
+      # major, so `pd upgrade` moves them to ^floor and not to the next major
+      # `pd new` writes. And the protobuf runtime and its generator, which are
+      # in two sections and name each other's release exactly, so it has to
+      # resolve them as one: they come out at one release or not at all. Then
+      # the moved generator writes the page, which is held to its floor by its
+      # own package, and the page builds.
       - name: and from below them
         working-directory: widget/ts
         run: |
-          npm install --save-exact --save-dev typescript@5.8.3 vite@7.0.0
+          npm pkg set 'dependencies[@bufbuild/protobuf]=2.10.0' 'devDependencies[@bufbuild/protoc-gen-es]=2.10.0' \
+            'devDependencies[typescript]=5.8.3' 'devDependencies[vite]=7.0.0'
+          npm install
           (cd .. && go tool pd upgrade .)
           go tool pd versions ..
           if go tool pd versions --json .. | jq -e '.[] | select(.below)' > /dev/null; then
             echo 'pd upgrade left the page below a floor' >&2
             exit 1
           fi
+          v() { jq -r .version "node_modules/$1/package.json"; }
+          case "$(v typescript) $(v vite)" in
+            5.*' '7.*) ;;
+            *) echo "pd upgrade moved typescript to $(v typescript) and vite to $(v vite), out of their majors" >&2; exit 1 ;;
+          esac
+          if [ "$(v @bufbuild/protobuf)" != "$(v @bufbuild/protoc-gen-es)" ]; then
+            echo "pd upgrade left the runtime at $(v @bufbuild/protobuf) and its generator at $(v @bufbuild/protoc-gen-es)" >&2
+            exit 1
+          fi
+          (cd .. && go tool pd gen --ts .)
           npm run build
 
   # The TypeScript, twice: payday's own half, and the app's -- which is where
