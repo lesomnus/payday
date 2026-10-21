@@ -109,13 +109,15 @@ const (
 	labelRecipient = "Recipient"
 )
 
-// sealedField is where a sealed row keeps what it said, in place of `value`
+// SealedMember is where a sealed row keeps what it said, in place of `value`
 // and `patch`: their protojson members, as one JSON object, sealed with age
 // and written as base64.
 //
-// No field of `Audit` has this name, and the test app's schema is checked for
-// it, since a row is read back by the name.
-const sealedField = "sealed"
+// It is no field of payday's, so nothing in protobuf keeps a field of an app's
+// from being written under it -- protojson writes a field by its JSON name --
+// and a row with one would read as sealed already, and be sealed by nothing.
+// `pd gen` refuses a field of the trail's entities named or JSON-named this.
+const SealedMember = "sealed"
 
 // keyspaces is the namespaces of the key store a row's contents are sealed
 // to: every tenant it names, or [DeploymentNamespace] for a row that names
@@ -356,7 +358,7 @@ func (s *sealer) seal(ctx context.Context, doc []byte) ([]byte, error) {
 	if err := json.Unmarshal(doc, &v); err != nil {
 		return nil, err
 	}
-	if _, ok := v[sealedField]; ok {
+	if _, ok := v[SealedMember]; ok {
 		return doc, nil
 	}
 
@@ -407,7 +409,7 @@ func (s *sealer) seal(ctx context.Context, doc []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	v[sealedField] = sealed
+	v[SealedMember] = sealed
 
 	return json.Marshal(v)
 }
@@ -481,7 +483,7 @@ func (o *opener) open(ctx context.Context, doc []byte, h head) ([]byte, error) {
 	if err := json.Unmarshal(doc, &v); err != nil {
 		return nil, err
 	}
-	delete(v, sealedField)
+	delete(v, SealedMember)
 	for f, c := range contents {
 		v[f] = c
 	}

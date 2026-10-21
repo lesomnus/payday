@@ -448,7 +448,11 @@ size, and an archive is written every day and read when somebody asks. Its
 labels say the kind, the month, the run and when its oldest and newest rows were
 written, which is everything a pass decides from:
 
-- a chunk whose newest row is past its window is **destroyed**;
+- a chunk whose newest row is past its window is **destroyed** — the kind's
+  `destroy`, or its `retain` for a kind whose rows are discarded on their way
+  out of the database: what a hold sent to the archive instead, or a longer
+  window kept there before, lasts no longer there than the discard lets it
+  last anywhere;
 - once a month can receive no more rows, its chunks are **folded** into one, so
   that a daily pass is not a blob a day per tenant for as long as the archive is
   kept.
@@ -460,6 +464,14 @@ written it into, and the file is erased once they all have. From then on there
 is one layout, and every row is on its own tenant's windows and holds. A file
 the pass could not file stays in `_legacy` and is decided by the deployment's
 policy, as it was.
+
+Only the first pass does that: the one before the archive has had a
+checkpoint, which takes the archive as it is. A file adopted is signed into the
+[manifest](#the-manifest) as the deployment's, so after the first checkpoint a
+file of that format in the directory is one somebody else put there. No pass
+takes it in, files it under anybody or reads it; `Policy.Verify` finds it,
+`unaccounted`, and an operator who has looked takes it in with `Policy.Accept`,
+as the first pass would have.
 
 Every destruction writes a **receipt** — a discard on the way out of the
 database, a chunk destroyed at the end of its window, a purge by hand, a subject
@@ -513,7 +525,7 @@ way through is no finding, and no clock is asked. What it finds:
 | | |
 | --- | --- |
 | `missing` | a blob the manifest says is there, and is not |
-| `unaccounted` | a blob that is there, and the manifest never added |
+| `unaccounted` | a blob that is there, and the manifest never added; or a file of the directory format in the archive's directory after its first checkpoint |
 | `relabelled` | a blob whose labels are not the ones the manifest recorded, or a checkpoint whose labels do not say which it is |
 | `altered` | a blob whose bytes are no longer its digest (`full` only) |
 | `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts |
@@ -539,6 +551,16 @@ that must reach it does: `Policy.Forget` and `Policy.PurgeTenant`, since
 whatever it is, it holds what it holds about the person or the tenant. They
 write it again beneath the manifest, so that what it became is as unaccounted
 for as what it was.
+
+**And nothing writes again what is not its digest.** A fold, a subject's
+erasure, a tenant leaving and a file filed by tenant copy what a chunk says
+into a chunk the manifest accounts for, and a chunk's bytes that are not its
+digest any more are what somebody wrote beneath its name. So each reads what
+it copies through the digest, and stops at a chunk that is not it: nothing of
+it is written, it is not erased, and `Verify` says `altered`. A light check
+reads no bytes, so it is the copy that finds it. `Policy.Forget`,
+`Policy.PurgeTenant` and `Policy.Purge` go on with the rest and answer which
+chunks they could not check; a pass says so in its log.
 
 `Policy.Read` and `Policy.ReadTenant` read the same way — only what the
 manifest accounts for, a chunk of `_shared` by the tenants the manifest
@@ -849,10 +871,13 @@ kept as long as the archive is and which no purge reaches. `trail.Keys`
 (`audit.keys`) is for that:
 
 - **Only what a row says is sealed** — `value` and `patch`, together, row by
-  row, with [age](https://age-encryption.org). Who acted, on what, when and
-  whose it is stay in the clear, because every act on the archive decides by
-  them: a pass folding a month, a subject's erasure, a tenant leaving, a hold
-  that keeps part of a file. None of them needs a key; only reading what a row
+  row, with [age](https://age-encryption.org), in a member of their own,
+  `sealed` (`trail.SealedMember`). It is no field of payday's, so `pd gen`
+  refuses a field of `Audit` or `Access` named or JSON-named that: a row with
+  one would read as sealed already. Who acted, on what, when and whose it is
+  stay in the clear, because every act on the archive decides by them: a pass
+  folding a month, a subject's erasure, a tenant leaving, a hold that keeps
+  part of a file. None of them needs a key; only reading what a row
   said does. The cost is the archive's size, since the contents no longer
   compress together.
 - **A key per tenant, and a master.** A row is sealed to the key of every tenant
@@ -911,7 +936,9 @@ shares with another tenant is one it may read:
 
 - a pass still **moves** its rows out of the database on their window, into the
   archive even when the window says discard, and keeps them in the database
-  when there is no archive; what it does not do is discard or destroy;
+  when there is no archive; what it does not do is discard or destroy. Once the
+  hold lifts, what it sent to the archive goes when the discard would have
+  taken it;
 - `Policy.Collect` and `Policy.Purge`, the acts an operator takes by hand,
   leave what is held and answer with it. They go ahead for everybody else,
   because refusing would keep every other tenant's trail past what they are

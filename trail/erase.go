@@ -75,6 +75,33 @@ func (h *Held) unanswered(id pdid.Id) {
 	h.Unanswered = append(h.Unanswered, id)
 }
 
+// stuck is the chunks an act found were not their digest any more, and left as
+// they are for [Policy.Verify] while it went on with the rest: each said once,
+// however many rounds came back to it.
+type stuck struct {
+	seen map[blobKey]bool
+	err  error
+}
+
+// add notes a chunk an act could not edit, and answers whether that was the
+// reason: an error that is not [ErrAltered] is the act's to stop at.
+func (s *stuck) add(c Chunk, err error) bool {
+	if !errors.Is(err, ErrAltered) {
+		return false
+	}
+	if s.seen == nil {
+		s.seen = map[blobKey]bool{}
+	}
+
+	k := blobKey{c.Namespace, c.Digest}
+	if !s.seen[k] {
+		s.seen[k] = true
+		s.err = errors.Join(s.err, err)
+	}
+
+	return true
+}
+
 // Collect removes rows older than `before` and keeps no copy, except what a
 // legal hold is on. It answers how many went and what was kept.
 //
@@ -158,8 +185,10 @@ func (p Policy) Doomed(ctx context.Context, s Store, cut func(kind string) (time
 // trail past what they are owed.
 //
 // A file of everybody's from before the archive was a flob store loses what is
-// not held and keeps what is. It writes a [Receipt] of what went, including
-// when it stopped part of the way.
+// not held and keeps what is -- unless its bytes are not its digest any more,
+// when it is left as it is and the purge goes on, answering [ErrAltered] for it
+// at the end. It writes a [Receipt] of what went, including when it stopped
+// part of the way.
 //
 // It goes through the archive's manifest like every other act, which is why it
 // takes the store: the manifest is in the database; see [Archived]. A chunk is
@@ -213,6 +242,7 @@ func (p Policy) purge(ctx context.Context, s Store, cut func(kind string) (time.
 	}
 
 	out := []Chunk{}
+	altered := &stuck{}
 	judges := map[string]func(Chunk, *Held) (Keep, bool, bool){}
 	for _, c := range vs {
 		if err = ctx.Err(); err != nil {
@@ -235,14 +265,19 @@ func (p Policy) purge(ctx context.Context, s Store, cut func(kind string) (time.
 
 		_, held, _ := judge(c, &h)
 
-		var n int
-		if n, err = x.spend(ctx, c, held, before, "purge", dry, &h); err != nil {
+		n, serr := x.spend(ctx, c, held, before, "purge", dry, &h)
+		if altered.add(c, serr) {
+			continue
+		}
+		if serr != nil {
+			err = serr
 			break
 		}
 		if n > 0 {
 			out = append(out, c)
 		}
 	}
+	err = errors.Join(err, altered.err)
 
 	if !dry {
 		if werr := x.r.write(ctx, x.p.Archive); werr != nil && err == nil {
@@ -312,6 +347,12 @@ type Forgotten struct {
 // Is blanked all the same: whatever it is, it holds what it holds about the
 // person. It is written again beneath the manifest, so that what it became is
 // as unaccounted for as what it was, and [Policy.Verify] still finds it.
+//
+// What is not written again is a chunk whose bytes are not its digest any
+// more, whichever it is: what they say is somebody else's, and blanking them
+// would hand it a name of its own. The erasure goes on with the rest, writes
+// its receipts, and answers [ErrAltered] for each such chunk -- to be looked
+// at, and erased again once it is settled.
 func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgotten, err error) {
 	out := Forgotten{}
 	if len(objects) == 0 {
@@ -357,17 +398,17 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgo
 	held := out.Held.Rows
 	x.r.add(Receipt{Act: "forget", Where: "database", Blanked: out.Rows, Objects: len(objects), Held: held})
 
-	// The archive.
+	// The archive. Its receipt is written whatever it answered, since what it
+	// blanked before it stopped is gone all the same.
+	var aerr error
 	if p.Archive != nil {
-		n, k, err := x.forget(ctx, objects, &out.Held)
+		var n, k int
+		n, k, aerr = x.forget(ctx, objects, &out.Held)
 		out.Archived = n
 		x.r.add(Receipt{Act: "forget", Where: "archive", Blanked: n, Chunks: k, Objects: len(objects), Held: out.Held.Rows - held})
-		if err != nil {
-			return out, err
-		}
 	}
 
-	return out, x.r.write(ctx, x.p.Archive)
+	return out, errors.Join(aerr, x.r.write(ctx, x.p.Archive))
 }
 
 // forget is the archive's half of [Policy.Forget], and answers how many rows
@@ -394,14 +435,15 @@ func (x *pass) forget(ctx context.Context, objects []pdid.Id, h *Held) (int, int
 	}
 
 	n, rewritten := 0, 0
+	left := &stuck{}
 	for round := 0; round < 3; round++ {
 		nss, err := chunkNamespaces(ctx, x.raw())
 		if err != nil {
-			return n, rewritten, err
+			return n, rewritten, errors.Join(left.err, err)
 		}
 		vs, rest, err := x.chunks(ctx, nss, true)
 		if err != nil {
-			return n, rewritten, err
+			return n, rewritten, errors.Join(left.err, err)
 		}
 
 		k := 0
@@ -420,8 +462,13 @@ func (x *pass) forget(ctx context.Context, objects []pdid.Id, h *Held) (int, int
 				out, err := blanked(line)
 				return out, changed, err
 			})
+			if left.add(r.c, err) {
+				// Not its digest any more: left for Verify, and the rest
+				// blanked all the same.
+				continue
+			}
 			if err != nil {
-				return n, rewritten, err
+				return n, rewritten, errors.Join(left.err, err)
 			}
 
 			if round == 0 {
@@ -439,7 +486,7 @@ func (x *pass) forget(ctx context.Context, objects []pdid.Id, h *Held) (int, int
 		}
 	}
 
-	return n, rewritten, nil
+	return n, rewritten, left.err
 }
 
 // TenantPurge is what removing one tenant's trail did, or would do.
@@ -505,7 +552,9 @@ type TenantPurge struct {
 // It goes round again until a round finds nothing, because a pass moving the
 // tenant's rows at the same moment can write a chunk after its namespace was
 // erased. It writes a [Receipt]. [Policy.PlanTenantPurge] is the same, counted
-// and not done.
+// and not done. A chunk it would write again whose bytes are not its digest any
+// more it leaves as it is, as [Policy.Forget] does, and answers [ErrAltered]
+// for once it has done the rest.
 func (p Policy) PurgeTenant(ctx context.Context, s Store, tenant pdid.Id) (TenantPurge, error) {
 	return p.purgeTenant(ctx, s, tenant, false)
 }
@@ -545,15 +594,16 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 		return out, err
 	}
 
+	left := &stuck{}
 	for round := 0; round < 3; round++ {
 		n, err := x.purgeDatabase(ctx, tenant, dry, round == 0, &out)
 		if err != nil {
-			return out, err
+			return out, errors.Join(left.err, err)
 		}
 
-		m, err := x.purgeArchive(ctx, tenant, dry, round == 0, &out)
+		m, err := x.purgeArchive(ctx, tenant, dry, round == 0, &out, left)
 		if err != nil {
-			return out, err
+			return out, errors.Join(left.err, err)
 		}
 		if dry || n+m == 0 {
 			break
@@ -561,7 +611,7 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 	}
 
 	if dry {
-		return out, nil
+		return out, left.err
 	}
 
 	// Again, for the key a pass sealing the tenant's rows at the same moment
@@ -581,7 +631,7 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 		})
 	}
 
-	return out, x.r.write(ctx, x.p.Archive)
+	return out, errors.Join(left.err, x.r.write(ctx, x.p.Archive))
 }
 
 // purgeKeys destroys the keys a tenant's rows were sealed with, and writes the
@@ -695,8 +745,10 @@ func (x *pass) purgeDatabase(ctx context.Context, tenant pdid.Id, dry bool, firs
 }
 
 // purgeArchive is the archive's half, and answers how many chunks it reached
-// this round.
-func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first bool, out *TenantPurge) (int, error) {
+// this round. A chunk of another namespace that is not its digest any more is
+// written again by nothing: it goes into `left`, for Verify, and the rest of
+// the round goes on.
+func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first bool, out *TenantPurge, left *stuck) (int, error) {
 	a := x.p.Archive
 	if a == nil {
 		return 0, nil
@@ -763,6 +815,9 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 				b, err := blanked(line)
 				return b, changed, err
 			})
+			if left.add(c, err) {
+				continue
+			}
 			if err != nil {
 				return touched, err
 			}

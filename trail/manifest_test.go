@@ -170,7 +170,7 @@ func TestAnArchiveFromBeforeTheManifestIsTakenAsItIs(t *testing.T) {
 	tenant := newTenant()
 	a := flob.NewMemStores()
 	r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(400 * day)}
-	old, err := put(ctx, a, Chunk{Namespace: tenant.String(), Kind: "person", Month: time.Now().AddDate(-1, -2, 0), Run: "before",
+	old, _, err := put(ctx, a, Chunk{Namespace: tenant.String(), Kind: "person", Month: time.Now().AddDate(-1, -2, 0), Run: "before",
 		Rows: 1, First: r.created, Last: r.created}, [][]byte{r.doc()})
 	x.NoError(err)
 
@@ -482,9 +482,9 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 		x.NoError(os.WriteFile(path, gz(t, forged.doc()), 0o600))
 
 		err = p.ReadTenant(ctx, s, tenant, func([]byte) error { return nil })
-		x.ErrorIs(err, errAltered)
+		x.ErrorIs(err, ErrAltered)
 		err = p.Read(ctx, s, func([]byte) error { return nil })
-		x.ErrorIs(err, errAltered)
+		x.ErrorIs(err, ErrAltered)
 
 		x.Equal([]string{"forged"}, values(t, func(fn func([]byte) error) error { return ReadTenant(ctx, p.Archive, tenant, fn) }))
 	})
@@ -545,6 +545,267 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 		x.Equal(SharedNamespace, v.Findings[0].Namespace)
 	})
 }
+
+// TestWhatIsNotItsDigestIsWrittenAgainByNothing.
+//
+// Every act that writes a chunk again -- a pass folding a month, a subject's
+// erasure, a tenant leaving, a file of a version before filed by tenant --
+// copies what the chunk says into a chunk the manifest accounts for. A chunk
+// whose bytes are not its digest any more says what somebody wrote beneath its
+// name, so none of them copies it: each stops at it, erases nothing, and leaves
+// it for Verify, which says `altered`. The erasures go on with the rest, and
+// say which they could not check.
+func TestWhatIsNotItsDigestIsWrittenAgainByNothing(t *testing.T) {
+	ctx := t.Context()
+
+	// alter writes rows into a chunk's bytes beneath its name, as somebody
+	// who can write the archive's disk would.
+	alter := func(t *testing.T, dir string, c Chunk, docs ...[]byte) {
+		path := blobPath(dir, c.Digest)
+		require.NoError(t, os.Chmod(path, 0o600))
+		require.NoError(t, os.WriteFile(path, gz(t, docs...), 0o600))
+	}
+
+	t.Run("a fold", func(t *testing.T) {
+		x := require.New(t)
+
+		now := time.Now().UTC()
+		month := time.Date(now.Year(), now.Month()-4, 3, 12, 0, 0, 0, time.UTC)
+
+		dir := t.TempDir()
+		tenant := newTenant()
+		s := &fakeStore{}
+		r := s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: month, value: "what it said"})
+		p := Policy{Archive: flob.NewOsStores(dir), Keep: Keep{Retain: 30 * day}, Signer: newKey(t)}
+		p.Pass(ctx, s)
+
+		cs, err := chunksIn(ctx, p.Archive, tenant.String())
+		x.NoError(err)
+		x.Len(cs, 1)
+		r.value = "what somebody else says it said"
+		alter(t, dir, cs[0], r.doc())
+
+		// Another row of the month, so that the next pass folds it.
+		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: month.Add(day), value: "the day after"})
+		p.Pass(ctx, s)
+
+		cs, err = chunksIn(ctx, p.Archive, tenant.String())
+		x.NoError(err)
+		x.Len(cs, 2, "a month was folded with a chunk that is not its digest")
+
+		v, err := p.Verify(ctx, s, true)
+		x.NoError(err)
+		x.Equal([]string{"altered"}, kinds(v))
+		x.ErrorIs(p.ReadTenant(ctx, s, tenant, func([]byte) error { return nil }), ErrAltered)
+	})
+
+	t.Run("a subject's erasure", func(t *testing.T) {
+		x := require.New(t)
+
+		dir := t.TempDir()
+		one, two := newTenant(), newTenant()
+		who := uuid.NewV7()
+		s := &fakeStore{}
+		r := s.add(fakeRow{tenant: one.Uuid(), object: who, domain: person, created: ago(41 * day), value: "an address"})
+		s.add(fakeRow{tenant: two.Uuid(), object: who, domain: person, created: ago(40 * day), value: "an address"})
+		p := Policy{Archive: flob.NewOsStores(dir), Keep: Keep{Retain: 30 * day}, Signer: newKey(t)}
+		p.Pass(ctx, s)
+
+		// The first chunk an erasure comes to, altered.
+		cs, err := chunksIn(ctx, p.Archive, one.String())
+		x.NoError(err)
+		x.Len(cs, 1)
+		r.value = "an address, and what somebody else adds to it"
+		alter(t, dir, cs[0], r.doc())
+
+		got, err := p.Forget(ctx, s, []pdid.Id{pdid.Id(who)})
+		x.ErrorIs(err, ErrAltered)
+		x.Contains(err.Error(), cs[0].Digest.String())
+		x.Equal(1, got.Archived, "the erasure stopped at the chunk it could not check")
+
+		after, err := chunksIn(ctx, p.Archive, one.String())
+		x.NoError(err)
+		x.Equal([]flob.Digest{cs[0].Digest}, digestsOf(after), "a chunk that is not its digest was written again")
+		in := values(t, func(fn func([]byte) error) error { return ReadTenant(ctx, p.Archive, two, fn) })
+		x.Equal([]string{""}, in, "the erasure did not go on with the rest")
+
+		v, err := p.Verify(ctx, s, true)
+		x.NoError(err)
+		x.Equal([]string{"altered"}, kinds(v))
+
+		forgets := 0
+		for _, v := range receiptsIn(t, p.Archive) {
+			if v.Act == "forget" && v.Where == "archive" {
+				forgets++
+			}
+		}
+		x.Equal(1, forgets, "what the erasure did is not receipted")
+	})
+
+	t.Run("a tenant leaving", func(t *testing.T) {
+		x := require.New(t)
+
+		dir := t.TempDir()
+		leaving, staying := newTenant(), newTenant()
+		s := &fakeStore{}
+		r := s.add(fakeRow{tenant: leaving.Uuid(), actor: staying.Uuid(), domain: person, created: ago(40 * day), value: "both sides"})
+		s.add(fakeRow{tenant: leaving.Uuid(), domain: person, created: ago(40 * day), value: "its own"})
+		p := Policy{Archive: flob.NewOsStores(dir), Keep: Keep{Retain: 30 * day}, Signer: newKey(t)}
+		p.Pass(ctx, s)
+
+		shared, err := chunksIn(ctx, p.Archive, SharedNamespace)
+		x.NoError(err)
+		x.Len(shared, 1)
+		r.value = "both sides, and somebody else"
+		alter(t, dir, shared[0], r.doc())
+
+		_, err = p.PurgeTenant(ctx, s, leaving)
+		x.ErrorIs(err, ErrAltered)
+
+		own, err := chunksIn(ctx, p.Archive, leaving.String())
+		x.NoError(err)
+		x.Empty(own, "the purge did not go on with the rest")
+		after, err := chunksIn(ctx, p.Archive, SharedNamespace)
+		x.NoError(err)
+		x.Equal(digestsOf(shared), digestsOf(after), "a chunk that is not its digest was written again")
+
+		leaves := 0
+		for _, v := range receiptsIn(t, p.Archive) {
+			if v.Act == "purge-tenant" {
+				leaves++
+			}
+		}
+		x.Equal(2, leaves, "what the purge did is not receipted")
+	})
+
+	t.Run("a file of a version before", func(t *testing.T) {
+		tenant := newTenant()
+		row := func(i int, v string) []byte {
+			return fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: uuid.NewV7(), domain: person,
+				created: time.Date(2020, 1, 1+i%28, 0, 0, 0, 0, time.UTC), value: v}.doc()
+		}
+		c := Chunk{Namespace: LegacyNamespace, Kind: "person", Month: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), Name: "audit-2020-01.person.0" + Ext}
+
+		// More rows than one chunk holds, so that a chunk is written before
+		// the file is read to its end.
+		docs := make([][]byte, chunkRows+1)
+		for i := range docs {
+			docs[i] = row(i, "what it said")
+		}
+		changed := slices.Clone(docs)
+		changed[len(changed)-1] = row(0, "what somebody else says")
+
+		t.Run("whose bytes were changed", func(t *testing.T) {
+			x := require.New(t)
+
+			dir := t.TempDir()
+			a := flob.NewOsStores(dir)
+			d, _, err := put(ctx, a, c, docs)
+			x.NoError(err)
+			c := c
+			c.Digest = d
+			alter(t, dir, c, changed...)
+
+			// Through the manifest, which says whether anything was written
+			// at all.
+			s := &fakeStore{}
+			_, err = refile(ctx, Policy{Archive: a}.manifested(s), "run", nil, c)
+			x.ErrorIs(err, ErrAltered)
+
+			x.Empty(s.archived, "rows of a file that is not its digest were filed, even if taken back")
+			cs, err := chunksIn(ctx, a, LegacyNamespace)
+			x.NoError(err)
+			x.Len(cs, 1, "a file that is not its digest was erased")
+		})
+
+		t.Run("as it was filed", func(t *testing.T) {
+			x := require.New(t)
+
+			a := flob.NewMemStores()
+			d, _, err := put(ctx, a, c, docs)
+			x.NoError(err)
+			c := c
+			c.Digest = d
+
+			swapped := swapping{Stores: a, ns: LegacyNamespace, then: gz(t, changed...)}
+
+			_, err = refile(ctx, swapped, "run", nil, c)
+			x.ErrorIs(err, ErrAltered)
+
+			cs, err := chunksIn(ctx, a, tenant.String())
+			x.NoError(err)
+			x.Empty(cs, "what was filed of a file that changed as it was read was kept")
+			cs, err = chunksIn(ctx, a, LegacyNamespace)
+			x.NoError(err)
+			x.Len(cs, 1)
+		})
+	})
+}
+
+// digestsOf is the chunks' digests, in order.
+func digestsOf(cs []Chunk) []flob.Digest {
+	out := make([]flob.Digest, len(cs))
+	for i, c := range cs {
+		out[i] = c.Digest
+	}
+
+	return out
+}
+
+// swapping is an archive whose blobs of one namespace read as they are until
+// they are read again from the start, and as `then` after: a file changed on
+// the disk between two reads of it.
+type swapping struct {
+	flob.Stores
+	ns   string
+	then []byte
+}
+
+func (s swapping) Use(ns string) flob.Store {
+	v := s.Stores.Use(ns)
+	if ns != s.ns {
+		return v
+	}
+
+	return swappingStore{Store: v, then: s.then}
+}
+
+type swappingStore struct {
+	flob.Store
+	then []byte
+}
+
+func (s swappingStore) Unwrap() flob.Store { return s.Store }
+
+func (s swappingStore) Open(ctx context.Context, d flob.Digest) (io.ReadSeekCloser, flob.Info, error) {
+	r, info, err := s.Store.Open(ctx, d)
+	if err != nil {
+		return r, info, err
+	}
+	defer r.Close()
+
+	now, err := io.ReadAll(r)
+	if err != nil {
+		return nil, info, err
+	}
+
+	return &swapped{Reader: bytes.NewReader(now), then: s.then}, info, nil
+}
+
+type swapped struct {
+	*bytes.Reader
+	then []byte
+}
+
+func (s *swapped) Seek(offset int64, whence int) (int64, error) {
+	if offset == 0 && whence == io.SeekStart && s.then != nil {
+		s.Reader, s.then = bytes.NewReader(s.then), nil
+	}
+
+	return s.Reader.Seek(offset, whence)
+}
+
+func (s *swapped) Close() error { return nil }
 
 // TestWhatIsInFlightIsNoFindingAndACrashIsSettled.
 //

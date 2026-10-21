@@ -318,7 +318,7 @@ func TestArchiveWritesAsThePolicySays(t *testing.T) {
 	in := raw(t, p.Archive)[r.id]
 	x.NotNil(in)
 	x.NotContains(in, "value")
-	x.Contains(in, sealedField)
+	x.Contains(in, SealedMember)
 
 	v, err := p.Verify(ctx, s, true)
 	x.NoError(err)
