@@ -7879,6 +7879,34 @@ func accessDoc(doc []byte) bool {
 	return json.Unmarshal(doc, &h) == nil && h.Domain == uint32(AccessDomain)
 }
 
+// Cost is how many calls a request counts as: an AddMany is one for each of
+// its items -- the Add each stands for -- and every other call is one.
+//
+// It is what the limit charges a call, and an operation of a batch, and
+// what the rows a batch asks to write are counted by. [Batch] is given it
+// when its guard says nothing; the interceptor is handed it:
+//
+//	WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant(), pd.Cost))
+//
+// An app that weighs RPCs of its own writes a Cost that asks this one for
+// the rest.
+func Cost(method string, req any) int {
+	switch method {
+	case apptest.ReadingService_AddMany_FullMethodName:
+		if v, ok := req.(*apptest.ReadingAddManyRequest); ok {
+			return max(len(v.GetItems()), 1)
+		}
+	case apptest.RobotService_AddMany_FullMethodName:
+		if v, ok := req.(*apptest.RobotAddManyRequest); ok {
+			return max(len(v.GetItems()), 1)
+		}
+	}
+
+	return 1
+}
+
+var _ grpcx.Cost = Cost
+
 // Batch answers with the server that runs several writes as one
 // transaction.
 //
@@ -7912,6 +7940,13 @@ func Batch(s apptest.Server, drv dialect.Driver, guard batch.Guard) (pdpb.BatchS
 		return nil, batch.ErrNoGuard
 	}
 
+	// What an operation costs is the schema's to say -- an AddMany is as many
+	// calls as its items -- and nothing the configuration knows. So a guard
+	// that says nothing of it is given this app's ([Cost]).
+	if guard.Cost == nil {
+		guard.Cost = Cost
+	}
+
 	return batchServer{s: s, drv: drv, guard: guard}, nil
 }
 
@@ -7941,14 +7976,35 @@ func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.Batc
 		return nil, err
 	}
 
+	// What each operation asks for, as the message its method takes, and what
+	// it costs -- an AddMany is as many rows as its items. A batch that asks
+	// to write more rows than one transaction may is refused here, before
+	// anything is charged or written: it is one transaction however many
+	// operations it is said in.
+	in := make([]proto.Message, len(ops))
+	costs := make([]int, len(ops))
+	rows := 0
+	for i, op := range ops {
+		v, err := unpack(op)
+		if err != nil {
+			return nil, batch.Failed(i, op.GetMethod(), err)
+		}
+
+		in[i], costs[i] = v, b.guard.CostOf(op.GetMethod(), v)
+		rows += costs[i]
+	}
+	if err := b.guard.CheckRows(rows); err != nil {
+		return nil, err
+	}
+
 	// Every rule for every operation, before anything is written. The
 	// transaction would undo the work of a batch refused halfway, but the
 	// work and the locks it took are real -- and a rate limiter that had
 	// already counted the first seven would charge for a batch that never
-	// happened.
+	// happened. Each is charged what it costs, as a call of it would be.
 	cs := make([]context.Context, len(ops))
 	for i, op := range ops {
-		c, err := b.guard.Allow(ctx, op.GetMethod())
+		c, err := b.guard.Allow(ctx, op.GetMethod(), costs[i])
 		if err != nil {
 			return nil, batch.Failed(i, op.GetMethod(), err)
 		}
@@ -7969,7 +8025,7 @@ func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.Batc
 
 	vs := make([]*anypb.Any, len(ops))
 	for i, op := range ops {
-		v, err := dispatch(cs[i], s, op)
+		v, err := dispatch(cs[i], s, op.GetMethod(), in[i])
 		if err != nil {
 			tx.Rollback()
 			return nil, batch.Failed(i, op.GetMethod(), err)
@@ -7985,15 +8041,148 @@ func (b batchServer) Do(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.Batc
 	return pdpb.BatchResponse_builder{Results: vs}.Build(), nil
 }
 
-// dispatch runs one operation against the stack the transaction is on.
+// unpack is the request an operation carries, as exactly the message its
+// method takes.
 //
-// The request is unpacked into exactly the message the method takes, and an
-// `Any` carrying anything else is refused rather than coerced -- a request
-// that decoded into a different message would be a write the caller did not
-// ask for, and `Any` is checked by type Url so there is a right answer.
-func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, error) {
+// An `Any` carrying anything else is refused rather than coerced -- a
+// request that decoded into a different message would be a write the
+// caller did not ask for, and `Any` is checked by type Url so there is a
+// right answer.
+func unpack(op *pdpb.Op) (proto.Message, error) {
 	m := op.GetMethod()
 
+	var v proto.Message
+	switch m {
+	case apptest.TenantService_Add_FullMethodName:
+		v = &apptest.TenantAddRequest{}
+	case apptest.TenantService_Get_FullMethodName:
+		v = &apptest.TenantGetRequest{}
+	case apptest.TenantService_Patch_FullMethodName:
+		v = &apptest.TenantPatchRequest{}
+	case apptest.TenantService_Apply_FullMethodName:
+		v = &apptest.TenantApplyRequest{}
+	case apptest.TenantService_Erase_FullMethodName:
+		v = &apptest.TenantRef{}
+	case apptest.TenantService_List_FullMethodName:
+		v = &apptest.TenantListRequest{}
+	case apptest.ThingService_Add_FullMethodName:
+		v = &apptest.ThingAddRequest{}
+	case apptest.ThingService_Get_FullMethodName:
+		v = &apptest.ThingGetRequest{}
+	case apptest.ThingService_Patch_FullMethodName:
+		v = &apptest.ThingPatchRequest{}
+	case apptest.ThingService_Apply_FullMethodName:
+		v = &apptest.ThingApplyRequest{}
+	case apptest.ThingService_Erase_FullMethodName:
+		v = &apptest.ThingRef{}
+	case apptest.ThingService_List_FullMethodName:
+		v = &apptest.ThingListRequest{}
+	case apptest.CellService_Add_FullMethodName:
+		v = &apptest.CellAddRequest{}
+	case apptest.CellService_Get_FullMethodName:
+		v = &apptest.CellGetRequest{}
+	case apptest.CellService_Patch_FullMethodName:
+		v = &apptest.CellPatchRequest{}
+	case apptest.CellService_Apply_FullMethodName:
+		v = &apptest.CellApplyRequest{}
+	case apptest.CellService_Erase_FullMethodName:
+		v = &apptest.CellRef{}
+	case apptest.RobotService_Add_FullMethodName:
+		v = &apptest.RobotAddRequest{}
+	case apptest.RobotService_AddMany_FullMethodName:
+		v = &apptest.RobotAddManyRequest{}
+	case apptest.RobotService_Get_FullMethodName:
+		v = &apptest.RobotGetRequest{}
+	case apptest.RobotService_Patch_FullMethodName:
+		v = &apptest.RobotPatchRequest{}
+	case apptest.RobotService_Apply_FullMethodName:
+		v = &apptest.RobotApplyRequest{}
+	case apptest.RobotService_Erase_FullMethodName:
+		v = &apptest.RobotRef{}
+	case apptest.RobotService_List_FullMethodName:
+		v = &apptest.RobotListRequest{}
+	case apptest.RobotService_Move_FullMethodName:
+		v = &apptest.RobotMoveRequest{}
+	case apptest.PairingService_Add_FullMethodName:
+		v = &apptest.PairingAddRequest{}
+	case apptest.PairingService_Get_FullMethodName:
+		v = &apptest.PairingGetRequest{}
+	case apptest.PairingService_Patch_FullMethodName:
+		v = &apptest.PairingPatchRequest{}
+	case apptest.PairingService_Apply_FullMethodName:
+		v = &apptest.PairingApplyRequest{}
+	case apptest.PairingService_Erase_FullMethodName:
+		v = &apptest.PairingRef{}
+	case apptest.JointService_Add_FullMethodName:
+		v = &apptest.JointAddRequest{}
+	case apptest.JointService_Get_FullMethodName:
+		v = &apptest.JointGetRequest{}
+	case apptest.JointService_Patch_FullMethodName:
+		v = &apptest.JointPatchRequest{}
+	case apptest.JointService_Apply_FullMethodName:
+		v = &apptest.JointApplyRequest{}
+	case apptest.JointService_Erase_FullMethodName:
+		v = &apptest.JointRef{}
+	case apptest.FleetService_Add_FullMethodName:
+		v = &apptest.FleetAddRequest{}
+	case apptest.FleetService_Get_FullMethodName:
+		v = &apptest.FleetGetRequest{}
+	case apptest.FleetService_Patch_FullMethodName:
+		v = &apptest.FleetPatchRequest{}
+	case apptest.FleetService_Apply_FullMethodName:
+		v = &apptest.FleetApplyRequest{}
+	case apptest.FleetService_Erase_FullMethodName:
+		v = &apptest.FleetRef{}
+	case apptest.ReadingService_Add_FullMethodName:
+		v = &apptest.ReadingAddRequest{}
+	case apptest.ReadingService_AddMany_FullMethodName:
+		v = &apptest.ReadingAddManyRequest{}
+	case apptest.ReadingService_Get_FullMethodName:
+		v = &apptest.ReadingGetRequest{}
+	case apptest.ReadingService_Patch_FullMethodName:
+		v = &apptest.ReadingPatchRequest{}
+	case apptest.ReadingService_Apply_FullMethodName:
+		v = &apptest.ReadingApplyRequest{}
+	case apptest.ReadingService_Erase_FullMethodName:
+		v = &apptest.ReadingRef{}
+	case apptest.HolderService_Add_FullMethodName:
+		v = &apptest.HolderAddRequest{}
+	case apptest.HolderService_Get_FullMethodName:
+		v = &apptest.HolderGetRequest{}
+	case apptest.HolderService_Patch_FullMethodName:
+		v = &apptest.HolderPatchRequest{}
+	case apptest.HolderService_Apply_FullMethodName:
+		v = &apptest.HolderApplyRequest{}
+	case apptest.HolderService_Erase_FullMethodName:
+		v = &apptest.HolderRef{}
+	case apptest.HolderService_List_FullMethodName:
+		v = &apptest.HolderListRequest{}
+	case apptest.SealService_Add_FullMethodName:
+		v = &apptest.SealAddRequest{}
+	case apptest.SealService_Get_FullMethodName:
+		v = &apptest.SealGetRequest{}
+	case apptest.SealService_Patch_FullMethodName:
+		v = &apptest.SealPatchRequest{}
+	case apptest.SealService_Apply_FullMethodName:
+		v = &apptest.SealApplyRequest{}
+	case apptest.SealService_Erase_FullMethodName:
+		v = &apptest.SealRef{}
+	default:
+		// Including every Rpc written by hand: those live on a service of
+		// their own, which `Server` has no accessor for.
+		return nil, batch.ErrNoMethod(m)
+	}
+
+	if err := op.GetRequest().UnmarshalTo(v); err != nil {
+		return nil, batch.ErrRequest(m, err)
+	}
+
+	return v, nil
+}
+
+// dispatch runs one operation, of method `m` asking `v`, against the stack
+// the transaction is on. `v` is what [unpack] read for it.
+func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) (*anypb.Any, error) {
 	// Under the operation's own name. The recorder fills in what the
 	// caller asked for by asking gRPC, and in here gRPC answers with the
 	// envelope -- `BatchService/Do`, for every operation of every batch --
@@ -8001,754 +8190,133 @@ func dispatch(ctx context.Context, s apptest.Server, op *pdpb.Op) (*anypb.Any, e
 	// the same call.
 	ctx = batch.AsOp(ctx, m)
 
+	var (
+		res proto.Message
+		err error
+	)
 	switch m {
 	case apptest.TenantService_Add_FullMethodName:
-		v := &apptest.TenantAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Tenant().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Tenant().Add(ctx, v.(*apptest.TenantAddRequest))
 	case apptest.TenantService_Get_FullMethodName:
-		v := &apptest.TenantGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Tenant().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Tenant().Get(ctx, v.(*apptest.TenantGetRequest))
 	case apptest.TenantService_Patch_FullMethodName:
-		v := &apptest.TenantPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Tenant().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Tenant().Patch(ctx, v.(*apptest.TenantPatchRequest))
 	case apptest.TenantService_Apply_FullMethodName:
-		v := &apptest.TenantApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Tenant().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Tenant().Apply(ctx, v.(*apptest.TenantApplyRequest))
 	case apptest.TenantService_Erase_FullMethodName:
-		v := &apptest.TenantRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Tenant().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Tenant().Erase(ctx, v.(*apptest.TenantRef))
 	case apptest.TenantService_List_FullMethodName:
-		v := &apptest.TenantListRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Tenant().List(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Tenant().List(ctx, v.(*apptest.TenantListRequest))
 	case apptest.ThingService_Add_FullMethodName:
-		v := &apptest.ThingAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Thing().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Thing().Add(ctx, v.(*apptest.ThingAddRequest))
 	case apptest.ThingService_Get_FullMethodName:
-		v := &apptest.ThingGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Thing().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Thing().Get(ctx, v.(*apptest.ThingGetRequest))
 	case apptest.ThingService_Patch_FullMethodName:
-		v := &apptest.ThingPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Thing().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Thing().Patch(ctx, v.(*apptest.ThingPatchRequest))
 	case apptest.ThingService_Apply_FullMethodName:
-		v := &apptest.ThingApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Thing().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Thing().Apply(ctx, v.(*apptest.ThingApplyRequest))
 	case apptest.ThingService_Erase_FullMethodName:
-		v := &apptest.ThingRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Thing().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Thing().Erase(ctx, v.(*apptest.ThingRef))
 	case apptest.ThingService_List_FullMethodName:
-		v := &apptest.ThingListRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Thing().List(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Thing().List(ctx, v.(*apptest.ThingListRequest))
 	case apptest.CellService_Add_FullMethodName:
-		v := &apptest.CellAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Cell().Add(ctx, v.(*apptest.CellAddRequest))
 	case apptest.CellService_Get_FullMethodName:
-		v := &apptest.CellGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Cell().Get(ctx, v.(*apptest.CellGetRequest))
 	case apptest.CellService_Patch_FullMethodName:
-		v := &apptest.CellPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Cell().Patch(ctx, v.(*apptest.CellPatchRequest))
 	case apptest.CellService_Apply_FullMethodName:
-		v := &apptest.CellApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Cell().Apply(ctx, v.(*apptest.CellApplyRequest))
 	case apptest.CellService_Erase_FullMethodName:
-		v := &apptest.CellRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Cell().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Cell().Erase(ctx, v.(*apptest.CellRef))
 	case apptest.RobotService_Add_FullMethodName:
-		v := &apptest.RobotAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Robot().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Robot().Add(ctx, v.(*apptest.RobotAddRequest))
 	case apptest.RobotService_AddMany_FullMethodName:
-		v := &apptest.RobotAddManyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Robot().AddMany(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Robot().AddMany(ctx, v.(*apptest.RobotAddManyRequest))
 	case apptest.RobotService_Get_FullMethodName:
-		v := &apptest.RobotGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Robot().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Robot().Get(ctx, v.(*apptest.RobotGetRequest))
 	case apptest.RobotService_Patch_FullMethodName:
-		v := &apptest.RobotPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Robot().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Robot().Patch(ctx, v.(*apptest.RobotPatchRequest))
 	case apptest.RobotService_Apply_FullMethodName:
-		v := &apptest.RobotApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Robot().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Robot().Apply(ctx, v.(*apptest.RobotApplyRequest))
 	case apptest.RobotService_Erase_FullMethodName:
-		v := &apptest.RobotRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Robot().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Robot().Erase(ctx, v.(*apptest.RobotRef))
 	case apptest.RobotService_List_FullMethodName:
-		v := &apptest.RobotListRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Robot().List(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Robot().List(ctx, v.(*apptest.RobotListRequest))
 	case apptest.RobotService_Move_FullMethodName:
-		v := &apptest.RobotMoveRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Robot().Move(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Robot().Move(ctx, v.(*apptest.RobotMoveRequest))
 	case apptest.PairingService_Add_FullMethodName:
-		v := &apptest.PairingAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Pairing().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Pairing().Add(ctx, v.(*apptest.PairingAddRequest))
 	case apptest.PairingService_Get_FullMethodName:
-		v := &apptest.PairingGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Pairing().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Pairing().Get(ctx, v.(*apptest.PairingGetRequest))
 	case apptest.PairingService_Patch_FullMethodName:
-		v := &apptest.PairingPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Pairing().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Pairing().Patch(ctx, v.(*apptest.PairingPatchRequest))
 	case apptest.PairingService_Apply_FullMethodName:
-		v := &apptest.PairingApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Pairing().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Pairing().Apply(ctx, v.(*apptest.PairingApplyRequest))
 	case apptest.PairingService_Erase_FullMethodName:
-		v := &apptest.PairingRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Pairing().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Pairing().Erase(ctx, v.(*apptest.PairingRef))
 	case apptest.JointService_Add_FullMethodName:
-		v := &apptest.JointAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Joint().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Joint().Add(ctx, v.(*apptest.JointAddRequest))
 	case apptest.JointService_Get_FullMethodName:
-		v := &apptest.JointGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Joint().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Joint().Get(ctx, v.(*apptest.JointGetRequest))
 	case apptest.JointService_Patch_FullMethodName:
-		v := &apptest.JointPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Joint().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Joint().Patch(ctx, v.(*apptest.JointPatchRequest))
 	case apptest.JointService_Apply_FullMethodName:
-		v := &apptest.JointApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Joint().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Joint().Apply(ctx, v.(*apptest.JointApplyRequest))
 	case apptest.JointService_Erase_FullMethodName:
-		v := &apptest.JointRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Joint().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Joint().Erase(ctx, v.(*apptest.JointRef))
 	case apptest.FleetService_Add_FullMethodName:
-		v := &apptest.FleetAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Fleet().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Fleet().Add(ctx, v.(*apptest.FleetAddRequest))
 	case apptest.FleetService_Get_FullMethodName:
-		v := &apptest.FleetGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Fleet().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Fleet().Get(ctx, v.(*apptest.FleetGetRequest))
 	case apptest.FleetService_Patch_FullMethodName:
-		v := &apptest.FleetPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Fleet().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Fleet().Patch(ctx, v.(*apptest.FleetPatchRequest))
 	case apptest.FleetService_Apply_FullMethodName:
-		v := &apptest.FleetApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Fleet().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Fleet().Apply(ctx, v.(*apptest.FleetApplyRequest))
 	case apptest.FleetService_Erase_FullMethodName:
-		v := &apptest.FleetRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Fleet().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Fleet().Erase(ctx, v.(*apptest.FleetRef))
 	case apptest.ReadingService_Add_FullMethodName:
-		v := &apptest.ReadingAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Reading().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Reading().Add(ctx, v.(*apptest.ReadingAddRequest))
 	case apptest.ReadingService_AddMany_FullMethodName:
-		v := &apptest.ReadingAddManyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Reading().AddMany(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Reading().AddMany(ctx, v.(*apptest.ReadingAddManyRequest))
 	case apptest.ReadingService_Get_FullMethodName:
-		v := &apptest.ReadingGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Reading().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Reading().Get(ctx, v.(*apptest.ReadingGetRequest))
 	case apptest.ReadingService_Patch_FullMethodName:
-		v := &apptest.ReadingPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Reading().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Reading().Patch(ctx, v.(*apptest.ReadingPatchRequest))
 	case apptest.ReadingService_Apply_FullMethodName:
-		v := &apptest.ReadingApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Reading().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Reading().Apply(ctx, v.(*apptest.ReadingApplyRequest))
 	case apptest.ReadingService_Erase_FullMethodName:
-		v := &apptest.ReadingRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Reading().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Reading().Erase(ctx, v.(*apptest.ReadingRef))
 	case apptest.HolderService_Add_FullMethodName:
-		v := &apptest.HolderAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Holder().Add(ctx, v.(*apptest.HolderAddRequest))
 	case apptest.HolderService_Get_FullMethodName:
-		v := &apptest.HolderGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Holder().Get(ctx, v.(*apptest.HolderGetRequest))
 	case apptest.HolderService_Patch_FullMethodName:
-		v := &apptest.HolderPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Holder().Patch(ctx, v.(*apptest.HolderPatchRequest))
 	case apptest.HolderService_Apply_FullMethodName:
-		v := &apptest.HolderApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Holder().Apply(ctx, v.(*apptest.HolderApplyRequest))
 	case apptest.HolderService_Erase_FullMethodName:
-		v := &apptest.HolderRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Holder().Erase(ctx, v.(*apptest.HolderRef))
 	case apptest.HolderService_List_FullMethodName:
-		v := &apptest.HolderListRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Holder().List(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Holder().List(ctx, v.(*apptest.HolderListRequest))
 	case apptest.SealService_Add_FullMethodName:
-		v := &apptest.SealAddRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Seal().Add(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Seal().Add(ctx, v.(*apptest.SealAddRequest))
 	case apptest.SealService_Get_FullMethodName:
-		v := &apptest.SealGetRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Seal().Get(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Seal().Get(ctx, v.(*apptest.SealGetRequest))
 	case apptest.SealService_Patch_FullMethodName:
-		v := &apptest.SealPatchRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Seal().Patch(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Seal().Patch(ctx, v.(*apptest.SealPatchRequest))
 	case apptest.SealService_Apply_FullMethodName:
-		v := &apptest.SealApplyRequest{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Seal().Apply(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Seal().Apply(ctx, v.(*apptest.SealApplyRequest))
 	case apptest.SealService_Erase_FullMethodName:
-		v := &apptest.SealRef{}
-		if err := op.GetRequest().UnmarshalTo(v); err != nil {
-			return nil, batch.ErrRequest(m, err)
-		}
-
-		res, err := s.Seal().Erase(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-
-		return anypb.New(res)
-
+		res, err = s.Seal().Erase(ctx, v.(*apptest.SealRef))
 	default:
-		// Including every Rpc written by hand: those live on a service of
-		// their own and `Server` has no accessor for one, so there is nothing
-		// here to call. Unimplemented says exactly that.
 		return nil, batch.ErrNoMethod(m)
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	return anypb.New(res)
 }
 
 // Resources serves the common Batch and Watch API. project is required so custom
@@ -8808,7 +8376,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 		read.By = nil
 		switch v := message.(type) {
 		case *apptest.Access:
-			ctx, err := read.Allow(ctx, apptest.AccessService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.AccessService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -8847,7 +8415,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Audit:
-			ctx, err := read.Allow(ctx, apptest.AuditService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.AuditService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -8886,7 +8454,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Cell:
-			ctx, err := read.Allow(ctx, apptest.CellService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.CellService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -8917,7 +8485,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Fleet:
-			ctx, err := read.Allow(ctx, apptest.FleetService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.FleetService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -8947,7 +8515,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Holder:
-			ctx, err := read.Allow(ctx, apptest.HolderService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.HolderService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -8985,7 +8553,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Joint:
-			ctx, err := read.Allow(ctx, apptest.JointService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.JointService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -9016,7 +8584,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Pairing:
-			ctx, err := read.Allow(ctx, apptest.PairingService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.PairingService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -9047,7 +8615,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Reading:
-			ctx, err := read.Allow(ctx, apptest.ReadingService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.ReadingService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -9079,7 +8647,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Robot:
-			ctx, err := read.Allow(ctx, apptest.RobotService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.RobotService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -9116,7 +8684,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Seal:
-			ctx, err := read.Allow(ctx, apptest.SealService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.SealService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -9147,7 +8715,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Tenant:
-			ctx, err := read.Allow(ctx, apptest.TenantService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.TenantService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
@@ -9181,7 +8749,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			}
 			return publicResource(v), nil
 		case *apptest.Thing:
-			ctx, err := read.Allow(ctx, apptest.ThingService_Get_FullMethodName)
+			ctx, err := read.Allow(ctx, apptest.ThingService_Get_FullMethodName, 1)
 			if err != nil {
 				switch status.Code(err) {
 				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:

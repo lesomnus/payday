@@ -649,7 +649,7 @@ The chain is built in `cmd/serve.go` and the order is readable there:
 chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
 	WithUnary(auth.InterceptorUnary(h, Resolver(s.Ungated), auth.PublicDefault)).
 	WithStream(auth.InterceptorStream(h, Resolver(s.Ungated), auth.PublicDefault)).
-	WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant())).
+	WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant(), pd.Cost)).
 	With(s.accessed().Interceptor()).
 	With(gate.Interceptor(s.Policy)).
 	With(s.Watch.Interceptor()).
@@ -681,7 +681,7 @@ Who is calling comes first, because everything after it reads the frame.
 | --- | --- |
 | `grpcx.Serving` | logging, tracing, panic recovery, and a deadline for a call that named none |
 | `auth.Interceptor*` | reads the credential, resolves it, puts a `frame` in the context |
-| `grpcx.LimitUnary` | how often one caller may ask; `gate.ByTenant()` is the key |
+| `grpcx.LimitUnary` | how often one caller may ask; `gate.ByTenant()` is the key, and `pd.Cost` is what each call counts as (an AddMany is one for each item) |
 | `access.Config.Interceptor` | the access record: whose personal data the call carried, from where, and how it ended. Before the gate, so a refusal is a row too |
 | `gate.Interceptor` | what this caller may do, as against what they may see |
 | `Watch.Interceptor` | publishes what the call changed, **after** it answered without error |

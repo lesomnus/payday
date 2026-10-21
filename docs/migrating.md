@@ -3,6 +3,34 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A call costs what it asks for
+
+**Applies if** your `serve` calls `grpcx.LimitUnary` or `grpcx.Limit`, which
+`pd new`'s does, or code of yours implements `grpcx.Limiter` or calls
+`batch.Guard.Allow`. Regenerate, then change those calls (#84).
+
+- **An `AddMany` costs one call for each of its items** (`grpcx.Cost`). It was
+  one call however many rows it carried, so a caller limited to a call a second
+  could write a thousand rows a second, and a batch of a hundred and
+  twenty-eight `AddMany`s was a hundred and twenty-eight operations.
+  `pd gen` writes `pd.Cost`, which says what each RPC of the schema costs.
+- **Hand it to the interceptor**: `grpcx.LimitUnary(c.Server.Limiter(),
+  gate.ByTenant(), pd.Cost)`, and `grpcx.Limit` takes it the same way. `pd.Batch`
+  puts it in a guard that names no `Cost` itself.
+- **`grpcx.Limiter.Allow` takes the cost**: `Allow(ctx, key, n)`. A limiter
+  answers `grpcx.Never` for a call it will never let through as it is; the
+  in-process one does for a call that costs more than its burst, and the caller
+  is told to ask for less. A deployment that limits and takes large `AddMany`s
+  sets `server.limit.burst` at least as large as the largest.
+- **A batch is bounded by the rows it asks to write** as well as by its
+  operations: `batch.Guard.Rows`, a thousand when nothing said
+  (`batch.MaxRows`), and `server.max_batch_rows`. A batch over it is refused
+  before anything is charged or written. `Guard.Allow(ctx, method, cost)`
+  takes what the operation costs (`Guard.CostOf`).
+- **A batch reads every operation's request before it lets any through**, so an
+  operation of a method nothing serves, or with a request of another message,
+  is refused before anything is charged or written.
+
 ## A write to a row forgets what a transaction was told about it
 
 **Applies if** you generate with `pd gen`. Regenerate; nothing else has to

@@ -64,6 +64,12 @@ type ServerConfig struct {
 	// is a lock held against every other writer.
 	MaxBatchOps int `yaml:"max_batch_ops"`
 
+	// MaxBatchRows is how many rows one batch may ask to write, as what its
+	// operations cost adds up -- an AddMany of a thousand is a thousand; zero
+	// is [batch.MaxRows]. The same transaction, bounded by what it writes
+	// rather than by how many operations say so.
+	MaxBatchRows int `yaml:"max_batch_rows"`
+
 	// AllowGeneralWrites serves `Patch` and `Apply`, the two Rpcs every
 	// generated service has that can write anything the schema holds. It is
 	// **off** unless it is turned on, and turning it on is a decision about the
@@ -173,6 +179,11 @@ type LimitConfig struct {
 	// It is the number that decides whether an honest client is refused. A
 	// client that sends its work in batches is bursty by construction, and a
 	// burst of one turns that into an error rather than into a wait.
+	//
+	// It is also the most one call may cost (`grpcx.Cost`): an AddMany of a
+	// hundred rows is a hundred calls, and one that costs more than the burst
+	// is refused however long its caller waits. A deployment that takes
+	// AddManys of its schema's largest sets a burst at least that large.
 	Burst int `yaml:"burst"`
 }
 
@@ -346,5 +357,6 @@ func (c ServerConfig) Guard(p gate.Policy) batch.Guard {
 		By:      gate.ByTenant(),
 		Policy:  p,
 		Max:     c.MaxBatchOps,
+		Rows:    c.MaxBatchRows,
 	}
 }
