@@ -1043,6 +1043,42 @@ is a `Verify` — what checking a secret means here — because who may have a
 credential, and on what evidence, is a decision about an organisation. See
 [putting a login in front of an app](signing-in.md).
 
+## 10. Logging an error
+
+An error goes into a record as the error, under `err`, and a record has one:
+
+```go
+log.From(ctx).ErrorContext(ctx, "outbox", slog.Any("err", err))
+```
+
+Every record an app writes reaches its exporters through OpenTelemetry's
+`log/slog` bridge (`otelslog`, in the `otx` that `config.OtelConfig.Build`
+answers with), and the console's `pretty` is one of those exporters. Since v0.21.0 the bridge does
+three things with an error, and the convention follows from them:
+
+- **An error value is the record's error.** The logs SDK writes it as
+  `exception.type` and `exception.message`, the attributes the OpenTelemetry
+  specification gives an exception on a log record and the ones a backend
+  groups and searches by. The key it was given is not kept, so `err` is for a
+  reader of the code.
+- **An error's text is a string, and nothing more.** `slog.String("err",
+  err.Error())` writes an attribute no backend can tell from any other. It has
+  no type, and it is no exception. The same goes for a message made of the
+  error: the message is a fixed sentence, and the error is the attribute.
+- **One error to a record.** Of two error values in one record, the bridge
+  keeps the last and drops the other without a word. When a second failure
+  matters, it is a record of its own. When it is part of the same failure,
+  join it into the one with `errors.Join`.
+
+Inside a `slog.Group` the bridge keeps an error as its text, since a group has
+no slot for an exception, and that is also the only place a second error
+survives.
+
+`internal/logcheck` holds payday to this, in its own packages, in the code it
+generates, and in what `pd new` writes. It also pins the bridge's behaviour: a
+bridge that changes any of this fails that test in the pull request that moves
+it.
+
 ## Where to go next
 
 - [Permissions and the wall](permissions.md) — who sees what, and where each

@@ -204,7 +204,7 @@ func (l *Lease) Hold(ctx context.Context, name string) (context.Context, func(),
 			// a thing to say and then wait out.
 			unreachable = true
 			log.From(ctx).WarnContext(ctx, "spinpg: the lease's database cannot be asked; asking again",
-				slog.String("spin", name), slog.String("error", err.Error()))
+				slog.String("spin", name), slog.Any("err", err))
 
 		case held != nil:
 			return held, release, nil
@@ -339,7 +339,7 @@ func (l *Lease) lose(err error) {
 	}
 	sort.Strings(names)
 	l.log.Warn("spinpg: the lease's connection was lost, and every name held on it with it",
-		slog.String("spin.names", strings.Join(names, ",")), slog.String("error", err.Error()))
+		slog.String("spin.names", strings.Join(names, ",")), slog.Any("err", err))
 }
 
 // watch pings the connection for as long as anything is held on it.

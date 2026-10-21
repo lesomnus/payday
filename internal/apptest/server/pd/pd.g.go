@@ -6285,7 +6285,7 @@ func (d drain) pass(ctx context.Context) error {
 	for {
 		n, err := d.once(ctx)
 		if err != nil {
-			log.From(ctx).ErrorContext(ctx, "outbox", slog.String("error", err.Error()))
+			log.From(ctx).ErrorContext(ctx, "outbox", slog.Any("err", err))
 			return nil
 		}
 		if n < DrainSize {

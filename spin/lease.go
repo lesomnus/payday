@@ -213,7 +213,7 @@ func lead(ctx context.Context, l Lease, s Spinner) error {
 				// of a loop in a process that never led.
 				return nil
 			}
-			lg.ErrorContext(ctx, "spin cannot hold its lease", slog.String("error", err.Error()))
+			lg.ErrorContext(ctx, "spin cannot hold its lease", slog.Any("err", err))
 			return fmt.Errorf("%s: lease: %w", n, err)
 		}
 
@@ -235,7 +235,7 @@ func lead(ctx context.Context, l Lease, s Spinner) error {
 			// -- so it is said, and not counted as the loop giving up.
 			args := []any{}
 			if err != nil && !errors.Is(err, context.Canceled) {
-				args = append(args, slog.String("error", err.Error()))
+				args = append(args, slog.Any("err", err))
 			}
 			lg.WarnContext(ctx, "spin lost its lease, and waits to hold it again", args...)
 			continue
@@ -245,7 +245,7 @@ func lead(ctx context.Context, l Lease, s Spinner) error {
 			return nil
 
 		default:
-			lg.ErrorContext(ctx, "spin failed", slog.String("error", err.Error()))
+			lg.ErrorContext(ctx, "spin failed", slog.Any("err", err))
 			return fmt.Errorf("%s: %w", n, err)
 		}
 	}

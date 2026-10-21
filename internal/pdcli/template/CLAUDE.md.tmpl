@@ -36,6 +36,18 @@ A commit, not `latest`: payday tags no versions, so `latest` is whatever its
 moves only what is below payday's floors, and only to what payday builds with;
 keeping current beyond that is Renovate's.
 
+## Logging an error
+
+```go
+log.From(ctx).ErrorContext(ctx, "what failed", slog.Any("err", err))
+```
+
+The error itself, never `err.Error()`, and one to a record. The OpenTelemetry
+bridge makes an error value the record's `exception.type` and
+`exception.message`, turns its text into a plain string, and of two errors keeps
+the last. A second failure is a record of its own, or `errors.Join`ed into the
+one (payday's `docs/guide/server.md`, "Logging an error").
+
 ## Do not edit — regenerate
 
 | | |
