@@ -178,6 +178,7 @@ Everything payday enforces is placed as far left as it goes.
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
 | `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
 | the wire does not break | `buf breaking` in CI, against the published label and the branch |
+| an error is logged as the error, and one to a record | a test, `internal/logcheck`, over payday's packages, the code it generates and what `pd new` writes; and of what the `otelslog` bridge does with an error, which is what makes it the rule (see [logging an error](guide/server.md#10-logging-an-error)) |
 | an index covers `list.order` | a **warning** from `pd gen` and not a refusal: a hundred rows of configuration need no index, and refusing to generate for them would be insisting on a cost nobody is paying |
 
 One rule is in no row of that table, because what enforces it is an absence.

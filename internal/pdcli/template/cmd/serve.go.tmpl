@@ -322,7 +322,7 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 		// A deployment that closed nothing, limits nothing and has no policy.
 		// It is a real thing to be and it is also what a guard nobody filled in
 		// looks like, so the batch is not served rather than served open.
-		log.From(ctx).WarnContext(ctx, "no batch", slog.String("why", err.Error()))
+		log.From(ctx).WarnContext(ctx, "no batch", slog.Any("err", err))
 	}
 
 	return g, nil
@@ -427,7 +427,7 @@ func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(
 	srv := &http.Server{Handler: h}
 	go func() {
 		if err := srv.Serve(l); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.From(ctx).ErrorContext(ctx, "http", slog.String("err", err.Error()))
+			log.From(ctx).ErrorContext(ctx, "http", slog.Any("err", err))
 		}
 	}()
 
