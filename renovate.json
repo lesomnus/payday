@@ -21,6 +21,19 @@
       ],
       "datasourceTemplate": "npm",
       "versioningTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "The npm that stages a release, which `.github/workflows/npm.yaml` names by its version rather than `latest`.",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/npm\\.yaml$/"
+      ],
+      "matchStrings": [
+        "npm install -g npm@(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "depNameTemplate": "npm",
+      "datasourceTemplate": "npm",
+      "versioningTemplate": "npm"
     }
   ],
   "vulnerabilityAlerts": {

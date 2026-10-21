@@ -32,6 +32,9 @@ on:
   # And by hand, for a re-run that failed on something other than the build.
   workflow_dispatch:
 
+# Each action by the commit its version had when it was written here, as in
+# `ci.yml`: a tag is moved by whoever can push to the action's repository, and
+# this job can publish.
 jobs:
   stage:
     runs-on: ubuntu-26.04
@@ -41,7 +44,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # No `registry-url`, which is the one thing that has to be left out.
       #
@@ -51,13 +54,17 @@ jobs:
       # that looks like is a publish that signs its provenance happily and then
       # answers `E401 ... your authentication token seems to be invalid`, which
       # names the one thing this workflow does not have.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
       # Trusted publishing wants a recent CLI, and the runner's is older than
       # the one that speaks it.
-      - run: npm install -g npm@latest
+      #
+      # A version rather than `latest`: this is the job that can publish, and
+      # `latest` is whatever the registry answers the moment it runs. 12.2.0 is
+      # what staged ts/v0.1.1. Renovate moves it (`renovate.json`).
+      - run: npm install -g npm@12.2.0
 
       - run: npm ci
         working-directory: ts

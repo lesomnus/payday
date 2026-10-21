@@ -78,10 +78,10 @@ in it they are yours, and nothing here moves them.
 ## Upgrading payday
 
 ```sh
-go tool pd upgrade --payday latest
+go tool pd upgrade --payday <commit>
 ```
 
-That is `go get github.com/lesomnus/payday@latest` and `go mod tidy`, and then
+That is `go get github.com/lesomnus/payday@<commit>` and `go mod tidy`, and then
 the payday it fetched: **its** `pd upgrade` and **its** `pd gen` (`--ts`,
 which is the Go half as well, for an app with a page). Its upgrade holds the page to its floors -- the oldest
 `@bufbuild/protobuf`, `typescript`, `vite` and so on it builds with, which
@@ -89,11 +89,18 @@ which is the Go half as well, for an app with a page). Its upgrade holds the pag
 `pd new` writes today. Nothing is committed: `git diff` says what moved, and
 `--dry-run` says what would run.
 
+A commit, and not `latest`: payday tags no versions of its Go module, so
+`latest` is whatever its `main` is the moment `go get` asks. Name the one you
+read.
+
 Keeping current beyond those floors is not payday's to do; Renovate does it
 better, with CI behind every bump. `renovate.json` extends payday's preset,
 which leaves payday and protobuf-orm to `pd upgrade` (an upgrade of either has
 to generate again), keeps vite and its React plugin in one pull request, and
-gives a minor before 1.0 a pull request of its own.
+gives a minor before 1.0 a pull request of its own -- but golang.org/x one
+between them. It waits three days before it proposes a release of an npm
+package or a Go module, except a fix for a known vulnerability, and it pins
+GitHub Actions by commit.
 
 payday owns some of this app's schema — `Tenant`, `Holder`, `Audit`, `Outbox` —
 so a field added to one of them there arrives in `internal/ent` here the next

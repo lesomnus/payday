@@ -145,7 +145,7 @@ are at payday's floor (`pdcli.ErrBelowFloor`).
   version `pd new` writes, along with the packages it moves with. It runs
   `npm` and commits nothing. `pd doctor` lists the other floors, and those
   refuse nothing ([upgrading](guide/upgrading.md)).
-- Upgrading payday is `go tool pd upgrade --payday latest` now. It runs
+- Upgrading payday is `go tool pd upgrade --payday <commit>` now. It runs
   `go get` and `go mod tidy`, then the new payday's own upgrade and
   generation.
 - The template's lower bounds are real releases now. The old `vite: ^7.1.14`
