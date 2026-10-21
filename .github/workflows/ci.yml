@@ -11,22 +11,34 @@ on:
     branches: [main]
   pull_request:
 
+# Nothing here writes, so no job is given more than to read the checkout. It
+# is said here rather than left to the repository's default, which is a setting
+# nobody reviews.
+permissions:
+  contents: read
+
 # Every job names its image rather than `ubuntu-latest`, so that the runner
 # moves when this file says so and not on GitHub's schedule.
+#
+# And every action is named by the commit its version had when it was written
+# here, with that version after it: a tag is moved by whoever can push to the
+# action's repository, so a tag is code this file has never seen. Renovate
+# moves the commit and the comment together (`helpers:pinGitHubActionDigests`,
+# in the preset, `renovate/app.json`).
 jobs:
   go:
     runs-on: ubuntu-26.04
     steps:
       # The whole history, because `buf breaking` below compares against the
       # branch tip and a shallow checkout has no ref to compare against.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
-      - uses: bufbuild/buf-action@v1
+      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
         with:
           setup_only: true
 
@@ -64,7 +76,7 @@ jobs:
       # its schema and the TypeScript half of that needs the plugin. A run
       # without it is a run that says the generated code is fine having looked
       # at two thirds of it.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
       - run: npm ci --prefix ts
@@ -144,8 +156,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -216,8 +228,8 @@ jobs:
         image: nsmithuk/local-kms:3.11.7
         ports: ["8080:8080"]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -255,8 +267,8 @@ jobs:
   write-once:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -303,14 +315,14 @@ jobs:
   new:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: payday
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: payday/go.mod
           cache: true
-      - uses: bufbuild/buf-action@v1
+      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
         with:
           setup_only: true
 
@@ -364,7 +376,7 @@ jobs:
         working-directory: widget
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -403,17 +415,17 @@ jobs:
   floor:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: payday
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: payday/go.mod
           cache: true
-      - uses: bufbuild/buf-action@v1
+      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
         with:
           setup_only: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
 
@@ -471,12 +483,12 @@ jobs:
   ts:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
