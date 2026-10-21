@@ -1,12 +1,16 @@
 package access_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/lesomnus/otx/log"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -242,4 +246,52 @@ func TestACallRecordsWhatItWroteOnce(t *testing.T) {
 	wrote, others = call.Unsaid()
 	x.Equal([]access.Subject{other}, wrote)
 	x.Empty(others)
+}
+
+// logged is a log that keeps what it is told.
+type logged struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (l *logged) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	return l.buf.Write(p)
+}
+
+func (l *logged) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	return l.buf.String()
+}
+
+// TestAWriterSaysWhatItLostInTheProcesssLog: what is lost is lost loudly, in
+// the log the process was handed -- the one a context with nothing in it
+// reaches is the global, and nothing installs that.
+func TestAWriterSaysWhatItLostInTheProcesssLog(t *testing.T) {
+	x := require.New(t)
+
+	l := &logged{}
+	ctx, cancel := context.WithCancel(log.Into(t.Context(), slog.New(slog.NewTextHandler(l, nil))))
+	defer cancel()
+
+	s := &sink{down: true}
+	w := &access.Writer{Sink: s.write, Max: 1, Every: time.Hour}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		w.Spin(ctx)
+	}()
+
+	r := access.Record{Id: pdid.New(1), Kind: access.Read}
+	x.Eventually(func() bool {
+		w.Queue(r, r)
+		return strings.Contains(l.String(), "were dropped")
+	}, 5*time.Second, 10*time.Millisecond)
+
+	cancel()
+	<-done
 }

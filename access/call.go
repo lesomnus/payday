@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"slices"
 	"sync"
 )
 
@@ -20,6 +21,10 @@ type Call struct {
 	method  string
 	address string
 
+	// downloads are the methods [Config.Downloads] names, for what serves
+	// several in one call to ask of each ([IsDownload]).
+	downloads []string
+
 	// subjects is everybody the call carried, in the order it did; of is what
 	// it did with each.
 	subjects []Subject
@@ -30,6 +35,10 @@ type Call struct {
 // of it so far.
 type carried struct {
 	wrote bool
+
+	// kept is whether a row of the write is in a transaction that is not
+	// known to have committed: the call's end settles it ([Call.Settle]).
+	kept bool
 
 	// saidWrote is whether a row says the call wrote it; saidCarried whether
 	// one says the call carried it otherwise.
@@ -80,6 +89,14 @@ func (c *Call) add(wrote bool, subjects ...Subject) {
 	}
 }
 
+// IsDownload answers whether `method` is one [Config.Downloads] names, as the
+// call in `ctx` was told: what a batch asks of each of its operations, since
+// gRPC dispatched the batch and not them.
+func IsDownload(ctx context.Context, method string) bool {
+	c, ok := Of(ctx)
+	return ok && slices.Contains(c.downloads, method)
+}
+
 // Method is the RPC the call is.
 func (c *Call) Method() string { return c.method }
 
@@ -90,16 +107,30 @@ func (c *Call) Address() string { return c.address }
 // Wrote says the call's writes wrote the personal data of `subjects`.
 func (c *Call) Wrote(subjects ...Subject) { c.add(true, subjects...) }
 
-// Unsaid is what no row of the call says yet: the people whose data its writes
-// wrote, and those whose data it carried otherwise -- showed, or named in a
-// request that was refused.
+// Writes answers whether the call wrote anybody's data.
+func (c *Call) Writes() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, e := range c.of {
+		if e.wrote {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Unsaid is what no row of the call says or keeps yet: the people whose data
+// its writes wrote, and those whose data it carried otherwise -- showed, or
+// named in a request that was refused.
 func (c *Call) Unsaid() (wrote, others []Subject) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	for _, v := range c.subjects {
 		switch e := c.of[v]; {
-		case e.wrote && !e.saidWrote:
+		case e.wrote && !e.saidWrote && !e.kept:
 			wrote = append(wrote, v)
 		case !e.wrote && !e.saidCarried:
 			others = append(others, v)
@@ -107,6 +138,58 @@ func (c *Call) Unsaid() (wrote, others []Subject) {
 	}
 
 	return wrote, others
+}
+
+// Unkept is those of `subjects` the call wrote that no row says or keeps
+// yet: what a write that has no commit to wait for writes a row of as it is
+// made.
+func (c *Call) Unkept(subjects ...Subject) []Subject {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var out []Subject
+	for _, v := range subjects {
+		if e, ok := c.of[v]; ok && e.wrote && !e.saidWrote && !e.kept && !slices.Contains(out, v) {
+			out = append(out, v)
+		}
+	}
+
+	return out
+}
+
+// Kept says rows of the writes of `subjects` are in a transaction that is not
+// known to have committed. A commit that fails takes its rows along, and only
+// the call's end can tell whether one did: [Call.Settle] says them then, or
+// leaves them for the interceptor to write as the refusal the call ended in.
+func (c *Call) Kept(subjects ...Subject) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, v := range subjects {
+		if e, ok := c.of[v]; ok {
+			e.kept = true
+		}
+	}
+}
+
+// Settle ends what [Call.Kept] kept, once the call has ended: said, when it
+// answered -- what it wrote is committed -- and unsaid again when it was
+// refused, since the transaction its rows were in may have been rolled back
+// or refused at its commit.
+func (c *Call) Settle(answered bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, e := range c.of {
+		if !e.kept {
+			continue
+		}
+
+		e.kept = false
+		if answered {
+			e.saidWrote = true
+		}
+	}
 }
 
 // Said says a row now says `subjects`: that the call wrote their data, or

@@ -518,3 +518,20 @@ func TestABatchIsOneEventOverTheWire(t *testing.T) {
 			"filed under the operation's own name, not the batch's")
 	}
 }
+
+// TestARecordIsNoOperationOfABatch: the trail, the outbox, the archive's
+// account and the access record are written by the servers, and read -- where
+// they are read at all -- as an RPC of their own. A batch that dispatched them
+// would reach by name what the app may not serve.
+func TestARecordIsNoOperationOfABatch(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	for _, v := range []*pdpb.Op{
+		op(t, app.AccessService_List_FullMethodName, app.AccessListRequest_builder{}.Build()),
+		op(t, app.AuditService_List_FullMethodName, app.AuditListRequest_builder{}.Build()),
+	} {
+		_, err := b.batched(t, closedGuard).Do(b.as(ctx), pdpb.BatchRequest_builder{Ops: []*pdpb.Op{v}}.Build())
+		x.Equal(codes.Unimplemented, status.Code(err), v.GetMethod())
+	}
+}

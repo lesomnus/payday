@@ -697,7 +697,8 @@ app's:
 - **`Downloads`**, in `s.Downloads`: the methods that hand personal data out to
   be kept somewhere else -- an export, a file. Each is refused without a
   `payday-reason-bin` header saying what it is for -- any text, base64 on the wire as a `-bin` key is, so a page sends it with connect-es's `encodeBinaryHeader` --, and its row is written before
-  its answer leaves.
+  its answer leaves. It is called by itself: a batch refuses one as an
+  operation.
 
 And one is the app's code: what shows a person's data where no `personal`
 field carries it -- a name rendered into a sentence, a column of a CSV -- says

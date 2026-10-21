@@ -965,7 +965,11 @@ data, filed under the tenant that data was in: who called (`actor_id`,
 for anything else it carried -- `result` (`ok`, or the code it was refused
 with), when, `subjects` (the keys of whose rows, a thousand at most, and
 `subject_count`), and `value` -- where the call came from, what a read or a
-download asked for, a download's reason -- which is what the archive seals. A
+download asked for, a download's reason -- which is what the archive seals. Of
+a request it keeps a read's and a download's, as its message declares it and
+`access.MaxRequest` bytes at most, and nothing of a call that wrote, whose
+request is the write and on the trail, or of one refused, whose request is
+what it tried and somebody's data as often as not. A
 call that wrote one person's data and showed another's is a row of each.
 
 **Whose data a call carried is read off the declarations, not written by each
@@ -973,7 +977,10 @@ app.** A message holds somebody's data when it holds a field declared
 `personal` (#92), and its key is whose; the generated `pd.Subjects` reads any
 answer that way -- a `Get`, a list of a hundred, an edge two hops into a select,
 a batch's packed answers -- so an RPC an app adds is recorded without anybody
-saying what it shows. What no declaration can see, the app says:
+saying what it shows. An `Any` is read only where payday packs one -- a batch's
+operations and answers, a watch's events -- and once: one an app's rows hold is
+its own data, which no declaration describes, and a message packed in one
+packed in another is work that grows with the square of its size. What no declaration can see, the app says:
 `access.Saw(ctx, ...)` for a name put into a sentence or a column of a file. A
 write is the rows it wrote, before or after it (`pd.AccessRecorder`, which asks
 `bare` for those images); a refused call is the rows its request named by key. A
@@ -981,18 +988,25 @@ call that carried nobody's data leaves nothing.
 
 **When a row is written** depends on what can be lost:
 
-- a **write** is recorded in its own transaction, at its commit, as the trail
-  is: what holds the write holds its record, and a rollback takes both;
+- a **write** is recorded in its own transaction, as the trail is: at its
+  commit where the transaction keeps one, as the write is made where it keeps
+  none. What holds the write holds its record, a rollback takes both, and a
+  write whose row cannot be written is refused. The call says the row once it
+  has answered: a commit refused after the row was written takes it along, and
+  the call that ends in that refusal writes it again as the refusal;
 - a **download** -- a method the app names in `access.Config.Downloads` -- says
   what it is for in the `payday-reason-bin` header or is refused, and its row
   is written before its answer leaves; one that cannot be recorded is refused.
-  The reason is any text: a `-bin` key is base64 on the wire, which is what
-  lets a browser send words a plain header cannot carry;
+  The reason is a sentence of any text, `access.MaxReason` bytes at most: a
+  `-bin` key is base64 on the wire, which is what lets a browser send words a
+  plain header cannot carry. A download is called by itself, and a batch
+  refuses one as an operation;
 - a **read** is queued and written a second later with the others of its
   second (`access.Writer`, a loop each process runs for itself). A page is a
   dozen reads, and a statement in front of each would be the cost. The queue is
   the one loss: a process killed outright loses its last second of reads, and
-  one stopped writes what it holds before it goes. A stream's reads are queued
+  one stopped writes what it holds before it goes, and again once its server
+  has stopped. A stream's reads are queued
   as it sends, so a watch open for an hour is a record of that hour.
 
 **It is kept by the trail's machinery**, not a copy of it. The generated
@@ -1014,7 +1028,8 @@ else, and keeping it is what the law that asks for it requires (개인정보보�
 **What payday does not decide**: which methods are downloads, which addresses
 to believe behind a proxy (`access.Config.Address`; `access.Peer` is the
 connection's), who may read the record (the generated `AccessService` is `Get`
-and `List` behind the wall, and the policy says who), and the monthly review.
+and `List` behind the wall, and the policy says who; it is no operation of a
+batch), and the monthly review.
 
 ## 7. What payday does not do
 
