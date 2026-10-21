@@ -823,18 +823,55 @@ func emitMapFilter(g *protogen.GeneratedFile, v *Entity, by By, at string, p Pat
 	g.P("	}")
 }
 
-// goTypeOf is what a cursor column is decoded into.
+// cursorTypes is what a cursor reads each type of column it may carry back
+// into: the Go type ent holds the column in, which is what [emitOrderCursor]
+// writes the cursor from. Read into the type it was written from, JSON gives a
+// value back exactly; read into `any`, a number is a float64, and an int64 past
+// 2^53 comes back as a neighbour -- a cursor that lands short of the row it was
+// taken from, and a page after it that answers that row again.
+//
+// The two that are not built in are written qualified, in [goTypeOf]. A type
+// not here is not an order's; see [orderable].
+var cursorTypes = map[ormpb.Type]string{
+	ormpb.Type_TYPE_UUID: "",
+	ormpb.Type_TYPE_TIME: "",
+
+	ormpb.Type_TYPE_STRING: "string",
+	ormpb.Type_TYPE_BOOL:   "bool",
+
+	// An enum is the number of its value, and ent holds it as one.
+	ormpb.Type_TYPE_ENUM: "int32",
+
+	ormpb.Type_TYPE_INT32:    "int32",
+	ormpb.Type_TYPE_SINT32:   "int32",
+	ormpb.Type_TYPE_SFIXED32: "int32",
+	ormpb.Type_TYPE_UINT32:   "uint32",
+	ormpb.Type_TYPE_FIXED32:  "uint32",
+	ormpb.Type_TYPE_INT64:    "int64",
+	ormpb.Type_TYPE_SINT64:   "int64",
+	ormpb.Type_TYPE_SFIXED64: "int64",
+	ormpb.Type_TYPE_UINT64:   "uint64",
+	ormpb.Type_TYPE_FIXED64:  "uint64",
+	ormpb.Type_TYPE_FLOAT:    "float32",
+	ormpb.Type_TYPE_DOUBLE:   "float64",
+}
+
+// goTypeOf is what a cursor column is decoded into; see [cursorTypes].
 func goTypeOf(g *protogen.GeneratedFile, t ormpb.Type) string {
 	switch t {
 	case ormpb.Type_TYPE_UUID:
 		return g.QualifiedGoIdent(pkgUuid2.Ident("UUID"))
 	case ormpb.Type_TYPE_TIME:
 		return g.QualifiedGoIdent(pkgTime.Ident("Time"))
-	case ormpb.Type_TYPE_STRING:
-		return "string"
 	}
 
-	return "any"
+	v, ok := cursorTypes[t]
+	if !ok {
+		// [orderable] refused it when the schema was read.
+		panic(fmt.Sprintf("a cursor of a %s column, which no order may have", t))
+	}
+
+	return v
 }
 
 // pf writes a fragment without a newline, which is how a call is built up

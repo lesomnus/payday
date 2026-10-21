@@ -1177,7 +1177,7 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 var orderName = regexp.MustCompile(`^[a-z][a-z0-9]*(_[a-z0-9]+)*$`)
 
 // readOrder reads one order of a list, and refuses one that does not end in
-// the key.
+// the key, or that pages by a column a cursor cannot carry ([orderable]).
 //
 // A cursor cannot tell apart two rows equal in every column of the order, so
 // the page after the first of them repeats the second or skips it -- and rows
@@ -1190,8 +1190,12 @@ func readOrder(e *Entity, os []*pdpb.Entity_Order, at string) ([]Order, error) {
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := field(e.Entity, name); !ok {
+		f, ok := field(e.Entity, name)
+		if !ok {
 			return nil, fmt.Errorf("list: %s: %s has no field %q", at, e.FullName(), name)
+		}
+		if err := orderable(e, f); err != nil {
+			return nil, fmt.Errorf("list: %s: %q %w", at, name, err)
 		}
 
 		out = append(out, Order{Field: name, Desc: o.GetDesc()})
@@ -1210,6 +1214,47 @@ func readOrder(e *Entity, os []*pdpb.Entity_Order, at string) ([]Order, error) {
 	}
 
 	return out, nil
+}
+
+// orderable refuses a column a list cannot be paged by.
+//
+// A cursor is the last row's value of every column of the order, handed to the
+// caller and handed back, and the next page is the rows past it -- so a column
+// is one to order by only if that value can be carried there and back and
+// compared as itself:
+//
+//   - **Not one that may be null.** A null compares as neither greater nor
+//     less, so the page after a row whose column is empty is never reached or
+//     skips the rest of them, and the databases do not agree on where nulls
+//     sort either. A default does not change it: a nullable column with one is
+//     still one a write may clear.
+//   - **Not a `secret:`.** It is never answered with, and a cursor is an
+//     answer: the last row's value would go out in every `next`, and a cursor
+//     a caller writes would ask where a value falls among the rows.
+//   - **A scalar the cursor carries as itself** -- [cursorTypes]. A list, a
+//     map or a JSON column has no order a cursor can name, and bytes go out as
+//     text a comparison then takes for the column.
+//
+// A `personal:` field may be an order: its cursor carries the value of the row
+// the same page answered with, to the caller it answered.
+func orderable(e *Entity, f graph.Field) error {
+	switch {
+	case f.IsList() || f.Descriptor().IsMap():
+		return fmt.Errorf("is a list or a map, one JSON column, and has no order a cursor can name")
+	case slices.Contains(e.Secrets, f.Name()):
+		return fmt.Errorf("is `secret:`, and a cursor is an answer: the last row's value would go out in every page, " +
+			"and one a caller writes would ask where a value falls among the rows")
+	case f.IsNullable():
+		return fmt.Errorf("may be null, and a null compares as neither greater nor less: the page after a row " +
+			"whose column is empty skips or never reaches the rest. Order by a column that is `default`ed " +
+			"rather than `nullable`, or keep this one out of the order")
+	}
+	if _, ok := cursorTypes[f.Type()]; !ok {
+		return fmt.Errorf("is %s, which a cursor does not carry as itself: order by a number, a string, "+
+			"a bool, an enum, a time or an identifier", f.Type())
+	}
+
+	return nil
 }
 
 // isStringMap reports whether f is a `map<string, string>`.

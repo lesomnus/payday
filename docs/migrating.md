@@ -3,6 +3,20 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An order is over columns a cursor can carry
+
+**Applies if** an entity's `list:` orders by a column that may be null, a
+`secret:` field, a list, a map, JSON or bytes -- in `order` or in a named
+order. `pd gen` refuses it now, naming the column; nothing changes for any
+other list.
+
+- **A nullable column** skipped rows: a null is neither past nor before a
+  cursor. Order by a `default`ed column, or leave it out of the order.
+- **A `secret:` field** went out in every page's `next`.
+- **A cursor is read back as the column's type.** It was read into `any` for
+  every column but a string, a time and an identifier, so an int64 past 2^53
+  came back as a neighbour and a page repeated its last row. A cursor a client
+  holds carries on: its bytes are what they were.
 ## The gate asks an `Apply` about the edges it moves
 
 **Applies if** an entity has an edge that can move onto a row behind the wall
