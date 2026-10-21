@@ -33,8 +33,9 @@ A commit, not `latest`: payday tags no versions, so `latest` is whatever its
 `main` is when `go get` asks.
 
 `pd upgrade` runs `go` and `npm` and **commits nothing**: read `git diff`. It
-moves only what is below payday's floors, and only to what payday builds with;
-keeping current beyond that is Renovate's.
+moves only what is below payday's floors, to the floor in the major it is in
+(a later major only when the floor is one); keeping current beyond that is
+Renovate's.
 
 ## Do not edit — regenerate
 

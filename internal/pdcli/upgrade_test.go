@@ -64,6 +64,26 @@ func fake(t *testing.T, name string) func() []string {
 	}
 }
 
+// generator installs a protoc-gen-es into the page the way npm does: the
+// package, with its version, and a `.bin` entry that links into it.
+func generator(t *testing.T, l pdcli.Layout, version string) string {
+	t.Helper()
+	x := require.New(t)
+
+	modules := filepath.Join(l.Root, "ts", "node_modules")
+	pkg := filepath.Join(modules, "@bufbuild", "protoc-gen-es")
+	x.NoError(os.MkdirAll(filepath.Join(pkg, "bin"), 0o755))
+	x.NoError(os.WriteFile(filepath.Join(pkg, "package.json"),
+		[]byte(`{"name":"@bufbuild/protoc-gen-es","version":"`+version+`"}`), 0o644))
+	x.NoError(os.WriteFile(filepath.Join(pkg, "bin", "protoc-gen-es"), []byte("#!/bin/sh\n"), 0o755))
+
+	bin := filepath.Join(modules, ".bin")
+	x.NoError(os.MkdirAll(bin, 0o755))
+	x.NoError(os.Symlink(filepath.Join("..", "@bufbuild", "protoc-gen-es", "bin", "protoc-gen-es"), filepath.Join(bin, "protoc-gen-es")))
+
+	return filepath.Join(bin, "protoc-gen-es")
+}
+
 // older is the page a long-lived app has: a TypeScript and a protobuf runtime
 // from before the floors, and the rest at or above them.
 func older(t *testing.T) pdcli.Layout {
@@ -150,9 +170,11 @@ func TestTheVersionIsTheOneInstalled(t *testing.T) {
 	x.Empty(vs, "nothing is below a floor, and a version nobody can read is not guessed at")
 }
 
-// TestAnUpgradeMovesWhatIsBelowItsFloor, and what moves with it, to the
-// template's version, in the section the page had it in -- and nothing else.
-func TestAnUpgradeMovesWhatIsBelowItsFloor(t *testing.T) {
+// TestAnUpgradeMovesWhatIsBelowItsFloorToItsFloor, in the major it is in and
+// the section the page had it in -- and nothing else. TypeScript 5.8 is below
+// 5.9.3 and goes to ^5.9.3, not to the 7 `pd new` writes: a major is a
+// migration, and the app's to make.
+func TestAnUpgradeMovesWhatIsBelowItsFloorToItsFloor(t *testing.T) {
 	x := require.New(t)
 
 	vs, err := pdcli.Upgrades(older(t))
@@ -162,41 +184,82 @@ func TestAnUpgradeMovesWhatIsBelowItsFloor(t *testing.T) {
 	for _, v := range vs {
 		got[v.Name] = v
 	}
-	x.Len(got, 3, "%+v", vs)
+	x.Len(got, 2, "%+v", vs)
 
 	x.Equal("dependencies", got["@bufbuild/protobuf"].Section)
 	x.Equal("2.10.0", got["@bufbuild/protobuf"].From)
+	x.Equal("^2.12.1", got["@bufbuild/protobuf"].To)
 	x.False(got["@bufbuild/protobuf"].Partner)
 
-	x.True(got["@bufbuild/protoc-gen-es"].Partner, "the generator moves with the runtime it was below with")
-	x.Equal("devDependencies", got["@bufbuild/protoc-gen-es"].Section)
-
-	targets, err := pdcli.Targets()
-	x.NoError(err)
-	x.Equal(targets["typescript"].Range, got["typescript"].To, "the template's")
+	x.Equal("devDependencies", got["typescript"].Section)
+	x.Equal("^5.9.3", got["typescript"].To, "the floor, in TypeScript 5")
 	x.False(got["typescript"].Partner)
 
-	_, moved := got["vite"]
+	_, moved := got["@bufbuild/protoc-gen-es"]
+	x.False(moved, "above its own floor, and in the same major as the runtime that moves")
+	_, moved = got["vite"]
 	x.False(moved, "above its floor, so Renovate's to move")
 }
 
-// TestAnUpgradeIsOneInstallForEachSection: what moves is installed by npm, in
-// the page's directory, one install for each section so that a pair is resolved
-// together and a dev dependency stays one.
-func TestAnUpgradeIsOneInstallForEachSection(t *testing.T) {
+// TestAnUpgradeCrossesAMajorOnlyToTheTemplates: a package whose floor is a
+// later major than the one it is in has a major to cross anyway, so it goes to
+// what `pd new` writes -- and so does every package it moves with, since a
+// major of one is a major of the others. One still in its floor's major goes
+// no further than the floor.
+func TestAnUpgradeCrossesAMajorOnlyToTheTemplates(t *testing.T) {
 	x := require.New(t)
-	l := older(t)
+
+	l := page(t, app(t, "github.com/acme/thing"),
+		map[string]string{"@lesomnus/payday": "^0.0.5"},
+		map[string]string{
+			"typescript":           "^4.9.5",
+			"vite":                 "^6.3.0",
+			"@vitejs/plugin-react": "^5.2.0",
+		},
+		map[string]string{
+			"@lesomnus/payday":     "0.0.5",
+			"typescript":           "4.9.5",
+			"vite":                 "6.3.0",
+			"@vitejs/plugin-react": "5.2.0",
+		})
+
+	vs, err := pdcli.Upgrades(l)
+	x.NoError(err)
+	got := map[string]pdcli.Step{}
+	for _, v := range vs {
+		got[v.Name] = v
+	}
+	x.Len(got, 4, "%+v", vs)
+
+	targets, err := pdcli.Targets()
+	x.NoError(err)
+	x.Equal(targets["typescript"].Range, got["typescript"].To, "TypeScript 4 is below 5.9.3, a later major")
+	x.Equal(targets["vite"].Range, got["vite"].To, "Vite 6 is below 7.2.0, a later major")
+	x.Equal(targets["@vitejs/plugin-react"].Range, got["@vitejs/plugin-react"].To, "with Vite")
+	x.True(got["@vitejs/plugin-react"].Partner, "5.2.0 is above its own floor, and moves only because Vite does")
+	x.Equal("^0.1.1", got["@lesomnus/payday"].To, "0.0.5 is below 0.1.1, in the same major")
+}
+
+// TestAnUpgradeIsOneResolution: what moves is set in package.json by npm, each
+// range in the section the page has it in, and then installed by one `npm
+// install` -- so a pair is resolved together even when its halves are in two
+// sections, as the protobuf runtime, a dependency, and its generator, a dev
+// dependency, are.
+func TestAnUpgradeIsOneResolution(t *testing.T) {
+	x := require.New(t)
+	l := page(t, app(t, "github.com/acme/thing"),
+		map[string]string{"@bufbuild/protobuf": "^2.10.0"},
+		map[string]string{"@bufbuild/protoc-gen-es": "^2.10.0", "typescript": "~5.8.3"},
+		map[string]string{"@bufbuild/protobuf": "2.10.0", "@bufbuild/protoc-gen-es": "2.10.0", "typescript": "5.8.3"})
 	npm := fake(t, "npm")
 
 	var log bytes.Buffer
 	x.NoError(pdcli.Upgrade{Layout: l, Log: &log}.Run(context.Background()))
 
-	targets, err := pdcli.Targets()
-	x.NoError(err)
 	dir := filepath.Join(l.Root, "ts")
 	x.Equal([]string{
-		dir + " install @bufbuild/protobuf@" + targets["@bufbuild/protobuf"].Range,
-		dir + " install --save-dev @bufbuild/protoc-gen-es@" + targets["@bufbuild/protoc-gen-es"].Range + " typescript@" + targets["typescript"].Range,
+		dir + " pkg set dependencies[@bufbuild/protobuf]=^2.12.1 devDependencies[@bufbuild/protoc-gen-es]=^2.12.1 devDependencies[typescript]=^5.9.3",
+		dir + " install",
 	}, npm())
 	x.Contains(log.String(), "below 5.9.3", "it says why")
 	x.Contains(log.String(), "nothing is committed")
@@ -208,7 +271,8 @@ func TestAnUpgradeIsOneInstallForEachSection(t *testing.T) {
 		var log bytes.Buffer
 		x.NoError(pdcli.Upgrade{Layout: l, Log: &log, DryRun: true}.Run(context.Background()))
 		x.Empty(npm())
-		x.Contains(log.String(), "npm install --save-dev")
+		x.Contains(log.String(), "npm pkg set dependencies[@bufbuild/protobuf]=^2.12.1")
+		x.Contains(log.String(), "npm install")
 	})
 
 	t.Run("and a page at its floors is left alone", func(t *testing.T) {
@@ -231,11 +295,7 @@ func TestAnUpgradeIsOneInstallForEachSection(t *testing.T) {
 func TestAnUpgradeToAnotherPaydayIsThatPaydays(t *testing.T) {
 	x := require.New(t)
 	l := older(t)
-
-	// A generator to find, so the page is generated as well.
-	bin := filepath.Join(l.Root, "ts", "node_modules", ".bin")
-	x.NoError(os.MkdirAll(bin, 0o755))
-	x.NoError(os.WriteFile(filepath.Join(bin, "protoc-gen-es"), []byte("#!/bin/sh\n"), 0o755))
+	generator(t, l, "2.16.0")
 
 	goes := fake(t, "go")
 	var log bytes.Buffer
@@ -247,14 +307,45 @@ func TestAnUpgradeToAnotherPaydayIsThatPaydays(t *testing.T) {
 		l.Root + " tool pd upgrade " + l.Root,
 		l.Root + " tool pd gen --ts " + l.Root,
 	}, goes(), "one generation: --ts is the Go half as well")
+	x.Contains(log.String(), "the next two are run by the payday `go get` fetched")
 	x.Contains(log.String(), "nothing is committed")
 
-	t.Run("and one whose page has no generator is generated without --ts", func(t *testing.T) {
+	t.Run("and a dry run says the last two are not this payday's", func(t *testing.T) {
 		x := require.New(t)
-		l := page(t, app(t, "github.com/acme/thing"), nil, map[string]string{"typescript": "~5.9.3"}, nil)
+		goes := fake(t, "go")
+
+		var log bytes.Buffer
+		x.NoError(pdcli.Upgrade{Layout: l, Log: &log, Payday: "v0.9.0", DryRun: true}.Run(context.Background()))
+		x.Empty(goes())
+		x.Contains(log.String(), "the next two are run by the payday `go get` fetches, not by this one")
+		x.Contains(log.String(), "a dry run fetches nothing")
+		x.Contains(log.String(), "go tool pd upgrade "+l.Root, "what a run would run")
+		x.NotContains(log.String(), "--dry-run", "it is not passed on to a step that does not run")
+	})
+
+	t.Run("and a page is generated with --ts because it is a page", func(t *testing.T) {
+		x := require.New(t)
+		l := page(t, app(t, "github.com/acme/thing"), nil,
+			map[string]string{"@bufbuild/protoc-gen-es": "^2.16.0", "typescript": "~5.9.3"}, nil)
 
 		goes := fake(t, "go")
-		x.NoError(pdcli.Upgrade{Layout: l, Payday: "latest"}.Run(context.Background()))
+		err := pdcli.Upgrade{Layout: l, Payday: "v0.9.0"}.Run(context.Background())
+		x.ErrorIs(err, pdcli.ErrNoTsPlugin, "its generator is not installed, so it is refused")
+		x.Contains(err.Error(), "npm ci", "the page declares it, so installing what it declares is the fix")
+		x.Empty(goes(), "before anything moved")
+
+		generator(t, l, "2.16.0")
+		x.NoError(pdcli.Upgrade{Layout: l, Payday: "v0.9.0"}.Run(context.Background()))
+		x.Equal(l.Root+" tool pd gen --ts "+l.Root, goes()[3])
+	})
+
+	t.Run("and an app with no page is generated without --ts", func(t *testing.T) {
+		x := require.New(t)
+		l, err := pdcli.Discover(app(t, "github.com/acme/thing"))
+		x.NoError(err)
+
+		goes := fake(t, "go")
+		x.NoError(pdcli.Upgrade{Layout: l, Payday: "v0.9.0"}.Run(context.Background()))
 		x.Equal(l.Root+" tool pd gen "+l.Root, goes()[3])
 	})
 }
@@ -265,18 +356,75 @@ func TestAnUpgradeToAnotherPaydayIsThatPaydays(t *testing.T) {
 func TestTheGeneratorBelowItsFloorIsRefused(t *testing.T) {
 	x := require.New(t)
 	l := older(t)
+	plugin := generator(t, l, "2.16.0")
 
-	vs, err := pdcli.Below(l)
+	vs, err := pdcli.Below(l, plugin)
 	x.NoError(err)
 	x.Len(vs, 1, "%+v", vs)
 	x.Equal("@bufbuild/protobuf", vs[0].Name, "not its partner, which is above its own, and not typescript")
-
-	bin := filepath.Join(l.Root, "ts", "node_modules", ".bin")
-	x.NoError(os.MkdirAll(bin, 0o755))
-	x.NoError(os.WriteFile(filepath.Join(bin, "protoc-gen-es"), []byte("#!/bin/sh\n"), 0o755))
 
 	err = pdcli.Gen{Layout: l}.Ts(context.Background())
 	x.ErrorIs(err, pdcli.ErrBelowFloor)
 	x.Contains(err.Error(), "@bufbuild/protobuf 2.10.0 is older than 2.12.1")
 	x.Contains(err.Error(), "go tool pd upgrade")
+}
+
+// TestTheGeneratorIsTheOneThatRuns: the generator is held to its floor by the
+// version of its own package -- the plugin that writes the code -- and not by
+// the lockfile, which says what the next install makes. A lockfile Renovate
+// moved and a node_modules nobody reinstalled is the case it is for.
+func TestTheGeneratorIsTheOneThatRuns(t *testing.T) {
+	x := require.New(t)
+
+	l := page(t, app(t, "github.com/acme/thing"),
+		map[string]string{"@bufbuild/protobuf": "^2.16.0"},
+		map[string]string{"@bufbuild/protoc-gen-es": "^2.16.0"},
+		map[string]string{"@bufbuild/protobuf": "2.16.0", "@bufbuild/protoc-gen-es": "2.16.0"})
+	plugin := generator(t, l, "2.10.0")
+
+	v, err := pdcli.PluginVersion(plugin)
+	x.NoError(err)
+	x.Equal("2.10.0", v)
+
+	err = pdcli.Gen{Layout: l}.Ts(context.Background())
+	x.ErrorIs(err, pdcli.ErrBelowFloor, "the lockfile says 2.16.0; the plugin is 2.10.0")
+	x.Contains(err.Error(), "@bufbuild/protoc-gen-es 2.10.0 is older than 2.12.1")
+
+	t.Run("and the other way round", func(t *testing.T) {
+		x := require.New(t)
+		l := page(t, app(t, "github.com/acme/thing"),
+			map[string]string{"@bufbuild/protobuf": "^2.16.0"},
+			map[string]string{"@bufbuild/protoc-gen-es": "^2.10.0"},
+			map[string]string{"@bufbuild/protobuf": "2.16.0", "@bufbuild/protoc-gen-es": "2.10.0"})
+
+		vs, err := pdcli.Below(l, generator(t, l, "2.16.0"))
+		x.NoError(err)
+		x.Empty(vs, "the plugin that runs is 2.16.0, whatever the lockfile says")
+	})
+
+	t.Run("and a .bin entry that is a script, as pnpm writes it", func(t *testing.T) {
+		x := require.New(t)
+		l := page(t, app(t, "github.com/acme/thing"), nil, nil, nil)
+		modules := filepath.Join(l.Root, "ts", "node_modules")
+		pkg := filepath.Join(modules, "@bufbuild", "protoc-gen-es")
+		x.NoError(os.MkdirAll(pkg, 0o755))
+		x.NoError(os.WriteFile(filepath.Join(pkg, "package.json"), []byte(`{"name":"@bufbuild/protoc-gen-es","version":"2.13.0"}`), 0o644))
+		x.NoError(os.MkdirAll(filepath.Join(modules, ".bin"), 0o755))
+		shim := filepath.Join(modules, ".bin", "protoc-gen-es")
+		x.NoError(os.WriteFile(shim, []byte("#!/bin/sh\nexec node ../.pnpm/x/bin \"$@\"\n"), 0o755))
+
+		v, err := pdcli.PluginVersion(shim)
+		x.NoError(err)
+		x.Equal("2.13.0", v, "the package of that name in the same node_modules")
+	})
+
+	t.Run("and a plugin that is part of no package is not guessed at", func(t *testing.T) {
+		x := require.New(t)
+		bin := filepath.Join(t.TempDir(), "node_modules", ".bin")
+		x.NoError(os.MkdirAll(bin, 0o755))
+		x.NoError(os.WriteFile(filepath.Join(bin, "protoc-gen-es"), []byte("#!/bin/sh\n"), 0o755))
+
+		_, err := pdcli.PluginVersion(filepath.Join(bin, "protoc-gen-es"))
+		x.ErrorIs(err, pdcli.ErrNoTsPlugin)
+	})
 }
