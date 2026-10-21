@@ -3,6 +3,22 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The gate asks an `Apply` about the edges it moves
+
+**Applies if** an entity has an edge that can move onto a row behind the wall
+-- one that is not `immutable`. Regenerate; nothing else changes.
+
+- **The generated `Gate` has an `Apply`** beside its `Patch` for each such
+  entity, payday's holder among them when an overlay gave it one. It compiles
+  the document as the server behind does and reads, through the wall, the row
+  each moved edge is given; one the caller cannot see is `NotFound`, as at
+  `Patch`. Before, a document moved an edge onto any row by its key, and the
+  row was read back through the caller's own one hop later.
+- **A document the gate cannot compile is refused there**, with the code the
+  server behind gives it: `InvalidArgument`, or `Unimplemented` for what this
+  engine does not do.
+- `Apply` is still closed at the transport unless `allow_general_writes` opens
+  it; this is the rule about the row that holds wherever it is called from.
 ## A broker and a lease are built on the process's context, and `PlainInProcess` believes only this process
 
 **Applies if** your `cmd.Build` or your serve command builds a broker or a

@@ -57,6 +57,7 @@ import (
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqljson "github.com/protobuf-orm/ent/dialect/sql/sqljson"
 	sqlpage "github.com/protobuf-orm/ent/dialect/sql/sqlpage"
+	ormpatch "github.com/protobuf-orm/protobuf-orm/ormpatch"
 	enttx "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	entuuid "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	grpc "google.golang.org/grpc"
@@ -3292,6 +3293,55 @@ func (s gateHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) 
 	return s.HolderServiceServer.Patch(ctx, req)
 }
 
+// Apply refuses a document that moves an edge onto a row this caller cannot
+// see, as Patch refuses a request that does.
+//
+// A document names the row an edge points at by its key, and the server
+// behind writes that key into the column as it is -- compiling a document
+// reads nothing. So the read Patch is asked is asked here of the key the
+// document lands in the column, compiled the way the server behind will.
+func (s gateHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	if !req.HasPatch() {
+		// Nothing written, and the server behind refuses it in its own words.
+		return s.HolderServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(gateHolderEntity, req.GetPatch())
+	if err != nil {
+		// Refused here rather than passed on, in the codes the server behind
+		// gives the same document: one this layer cannot read is one it can
+		// say nothing about.
+		if errors.Is(err, ormpatch.ErrUnsupported) {
+			return nil, status.Errorf(codes.Unimplemented, "%s", err)
+		}
+
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+	if w, ok := plan.WriteTo(11); ok {
+		if k, ok := w.Op.(ormpatch.SetEdge); ok {
+			ref := apptest.RobotRef_builder{Id: k.Key.Bytes()}.Build()
+			if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
+				_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+					Ref: ref,
+				}.Build())
+				return err
+			}); err != nil {
+				if status.Code(err) == codes.NotFound {
+					return nil, gate.ErrNotFound("Robot")
+				}
+
+				return nil, err
+			}
+		}
+	}
+
+	return s.HolderServiceServer.Apply(ctx, req)
+}
+
+// gateHolderEntity is what a Holder document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var gateHolderEntity = ormpatch.MustEntityOf((*apptest.Holder)(nil).ProtoReflect().Descriptor().ParentFile(), "Holder")
+
 type gateCell struct {
 	Gate
 	apptest.CellServiceServer
@@ -3570,6 +3620,55 @@ func (s gateRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*
 
 	return s.RobotServiceServer.Patch(ctx, req)
 }
+
+// Apply refuses a document that moves an edge onto a row this caller cannot
+// see, as Patch refuses a request that does.
+//
+// A document names the row an edge points at by its key, and the server
+// behind writes that key into the column as it is -- compiling a document
+// reads nothing. So the read Patch is asked is asked here of the key the
+// document lands in the column, compiled the way the server behind will.
+func (s gateRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
+	if !req.HasPatch() {
+		// Nothing written, and the server behind refuses it in its own words.
+		return s.RobotServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(gateRobotEntity, req.GetPatch())
+	if err != nil {
+		// Refused here rather than passed on, in the codes the server behind
+		// gives the same document: one this layer cannot read is one it can
+		// say nothing about.
+		if errors.Is(err, ormpatch.ErrUnsupported) {
+			return nil, status.Errorf(codes.Unimplemented, "%s", err)
+		}
+
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+	if w, ok := plan.WriteTo(3); ok {
+		if k, ok := w.Op.(ormpatch.SetEdge); ok {
+			ref := apptest.CellRef_builder{Id: k.Key.Bytes()}.Build()
+			if err := seen.Visible(ctx, s.Gate.drv, "Cell", ref, func() error {
+				_, err := s.Gate.Next().Cell().Get(ctx, apptest.CellGetRequest_builder{
+					Ref: ref,
+				}.Build())
+				return err
+			}); err != nil {
+				if status.Code(err) == codes.NotFound {
+					return nil, gate.ErrNotFound("Cell")
+				}
+
+				return nil, err
+			}
+		}
+	}
+
+	return s.RobotServiceServer.Apply(ctx, req)
+}
+
+// gateRobotEntity is what a Robot document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var gateRobotEntity = ormpatch.MustEntityOf((*apptest.Robot)(nil).ProtoReflect().Descriptor().ParentFile(), "Robot")
 
 // Audit is the layer that refuses a trail row written by hand.
 //
