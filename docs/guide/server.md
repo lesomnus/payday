@@ -650,6 +650,7 @@ chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
 	WithUnary(auth.InterceptorUnary(h, Resolver(s.Ungated), auth.PublicDefault)).
 	WithStream(auth.InterceptorStream(h, Resolver(s.Ungated), auth.PublicDefault)).
 	WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant())).
+	With(s.accessed().Interceptor()).
 	With(gate.Interceptor(s.Policy)).
 	With(s.Watch.Interceptor()).
 	WithUnary(grpcx.ClosedUnary(c.Server.Closed()))
@@ -677,9 +678,31 @@ Who is calling comes first, because everything after it reads the frame.
 | `grpcx.Serving` | logging, tracing, panic recovery, and a deadline for a call that named none |
 | `auth.Interceptor*` | reads the credential, resolves it, puts a `frame` in the context |
 | `grpcx.LimitUnary` | how often one caller may ask; `gate.ByTenant()` is the key |
+| `access.Config.Interceptor` | the access record: whose personal data the call carried, from where, and how it ended. Before the gate, so a refusal is a row too |
 | `gate.Interceptor` | what this caller may do, as against what they may see |
 | `Watch.Interceptor` | publishes what the call changed, **after** it answered without error |
 | `grpcx.ClosedUnary` | what is closed to callers entirely — `Patch` and `Apply` by default |
+
+### The access record
+
+`s.accessed()` is what the access record is told of this app (see
+[the runtime](../runtime.md#the-access-record-111)): whose data a message
+carries, which `pd gen` writes from the `personal` declarations; where a call
+came from; and which of the app's methods are downloads. The last two are the
+app's:
+
+- **`Address`**. `access.Peer` is the connection's, which is the caller's only
+  when nothing stands in front of the app. Behind a proxy, answer with what the
+  deployment trusts of its forwarding headers.
+- **`Downloads`**, in `s.Downloads`: the methods that hand personal data out to
+  be kept somewhere else -- an export, a file. Each is refused without a
+  `payday-reason` header saying what it is for, and its row is written before
+  its answer leaves.
+
+And one is the app's code: what shows a person's data where no `personal`
+field carries it -- a name rendered into a sentence, a column of a CSV -- says
+so with `access.Saw(ctx, access.Subject{Id: key, Tenant: tenant})` in the call
+that shows it.
 
 ### `auth.Plain` is not for production
 

@@ -446,6 +446,10 @@ enum Own {
   // The trail archive's manifest: what the archive holds, as the database
   // keeps the account of it. See `trail.Manifest`.
   OWN_ARCHIVED = 5;
+
+  // The access record: who read or wrote whose personal data, from where
+  // (payday#111). See the `access` package.
+  OWN_ACCESS = 6;
 }
 
 // Field is what payday adds to one field of an entity.

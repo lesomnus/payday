@@ -1,0 +1,25 @@
+edition = "2023";
+
+package payday;
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// AccessDetail is what a row of the access record says beyond who, when and
+// what (payday#111): marshalled into `Access.value`, the one column the
+// archive seals, as it seals the trail's -- so what a call asked for is
+// readable with the tenant's key and to nobody who merely holds the archive.
+message AccessDetail {
+  // Address is where the call came from, as the app knows it: the caller's
+  // address past the proxies it trusts. See `access.Config.Address`.
+  string address = 1;
+
+  // Request is what a read or a download asked for, as it was sent: what a
+  // list, a search or an export asked for, which is what says how a page of
+  // people came to be shown. Empty for a write, whose trail holds what it
+  // asked.
+  bytes request = 2;
+
+  // Reason is what a download said it was for (`payday-reason`).
+  string reason = 3;
+}

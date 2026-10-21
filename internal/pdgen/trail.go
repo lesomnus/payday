@@ -46,6 +46,15 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
 	pred := p.Ent + "/predicate"
 
+	// The access record's rows are rows of this store too (payday#111), so
+	// that the passes that keep the trail keep them: archived, sealed,
+	// checkpointed and purged as a kind of their own.
+	acc := s.Own(pdpb.Own_OWN_ACCESS)
+	var accPkg protogen.GoImportPath
+	if acc != nil {
+		accPkg = p.Ent + "/" + protogen.GoImportPath(acc.EntPkg())
+	}
+
 	g.P("// TrailStore is the audit table as [trail.Store] sees it.")
 	g.P("//")
 	g.P("// Handed to `trail.Sweep` beside a policy, and to whatever command an app")
@@ -129,25 +138,42 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("// in between. A `DISTINCT` would read all of them.")
 	g.P("func (s trailStore) Tenants(ctx ", pkgCtx.Ident("Context"), ", after ", pkgPdid.Ident("Id"),
 		", limit int) ([]", pkgPdid.Ident("Id"), ", error) {")
-	g.P("	out := []", pkgPdid.Ident("Id"), "{}")
-	g.P("	last := after.Uuid()")
-	g.P("	for len(out) < limit {")
-	g.P("		v, err := s.db.", e, ".Query().")
-	g.P("			Where(", entPkg.Ident("TenantIdGT"), "(last)).")
-	g.P("			Order(", p.Ent.Ident("Asc"), "(", entPkg.Ident("FieldTenantId"), ")).")
-	g.P("			First(ctx)")
-	g.P("		if ", p.Ent.Ident("IsNotFound"), "(err) {")
-	g.P("			break")
-	g.P("		}")
-	g.P("		if err != nil {")
-	g.P("			return out, err")
-	g.P("		}")
+	g.P("\tout := []", pkgPdid.Ident("Id"), "{}")
+	g.P("\tlast := after.Uuid()")
+	g.P("\tfor len(out) < limit {")
+	g.P("\t\tnext, found := ", pkgUuid.Ident("Nil"), "(), false")
+	g.P("\t\tv, err := s.db.", e, ".Query().")
+	g.P("\t\t\tWhere(", entPkg.Ident("TenantIdGT"), "(last)).")
+	g.P("\t\t\tOrder(", p.Ent.Ident("Asc"), "(", entPkg.Ident("FieldTenantId"), ")).")
+	g.P("\t\t\tFirst(ctx)")
+	g.P("\t\tswitch {")
+	g.P("\t\tcase err == nil:")
+	g.P("\t\t\tnext, found = v.TenantId, true")
+	g.P("\t\tcase !", p.Ent.Ident("IsNotFound"), "(err):")
+	g.P("\t\t\treturn out, err")
+	g.P("\t\t}")
+	if acc != nil {
+		// The access record's tenants as well: the next of either table.
+		g.P("\t\tw, err := s.db.", acc.GoName(), ".Query().")
+		g.P("\t\t\tWhere(", accPkg.Ident("TenantIdGT"), "(last)).")
+		g.P("\t\t\tOrder(", p.Ent.Ident("Asc"), "(", accPkg.Ident("FieldTenantId"), ")).")
+		g.P("\t\t\tFirst(ctx)")
+		g.P("\t\tswitch {")
+		g.P("\t\tcase err == nil && (!found || w.TenantId.Compare(next) < 0):")
+		g.P("\t\t\tnext, found = w.TenantId, true")
+		g.P("\t\tcase err != nil && !", p.Ent.Ident("IsNotFound"), "(err):")
+		g.P("\t\t\treturn out, err")
+		g.P("\t\t}")
+	}
+	g.P("\t\tif !found {")
+	g.P("\t\t\tbreak")
+	g.P("\t\t}")
 	g.P("")
-	g.P("		out = append(out, ", pkgPdid.Ident("Id"), "(v.TenantId))")
-	g.P("		last = v.TenantId")
-	g.P("	}")
+	g.P("\t\tout = append(out, ", pkgPdid.Ident("Id"), "(next))")
+	g.P("\t\tlast = next")
+	g.P("\t}")
 	g.P("")
-	g.P("	return out, nil")
+	g.P("\treturn out, nil")
 	g.P("}")
 	g.P("")
 
@@ -156,9 +182,9 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 		", after ", pkgTrail.Ident("Cursor"), ", limit int) (*", p.Ent.Ident(e+"Query"), ", error) {")
 	g.P("	q := s.of(k).Where(", entPkg.Ident("DateCreatedLT"), "(at))")
 	g.P("	if after.Key != nil {")
-	g.P("		id, ok := after.Key.(", pkgUuid.Ident("UUID"), ")")
-	g.P("		if !ok {")
-	g.P("			return nil, ", pkgFmt.Ident("Errorf"), "(\"trail: %T is not a key this store gave out\", after.Key)")
+	g.P("		id, err := cursorOf(after.Key)")
+	g.P("		if err != nil {")
+	g.P("			return nil, err")
 	g.P("		}")
 	g.P("")
 	g.P("		q = q.Where(", entPkg.Ident("Or"), "(")
@@ -206,7 +232,16 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		})")
 	g.P("	}")
 	g.P("")
-	g.P("	return out, nil")
+	if acc != nil {
+		g.P("	b, err := s.accessRows(ctx, k, at, after, limit, true)")
+		g.P("	if err != nil {")
+		g.P("		return nil, err")
+		g.P("	}")
+		g.P("")
+		g.P("	return mergeRows(out, b, limit), nil")
+	} else {
+		g.P("	return out, nil")
+	}
 	g.P("}")
 	g.P("")
 
@@ -242,12 +277,34 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		})")
 	g.P("	}")
 	g.P("")
-	g.P("	return out, nil")
+	if acc != nil {
+		g.P("	b, err := s.accessRows(ctx, k, at, after, limit, false)")
+		g.P("	if err != nil {")
+		g.P("		return nil, err")
+		g.P("	}")
+		g.P("")
+		g.P("	return mergeRows(out, b, limit), nil")
+	} else {
+		g.P("	return out, nil")
+	}
 	g.P("}")
 	g.P("")
 	g.P("func (s trailStore) Count(ctx ", pkgCtx.Ident("Context"), ", k ", pkgTrail.Ident("Scope"),
 		", at ", pkgTime.Ident("Time"), ") (int, error) {")
-	g.P("	return s.of(k).Where(", entPkg.Ident("DateCreatedLT"), "(at)).Count(ctx)")
+	if acc != nil {
+		g.P("	n, err := s.of(k).Where(", entPkg.Ident("DateCreatedLT"), "(at)).Count(ctx)")
+		g.P("	if err != nil {")
+		g.P("		return n, err")
+		g.P("	}")
+		g.P("	if q := s.accessOf(k); q != nil {")
+		g.P("		m, err := q.Where(", accPkg.Ident("DateCreatedLT"), "(at)).Count(ctx)")
+		g.P("		return n + m, err")
+		g.P("	}")
+		g.P("")
+		g.P("	return n, nil")
+	} else {
+		g.P("	return s.of(k).Where(", entPkg.Ident("DateCreatedLT"), "(at)).Count(ctx)")
+	}
 	g.P("}")
 	g.P("")
 
@@ -258,12 +315,23 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("// when it runs, and a row backdated by a clock that stepped is one it")
 	g.P("// removes and the archive does not have.")
 	g.P("func (s trailStore) Forget(ctx ", pkgCtx.Ident("Context"), ", keys []any) (int, error) {")
-	g.P("	ids, err := trailKeys(keys)")
+	g.P("	ids, accessed, err := trailKeys(keys)")
 	g.P("	if err != nil {")
 	g.P("		return 0, err")
 	g.P("	}")
 	g.P("")
-	g.P("	return s.db.", e, ".Delete().Where(", entPkg.Ident("IdIn"), "(ids...)).Exec(ctx)")
+	g.P("	n, err := s.db.", e, ".Delete().Where(", entPkg.Ident("IdIn"), "(ids...)).Exec(ctx)")
+	if acc != nil {
+		g.P("	if err != nil || len(accessed) == 0 {")
+		g.P("		return n, err")
+		g.P("	}")
+		g.P("")
+		g.P("	m, err := s.db.", acc.GoName(), ".Delete().Where(", accPkg.Ident("IdIn"), "(accessed...)).Exec(ctx)")
+		g.P("	return n + m, err")
+	} else {
+		g.P("	_ = accessed")
+		g.P("	return n, err")
+	}
 	g.P("}")
 	g.P("")
 	g.P("// Blank empties the two columns that hold contents, for exactly these rows.")
@@ -271,33 +339,69 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("// Empty and not nil: nil is SQL NULL, which a NOT NULL column refuses on")
 	g.P("// PostgreSQL and accepts on SQLite.")
 	g.P("func (s trailStore) Blank(ctx ", pkgCtx.Ident("Context"), ", keys []any) (int, error) {")
-	g.P("	ids, err := trailKeys(keys)")
+	g.P("	ids, accessed, err := trailKeys(keys)")
 	g.P("	if err != nil {")
 	g.P("		return 0, err")
 	g.P("	}")
 	g.P("")
-	g.P("	return s.db.", e, ".Update().")
+	g.P("	n, err := s.db.", e, ".Update().")
 	g.P("		Where(", entPkg.Ident("IdIn"), "(ids...)).")
 	g.P("		SetValue([]byte{}).")
 	g.P("		SetPatch([]byte{}).")
 	g.P("		Save(ctx)")
+	if acc != nil {
+		// An access row says what happened in its columns, and what it
+		// carried in `value`; it is the second that goes.
+		g.P("	if err != nil || len(accessed) == 0 {")
+		g.P("		return n, err")
+		g.P("	}")
+		g.P("")
+		g.P("	m, err := s.db.", acc.GoName(), ".Update().Where(", accPkg.Ident("IdIn"), "(accessed...)).SetValue([]byte{}).Save(ctx)")
+		g.P("	return n + m, err")
+	} else {
+		g.P("	_ = accessed")
+		g.P("	return n, err")
+	}
 	g.P("}")
 	g.P("")
-	g.P("// trailKeys is the keys this store gave out, back as what it deletes by.")
-	g.P("func trailKeys(keys []any) ([]", pkgUuid.Ident("UUID"), ", error) {")
-	g.P("	ids := make([]", pkgUuid.Ident("UUID"), ", 0, len(keys))")
-	g.P("	for _, k := range keys {")
-	g.P("		v, ok := k.(", pkgUuid.Ident("UUID"), ")")
-	g.P("		if !ok {")
-	g.P("			return nil, ", pkgFmt.Ident("Errorf"), "(\"trail: %T is not a key this store gave out\", k)")
-	g.P("		}")
+	g.P("// trailKeys is the keys this store gave out, back as what each table deletes")
+	g.P("// by: the trail's, and the access record's.")
+	g.P("func trailKeys(keys []any) (trailed, accessed []", pkgUuid.Ident("UUID"), ", err error) {")
+	g.P("\tfor _, k := range keys {")
+	g.P("\t\tswitch v := k.(type) {")
+	g.P("\t\tcase ", pkgUuid.Ident("UUID"), ":")
+	g.P("\t\t\ttrailed = append(trailed, v)")
+	if acc != nil {
+		g.P("\t\tcase accessKey:")
+		g.P("\t\t\taccessed = append(accessed, ", pkgUuid.Ident("UUID"), "(v))")
+	}
+	g.P("\t\tdefault:")
+	g.P("\t\t\treturn nil, nil, ", pkgFmt.Ident("Errorf"), "(\"trail: %T is not a key this store gave out\", k)")
+	g.P("\t\t}")
+	g.P("\t}")
 	g.P("")
-	g.P("		ids = append(ids, v)")
-	g.P("	}")
-	g.P("")
-	g.P("	return ids, nil")
+	g.P("\treturn trailed, accessed, nil")
 	g.P("}")
 	g.P("")
+	g.P("// cursorOf is the identifier a key this store gave out holds, which is what")
+	g.P("// a read carries on from in either table: both order by when a row was")
+	g.P("// written, then by its identifier.")
+	g.P("func cursorOf(k any) (", pkgUuid.Ident("UUID"), ", error) {")
+	g.P("\tswitch v := k.(type) {")
+	g.P("\tcase ", pkgUuid.Ident("UUID"), ":")
+	g.P("\t\treturn v, nil")
+	if acc != nil {
+		g.P("\tcase accessKey:")
+		g.P("\t\treturn ", pkgUuid.Ident("UUID"), "(v), nil")
+	}
+	g.P("\t}")
+	g.P("")
+	g.P("\treturn ", pkgUuid.Ident("Nil"), "(), ", pkgFmt.Ident("Errorf"), "(\"trail: %T is not a key this store gave out\", k)")
+	g.P("}")
+	g.P("")
+	if acc != nil {
+		emitAccessRows(g, p, acc, accPkg)
+	}
 
 	g.P("// numbers is what the column holds, which is a domain widened to what")
 	g.P("// protobuf has: there is no `uint8`.")
@@ -329,6 +433,14 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("// would be answering the question at the one moment nobody can.")
 	g.P("func TrailOf(fn func(*", root.Ident(e), ") error) func(doc []byte) error {")
 	g.P("	return func(doc []byte) error {")
+	if acc != nil {
+		// The access record's rows are in the same archive, and are
+		// [AccessOf]'s to read.
+		g.P("		if accessDoc(doc) {")
+		g.P("			return nil")
+		g.P("		}")
+		g.P("")
+	}
 	g.P("		v := &", root.Ident(e), "{}")
 	g.P("		if err := ", pkgProtojson.Ident("Unmarshal"), "(doc, v); err != nil {")
 	g.P("			return err")

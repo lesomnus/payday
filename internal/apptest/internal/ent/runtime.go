@@ -4,6 +4,7 @@ package ent
 
 import (
 	"github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/access"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/schema"
@@ -16,6 +17,12 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	accessFields := schema.Access{}.Fields()
+	_ = accessFields
+	// accessDescDomain is the schema descriptor for domain field.
+	accessDescDomain := accessFields[10].Descriptor()
+	// access.DefaultDomain holds the default value on creation for the domain field.
+	access.DefaultDomain = accessDescDomain.Default.(uint32)
 	auditFields := schema.Audit{}.Fields()
 	_ = auditFields
 	// auditDescDomain is the schema descriptor for domain field.

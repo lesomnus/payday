@@ -40,6 +40,9 @@ const (
 	// The trail archive's manifest: what the archive holds, as the database
 	// keeps the account of it. See `trail.Manifest`.
 	Own_OWN_ARCHIVED Own = 5
+	// The access record: who read or wrote whose personal data, from where
+	// (payday#111). See the `access` package.
+	Own_OWN_ACCESS Own = 6
 )
 
 // Enum value maps for Own.
@@ -51,6 +54,7 @@ var (
 		3: "OWN_AUDIT",
 		4: "OWN_OUTBOX",
 		5: "OWN_ARCHIVED",
+		6: "OWN_ACCESS",
 	}
 	Own_value = map[string]int32{
 		"OWN_UNSPECIFIED": 0,
@@ -59,6 +63,7 @@ var (
 		"OWN_AUDIT":       3,
 		"OWN_OUTBOX":      4,
 		"OWN_ARCHIVED":    5,
+		"OWN_ACCESS":      6,
 	}
 )
 
@@ -2013,7 +2018,7 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05Field\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
 	"\astamped\x18\x02 \x01(\bR\astamped\x12!\n" +
-	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonal*k\n" +
+	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonal*{\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -2023,7 +2028,9 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\tOWN_AUDIT\x10\x03\x12\x0e\n" +
 	"\n" +
 	"OWN_OUTBOX\x10\x04\x12\x10\n" +
-	"\fOWN_ARCHIVED\x10\x05B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\fOWN_ARCHIVED\x10\x05\x12\x0e\n" +
+	"\n" +
+	"OWN_ACCESS\x10\x06B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 14)

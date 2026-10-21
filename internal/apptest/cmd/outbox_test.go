@@ -226,8 +226,8 @@ func TestNoOutboxMeansNoRows(t *testing.T) {
 	x.NoError(err)
 	x.Zero(n)
 
-	// And no loop to run.
-	x.Empty(b.Spin)
+	// And no loop to run but the access record's, which every app has.
+	x.Equal([]any{b.Access}, b.Spin)
 }
 
 // TestTheLoopIsFoundAndNotDeclared is `spin` over the app's own wiring.
@@ -235,9 +235,13 @@ func TestTheLoopIsFoundAndNotDeclared(t *testing.T) {
 	x := require.New(t)
 	b, _ := queued(t)
 
-	x.Len(b.Spin, 1)
-	_, ok := b.Spin[0].(spin.Spinner)
-	x.True(ok, "the drainer is not something spin.Run would find")
+	// The drainer, beside the access record's writer, which every app has.
+	x.Len(b.Spin, 2)
+	x.Contains(b.Spin, any(b.Access))
+	for _, v := range b.Spin {
+		_, ok := v.(spin.Spinner)
+		x.True(ok, "%T is not something spin.Run would find", v)
+	}
 }
 
 // drainOnce runs the loop for exactly as long as it takes to empty the queue.

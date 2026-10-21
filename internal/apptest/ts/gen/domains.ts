@@ -12,6 +12,9 @@
 
 import { pdid } from '@lesomnus/payday'
 
+/** The domain identifiers of app.Access carry. */
+export const AccessDomain = 6
+
 /** The domain identifiers of app.Archived carry. */
 export const ArchivedDomain = 5
 
@@ -59,6 +62,7 @@ export const ThingDomain = 13
 
 // Registered as this module is loaded, which is why importing it is the
 // whole of what an app does with it.
+pdid.register("app.Access", AccessDomain, "access")
 pdid.register("app.Archived", ArchivedDomain, "archived")
 pdid.register("app.Audit", AuditDomain, "audit")
 pdid.register("app.Cell", CellDomain, "cell")

@@ -13,6 +13,7 @@
 
 import type { EntityDesc } from '@lesomnus/payday/store'
 
+import { AccessSchema } from './app/payday/access_pb.js'
 import { ArchivedSchema } from './app/payday/archived_pb.js'
 import { AuditSchema } from './app/payday/audit_pb.js'
 import { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, RobotSchema } from './app/robot_pb.js'
@@ -22,6 +23,7 @@ import { PulseSchema, TallySchema } from './app/tally_pb.js'
 import { SealSchema } from './app/seal_pb.js'
 import { TenantSchema } from './app/payday/tenant_pb.js'
 import { ThingSchema } from './shared/thing_pb.js'
+import { AccessService } from './app/payday/access_svc_pb.js'
 import { ArchivedService } from './app/payday/archived_svc_pb.js'
 import { AuditService } from './app/payday/audit_svc_pb.js'
 import { CellService, FleetService, JointService, PairingService, ReadingService, RobotService } from './app/robot_svc_pb.js'
@@ -31,6 +33,16 @@ import { PulseService, TallyService } from './app/tally_svc_pb.js'
 import { SealService } from './app/seal_svc_pb.js'
 import { TenantService } from './app/payday/tenant_svc_pb.js'
 import { ThingService } from './shared/thing_svc_pb.js'
+
+/** app.Access, as the store holds it. */
+export const Access = {
+	typeName: "app.Access",
+	schema: AccessSchema,
+	domain: 6,
+	key: "id",
+	ids: ["id", "tenantId", "actorId", "actorTenantId"],
+	service: AccessService,
+} as const satisfies EntityDesc
 
 /** app.Archived, as the store holds it. */
 export const Archived = {
@@ -206,5 +218,5 @@ export const Thing = {
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse, Reading, Robot, Seal, Tally, Tenant, Thing] as const
+export const entities = [Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse, Reading, Robot, Seal, Tally, Tenant, Thing] as const
 

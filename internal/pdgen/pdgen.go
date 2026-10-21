@@ -931,6 +931,19 @@ func (e *Entity) Serves() bool {
 	return r.HasAdd() || r.HasAddMany() || r.HasGet() || r.HasPatch() || r.HasErase() || e.List != nil || e.Watch
 }
 
+// Records answers whether the entity is one of payday's own records of what
+// happens -- the trail, the outbox, the archive's manifest, the access record
+// -- which payday writes beneath the servers, and which nothing records in
+// turn.
+func (e *Entity) Records() bool {
+	switch e.Own {
+	case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED, pdpb.Own_OWN_ACCESS:
+		return true
+	}
+
+	return false
+}
+
 // Writes answers whether a server writes the entity: an Add, an AddMany or a
 // Patch, each of which the recorder puts on the trail.
 func (e *Entity) Writes() bool {
@@ -939,12 +952,12 @@ func (e *Entity) Writes() bool {
 }
 
 // Checked answers whether a check of the rows against the trail reads the
-// entity (payday#108): every one but payday's own trail, outbox and archive
-// manifest, which record writes rather than being what is recorded, and one
-// whose writes are kept off the trail -- `trail: {off: {why: ...}}`.
+// entity (payday#108): every one but payday's own trail, outbox, archive
+// manifest and access record, which record what happens rather than being
+// what is recorded, and one whose writes are kept off the trail -- `trail:
+// {off: {why: ...}}`.
 func (e *Entity) Checked() bool {
-	switch e.Own {
-	case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED:
+	if e.Records() {
 		return false
 	}
 
@@ -1658,11 +1671,10 @@ func setName(s *Schema, to *Entity) protoreflect.FullName {
 func (s *Schema) checkTrail() error {
 	for _, v := range s.Entities {
 		t := v.Opts.GetTrail()
-		switch v.Own {
-		case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED:
-			// What records writes, rather than what is recorded.
+		if v.Records() {
+			// What records what happens, rather than what is recorded.
 			if v.Opts.HasTrail() {
-				return fmt.Errorf("%s: trail: is one of payday's own, which records what is written rather than being what a record is about", v.FullName())
+				return fmt.Errorf("%s: trail: is one of payday's own, which records what happens rather than being what a record is about", v.FullName())
 			}
 			continue
 		}
