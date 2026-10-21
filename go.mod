@@ -19,6 +19,7 @@ require (
 	github.com/lesomnus/mkot/pretty v0.0.0-20261013182918-46d8b05a79b3
 	github.com/lesomnus/otx v0.0.0-20261013182912-d2af55df512e
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20261013182912-d2af55df512e
+	github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f
 	github.com/lesomnus/pwr/cel v0.0.0-20261015172325-de464a5ef1fa
 	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e
 	github.com/lesomnus/xli v0.0.0-20261006051808-dadaa2417a76
