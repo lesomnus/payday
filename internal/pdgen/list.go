@@ -32,12 +32,13 @@ const (
 // one.
 func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	// Every entity the Sink has something to say about: a list to answer, a
-	// name to fold, or both. They share one wrapper per entity because two
-	// wrappers over one service would each have to know about the other to
-	// pass the methods it did not override.
+	// name to fold, a tenancy to stamp, or a write that makes what a
+	// transaction was told about a row stale. They share one wrapper per
+	// entity because two wrappers over one service would each have to know
+	// about the other to pass the methods it did not override.
 	wraps := []*Entity{}
 	for _, v := range s.Sorted() {
-		if v.List != nil || v.Alias || v.Stamp != "" || len(v.Agrees) > 0 {
+		if v.List != nil || v.Alias || v.Stamp != "" || len(v.Agrees) > 0 || forgets(v) {
 			wraps = append(wraps, v)
 		}
 	}
@@ -162,6 +163,9 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 
 		if v.Alias {
 			emitAlias(g, v, root)
+		}
+		if forgets(v) {
+			emitForget(g, v, root)
 		}
 		if v.Stamp != "" || len(v.Agrees) > 0 {
 			emitTenancy(g, v, s, p, root)
@@ -421,8 +425,17 @@ func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath)
 	g.P("// decides the name of a row being made; a patch that cleared the alias is")
 	g.P("// a caller asking for something invalid, and answering that with an")
 	g.P("// invented name would hand them a row they did not ask for.")
+	if forgets(v) {
+		g.P("//")
+		g.P("// And it forgets what the transaction was told about the row; see")
+		g.P("// [sink", e, ".Apply].")
+	}
 	g.P("func (s sink", e, ") Patch(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"PatchRequest"),
 		") (*", root.Ident(e), ", error) {")
+	if forgets(v) {
+		g.P("	", pkgSeen.Ident("Forget"), "(s.store.Db.Driver(), ", strconv.Quote(e), ", req.GetRef())")
+		g.P("")
+	}
 	g.P("	if !req.HasAlias() {")
 	g.P("		return s.", e, "ServiceServer.Patch(ctx, req)")
 	g.P("	}")
@@ -435,6 +448,76 @@ func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath)
 	g.P("	req = ", pkgProto.Ident("CloneOf"), "(req)")
 	g.P("	req.SetAlias(v)")
 	g.P("")
+	g.P("	return s.", e, "ServiceServer.Patch(ctx, req)")
+	g.P("}")
+	g.P("")
+}
+
+// forgets is whether a write to a row of `v` makes what a transaction was told
+// about that row stale: a row named by key, which is the only kind `payday/seen`
+// remembers, with a Patch or an Erase to write it with.
+func forgets(v *Entity) bool {
+	r := v.Rpcs()
+	return byKey(v) && (r.HasPatch() || r.HasErase())
+}
+
+// emitForget writes the Sink's Erase, and its Patch and Apply, of an entity
+// whose rows a transaction remembers: each forgets what the transaction was
+// told about the row it writes, before it writes it ([seen.Forget]).
+//
+// What a transaction remembers is about the row as it was: that a frame could
+// see it through the wall, and the set beside it, and which tenant a walk from
+// it arrives at. An Erase takes the row out of every read, and one that takes
+// it for good lets an Add put another under its key, in another tenant; a
+// Patch or an Apply may move it to a set the caller cannot see. So the next
+// question about the row is asked again.
+//
+// On the Sink, because that is what both stacks are built on: a write the
+// deployment makes through the server with no wall is a write to the row as
+// much as one through the gate is.
+func emitForget(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
+	e := v.GoName()
+	forget := func(ref string) {
+		g.P("	", pkgSeen.Ident("Forget"), "(s.store.Db.Driver(), ", strconv.Quote(e), ", ", ref, ")")
+		g.P("")
+	}
+
+	if v.Rpcs().HasErase() {
+		g.P("// Erase forgets what the transaction was told about the row, before it is")
+		g.P("// erased: whether a frame may see it, and where a walk from it arrives.")
+		g.P("// Neither is true of a row that is gone, nor of another put under its")
+		g.P("// key. See [seen.Forget].")
+		g.P("func (s sink", e, ") Erase(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"Ref"),
+			") (*", root.Ident(e+"EraseResponse"), ", error) {")
+		forget("req")
+		g.P("	return s.", e, "ServiceServer.Erase(ctx, req)")
+		g.P("}")
+		g.P("")
+	}
+	if !v.Rpcs().HasPatch() {
+		return
+	}
+
+	g.P("// Apply forgets what the transaction was told about the row, before it is")
+	g.P("// written: a document may move it to a set the caller cannot see. See")
+	g.P("// [seen.Forget].")
+	g.P("func (s sink", e, ") Apply(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"ApplyRequest"),
+		") (*", root.Ident(e), ", error) {")
+	forget("req.GetRef()")
+	g.P("	return s.", e, "ServiceServer.Apply(ctx, req)")
+	g.P("}")
+	g.P("")
+
+	// The Patch of an entity with an alias is the one that folds it, and
+	// forgets there; see [emitAlias].
+	if v.Alias {
+		return
+	}
+	g.P("// Patch forgets what the transaction was told about the row, before it is")
+	g.P("// written; see [sink", e, ".Apply].")
+	g.P("func (s sink", e, ") Patch(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"PatchRequest"),
+		") (*", root.Ident(e), ", error) {")
+	forget("req.GetRef()")
 	g.P("	return s.", e, "ServiceServer.Patch(ctx, req)")
 	g.P("}")
 	g.P("")
@@ -1009,9 +1092,10 @@ func emitTenantAt(g *protogen.GeneratedFile, v *Entity, path []string, s *Schema
 	walk, kept := rest(first.Target(), path[1:])
 	if to, ok := s.of(first.Target().FullName()); kept && ok && byKey(to) {
 		g.P("	// Asked once a transaction: no step past the first can be repointed, so")
-		g.P("	// where this walk arrives from a row is decided for good. See")
-		g.P("	// [seen.Tenant].")
-		g.P("	return ", pkgSeen.Ident("Tenant"), "(s.store.Db.Driver(), ", strconv.Quote(walk), ", ref, func() ([]byte, error) {")
+		g.P("	// where this walk arrives from a row is decided until the row is")
+		g.P("	// written. See [seen.Tenant].")
+		g.P("	return ", pkgSeen.Ident("Tenant"), "(s.store.Db.Driver(), ", strconv.Quote(to.GoName()), ", ",
+			strconv.Quote(walk), ", ref, func() ([]byte, error) {")
 		in = "		"
 	}
 
@@ -1044,10 +1128,10 @@ func emitTenantAt(g *protogen.GeneratedFile, v *Entity, path []string, s *Schema
 }
 
 // rest is the walk from `at` along `steps`, as `payday/seen` names it -- the
-// entity it starts at and the edges it takes -- and whether every one of those
-// edges is immutable.
+// edges it takes from the entity it starts at -- and whether every one of
+// those edges is immutable.
 func rest(at graph.Entity, steps []string) (string, bool) {
-	walk := []string{string(at.FullName().Name())}
+	walk := []string{}
 	kept := true
 	for _, step := range steps {
 		e, ok := edge(at, step)

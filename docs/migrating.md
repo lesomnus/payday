@@ -3,6 +3,27 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A write to a row forgets what a transaction was told about it
+
+**Applies if** you generate with `pd gen`. Regenerate; nothing else has to
+change, unless code of yours calls `seen.Tenant`.
+
+- **The Sink forgets what a transaction was told about a row before a
+  `Patch`, an `Apply` or an `Erase` writes it** (`seen.Forget`), so the next
+  question about the row is asked again (#84). Before, an answer outlived a
+  write to its row for the rest of the transaction: a row erased was still one
+  the caller had seen, a row moved to a set the caller cannot see was still in
+  reach, and a key a hard erase had freed and an `Add` had given another row,
+  in another tenant, still arrived at the old row's tenant. On the Sink, so a
+  write through the server with no wall forgets as one through the gate does;
+  an entity the Sink had nothing else to say about is wrapped for it.
+- **A write around the servers is not seen** -- ent itself, or SQL. A
+  transaction that makes one to a row and then names the row through the
+  servers is answered from before it.
+- **`seen.Tenant` takes the entity a walk starts at and the walk apart**:
+  `seen.Tenant(drv, "Robot", "tenant", ref, ask)` where it was
+  `seen.Tenant(drv, "Robot.tenant", ref, ask)`. Only generated code calls it.
+
 ## An order is over columns a cursor can carry
 
 **Applies if** an entity's `list:` orders by a column that may be null, a

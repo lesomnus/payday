@@ -127,7 +127,7 @@ func TestOnlyARowNamedByItsKeyIsRemembered(t *testing.T) {
 
 	tenant := 0
 	for range 2 {
-		_, err := seen.Tenant(drv, "Robot.tenant", byAlias, func() ([]byte, error) {
+		_, err := seen.Tenant(drv, "Robot", "tenant", byAlias, func() ([]byte, error) {
 			tenant++
 			return []byte{1}, nil
 		})
@@ -198,20 +198,20 @@ func TestATenantIsAskedOnceATransaction(t *testing.T) {
 		return []byte{1, 2, 3}, nil
 	}
 
-	v, err := seen.Tenant(drv, "Robot.tenant", byKey(robot), ask)
+	v, err := seen.Tenant(drv, "Robot", "tenant", byKey(robot), ask)
 	x.NoError(err)
 	x.Equal([]byte{1, 2, 3}, v)
 
 	// What a caller does with the answer is theirs. A stamp is set from it.
 	v[0] = 9
 
-	v, err = seen.Tenant(drv, "Robot.tenant", byKey(robot), ask)
+	v, err = seen.Tenant(drv, "Robot", "tenant", byKey(robot), ask)
 	x.NoError(err)
 	x.Equal([]byte{1, 2, 3}, v)
 	x.Equal(1, n)
 
 	// Another path from the same row is another walk.
-	_, err = seen.Tenant(drv, "Robot.fleet.tenant", byKey(robot), ask)
+	_, err = seen.Tenant(drv, "Robot", "fleet.tenant", byKey(robot), ask)
 	x.NoError(err)
 	x.Equal(2, n)
 }
@@ -230,12 +230,85 @@ func TestATenantNotFoundIsAskedAgain(t *testing.T) {
 		return []byte{1}, nil
 	}
 
-	_, err := seen.Tenant(drv, "Robot.tenant", byKey(robot), ask)
+	_, err := seen.Tenant(drv, "Robot", "tenant", byKey(robot), ask)
 	x.Equal(codes.InvalidArgument, status.Code(err))
 
 	for range 2 {
-		_, err = seen.Tenant(drv, "Robot.tenant", byKey(robot), ask)
+		_, err = seen.Tenant(drv, "Robot", "tenant", byKey(robot), ask)
 		x.NoError(err)
 	}
 	x.Equal(2, n)
+}
+
+// A write to a row is what can make an answer about it wrong -- it is erased,
+// moved to a set the caller cannot see, or taken for good and its key given to
+// another row -- so the write forgets what the transaction was told about it,
+// and the next question is asked again.
+func TestAWriteForgetsTheRowItIsAbout(t *testing.T) {
+	x := require.New(t)
+	ctx, drv := t.Context(), begun(t, driver{})
+
+	robot, other := pdid.New(7), pdid.New(7)
+	one, two := framed(ctx), framed(ctx)
+
+	a := &asks{}
+	n := 0
+	ask := func() ([]byte, error) {
+		n++
+		return []byte{1}, nil
+	}
+	tell := func() {
+		for _, c := range []context.Context{one, two} {
+			for _, v := range []pdid.Id{robot, other} {
+				x.NoError(seen.Visible(c, drv, "Robot", byKey(v), a.visible))
+			}
+		}
+		for _, v := range []pdid.Id{robot, other} {
+			_, err := seen.Tenant(drv, "Robot", "tenant", byKey(v), ask)
+			x.NoError(err)
+		}
+	}
+
+	tell()
+	x.Equal(4, a.n)
+	x.Equal(2, n)
+
+	seen.Forget(drv, "Robot", byKey(robot))
+	tell()
+	x.Equal(6, a.n, "every frame's answer about the row written is asked again, and only that row's")
+	x.Equal(3, n, "where a walk from the row written arrives is asked again, and only that row's")
+
+	// Another entity's row of the same key is another row.
+	seen.Forget(drv, "Joint", byKey(other))
+	tell()
+	x.Equal(6, a.n)
+	x.Equal(3, n)
+}
+
+// A write that names its row by alias forgets every row of the entity: which
+// one the alias names is what a read would say.
+func TestAWriteByAliasForgetsEveryRowOfTheEntity(t *testing.T) {
+	x := require.New(t)
+	ctx, drv := framed(t.Context()), begun(t, driver{})
+
+	robot, joint := pdid.New(7), pdid.New(8)
+	a := &asks{}
+	x.NoError(seen.Visible(ctx, drv, "Robot", byKey(robot), a.visible))
+	x.NoError(seen.Visible(ctx, drv, "Joint", byKey(joint), a.visible))
+
+	seen.Forget(drv, "Robot", ref{})
+	x.NoError(seen.Visible(ctx, drv, "Robot", byKey(robot), a.visible))
+	x.NoError(seen.Visible(ctx, drv, "Joint", byKey(joint), a.visible))
+	x.Equal(3, a.n, "the robot is asked again, and the joint is not")
+
+	// And a reference that is not there names nothing better.
+	seen.Forget(drv, "Robot", nil)
+	x.NoError(seen.Visible(ctx, drv, "Robot", byKey(robot), a.visible))
+	x.Equal(4, a.n)
+}
+
+// Outside a transaction nothing was kept, so nothing is forgotten.
+func TestForgettingOutsideATransactionIsNothing(t *testing.T) {
+	seen.Forget(nil, "Robot", byKey(pdid.New(7)))
+	seen.Forget(driver{}, "Robot", ref{})
 }

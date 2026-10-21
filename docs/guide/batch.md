@@ -69,7 +69,8 @@ answer `WithDriver`; see [the server guide](server.md#the-one-thing-that-is-easy
 
 A batch is one transaction, and a transaction keeps what it was told, so the
 sink asks which tenant a row is in once for the whole batch, however many of its
-operations name that row. The gate
+operations name that row -- until one of them writes it, which forgets what was
+told about it. The gate
 asks once per operation: each one is narrowed into a frame of its own, and what
 one frame may see is not an answer about the next. See [`seen`](../../seen).
 
