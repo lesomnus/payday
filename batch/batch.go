@@ -16,7 +16,7 @@
 //
 // # The hard part, which is this package
 //
-// payday enforces four things by looking at the method gRPC dispatched. A batch
+// payday enforces five things by looking at the method gRPC dispatched. A batch
 // arrives as **one** method carrying many, so every one of them is enforced
 // against `BatchService/Do` and none against what is actually being asked for:
 //
@@ -25,6 +25,8 @@
 //     methods.
 //   - `gate.Policy.May`, and the scope `gate.Policy.Where` answers with.
 //   - `grpcx.Limit`, which counts calls.
+//   - `access.Config.Downloads`, which is what makes a download say what it
+//     is for and be recorded before its answer leaves.
 //
 // Left alone, a batch is a way to reach every one of them -- a caller whose
 // token allows one method wraps any method they like in a batch and it is
@@ -32,9 +34,10 @@
 // later: it is the whole security model with a hole in it, and the hole is
 // exactly as wide as the batch RPC is useful.
 //
-// [Guard] is those four as functions, applied per operation. Every one of them
+// [Guard] is those five as functions, applied per operation. Every one of them
 // was already a function or was made one -- `gate.Decide` says in its own
-// comment that it is exported for this.
+// comment that it is exported for this. A download is the one it refuses
+// outright, since what it asks of a call a batch's operation cannot give.
 //
 // # It is refused rather than defaulted
 //
@@ -54,6 +57,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"github.com/lesomnus/payday/access"
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
@@ -123,6 +127,16 @@ func (g Guard) Allow(ctx context.Context, method string) (context.Context, error
 
 	if g.Closed != nil && g.Closed(method) {
 		return nil, grpcx.ErrClosed(method)
+	}
+
+	// A download is answered by itself (payday#111): it says what it is for,
+	// and its row is written before its answer leaves. An operation of a
+	// batch can do neither -- what the call says it is for is the envelope's,
+	// and its answer leaves with every other operation's -- so it is refused
+	// here rather than let out as the batch's read.
+	if access.IsDownload(ctx, method) {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"%s hands personal data out, and is called by itself rather than in a batch", method)
 	}
 
 	if err := grpcx.Allow(ctx, g.Limiter, g.By, method); err != nil {
