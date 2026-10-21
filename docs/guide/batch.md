@@ -135,20 +135,32 @@ Refused rather than served open, because served open is a privilege escalation
 and the way it would be found is somebody reading the wiring and noticing what
 is not there. The snippet above logs and serves no batch.
 
-### The limit counts operations
+### The limit counts what operations cost
 
 A batch of a thousand operations counts as a thousand. An unguarded batch is
 otherwise a way to do a thousand calls' worth of work for the price of one.
 
-`Max` caps the list itself: an unbounded batch is an unbounded transaction, and
-that holds locks for a long time.
+And an operation counts as what it costs, which is not always one. An `AddMany`
+of a thousand rows is a thousand `Add`s' worth of work, sent as one call, so it
+is charged a thousand -- here, and by the interceptor when it is called alone.
+Which RPCs those are is the schema's to say: `pd.Cost` is generated with them,
+`pd.Batch` puts it in a guard that names no `Cost`, and the interceptor is
+handed it (`grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant(), pd.Cost)`).
+A call that costs more than the limit lets through at once is refused, and told
+to ask for less rather than when to ask again; a deployment that takes large
+`AddMany`s sets a burst at least that large.
 
-An `AddMany` is one operation, however many rows it carries: what bounds it is
-its own `max` (a thousand unless the schema says otherwise), which it refuses
-past before anything is asked. And a batch is where an `AddMany` sent by a
-caller costs least -- in a transaction begun with `dialect.BeginTx` each row
-its items name is asked about once, and the trail is written by the commit;
-sent alone, it asks of each item, as that many `Add`s would.
+`Max` caps the list itself: an unbounded batch is an unbounded transaction, and
+that holds locks for a long time. `Rows` caps what the list asks to write, as
+its operations' costs add up -- a thousand when nothing said (`batch.MaxRows`,
+`server.max_batch_rows`): one `AddMany` of a thousand, or a thousand `Add`s, but
+not a hundred `AddMany`s of a thousand each. A batch over either is refused
+before anything is charged or written.
+
+A batch is still where an `AddMany` sent by a caller costs least -- in a
+transaction begun with `dialect.BeginTx` each row its items name is asked about
+once, and the trail is written by the commit; sent alone, it asks of each item,
+as that many `Add`s would.
 
 ## 4. Referring to a row you are creating in the same batch
 

@@ -64,6 +64,13 @@ func EmitBatch(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		return nil, ", pkgBatch.Ident("ErrNoGuard"))
 	g.P("	}")
 	g.P("")
+	g.P("	// What an operation costs is the schema's to say -- an AddMany is as many")
+	g.P("	// calls as its items -- and nothing the configuration knows. So a guard")
+	g.P("	// that says nothing of it is given this app's ([Cost]).")
+	g.P("	if guard.Cost == nil {")
+	g.P("		guard.Cost = Cost")
+	g.P("	}")
+	g.P("")
 	g.P("	return batchServer{s: s, drv: drv, guard: guard}, nil")
 	g.P("}")
 	g.P("")
@@ -96,6 +103,31 @@ func EmitBatch(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("	}")
 	g.P("")
 
+	// What each operation asks for, read before any of it is let through:
+	// its cost is read off its request, and a batch that writes more rows than
+	// a transaction may is refused before anything is charged.
+	g.P("	// What each operation asks for, as the message its method takes, and what")
+	g.P("	// it costs -- an AddMany is as many rows as its items. A batch that asks")
+	g.P("	// to write more rows than one transaction may is refused here, before")
+	g.P("	// anything is charged or written: it is one transaction however many")
+	g.P("	// operations it is said in.")
+	g.P("	in := make([]", pkgProto.Ident("Message"), ", len(ops))")
+	g.P("	costs := make([]int, len(ops))")
+	g.P("	rows := 0")
+	g.P("	for i, op := range ops {")
+	g.P("		v, err := unpack(op)")
+	g.P("		if err != nil {")
+	g.P("			return nil, ", pkgBatch.Ident("Failed"), "(i, op.GetMethod(), err)")
+	g.P("		}")
+	g.P("")
+	g.P("		in[i], costs[i] = v, b.guard.CostOf(op.GetMethod(), v)")
+	g.P("		rows += costs[i]")
+	g.P("	}")
+	g.P("	if err := b.guard.CheckRows(rows); err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+
 	// Every rule is applied before anything is written. A batch whose eighth
 	// operation is refused should not have run the first seven, and although
 	// the transaction would undo them, the work and the locks are real.
@@ -103,10 +135,10 @@ func EmitBatch(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("	// transaction would undo the work of a batch refused halfway, but the")
 	g.P("	// work and the locks it took are real -- and a rate limiter that had")
 	g.P("	// already counted the first seven would charge for a batch that never")
-	g.P("	// happened.")
+	g.P("	// happened. Each is charged what it costs, as a call of it would be.")
 	g.P("	cs := make([]", pkgCtx.Ident("Context"), ", len(ops))")
 	g.P("	for i, op := range ops {")
-	g.P("		c, err := b.guard.Allow(ctx, op.GetMethod())")
+	g.P("		c, err := b.guard.Allow(ctx, op.GetMethod(), costs[i])")
 	g.P("		if err != nil {")
 	g.P("			return nil, ", pkgBatch.Ident("Failed"), "(i, op.GetMethod(), err)")
 	g.P("		}")
@@ -127,7 +159,7 @@ func EmitBatch(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("")
 	g.P("	vs := make([]*", pkgAnypb.Ident("Any"), ", len(ops))")
 	g.P("	for i, op := range ops {")
-	g.P("		v, err := dispatch(cs[i], s, op)")
+	g.P("		v, err := dispatch(cs[i], s, op.GetMethod(), in[i])")
 	g.P("		if err != nil {")
 	g.P("			tx.Rollback()")
 	g.P("			return nil, ", pkgBatch.Ident("Failed"), "(i, op.GetMethod(), err)")
@@ -214,16 +246,39 @@ func batchOps(s *Schema, files []*protogen.File) []batchOp {
 }
 
 func emitDispatch(g *protogen.GeneratedFile, ops []batchOp, p Paths, root protogen.GoImportPath) {
-	g.P("// dispatch runs one operation against the stack the transaction is on.")
+	g.P("// unpack is the request an operation carries, as exactly the message its")
+	g.P("// method takes.")
 	g.P("//")
-	g.P("// The request is unpacked into exactly the message the method takes, and an")
-	g.P("// `Any` carrying anything else is refused rather than coerced -- a request")
-	g.P("// that decoded into a different message would be a write the caller did not")
-	g.P("// ask for, and `Any` is checked by type Url so there is a right answer.")
-	g.P("func dispatch(ctx ", pkgCtx.Ident("Context"), ", s ", root.Ident("Server"),
-		", op *", pkgPdpb.Ident("Op"), ") (*", pkgAnypb.Ident("Any"), ", error) {")
+	g.P("// An `Any` carrying anything else is refused rather than coerced -- a")
+	g.P("// request that decoded into a different message would be a write the")
+	g.P("// caller did not ask for, and `Any` is checked by type Url so there is a")
+	g.P("// right answer.")
+	g.P("func unpack(op *", pkgPdpb.Ident("Op"), ") (", pkgProto.Ident("Message"), ", error) {")
 	g.P("	m := op.GetMethod()")
 	g.P("")
+	g.P("	var v ", pkgProto.Ident("Message"))
+	g.P("	switch m {")
+	for _, op := range ops {
+		g.P("	case ", root.Ident(op.Const), ":")
+		g.P("		v = &", root.Ident(op.In), "{}")
+	}
+	g.P("	default:")
+	g.P("		// Including every Rpc written by hand: those live on a service of")
+	g.P("		// their own, which `Server` has no accessor for.")
+	g.P("		return nil, ", pkgBatch.Ident("ErrNoMethod"), "(m)")
+	g.P("	}")
+	g.P("")
+	g.P("	if err := op.GetRequest().UnmarshalTo(v); err != nil {")
+	g.P("		return nil, ", pkgBatch.Ident("ErrRequest"), "(m, err)")
+	g.P("	}")
+	g.P("")
+	g.P("	return v, nil")
+	g.P("}")
+	g.P("")
+	g.P("// dispatch runs one operation, of method `m` asking `v`, against the stack")
+	g.P("// the transaction is on. `v` is what [unpack] read for it.")
+	g.P("func dispatch(ctx ", pkgCtx.Ident("Context"), ", s ", root.Ident("Server"),
+		", m string, v ", pkgProto.Ident("Message"), ") (*", pkgAnypb.Ident("Any"), ", error) {")
 	g.P("	// Under the operation's own name. The recorder fills in what the")
 	g.P("	// caller asked for by asking gRPC, and in here gRPC answers with the")
 	g.P("	// envelope -- `BatchService/Do`, for every operation of every batch --")
@@ -231,30 +286,70 @@ func emitDispatch(g *protogen.GeneratedFile, ops []batchOp, p Paths, root protog
 	g.P("	// the same call.")
 	g.P("	ctx = ", pkgBatch.Ident("AsOp"), "(ctx, m)")
 	g.P("")
+	g.P("	var (")
+	g.P("		res ", pkgProto.Ident("Message"))
+	g.P("		err error")
+	g.P("	)")
 	g.P("	switch m {")
-
 	for _, op := range ops {
 		g.P("	case ", root.Ident(op.Const), ":")
-		g.P("		v := &", root.Ident(op.In), "{}")
-		g.P("		if err := op.GetRequest().UnmarshalTo(v); err != nil {")
-		g.P("			return nil, ", pkgBatch.Ident("ErrRequest"), "(m, err)")
-		g.P("		}")
-		g.P("")
-		g.P("		res, err := s.", op.Entity, "().", op.Rpc, "(ctx, v)")
-		g.P("		if err != nil {")
-		g.P("			return nil, err")
-		g.P("		}")
-		g.P("")
-		g.P("		return ", pkgAnypb.Ident("New"), "(res)")
-		g.P("")
+		g.P("		res, err = s.", op.Entity, "().", op.Rpc, "(ctx, v.(*", root.Ident(op.In), "))")
 	}
-
 	g.P("	default:")
-	g.P("		// Including every Rpc written by hand: those live on a service of")
-	g.P("		// their own and `Server` has no accessor for one, so there is nothing")
-	g.P("		// here to call. Unimplemented says exactly that.")
 	g.P("		return nil, ", pkgBatch.Ident("ErrNoMethod"), "(m)")
 	g.P("	}")
+	g.P("	if err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("")
+	g.P("	return ", pkgAnypb.Ident("New"), "(res)")
 	g.P("}")
+	g.P("")
+}
+
+// EmitCost writes how many calls a request of this app counts as: one, but an
+// AddMany is one for each of its items.
+//
+// An AddMany of a thousand rows is a thousand Adds' worth of work sent as one
+// call, and the limit and a batch counted it as one -- a thousand calls' worth
+// for the price of one, which is what counting a batch's operations one by one
+// was there to stop. Which RPCs write many rows is the schema's to say, so the
+// answer is generated: an RPC an entity asks for is weighed without anybody
+// listing it.
+func EmitCost(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath) {
+	g.P("// Cost is how many calls a request counts as: an AddMany is one for each of")
+	g.P("// its items -- the Add each stands for -- and every other call is one.")
+	g.P("//")
+	g.P("// It is what the limit charges a call, and an operation of a batch, and")
+	g.P("// what the rows a batch asks to write are counted by. [Batch] is given it")
+	g.P("// when its guard says nothing; the interceptor is handed it:")
+	g.P("//")
+	g.P("//	WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant(), pd.Cost))")
+	g.P("//")
+	g.P("// An app that weighs RPCs of its own writes a Cost that asks this one for")
+	g.P("// the rest.")
+	g.P("func Cost(method string, req any) int {")
+	many := []*Entity{}
+	for _, v := range s.Sorted() {
+		if v.Rpcs().HasAddMany() {
+			many = append(many, v)
+		}
+	}
+	if len(many) > 0 {
+		g.P("	switch method {")
+		for _, v := range many {
+			name := v.GoName()
+			g.P("	case ", root.Ident(name+"Service_AddMany_FullMethodName"), ":")
+			g.P("		if v, ok := req.(*", root.Ident(name+"AddManyRequest"), "); ok {")
+			g.P("			return max(len(v.GetItems()), 1)")
+			g.P("		}")
+		}
+		g.P("	}")
+		g.P("")
+	}
+	g.P("	return 1")
+	g.P("}")
+	g.P("")
+	g.P("var _ ", pkgGrpcx.Ident("Cost"), " = Cost")
 	g.P("")
 }

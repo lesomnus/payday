@@ -21,11 +21,13 @@ type stubLimiter struct {
 	retry time.Duration
 	ok    bool
 
-	keys []string
+	keys  []string
+	costs []int
 }
 
-func (l *stubLimiter) Allow(_ context.Context, key string) (time.Duration, bool) {
+func (l *stubLimiter) Allow(_ context.Context, key string, n int) (time.Duration, bool) {
 	l.keys = append(l.keys, key)
+	l.costs = append(l.costs, n)
 	return l.retry, l.ok
 }
 
@@ -34,8 +36,15 @@ func (l *stubLimiter) Allow(_ context.Context, key string) (time.Duration, bool)
 func limited(t *testing.T, l grpcx.Limiter, by func(context.Context, string) string) (bool, error) {
 	t.Helper()
 
+	return costly(t, l, by, nil)
+}
+
+// costly is [limited] with the calls costing what `cost` says.
+func costly(t *testing.T, l grpcx.Limiter, by func(context.Context, string) string, cost grpcx.Cost) (bool, error) {
+	t.Helper()
+
 	var ran bool
-	_, err := grpcx.LimitUnary(l, by)(
+	_, err := grpcx.LimitUnary(l, by, cost)(
 		t.Context(), nil, &grpc.UnaryServerInfo{FullMethod: "/go_app.HolderService/Get"},
 		func(context.Context, any) (any, error) {
 			ran = true
@@ -99,9 +108,56 @@ func TestLimit(t *testing.T) {
 
 		// Not an interceptor that lets everything through, which is what a
 		// deployment that configured no limit gets.
-		x.Nil(grpcx.Limit(nil, by("tenant:acme")))
-		x.Nil(grpcx.Limit(&stubLimiter{ok: true}, nil))
-		x.Len(grpcx.Limit(&stubLimiter{ok: true}, by("tenant:acme")), 2, "the unary one and the stream one")
+		x.Nil(grpcx.Limit(nil, by("tenant:acme"), nil))
+		x.Nil(grpcx.Limit(&stubLimiter{ok: true}, nil, nil))
+		x.Len(grpcx.Limit(&stubLimiter{ok: true}, by("tenant:acme"), nil), 2, "the unary one and the stream one")
+	})
+
+	// An AddMany of a thousand rows is a thousand Adds' worth of work, and
+	// counted as one call it would be a thousand calls' worth for the price
+	// of one.
+	t.Run("a call is charged what it costs", func(t *testing.T) {
+		x := require.New(t)
+
+		l := &stubLimiter{ok: true}
+		ran, err := costly(t, l, by("tenant:acme"), func(method string, _ any) int {
+			if method == "/go_app.HolderService/Get" {
+				return 7
+			}
+			return 1
+		})
+		x.True(ran)
+		x.NoError(err)
+		x.Equal([]int{7}, l.costs)
+	})
+
+	t.Run("and a call that costs less than one, or nothing said, is one", func(t *testing.T) {
+		x := require.New(t)
+
+		l := &stubLimiter{ok: true}
+		_, err := costly(t, l, by("tenant:acme"), func(string, any) int { return 0 })
+		x.NoError(err)
+		_, err = costly(t, l, by("tenant:acme"), nil)
+		x.NoError(err)
+		x.Equal([]int{1, 1}, l.costs)
+	})
+
+	// Waiting changes nothing for a call larger than the limit lets through at
+	// once, so the caller is not told how long to wait: a client told to wait
+	// asks the same thing again.
+	t.Run("a call that costs more than is ever let through is told to ask for less", func(t *testing.T) {
+		x := require.New(t)
+
+		ran, err := limited(t, &stubLimiter{retry: grpcx.Never}, by("tenant:acme"))
+		x.False(ran)
+		x.Equal(codes.ResourceExhausted, status.Code(err))
+		x.Contains(status.Convert(err).Message(), "ask for less")
+
+		s, _ := status.FromError(err)
+		for _, d := range s.Details() {
+			_, retry := d.(*errdetails.RetryInfo)
+			x.False(retry, "a call that can never run was told when to ask again")
+		}
 	})
 }
 
@@ -113,11 +169,11 @@ func TestMemLimiter(t *testing.T) {
 		// however long the two before it took.
 		l := grpcx.NewLimiter(1, 2)
 		for range 2 {
-			_, ok := l.Allow(t.Context(), "tenant:acme")
+			_, ok := l.Allow(t.Context(), "tenant:acme", 1)
 			x.True(ok)
 		}
 
-		retry, ok := l.Allow(t.Context(), "tenant:acme")
+		retry, ok := l.Allow(t.Context(), "tenant:acme", 1)
 		x.False(ok)
 		x.Positive(retry)
 		x.LessOrEqual(retry, time.Second, "a token a second, so never longer than that")
@@ -129,12 +185,12 @@ func TestMemLimiter(t *testing.T) {
 		// The whole of what "per caller" means, and the thing a single global
 		// bucket would get wrong.
 		l := grpcx.NewLimiter(1, 1)
-		_, ok := l.Allow(t.Context(), "tenant:acme")
+		_, ok := l.Allow(t.Context(), "tenant:acme", 1)
 		x.True(ok)
-		_, ok = l.Allow(t.Context(), "tenant:acme")
+		_, ok = l.Allow(t.Context(), "tenant:acme", 1)
 		x.False(ok)
 
-		_, ok = l.Allow(t.Context(), "tenant:hooli")
+		_, ok = l.Allow(t.Context(), "tenant:hooli", 1)
 		x.True(ok)
 	})
 
@@ -144,7 +200,7 @@ func TestMemLimiter(t *testing.T) {
 		// A bucket that never holds a whole token is a limiter that refuses
 		// everything, which is not what anybody writing a zero meant.
 		l := grpcx.NewLimiter(1, 0)
-		_, ok := l.Allow(t.Context(), "tenant:acme")
+		_, ok := l.Allow(t.Context(), "tenant:acme", 1)
 		x.True(ok)
 	})
 
@@ -165,7 +221,7 @@ func TestMemLimiter(t *testing.T) {
 		)
 		for range 100 {
 			wg.Go(func() {
-				if _, allowed := l.Allow(ctx, "tenant:acme"); allowed {
+				if _, allowed := l.Allow(ctx, "tenant:acme", 1); allowed {
 					ok.Add(1)
 				}
 			})
@@ -202,9 +258,9 @@ func TestNoLimitIsNoLimit(t *testing.T) {
 	}
 
 	for _, at := range []grpc.UnaryServerInterceptor{
-		grpcx.LimitUnary(nil, nil),
-		grpcx.LimitUnary(nil, func(context.Context, string) string { return "who" }),
-		grpcx.LimitUnary(grpcx.NewLimiter(1, 1), nil),
+		grpcx.LimitUnary(nil, nil, nil),
+		grpcx.LimitUnary(nil, func(context.Context, string) string { return "who" }, nil),
+		grpcx.LimitUnary(grpcx.NewLimiter(1, 1), nil, nil),
 	} {
 		served = false
 		_, err := at(t.Context(), nil, &grpc.UnaryServerInfo{FullMethod: "/a.B/C"}, handler)

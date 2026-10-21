@@ -24,7 +24,9 @@
 //   - `frame.Grant.Allows`, which is how a credential is attenuated to a few
 //     methods.
 //   - `gate.Policy.May`, and the scope `gate.Policy.Where` answers with.
-//   - `grpcx.Limit`, which counts calls.
+//   - `grpcx.Limit`, which counts calls -- as their `grpcx.Cost` says, so an
+//     operation that writes a thousand rows counts as the thousand calls it
+//     stands for.
 //   - `access.Config.Downloads`, which is what makes a download say what it
 //     is for and be recorded before its answer leaves.
 //
@@ -72,6 +74,18 @@ import (
 // rows.
 const MaxOps = 128
 
+// MaxRows is how many rows one batch may ask to write when nothing said, as
+// what its operations cost adds up ([Guard.Cost]).
+//
+// A second limit beside [MaxOps], for the same reason, because an operation is
+// not a row: one AddMany carries a thousand, so a batch of a hundred and
+// twenty-eight of them was a transaction of more than a hundred thousand rows
+// that counted as a hundred and twenty-eight. A thousand is the most an
+// AddMany carries when its schema says nothing, which is where the ORM put the
+// most one transaction should write: a batch is one transaction, and so is an
+// AddMany.
+const MaxRows = 1000
+
 // ErrNoGuard is a batch built without the rules the transport enforces.
 //
 // It is a refusal at build time rather than a permissive default, because the
@@ -106,18 +120,30 @@ type Guard struct {
 	Limiter grpcx.Limiter
 	By      func(ctx context.Context, method string) string
 
+	// Cost is how many calls each operation counts as, for the limit and for
+	// [Guard.Rows] -- the same answer [grpcx.LimitUnary] is given, for the
+	// same reason. Nil counts every operation as one. The generated `pd.Batch`
+	// puts the schema's (`pd.Cost`) in when this says nothing, since which
+	// RPCs write many rows is the schema's to say.
+	Cost grpcx.Cost
+
 	// Max is how many operations one batch may carry; zero is [MaxOps].
 	Max int
+
+	// Rows is how many rows one batch may ask to write, as the costs of its
+	// operations add up; zero is [MaxRows].
+	Rows int
 }
 
-// Allow applies every rule to one operation and answers with the context that
-// operation is served with.
+// Allow applies every rule to one operation, which costs `cost` calls
+// ([Guard.CostOf]), and answers with the context that operation is served
+// with.
 //
 // The order is the interceptor chain's: what the credential allows, what is
 // closed to everybody, how often, and then what the policy says -- which is
 // last because it is the one that answers with something, and the others only
 // answer yes or no.
-func (g Guard) Allow(ctx context.Context, method string) (context.Context, error) {
+func (g Guard) Allow(ctx context.Context, method string, cost int) (context.Context, error) {
 	// The credential first. It is the cheapest and the most specific: a token
 	// attenuated to two methods says so without anything being looked up.
 	if f, ok := frame.From(ctx); ok && !f.Grant.Allows(method) {
@@ -139,7 +165,7 @@ func (g Guard) Allow(ctx context.Context, method string) (context.Context, error
 			"%s hands personal data out, and is called by itself rather than in a batch", method)
 	}
 
-	if err := grpcx.Allow(ctx, g.Limiter, g.By, method); err != nil {
+	if err := grpcx.Allow(ctx, g.Limiter, g.By, method, cost); err != nil {
 		return nil, err
 	}
 
@@ -157,7 +183,14 @@ func (g Guard) Allow(ctx context.Context, method string) (context.Context, error
 // `config.ServerConfig.Guard` still fills in how a caller is counted -- so what
 // this catches is a `batch.Guard{}` written by hand and nothing else.
 func (g Guard) IsZero() bool {
-	return g.Closed == nil && g.Policy == nil && g.Limiter == nil && g.By == nil && g.Max == 0
+	return g.Closed == nil && g.Policy == nil && g.Limiter == nil && g.By == nil &&
+		g.Cost == nil && g.Max == 0 && g.Rows == 0
+}
+
+// CostOf is what one operation of `method`, asking `req`, costs: what
+// [Guard.Cost] says, and one when it says nothing or less.
+func (g Guard) CostOf(method string, req any) int {
+	return grpcx.CostOf(g.Cost, method, req)
 }
 
 // Ops is how many operations this guard takes.
@@ -167,6 +200,29 @@ func (g Guard) Ops() int {
 	}
 
 	return g.Max
+}
+
+// RowLimit is how many rows one batch this guard takes may ask to write.
+func (g Guard) RowLimit() int {
+	if g.Rows <= 0 {
+		return MaxRows
+	}
+
+	return g.Rows
+}
+
+// CheckRows reports whether a batch whose operations cost `rows` altogether is
+// one this guard takes. It is asked before any operation is let through, so
+// that a batch refused for its size is charged nothing and writes nothing.
+func (g Guard) CheckRows(rows int) error {
+	if max := g.RowLimit(); rows > max {
+		return status.Errorf(codes.InvalidArgument,
+			"a batch that writes %d rows, and %d is the most this server takes: a batch is "+
+				"a transaction, and one held open long enough is a lock held against "+
+				"every other writer", rows, max)
+	}
+
+	return nil
 }
 
 // Check reports whether a batch of `n` operations is one this guard takes.
