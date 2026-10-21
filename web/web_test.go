@@ -13,6 +13,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/lesomnus/payday/auth/authsession"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/web"
 )
@@ -144,6 +145,35 @@ func TestThePreflightSaysItTooBecauseThatIsWhatTheBrowserAsks(t *testing.T) {
 
 	x.Equal(http.StatusNoContent, res.StatusCode)
 	x.Equal("true", res.Header.Get("Access-Control-Allow-Credentials"))
+}
+
+// TestAPageMaySayWhichStoreACallIsFor: every call a page's store makes carries
+// [authsession.IdentityHeader], so a preflight that does not allow it is every
+// call from another origin refused before it is made.
+func TestAPageMaySayWhichStoreACallIsFor(t *testing.T) {
+	x := require.New(t)
+
+	s, seen := served(t, config.HttpConfig{
+		AllowWeb: true,
+		Origins:  []string{"http://localhost:5173"},
+	})
+
+	r, err := http.NewRequest(http.MethodOptions, s.URL+"/grpc.health.v1.Health/Check", nil)
+	x.NoError(err)
+	r.Header.Set("Origin", "http://localhost:5173")
+	r.Header.Set("Access-Control-Request-Method", "POST")
+	r.Header.Set("Access-Control-Request-Headers", authsession.IdentityHeader)
+
+	res, err := http.DefaultClient.Do(r)
+	x.NoError(err)
+	defer res.Body.Close()
+
+	allowed := strings.Split(strings.ToLower(res.Header.Get("Access-Control-Allow-Headers")), ", ")
+	x.Contains(allowed, authsession.IdentityHeader)
+
+	// And it reaches the handler that reads it, as the cookie does.
+	call(t, s, func(r *http.Request) { r.Header.Set(authsession.IdentityHeader, "0123456789abcdef") })
+	x.Equal([]string{"0123456789abcdef"}, seen.Get(authsession.IdentityHeader))
 }
 
 // TestAnOriginNobodyNamedGetsNothing, which is the trust decision this rests

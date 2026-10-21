@@ -58,21 +58,30 @@ export async function open(transport: Transport, identity: string): Promise<App>
 
 Two things in that are worth reading twice.
 
-**The identity is a digest of the credential, not a name for the person.** What
-a caller may see is the actor *and* the scope together, so the same person
-holding a narrowed credential is a different store. Keyed on the person, the
-narrowed session would draw the wide session's rows: nothing leaks either way,
-and the screen is wrong.
+**The identity names what the caller may see, not the person.** What a caller
+may see is the actor *and* the scope together, so the same person holding a
+narrowed credential is a different store. Keyed on the person, the narrowed
+session would draw the wide session's rows: nothing leaks either way, and the
+screen is wrong.
 
 It is passed in already made, because the two pages `pd new` writes come by it
 differently. `main.tsx` holds its credential and digests it with `identityOf`.
 `session.tsx` is signed in by a session cookie it cannot read — that is what
 HttpOnly is for — so it asks the server instead: `GET /session` answers
-`{ identity, id, tenantId }`, and `identity` is the same digest of the session's
-key, made where the key can be read. Every sign-in is then a store of its own,
-as every credential is. The other two are who the session names, which is what
-the page's first question about the person is asked with. See
+`{ identity, id, tenantId }`, and `identity` is a digest of what the session
+lets its caller see — who, in which tenant, narrowed how — made where the
+session can be read. So a person's next sign-in is the same store as their
+last, and a narrower one is another. The other two are who the session names,
+which is what the page's first question about the person is asked with. See
 [Putting a login in front of an app](signing-in.md#a-page-signed-in-by-cookie).
+
+**Every call says which store it is for.** The query layer sends the identity
+on every call it makes, in `payday-identity` (`IDENTITY_HEADER` in
+`@lesomnus/payday/query`), and `auth/authsession` serves a call only as a
+session that identity names; under any other it is `Unauthenticated`. A cookie
+is every tab's, so this is what keeps a tab left holding one person's store
+from reading the next person's rows into it, or sending what it kept as them.
+`web.Cors` allows the header for a page on another origin.
 
 **The disk is optional.** Delete those two lines and everything still works —
 the store is a store either way and lives as long as the tab does. What the
@@ -279,21 +288,24 @@ Six things are worth knowing before relying on it:
   lost answer's second `Add` makes a second row. Keeping what the page mints in
   step with what your minter accepts is your app's job too
   ([the generation contract §5](../schema.md#5-identifiers)).
-- **It is sent as whoever the transport is when it goes**, not when it was made.
-  With a bearer token the page holds, that is the same person. With a cookie,
-  every tab shares one credential, so it is whoever signed in last. If one tab
-  signs out and another signs in as somebody else, a third tab still holding the
-  first person's queue would send it as the second. So signing out has to reach
-  **every** page holding the store, for example over a `BroadcastChannel`:
-  `store.forget()` in each, and drop that `Queries`. A forgotten store keeps
-  nothing more and sends nothing. Read `queries.writes()` before signing out if
-  losing them matters.
+- **It is sent as the caller its store is for.** The transport carries whoever
+  it carries when the write goes, and with a cookie that is whoever signed in
+  last, in any tab. The write says whose store it is from, as every call does,
+  and `auth/authsession` refuses it under any other session. Refused
+  `Unauthenticated` — somebody else's session, or one that idled out while the
+  page was offline — it **waits**, and goes once its caller signs in again: the
+  same person with the same grant is the same store. Signing out is what lets
+  the writes go: `store.forget()`, in **every** page holding the store, which
+  `pd new`'s `session.tsx` says over a `BroadcastChannel`. A forgotten store
+  keeps nothing more and sends nothing. Read `queries.writes()` before signing
+  out if losing them matters.
 - **A secret is not kept.** A write that sets a field declared
   `(payday.field).secret` is refused by `send` before anything is stored, because
   waiting would keep the secret on disk in the clear -- and so is an `AddMany`
-  one of whose items does. Send it with `call`. A
-  secret in a batch or in an RPC of your own, such as a password, is not visible
-  here, so keep those out of `send` yourself.
+  one of whose items does, and any `Apply` to an entity that declares one: a
+  patch says what it writes in terms only the server reads. Send it with
+  `call`. A secret in a batch or in an RPC of your own, such as a password, is
+  not visible here, so keep those out of `send` yourself.
 - **One tab sends.** Two tabs on one store both hold its queue. The one sending
   takes a Web Lock and re-reads the queue from the mirror first, so a write is
   sent once.
@@ -319,6 +331,24 @@ expiry clock runs from this side's write are
 
 `keep` is a week by default, counted from when this side last wrote the row, and
 `Infinity` turns expiry off.
+
+**Everybody else's mirror goes.** A mirror is swept only when its own caller
+hydrates it, so one whose caller has left the browser to somebody else would
+keep their rows, answers and unsent writes for as long as the browser keeps the
+database. `deleteOtherDisks(at)` deletes every mirror of the app but `at`'s: a
+page asks for it once the caller's own is open, and does not wait on it --
+
+```ts
+const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) })
+void deleteOtherDisks(at)
+await store.hydrate()
+```
+
+A page lets go of its mirror when another page deletes it or moves it to
+a later version, so neither waits on a tab somebody left open. A tab from before
+that holds on: the sweep leaves its mirror for next time, and `openDisk` fails
+saying another page holds it, rather than waiting for as long as that tab is
+open.
 
 The schema stamp is a digest of field numbers, names and kinds, so nobody has to
 remember to bump a version: change the schema and the mirror is discarded.

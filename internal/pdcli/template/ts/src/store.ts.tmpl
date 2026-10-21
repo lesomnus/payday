@@ -28,16 +28,18 @@ import { entities } from '../gen/entities.js'
 /**
  * open answers with this app's store and queries, for one caller.
  *
- * `identity` is a digest of the **credential** rather than a name for the
- * person -- see `identityOf`. What a caller may see is the actor and the scope
- * together, so the same person holding a narrowed credential is a different
- * store; keyed on the person, the narrowed session would draw the wide
- * session's rows. Nothing leaks either way, and the screen is wrong.
+ * `identity` names what the caller may see, rather than the person -- see
+ * `identityOf`. What a caller may see is the actor and the scope together, so
+ * the same person holding a narrowed credential is a different store; keyed on
+ * the person, the narrowed session would draw the wide session's rows. Nothing
+ * leaks either way, and the screen is wrong.
  *
  * It is taken already made, because the two pages `pd new` writes come by it
- * differently and must not disagree about what it is: `main.tsx` holds its
- * credential and digests it, and `session.tsx`, signed in by a cookie it cannot
- * read, is told the same digest by the server (`GET /session`).
+ * differently: `main.tsx` holds its credential and digests it, and
+ * `session.tsx`, signed in by a cookie it cannot read, is told the name by the
+ * server (`GET /session`) -- one name for every sign-in that sees the same
+ * things, so a session that idled out is the same store once its person signs
+ * in again.
  *
  * The mirror is what makes a reload draw the page it had rather than a spinner
  * for it. Delete these two lines and everything still works -- the store is a

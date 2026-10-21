@@ -6,20 +6,27 @@
 // knowing is whether the descriptors protobuf-es generated and the descriptors
 // protoc-gen-go generated are descriptions of the same thing.
 //
-// It prints the address it is listening on and then serves until it is killed.
+// It prints the address it serves gRPC on, then the one a page signs in at, and
+// then serves until it is killed.
 package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 
 	"github.com/ncruces/go-sqlite3/vfs/memdb"
 
+	"github.com/lesomnus/payday/auth"
+	"github.com/lesomnus/payday/auth/authsession"
 	"github.com/lesomnus/payday/config"
+	"github.com/lesomnus/payday/frame"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/cli"
@@ -80,14 +87,63 @@ func run() error {
 		return err
 	}
 
+	// A call is whoever its session cookie names, and failing that whoever its
+	// `authorization` header says -- so a page signed in by cookie is tried
+	// against the handler that reads one, and everything else is `Plain` as it
+	// was. Over plain HTTP, which is what this serves.
+	sessions := authsession.New(authsession.NewMemStore(), authsession.Insecure())
+	s.Auth = auth.Seq(sessions.Handler(), auth.Plain())
+
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return err
 	}
+	h, err := signingIn(ctx, sessions)
+	if err != nil {
+		return err
+	}
 
-	// The one line the other side is waiting for.
+	// The two lines the other side is waiting for.
 	fmt.Println(l.Addr().String())
+	fmt.Println(h)
 	os.Stdout.Sync()
 
 	return s.Serve(ctx, c, l)
+}
+
+// signingIn serves the session endpoint, and answers with where.
+//
+// What a form contains is the app's, and here it is the holder's identifier,
+// believed -- `auth.Plain` in the shape of a sign-in, which is what a test
+// needs and nothing should be served with.
+func signingIn(ctx context.Context, sessions *authsession.Sessions) (string, error) {
+	login := func(_ context.Context, r *http.Request) (authsession.Session, error) {
+		var body struct{ Id string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			return authsession.Session{}, err
+		}
+
+		return authsession.Session{Id: body.Id, Grant: frame.Whole()}, nil
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/session", sessions.Serve(login))
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", err
+	}
+
+	srv := &http.Server{Handler: mux}
+	go func() {
+		<-ctx.Done()
+		srv.Close()
+	}()
+	go func() {
+		if err := srv.Serve(l); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Fprintln(os.Stderr, "testsrv: http:", err)
+		}
+	}()
+
+	return l.Addr().String(), nil
 }

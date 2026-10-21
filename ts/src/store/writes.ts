@@ -3,10 +3,11 @@
  *
  * # Why it is the store's
  *
- * A write is tied to a credential the way a row is: it is something *this
+ * A write is tied to its caller the way a row is: it is something *this
  * caller* did, and sending it under the next one would be the next one doing
- * it. So it lives where the credential is known, goes to the mirror the rows go
- * to, and goes when [Store.forget] says this caller is done.
+ * it. So it lives where the caller is known -- the store is opened for them --
+ * goes to the mirror the rows go to, is sent saying whose store it is from,
+ * and goes when [Store.forget] says this caller is done.
  *
  * What it does not do is send anything. That is the query layer's, which holds
  * the transport; see [Queries.send].

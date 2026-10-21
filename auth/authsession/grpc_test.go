@@ -245,6 +245,69 @@ func TestACookieTheServerHasForgottenIsNobodyAtTheDoor(t *testing.T) {
 	})
 }
 
+// TestACallForAnotherStoreIsRefusedAtTheDoor is [ErrOtherIdentity] over the
+// wire: a page's call carries the browser's cookie and the name of the store
+// it was made for, and a session that store is not named by is
+// `Unauthenticated` -- which is what a page waits for a sign-in on -- with the
+// cookie left where it is, since it is alive and the browser's.
+func TestACallForAnotherStoreIsRefusedAtTheDoor(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	who := pdid.New(1)
+	sessions := authsession.New(authsession.NewMemStore(), authsession.Insecure())
+
+	public := func(method string) bool { return method == pdpb.TokenService_Introspect_FullMethodName }
+	resolver := auth.ResolverFunc(func(context.Context, auth.Identity) (*frame.Frame, error) {
+		return frame.New(who, pdid.New(2), frame.Whole()), nil
+	})
+
+	g := grpc.NewServer(auth.Interceptor(sessions.Handler(), resolver, public)...)
+	pdpb.RegisterTokenServiceServer(g, signer{sessions: sessions, who: who})
+	healthpb.RegisterHealthServer(g, health.NewServer())
+
+	h, err := web.Transcode(g)
+	x.NoError(err)
+
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+
+	call := func(method, body string, c *http.Cookie, identity string) *http.Response {
+		t.Helper()
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+method, strings.NewReader(body))
+		x.NoError(err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Connect-Protocol-Version", "1")
+		if c != nil {
+			req.AddCookie(c)
+		}
+		if identity != "" {
+			req.Header.Set(authsession.IdentityHeader, identity)
+		}
+
+		res, err := http.DefaultClient.Do(req)
+		x.NoError(err)
+		t.Cleanup(func() { _ = res.Body.Close() })
+
+		return res
+	}
+
+	res := call(pdpb.TokenService_Introspect_FullMethodName, `{"token":"in"}`, nil, "")
+	x.Equal(http.StatusOK, res.StatusCode)
+	x.Len(res.Cookies(), 1)
+	live := res.Cookies()[0]
+
+	mine := authsession.IdentityOf(authsession.Session{Id: who.String(), Grant: frame.Whole()})
+
+	res = call(healthpb.Health_Check_FullMethodName, `{}`, live, mine)
+	x.Equal(http.StatusOK, res.StatusCode, "a call for the session's own store was refused")
+
+	res = call(healthpb.Health_Check_FullMethodName, `{}`, live, authsession.IdentityOf(authsession.Session{Id: pdid.New(1).String(), Grant: frame.Whole()}))
+	x.Equal(http.StatusUnauthorized, res.StatusCode, "a call for another store was served as this session")
+	x.Empty(res.Cookies(), "a session that is alive was cleared")
+}
+
 func errorsIsNoCredential(err error) bool {
 	return err != nil && err == auth.ErrNoCredential
 }

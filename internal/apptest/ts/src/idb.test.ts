@@ -25,7 +25,7 @@ import 'fake-indexeddb/auto'
 import { pdid } from '@lesomnus/payday'
 import { Queries } from '@lesomnus/payday/query'
 import { Store, type Disk } from '@lesomnus/payday/store'
-import { deleteDisk, openDisk } from '@lesomnus/payday/store/idb'
+import { deleteDisk, deleteOtherDisks, openDisk } from '@lesomnus/payday/store/idb'
 
 import { entities, Robot, Tenant } from '../gen/entities.js'
 import { RobotSchema, type Robot as RobotMsg } from '../gen/app/robot_pb.js'
@@ -184,6 +184,93 @@ describe('the mirror is that caller and that schema', () => {
 		const b = await opened()
 		expect(b.row(Robot.typeName, v.id)).toBeUndefined()
 		b.close()
+	})
+})
+
+/** within is `p`, or a rejection saying it waited -- for what must not hang. */
+function within<T>(p: Promise<T>, ms = 2_000): Promise<T> {
+	return Promise.race([
+		p,
+		new Promise<never>((_, no) => setTimeout(() => no(new Error(`it waited ${ms}ms`)), ms)),
+	])
+}
+
+/** held is a database opened the way a page written before this let go of nothing opened it. */
+function held(name: string, version: number): Promise<IDBDatabase> {
+	return new Promise((ok, no) => {
+		const r = indexedDB.open(name, version)
+		r.onsuccess = () => ok(r.result)
+		r.onerror = () => no(r.error)
+	})
+}
+
+describe('a mirror another page holds', () => {
+	it('is let go when another page deletes it, rather than holding that up', async () => {
+		const a = await opened()
+		const v = robot('arm-01', new Date('2026-01-01T00:00:00Z'))
+		a.put(Robot.typeName, v)
+		await a.flushed()
+
+		// `a` is still open: a tab on this store, and another page wiping it.
+		await within(deleteDisk(at))
+
+		// The store goes on in memory, and what needs the disk says why it
+		// cannot have it.
+		expect(a.row(Robot.typeName, v.id)).toBeDefined()
+		await expect(a.writes.add({ id: 'x', method: 'app.RobotService/Add', input: new Uint8Array(), at: 0 })).rejects.toThrow(
+			/let go/,
+		)
+	})
+
+	it('is refused, rather than waited on, while an older page holds it at an older version', async () => {
+		const old = await held(`payday/${at.name}:${at.identity}`, 1)
+
+		await expect(within(openDisk(entities, at))).rejects.toThrow(/another page holds/)
+		old.close()
+
+		// And once it has let go, it opens.
+		const b = await opened()
+		b.close()
+	})
+})
+
+describe('a mirror nobody will open again', () => {
+	/** names is every database this origin has. */
+	async function names(): Promise<(string | undefined)[]> {
+		return (await indexedDB.databases()).map((v) => v.name)
+	}
+
+	it('goes once somebody else is using the app', async () => {
+		const theirs = { name: at.name, identity: `${at.identity}-other` }
+		const another = { name: `${at.name}-other`, identity: at.identity }
+		const prefixed = { name: `${at.name}:x`, identity: at.identity }
+
+		for (const o of [at, theirs, another, prefixed]) {
+			const s = await opened(o)
+			s.put(Robot.typeName, robot('arm-01', new Date('2026-01-01T00:00:00Z')))
+			await s.flushed()
+			s.close()
+		}
+
+		await deleteOtherDisks(at)
+
+		const left = await names()
+		expect(left).toContain(`payday/${at.name}:${at.identity}`)
+		expect(left).not.toContain(`payday/${theirs.name}:${theirs.identity}`)
+
+		// Other apps', including one whose name begins with this one's.
+		expect(left).toContain(`payday/${another.name}:${another.identity}`)
+		expect(left).toContain(`payday/${prefixed.name}:${prefixed.identity}`)
+
+		for (const o of [another, prefixed]) await deleteDisk(o)
+	})
+
+	it('does not wait on a page that will not let go', async () => {
+		const theirs = { name: at.name, identity: `${at.identity}-other` }
+		const old = await held(`payday/${theirs.name}:${theirs.identity}`, 2)
+
+		await within(deleteOtherDisks(at))
+		old.close()
 	})
 })
 

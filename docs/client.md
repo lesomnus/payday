@@ -341,7 +341,7 @@ So it is memory first, mirrored to IndexedDB, and never the other way round.
 A refresh that restores only rows still draws a spinner where a list was one
 second ago, because **a list is an order and a membership** and neither of those
 lives on any row. So the query layer mirrors its own answers under the same
-credential (`Store.blob`), and restoration is **synchronous** — a reopened page
+identity (`Store.blob`), and restoration is **synchronous** — a reopened page
 draws the list on its first frame.
 
 The mirror is stamped with a digest of field numbers, names and kinds. A
@@ -384,11 +384,20 @@ round for it:
 - **A request is the one thing kept here that could hold a secret.** No row
   does, since the server never answers with one. So `send` refuses a request
   that sets a field declared `(payday.field).secret`, and `pd gen --ts` writes
-  those fields into the declarations so that it can tell.
-- **It is sent as whoever the transport is at the time.** With a credential
-  every tab shares, such as a cookie, a queue left in an open tab after its
-  person signed out would go out as whoever signed in next. A forgotten store
-  keeps nothing more and sends nothing, and signing out has to reach every tab.
+  those fields into the declarations so that it can tell. A patch document to
+  such an entity is refused whatever it names: it says what it writes in the
+  server's terms -- a field by number or name, a oneof's member, a whole
+  message -- and a reading of it here that missed one shape would keep a secret
+  on disk.
+- **It is sent as the caller its store is for, or not at all.** The transport
+  carries whoever it carries at the time, and a credential every tab shares --
+  a cookie -- is whoever signed in last. So every call the query layer makes
+  names its store, and `auth/authsession` serves it only as a session that
+  store is named by. Refused, a write waits: `Unauthenticated` is about the
+  credential and not the write, and a session that idled out while the page was
+  offline is the same caller, and the same store, once they sign in again. A
+  forgotten store keeps nothing more and sends nothing, and signing out has to
+  reach every tab.
 
 That is this side's own writes. Somebody else's arrive over the sibling `Watch`,
 which a query holds open for as long as it is drawn — and only when it named at
@@ -406,6 +415,13 @@ true for one round trip — so *how stale may this be* needs an answer.
 It is measured from **when this side last wrote it**, not from the server's
 `dateUpdated`. Measuring the other way discards rows that have not changed since
 2020 first — that is, the rows that never change.
+
+An expiry is applied when a mirror is read, which is by its own caller, so it
+bounds only the mirrors somebody comes back to. The rest are other callers' --
+a person who left the browser to somebody else -- and `deleteOtherDisks` takes
+those away once the next caller's store is open. That is also why a store is
+named by what its caller sees rather than by their session: named by the
+session, every sign-in would be a mirror nobody comes back to.
 
 ## 4. A window on both halves
 

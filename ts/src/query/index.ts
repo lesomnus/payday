@@ -10,5 +10,5 @@
  * @module
  */
 
-export { Queries, keyOf } from './query.js'
+export { IDENTITY_HEADER, Queries, keyOf } from './query.js'
 export type { CallOpts, Entry, QueriesOpts, QueryOpts, State, Write } from './query.js'

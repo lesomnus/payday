@@ -46,6 +46,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/lesomnus/payday/auth"
+	"github.com/lesomnus/payday/auth/authsession"
 	"github.com/lesomnus/payday/config"
 )
 
@@ -249,12 +250,13 @@ func Transcode(s *grpc.Server) (http.Handler, error) {
 // **different** origin, which is every `npm run dev`, has to be named.
 //
 // The header lists are `connectrpc.com/cors`'s rather than written out, with
-// `Authorization` added because that is where payday reads a credential from.
-// A list written out here is one that is right on the day it is written: a
-// protocol adds a header, every app that copied the list refuses it, and the
-// symptom is one browser failing on one call.
+// `Authorization` added because that is where payday reads a credential from,
+// and [authsession.IdentityHeader] because every call a page's store makes
+// says which store it is for. A list written out here is one that is right on
+// the day it is written: a protocol adds a header, every app that copied the
+// list refuses it, and the symptom is one browser failing on one call.
 func Cors(is func(origin string) bool, next http.Handler) http.Handler {
-	headers := strings.Join(append(cors.AllowedHeaders(), auth.Header), ", ")
+	headers := strings.Join(append(cors.AllowedHeaders(), auth.Header, authsession.IdentityHeader), ", ")
 	methods := strings.Join(cors.AllowedMethods(), ", ")
 	expose := strings.Join(cors.ExposedHeaders(), ", ")
 

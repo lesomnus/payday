@@ -72,11 +72,16 @@ export default async function setup(): Promise<() => Promise<void>> {
 
 /** Server is one running `testsrv`, and where to reach it. */
 export interface Server {
+	/** Where its services answer gRPC. */
 	addr: string
+
+	/** Where a page signs in: `GET`, `POST` and `DELETE /session`. */
+	http: string
+
 	stop: () => void
 }
 
-/** start runs the built server and answers once it has said its address. */
+/** start runs the built server and answers once it has said its addresses. */
 export async function start(): Promise<Server> {
 	const path = process.env[bin]
 	if (path === undefined) {
@@ -84,23 +89,24 @@ export async function start(): Promise<Server> {
 	}
 
 	const p = spawn(path, [], { cwd: repo })
+	const [addr = '', http = ''] = await said(p, 2)
 
-	return { addr: await said(p), stop: () => p.kill() }
+	return { addr, http, stop: () => p.kill() }
 }
 
-/** said answers with the address the server printed, or gives up loudly. */
-function said(p: ChildProcessWithoutNullStreams): Promise<string> {
+/** said answers with the first `n` lines the server printed, or gives up loudly. */
+function said(p: ChildProcessWithoutNullStreams, n: number): Promise<string[]> {
 	return new Promise((ok, no) => {
 		const t = setTimeout(() => no(new Error('the server printed no address')), 60_000)
 		let buf = ''
 
 		p.stdout.on('data', (b: Buffer) => {
 			buf += b.toString()
-			const i = buf.indexOf('\n')
-			if (i < 0) return
+			const lines = buf.split('\n')
+			if (lines.length <= n) return
 
 			clearTimeout(t)
-			ok(buf.slice(0, i).trim())
+			ok(lines.slice(0, n).map((v) => v.trim()))
 		})
 		p.on('error', no)
 		p.stderr.on('data', (b: Buffer) => process.stderr.write(b))

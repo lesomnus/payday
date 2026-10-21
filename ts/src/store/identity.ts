@@ -40,7 +40,8 @@ import { digest } from './digest.js'
  * Nothing here expires anything or notices that a token was revoked. What it
  * answers is "is this the same credential as last time", and a token that was
  * rotated is a different one -- so a rotation starts an empty store, which
- * costs a refill of something the server has anyway.
+ * costs a refill of something the server has anyway, and leaves the last
+ * one's mirror for `deleteOtherDisks` to take away.
  *
  * # A page signed in by cookie
  *
@@ -51,13 +52,22 @@ import { digest } from './digest.js'
  * for the narrowed one to draw after a reload.
  *
  * So the server says the name. `GET /session`, which `auth/authsession` serves
- * beside the sign-in, answers `{ identity, id, tenantId }`, and `identity` is
- * this same digest of the session's key, worked out where the key can be read
+ * beside the sign-in, answers `{ identity, id, tenantId }`, and `identity` is a
+ * digest of what the session lets its caller see -- who it names, in which
+ * tenant, narrowed how -- worked out where the session can be read
  * (`authsession.IdentityOf`). A page passes it where this answer would have
- * gone, and every sign-in is a store of its own as every credential is. The
- * other two are who the session names, which is what the page's first question
- * about the person is asked with. `pd new` writes both pages: `main.tsx`, which
- * holds a credential, and `session.tsx`, which holds a cookie.
+ * gone. The other two are who the session names, which is what the page's
+ * first question about the person is asked with. `pd new` writes both pages:
+ * `main.tsx`, which holds a credential, and `session.tsx`, which holds a
+ * cookie.
+ *
+ * It is not a digest of the session's key, and that difference is the one
+ * worth having. A session ends by itself -- it idles out, or the next sign-in
+ * replaces its cookie -- and a store named by its key is a mirror nobody opens
+ * again, holding the person's rows and the writes they made and never sent.
+ * Named by what it sees, the person's next sign-in opens the same store and
+ * sends what was waiting, as them; and a narrower session is still a name of
+ * its own, which is the argument above kept.
  */
 export async function identityOf(credential: string): Promise<string> {
 	return digest(credential)
