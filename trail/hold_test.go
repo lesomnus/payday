@@ -120,6 +120,88 @@ func TestAHeldTenantIsMovedAndNeverDestroyed(t *testing.T) {
 	})
 }
 
+// TestADiscardWindowDestroysWhatTheArchiveHolds.
+//
+// A kind whose rows are discarded on their way out of the database still has
+// rows in the archive: the ones a legal hold sent there rather than let them be
+// discarded, and the ones a longer window kept there before it was shortened.
+// They last no longer there than the discard lets them last anywhere, so that
+// lifting the hold, or shortening the window, brings the discard back for them
+// too -- and a preview says so.
+func TestADiscardWindowDestroysWhatTheArchiveHolds(t *testing.T) {
+	ctx := t.Context()
+	discard := Keep{Retain: 30 * day, Discard: true}
+
+	destroyed := func(t *testing.T, a flob.Stores, tenant pdid.Id) int {
+		n := 0
+		for _, v := range receiptsIn(t, a) {
+			if v.Act == "destroy" && v.Tenant == tenant.String() {
+				n += v.Rows
+			}
+		}
+
+		return n
+	}
+
+	t.Run("once a hold lifts", func(t *testing.T) {
+		x := require.New(t)
+
+		tenant := newTenant()
+		s := &fakeStore{}
+		r := s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(60 * day)})
+		vs := map[pdid.Id]Tenant{tenant: {Keep: &discard, Hold: onHold()}}
+		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 90 * day}, Tenants: answers(vs)}
+
+		p.Pass(ctx, s)
+		p.Pass(ctx, s)
+		x.Contains(docsIn(t, p.Archive), r.id, "the hold did not keep the row")
+
+		vs[tenant] = Tenant{Keep: &discard}
+		pv, err := p.Preview(ctx, s, tenant, vs[tenant])
+		x.NoError(err)
+		x.Equal(1, pv["person"].Destroyed, "a preview does not say the discard comes back for what the archive holds")
+
+		p.Pass(ctx, s)
+		x.NotContains(docsIn(t, p.Archive), r.id, "lifting the hold kept what it sent to the archive for ever")
+		x.Equal(1, destroyed(t, p.Archive, tenant))
+	})
+
+	t.Run("once a window shortens to one", func(t *testing.T) {
+		x := require.New(t)
+
+		tenant := newTenant()
+		s := &fakeStore{}
+		r := s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(60 * day)})
+		long := Keep{Retain: 30 * day, Destroy: 365 * day}
+		vs := map[pdid.Id]Tenant{tenant: {Keep: &long}}
+		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 90 * day}, Tenants: answers(vs)}
+
+		p.Pass(ctx, s)
+		x.Contains(docsIn(t, p.Archive), r.id)
+
+		vs[tenant] = Tenant{Keep: &discard}
+		p.Pass(ctx, s)
+		x.NotContains(docsIn(t, p.Archive), r.id, "a window shortened to a discard kept what the archive holds for ever")
+		x.Equal(1, destroyed(t, p.Archive, tenant))
+	})
+
+	t.Run("and the deployment's own", func(t *testing.T) {
+		x := require.New(t)
+
+		tenant := newTenant()
+		s := &fakeStore{}
+		r := s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(60 * day)})
+		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: 365 * day}}
+
+		p.Pass(ctx, s)
+		x.Contains(docsIn(t, p.Archive), r.id)
+
+		p.Keep = discard
+		p.Pass(ctx, s)
+		x.NotContains(docsIn(t, p.Archive), r.id)
+	})
+}
+
 // TestAHoldOnSomeKindsHoldsOnlyThose.
 func TestAHoldOnSomeKindsHoldsOnlyThose(t *testing.T) {
 	x := require.New(t)
@@ -186,7 +268,7 @@ func TestAHoldKeepsItsOwnRowsOfAFileOfEverybodys(t *testing.T) {
 	mine := fakeRow{id: uuid.NewV7(), tenant: free.Uuid(), actor: free.Uuid(), domain: person, created: month.Add(day)}
 	theirs := fakeRow{id: uuid.NewV7(), tenant: held.Uuid(), actor: held.Uuid(), domain: person, created: month.Add(2 * day)}
 
-	_, err := put(ctx, a, Chunk{Namespace: LegacyNamespace, Kind: "person", Month: month, Name: "audit-2020-01.person.0" + Ext},
+	_, _, err := put(ctx, a, Chunk{Namespace: LegacyNamespace, Kind: "person", Month: month, Name: "audit-2020-01.person.0" + Ext},
 		[][]byte{mine.doc(), theirs.doc()})
 	x.NoError(err)
 
@@ -361,19 +443,19 @@ func TestATenantLeaves(t *testing.T) {
 	}
 
 	own := row(leaving, leaving)
-	_, err := put(ctx, a, Chunk{Namespace: leaving.String(), Kind: "person", Month: month, Rows: 1, First: own.created, Last: own.created},
+	_, _, err := put(ctx, a, Chunk{Namespace: leaving.String(), Kind: "person", Month: month, Rows: 1, First: own.created, Last: own.created},
 		[][]byte{own.doc()})
 	x.NoError(err)
 
 	set := []pdid.Id{leaving, other}
 	slices.SortFunc(set, byId)
 	sharedMine, sharedTheirs := row(leaving, other), row(other, leaving)
-	_, err = put(ctx, a, Chunk{Namespace: SharedNamespace, Kind: "person", Month: month, Rows: 2, Tenants: set,
+	_, _, err = put(ctx, a, Chunk{Namespace: SharedNamespace, Kind: "person", Month: month, Rows: 2, Tenants: set,
 		First: sharedMine.created, Last: sharedTheirs.created}, [][]byte{sharedMine.doc(), sharedTheirs.doc()})
 	x.NoError(err)
 
 	legacyMine, legacyShared, legacyTheirs := row(leaving, leaving), row(leaving, other), row(other, other)
-	_, err = put(ctx, a, Chunk{Namespace: LegacyNamespace, Kind: "person", Month: month},
+	_, _, err = put(ctx, a, Chunk{Namespace: LegacyNamespace, Kind: "person", Month: month},
 		[][]byte{legacyMine.doc(), legacyShared.doc(), legacyTheirs.doc()})
 	x.NoError(err)
 

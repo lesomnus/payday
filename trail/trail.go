@@ -95,6 +95,7 @@ import (
 	"uuid"
 
 	"github.com/lesomnus/flob"
+	"github.com/lesomnus/otx/log"
 
 	"github.com/lesomnus/payday/pdid"
 )
@@ -397,7 +398,7 @@ func Archive(ctx context.Context, s Store, p Policy, of Kinds, before time.Time)
 	}
 	defer x.cover(ctx, "archive", &err)
 
-	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, x.p.Archive, x.run, x.seal, func(Row) fate { return archived })
+	moved, _, err := drain(ctx, s, Scope{Kinds: of}, before, x.p.Archive, x.run, x.seal, x.turn, func(Row) fate { return archived })
 
 	return moved, err
 }
@@ -426,18 +427,51 @@ const (
 // time, since there is nothing to wait for. With no archive there is nothing
 // to write, and the rows are read without their documents. A sealer, when
 // there is one, seals what the archived rows say; see [Keys].
-func drain(ctx context.Context, s Store, of Scope, before time.Time, a flob.Stores, run string, seal *sealer, decide func(Row) fate) (int, int, error) {
+//
+// # Its turn
+//
+// From the read of a row until the row is forgotten, what the pass holds of it
+// is what it said when it was read. An erasure or a purge that changed it in
+// the database meanwhile -- and then looked in the archive, before the chunk
+// was there -- would be undone by the copy. So the drain holds the trail's
+// turn, `take`, for each chunk's worth: from its first read to the forgetting
+// of what was written, and given back between, so that an act waits for one
+// chunk and not for a pass. See [Policy.Lease].
+func drain(ctx context.Context, s Store, of Scope, before time.Time, a flob.Stores, run string, seal *sealer, take turn, decide func(Row) fate) (_ int, _ int, err error) {
 	var w *writer
 	read := s.Heads
 	if a != nil {
 		w = newWriter(a, run, seal)
 		read = s.Older
 	}
+	defer func() {
+		if w != nil && w.left > 0 {
+			log.From(ctx).WarnContext(ctx, "trail: rows every tenant of which has left since they were written, not archived",
+				"rows", w.left)
+		}
+	}()
+
+	held, give := ctx, func() {}
+	holding := false
+	back := func() {
+		if holding {
+			give()
+			held, give, holding = ctx, func() {}, false
+		}
+	}
+	defer back()
 
 	moved, gone := 0, 0
 	at := Cursor{}
 	for {
-		vs, err := read(ctx, of, before, at, Batch)
+		if !holding {
+			if held, give, err = take(ctx); err != nil {
+				return moved, gone, err
+			}
+			holding = true
+		}
+
+		vs, err := read(held, of, before, at, Batch)
 		if err != nil {
 			return moved, gone, err
 		}
@@ -459,7 +493,7 @@ func drain(ctx context.Context, s Store, of Scope, before time.Time, a flob.Stor
 			}
 		}
 
-		n, err := forget(ctx, s, drop)
+		n, err := forget(held, s, drop)
 		gone += n
 		if err != nil {
 			return moved, gone, err
@@ -467,22 +501,31 @@ func drain(ctx context.Context, s Store, of Scope, before time.Time, a flob.Stor
 
 		last := len(vs) < Batch
 		if w != nil && (last || w.full()) {
-			keys, err := w.flush(ctx)
+			keys, err := w.flush(held)
 			if err != nil {
 				return moved, gone, err
 			}
 
-			n, err := forget(ctx, s, keys)
+			n, err := forget(held, s, keys)
 			moved += n
 			if err != nil {
 				return moved, gone, err
 			}
+		}
+		if w == nil || w.rows == 0 {
+			// Nothing read is on its way anywhere.
+			back()
 		}
 		if last {
 			return moved, gone, nil
 		}
 	}
 }
+
+// turn is how an act takes the trail's turn: the context it then acts in,
+// which ends if the turn is lost, and the call that gives it back. See
+// [Policy.Lease].
+type turn func(context.Context) (context.Context, func(), error)
 
 // forget is [Store.Forget] a batch at a time, because a flushed chunk can name
 // more rows than one statement should.

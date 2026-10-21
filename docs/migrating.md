@@ -3,6 +3,57 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A pass and what erases from the trail take turns, and a tenant that left has no key made again
+
+**Applies if** you keep the trail's archive and erase from it -- `Policy.Forget`,
+`Policy.PurgeTenant`, `Policy.Collect` -- or seal it (`audit.keys`). Part of
+payday#115.
+
+- **Hand the trail's policy the deployment's lease**: `p.Lease =` the
+  `spin.Lease` that `spin.lease` names, built beside the policy -- `pd new`'s
+  `Build` does, unless it is `none`. A pass then holds `trail.Turn` for each
+  chunk's worth of rows it moves, and the erasures change the database's rows
+  in their own turn, so a pass can no longer write back what one blanked or
+  removed a moment before. Without it nothing takes turns, which `p.String()`
+  says. Never hand it `spin.Nowhere()`: an act would wait for ever.
+- **An erasure called inside a transaction of yours waits for a pass's chunk**
+  while it holds that transaction. On SQLite that can make the pass's chunk
+  fail once (`database is locked`), to be moved again by the next pass.
+- **A tenant that leaves leaves a mark in the key store** where its keys were.
+  A row written before it is sealed to the tenants it names that are still
+  there; one that names nobody still there stays in the database, for the
+  tenant's purge, and is not archived. Nothing to change; a key store's
+  listing shows one more blob per tenant that left.
+
+## The trail's archive takes in only what it can account for
+
+**Applies if** you keep the trail's archive (`audit.archive`, or
+`trail.Policy.Archive`). Nothing in your code changes shape; four things the
+archive did change (part of payday#115).
+
+- **Files of the directory format are adopted by the first pass alone**: the
+  one before the archive's first checkpoint. A file of that format put in
+  `audit.archive` after it is `unaccounted` to `trail verify`, and is read,
+  filed and signed by nothing until an operator accepts it
+  (`policy.Accept`). A deployment that upgraded from the directory format has
+  had its first pass; one that restores an old file into the directory now
+  accepts it once.
+- **A chunk whose bytes are not its digest is written again by nothing.** A
+  fold, `Policy.Forget`, `Policy.PurgeTenant` and the filing of an old file
+  read what they copy through its digest, and stop at a chunk that is not it:
+  `trail verify --full` says `altered`. `Forget`, `PurgeTenant` and `Purge` go
+  on with the rest, write their receipts, and answer an error naming each such
+  chunk, which is `trail.ErrAltered` -- what a verified read answers for one.
+  An erasure that answers it has done everything else: look at the chunk, and
+  erase again once it is settled.
+- **A discard window destroys what the archive holds of it**, once it is as
+  old as `retain`: what a legal hold sent there instead of discarding it, once
+  the hold lifts, and what a longer window kept there before it was shortened
+  to a discard. It used to be kept for ever. `policy.Preview` counts it.
+- **`pd gen` refuses a field of `Audit` or `Access` named or JSON-named
+  `sealed`**, the member a sealed row keeps what it said in
+  (`trail.SealedMember`). An overlay with one renames it.
+
 ## A page's store is named by what it sees, and every call it makes says so
 
 **Applies if** a page of yours uses `@lesomnus/payday`'s store or query layer,

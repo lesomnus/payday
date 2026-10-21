@@ -42,7 +42,7 @@ func archiveBy(t *testing.T, p Policy, s *fakeStore) {
 	x, err := p.start(s)
 	require.NoError(t, err)
 
-	_, _, err = drain(t.Context(), s, Scope{}, time.Now(), x.p.Archive, x.run, nil, func(Row) fate { return archived })
+	_, _, err = drain(t.Context(), s, Scope{}, time.Now(), x.p.Archive, x.run, nil, x.turn, func(Row) fate { return archived })
 	require.NoError(t, err)
 }
 
