@@ -45,6 +45,7 @@ import (
 	pderr "github.com/lesomnus/payday/pderr"
 	pdid "github.com/lesomnus/payday/pdid"
 	pdpb "github.com/lesomnus/payday/pdpb"
+	rename "github.com/lesomnus/payday/rename"
 	resource "github.com/lesomnus/payday/resource"
 	resourcesql "github.com/lesomnus/payday/resource/resourcesql"
 	seen "github.com/lesomnus/payday/seen"
@@ -159,6 +160,33 @@ var Domains = map[string]pdid.Domain{
 	"app.Tally":    TallyDomain,
 	"app.Tenant":   TenantDomain,
 	"shared.Thing": ThingDomain,
+}
+
+// IndexRenames are the indexes this schema names, by what an earlier build
+// stored each under: the name made of its columns, where protoc-gen-orm-ent
+// now stores it under the one it declares. Hand them to `rename.Indexes`
+// before a migration, which makes again whatever it does not find by name.
+var IndexRenames = []rename.Index{
+	{Table: "access", From: "access_tenant_id_date_created", To: "access_access"},
+	{Table: "access", From: "access_actor_tenant_id_date_created", To: "access_by_actor_tenant"},
+	{Table: "access", From: "access_actor_id_date_created", To: "access_by_actor"},
+	{Table: "archived", From: "archived_namespace_digest", To: "archived_blob"},
+	{Table: "audit", From: "audit_object_id", To: "audit_object"},
+	{Table: "audit", From: "audit_tenant_id_date_created", To: "audit_trail"},
+	{Table: "audit", From: "audit_actor_tenant_id_date_created", To: "audit_by_actor_tenant"},
+	{Table: "audit", From: "audit_counterpart_tenant_id_date_created", To: "audit_by_counterpart"},
+	{Table: "audit", From: "audit_domain_date_created", To: "audit_by_domain"},
+	{Table: "audit", From: "audit_tenant_id_domain_date_created", To: "audit_by_tenant_domain"},
+	{Table: "audit", From: "audit_actor_id_date_created", To: "audit_by_actor"},
+	{Table: "holder", From: "holder_alias_tenant_id", To: "holder_slug"},
+	{Table: "holder", From: "holder_tenant_id_date_created_id", To: "holder_page"},
+	{Table: "outbox", From: "outbox_id", To: "outbox_queue"},
+	{Table: "reading", From: "reading_tenant_id_date_created", To: "reading_wall"},
+	{Table: "robot", From: "robot_tenant_id_date_created_id", To: "robot_page"},
+	{Table: "robot", From: "robot_alias_tenant_id", To: "robot_slug"},
+	{Table: "robot", From: "robot_tenant_id_alias_id", To: "robot_by_alias"},
+	{Table: "tenant", From: "tenant_date_created_id", To: "tenant_page"},
+	{Table: "thing", From: "thing_date_created_id", To: "thing_page"},
 }
 
 // Minter answers with the [bare.Minter] that gives every new row an

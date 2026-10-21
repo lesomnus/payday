@@ -979,6 +979,11 @@ the atlas integration, rather than payday's. Planning and applying use the
 atlas packages ent already depends on; the separately licensed Atlas CLI is not
 involved.
 
+An index the schema names is found under that name, `<table>_<name>`; a
+database an earlier build made holds each under ent's name for its columns.
+`rename.Indexes`, with `pd.IndexRenames`, moves them before `Create` looks, and
+`pd new`'s `Migrate` calls it (see [migrating](../migrating.md)).
+
 ### And a check before serving
 
 ```go

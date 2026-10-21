@@ -96,11 +96,14 @@ func (Robot) Edges() []ent.Edge {
 
 func (Robot) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("tenant_id", "date_created", "id"),
+		index.Fields("tenant_id", "date_created", "id").
+			StorageKey("robot_page"),
 		index.Fields("alias", "tenant_id").
+			StorageKey("robot_slug").
 			Unique().
 			Annotations(entsql.IndexWhere("date_erased IS NULL")),
-		index.Fields("tenant_id", "alias", "id"),
+		index.Fields("tenant_id", "alias", "id").
+			StorageKey("robot_by_alias"),
 	}
 }
 
@@ -245,7 +248,8 @@ func (Reading) Edges() []ent.Edge {
 
 func (Reading) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("tenant_id", "date_created"),
+		index.Fields("tenant_id", "date_created").
+			StorageKey("reading_wall"),
 	}
 }
 

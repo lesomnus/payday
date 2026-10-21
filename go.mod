@@ -75,7 +75,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/protobuf-orm/protobuf-merge v0.0.0-20261009205601-8502fad9e678 // indirect
-	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20261021205510-f86fc4afe40c // indirect
+	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20261021213534-6068959c562d // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20261010065542-f9ac5b66df3e // indirect
 	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20261017215512-5234846ec2e4 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

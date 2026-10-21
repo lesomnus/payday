@@ -36,7 +36,8 @@ func (Tenant) Fields() []ent.Field {
 
 func (Tenant) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("date_created", "id"),
+		index.Fields("date_created", "id").
+			StorageKey("tenant_page"),
 	}
 }
 
