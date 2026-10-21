@@ -125,8 +125,14 @@ func (_u *ReadingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.TenantId(); ok {
 		_spec.SetField(reading.FieldTenantId, field.TypeUuid, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(reading.FieldTenantId); ok {
+		_spec.SetField(reading.FieldTenantId, field.TypeUuid, e)
+	}
 	if value, ok := _u.mutation.Celsius(); ok {
 		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(reading.FieldCelsius); ok {
+		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, e)
 	}
 	if value, ok := _u.mutation.AddedCelsius(); ok {
 		_spec.AddField(reading.FieldCelsius, field.TypeFloat64, value)
@@ -282,8 +288,14 @@ func (_u *ReadingUpdateOne) sqlSave(ctx context.Context) (_node *Reading, err er
 	if value, ok := _u.mutation.TenantId(); ok {
 		_spec.SetField(reading.FieldTenantId, field.TypeUuid, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(reading.FieldTenantId); ok {
+		_spec.SetField(reading.FieldTenantId, field.TypeUuid, e)
+	}
 	if value, ok := _u.mutation.Celsius(); ok {
 		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(reading.FieldCelsius); ok {
+		_spec.SetField(reading.FieldCelsius, field.TypeFloat64, e)
 	}
 	if value, ok := _u.mutation.AddedCelsius(); ok {
 		_spec.AddField(reading.FieldCelsius, field.TypeFloat64, value)

@@ -242,20 +242,38 @@ func (_u *AccessUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.TenantId(); ok {
 		_spec.SetField(access.FieldTenantId, field.TypeUuid, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldTenantId); ok {
+		_spec.SetField(access.FieldTenantId, field.TypeUuid, e)
+	}
 	if value, ok := _u.mutation.ActorId(); ok {
 		_spec.SetField(access.FieldActorId, field.TypeUuid, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldActorId); ok {
+		_spec.SetField(access.FieldActorId, field.TypeUuid, e)
 	}
 	if value, ok := _u.mutation.TraceId(); ok {
 		_spec.SetField(access.FieldTraceId, field.TypeBytes, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldTraceId); ok {
+		_spec.SetField(access.FieldTraceId, field.TypeBytes, e)
+	}
 	if value, ok := _u.mutation.Action(); ok {
 		_spec.SetField(access.FieldAction, field.TypeString, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldAction); ok {
+		_spec.SetField(access.FieldAction, field.TypeString, e)
 	}
 	if value, ok := _u.mutation.Kind(); ok {
 		_spec.SetField(access.FieldKind, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldKind); ok {
+		_spec.SetField(access.FieldKind, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.Result(); ok {
 		_spec.SetField(access.FieldResult, field.TypeString, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldResult); ok {
+		_spec.SetField(access.FieldResult, field.TypeString, e)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(access.FieldDateCreated, field.TypeTime)
@@ -263,11 +281,20 @@ func (_u *AccessUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.ActorTenantId(); ok {
 		_spec.SetField(access.FieldActorTenantId, field.TypeUuid, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldActorTenantId); ok {
+		_spec.SetField(access.FieldActorTenantId, field.TypeUuid, e)
+	}
 	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(access.FieldValue, field.TypeBytes, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldValue); ok {
+		_spec.SetField(access.FieldValue, field.TypeBytes, e)
+	}
 	if value, ok := _u.mutation.Domain(); ok {
 		_spec.SetField(access.FieldDomain, field.TypeUint32, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldDomain); ok {
+		_spec.SetField(access.FieldDomain, field.TypeUint32, e)
 	}
 	if value, ok := _u.mutation.AddedDomain(); ok {
 		_spec.AddField(access.FieldDomain, field.TypeUint32, value)
@@ -277,6 +304,9 @@ func (_u *AccessUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Subjects(); ok {
 		_spec.SetField(access.FieldSubjects, field.TypeJson, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldSubjects); ok {
+		_spec.SetField(access.FieldSubjects, field.TypeJson, e)
 	}
 	if value, ok := _u.mutation.AppendedSubjects(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
@@ -288,6 +318,9 @@ func (_u *AccessUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.SubjectCount(); ok {
 		_spec.SetField(access.FieldSubjectCount, field.TypeUint32, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldSubjectCount); ok {
+		_spec.SetField(access.FieldSubjectCount, field.TypeUint32, e)
 	}
 	if value, ok := _u.mutation.AddedSubjectCount(); ok {
 		_spec.AddField(access.FieldSubjectCount, field.TypeUint32, value)
@@ -556,20 +589,38 @@ func (_u *AccessUpdateOne) sqlSave(ctx context.Context) (_node *Access, err erro
 	if value, ok := _u.mutation.TenantId(); ok {
 		_spec.SetField(access.FieldTenantId, field.TypeUuid, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldTenantId); ok {
+		_spec.SetField(access.FieldTenantId, field.TypeUuid, e)
+	}
 	if value, ok := _u.mutation.ActorId(); ok {
 		_spec.SetField(access.FieldActorId, field.TypeUuid, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldActorId); ok {
+		_spec.SetField(access.FieldActorId, field.TypeUuid, e)
 	}
 	if value, ok := _u.mutation.TraceId(); ok {
 		_spec.SetField(access.FieldTraceId, field.TypeBytes, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldTraceId); ok {
+		_spec.SetField(access.FieldTraceId, field.TypeBytes, e)
+	}
 	if value, ok := _u.mutation.Action(); ok {
 		_spec.SetField(access.FieldAction, field.TypeString, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldAction); ok {
+		_spec.SetField(access.FieldAction, field.TypeString, e)
 	}
 	if value, ok := _u.mutation.Kind(); ok {
 		_spec.SetField(access.FieldKind, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldKind); ok {
+		_spec.SetField(access.FieldKind, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.Result(); ok {
 		_spec.SetField(access.FieldResult, field.TypeString, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldResult); ok {
+		_spec.SetField(access.FieldResult, field.TypeString, e)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(access.FieldDateCreated, field.TypeTime)
@@ -577,11 +628,20 @@ func (_u *AccessUpdateOne) sqlSave(ctx context.Context) (_node *Access, err erro
 	if value, ok := _u.mutation.ActorTenantId(); ok {
 		_spec.SetField(access.FieldActorTenantId, field.TypeUuid, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldActorTenantId); ok {
+		_spec.SetField(access.FieldActorTenantId, field.TypeUuid, e)
+	}
 	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(access.FieldValue, field.TypeBytes, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldValue); ok {
+		_spec.SetField(access.FieldValue, field.TypeBytes, e)
+	}
 	if value, ok := _u.mutation.Domain(); ok {
 		_spec.SetField(access.FieldDomain, field.TypeUint32, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldDomain); ok {
+		_spec.SetField(access.FieldDomain, field.TypeUint32, e)
 	}
 	if value, ok := _u.mutation.AddedDomain(); ok {
 		_spec.AddField(access.FieldDomain, field.TypeUint32, value)
@@ -591,6 +651,9 @@ func (_u *AccessUpdateOne) sqlSave(ctx context.Context) (_node *Access, err erro
 	}
 	if value, ok := _u.mutation.Subjects(); ok {
 		_spec.SetField(access.FieldSubjects, field.TypeJson, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldSubjects); ok {
+		_spec.SetField(access.FieldSubjects, field.TypeJson, e)
 	}
 	if value, ok := _u.mutation.AppendedSubjects(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
@@ -602,6 +665,9 @@ func (_u *AccessUpdateOne) sqlSave(ctx context.Context) (_node *Access, err erro
 	}
 	if value, ok := _u.mutation.SubjectCount(); ok {
 		_spec.SetField(access.FieldSubjectCount, field.TypeUint32, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(access.FieldSubjectCount); ok {
+		_spec.SetField(access.FieldSubjectCount, field.TypeUint32, e)
 	}
 	if value, ok := _u.mutation.AddedSubjectCount(); ok {
 		_spec.AddField(access.FieldSubjectCount, field.TypeUint32, value)

@@ -124,8 +124,14 @@ func (_u *CellUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(cell.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(cell.FieldAlias); ok {
+		_spec.SetField(cell.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(cell.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(cell.FieldDateErased); ok {
+		_spec.SetField(cell.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(cell.FieldDateErased, field.TypeTime)
@@ -277,8 +283,14 @@ func (_u *CellUpdateOne) sqlSave(ctx context.Context) (_node *Cell, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(cell.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(cell.FieldAlias); ok {
+		_spec.SetField(cell.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(cell.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(cell.FieldDateErased); ok {
+		_spec.SetField(cell.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(cell.FieldDateErased, field.TypeTime)

@@ -3,6 +3,30 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A transaction's end is its owner's: a write that fails partway refuses its commit
+
+**Applies if** you generate with `pd gen`, or call `dialect.BeginTx`.
+Regenerate; change code that holds what `BeginTx` hands back as a
+`dialect.Tx` (#84, protobuf-orm/ent#16, protobuf-orm/protoc-gen-orm-ent#14).
+
+- **A generated write that fails partway, in a transaction it joined, refuses
+  that transaction's commit** (`ent.ErrPartial`). It cannot take back what it
+  wrote -- there are no savepoints, and the transaction is not its to end -- so
+  an operation that goes on past the error finds its commit refused, and
+  nothing of the write holds. Each write says when it begins writing
+  (`ent.Joined.Writing`); one refused before then refuses nothing.
+- **An `AddMany` records the rows of each statement as soon as it holds**, so
+  the trail never lags the rows a statement wrote.
+- **What `dialect.BeginTx` hands back is a `driver.Tx`**: Commit and Rollback,
+  no statements. A statement goes through the driver it answered with, which
+  is what writes what the transaction kept ahead of a statement about it.
+- **`dialect.BeginTx` refuses to begin inside a transaction it did not begin**
+  (`dialect.ErrForeignTx`) -- a generated client's `Client.Tx`, say. Begin with
+  `BeginTx`, and put the client on it with `WithDriver`.
+- **An AddMany's rule hands the request on whole**: a field of an app's own on
+  `<E>AddManyRequest` reaches the server behind the gate and the Sink
+  (protobuf-orm/protoc-gen-orm-ent#13).
+
 ## A call costs what it asks for
 
 **Applies if** your `serve` calls `grpcx.LimitUnary` or `grpcx.Limit`, which

@@ -249,8 +249,14 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(robot.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldAlias); ok {
+		_spec.SetField(robot.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.Secret(); ok {
 		_spec.SetField(robot.FieldSecret, field.TypeBytes, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldSecret); ok {
+		_spec.SetField(robot.FieldSecret, field.TypeBytes, e)
 	}
 	if _u.mutation.SecretCleared() {
 		_spec.ClearField(robot.FieldSecret, field.TypeBytes)
@@ -258,20 +264,32 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.DateAttested(); ok {
 		_spec.SetField(robot.FieldDateAttested, field.TypeTime, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldDateAttested); ok {
+		_spec.SetField(robot.FieldDateAttested, field.TypeTime, e)
+	}
 	if _u.mutation.DateAttestedCleared() {
 		_spec.ClearField(robot.FieldDateAttested, field.TypeTime)
 	}
 	if value, ok := _u.mutation.Keeper(); ok {
 		_spec.SetField(robot.FieldKeeper, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldKeeper); ok {
+		_spec.SetField(robot.FieldKeeper, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldDateUpdated); ok {
+		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, e)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(robot.FieldDateCreated, field.TypeTime)
 	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(robot.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldDateErased); ok {
+		_spec.SetField(robot.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(robot.FieldDateErased, field.TypeTime)
@@ -603,8 +621,14 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(robot.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldAlias); ok {
+		_spec.SetField(robot.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.Secret(); ok {
 		_spec.SetField(robot.FieldSecret, field.TypeBytes, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldSecret); ok {
+		_spec.SetField(robot.FieldSecret, field.TypeBytes, e)
 	}
 	if _u.mutation.SecretCleared() {
 		_spec.ClearField(robot.FieldSecret, field.TypeBytes)
@@ -612,20 +636,32 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	if value, ok := _u.mutation.DateAttested(); ok {
 		_spec.SetField(robot.FieldDateAttested, field.TypeTime, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldDateAttested); ok {
+		_spec.SetField(robot.FieldDateAttested, field.TypeTime, e)
+	}
 	if _u.mutation.DateAttestedCleared() {
 		_spec.ClearField(robot.FieldDateAttested, field.TypeTime)
 	}
 	if value, ok := _u.mutation.Keeper(); ok {
 		_spec.SetField(robot.FieldKeeper, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldKeeper); ok {
+		_spec.SetField(robot.FieldKeeper, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldDateUpdated); ok {
+		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, e)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(robot.FieldDateCreated, field.TypeTime)
 	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(robot.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldDateErased); ok {
+		_spec.SetField(robot.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(robot.FieldDateErased, field.TypeTime)

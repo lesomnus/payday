@@ -113,8 +113,14 @@ func (_u *PulseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Process(); ok {
 		_spec.SetField(pulse.FieldProcess, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(pulse.FieldProcess); ok {
+		_spec.SetField(pulse.FieldProcess, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateSeen(); ok {
 		_spec.SetField(pulse.FieldDateSeen, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(pulse.FieldDateSeen); ok {
+		_spec.SetField(pulse.FieldDateSeen, field.TypeTime, e)
 	}
 	if _u.mutation.DateSeenCleared() {
 		_spec.ClearField(pulse.FieldDateSeen, field.TypeTime)
@@ -258,8 +264,14 @@ func (_u *PulseUpdateOne) sqlSave(ctx context.Context) (_node *Pulse, err error)
 	if value, ok := _u.mutation.Process(); ok {
 		_spec.SetField(pulse.FieldProcess, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(pulse.FieldProcess); ok {
+		_spec.SetField(pulse.FieldProcess, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateSeen(); ok {
 		_spec.SetField(pulse.FieldDateSeen, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(pulse.FieldDateSeen); ok {
+		_spec.SetField(pulse.FieldDateSeen, field.TypeTime, e)
 	}
 	if _u.mutation.DateSeenCleared() {
 		_spec.ClearField(pulse.FieldDateSeen, field.TypeTime)

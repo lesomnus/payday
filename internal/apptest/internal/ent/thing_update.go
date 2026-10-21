@@ -133,14 +133,23 @@ func (_u *ThingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(thing.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(thing.FieldAlias); ok {
+		_spec.SetField(thing.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(thing.FieldDescription, field.TypeString, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(thing.FieldDescription); ok {
+		_spec.SetField(thing.FieldDescription, field.TypeString, e)
 	}
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(thing.FieldDescription, field.TypeString)
 	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(thing.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(thing.FieldDateErased); ok {
+		_spec.SetField(thing.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(thing.FieldDateErased, field.TypeTime)
@@ -304,14 +313,23 @@ func (_u *ThingUpdateOne) sqlSave(ctx context.Context) (_node *Thing, err error)
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(thing.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(thing.FieldAlias); ok {
+		_spec.SetField(thing.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(thing.FieldDescription, field.TypeString, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(thing.FieldDescription); ok {
+		_spec.SetField(thing.FieldDescription, field.TypeString, e)
 	}
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(thing.FieldDescription, field.TypeString)
 	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(thing.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(thing.FieldDateErased); ok {
+		_spec.SetField(thing.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(thing.FieldDateErased, field.TypeTime)

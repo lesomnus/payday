@@ -2,6 +2,7 @@ package cmd_test
 
 import (
 	"context"
+	"database/sql/driver"
 	"encoding/base64"
 	"errors"
 	"net/http"
@@ -197,7 +198,7 @@ func TestAWriteIsRecordedInItsOwnTransaction(t *testing.T) {
 		x.Empty(detail(t, rs[0]).GetRequest(), "a write's is on the trail")
 	})
 
-	written := func(t *testing.T, b *built, ctx context.Context) (context.Context, *access.Call, dialect.Tx, pdid.Id) {
+	written := func(t *testing.T, b *built, ctx context.Context) (context.Context, *access.Call, driver.Tx, pdid.Id) {
 		t.Helper()
 		x := require.New(t)
 		alice := b.person(t, ctx, "alice")

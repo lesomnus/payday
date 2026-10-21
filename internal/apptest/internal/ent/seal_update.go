@@ -133,14 +133,26 @@ func (_u *SealUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(seal.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(seal.FieldAlias); ok {
+		_spec.SetField(seal.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.Secret(); ok {
 		_spec.SetField(seal.FieldSecret, field.TypeBytes, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(seal.FieldSecret); ok {
+		_spec.SetField(seal.FieldSecret, field.TypeBytes, e)
 	}
 	if value, ok := _u.mutation.Code(); ok {
 		_spec.SetField(seal.FieldCode, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(seal.FieldCode); ok {
+		_spec.SetField(seal.FieldCode, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(seal.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(seal.FieldDateErased); ok {
+		_spec.SetField(seal.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(seal.FieldDateErased, field.TypeTime)
@@ -304,14 +316,26 @@ func (_u *SealUpdateOne) sqlSave(ctx context.Context) (_node *Seal, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(seal.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(seal.FieldAlias); ok {
+		_spec.SetField(seal.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.Secret(); ok {
 		_spec.SetField(seal.FieldSecret, field.TypeBytes, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(seal.FieldSecret); ok {
+		_spec.SetField(seal.FieldSecret, field.TypeBytes, e)
 	}
 	if value, ok := _u.mutation.Code(); ok {
 		_spec.SetField(seal.FieldCode, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(seal.FieldCode); ok {
+		_spec.SetField(seal.FieldCode, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(seal.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(seal.FieldDateErased); ok {
+		_spec.SetField(seal.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(seal.FieldDateErased, field.TypeTime)

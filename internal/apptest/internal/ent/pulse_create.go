@@ -97,6 +97,9 @@ func (_c *PulseCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *PulseCreate) check() error {
+	if fs := _c.mutation.ExprFields(); len(fs) > 0 {
+		return &ValidationError{Name: fs[0], err: fmt.Errorf(`ent: field "Pulse.%s" was assigned an expression, which only an update writes`, fs[0])}
+	}
 	if _, ok := _c.mutation.Process(); !ok {
 		return &ValidationError{Name: "process", err: errors.New(`ent: missing required field "Pulse.process"`)}
 	}

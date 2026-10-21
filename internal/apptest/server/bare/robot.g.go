@@ -174,6 +174,7 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 		q.Stored(&stored)
 	}
 
+	tx.Writing()
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -437,6 +438,7 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 			q.Where(predicate.Cell(pred))
 		}
 		q.Modify(mod)
+		tx.Writing()
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -528,6 +530,7 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 		p = cell.And(p, cell.IdEQ(v.Id))
 	}
 
+	tx.Writing()
 	u := st.Db.Cell.Update().Where(p)
 	u.SetDateErased(st.now())
 	n, err := u.Save(ctx)
@@ -790,6 +793,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 		q.Stored(&stored)
 	}
 
+	tx.Writing()
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -834,7 +838,9 @@ const RobotAddManyMax = 1000
 const robotAddManyRows = 500
 
 // AddMany adds every item as Add would add it, in one transaction: all of
-// the rows or none of them. The rows come back in the order of the items.
+// the rows or none of them -- in a transaction this joined, by that one's
+// commit being refused when this fails partway. The rows come back in the
+// order of the items, each recorded as soon as its statement holds.
 //
 // An item that cannot be a row is refused naming the item, before anything
 // is written. A refusal by the database is the whole statement's, and does
@@ -872,9 +878,11 @@ func (s RobotServiceServer) AddMany(ctx context.Context, req *apptest.RobotAddMa
 		qs[i], dss[i] = q, ds
 	}
 
-	us := make([]*ent.Robot, 0, len(qs))
+	tx.Writing()
+	out := make([]*apptest.Robot, 0, len(qs))
 	for lo := 0; lo < len(qs); lo += robotAddManyRows {
-		vs, err := st.Db.Robot.CreateBulk(qs[lo:min(lo+robotAddManyRows, len(qs))]...).Save(ctx)
+		hi := min(lo+robotAddManyRows, len(qs))
+		vs, err := st.Db.Robot.CreateBulk(qs[lo:hi]...).Save(ctx)
 		if err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -886,27 +894,26 @@ func (s RobotServiceServer) AddMany(ctx context.Context, req *apptest.RobotAddMa
 			}
 			return nil, err
 		}
-		us = append(us, vs...)
-	}
 
-	out := make([]*apptest.Robot, len(us))
-	for i, u := range us {
-		v := u.Proto()
-		for _, d := range dss[i] {
-			d(v)
-		}
-		out[i] = v
+		for j, u := range vs {
+			i := lo + j
+			v := u.Proto()
+			for _, d := range dss[i] {
+				d(v)
+			}
+			out = append(out, v)
 
-		var value *apptest.Robot
-		if stored[i] != nil {
-			value = s.image(stored[i].Proto())
-		}
-		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    apptest.RobotService_AddMany_FullMethodName,
-			Key:   u.Id,
-			Value: value,
-		}); err != nil {
-			return nil, err
+			var value *apptest.Robot
+			if stored[i] != nil {
+				value = s.image(stored[i].Proto())
+			}
+			if err := record(ctx, s.Rec, st.Db, Change{
+				By:    apptest.RobotService_AddMany_FullMethodName,
+				Key:   u.Id,
+				Value: value,
+			}); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -965,7 +972,17 @@ func (s robotAddRuled) AddMany(ctx context.Context, req *apptest.RobotAddManyReq
 		}
 		rs[i] = r
 	}
-	return s.RobotServiceServer.AddMany(ctx, apptest.RobotAddManyRequest_builder{Items: rs}.Build())
+	out := &apptest.RobotAddManyRequest{}
+	req.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		if fd.Name() != "items" {
+			out.ProtoReflect().Set(fd, v)
+		}
+		return true
+	})
+	out.ProtoReflect().SetUnknown(req.ProtoReflect().GetUnknown())
+	out.SetItems(rs)
+
+	return s.RobotServiceServer.AddMany(ctx, out)
 }
 
 func (s RobotServiceServer) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
@@ -1210,6 +1227,7 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 		if !plan.WritesTo(13) {
 			q.SetDateUpdated(st.now())
 		}
+		tx.Writing()
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -1301,6 +1319,7 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 		p = robot.And(p, robot.IdEQ(v.Id))
 	}
 
+	tx.Writing()
 	u := st.Db.Robot.Update().Where(p)
 	u.SetDateErased(st.now())
 	u.SetDateUpdated(st.now())
@@ -1533,6 +1552,7 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 		q.Stored(&stored)
 	}
 
+	tx.Writing()
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -1800,6 +1820,7 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 			q.Where(predicate.Pairing(pred))
 		}
 		q.Modify(mod)
+		tx.Writing()
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -1891,6 +1912,7 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 		p = pairing.And(p, pairing.IdEQ(v.Id))
 	}
 
+	tx.Writing()
 	n, err := st.Db.Pairing.Delete().Where(p).Exec(ctx)
 	if err != nil {
 		return nil, err
@@ -2072,6 +2094,7 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 		q.Stored(&stored)
 	}
 
+	tx.Writing()
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -2336,6 +2359,7 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 			q.Where(predicate.Joint(pred))
 		}
 		q.Modify(mod)
+		tx.Writing()
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -2427,6 +2451,7 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 		p = joint.And(p, joint.IdEQ(v.Id))
 	}
 
+	tx.Writing()
 	u := st.Db.Joint.Update().Where(p)
 	u.SetDateErased(st.now())
 	n, err := u.Save(ctx)
@@ -2603,6 +2628,7 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 		q.Stored(&stored)
 	}
 
+	tx.Writing()
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -2861,6 +2887,7 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 			q.Where(predicate.Fleet(pred))
 		}
 		q.Modify(mod)
+		tx.Writing()
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -2952,6 +2979,7 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 		p = fleet.And(p, fleet.IdEQ(v.Id))
 	}
 
+	tx.Writing()
 	u := st.Db.Fleet.Update().Where(p)
 	u.SetDateErased(st.now())
 	n, err := u.Save(ctx)
@@ -3159,6 +3187,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 		q.Stored(&stored)
 	}
 
+	tx.Writing()
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -3203,7 +3232,9 @@ const ReadingAddManyMax = 1000
 const readingAddManyRows = 500
 
 // AddMany adds every item as Add would add it, in one transaction: all of
-// the rows or none of them. The rows come back in the order of the items.
+// the rows or none of them -- in a transaction this joined, by that one's
+// commit being refused when this fails partway. The rows come back in the
+// order of the items, each recorded as soon as its statement holds.
 //
 // An item that cannot be a row is refused naming the item, before anything
 // is written. A refusal by the database is the whole statement's, and does
@@ -3241,9 +3272,11 @@ func (s ReadingServiceServer) AddMany(ctx context.Context, req *apptest.ReadingA
 		qs[i], dss[i] = q, ds
 	}
 
-	us := make([]*ent.Reading, 0, len(qs))
+	tx.Writing()
+	out := make([]*apptest.Reading, 0, len(qs))
 	for lo := 0; lo < len(qs); lo += readingAddManyRows {
-		vs, err := st.Db.Reading.CreateBulk(qs[lo:min(lo+readingAddManyRows, len(qs))]...).Save(ctx)
+		hi := min(lo+readingAddManyRows, len(qs))
+		vs, err := st.Db.Reading.CreateBulk(qs[lo:hi]...).Save(ctx)
 		if err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -3255,27 +3288,26 @@ func (s ReadingServiceServer) AddMany(ctx context.Context, req *apptest.ReadingA
 			}
 			return nil, err
 		}
-		us = append(us, vs...)
-	}
 
-	out := make([]*apptest.Reading, len(us))
-	for i, u := range us {
-		v := u.Proto()
-		for _, d := range dss[i] {
-			d(v)
-		}
-		out[i] = v
+		for j, u := range vs {
+			i := lo + j
+			v := u.Proto()
+			for _, d := range dss[i] {
+				d(v)
+			}
+			out = append(out, v)
 
-		var value *apptest.Reading
-		if stored[i] != nil {
-			value = s.image(stored[i].Proto())
-		}
-		if err := record(ctx, s.Rec, st.Db, Change{
-			By:    apptest.ReadingService_AddMany_FullMethodName,
-			Key:   u.Id,
-			Value: value,
-		}); err != nil {
-			return nil, err
+			var value *apptest.Reading
+			if stored[i] != nil {
+				value = s.image(stored[i].Proto())
+			}
+			if err := record(ctx, s.Rec, st.Db, Change{
+				By:    apptest.ReadingService_AddMany_FullMethodName,
+				Key:   u.Id,
+				Value: value,
+			}); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -3334,7 +3366,17 @@ func (s readingAddRuled) AddMany(ctx context.Context, req *apptest.ReadingAddMan
 		}
 		rs[i] = r
 	}
-	return s.ReadingServiceServer.AddMany(ctx, apptest.ReadingAddManyRequest_builder{Items: rs}.Build())
+	out := &apptest.ReadingAddManyRequest{}
+	req.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		if fd.Name() != "items" {
+			out.ProtoReflect().Set(fd, v)
+		}
+		return true
+	})
+	out.ProtoReflect().SetUnknown(req.ProtoReflect().GetUnknown())
+	out.SetItems(rs)
+
+	return s.ReadingServiceServer.AddMany(ctx, out)
 }
 
 func (s ReadingServiceServer) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
@@ -3537,6 +3579,7 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 			q.Where(predicate.Reading(pred))
 		}
 		q.Modify(mod)
+		tx.Writing()
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -3628,6 +3671,7 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 		p = reading.And(p, reading.IdEQ(v.Id))
 	}
 
+	tx.Writing()
 	n, err := st.Db.Reading.Delete().Where(p).Exec(ctx)
 	if err != nil {
 		return nil, err

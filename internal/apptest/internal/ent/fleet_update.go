@@ -113,8 +113,14 @@ func (_u *FleetUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(fleet.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(fleet.FieldAlias); ok {
+		_spec.SetField(fleet.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(fleet.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(fleet.FieldDateErased); ok {
+		_spec.SetField(fleet.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(fleet.FieldDateErased, field.TypeTime)
@@ -255,8 +261,14 @@ func (_u *FleetUpdateOne) sqlSave(ctx context.Context) (_node *Fleet, err error)
 	if value, ok := _u.mutation.Alias(); ok {
 		_spec.SetField(fleet.FieldAlias, field.TypeString, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(fleet.FieldAlias); ok {
+		_spec.SetField(fleet.FieldAlias, field.TypeString, e)
+	}
 	if value, ok := _u.mutation.DateErased(); ok {
 		_spec.SetField(fleet.FieldDateErased, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(fleet.FieldDateErased); ok {
+		_spec.SetField(fleet.FieldDateErased, field.TypeTime, e)
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(fleet.FieldDateErased, field.TypeTime)
