@@ -1,7 +1,19 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": "What Renovate has to know about an app made with payday. An app extends github>lesomnus/payday//renovate/app and keeps the rest of its configuration its own.",
+  "extends": ["helpers:pinGitHubActionDigests"],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "description": "A fix for a known vulnerability is proposed as soon as it is known, however new the release that has it.",
+    "minimumReleaseAge": null
+  },
   "packageRules": [
+    {
+      "description": "A release of an npm package or a Go module is not proposed until it is three days old, as Renovate's own security:minimumReleaseAgeNpm waits: time for a release published to do harm to be found and pulled, and the 72 hours in which npm lets a release be unpublished. The age is the registry's and the module proxy's, and a Go pseudo-version's is the time in its name, which is its commit's. `strict` holds the branch until then rather than opening it with a pending check; it has been the default since Renovate 42, and is said here so that it does not rest on one.",
+      "matchDatasources": ["npm", "go"],
+      "minimumReleaseAge": "3 days",
+      "internalChecksFilter": "strict"
+    },
     {
       "description": "What cannot break goes in one pull request: patches and digests.",
       "matchUpdateTypes": ["patch", "digest"],
@@ -12,6 +24,13 @@
       "matchUpdateTypes": ["minor"],
       "matchCurrentVersion": ">=1.0.0",
       "groupName": "non-major"
+    },
+    {
+      "description": "But golang.org/x is released as one: every module of it is before 1.0, and most of them are tagged together about once a month. A pull request each was four in one week in roster -- x/crypto, x/image, x/oauth2, x/sync -- and each conflicted in go.mod and go.sum with whichever was merged before it.",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["golang.org/x/**"],
+      "groupName": "golang.org/x",
+      "groupSlug": "golang-x"
     },
     {
       "description": "A major of @vitejs/plugin-react follows a major of Vite, and npm refuses the half of the pair that moved alone.",

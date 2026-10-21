@@ -112,8 +112,23 @@ requires and no further.
 Keeping current above the floors is Renovate's. An app made with `pd new` has a
 `renovate.json` that extends payday's preset, `github>lesomnus/payday//renovate/app`
 (`renovate/app.json` in this repository). An app made before that can extend the
-same preset. The preset does four things:
+same preset. The preset does these things:
 
+- **It waits three days before it proposes a release** of an npm package or a
+  Go module: time for a release published to do harm to be found and pulled,
+  and the 72 hours in which npm lets a release be unpublished. That is what
+  Renovate's own `security:minimumReleaseAgeNpm` waits. An update still
+  waiting is on the dependency dashboard under "Pending Status Checks", where a
+  tick opens it anyway. A fix for a known vulnerability is not held. A Go
+  pseudo-version waits from the time in its name, which is its commit's.
+- **It pins every GitHub Action by commit** (`helpers:pinGitHubActionDigests`).
+  A tag is moved by whoever can push to the action's repository, and a commit
+  is not. A workflow that names an action by its tag gets a pull request that
+  names the commit instead, with the tag after it as a comment, and from then
+  on an update moves the two together.
+- **It asks osv.dev about vulnerabilities as well as GitHub**
+  (`osvVulnerabilityAlerts`), and proposes the fix for each, when there is
+  one, at once and whatever the app's schedule says.
 - **It leaves payday and protobuf-orm to `pd upgrade --payday`.** An upgrade of
   either has to generate the app's code again. Renovate cannot generate, and
   code another payday generated is refused when it runs, so a pull request that
@@ -136,6 +151,12 @@ same preset. The preset does four things:
   gets a pull request of its own and cannot hold the rest of the group back.
   go-webauthn's 0.17 to 0.18 changed `Verify` under roster, and held every
   other update in its group back.
+
+  But golang.org/x is one pull request, `golang.org/x`. Every module of it is
+  before 1.0 and most of them are tagged together about once a month, so a pull
+  request each was four in one week in roster -- x/crypto, x/image, x/oauth2,
+  x/sync -- and each conflicted in `go.mod` and `go.sum` with whichever was
+  merged before it.
 
 The rest of a Renovate configuration stays the app's: its schedule, its
 reviewers, and rules of its own. A rule in the app's own `packageRules` is read
