@@ -6,7 +6,7 @@ Two things move under an app: payday, and the packages its page is built with.
 commits nothing.
 
 ```sh
-go tool pd upgrade --payday latest   # payday, then what that payday needs of the page
+go tool pd upgrade --payday <commit> # payday, then what that payday needs of the page
 go tool pd upgrade                   # what this payday needs of the page
 go tool pd upgrade --dry-run         # what would run
 go tool pd versions .                # the floors, the targets, and what this app has
@@ -94,9 +94,16 @@ Steps 3 and 4 run the payday that step 1 fetched, not the one you started
 with. Its floors are the ones the page has to meet, and code that payday's
 generator writes is the only code its runtime accepts (`version.Same`).
 
-`VERSION` is anything `go get` takes: `latest`, a tag, or a commit. It is
+`VERSION` is anything `go get` takes: a commit, a tag, or `latest`. It is
 `go get` without `-u`, so payday's own dependencies move to what payday
 requires and no further.
+
+Name a commit. payday tags no versions of its Go module (its only tags,
+`ts/v*`, are the npm package's), so `latest` is whatever `main` is the moment
+`go get` asks: a commit nobody upgrading has read, and not the one the next
+person to run the same command gets. A commit is the payday you looked at, and
+it is what the pull request can say it moved to. roster's upgrade to the
+payday that brought `pd upgrade` was `--payday 56a32f4`.
 
 ## 5. What it does not do
 

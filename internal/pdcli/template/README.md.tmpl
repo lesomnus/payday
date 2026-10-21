@@ -78,16 +78,20 @@ in it they are yours, and nothing here moves them.
 ## Upgrading payday
 
 ```sh
-go tool pd upgrade --payday latest
+go tool pd upgrade --payday <commit>
 ```
 
-That is `go get github.com/lesomnus/payday@latest` and `go mod tidy`, and then
+That is `go get github.com/lesomnus/payday@<commit>` and `go mod tidy`, and then
 the payday it fetched: **its** `pd upgrade` and **its** `pd gen` (`--ts`,
 which is the Go half as well, for an app with a page). Its upgrade holds the page to its floors -- the oldest
 `@bufbuild/protobuf`, `typescript`, `vite` and so on it builds with, which
 `go tool pd versions` lists -- and moves only what is below one, to the version
 `pd new` writes today. Nothing is committed: `git diff` says what moved, and
 `--dry-run` says what would run.
+
+A commit, and not `latest`: payday tags no versions of its Go module, so
+`latest` is whatever its `main` is the moment `go get` asks. Name the one you
+read.
 
 Keeping current beyond those floors is not payday's to do; Renovate does it
 better, with CI behind every bump. `renovate.json` extends payday's preset,
