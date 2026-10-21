@@ -71,6 +71,10 @@ import (
 // before the purge touches it, and a hold refuses it, because a held tenant is
 // not purged. A window that destroys every chunk of a tenant leaves its key,
 // since the tenant is still there and writing.
+//
+// And it leaves a mark where the key was, saying when ([Keys.left]): a row the
+// tenant may read that was written before then is sealed to the tenants it
+// names that are still there, and to no key made for this one again.
 type Keys struct {
 	// Store is the key store: a namespace per tenant, and never the archive.
 	Store flob.Stores
@@ -105,9 +109,18 @@ const (
 	// formatKey is a tenant's key: its age identity, sealed to the master.
 	formatKey = "age-key"
 
+	// formatLeft is the mark a tenant's keys leave behind when it leaves: when
+	// they went, so that no key is made for what it wrote before. See
+	// [Keys.left].
+	formatLeft = "age-key-left"
+
 	// labelRecipient is the key's public half, which is all sealing needs.
 	labelRecipient = "Recipient"
 )
+
+// errLeft is a row every tenant it names has left: there is nobody left to
+// seal it to, and it is not for the archive. See [Keys.left].
+var errLeft = errors.New("every tenant the row names has left, and their keys with them")
 
 // SealedMember is where a sealed row keeps what it said, in place of `value`
 // and `patch`: their protojson members, as one JSON object, sealed with age
@@ -178,23 +191,24 @@ func (k *Keys) keysIn(ctx context.Context, ns string) ([]key, error) {
 }
 
 // make is a new key for a namespace: an X25519 identity, sealed to the master
-// and kept, of which the process keeps only the public half.
-func (k *Keys) make(ctx context.Context, ns string) error {
+// and kept, of which the process keeps only the public half. It answers the
+// key's digest in the key store.
+func (k *Keys) make(ctx context.Context, ns string) (flob.Digest, error) {
 	id, err := age.GenerateX25519Identity()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	buf := &bytes.Buffer{}
 	w, err := age.Encrypt(buf, k.Master...)
 	if err != nil {
-		return fmt.Errorf("audit.keys.master: %w", err)
+		return "", fmt.Errorf("audit.keys.master: %w", err)
 	}
 	if _, err := io.WriteString(w, id.String()+"\n"); err != nil {
-		return err
+		return "", err
 	}
 	if err := w.Close(); err != nil {
-		return err
+		return "", err
 	}
 
 	l := flob.Labels{}
@@ -202,7 +216,71 @@ func (k *Keys) make(ctx context.Context, ns string) error {
 	l.Set(labelRecipient, id.Recipient().String())
 	l.Set(labelAt, time.Now().UTC().Format(time.RFC3339Nano))
 
-	if _, err := k.Store.Use(ns).Add(ctx, flob.Meta{Labels: l}, buf); err != nil && !errors.Is(err, flob.ErrAlreadyExists) {
+	m, err := k.Store.Use(ns).Add(ctx, flob.Meta{Labels: l}, buf)
+	if err != nil && !errors.Is(err, flob.ErrAlreadyExists) {
+		return "", fmt.Errorf("audit.keys: %s: %w", ns, err)
+	}
+
+	return m.Digest, nil
+}
+
+// left answers when the tenant of a namespace last left -- when its keys were
+// last destroyed -- and the zero time for a tenant that never has.
+//
+// # Why its leaving is kept
+//
+// The key a row is sealed to is made by the process that first has a row of
+// the tenant's to seal, so a namespace with no key is no answer: it is a
+// tenant that has not had a row sealed yet, and a tenant that left. A row of
+// the second written before it left -- read out of the database by a pass a
+// moment before its purge, or written by another tenant and naming it, the
+// other side of a transfer -- would be sealed to a key made for it afterwards,
+// and what the tenant took with it would be readable again. So the mark stays
+// where its keys were, and a row written before it is sealed to the tenants
+// still there, or not archived at all. A row written after it is a tenant
+// that is back, and gets a key of its own.
+func (k *Keys) left(ctx context.Context, ns string) (time.Time, error) {
+	w, ok := flob.AsWalker(k.Store.Use(ns))
+	if !ok {
+		return time.Time{}, errors.New("audit.keys: the key store cannot list what it holds")
+	}
+
+	out := time.Time{}
+	for v, err := range w.Walk(ctx) {
+		if err != nil {
+			return out, err
+		}
+
+		l, err := v.Labels(ctx)
+		if err != nil {
+			if errors.Is(err, flob.ErrNotExist) {
+				continue
+			}
+
+			return out, err
+		}
+		if l.Get(labelFormat) != formatLeft {
+			continue
+		}
+
+		if at, err := time.Parse(time.RFC3339Nano, l.Get(labelAt)); err == nil && at.After(out) {
+			out = at
+		}
+	}
+
+	return out, nil
+}
+
+// leave marks a namespace's tenant as having left, now: see [Keys.left].
+func (k *Keys) leave(ctx context.Context, ns string) error {
+	at := time.Now().UTC().Format(time.RFC3339Nano)
+
+	l := flob.Labels{}
+	l.Set(labelFormat, formatLeft)
+	l.Set(labelAt, at)
+
+	b := []byte(ns + " left at " + at + "\n")
+	if _, err := k.Store.Use(ns).Add(ctx, flob.Meta{Labels: l}, bytes.NewReader(b)); err != nil && !errors.Is(err, flob.ErrAlreadyExists) {
 		return fmt.Errorf("audit.keys: %s: %w", ns, err)
 	}
 
@@ -211,6 +289,10 @@ func (k *Keys) make(ctx context.Context, ns string) error {
 
 // destroy erases every key of a namespace, and answers how many. `dry` counts
 // them and erases nothing.
+//
+// The namespace is marked as left first (see [Keys.left]), so that a key a
+// pass makes for it while its keys go is one the pass finds it should not
+// have made.
 func (k *Keys) destroy(ctx context.Context, ns string, dry bool) (int, error) {
 	ks, err := k.keysIn(ctx, ns)
 	if err != nil {
@@ -218,6 +300,12 @@ func (k *Keys) destroy(ctx context.Context, ns string, dry bool) (int, error) {
 	}
 	if dry {
 		return len(ks), nil
+	}
+	if err := k.leave(ctx, ns); err != nil {
+		return 0, err
+	}
+	if ks, err = k.keysIn(ctx, ns); err != nil {
+		return 0, err
 	}
 
 	n := 0
@@ -295,12 +383,13 @@ func (k *Keys) Open(ctx context.Context, doc []byte) ([]byte, error) {
 }
 
 // sealer seals rows on their way into the archive, for one act: the public
-// half of each tenant's key, asked for once.
+// half of each tenant's key, asked for once, and when each tenant last left.
 type sealer struct {
 	k *Keys
 
 	mu    sync.Mutex
 	known map[string]age.Recipient
+	gone  map[string]time.Time
 }
 
 func newSealer(k *Keys) *sealer {
@@ -308,46 +397,76 @@ func newSealer(k *Keys) *sealer {
 		return nil
 	}
 
-	return &sealer{k: k, known: map[string]age.Recipient{}}
+	return &sealer{k: k, known: map[string]age.Recipient{}, gone: map[string]time.Time{}}
 }
 
-// recipient is the key a namespace's rows are sealed to, made when there is
-// none.
-func (s *sealer) recipient(ctx context.Context, ns string) (age.Recipient, error) {
+// recipient is the key a namespace's row written at `at` is sealed to, made
+// when there is none -- and false for a row written before the namespace's
+// tenant left, which is sealed to nothing of theirs (see [Keys.left]).
+func (s *sealer) recipient(ctx context.Context, ns string, at time.Time) (age.Recipient, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	gone, ok := s.gone[ns]
+	if !ok {
+		var err error
+		if gone, err = s.k.left(ctx, ns); err != nil {
+			return nil, false, err
+		}
+
+		s.gone[ns] = gone
+	}
+	if !gone.IsZero() && !at.After(gone) {
+		return nil, false, nil
+	}
+
 	if r, ok := s.known[ns]; ok {
-		return r, nil
+		return r, true, nil
 	}
 
 	ks, err := s.k.keysIn(ctx, ns)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if len(ks) == 0 {
-		if err := s.k.make(ctx, ns); err != nil {
-			return nil, err
+		d, err := s.k.make(ctx, ns)
+		if err != nil {
+			return nil, false, err
+		}
+
+		// Asked again after: a tenant leaving marks it before its keys go,
+		// so one that left while this key was made has marked it by now, and
+		// the key goes too.
+		if gone, err = s.k.left(ctx, ns); err != nil {
+			return nil, false, err
+		}
+		s.gone[ns] = gone
+		if !gone.IsZero() && !at.After(gone) {
+			if err := s.k.Store.Use(ns).Erase(ctx, d); err != nil && !errors.Is(err, flob.ErrNotExist) {
+				return nil, false, fmt.Errorf("audit.keys: %s: %w", ns, err)
+			}
+
+			return nil, false, nil
 		}
 
 		// Read again rather than kept: another replica may have made one
 		// first, and the oldest is the one everybody seals to.
 		if ks, err = s.k.keysIn(ctx, ns); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if len(ks) == 0 {
-			return nil, fmt.Errorf("audit.keys: %s: a key was made and the key store does not have it", ns)
+			return nil, false, fmt.Errorf("audit.keys: %s: a key was made and the key store does not have it", ns)
 		}
 	}
 
 	r, err := age.ParseX25519Recipient(ks[0].recipient)
 	if err != nil {
-		return nil, fmt.Errorf("audit.keys: %s: %w", ns, err)
+		return nil, false, fmt.Errorf("audit.keys: %s: %w", ns, err)
 	}
 
 	s.known[ns] = r
 
-	return r, nil
+	return r, true, nil
 }
 
 // seal is a row with what it says sealed, and as it was when it says nothing:
@@ -377,15 +496,25 @@ func (s *sealer) seal(ctx context.Context, doc []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	at, err := time.Parse(time.RFC3339Nano, h.Created)
+	if err != nil {
+		return nil, fmt.Errorf("a row written at %q: %w", h.Created, err)
+	}
 
+	// To the tenants it names that are still there: one that has left took
+	// what it shared with it.
 	rs := []age.Recipient{}
 	for _, ns := range keyspaces(h) {
-		r, err := s.recipient(ctx, ns)
+		r, ok, err := s.recipient(ctx, ns, at)
 		if err != nil {
 			return nil, err
 		}
-
-		rs = append(rs, r)
+		if ok {
+			rs = append(rs, r)
+		}
+	}
+	if len(rs) == 0 {
+		return nil, errLeft
 	}
 
 	plain, err := json.Marshal(contents)

@@ -908,6 +908,15 @@ kept as long as the archive is and which no purge reaches. `trail.Keys`
   key, because nothing before the purge touches it; a hold refuses its
   destruction, because a held tenant is not purged; a window that destroys every
   chunk of a tenant leaves its key, since the tenant is still there.
+- **And leaves a mark where its key was**, saying when. A key is made by the
+  process that first has a row to seal, so no key is no answer: a row written
+  before the mark — the other side of a transfer, or one a pass read a moment
+  before the purge — would be sealed to a key made for it again. So a row
+  written before it is sealed to the tenants it names that are still there,
+  and one that names nobody still there is not archived at all; one written
+  after it is a tenant that is back, with a key of its own. A key a pass makes
+  as the tenant leaves is found under the mark, which comes before the keys go,
+  and goes too.
 - **Reading.** `Policy.Read` and `Policy.ReadTenant` hand a sealed row over
   opened, given the master; without it a sealed row is `trail.ErrSealed`, and
   one whose every key is gone is `trail.ErrKeyGone`. `trail.Read`,
@@ -973,6 +982,31 @@ offboarding gives.
 It refuses a tenant under a hold and one the app has no answer for, goes round
 again until a round finds nothing (a pass can write a chunk after the
 namespace was erased), and writes a receipt.
+
+#### A pass and what erases take turns
+
+A pass holds what it read of a row from the moment it reads it until the
+chunk it copies the row into is written and the row is forgotten. An erasure
+that blanked the row in that time, and then looked through the archive before
+the chunk was there, would have its work undone by the copy — and so would a
+tenant's purge, and a discard by hand. So they take turns, on the
+deployment's lease, `Policy.Lease`, under a name of their own (`trail.Turn`):
+
+- a pass holds the turn for each chunk's worth of rows it moves, from the first
+  read to the forgetting, and gives it back between, so that an act waits for a
+  chunk and not for a pass;
+- `Policy.Forget` and `Policy.PurgeTenant` change the database's rows in their
+  turn, and look through the archive after it, where a pass that held the rows
+  has put them by then; `Policy.Collect` discards in its own.
+
+What a pass does inside the archive — a fold, a file filed by tenant — is
+the erasures' rounds to answer, as it was. It is not the loop's lease,
+`payday.trail`, which one process holds for as long as it runs the passes: an
+act in any process takes the turn for as long as it changes rows. With no
+lease nothing takes turns, and the process says so where it comes up; a lease
+that holds nothing (`none`) is no lease for this, so a process that runs no
+loops acts without one. `pd new`'s `Build` hands the policy the lease
+`spin.lease` names.
 
 ### The access record (#111)
 

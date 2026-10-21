@@ -3,6 +3,28 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A pass and what erases from the trail take turns, and a tenant that left has no key made again
+
+**Applies if** you keep the trail's archive and erase from it -- `Policy.Forget`,
+`Policy.PurgeTenant`, `Policy.Collect` -- or seal it (`audit.keys`). Part of
+payday#115.
+
+- **Hand the trail's policy the deployment's lease**: `p.Lease =` the
+  `spin.Lease` that `spin.lease` names, built beside the policy -- `pd new`'s
+  `Build` does, unless it is `none`. A pass then holds `trail.Turn` for each
+  chunk's worth of rows it moves, and the erasures change the database's rows
+  in their own turn, so a pass can no longer write back what one blanked or
+  removed a moment before. Without it nothing takes turns, which `p.String()`
+  says. Never hand it `spin.Nowhere()`: an act would wait for ever.
+- **An erasure called inside a transaction of yours waits for a pass's chunk**
+  while it holds that transaction. On SQLite that can make the pass's chunk
+  fail once (`database is locked`), to be moved again by the next pass.
+- **A tenant that leaves leaves a mark in the key store** where its keys were.
+  A row written before it is sealed to the tenants it names that are still
+  there; one that names nobody still there stays in the database, for the
+  tenant's purge, and is not archived. Nothing to change; a key store's
+  listing shows one more blob per tenant that left.
+
 ## The trail's archive takes in only what it can account for
 
 **Applies if** you keep the trail's archive (`audit.archive`, or
