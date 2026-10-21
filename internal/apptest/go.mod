@@ -6,11 +6,12 @@ module github.com/lesomnus/payday/internal/apptest
 go 1.27.0
 
 require (
+	filippo.io/age v1.3.2
 	github.com/lesomnus/flob v0.0.0-20261010120939-21f89e60609e
 	github.com/lesomnus/grpc-dgram v0.0.0-20260912133542-a7366077bf6f
-	github.com/lesomnus/otx v0.0.0-20260807173743-977a5687d6ba
-	github.com/lesomnus/otx/otxgrpc v0.0.0-20260807173743-977a5687d6ba
-	github.com/lesomnus/payday v0.0.0-20260901023457-72d006c78d10
+	github.com/lesomnus/otx v0.0.0-20261013182912-d2af55df512e
+	github.com/lesomnus/otx/otxgrpc v0.0.0-20261013182912-d2af55df512e
+	github.com/lesomnus/payday v0.0.0-00010101000000-000000000000
 	github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f
 	github.com/lesomnus/xli v0.0.0-20261006051808-dadaa2417a76
 	github.com/lesomnus/xli/cfg v0.1.2
@@ -19,23 +20,27 @@ require (
 	github.com/protobuf-orm/ent v0.0.0-20261017215450-5460d907499b
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20261017212716-3430237a8656
 	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260906232518-fa1777a2628d
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.1
 	golang.org/x/sync v0.23.0
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
 )
 
 require (
 	ariga.io/atlas v1.3.0 // indirect
+	cel.dev/cel-go v0.32.0 // indirect
+	cel.dev/expr v0.25.2 // indirect
 	connectrpc.com/connect v1.19.1 // indirect
 	connectrpc.com/cors v0.1.0 // indirect
 	connectrpc.com/vanguard v0.4.0 // indirect
+	filippo.io/hpke v0.4.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v17 v17.0.1 // indirect
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -49,9 +54,11 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.10.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/lesomnus/mkot v0.0.0-20260907012347-f3fd02e2da01 // indirect
-	github.com/lesomnus/mkot/mkotx v0.0.0-20260801183340-9c83100aa7c2 // indirect
-	github.com/lesomnus/mkot/pretty v0.0.0-20260907012347-f3fd02e2da01 // indirect
+	github.com/lesomnus/mkot v0.0.0-20261013182918-46d8b05a79b3 // indirect
+	github.com/lesomnus/mkot/mkotx v0.0.0-20261013182918-46d8b05a79b3 // indirect
+	github.com/lesomnus/mkot/pretty v0.0.0-20261013182918-46d8b05a79b3 // indirect
+	github.com/lesomnus/pwr v0.0.0-20261015171245-2ec220d490d1 // indirect
+	github.com/lesomnus/pwr/cel v0.0.0-20261015172325-de464a5ef1fa // indirect
 	github.com/lesomnus/sqlite3-wasm v0.0.0-20260907051834-c375b662b25b // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.23 // indirect
@@ -59,30 +66,30 @@ require (
 	github.com/ncruces/go-sqlite3-wasm/v3 v3.2.35304 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20261010065542-f9ac5b66df3e // indirect
-	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/zclconf/go-cty v1.19.0 // indirect
 	github.com/zclconf/go-cty-yaml v1.2.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/bridges/otelslog v0.18.0 // indirect
+	go.opentelemetry.io/contrib/bridges/otelslog v0.21.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0 // indirect
-	go.opentelemetry.io/otel v1.45.0 // indirect
-	go.opentelemetry.io/otel/log v0.20.0 // indirect
-	go.opentelemetry.io/otel/metric v1.45.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
-	go.opentelemetry.io/otel/sdk/log v0.20.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect
-	go.opentelemetry.io/otel/trace v1.45.0 // indirect
+	go.opentelemetry.io/otel v1.47.0 // indirect
+	go.opentelemetry.io/otel/log v1.47.0 // indirect
+	go.opentelemetry.io/otel/metric v1.47.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
+	go.opentelemetry.io/otel/sdk/log v1.47.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.47.0 // indirect
+	go.opentelemetry.io/otel/trace v1.47.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260724162435-b2f20204f0df // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
@@ -90,3 +97,10 @@ tool (
 	github.com/protobuf-orm/ent/cmd/ent
 	github.com/protobuf-orm/protoc-gen-orm-go
 )
+
+// The payday it is tried against is the checkout it sits in, and no release of
+// it: go.work says so for a build at the root, and this says it for this
+// go.mod alone -- which is what `go mod tidy`, Renovate and a vulnerability
+// scanner read. Without it, this file named the payday of 1 September and the
+// otel and x/net versions that one needed, which only the workspace overrode.
+replace github.com/lesomnus/payday => ../..

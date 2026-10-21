@@ -22,6 +22,12 @@
 // goes on as if it held what it held, which is the window no lease closes (see
 // [spin.Lease]).
 //
+// A connection is made outside the lock every hold shares, one dial at a time
+// and under the context of the loop that asked, so a database that does not
+// answer keeps waiting only the loops that are waiting anyway -- and a process
+// shutting down stops dialing when it is told to, rather than once every loop
+// has had its own dial time out in turn.
+//
 // # The other half of noticing
 //
 // The database notices a process that is gone when its connection closes. A
@@ -55,6 +61,7 @@ package spinpg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"log/slog"
@@ -85,6 +92,10 @@ const (
 	DefaultCheck = 5 * time.Second
 )
 
+// dialWithin is how long a connection may take to be made before the database
+// is taken for one that cannot be asked just now.
+const dialWithin = 10 * time.Second
+
 // Lease is a [spin.Lease] whose holds are advisory locks on one connection.
 type Lease struct {
 	cfg   *pgx.ConnConfig
@@ -99,6 +110,12 @@ type Lease struct {
 	names    map[int32]string
 	users    int
 	checking bool
+
+	// dialing is closed when the connection being made is made, or is not;
+	// nil while nobody is making one. dialed is how the database refused the
+	// last one, for whoever waited on it.
+	dialing chan struct{}
+	dialed  error
 }
 
 type hold struct {
@@ -122,6 +139,10 @@ func Check(d time.Duration) Option { return func(l *Lease) { l.check = d } }
 // New answers with a lease on the database at `dsn`. It connects once to check,
 // as a broker does, so that a lease that cannot reach its database says so when
 // a server is built rather than at its first hold.
+//
+// What it says later -- which names a lost connection took with it -- it says
+// in the log `ctx` carries, which is the process's when the serve command
+// builds it; the lease outlives `ctx` being done.
 func New(ctx context.Context, dsn string, opts ...Option) (*Lease, error) {
 	cfg, err := pgx.ParseConfig(dsn)
 	if err != nil {
@@ -140,10 +161,10 @@ func New(ctx context.Context, dsn string, opts ...Option) (*Lease, error) {
 
 	l := &Lease{
 		cfg:   cfg,
-		log:   log.From(ctx),
+		log:   log.From(context.WithoutCancel(ctx)),
 		retry: DefaultRetry,
 		check: DefaultCheck,
-		dial:  10 * time.Second,
+		dial:  dialWithin,
 		holds: map[int32]*hold{},
 		names: map[int32]string{},
 	}
@@ -151,11 +172,13 @@ func New(ctx context.Context, dsn string, opts ...Option) (*Lease, error) {
 		opt(l)
 	}
 
-	c, err := pgx.ConnectConfig(ctx, cfg.Copy())
+	d, cancel := context.WithTimeout(ctx, l.dial)
+	defer cancel()
+	c, err := pgx.ConnectConfig(d, cfg.Copy())
 	if err != nil {
 		return nil, fmt.Errorf("spinpg: %w", err)
 	}
-	_ = c.Close(ctx)
+	_ = c.Close(d)
 
 	return l, nil
 }
@@ -191,23 +214,18 @@ func (l *Lease) Hold(ctx context.Context, name string) (context.Context, func(),
 
 	unreachable := false
 	for {
-		if err := ctx.Err(); err != nil {
-			l.mu.Lock()
-			l.leave()
-			l.mu.Unlock()
-			return nil, nil, err
-		}
 		held, release, err := l.try(ctx, key)
-		switch {
-		case err != nil && !unreachable:
+		if held != nil {
+			return held, release, nil
+		}
+		if err != nil && ctx.Err() == nil && !unreachable {
 			// Said once, and not every retry: a database that is down is
-			// a thing to say and then wait out.
+			// a thing to say and then wait out. Not said of a dial the
+			// process stopped by shutting down, which is no news about the
+			// database.
 			unreachable = true
 			log.From(ctx).WarnContext(ctx, "spinpg: the lease's database cannot be asked; asking again",
-				slog.String("spin", name), slog.String("error", err.Error()))
-
-		case held != nil:
-			return held, release, nil
+				slog.String("spin", name), slog.Any("err", err))
 		}
 
 		select {
@@ -233,7 +251,12 @@ func (l *Lease) claim(key int32, name string) error {
 	return nil
 }
 
+// try asks for `key` once, and answers nothing while somebody else holds it.
 func (l *Lease) try(ctx context.Context, key int32) (context.Context, func(), error) {
+	if err := l.connected(ctx); err != nil {
+		return nil, nil, err
+	}
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -243,7 +266,12 @@ func (l *Lease) try(ctx context.Context, key int32) (context.Context, func(), er
 		// waits as another process would.
 		return nil, nil, nil
 	}
-	if err := l.connect(); err != nil {
+	if l.conn == nil {
+		// Lost between being made and here. Asked again after a retry, on
+		// whatever connection there is then.
+		return nil, nil, nil
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
 
@@ -268,6 +296,83 @@ func (l *Lease) try(ctx context.Context, key int32) (context.Context, func(), er
 	var once sync.Once
 	return held, func() { once.Do(func() { l.release(key, h) }) }, nil
 }
+
+// connected makes sure there is a connection to ask on.
+//
+// The dial is outside the lock and under the context of the loop that asked,
+// because a dial is the one thing here that can take seconds: a database that
+// does not answer takes ten of them to give up on, and made under the lock that
+// was every waiting loop in turn, each waiting on the one before it, and a
+// shutdown that took as long as all of them together. Not a query: a dial
+// canceled part way is a connection that was never made, which nothing holds
+// anything on.
+//
+// One at a time. The others wait for it -- or for their own context -- and take
+// what it made, or how the database refused it, as their own try. A dial given
+// up because the loop making it stopped says nothing about the database, so
+// whoever was waiting makes one of its own.
+func (l *Lease) connected(ctx context.Context) error {
+	l.mu.Lock()
+	for {
+		if l.conn != nil && l.conn.IsClosed() {
+			// Closed under it, which a failed query or ping says rather than
+			// leaves to be found; said here so that nothing held on it is
+			// believed a moment longer.
+			l.lose(errClosed)
+		}
+		if l.conn != nil {
+			l.mu.Unlock()
+			return nil
+		}
+
+		wait := l.dialing
+		if wait == nil {
+			break
+		}
+		l.mu.Unlock()
+		select {
+		case <-wait:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+
+		l.mu.Lock()
+		if l.conn == nil && l.dialed != nil {
+			err := l.dialed
+			l.mu.Unlock()
+			return err
+		}
+	}
+
+	wait := make(chan struct{})
+	l.dialing = wait
+	l.mu.Unlock()
+
+	d, cancel := context.WithTimeout(ctx, l.dial)
+	c, err := pgx.ConnectConfig(d, l.cfg.Copy())
+	cancel()
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.dialing = nil
+	close(wait)
+	switch {
+	case err == nil:
+		l.conn, l.dialed = c, nil
+		return nil
+
+	case ctx.Err() != nil:
+		l.dialed = nil
+		return ctx.Err()
+
+	default:
+		l.dialed = err
+		return err
+	}
+}
+
+// errClosed is a connection found closed before anything said so.
+var errClosed = errors.New("spinpg: the connection closed")
 
 func (l *Lease) release(key int32, h *hold) {
 	l.mu.Lock()
@@ -303,21 +408,6 @@ func (l *Lease) leave() {
 	l.conn = nil
 }
 
-func (l *Lease) connect() error {
-	if l.conn != nil && !l.conn.IsClosed() {
-		return nil
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), l.dial)
-	defer cancel()
-
-	c, err := pgx.ConnectConfig(ctx, l.cfg.Copy())
-	if err != nil {
-		return err
-	}
-	l.conn = c
-	return nil
-}
-
 // lose is the connection gone, and every hold on it: each loop that held one
 // is stopped, and waits to hold it again.
 func (l *Lease) lose(err error) {
@@ -339,7 +429,7 @@ func (l *Lease) lose(err error) {
 	}
 	sort.Strings(names)
 	l.log.Warn("spinpg: the lease's connection was lost, and every name held on it with it",
-		slog.String("spin.names", strings.Join(names, ",")), slog.String("error", err.Error()))
+		slog.String("spin.names", strings.Join(names, ",")), slog.Any("err", err))
 }
 
 // watch pings the connection for as long as anything is held on it.

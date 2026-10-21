@@ -2,8 +2,12 @@ package spinpg
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
+	"net"
 	"os"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -262,4 +266,105 @@ func TestSpinRunsALoopInOneProcessOfTwo(t *testing.T) {
 	x.NoError(within(t, done[first], "the first process stopping"))
 	second := within(t, started, "the loop starting in the other process")
 	x.NotEqual(first, second)
+}
+
+// silent is an address that takes a connection and never answers it: a
+// database on the far side of a network that stopped carrying anything, which
+// a dial waits on until it is told to stop. No PostgreSQL is needed for that.
+func silent(t *testing.T) *pgx.ConnConfig {
+	t.Helper()
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	var mu sync.Mutex
+	held := []net.Conn{}
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			held = append(held, c)
+			mu.Unlock()
+		}
+	}()
+	t.Cleanup(func() {
+		_ = l.Close()
+		mu.Lock()
+		defer mu.Unlock()
+		for _, c := range held {
+			_ = c.Close()
+		}
+	})
+
+	cfg, err := pgx.ParseConfig("postgres://nobody@" + l.Addr().String() + "/nothing?sslmode=disable")
+	require.NoError(t, err)
+
+	return cfg
+}
+
+// unchecked is a lease on `cfg` made without the dial [New] checks with, which
+// is a dial the database in these tests never answers.
+func unchecked(cfg *pgx.ConnConfig, dial time.Duration) *Lease {
+	return &Lease{
+		cfg:   cfg,
+		log:   slog.New(slog.DiscardHandler),
+		retry: time.Hour,
+		check: time.Second,
+		dial:  dial,
+		holds: map[int32]*hold{},
+		names: map[int32]string{},
+	}
+}
+
+// TestShuttingDownDoesNotWaitOutADial: a database that does not answer, and
+// three loops asking for their names. Shutting down ends all three at once --
+// the dial is the loop's to cancel, and the loops waiting for it are not
+// queued behind it -- rather than once each loop's own dial has run out in turn.
+func TestShuttingDownDoesNotWaitOutADial(t *testing.T) {
+	x := require.New(t)
+	l := unchecked(silent(t), 3*time.Second)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 3)
+	for i := range 3 {
+		go func() {
+			_, _, err := l.Hold(ctx, named(t, fmt.Sprint(i)))
+			done <- err
+		}()
+	}
+
+	// All three asking: one dialing, two waiting for it.
+	time.Sleep(200 * time.Millisecond)
+	cancel()
+
+	at := time.Now()
+	for range 3 {
+		x.ErrorIs(within(t, done, "a loop that stopped asking"), context.Canceled)
+	}
+	x.Less(time.Since(at), time.Second, "shutting down waited for a dial")
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	x.Zero(l.users, "a wait that ended still counted")
+}
+
+// TestALoopWaitingForADialIsNotHeldUpByIt: one loop's dial is slow, and
+// another loop that stops asking -- its own context done -- answers at once
+// rather than when the dial gives up.
+func TestALoopWaitingForADialIsNotHeldUpByIt(t *testing.T) {
+	x := require.New(t)
+	l := unchecked(silent(t), 3*time.Second)
+
+	go func() { _, _, _ = l.Hold(t.Context(), named(t, "slow")) }()
+	time.Sleep(200 * time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+	defer cancel()
+	at := time.Now()
+	_, _, err := l.Hold(ctx, named(t, "other"))
+	x.ErrorIs(err, context.DeadlineExceeded)
+	x.Less(time.Since(at), time.Second, "waited for another loop's dial")
 }

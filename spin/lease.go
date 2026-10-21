@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 
 	"github.com/lesomnus/otx/log"
@@ -38,6 +39,11 @@ import (
 // Hold answers ctx's error when ctx ends first, which is the ordinary end of a
 // process that never held the name. Any other error is a lease that cannot hold
 // anything, and ends the process like a loop that gave up.
+//
+// A loop may hold more than one name -- its own and the ones it was called
+// before ([Formerly]) -- and does, one after another and each under the one
+// before it, so `held` being done when `ctx` is, is what makes losing any of
+// them stop the loop.
 type Lease interface {
 	Hold(ctx context.Context, name string) (held context.Context, release func(), err error)
 }
@@ -78,6 +84,37 @@ type called struct {
 
 func (c called) SpinName() string { return c.n }
 func (c called) Unwrap() Spinner  { return c.Spinner }
+
+// Renamed is a loop that was called something else in a build before this one;
+// see [Formerly].
+type Renamed interface {
+	SpinFormerly() string
+}
+
+// Formerly says a loop was called `old` in a build before this one, which a
+// rolling upgrade runs beside it.
+//
+// The name is what the processes of a deployment agree on, so renaming a loop
+// is changing its lock: a process of the old build holds the old name and one
+// of the new build the new, and while an upgrade runs both, the loop runs in
+// one of each -- for as long as the upgrade takes, rather than for a moment
+// around a failover. Said here, a loop under a lease holds the name it was
+// called as well as its own, so the two builds take turns on the old one, and
+// the loop runs in one process of either. Once no process of the old build is
+// left, the old name can go, as anything kept for an upgrade can.
+//
+// A name a loop was called is its own as much as its name is, so it is refused
+// beside another loop that holds it ([Run]). A loop each process runs for
+// itself ([Everywhere]) holds no name, the old one included.
+func Formerly(old string, s Spinner) Spinner { return formerly{old, s} }
+
+type formerly struct {
+	old string
+	Spinner
+}
+
+func (f formerly) SpinFormerly() string { return f.old }
+func (f formerly) Unwrap() Spinner      { return f.Spinner }
 
 // Local is a lease for a deployment of one process: a name is held by the first
 // loop that asks for it, and by the next once that one gives it up. Loops that
@@ -174,12 +211,45 @@ func explicit(s Spinner) (string, bool) {
 	return "", false
 }
 
+// formerlyOf is every name a loop, or one it wraps, says it was called.
+func formerlyOf(s Spinner) []string {
+	vs := []string{}
+	for s != nil {
+		if v, ok := s.(Renamed); ok {
+			vs = append(vs, v.SpinFormerly())
+		}
+		u, ok := s.(interface{ Unwrap() Spinner })
+		if !ok {
+			break
+		}
+		s = u.Unwrap()
+	}
+	return vs
+}
+
+// holding is the names a loop called `n` holds under a lease: that one and the
+// ones it was called before, in the one order every process asks for them in,
+// so that two processes asking for two names each never hold one apiece and
+// wait on each other.
+func holding(n string, s Spinner) []string {
+	vs := append([]string{n}, formerlyOf(s)...)
+	slices.Sort(vs)
+
+	return vs
+}
+
 // agree refuses what the processes of a deployment could not tell apart: a loop
 // one of them runs with no name of its own, and two loops with one name between
-// them, which one lease would make take turns. Before anything starts, so a
-// deployment finds out at its first start rather than at its first replica.
+// them -- its own, or one it was called before -- which one lease would make take
+// turns. Before anything starts, so a deployment finds out at its first start
+// rather than at its first replica.
 func agree(ss []Spinner) error {
-	seen := map[string]bool{}
+	type holder struct {
+		loop   string
+		former bool
+	}
+
+	seen := map[string]holder{}
 	for _, s := range ss {
 		if isEverywhere(s) {
 			continue
@@ -189,31 +259,83 @@ func agree(ss []Spinner) error {
 			return fmt.Errorf("spin: %s is run by one process of a deployment and has no name for them to agree on; "+
 				"name it with spin.Called, or say it is each process's own with spin.InEveryProcess", name(s))
 		}
-		if seen[n] {
-			return fmt.Errorf("spin: two loops are called %q, and one lease would have them take turns", n)
+
+		own := append([]string{n}, formerlyOf(s)...)
+		for i, v := range own {
+			was, dup := seen[v]
+			switch {
+			case v == "":
+				return fmt.Errorf("spin: %s was formerly called nothing; spin.Formerly takes the name it had", n)
+			case slices.Contains(own[:i], v):
+				return fmt.Errorf("spin: %s says it was called %q more than once, or that it was called its own name", n, v)
+			case dup && i == 0 && !was.former:
+				return fmt.Errorf("spin: two loops are called %q, and one lease would have them take turns", v)
+			case dup:
+				return fmt.Errorf("spin: %s and %s both hold %q -- as a name, or as one they were formerly called -- "+
+					"and one lease would have them take turns", was.loop, n, v)
+			}
 		}
-		seen[n] = true
+		for i, v := range own {
+			seen[v] = holder{loop: n, former: i > 0}
+		}
 	}
 	return nil
+}
+
+// errLost is a name lost while the next one was waited for. The loop did not
+// start, and waits to hold every one of them again.
+var errLost = errors.New("spin: a name was lost while the next was waited for")
+
+// hold holds every one of `names`, in order and each under the one before it,
+// and answers with a context that is done when any of them is lost.
+func hold(ctx context.Context, l Lease, names []string) (context.Context, func(), error) {
+	held := ctx
+	rs := make([]func(), 0, len(names))
+	release := func() {
+		for i := len(rs) - 1; i >= 0; i-- {
+			rs[i]()
+		}
+	}
+
+	for _, n := range names {
+		h, r, err := l.Hold(held, n)
+		if err != nil {
+			release()
+			if held.Err() != nil && ctx.Err() == nil {
+				return nil, nil, errLost
+			}
+
+			return nil, nil, err
+		}
+		rs = append(rs, r)
+		held = h
+	}
+
+	return held, release, nil
 }
 
 // lead runs a loop for as long as this process holds its lease, and waits to
 // hold it again whenever the hold is lost.
 func lead(ctx context.Context, l Lease, s Spinner) error {
 	n := name(s)
+	ns := holding(n, s)
 	lg := log.From(ctx).With(slog.String("spin", n))
 	ctx = log.Into(ctx, lg)
 
 	for {
 		lg.DebugContext(ctx, "spin waits for its lease")
-		held, release, err := l.Hold(ctx, n)
+		held, release, err := hold(ctx, l, ns)
 		if err != nil {
 			if ctx.Err() != nil {
 				// Shut down while another process held it: the ordinary end
 				// of a loop in a process that never led.
 				return nil
 			}
-			lg.ErrorContext(ctx, "spin cannot hold its lease", slog.String("error", err.Error()))
+			if errors.Is(err, errLost) {
+				lg.WarnContext(ctx, "spin lost its lease, and waits to hold it again")
+				continue
+			}
+			lg.ErrorContext(ctx, "spin cannot hold its lease", slog.Any("err", err))
 			return fmt.Errorf("%s: lease: %w", n, err)
 		}
 
@@ -235,7 +357,7 @@ func lead(ctx context.Context, l Lease, s Spinner) error {
 			// -- so it is said, and not counted as the loop giving up.
 			args := []any{}
 			if err != nil && !errors.Is(err, context.Canceled) {
-				args = append(args, slog.String("error", err.Error()))
+				args = append(args, slog.Any("err", err))
 			}
 			lg.WarnContext(ctx, "spin lost its lease, and waits to hold it again", args...)
 			continue
@@ -245,7 +367,7 @@ func lead(ctx context.Context, l Lease, s Spinner) error {
 			return nil
 
 		default:
-			lg.ErrorContext(ctx, "spin failed", slog.String("error", err.Error()))
+			lg.ErrorContext(ctx, "spin failed", slog.Any("err", err))
 			return fmt.Errorf("%s: %w", n, err)
 		}
 	}
