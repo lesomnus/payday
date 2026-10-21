@@ -443,16 +443,19 @@ func TestTwoKeysAreOneTenantsAndTheOldestIsSealedTo(t *testing.T) {
 	tenant := newTenant()
 	k, master := sealing(t)
 	ns := tenant.String()
-	x.NoError(k.make(ctx, ns))
+	_, err := k.make(ctx, ns)
+	x.NoError(err)
 	time.Sleep(time.Millisecond)
-	x.NoError(k.make(ctx, ns))
+	_, err = k.make(ctx, ns)
+	x.NoError(err)
 
 	ks := keysOf(t, k, ns)
 	x.Len(ks, 2)
 	x.True(ks[0].at.Before(ks[1].at))
 
-	r, err := newSealer(k).recipient(ctx, ns)
+	r, ok, err := newSealer(k).recipient(ctx, ns, time.Now())
 	x.NoError(err)
+	x.True(ok)
 	x.Equal(ks[0].recipient, r.(*age.X25519Recipient).String())
 
 	opens := &Keys{Store: k.Store, Master: k.Master, Identities: []age.Identity{master}}
@@ -514,7 +517,10 @@ func TestAKeyMadeWhileATenantLeavesGoesWithIt(t *testing.T) {
 	s.add(fakeRow{tenant: leaving.Uuid(), domain: person, created: ago(day), value: "v"})
 	p.Pass(ctx, s)
 
-	p.Archive = meanwhile{arch, leaving.String(), func() { x.NoError(k.make(ctx, leaving.String())) }}
+	p.Archive = meanwhile{arch, leaving.String(), func() {
+		_, err := k.make(ctx, leaving.String())
+		x.NoError(err)
+	}}
 	got, err := p.PurgeTenant(ctx, s, leaving)
 	x.NoError(err)
 	x.Equal(2, got.Keys)

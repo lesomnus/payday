@@ -120,7 +120,7 @@ func (p Policy) Collect(ctx context.Context, s Store, of Kinds, before time.Time
 	}
 	defer x.cover(ctx, "discard", &err)
 
-	_, gone, err := drain(ctx, s, Scope{Kinds: of}, before, nil, "", nil, func(v Row) fate {
+	_, gone, err := drain(ctx, s, Scope{Kinds: of}, before, nil, "", nil, x.turn, func(v Row) fate {
 		if x.held(ctx, v.Tenants, v.Domain, true, &h) {
 			h.keep(1, 0)
 			return stays
@@ -365,34 +365,11 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgo
 	}
 	defer x.cover(ctx, "forget", &err)
 
-	// The database.
-	at := Cursor{}
-	for {
-		vs, err := s.Heads(ctx, Scope{Objects: objects}, forever, at, Batch)
-		if err != nil {
-			return out, err
-		}
-
-		keys := []any{}
-		for _, v := range vs {
-			at = Cursor{Created: v.Created, Key: v.Key}
-
-			if x.held(ctx, v.Tenants, v.Domain, true, &out.Held) {
-				out.Held.keep(1, 0)
-				continue
-			}
-
-			keys = append(keys, v.Key)
-		}
-
-		n, err := blank(ctx, s, keys)
-		out.Rows += n
-		if err != nil {
-			return out, err
-		}
-		if len(vs) < Batch {
-			break
-		}
+	// The database, in the trail's turn: a pass holding a copy of one of
+	// these rows has written it into the archive by then, where the archive's
+	// half finds it.
+	if err := x.blankAbout(ctx, s, objects, &out); err != nil {
+		return out, err
 	}
 
 	held := out.Held.Rows
@@ -409,6 +386,44 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgo
 	}
 
 	return out, errors.Join(aerr, x.r.write(ctx, x.p.Archive))
+}
+
+// blankAbout is the database's half of [Policy.Forget], in the trail's turn.
+func (x *pass) blankAbout(ctx context.Context, s Store, objects []pdid.Id, out *Forgotten) error {
+	held, give, err := x.turn(ctx)
+	if err != nil {
+		return err
+	}
+	defer give()
+
+	at := Cursor{}
+	for {
+		vs, err := s.Heads(held, Scope{Objects: objects}, forever, at, Batch)
+		if err != nil {
+			return err
+		}
+
+		keys := []any{}
+		for _, v := range vs {
+			at = Cursor{Created: v.Created, Key: v.Key}
+
+			if x.held(held, v.Tenants, v.Domain, true, &out.Held) {
+				out.Held.keep(1, 0)
+				continue
+			}
+
+			keys = append(keys, v.Key)
+		}
+
+		n, err := blank(held, s, keys)
+		out.Rows += n
+		if err != nil {
+			return err
+		}
+		if len(vs) < Batch {
+			return nil
+		}
+	}
 }
 
 // forget is the archive's half of [Policy.Forget], and answers how many rows
@@ -659,10 +674,19 @@ func (x *pass) purgeKeys(ctx context.Context, tenant pdid.Id, dry bool, out *Ten
 }
 
 // purgeDatabase is the database's half of a tenant leaving, and answers how
-// many rows it reached this round.
-func (x *pass) purgeDatabase(ctx context.Context, tenant pdid.Id, dry bool, first bool, out *TenantPurge) (int, error) {
+// many rows it reached this round. In the trail's turn, for the reason
+// [Policy.Forget]'s is: a pass holding a copy of one of these rows has written
+// it into the archive by then, where the archive's half finds it.
+func (x *pass) purgeDatabase(ctx context.Context, tenant pdid.Id, dry bool, first bool, out *TenantPurge) (_ int, err error) {
 	s := x.s
 	touched := 0
+	if !dry {
+		var give func()
+		if ctx, give, err = x.turn(ctx); err != nil {
+			return 0, err
+		}
+		defer give()
+	}
 
 	// What was its alone.
 	alone := Scope{Whose: Alone, Tenant: tenant}

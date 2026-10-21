@@ -487,7 +487,32 @@ type Policy struct {
 	// Nil seals nothing, and an archive written with it is what one was
 	// before.
 	Keys *Keys
+
+	// Lease is a lease of the deployment's -- the kind `spin.lease` names, its
+	// loops are run under -- on which a pass and the acts that change the
+	// rows of the database take turns: [Turn].
+	//
+	// A pass holds what it read of a row from the moment it reads it until
+	// the chunk it is copied into is written and the row is forgotten. An
+	// erasure that blanked the row in the meantime, and then looked through
+	// the archive before the chunk was there, has its work undone by the
+	// copy -- and so has a tenant's purge, and a discard by hand. With a
+	// lease, [Policy.Forget] and [Policy.PurgeTenant] change the database's
+	// rows only in their turn, [Policy.Collect] discards them in its own, and
+	// a pass holds the turn for each chunk's worth of rows it moves.
+	//
+	// Nil takes no turns, which is the pass that can write back what an
+	// erasure blanked a moment before; the process says so where it comes
+	// up. A lease that holds nothing (`spin.Nowhere`, a replica that runs no
+	// loops) is no lease for this: its acts would wait for ever.
+	Lease spin.Lease
 }
+
+// Turn is the name a pass and the acts beside it take turns under on
+// [Policy.Lease]. Not the trail's loop, `payday.trail`, which one process of a
+// deployment holds for as long as it runs the passes: an act in any process
+// takes this one, for as long as it changes rows a pass may be holding.
+const Turn = "payday.trail.turn"
 
 // For is the deployment's own policy for one kind of thing: what a tenant
 // that answers nothing keeps.
@@ -681,6 +706,9 @@ func (p Policy) String() string {
 	}
 	if p.Archive != nil {
 		out = append(out, p.accounted())
+	}
+	if p.Archive != nil && p.Lease == nil {
+		out = append(out, "no lease: a pass and an erasure do not take turns")
 	}
 
 	return strings.Join(out, "; ")
@@ -1066,6 +1094,22 @@ func (x *pass) once(k string) bool {
 	return true
 }
 
+// turn takes the trail's turn on [Policy.Lease], and answers the context to act
+// in, which ends when the turn is lost, and the call that gives it back. With
+// no lease it is always this act's.
+func (x *pass) turn(ctx context.Context) (context.Context, func(), error) {
+	if x.p.Lease == nil {
+		return ctx, func() {}, nil
+	}
+
+	held, give, err := x.p.Lease.Hold(ctx, Turn)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", Turn, err)
+	}
+
+	return held, give, nil
+}
+
 // first answers whether this pass is the archive's first, before it has ever
 // had a checkpoint taken; see [Policy.unchecked]. One that cannot tell is not.
 func (x *pass) first(ctx context.Context) bool {
@@ -1267,7 +1311,7 @@ func (x *pass) drain(ctx context.Context, of Scope, k Keep, held bool, kind stri
 		return archived
 	}
 
-	moved, gone, err := drain(ctx, x.s, of, before, x.p.Archive, x.run, x.seal, decide)
+	moved, gone, err := drain(ctx, x.s, of, before, x.p.Archive, x.run, x.seal, x.turn, decide)
 	if kept > 0 {
 		log.From(ctx).InfoContext(ctx, "trail: rows a hold keeps in the database, with no archive to move them to",
 			"kind", kind, "tenant", of.Tenant, "rows", kept)

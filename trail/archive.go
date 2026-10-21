@@ -338,6 +338,10 @@ type writer struct {
 	// added is the chunks the store took from this writer, and not the ones
 	// it had already: what is this writer's to take back.
 	added []Chunk
+
+	// left is how many rows it was handed that every tenant they name has
+	// left since they were written: not for the archive. See [Keys.left].
+	left int
 }
 
 type groupKey struct {
@@ -431,28 +435,38 @@ func (w *writer) flush(ctx context.Context) ([]any, error) {
 			Tenants:   g.tenants,
 		}
 
-		docs := g.docs
+		docs, held := g.docs, g.keys
 		if w.seal != nil {
-			docs = make([][]byte, len(g.docs))
+			docs, held = make([][]byte, 0, len(g.docs)), make([]any, 0, len(g.keys))
 			for i, doc := range g.docs {
 				v, err := w.seal.seal(ctx, doc)
+				if errors.Is(err, errLeft) {
+					// Nobody it names is there to seal it to: it stays where
+					// it is, for their purge to take, and is not answered as
+					// written.
+					w.left++
+					continue
+				}
 				if err != nil {
 					return keys, err
 				}
 
-				docs[i] = v
+				docs, held = append(docs, v), append(held, g.keys[i])
 			}
 		}
-		d, took, err := put(ctx, w.a, c, docs)
-		if err != nil {
-			return keys, err
-		}
-		if took {
-			c.Digest = d
-			w.added = append(w.added, c)
+		if len(docs) > 0 {
+			c.Rows = len(docs)
+			d, took, err := put(ctx, w.a, c, docs)
+			if err != nil {
+				return keys, err
+			}
+			if took {
+				c.Digest = d
+				w.added = append(w.added, c)
+			}
 		}
 
-		keys = append(keys, g.keys...)
+		keys = append(keys, held...)
 		w.rows -= len(g.docs)
 		for _, doc := range g.docs {
 			w.size -= len(doc)

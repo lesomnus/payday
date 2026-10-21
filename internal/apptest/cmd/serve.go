@@ -16,6 +16,7 @@ import (
 
 	"github.com/lesomnus/payday/access"
 	"github.com/lesomnus/payday/auth"
+	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/pdpb"
@@ -245,6 +246,20 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		db.Close()
 
 		return nil, err
+	}
+
+	// And the turns a pass takes with whatever erases from the trail -- a
+	// person forgotten, a tenant leaving -- on the deployment's lease
+	// (`trail.Policy.Lease`), so that neither undoes the other. Its own, and
+	// not the one the loops are run under: a loop's lease is which process
+	// runs it, and the trail's turn is a lock any process takes for a moment.
+	// A process that runs no loops (`none`) has nothing to take turns on.
+	if c.Spin.Lease != "" && c.Spin.Lease != config.LeaseNone {
+		if p.Lease, err = c.Spin.Build(c.Db); err != nil {
+			db.Close()
+
+			return nil, err
+		}
 	}
 	if p.On() {
 		log.From(ctx).InfoContext(ctx, "trail: retention", "policy", p.String())
