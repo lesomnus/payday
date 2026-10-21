@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,7 @@ func TestABrokerCanBeRegistered(t *testing.T) {
 	x := require.New(t)
 
 	t.Run("a name nothing registered is refused, and says what there is", func(t *testing.T) {
-		_, err := config.WatchConfig{Broker: "nats"}.Build(config.DbConfig{})
+		_, err := config.WatchConfig{Broker: "nats"}.Build(t.Context(), config.DbConfig{})
 		x.ErrorContains(err, "nats")
 		x.ErrorContains(err, "memory")
 		x.ErrorContains(err, "RegisterBroker")
@@ -42,12 +43,12 @@ func TestABrokerCanBeRegistered(t *testing.T) {
 	// difference from how an app would do it -- and the reason the name is
 	// this one: a registry is process-wide, and a test that took a plausible
 	// name would be deciding it for every other test in this binary.
-	config.RegisterBroker("apptest-echo", func(config.WatchConfig, config.DbConfig) (watch.Broker, error) {
+	config.RegisterBroker("apptest-echo", func(context.Context, config.WatchConfig, config.DbConfig) (watch.Broker, error) {
 		return watch.Memory(), nil
 	})
 
 	t.Run("and one that was is built", func(t *testing.T) {
-		b, err := config.WatchConfig{Broker: "apptest-echo"}.Build(config.DbConfig{})
+		b, err := config.WatchConfig{Broker: "apptest-echo"}.Build(t.Context(), config.DbConfig{})
 		x.NoError(err)
 		x.NotNil(b)
 	})
@@ -60,9 +61,9 @@ func TestABrokerCanBeRegistered(t *testing.T) {
 	// arriving at that by accident is how a deployment ends up with the silent
 	// stream this file's other test is about.
 	t.Run("a registration that builds nothing is refused", func(t *testing.T) {
-		config.RegisterBroker("apptest-nothing", func(config.WatchConfig, config.DbConfig) (watch.Broker, error) { return nil, nil })
+		config.RegisterBroker("apptest-nothing", func(context.Context, config.WatchConfig, config.DbConfig) (watch.Broker, error) { return nil, nil })
 
-		_, err := config.WatchConfig{Broker: "apptest-nothing"}.Build(config.DbConfig{})
+		_, err := config.WatchConfig{Broker: "apptest-nothing"}.Build(t.Context(), config.DbConfig{})
 		x.ErrorContains(err, "built no broker")
 		x.ErrorContains(err, config.BrokerNone)
 	})

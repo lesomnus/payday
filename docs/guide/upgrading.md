@@ -22,9 +22,15 @@ For each page package payday depends on, it knows two versions:
 - **the target**: the version `pd new` writes today.
 
 `pd upgrade` moves a package only when it is **below its floor**, and moves it
-**to its target**. A package at or above its floor is left alone, however far
-behind the target it is. A floor is where payday's code stops being something
-payday has built. Anything above that is the app's business, and Renovate's.
+**to the floor, in the major it is in**: `^<floor>`. TypeScript 5.8 goes to
+`^5.9.3`, not to the 7 that `pd new` writes. A later major is a migration, and
+the app's to make. Only a package whose floor is itself a later major than the
+one it is in moves **to its target**, since it has a major to cross anyway:
+Vite 6 is below 7.2.0, and goes to what `pd new` writes.
+
+A package at or above its floor is left alone, however far behind the target
+it is. A floor is where payday's code stops being something payday has built.
+Anything above that is the app's business, and Renovate's.
 
 | package | why it has a floor |
 | --- | --- |
@@ -65,9 +71,16 @@ Three pairs move as one:
 - `@connectrpc/connect` and `@connectrpc/connect-web`.
 
 A major release of one is a major release of the other, and npm refuses the half
-of a pair that moved alone. So when one of a pair is below its floor, both go to
-their targets in a single `npm install`. There is one install for each section
-of `package.json` the page keeps them in, so a dev dependency stays one.
+of a pair that moved alone. So when one of a pair crosses a major to its target,
+the other goes to its target too. When one only moves to its floor, in its
+major, the other is left where it is unless it is below its own floor.
+
+Whatever moves is resolved once. `pd upgrade` sets each range with `npm pkg
+set`, in the section the page has it in, so a dev dependency stays one. Then a
+single `npm install` resolves the lot as one tree. That matters for
+`@bufbuild/protobuf`, which is a dependency, and `@bufbuild/protoc-gen-es`, a
+dev dependency, whose every release names its own release of the runtime
+exactly. They are two sections and one resolution.
 
 ## 3. Where the floors are enforced
 
@@ -76,7 +89,10 @@ of `package.json` the page keeps them in, so a dev dependency stays one.
 - **`pd gen --ts`** refuses to write with a generator, or against a runtime, that
   is below its floor (`pdcli.ErrBelowFloor`). What it writes is committed and
   then compiled against that runtime, so an older generator's output would be
-  found out at somebody else's compile.
+  found out at somebody else's compile. The generator's version is that of the
+  plugin about to run, read from its own package, and not the lockfile's: a
+  lockfile says what the next install makes, and a `node_modules` that no
+  install has caught up with writes with what it has.
 - **Nothing else.** A page below the floor of `typescript` or `vite` still
   generates. Only `pd doctor` says so.
 
@@ -87,12 +103,20 @@ of `package.json` the page keeps them in, so a dev dependency stays one.
 1. `go get github.com/lesomnus/payday@VERSION`;
 2. `go mod tidy`;
 3. `go tool pd upgrade`;
-4. `go tool pd gen --ts` when the app has a page, which writes the Go half as
-   well; `go tool pd gen` when it has none.
+4. `go tool pd gen --ts` when the app has a page (`ts/package.json`), which
+   writes the Go half as well; `go tool pd gen` when it has none.
 
 Steps 3 and 4 run the payday that step 1 fetched, not the one you started
 with. Its floors are the ones the page has to meet, and code that payday's
 generator writes is the only code its runtime accepts (`version.Same`).
+
+- **A dry run fetches nothing.** `--dry-run` with `--payday` lists the four
+  steps and says that the last two are the fetched payday's. What they would
+  move and write is that payday's to say, and it is not shown.
+- **The page comes from the page.** Whether `--ts` is passed depends on whether
+  the app has a page, not on whether its generator is installed. A page whose
+  generator is missing is refused before step 1, with the install to run,
+  rather than left a payday behind its Go half.
 
 `VERSION` is anything `go get` takes: a commit, a tag, or `latest`. It is
 `go get` without `-u`, so payday's own dependencies move to what payday

@@ -30,7 +30,7 @@ import (
 const Name = "postgres"
 
 func init() {
-	config.RegisterLease(Name, func(c config.SpinConfig, db config.DbConfig) (spin.Lease, error) {
+	config.RegisterLease(Name, func(ctx context.Context, c config.SpinConfig, db config.DbConfig) (spin.Lease, error) {
 		dsn := c.Dsn
 		if dsn == "" {
 			// The rows' own database, which is the answer for this lease
@@ -47,8 +47,10 @@ func init() {
 			}
 		}
 
-		// Not the caller's: this dials to check, and what it builds outlives
-		// the call.
-		return spinpg.New(context.WithoutCancel(context.Background()), dsn)
+		// The caller's: the dial that checks is the serve command's, and which
+		// names a lost connection took is said in the process's log rather
+		// than the OpenTelemetry global, which keeps nothing. The lease
+		// outlives the call, which spinpg sees to.
+		return spinpg.New(ctx, dsn)
 	})
 }

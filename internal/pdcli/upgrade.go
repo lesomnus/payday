@@ -51,24 +51,24 @@ func (u Upgrade) Run(ctx context.Context) error {
 		u.say("pd: %s %s -> %s: below %s, %s", v.Name, v.From, v.To, v.Floor, v.Why)
 	}
 
-	// One install for each section, so that a pair is resolved together, and
-	// in the section the page already has each package in: `npm install`
-	// without `--save-dev` would move a dev dependency into the bundle's.
-	for _, section := range []string{sectionDeps, sectionDev} {
-		args := []string{"install"}
-		if section == sectionDev {
-			args = append(args, "--save-dev")
-		}
-		n := len(args)
+	// Every range is set first, each in the section the page has it in, and
+	// then one `npm install` resolves what package.json asks for as one tree --
+	// so a pair is resolved together even when its halves are in two sections,
+	// as @bufbuild/protobuf, the bundle's, and protoc-gen-es, a dev dependency,
+	// are. An install for each section resolved them one after the other: the
+	// runtime moved under a generator that names its own release of it
+	// exactly, and npm took it only by nesting a second runtime under the
+	// generator until the next install moved that too.
+	if len(vs) > 0 {
+		ts := u.Layout.Path(DirTs)
+		set := []string{"pkg", "set"}
 		for _, v := range vs {
-			if v.Section == section {
-				args = append(args, v.Name+"@"+v.To)
-			}
+			set = append(set, v.Section+"["+v.Name+"]="+v.To)
 		}
-		if len(args) == n {
-			continue
+		if err := u.exec(ctx, ts, "npm", set...); err != nil {
+			return err
 		}
-		if err := u.exec(ctx, u.Layout.Path(DirTs), "npm", args...); err != nil {
+		if err := u.exec(ctx, ts, "npm", "install"); err != nil {
 			return err
 		}
 	}
@@ -90,6 +90,30 @@ func (u Upgrade) Run(ctx context.Context) error {
 // payday wrote.
 func (u Upgrade) payday(ctx context.Context) error {
 	dir := u.Layout.Root
+
+	// One generation: `--ts` is the Go half and then the page's, so an app
+	// with a page asks for that alone rather than writing the Go half twice.
+	// Whether there is a page is the page's to say, and not whether its
+	// generator happens to be installed: without one, the Go half moved to
+	// the new payday and the page's stayed the old one's. So a page whose
+	// generator is not installed is refused here, before anything moves.
+	have, page, err := Page(u.Layout)
+	if err != nil {
+		return err
+	}
+	gen := []string{"tool", "pd", "gen"}
+	if page {
+		if _, err := TsPlugin(u.Layout); err != nil {
+			fix := "npm install --save-dev " + tsPluginPackage
+			if _, ok := have[tsPluginPackage]; ok {
+				fix = "npm ci"
+			}
+			return fmt.Errorf("%w: the page is generated with the rest, so its generator has to be installed first -- %s, in %s",
+				ErrNoTsPlugin, fix, u.Layout.Rel(DirTs))
+		}
+		gen = append(gen, "--ts")
+	}
+
 	if err := u.exec(ctx, dir, "go", "get", version.Module+"@"+u.Payday); err != nil {
 		return err
 	}
@@ -97,19 +121,18 @@ func (u Upgrade) payday(ctx context.Context) error {
 		return err
 	}
 
-	args := []string{"tool", "pd", "upgrade"}
+	// The rest is the payday `go get` fetched, which is not the one running:
+	// `go tool pd` is whatever go.mod now names. A dry run fetches nothing, so
+	// it can say what will be run but not what that payday will move or
+	// write, and it says so rather than pass `--dry-run` on to a step it does
+	// not run either.
 	if u.DryRun {
-		args = append(args, "--dry-run")
+		u.say("pd: the next two are run by the payday `go get` fetches, not by this one, and a dry run fetches nothing: what they would move and write is that payday's, and is not shown here")
+	} else {
+		u.say("pd: the next two are run by the payday `go get` fetched: its floors, and its generator")
 	}
-	if err := u.exec(ctx, dir, "go", append(args, dir)...); err != nil {
+	if err := u.exec(ctx, dir, "go", "tool", "pd", "upgrade", dir); err != nil {
 		return err
-	}
-
-	// One generation: `--ts` is the Go half and then the page's, so an app
-	// with a page asks for that alone rather than writing the Go half twice.
-	gen := []string{"tool", "pd", "gen"}
-	if _, err := TsPlugin(u.Layout); err == nil {
-		gen = append(gen, "--ts")
 	}
 	if err := u.exec(ctx, dir, "go", append(gen, dir)...); err != nil {
 		return err

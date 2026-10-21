@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/lesomnus/protobuf-patch/patch"
 	"github.com/lesomnus/protobuf-patch/patchpb"
 	"github.com/lesomnus/protobuf-patch/patchproto"
 	"github.com/lesomnus/z"
@@ -1299,6 +1300,12 @@ func TestAnEdgeIsARead(t *testing.T) {
 	})
 }
 
+// moving is a patch document that points `edge` at the row `id` names, by its
+// key, which is how a document names the row an edge points at.
+func moving(edge string, id []byte) *patchpb.Patch {
+	return patch.MustNewUntyped(patch.Target(patch.Name("id")).In(patch.Name(edge)).Assign(patch.Bytes(id)))
+}
+
 // TestAnEdgeThatCanMoveIsAskedAgainWhenItDoes.
 //
 // `Add` is not the only door onto an edge. One that is not immutable can be
@@ -1311,6 +1318,10 @@ func TestAnEdgeIsARead(t *testing.T) {
 // configuration, an app's own command tree may build a server without the
 // interceptor, and a narrow write of an app's own is a second door onto the
 // same column.
+//
+// And `Apply` is the other general write, the same door with the read taken
+// off: a document names the row an edge points at by its key, which goes into
+// the column as it is.
 func TestAnEdgeThatCanMoveIsAskedAgainWhenItDoes(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
@@ -1339,6 +1350,60 @@ func TestAnEdgeThatCanMoveIsAskedAgainWhenItDoes(t *testing.T) {
 	}.Build())
 	x.Equal(codes.NotFound, status.Code(err),
 		"an edge was moved onto a row in a tenant this caller cannot see")
+
+	near, err := b.Ungated.Cell().Add(ctx, app.CellAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "near",
+	}.Build())
+	x.NoError(err)
+
+	t.Run("and when a document moves it", func(t *testing.T) {
+		x := require.New(t)
+
+		ref := app.RobotRef_builder{Id: mine.GetId()}.Build()
+		_, err := b.Walled.Robot().Apply(as, app.RobotApplyRequest_builder{
+			Ref:   ref,
+			Patch: moving("cell", theirs.GetId()),
+		}.Build())
+		x.Equal(codes.NotFound, status.Code(err),
+			"a document moved an edge onto a row in a tenant this caller cannot see")
+
+		// What is asked is what the document writes. Two entries that name
+		// the same column are one write, the last, so a document that ends on
+		// the other tenant's row is that move however it began.
+		_, err = b.Walled.Robot().Apply(as, app.RobotApplyRequest_builder{
+			Ref: ref,
+			Patch: patch.MustNewUntyped(
+				patch.Target(patch.Name("id")).In(patch.Name("cell")).Assign(patch.Bytes(near.GetId())),
+				patch.Target(patch.Name("id")).In(patch.Name("cell")).Assign(patch.Bytes(theirs.GetId())),
+			),
+		}.Build())
+		x.Equal(codes.NotFound, status.Code(err),
+			"the last of two writes to one edge reached a row this caller cannot see")
+
+		v, err := b.Ungated.Robot().Get(ctx, app.RobotGetRequest_builder{Ref: ref}.Build())
+		x.NoError(err)
+		x.False(v.HasCell(), "the robot was moved all the same")
+	})
+
+	t.Run("and a document that moves it inside the wall is fine", func(t *testing.T) {
+		x := require.New(t)
+
+		ref := app.RobotRef_builder{Id: mine.GetId()}.Build()
+		v, err := b.Walled.Robot().Apply(as, app.RobotApplyRequest_builder{
+			Ref:   ref,
+			Patch: moving("cell", near.GetId()),
+		}.Build())
+		x.NoError(err, "the check refuses what it should allow")
+		x.Equal(near.GetId(), v.GetCell().GetId())
+
+		// And one that points it at nothing reaches nothing.
+		_, err = b.Walled.Robot().Apply(as, app.RobotApplyRequest_builder{
+			Ref:   ref,
+			Patch: patch.MustNewUntyped(patch.Target(patch.Name("cell")).Remove()),
+		}.Build())
+		x.NoError(err)
+	})
 }
 
 // TestAStampIsNotAssertedByARequest.
@@ -1522,5 +1587,34 @@ func TestAnEdgeAnOverlayGivesTheHolderIsARead(t *testing.T) {
 		}.Build())
 		x.Equal(codes.NotFound, status.Code(err),
 			"a holder's edge was moved onto a robot in a tenant this caller cannot see")
+	})
+
+	t.Run("and when a document moves it", func(t *testing.T) {
+		x := require.New(t)
+
+		ref := app.HolderRef_builder{Id: v.GetId()}.Build()
+		_, err := b.Walled.Holder().Apply(b.as(ctx), app.HolderApplyRequest_builder{
+			Ref:   ref,
+			Patch: moving("robot", theirs.GetId()),
+		}.Build())
+		x.Equal(codes.NotFound, status.Code(err),
+			"a document moved a holder's edge onto a robot in a tenant this caller cannot see")
+
+		got, err := b.Ungated.Holder().Get(ctx, app.HolderGetRequest_builder{Ref: ref}.Build())
+		x.NoError(err)
+		x.Equal(mine.GetId(), got.GetRobot().GetId(), "the holder was moved all the same")
+
+		other, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  "also-mine",
+		}.Build())
+		x.NoError(err)
+
+		got, err = b.Walled.Holder().Apply(b.as(ctx), app.HolderApplyRequest_builder{
+			Ref:   ref,
+			Patch: moving("robot", other.GetId()),
+		}.Build())
+		x.NoError(err, "the check refuses what it should allow")
+		x.Equal(other.GetId(), got.GetRobot().GetId())
 	})
 }

@@ -26,6 +26,23 @@ if v="$(gofmt -l . | grep -v node_modules || true)"; [ -n "${v}" ]; then
 	exit 1
 fi
 
+# Each module's go.mod, read on its own. go.work makes the three one build, in
+# which the highest version any of them asks for wins -- so a go.mod can name
+# an old payday, old versions with known vulnerabilities, or no module at all
+# for a package it imports, and every build below still passes. An app gets
+# payday's go.mod alone, and a scanner reads each one alone; payday's lacked
+# protobuf-patch, which `audit` imports, and apptest's named the payday of
+# 1 September.
+echo "== each go.mod, without go.work"
+for m in . internal/apptest trail/trailawskms; do
+	if ! (cd "${__root}/${m}" && GOWORK=off go mod tidy -diff); then
+		echo "${m}/go.mod is not what that module builds with on its own:" >&2
+		echo >&2
+		echo "    (cd ${m} && GOWORK=off go mod tidy)" >&2
+		exit 1
+	fi
+done
+
 echo "== payday"
 go build ./...
 go vet ./...

@@ -22,6 +22,8 @@ const (
 	pkgProto   = protogen.GoImportPath("google.golang.org/protobuf/proto")
 	pkgPatchpb = protogen.GoImportPath("github.com/lesomnus/protobuf-patch/patchpb")
 	pkgReflect = protogen.GoImportPath("google.golang.org/protobuf/reflect/protoreflect")
+
+	pkgOrmpatch = protogen.GoImportPath("github.com/protobuf-orm/protobuf-orm/ormpatch")
 )
 
 // Own is the entity payday ships under that marker, and nil for a schema that
@@ -435,12 +437,26 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 // would be a read per Patch for an answer nothing can act on. The tenancy hop
 // and the second axis are almost always immutable for that reason, so what is
 // usually left is nothing at all and this emits no method.
+//
+// # And `Apply`, which is the same door
+//
+// `Apply` writes what a patch document says, and `GeneralWrite` closes it
+// beside `Patch` for the same reason: between them they can write anything
+// the schema holds. A document names the row an edge points at by its **key**
+// -- `cell.id`, which is the column itself -- and the server behind writes that
+// key into the foreign key as it is, because compiling a document never reads
+// storage. So it is `Patch` with the read taken off, and asking the question of
+// `Patch` alone left the same edge movable through the other door, onto a row
+// of another tenant and read back through the caller's own. See
+// [emitAdmitApply].
 func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protogen.GoImportPath) {
-	moves := []struct {
-		at string
-		to *Entity
-	}{}
+	// Nothing to override on a server that has no general write. `Apply`
+	// rides on `patch` in the ORM, so one is there exactly when the other is.
+	if !v.Rpcs().HasPatch() {
+		return
+	}
 
+	moves := []move{}
 	for e := range v.Edges() {
 		if e.IsImmutable() {
 			continue
@@ -451,10 +467,7 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 			continue
 		}
 
-		moves = append(moves, struct {
-			at string
-			to *Entity
-		}{e.Name(), to})
+		moves = append(moves, move{at: e.Name(), number: e.Number(), to: to})
 	}
 	if len(moves) == 0 {
 		return
@@ -475,6 +488,88 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 	}
 	g.P("	return s.", name, "ServiceServer.Patch(ctx, req)")
 	g.P("}")
+	g.P("")
+
+	emitAdmitApply(g, v, moves, root)
+}
+
+// move is an edge a write can point somewhere else, and what it points at.
+type move struct {
+	at     string
+	number protoreflect.FieldNumber
+	to     *Entity
+}
+
+// emitAdmitApply asks of an `Apply` what [emitAdmitPatch] asks of a `Patch`:
+// whether the caller may see the row an edge is moved onto.
+//
+// The document is compiled here, as the server behind compiles it -- with
+// `ormpatch.Compile`, against the entity parsed from the file that declares
+// it, which is the graph the server behind is built on -- and the question is
+// asked of what the plan writes to each edge that can move. That is the
+// write itself rather than a reading of the document: entries that address
+// one column fold into one write, last wins, and a field may be named by its
+// name, its JSON name or its number. Asking the plan asks about the key that
+// lands in the column, however the document spelled it.
+//
+// A document this layer cannot compile is refused here, in the codes the
+// server behind answers the same document with, rather than passed on: one
+// this layer cannot read is one it can say nothing about. Clearing an edge
+// points it at nothing, which there is nothing to ask about.
+func emitAdmitApply(g *protogen.GeneratedFile, v *Entity, moves []move, root protogen.GoImportPath) {
+	name := v.GoName()
+	entity := "gate" + name + "Entity"
+
+	g.P("// Apply refuses a document that moves an edge onto a row this caller cannot")
+	g.P("// see, as Patch refuses a request that does.")
+	g.P("//")
+	g.P("// A document names the row an edge points at by its key, and the server")
+	g.P("// behind writes that key into the column as it is -- compiling a document")
+	g.P("// reads nothing. So the read Patch is asked is asked here of the key the")
+	g.P("// document lands in the column, compiled the way the server behind will.")
+	g.P("func (s gate", name, ") Apply(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"ApplyRequest"),
+		") (*", root.Ident(name), ", error) {")
+	g.P("	if !req.HasPatch() {")
+	g.P("		// Nothing written, and the server behind refuses it in its own words.")
+	g.P("		return s.", name, "ServiceServer.Apply(ctx, req)")
+	g.P("	}")
+	g.P("")
+	g.P("	plan, err := ", pkgOrmpatch.Ident("Compile"), "(", entity, ", req.GetPatch())")
+	g.P("	if err != nil {")
+	g.P("		// Refused here rather than passed on, in the codes the server behind")
+	g.P("		// gives the same document: one this layer cannot read is one it can")
+	g.P("		// say nothing about.")
+	g.P("		if ", pkgErrors.Ident("Is"), "(err, ", pkgOrmpatch.Ident("ErrUnsupported"), ") {")
+	g.P("			return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("Unimplemented"), ", \"%s\", err)")
+	g.P("		}")
+	g.P("")
+	g.P("		return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"%s\", err)")
+	g.P("	}")
+	for _, m := range moves {
+		g.P("	if w, ok := plan.WriteTo(", m.number, "); ok {")
+		g.P("		if k, ok := w.Op.(", pkgOrmpatch.Ident("SetEdge"), "); ok {")
+		if byKey(m.to) {
+			g.P("			ref := ", root.Ident(m.to.GoName()+"Ref_builder"), "{Id: k.Key.Bytes()}.Build()")
+		} else {
+			// Named by a key that is not an identifier, which no entity behind
+			// the wall is (see [byKey]); set on the reference by its name, which
+			// the reference shares with the key it carries.
+			g.P("			ref := &", root.Ident(m.to.GoName()+"Ref"), "{}")
+			g.P("			ref.ProtoReflect().Set(ref.ProtoReflect().Descriptor().Fields().ByName(",
+				strconv.Quote(m.to.Key().Name()), "), k.Key)")
+		}
+		readThrough(g, root, "ref", m.to, "			")
+		g.P("		}")
+		g.P("	}")
+	}
+	g.P("")
+	g.P("	return s.", name, "ServiceServer.Apply(ctx, req)")
+	g.P("}")
+	g.P("")
+	g.P("// ", entity, " is what a ", name, " document is compiled against: the entity")
+	g.P("// parsed from the file that declares it, as the server behind parses it.")
+	g.P("var ", entity, " = ", pkgOrmpatch.Ident("MustEntityOf"), "((*", root.Ident(name), ")(nil).ProtoReflect().Descriptor().ParentFile(), ",
+		strconv.Quote(string(v.Descriptor().Name())), ")")
 	g.P("")
 }
 

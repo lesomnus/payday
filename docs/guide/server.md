@@ -668,8 +668,12 @@ A server that only its own process can reach takes `auth.PlainInProcess()` in
 `s.Auth` instead. That is one served on an in-memory listener, such as another
 payday app run inside yours and called over `bufconn`. It believes its callers
 as `Plain` does, and says so once at info rather than with `Plain`'s warning,
-which would read as a hole in a server nobody outside can dial. Give it only to
-a server served that way.
+which would read as a hole in a server nobody outside can dial. It also checks
+that claim: a name is believed only of a call whose peer is `bufconn`, and one
+that arrived over a port, a socket or the HTTP transcoder is refused
+(`auth.ErrFromOutside`, Unauthenticated) and logged once. A call that says no
+name is not refused, so it can sit in an `auth.Seq` beside a handler for the
+callers who do come over the network.
 
 Who is calling comes first, because everything after it reads the frame.
 
@@ -818,8 +822,15 @@ spin:
 process, which is right for one replica and silently wrong for two: each would
 run every sweep. `postgres` (blank import `config/leasepg`) holds each loop in one
 process of the deployment, on the app's own database; `none` runs none of them
-here. It is read by the serve command, not by `cmd.Build`, so a test that builds a
-server has nothing to name.
+here. The serve command reads it for the loops, and `cmd.Build` for the trail's
+turns only when it names one, so a test that builds a server has nothing to name.
+
+Both are built on the context the process logs into — `c.Watch.Build(ctx, c.Db)`
+and the trail's `c.Spin.Build(ctx, c.Db)` in `cmd.Build`, the loops' in the
+serve command, after `Telemetry` — because what a broker or a lease says later,
+a listener that stopped or a hold lost with its connection, is said there. A
+registration made with `config.RegisterBroker` or `config.RegisterLease` is
+handed that context first.
 
 ## 6. Background work
 
@@ -853,6 +864,15 @@ s.Spin = append(s.Spin,
 A lease is at most one at a time but for a moment around a failover, not exactly
 once, so a loop is still written to be safe run twice; see
 [one process of many](../runtime.md#one-process-of-many-54).
+
+The name is the lock, so renaming a loop changes it: through a rolling upgrade
+the old build runs it under the old name and the new build under the new one,
+both at once. Say what it was called for as long as an upgrade can run the two
+side by side, and the new build holds the old name too:
+
+```go
+spin.Formerly("acme.sweep", spin.Called("acme.purge", spin.Every(time.Minute, purge)))
+```
 
 ## 7. The database
 
