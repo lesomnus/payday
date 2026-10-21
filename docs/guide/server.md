@@ -283,7 +283,19 @@ already a transaction answers with a `Tx` that cannot end it, so the inner
 `Commit` is a no-op and the writes hold or fall with the batch. Rebuilt with the
 original driver instead, it would open a second transaction on another
 connection: the writes split between two, and on SQLite the second waits out
-`busy_timeout` for a lock the first is holding.
+`busy_timeout` for a lock the first is holding. (What `BeginTx` refuses is a
+driver inside a transaction it did not begin, such as a generated client's
+`Client.Tx`: `dialect.ErrForeignTx`.)
+
+And a write that fails partway is not one to carry on past. A generated write
+inside a transaction somebody else began joins it and cannot take back the
+statements of it that held, so when it fails after it began writing -- an
+`AddMany` whose second INSERT is refused, an `Add` whose trail could not be
+written -- the transaction is refused its commit (`ent.ErrPartial`): nothing of
+a write that answered with an error holds. A verb that treats such an error as
+an answer and goes on finds its own commit refused. PostgreSQL already ended
+the transaction for a refused statement; this is that answer on SQLite, and
+for a failure that was not a statement's.
 
 The whole of it is compiled and run in
 `internal/apptest/cmd/composite_test.go` — one call writing both rows, a refusal

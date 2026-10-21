@@ -150,6 +150,7 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 		q.Stored(&stored)
 	}
 
+	tx.Writing()
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -417,6 +418,7 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 			q.Where(predicate.Seal(pred))
 		}
 		q.Modify(mod)
+		tx.Writing()
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -508,6 +510,7 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 		p = seal.And(p, seal.IdEQ(v.Id))
 	}
 
+	tx.Writing()
 	u := st.Db.Seal.Update().Where(p)
 	u.SetDateErased(st.now())
 	n, err := u.Save(ctx)

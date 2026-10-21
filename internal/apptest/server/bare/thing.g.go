@@ -153,6 +153,7 @@ func (s ThingServiceServer) Add(ctx context.Context, req *apptest.ThingAddReques
 		q.Stored(&stored)
 	}
 
+	tx.Writing()
 	u, err := q.Save(ctx)
 	if err != nil {
 		if err, ok := err.(*ent.ConstraintError); ok {
@@ -417,6 +418,7 @@ func (s ThingServiceServer) apply(ctx context.Context, ref *apptest.ThingRef, do
 			q.Where(predicate.Thing(pred))
 		}
 		q.Modify(mod)
+		tx.Writing()
 		if n, err := q.Save(ctx); err != nil {
 			if err, ok := err.(*ent.ConstraintError); ok {
 				if sqlgraph.IsUniqueConstraintError(err) {
@@ -508,6 +510,7 @@ func (s ThingServiceServer) Erase(ctx context.Context, req *apptest.ThingRef) (*
 		p = thing.And(p, thing.IdEQ(v.Id))
 	}
 
+	tx.Writing()
 	u := st.Db.Thing.Update().Where(p)
 	u.SetDateErased(st.now())
 	n, err := u.Save(ctx)

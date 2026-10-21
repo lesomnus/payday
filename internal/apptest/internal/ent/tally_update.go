@@ -131,14 +131,23 @@ func (_u *TallyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Count(); ok {
 		_spec.SetField(tally.FieldCount, field.TypeUint64, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(tally.FieldCount); ok {
+		_spec.SetField(tally.FieldCount, field.TypeUint64, e)
+	}
 	if value, ok := _u.mutation.AddedCount(); ok {
 		_spec.AddField(tally.FieldCount, field.TypeUint64, value)
 	}
 	if value, ok := _u.mutation.Token(); ok {
 		_spec.SetField(tally.FieldToken, field.TypeBytes, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(tally.FieldToken); ok {
+		_spec.SetField(tally.FieldToken, field.TypeBytes, e)
+	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(tally.FieldDateUpdated, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(tally.FieldDateUpdated); ok {
+		_spec.SetField(tally.FieldDateUpdated, field.TypeTime, e)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(tally.FieldDateCreated, field.TypeTime)
@@ -297,14 +306,23 @@ func (_u *TallyUpdateOne) sqlSave(ctx context.Context) (_node *Tally, err error)
 	if value, ok := _u.mutation.Count(); ok {
 		_spec.SetField(tally.FieldCount, field.TypeUint64, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(tally.FieldCount); ok {
+		_spec.SetField(tally.FieldCount, field.TypeUint64, e)
+	}
 	if value, ok := _u.mutation.AddedCount(); ok {
 		_spec.AddField(tally.FieldCount, field.TypeUint64, value)
 	}
 	if value, ok := _u.mutation.Token(); ok {
 		_spec.SetField(tally.FieldToken, field.TypeBytes, value)
 	}
+	if e, ok := _u.mutation.FieldExpr(tally.FieldToken); ok {
+		_spec.SetField(tally.FieldToken, field.TypeBytes, e)
+	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(tally.FieldDateUpdated, field.TypeTime, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(tally.FieldDateUpdated); ok {
+		_spec.SetField(tally.FieldDateUpdated, field.TypeTime, e)
 	}
 	if _u.mutation.DateCreatedCleared() {
 		_spec.ClearField(tally.FieldDateCreated, field.TypeTime)

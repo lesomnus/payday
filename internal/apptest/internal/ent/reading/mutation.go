@@ -22,6 +22,7 @@ type Mutation struct {
 	addcelsius    *float64
 	date_created  *time.Time
 	clearedFields map[string]struct{}
+	exprs         map[string]sql.Querier
 	robot         *uuid.UUID
 	clearedrobot  bool
 	predicates    []predicate.Reading
@@ -44,6 +45,7 @@ func (m *Mutation) Predicates() []predicate.Reading {
 // SetTenantId sets the "tenant_id" field.
 func (m *Mutation) SetTenantId(u uuid.UUID) {
 	m.tenant_id = &u
+	delete(m.exprs, FieldTenantId)
 }
 
 // TenantId returns the value of the "tenant_id" field in the mutation.
@@ -58,12 +60,14 @@ func (m *Mutation) TenantId() (r uuid.UUID, exists bool) {
 // ResetTenantId resets all changes to the "tenant_id" field.
 func (m *Mutation) ResetTenantId() {
 	m.tenant_id = nil
+	delete(m.exprs, FieldTenantId)
 }
 
 // SetCelsius sets the "celsius" field.
 func (m *Mutation) SetCelsius(f float64) {
 	m.celsius = &f
 	m.addcelsius = nil
+	delete(m.exprs, FieldCelsius)
 }
 
 // Celsius returns the value of the "celsius" field in the mutation.
@@ -97,11 +101,13 @@ func (m *Mutation) AddedCelsius() (r float64, exists bool) {
 func (m *Mutation) ResetCelsius() {
 	m.celsius = nil
 	m.addcelsius = nil
+	delete(m.exprs, FieldCelsius)
 }
 
 // SetDateCreated sets the "date_created" field.
 func (m *Mutation) SetDateCreated(t time.Time) {
 	m.date_created = &t
+	delete(m.clearedFields, FieldDateCreated)
 }
 
 // DateCreated returns the value of the "date_created" field in the mutation.
@@ -212,10 +218,10 @@ func (m *Mutation) Type() string {
 // AddedFields().
 func (m *Mutation) Fields() []string {
 	fields := make([]string, 0, 4)
-	if m.tenant_id != nil {
+	if m.tenant_id != nil || m.exprs[FieldTenantId] != nil {
 		fields = append(fields, FieldTenantId)
 	}
-	if m.celsius != nil {
+	if m.celsius != nil || m.exprs[FieldCelsius] != nil {
 		fields = append(fields, FieldCelsius)
 	}
 	if m.date_created != nil {
@@ -230,7 +236,13 @@ func (m *Mutation) Fields() []string {
 // Field returns the value of a field with the given name. The second boolean
 // return value indicates that this field was not set, or was not defined in the
 // schema.
+//
+// A field assigned an expression with SetFieldExpr returns that expression, a
+// sql.Querier, since the value it stands for is the database's to compute.
 func (m *Mutation) Field(name string) (ent.Value, bool) {
+	if e, ok := m.exprs[name]; ok {
+		return e, true
+	}
 	switch name {
 	case FieldTenantId:
 		return m.TenantId()
@@ -254,11 +266,17 @@ func (m *Mutation) OldField(ctx context.Context, name string) (ent.Value, error)
 // SetField sets the value of a field with the given name. It returns an error if
 // the field is not defined in the schema, or if the type mismatched the field
 // type.
+//
+// A sql.Querier that is not of the field's type is handed to SetFieldExpr, so
+// that what Field returns for a field can be set back on it.
 func (m *Mutation) SetField(name string, value ent.Value) error {
 	switch name {
 	case FieldTenantId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
+			if e, ok := value.(sql.Querier); ok {
+				return m.SetFieldExpr(name, e)
+			}
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTenantId(v)
@@ -266,6 +284,9 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 	case FieldCelsius:
 		v, ok := value.(float64)
 		if !ok {
+			if e, ok := value.(sql.Querier); ok {
+				return m.SetFieldExpr(name, e)
+			}
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCelsius(v)
@@ -273,6 +294,9 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 	case FieldDateCreated:
 		v, ok := value.(time.Time)
 		if !ok {
+			if e, ok := value.(sql.Querier); ok {
+				return m.SetFieldExpr(name, e)
+			}
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDateCreated(v)
@@ -280,12 +304,71 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 	case FieldRobotId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
+			if e, ok := value.(sql.Querier); ok {
+				return m.SetFieldExpr(name, e)
+			}
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRobotId(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Reading field %s", name)
+}
+
+// SetFieldExpr assigns the field with the given name a SQL expression, which
+// the database evaluates as the UPDATE writes the row. It replaces any value
+// the field was set, added, appended or cleared with, as setting it again
+// would, and so the column is assigned once.
+//
+// The field is listed by Fields and Field returns the expression, so a hook
+// sees it as it sees any other. What it does not have is a value: a field
+// with a validator is refused, since there is nothing for the validator to
+// check, and so is one that only a create could write. A create refuses a
+// mutation holding an expression at all.
+func (m *Mutation) SetFieldExpr(name string, expr sql.Querier) error {
+	if expr == nil {
+		return fmt.Errorf("no expression for field %s", name)
+	}
+	if m.op.Is(ent.OpCreate) {
+		return fmt.Errorf("field %s cannot be assigned an expression: a create writes values, and an expression is written only by an update", name)
+	}
+	switch name {
+	case FieldTenantId:
+		m.ResetTenantId()
+	case FieldCelsius:
+		m.ResetCelsius()
+	case FieldDateCreated:
+		return fmt.Errorf("field %s cannot be assigned an expression: it is immutable, and an expression is written only by an update", name)
+	case FieldRobotId:
+		return fmt.Errorf("field %s cannot be assigned an expression: it holds an edge, which is set through the edge", name)
+	default:
+		return fmt.Errorf("unknown Reading field %s", name)
+	}
+	if m.exprs == nil {
+		m.exprs = make(map[string]sql.Querier)
+	}
+	m.exprs[name] = expr
+	return nil
+}
+
+// FieldExpr returns the expression the field with the given name was assigned
+// by SetFieldExpr. The second return value reports whether it was.
+func (m *Mutation) FieldExpr(name string) (sql.Querier, bool) {
+	e, ok := m.exprs[name]
+	return e, ok
+}
+
+// ExprFields returns the fields that were assigned an expression by
+// SetFieldExpr.
+func (m *Mutation) ExprFields() []string {
+	var fields []string
+	if _, ok := m.exprs[FieldTenantId]; ok {
+		fields = append(fields, FieldTenantId)
+	}
+	if _, ok := m.exprs[FieldCelsius]; ok {
+		fields = append(fields, FieldCelsius)
+	}
+	return fields
 }
 
 // AddedFields returns all numeric fields that were incremented/decremented during

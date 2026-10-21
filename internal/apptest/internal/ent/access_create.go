@@ -153,13 +153,18 @@ func (_c *AccessCreate) ExecX(ctx context.Context) {
 // defaults sets the default values of the builder before save.
 func (_c *AccessCreate) defaults() {
 	if _, ok := _c.mutation.Domain(); !ok {
-		v := access.DefaultDomain
-		_c.mutation.SetDomain(v)
+		if _, ok := _c.mutation.FieldExpr(access.FieldDomain); !ok {
+			v := access.DefaultDomain
+			_c.mutation.SetDomain(v)
+		}
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *AccessCreate) check() error {
+	if fs := _c.mutation.ExprFields(); len(fs) > 0 {
+		return &ValidationError{Name: fs[0], err: fmt.Errorf(`ent: field "Access.%s" was assigned an expression, which only an update writes`, fs[0])}
+	}
 	if _, ok := _c.mutation.TenantId(); !ok {
 		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Access.tenant_id"`)}
 	}

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	entgo "github.com/protobuf-orm/ent"
 	"github.com/protobuf-orm/ent/dialect"
 	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	"github.com/stretchr/testify/require"
@@ -390,4 +391,36 @@ func TestAnAddManyAsksAboutARowOnceInATransaction(t *testing.T) {
 			x.Equal(1, inserts, "the rows were not written in one statement")
 		})
 	}
+}
+
+// TestAnAddManyThatFailsPartwayIsNotCommitted, in a transaction somebody else
+// began -- an app's operation, a batch. The AddMany joins it and cannot take
+// back the statements of it that held, so the transaction is told: its commit
+// is refused, and neither the rows nor what the trail kept of them holds. On
+// SQLite, which undoes a refused statement alone, the first five hundred rows
+// would otherwise have been committed with the transaction.
+func TestAnAddManyThatFailsPartwayIsNotCommitted(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	// The last of 501 is taken already, so the second statement is refused.
+	b.robot(t, ctx, b.Tenant, "arm-500")
+	aliases := make([]string, 501)
+	for i := range aliases {
+		aliases[i] = fmt.Sprintf("arm-%03d", i)
+	}
+
+	drv, tx, err := dialect.BeginTx(ctx, b.Drv)
+	x.NoError(err)
+	defer tx.Rollback()
+	s, err := enttx.Rebind(b.Walled, drv)
+	x.NoError(err)
+
+	_, err = s.Robot().AddMany(b.as(ctx), robots(b.Tenant, aliases...))
+	x.Equal(codes.AlreadyExists, status.Code(err))
+
+	x.ErrorIs(tx.Commit(), entgo.ErrPartial)
+	x.Equal(1, b.Ent.Robot.Query().Where(robot.AliasHasPrefix("arm-")).CountX(ctx), "rows of an AddMany that failed partway held")
+	x.Zero(b.Ent.Audit.Query().Where(entaudit.Action(app.RobotService_AddMany_FullMethodName)).CountX(ctx),
+		"what the trail kept of an AddMany that failed partway held")
 }
