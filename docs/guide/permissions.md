@@ -155,7 +155,7 @@ other to write the same rows past it.
 | field 3, the set (§7) | **yes**, for the same reason one level down |
 | any other edge to a walled entity | **yes**, every one the request sets |
 | an edge to a global entity, or to one the schema does not describe | **no** |
-| any edge a `Patch` moves | **yes**, the same read again |
+| any edge a `Patch` or an `Apply` moves | **yes**, the same read again |
 
 The first hop is the `tenant` edge for the ordinary entity, and for one that
 reaches its tenant through another row it is that row. Reading it through the
@@ -172,8 +172,11 @@ pointing at one it may not, and reads the far end back through its own. So the
 gate asks of each edge the request sets the question it asks of the first hop,
 "may this caller see it", and an edge left empty is not asked about. A `Patch`
 asks it again of every edge it moves; an immutable edge cannot be moved, so it
-is asked once, at `Add`. That is a read per edge per write, which is what
-keeping the wall whole costs.
+is asked once, at `Add`. An `Apply` is asked it too, of the document compiled
+the way the server behind compiles it: a document names the row an edge points
+at by its key, which goes into the column as it is, so without the question it
+is the same move with the read taken off. That is a read per edge per write,
+which is what keeping the wall whole costs.
 
 Inside one transaction begun with `dialect.BeginTx` it is a read per edge per
 **row**: the second write naming a row asks what the first was told, and the
