@@ -583,12 +583,27 @@ of those directions; an ordinary `(alias, id)` serves `(alias, id)` both ways
 round and not that. The warning above asks about each named order as it does
 about `order`.
 
-**An order is over columns that are always there.** A cursor carries on from
-the last row by comparing, and a column that may be null compares as neither
-greater nor less: a row whose column is empty is skipped by the page after it,
-or never reached, and the databases do not agree on where nulls sort either.
-Order by a column that is `default`ed rather than `nullable`, or keep a
-nullable one out of the order and read the rows it would sort some other way.
+**An order is over columns a cursor can carry.** A cursor is the last row's
+value of every column of the order, handed to the caller and back, and the
+next page is the rows past it. So generation refuses, in `order` and in every
+named order:
+
+- **a column that may be null** -- a null compares as neither greater nor less,
+  so a row whose column is empty is skipped by the page after it, or never
+  reached, and the databases do not agree on where nulls sort either. A default
+  does not help: a nullable column with one is still one a write may clear.
+  Order by a column that is `default`ed rather than `nullable`, or keep a
+  nullable one out of the order and read the rows it would sort some other way;
+- **a `secret:` field** -- it is never answered with, and a cursor is an
+  answer: the last row's value would go out in every page's `next`;
+- **a list, a map, a JSON column or bytes**, which have no order a cursor can
+  name.
+
+What is left -- a number, a string, a bool, an enum, a time, an identifier -- a
+cursor reads back as the type the column is, so it names the row exactly; read
+as a JSON number, an int64 past 2^53 came back as a neighbour and the next page
+answered the same row again. A `personal:` field may be an order: the cursor
+carries a value the page it came with already answered with, to the same caller.
 
 A cursor is of the order it was read in and the way: carried on in another, or
 the other way round, it is refused, since it names a place in a sequence it is
@@ -806,6 +821,7 @@ only test for whether it belongs on this list.
 | `agrees:` through a mutable step | an agreement true only until somebody repoints it |
 | `list:` with no `max` | an answer with no cap |
 | `list:` order not ending in the key | a cursor that repeats or skips a row |
+| `list:` order over a nullable, `secret:`, list, map, JSON or bytes column | a cursor that skips a row, or carries what is never answered with |
 | `watch:` with no `list:` | nothing to order, filter or cap |
 | `watch:` with no `ref` in `by:` | no way to name the rows it is about |
 | `watch:` with no version field | a late answer overwriting a fresh one |
