@@ -288,9 +288,15 @@ database the migration makes (lesomnus/rove#122).
   every edge after every field, so an index declared `(party, issued_at)` was
   `(issued_at, party_id)` -- the wrong one for the reads it was declared for.
   After `pd gen` it is `(party_id, issued_at)`, under the name of those columns,
-  and the next migration drops the old index and makes the new one. An index
-  whose fields all came before its edges -- `(alias, tenant)`, say -- is as it
-  was.
+  and the next migration makes it beside the old one -- which it leaves:
+  ent's migration drops no index, and the old one goes on being written on
+  every insert and read by nothing. Drop each old name once the migration has
+  made its replacement; on PostgreSQL `DROP INDEX CONCURRENTLY IF EXISTS
+  <name>`, one statement at a time and outside a transaction, which blocks no
+  read or write while it waits out the transactions already using the table --
+  a plain `DROP INDEX` takes the table's strongest lock and queues every query
+  behind it. rove's and roster's `Replaced` lists are what that looks like. An index whose fields all came before its edges -- `(alias,
+  tenant)`, say -- is as it was.
 - **`pd gen` prints the warnings it was given.** The generation's own warnings
   were dropped whenever it succeeded, so an app may see a list of them the
   first time. The one that matters here is the list index:
