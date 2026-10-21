@@ -183,8 +183,11 @@ Inside one transaction begun with `dialect.BeginTx` it is a read per edge per
 answer is the one it got. A generated batch is such a transaction, and so is a
 layer's that writes several rows ([server guide](server.md#completing-a-generated-verb)).
 It is the same read, remembered for the caller who asked it and only for a
-row named by identifier; [`seen`](../../seen) says why remembering it waits on
-no write and cannot reach past the wall.
+row named by identifier, until something writes that row: a `Patch`, an
+`Apply` or an `Erase` of it forgets what the transaction was told about it, so
+a row erased, or moved to a set the caller cannot see, is asked about again.
+[`seen`](../../seen) says what is forgotten and why remembering cannot reach
+past the wall.
 
 What the gate does **not** do is compare. "May I see it" is answered yes twice
 by a caller whose scope covers two tenants, so an operator can write a row with

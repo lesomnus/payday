@@ -754,6 +754,33 @@ func (s Sink) Audit() apptest.AuditServiceServer {
 	return sinkAudit{s.Server.Audit(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Audit", req)
+
+	return s.AuditServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
+	seen.Forget(s.store.Db.Driver(), "Audit", req.GetRef())
+
+	return s.AuditServiceServer.Apply(ctx, req)
+}
+
+// Patch forgets what the transaction was told about the row, before it is
+// written; see [sinkAudit.Apply].
+func (s sinkAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
+	seen.Forget(s.store.Db.Driver(), "Audit", req.GetRef())
+
+	return s.AuditServiceServer.Patch(ctx, req)
+}
+
 // orderAudit is how Audits come back.
 //
 // The last column is the key, and it is not decoration: a cursor cannot
@@ -1026,7 +1053,12 @@ func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptes
 // decides the name of a row being made; a patch that cleared the alias is
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
+//
+// And it forgets what the transaction was told about the row; see
+// [sinkCell.Apply].
 func (s sinkCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
+	seen.Forget(s.store.Db.Driver(), "Cell", req.GetRef())
+
 	if !req.HasAlias() {
 		return s.CellServiceServer.Patch(ctx, req)
 	}
@@ -1040,6 +1072,25 @@ func (s sinkCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*ap
 	req.SetAlias(v)
 
 	return s.CellServiceServer.Patch(ctx, req)
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkCell) Erase(ctx context.Context, req *apptest.CellRef) (*apptest.CellEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Cell", req)
+
+	return s.CellServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
+	seen.Forget(s.store.Db.Driver(), "Cell", req.GetRef())
+
+	return s.CellServiceServer.Apply(ctx, req)
 }
 
 type sinkFleet struct {
@@ -1121,7 +1172,12 @@ func (s sinkFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*appt
 // decides the name of a row being made; a patch that cleared the alias is
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
+//
+// And it forgets what the transaction was told about the row; see
+// [sinkFleet.Apply].
 func (s sinkFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
+	seen.Forget(s.store.Db.Driver(), "Fleet", req.GetRef())
+
 	if !req.HasAlias() {
 		return s.FleetServiceServer.Patch(ctx, req)
 	}
@@ -1135,6 +1191,25 @@ func (s sinkFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*
 	req.SetAlias(v)
 
 	return s.FleetServiceServer.Patch(ctx, req)
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.FleetEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Fleet", req)
+
+	return s.FleetServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkFleet) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
+	seen.Forget(s.store.Db.Driver(), "Fleet", req.GetRef())
+
+	return s.FleetServiceServer.Apply(ctx, req)
 }
 
 type sinkHolder struct {
@@ -1216,7 +1291,12 @@ func (s sinkHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 // decides the name of a row being made; a patch that cleared the alias is
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
+//
+// And it forgets what the transaction was told about the row; see
+// [sinkHolder.Apply].
 func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
+	seen.Forget(s.store.Db.Driver(), "Holder", req.GetRef())
+
 	if !req.HasAlias() {
 		return s.HolderServiceServer.Patch(ctx, req)
 	}
@@ -1230,6 +1310,25 @@ func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) 
 	req.SetAlias(v)
 
 	return s.HolderServiceServer.Patch(ctx, req)
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Holder", req)
+
+	return s.HolderServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	seen.Forget(s.store.Db.Driver(), "Holder", req.GetRef())
+
+	return s.HolderServiceServer.Apply(ctx, req)
 }
 
 // orderHolder is how Holders come back.
@@ -1695,7 +1794,12 @@ func (s sinkJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*appt
 // decides the name of a row being made; a patch that cleared the alias is
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
+//
+// And it forgets what the transaction was told about the row; see
+// [sinkJoint.Apply].
 func (s sinkJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
+	seen.Forget(s.store.Db.Driver(), "Joint", req.GetRef())
+
 	if !req.HasAlias() {
 		return s.JointServiceServer.Patch(ctx, req)
 	}
@@ -1709,6 +1813,25 @@ func (s sinkJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*
 	req.SetAlias(v)
 
 	return s.JointServiceServer.Patch(ctx, req)
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkJoint) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.JointEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Joint", req)
+
+	return s.JointServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
+	seen.Forget(s.store.Db.Driver(), "Joint", req.GetRef())
+
+	return s.JointServiceServer.Apply(ctx, req)
 }
 
 type sinkPairing struct {
@@ -1743,6 +1866,33 @@ func (s sinkPairing) admit(ctx context.Context, req *apptest.PairingAddRequest) 
 	return r, nil
 }
 
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkPairing) Erase(ctx context.Context, req *apptest.PairingRef) (*apptest.PairingEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Pairing", req)
+
+	return s.PairingServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkPairing) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
+	seen.Forget(s.store.Db.Driver(), "Pairing", req.GetRef())
+
+	return s.PairingServiceServer.Apply(ctx, req)
+}
+
+// Patch forgets what the transaction was told about the row, before it is
+// written; see [sinkPairing.Apply].
+func (s sinkPairing) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
+	seen.Forget(s.store.Db.Driver(), "Pairing", req.GetRef())
+
+	return s.PairingServiceServer.Patch(ctx, req)
+}
+
 // tenantAtLeadTenant is the tenant "lead.tenant" arrives at.
 func (s sinkPairing) tenantAtLeadTenant(ctx context.Context, ref *apptest.RobotRef) ([]byte, error) {
 	if ref == nil {
@@ -1750,9 +1900,9 @@ func (s sinkPairing) tenantAtLeadTenant(ctx context.Context, ref *apptest.RobotR
 	}
 
 	// Asked once a transaction: no step past the first can be repointed, so
-	// where this walk arrives from a row is decided for good. See
-	// [seen.Tenant].
-	return seen.Tenant(s.store.Db.Driver(), "Robot.tenant", ref, func() ([]byte, error) {
+	// where this walk arrives from a row is decided until the row is
+	// written. See [seen.Tenant].
+	return seen.Tenant(s.store.Db.Driver(), "Robot", "tenant", ref, func() ([]byte, error) {
 		// The row the edge names, picked the way every other reference is.
 		pick, err := bare.RobotPick(ref)
 		if err != nil {
@@ -1777,9 +1927,9 @@ func (s sinkPairing) tenantAtFollowTenant(ctx context.Context, ref *apptest.Robo
 	}
 
 	// Asked once a transaction: no step past the first can be repointed, so
-	// where this walk arrives from a row is decided for good. See
-	// [seen.Tenant].
-	return seen.Tenant(s.store.Db.Driver(), "Robot.tenant", ref, func() ([]byte, error) {
+	// where this walk arrives from a row is decided until the row is
+	// written. See [seen.Tenant].
+	return seen.Tenant(s.store.Db.Driver(), "Robot", "tenant", ref, func() ([]byte, error) {
 		// The row the edge names, picked the way every other reference is.
 		pick, err := bare.RobotPick(ref)
 		if err != nil {
@@ -1858,6 +2008,33 @@ func (s sinkReading) admit(ctx context.Context, req *apptest.ReadingAddRequest) 
 	return r, nil
 }
 
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Reading", req)
+
+	return s.ReadingServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkReading) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
+	seen.Forget(s.store.Db.Driver(), "Reading", req.GetRef())
+
+	return s.ReadingServiceServer.Apply(ctx, req)
+}
+
+// Patch forgets what the transaction was told about the row, before it is
+// written; see [sinkReading.Apply].
+func (s sinkReading) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
+	seen.Forget(s.store.Db.Driver(), "Reading", req.GetRef())
+
+	return s.ReadingServiceServer.Patch(ctx, req)
+}
+
 // tenantAtRobotTenant is the tenant "robot.tenant" arrives at.
 func (s sinkReading) tenantAtRobotTenant(ctx context.Context, ref *apptest.RobotRef) ([]byte, error) {
 	if ref == nil {
@@ -1865,9 +2042,9 @@ func (s sinkReading) tenantAtRobotTenant(ctx context.Context, ref *apptest.Robot
 	}
 
 	// Asked once a transaction: no step past the first can be repointed, so
-	// where this walk arrives from a row is decided for good. See
-	// [seen.Tenant].
-	return seen.Tenant(s.store.Db.Driver(), "Robot.tenant", ref, func() ([]byte, error) {
+	// where this walk arrives from a row is decided until the row is
+	// written. See [seen.Tenant].
+	return seen.Tenant(s.store.Db.Driver(), "Robot", "tenant", ref, func() ([]byte, error) {
 		// The row the edge names, picked the way every other reference is.
 		pick, err := bare.RobotPick(ref)
 		if err != nil {
@@ -2011,7 +2188,12 @@ func (s sinkRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest
 // decides the name of a row being made; a patch that cleared the alias is
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
+//
+// And it forgets what the transaction was told about the row; see
+// [sinkRobot.Apply].
 func (s sinkRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
+	seen.Forget(s.store.Db.Driver(), "Robot", req.GetRef())
+
 	if !req.HasAlias() {
 		return s.RobotServiceServer.Patch(ctx, req)
 	}
@@ -2025,6 +2207,25 @@ func (s sinkRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*
 	req.SetAlias(v)
 
 	return s.RobotServiceServer.Patch(ctx, req)
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkRobot) Erase(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Robot", req)
+
+	return s.RobotServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
+	seen.Forget(s.store.Db.Driver(), "Robot", req.GetRef())
+
+	return s.RobotServiceServer.Apply(ctx, req)
 }
 
 // orderRobot is how Robots come back.
@@ -2554,7 +2755,12 @@ func (s sinkSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptes
 // decides the name of a row being made; a patch that cleared the alias is
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
+//
+// And it forgets what the transaction was told about the row; see
+// [sinkSeal.Apply].
 func (s sinkSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
+	seen.Forget(s.store.Db.Driver(), "Seal", req.GetRef())
+
 	if !req.HasAlias() {
 		return s.SealServiceServer.Patch(ctx, req)
 	}
@@ -2568,6 +2774,25 @@ func (s sinkSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*ap
 	req.SetAlias(v)
 
 	return s.SealServiceServer.Patch(ctx, req)
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Seal", req)
+
+	return s.SealServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
+	seen.Forget(s.store.Db.Driver(), "Seal", req.GetRef())
+
+	return s.SealServiceServer.Apply(ctx, req)
 }
 
 type sinkTenant struct {
@@ -2649,7 +2874,12 @@ func (s sinkTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*ap
 // decides the name of a row being made; a patch that cleared the alias is
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
+//
+// And it forgets what the transaction was told about the row; see
+// [sinkTenant.Apply].
 func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) (*apptest.Tenant, error) {
+	seen.Forget(s.store.Db.Driver(), "Tenant", req.GetRef())
+
 	if !req.HasAlias() {
 		return s.TenantServiceServer.Patch(ctx, req)
 	}
@@ -2663,6 +2893,25 @@ func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) 
 	req.SetAlias(v)
 
 	return s.TenantServiceServer.Patch(ctx, req)
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Tenant", req)
+
+	return s.TenantServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
+	seen.Forget(s.store.Db.Driver(), "Tenant", req.GetRef())
+
+	return s.TenantServiceServer.Apply(ctx, req)
 }
 
 // orderTenant is how Tenants come back.
@@ -2905,7 +3154,12 @@ func (s sinkThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*appt
 // decides the name of a row being made; a patch that cleared the alias is
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
+//
+// And it forgets what the transaction was told about the row; see
+// [sinkThing.Apply].
 func (s sinkThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*apptest.Thing, error) {
+	seen.Forget(s.store.Db.Driver(), "Thing", req.GetRef())
+
 	if !req.HasAlias() {
 		return s.ThingServiceServer.Patch(ctx, req)
 	}
@@ -2919,6 +3173,25 @@ func (s sinkThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*
 	req.SetAlias(v)
 
 	return s.ThingServiceServer.Patch(ctx, req)
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkThing) Erase(ctx context.Context, req *apptest.ThingRef) (*apptest.ThingEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Thing", req)
+
+	return s.ThingServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
+	seen.Forget(s.store.Db.Driver(), "Thing", req.GetRef())
+
+	return s.ThingServiceServer.Apply(ctx, req)
 }
 
 // orderThing is how Things come back.

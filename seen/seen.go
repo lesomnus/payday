@@ -33,26 +33,52 @@
 // proof about the next. What the sink learns is about the row and not about
 // who is asking, so every frame in the transaction shares it.
 //
-// # Why a write does not make it forget
+// The read the gate remembers goes through every scope the stack narrows by:
+// the wall, and the set at field 3 when the app declared one. So what it found
+// is that the row was inside both.
 //
-// The tenant a row's path arrives at does not move. `pd gen` refuses a stamp
-// or an `agrees:` path with a step that can be repointed, and the generated
-// sink remembers no path that has one -- so what it remembers stays true.
+// # What a write makes it forget
 //
-// What the gate remembers can stop being true: the transaction may erase the
-// row, or end a membership the caller saw it through. The gate then answers
-// from before that, which is what it already does for the same write arriving
-// from another transaction -- the read is not a lock, so a row erased or a set
-// taken away between the gate's read and the write is one the gate never saw.
-// Remembering stretches that window to the rest of a transaction the caller is
-// running themselves. It does not open one that was not there, and it does not
-// reach past the wall: the caller's tenants are fixed for the call and a row's
-// tenant is fixed for good, so a row they could see is in a tenant they hold
-// for as long as the transaction lasts.
+// A write the generated servers make to a row -- a Patch, an Apply, an Erase
+// -- forgets what the transaction was told about that row ([Forget]), and the
+// next question about it is asked again. The Sink is where that is said, being
+// what both stacks are built on: a write through the server with no wall
+// forgets as one through the gate does.
 //
-// Forgetting on every write was the alternative, and it costs what this is
-// for. A transaction that adds rows writes between every two questions it
-// asks, so it would ask each of them every time, as it does now.
+// That is every way a write can make a remembered answer wrong about the row
+// itself:
+//
+//   - An Erase takes the row out of every read, softly or for good.
+//   - A Patch or an Apply may move it to another set. The set is an isolation
+//     boundary as the tenant is, and nothing asks that its edge be immutable --
+//     a row moved to a set the caller cannot see is a row they no longer see.
+//   - An Erase that takes the row for good leaves its key free, and an Add
+//     naming that key puts another row there, in whatever tenant the Add says.
+//     Where the old row's walk arrived is nothing to say about the new one's.
+//
+// An Add forgets nothing: it names no row that was there to be asked about.
+// And the tenant a row's walk arrives at does not otherwise move: `pd gen`
+// refuses a stamp or an `agrees:` path with a step that can be repointed, and
+// the generated sink remembers no walk that has one.
+//
+// What it does not forget is a change to the **caller** rather than to the
+// row: a membership ended, a set taken away. The gate answers from before
+// that, which is what it already does for the same change made by another
+// transaction -- the read is not a lock, so a set taken away between the
+// gate's read and the write is one the gate never saw. Remembering stretches
+// that window to the rest of a transaction the caller is running themselves.
+// It does not reach past the wall: the caller's tenants are fixed for the call,
+// and a row's tenant is fixed for good.
+//
+// Nor does it see a write made around the servers -- ent itself, or SQL --
+// which is not a write of theirs to forget by. A transaction that makes one to
+// a row and then names that row through the servers is answered from before
+// it.
+//
+// Forgetting on every write, every row, was the alternative, and it costs what
+// this is for. A transaction that adds rows writes between every two questions
+// it asks, so it would ask each of them every time. Forgetting the row a write
+// was about costs the next question about that row and nothing else.
 //
 // # Whose it is
 //
@@ -112,35 +138,35 @@ func Visible(ctx context.Context, drv dialect.Driver, entity string, ref Ref, as
 		return ask()
 	}
 
-	k := visibleKey{frame: f, entity: entity, id: string(ref.GetId())}
-	if m.saw(k) {
+	at := row{entity: entity, id: string(ref.GetId())}
+	if m.saw(at, f) {
 		return nil
 	}
 	if err := ask(); err != nil {
 		return err
 	}
 
-	m.see(k)
+	m.see(at, f)
 	return nil
 }
 
-// Tenant answers what `ask` does about which tenant `path` arrives at from the
-// row `ref` names, asking it once for each path and row in the transaction
-// `drv` runs in.
+// Tenant answers what `ask` does about which tenant the walk `walk` arrives at
+// from the row of `entity` that `ref` names, asking it once for each walk and
+// row in the transaction `drv` runs in.
 //
-// `path` names where the walk starts and where it goes -- `Robot.tenant`, not
-// the edge that reached the robot -- so two edges onto the same row share an
-// answer. Only a path whose every step is immutable may be asked here; one that
-// can be repointed arrives somewhere else after a write, and the generated sink
-// asks the database for those every time.
-func Tenant(drv dialect.Driver, path string, ref Ref, ask func() ([]byte, error)) ([]byte, error) {
+// `entity` and `walk` say where the walk starts and where it goes -- `Robot`
+// and `tenant`, not the edge that reached the robot -- so two edges onto the
+// same row share an answer. Only a walk whose every step is immutable may be
+// asked here; one that can be repointed arrives somewhere else after a write,
+// and the generated sink asks the database for those every time.
+func Tenant(drv dialect.Driver, entity, walk string, ref Ref, ask func() ([]byte, error)) ([]byte, error) {
 	m, ok := memoOf(drv)
 	if !ok || !ref.HasId() {
 		return ask()
 	}
 
-	k := tenantKey{path: path, id: string(ref.GetId())}
-	if v, ok := m.tenantOf(k); ok {
+	at := row{entity: entity, id: string(ref.GetId())}
+	if v, ok := m.tenantOf(at, walk); ok {
 		return v, nil
 	}
 
@@ -149,8 +175,31 @@ func Tenant(drv dialect.Driver, path string, ref Ref, ask func() ([]byte, error)
 		return nil, err
 	}
 
-	m.keep(k, v)
+	m.keep(at, walk, v)
 	return v, nil
+}
+
+// Forget drops what the transaction `drv` runs in was told about the row of
+// `entity` that `ref` names: whether each frame may see it, and where each walk
+// from it arrives. It is what a write to the row says, before the write; see
+// the package comment.
+//
+// A reference that names its row some other way than by key -- an alias --
+// forgets every row of `entity`, since which one it names is what a read would
+// say. Outside a transaction that keeps anything it does nothing, and there is
+// nothing to forget.
+func Forget(drv dialect.Driver, entity string, ref Ref) {
+	m, ok := memoOf(drv)
+	if !ok {
+		return
+	}
+
+	if ref == nil || !ref.HasId() {
+		m.forgetAll(entity)
+		return
+	}
+
+	m.forget(row{entity: entity, id: string(ref.GetId())})
 }
 
 type key struct{}
@@ -169,60 +218,94 @@ func memoOf(drv dialect.Driver) (*memo, bool) {
 
 	return k.Value(key{}, func() any {
 		return &memo{
-			visible: map[visibleKey]struct{}{},
-			tenant:  map[tenantKey][]byte{},
+			visible: map[row]map[*frame.Frame]struct{}{},
+			tenant:  map[row]map[string][]byte{},
 		}
 	}).(*memo), true
 }
 
-// memo is one transaction's.
+// memo is one transaction's, by the row each answer is about, so that what a
+// write to the row forgets is one entry of each map.
 //
 // Guarded, though a transaction is used from one goroutine at a time: what a
 // transaction keeps is reachable by anything running on it, and a lock nobody
 // contends costs nothing next to the read it saves.
 type memo struct {
-	mu      sync.Mutex
-	visible map[visibleKey]struct{}
-	tenant  map[tenantKey][]byte
+	mu sync.Mutex
+
+	// visible is the frames each row was found by, through the wall.
+	visible map[row]map[*frame.Frame]struct{}
+
+	// tenant is the tenant each walk from a row arrives at, by the walk.
+	tenant map[row]map[string][]byte
 }
 
-type visibleKey struct {
-	frame  *frame.Frame
+// row is a row of an entity, by its key.
+type row struct {
 	entity string
 	id     string
 }
 
-type tenantKey struct {
-	path string
-	id   string
-}
-
-func (m *memo) saw(k visibleKey) bool {
+func (m *memo) saw(at row, f *frame.Frame) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	_, ok := m.visible[k]
+	_, ok := m.visible[at][f]
 	return ok
 }
 
-func (m *memo) see(k visibleKey) {
+func (m *memo) see(at row, f *frame.Frame) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.visible[k] = struct{}{}
+	fs, ok := m.visible[at]
+	if !ok {
+		fs = map[*frame.Frame]struct{}{}
+		m.visible[at] = fs
+	}
+	fs[f] = struct{}{}
 }
 
-func (m *memo) tenantOf(k tenantKey) ([]byte, bool) {
+func (m *memo) tenantOf(at row, walk string) ([]byte, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	v, ok := m.tenant[k]
+	v, ok := m.tenant[at][walk]
 	return slices.Clone(v), ok
 }
 
-func (m *memo) keep(k tenantKey, v []byte) {
+func (m *memo) keep(at row, walk string, v []byte) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.tenant[k] = slices.Clone(v)
+	ws, ok := m.tenant[at]
+	if !ok {
+		ws = map[string][]byte{}
+		m.tenant[at] = ws
+	}
+	ws[walk] = slices.Clone(v)
+}
+
+func (m *memo) forget(at row) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	delete(m.visible, at)
+	delete(m.tenant, at)
+}
+
+func (m *memo) forgetAll(entity string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for at := range m.visible {
+		if at.entity == entity {
+			delete(m.visible, at)
+		}
+	}
+	for at := range m.tenant {
+		if at.entity == entity {
+			delete(m.tenant, at)
+		}
+	}
 }

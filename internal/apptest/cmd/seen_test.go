@@ -18,6 +18,7 @@ import (
 	"github.com/lesomnus/payday/pdtest"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/server/bare"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
@@ -204,4 +205,146 @@ func TestABatchAsksAboutARowOnce(t *testing.T) {
 
 	x.Equal(1, a.tenancy, "the sink's read of the robot's tenant")
 	x.Equal(5, a.walled, "the gate's read through the wall, once for each operation's frame")
+}
+
+// A write to a row is what can make an answer about it wrong, and the Sink
+// forgets what the transaction was told about the row before the write: the
+// next question about it is asked again, and answered as the row now is.
+func TestARowWrittenInTheTransactionIsAskedAboutAgain(t *testing.T) {
+	begin := func(t *testing.T, b *built, ctx context.Context, s app.Server) app.Server {
+		t.Helper()
+
+		drv, tx, err := dialect.BeginTx(ctx, b.Drv)
+		require.NoError(t, err)
+		t.Cleanup(func() { tx.Rollback() })
+
+		v, err := enttx.Rebind(s, drv)
+		require.NoError(t, err)
+
+		return v
+	}
+
+	// What the gate was told about the robot is the read through the wall,
+	// which an erased row is not found by.
+	t.Run("erased, it is a row the gate no longer finds", func(t *testing.T) {
+		x := pdtest.NewX(t)
+		b, ctx := build(t)
+		robot := b.robot(t, ctx, b.Tenant, "arm")
+		s := begin(t, b, ctx, b.Walled)
+
+		in := b.as(ctx)
+		_, err := s.Reading().Add(in, reading(robot, 1))
+		x.NoError(err)
+		_, err = s.Robot().Erase(in, app.RobotRef_builder{Id: robot}.Build())
+		x.NoError(err)
+
+		_, err = s.Reading().Add(in, reading(robot, 2))
+		x.ErrCode(codes.NotFound, err)
+	})
+
+	// And what the sink was told -- the tenant the robot is in -- is as much
+	// about a row that is there, on the server the deployment writes through.
+	t.Run("erased, it is a row the sink no longer finds", func(t *testing.T) {
+		x := pdtest.NewX(t)
+		b, ctx := build(t)
+		robot := b.robot(t, ctx, b.Tenant, "arm")
+		s := begin(t, b, ctx, b.Ungated)
+
+		_, err := s.Reading().Add(ctx, reading(robot, 1))
+		x.NoError(err)
+		_, err = s.Robot().Erase(ctx, app.RobotRef_builder{Id: robot}.Build())
+		x.NoError(err)
+
+		_, err = s.Reading().Add(ctx, reading(robot, 2))
+		x.ErrCode(codes.InvalidArgument, err)
+		x.Contains(err.Error(), "does not name one row")
+	})
+
+	// The set is an isolation boundary as the tenant is, and the edge that
+	// puts a robot in a cell can be moved. A caller whose credential is for
+	// one cell saw the robot there; moved to another, it is out of their
+	// reach, however recently they saw it.
+	t.Run("moved to a set the caller cannot see, it is out of reach", func(t *testing.T) {
+		x := pdtest.NewX(t)
+		b, ctx := build(t)
+
+		cell := func(alias string) []byte {
+			v, err := b.Ungated.Cell().Add(ctx, app.CellAddRequest_builder{
+				Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+				Alias:  alias,
+			}.Build())
+			x.NoError(err)
+			return v.GetId()
+		}
+		north, south := cell("north"), cell("south")
+
+		v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Cell:   app.CellRef_builder{Id: north}.Build(),
+			Alias:  "arm",
+		}.Build())
+		x.NoError(err)
+		robot, version := v.GetId(), v.GetDateUpdated()
+
+		// Both axes: the wall, and the set beside it.
+		sink, err := pd.NewSink(b.Ent, bare.WithMinter(pd.Minter()), bare.WithScope(bare.Scopes{pd.Wall(), pd.Grouped(nil)}))
+		x.NoError(err)
+		grouped, err := app.Build(sink, pd.GateBuild())
+		x.NoError(err)
+
+		drv, tx, err := dialect.BeginTx(ctx, b.Drv)
+		x.NoError(err)
+		defer tx.Rollback()
+		s, err := enttx.Rebind(grouped, drv)
+		x.NoError(err)
+		u, err := enttx.Rebind(b.Ungated, drv)
+		x.NoError(err)
+
+		k, err := pdid.From(north)
+		x.NoError(err)
+		in := frame.Into(ctx, frame.New(b.Holder, b.Tenant, frame.Whole().Within(k)).WithScope(frame.Only(b.Tenant)))
+
+		_, err = s.Reading().Add(in, reading(robot, 1))
+		x.NoError(err)
+
+		_, err = u.Robot().Patch(ctx, app.RobotPatchRequest_builder{
+			Ref:         app.RobotRef_builder{Id: robot}.Build(),
+			Cell:        app.CellRef_builder{Id: south}.Build(),
+			DateUpdated: version,
+		}.Build())
+		x.NoError(err)
+
+		_, err = s.Reading().Add(in, reading(robot, 2))
+		x.ErrCode(codes.NotFound, err)
+	})
+
+	// A write to another row forgets nothing about this one.
+	t.Run("and a write to another row does not make it asked again", func(t *testing.T) {
+		x := require.New(t)
+		b, ctx := build(t)
+		robot := b.robot(t, ctx, b.Tenant, "arm")
+		other := b.robot(t, ctx, b.Tenant, "leg")
+
+		a := &asked{}
+		drv, tx, err := dialect.BeginTx(ctx, a.on(b.Drv))
+		x.NoError(err)
+		defer tx.Rollback()
+		s, err := enttx.Rebind(b.Walled, drv)
+		x.NoError(err)
+
+		in := b.as(ctx)
+		_, err = s.Reading().Add(in, reading(robot, 1))
+		x.NoError(err)
+		_, err = s.Robot().Erase(in, app.RobotRef_builder{Id: other}.Build())
+		x.NoError(err)
+
+		// The erase reads the robot it erases, through the wall, which is
+		// not a question about this one.
+		walled, tenancy := a.walled, a.tenancy
+		_, err = s.Reading().Add(in, reading(robot, 2))
+		x.NoError(err)
+
+		x.Equal(walled, a.walled, "the gate read the robot through the wall again")
+		x.Equal(tenancy, a.tenancy, "the sink read the robot's tenant again")
+	})
 }
