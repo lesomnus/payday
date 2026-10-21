@@ -3,6 +3,31 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A broker and a lease are built on the process's context, and `PlainInProcess` believes only this process
+
+**Applies if** your `cmd.Build` or your serve command builds a broker or a
+lease -- every app `pd new` made does -- if you register a broker or a lease of
+your own, or if you serve a server with `auth.PlainInProcess()`.
+
+- **`c.Watch.Build(ctx, c.Db)` and `c.Spin.Build(ctx, c.Db)`.** Both take the
+  context first: `cmd.Build`'s for the broker and for the trail's lease
+  (`p.Lease`, the entry below), the serve command's -- after `Telemetry` -- for
+  the lease the loops run under. What they say later, a listener that stopped
+  or a hold lost with its connection, is said in the log that context carries;
+  it went to the OpenTelemetry global, which nothing installs.
+- **A registration is handed that context first**:
+  `config.RegisterBroker(name, func(ctx context.Context, c config.WatchConfig, db config.DbConfig) (watch.Broker, error))`,
+  and the same for `config.RegisterLease`. Dial under it, and keep what it
+  carries rather than its cancellation (`context.WithoutCancel`).
+- **`auth.PlainInProcess()` refuses a name told from outside this process.** A
+  call is believed when its peer is `bufconn`; one over a port, a socket or the
+  HTTP transcoder is Unauthenticated (`auth.ErrFromOutside`). A server served on
+  `bufconn`, which is what it was for, changes nothing.
+- **A loop you rename can say what it was called**: `spin.Formerly(old, s)`.
+  Under a lease it holds that name as well as its own, so a rolling upgrade
+  that runs the build before beside this one runs the loop in one of them.
+  Nothing to do for a loop you have not renamed.
+
 ## A pass and what erases from the trail take turns, and a tenant that left has no key made again
 
 **Applies if** you keep the trail's archive and erase from it -- `Policy.Forget`,

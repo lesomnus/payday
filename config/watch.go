@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"slices"
@@ -91,7 +92,7 @@ type WatchConfig struct {
 // `memory` is not in here: it is what payday ships and [WatchConfig.Build]
 // answers for it directly, the way an app that needs no other database still
 // gets its driver named. What this map is for is the one after that.
-var brokers = map[string]func(c WatchConfig, db DbConfig) (watch.Broker, error){}
+var brokers = map[string]func(ctx context.Context, c WatchConfig, db DbConfig) (watch.Broker, error){}
 
 // RegisterBroker records how to build the broker named `name`, so that a
 // deployment can select one payday does not ship by naming it.
@@ -115,16 +116,25 @@ var brokers = map[string]func(c WatchConfig, db DbConfig) (watch.Broker, error){
 //
 // # What it is told
 //
-// Its own configuration, and **the database the app is on**. The second is
-// there because the first broker anybody writes rides that database: Postgres
-// answers `LISTEN`/`NOTIFY`, so an app already talking to one needs no second
-// piece of infrastructure to make its replicas hear each other. A broker that
-// connects somewhere else ignores it and reads [WatchConfig.Dsn].
+// The context the server is built under, its own configuration, and **the
+// database the app is on**. The last is there because the first broker anybody
+// writes rides that database: Postgres answers `LISTEN`/`NOTIFY`, so an app
+// already talking to one needs no second piece of infrastructure to make its
+// replicas hear each other. A broker that connects somewhere else ignores it
+// and reads [WatchConfig.Dsn].
+//
+// The context is what it dials under, and what it says later -- a listener
+// that stopped, a change that was not published -- it says in the log the
+// context carries. That is the process's, built from `otel:` before the
+// server, and it is the only one that keeps anything: a broker made on a
+// context of its own logs into the OpenTelemetry global, which nothing
+// installs. A broker outlives the call, so it holds on to the values and not
+// to the cancellation ([context.WithoutCancel]).
 //
 // The function is called once, when a server is built. A broker that cannot
 // reach whatever it publishes to answers with an error there rather than
 // panicking later, which is the same bargain [DbConfig.Open] makes.
-func RegisterBroker(name string, build func(c WatchConfig, db DbConfig) (watch.Broker, error)) {
+func RegisterBroker(name string, build func(ctx context.Context, c WatchConfig, db DbConfig) (watch.Broker, error)) {
 	brokers[name] = build
 }
 
@@ -152,7 +162,10 @@ func known() map[string]struct{} {
 // a subscriber outright rather than handing back a stream that never speaks;
 // before it did, `none` was the quietest setting available instead of the
 // loudest.
-func (c WatchConfig) Build(db DbConfig) (watch.Broker, error) {
+//
+// `ctx` is what a registered broker dials under and logs into; see
+// [RegisterBroker].
+func (c WatchConfig) Build(ctx context.Context, db DbConfig) (watch.Broker, error) {
 	switch c.Broker {
 	case BrokerMemory:
 		return watch.Memory(), nil
@@ -178,7 +191,7 @@ func (c WatchConfig) Build(db DbConfig) (watch.Broker, error) {
 			c.Broker, strings.Join(Brokers(), ", "))
 	}
 
-	b, err := build(c, db)
+	b, err := build(ctx, c, db)
 	if err != nil {
 		return nil, fmt.Errorf("watch.broker: %s: %w", c.Broker, err)
 	}

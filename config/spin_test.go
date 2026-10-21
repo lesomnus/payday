@@ -17,13 +17,13 @@ import (
 func TestAnUnnamedLeaseIsRefused(t *testing.T) {
 	x := require.New(t)
 
-	_, err := config.SpinConfig{}.Build(config.DbConfig{})
+	_, err := config.SpinConfig{}.Build(t.Context(), config.DbConfig{})
 	x.ErrorContains(err, "spin.lease")
 	x.ErrorContains(err, config.LeaseLocal)
 	x.ErrorContains(err, config.LeaseNone)
 	x.ErrorContains(err, "one replica", "the reason, not just the names")
 
-	_, err = config.SpinConfig{Lease: "zookeeper"}.Build(config.DbConfig{})
+	_, err = config.SpinConfig{Lease: "zookeeper"}.Build(t.Context(), config.DbConfig{})
 	x.ErrorContains(err, `"zookeeper"`)
 	x.ErrorContains(err, "RegisterLease")
 }
@@ -33,14 +33,14 @@ func TestAnUnnamedLeaseIsRefused(t *testing.T) {
 func TestTheLeasesPaydayShipsAreWhatTheySay(t *testing.T) {
 	x := require.New(t)
 
-	l, err := config.SpinConfig{Lease: config.LeaseLocal}.Build(config.DbConfig{})
+	l, err := config.SpinConfig{Lease: config.LeaseLocal}.Build(t.Context(), config.DbConfig{})
 	x.NoError(err)
 	held, release, err := l.Hold(t.Context(), "app.sweep")
 	x.NoError(err)
 	x.NoError(held.Err())
 	release()
 
-	l, err = config.SpinConfig{Lease: config.LeaseNone}.Build(config.DbConfig{})
+	l, err = config.SpinConfig{Lease: config.LeaseNone}.Build(t.Context(), config.DbConfig{})
 	x.NoError(err)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -52,20 +52,24 @@ func TestTheLeasesPaydayShipsAreWhatTheySay(t *testing.T) {
 }
 
 // TestARegisteredLeaseIsNamedLikeTheOthers: what [config.RegisterLease] records
-// is built from its name, with its configuration and the app's database, and
-// listed beside the ones payday ships.
+// is built from its name, with the serve command's context, its configuration
+// and the app's database, and listed beside the ones payday ships.
 func TestARegisteredLeaseIsNamedLikeTheOthers(t *testing.T) {
 	x := require.New(t)
 
+	type mark struct{}
 	var told config.SpinConfig
-	config.RegisterLease("test-registered", func(c config.SpinConfig, db config.DbConfig) (spin.Lease, error) {
-		told = c
+	var under context.Context
+	config.RegisterLease("test-registered", func(ctx context.Context, c config.SpinConfig, db config.DbConfig) (spin.Lease, error) {
+		told, under = c, ctx
 		return spin.Local(), nil
 	})
 
-	l, err := config.SpinConfig{Lease: "test-registered", Dsn: "somewhere"}.Build(config.DbConfig{})
+	ctx := context.WithValue(t.Context(), mark{}, "serve")
+	l, err := config.SpinConfig{Lease: "test-registered", Dsn: "somewhere"}.Build(ctx, config.DbConfig{})
 	x.NoError(err)
 	x.NotNil(l)
 	x.Equal("somewhere", told.Dsn)
+	x.Equal("serve", under.Value(mark{}), "built on a context other than the one it was given")
 	x.Contains(config.Leases(), "test-registered")
 }

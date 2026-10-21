@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"slices"
@@ -53,7 +54,7 @@ type SpinConfig struct {
 }
 
 // leases holds what each registered name builds.
-var leases = map[string]func(c SpinConfig, db DbConfig) (spin.Lease, error){}
+var leases = map[string]func(ctx context.Context, c SpinConfig, db DbConfig) (spin.Lease, error){}
 
 // RegisterLease records how to build the lease named `name`, so that a
 // deployment selects it by naming it. It is [RegisterBroker]'s shape and for
@@ -63,9 +64,11 @@ var leases = map[string]func(c SpinConfig, db DbConfig) (spin.Lease, error){}
 //
 //	import _ "github.com/lesomnus/payday/config/leasepg"
 //
-// It is told its own configuration and the database the app is on, which the
-// first lease anybody writes rides.
-func RegisterLease(name string, build func(c SpinConfig, db DbConfig) (spin.Lease, error)) {
+// It is told what [RegisterBroker] is told, and for its reasons: the context
+// the serve command runs under -- what it dials under, and the log it says a
+// lost hold in -- its own configuration, and the database the app is on, which
+// the first lease anybody writes rides.
+func RegisterLease(name string, build func(ctx context.Context, c SpinConfig, db DbConfig) (spin.Lease, error)) {
 	leases[name] = build
 }
 
@@ -85,8 +88,9 @@ func Leases() []string {
 //
 // It is built where the loops are run -- an app's serve command, beside
 // `spin.Run` -- and not where a server is, so that a test that builds a server
-// and runs no loop has nothing to name.
-func (c SpinConfig) Build(db DbConfig) (spin.Lease, error) {
+// and runs no loop has nothing to name. `ctx` is the serve command's, carrying
+// the telemetry it built; see [RegisterLease].
+func (c SpinConfig) Build(ctx context.Context, db DbConfig) (spin.Lease, error) {
 	switch c.Lease {
 	case LeaseLocal:
 		return spin.Local(), nil
@@ -111,7 +115,7 @@ func (c SpinConfig) Build(db DbConfig) (spin.Lease, error) {
 			c.Lease, strings.Join(Leases(), ", "))
 	}
 
-	l, err := build(c, db)
+	l, err := build(ctx, c, db)
 	if err != nil {
 		return nil, fmt.Errorf("spin.lease: %s: %w", c.Lease, err)
 	}

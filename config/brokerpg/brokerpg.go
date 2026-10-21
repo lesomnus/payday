@@ -33,7 +33,7 @@ import (
 const Name = "postgres"
 
 func init() {
-	config.RegisterBroker(Name, func(c config.WatchConfig, db config.DbConfig) (watch.Broker, error) {
+	config.RegisterBroker(Name, func(ctx context.Context, c config.WatchConfig, db config.DbConfig) (watch.Broker, error) {
 		dsn := c.Dsn
 		if dsn == "" {
 			// The rows' own database, which is the answer for this broker
@@ -54,8 +54,9 @@ func init() {
 			}
 		}
 
-		// Not the caller's: this dials to check, and what it builds outlives
-		// the call. A server being built is what is doing the calling.
-		return watchpg.New(context.WithoutCancel(context.Background()), dsn)
+		// The caller's: the dial that checks is the server's start, and what
+		// the broker says later belongs in the process's log. It outlives the
+		// call, which watchpg sees to.
+		return watchpg.New(ctx, dsn)
 	})
 }
