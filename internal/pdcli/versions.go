@@ -21,11 +21,12 @@ import (
 //
 // A floor is a version payday has built a page with: CI's `floor` job makes an
 // app with `pd new`, puts every package here at exactly its floor and builds it,
-// on Node at [NodeFloor]. What an upgrade moves a package to is its [Target] --
-// the version the page `pd new` writes declares, which the `new` job builds.
-// So a floor is raised when payday comes to need something newer, and never
-// because something newer exists: keeping current is Renovate's, and an app
-// above its floors is left alone.
+// on Node at [NodeFloor]. An upgrade moves a package below its floor to the
+// floor, in the major it is in, and to its [Target] -- the version the page
+// `pd new` writes declares, which the `new` job builds -- only when the floor
+// is a later major (see [Upgrades]). So a floor is raised when payday comes to
+// need something newer, and never because something newer exists: keeping
+// current is Renovate's, and an app above its floors is left alone.
 type Floor struct {
 	// Name is the npm package.
 	Name string
@@ -98,8 +99,9 @@ const (
 	NodeWhy   = "Vite 7 and 8 run on Node 20.19 or 22.12 and later; payday builds its floor on Node 22 and its target on 24"
 )
 
-// Target is what an upgrade moves a package to: the range the page `pd new`
-// writes declares, in the section it declares it in.
+// Target is the range the page `pd new` writes declares for a package, in the
+// section it declares it in: what an upgrade moves a package to when its floor
+// is a later major than the one the page has.
 type Target struct {
 	Range   string
 	Section string
@@ -290,14 +292,26 @@ type Step struct {
 	Partner bool
 }
 
-// Upgrades are the packages of the app's page below their floors, each to its
-// target, and the packages they move with. A package the page does not have
-// is not added, and one whose version cannot be read is not guessed at.
+// Upgrades are the packages of the app's page below their floors, and the
+// packages they move with. A package the page does not have is not added, and
+// one whose version cannot be read is not guessed at.
+//
+// A package below its floor moves to the floor and no further than the major
+// it is in, `^` the floor: what payday needs of it, and nothing an app has not
+// asked for -- a later major is a migration, and Renovate's to propose. Only a
+// package whose floor is itself a later major has a major to cross anyway, and
+// that one moves to what `pd new` writes, its [Target], with every package it
+// moves with that the page has: a major of one is a major of the others.
 func Upgrades(l Layout) ([]Step, error) {
 	page, ok, err := Page(l)
 	if err != nil || !ok {
 		return nil, err
 	}
+
+	return upgrades(page)
+}
+
+func upgrades(page map[string]Have) ([]Step, error) {
 	targets, err := Targets()
 	if err != nil {
 		return nil, err
@@ -314,34 +328,38 @@ func Upgrades(l Layout) ([]Step, error) {
 		}
 	}
 
-	moved := map[string]bool{}
+	cross := map[string]bool{}
 	for _, f := range Floors {
-		if !below[f.Name] {
+		if !below[f.Name] || semver.Major("v"+f.Minimum) == semver.Major("v"+page[f.Name].Version()) {
 			continue
 		}
-		moved[f.Name] = true
+		cross[f.Name] = true
 		for _, w := range f.With {
 			if _, ok := page[w]; ok {
-				moved[w] = true
+				cross[w] = true
 			}
 		}
 	}
 
 	var vs []Step
 	for _, f := range Floors {
-		if !moved[f.Name] {
+		if !below[f.Name] && !cross[f.Name] {
 			continue
 		}
-		t, ok := targets[f.Name]
-		if !ok {
-			return nil, fmt.Errorf("%s has a floor and the template declares no version of it", f.Name)
+		to := "^" + f.Minimum
+		if cross[f.Name] {
+			t, ok := targets[f.Name]
+			if !ok {
+				return nil, fmt.Errorf("%s has a floor and the template declares no version of it", f.Name)
+			}
+			to = t.Range
 		}
 		h := page[f.Name]
 		vs = append(vs, Step{
 			Name:    f.Name,
 			Section: h.Section,
 			From:    h.Version(),
-			To:      t.Range,
+			To:      to,
 			Floor:   f.Minimum,
 			Why:     f.Why,
 			Partner: !below[f.Name],
@@ -352,9 +370,28 @@ func Upgrades(l Layout) ([]Step, error) {
 }
 
 // Below is the generator's half of [Upgrades]: what `pd gen --ts` refuses to
-// write with.
-func Below(l Layout) ([]Step, error) {
-	vs, err := Upgrades(l)
+// write with, given the plugin [TsPlugin] found.
+//
+// The generator is held to its floor by the version of the plugin that runs
+// -- its own package's, [PluginVersion] -- and not by what a lockfile says: a
+// lockfile is what the next install makes, and a node_modules an install has
+// not caught up with writes with what it has. The runtime its code imports is
+// read as any other package is.
+func Below(l Layout, plugin string) ([]Step, error) {
+	page, ok, err := Page(l)
+	if err != nil || !ok {
+		return nil, err
+	}
+
+	v, err := PluginVersion(plugin)
+	if err != nil {
+		return nil, err
+	}
+	h := page[tsPluginPackage]
+	h.Installed = v
+	page[tsPluginPackage] = h
+
+	vs, err := upgrades(page)
 	if err != nil {
 		return nil, err
 	}
@@ -365,6 +402,49 @@ func Below(l Layout) ([]Step, error) {
 	}
 
 	return slices.DeleteFunc(vs, func(v Step) bool { return v.Partner || !gen[v.Name] }), nil
+}
+
+// tsPluginPackage is the npm package protoc-gen-es is in.
+const tsPluginPackage = "@bufbuild/protoc-gen-es"
+
+// PluginVersion is the version of the protoc-gen-es a plugin path runs: that
+// of the package it is part of. The path is a `.bin` entry, which npm makes a
+// link into the package and pnpm a script that calls it, so the link is
+// followed to the package when there is one, and otherwise the package is
+// the one of that name in the same node_modules -- which is where every
+// package manager puts the package whose bin it is.
+func PluginVersion(plugin string) (string, error) {
+	type pkg struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+	read := func(p string) (pkg, bool) {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return pkg{}, false
+		}
+		var v pkg
+		if json.Unmarshal(b, &v) != nil || v.Name != tsPluginPackage || v.Version == "" {
+			return pkg{}, false
+		}
+		return v, true
+	}
+
+	if real, err := filepath.EvalSymlinks(plugin); err == nil {
+		for d := filepath.Dir(real); filepath.Base(d) != "node_modules" && filepath.Dir(d) != d; d = filepath.Dir(d) {
+			if v, ok := read(filepath.Join(d, "package.json")); ok {
+				return v.Version, nil
+			}
+		}
+	}
+
+	modules := filepath.Dir(filepath.Dir(plugin))
+	if v, ok := read(filepath.Join(modules, filepath.FromSlash(tsPluginPackage), "package.json")); ok {
+		return v.Version, nil
+	}
+
+	return "", fmt.Errorf("%w: %s is not part of an installed %s, so which one it is cannot be told",
+		ErrNoTsPlugin, plugin, tsPluginPackage)
 }
 
 // older says a is an older version than b, both as npm writes them.

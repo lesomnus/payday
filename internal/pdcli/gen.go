@@ -956,8 +956,9 @@ func (g Gen) Ts(ctx context.Context) error {
 	// Refused below a floor rather than written: what comes out is the
 	// generator's, committed, and imported against the runtime -- so an older
 	// one writes code the rest of the page was not built with, and it is
-	// found out at somebody else's compile.
-	if vs, err := Below(g.Layout); err != nil {
+	// found out at somebody else's compile. The generator's version is the
+	// plugin's own, the one about to run.
+	if vs, err := Below(g.Layout, plugin); err != nil {
 		return err
 	} else if len(vs) > 0 {
 		names := make([]string, 0, len(vs))
