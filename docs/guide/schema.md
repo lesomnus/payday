@@ -718,6 +718,12 @@ to an `Add` request, and an edge the overlay adds is read through the wall at
 writes out by hand, and these are written into it, not into a second gate
 beside it.
 
+Nor may a field it adds to the trail's two entities, `Audit` and `Access`, be
+named or JSON-named `sealed`. That is the member a row of the archive keeps what
+it said in once it is sealed (`trail.SealedMember`), and no field of payday's,
+so protobuf's own refusal of two fields with one JSON name does not see it: a
+row with such a field would read as sealed already, and be sealed by nothing.
+
 One thing an overlay may not say is what the file **is**. A file-level
 `features.` option — `features.field_presence = IMPLICIT` copied down from the
 entity file — is refused, because the merge would put it on every field of every
@@ -806,6 +812,7 @@ only test for whether it belongs on this list.
 | an overlay changing payday's field | a column that is no longer what its readers expect |
 | an overlay adding to payday's options, beyond an index | an entity declared differently from the one payday's layers were written for |
 | an overlay setting a file-level `features.` option | the whole contract silently changed by one line |
+| a field of `Audit` or `Access` named or JSON-named `sealed` | a row of the archive that reads as sealed and is sealed by nothing |
 | two `go_package`, or two proto packages | two Go packages is two ent schemas, and the wall is an edge |
 | generated code from a different payday | a wall written by one version, read by another |
 | the database not matching the schema | a server up on a table that is not there |

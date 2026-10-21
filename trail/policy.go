@@ -50,7 +50,9 @@ type Keep struct {
 	// Retain is how long a row stays in the database. Empty is forever.
 	Retain time.Duration
 
-	// Discard says these rows are removed with no copy kept.
+	// Discard says these rows are removed with no copy kept, and what of
+	// them is in the archive anyway -- a hold sent it there, an earlier
+	// window kept it -- is destroyed once it is as old as Retain.
 	//
 	// Its own field rather than an empty archive, because those are two
 	// different states that look alike: *I have not configured where* and *I
@@ -108,6 +110,26 @@ func (k Keep) life() time.Duration {
 	default:
 		return k.Destroy
 	}
+}
+
+// end is how old a chunk of the archive is when it is destroyed under this,
+// and zero for never: [Keep.Destroy], or for a kind whose rows are discarded on
+// their way out of the database, [Keep.Retain].
+//
+// Rows of such a kind reach the archive all the same. A legal hold sends them
+// there rather than let them be discarded, and a window before this one may
+// have kept them there. They last no longer in it than the discard would have
+// let them last anywhere, so that lifting the hold, or shortening a window to a
+// discard, brings the discard back for what the archive holds as well.
+func (k Keep) end() time.Duration {
+	if k.Destroy > 0 {
+		return k.Destroy
+	}
+	if k.Discard {
+		return k.Retain
+	}
+
+	return 0
 }
 
 // contradiction is what is wrong with a Keep whatever the archive is: a window
@@ -465,7 +487,32 @@ type Policy struct {
 	// Nil seals nothing, and an archive written with it is what one was
 	// before.
 	Keys *Keys
+
+	// Lease is a lease of the deployment's -- the kind `spin.lease` names, its
+	// loops are run under -- on which a pass and the acts that change the
+	// rows of the database take turns: [Turn].
+	//
+	// A pass holds what it read of a row from the moment it reads it until
+	// the chunk it is copied into is written and the row is forgotten. An
+	// erasure that blanked the row in the meantime, and then looked through
+	// the archive before the chunk was there, has its work undone by the
+	// copy -- and so has a tenant's purge, and a discard by hand. With a
+	// lease, [Policy.Forget] and [Policy.PurgeTenant] change the database's
+	// rows only in their turn, [Policy.Collect] discards them in its own, and
+	// a pass holds the turn for each chunk's worth of rows it moves.
+	//
+	// Nil takes no turns, which is the pass that can write back what an
+	// erasure blanked a moment before; the process says so where it comes
+	// up. A lease that holds nothing (`spin.Nowhere`, a replica that runs no
+	// loops) is no lease for this: its acts would wait for ever.
+	Lease spin.Lease
 }
+
+// Turn is the name a pass and the acts beside it take turns under on
+// [Policy.Lease]. Not the trail's loop, `payday.trail`, which one process of a
+// deployment holds for as long as it runs the passes: an act in any process
+// takes this one, for as long as it changes rows a pass may be holding.
+const Turn = "payday.trail.turn"
 
 // For is the deployment's own policy for one kind of thing: what a tenant
 // that answers nothing keeps.
@@ -660,6 +707,9 @@ func (p Policy) String() string {
 	if p.Archive != nil {
 		out = append(out, p.accounted())
 	}
+	if p.Archive != nil && p.Lease == nil {
+		out = append(out, "no lease: a pass and an erasure do not take turns")
+	}
 
 	return strings.Join(out, "; ")
 }
@@ -758,8 +808,14 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 	}
 
 	if x.m != nil {
+		// Asked before verifying, which may fill the manifest: the files a
+		// version before wrote are taken in by the archive's first pass --
+		// the one that takes the archive as it is -- and by no pass after it.
+		first := x.first(ctx)
 		x.verify(ctx)
-		x.adopt(ctx)
+		if first {
+			x.adopt(ctx)
+		}
 		x.refile(ctx)
 	}
 
@@ -1038,16 +1094,46 @@ func (x *pass) once(k string) bool {
 	return true
 }
 
+// turn takes the trail's turn on [Policy.Lease], and answers the context to act
+// in, which ends when the turn is lost, and the call that gives it back. With
+// no lease it is always this act's.
+func (x *pass) turn(ctx context.Context) (context.Context, func(), error) {
+	if x.p.Lease == nil {
+		return ctx, func() {}, nil
+	}
+
+	held, give, err := x.p.Lease.Hold(ctx, Turn)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", Turn, err)
+	}
+
+	return held, give, nil
+}
+
+// first answers whether this pass is the archive's first, before it has ever
+// had a checkpoint taken; see [Policy.unchecked]. One that cannot tell is not.
+func (x *pass) first(ctx context.Context) bool {
+	ok, err := x.p.unchecked(ctx, x.s)
+	if err != nil {
+		log.From(ctx).WarnContext(ctx, "trail: whether the archive has had a checkpoint", "err", err)
+
+		return false
+	}
+
+	return ok
+}
+
 // adopt takes in the files a version before this one left in the archive's
 // directory, so that a deployment upgrading has nothing to run.
+//
+// On the archive's first pass alone (see [Pass]). The manifest is the account
+// of what the deployment wrote into the archive, and a file adopted into it is
+// signed in as the deployment's: after the first checkpoint, a file of that
+// format in the directory is one somebody else put there, and taking it in
+// would sign whatever it says. [Policy.Verify] finds it instead.
 func (x *pass) adopt(ctx context.Context) {
-	var root string
-	switch v := unwrapStores(x.p.Archive).(type) {
-	case flob.OsStores:
-		root = v.Root()
-	case *flob.OsStores:
-		root = v.Root()
-	default:
+	root, ok := rootOf(x.p.Archive)
+	if !ok {
 		return
 	}
 
@@ -1225,7 +1311,7 @@ func (x *pass) drain(ctx context.Context, of Scope, k Keep, held bool, kind stri
 		return archived
 	}
 
-	moved, gone, err := drain(ctx, x.s, of, before, x.p.Archive, x.run, x.seal, decide)
+	moved, gone, err := drain(ctx, x.s, of, before, x.p.Archive, x.run, x.seal, x.turn, decide)
 	if kept > 0 {
 		log.From(ctx).InfoContext(ctx, "trail: rows a hold keeps in the database, with no archive to move them to",
 			"kind", kind, "tenant", of.Tenant, "rows", kept)
@@ -1437,7 +1523,7 @@ func (x *pass) archive(ctx context.Context) {
 				continue
 			}
 
-			if before := x.now.Add(-k.Destroy); k.Destroy > 0 && c.Before(before) {
+			if before := x.now.Add(-k.end()); k.end() > 0 && c.Before(before) {
 				n, err := x.spend(ctx, c, held, before, "destroy", false, kept)
 				if err != nil {
 					log.From(ctx).WarnContext(ctx, "trail: the archive", "namespace", ns, "chunk", c.String(), "err", err)
@@ -1662,7 +1748,7 @@ func (p Policy) Preview(ctx context.Context, s Store, tenant pdid.Id, t Tenant) 
 		}
 
 		k, held, ok := judge(c, nil)
-		if !ok || held || k.Destroy <= 0 || !c.Before(x.now.Add(-k.Destroy)) {
+		if !ok || held || k.end() <= 0 || !c.Before(x.now.Add(-k.end())) {
 			continue
 		}
 

@@ -181,7 +181,7 @@ func emitDrain(g *protogen.GeneratedFile, p Paths) {
 	g.P("		n, err := d.once(ctx)")
 	g.P("		if err != nil {")
 	g.P("			", pkgLog.Ident("From"), "(ctx).ErrorContext(ctx, \"outbox\", ",
-		pkgSlog.Ident("String"), "(\"error\", err.Error()))")
+		pkgSlog.Ident("Any"), "(\"err\", err))")
 	g.P("			return nil")
 	g.P("		}")
 	g.P("		if n < DrainSize {")

@@ -178,3 +178,45 @@ func TestPaydaysOwnHaveNoAddMany(t *testing.T) {
 		}
 	}
 }
+
+// TestAFieldOfTheTrailWrittenAsSealedIsRefused.
+//
+// A sealed row of the trail's archive keeps what it said under `sealed`, which
+// is no field of payday's, so protobuf's own refusal of two fields with one
+// JSON name does not see it. A field of the trail's entities written under that
+// name -- an overlay's -- would make a row read as sealed already, and be
+// sealed by nothing.
+func TestAFieldOfTheTrailWrittenAsSealedIsRefused(t *testing.T) {
+	add := func(entity, field string) string {
+		src := ownAll(t)
+		head := "message " + entity + " {"
+		if !strings.Contains(src, head) {
+			t.Fatalf("payday's schema has no %q", head)
+		}
+
+		return strings.Replace(src, head, head+"\n  "+field, 1)
+	}
+
+	for name, src := range map[string]string{
+		"named so":             add("Audit", `string sealed = 40;`),
+		"JSON-named so":        add("Audit", `string note = 40 [json_name = "sealed"];`),
+		"on the access record": add("Access", `bytes sealed = 40;`),
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := readAs(t, "fleet", src)
+			if err == nil {
+				t.Fatal("a field the trail's archive would write as `sealed` was generated")
+			}
+			for _, want := range []string{`"sealed"`, "= 40", "sealed by nothing"} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("the refusal does not say %q:\n%v", want, err)
+				}
+			}
+		})
+	}
+
+	// One that only begins with it is the app's to have.
+	if _, err := readAs(t, "fleet", add("Audit", `string sealed_by = 40;`)); err != nil {
+		t.Fatalf("a field that is not written as `sealed` was refused: %v", err)
+	}
+}

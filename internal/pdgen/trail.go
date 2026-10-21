@@ -1,15 +1,59 @@
 package pdgen
 
 import (
+	"fmt"
+	"strings"
+
 	"google.golang.org/protobuf/compiler/protogen"
 
 	"github.com/lesomnus/payday/pdpb"
+	"github.com/lesomnus/payday/trail"
 )
 
 var (
 	pkgTrail     = protogen.GoImportPath("github.com/lesomnus/payday/trail")
 	pkgProtojson = protogen.GoImportPath("google.golang.org/protobuf/encoding/protojson")
 )
+
+// checkSealed refuses a field of the trail's two entities -- `Audit`, and the
+// access record beside it -- that protojson would write as
+// [trail.SealedMember], or that it reads under that name.
+//
+// That member is where a row of the archive keeps what it said once it is
+// sealed, in place of `value` and `patch`, and it is no field of payday's: so
+// protobuf's own refusal of two fields that write one JSON name does not see
+// it. A field of an app's written under it would make a row read as sealed
+// already, which is then sealed by nothing and opened by nothing. An overlay
+// is the one way such a field gets there, and this is where an overlay is held
+// to what payday's documents need -- rather than the member moving to a name no
+// field could take, which would be a second format for an archive that already
+// holds the first.
+func (s *Schema) checkSealed() error {
+	errs := []string{}
+	for _, own := range []pdpb.Own{pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_ACCESS} {
+		v := s.Own(own)
+		if v == nil {
+			continue
+		}
+
+		fs := v.Descriptor().Fields()
+		for i := range fs.Len() {
+			f := fs.Get(i)
+			if string(f.Name()) == trail.SealedMember || f.JSONName() == trail.SealedMember {
+				errs = append(errs, fmt.Sprintf("%s: %s = %d is written as %q", v.FullName(), f.Name(), f.Number(), f.JSONName()))
+			}
+		}
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf(
+		"a field of the trail's entities may not be named, or JSON-named, %q: it is where the archive keeps "+
+			"what a sealed row said (`trail.Keys`), and a row with a field written as it reads as sealed "+
+			"and is sealed by nothing. Name it something else\n\n  %s",
+		trail.SealedMember, strings.Join(errs, "\n  "))
+}
 
 // EmitTrail writes the app's half of the retention policy: the audit table, as
 // much of it as `trail` needs to move rows out of the database.

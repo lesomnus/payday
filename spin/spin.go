@@ -190,7 +190,7 @@ func run(ctx context.Context, s Spinner) error {
 		return nil
 
 	default:
-		l.ErrorContext(ctx, "spin failed", slog.String("error", err.Error()))
+		l.ErrorContext(ctx, "spin failed", slog.Any("err", err))
 
 		// Named, because an errgroup answers with the error and nothing else,
 		// and "connection refused" alone does not say which loop to go and look

@@ -334,6 +334,14 @@ type writer struct {
 	groups map[groupKey]*group
 	rows   int
 	size   int
+
+	// added is the chunks the store took from this writer, and not the ones
+	// it had already: what is this writer's to take back.
+	added []Chunk
+
+	// left is how many rows it was handed that every tenant they name has
+	// left since they were written: not for the archive. See [Keys.left].
+	left int
 }
 
 type groupKey struct {
@@ -380,6 +388,20 @@ func (w *writer) add(v Row) {
 
 func (w *writer) full() bool { return w.rows >= chunkRows || w.size >= chunkSize }
 
+// unwind erases the chunks the store took from this writer, for an act that
+// finds it should not have written them: what they were made of was not what
+// it was taken for. A chunk the store had already is somebody else's, and
+// stays.
+func (w *writer) unwind(ctx context.Context) error {
+	var err error
+	for _, c := range w.added {
+		err = errors.Join(err, w.a.Use(c.Namespace).Erase(ctx, c.Digest))
+	}
+	w.added = nil
+
+	return err
+}
+
 // flush writes every group as a chunk and answers the keys of the rows the
 // archive now holds, which are the ones that may be forgotten. On an error it
 // still answers the keys of the chunks it did write.
@@ -413,23 +435,38 @@ func (w *writer) flush(ctx context.Context) ([]any, error) {
 			Tenants:   g.tenants,
 		}
 
-		docs := g.docs
+		docs, held := g.docs, g.keys
 		if w.seal != nil {
-			docs = make([][]byte, len(g.docs))
+			docs, held = make([][]byte, 0, len(g.docs)), make([]any, 0, len(g.keys))
 			for i, doc := range g.docs {
 				v, err := w.seal.seal(ctx, doc)
+				if errors.Is(err, errLeft) {
+					// Nobody it names is there to seal it to: it stays where
+					// it is, for their purge to take, and is not answered as
+					// written.
+					w.left++
+					continue
+				}
 				if err != nil {
 					return keys, err
 				}
 
-				docs[i] = v
+				docs, held = append(docs, v), append(held, g.keys[i])
 			}
 		}
-		if _, err := put(ctx, w.a, c, docs); err != nil {
-			return keys, err
+		if len(docs) > 0 {
+			c.Rows = len(docs)
+			d, took, err := put(ctx, w.a, c, docs)
+			if err != nil {
+				return keys, err
+			}
+			if took {
+				c.Digest = d
+				w.added = append(w.added, c)
+			}
 		}
 
-		keys = append(keys, g.keys...)
+		keys = append(keys, held...)
 		w.rows -= len(g.docs)
 		for _, doc := range g.docs {
 			w.size -= len(doc)
@@ -440,33 +477,41 @@ func (w *writer) flush(ctx context.Context) ([]any, error) {
 	return keys, nil
 }
 
-// put writes one chunk whole.
+// put writes one chunk whole, and answers whether the store took it: false
+// for a blob it had already.
 //
 // Whole, and answered only once the store holds it: that is the point at
 // which the rows in it may leave the database. A blob the store already has is
 // not a failure -- it is the same rows, written by a replica that read them at
 // the same moment, and they are in the archive either way.
-func put(ctx context.Context, a flob.Stores, c Chunk, docs [][]byte) (flob.Digest, error) {
+func put(ctx context.Context, a flob.Stores, c Chunk, docs [][]byte) (flob.Digest, bool, error) {
 	buf := &bytes.Buffer{}
 	z := gzip.NewWriter(buf)
 	for _, doc := range docs {
 		if _, err := z.Write(append(doc, '\n')); err != nil {
-			return "", err
+			return "", false, err
 		}
 	}
 	if err := z.Close(); err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	m, err := a.Use(c.Namespace).Add(ctx, flob.Meta{Labels: c.labels()}, buf)
-	if err != nil && !errors.Is(err, flob.ErrAlreadyExists) {
-		return "", fmt.Errorf("%s: %w", c.Namespace, err)
+	if errors.Is(err, flob.ErrAlreadyExists) {
+		return m.Digest, false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("%s: %w", c.Namespace, err)
 	}
 
-	return m.Digest, nil
+	return m.Digest, true, nil
 }
 
 // stream adds a blob whose bytes `write` produces, without holding them all.
+//
+// What `write` answers is what the add answers when it is an error: a writer
+// that stops part of the way -- a source that is not its digest, say -- is why
+// the store saw the bytes stop, and the store's own words for that say less.
 func stream(ctx context.Context, s flob.Store, l flob.Labels, write func(w io.Writer) error) (flob.Meta, error) {
 	r, w := io.Pipe()
 	done := make(chan error, 1)
@@ -481,11 +526,50 @@ func stream(ctx context.Context, s flob.Store, l flob.Labels, write func(w io.Wr
 	// Whatever Add did, the writer must not be left blocked on a pipe nobody
 	// reads.
 	r.CloseWithError(errors.New("the store stopped reading"))
-	if werr := <-done; werr != nil && err == nil {
-		return m, werr
+	if werr := <-done; werr != nil && (err == nil || !errors.Is(err, werr)) {
+		return m, errors.Join(werr, err)
 	}
 
 	return m, err
+}
+
+// checked is a chunk's bytes as they are read, checked against its digest
+// once they all have been: what every act that writes a chunk again reads its
+// sources through.
+//
+// A chunk is named by its digest, so bytes that are not it are bytes somebody
+// changed beneath the name, and copying them into a chunk of their own -- a
+// fold, a rewrite, a refile -- would give what they say a name it never had,
+// one the manifest accounts for. So an act that finds one stops at it: it
+// writes nothing of it, erases nothing, and leaves it for [Policy.Verify],
+// which says `altered`.
+type checked struct {
+	c Chunk
+	r io.Reader
+	v interface {
+		io.Writer
+		Verified() bool
+	}
+}
+
+func checking(c Chunk, r io.Reader) *checked {
+	v := c.Digest.Verifier()
+	return &checked{c: c, r: io.TeeReader(r, v), v: v}
+}
+
+func (v *checked) Read(p []byte) (int, error) { return v.r.Read(p) }
+
+// done reads what the rows did not take, so that the digest is over every
+// byte, and answers [ErrAltered] when it is not the chunk's.
+func (v *checked) done() error {
+	if _, err := io.Copy(io.Discard, v.r); err != nil {
+		return fmt.Errorf("%s: %w", v.c, err)
+	}
+	if !v.v.Verified() {
+		return fmt.Errorf("%s: %w", v.c, ErrAltered)
+	}
+
+	return nil
 }
 
 var errUnwalkable = errors.New("the archive cannot list what it holds, so nothing could ever be destroyed from it")
@@ -752,8 +836,12 @@ func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, 
 	return nil
 }
 
-// errAltered is a chunk whose bytes are not what its name says.
-var errAltered = errors.New("its bytes are not its digest any more; see `trail verify`")
+// ErrAltered is a chunk whose bytes are not what its name says any more: what
+// a verified read answers for one, and what an act that would have written it
+// again answers instead -- [Policy.Forget], [Policy.PurgeTenant] and
+// [Policy.Purge] after doing the rest. `trail verify --full` finds it as
+// `altered`.
+var ErrAltered = errors.New("its bytes are not its digest any more; see `trail verify`")
 
 // readChunk is one chunk's rows, less the ones `seen` has, and less the ones
 // `keep` declines when there is one. `verify` reads it whole first, and refuses
@@ -784,7 +872,7 @@ func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool
 			return fmt.Errorf("%s: %w", c, err)
 		}
 		if !w.Verified() {
-			return fmt.Errorf("%s: %w", c, errAltered)
+			return fmt.Errorf("%s: %w", c, ErrAltered)
 		}
 		if _, err := r.Seek(0, io.SeekStart); err != nil {
 			return fmt.Errorf("%s: %w", c, err)
@@ -821,7 +909,7 @@ func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool
 			return fmt.Errorf("%s: %w", c, err)
 		}
 		if !v.Verified() {
-			return fmt.Errorf("%s: %w", c, errAltered)
+			return fmt.Errorf("%s: %w", c, ErrAltered)
 		}
 	}
 
@@ -903,6 +991,13 @@ type tally struct {
 // on the first read, and a dry edit stops there. The new chunk is added before
 // the old one is erased, so a crash leaves one or the other and never neither;
 // a chunk with nothing left in it is only erased.
+//
+// Both reads are checked against the chunk's digest, and a chunk whose bytes
+// are not it any more is [ErrAltered]: nothing is written in its place and
+// nothing is erased, so that what somebody changed is neither carried into a
+// chunk of its own nor taken away from [Policy.Verify]. Checked on the second
+// read as well, since a chunk can change between the two -- and then the new
+// chunk is never added, because the bytes it is made of stop short of it.
 func edit(ctx context.Context, a flob.Stores, c Chunk, dry bool, pre func([]byte) bool, fn func(line []byte, h head) ([]byte, mark, error)) (tally, error) {
 	s := a.Use(c.Namespace)
 
@@ -922,7 +1017,8 @@ func edit(ctx context.Context, a flob.Stores, c Chunk, dry bool, pre func([]byte
 		}
 		defer r.Close()
 
-		err = lines(r, func(line []byte) error {
+		src := checking(c, r)
+		err = lines(src, func(line []byte) error {
 			out, m := line, kept
 
 			var h head
@@ -969,7 +1065,7 @@ func edit(ctx context.Context, a flob.Stores, c Chunk, dry bool, pre func([]byte
 			return v, fmt.Errorf("%s: %w", c, err)
 		}
 
-		return v, nil
+		return v, src.done()
 	}
 
 	v, err := read(nil, false)
@@ -1044,7 +1140,7 @@ func blanked(line []byte) ([]byte, error) {
 
 	delete(v, "value")
 	delete(v, "patch")
-	delete(v, sealedField)
+	delete(v, SealedMember)
 
 	return json.Marshal(v)
 }
@@ -1061,6 +1157,11 @@ func blanked(line []byte) ([]byte, error) {
 // same blob, and the store's answer that it already has it is the same as its
 // answer that it took it. What neither may do is erase the result: a source is
 // erased only when it is not what the fold produced.
+//
+// Each source is read through its digest (see [checked]). One whose bytes are
+// not it any more stops the fold before the folded chunk is added, so nothing
+// is folded and nothing erased: what it says does not become the manifest's by
+// being copied into a chunk it accounts for.
 func merge(ctx context.Context, a flob.Stores, run string, cs []Chunk) (Chunk, error) {
 	cs = slices.Clone(cs)
 	slices.SortFunc(cs, func(a, b Chunk) int {
@@ -1098,7 +1199,8 @@ func merge(ctx context.Context, a flob.Stores, run string, cs []Chunk) (Chunk, e
 				return err
 			}
 
-			err = lines(r, func(line []byte) error {
+			src := checking(c, r)
+			err = lines(src, func(line []byte) error {
 				id, err := identifier(line)
 				if err != nil {
 					return err
@@ -1112,9 +1214,14 @@ func merge(ctx context.Context, a flob.Stores, run string, cs []Chunk) (Chunk, e
 				_, err = z.Write(append(line, '\n'))
 				return err
 			})
+			if err == nil {
+				err = src.done()
+			} else {
+				err = fmt.Errorf("%s: %w", c, err)
+			}
 			r.Close()
 			if err != nil {
-				return fmt.Errorf("%s: %w", c, err)
+				return err
 			}
 		}
 
@@ -1153,18 +1260,51 @@ func merge(ctx context.Context, a flob.Stores, run string, cs []Chunk) (Chunk, e
 // Their rows hold every tenant's together, so they are decided by the
 // deployment's policy, as they were: by kind, and by the month in their name.
 //
-// [Policy.Pass] does this first, so a deployment upgrading has nothing to run.
+// [Policy.Pass] does this on the first pass, before the archive's first
+// checkpoint, so a deployment upgrading has nothing to run. Not after it: a
+// file of this format in the directory then is one nobody wrote through the
+// manifest, which [Policy.Verify] finds and only [Policy.Accept] takes in.
 func Adopt(ctx context.Context, a flob.Stores, dir string) (int, error) {
-	vs, err := os.ReadDir(dir)
+	vs, err := looseIn(dir)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return 0, nil
-		}
-
 		return 0, err
 	}
 
 	n := 0
+	for _, v := range vs {
+		if err := v.adopt(ctx, a); err != nil {
+			return n, fmt.Errorf("%s: %w", v.name, err)
+		}
+
+		n++
+	}
+
+	return n, nil
+}
+
+// loose is one file of the directory format in an archive's directory: what a
+// version before this one wrote, before the archive was a flob store.
+type loose struct {
+	name  string
+	path  string
+	chunk Chunk
+	at    time.Time
+}
+
+// looseIn is the files of the directory format in a directory, in name order.
+// Anything else in it is left alone: a pass over a directory is not the place
+// to guess.
+func looseIn(dir string) ([]loose, error) {
+	vs, err := os.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	out := []loose{}
 	for _, v := range vs {
 		if !v.Type().IsRegular() {
 			continue
@@ -1172,29 +1312,60 @@ func Adopt(ctx context.Context, a flob.Stores, dir string) (int, error) {
 
 		month, kind, run, ok := partsOf(v.Name())
 		if !ok {
-			// A file in the directory that this did not write. Left alone: a
-			// pass over a directory is not the place to guess.
 			continue
 		}
 
 		info, err := v.Info()
 		if err != nil {
-			return n, err
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+
+			return out, err
 		}
 
-		path := filepath.Join(dir, v.Name())
-		c := Chunk{Namespace: LegacyNamespace, Kind: kind, Month: month, Run: run, Name: v.Name()}
-		if err := adopt(ctx, a, c, path, info.ModTime()); err != nil {
-			return n, fmt.Errorf("%s: %w", v.Name(), err)
-		}
-		if err := os.Remove(path); err != nil {
-			return n, err
-		}
-
-		n++
+		out = append(out, loose{
+			name:  v.Name(),
+			path:  filepath.Join(dir, v.Name()),
+			chunk: Chunk{Namespace: LegacyNamespace, Kind: kind, Month: month, Run: run, Name: v.Name()},
+			at:    info.ModTime(),
+		})
 	}
 
-	return n, nil
+	return out, nil
+}
+
+// rootOf is the directory of an archive on a disk, the one a version before
+// this one wrote its files into, and false for an archive anywhere else.
+func rootOf(a flob.Stores) (string, bool) {
+	switch v := unwrapStores(a).(type) {
+	case flob.OsStores:
+		return v.Root(), true
+	case *flob.OsStores:
+		return v.Root(), true
+	}
+
+	return "", false
+}
+
+// adopt takes the file in, and removes it from the directory once the archive
+// holds it.
+func (v loose) adopt(ctx context.Context, a flob.Stores) error {
+	if err := adopt(ctx, a, v.chunk, v.path, v.at); err != nil {
+		return err
+	}
+
+	return os.Remove(v.path)
+}
+
+func (v loose) digest() (flob.Digest, error) {
+	f, err := os.Open(v.path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	return flob.DigestFromReader(f)
 }
 
 func adopt(ctx context.Context, a flob.Stores, c Chunk, path string, at time.Time) error {
@@ -1511,7 +1682,8 @@ func encoded(v pdid.Id) string { return base64.StdEncoding.EncodeToString(v.Byte
 // have filed them, in the months they were written, and the file is erased
 // once every chunk made of it is written. A crash between the two leaves the
 // rows in both places, which [Read] drops and a fold folds. A file the manifest
-// does not account for is left where it is.
+// does not account for is left where it is, and so is one whose bytes are not
+// its digest any more, whose rows are filed nowhere (see [checked]).
 func (x *pass) refile(ctx context.Context) {
 	a := x.p.Archive
 	cs, rest, err := x.chunks(ctx, []string{LegacyNamespace}, false)
@@ -1545,7 +1717,8 @@ func (x *pass) refile(ctx context.Context) {
 }
 
 func refile(ctx context.Context, a flob.Stores, run string, seal *sealer, c Chunk) (int, error) {
-	r, _, err := a.Use(c.Namespace).Open(ctx, c.Digest)
+	s := a.Use(c.Namespace)
+	r, _, err := s.Open(ctx, c.Digest)
 	if err != nil {
 		if errors.Is(err, flob.ErrNotExist) {
 			return 0, nil
@@ -1553,10 +1726,22 @@ func refile(ctx context.Context, a flob.Stores, run string, seal *sealer, c Chun
 
 		return 0, err
 	}
+	defer r.Close()
 
+	// Whole, before a row of it is filed anywhere: its rows go into chunks
+	// written as they fill, so a file that is not its digest any more is to
+	// be found before the first of them is.
+	if err := checking(c, r).done(); err != nil {
+		return 0, err
+	}
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return 0, fmt.Errorf("%s: %w", c, err)
+	}
+
+	src := checking(c, r)
 	w := newWriter(a, run, seal)
 	n := 0
-	err = lines(r, func(doc []byte) error {
+	err = lines(src, func(doc []byte) error {
 		h, err := headOf(doc)
 		if err != nil {
 			return err
@@ -1576,7 +1761,14 @@ func refile(ctx context.Context, a flob.Stores, run string, seal *sealer, c Chun
 
 		return nil
 	})
-	r.Close()
+	if err == nil {
+		err = src.done()
+	}
+	if errors.Is(err, ErrAltered) {
+		// And again as it was filed, since it can change between the two:
+		// what was filed of it is taken back, and the file stays where it is.
+		return n, errors.Join(err, w.unwind(ctx))
+	}
 	if err != nil {
 		return n, err
 	}
@@ -1584,5 +1776,5 @@ func refile(ctx context.Context, a flob.Stores, run string, seal *sealer, c Chun
 		return n, err
 	}
 
-	return n, a.Use(c.Namespace).Erase(ctx, c.Digest)
+	return n, s.Erase(ctx, c.Digest)
 }

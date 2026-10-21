@@ -239,6 +239,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	if err := CheckOverlay(s); err != nil {
 		return nil, err
 	}
+	if err := s.checkSealed(); err != nil {
+		return nil, err
+	}
 	if err := s.checkAlias(); err != nil {
 		return nil, err
 	}

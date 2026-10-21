@@ -178,6 +178,7 @@ Everything payday enforces is placed as far left as it goes.
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
 | `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
 | the wire does not break | `buf breaking` in CI, against the published label and the branch |
+| an error is logged as the error, and one to a record | a test, `internal/logcheck`, over payday's packages, the code it generates and what `pd new` writes; and of what the `otelslog` bridge does with an error, which is what makes it the rule (see [logging an error](guide/server.md#10-logging-an-error)) |
 | an index covers `list.order` | a **warning** from `pd gen` and not a refusal: a hundred rows of configuration need no index, and refusing to generate for them would be insisting on a cost nobody is paying |
 
 One rule is in no row of that table, because what enforces it is an absence.
@@ -448,7 +449,11 @@ size, and an archive is written every day and read when somebody asks. Its
 labels say the kind, the month, the run and when its oldest and newest rows were
 written, which is everything a pass decides from:
 
-- a chunk whose newest row is past its window is **destroyed**;
+- a chunk whose newest row is past its window is **destroyed** — the kind's
+  `destroy`, or its `retain` for a kind whose rows are discarded on their way
+  out of the database: what a hold sent to the archive instead, or a longer
+  window kept there before, lasts no longer there than the discard lets it
+  last anywhere;
 - once a month can receive no more rows, its chunks are **folded** into one, so
   that a daily pass is not a blob a day per tenant for as long as the archive is
   kept.
@@ -460,6 +465,14 @@ written it into, and the file is erased once they all have. From then on there
 is one layout, and every row is on its own tenant's windows and holds. A file
 the pass could not file stays in `_legacy` and is decided by the deployment's
 policy, as it was.
+
+Only the first pass does that: the one before the archive has had a
+checkpoint, which takes the archive as it is. A file adopted is signed into the
+[manifest](#the-manifest) as the deployment's, so after the first checkpoint a
+file of that format in the directory is one somebody else put there. No pass
+takes it in, files it under anybody or reads it; `Policy.Verify` finds it,
+`unaccounted`, and an operator who has looked takes it in with `Policy.Accept`,
+as the first pass would have.
 
 Every destruction writes a **receipt** — a discard on the way out of the
 database, a chunk destroyed at the end of its window, a purge by hand, a subject
@@ -513,7 +526,7 @@ way through is no finding, and no clock is asked. What it finds:
 | | |
 | --- | --- |
 | `missing` | a blob the manifest says is there, and is not |
-| `unaccounted` | a blob that is there, and the manifest never added |
+| `unaccounted` | a blob that is there, and the manifest never added; or a file of the directory format in the archive's directory after its first checkpoint |
 | `relabelled` | a blob whose labels are not the ones the manifest recorded, or a checkpoint whose labels do not say which it is |
 | `altered` | a blob whose bytes are no longer its digest (`full` only) |
 | `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts |
@@ -539,6 +552,16 @@ that must reach it does: `Policy.Forget` and `Policy.PurgeTenant`, since
 whatever it is, it holds what it holds about the person or the tenant. They
 write it again beneath the manifest, so that what it became is as unaccounted
 for as what it was.
+
+**And nothing writes again what is not its digest.** A fold, a subject's
+erasure, a tenant leaving and a file filed by tenant copy what a chunk says
+into a chunk the manifest accounts for, and a chunk's bytes that are not its
+digest any more are what somebody wrote beneath its name. So each reads what
+it copies through the digest, and stops at a chunk that is not it: nothing of
+it is written, it is not erased, and `Verify` says `altered`. A light check
+reads no bytes, so it is the copy that finds it. `Policy.Forget`,
+`Policy.PurgeTenant` and `Policy.Purge` go on with the rest and answer which
+chunks they could not check; a pass says so in its log.
 
 `Policy.Read` and `Policy.ReadTenant` read the same way — only what the
 manifest accounts for, a chunk of `_shared` by the tenants the manifest
@@ -849,10 +872,13 @@ kept as long as the archive is and which no purge reaches. `trail.Keys`
 (`audit.keys`) is for that:
 
 - **Only what a row says is sealed** — `value` and `patch`, together, row by
-  row, with [age](https://age-encryption.org). Who acted, on what, when and
-  whose it is stay in the clear, because every act on the archive decides by
-  them: a pass folding a month, a subject's erasure, a tenant leaving, a hold
-  that keeps part of a file. None of them needs a key; only reading what a row
+  row, with [age](https://age-encryption.org), in a member of their own,
+  `sealed` (`trail.SealedMember`). It is no field of payday's, so `pd gen`
+  refuses a field of `Audit` or `Access` named or JSON-named that: a row with
+  one would read as sealed already. Who acted, on what, when and whose it is
+  stay in the clear, because every act on the archive decides by them: a pass
+  folding a month, a subject's erasure, a tenant leaving, a hold that keeps
+  part of a file. None of them needs a key; only reading what a row
   said does. The cost is the archive's size, since the contents no longer
   compress together.
 - **A key per tenant, and a master.** A row is sealed to the key of every tenant
@@ -883,6 +909,15 @@ kept as long as the archive is and which no purge reaches. `trail.Keys`
   key, because nothing before the purge touches it; a hold refuses its
   destruction, because a held tenant is not purged; a window that destroys every
   chunk of a tenant leaves its key, since the tenant is still there.
+- **And leaves a mark where its key was**, saying when. A key is made by the
+  process that first has a row to seal, so no key is no answer: a row written
+  before the mark — the other side of a transfer, or one a pass read a moment
+  before the purge — would be sealed to a key made for it again. So a row
+  written before it is sealed to the tenants it names that are still there,
+  and one that names nobody still there is not archived at all; one written
+  after it is a tenant that is back, with a key of its own. A key a pass makes
+  as the tenant leaves is found under the mark, which comes before the keys go,
+  and goes too.
 - **Reading.** `Policy.Read` and `Policy.ReadTenant` hand a sealed row over
   opened, given the master; without it a sealed row is `trail.ErrSealed`, and
   one whose every key is gone is `trail.ErrKeyGone`. `trail.Read`,
@@ -911,7 +946,9 @@ shares with another tenant is one it may read:
 
 - a pass still **moves** its rows out of the database on their window, into the
   archive even when the window says discard, and keeps them in the database
-  when there is no archive; what it does not do is discard or destroy;
+  when there is no archive; what it does not do is discard or destroy. Once the
+  hold lifts, what it sent to the archive goes when the discard would have
+  taken it;
 - `Policy.Collect` and `Policy.Purge`, the acts an operator takes by hand,
   leave what is held and answer with it. They go ahead for everybody else,
   because refusing would keep every other tenant's trail past what they are
@@ -946,6 +983,31 @@ offboarding gives.
 It refuses a tenant under a hold and one the app has no answer for, goes round
 again until a round finds nothing (a pass can write a chunk after the
 namespace was erased), and writes a receipt.
+
+#### A pass and what erases take turns
+
+A pass holds what it read of a row from the moment it reads it until the
+chunk it copies the row into is written and the row is forgotten. An erasure
+that blanked the row in that time, and then looked through the archive before
+the chunk was there, would have its work undone by the copy — and so would a
+tenant's purge, and a discard by hand. So they take turns, on the
+deployment's lease, `Policy.Lease`, under a name of their own (`trail.Turn`):
+
+- a pass holds the turn for each chunk's worth of rows it moves, from the first
+  read to the forgetting, and gives it back between, so that an act waits for a
+  chunk and not for a pass;
+- `Policy.Forget` and `Policy.PurgeTenant` change the database's rows in their
+  turn, and look through the archive after it, where a pass that held the rows
+  has put them by then; `Policy.Collect` discards in its own.
+
+What a pass does inside the archive — a fold, a file filed by tenant — is
+the erasures' rounds to answer, as it was. It is not the loop's lease,
+`payday.trail`, which one process holds for as long as it runs the passes: an
+act in any process takes the turn for as long as it changes rows. With no
+lease nothing takes turns, and the process says so where it comes up; a lease
+that holds nothing (`none`) is no lease for this, so a process that runs no
+loops acts without one. `pd new`'s `Build` hands the policy the lease
+`spin.lease` names.
 
 ### The access record (#111)
 
