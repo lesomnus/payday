@@ -361,10 +361,16 @@ the wide one's rows, from a mirror on disk after a reload. `identityOf` in
 `@lesomnus/payday/store` is that argument at length.
 
 A page signed in by cookie cannot read its credential. So the server says the
-name: `identity` above is `authsession.IdentityOf(key)`, sixteen hex characters
-of the key's SHA-256 — the digest `identityOf` would have made of the key, and
-never the key. Every sign-in is a different name, so every sign-in is a store of
-its own.
+name: `identity` above is `authsession.IdentityOf(session)`, sixteen hex
+characters of a SHA-256 of what the session lets its caller see — the actor, the
+tenant, and the grant, each axis of it as a set — and never the key. A narrower
+grant is a different name, as a narrower credential is. The same person signed
+in again with the same grant is the **same** name, and that is the point of not
+naming it by the key: a session that idles out, or that the next sign-in
+replaces, would otherwise leave a store on disk that no later session opens —
+the person's rows, and the writes they made offline and never sent. Named by
+what it sees, their next sign-in opens it, sweeps it, and sends what was
+waiting, as them.
 
 `id` and `tenantId` are what the page asks its first question with, since the
 sign-in answered nothing about the person:
@@ -380,6 +386,42 @@ holds a credential for `auth.Plain`; `index.html` points at the second until the
 server serves sessions. Its transport carries no `authorization` header and
 sends the cookie on every request (`credentials: "include"`), which a page on
 another origin has to ask for.
+
+## A call made for a store
+
+The cookie is the browser's, so every tab sends whoever signed in last. A tab
+still holding one person's store, after somebody else signed in in another,
+would read the second person's rows into the first person's store and send the
+writes it was keeping for the first as the second. So the store says which it
+is: the query layer in `@lesomnus/payday` puts the identity on every call, in
+`authsession.IdentityHeader` (`payday-identity`), and `Sessions.Handler` serves
+such a call only as a session that identity names.
+
+Anything else is refused as `ErrOtherIdentity`, which a caller sees as
+`Unauthenticated`. It does not fall through to the next handler in the chain,
+and it does not clear the cookie, which is alive and the browser's. A public
+method is served as nobody, as it is to any credential that is refused, so a
+page left behind can still sign in. A call that names no store is served as
+before. `web.Cors` allows the header, so a page on another origin can send it.
+
+A page reads `Unauthenticated` as its cue to ask `GET /session` again, and to
+let go of the store when the answer is somebody else or nobody — and **not** to
+forget it. A write the store was keeping is refused for the credential, not for
+itself, so it waits; the person who made it signs in again, the same store
+opens, and it goes. `session.tsx` does this, and forgets a store only when its
+person signs out, saying so to every other tab over a `BroadcastChannel`.
+
+## Two cookies of the name
+
+A browser holding a session cookie this server set and another of the same name
+— one a sibling host set for the whole domain, or one left at another path —
+sends both, in an order that is the browser's. All three readers of the cookie,
+`Handler`, the `GET` and the `DELETE`, read it through `Sessions.KeyOf`, and two
+of the name are no credential at all rather than whichever came first. A cookie
+on the line that does not parse is skipped and hides nothing else.
+
+The default name is `__Host-pd_session`, which no sibling host can set; a name
+of your own (`WithCookie`) or `Insecure()`'s `pd_session` has no such guard.
 
 ## Mixing with other credentials
 

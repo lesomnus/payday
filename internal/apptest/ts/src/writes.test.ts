@@ -23,10 +23,12 @@ import { Queries } from '@lesomnus/payday/query'
 import { Store } from '@lesomnus/payday/store'
 import { deleteDisk, openDisk } from '@lesomnus/payday/store/idb'
 
-import { entities, Robot } from '../gen/entities.js'
+import { entities, Robot, Tenant } from '../gen/entities.js'
 import { CellService, RobotService } from '../gen/app/robot_svc_pb.js'
+import { HolderService } from '../gen/app/payday/holder_svc_pb.js'
 import { TenantService } from '../gen/app/payday/tenant_svc_pb.js'
-import { CellDomain, RobotDomain } from '../gen/domains.js'
+import { ThingService } from '../gen/shared/thing_svc_pb.js'
+import { CellDomain, RobotDomain, ThingDomain } from '../gen/domains.js'
 import { start, type Server } from './testsrv.js'
 
 let srv: Server
@@ -62,27 +64,35 @@ function gone(): ConnectError {
 	return new ConnectError('Failed to fetch', Code.Unknown, undefined, undefined, new TypeError('Failed to fetch'))
 }
 
+/** flakyOver is `t` with the network this file can take away; see the note at the top. */
+function flakyOver(t: Transport): Transport {
+	return {
+		async unary(method, ...rest) {
+			if (offline) throw gone()
+
+			calls.push(method.name)
+			const res = await t.unary(method, ...rest)
+
+			// Sent, done, and the answer lost: the row exists and this side was
+			// never told.
+			if (lose) {
+				lose = false
+				throw gone()
+			}
+
+			return res
+		},
+		stream(method, ...rest) {
+			if (offline) return Promise.reject(gone())
+
+			return t.stream(method, ...rest)
+		},
+	}
+}
+
 const flaky: Transport = {
-	async unary(method, ...rest) {
-		if (offline) throw gone()
-
-		calls.push(method.name)
-		const res = await transport.unary(method, ...rest)
-
-		// Sent, done, and the answer lost: the row exists and this side was
-		// never told.
-		if (lose) {
-			lose = false
-			throw gone()
-		}
-
-		return res
-	},
-	stream(method, ...rest) {
-		if (offline) return Promise.reject(gone())
-
-		return transport.stream(method, ...rest)
-	},
+	unary: (...args) => flakyOver(transport).unary(...args),
+	stream: (...args) => flakyOver(transport).stream(...args),
 }
 
 let at: { name: string; identity: string }
@@ -98,11 +108,81 @@ beforeEach(async () => {
 })
 
 /** opened is one page on the store at `at`: its mirror, hydrated, and its queries. */
-async function opened(): Promise<{ store: Store; queries: Queries }> {
+async function opened(over: Transport = flaky): Promise<{ store: Store; queries: Queries }> {
 	const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) })
 	await store.hydrate()
 
-	return { store, queries: new Queries(store, flaky, entities) }
+	return { store, queries: new Queries(store, over, entities) }
+}
+
+/**
+ * Browser is one cookie jar, as a browser has one: every page calling through
+ * it carries whoever signed in last, and no `authorization` header.
+ */
+interface Browser {
+	/** What every page of this browser calls through, with the network this file takes away. */
+	readonly transport: Transport
+
+	/** signIn makes a session for one holder, and it is the browser's now. */
+	signIn(holder: Uint8Array): Promise<void>
+
+	/** which is what `GET /session` answers this browser. */
+	which(): Promise<{ identity: string }>
+
+	/** end ends the browser's session at the server, behind the browser's back: what an idle clock does. */
+	end(): Promise<void>
+}
+
+function browser(): Browser {
+	let cookie = ''
+	const at = (path: string) => `http://${srv.http}${path}`
+
+	return {
+		transport: flakyOver(
+			createGrpcTransport({
+				baseUrl: `http://${srv.addr}`,
+				interceptors: [
+					(next) => (req) => {
+						if (cookie !== '') req.header.set('cookie', cookie)
+						return next(req)
+					},
+				],
+			}),
+		),
+		async signIn(holder) {
+			const res = await fetch(at('/session'), {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ Id: pdid.from(holder).toString() }),
+			})
+			expect(res.status).toBe(204)
+
+			cookie = res.headers.getSetCookie()[0]?.split(';')[0] ?? ''
+			expect(cookie).not.toBe('')
+		},
+		async which() {
+			const res = await fetch(at('/session'), { headers: { cookie } })
+			expect(res.status).toBe(200)
+
+			return (await res.json()) as { identity: string }
+		},
+		async end() {
+			const res = await fetch(at('/session'), { method: 'DELETE', headers: { cookie } })
+			expect(res.status).toBe(204)
+		},
+	}
+}
+
+/** holder is the identifier of a holder of `acme`, made if it is not there. */
+async function holder(alias: string): Promise<Uint8Array> {
+	const holders = createClient(HolderService, transport)
+	const ref = { key: { case: 'slug' as const, value: { alias, tenant: { key: { case: 'alias' as const, value: 'acme' } } } } }
+
+	try {
+		return (await holders.get({ ref })).id
+	} catch {
+		return (await holders.add({ tenant: await tenantRef(), alias })).id
+	}
 }
 
 /** until waits for something to become true, or gives up loudly. */
@@ -418,6 +498,95 @@ describe('a caller who is done', () => {
 	})
 })
 
+describe('a write is sent as the caller its store is for', () => {
+	/** page is one page signed in by cookie: its store named as the server said, over the browser. */
+	async function page(b: Browser): Promise<{ store: Store; queries: Queries }> {
+		at = { name: 'writes', identity: (await b.which()).identity }
+		await deleteDisk(at)
+
+		return opened(b.transport)
+	}
+
+	it('waits while somebody else is signed in, and goes once its own caller is back', async () => {
+		const ref = await tenantRef()
+		const alice = await holder('admin')
+		const bob = await holder('bob')
+		const id = pdid.newId(RobotDomain).bytes
+		const alias = named('w')
+
+		const b = browser()
+		await b.signIn(alice)
+		const { queries } = await page(b)
+
+		offline = true
+		await queries.send(RobotService.method.add, { id, tenant: ref, alias })
+
+		// Somebody else signs in, in another tab. The browser's one cookie is
+		// theirs now, and every page of it sends that.
+		await b.signIn(bob)
+		offline = false
+		await queries.flush()
+
+		// Not sent as them: refused for the store it was made for, and kept.
+		expect(queries.writes().map((w) => w.state)).toEqual(['waiting'])
+		await expect(robot(id)).rejects.toMatchObject({ code: Code.NotFound })
+
+		// The one who made it signs in again -- another session, and the same
+		// store -- and it goes, as them.
+		const was = at.identity
+		await b.signIn(alice)
+		expect((await b.which()).identity).toBe(was)
+
+		await queries.flush()
+		expect(queries.writes()).toEqual([])
+		expect((await robot(id)).alias).toBe(alias)
+	})
+
+	it('waits for a sign-in when its session ended, rather than being refused', async () => {
+		const ref = await tenantRef()
+		const id = pdid.newId(RobotDomain).bytes
+
+		const b = browser()
+		await b.signIn(await holder('admin'))
+		const { queries } = await page(b)
+
+		offline = true
+		await queries.send(RobotService.method.add, { id, tenant: ref, alias: named('w') })
+
+		// It idles out while the page is offline: the server has forgotten the
+		// session, and the browser still carries its cookie.
+		await b.end()
+		offline = false
+		await queries.flush()
+		expect(queries.writes().map((w) => w.state)).toEqual(['waiting'])
+
+		await b.signIn(await holder('admin'))
+		await queries.flush()
+		expect(queries.writes()).toEqual([])
+		expect((await robot(id)).id).toEqual(id)
+	})
+
+	it('reads nothing into its store under somebody else', async () => {
+		const ref = await tenantRef()
+
+		const b = browser()
+		await b.signIn(await holder('admin'))
+		const { store, queries } = await page(b)
+
+		await b.signIn(await holder('bob'))
+
+		// Bob may read this tenant. Answered, it would be his answer in the
+		// store of the one before him.
+		const entry = queries.get(TenantService.method.get, { ref }, { watch: false })
+		await new Promise<void>((ok) => queries.subscribe(entry.key, () => ok()))
+
+		const got = queries.get(TenantService.method.get, { ref }, { watch: false })
+		expect(got.state).toBe('error')
+		expect(ConnectError.from(got.error).code).toBe(Code.Unauthenticated)
+		expect(store.all(Tenant.typeName)).toEqual([])
+	})
+})
+
 describe('a write that carries a secret', () => {
 	it('is refused before anything is kept', async () => {
 		const ref = await tenantRef()
@@ -454,6 +623,46 @@ describe('a write that carries a secret', () => {
 		expect(queries.writes()).toEqual([])
 		expect((await opened()).queries.writes()).toEqual([])
 		expect(calls).toEqual([])
+	})
+
+	it('is refused as a patch, whatever the patch names', async () => {
+		const { queries } = await opened()
+		offline = true
+
+		// What an `Apply` writes is a document only the server reads, and it
+		// maps every column the entity has -- `secret` among them. This one
+		// sets it; one that does not would be refused the same, since telling
+		// the two apart here is reading the document as the server does.
+		await expect(
+			queries.send(RobotService.method.apply, {
+				ref: { key: { case: 'id', value: pdid.newId(RobotDomain).bytes } },
+				patch: {
+					messageType: Robot.typeName,
+					delta: {
+						entries: [
+							{
+								scope: {
+									case: 'targets',
+									value: { selectors: [{ kind: { case: 'key', value: { kind: { case: 'field', value: { name: 'secret' } } } } }] },
+								},
+								kind: { case: 'assign', value: { value: { kind: { case: 'x', value: new Uint8Array([1, 2, 3]) } } } },
+							},
+						],
+					},
+				},
+			}),
+		).rejects.toThrow(/secret/)
+		expect(queries.writes()).toEqual([])
+		expect((await opened()).queries.writes()).toEqual([])
+
+		// And a patch to an entity that keeps nothing secret is kept, as any
+		// write is.
+		const w = await queries.send(ThingService.method.apply, {
+			ref: { key: { case: 'id', value: pdid.newId(ThingDomain).bytes } },
+			patch: { messageType: 'shared.Thing' },
+		})
+		expect(w.state).toBe('waiting')
+		await queries.dismiss(w.id)
 	})
 
 	it('still goes as a call', async () => {

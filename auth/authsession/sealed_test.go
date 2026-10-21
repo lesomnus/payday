@@ -202,7 +202,7 @@ func TestASealedSessionSaysWhichItIsToo(t *testing.T) {
 	x.NotContains(w.Body.String(), c.Value)
 
 	v := decoded(t, w)
-	x.Equal(authsession.IdentityOf(c.Value), v.Identity)
+	x.Equal(authsession.IdentityOf(authsession.Session{Id: "019-abc", TenantId: "019-acme", Grant: frame.Whole()}), v.Identity)
 	x.Equal("019-abc", v.Id)
 }
 

@@ -3,6 +3,7 @@
  *
  *   const at = { name: 'acme', identity: await identityOf(credential) }
  *   const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) })
+ *   void deleteOtherDisks(at)
  *   await store.hydrate()
  *
  * It is a separate entry because persistence is a separate decision: an app
@@ -42,6 +43,12 @@ interface Req<T> {
 
 interface OpenReq extends Req<Db> {
 	onupgradeneeded: (() => void) | null
+	onblocked: (() => void) | null
+}
+
+/** What `deleteDatabase` answers with: a request that may be blocked too. */
+interface DeleteReq extends Req<unknown> {
+	onblocked: (() => void) | null
 }
 
 interface Db {
@@ -49,6 +56,7 @@ interface Db {
 	createObjectStore(name: string, opts?: { keyPath?: string }): Table
 	transaction(names: string | string[], mode: 'readonly' | 'readwrite'): Tx
 	close(): void
+	onversionchange: (() => void) | null
 }
 
 interface Tx {
@@ -69,7 +77,10 @@ interface Table {
 
 declare const indexedDB: {
 	open(name: string, version?: number): OpenReq
-	deleteDatabase(name: string): Req<unknown>
+	deleteDatabase(name: string): DeleteReq
+
+	/** Absent from a browser too old to list them; see [deleteOtherDisks]. */
+	databases?(): Promise<readonly { readonly name?: string }[]>
 }
 
 /** Rows, keyed in line by `k` so that reading everything is one request. */
@@ -133,13 +144,25 @@ const KEEP = 7 * 24 * 60 * 60 * 1000
  *
  * The database name carries the identity, so two people on one browser have two
  * mirrors and neither can read the other's rows back. The identity is already a
- * digest of a credential -- see `identityOf` -- which matters here more than
- * anywhere else, because this name is the one thing about a store that a person
- * can see in devtools.
+ * digest -- see `identityOf` -- which matters here more than anywhere else,
+ * because this name is the one thing about a store that a person can see in
+ * devtools.
+ *
+ * # Another page holding it
+ *
+ * A mirror is open in every page on its store, and a database cannot be
+ * moved to a later version, or deleted, while a page holds it open. So this
+ * one lets go the moment another page asks for either -- it is closed, and
+ * every use of it after that fails saying why -- and a page that would rather
+ * keep it cannot hold up the deploy after it.
+ *
+ * A page that does not let go is one written before mirrors did, holding
+ * the mirror at an older version. Opening it then is refused, where it used
+ * to wait for as long as that page stayed open.
  */
 export async function openDisk(entities: readonly EntityDesc[], at: At, opts: DiskOpts = {}): Promise<Disk> {
 	const stamp = await stampOf(entities)
-	const name = `payday/${at.name}:${at.identity}`
+	const name = nameOf(at)
 
 	// Version 2 is the queue: a mirror written before it gains the table and
 	// keeps everything else.
@@ -152,7 +175,9 @@ export async function openDisk(entities: readonly EntityDesc[], at: At, opts: Di
 		if (!db.objectStoreNames.contains(META)) db.createObjectStore(META)
 	}
 
-	const db = await done(req)
+	const db = await opening(req, name)
+	const mirror = new Mirror(db, opts.keep ?? KEEP)
+	db.onversionchange = (): void => mirror.release()
 
 	// Two transactions rather than one, deliberately. A transaction commits by
 	// itself once nothing is pending on it, and an `await` between two requests
@@ -166,12 +191,107 @@ export async function openDisk(entities: readonly EntityDesc[], at: At, opts: Di
 		await settled(tx)
 	}
 
-	return new Mirror(db, opts.keep ?? KEEP)
+	return mirror
 }
 
-/** deleteDisk removes one caller's mirror entirely, for a test or a wipe. */
+/**
+ * deleteDisk removes one caller's mirror entirely, for a test or a wipe.
+ *
+ * Refused rather than waited on while a page written before mirrors let go of
+ * themselves is holding it open; see [openDisk].
+ */
 export async function deleteDisk(at: At): Promise<void> {
-	await done(indexedDB.deleteDatabase(`payday/${at.name}:${at.identity}`))
+	const name = nameOf(at)
+	const req = indexedDB.deleteDatabase(name)
+
+	await new Promise<void>((ok, no) => {
+		req.onsuccess = (): void => ok()
+		req.onerror = (): void => no(req.error ?? new Error('idb: the request failed'))
+		req.onblocked = (): void => no(new Error(`idb: another page holds ${name} open and will not let go of it`))
+	})
+}
+
+/**
+ * deleteOtherDisks removes every mirror of this app but the one for `at`: what
+ * a page calls once it knows whose store it is opening.
+ *
+ * A mirror is swept only when its store is hydrated, and a store is hydrated
+ * only by its own caller -- so the mirror of anybody who stopped using this
+ * browser stays, rows and answers and the writes they never sent, for as long
+ * as the browser keeps the database. Once somebody else's store is open here,
+ * nobody is coming back for it in a way that should find it: a person signing
+ * in again on a browser somebody else has since used is not owed what they
+ * left on it, and the person using it now is owed not finding it.
+ *
+ * Which is also what it costs: writes another caller made and never sent are
+ * thrown away with their mirror. A page that would rather not lose them sends
+ * them before it lets that caller go.
+ *
+ * Best effort. A browser too old to list its databases keeps them, and one held
+ * open by a page that will not let go is left for the next time. It answers
+ * once each is gone or so held -- which a request another page is still
+ * waiting on can delay, since a database takes its requests in turn -- so a
+ * page asks for it and draws without waiting for the answer.
+ */
+export async function deleteOtherDisks(at: At): Promise<void> {
+	// Never a rejection, since nothing waits on it to hear one.
+	let all: readonly { readonly name?: string }[] | undefined
+	try {
+		all = await indexedDB.databases?.()
+	} catch {
+		return
+	}
+	if (all === undefined) return
+
+	const prefix = `payday/${at.name}:`
+	const mine = nameOf(at)
+
+	await Promise.all(
+		all.map(({ name }) => {
+			// Of this app, and not of another whose name begins with this one's:
+			// an identity has no colon in it, so a name with one after the
+			// prefix is somebody else's prefix.
+			if (name === undefined || name === mine || !name.startsWith(prefix)) return
+			if (name.slice(prefix.length).includes(':')) return
+
+			const req = indexedDB.deleteDatabase(name)
+
+			return new Promise<void>((ok) => {
+				req.onsuccess = (): void => ok()
+				req.onerror = (): void => ok()
+				req.onblocked = (): void => ok()
+			})
+		}),
+	)
+}
+
+/** nameOf is the database one caller's mirror is kept in. */
+function nameOf(at: At): string {
+	return `payday/${at.name}:${at.identity}`
+}
+
+/**
+ * opening is an open request's database, refused if another page is holding it
+ * at an older version and will not let go; see [openDisk].
+ *
+ * A request that was refused can still succeed later -- it is queued, and goes
+ * once the other page closes -- so a database that arrives after the refusal
+ * is closed rather than left open with nobody holding it.
+ */
+function opening(req: OpenReq, name: string): Promise<Db> {
+	return new Promise<Db>((ok, no) => {
+		let refused = false
+
+		req.onsuccess = (): void => {
+			if (refused) req.result.close()
+			else ok(req.result)
+		}
+		req.onerror = (): void => no(req.error ?? new Error('idb: the request failed'))
+		req.onblocked = (): void => {
+			refused = true
+			no(new Error(`idb: another page holds ${name} open at an older version; close it, or reload it, and this one opens`))
+		}
+	})
 }
 
 /** Kept is one entry: the key, what it holds, and when this last wrote it. */
@@ -185,9 +305,35 @@ class Mirror implements Disk {
 	private readonly db: Db
 	private readonly keep: number
 
+	/** Let go of for another page; see [Mirror.release]. */
+	private released = false
+
 	constructor(db: Db, keep: number) {
 		this.db = db
 		this.keep = keep
+	}
+
+	/**
+	 * release closes the mirror because another page asked to move it to a
+	 * later version or to delete it, and neither can happen while this page
+	 * holds it; see [openDisk].
+	 *
+	 * The store above goes on in memory. What fails is what needed the disk --
+	 * a write kept, a write sent and let go -- and it fails saying why, so
+	 * whatever sees it knows the page wants reloading.
+	 */
+	release(): void {
+		this.released = true
+		this.db.close()
+	}
+
+	/** tx is a transaction on the mirror, while this page still holds it. */
+	private tx(names: string | string[], mode: 'readonly' | 'readwrite'): Tx {
+		if (this.released) {
+			throw new Error('idb: this mirror was let go for another page, which moved it on or deleted it; reload')
+		}
+
+		return this.db.transaction(names, mode)
 	}
 
 	/**
@@ -197,31 +343,37 @@ class Mirror implements Disk {
 	 */
 	readonly queue: Queue = {
 		load: async (): Promise<Queued[]> => {
-			const tx = this.db.transaction(WRITES, 'readonly')
+			const tx = this.tx(WRITES, 'readonly')
 			const all = tx.objectStore(WRITES).getAll()
 			await settled(tx)
 
 			return (all.result as Kept<Queued>[]).map((r) => r.v)
 		},
 		put: async (v: Queued): Promise<void> => {
-			const tx = this.db.transaction(WRITES, 'readwrite')
+			const tx = this.tx(WRITES, 'readwrite')
 			tx.objectStore(WRITES).put({ k: v.id, v, at: Date.now() })
 
 			await settled(tx)
 		},
 		drop: async (id: string): Promise<void> => {
-			const tx = this.db.transaction(WRITES, 'readwrite')
+			const tx = this.tx(WRITES, 'readwrite')
 			tx.objectStore(WRITES).delete(id)
 
 			await settled(tx)
 		},
 		clear: (): Promise<void> => {
 			// Opened before anything is awaited, which is the whole of the
-			// promise this makes.
-			const tx = this.db.transaction(WRITES, 'readwrite')
-			tx.objectStore(WRITES).clear()
+			// promise this makes. And a mirror that can no longer open one
+			// says so in the promise, as every other method here does, rather
+			// than throwing at the caller who is signing out.
+			try {
+				const tx = this.tx(WRITES, 'readwrite')
+				tx.objectStore(WRITES).clear()
 
-			return settled(tx)
+				return settled(tx)
+			} catch (err) {
+				return Promise.reject(err)
+			}
 		},
 	}
 
@@ -238,7 +390,7 @@ class Mirror implements Disk {
 		// One transaction over both, so what comes back is one moment rather
 		// than two -- an answer restored beside rows it does not match would be
 		// a list drawing something that is not there.
-		const tx = this.db.transaction(TABLES, 'readonly')
+		const tx = this.tx(TABLES, 'readonly')
 		const rows = tx.objectStore(ROWS).getAll()
 		const blobs = tx.objectStore(BLOBS).getAll()
 		await settled(tx)
@@ -271,14 +423,14 @@ class Mirror implements Disk {
 	}
 
 	private async drop(vs: readonly (readonly [string, string])[]): Promise<void> {
-		const tx = this.db.transaction(TABLES, 'readwrite')
+		const tx = this.tx(TABLES, 'readwrite')
 		for (const [at, k] of vs) tx.objectStore(at).delete(k)
 
 		await settled(tx)
 	}
 
 	async save(changes: Changes): Promise<void> {
-		const tx = this.db.transaction(TABLES, 'readwrite')
+		const tx = this.tx(TABLES, 'readwrite')
 
 		// Every request is made before anything is awaited, so the whole batch
 		// is one transaction and one commit -- which is also why a response
@@ -304,7 +456,7 @@ class Mirror implements Disk {
 	async clear(): Promise<void> {
 		// The writes too: this is a caller being done, and what they never sent
 		// is theirs as much as what they read. See [Store.forget].
-		const tx = this.db.transaction([...TABLES, WRITES], 'readwrite')
+		const tx = this.tx([...TABLES, WRITES], 'readwrite')
 		for (const t of [...TABLES, WRITES]) tx.objectStore(t).clear()
 
 		await settled(tx)

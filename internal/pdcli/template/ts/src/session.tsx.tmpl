@@ -17,10 +17,27 @@
  * `authsession.Insecure()`, since a browser will not keep a `Secure` cookie it
  * was handed over `http://`.
  *
+ * # The cookie is every tab's
+ *
+ * Whoever signed in last, in any tab, is who every page of this origin sends
+ * as. The query layer says which store each call is for, and the server
+ * refuses a call the cookie is not that store's session for -- so a page left
+ * holding one person's store never reads the next person's rows into it, or
+ * sends what it was keeping as them. What is left to the page is noticing:
+ *
+ *   - A call refused `Unauthenticated` may be a session that ended, or one
+ *     that is somebody else's now. The page asks again who is signed in, and
+ *     if it is not this store's caller it lets go of the store. It does not
+ *     forget it: a session that idled out is the same person once they sign in
+ *     again, the same store, and what they wrote offline goes then.
+ *   - Signing out, in any tab, is said to every other on a `BroadcastChannel`,
+ *     and each forgets what it was holding for that person -- the rows, the
+ *     answers, and the writes they never sent.
+ *
  * @module
  */
 
-import { createClient, type Transport } from '@connectrpc/connect'
+import { Code, ConnectError, createClient, type Transport } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -48,12 +65,26 @@ function send(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
 }
 
 /**
+ * Where a sign-out in any tab is said to every other; see the note at the top.
+ * What is said is the identity of the store that was signed out of.
+ */
+const signedOut = new BroadcastChannel('{{.Name}}/signed-out')
+
+/** The store this page is drawing, and how it lets go of it; see [boot]. */
+let drawn: { identity: string; leave: (forget: boolean) => void } | undefined
+
+signedOut.onmessage = (e: MessageEvent<string>): void => {
+	if (drawn !== undefined) drawn.leave(e.data === drawn.identity)
+}
+
+/**
  * Which session this browser holds, as `GET /session` says it: a name for the
  * store, and who the session names. Null when it holds none.
  *
- * The name is a digest of the session's key, made where the key can be read,
- * so the store is named by the credential exactly as `main.tsx` names it --
- * and not by the person, which `identityOf` says goes wrong.
+ * The name is a digest of what the session lets its caller see, made where the
+ * session can be read -- not of the person, which `identityOf` says goes
+ * wrong, and not of the key, which would leave a store behind every session
+ * that ends by itself.
  */
 async function which(): Promise<{ identity: string; id: string; tenantId: string } | null> {
 	const res = await send(`${ADDR}/session`)
@@ -125,9 +156,29 @@ function askToSignIn(said?: string): void {
 }
 
 async function boot(): Promise<void> {
+	drawn = undefined
+
+	// What a call refused for its session does: nothing until there is a
+	// store to let go of. This boot's own, so a call the last store made that
+	// comes back late lets go of that store and not of this one.
+	let lost = (): void => {}
+
 	// No `authorization` header and no `Plain`: the cookie is the credential,
 	// and the browser sends it.
-	const transport = createConnectTransport({ baseUrl: ADDR, fetch: send })
+	const transport = createConnectTransport({
+		baseUrl: ADDR,
+		fetch: send,
+		interceptors: [
+			(next) => async (req) => {
+				try {
+					return await next(req)
+				} catch (err) {
+					if (ConnectError.from(err).code === Code.Unauthenticated) lost()
+					throw err
+				}
+			},
+		],
+	})
 
 	let who: string
 	let identity: string
@@ -147,14 +198,42 @@ async function boot(): Promise<void> {
 	const app = await open(transport, identity)
 
 	/**
+	 * Letting go of the store: forgetting it first when its person signed out,
+	 * and in any case asking again who is signed in. Once, however many calls
+	 * come back refused.
+	 */
+	let left = false
+	const leave = (forget: boolean): void => {
+		if (left) return
+		left = true
+
+		if (forget) app.store.forget()
+		app.store.close()
+		void boot()
+	}
+	drawn = { identity, leave }
+
+	// Refused for its session: let go if the browser's session is not this
+	// store's any more. One that still is was refused for something else, and
+	// starting the page again would only lose what is on it.
+	lost = () => {
+		void which().then(
+			(held) => {
+				if (held?.identity !== identity) leave(false)
+			},
+			() => {},
+		)
+	}
+
+	/**
 	 * Signing out ends the session on the server -- the key is dead in every
-	 * browser that had it -- and drops this caller's copy, as `main.tsx` does.
+	 * browser that had it -- and drops this caller's copy, as `main.tsx` does,
+	 * here and in every other tab holding it.
 	 */
 	const out = (): void => {
 		void send(`${ADDR}/session`, { method: 'DELETE' }).finally(() => {
-			app.store.forget()
-			app.store.close()
-			void boot()
+			signedOut.postMessage(identity)
+			leave(true)
 		})
 	}
 

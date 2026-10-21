@@ -3,6 +3,40 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A page's store is named by what it sees, and every call it makes says so
+
+**Applies if** a page of yours uses `@lesomnus/payday`'s store or query layer,
+or your server serves `auth/authsession` -- `Sessions.Handler`, `Serve`, or
+`IdentityOf`.
+
+- **`authsession.IdentityOf(v Session)`** digests what the session lets its
+  caller see -- the actor, the tenant, the grant -- where it took the key.
+  `GET /session`'s `identity` is that, so one person's sign-ins with one grant
+  share a store. Mirrors named the old way are other names now, and go with the
+  rest below.
+- **Every call `Queries` makes carries `payday-identity`**
+  (`authsession.IdentityHeader`, `IDENTITY_HEADER`), and `Sessions.Handler`
+  refuses a call whose session that store is not named by, as
+  `ErrOtherIdentity` -- `Unauthenticated` on the wire, with the cookie kept. A
+  call that names no store is served as before. `web.Cors` allows the header;
+  a CORS list of your own has to.
+- **A write refused `Unauthenticated` waits** rather than being refused, and
+  goes once its caller signs in again. So a page that forgets its store on a
+  401 throws away what this keeps for it: let go of the store and ask again who
+  is signed in, and forget only on a sign-out, in every tab. `pd new`'s
+  `ts/src/session.tsx` is the shape.
+- **`deleteOtherDisks(at)`** in `@lesomnus/payday/store/idb` deletes every mirror
+  of the app but `at`'s. Ask for it once the caller's own is open, and do not
+  wait on it.
+- **A mirror lets go of itself** when another page deletes it or moves it to a
+  later version, and what then needs the disk fails saying so. `openDisk` and
+  `deleteDisk` reject, rather than wait, while a page from before this holds one
+  open.
+- **`send` refuses a patch** -- a request carrying a `patch.Patch`, as `Apply`
+  does -- to an entity that declares a secret. Send those with `call`.
+- **`Sessions.KeyOf`** answers nothing for two cookies of its name, and reads a
+  cookie line a pair at a time. The `GET` and the `DELETE` read through it too.
+
 ## The access record: a write's row in its transaction, a download alone, a read's request only
 
 **Applies if** you wired the access record (the entry below). Regenerate; what

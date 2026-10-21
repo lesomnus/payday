@@ -34,17 +34,20 @@
  *
  * # It is tied to what this caller can see
  *
- * A store is opened **for a credential**, and one opened for another is a
- * different store. Nothing leaks if it is not -- the server never sent anything
- * the caller may not see -- but the screen is wrong: rows a narrowed credential
- * can no longer read are still there, and a page drawn from them shows things
- * that are not there any more.
+ * A store is opened **for what a caller can see**, and one opened for another
+ * is a different store. Nothing leaks if it is not -- the server never sent
+ * anything the caller may not see -- but the screen is wrong: rows a narrowed
+ * credential can no longer read are still there, and a page drawn from them
+ * shows things that are not there any more.
  *
- * Note *credential* and not *user*. What a caller can see is the actor **and
- * the scope**: the same person holding a credential narrowed to one customer
- * sees that customer, and holding a whole one sees everything. Keyed on the
- * person, those two share a store and the narrowed session shows the wide
- * session's rows. See [identityOf].
+ * Note *what they can see* and not *user*. What a caller can see is the actor
+ * **and the scope**: the same person holding a credential narrowed to one
+ * customer sees that customer, and holding a whole one sees everything. Keyed
+ * on the person, those two share a store and the narrowed session shows the
+ * wide session's rows. See [identityOf].
+ *
+ * And it is said on every call made for it -- see [Queries] -- so a server that
+ * can tell serves those calls only as the caller the store is for.
  *
  * @module
  */
@@ -67,7 +70,8 @@ export interface Opts {
 	 * What this caller can see, as a string.
 	 *
 	 * Not optional, and not the user's name: see the note on identity above,
-	 * and [identityOf] for what to put here.
+	 * and [identityOf] for what to put here -- which, for a page signed in by
+	 * cookie, is what the server said.
 	 */
 	readonly identity: string
 
@@ -103,7 +107,14 @@ export const WRITES: Key = 'payday:writes'
 
 /** Store is every entity of one app, for one caller. */
 export class Store {
+	/** `<app>:<identity>`, which is what the mirror and the lock on its writes are named by. */
 	readonly name: string
+
+	/**
+	 * What this caller can see, as the store was opened with it; see
+	 * [Opts.identity]. [Queries] says it on every call it makes for this store.
+	 */
+	readonly identity: string
 
 	/**
 	 * writes are what this caller made that the server has not answered yet,
@@ -131,8 +142,9 @@ export class Store {
 	private flushing: Promise<void> = Promise.resolve()
 	private failed: unknown
 
-	private constructor(name: string, by: Map<string, EntityDesc>, disk: Disk | undefined) {
-		this.name = name
+	private constructor(app: string, identity: string, by: Map<string, EntityDesc>, disk: Disk | undefined) {
+		this.name = `${app}:${identity}`
+		this.identity = identity
 		this.by = by
 		this.disk = disk
 		this.writes = new Writes(disk?.queue, () => this.touch(WRITES))
@@ -144,7 +156,7 @@ export class Store {
 		const by = new Map<string, EntityDesc>()
 		for (const v of entities) by.set(v.typeName, v)
 
-		return new Store(`${opts.name}:${opts.identity}`, by, opts.disk)
+		return new Store(opts.name, opts.identity, by, opts.disk)
 	}
 
 	/**
@@ -423,6 +435,10 @@ export class Store {
 	 * sent as whoever the transport carries next. With a credential every page
 	 * shares, such as a cookie, that is a reason to call this in every page
 	 * holding the store, not only the one that signed out.
+	 *
+	 * It is for signing out, and not for a session that ended by itself. One
+	 * that idled out is the same caller once they sign in again, and what they
+	 * were keeping is theirs to send then; see [Queries.send].
 	 */
 	forget(): void {
 		this.batch(() => {

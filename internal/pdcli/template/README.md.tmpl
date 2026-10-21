@@ -261,10 +261,14 @@ a route added here is reachable from the same page the RPCs are.
 The page has two starts for the two ways of being signed in. `ts/src/main.tsx`
 holds its credential, which is what `auth.Plain` needs; `ts/src/session.tsx`
 holds a cookie it cannot read, so it asks `GET /session` which session it holds
-and names its local store by the answer — a digest of the session's key, which
-keeps a narrowed sign-in and a whole one apart as two credentials would be.
-`index.html` points at the first; point it at the second once the server serves
-sessions.
+and names its local store by the answer — a digest of what the session lets its
+caller see, which keeps a narrowed sign-in and a whole one apart as two
+credentials would be, and makes a person's next sign-in the same store, so what
+they wrote offline goes once they are back. Every call it makes says which
+store it is for, and the server refuses one the cookie is not the session of:
+the cookie is every tab's, and a tab left holding the last person's store must
+not send as the next. `index.html` points at the first; point it at the second
+once the server serves sessions.
 
 `go tool pd gen --ts .` writes the messages and service descriptors into
 `ts/gen`, along with `entities.ts` — one declaration per entity, which is what

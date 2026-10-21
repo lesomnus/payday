@@ -16,6 +16,7 @@ import (
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/auth/authsession"
 	"github.com/lesomnus/payday/frame"
+	"github.com/lesomnus/payday/pdid"
 )
 
 // who is a sign-in that always works, for the tests that are about everything
@@ -518,24 +519,58 @@ func TestAPageIsToldWhichSessionItHolds(t *testing.T) {
 	x.NotContains(w.Body.String(), c.Value)
 
 	v := decoded(t, w)
-	x.Equal(authsession.IdentityOf(c.Value), v.Identity)
+	x.Equal(authsession.IdentityOf(authsession.Session{Id: "019-abc", TenantId: "019-acme", Grant: frame.Whole()}), v.Identity)
+	x.NotEqual(authsession.IdentityOf(authsession.Session{Key: c.Value}), v.Identity, "the name is the key's")
 	x.Equal("019-abc", v.Id)
 	x.Equal("019-acme", v.TenantId)
 }
 
-// TestEverySignInIsAStoreOfItsOwn, which is what naming the store by the
-// credential is for: the same person signed in twice is two names, as two
-// credentials are, so a narrowed session never draws what a wide one left on
-// disk.
-func TestEverySignInIsAStoreOfItsOwn(t *testing.T) {
+// TestASignInThatSeesTheSameIsTheSameStore, so that the next session of one
+// person opens the mirror the last one left -- sweeping it, and sending what it
+// was keeping -- rather than leaving a mirror on disk per sign-in that nothing
+// ever opens again.
+//
+// And a session that sees less is another store, which is what naming the
+// store by the credential was for: a narrowed session never draws what a wide
+// one kept.
+func TestASignInThatSeesTheSameIsTheSameStore(t *testing.T) {
 	x := require.New(t)
 
 	s := authsession.New(authsession.NewMemStore())
-	a := decoded(t, which(t, s, signIn(t, s, who("019-abc", "019-acme"))))
-	b := decoded(t, which(t, s, signIn(t, s, who("019-abc", "019-acme"))))
+	identity := func(v authsession.Session) string {
+		return decoded(t, which(t, s, signIn(t, s, func(context.Context, *http.Request) (authsession.Session, error) {
+			return v, nil
+		}))).Identity
+	}
 
-	x.Equal(a.Id, b.Id)
-	x.NotEqual(a.Identity, b.Identity)
+	one, other := pdid.New(1), pdid.New(1)
+	person := authsession.Session{Id: "019-abc", TenantId: "019-acme", Grant: frame.Whole()}
+
+	was := identity(person)
+	x.Equal(was, identity(person), "one person, signed in twice, is two stores")
+
+	narrowed := person
+	narrowed.Grant = frame.Whole().In(one)
+	x.NotEqual(was, identity(narrowed), "a narrowed session draws what a whole one kept")
+
+	somebody := person
+	somebody.Id = "019-xyz"
+	x.NotEqual(was, identity(somebody))
+
+	elsewhere := person
+	elsewhere.TenantId = "019-other"
+	x.NotEqual(was, identity(elsewhere))
+
+	// Each axis is a set: the order a grant was built in and a name said twice
+	// are not what it allows.
+	x.Equal(
+		authsession.IdentityOf(authsession.Session{Id: "019-abc", Grant: frame.Whole().In(one, other).To("/a/B", "/a/A")}),
+		authsession.IdentityOf(authsession.Session{Id: "019-abc", Grant: frame.Whole().In(other, one, other).To("/a/A", "/a/B")}))
+
+	// And an axis narrowed to nothing is not an axis narrowed by nothing.
+	x.NotEqual(
+		authsession.IdentityOf(authsession.Session{Id: "019-abc", Grant: frame.Whole().In()}),
+		authsession.IdentityOf(authsession.Session{Id: "019-abc", Grant: frame.Whole()}))
 }
 
 // TestABrowserHoldingNoSessionIsToldSo, and one holding a session the server
@@ -574,12 +609,126 @@ func TestAStoreThatCannotBeReachedCannotSay(t *testing.T) {
 	x.NotContains(w.Body.String(), "down")
 }
 
-// TestIdentityOfIsTheNameThePageWouldHaveMade: sixteen hex characters of the
-// key's SHA-256, which is `identityOf` in `@lesomnus/payday/store` -- the same
-// vector is in `ts/src/store/identity.test.ts`, so the two cannot drift apart
-// unnoticed.
-func TestIdentityOfIsTheNameThePageWouldHaveMade(t *testing.T) {
-	require.Equal(t, "ba7816bf8f01cfea", authsession.IdentityOf("abc"))
+// TestIdentityOfIsAName: sixteen hex characters, the same for the same session
+// on every replica and in every release. A change to what it digests renames
+// every store a page keeps, which is a migration -- so this says when one
+// happens.
+func TestIdentityOfIsAName(t *testing.T) {
+	require.Equal(t, "180f789477cf89a2",
+		authsession.IdentityOf(authsession.Session{Id: "019-abc", TenantId: "019-acme", Grant: frame.Whole()}))
+}
+
+// carryingFor is a call made for the store `identity` names, carrying these
+// cookies -- what a page's query layer sends.
+func carryingFor(identity string, cs ...*http.Cookie) context.Context {
+	md, _ := metadata.FromIncomingContext(carrying(cs...))
+
+	return metadata.NewIncomingContext(context.Background(),
+		metadata.Join(md, metadata.Pairs(authsession.IdentityHeader, identity)))
+}
+
+// TestACallForAnotherStoreIsRefused is what binds a page's writes to the
+// person who made them.
+//
+// The cookie is the browser's, so it is whoever signed in last, in any tab. A
+// page still holding the store of the one before would otherwise draw the next
+// person's rows into it and send the writes it was keeping as them. It says
+// which store it is for, and a session of another is refused -- as itself, so
+// nothing after this handler makes somebody else of it, and without clearing a
+// cookie that is alive and the browser's.
+func TestACallForAnotherStoreIsRefused(t *testing.T) {
+	x := require.New(t)
+
+	s := authsession.New(authsession.NewMemStore())
+	c := signIn(t, s, who("019-abc", "019-acme"))
+	mine := decoded(t, which(t, s, c)).Identity
+
+	id, err := s.Handler().Handle(carryingFor(mine, c))
+	x.NoError(err, "a call for the session's own store was refused")
+	x.Equal("019-abc", id.Id)
+
+	other := decoded(t, which(t, s, signIn(t, s, who("019-xyz", "019-acme")))).Identity
+
+	var out headers
+	_, err = s.Handler().Handle(grpc.NewContextWithServerTransportStream(carryingFor(other, c), &out))
+	x.ErrorIs(err, authsession.ErrOtherIdentity)
+	x.NotErrorIs(err, auth.ErrNoCredential)
+	x.Empty(out.md.Get("set-cookie"), "a session that is alive was cleared for a page it is not the session of")
+
+	h := auth.Seq(s.Handler(), auth.HandlerFunc(func(ctx context.Context) (auth.Identity, error) {
+		return auth.Identity{Id: "019-somebody-else"}, nil
+	}))
+	_, err = h.Handle(carryingFor(other, c))
+	x.Error(err, "a call for another store became the next handler's caller")
+
+	// A call that names no store is any call, as it always was.
+	id, err = s.Handler().Handle(carrying(c))
+	x.NoError(err)
+	x.Equal("019-abc", id.Id)
+}
+
+// TestTwoCookiesOfTheNameAreNone: a browser holding one this server set and
+// one a sibling host set for the whole domain, or one left at another path.
+// Which it sends first is the browser's to decide, and the halves of this
+// package once took one each -- the page was told one session while its calls
+// were served as the other. So both halves take neither.
+func TestTwoCookiesOfTheNameAreNone(t *testing.T) {
+	x := require.New(t)
+
+	store := authsession.NewMemStore()
+	s := authsession.New(store, authsession.WithCookie("sid"))
+	a := signIn(t, s, who("019-abc", "019-acme"))
+	b := signIn(t, s, who("019-xyz", "019-acme"))
+
+	for _, cs := range [][]*http.Cookie{{a, b}, {b, a}} {
+		x.Empty(s.KeyOf([]string{cs[0].Name + "=" + cs[0].Value + "; " + cs[1].Name + "=" + cs[1].Value}))
+		x.Empty(s.KeyOf([]string{cs[0].Name + "=" + cs[0].Value, cs[1].Name + "=" + cs[1].Value}), "split across two header lines")
+
+		_, err := s.Handler().Handle(carrying(cs...))
+		x.ErrorIs(err, auth.ErrNoCredential)
+
+		w := which(t, s, cs...)
+		x.Equal(http.StatusUnauthorized, w.Code, "the page was told a session its calls are not served as")
+		x.Empty(w.Result().Cookies())
+	}
+
+	// Signing out of two is ending neither, since neither is the one: the
+	// browser's own is cleared, and the rows stay for their clocks.
+	r := httptest.NewRequest(http.MethodDelete, "/session", nil)
+	r.AddCookie(a)
+	r.AddCookie(b)
+	w := httptest.NewRecorder()
+	s.Serve(nil).ServeHTTP(w, r)
+	x.Equal(http.StatusNoContent, w.Code)
+	x.Len(w.Result().Cookies(), 1)
+	x.Equal(2, store.Len())
+}
+
+// TestACookieThisCannotReadHidesNoOther: the line a browser sends is every
+// cookie it holds for the host, including ones somebody else set. One of them
+// that does not parse is that one skipped, and not the line -- or a sibling
+// could sign everybody out by setting one.
+func TestACookieThisCannotReadHidesNoOther(t *testing.T) {
+	x := require.New(t)
+
+	s := authsession.New(authsession.NewMemStore())
+	c := signIn(t, s, who("019-abc", "019-acme"))
+
+	line := `theme=da"rk; ` + c.Name + "=" + c.Value
+	x.Equal(c.Value, s.KeyOf([]string{line}))
+
+	id, err := s.Handler().Handle(metadata.NewIncomingContext(context.Background(), metadata.Pairs("cookie", line)))
+	x.NoError(err)
+	x.Equal("019-abc", id.Id)
+
+	r := httptest.NewRequest(http.MethodGet, "/session", nil)
+	r.Header.Set("Cookie", line)
+	w := httptest.NewRecorder()
+	s.Serve(nil).ServeHTTP(w, r)
+	x.Equal(http.StatusOK, w.Code)
+
+	// And one of this name that does not parse is not a key.
+	x.Empty(s.KeyOf([]string{c.Name + `="unterminated`}))
 }
 
 // TestANamedCookieIsUsedByBothHalves.

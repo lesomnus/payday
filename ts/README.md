@@ -86,13 +86,14 @@ one caller may see, and a read layer over it.
 ```ts
 import { Queries } from "@lesomnus/payday/query";
 import { Store, identityOf } from "@lesomnus/payday/store";
-import { openDisk } from "@lesomnus/payday/store/idb";
+import { deleteOtherDisks, openDisk } from "@lesomnus/payday/store/idb";
 import { Provider, useQuery, useCall, useRow } from "@lesomnus/payday/react";
 
 import { entities } from "./gen/entities.js"; // generated: one declaration per entity
 
 const at = { name: "acme", identity: await identityOf(credential) };
 const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) });
+void deleteOtherDisks(at); // everybody else's mirror, on this browser
 await store.hydrate();
 
 const app = { store, queries: new Queries(store, transport, entities) };
@@ -116,12 +117,14 @@ and only the server knows which.
 
 A few things it is worth knowing before reaching for it:
 
-- **A store is opened for a credential, not for a person.** What a caller may
-  see is the actor *and* the scope, so a narrowed credential is a different
-  store. `identityOf` is a digest, so the token itself never reaches a database
-  name. A page signed in by a session cookie cannot read its credential, and is
-  told the same digest instead: `GET /session`, which payday's `auth/authsession`
-  serves, answers it as `identity`.
+- **A store is opened for what a caller may see, not for a person.** What a
+  caller may see is the actor *and* the scope, so a narrowed credential is a
+  different store. `identityOf` is a digest, so the token itself never reaches a
+  database name. A page signed in by a session cookie cannot read its
+  credential, and is told the name instead: `GET /session`, which payday's
+  `auth/authsession` serves, answers it as `identity` -- one name for every
+  sign-in that sees the same things. Every call the query layer makes carries
+  it, and `auth/authsession` serves the call only as a session it names.
 - **It is in memory, and that is not a shortcut.** Reading has to answer *now* —
   `useSyncExternalStore` takes a function, not a promise. `store/idb` is a
   mirror behind that: memory is the truth and the disk is a copy, so a reload
@@ -136,9 +139,9 @@ A few things it is worth knowing before reaching for it:
   once anything answers. A page draws what is waiting with `useWrites`, as
   writes, not as the rows they will make. A refusal is kept as the error a call
   would have thrown, until somebody dismisses it. A write that sets a declared
-  secret is refused rather than kept, and a queue is sent as whoever the
-  transport carries when it goes, so signing out means `store.forget()` in every
-  tab.
+  secret is refused rather than kept, as is a patch to an entity that has one. A
+  write refused for its credential waits for its caller to sign in again rather
+  than being refused, and signing out means `store.forget()` in every tab.
 - **React is an optional peer dependency.** `store` and `query` know nothing
   about it; `react` is thirty lines of `useSyncExternalStore` over them, and the
   same file for Vue or Svelte is the same length.

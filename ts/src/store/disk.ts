@@ -14,8 +14,9 @@
  * spinner for something it was holding a second ago.
  *
  * What it costs is a copy of the server's data on somebody's disk, with all
- * that implies: it is **that caller's** copy, keyed on their credential, and it
- * goes when they log out. See [Store.forget].
+ * that implies: it is **that caller's** copy, keyed on what they can see, and it
+ * goes when they log out -- see [Store.forget] -- or when somebody else's is
+ * opened in that browser, see `deleteOtherDisks`.
  *
  * It also expires. A mirror with nothing to bound it holds every question the
  * app ever asked, forever; and a restored answer is drawn as though it were

@@ -33,6 +33,15 @@
  * row it will make: guessing the row is the optimistic update this layer does
  * not have, and the reason is the same one. The answer is the row.
  *
+ * # Every call says whose store it is for
+ *
+ * The store's identity goes on every call made here, in [IDENTITY_HEADER], and
+ * a server that can tell -- `auth/authsession` -- serves it only as the caller
+ * the store is for. A credential every page of an origin shares, a cookie, is
+ * whoever signed in last; a page still holding the store of the one before is
+ * refused, rather than reading the next person's rows into that store or
+ * sending the writes it was keeping as them.
+ *
  * @module
  */
 
@@ -50,10 +59,26 @@ import {
 	type MessageInitShape,
 	type MessageShape,
 } from '@bufbuild/protobuf'
-import { Code, ConnectError, createClient, type Transport } from '@connectrpc/connect'
+import { Code, ConnectError, createClient, type CallOptions, type Transport } from '@connectrpc/connect'
 
 import { random } from '../random.js'
 import { WRITES, key, type EntityDesc, type Key, type Queued, type Refusal, type Store } from '../store/index.js'
+
+/**
+ * IDENTITY_HEADER is what every call made here says its store's identity in,
+ * and what `auth/authsession` reads it from (`authsession.IdentityHeader`).
+ *
+ * A server whose credential is not a session has nothing to compare it with
+ * and reads nothing here; one that is serves the call only as a session that
+ * identity names. See the note on the module.
+ */
+export const IDENTITY_HEADER = 'payday-identity'
+
+/**
+ * PATCH is the document a generated `Apply` carries; see
+ * [Queries.refuseSecret] for why a queued one is read by it.
+ */
+const PATCH = 'patch.Patch'
 
 // Declared rather than putting `DOM` in `lib`: these two are in a page, a
 // worker and Node, and they are all this module needs from outside the
@@ -235,7 +260,9 @@ export class Queries {
 	 * believes would make the two agree by looking at them.
 	 *
 	 * So it hands over the transport rather than a method to call: what to do
-	 * with it is `createClient`, and nothing here is in the way.
+	 * with it is `createClient`, and nothing here is in the way -- including
+	 * [IDENTITY_HEADER]. A call made through it is asked as whoever the
+	 * transport carries, and is not bound to this store.
 	 */
 	get raw(): Transport {
 		return this.transport
@@ -375,14 +402,22 @@ export class Queries {
 	 *
 	 * # Who it is sent as
 	 *
-	 * Whoever the transport carries **when it is sent**, not when it was made.
-	 * A page holding a bearer token for one person sends as that person either
-	 * way. A credential every page of the origin shares -- a cookie -- is
-	 * whoever signed in last, in any tab: sign out in one tab and in as
-	 * somebody else in another, and a page still holding the first person's
-	 * queue would send it as the second. So signing out has to reach every page
-	 * holding this store: [Store.forget] in each, after which it keeps nothing
-	 * and sends nothing, and this `Queries` dropped with it.
+	 * The caller the store is for, and nobody else. The transport carries
+	 * whoever it carries **when the write is sent**, not when it was made: a
+	 * page holding a bearer token for one person sends as that person either
+	 * way, and a credential every page of the origin shares -- a cookie -- is
+	 * whoever signed in last, in any tab. So the write says whose store it is
+	 * from, as every call here does, and a server that can tell serves it only
+	 * as them: under somebody else's session it is refused `Unauthenticated`,
+	 * and waits.
+	 *
+	 * Waits, and is not refused, because `Unauthenticated` is about the
+	 * credential and not about the write. A session that idles out while the
+	 * page is offline -- which is the page this is for -- is the same caller
+	 * once they sign in again, and the store opened then is this one: what was
+	 * waiting goes, as them. A write is let go only when they sign out, with
+	 * [Store.forget] -- in every page holding this store, since a cookie is
+	 * every page's -- after which it keeps nothing and sends nothing.
 	 *
 	 * # What it will not keep
 	 *
@@ -392,6 +427,10 @@ export class Queries {
 	 * [Queries.call]. It is read off the entity whose service the method is on,
 	 * so a secret in a batch, or in an RPC of the app's own -- a password, a
 	 * token -- is not seen, and keeping those out of a queue is the app's.
+	 *
+	 * And a patch document to such an entity, whatever it names: an `Apply`
+	 * says what it writes in terms only the server reads, so nothing here can
+	 * tell that it leaves the secret alone.
 	 */
 	async send<I extends DescMessage, O extends DescMessage>(
 		method: DescMethodUnary<I, O>,
@@ -564,8 +603,9 @@ export class Queries {
 
 	/**
 	 * drain sends every write that is waiting, in order, and stops at the first
-	 * the server did not answer -- the rest would not be answered either, and
-	 * would arrive out of order if they were.
+	 * the server did not judge -- not answered, or refused for the credential
+	 * it carried rather than for what it asked. The rest would not be judged
+	 * either, and would arrive out of order if they were.
 	 *
 	 * A refused write does not stop it. The server judged that one, and the
 	 * next is judged on its own; one that needed the refused one to have
@@ -634,13 +674,13 @@ export class Queries {
 
 	/**
 	 * attempt sends one write, and answers with the answer, with the refusal,
-	 * or with nothing when nobody answered.
+	 * or with nothing when nobody judged it.
 	 */
 	private async attempt(method: DescMethod, req: Message): Promise<Message | ConnectError | undefined> {
 		try {
 			return (await this.invoke(method, req)) as Message
 		} catch (err) {
-			if (unanswered(err)) return undefined
+			if (unjudged(err)) return undefined
 
 			const e = ConnectError.from(err)
 			if (e.code !== Code.AlreadyExists) return e
@@ -695,7 +735,7 @@ export class Queries {
 
 			return (await this.invoke(get, ref)) as Message
 		} catch (err) {
-			return unanswered(err) ? null : undefined
+			return unjudged(err) ? null : undefined
 		}
 	}
 
@@ -705,6 +745,15 @@ export class Queries {
 	 *
 	 * By name, because that is what a request has of its entity: the contract
 	 * carries an entity's fields under their own names, and not their options.
+	 *
+	 * Except for a patch, which is refused by what it is. A `patch.Patch` names
+	 * what it writes by field number, by name, by JSON name, as whichever member
+	 * of a oneof happens to be set, or as a whole message assigned at once --
+	 * and the server's `Apply` maps every one of those onto the entity's
+	 * columns, the secret ones included. Telling here that a document leaves a
+	 * secret alone would be reading it as the server does, and a reading that
+	 * misses one shape keeps a secret on disk; so a patch to an entity that
+	 * keeps one waits for nobody, and goes with [Queries.call].
 	 */
 	private refuseSecret(method: DescMethod, req: Message): void {
 		// An `AddMany` carries the request of an `Add` for each row it writes,
@@ -714,11 +763,21 @@ export class Queries {
 		const asked: [DescMessage, Message][] =
 			many === undefined ? [[method.input, req]] : many.items.map((v) => [many.desc, v])
 
+		const patch = method.input.fields.find((f) => f.fieldKind === 'message' && f.message.typeName === PATCH)
+
 		for (const e of this.entities.values()) {
 			if (e.service?.typeName !== method.parent.typeName) continue
 
+			const secrets = e.secrets ?? []
+			if (secrets.length > 0 && patch !== undefined && isFieldSet(req, patch)) {
+				throw new Error(
+					`query: ${nameOf(method)} carries a patch, and ${e.typeName} keeps ${secrets.join(', ')} secret; ` +
+						'a write that waits is kept on disk, so this one goes with call()',
+				)
+			}
+
 			for (const [desc, m] of asked) {
-				for (const name of e.secrets ?? []) {
+				for (const name of secrets) {
 					const f = desc.fields.find((v) => v.localName === name)
 					if (f === undefined || !isFieldSet(m, f)) continue
 
@@ -787,9 +846,14 @@ export class Queries {
 			this.clients.set(method.parent, client)
 		}
 
-		const f = client[method.localName] as (v: Message) => Promise<unknown>
+		const f = client[method.localName] as (v: Message, o: CallOptions) => Promise<unknown>
 
-		return f(input)
+		return f(input, { headers: this.said() })
+	}
+
+	/** said is what every call made here says of its store; see [IDENTITY_HEADER]. */
+	private said(): Record<string, string> {
+		return { [IDENTITY_HEADER]: this.store.identity }
 	}
 
 	/**
@@ -1005,7 +1069,7 @@ export class Queries {
 				const client = createClient(m.parent, this.transport) as unknown as Record<string, unknown>
 				const f = client[m.localName] as (
 					v: Message,
-					o: { signal: AbortSignal },
+					o: { signal: AbortSignal; headers: Record<string, string> },
 				) => AsyncIterable<Message>
 
 				// **Not** `skipSnapshot`. The list answered a moment ago and the
@@ -1019,7 +1083,7 @@ export class Queries {
 				// message and nothing else: the store reconciles by version, so
 				// an answer it already has changes nothing and tells nobody.
 				const req = create(m.input, { filters } as never)
-				for await (const res of f(req, { signal: stop.signal })) {
+				for await (const res of f(req, { signal: stop.signal, headers: this.said() })) {
 					const items = (res as unknown as Record<string, unknown>)['items'] as
 						| { id: Uint8Array; value?: Message }[]
 						| undefined
@@ -1256,25 +1320,34 @@ function messageOf(f: DescField): DescMessage | undefined {
 }
 
 /**
- * unanswered is whether a failed call is one the server never answered --
- * the only kind worth sending again.
+ * unjudged is whether a failed call is one the server did not judge the write
+ * by -- the only kind worth sending again.
  *
- * `Unavailable` is a proxy or the transport saying so. `Canceled` and
- * `DeadlineExceeded` are this side giving up, which says nothing about whether
- * the server got it. `Unknown` with a cause is a `fetch` that failed, which is
- * how connect-web reports a page with no network: the `TypeError` wrapped in a
- * ConnectError with no code of its own. And something that is not a
- * ConnectError at all is a transport that broke before it could say anything.
+ * Unanswered, mostly. `Unavailable` is a proxy or the transport saying so.
+ * `Canceled` and `DeadlineExceeded` are this side giving up, which says nothing
+ * about whether the server got it. `Unknown` with a cause is a `fetch` that
+ * failed, which is how connect-web reports a page with no network: the
+ * `TypeError` wrapped in a ConnectError with no code of its own. And something
+ * that is not a ConnectError at all is a transport that broke before it could
+ * say anything.
+ *
+ * And `Unauthenticated`, which the server did say -- about the credential, and
+ * not about the write. There was none, it had ended, or it was not the one this
+ * store is for. A session that idles out while a page is offline is the case a
+ * queue exists for, and the write is the same write once its caller signs in
+ * again; refused now, it would be a count taken in a basement lost to a
+ * timeout.
  *
  * Anything else, the server said -- and saying it again changes nothing.
  */
-function unanswered(err: unknown): boolean {
+function unjudged(err: unknown): boolean {
 	if (!(err instanceof ConnectError)) return true
 
 	switch (err.code) {
 		case Code.Unavailable:
 		case Code.Canceled:
 		case Code.DeadlineExceeded:
+		case Code.Unauthenticated:
 			return true
 		case Code.Unknown:
 			return err.cause !== undefined && !(err.cause instanceof ConnectError)

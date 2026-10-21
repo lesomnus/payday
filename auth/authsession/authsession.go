@@ -84,6 +84,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -92,6 +94,7 @@ import (
 
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/frame"
+	"github.com/lesomnus/payday/pdid"
 )
 
 // Method is what this calls itself in [auth.Identity.Method].
@@ -373,6 +376,80 @@ func New(store Store, opts ...Option) *Sessions {
 	return s
 }
 
+// KeyOf is the session a `cookie` header names, and empty for one that names
+// none -- or more than one.
+//
+// Exported because a sign-out has to read it and a sign-out is not necessarily
+// an HTTP handler: [Sessions.End] takes the key, and something has to get it
+// out of the metadata a gRPC handler was called with. [Sessions.Handler], the
+// GET that says which session a browser holds, and the DELETE that ends it all
+// read the cookie through here, so there is one answer to "which cookie is
+// ours" rather than several that agree today.
+//
+// # Two of them are none
+//
+// A browser sends two cookies of one name when it holds two: the one this
+// server set, and one set for the whole domain by a sibling host -- which may
+// write any name that is not `__Host-` -- or left at another path. Which comes
+// first is the browser's to decide, and taking either is taking a side. This
+// took the last while the GET took the first, so a page was told one session
+// and its calls were served as the other. So a request carrying two is a
+// request this cannot read: no credential, as though it carried none.
+//
+// # One cookie at a time
+//
+// A pair this cannot read is skipped and the rest of its line is not. A line is
+// every cookie the browser holds for the host, so one it cannot read -- of
+// another name, set by somebody else -- would otherwise hide this one.
+func (s *Sessions) KeyOf(cookies []string) string {
+	key, n := "", 0
+	for _, line := range cookies {
+		for pair := range strings.SplitSeq(line, ";") {
+			name, _, _ := strings.Cut(strings.TrimSpace(pair), "=")
+			if name != s.cookie {
+				continue
+			}
+
+			n++
+			key = ""
+			if cs, err := http.ParseCookie(pair); err == nil && len(cs) == 1 {
+				key = cs[0].Value
+			}
+		}
+	}
+	if n != 1 {
+		return ""
+	}
+
+	return key
+}
+
+// IdentityHeader is what a call made for a page's store says that store's
+// identity in: [Which.Identity], as the page was told it. `@lesomnus/payday`'s
+// query layer puts it on every call it makes.
+//
+// [Sessions.Handler] serves such a call only as a session that identity
+// names, and refuses it under any other. A page's cookie is the browser's, so
+// it is whoever signed in last, in any tab -- and a page still holding one
+// person's store would otherwise read the next person's rows into it, and
+// send the writes it was keeping for the first as the second. Refused instead,
+// they wait for a session of the first; see [ErrOtherIdentity].
+const IdentityHeader = "payday-identity"
+
+// ErrOtherIdentity is a call made for one caller's store carrying another
+// caller's session: the session is good, and is not one the store's identity
+// names.
+//
+// A refusal and not the absence of a credential, so nothing after this handler
+// is asked -- the call was made for somebody, and serving it as whoever the
+// next handler finds would be the thing being refused. The cookie is not
+// cleared: the session is alive and the browser's, and only the page was
+// left behind by it. It arrives as `Unauthenticated`, which is what a page
+// waits for a sign-in on; a public method serves it as nobody, as `auth`
+// serves any credential it refuses there, so a page left behind can still
+// sign in.
+var ErrOtherIdentity = errors.New("authsession: this call was made for another caller's store")
+
 // Handler reads the cookie off a call and answers who it names.
 //
 // It is an [auth.Handler] like [auth.Plain] and [auth.MTls], and goes in the
@@ -383,36 +460,7 @@ func New(store Store, opts ...Option) *Sessions {
 //
 // The cookie arrives as ordinary gRPC metadata. A browser cannot speak gRPC, so
 // its call came through `web`'s transcoder, and headers travel across that as
-// metadata -- `cookie` among them.
-// KeyOf is the session a `cookie` header names, and empty for one that names
-// none.
-//
-// Exported because a sign-out has to read it and a sign-out is not necessarily
-// an HTTP handler: [Sessions.End] takes the key, and something has to get it
-// out of the metadata a gRPC handler was called with. [Sessions.Handler] does
-// the same thing on the way in and now does it through here, so there is one
-// answer to "which cookie is ours" rather than two that agree today.
-//
-// A header this cannot read is not a credential and is skipped. Something else
-// in the chain may still find one.
-func (s *Sessions) KeyOf(cookies []string) string {
-	key := ""
-	for _, line := range cookies {
-		cs, err := http.ParseCookie(line)
-		if err != nil {
-			continue
-		}
-
-		for _, c := range cs {
-			if c.Name == s.cookie {
-				key = c.Value
-			}
-		}
-	}
-
-	return key
-}
-
+// metadata -- `cookie` among them, and [IdentityHeader] beside it.
 func (s *Sessions) Handler() auth.Handler {
 	return auth.HandlerFunc(func(ctx context.Context) (auth.Identity, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
@@ -458,6 +506,18 @@ func (s *Sessions) Handler() auth.Handler {
 			}
 
 			return auth.Identity{}, err
+		}
+
+		// After the session is read, so that a dead one is cleared as above
+		// whatever the call was made for, and a live one is never cleared for
+		// being asked about by a page it was not the session of.
+		if want := md.Get(IdentityHeader); len(want) > 0 {
+			got := IdentityOf(v)
+			for _, w := range want {
+				if w != got {
+					return auth.Identity{}, ErrOtherIdentity
+				}
+			}
 		}
 
 		return auth.Identity{
@@ -617,14 +677,14 @@ func (s *Sessions) Serve(verify Verify) http.Handler {
 //
 // # Why a page needs this much
 //
-// A page keeps a store of what its caller may see, and the store is named by
-// the **credential** and not by the person -- the same holder with a narrowed
-// credential sees less, so keyed on the person the narrowed session would draw
-// the wide one's rows, and with a mirror on disk it would go on drawing them
-// after a reload. `identityOf` in `@lesomnus/payday/store` is that argument at
-// length. A page signed in by cookie cannot read its credential, which is what
-// HttpOnly is for, so it has nothing to name its store by unless it is told;
-// [Which.Identity] is the name.
+// A page keeps a store of what its caller may see, and names it by that --
+// the actor **and the scope** -- rather than by the person: the same holder
+// with a narrowed session sees less, so keyed on the person the narrowed
+// session would draw the wide one's rows, and with a mirror on disk it would
+// go on drawing them after a reload. `identityOf` in `@lesomnus/payday/store`
+// is that argument at length. A page signed in by cookie cannot read its
+// session, which is what HttpOnly is for, so it has nothing to name its store
+// by unless it is told; [Which.Identity] is the name.
 //
 // And it has to ask somebody something to draw anything: who it is signed in
 // as, at the least. [Which.Id] and [Which.TenantId] are who the session names,
@@ -634,9 +694,8 @@ func (s *Sessions) Serve(verify Verify) http.Handler {
 // A browser holding none is 401, and one holding a session this server no
 // longer has is 401 with the cookie cleared, as [Sessions.Handler] clears it.
 type Which struct {
-	// Identity is [IdentityOf] the session's key: a different name for every
-	// sign-in, never the key, and the name `identityOf` would have given the
-	// key had the page been able to read it.
+	// Identity is [IdentityOf] the session: one name for every sign-in that
+	// sees the same things, and never the key.
 	Identity string `json:"identity"`
 
 	// Id and TenantId are [Session.Id] and [Session.TenantId].
@@ -644,17 +703,68 @@ type Which struct {
 	TenantId string `json:"tenantId"`
 }
 
-// IdentityOf is a session's key as a store name: sixteen hex characters of its
-// SHA-256, which is what `identityOf` makes of a credential in the page.
+// IdentityOf is what a session lets its caller see, as a store name: who it
+// names, in which tenant, and narrowed how, as sixteen hex characters of a
+// SHA-256.
 //
-// One-way, because the name is not a secret and the key is: it ends up in
-// IndexedDB, in a devtools pane, in a screenshot. Sixty-four bits names one
-// session among however many a browser profile will ever hold, and defends
-// nothing -- the key itself is what the cookie keeps from script.
-func IdentityOf(key string) string {
-	sum := sha256.Sum256([]byte(key))
+// # Not its key
+//
+// It was the key's digest once, which made every sign-in a store of its own --
+// and a store is a mirror on disk. A session that idled out, or was replaced
+// by the next sign-in, left its mirror where no later session would open it
+// again: the person's rows, the answers they were given, and the writes they
+// made offline and never sent, kept for as long as the browser kept the
+// database. Named by what it sees, the person's next session opens the same
+// mirror, sweeps it as it reads it, and sends what was waiting -- as them.
+//
+// The argument for a name per credential survives, because it was about the
+// scope and the scope is in here: a narrower grant is another name, so a
+// narrowed session never draws what a wide one kept. Each axis of the grant is
+// read as a set, so two grants that allow the same thing are one name however
+// they were built.
+//
+// One-way, because the name ends up in IndexedDB, in a devtools pane, in a
+// screenshot. Sixty-four bits names one caller among however many a browser
+// profile will ever hold, and defends nothing: it is a name, and a call
+// carrying it is served only if its own session agrees ([IdentityHeader]).
+func IdentityOf(v Session) string {
+	b, _ := json.Marshal(seen{
+		Id:       v.Id,
+		TenantId: v.TenantId,
+		Tenants:  axis(v.Grant.AnyTenant(), v.Grant.TenantIds(), pdid.Id.String),
+		Sets:     axis(v.Grant.AnySet(), v.Grant.SetIds(), pdid.Id.String),
+		Actions:  axis(v.Grant.AnyAction(), v.Grant.Actions(), func(v string) string { return v }),
+	})
+	sum := sha256.Sum256(b)
 
 	return hex.EncodeToString(sum[:8])
+}
+
+// seen is what [IdentityOf] digests: a struct, so the fields are written in one
+// order, and each axis of the grant null for "any" -- which is not the same as
+// an empty list, an axis narrowed to nothing.
+type seen struct {
+	Id       string   `json:"id"`
+	TenantId string   `json:"tenant"`
+	Tenants  []string `json:"tenants"`
+	Sets     []string `json:"sets"`
+	Actions  []string `json:"actions"`
+}
+
+// axis is one axis of a grant as [seen] holds it: nil when it narrows nothing,
+// and otherwise what it narrows to, sorted and without repeats.
+func axis[T any](whole bool, vs []T, str func(T) string) []string {
+	if whole {
+		return nil
+	}
+
+	out := make([]string, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, str(v))
+	}
+	slices.Sort(out)
+
+	return slices.Compact(out)
 }
 
 // ErrNobody is a session that names no actor.
@@ -810,15 +920,17 @@ func (s *Sessions) which(w http.ResponseWriter, r *http.Request) {
 	// there should keep and hand to the next request.
 	w.Header().Set("Cache-Control", "no-store")
 
-	c, err := r.Cookie(s.cookie)
-	if err != nil || c.Value == "" {
+	// Through [Sessions.KeyOf] and not `r.Cookie`, which answers the first of
+	// two cookies of the name where every other reader here answers none.
+	key := s.KeyOf(r.Header.Values("Cookie"))
+	if key == "" {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 
 		return
 	}
 
 	// Read and not Get: asking which session this is, is using it.
-	v, err := s.Read(r.Context(), c.Value)
+	v, err := s.Read(r.Context(), key)
 	if err != nil {
 		if errors.Is(err, ErrNoSession) {
 			http.SetCookie(w, s.cleared())
@@ -833,16 +945,11 @@ func (s *Sessions) which(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(Which{Identity: IdentityOf(c.Value), Id: v.Id, TenantId: v.TenantId})
+	_ = json.NewEncoder(w).Encode(Which{Identity: IdentityOf(v), Id: v.Id, TenantId: v.TenantId})
 }
 
 func (s *Sessions) end(w http.ResponseWriter, r *http.Request) {
-	var was string
-	if c, err := r.Cookie(s.cookie); err == nil {
-		was = c.Value
-	}
-
-	http.SetCookie(w, s.End(r.Context(), was))
+	http.SetCookie(w, s.End(r.Context(), s.KeyOf(r.Header.Values("Cookie"))))
 	w.WriteHeader(http.StatusNoContent)
 }
 
