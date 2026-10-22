@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 	"uuid"
@@ -415,13 +416,7 @@ func TestAnAcceptanceGoesOnFromWhatTheDatabaseNumbered(t *testing.T) {
 
 		s, p, _, first := keyless(t)
 		p.Signer = newKey(t)
-
-		for i := 0; ; i++ {
-			x.Less(i, 64, "no checkpoint first by digest")
-			if planted(t, p, over(1), nil) < first {
-				break
-			}
-		}
+		planted(t, p, over(1), nil)
 
 		_, err := accept(t, p, s, Acceptance{Why: "an archive kept without a key until now"})
 		x.NoError(err)
@@ -430,6 +425,30 @@ func TestAnAcceptanceGoesOnFromWhatTheDatabaseNumbered(t *testing.T) {
 		v, err := p.Verify(ctx, s, false)
 		x.NoError(err)
 		x.Equal([]string{"unsigned"}, kinds(v), "%v", v.Findings)
+	})
+	t.Run("whichever is first by digest", func(t *testing.T) {
+		// What the store keeps under the database's latest number, chosen so
+		// that the one the rows do not add up to sorts first.
+		x := require.New(t)
+		ctx := t.Context()
+
+		s := &fakeStore{}
+		key, err := s.Adding(ctx, newTenant().String(), "", nil, nobody)
+		x.NoError(err)
+		x.NoError(s.Added(ctx, key, string(flob.DigestFromBytes([]byte("a chunk"))), nil, nobody))
+		k, rows, err := s.Checkpoint(ctx, 0)
+		x.NoError(err)
+
+		took := flob.Digest("sha256:" + strings.Repeat("f", 64))
+		other := flob.Digest("sha256:" + strings.Repeat("0", 64))
+		ch := chain{kept: map[flob.Digest]stored{
+			took:  {c: checkpointOf(k, time.Now(), rows), d: took},
+			other: {c: over(k), d: other},
+		}, vouched: map[flob.Digest]bool{}}
+
+		d, err := ch.goesOn(ctx, s, k)
+		x.NoError(err)
+		x.Equal(took, d, "the acceptance went on from one the database never took")
 	})
 	t.Run("before the database numbered any", func(t *testing.T) {
 		x := require.New(t)
