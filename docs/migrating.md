@@ -3,6 +3,27 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A Rekor log is a witness
+
+**Applies if** you name witnesses (`audit.checkpoints.witnesses`), or write a
+`trail.Witness` of your own. Part of payday#115.
+
+- **`rekor:<url>?key=<file>`**, `&v=2` for a log on tiles, logs each
+  checkpoint's digest to a Rekor transparency log: `import _
+  "github.com/lesomnus/payday/config/witnessrekor"`. Your own log, or public
+  Sigstore by choice; read the runtime docs' Rekor part first.
+- **An Ed25519 key in a device is refused** when a `rekor:` witness is named:
+  the log takes a signature over the digest (Ed25519ph), which payday's device
+  signers do not make. Name an ECDSA or RSA deployment key, or keep to `store:`
+  and `log:`.
+- **Two optional interfaces for a witness of your own**: `trail.Prehashed`, one
+  that keeps a statement's digest and is told a signature over it
+  (`trail.Signed`'s new `Prehash`, `PrehashKey` and `PrehashSig`), and
+  `trail.Checker`, one that holds the chain to itself in a bounded number of
+  questions. A witness that implements neither is as it was.
+- **On the log's head**: set a monitor of the log to the deployment's key, and
+  the alert the runtime docs give.
+
 ## The trail's digest covers a secret, and a row's seal what is personal
 
 **Applies if** you keep digests (`audit.digest.key`), give an operator a command

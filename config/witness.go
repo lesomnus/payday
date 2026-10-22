@@ -18,6 +18,7 @@ var witnesses = map[string]func(v string) (trail.Witness, error){}
 // would.
 var shippedWitnesses = map[string]string{
 	"log":   "github.com/lesomnus/payday/config/witnesslog",
+	"rekor": "github.com/lesomnus/payday/config/witnessrekor",
 	"store": "github.com/lesomnus/payday/config/witnessstore",
 }
 

@@ -30,6 +30,7 @@ require (
 	github.com/protobuf-orm/ent v0.0.0-20261021205026-b333b8f2153a
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20261017212716-3430237a8656
 	github.com/stretchr/testify v1.12.1
+	github.com/transparency-dev/merkle v0.0.2
 	go.opentelemetry.io/contrib/bridges/otelslog v0.21.0
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/metric v1.47.0

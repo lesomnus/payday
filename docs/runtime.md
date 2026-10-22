@@ -883,6 +883,72 @@ Two are payday's, each a package of its own:
   your system's spelling of it — and one when the logs hold two lines of one
   `k` with two `digest`s; and a third, if the deployment takes a checkpoint at
   least every pass, when the gauge has not moved for longer than two passes.
+- **`rekor:<url>?key=<file>`**, `&v=2` for a log on tiles
+  (`config/witnessrekor`, `trail/witnessrekor`) logs every checkpoint to a
+  Rekor transparency log. More below.
+
+**Rekor.** What goes to the log is a `hashedrekord`: the statement's digest, a
+signature over it by the deployment's key, and the key's public half — never
+the statement, which names the tenants whose chunks the archive held. So an
+entry says nothing of a tenant, only that the deployment took a checkpoint,
+and when; a tenant's chain is never told to a log the deployment names. The
+signature over the digest is the checkpoint's own for an ECDSA or RSA key,
+which signs SHA-256 of what it signs (a v2 log holds P-384 and P-521 to their
+own hashes, and those are signed once more). An Ed25519 key signs once more,
+as Ed25519ph (`trail.Prehashed`): the same key for both is safe, since RFC
+8032's `dom2` prefix ("SigEd25519 no Ed25519 collisions", section 5.1)
+separates Ed25519ph from the pure Ed25519 that signs the statement, so that
+neither signature can stand for the other — and a key of the deployment's own
+is the entries' worth, where a second key would be one more for an operator to
+keep. A key that cannot sign a digest — an Ed25519 key in a device: payday's
+device signers sign Ed25519 over the message alone — is refused where the
+process comes up, and only when a `rekor:` witness is named; an ECDSA or RSA
+key for the deployment, or `store:` and `log:`, instead. `key=` is the PEM file
+of the log's key, which signs its trees' heads, and is the deployment's to know:
+it is given, never asked of the log.
+
+What the log answers — where the entry is, the proof that it is in the tree,
+and the tree's head the log signed — is the receipt kept beside the checkpoint.
+An entry carries no number, so the log answers no `Latest` (`trail.ErrDeaf`)
+and holds the chain to itself (`trail.Checker`): each receipt is the entry of
+its checkpoint, proved in the tree the log signed — which costs the log
+nothing, the proof is in the receipt — and the trees it signed go on: the
+newest receipt's to the tree the log answers with now, at every verification;
+each receipt's to the next, for the newest two at a verification and for all
+of them at a full one. A receipt that is none of that is `forged`, a log whose
+tree does not go on is `rewritten`, and a log that does not answer is a
+witness that did not answer. So a verification asks a v1 log for its tree
+(`GET /api/v1/log`), a proof or two (`GET /api/v1/log/proof`), its search
+once for each of the deployment's keys and its new entries ten at a time; a v2
+log for its tree (`GET /checkpoint`) and the tiles of a proof or two, a few
+each. A full verification also asks one proof for each pair of receipts. A
+pass adds an entry for its checkpoint and one for each act that changed the
+archive, and tells the log again at most a hundred it missed.
+
+v1's search by key (`/api/v1/index/retrieve`) is deprecated, best effort and
+may answer short, as Rekor's own API says: what it answers is held to the
+store — an entry the deployment's key signed that no checkpoint the store keeps
+is, is `unkept`, the head cut short or a count wound back — and what it does
+not answer is no "nothing to find". v2 has no search. So on both the head is
+the operator's monitor of the log to watch: Sigstore's `rekor-monitor`, say,
+set to the deployment's key's fingerprint, which reports every entry the key
+signs. Alert when it reports an entry at a time the log witness's gauge did
+not move — an entry of a checkpoint the deployment did not take — and when the
+gauge moves and no entry follows within `hear_within`. A key is the
+deployment's alone: entries are found by it.
+
+**Public Sigstore** is a log anybody may write to, and an operator's choice
+to make knowing three things, never a default. Sigstore publishes no rate
+limit, only a 99.5% availability objective and a limit of 100 KB an entry.
+Whether an audit trail that is not software's belongs there is an open
+question (sigstore/rekor#2993, unanswered by its maintainers); in #2798 a
+maintainer is reported to have found one summary anchor an interval, rather
+than one entry an action, a good way — which is what a checkpoint is: one a
+pass, a day unless `audit.every` says otherwise, and one an act that changes
+the archive, written by the one process that holds the trail's lease. Use v2
+there: v1's search is deprecated, and #2993 reports v1's uploads may be frozen.
+And a self-hosted rekor-tiles is cheap to run, and the store witness on a disk
+that refuses deletion needs no third party at all.
 
 What a witness hears is a statement in a chain (`Signed.Chain`): the
 deployment's checkpoints are the chain named by nothing, and a tenant whose

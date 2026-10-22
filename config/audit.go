@@ -443,8 +443,9 @@ type AuditCheckpointsConfig struct {
 	// archive's credentials do not reach, so that the newest is known outside
 	// the two (payday#115; see `trail.Witness`). Each is named by a scheme
 	// something registered with [RegisterWitness] -- `log:`, which tells the
-	// log and the metrics, and `store:/mnt/worm/witness`, a directory of its
-	// own -- and a finding says which by what is written here, up to a `?`.
+	// log and the metrics, `store:/mnt/worm/witness`, a directory of its own,
+	// and `rekor:` a transparency log -- and a finding says which by what is
+	// written here, up to a `?`.
 	// Several may be named, and a verification holds the chain to each that
 	// answers. Empty is a head known to the database and the store alone.
 	Witnesses []string `yaml:"witnesses"`
@@ -648,6 +649,17 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 	}
 	if p.Witnesses, err = witnessesOf(c.Checkpoints.Witnesses); err != nil {
 		return trail.Policy{}, fmt.Errorf("audit.checkpoints.witnesses%w", err)
+	}
+	// A witness that keeps a digest is told the key's signature over one,
+	// which a key in a device that signs Ed25519 over the message alone does
+	// not make: found here, and only where such a witness is named.
+	for name, w := range p.Witnesses {
+		if pw, ok := w.(trail.Prehashed); ok && p.Signer != nil {
+			if err := trail.TryPrehash(p.Signer, pw); err != nil {
+				return trail.Policy{}, fmt.Errorf("audit.checkpoints.witnesses: %s keeps a statement's digest, and audit.checkpoints.key cannot sign one (%w); "+
+					"name an ECDSA or RSA key for the deployment, or witnesses that keep the statement -- store: and log:", name, err)
+			}
+		}
 	}
 	p.HearWithin = c.Checkpoints.HearWithin
 	if c.Checkpoints.Dir != "" {
