@@ -53,6 +53,9 @@ type Reading func(*sql.Selector)
 // Robot is the predicate function for robot builders.
 type Robot func(*sql.Selector)
 
+// RowSeal is the predicate function for rowseal builders.
+type RowSeal func(*sql.Selector)
+
 // Seal is the predicate function for seal builders.
 type Seal func(*sql.Selector)
 

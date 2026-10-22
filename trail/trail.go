@@ -337,7 +337,24 @@ type Store interface {
 	// passed over: a thing that is gone has nothing to carry forward to, and
 	// one the database's trail is about has a newer line than any the archive
 	// holds.
+	//
+	// The row's seal, when it has one, goes with its line: bound to the new
+	// one, saying of the row what it said ([audit.Digest.CarrySeal]).
 	Carry(ctx context.Context, digest *audit.Digest, d pdid.Domain, vs []Carried) (int, error)
+
+	// BlankSeals blanks the seals of the rows `objects` names (payday#115) --
+	// the MACs beside the rows that vouch for what their digests leave out
+	// ([audit.Digest.Seal]), which are nothing to do with what the archive
+	// seals to tenants' keys ([SealedMember]): in place of each seal there is,
+	// what `forgotten` answers for its row -- a seal that says the row's
+	// person was forgotten, and nothing of what they were -- or nothing at
+	// all, for a nil `forgotten`. It answers how many it reached. A row that
+	// has no seal is passed over.
+	BlankSeals(ctx context.Context, objects []pdid.Id, forgotten func(pdid.Id) []byte) (int, error)
+
+	// PurgeSeals removes every seal filed under `tenant`, and answers how
+	// many went: what a tenant leaving takes with it.
+	PurgeSeals(ctx context.Context, tenant pdid.Id) (int, error)
 
 	// Manifest is the database's account of what the archive holds; see
 	// [Archived]. It is in the store because the database is where it has to

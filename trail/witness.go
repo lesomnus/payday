@@ -234,7 +234,13 @@ func (x *pass) retell(ctx context.Context) {
 			continue
 		}
 
-		p.tell(ctx, v, heard)
+		w, err := ch.whole(ctx, v)
+		if err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: telling the witnesses again", "k", v.c.K, "err", err)
+			continue
+		}
+
+		p.tell(ctx, w, heard)
 		n++
 	}
 }

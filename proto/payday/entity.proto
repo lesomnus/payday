@@ -450,6 +450,10 @@ enum Own {
   // The access record: who read or wrote whose personal data, from where
   // (payday#111). See the `access` package.
   OWN_ACCESS = 6;
+
+  // A row's seal: the MAC of a row whose kind declares a field personal,
+  // kept beside it for as long as it is (payday#115). See `audit.Digest.Seal`.
+  OWN_ROW_SEAL = 7;
 }
 
 // Field is what payday adds to one field of an entity.

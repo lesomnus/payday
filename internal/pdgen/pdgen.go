@@ -1008,16 +1008,25 @@ func (e *Entity) Serves() bool {
 }
 
 // Records answers whether the entity is one of payday's own records of what
-// happens -- the trail, the outbox, the archive's manifest, the access record
-// -- which payday writes beneath the servers, and which nothing records in
-// turn.
+// happens -- the trail, the outbox, the archive's manifest, the access record,
+// the rows' seals -- which payday writes beneath the servers, and which nothing
+// records in turn.
 func (e *Entity) Records() bool {
 	switch e.Own {
-	case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED, pdpb.Own_OWN_ACCESS:
+	case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED, pdpb.Own_OWN_ACCESS, pdpb.Own_OWN_ROW_SEAL:
 		return true
 	}
 
 	return false
+}
+
+// Sealed answers whether a row of the entity is sealed (payday#115): it is on
+// the trail and declares a field `personal`, which the trail's digest leaves
+// out and the row's seal covers. Whether a field is personal decides what the
+// trail keeps of it, what the access record reads, and this -- and not whether
+// the digest covers it otherwise.
+func (e *Entity) Sealed() bool {
+	return e.Checked() && len(e.PersonalNumbers) > 0
 }
 
 // Writes answers whether a server writes the entity: an Add, an AddMany or a
@@ -1029,9 +1038,9 @@ func (e *Entity) Writes() bool {
 
 // Checked answers whether a check of the rows against the trail reads the
 // entity (payday#108): every one but payday's own trail, outbox, archive
-// manifest and access record, which record what happens rather than being
-// what is recorded, and one whose writes are kept off the trail -- `trail:
-// {off: {why: ...}}`.
+// manifest, access record and rows' seals, which record what happens rather
+// than being what is recorded, and one whose writes are kept off the trail --
+// `trail: {off: {why: ...}}`.
 func (e *Entity) Checked() bool {
 	if e.Records() {
 		return false

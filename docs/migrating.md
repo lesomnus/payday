@@ -3,6 +3,69 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The trail's digest covers a secret, and a row's seal what is personal
+
+**Applies if** you keep digests (`audit.digest.key`), give an operator a command
+that runs `pd.Digests` (`trail rows`), or write or remove rows beneath your
+servers. Part of payday#115. Regenerate: payday's entities gain `RowSeal`,
+which `pd gen` copies in and a migration makes a table of.
+
+- **The digest covers a field declared `secret`.** A keyed MAC of a verifier or
+  a token's hash is neither a copy of it nor a way to test a guess at it without
+  the key, so a credential rewritten in the database past the servers is a row
+  that differs. A digest made before this left secrets out, says so in the
+  fields it lists (`digest_fields`), and is checked over what it covered.
+- **A digest is version 3**: a byte of flags after the version, bound into the
+  line's MAC, saying whether the write sealed the row (`audit.Sealing`). It is
+  82 bytes where it was 81, and 42 for a write that left no row. Versions 2 and
+  1 are still checked, and carried forward as version 3 saying they sealed
+  nothing.
+- **A field declared `personal` is covered by the row's seal**: a MAC of every
+  field of the row, kept beside it in `RowSeal` -- in the database alone, never
+  on the trail and never in the archive -- for as long as the row is. The
+  recorder writes it in the transaction of every write that leaves a row of a
+  kind that declares a field personal, kept for the commit with the trail: a
+  statement for every few hundred rows. Its key is derived from
+  `audit.digest.key`; there is nothing to configure. A personal field changed
+  past the servers is in `Rows.Differs`, and so is a row whose seal was taken
+  off; a seal of an earlier write is in `Rows.Forged`.
+- **`personal` no longer decides what a check covers.** It decides what the
+  trail keeps of a field, what the access record reads, and which kinds are
+  sealed.
+- **Rows from before seals are listed, and are no finding**: `Rows.Unsealed`,
+  the rows of a sealed kind whose newest line's write sealed nothing -- written
+  before this, or before the kind declared the field personal. `Rows.Ok()` is
+  true with them, and they are in `Rows.Digest`. Until they are sealed, a
+  personal field changed in one of them is not found. Seal them once, as an
+  operator who has looked: your `trail rows --accept` puts `Rows.Unsealed` on
+  the trail with `pd.Record`, beside what it records already, bound to the
+  digest the operator reviewed as before. So have the command accept when
+  `Unsealed` is not empty although nothing was found, and print how many there
+  are and that a check does not vouch for their personal fields yet.
+- **`pd.Record` seals what it records, and `pd.RecordErased` removes the seal**,
+  in the transaction they write the trail in. A row removed beneath the servers
+  without `RecordErased` keeps its seal, a MAC of what the person was, until a
+  forgetting or the tenant's purge takes it.
+- **`trail.Policy.Forget` blanks the seals of the rows it names**, whatever a
+  hold keeps of the trail, leaving one that says the person was forgotten
+  (`audit.Digest.Forgotten`, counted in `Forgotten.Seals`); a check counts such
+  a row in `Rows.Forgotten` and vouches for what its digest covers. The next
+  write through the servers seals the row again. Forget after the writes that
+  blank the row, as before. `PurgeTenant` and `RetireTenant` remove every seal
+  filed under the tenant (`TenantPurge.Seals`), and a pass carrying a line
+  forward carries its row's seal.
+- **`trail.Store` has `BlankSeals` and `PurgeSeals`**, which `pd gen` writes for
+  you; a store of your own adds them.
+- **Code that walks your tables leaves `rowseal` to the trail**, as it leaves
+  the trail's own: a purge of a tenant's rows leaves their seals to
+  `trail.Policy.PurgeTenant`, which takes them, and an export of the rows never
+  carries one -- a seal is a MAC of what people are, kept in the database
+  alone (`rowseal.Table`).
+- **`pd entity add` numbers an app's entity below 248.** payday numbers what it
+  adds now down from 255, where no app's entity is: `RowSeal` is 255. An app
+  whose own entity is 255 is refused by `pd gen` (two entities declare one
+  domain), which is how it finds out.
+
 ## The newest checkpoint is heard outside the database: witnesses
 
 **Applies if** you keep the trail's archive (`audit.archive`). Part of

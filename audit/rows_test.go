@@ -23,6 +23,11 @@ type table struct {
 	db       map[pdid.Id]audit.Recorded
 	archived map[pdid.Id]audit.Recorded
 
+	// sealed is whether the kind declares a field personal, and seals what
+	// each row's seal is.
+	sealed bool
+	seals  map[pdid.Id]audit.Sealed
+
 	// between is what happens to the table after the first pass, before the
 	// second reads it again.
 	between func(*table)
@@ -36,11 +41,12 @@ func newTable() *table {
 		rows:     map[pdid.Id]proto.Message{},
 		db:       map[pdid.Id]audit.Recorded{},
 		archived: map[pdid.Id]audit.Recorded{},
+		seals:    map[pdid.Id]audit.Sealed{},
 	}
 }
 
 func (t *table) page(ids []pdid.Id) audit.Page {
-	p := audit.Page{Recorded: map[pdid.Id]audit.Recorded{}}
+	p := audit.Page{Recorded: map[pdid.Id]audit.Recorded{}, Seals: map[pdid.Id]audit.Sealed{}}
 	for _, id := range ids {
 		row, ok := t.rows[id]
 		if !ok {
@@ -50,6 +56,9 @@ func (t *table) page(ids []pdid.Id) audit.Page {
 		p.Rows = append(p.Rows, audit.Live{Object: id, Row: row})
 		if r, ok := t.db[id]; ok {
 			p.Recorded[id] = r
+		}
+		if v, ok := t.seals[id]; ok {
+			p.Seals[id] = v
 		}
 	}
 
@@ -64,6 +73,7 @@ func sorted(ids []pdid.Id) []pdid.Id {
 func (t *table) kind() audit.Kind {
 	return audit.Kind{
 		Domain: thing,
+		Sealed: t.sealed,
 		After: func(_ context.Context, after pdid.Id) (audit.Page, error) {
 			ids := slices.DeleteFunc(sorted(slices.Collect(maps.Keys(t.rows))), func(v pdid.Id) bool {
 				return bytes.Compare(v[:], after[:]) <= 0
@@ -135,6 +145,24 @@ func recorded(x *require.Assertions, d *audit.Digest, id pdid.Id, v proto.Messag
 	x.NoError(err)
 
 	return audit.Recorded{Digest: sum, Fields: []uint32{1, 2}, Line: l}
+}
+
+// addSealed is a row of a sealed kind written through the servers: field 2 is
+// the personal one, which the digest leaves out and the seal covers. Its line
+// is in the database's trail, and its seal beside it.
+func (t *table) addSealed(x *require.Assertions, d *audit.Digest, n byte, seconds int64, nanos int32) pdid.Id {
+	t.sealed = true
+	id := object
+	id[15] = n
+	t.rows[id] = row(seconds, nanos)
+
+	l := written(0)
+	sum, seal, err := d.OfSealed(id, t.rows[id], []uint32{1}, []uint32{1, 2}, l)
+	x.NoError(err)
+	t.db[id] = audit.Recorded{Digest: sum, Fields: []uint32{1}, Line: l}
+	t.seals[id] = audit.Sealed{Sum: seal, Fields: []uint32{1, 2}}
+
+	return id
 }
 
 func TestEveryRowIsAccountedForInTheDatabaseOrTheArchive(t *testing.T) {
@@ -431,4 +459,156 @@ func TestWhatACheckFoundIsOneDigest(t *testing.T) {
 	x.NotEqual(looked.Digest(), audit.Rows{Differs: []pdid.Id{a}, NotOnTrail: []pdid.Id{b}}.Digest(), "a row found as another finding")
 	x.NotEqual(looked.Digest(), audit.Rows{}.Digest())
 	x.True(strings.HasPrefix(looked.Digest(), "sha256:"))
+}
+
+// TestAPersonalFieldChangedPastTheServersDiffers: the digest leaves a field
+// declared personal out, and the row's seal covers it -- so a row changed
+// there past the servers differs, as one changed anywhere else does
+// (payday#115). Before seals it passed every check.
+func TestAPersonalFieldChangedPastTheServersDiffers(t *testing.T) {
+	x := require.New(t)
+	d, err := audit.NewDigest(keyA)
+	x.NoError(err)
+
+	tb := newTable()
+	kept := tb.addSealed(x, d, 1, 10, 20)
+	changed := tb.addSealed(x, d, 2, 10, 20)
+	tb.rows[changed] = row(10, 21)
+
+	out := audit.Rows{}
+	x.NoError(audit.CheckKind(t.Context(), d, tb.kind(), tb.archive, &out))
+	x.Equal(1, out.Matches)
+	x.Equal([]pdid.Id{changed}, out.Differs)
+	x.NotContains(out.Differs, kept)
+	x.False(out.Ok())
+}
+
+// TestASealTakenOffIsAFinding: the newest line says its write sealed the row,
+// bound into its MAC, so a row with no seal beside it is a row somebody took
+// the seal off -- found, and not counted as a row from before seals.
+func TestASealTakenOffIsAFinding(t *testing.T) {
+	x := require.New(t)
+	d, err := audit.NewDigest(keyA)
+	x.NoError(err)
+
+	tb := newTable()
+	id := tb.addSealed(x, d, 1, 10, 20)
+	delete(tb.seals, id)
+
+	out := audit.Rows{}
+	x.NoError(audit.CheckKind(t.Context(), d, tb.kind(), tb.archive, &out))
+	x.Equal([]pdid.Id{id}, out.Differs)
+	x.Empty(out.Unsealed)
+
+	// Nor is a seal blanked, short of one that says the row was forgotten.
+	tb.seals[id] = audit.Sealed{Sum: []byte{}, Fields: []uint32{1, 2}}
+	out = audit.Rows{}
+	x.NoError(audit.CheckKind(t.Context(), d, tb.kind(), tb.archive, &out))
+	x.Equal([]pdid.Id{id}, out.Differs)
+}
+
+// TestASealOfAnotherWriteIsForged: a seal is of the write its newest line
+// records, so one kept from an earlier write -- put back with what the row
+// then was -- is not that line's.
+func TestASealOfAnotherWriteIsForged(t *testing.T) {
+	x := require.New(t)
+	d, err := audit.NewDigest(keyA)
+	x.NoError(err)
+
+	tb := newTable()
+	id := tb.addSealed(x, d, 1, 10, 20)
+	earlier := tb.seals[id]
+
+	// Written again, through the servers, and then the earlier seal put back.
+	l := written(0)
+	sum, seal, err := d.OfSealed(id, tb.rows[id], []uint32{1}, []uint32{1, 2}, l)
+	x.NoError(err)
+	tb.db[id] = audit.Recorded{Digest: sum, Fields: []uint32{1}, Line: l}
+	tb.seals[id] = audit.Sealed{Sum: seal, Fields: []uint32{1, 2}}
+
+	out := audit.Rows{}
+	x.NoError(audit.CheckKind(t.Context(), d, tb.kind(), tb.archive, &out))
+	x.Equal(1, out.Matches)
+
+	tb.seals[id] = earlier
+	out = audit.Rows{}
+	x.NoError(audit.CheckKind(t.Context(), d, tb.kind(), tb.archive, &out))
+	x.Equal([]pdid.Id{id}, out.Forged)
+}
+
+// TestARowFromBeforeSealsIsCountedAndListed: a row whose newest line was
+// written by a write that sealed nothing -- a build from before seals -- is
+// not a finding: its personal fields are vouched for by nothing yet, which is
+// what it is listed as, and the list is in what a check found as one digest,
+// so that the acceptance that seals the rows seals the ones reviewed.
+func TestARowFromBeforeSealsIsCountedAndListed(t *testing.T) {
+	x := require.New(t)
+	d, err := audit.NewDigest(keyA)
+	x.NoError(err)
+
+	tb := newTable()
+	tb.sealed = true
+	before, recorded := tb.add(x, d, 1, 10)
+	tb.db[before] = recorded
+	sealed := tb.addSealed(x, d, 2, 10, 20)
+
+	out := audit.Rows{}
+	x.NoError(audit.CheckKind(t.Context(), d, tb.kind(), tb.archive, &out))
+	x.Equal([]pdid.Id{before}, out.Unsealed)
+	x.Equal(1, out.Matches)
+	x.Equal(2, out.Read)
+	x.True(out.Ok(), "a row from before seals is no finding")
+	x.NotContains(out.Unsealed, sealed)
+
+	x.NotEqual(out.Digest(), audit.Rows{}.Digest(), "what is to be sealed is what was reviewed")
+	x.NotEqual(out.Digest(), audit.Rows{Unsealed: []pdid.Id{sealed}}.Digest())
+	x.NotEqual(out.Digest(), audit.Rows{Differs: []pdid.Id{before}}.Digest())
+}
+
+// TestAForgottenRowMatches: a row whose person was forgotten has a seal that
+// says so, and nothing of what they were: it matches on what its digest
+// covers, and is counted.
+func TestAForgottenRowMatches(t *testing.T) {
+	x := require.New(t)
+	d, err := audit.NewDigest(keyA)
+	x.NoError(err)
+
+	tb := newTable()
+	id := tb.addSealed(x, d, 1, 10, 20)
+	tb.seals[id] = audit.Sealed{Sum: d.Forgotten(id), Fields: []uint32{1, 2}}
+	tb.rows[id] = row(10, 0)
+
+	out := audit.Rows{}
+	x.NoError(audit.CheckKind(t.Context(), d, tb.kind(), tb.archive, &out))
+	x.True(out.Ok())
+	x.Equal(1, out.Matches)
+	x.Equal(1, out.Forgotten)
+
+	// And one somebody made to say so is not: the seal of another row's
+	// forgetting is that row's.
+	other := tb.addSealed(x, d, 2, 10, 20)
+	tb.seals[other] = audit.Sealed{Sum: d.Forgotten(id), Fields: []uint32{1, 2}}
+	out = audit.Rows{}
+	x.NoError(audit.CheckKind(t.Context(), d, tb.kind(), tb.archive, &out))
+	x.Equal([]pdid.Id{other}, out.Forged)
+}
+
+// TestASealUnderAKeyNotHeldIsAFinding: as a digest's is, and the key is named.
+func TestASealUnderAKeyNotHeldIsAFinding(t *testing.T) {
+	x := require.New(t)
+	a, err := audit.NewDigest(keyA)
+	x.NoError(err)
+	b, err := audit.NewDigest(keyB)
+	x.NoError(err)
+
+	tb := newTable()
+	id := tb.addSealed(x, b, 1, 10, 20)
+	_, seal, err := a.OfSealed(id, tb.rows[id], []uint32{1}, []uint32{1, 2}, tb.db[id].Line)
+	x.NoError(err)
+	tb.seals[id] = audit.Sealed{Sum: seal, Fields: []uint32{1, 2}}
+
+	out := audit.Rows{}
+	x.NoError(audit.CheckKind(t.Context(), b, tb.kind(), tb.archive, &out))
+	x.Equal([]pdid.Id{id}, out.KeyNotHeld)
+	x.Equal([]audit.Fingerprint{audit.FingerprintOf(keyA)}, out.Unheld)
 }

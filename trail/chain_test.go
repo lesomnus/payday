@@ -5,12 +5,14 @@ import (
 	"context"
 	"crypto"
 	"encoding/json"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -55,14 +57,17 @@ func rewrite(t *testing.T, p Policy, was stored, fn func(c *Checkpoint)) flob.Di
 	return m.Digest
 }
 
-// numbered is the checkpoint the store keeps under a number.
+// numbered is the checkpoint the store keeps under a number, whole.
 func numbered(t *testing.T, p Policy, k int) stored {
 	ch, err := p.readChain(t.Context())
 	require.NoError(t, err)
 	vs := ch.numbered(k)
 	require.Len(t, vs, 1)
 
-	return vs[0]
+	v, err := ch.whole(t.Context(), vs[0])
+	require.NoError(t, err)
+
+	return v
 }
 
 // TestEachCheckpointNamesTheOneBefore.
@@ -683,8 +688,69 @@ func TestACheckpointIsReadOnlyAsItsDigest(t *testing.T) {
 	x.NoError(err)
 	x.NoError(os.WriteFile(path(two.d), b, 0o640))
 
-	v, err := p.Verify(ctx, s, false)
+	// A full verification reads every checkpoint again, and a process that
+	// had not read it before reads it in any verification.
+	v, err := p.Verify(ctx, s, true)
 	x.NoError(err)
 	x.Equal([]string{"forged"}, kinds(v), "%v", v.Findings)
 	x.Contains(v.Findings[0].Note, "not its digest")
+
+	known.Clear()
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"forged"}, kinds(v), "%v", v.Findings)
+}
+
+// opening is a store that counts what it is asked to open.
+type opening struct {
+	flob.Store
+	n *atomic.Int64
+}
+
+func (o opening) Unwrap() flob.Store { return o.Store }
+
+func (o opening) Open(ctx context.Context, d flob.Digest) (io.ReadSeekCloser, flob.Info, error) {
+	o.n.Add(1)
+	return o.Store.Open(ctx, d)
+}
+
+// TestWhatAProcessReadIsNotReadAgain: a checkpoint the process read before is
+// had from memory -- an act, and a verification, ask the store for what it
+// lists and read only what is new -- and read again whole where its blobs are
+// asked for. A full verification reads every one again.
+func TestWhatAProcessReadIsNotReadAgain(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	n := &atomic.Int64{}
+	s, p := chained(t, 5, opening{flob.NewMemStores().Use("checkpoints"), n})
+
+	// The newest, which the last pass wrote and nothing read since, alone.
+	n.Store(0)
+	_, err := p.readChain(ctx)
+	x.NoError(err)
+	x.EqualValues(1, n.Load(), "checkpoints the process read before were read again")
+	n.Store(0)
+	_, err = p.readChain(ctx)
+	x.NoError(err)
+	x.Zero(n.Load(), "checkpoints the process read before were read again")
+
+	x.NoError(oneMore(t, s, p))
+	n.Store(0)
+	_, err = p.readChain(ctx)
+	x.NoError(err)
+	x.EqualValues(1, n.Load(), "more than what was new was read")
+
+	cs := []Checkpoint{}
+	x.NoError(p.ReadCheckpoints(ctx, func(c Checkpoint) error { cs = append(cs, c); return nil }))
+	x.Len(cs, 6)
+	for _, c := range cs {
+		x.Len(c.Blobs, c.Count, "checkpoint %d was answered without its blobs", c.K)
+	}
+
+	n.Store(0)
+	v, err := p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+	x.GreaterOrEqual(n.Load(), int64(6), "a full verification did not read every checkpoint again")
 }

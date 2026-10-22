@@ -112,6 +112,11 @@ type fakeStore struct {
 	// live is the things that are still rows, which is what a line is
 	// carried forward for.
 	live map[uuid.UUID]bool
+
+	// seals is the rows' seals, by what they are of, and sealedIn the tenant
+	// each was filed under.
+	seals    map[uuid.UUID][]byte
+	sealedIn map[uuid.UUID]uuid.UUID
 }
 
 var _ Store = (*fakeStore)(nil)
@@ -406,6 +411,43 @@ func (s *fakeStore) Carry(ctx context.Context, digest *audit.Digest, d pdid.Doma
 		r.digest = sum
 		s.rows = append(s.rows, r)
 		n++
+	}
+
+	return n, nil
+}
+
+func (s *fakeStore) BlankSeals(ctx context.Context, objects []pdid.Id, forgotten func(pdid.Id) []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	n := 0
+	for _, v := range objects {
+		if _, ok := s.seals[v.Uuid()]; !ok {
+			continue
+		}
+
+		n++
+		if forgotten == nil {
+			delete(s.seals, v.Uuid())
+			continue
+		}
+		s.seals[v.Uuid()] = forgotten(v)
+	}
+
+	return n, nil
+}
+
+func (s *fakeStore) PurgeSeals(ctx context.Context, tenant pdid.Id) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	n := 0
+	for k, t := range s.sealedIn {
+		if t == tenant.Uuid() {
+			delete(s.seals, k)
+			delete(s.sealedIn, k)
+			n++
+		}
 	}
 
 	return n, nil

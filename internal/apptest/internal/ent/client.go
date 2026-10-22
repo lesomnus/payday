@@ -23,6 +23,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
@@ -60,6 +61,8 @@ type Client struct {
 	Reading *ReadingClient
 	// Robot is the client for interacting with the Robot builders.
 	Robot *RobotClient
+	// RowSeal is the client for interacting with the RowSeal builders.
+	RowSeal *RowSealClient
 	// Seal is the client for interacting with the Seal builders.
 	Seal *SealClient
 	// Tally is the client for interacting with the Tally builders.
@@ -90,6 +93,7 @@ func (c *Client) init() {
 	c.Pulse = NewPulseClient(c.config)
 	c.Reading = NewReadingClient(c.config)
 	c.Robot = NewRobotClient(c.config)
+	c.RowSeal = NewRowSealClient(c.config)
 	c.Seal = NewSealClient(c.config)
 	c.Tally = NewTallyClient(c.config)
 	c.Tenant = NewTenantClient(c.config)
@@ -198,6 +202,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Pulse:    NewPulseClient(cfg),
 		Reading:  NewReadingClient(cfg),
 		Robot:    NewRobotClient(cfg),
+		RowSeal:  NewRowSealClient(cfg),
 		Seal:     NewSealClient(cfg),
 		Tally:    NewTallyClient(cfg),
 		Tenant:   NewTenantClient(cfg),
@@ -233,6 +238,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Pulse:    NewPulseClient(cfg),
 		Reading:  NewReadingClient(cfg),
 		Robot:    NewRobotClient(cfg),
+		RowSeal:  NewRowSealClient(cfg),
 		Seal:     NewSealClient(cfg),
 		Tally:    NewTallyClient(cfg),
 		Tenant:   NewTenantClient(cfg),
@@ -313,7 +319,8 @@ func (c *Client) InTx() bool {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Access, c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox,
-		c.Pairing, c.Pulse, c.Reading, c.Robot, c.Seal, c.Tally, c.Tenant, c.Thing,
+		c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal, c.Tally, c.Tenant,
+		c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -324,7 +331,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Access, c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox,
-		c.Pairing, c.Pulse, c.Reading, c.Robot, c.Seal, c.Tally, c.Tenant, c.Thing,
+		c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal, c.Tally, c.Tenant,
+		c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -357,6 +365,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Reading.mutate(ctx, m)
 	case *RobotMutation:
 		return c.Robot.mutate(ctx, m)
+	case *RowSealMutation:
+		return c.RowSeal.mutate(ctx, m)
 	case *SealMutation:
 		return c.Seal.mutate(ctx, m)
 	case *TallyMutation:
@@ -2126,6 +2136,139 @@ func (c *RobotClient) mutate(ctx context.Context, m *RobotMutation) (Value, erro
 	}
 }
 
+// RowSealClient is a client for the RowSeal schema.
+type RowSealClient struct {
+	config
+}
+
+// NewRowSealClient returns a client for the RowSeal from the given config.
+func NewRowSealClient(c config) *RowSealClient {
+	return &RowSealClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `rowseal.Hooks(f(g(h())))`.
+func (c *RowSealClient) Use(hooks ...Hook) {
+	c.hooks.RowSeal = append(c.hooks.RowSeal, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `rowseal.Intercept(f(g(h())))`.
+func (c *RowSealClient) Intercept(interceptors ...Interceptor) {
+	c.inters.RowSeal = append(c.inters.RowSeal, interceptors...)
+}
+
+// Create returns a builder for creating a RowSeal entity.
+func (c *RowSealClient) Create() *RowSealCreate {
+	mutation := newRowSealMutation(c.config, OpCreate)
+	return &RowSealCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of RowSeal entities.
+func (c *RowSealClient) CreateBulk(builders ...*RowSealCreate) *RowSealCreateBulk {
+	return &RowSealCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RowSealClient) MapCreateBulk(slice any, setFunc func(*RowSealCreate, int)) *RowSealCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RowSealCreateBulk{err: fmt.Errorf("calling to RowSealClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RowSealCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RowSealCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for RowSeal.
+func (c *RowSealClient) Update() *RowSealUpdate {
+	mutation := newRowSealMutation(c.config, OpUpdate)
+	return &RowSealUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RowSealClient) UpdateOne(_m *RowSeal) *RowSealUpdateOne {
+	mutation := newRowSealMutation(c.config, OpUpdateOne, withRowSeal(_m))
+	return &RowSealUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneId returns an update builder for the given id.
+func (c *RowSealClient) UpdateOneId(id uuid.UUID) *RowSealUpdateOne {
+	mutation := newRowSealMutation(c.config, OpUpdateOne, withRowSealId(id))
+	return &RowSealUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for RowSeal.
+func (c *RowSealClient) Delete() *RowSealDelete {
+	mutation := newRowSealMutation(c.config, OpDelete)
+	return &RowSealDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RowSealClient) DeleteOne(_m *RowSeal) *RowSealDeleteOne {
+	return c.DeleteOneId(_m.Id)
+}
+
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *RowSealClient) DeleteOneId(id uuid.UUID) *RowSealDeleteOne {
+	builder := c.Delete().Where(rowseal.Id(id))
+	builder.mutation.id = &id
+	builder.mutation.SetOp(OpDeleteOne)
+	return &RowSealDeleteOne{builder}
+}
+
+// Query returns a query builder for RowSeal.
+func (c *RowSealClient) Query() *RowSealQuery {
+	return &RowSealQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRowSeal},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a RowSeal entity by its id.
+func (c *RowSealClient) Get(ctx context.Context, id uuid.UUID) (*RowSeal, error) {
+	return c.Query().Where(rowseal.Id(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RowSealClient) GetX(ctx context.Context, id uuid.UUID) *RowSeal {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *RowSealClient) Hooks() []Hook {
+	return c.hooks.RowSeal
+}
+
+// Interceptors returns the client interceptors.
+func (c *RowSealClient) Interceptors() []Interceptor {
+	return c.inters.RowSeal
+}
+
+func (c *RowSealClient) mutate(ctx context.Context, m *RowSealMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RowSealCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RowSealUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RowSealUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RowSealDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown RowSeal mutation op: %q", m.Op())
+	}
+}
+
 // SealClient is a client for the Seal schema.
 type SealClient struct {
 	config
@@ -2678,10 +2821,10 @@ func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, erro
 type (
 	hooks struct {
 		Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse,
-		Reading, Robot, Seal, Tally, Tenant, Thing []ent.Hook
+		Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Hook
 	}
 	inters struct {
 		Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse,
-		Reading, Robot, Seal, Tally, Tenant, Thing []ent.Interceptor
+		Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Interceptor
 	}
 )

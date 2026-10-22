@@ -342,12 +342,15 @@ to correct and to erase a person -- is not a deployment's to opt out of.
 #### A digest of the row the write left
 
 With `audit.digest.key`, each row of the trail also keeps a keyed digest of the
-row its write left (`Audit.digest`, payday#102). It is HMAC-SHA256 of the row as
-`value` would hold it, with `personal` and `secret` cleared, over the fields the
-build that wrote it knew. Those fields are recorded beside it
-(`Audit.digest_fields`). The recorder makes it from the row the write handed
-over, so it costs no statement; an Erase hands none, and its row is read once,
-in its transaction -- the row as the erase stamped it, for one that left it.
+row its write left (`Audit.digest`, payday#102). It is HMAC-SHA256 of the row
+with every field declared `personal` cleared, over the fields the build that
+wrote it knew. Those fields are recorded beside it (`Audit.digest_fields`). A
+field declared `secret` is covered (payday#115): a keyed MAC of a verifier or a
+token's hash is neither a copy of it nor a way to test a guess at it without the
+key, and a credential rewritten in the database is the change most worth
+finding. The recorder makes it from the row the write handed over, so it costs
+no statement; an Erase hands none, and its row is read once, in its transaction
+-- the row as the erase stamped it, for one that left it.
 
 **A digest is bound to the line that keeps it** (payday#115). It is two MACs:
 one of the row, and one of the line over that -- the line's key, the moment it
@@ -374,6 +377,8 @@ rows, err := pd.Digests(ctx, db, contents.Digest, policy)
 // rows.NotOnTrail: rows nothing on the trail is about -- added past them.
 // rows.Missing: things the trail says are rows, that are not -- removed.
 // rows.Skipped: the kinds kept off the trail, with why.
+// rows.Unsealed: rows from before seals, listed and no finding (below).
+// rows.Forgotten: rows that match, whose person was forgotten.
 ```
 
 Every list is a finding, and `rows.Ok()` is none of them. A page of rows is read
@@ -402,8 +407,39 @@ row from before apart from one whose whole trail was made to look like it, which
 is the price of a deployment that had rows before it had a key: accept those
 once, and take `since` out.
 
-It does not see a field declared `personal`. A keyed hash of it would outlive
-the person's erasure for as long as the key does.
+**A personal field is the row's seal's.** The digest leaves a field declared
+`personal` out: it is kept on a line of the trail, a line is copied to the
+archive and kept for years after its row and its person are gone, and a keyed
+hash of somebody's address kept that long is something of them that outlives
+their erasure. A row of a kind that declares one is sealed instead (payday#115):
+a MAC of every field of it, the personal ones among them, kept beside the row in
+payday's `RowSeal` table -- in the database alone, never on the trail and never
+in the archive, for exactly as long as the row is. The recorder writes it in
+the transaction of every write that leaves the row, kept for the commit with
+the trail and written with it, a statement for every few hundred; a write that
+takes the row removes it, and so does `RecordErased`. Its key is derived from
+the digest key, so there is nothing to configure, and it rotates with it.
+
+The check reads it beside the row. A seal is of the write its newest line
+records, bound to that line, and the line's digest says, in flags bound into its
+MAC, that the write sealed the row. So a personal field changed past the
+servers is `rows.Differs`; so is a row whose seal was taken off; a seal put back
+from an earlier write is `rows.Forged`. A row whose newest line's write sealed
+nothing -- written before this, or before its kind declared the field personal
+-- is `rows.Unsealed`: listed, in `rows.Digest`, and no finding, since nothing
+can be said of what it was. An acceptance seals those (`pd.Record` seals what it
+records) once an operator has looked.
+
+**Forgetting blanks the seal.** `Policy.Forget` puts, in place of the seal of
+each row it names, one that says the person was forgotten and nothing of what
+they were (`audit.Digest.Forgotten`), whatever a hold keeps of the trail: a hold
+keeps the record of what happened, and a seal is no part of it. The row then
+matches on what its digest covers (`rows.Forgotten`), until its next write
+through the servers seals it again. A tenant leaving takes every seal filed
+under it, and a pass that carries a line forward carries its row's seal with it.
+
+So whether a field is personal decides what the trail keeps of it, what the
+access record reads, and which kinds are sealed -- not whether a check sees it.
 
 **What nothing accounts for is a finding.** A row somebody added past the
 servers is one the trail says nothing about, and a row somebody removed is a
@@ -677,8 +713,17 @@ the ones after it are compared with it, and the one before it no longer is.
 
 What a checkpoint per act costs is one more write per act — the manifest's
 blobs, signed, which a device is asked for once more — to a store that keeps
-every one, and `Verify` reads them all. An act handed one person to forget at a
-time takes one per person; handed everybody who is due, one.
+every one, and every act and every verification reads what the store lists. An
+act handed one person to forget at a time takes one per person; handed
+everybody who is due, one. A process keeps what it read of each — the chain's
+part, without the blobs, which it reads again where they are asked for — by
+digest, and asks the store only for what it lists and has not read: a blob is
+named by its digest and read only while its bytes are it, so what one digest
+was read as is what it is. One taken away is what the listing says. One
+changed in place, under a name the process read before, is found by a full
+verification, which reads every one again, and by any verification in a process
+that had not read it — `trail verify`, a process of its own, always; the
+serving process's own pass, until it restarts.
 
 That is what covers somebody who can write both the database and the archive.
 Their worth is where they are kept: `audit.checkpoints.dir`, or

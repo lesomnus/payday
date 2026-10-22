@@ -411,6 +411,19 @@ var (
 			},
 		},
 	}
+	// RowsealColumns holds the columns for the "rowseal" table.
+	RowsealColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+		{Name: "sum", Type: field.TypeBytes},
+		{Name: "fields", Type: field.TypeJson, Nullable: true},
+	}
+	// RowsealTable holds the schema information for the "rowseal" table.
+	RowsealTable = &schema.Table{
+		Name:       "rowseal",
+		Columns:    RowsealColumns,
+		PrimaryKey: []*schema.Column{RowsealColumns[0]},
+	}
 	// SealColumns holds the columns for the "seal" table.
 	SealColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -508,6 +521,7 @@ var (
 		PulseTable,
 		ReadingTable,
 		RobotTable,
+		RowsealTable,
 		SealTable,
 		TallyTable,
 		TenantTable,
@@ -561,6 +575,9 @@ func init() {
 	RobotTable.ForeignKeys[2].RefTable = CellTable
 	RobotTable.Annotation = &entsql.Annotation{
 		Table: "robot",
+	}
+	RowsealTable.Annotation = &entsql.Annotation{
+		Table: "rowseal",
 	}
 	SealTable.Annotation = &entsql.Annotation{
 		Table: "seal",
