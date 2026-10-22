@@ -171,6 +171,7 @@ func TestAWitnessThatDidNotHearIsToldAgain(t *testing.T) {
 	ks := []int{}
 	for _, h := range e.all() {
 		ks = append(ks, h.K)
+		x.True(verified(h.Key, h.Statement, h.Sig), "checkpoint %d was told again without the statement it was signed as", h.K)
 	}
 	x.Equal([]int{1, 2, 3}, ks)
 

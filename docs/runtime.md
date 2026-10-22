@@ -677,8 +677,17 @@ the ones after it are compared with it, and the one before it no longer is.
 
 What a checkpoint per act costs is one more write per act — the manifest's
 blobs, signed, which a device is asked for once more — to a store that keeps
-every one, and `Verify` reads them all. An act handed one person to forget at a
-time takes one per person; handed everybody who is due, one.
+every one, and every act and every verification reads what the store lists. An
+act handed one person to forget at a time takes one per person; handed
+everybody who is due, one. A process keeps what it read of each — the chain's
+part, without the blobs, which it reads again where they are asked for — by
+digest, and asks the store only for what it lists and has not read: a blob is
+named by its digest and read only while its bytes are it, so what one digest
+was read as is what it is. One taken away is what the listing says. One
+changed in place, under a name the process read before, is found by a full
+verification, which reads every one again, and by any verification in a process
+that had not read it — `trail verify`, a process of its own, always; the
+serving process's own pass, until it restarts.
 
 That is what covers somebody who can write both the database and the archive.
 Their worth is where they are kept: `audit.checkpoints.dir`, or
