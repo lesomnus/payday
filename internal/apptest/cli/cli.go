@@ -36,10 +36,12 @@ import (
 
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/pdcmd"
+	"github.com/lesomnus/payday/rename"
 	"github.com/lesomnus/payday/spin"
 
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 	entmigrate "github.com/lesomnus/payday/internal/apptest/internal/ent/migrate"
+	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
 // Cmd is this app's own command line: what payday and xli supply, plus
@@ -166,7 +168,16 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 // the migration engine, and `cmd` is what the sandbox imports. The page does
 // not migrate: it executes a script that is already the answer, which is what
 // `sandbox` is for.
+//
+// The indexes an earlier build made under another name are moved to this
+// build's first: a migration finds an index by its name, and one it does not
+// find it makes again, from every row, beside the old one, which it leaves --
+// it drops no index. See `rename`.
 func Migrate(ctx context.Context, s *cmd.Server) error {
+	if err := rename.Indexes(ctx, s.Db, s.Dialect, pd.IndexRenames); err != nil {
+		return err
+	}
+
 	return entmigrate.NewSchema(s.Drv).Create(ctx)
 }
 

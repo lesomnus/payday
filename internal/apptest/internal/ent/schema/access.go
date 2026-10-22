@@ -42,9 +42,12 @@ func (Access) Fields() []ent.Field {
 
 func (Access) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("tenant_id", "date_created"),
-		index.Fields("actor_tenant_id", "date_created"),
-		index.Fields("actor_id", "date_created"),
+		index.Fields("tenant_id", "date_created").
+			StorageKey("access_access"),
+		index.Fields("actor_tenant_id", "date_created").
+			StorageKey("access_by_actor_tenant"),
+		index.Fields("actor_id", "date_created").
+			StorageKey("access_by_actor"),
 	}
 }
 

@@ -207,6 +207,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 
 	pdgen.EmitPayday(out, o.Payday)
 	pdgen.EmitDomains(out, s)
+	pdgen.EmitIndexRenames(out, s)
 	pdgen.EmitMinter(out, s, paths)
 	pdgen.EmitWall(out, s, paths)
 	pdgen.EmitGrouped(out, s, paths)

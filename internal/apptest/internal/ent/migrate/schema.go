@@ -32,17 +32,17 @@ var (
 		PrimaryKey: []*schema.Column{AccessColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "access_tenant_id_date_created",
+				Name:    "access_access",
 				Unique:  false,
 				Columns: []*schema.Column{AccessColumns[1], AccessColumns[7]},
 			},
 			{
-				Name:    "access_actor_tenant_id_date_created",
+				Name:    "access_by_actor_tenant",
 				Unique:  false,
 				Columns: []*schema.Column{AccessColumns[8], AccessColumns[7]},
 			},
 			{
-				Name:    "access_actor_id_date_created",
+				Name:    "access_by_actor",
 				Unique:  false,
 				Columns: []*schema.Column{AccessColumns[2], AccessColumns[7]},
 			},
@@ -70,7 +70,7 @@ var (
 		PrimaryKey: []*schema.Column{ArchivedColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "archived_namespace_digest",
+				Name:    "archived_blob",
 				Unique:  false,
 				Columns: []*schema.Column{ArchivedColumns[2], ArchivedColumns[3]},
 			},
@@ -106,37 +106,37 @@ var (
 		PrimaryKey: []*schema.Column{AuditColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "audit_object_id",
+				Name:    "audit_object",
 				Unique:  false,
 				Columns: []*schema.Column{AuditColumns[5]},
 			},
 			{
-				Name:    "audit_tenant_id_date_created",
+				Name:    "audit_trail",
 				Unique:  false,
 				Columns: []*schema.Column{AuditColumns[1], AuditColumns[7]},
 			},
 			{
-				Name:    "audit_actor_tenant_id_date_created",
+				Name:    "audit_by_actor_tenant",
 				Unique:  false,
 				Columns: []*schema.Column{AuditColumns[8], AuditColumns[7]},
 			},
 			{
-				Name:    "audit_counterpart_tenant_id_date_created",
+				Name:    "audit_by_counterpart",
 				Unique:  false,
 				Columns: []*schema.Column{AuditColumns[10], AuditColumns[7]},
 			},
 			{
-				Name:    "audit_domain_date_created",
+				Name:    "audit_by_domain",
 				Unique:  false,
 				Columns: []*schema.Column{AuditColumns[11], AuditColumns[7]},
 			},
 			{
-				Name:    "audit_tenant_id_domain_date_created",
+				Name:    "audit_by_tenant_domain",
 				Unique:  false,
 				Columns: []*schema.Column{AuditColumns[1], AuditColumns[11], AuditColumns[7]},
 			},
 			{
-				Name:    "audit_actor_id_date_created",
+				Name:    "audit_by_actor",
 				Unique:  false,
 				Columns: []*schema.Column{AuditColumns[2], AuditColumns[7]},
 			},
@@ -222,7 +222,7 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "holder_alias_tenant_id",
+				Name:    "holder_slug",
 				Unique:  true,
 				Columns: []*schema.Column{HolderColumns[1], HolderColumns[11]},
 				Annotation: &entsql.IndexAnnotation{
@@ -230,7 +230,7 @@ var (
 				},
 			},
 			{
-				Name:    "holder_tenant_id_date_created_id",
+				Name:    "holder_page",
 				Unique:  false,
 				Columns: []*schema.Column{HolderColumns[11], HolderColumns[7], HolderColumns[0]},
 			},
@@ -276,7 +276,7 @@ var (
 		PrimaryKey: []*schema.Column{OutboxColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "outbox_id",
+				Name:    "outbox_queue",
 				Unique:  false,
 				Columns: []*schema.Column{OutboxColumns[0]},
 			},
@@ -345,7 +345,7 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "reading_tenant_id_date_created",
+				Name:    "reading_wall",
 				Unique:  false,
 				Columns: []*schema.Column{ReadingColumns[1], ReadingColumns[3]},
 			},
@@ -392,12 +392,12 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "robot_tenant_id_date_created_id",
+				Name:    "robot_page",
 				Unique:  false,
 				Columns: []*schema.Column{RobotColumns[8], RobotColumns[6], RobotColumns[0]},
 			},
 			{
-				Name:    "robot_alias_tenant_id",
+				Name:    "robot_slug",
 				Unique:  true,
 				Columns: []*schema.Column{RobotColumns[1], RobotColumns[8]},
 				Annotation: &entsql.IndexAnnotation{
@@ -405,7 +405,7 @@ var (
 				},
 			},
 			{
-				Name:    "robot_tenant_id_alias_id",
+				Name:    "robot_by_alias",
 				Unique:  false,
 				Columns: []*schema.Column{RobotColumns[8], RobotColumns[1], RobotColumns[0]},
 			},
@@ -467,7 +467,7 @@ var (
 		PrimaryKey: []*schema.Column{TenantColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "tenant_date_created_id",
+				Name:    "tenant_page",
 				Unique:  false,
 				Columns: []*schema.Column{TenantColumns[6], TenantColumns[0]},
 			},
@@ -488,7 +488,7 @@ var (
 		PrimaryKey: []*schema.Column{ThingColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "thing_date_created_id",
+				Name:    "thing_page",
 				Unique:  false,
 				Columns: []*schema.Column{ThingColumns[4], ThingColumns[0]},
 			},

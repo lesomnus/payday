@@ -35,7 +35,8 @@ func (Thing) Fields() []ent.Field {
 
 func (Thing) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("date_created", "id"),
+		index.Fields("date_created", "id").
+			StorageKey("thing_page"),
 	}
 }
 

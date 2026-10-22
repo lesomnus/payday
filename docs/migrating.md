@@ -3,6 +3,37 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An index is stored under the name it declares, and `rename.Indexes` moves it there
+
+**Applies if** you generate with `pd gen` and migrate a database an earlier
+build made: every index your schema names -- and payday's own, `Audit`,
+`Access`, `Outbox`, `Holder`, `Tenant` among them -- is stored as
+`<table>_<name>`, `robot_page`, where it was stored under ent's name for its
+columns, `robot_tenant_id_date_created_id`
+(protobuf-orm/protoc-gen-orm-ent#15).
+
+- **Call `rename.Indexes` in your `Migrate`, before `Create`**, with what `pd
+  gen` writes for your schema, `pd.IndexRenames` -- `pd new`'s `Migrate` does:
+
+  ```go
+  if err := rename.Indexes(ctx, s.Db, s.Dialect, pd.IndexRenames); err != nil {
+  	return err
+  }
+  return entmigrate.NewSchema(s.Drv).Create(ctx)
+  ```
+
+  A migration finds an index by name, so without it the first one made every
+  index again from every row, holding each table against writes while it did,
+  and left the old one beside it, since it drops no index. With it, PostgreSQL
+  renames each one, which is a change to the catalog and builds nothing;
+  SQLite renames no index, so the old one is dropped and `Create` makes the new
+  one. An index already made under the new name has the old one dropped
+  instead. On a database this build made, or one already renamed, it does
+  nothing.
+- **And then a reordered index needs no list.** It is found under its name and
+  made again where it stands, so a list of replaced names such as rove's and
+  roster's `Replaced` has nothing more to say once every deployment has
+  migrated past the build that replaced them; delete it then.
 ## A checkpoint nobody vouches for decides nothing
 
 **Applies if** you keep the trail's archive (`audit.archive`, or
