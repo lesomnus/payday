@@ -31,9 +31,9 @@ import (
 var digestKey = "base64:" + base64.StdEncoding.EncodeToString([]byte("a key of thirty-two bytes, or so"))
 
 // rowDigest is the length of a digest of the row a write left, bound to its
-// line (payday#115): a version byte, and a fingerprint and a MAC each for the
-// line and for the row.
-const rowDigest = 1 + 2*(8+32)
+// line (payday#115): a version byte and a byte of flags, and a fingerprint and
+// a MAC each for the line and for the row.
+const rowDigest = 2 + 2*(8+32)
 
 // digesting is the app with a digest key, and that key as a check reads it.
 func digesting(t *testing.T) (*built, context.Context, *audit.Digest) {
@@ -53,23 +53,33 @@ func digesting(t *testing.T) (*built, context.Context, *audit.Digest) {
 	return b, ctx, cs.Digest
 }
 
-// TestEachRowOfTheTrailKeepsADigestOfTheRowItsWriteLeft: a byte of version, the
-// key's fingerprint and the HMAC, over every field but the ones the robot
-// declares secret and personal -- and a write that changed the row leaves
-// another.
+// TestEachRowOfTheTrailKeepsADigestOfTheRowItsWriteLeft: a byte of version,
+// one of flags, the key's fingerprint and the HMAC, over every field but the
+// ones the robot declares personal -- its secret among them (payday#115) --
+// and a write that changed the row leaves another. The robot declares a field
+// personal, so each write sealed the row, and says so.
 func TestEachRowOfTheTrailKeepsADigestOfTheRowItsWriteLeft(t *testing.T) {
 	x := require.New(t)
 	b, ctx, d := digesting(t)
 
-	_, rows := b.kept(t, ctx)
+	v, rows := b.kept(t, ctx)
 	for _, row := range rows {
 		x.Len(row.Digest, rowDigest)
 		x.Equal(audit.DigestVersion, row.Digest[0])
+		x.True(audit.Sealing(row.Digest), "the write sealed the row")
 		x.Contains(row.DigestFields, uint32(4), "the alias is the robot's")
-		x.NotContains(row.DigestFields, uint32(8), "the secret is nobody's to read")
+		x.Contains(row.DigestFields, uint32(8), "a keyed MAC of the secret is no copy of it, and no way to test a guess at it")
 		x.NotContains(row.DigestFields, uint32(32), "the keeper is a person's")
 	}
 	x.NotEqual(rows[0].Digest, rows[1].Digest, "the Patch left another row")
+
+	k, err := entuuid.FromBytes(v.GetId())
+	x.NoError(err)
+	seal, err := b.Ent.RowSeal.Get(ctx, k)
+	x.NoError(err, "a robot declares a field personal, and nothing sealed it")
+	x.Equal(audit.SealVersion, seal.Sum[0])
+	x.Contains(seal.Fields, uint32(32), "the seal covers the keeper")
+	x.Equal(b.Tenant.Uuid(), seal.TenantId, "filed where its line is")
 
 	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
 	x.NoError(err)
@@ -106,10 +116,12 @@ func TestARowChangedPastTheServersDiffers(t *testing.T) {
 	x.True(got.Ok(), "a write the trail recorded is the row again: %v", got.Differs)
 }
 
-// TestAPersonalFieldIsOutsideTheDigest: the keeper changed in the database is
-// not found, and that is the trade. A keyed hash of somebody's address would
-// outlive their erasure for as long as the key does.
-func TestAPersonalFieldIsOutsideTheDigest(t *testing.T) {
+// TestAPersonalFieldChangedPastTheServersIsFoundByTheSeal: the keeper is
+// outside the trail's digest -- a keyed hash of somebody's address on a line
+// would outlive their erasure for as long as the line does -- and inside the
+// row's seal, which lives as long as the row: so the keeper changed in the
+// database is found (payday#115), where before it passed every check.
+func TestAPersonalFieldChangedPastTheServersIsFoundByTheSeal(t *testing.T) {
 	x := require.New(t)
 	b, ctx, d := digesting(t)
 
@@ -120,7 +132,51 @@ func TestAPersonalFieldIsOutsideTheDigest(t *testing.T) {
 
 	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
 	x.NoError(err)
-	x.True(got.Ok())
+	x.Equal([]pdid.Id{pdid.Id(k)}, got.Differs)
+
+	// And the seal taken off is as much a finding: the line says its write
+	// sealed the row.
+	_, err = b.Ungated.Robot().Patch(ctx, app.RobotPatchRequest_builder{
+		Ref:              app.RobotRef_builder{Id: v.GetId()}.Build(),
+		Keeper:           z.Ptr("somebody-else@example.com"),
+		DateUpdatedForce: z.Ptr(true),
+	}.Build())
+	x.NoError(err)
+	got, err = pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.True(got.Ok(), "a write the trail recorded is the row again: %+v", got)
+
+	x.NoError(b.Ent.RowSeal.DeleteOneId(k).Exec(ctx))
+	got, err = pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.Equal([]pdid.Id{pdid.Id(k)}, got.Differs)
+}
+
+// TestASecretChangedPastTheServersDiffers: the trail's digest covers a field
+// declared secret (payday#115), so a credential somebody rewrote in the
+// database is found, as any other field is. Of a seal, which declares a secret
+// and no field personal: nothing but the digest vouches for it.
+func TestASecretChangedPastTheServersDiffers(t *testing.T) {
+	x := require.New(t)
+	b, ctx, d := digesting(t)
+
+	v, err := b.Ungated.Seal().Add(ctx, app.SealAddRequest_builder{Alias: "door", Secret: []byte("the verifier")}.Build())
+	x.NoError(err)
+	k, err := entuuid.FromBytes(v.GetId())
+	x.NoError(err)
+	rows := b.trailOf(t, ctx, v.GetId())
+	x.Len(rows, 1)
+	x.Contains(rows[0].DigestFields, uint32(8), "the secret is covered")
+	x.False(audit.Sealing(rows[0].Digest), "nothing of it is personal, so it is not sealed")
+
+	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.True(got.Ok(), "%+v", got)
+
+	x.NoError(b.Ent.Seal.UpdateOneId(k).SetSecret([]byte("somebody else's")).Exec(ctx))
+	got, err = pd.Digests(ctx, b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.Equal([]pdid.Id{pdid.Id(k)}, got.Differs)
 }
 
 // TestRowsMadeManyAtATimeAreDigestedToo: an AddMany's rows of the trail are
@@ -392,7 +448,7 @@ func TestAKindTheAppRecordsIsChecked(t *testing.T) {
 	rows := b.trailOf(t, ctx, id.Bytes())
 	x.Len(rows, 1)
 	x.Equal(b.Tenant.Uuid(), rows[0].TenantId, "filed under the row's own tenant")
-	x.NotContains(rows[0].DigestFields, uint32(9), "the token is a secret")
+	x.Contains(rows[0].DigestFields, uint32(9), "the token is a secret, and a keyed MAC of it is no copy of it")
 }
 
 // TestAKindKeptOffTheTrailIsNotRead: a pulse says its writes are kept off the
@@ -620,6 +676,14 @@ func TestARowNobodyWroteSinceItsWindowIsCarriedForward(t *testing.T) {
 		rows := b.trailOf(t, ctx, v.GetId())
 		x.Len(rows, 1)
 		x.Equal(trail.CarriedAction, rows[0].Action)
+
+		// And the row's seal went with its line (payday#115): bound to the
+		// new one, it vouches for the keeper still.
+		x.NoError(b.Ent.Robot.UpdateOneId(k).SetKeeper("somebody-else@example.com").Exec(ctx))
+		got, err = pd.Digests(ctx, b.Ent, d, p)
+		x.NoError(err)
+		x.Equal([]pdid.Id{pdid.Id(k)}, got.Differs, "the seal was not carried with the line")
+		x.NoError(b.Ent.Robot.UpdateOneId(k).SetKeeper(keeperAfter).Exec(ctx))
 
 		x.NoError(b.Ent.Robot.UpdateOneId(k).SetAlias("arm-forged").Exec(ctx))
 		got, err = pd.Digests(ctx, b.Ent, d, p)

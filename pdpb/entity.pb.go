@@ -43,6 +43,9 @@ const (
 	// The access record: who read or wrote whose personal data, from where
 	// (payday#111). See the `access` package.
 	Own_OWN_ACCESS Own = 6
+	// A row's seal: the MAC of a row whose kind declares a field personal,
+	// kept beside it for as long as it is (payday#115). See `audit.Digest.Seal`.
+	Own_OWN_ROW_SEAL Own = 7
 )
 
 // Enum value maps for Own.
@@ -55,6 +58,7 @@ var (
 		4: "OWN_OUTBOX",
 		5: "OWN_ARCHIVED",
 		6: "OWN_ACCESS",
+		7: "OWN_ROW_SEAL",
 	}
 	Own_value = map[string]int32{
 		"OWN_UNSPECIFIED": 0,
@@ -64,6 +68,7 @@ var (
 		"OWN_OUTBOX":      4,
 		"OWN_ARCHIVED":    5,
 		"OWN_ACCESS":      6,
+		"OWN_ROW_SEAL":    7,
 	}
 )
 
@@ -2024,7 +2029,7 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
 	"\astamped\x18\x02 \x01(\bR\astamped\x12!\n" +
 	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonalJ\x04\b\x04\x10\x05R\n" +
-	"impersonal*{\n" +
+	"impersonal*\x8d\x01\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -2036,7 +2041,8 @@ const file_payday_entity_proto_rawDesc = "" +
 	"OWN_OUTBOX\x10\x04\x12\x10\n" +
 	"\fOWN_ARCHIVED\x10\x05\x12\x0e\n" +
 	"\n" +
-	"OWN_ACCESS\x10\x06B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"OWN_ACCESS\x10\x06\x12\x10\n" +
+	"\fOWN_ROW_SEAL\x10\aB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 14)

@@ -36,6 +36,8 @@ type Tx struct {
 	Reading *ReadingClient
 	// Robot is the client for interacting with the Robot builders.
 	Robot *RobotClient
+	// RowSeal is the client for interacting with the RowSeal builders.
+	RowSeal *RowSealClient
 	// Seal is the client for interacting with the Seal builders.
 	Seal *SealClient
 	// Tally is the client for interacting with the Tally builders.
@@ -187,6 +189,7 @@ func (tx *Tx) init() {
 	tx.Pulse = NewPulseClient(tx.config)
 	tx.Reading = NewReadingClient(tx.config)
 	tx.Robot = NewRobotClient(tx.config)
+	tx.RowSeal = NewRowSealClient(tx.config)
 	tx.Seal = NewSealClient(tx.config)
 	tx.Tally = NewTallyClient(tx.config)
 	tx.Tenant = NewTenantClient(tx.config)

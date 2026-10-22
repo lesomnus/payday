@@ -94,9 +94,11 @@ func emitDigests(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	g.P("}")
 	g.P("")
 
+	sealing := s.Has(pdpb.Own_OWN_ROW_SEAL)
 	for _, v := range kinds {
 		e := v.GoName()
 		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		sealed := sealing && v.Sealed()
 
 		g.P("// checked", e, " is what a check of the rows reads of the ", v.Name, " kind.")
 		g.P("func checked", e, "(db *", p.Ent.Ident("Client"), ") ", pkgAudit.Ident("Kind"), " {")
@@ -109,7 +111,18 @@ func emitDigests(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		g.P("			}")
 		g.P("")
 		g.P("			recorded, err := newestDigests(ctx, db, objects(rows))")
-		g.P("			out = ", pkgAudit.Ident("Page"), "{Rows: rows, Recorded: recorded}")
+		if sealed {
+			// And the seals beside them, at the same moment: a write between the
+			// reads would be a seal of another line than the one read.
+			g.P("			if err != nil {")
+			g.P("				return err")
+			g.P("			}")
+			g.P("")
+			g.P("			seals, err := sealsOf(ctx, db, objects(rows))")
+			g.P("			out = ", pkgAudit.Ident("Page"), "{Rows: rows, Recorded: recorded, Seals: seals}")
+		} else {
+			g.P("			out = ", pkgAudit.Ident("Page"), "{Rows: rows, Recorded: recorded}")
+		}
 		g.P("			return err")
 		g.P("		})")
 		g.P("")
@@ -118,6 +131,9 @@ func emitDigests(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		g.P("")
 		g.P("	return ", pkgAudit.Ident("Kind"), "{")
 		g.P("		Domain: ", e, "Domain,")
+		if sealed {
+			g.P("		Sealed: true,")
+		}
 		g.P("		After: func(ctx ", pkgCtx.Ident("Context"), ", after ", pkgPdid.Ident("Id"), ") (", pkgAudit.Ident("Page"), ", error) {")
 		g.P("			return read(ctx, ", entPkg.Ident("IdGT"), "(", pkgUuid.Ident("UUID"), "(after)))")
 		g.P("		},")
@@ -504,6 +520,9 @@ func emitRecord(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	if keepsTrail(s) {
 		g.P("	qs := make([]*", p.Ent.Ident(a.GoName()+"Create"), ", 0, len(rows))")
 	}
+	g.P("	// And the seal of each row of a sealed kind, as its write would leave it:")
+	g.P("	// written over the one there is, or removed with the row.")
+	g.P("	seals := make([]*rowSeal, 0, len(rows))")
 	g.P("	for _, v := range rows {")
 	g.P("		w, err := ", pkgAudit.Ident("Of"), "(ctx, action, v.Object, nil)")
 	g.P("		if err != nil {")
@@ -511,7 +530,7 @@ func emitRecord(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	g.P("		}")
 	g.P("")
 	g.P("		at := line(s, action)")
-	g.P("		digest, covered, err := digested(content.Digest, v.Object, v.Row, at)")
+	g.P("		digest, covered, sealing, err := digested(content.Digest, v.Object, v.Row, at)")
 	g.P("		if err != nil {")
 	g.P("			return ", pkgFmt.Ident("Errorf"), "(\"the trail of %s: %w\", action, err)")
 	g.P("		}")
@@ -525,6 +544,7 @@ func emitRecord(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	g.P("		if tenant == ", pkgUuid.Ident("Nil"), "() {")
 	g.P("			tenant = ", pkgUuid.Ident("UUID"), "(w.Tenant)")
 	g.P("		}")
+	g.P("		seals = append(seals, sealing.in(tenant))")
 	g.P("		domain := uint32(v.Object.Domain())")
 	g.P("")
 	if keepsTrail(s) {
@@ -555,7 +575,7 @@ func emitRecord(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 		g.P("		}")
 		g.P("	}")
 		g.P("")
-		g.P("	return nil")
+		g.P("	return keepSeals(ctx, db, seals...)")
 		g.P("}")
 		g.P("")
 	} else {
@@ -584,7 +604,7 @@ func emitRecord(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 		g.P("		}")
 		g.P("	}")
 		g.P("")
-		g.P("	return nil")
+		g.P("	return keepSeals(ctx, db, seals...)")
 		g.P("}")
 		g.P("")
 	}
@@ -607,6 +627,7 @@ func emitCarry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 
 	a := s.Own(pdpb.Own_OWN_AUDIT)
 	trailPkg := p.Ent + "/" + protogen.GoImportPath(a.EntPkg())
+	sealing := s.Has(pdpb.Own_OWN_ROW_SEAL)
 
 	g.P("func (s trailStore) Carry(ctx ", pkgCtx.Ident("Context"), ", digest *", pkgAudit.Ident("Digest"), ", d ", pkgPdid.Ident("Domain"),
 		", vs []", pkgTrail.Ident("Carried"), ") (int, error) {")
@@ -656,12 +677,23 @@ func emitCarry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	if keepsTrail(s) {
 		g.P("		qs := []*", p.Ent.Ident(a.GoName()+"Create"), "{}")
 	}
+	if sealing {
+		g.P("		// The seals of the rows carried for, which go with their lines.")
+		g.P("		rebound := map[", pkgPdid.Ident("Id"), "]", pkgAudit.Ident("Line"), "{}")
+		g.P("		tenants := map[", pkgPdid.Ident("Id"), "]", pkgUuid.Ident("UUID"), "{}")
+	}
 	g.P("		for _, v := range page {")
 	g.P("			if !there[v.Object] {")
 	g.P("				continue")
 	g.P("			}")
 	g.P("")
 	g.P("			at := line(srv, ", pkgTrail.Ident("CarriedAction"), ")")
+	if sealing {
+		g.P("			if isSealed(v.Object) {")
+		g.P("				rebound[v.Object] = at")
+		g.P("				tenants[v.Object] = v.Tenant.Uuid()")
+		g.P("			}")
+	}
 	g.P("			sum, err := digest.Carry(v.Sum, v.Object, at)")
 	g.P("			if err != nil {")
 	g.P("				return n, ", pkgFmt.Ident("Errorf"), "(\"carry %s forward: %w\", v.Object, err)")
@@ -691,6 +723,11 @@ func emitCarry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 		g.P("			}")
 		g.P("			n += len(vs)")
 		g.P("		}")
+		if sealing {
+			g.P("		if err := carrySeals(ctx, s.db, digest, rebound, tenants); err != nil {")
+			g.P("			return n, err")
+			g.P("		}")
+		}
 	} else {
 		g.P("			if _, err := srv.", a.GoName(), "().Add(ctx, ", root.Ident(a.GoName()+"AddRequest_builder"), "{")
 		g.P("				Id:            at.Id[:],")
@@ -712,6 +749,11 @@ func emitCarry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 		g.P("			}")
 		g.P("			n++")
 		g.P("		}")
+		if sealing {
+			g.P("		if err := carrySeals(ctx, s.db, digest, rebound, tenants); err != nil {")
+			g.P("			return n, err")
+			g.P("		}")
+		}
 	}
 	g.P("	}")
 	g.P("")

@@ -39,7 +39,7 @@ func TestTheRecorderKeepsOnlyATrailItCanWriteWhole(t *testing.T) {
 	}
 
 	own := ownAll(t)
-	if out := emit(t, own); !strings.Contains(out, "return keptTrailOf(k, s.Store.Db).add(ctx, q)") {
+	if out := emit(t, own); !strings.Contains(out, "keptTrailOf(k, s.Store.Db).add(ctx, q)") {
 		t.Error("payday's own trail is written a statement a row")
 	}
 

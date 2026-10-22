@@ -404,6 +404,14 @@ the patch and in the row (#92). The row is where a person is corrected and
 erased, and the trail is the copy nothing rewrites, so their values have one
 home.
 
+It is also what the trail's keyed digest leaves out, for the same reason, and
+what the row's **seal** covers instead (payday#115): a MAC of the row, kept
+beside it in the database alone for as long as the row is, and blanked when the
+person is forgotten. So a personal field changed past the servers is found by a
+check of the rows, as any other field is. Declaring a field personal does not
+take it out of what a check sees; it decides what the trail keeps, what the
+access record reads, and that the kind is sealed.
+
 What it is for is a value that identifies or describes somebody — what they are
 called, how they are reached, what another system calls them, a picture, what
 is written about them. Not what they may do or where they stand: a role, a

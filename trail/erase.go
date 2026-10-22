@@ -307,6 +307,11 @@ type Forgotten struct {
 	// be erased again when it lifts, and this is the list of whose holds to
 	// watch for.
 	Held Held
+
+	// Seals is the rows' seals it blanked (payday#115): a seal is a MAC of
+	// what the person was, and goes whatever a hold keeps of the trail -- a
+	// hold keeps the record of what happened, and a seal is no part of it.
+	Seals int
 }
 
 // Forget blanks the contents of every row about these objects, in the database
@@ -427,9 +432,27 @@ func (x *pass) blankAbout(ctx context.Context, s Store, objects []pdid.Id, out *
 			return err
 		}
 		if len(vs) < Batch {
-			return nil
+			break
 		}
 	}
+
+	// And the rows' seals, in the same turn: a pass carrying a line forward
+	// carries its row's seal, and one doing so beside this would write back
+	// the seal this blanked.
+	n, err := s.BlankSeals(held, objects, x.forgotten())
+	out.Seals += n
+
+	return err
+}
+
+// forgotten is what a forgotten row's seal is replaced with: a seal that says
+// so, under the policy's digest key -- or nothing, for a policy with none.
+func (x *pass) forgotten() func(pdid.Id) []byte {
+	if x.p.Digest == nil {
+		return nil
+	}
+
+	return x.p.Digest.Forgotten
 }
 
 // forget is the archive's half of [Policy.Forget], and answers how many rows
@@ -535,6 +558,10 @@ type TenantPurge struct {
 	// Keys is the keys its rows were sealed with, destroyed before anything
 	// else; see [Keys].
 	Keys int
+
+	// Seals is the seals of its rows that went with it (payday#115): a seal
+	// is of a live row, and the tenant's rows are not. Not counted by a plan.
+	Seals int
 
 	// Kept is what a retirement left for the passes, by kind: the rows of the
 	// database and of the archive that a floor of the deployment's is still on
@@ -695,6 +722,13 @@ func (p Policy) leave(ctx context.Context, s Store, tenant pdid.Id, dry bool, re
 	if out.kept() == 0 {
 		out.Until = time.Time{}
 	}
+	if !dry {
+		n, err := x.purgeSeals(ctx, tenant)
+		out.Seals += n
+		if err != nil {
+			return out, errors.Join(left.err, err)
+		}
+	}
 
 	if dry {
 		if keeps != nil && out.kept() == 0 {
@@ -737,6 +771,18 @@ func (p Policy) leave(ctx context.Context, s Store, tenant pdid.Id, dry bool, re
 	}
 
 	return out, errors.Join(left.err, end, x.r.write(ctx, x.p.Archive))
+}
+
+// purgeSeals removes the seals of a tenant's rows, in the trail's turn: a
+// pass carrying a line of one of them forward would write its seal back.
+func (x *pass) purgeSeals(ctx context.Context, tenant pdid.Id) (int, error) {
+	held, give, err := x.turn(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer give()
+
+	return x.s.PurgeSeals(held, tenant)
 }
 
 // spared is what a retirement kept, counted by where.

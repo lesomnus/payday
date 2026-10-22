@@ -23,6 +23,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
@@ -51,6 +52,7 @@ const (
 	TypePulse    = "Pulse"
 	TypeReading  = "Reading"
 	TypeRobot    = "Robot"
+	TypeRowSeal  = "RowSeal"
 	TypeSeal     = "Seal"
 	TypeTally    = "Tally"
 	TypeTenant   = "Tenant"
@@ -3110,6 +3112,183 @@ func (m *RobotMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldCellId(ctx)
 	}
 	return nil, fmt.Errorf("unknown Robot field %s", name)
+}
+
+// RowSealMutation represents an operation that mutates the RowSeal nodes in the graph.
+type RowSealMutation struct {
+	rowseal.Mutation
+	config
+	id       *uuid.UUID
+	done     bool
+	oldValue func(context.Context) (*RowSeal, error)
+}
+
+var _ ent.Mutation = (*RowSealMutation)(nil)
+
+// rowsealOption allows management of the mutation configuration using functional options.
+type rowsealOption func(*RowSealMutation)
+
+// newRowSealMutation creates new mutation for the RowSeal entity.
+func newRowSealMutation(c config, op Op, opts ...rowsealOption) *RowSealMutation {
+	m := &RowSealMutation{
+		Mutation: *rowseal.NewMutation(op),
+		config:   c,
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// SetId sets the value of the id field. Note that this
+// operation is only accepted on creation of RowSeal entities.
+func (m *RowSealMutation) SetId(id uuid.UUID) {
+	m.id = &id
+}
+
+// Id returns the Id value in the mutation. Note that the Id is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *RowSealMutation) Id() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// withRowSealId sets the Id field of the mutation.
+func withRowSealId(id uuid.UUID) rowsealOption {
+	return func(m *RowSealMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *RowSeal
+		)
+		m.oldValue = func(ctx context.Context) (*RowSeal, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().RowSeal.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withRowSeal sets the old RowSeal of the mutation.
+func withRowSeal(node *RowSeal) rowsealOption {
+	return func(m *RowSealMutation) {
+		m.oldValue = func(context.Context) (*RowSeal, error) {
+			return node, nil
+		}
+		m.id = &node.Id
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m RowSealMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m RowSealMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// Ids queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *RowSealMutation) Ids(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.Op().Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.Id()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.Op().Is(OpUpdate | OpDelete):
+		return m.Client().RowSeal.Query().Where(m.Predicates()...).Ids(ctx)
+	default:
+		return nil, fmt.Errorf("Ids is not allowed on %s operations", m.Op())
+	}
+}
+
+// OldTenantId returns the old "tenant_id" field's value of the RowSeal entity.
+// If the RowSeal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RowSealMutation) OldTenantId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldTenantId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldTenantId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTenantId: %w", err)
+	}
+	return oldValue.TenantId, nil
+}
+
+// OldSum returns the old "sum" field's value of the RowSeal entity.
+// If the RowSeal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RowSealMutation) OldSum(ctx context.Context) (v []byte, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldSum is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldSum requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSum: %w", err)
+	}
+	return oldValue.Sum, nil
+}
+
+// OldFields returns the old "fields" field's value of the RowSeal entity.
+// If the RowSeal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RowSealMutation) OldFields(ctx context.Context) (v []uint32, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldFields is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldFields requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFields: %w", err)
+	}
+	return oldValue.Fields, nil
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *RowSealMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case rowseal.FieldTenantId:
+		return m.OldTenantId(ctx)
+	case rowseal.FieldSum:
+		return m.OldSum(ctx)
+	case rowseal.FieldFields:
+		return m.OldFields(ctx)
+	}
+	return nil, fmt.Errorf("unknown RowSeal field %s", name)
 }
 
 // SealMutation represents an operation that mutates the Seal nodes in the graph.

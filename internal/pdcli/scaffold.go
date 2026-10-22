@@ -278,18 +278,28 @@ func (e Entity) free() (int, error) {
 	// survives and comes back when the highest-numbered entity is the one that
 	// went. Closing that needs a record of every number ever allocated, which
 	// is a second file to keep in step with the first.
+	//
+	// And below payday's top ones ([PaydaysFromTop]): what payday added once
+	// apps had numbered up from 7 -- a row's seal, at 255 -- it numbered down
+	// from the top, where no app's entity is, so the highest of those is not
+	// the one an app's next is past.
 	next := 6
 	for n := range taken {
-		if n > next {
+		if n > next && n < PaydaysFromTop {
 			next = n
 		}
 	}
-	if next++; next < 256 {
+	if next++; next < PaydaysFromTop {
 		return next, nil
 	}
 
-	return 0, fmt.Errorf("the highest domain in this schema is 255, and this would be the next one")
+	return 0, fmt.Errorf("the highest domain an app's entity may have is %d, and this would be the next one: %d to 255 are payday's own", PaydaysFromTop-1, PaydaysFromTop)
 }
+
+// PaydaysFromTop is the lowest of the domains payday numbers its own entities
+// down from the top with: the ones it added after apps were numbering theirs
+// up from 7. An app's entity takes a number below it.
+const PaydaysFromTop = 248
 
 var domainAt = regexp.MustCompile(`(?m)^\s*domain:\s*(\d+)`)
 

@@ -21,6 +21,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
@@ -100,6 +101,7 @@ func checkColumn(t, c string) error {
 			pulse.Table:    pulse.ValidColumn,
 			reading.Table:  reading.ValidColumn,
 			robot.Table:    robot.ValidColumn,
+			rowseal.Table:  rowseal.ValidColumn,
 			seal.Table:     seal.ValidColumn,
 			tally.Table:    tally.ValidColumn,
 			tenant.Table:   tenant.ValidColumn,
