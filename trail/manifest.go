@@ -731,6 +731,11 @@ type Finding struct {
 	//	emptied      a manifest with no rows beside checkpoints of an archive
 	//	             that held something
 	//	behind       a checkpoint the store keeps that the database never numbered
+	//	lost         a blob the newest checkpoint the deployment vouches for says
+	//	             the archive held, numbered ahead of the database, that the
+	//	             archive holds no more and the manifest has no row of: gone
+	//	             since a backup the database was restored from, or taken away
+	//	             and hidden by rolling the database back
 	//
 	// A finding about a row is under the blob it is the row of. One about a
 	// checkpoint has its number, and the digest it is kept under or named by
@@ -776,6 +781,38 @@ func (f Finding) String() string {
 	return v
 }
 
+// key is which thing a finding is about, as an acceptance keeps it: its kind,
+// and its blob or its checkpoint, without the note.
+func (f Finding) key() string {
+	v := f.Kind
+	if f.Namespace != "" {
+		v += " " + f.Namespace
+	}
+	if f.Digest != "" {
+		v += " " + string(f.Digest)
+	}
+	if f.Checkpoint > 0 {
+		v += " checkpoint " + strconv.Itoa(f.Checkpoint)
+	}
+
+	return v
+}
+
+// digestOfFindings is a verification's findings as one digest: each a line of
+// every field it has, quoted, in [findingOrder], so that it does not hang on
+// the order a store answered in. See [Verified.Digest].
+func digestOfFindings(fs []Finding) flob.Digest {
+	vs := slices.Clone(fs)
+	slices.SortFunc(vs, findingOrder)
+
+	b := &bytes.Buffer{}
+	for _, v := range vs {
+		fmt.Fprintf(b, "%q %q %q %d %q\n", v.Kind, v.Namespace, v.Digest, v.Checkpoint, v.Note)
+	}
+
+	return flob.DigestFromBytes(b.Bytes())
+}
+
 // Verified is what a verification read, and what it found.
 type Verified struct {
 	// Rows is the manifest's rows, Blobs the archive's blobs outside its
@@ -789,6 +826,18 @@ type Verified struct {
 	// Findings is everything that did not add up: any of them is a reason to
 	// look.
 	Findings []Finding `json:"findings,omitempty"`
+
+	// Digest is the findings as one digest, which an acceptance of them names
+	// ([Acceptance.Of]): what an operator accepts is what they looked at, and
+	// an acceptance is refused once a verification finds anything else. It is
+	// a digest of no findings when there are none.
+	Digest flob.Digest `json:"digest"`
+
+	// Accepted is the acceptances the checkpoints that are the deployment's
+	// word keep, the newest first, at most [recentAccepted] of them: who
+	// accepted what, and why, for whoever reads a verification to see what
+	// was said of the archive before.
+	Accepted []Accepted `json:"accepted,omitempty"`
 
 	// trusted is the archive's blobs the manifest accounts for, with the
 	// labels it recorded -- which are what a pass decides by, and not the
@@ -811,6 +860,12 @@ func (v Verified) Ok() bool { return len(v.Findings) == 0 }
 // in [Adding] and is labelled with its intent; one being erased has a row in
 // [Erasing]. Neither is a finding, and no clock is asked. `full` also reads
 // every blob whole and checks its bytes against its digest.
+//
+// It answers its findings as one digest ([Verified.Digest]), which an
+// acceptance of them names ([Policy.Accept]), and the latest acceptances the
+// checkpoints keep. With the database behind the checkpoints the store keeps,
+// it also finds what the newest of them says the archive held and the archive
+// holds no more (`lost`; see [chain.lost]).
 //
 // # Which signatures count
 //
@@ -945,13 +1000,21 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		}
 	}
 
-	fs, err := p.verifyCheckpoints(ctx, s, len(after) == 0, &out)
+	fs, err := p.verifyCheckpoints(ctx, s, reading{inv, after}, &out)
 	if err != nil {
 		return out, err
 	}
 	out.Findings = append(out.Findings, fs...)
+	out.Digest = digestOfFindings(out.Findings)
 
 	return out, nil
+}
+
+// reading is what the archive holds and what the manifest has rows of, as a
+// verification read them, for what the checkpoints say beside them.
+type reading struct {
+	archive map[blobKey]map[string]string
+	rows    []Archived
 }
 
 // looseFindings is the files a version before this one would have written into
@@ -1092,11 +1155,12 @@ type Checkpoint struct {
 	Digest flob.Digest `json:"digest"`
 	Blobs  []Kept      `json:"blobs"`
 
-	// Accepted is why an operator accepted the manifest as it stood, when the
-	// checkpoint was taken over an acceptance; see [Policy.Accept]. It is the
-	// one kind taken whether or not the rows add up to the one before it, and
-	// it says so.
-	Accepted string `json:"accepted,omitempty"`
+	// Accepted is the acceptance the checkpoint was taken over, when it was
+	// taken over one: who accepted what of what a verification found, and
+	// why; see [Policy.Accept]. It is the one kind taken whether or not the
+	// rows add up to the one before it, and it says so. One taken before
+	// acceptances were kept (#115) says only why.
+	Accepted *Accepted `json:"accepted,omitempty"`
 }
 
 // Kept is one blob of a checkpoint.
@@ -1185,11 +1249,11 @@ var errRewritten = errors.New("the manifest no longer adds up to the latest chec
 // changed out of reach two acts later. Refused, it stays the latest, and
 // stays found.
 //
-// Both but when `accepted` says why an operator has accepted the manifest as
-// it is. That one is numbered after every checkpoint the store keeps, by what
-// each says, and names the newest of them as the one before it: a database
-// restored from before them goes on from there, and they stay what the
-// archive held meanwhile.
+// Both but when `accepted` is an operator's acceptance of the manifest as it
+// is, which the checkpoint keeps. That one is numbered after every checkpoint
+// the store keeps, by what each says, and names the newest of them as the one
+// before it: a database restored from before them goes on from there, and they
+// stay what the archive held meanwhile.
 //
 // Every one of those is decided by the checkpoints that are the deployment's
 // word, and by no other (see [Policy.readChain]). A checkpoint nobody signed,
@@ -1213,7 +1277,7 @@ var errRewritten = errors.New("the manifest no longer adds up to the latest chec
 //
 // Before the database has numbered any, there is no history to take in: what
 // the store keeps then is nobody's, is found, and stops nothing.
-func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted string) (Checkpoint, error) {
+func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted *Accepted) (Checkpoint, error) {
 	if p.Signer == nil {
 		return Checkpoint{}, ErrNoKey
 	}
@@ -1232,7 +1296,7 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted string) (Ch
 	unkeyed := len(ch.vouched) == 0 && latest > 0 && len(ch.unkeyed(latest)) > 0
 
 	after := 0
-	if accepted != "" {
+	if accepted != nil {
 		// Every one, the way [Policy.Verify] finds the database behind: a
 		// checkpoint relabelled to look older, or not listed at all, is still
 		// one the next must be numbered after.
@@ -1676,6 +1740,69 @@ func (ch chain) goesOn(ctx context.Context, m Manifest, k int) (flob.Digest, err
 	return cs[0].d, nil
 }
 
+// lost is what the newest checkpoint that decides, numbered k ahead of the
+// database, says the archive held, and the archive holds no more and the
+// manifest has no row of.
+//
+// A database restored from a backup has no row of what was written after the
+// backup, and is compared with its own latest checkpoints, which are from
+// before it: a blob taken away since is found by nothing else. Nor is one
+// taken away by somebody who then rolled the database back to hide it, which
+// looks the same. The newest checkpoint the deployment vouches for is what
+// the archive held at the latest it knows of; each blob of it that is gone is
+// a finding, for an operator to look at and the acceptance of the restore to
+// name (see [Policy.Accept]). One the manifest still says the archive holds
+// is `missing` already, and one being erased has its row.
+func (ch chain) lost(k int, now reading) []Finding {
+	rowed := map[blobKey]bool{}
+	for _, v := range now.rows {
+		if v.Digest != "" {
+			rowed[blobKey{v.Namespace, flob.Digest(v.Digest)}] = true
+		}
+	}
+
+	out := []Finding{}
+	seen := map[blobKey]bool{}
+	for _, v := range ch.numbered(k) {
+		for _, b := range v.c.Blobs {
+			key := blobKey{b.Namespace, b.Digest}
+			if _, ok := now.archive[key]; ok || rowed[key] || seen[key] {
+				continue
+			}
+
+			seen[key] = true
+			out = append(out, Finding{Kind: "lost", Namespace: b.Namespace, Digest: b.Digest, Checkpoint: k,
+				Note: fmt.Sprintf("checkpoint %d says the archive held it, and the archive holds it no more and the database has no row of it", k)})
+		}
+	}
+	slices.SortFunc(out, findingOrder)
+
+	return out
+}
+
+// recentAccepted is how many acceptances a verification lists.
+const recentAccepted = 10
+
+// accepted is the acceptances the checkpoints that decide keep, the newest
+// first, at most [recentAccepted] of them, each with the checkpoint it ended
+// in.
+func (ch chain) accepted() []Accepted {
+	out := []Accepted{}
+	vs := ch.decided()
+	for i := len(vs) - 1; i >= 0 && len(out) < recentAccepted; i-- {
+		v := vs[i]
+		if v.c.Accepted == nil {
+			continue
+		}
+
+		a := *v.c.Accepted
+		a.Checkpoint, a.At = v.c.K, v.c.At
+		out = append(out, a)
+	}
+
+	return out
+}
+
 // skipped is, for each checkpoint that decides, the numbers between it and
 // the one it names as the one before it that no checkpoint that decides says
 // it is (#80).
@@ -1703,7 +1830,7 @@ func (ch chain) skipped() []Finding {
 	says := []int{}
 	for _, v := range ch.decided() {
 		says = append(says, v.c.K)
-		if v.c.Accepted != "" {
+		if v.c.Accepted != nil {
 			accepted = max(accepted, v.c.K)
 		}
 	}
@@ -1875,9 +2002,9 @@ const checkpointing = 10 * time.Minute
 // Again when a checkpoint was taken while it read: the latest two are
 // recomputed from rows a checkpoint changes, and what was read of them before
 // one and after it are two checkpoints' rows.
-func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out *Verified) ([]Finding, error) {
+func (p Policy) verifyCheckpoints(ctx context.Context, s Store, now reading, out *Verified) ([]Finding, error) {
 	for i := 0; ; i++ {
-		fs, latest, err := p.checkpointFindings(ctx, s, empty, out)
+		fs, latest, err := p.checkpointFindings(ctx, s, now, out)
 		if err != nil {
 			return nil, err
 		}
@@ -1894,8 +2021,9 @@ func (p Policy) verifyCheckpoints(ctx context.Context, s Store, empty bool, out 
 
 // checkpointFindings is one reading of [Policy.verifyCheckpoints], and the
 // latest checkpoint it read.
-func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out *Verified) ([]Finding, int, error) {
+func (p Policy) checkpointFindings(ctx context.Context, s Store, now reading, out *Verified) ([]Finding, int, error) {
 	fs := []Finding{}
+	empty := len(now.rows) == 0
 
 	ch, err := p.readChain(ctx)
 	if err != nil {
@@ -1914,7 +2042,9 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out
 	}
 	if k := ch.newest(); k > latest {
 		fs = append(fs, Finding{Kind: "behind", Checkpoint: k, Note: fmt.Sprintf("the database has numbered %d checkpoints, and the store keeps one numbered %d: a database restored from before it", latest, k)})
+		fs = append(fs, ch.lost(k, now)...)
 	}
+	out.Accepted = ch.accepted()
 	// One nobody vouches for is still kept, and is the finding it is below.
 	if latest > 0 && time.Since(at) > checkpointing && !slices.ContainsFunc(ch.ordered(), func(v stored) bool { return v.c.K == latest }) {
 		fs = append(fs, Finding{Kind: "unkept", Checkpoint: latest, Note: "the database numbered it, and the checkpoint store does not keep it"})
@@ -1950,7 +2080,7 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, empty bool, out
 	// row marked erased to match.
 	from := max(1, latest-1)
 	for _, v := range ch.numbered(latest) {
-		if v.c.Accepted != "" {
+		if v.c.Accepted != nil {
 			from = latest
 		}
 	}
@@ -2028,10 +2158,116 @@ func checkpointDiff(was, is Checkpoint) string {
 	return fmt.Sprintf("it kept %d blobs; of them the manifest has lost %d, and gained %d it never had", was.Count, gone, came)
 }
 
+// Acceptance is an operator's word on what a verification found: that the
+// archive is right as it is, and why. See [Policy.Accept].
+type Acceptance struct {
+	// Of is the findings looked at, by the digest the verification that found
+	// them answered ([Verified.Digest]). An acceptance is of what was looked
+	// at, and of nothing else: it is refused when a verification now finds
+	// anything else ([ErrUnreviewed]).
+	Of flob.Digest `json:"of"`
+
+	// Full is whether that verification read every blob whole, which is the
+	// one way `altered` is found; the acceptance verifies again the same way.
+	Full bool `json:"full,omitempty"`
+
+	// By is who accepts, and Why what was looked at and decided. Both are
+	// kept, in the checkpoint the acceptance ends in and in its receipt.
+	By  string `json:"by"`
+	Why string `json:"why"`
+
+	// Restored is, for a database restored from a backup, the checkpoint the
+	// backup holds -- the latest it had numbered, and zero for one from
+	// before the first -- and nil for an acceptance that is no restore. A
+	// database behind the checkpoints the store keeps is accepted only as a
+	// restore that names it ([ErrRestored]); see [Policy.Accept].
+	Restored *int `json:"restored,omitempty"`
+}
+
+// Accepted is an acceptance as the checkpoint it ended in keeps it: what the
+// operator said, and what was accepted -- how many findings of each kind, and
+// which, the first [acceptedKeys] of them in [findingOrder].
+type Accepted struct {
+	Acceptance
+
+	Kinds map[string]int `json:"kinds,omitempty"`
+	Keys  []string       `json:"keys,omitempty"`
+
+	// More is how many were accepted past the keys kept.
+	More int `json:"more,omitempty"`
+
+	// Checkpoint and At are the checkpoint it ended in, as a verification
+	// lists it ([Verified.Accepted]). The checkpoint keeps them as its own,
+	// and they are not written twice.
+	Checkpoint int       `json:"checkpoint,omitempty"`
+	At         time.Time `json:"at,omitzero"`
+}
+
+// acceptedKeys is how many of the findings an acceptance names one by one in
+// its checkpoint: every act and every verification reads the chain, each
+// checkpoint of it whole, and an acceptance of a whole archive is of every
+// blob in it.
+const acceptedKeys = 100
+
+// UnmarshalJSON reads an acceptance as a checkpoint keeps it, and, from one
+// taken before acceptances were kept (#115), the why it kept instead.
+func (a *Accepted) UnmarshalJSON(b []byte) error {
+	var why string
+	if err := json.Unmarshal(b, &why); err == nil {
+		*a = Accepted{Acceptance: Acceptance{Why: why}}
+		return nil
+	}
+
+	type plain Accepted
+	return json.Unmarshal(b, (*plain)(a))
+}
+
+// acceptedOf is what an acceptance of these findings keeps of them.
+func acceptedOf(a Acceptance, fs []Finding) Accepted {
+	out := Accepted{Acceptance: a, Kinds: map[string]int{}}
+	vs := slices.Clone(fs)
+	slices.SortFunc(vs, findingOrder)
+	for _, f := range vs {
+		out.Kinds[f.Kind]++
+
+		k := f.key()
+		switch {
+		case slices.Contains(out.Keys, k):
+		case len(out.Keys) < acceptedKeys:
+			out.Keys = append(out.Keys, k)
+		default:
+			out.More++
+		}
+	}
+
+	return out
+}
+
+// ErrUnreviewed is an acceptance of findings other than the ones a
+// verification finds now: something changed after the operator looked, or
+// what they looked at was another verification's.
+var ErrUnreviewed = errors.New("an acceptance is of the findings that were looked at, and a verification now finds others: verify again, and look at what it finds")
+
+// ErrRestored is an acceptance that is wrong about a restore: one of a
+// database behind the checkpoints the store keeps that names no backup, or
+// one that names a backup the database was not restored from.
+var ErrRestored = errors.New("a database restored from a backup is accepted as the restore it is, naming the checkpoint the backup holds")
+
 // Accept makes the manifest say what the archive holds, for an operator who
 // has looked at what [Policy.Verify] found and decided the archive is right:
 // a pass a crash stopped, a blob restored from a backup, an archive kept
 // without a key until now.
+//
+// # Of what was looked at
+//
+// An acceptance names the findings it is of by the digest the verification
+// answered ([Acceptance.Of]), and is refused when a verification now finds
+// anything else ([ErrUnreviewed]): a finding nobody looked at is not taken in
+// beside the ones somebody did. So it takes in no more than it was shown.
+// Signing the rows whose signatures were findings brings their blobs into the
+// comparison, and what that finds -- a blob such a row said the archive held,
+// and it does not -- was not looked at either: it is the next verification's
+// to find, and an acceptance's of its own.
 //
 // It signs, as they stand, the rows whose signatures are findings -- the
 // deployment saying after all what they say -- and then adds the blobs the
@@ -2039,29 +2275,70 @@ func checkpointDiff(was, is Checkpoint) string {
 // archive holds and it does not, and records the labels the archive's blobs
 // carry. Each of those is a row written and signed as a pass writes one, so
 // accepting needs [Policy.Signer]: accepting is signing, and an acceptance
-// without the key is refused ([ErrNoKey]).
+// without the key is refused ([ErrNoKey]). It is an act of the trail's: in the
+// trail's turn on [Policy.Lease], and kept as one -- in the checkpoint it ends
+// in, and a [Receipt] of its own (`accept`).
+//
+// # What is kept of it
 //
 // A checkpoint is what it is, and Accept changes none. It ends in one of its
-// own, taken over the manifest as it accepted it and saying why
-// ([Checkpoint.Accepted]): the one kind taken whether or not the rows add up to
-// the one before -- no other is taken over rows that do not (see
-// [Policy.checkpoint]) -- and the checkpoints after it are compared with it,
-// and not the one before. It is also the one taken when the database is
-// behind the store, restored from a backup older than the latest checkpoint:
-// numbered after the newest the store keeps, and naming it as the one before.
-// And the one an archive kept without a key goes on from: it names the
+// own, taken over the manifest as it accepted it and keeping the acceptance
+// ([Checkpoint.Accepted]): who accepted, why, the digest of what was looked
+// at, and what it was -- how many findings of each kind, and which, the first
+// [acceptedKeys] of them. That checkpoint is signed and named by every one
+// after it, so what was accepted is held to the key as the archive is; a
+// verification lists the latest acceptances ([Verified.Accepted]). It is the
+// one kind taken whether or not the rows add up to the one before -- no other
+// is taken over rows that do not (see [Policy.checkpoint]) -- and the
+// checkpoints after it are compared with it, and not the one before.
+//
+// # A database restored from a backup
+//
+// One older than the latest checkpoint has numbered fewer than the store
+// keeps, `behind`, and is accepted only as the restore it is, naming the
+// checkpoint the backup holds ([Acceptance.Restored]), which has to be the
+// latest the database has numbered ([ErrRestored]). Its own latest
+// checkpoints are from before the backup, and what was taken away since would
+// look like what the backup never had; so a verification of it also finds
+// each blob the newest checkpoint the deployment vouches for says the archive
+// held and it holds no more (`lost`), and an acceptance of the restore is of
+// those as of every finding, by their digest. The acceptance is numbered after
+// the newest checkpoint the store keeps, and names it as the one before.
+//
+// And it is the one an archive kept without a key goes on from: it names the
 // checkpoint the database numbered last, which no key signed, and so takes in
 // the history before the key (see [Policy.checkpoint]).
-func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, error) {
-	if strings.TrimSpace(why) == "" {
-		return Verified{}, errors.New("an acceptance says why")
-	}
+func (p Policy) Accept(ctx context.Context, s Store, a Acceptance) (Verified, error) {
 	if p.Signer == nil {
 		return Verified{}, fmt.Errorf("accepting is signing what is accepted: %w", ErrNoKey)
 	}
+	switch {
+	case a.Of == "":
+		return Verified{}, errors.New("an acceptance names the findings it is of, by the digest a verification answered (Verified.Digest)")
+	case strings.TrimSpace(a.By) == "":
+		return Verified{}, errors.New("an acceptance says who accepts")
+	case strings.TrimSpace(a.Why) == "":
+		return Verified{}, errors.New("an acceptance says why")
+	}
 
-	v, err := p.Verify(ctx, s, false)
+	x, err := p.act(s)
 	if err != nil {
+		return Verified{}, err
+	}
+	ctx, give, err := x.turn(ctx)
+	if err != nil {
+		return Verified{}, err
+	}
+	defer give()
+
+	v, err := p.Verify(ctx, s, a.Full)
+	if err != nil {
+		return v, err
+	}
+	if v.Digest != a.Of {
+		return v, fmt.Errorf("%w (looked at %s, and found now %s)", ErrUnreviewed, a.Of, v.Digest)
+	}
+	if err := p.restored(ctx, s, a); err != nil {
 		return v, err
 	}
 
@@ -2069,16 +2346,11 @@ func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, erro
 	// counts, and these did not until now.
 	act := v
 	if slices.ContainsFunc(v.Findings, isRowFinding) {
-		if err := p.vouch(ctx, s); err != nil {
+		if err := p.vouch(ctx, s, v.Findings); err != nil {
 			return v, err
 		}
-		if act, err = p.Verify(ctx, s, false); err != nil {
+		if act, err = p.Verify(ctx, s, a.Full); err != nil {
 			return v, err
-		}
-		for _, f := range act.Findings {
-			if !slices.Contains(v.Findings, f) {
-				v.Findings = append(v.Findings, f)
-			}
 		}
 	}
 
@@ -2089,6 +2361,11 @@ func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, erro
 
 	sign := p.signing()
 	for _, f := range act.Findings {
+		if !slices.Contains(v.Findings, f) {
+			// What signing the rows brought to light, and nobody looked at.
+			continue
+		}
+
 		k := blobKey{f.Namespace, f.Digest}
 		switch {
 		case f.Kind == "unaccounted" && f.Namespace == "":
@@ -2108,15 +2385,48 @@ func (p Policy) Accept(ctx context.Context, s Store, why string) (Verified, erro
 		}
 	}
 
-	log.From(ctx).InfoContext(ctx, "trail: the manifest, made to say what the archive holds", "why", why, "findings", len(v.Findings))
+	kept := acceptedOf(a, v.Findings)
+	log.From(ctx).InfoContext(ctx, "trail: the manifest, made to say what the archive holds",
+		"by", a.By, "why", a.Why, "of", string(a.Of), "findings", len(v.Findings))
 
-	c, cerr := p.checkpoint(ctx, s, why)
+	x.r.add(Receipt{Act: "accept", Where: "archive", By: a.By, Why: a.Why, Of: string(a.Of), Findings: kept.Kinds})
+	err = errors.Join(err, x.r.write(ctx, x.p.Archive))
+
+	c, cerr := p.checkpoint(ctx, s, &kept)
 	if cerr != nil {
 		return v, errors.Join(err, fmt.Errorf("the checkpoint over what was accepted: %w", cerr))
 	}
 	log.From(ctx).InfoContext(ctx, "trail: a checkpoint", "after", "accept", "k", c.K, "blobs", c.Count)
 
 	return v, err
+}
+
+// restored answers whether an acceptance is right about a restore: a database
+// behind the checkpoints the store keeps is accepted as a restore, naming the
+// checkpoint its backup holds, which is the latest the database has numbered;
+// and one that is not behind was restored from nothing an acceptance names.
+func (p Policy) restored(ctx context.Context, s Store, a Acceptance) error {
+	ch, err := p.readChain(ctx)
+	if err != nil {
+		return err
+	}
+	latest, _, err := s.Latest(ctx)
+	if err != nil {
+		return fmt.Errorf("the manifest: %w", err)
+	}
+
+	behind := ch.newest() > latest
+	switch {
+	case behind && a.Restored == nil:
+		return fmt.Errorf("%w: the database has numbered %d checkpoints and the store keeps one numbered %d; name the checkpoint the backup holds",
+			ErrRestored, latest, ch.newest())
+	case !behind && a.Restored != nil:
+		return fmt.Errorf("%w: the database is not behind the checkpoints the store keeps, and no backup was restored", ErrRestored)
+	case a.Restored != nil && *a.Restored != latest:
+		return fmt.Errorf("%w: the backup is said to hold checkpoint %d, and the database has numbered %d", ErrRestored, *a.Restored, latest)
+	}
+
+	return nil
 }
 
 // adoptLoose takes in the file of the directory format in the archive's
@@ -2150,10 +2460,11 @@ func isRowFinding(f Finding) bool {
 	return f.Namespace != "" && (f.Kind == "unsigned" || f.Kind == "forged")
 }
 
-// vouch signs, as they stand, the rows whose signatures are findings: the
-// manifest's rows, and the erased ones the latest two checkpoints still read
-// back.
-func (p Policy) vouch(ctx context.Context, s Store) error {
+// vouch signs, as they stand, the rows whose signatures are findings and were
+// looked at -- of `reviewed`: the manifest's rows, and the erased ones the
+// latest two checkpoints still read back. A row whose signature became a
+// finding after the verification that was looked at is left as it is.
+func (p Policy) vouch(ctx context.Context, s Store, reviewed []Finding) error {
 	rows, err := s.Rows(ctx)
 	if err != nil {
 		return fmt.Errorf("the manifest: %w", err)
@@ -2175,7 +2486,7 @@ func (p Policy) vouch(ctx context.Context, s Store) error {
 	todo := map[of]bool{}
 	trusted := p.trusted()
 	for _, v := range rows {
-		if kind, _ := p.rowFinding(v, trusted); kind != "" {
+		if kind, note := p.rowFinding(v, trusted); kind != "" && slices.Contains(reviewed, rowFindingOf(v, kind, note)) {
 			todo[of{v.Namespace, v.Digest, v.State}] = true
 		}
 	}

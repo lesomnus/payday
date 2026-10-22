@@ -3,6 +3,46 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An acceptance is of what was reviewed, and is kept
+
+**Applies if** you give an operator a command that accepts what `Verify` found
+(`trail.Policy.Accept`), or one that records rows a check of them found
+(`pd.Record` after `pd.Digests`). Part of payday#115.
+
+- **`Policy.Accept(ctx, s, why)` is `Policy.Accept(ctx, s, trail.Acceptance{Of,
+  By, Why, Full, Restored})`.** `Of` is the digest of the findings the operator
+  looked at, which `Verify` now answers (`Verified.Digest`): print it beside the
+  findings in your `verify`, and have your `accept` take it back from the
+  operator (`--of`). Never fill it from a verification of the command's own,
+  which is the acceptance of whatever is there that this replaces. The
+  acceptance verifies again, the same way (`Full` for a `--full` one), and is
+  refused with `trail.ErrUnreviewed` when that finds anything else. `By` is who
+  accepts, as your command knows them, and is required like `Why`.
+- **What signing rows brings to light is not taken in.** A row whose signature
+  was a finding is signed by the acceptance, and its blob compared after;
+  what that finds is the next verification's, and an acceptance of its own. An
+  archive kept without a key may take two.
+- **A database behind the checkpoints the store keeps is accepted only as a
+  restore**, naming the checkpoint its backup holds (`Restored`, zero for a
+  backup from before the first): give `accept` a `--restored` that takes the
+  number, and `trail.ErrRestored` refuses one with none, one with the wrong
+  number, and one of a database that is not behind.
+- **A new finding, `lost`**, while the database is behind: what the newest
+  checkpoint the deployment vouches for says the archive held, and it holds no
+  more. A runbook for a restore says to look at each before accepting.
+- **`Checkpoint.Accepted` is a `*trail.Accepted`**, and no longer a string: who,
+  why, the digest, `Restored`, and what was accepted -- `Kinds`, the first
+  hundred `Keys` and how many `More`. A checkpoint from before keeps only why,
+  and reads as `Accepted{Why: ...}`. `Verified.Accepted` lists the latest ten,
+  newest first; print them in your `verify`.
+- **An acceptance is an act**: in the trail's turn on `Policy.Lease`, and it
+  writes a receipt, `accept`, with `By`, `Why` and `Of` (new fields of
+  `trail.Receipt`).
+- **A check of the rows has a digest too**, `audit.Rows.Digest`. Print it with
+  what `pd.Digests` found, and have the command that records the rows as
+  accepted (`pd.Record`) take it back and refuse when a check now answers
+  another.
+
 ## A tenant may retire, keeping what the deployment's floors are on
 
 **Applies if** you take a tenant's trail out when it leaves (`Policy.PurgeTenant`)

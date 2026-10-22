@@ -1113,15 +1113,21 @@ func TestADatabaseRestoredFromBeforeTheLatestCheckpointIsAcceptedInTheAppsOwnTab
 	p.Pass(ctx, s)
 	x.Equal(1, latest(), "a checkpoint was taken over a database behind the store")
 
+	// Accepted as the restore it is, naming the checkpoint the backup holds.
 	const why = "restored from the backup; the chunks since are the deployment's"
-	_, err = p.Accept(ctx, s, why)
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	one := 1
+	_, err = p.Accept(ctx, s, trail.Acceptance{Of: v.Digest, By: "an operator", Why: why, Restored: &one})
 	x.NoError(err)
 	x.Equal(4, latest())
 
 	cs := map[int]trail.Checkpoint{}
 	x.NoError(p.ReadCheckpoints(ctx, func(c trail.Checkpoint) error { cs[c.K] = c; return nil }))
 	x.Len(cs, 4)
-	x.Equal(why, cs[4].Accepted)
+	x.Equal(why, cs[4].Accepted.Why)
+	x.Equal(v.Digest, cs[4].Accepted.Of)
+	x.Equal(1, *cs[4].Accepted.Restored)
 	w, ok := flob.AsWalker(a.Use(trail.CheckpointNamespace))
 	x.True(ok)
 	for info, err := range w.Walk(ctx) {
