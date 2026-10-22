@@ -1,6 +1,8 @@
 package trail
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -279,4 +281,147 @@ func TestARetirementKeepsFloorsOnlyInAnArchive(t *testing.T) {
 	x.Equal(1, got.Removed)
 	x.Empty(got.Kept)
 	x.False(s.has(r.id))
+}
+
+// TestARetiredTenantIsTakenBack.
+//
+// The record of a retirement is what every pass goes by, whatever the app
+// answers: a tenant back under the identifier it had is still the tenant that
+// left, and what it writes goes at the next pass. Taken back, it is a tenant
+// again -- what it writes is kept as the deployment keeps a tenant's, and what
+// the retirement kept is its own -- with a receipt, and a checkpoint over it.
+// Asked again, or of a tenant that never retired, Return does nothing.
+func TestARetiredTenantIsTakenBack(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	back, stayed := newTenant(), newTenant()
+	arch := flob.NewMemStores()
+	p := Policy{Signer: signer, Archive: arch, Keep: Keep{Retain: time.Nanosecond},
+		MinBy: map[pdid.Domain]Floor{robot: {Destroy: 365 * day}}}
+
+	s := &fakeStore{}
+	kept := s.add(fakeRow{tenant: back.Uuid(), domain: robot, created: ago(day), value: "what a floor is on"})
+	s.add(fakeRow{tenant: stayed.Uuid(), domain: person, created: ago(day), value: "somebody else's"})
+	p.Pass(ctx, s)
+	_, err := p.RetireTenant(ctx, s, back)
+	x.NoError(err)
+
+	retired, err := p.Retired(ctx, s)
+	x.NoError(err)
+	x.Contains(retired, back)
+	x.NotContains(retired, stayed)
+
+	// Back, and not taken back: what it writes goes.
+	gone := s.add(fakeRow{tenant: back.Uuid(), domain: person, created: time.Now(), value: "written while it was still retired"})
+	p.Pass(ctx, s)
+	x.NotContains(raw(t, arch), gone.id)
+	x.False(s.has(gone.id), "a retired tenant kept what it wrote")
+
+	k, _, err := s.Latest(ctx)
+	x.NoError(err)
+	v, err := p.Return(ctx, s, back)
+	x.NoError(err)
+	x.Equal(1, v.Records)
+	x.Equal(retired[back], v.Retired)
+	then, _, err := s.Latest(ctx)
+	x.NoError(err)
+	x.Equal(k+1, then, "taking it back ended in no checkpoint")
+	retired, err = p.Retired(ctx, s)
+	x.NoError(err)
+	x.NotContains(retired, back, "taken back, and still retired")
+	vv, err := p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.True(vv.Ok(), "taking it back is not covered by a checkpoint: %v", vv.Findings)
+
+	after := s.add(fakeRow{tenant: back.Uuid(), domain: person, created: time.Now(), value: "written once it was back"})
+	p.Pass(ctx, s)
+	got := raw(t, arch)
+	x.Contains(got, after.id, "what it writes once it is back goes as a retired tenant's")
+	x.Contains(got, kept.id, "what the retirement kept went when it came back")
+
+	returned := 0
+	for _, r := range receiptsIn(t, arch) {
+		if r.Act == "return-tenant" && r.Tenant == back.String() {
+			returned++
+		}
+	}
+	x.Equal(1, returned, "no receipt says it came back")
+
+	vv, err = p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(vv.Ok(), "%v", vv.Findings)
+
+	v, err = p.Return(ctx, s, back)
+	x.NoError(err)
+	x.Zero(v.Records, "taken back twice")
+	v, err = p.Return(ctx, s, stayed)
+	x.NoError(err)
+	x.Zero(v.Records)
+	x.True(v.Retired.IsZero())
+}
+
+// TestATenantBackAfterItsPurgeIsSealedToAKeyOfItsOwn.
+//
+// A purged tenant needs nothing taken back: the mark its key leaves is of what
+// was written before it left. What it writes back under the identifier it had
+// is sealed to a key made for it then, and archived; a copy of what it wrote
+// before still opens to nothing. Return leaves the mark where it is.
+func TestATenantBackAfterItsPurgeIsSealedToAKeyOfItsOwn(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	back := newTenant()
+	k, master := sealing(t)
+	arch := flob.NewMemStores()
+	p := Policy{Signer: signer, Archive: arch, Keep: Keep{Retain: time.Nanosecond}, Keys: k}
+
+	s := &fakeStore{}
+	before := s.add(fakeRow{tenant: back.Uuid(), domain: person, created: ago(day), value: "before it left"})
+	p.Pass(ctx, s)
+	doc, err := json.Marshal(raw(t, arch)[before.id])
+	x.NoError(err)
+
+	_, err = p.PurgeTenant(ctx, s, back)
+	x.NoError(err)
+	x.Empty(keysOf(t, k, back.String()))
+
+	v, err := p.Return(ctx, s, back)
+	x.NoError(err)
+	x.Zero(v.Records, "a purged tenant had a retirement to take back")
+	left, err := k.left(ctx, back.String())
+	x.NoError(err)
+	x.False(left.IsZero(), "Return lifted the mark the tenant's key left")
+
+	after := s.add(fakeRow{tenant: back.Uuid(), domain: person, created: time.Now().Add(time.Millisecond), value: "after it came back"})
+	time.Sleep(2 * time.Millisecond)
+	p.Pass(ctx, s)
+	x.Len(keysOf(t, k, back.String()), 1, "no key for the tenant back")
+	got := raw(t, arch)
+	x.Contains(got, after.id, "what it wrote once back is not archived")
+
+	opens := &Keys{Store: k.Store, Master: k.Master, Identities: []age.Identity{master}}
+	_, err = opens.Open(ctx, doc)
+	x.ErrorIs(err, ErrKeyGone, "a copy from before it left opens again")
+	b, err := json.Marshal(got[after.id])
+	x.NoError(err)
+	said, err := opens.Open(ctx, b)
+	x.NoError(err)
+	x.Contains(string(said), base64.StdEncoding.EncodeToString([]byte(after.value)))
+
+	vv, err := p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(vv.Ok(), "%v", vv.Findings)
+}
+
+// TestAReturnIsSigned: taking a tenant back writes the manifest, and is
+// refused without the key to sign it, as every act is.
+func TestAReturnIsSigned(t *testing.T) {
+	x := require.New(t)
+
+	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Nanosecond}}
+	_, err := p.Return(t.Context(), &fakeStore{}, newTenant())
+	x.ErrorIs(err, ErrNoKey)
+	_, err = p.Retired(t.Context(), &fakeStore{})
+	x.ErrorIs(err, ErrNoKey)
 }

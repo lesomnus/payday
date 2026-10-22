@@ -41,6 +41,26 @@ when you are ready.
   `payday.trail.checkpoint` going down, and two log lines of one `k` with two
   digests. Without them it tells nobody.
 
+## A retired tenant can come back
+
+**Applies if** you restore a tenant under the identifier it had into a
+deployment it may have retired from (`Policy.RetireTenant`). Part of
+payday#115.
+
+- **`Policy.Return(ctx, s, tenant)`** takes a retired tenant back: the records
+  of its retirement are erased through the manifest, signed, with a receipt
+  `return-tenant` and a checkpoint after. Call it before you write anything of
+  the tenant back. Until then every pass takes it to have left, whatever your
+  callback answers: what it writes goes at the next pass, and its whole trail
+  and its key once its last floor has passed.
+- **`Policy.Retired(ctx, s)`** is the tenants that have retired and when, for a
+  restore's dry run to say so.
+- **A purged tenant needs nothing.** The mark its key left is of what was
+  written before it left, and what it writes after is sealed to a key of its
+  own; `Return` answers it with nothing done.
+- Both are acts: they need `Policy.Signer` where there is an archive, as every
+  act does.
+
 ## An acceptance is of what was reviewed, and is kept
 
 **Applies if** you give an operator a command that accepts what `Verify` found

@@ -1480,8 +1480,9 @@ type Receipt struct {
 	// subject's contents), `purge-tenant` (a tenant leaving) or
 	// `retire-tenant` (a tenant leaving, but for what a floor keeps) -- or
 	// `finding`, which is no destruction: what a pass found the archive's
-	// manifest does not account for, and `accept`, what an operator accepted
-	// of it ([Policy.Accept]), which may be.
+	// manifest does not account for, `accept`, what an operator accepted of
+	// it ([Policy.Accept]), which may be, and `return-tenant`, a tenant that
+	// retired taken back ([Policy.Return]).
 	Act string `json:"act"`
 
 	// Where is `database`, `archive`, or `keys` for the key store.

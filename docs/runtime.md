@@ -1233,6 +1233,20 @@ tenant retires into the archive: with floors and no archive it is refused. Its
 receipts are `retire-tenant`, saying what went, what was kept of which kinds,
 and until when.
 
+**And it can come back.** An app that puts a tenant back under the identifier
+it had — a workspace restored from its export into the deployment it left —
+puts back a tenant the passes still take to have left: what it writes goes at
+the next pass, and the whole of its trail at the end of its floors. So the app
+asks `Policy.Retired` first, the tenants whose records the manifest accounts
+for and when each retired, and takes the tenant back with `Policy.Return`
+before it writes anything of it. Return erases the records, through the
+manifest and signed, in the trail's turn, with a receipt `return-tenant` and a
+checkpoint after; from then on the tenant is the app's to answer for, and what
+its retirement kept, and its key, are its own. A purged tenant needs nothing:
+the mark its key left is of what was written before it left, and what it
+writes after is sealed to a key of its own, so Return leaves the mark where it
+is and does nothing.
+
 #### A pass and what erases take turns
 
 A pass holds what it read of a row from the moment it reads it until the
