@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"io"
 	"maps"
 	"slices"
 	"strconv"
@@ -480,4 +485,145 @@ func TestAWitnessIsNamed(t *testing.T) {
 	x.Error(Policy{Signer: signer, Witnesses: map[string]Witness{"ear": &ear{}}}.Valid())
 	x.NoError(Policy{Archive: a, Signer: signer, Witnesses: map[string]Witness{"ear": &ear{}}}.Valid())
 	x.Contains(Policy{Archive: a, Signer: signer}.String(), "heard by no witness")
+}
+
+// teller is a witness that keeps digests and holds the chain to itself.
+type teller struct {
+	*ear
+	h      crypto.Hash
+	checks func(kept []Checked, full bool) ([]Finding, error)
+}
+
+func (t *teller) Prehash(crypto.PublicKey) crypto.Hash { return t.h }
+
+func (t *teller) Latest(context.Context, string) (Heard, error) { return Heard{}, ErrDeaf }
+
+func (t *teller) Check(_ context.Context, _ string, kept []Checked, full bool) ([]Finding, error) {
+	return t.checks(kept, full)
+}
+
+// TestAWitnessThatKeepsDigestsIsToldASignatureOverOne (#115): beside the
+// statement, the digest it asks for, signed -- Ed25519 once more, as
+// Ed25519ph, which RFC 8032 keeps apart from the Ed25519 the statement is
+// signed with; ECDSA's own signature, which is over SHA-256 already. A key
+// that signs Ed25519 over the message alone is found by TryPrehash, and so is
+// one that signs the digest as if it were the message.
+func TestAWitnessThatKeepsDigestsIsToldASignatureOverOne(t *testing.T) {
+	ctx := t.Context()
+
+	p256, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	for name, c := range map[string]struct {
+		key   crypto.Signer
+		h     crypto.Hash
+		again bool
+	}{
+		"ed25519":    {newKey(t), crypto.SHA512, true},
+		"ecdsa-p256": {p256, crypto.SHA256, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			x := require.New(t)
+			w := &teller{ear: &ear{}, h: c.h, checks: func([]Checked, bool) ([]Finding, error) { return nil, nil }}
+			s := &fakeStore{}
+			s.add(fakeRow{tenant: newTenant().Uuid(), domain: person, created: ago(40 * day), value: "a"})
+			p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Signer: c.key, Witnesses: map[string]Witness{"log": w}}
+			p.Pass(ctx, s)
+
+			hs := w.all()
+			x.Len(hs, 1)
+			h := hs[0]
+			x.Equal(c.h, h.Prehash)
+			d := c.h.New()
+			d.Write(h.Statement)
+			x.True(verifiedOver(c.key.Public(), c.h, d.Sum(nil), h.PrehashSig), "what it was told is no signature over the digest")
+			x.True(verified(h.Key, h.Statement, h.Sig))
+			x.Equal(c.again, !bytes.Equal(h.Sig, h.PrehashSig), "signed once more, or not")
+			x.NoError(TryPrehash(c.key, w))
+		})
+	}
+
+	t.Run("a key that cannot", func(t *testing.T) {
+		x := require.New(t)
+		w := &teller{ear: &ear{}, h: crypto.SHA512}
+		x.Error(TryPrehash(messageOnly{newKey(t)}, w), "a key that refuses a digest")
+		x.Error(TryPrehash(asMessage{newKey(t)}, w), "a key that signs a digest as a message")
+
+		e := &ear{}
+		heardBy(t, 1, map[string]Witness{"ear": e})
+		x.Zero(e.all()[0].Prehash, "a witness that keeps statements was told a digest")
+	})
+}
+
+// messageOnly is a key in a device that signs Ed25519 over the message alone.
+type messageOnly struct{ crypto.Signer }
+
+func (k messageOnly) Sign(r io.Reader, b []byte, opts crypto.SignerOpts) ([]byte, error) {
+	if opts.HashFunc() != 0 {
+		return nil, errors.New("an Ed25519 key here signs a message itself")
+	}
+	return k.Signer.Sign(r, b, opts)
+}
+
+// asMessage is one that signs a digest as if it were the message.
+type asMessage struct{ crypto.Signer }
+
+func (k asMessage) Sign(r io.Reader, b []byte, _ crypto.SignerOpts) ([]byte, error) {
+	return k.Signer.Sign(r, b, crypto.Hash(0))
+}
+
+// TestAWitnessThatChecksItself (#115): what it finds is a finding of the
+// verification's, bound by its digest; it is handed every checkpoint that is
+// the deployment's word with the receipt the store keeps beside it and the
+// statement's digests, and told a full verification; and one that cannot
+// check is a witness that did not answer -- the newest it heard nothing of,
+// once the grace is over.
+func TestAWitnessThatChecksItself(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	var got []Checked
+	var full []bool
+	var finding *Finding
+	var down error
+	w := &teller{ear: &ear{}, h: crypto.SHA512, checks: func(kept []Checked, f bool) ([]Finding, error) {
+		got, full = kept, append(full, f)
+		if down != nil {
+			return nil, down
+		}
+		if finding != nil {
+			return []Finding{*finding}, nil
+		}
+		return nil, nil
+	}}
+	s, p := heardBy(t, 2, map[string]Witness{"log": w})
+
+	v, err := p.Verify(ctx, s, true)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+	x.True(full[len(full)-1], "a full verification was not told it was one")
+	x.False(full[0], "a pass's verification was told it was a full one")
+	x.Len(got, 2)
+	for _, c := range got {
+		x.NotNil(c.Receipt, "checkpoint %d was handed without its receipt", c.K)
+		x.Len(c.Sums[crypto.SHA512], 64)
+		x.NotEmpty(c.Keys)
+	}
+	clean := v.Digest
+
+	finding = &Finding{Kind: "forged", Checkpoint: 1, Note: "the log's receipt of it: it does not read"}
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"forged"}, kinds(v))
+	x.NotEqual(clean, v.Digest)
+
+	finding, down = nil, errors.New("the log is away")
+	p.HearWithin = time.Nanosecond
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"unheard"}, kinds(v), "a witness that could not check heard the newest")
+
+	down = nil
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.True(v.Ok(), "a witness whose receipt of the newest the store keeps did not hear it: %v", v.Findings)
 }

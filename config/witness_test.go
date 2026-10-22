@@ -2,7 +2,11 @@ package config_test
 
 import (
 	"context"
+	"crypto"
+	"crypto/ed25519"
+	"crypto/rand"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -54,7 +58,8 @@ func TestAWitnessIsALineOfConfiguration(t *testing.T) {
 		"test-failing:x":   "nobody is listening",
 		"test-nothing:x":   "opened nothing",
 		"store:/mnt/x":     "config/witnessstore",
-		"rekor:x":          "config.RegisterWitness",
+		"rekor:x":          "config/witnessrekor",
+		"elsewhere:x":      "config.RegisterWitness",
 	} {
 		ws := []string{v}
 		if v == "test-ear:one" {
@@ -74,4 +79,49 @@ func TestAWitnessIsALineOfConfiguration(t *testing.T) {
 	p, err = c.Policy()
 	x.NoError(err)
 	x.Equal(3*time.Hour, p.HearWithin)
+}
+
+// digests is a witness that keeps a statement's digest, as far as the
+// configuration can tell.
+type digests struct{ listener }
+
+func (*digests) Prehash(crypto.PublicKey) crypto.Hash { return crypto.SHA512 }
+
+// messageOnly is a key in a device that signs Ed25519 over the message alone.
+type messageOnly struct{ crypto.Signer }
+
+func (k messageOnly) Sign(r io.Reader, b []byte, opts crypto.SignerOpts) ([]byte, error) {
+	if opts.HashFunc() != 0 {
+		return nil, errors.New("an Ed25519 key here signs a message itself")
+	}
+	return k.Signer.Sign(r, b, opts)
+}
+
+// TestAKeyThatCannotSignADigestIsRefusedForAWitnessThatKeepsOne (payday#115):
+// a witness that keeps a statement's digest is told the key's signature over
+// one, and a key in a device that signs Ed25519 over the message alone cannot
+// make it: refused where the process comes up, with what to name instead --
+// and only where such a witness is named.
+func TestAKeyThatCannotSignADigestIsRefusedForAWitnessThatKeepsOne(t *testing.T) {
+	x := require.New(t)
+
+	_, ed, err := ed25519.GenerateKey(rand.Reader)
+	x.NoError(err)
+	config.RegisterSigner("test-message-only", func(string) (messageOnly, error) { return messageOnly{ed}, nil })
+	config.RegisterWitness("test-digests", func(string) (*digests, error) { return &digests{}, nil })
+	config.RegisterWitness("test-keeps", func(string) (*listener, error) { return &listener{}, nil })
+
+	audit := func(key string, ws ...string) config.AuditConfig {
+		return config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Key: key, Witnesses: ws}}
+	}
+
+	_, err = audit("test-message-only:x", "test-digests:x").Policy()
+	x.ErrorContains(err, "test-digests:x keeps a statement's digest")
+	x.ErrorContains(err, "an ECDSA or RSA key")
+	x.ErrorContains(err, "store: and log:")
+
+	_, err = audit("test-message-only:x", "test-keeps:x").Policy()
+	x.NoError(err, "a key was refused for a witness that keeps statements")
+	_, err = audit(pdtest.Key(t), "test-digests:x").Policy()
+	x.NoError(err, "an Ed25519 key that signs Ed25519ph was refused")
 }

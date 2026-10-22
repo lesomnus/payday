@@ -294,8 +294,12 @@ links payday's two in `cli`; another app imports `config/witnesslog` and
 `config/witnessstore`. `log:` tells the log and a gauge, and is a witness only
 with the alerts the runtime docs give set on it; `store:<dir>` keeps what it
 hears on a disk of its own — mount it with credentials neither the database's
-nor the archive's, and on a disk that refuses deletion. A verification lists
-what each heard last (`Verified.Heard`): print it.
+nor the archive's, and on a disk that refuses deletion. `rekor:` logs each
+checkpoint's digest to a transparency log (`config/witnessrekor`): a log of
+your own, or public Sigstore only by choice, after the runtime docs' part on
+it — and with a monitor of the log set to the deployment's key, which is what
+watches the head there. A verification lists what each heard last
+(`Verified.Heard`): print it.
 
 Every act that changes the archive ends in a checkpoint, as a pass does. Once
 the rows no longer add up to the latest one, none is taken — every act says so

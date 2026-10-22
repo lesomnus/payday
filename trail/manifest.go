@@ -6,6 +6,8 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -1019,7 +1021,7 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		return out, err
 	}
 	out.Findings = append(out.Findings, fs...)
-	out.Findings = append(out.Findings, p.witnessFindings(ctx, out.chain, &out)...)
+	out.Findings = append(out.Findings, p.witnessFindings(ctx, out.chain, &out, full)...)
 	out.Digest = digestOfFindings(out.Findings)
 
 	return out, nil
@@ -1510,6 +1512,17 @@ type stored struct {
 
 	has, good bool
 	light     bool
+
+	// sums is the statement's digests, which a log that keeps a digest and not
+	// the statement is bound to it by ([Checked]); kept from memory as the
+	// statement is not.
+	sums map[crypto.Hash][]byte
+}
+
+// sumsOf is the digests a [Checker] is handed of a statement.
+func sumsOf(b []byte) map[crypto.Hash][]byte {
+	a, c, d := sha256.Sum256(b), sha512.Sum384(b), sha512.Sum512(b)
+	return map[crypto.Hash][]byte{crypto.SHA256: a[:], crypto.SHA384: c[:], crypto.SHA512: d[:]}
 }
 
 // known is what the checkpoint stores this process reads were read for, by
@@ -1633,6 +1646,10 @@ type chain struct {
 	// a witness again and nothing else.
 	heard map[flob.Digest]map[string]bool
 
+	// receipts is, by a checkpoint's digest, what each witness answered when
+	// it heard it, as the store keeps it, for a [Checker].
+	receipts map[flob.Digest]map[string]json.RawMessage
+
 	// store is where it was read from, for [chain.whole].
 	store flob.Store
 }
@@ -1714,7 +1731,7 @@ func (p Policy) readChainFrom(ctx context.Context, fresh bool) (chain, error) {
 		}
 	}
 
-	ch := chain{kept: map[flob.Digest]stored{}, labelled: map[flob.Digest]int{}, vouched: map[flob.Digest]bool{}, heard: map[flob.Digest]map[string]bool{}, store: s}
+	ch := chain{kept: map[flob.Digest]stored{}, labelled: map[flob.Digest]int{}, vouched: map[flob.Digest]bool{}, heard: map[flob.Digest]map[string]bool{}, receipts: map[flob.Digest]map[string]json.RawMessage{}, store: s}
 	todo := []flob.Digest{}
 	listed := map[flob.Digest]bool{}
 	for _, v := range ls {
@@ -1752,8 +1769,10 @@ func (p Policy) readChainFrom(ctx context.Context, fresh bool) (chain, error) {
 		if w != nil {
 			if ch.heard[w.Of] == nil {
 				ch.heard[w.Of] = map[string]bool{}
+				ch.receipts[w.Of] = map[string]json.RawMessage{}
 			}
 			ch.heard[w.Of][w.Witness] = true
+			ch.receipts[w.Of][w.Witness] = w.Receipt
 
 			continue
 		}
@@ -2142,6 +2161,7 @@ func readStored(ctx context.Context, s flob.Store, d flob.Digest) (stored, *witn
 		return out, nil, err
 	}
 	out.has, out.good = signature(out.s)
+	out.sums = sumsOf(out.s.Checkpoint)
 
 	return out, nil, nil
 }

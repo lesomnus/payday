@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -79,6 +85,158 @@ type Signed struct {
 	Statement []byte `json:"statement"`
 	Key       []byte `json:"key"`
 	Sig       []byte `json:"sig"`
+
+	// Prehash, PrehashKey and PrehashSig are, for a witness that keeps a
+	// statement's digest and not the statement ([Prehashed]), the hash the
+	// digest is taken with and a signature over that digest, by the key
+	// whose public half, PKIX, it is: the statement's own signature where
+	// it already is one -- ECDSA and RSA sign SHA-256 of what they sign --
+	// and otherwise the policy's key once more, Ed25519 as Ed25519ph (RFC
+	// 8032, section 5.1). Empty for any other witness.
+	Prehash    crypto.Hash `json:"prehash,omitempty"`
+	PrehashKey []byte      `json:"prehash_key,omitempty"`
+	PrehashSig []byte      `json:"prehash_sig,omitempty"`
+}
+
+// Prehashed is a witness that keeps a statement's digest and not the
+// statement -- a transparency log's `hashedrekord` -- and so is told, beside
+// the statement, a signature over its digest ([Signed.Prehash]).
+type Prehashed interface {
+	Witness
+
+	// Prehash is the hash the digest is to be taken with for a statement the
+	// key whose public half this is signs: SHA-512 for an Ed25519 key, whose
+	// signature over it is Ed25519ph; for ECDSA and RSA what the log takes,
+	// SHA-256 being the statement's own signature again.
+	Prehash(key crypto.PublicKey) crypto.Hash
+}
+
+// Checker is a witness that holds the chain to itself: one whose entries
+// carry no number, so that [Witness.Latest] has nothing to answer -- a
+// transparency log that keeps a digest. A verification hands it, for a chain,
+// every checkpoint that is the deployment's word with the receipt the store
+// keeps of it from the witness, and what it finds is a finding of the
+// verification's, bound by its digest as every finding is. One that cannot
+// check is a witness that did not answer.
+//
+// A verification asks it a bounded number of questions whatever the length
+// of the history; `full` is a full verification, which asks again what one
+// it answered before already settled.
+type Checker interface {
+	Witness
+
+	Check(ctx context.Context, chain string, kept []Checked, full bool) ([]Finding, error)
+}
+
+// Checked is a checkpoint as a [Checker] is handed it: its number, what the
+// store keeps it under and the key that signed it -- the statement itself is
+// not read for it -- the statement's digests, and the receipt the store
+// keeps of it from the witness, nil for none.
+type Checked struct {
+	K      int
+	Digest flob.Digest
+	Key    []byte
+	Sums   map[crypto.Hash][]byte
+
+	Receipt json.RawMessage
+
+	// Keys is the keys the policy signs with and trusts, PKIX: what an entry
+	// the deployment made is signed by.
+	Keys [][]byte
+}
+
+// TryPrehash signs once over a digest for a [Prehashed] witness, as it will be
+// told every checkpoint, and verifies what comes back: a key in a device that
+// signs Ed25519 over the message alone, and refuses a digest or signs it as
+// if it were one, is found where the process comes up rather than at every
+// checkpoint after.
+func TryPrehash(k crypto.Signer, w Prehashed) error {
+	h := w.Prehash(k.Public())
+	if h == 0 {
+		return nil
+	}
+
+	d := h.New()
+	d.Write([]byte("payday: a signature over a digest, tried"))
+	sum := d.Sum(nil)
+
+	sig, err := prehashed(k, h, sum)
+	if err != nil {
+		return err
+	}
+	if !verifiedOver(k.Public(), h, sum, sig) {
+		return errors.New("the key signed something other than the digest it was given")
+	}
+
+	return nil
+}
+
+// prehashed signs a digest taken with `h`: Ed25519ph for an Ed25519 key.
+func prehashed(k crypto.Signer, h crypto.Hash, sum []byte) ([]byte, error) {
+	var opts crypto.SignerOpts = h
+	if _, ok := k.Public().(ed25519.PublicKey); ok {
+		opts = &ed25519.Options{Hash: h}
+	}
+
+	return k.Sign(rand.Reader, sum, opts)
+}
+
+// verifiedOver answers whether `sig` is a signature over a digest taken with
+// `h`: Ed25519ph for an Ed25519 key, PKCS #1 v1.5 for RSA.
+func verifiedOver(pub crypto.PublicKey, h crypto.Hash, sum, sig []byte) bool {
+	switch k := pub.(type) {
+	case ed25519.PublicKey:
+		return ed25519.VerifyWithOptions(k, sum, sig, &ed25519.Options{Hash: h}) == nil
+	case *ecdsa.PublicKey:
+		return ecdsa.VerifyASN1(k, sum, sig)
+	case *rsa.PublicKey:
+		return rsa.VerifyPKCS1v15(k, h, sum, sig) == nil
+	}
+
+	return false
+}
+
+// prehashFor is what a [Prehashed] witness is told of a statement beside it:
+// the statement's own signature where that is already over the digest the
+// witness takes, and the policy's key signing it once more where it is not.
+func (p Policy) prehashFor(w Prehashed, s Signed) (Signed, error) {
+	pub, err := x509.ParsePKIXPublicKey(s.Key)
+	if err != nil {
+		return s, err
+	}
+
+	if h := w.Prehash(pub); h == crypto.SHA256 && !isEd25519(pub) {
+		s.Prehash, s.PrehashKey, s.PrehashSig = h, s.Key, s.Sig
+		return s, nil
+	}
+	if p.Signer == nil {
+		return s, ErrNoKey
+	}
+
+	key, err := x509.MarshalPKIXPublicKey(p.Signer.Public())
+	if err != nil {
+		return s, err
+	}
+	h := w.Prehash(p.Signer.Public())
+	if h == 0 {
+		return s, nil
+	}
+
+	d := h.New()
+	d.Write(s.Statement)
+	sum := d.Sum(nil)
+	sig, err := prehashed(p.Signer, h, sum)
+	if err != nil {
+		return s, fmt.Errorf("signing the digest of checkpoint %d for a witness that keeps digests: %w", s.K, err)
+	}
+
+	s.Prehash, s.PrehashKey, s.PrehashSig = h, key, sig
+	return s, nil
+}
+
+func isEd25519(pub crypto.PublicKey) bool {
+	_, ok := pub.(ed25519.PublicKey)
+	return ok
 }
 
 // Witnessed is what a witness answers when it hears a statement: its
@@ -163,7 +321,16 @@ func (p Policy) tell(ctx context.Context, v stored, heard map[string]bool) {
 			continue
 		}
 
-		w, err := p.Witnesses[name].Hear(ctx, signedOf(v))
+		s := signedOf(v)
+		var err error
+		if pw, ok := p.Witnesses[name].(Prehashed); ok {
+			s, err = p.prehashFor(pw, s)
+		}
+
+		var w Witnessed
+		if err == nil {
+			w, err = p.Witnesses[name].Hear(ctx, s)
+		}
 		if err == nil {
 			err = p.keepWitnessed(ctx, witnessed{Witness: name, Of: v.d, K: v.c.K, At: time.Now().UTC(), Receipt: w.Receipt})
 		}
@@ -338,7 +505,7 @@ func (ch chain) twices(hs map[string]Heard) map[string][]HeardTwice {
 // heard last, the store keeps as it was heard, and the newest checkpoint the
 // store keeps, once it is older than [Policy.HearWithin], was heard by one of
 // them. See [Witness].
-func (p Policy) witnessFindings(ctx context.Context, ch chain, out *Verified) []Finding {
+func (p Policy) witnessFindings(ctx context.Context, ch chain, out *Verified, full bool) []Finding {
 	if len(p.Witnesses) == 0 {
 		return nil
 	}
@@ -353,7 +520,40 @@ func (p Policy) witnessFindings(ctx context.Context, ch chain, out *Verified) []
 	hs, asked := p.answers(ctx)
 	out.Heard = hs
 
-	fs := []Finding{}
+	// The ones that hold the chain to themselves, handed what the store keeps:
+	// each that answers heard the newest when the store keeps its receipt.
+	checked := false
+	checks := []Finding{}
+	for _, name := range slices.Sorted(maps.Keys(p.Witnesses)) {
+		c, ok := p.Witnesses[name].(Checker)
+		if !ok {
+			continue
+		}
+
+		asked++
+		keys := [][]byte{}
+		for _, k := range p.trusted() {
+			if der, err := x509.MarshalPKIXPublicKey(k); err == nil {
+				keys = append(keys, der)
+			}
+		}
+		kept := []Checked{}
+		for _, v := range ch.decided() {
+			kept = append(kept, Checked{K: v.c.K, Digest: v.d, Key: v.s.Key, Sums: v.sums, Receipt: ch.receipts[v.d][name], Keys: keys})
+		}
+		fs, err := c.Check(ctx, "", kept, full)
+		if err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: a witness did not answer", "witness", name, "err", err)
+			continue
+		}
+
+		checks = append(checks, fs...)
+		if newest != nil && ch.heard[newest.d][name] {
+			checked = true
+		}
+	}
+
+	fs := checks
 	heardNewest := false
 	for _, name := range slices.Sorted(maps.Keys(hs)) {
 		h := hs[name]
@@ -406,7 +606,7 @@ func (p Policy) witnessFindings(ctx context.Context, ch chain, out *Verified) []
 		}
 	}
 
-	if asked > 0 && newest != nil && !heardNewest && time.Since(newest.c.At) > p.hearWithin() {
+	if asked > 0 && newest != nil && !heardNewest && !checked && time.Since(newest.c.At) > p.hearWithin() {
 		fs = append(fs, Finding{Kind: "unheard", Checkpoint: newest.c.K, Digest: newest.d,
 			Note: fmt.Sprintf("taken %s ago, and no witness that answers heard it", time.Since(newest.c.At).Round(time.Minute))})
 	}
