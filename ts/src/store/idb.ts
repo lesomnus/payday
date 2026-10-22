@@ -56,7 +56,7 @@ interface Db {
 	createObjectStore(name: string, opts?: { keyPath?: string }): Table
 	transaction(names: string | string[], mode: 'readonly' | 'readwrite'): Tx
 	close(): void
-	onversionchange: (() => void) | null
+	onversionchange: ((e: { readonly newVersion: number | null }) => void) | null
 }
 
 interface Tx {
@@ -177,7 +177,7 @@ export async function openDisk(entities: readonly EntityDesc[], at: At, opts: Di
 
 	const db = await opening(req, name)
 	const mirror = new Mirror(db, opts.keep ?? KEEP)
-	db.onversionchange = (): void => mirror.release()
+	db.onversionchange = (e): void => mirror.release(e.newVersion === null)
 
 	// Two transactions rather than one, deliberately. A transaction commits by
 	// itself once nothing is pending on it, and an `await` between two requests
@@ -305,8 +305,8 @@ class Mirror implements Disk {
 	private readonly db: Db
 	private readonly keep: number
 
-	/** Let go of for another page; see [Mirror.release]. */
-	private released = false
+	/** Let go of for another page, and whether that page deleted it; see [Mirror.release]. */
+	private released: 'deleted' | 'moved' | undefined
 
 	constructor(db: Db, keep: number) {
 		this.db = db
@@ -321,15 +321,19 @@ class Mirror implements Disk {
 	 * The store above goes on in memory. What fails is what needed the disk --
 	 * a write kept, a write sent and let go -- and it fails saying why, so
 	 * whatever sees it knows the page wants reloading.
+	 *
+	 * But not a [Mirror.clear], when the other page is deleting the database:
+	 * what clearing it is for is that nothing of this caller's is left in it,
+	 * and that is so already.
 	 */
-	release(): void {
-		this.released = true
+	release(deleted: boolean): void {
+		this.released = deleted ? 'deleted' : 'moved'
 		this.db.close()
 	}
 
 	/** tx is a transaction on the mirror, while this page still holds it. */
 	private tx(names: string | string[], mode: 'readonly' | 'readwrite'): Tx {
-		if (this.released) {
+		if (this.released !== undefined) {
 			throw new Error('idb: this mirror was let go for another page, which moved it on or deleted it; reload')
 		}
 
@@ -454,6 +458,11 @@ class Mirror implements Disk {
 	}
 
 	async clear(): Promise<void> {
+		// Another page is deleting it, which leaves nothing to clear; see
+		// [Mirror.release]. A mirror moved on to a later version is still there,
+		// held by a page this one cannot reach, and clearing it fails saying so.
+		if (this.released === 'deleted') return
+
 		// The writes too: this is a caller being done, and what they never sent
 		// is theirs as much as what they read. See [Store.forget].
 		const tx = this.tx([...TABLES, WRITES], 'readwrite')

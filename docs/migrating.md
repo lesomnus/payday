@@ -3,6 +3,36 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A store closes after what it was told, and a forget says how it went
+
+**Applies if** a page of yours calls `Store.forget` or `Store.close` -- `pd new`'s
+`main.tsx` and `session.tsx` both do, when somebody signs out -- or implements
+`Disk`.
+
+- **`close()` closes the mirror once the writes queued for it have gone**, and
+  answers a promise for when it has. It used to close it at once, under the
+  writes still queued -- and a forget is one of them, so `forget(); close()`,
+  which is how a page signs out, left the caller's rows and answers on the
+  disk with nothing saying so. The writes they never sent were cleared, by a
+  transaction of their own. Nothing has to change in a page for the fix to
+  apply, awaited or not. A row written after `close()` stays in memory.
+- **`forget()` answers a promise**: for when the mirror is cleared, rejecting
+  with why it could not be. Called on a store already closed, it rejects,
+  since nothing is left to clear the mirror with; `deleteDisk` deletes it.
+- **`close()` rejects when the forget before it did not reach the mirror**, and
+  closes it all the same. Not awaited, that is an unhandled rejection, which a
+  browser prints. Await it where you would rather say so to the person, as
+  `pd new`'s `session.tsx` now does. A row that did not reach the mirror is
+  still `flushed()`'s to say, and not `close()`'s.
+- **A mirror another page deleted counts as forgotten.** One another page moved
+  to a later version does not, since it is still there.
+- **`Disk.close` is unchanged**, and still synchronous: the store calls it
+  once the queue has drained. A `Disk` of your own needs nothing.
+- `pd new`'s pages now wait for `close()` before they start again, and
+  `session.tsx` tells the person when signing out left something on the disk.
+  A page made before this keeps working as it was written, and is fixed by the
+  upgrade; copy those lines in if you would rather the person were told.
+
 ## An erasure decided in a transaction is owed, then paid
 
 **Applies to every app** (a new table), and to one that calls

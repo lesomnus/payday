@@ -296,9 +296,10 @@ Six things are worth knowing before relying on it:
   page was offline — it **waits**, and goes once its caller signs in again: the
   same person with the same grant is the same store. Signing out is what lets
   the writes go: `store.forget()`, in **every** page holding the store, which
-  `pd new`'s `session.tsx` says over a `BroadcastChannel`. A forgotten store
-  keeps nothing more and sends nothing. Read `queries.writes()` before signing
-  out if losing them matters.
+  `pd new`'s `session.tsx` says over a `BroadcastChannel`, and then
+  `store.close()` ([§5](#5-persistence)). A forgotten store keeps nothing more
+  and sends nothing. Read `queries.writes()` before signing out if losing them
+  matters.
 - **A secret is not kept.** A write that sets a field declared
   `(payday.field).secret` is refused by `send` before anything is stored, because
   waiting would keep the secret on disk in the clear -- and so is an `AddMany`
@@ -343,6 +344,25 @@ const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) }
 void deleteOtherDisks(at)
 await store.hydrate()
 ```
+
+**Signing out forgets, then closes.** `store.forget()` drops the caller's rows,
+answers and waiting writes at once, and the mirror's copy of them once the
+writes queued for it ahead of the forget have gone. `store.close()` closes the
+mirror only after that, so neither has to be awaited for the mirror to be left
+empty -- and a row written after `close()` stays in memory. Each answers a
+promise: `forget()` for when the mirror is cleared, and `close()` for when it
+is closed. `close()` rejects when the forget before it did not reach the disk,
+and closes the mirror all the same; so a page that would tell the person awaits
+it, as `pd new`'s `session.tsx` does:
+
+```ts
+void store.forget()
+await store.close() // rejects if the mirror still holds what was forgotten
+```
+
+A mirror another page deleted counts as forgotten. One another page moved to a
+later version does not, since it is still on the disk. A row that did not
+reach the mirror is `flushed()`'s to say, and not `close()`'s.
 
 A page lets go of its mirror when another page deletes it or moves it to
 a later version, so neither waits on a tab somebody left open. A tab from before
