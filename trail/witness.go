@@ -53,10 +53,11 @@ type Witness interface {
 	Hear(ctx context.Context, s Signed) (Witnessed, error)
 
 	// Latest is the newest statement of a chain the witness heard: the
-	// highest number, and of two of that number, the one it heard first --
-	// a number heard twice is one the count was wound back to take again,
-	// and the first is the one the deployment took. Nothing heard is zero.
-	// [ErrDeaf] is a witness that only tells, and has nothing to answer with.
+	// highest number, and of two of that number, the one it heard first.
+	// Nothing heard is zero. A witness that can also tell it heard one
+	// number twice, as two statements -- the count wound back and the
+	// number taken again -- says so in [Heard.Twice]. [ErrDeaf] is a witness
+	// that only tells, and has nothing to answer with.
 	Latest(ctx context.Context, chain string) (Heard, error)
 }
 
@@ -92,6 +93,34 @@ type Heard struct {
 	Signed
 
 	At time.Time `json:"at"`
+
+	// Twice is, of the chain, the number the witness heard two statements of
+	// most lately, when there is one: nil for none. A number heard twice is a
+	// count wound back -- the newest checkpoints taken away while every
+	// witness was away, and numbered again -- and is found below the head,
+	// where the newest no longer says it. The one heard most lately, so that
+	// an acceptance of one wound back hides no later one.
+	Twice *Twice `json:"twice,omitempty"`
+}
+
+// Twice is a number a witness heard two statements of: the first it heard,
+// and the one it heard last that was something else.
+type Twice struct {
+	First Heard `json:"first"`
+	Again Heard `json:"again"`
+}
+
+// HeardTwice is a number a witness heard twice, as an acceptance keeps it:
+// the number and the two digests, which it was of ([Accepted.Twice]).
+type HeardTwice struct {
+	K     int         `json:"k"`
+	First flob.Digest `json:"first"`
+	Again flob.Digest `json:"again"`
+}
+
+// heardTwice is what an acceptance keeps of a number heard twice.
+func (t Twice) heardTwice() HeardTwice {
+	return HeardTwice{K: t.First.K, First: t.First.Digest, Again: t.Again.Digest}
 }
 
 // ErrDeaf is a witness that only tells -- a log that the monitoring outside
@@ -264,6 +293,35 @@ func (p Policy) heardAhead(ctx context.Context) int {
 	return n
 }
 
+// acceptedTwice answers whether an acceptance the chain vouches for was of
+// this number a witness heard twice: one that an operator looked at, which is
+// a finding no more. A number heard twice after it is one of its own.
+func (ch chain) acceptedTwice(witness string, t HeardTwice) bool {
+	for _, v := range ch.decided() {
+		if a := v.c.Accepted; a != nil && a.Twice[witness] == t {
+			return true
+		}
+	}
+
+	return false
+}
+
+// twices is what an acceptance keeps of the numbers the witnesses that
+// answered heard twice, by witness.
+func twices(hs map[string]Heard) map[string]HeardTwice {
+	out := map[string]HeardTwice{}
+	for name, h := range hs {
+		if h.Twice != nil {
+			out[name] = h.Twice.heardTwice()
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+
+	return out
+}
+
 // witnessFindings holds the chain to every witness that answers: what each
 // heard last, the store keeps as it was heard, and the newest checkpoint the
 // store keeps, once it is older than [Policy.HearWithin], was heard by one of
@@ -294,6 +352,17 @@ func (p Policy) witnessFindings(ctx context.Context, ch chain, out *Verified) []
 			fs = append(fs, Finding{Kind: "forged", Checkpoint: h.K, Digest: h.Digest,
 				Note: fmt.Sprintf("witness %s answers that it heard it, and its signature is not good", name)})
 			continue
+		}
+
+		if t := h.Twice; t != nil && !ch.acceptedTwice(name, t.heardTwice()) {
+			switch {
+			case !verified(t.First.Key, t.First.Statement, t.First.Sig) || !verified(t.Again.Key, t.Again.Statement, t.Again.Sig):
+				fs = append(fs, Finding{Kind: "forged", Checkpoint: t.First.K, Digest: t.First.Digest,
+					Note: fmt.Sprintf("witness %s answers that it heard it twice, and a signature is not good", name)})
+			default:
+				fs = append(fs, Finding{Kind: "rewritten", Checkpoint: t.First.K, Digest: t.First.Digest,
+					Note: fmt.Sprintf("witness %s heard it as %s, and again as %s: the count was wound back and the number taken again", name, t.First.Digest, t.Again.Digest)})
+			}
 		}
 
 		_, kept := ch.kept[h.Digest]

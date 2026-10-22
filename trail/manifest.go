@@ -726,7 +726,8 @@ type Finding struct {
 	//	rewritten    a checkpoint the manifest's rows no longer add up to, or one
 	//	             of two the store keeps under one number, both the
 	//	             deployment's word; or one the store keeps as something
-	//	             other than a witness heard
+	//	             other than a witness heard, or a number a witness heard as
+	//	             two statements
 	//	reordered    a checkpoint that names one after it as the one before
 	//	unkept       a checkpoint the database numbered, or the one after it
 	//	             names, or a witness heard, that the store does not keep; or
@@ -2278,6 +2279,11 @@ type Accepted struct {
 	// More is how many were accepted past the keys kept.
 	More int `json:"more,omitempty"`
 
+	// Twice is, by witness, the number it heard twice that the acceptance was
+	// of -- a count wound back, which the operator looked at -- and is a
+	// finding no more; one heard twice after it is. See [Heard.Twice].
+	Twice map[string]HeardTwice `json:"twice,omitempty"`
+
 	// Checkpoint and At are the checkpoint it ended in, as a verification
 	// lists it ([Verified.Accepted]). The checkpoint keeps them as its own,
 	// and they are not written twice.
@@ -2468,6 +2474,7 @@ func (p Policy) Accept(ctx context.Context, s Store, a Acceptance) (Verified, er
 	}
 
 	kept := acceptedOf(a, v.Findings)
+	kept.Twice = twices(v.Heard)
 	log.From(ctx).InfoContext(ctx, "trail: the manifest, made to say what the archive holds",
 		"by", a.By, "why", a.Why, "of", string(a.Of), "findings", len(v.Findings))
 

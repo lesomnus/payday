@@ -60,6 +60,20 @@ func (e *ear) Latest(_ context.Context, chain string) (Heard, error) {
 		}
 	}
 
+	// The number heard as two statements most lately: its first statement,
+	// and the last heard that was something else.
+	firsts := map[int]Heard{}
+	for _, h := range e.heard {
+		if f, ok := firsts[h.K]; h.Chain == chain && (!ok || h.At.Before(f.At)) {
+			firsts[h.K] = h
+		}
+	}
+	for _, h := range e.heard {
+		if f := firsts[h.K]; h.Chain == chain && h.Digest != f.Digest && (out.Twice == nil || h.At.After(out.Twice.Again.At)) {
+			out.Twice = &Twice{First: f, Again: h}
+		}
+	}
+
 	return out, nil
 }
 
@@ -193,6 +207,71 @@ func TestAChainCutShortIsFoundByItsWitness(t *testing.T) {
 	v, err = p.Verify(ctx, s, false)
 	x.NoError(err)
 	x.True(v.Ok(), "%v", v.Findings)
+}
+
+// windBack is somebody who takes the newest `n` checkpoints away from the
+// store and winds the count back while every witness is away, and the
+// deployment numbering again what they took: `n` acts, each a checkpoint, and
+// a pass once the witness is back, which tells it what it missed.
+func windBack(t *testing.T, s *fakeStore, p Policy, e *ear, n int) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	e.set(func(e *ear) { e.away = errors.New("the witness is away") })
+	latest := latestOf(t, s)
+	for k := latest - n + 1; k <= latest; k++ {
+		x.NoError(p.checkpoints().Erase(ctx, numbered(t, p, k).d))
+	}
+	s.mu.Lock()
+	s.counter = latest - n
+	s.mu.Unlock()
+	for range n + 1 {
+		x.NoError(oneMore(t, s, p))
+	}
+
+	e.set(func(e *ear) { e.away = nil })
+	p.Pass(ctx, s)
+}
+
+// TestANumberTakenAgainIsFoundByItsWitness (#115).
+//
+// Every witness away while the newest checkpoints are taken away and the count
+// wound back, and the deployment numbers them again. Told them when it is
+// back, the witness's newest is the deployment's newest -- and it heard those
+// numbers twice, which is `rewritten` below the head: of the numbers it heard
+// twice, the one it heard so most lately. An operator who looked accepts it,
+// and it is a finding no more; a count wound back again after the acceptance
+// is found as before.
+func TestANumberTakenAgainIsFoundByItsWitness(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	e := &ear{}
+	s, p := heardBy(t, 3, map[string]Witness{"ear": e})
+	three := numbered(t, p, 3).d
+	windBack(t, s, p, e, 2)
+
+	v, err := p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"rewritten"}, kinds(v))
+	x.Equal(3, v.Findings[0].Checkpoint)
+	x.Equal(three, v.Findings[0].Digest)
+	x.Contains(v.Findings[0].Note, "wound back")
+
+	_, err = accept(t, p, s, Acceptance{Why: "the store's disk was restored from an older copy while the witness was away"})
+	x.NoError(err)
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+
+	// Another pass, and the count wound back past it alone: the acceptance is
+	// still in the chain, and is of the number heard twice before.
+	p.Pass(ctx, s)
+	windBack(t, s, p, e, 1)
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"rewritten"}, kinds(v), "an acceptance of one count wound back hid the next")
+	x.Equal(latestOf(t, s)-2, v.Findings[0].Checkpoint)
 }
 
 // TestACheckpointNoWitnessHeardIsFound (#115): the newest checkpoint, once it

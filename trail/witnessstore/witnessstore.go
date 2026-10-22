@@ -18,6 +18,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -99,15 +101,24 @@ func (w *Witness) Hear(ctx context.Context, s trail.Signed) (trail.Witnessed, er
 }
 
 // Latest reads every statement the store keeps of `chain`, and answers the
-// highest number, and of two of that number the one heard first. A blob that
-// holds no statement, or whose bytes are not its digest, is passed over.
+// highest number, and of two of that number the one heard first -- and the
+// number it heard two statements of most lately, its first statement and the
+// last heard that was something else (trail.Heard.Twice). A blob that holds no
+// statement, or whose bytes are not its digest, is passed over.
 func (w *Witness) Latest(ctx context.Context, chain string) (trail.Heard, error) {
 	walker, ok := flob.AsWalker(w.s)
 	if !ok {
 		return trail.Heard{}, errors.New("the witness's store cannot be listed")
 	}
 
-	out := trail.Heard{}
+	// What each number was heard as, without the statements, which are read
+	// again for the few that are answered.
+	type seen struct {
+		at     time.Time
+		digest flob.Digest
+		blob   flob.Digest
+	}
+	byK := map[int][]seen{}
 	for v, err := range walker.Walk(ctx) {
 		if err != nil {
 			return trail.Heard{}, err
@@ -125,9 +136,44 @@ func (w *Witness) Latest(ctx context.Context, chain string) (trail.Heard, error)
 			continue
 		}
 
-		if h.K > out.K || h.K == out.K && h.At.Before(out.At) {
-			out = h
+		byK[h.K] = append(byK[h.K], seen{h.At, h.Digest, v.Digest()})
+	}
+	if len(byK) == 0 {
+		return trail.Heard{}, nil
+	}
+
+	ks := slices.Sorted(maps.Keys(byK))
+	for _, k := range ks {
+		slices.SortFunc(byK[k], func(a, b seen) int { return a.at.Compare(b.at) })
+	}
+
+	out, err := w.read(ctx, byK[ks[len(ks)-1]][0].blob)
+	if err != nil {
+		return trail.Heard{}, err
+	}
+
+	// Of the numbers heard as two statements, the one heard so most lately:
+	// its first statement, and the last heard that was something else.
+	var first, again *seen
+	for _, k := range ks {
+		vs := byK[k]
+		for i := range vs[1:] {
+			v := &vs[i+1]
+			if v.digest != vs[0].digest && (again == nil || v.at.After(again.at)) {
+				first, again = &vs[0], v
+			}
 		}
+	}
+	if again != nil {
+		f, err := w.read(ctx, first.blob)
+		if err != nil {
+			return trail.Heard{}, err
+		}
+		a, err := w.read(ctx, again.blob)
+		if err != nil {
+			return trail.Heard{}, err
+		}
+		out.Twice = &trail.Twice{First: f, Again: a}
 	}
 
 	return out, nil

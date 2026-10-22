@@ -587,7 +587,7 @@ way through is no finding, and no clock is asked. What it finds:
 | `altered` | a blob whose bytes are no longer its digest (`full` only) |
 | `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts — but not a checkpoint a later one the deployment signed names, whatever signed it (a key rotated out); a blob of the checkpoint store that is neither a checkpoint nor a witness's receipt; or a statement a witness answers whose signature is not good |
 | `unsigned` | a row with no signature; a checkpoint with none that no checkpoint the deployment signed names |
-| `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to (not the one before an acceptance); or one of two the store keeps under one number, both the deployment's word; or one the store keeps as other than a witness heard |
+| `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to (not the one before an acceptance); or one of two the store keeps under one number, both the deployment's word; or one the store keeps as other than a witness heard, or a number a witness heard as two statements |
 | `reordered` | a checkpoint that names one after it as the one before |
 | `unkept` | a checkpoint the database numbered, the one after it names, or a witness heard, that the store does not keep; or the numbers a checkpoint skips over to the one it names that no checkpoint the store keeps says it is — taken away, lost to a store restored from an older copy, or numbered by a pass a crash stopped — until an operator accepts |
 | `behind` | a checkpoint the store keeps that the database never numbered: a database restored from before it, until an operator accepts |
@@ -804,11 +804,17 @@ No act takes a checkpoint under a number a witness that answers has heard and
 the database has not numbered: the count was wound back, and it would take
 the number again. An acceptance is numbered past every one a witness heard, as
 past every one the store keeps, and a database behind them is accepted as a
-restore (`Acceptance.Restored`). A number heard twice is answered as the first
-heard; a witness that was away while the count was wound back and the
-deployment numbered past the head again answers the newest, and what it heard
-twice is in what it keeps — the log witness's alert below is what says so at
-the time.
+restore (`Acceptance.Restored`).
+
+And below the head. Every witness away while the count is wound back and the
+deployment numbers again what was taken away: told it all when it is back, a
+witness's newest is the deployment's newest, and the head says nothing. It
+heard those numbers twice, as two statements, and a witness that can tell says
+so (`Heard.Twice`; the store witness does): the number it heard so most lately,
+its first statement and the last that was something else. That is `rewritten`
+at that number, below the head. An acceptance keeps what it was of
+(`Accepted.Twice`), which is a finding no more — and only that: a count wound
+back again after it is heard so more lately still, and found as before.
 
 Two are payday's, each a package of its own:
 
