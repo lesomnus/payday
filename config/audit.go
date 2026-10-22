@@ -438,6 +438,21 @@ type AuditCheckpointsConfig struct {
 	// deployment's for a verifier that is not given its private half -- each
 	// PKIX, base64, or the PEM document of one. See `trail.Policy.Trust`.
 	Trust []string `yaml:"trust"`
+
+	// Witnesses hear every checkpoint, somewhere the database's and the
+	// archive's credentials do not reach, so that the newest is known outside
+	// the two (payday#115; see `trail.Witness`). Each is named by a scheme
+	// something registered with [RegisterWitness] -- `log:`, which tells the
+	// log and the metrics, and `store:/mnt/worm/witness`, a directory of its
+	// own -- and a finding says which by what is written here, up to a `?`.
+	// Several may be named, and a verification holds the chain to each that
+	// answers. Empty is a head known to the database and the store alone.
+	Witnesses []string `yaml:"witnesses"`
+
+	// HearWithin is how long the newest checkpoint may go unheard by every
+	// witness that answers before a verification finds it: empty is twice
+	// `audit.every`. See `trail.Policy.HearWithin`.
+	HearWithin time.Duration `yaml:"hear_within"`
 }
 
 // keys is the checkpoints' keys, read.
@@ -631,6 +646,10 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 	if p.Signer, p.Trust, err = c.Checkpoints.keys(); err != nil {
 		return trail.Policy{}, fmt.Errorf("audit.checkpoints.%w", err)
 	}
+	if p.Witnesses, err = witnessesOf(c.Checkpoints.Witnesses); err != nil {
+		return trail.Policy{}, fmt.Errorf("audit.checkpoints.witnesses%w", err)
+	}
+	p.HearWithin = c.Checkpoints.HearWithin
 	if c.Checkpoints.Dir != "" {
 		p.Checkpoints = flob.NewOsStores(c.Checkpoints.Dir).Use(trail.CheckpointNamespace)
 		if c.Checkpoints.WriteOnce {

@@ -272,6 +272,16 @@ hand the store in as `trail.WriteOnce(store)`. Rows written before the
 deployment had a key are findings until an operator accepts them once, which
 signs them as they stand.
 
+Name witnesses for the checkpoints too, `audit.checkpoints.witnesses`: what
+hears each checkpoint outside the database and the archive, so that a chain cut
+short at its newest is found ([witnesses](../runtime.md#witnesses)). `pd new`
+links payday's two in `cli`; another app imports `config/witnesslog` and
+`config/witnessstore`. `log:` tells the log and a gauge, and is a witness only
+with the alerts the runtime docs give set on it; `store:<dir>` keeps what it
+hears on a disk of its own — mount it with credentials neither the database's
+nor the archive's, and on a disk that refuses deletion. A verification lists
+what each heard last (`Verified.Heard`): print it.
+
 Every act that changes the archive ends in a checkpoint, as a pass does. Once
 the rows no longer add up to the latest one, none is taken — every act says so
 in its error, after doing what it does — until an operator who has looked
