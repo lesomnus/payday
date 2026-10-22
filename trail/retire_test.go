@@ -311,6 +311,7 @@ func TestARetiredTenantIsTakenBack(t *testing.T) {
 	x.NoError(err)
 	x.Contains(retired, back)
 	x.NotContains(retired, stayed)
+	x.Equal(retired[back].At.Add(365*day), retired[back].Until, "until the floor it is on has passed")
 
 	// Back, and not taken back: what it writes goes.
 	gone := s.add(fakeRow{tenant: back.Uuid(), domain: person, created: time.Now(), value: "written while it was still retired"})
@@ -323,7 +324,7 @@ func TestARetiredTenantIsTakenBack(t *testing.T) {
 	v, err := p.Return(ctx, s, back)
 	x.NoError(err)
 	x.Equal(1, v.Records)
-	x.Equal(retired[back], v.Retired)
+	x.Equal(retired[back].At, v.Retired)
 	then, _, err := s.Latest(ctx)
 	x.NoError(err)
 	x.Equal(k+1, then, "taking it back ended in no checkpoint")

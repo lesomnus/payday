@@ -816,16 +816,9 @@ func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, 
 
 	seen := map[string]bool{}
 	for _, c := range cs {
-		var keep func(head) bool
-		if !tenant.IsZero() {
-			switch c.Namespace {
-			case SharedNamespace:
-				if !slices.Contains(c.Tenants, tenant) {
-					continue
-				}
-			case LegacyNamespace:
-				keep = func(h head) bool { return h.names(tenant) }
-			}
+		keep, ok := tenantsOf(c, tenant)
+		if !ok {
+			continue
 		}
 		err := readChunk(ctx, a, c, seen, keep, verify, func(h head, doc []byte) error {
 			doc, err := open.open(ctx, doc, h)
@@ -849,6 +842,25 @@ func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, 
 // [Policy.Purge] after doing the rest. `trail verify --full` finds it as
 // `altered`.
 var ErrAltered = errors.New("its bytes are not its digest any more; see `trail verify`")
+
+// tenantsOf is what of a chunk is a tenant's: none of a chunk of
+// [SharedNamespace] whose tenants do not include it, of [LegacyNamespace] only
+// the rows that name it, and of any other all of it. The zero tenant is every
+// tenant's.
+func tenantsOf(c Chunk, tenant pdid.Id) (keep func(head) bool, ok bool) {
+	if tenant.IsZero() {
+		return nil, true
+	}
+
+	switch c.Namespace {
+	case SharedNamespace:
+		return nil, slices.Contains(c.Tenants, tenant)
+	case LegacyNamespace:
+		return func(h head) bool { return h.names(tenant) }, true
+	}
+
+	return nil, true
+}
 
 // readChunk is one chunk's rows, less the ones `seen` has, and less the ones
 // `keep` declines when there is one. `verify` reads it whole first, and refuses
@@ -1481,8 +1493,10 @@ type Receipt struct {
 	// `retire-tenant` (a tenant leaving, but for what a floor keeps) -- or
 	// `finding`, which is no destruction: what a pass found the archive's
 	// manifest does not account for, `accept`, what an operator accepted of
-	// it ([Policy.Accept]), which may be, and `return-tenant`, a tenant that
-	// retired taken back ([Policy.Return]).
+	// it ([Policy.Accept]), which may be, `return-tenant`, a tenant that
+	// retired taken back ([Policy.Return]), and `export-tenant`, a tenant's
+	// trail written out for whoever it is for ([Policy.ExportTenant]), which
+	// destroys nothing and hands people's data out.
 	Act string `json:"act"`
 
 	// Where is `database`, `archive`, or `keys` for the key store.
@@ -1519,9 +1533,11 @@ type Receipt struct {
 	// it, for `accept`; see [Finding].
 	Findings map[string]int `json:"findings,omitempty"`
 
-	// By and Why are who accepted, and why, and Of the digest of what they
-	// looked at ([Acceptance]), for the act `accept`. The checkpoint the
-	// acceptance ended in keeps them too, signed.
+	// By and Why are who did it, and why, and Of the digest of what it was
+	// of: for the act `accept`, what the operator looked at ([Acceptance]),
+	// which the checkpoint the acceptance ended in keeps too, signed; for
+	// `export-tenant`, the manifest of the bundle written
+	// ([Exported.Digest]).
 	By  string `json:"by,omitempty"`
 	Why string `json:"why,omitempty"`
 	Of  string `json:"of,omitempty"`

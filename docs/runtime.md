@@ -1358,6 +1358,44 @@ the mark its key left is of what was written before it left, and what it
 writes after is sealed to a key of its own, so Return leaves the mark where it
 is and does nothing.
 
+**And what it left can be taken out.** Nothing holds a retired tenant's trail
+past its floors: a hold is the app's answer for a tenant, and an app that
+destroyed the tenant's rows has none to give. So a demand to preserve what one
+left, while it is still there, is answered by writing it out, for keeping
+somewhere the deployment does not reach: `Policy.ExportTenant`. `Policy.Retired`
+says, of each retired tenant, when it retired and until when its floors keep
+what they keep (`Retirement.Until`, by the floors as they are), which is
+whether there is anything to take out. It works for a live tenant as well.
+
+A bundle is every row that names the tenant, wherever it is: the database's
+rows a page a file (`database/`), each chunk of its own namespace as the
+archive keeps it (`archive/<namespace>/<digest>`), and each chunk's rows of the
+tenant opened (`rows/`) — its own, and of a chunk it shares or a file from
+before, its rows alone, so nothing another tenant's rows said is in it. It is
+written encrypted to whoever it is for, `age` recipients, and never otherwise:
+there is no clear copy on any disk. Sealed rows are opened as it is written,
+which takes the master's private half; whoever it is for reads it with their
+identity alone. Last comes `manifest.json`: every file's digest and size, the
+chunks read, and the newest checkpoint the deployment vouches for — its
+number, its digest, and every witness's receipt of it — with whether each
+chunk is one it lists, signed with the deployment's key.
+
+`trail.OpenTenantExport` holds a bundle to its manifest — every file there,
+each its digest, nothing more — and the manifest to a key the deployment
+trusts. That says the deployment wrote it, and no more. What says the archive
+held those chunks before anybody asked is the checkpoint: read it later from
+the checkpoint store's write-once copy by its digest, check its signature and
+number, find each whole chunk's digest among its blobs, and hold it to each
+witness's receipt as that witness says to. The rows that were still in the
+database are newer than any checkpoint, and only the manifest's signature
+vouches for them.
+
+It hands people's data out of the deployment, so it is an act of the trail's,
+in the trail's turn, with a receipt, `export-tenant`, saying who took it out,
+why, and the manifest's digest, and a checkpoint after. The app records it
+too, as it records any download of people's data, with its reason: nothing
+here knows who a row is about.
+
 #### A pass and what erases take turns
 
 A pass holds what it read of a row from the moment it reads it until the

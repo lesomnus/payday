@@ -227,8 +227,29 @@ back, err := policy.Return(ctx, pd.TrailStore(db), tenant)
 // back.Retired when it had retired; a purged tenant needs nothing taken back.
 ```
 
-`policy.Retired` answers which tenants have retired, for a restore's dry run
-to say so.
+`policy.Retired` answers which tenants have retired, with when each did and
+until when its floors keep what they keep (`Retirement.Until`).
+
+Nothing holds what a retired tenant left past its floors, so a demand to
+preserve it is answered by taking it out while it is there, for keeping apart
+from the deployment — and the same works for a live tenant:
+
+```go
+out, err := policy.ExportTenant(ctx, pd.TrailStore(db), tenant, trail.Export{
+	By:  who,                  // the operator, as your command knows them
+	Why: why,                  // the request it answers
+	To:  []age.Recipient{key}, // whoever keeps it: written encrypted to them, and never otherwise
+}, w)
+// out.Digest is the manifest's, which the act's receipt names.
+
+got, err := trail.OpenTenantExport(r, []age.Identity{id}, trusted, nil)
+// trusted is the deployment's public keys, as audit.checkpoints.trust lists
+// them: every file is what the manifest says, and the manifest is theirs
+```
+
+Record it as a download of people's data, with its reason, as you record any.
+Sealed rows are opened as the bundle is written, so the command needs the
+master's private half (`audit.keys.identity`).
 
 ## 6. Showing that the archive is what it was
 
