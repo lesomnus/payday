@@ -142,7 +142,7 @@ func TestWhatARowSaysIsSealedAndWhatHappenedIsNot(t *testing.T) {
 	quiet := s.add(fakeRow{tenant: a.Uuid(), domain: person, created: ago(day)})
 
 	k, master := sealing(t)
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Hour}, Keys: k}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Hour}, Keys: k}
 	x.NoError(p.Valid())
 	p.Pass(ctx, s)
 
@@ -221,7 +221,7 @@ func TestWhatNeedsNoKeyIsDoneWithout(t *testing.T) {
 	a, b := newTenant(), newTenant()
 	k, master := sealing(t)
 	arch := flob.NewMemStores()
-	p := Policy{Archive: arch, Keep: Keep{Retain: time.Hour}, Keys: k}
+	p := Policy{Signer: signer, Archive: arch, Keep: Keep{Retain: time.Hour}, Keys: k}
 
 	s := &fakeStore{}
 	person1 := pdid.New(person)
@@ -285,7 +285,7 @@ func TestATenantThatLeavesTakesItsKeyFirst(t *testing.T) {
 	leaving, staying := newTenant(), newTenant()
 	k, master := sealing(t)
 	arch := flob.NewMemStores()
-	p := Policy{Archive: arch, Keep: Keep{Retain: time.Hour}, Keys: k}
+	p := Policy{Signer: signer, Archive: arch, Keep: Keep{Retain: time.Hour}, Keys: k}
 
 	s := &fakeStore{}
 	mine := s.add(fakeRow{tenant: leaving.Uuid(), domain: person, created: ago(day), value: "what it said"})
@@ -374,6 +374,7 @@ func TestAHoldKeepsWhatItHoldsReadable(t *testing.T) {
 	k, master := sealing(t)
 	arch := flob.NewMemStores()
 	p := Policy{
+		Signer:  signer,
 		Archive: arch,
 		Keep:    Keep{Retain: time.Hour},
 		Keys:    k,
@@ -415,7 +416,7 @@ func TestOnlyATenantLeavingDestroysAKey(t *testing.T) {
 	tenant := newTenant()
 	k, _ := sealing(t)
 	arch := flob.NewMemStores()
-	p := Policy{Archive: arch, Keep: Keep{Retain: time.Hour, Destroy: 2 * time.Hour}, Keys: k}
+	p := Policy{Signer: signer, Archive: arch, Keep: Keep{Retain: time.Hour, Destroy: 2 * time.Hour}, Keys: k}
 
 	s := &fakeStore{}
 	s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(year), value: "long gone"})
@@ -476,7 +477,7 @@ func TestNothingSetSealsNothing(t *testing.T) {
 	s := &fakeStore{}
 	r := s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(day), value: "plain"})
 
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Hour}}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Hour}}
 	p.Pass(ctx, s)
 
 	in := raw(t, p.Archive)
@@ -494,9 +495,9 @@ func TestAKeyConfigurationThatCannotWorkIsRefused(t *testing.T) {
 
 	k, _ := sealing(t)
 	x.ErrorContains(Policy{Keys: k}.Valid(), "audit.archive")
-	x.ErrorContains(Policy{Archive: flob.NewMemStores(), Keys: &Keys{Master: k.Master}}.Valid(), "audit.keys.dir")
-	x.ErrorContains(Policy{Archive: flob.NewMemStores(), Keys: &Keys{Store: k.Store}}.Valid(), "audit.keys.master")
-	x.NoError(Policy{Archive: flob.NewMemStores(), Keys: k}.Valid())
+	x.ErrorContains(Policy{Signer: signer, Archive: flob.NewMemStores(), Keys: &Keys{Master: k.Master}}.Valid(), "audit.keys.dir")
+	x.ErrorContains(Policy{Signer: signer, Archive: flob.NewMemStores(), Keys: &Keys{Store: k.Store}}.Valid(), "audit.keys.master")
+	x.NoError(Policy{Signer: signer, Archive: flob.NewMemStores(), Keys: k}.Valid())
 }
 
 // TestAKeyMadeWhileATenantLeavesGoesWithIt.
@@ -511,7 +512,7 @@ func TestAKeyMadeWhileATenantLeavesGoesWithIt(t *testing.T) {
 	leaving := newTenant()
 	k, _ := sealing(t)
 	arch := flob.NewMemStores()
-	p := Policy{Archive: arch, Keep: Keep{Retain: time.Hour}, Keys: k}
+	p := Policy{Signer: signer, Archive: arch, Keep: Keep{Retain: time.Hour}, Keys: k}
 
 	s := &fakeStore{}
 	s.add(fakeRow{tenant: leaving.Uuid(), domain: person, created: ago(day), value: "v"})

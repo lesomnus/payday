@@ -403,7 +403,7 @@ func Archive(ctx context.Context, s Store, p Policy, of Kinds, before time.Time)
 	}
 
 	// Through the manifest, like every act.
-	x, err := p.start(s)
+	x, err := p.act(s)
 	if err != nil {
 		return 0, err
 	}

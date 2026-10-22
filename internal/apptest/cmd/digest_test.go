@@ -19,6 +19,7 @@ import (
 	entaudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 	"github.com/lesomnus/payday/pdid"
+	"github.com/lesomnus/payday/pdtest"
 	"github.com/lesomnus/payday/trail"
 )
 
@@ -173,7 +174,7 @@ func TestARowWhoseTrailWasArchivedIsCheckedAgainstTheArchive(t *testing.T) {
 	k, err := entuuid.FromBytes(v.GetId())
 	x.NoError(err)
 
-	p := trail.Policy{Archive: flob.NewMemStores()}
+	p := trail.Policy{Archive: flob.NewMemStores(), Signer: pdtest.Signer(t)}
 	n, err := trail.Archive(ctx, pd.TrailStore(b.Ent), p, trail.Kinds{}, time.Now().Add(time.Hour))
 	x.NoError(err)
 	x.NotZero(n)
@@ -209,7 +210,7 @@ func TestASealedArchiveIsCheckedWithNoTenantsKey(t *testing.T) {
 	master, err := age.GenerateX25519Identity()
 	x.NoError(err)
 	keys := &trail.Keys{Store: flob.NewMemStores(), Master: []age.Recipient{master.Recipient()}}
-	p := trail.Policy{Archive: flob.NewMemStores(), Keep: trail.Keep{Retain: time.Nanosecond}, Keys: keys}
+	p := trail.Policy{Archive: flob.NewMemStores(), Keep: trail.Keep{Retain: time.Nanosecond}, Keys: keys, Signer: pdtest.Signer(t)}
 	x.NoError(p.Valid())
 
 	s := pd.TrailStore(b.Ent)
@@ -600,7 +601,7 @@ func TestARowNobodyWroteSinceItsWindowIsCarriedForward(t *testing.T) {
 		k, err := entuuid.FromBytes(v.GetId())
 		x.NoError(err)
 
-		p := trail.Policy{Archive: flob.NewMemStores(), Keep: trail.Keep{Retain: time.Nanosecond, Destroy: 2 * time.Nanosecond}}
+		p := trail.Policy{Archive: flob.NewMemStores(), Keep: trail.Keep{Retain: time.Nanosecond, Destroy: 2 * time.Nanosecond}, Signer: pdtest.Signer(t)}
 		if carries {
 			p.Digest = d
 		}

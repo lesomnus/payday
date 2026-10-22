@@ -281,7 +281,7 @@ func TestAQuestionTakesNoCheckpoint(t *testing.T) {
 		plant(t, a, Chunk{Namespace: tenant.String(), Kind: "person", Month: monthOf(r.created), Run: "before", Rows: 1, First: r.created, Last: r.created}, r.doc())
 
 		s := &fakeStore{}
-		p := Policy{Archive: a}
+		p := Policy{Signer: signer, Archive: a}
 		x.NoError(ask(p, s), name)
 
 		rows, err := s.Rows(ctx)

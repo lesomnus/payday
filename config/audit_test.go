@@ -18,6 +18,7 @@ import (
 
 	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/config"
+	"github.com/lesomnus/payday/pdtest"
 	"github.com/lesomnus/payday/trail"
 )
 
@@ -135,21 +136,53 @@ func TestWhatTheDigestsBeganWithIsSaidBesideTheKey(t *testing.T) {
 	}
 }
 
+// signed is the checkpoints' block with a key of the test's own, which every
+// archive is kept with.
+func signed(t *testing.T) config.AuditCheckpointsConfig {
+	return config.AuditCheckpointsConfig{Key: pdtest.Key(t)}
+}
+
+// TestAnArchiveIsRefusedWithoutAKey where the process comes up (payday#115),
+// with what to do about it: there is no archive whose account nothing signs,
+// keys to trust are a verifier's and not a deployment's, and a deployment with
+// no archive needs no key.
+func TestAnArchiveIsRefusedWithoutAKey(t *testing.T) {
+	x := require.New(t)
+
+	key, public, err := trail.GenerateKey()
+	x.NoError(err)
+
+	_, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1}.Policy()
+	x.ErrorIs(err, trail.ErrNoKey)
+	x.ErrorContains(err, "audit.checkpoints.key")
+	x.ErrorContains(err, "openssl genpkey", "the refusal does not say how to make one")
+
+	_, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Trust: []string{public}}}.Policy()
+	x.ErrorIs(err, trail.ErrNoKey, "keys to trust and none to sign with")
+
+	p, err := config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Key: string(key)}}.Policy()
+	x.NoError(err)
+	x.NotNil(p.Signer)
+
+	_, err = config.AuditConfig{Retain: 1, Discard: true}.Policy()
+	x.NoError(err, "a deployment that keeps no archive was asked for a key")
+}
+
 // TestCheckpointsGoWhereTheyAreToldTo.
 func TestCheckpointsGoWhereTheyAreToldTo(t *testing.T) {
 	x := require.New(t)
 
-	p, err := config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Dir: t.TempDir()}}.Policy()
+	p, err := config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Dir: t.TempDir(), Key: pdtest.Key(t)}}.Policy()
 	x.NoError(err)
 	x.NotNil(p.Checkpoints, "a directory of their own was not taken")
 
-	p, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1}.Policy()
+	p, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Key: pdtest.Key(t)}}.Policy()
 	x.NoError(err)
 	x.Nil(p.Checkpoints, "with no directory, they are the archive's")
 
 	// On a disk that says it keeps them, kept by the process too: an erase is
 	// refused, and the process says so where it comes up.
-	p, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Dir: t.TempDir(), WriteOnce: true}}.Policy()
+	p, err = config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Dir: t.TempDir(), WriteOnce: true, Key: pdtest.Key(t)}}.Policy()
 	x.NoError(err)
 	x.True(trail.IsWriteOnce(p.Checkpoints))
 	x.ErrorIs(p.Checkpoints.Erase(t.Context(), "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"), trail.ErrWriteOnce)
@@ -175,7 +208,7 @@ func TestTheKeysAreWhatTheConfigurationSays(t *testing.T) {
 	public := master.Recipient().String()
 	archive := t.TempDir()
 
-	p, err := config.AuditConfig{Archive: archive, Retain: 1, Keys: config.AuditKeysConfig{Dir: t.TempDir(), Master: []string{public}}}.Policy()
+	p, err := config.AuditConfig{Archive: archive, Retain: 1, Checkpoints: signed(t), Keys: config.AuditKeysConfig{Dir: t.TempDir(), Master: []string{public}}}.Policy()
 	x.NoError(err)
 	x.NotNil(p.Keys)
 	x.Len(p.Keys.Master, 1)
@@ -184,14 +217,14 @@ func TestTheKeysAreWhatTheConfigurationSays(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "master.txt")
 	x.NoError(os.WriteFile(path, []byte("# created by age-keygen\n"+master.String()+"\n"), 0o600))
 	for _, v := range []string{path, master.String()} {
-		p, err := config.AuditConfig{Archive: archive, Retain: 1, Keys: config.AuditKeysConfig{
+		p, err := config.AuditConfig{Archive: archive, Retain: 1, Checkpoints: signed(t), Keys: config.AuditKeysConfig{
 			Dir: t.TempDir(), Master: []string{public}, Identity: v,
 		}}.Policy()
 		x.NoError(err)
 		x.Len(p.Keys.Identities, 1)
 	}
 
-	p, err = config.AuditConfig{Archive: archive, Retain: 1}.Policy()
+	p, err = config.AuditConfig{Archive: archive, Retain: 1, Checkpoints: signed(t)}.Policy()
 	x.NoError(err)
 	x.Nil(p.Keys, "a configuration that says nothing sealed something")
 

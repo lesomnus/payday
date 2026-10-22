@@ -17,6 +17,7 @@ import (
 
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/pdid"
+	"github.com/lesomnus/payday/pdtest"
 	"github.com/lesomnus/payday/trail"
 
 	app "github.com/lesomnus/payday/internal/apptest"
@@ -161,9 +162,10 @@ func TestAKindTheAppDoesNotHaveIsRefused(t *testing.T) {
 		x := require.New(t)
 
 		p, err := config.AuditConfig{
-			Archive: "/tmp/nowhere",
-			Retain:  time.Hour,
-			By:      map[string]config.AuditKeepConfig{"robot": {Min: config.AuditMinConfig{Retain: time.Minute}}},
+			Archive:     "/tmp/nowhere",
+			Checkpoints: config.AuditCheckpointsConfig{Key: pdtest.Key(t)},
+			Retain:      time.Hour,
+			By:          map[string]config.AuditKeepConfig{"robot": {Min: config.AuditMinConfig{Retain: time.Minute}}},
 		}.Policy()
 		x.NoError(err)
 
@@ -195,11 +197,12 @@ func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 
 	a := flob.NewOsStores(t.TempDir())
 	s := pd.TrailStore(b.Ent)
+	key := pdtest.Signer(t)
 
 	was, err := b.Ent.Audit.Query().Count(ctx)
 	x.NoError(err)
 
-	n, err := trail.Archive(ctx, s, trail.Policy{Archive: a}, trail.Kinds{}, time.Now().Add(time.Hour))
+	n, err := trail.Archive(ctx, s, trail.Policy{Archive: a, Signer: key}, trail.Kinds{}, time.Now().Add(time.Hour))
 	x.NoError(err)
 	x.Equal(was, n)
 
@@ -222,7 +225,7 @@ func TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe(t *testing.T) {
 		x := require.New(t)
 
 		// Long past everything, for the robot alone.
-		vs, _, err := trail.Policy{Archive: a}.Purge(ctx, s, trail.Only(robot).CutFor(time.Now().AddDate(1, 0, 0)))
+		vs, _, err := trail.Policy{Archive: a, Signer: key}.Purge(ctx, s, trail.Only(robot).CutFor(time.Now().AddDate(1, 0, 0)))
 		x.NoError(err)
 		x.NotEmpty(vs, "the robot's archive was not destroyed")
 
@@ -351,7 +354,8 @@ func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 	who := must(pdid.From(v.GetId()))
 
 	a := flob.NewMemStores()
-	_, err = trail.Archive(ctx, pd.TrailStore(b.Ent), trail.Policy{Archive: a}, trail.Kinds{}, time.Now().Add(time.Hour))
+	key := pdtest.Signer(t)
+	_, err = trail.Archive(ctx, pd.TrailStore(b.Ent), trail.Policy{Archive: a, Signer: key}, trail.Kinds{}, time.Now().Add(time.Hour))
 	x.NoError(err)
 
 	held := 0
@@ -364,7 +368,7 @@ func TestAnArchivedRowIsForgottenToo(t *testing.T) {
 	})))
 	x.NotZero(held, "the archive holds nothing about them, so this proves nothing")
 
-	got, err := trail.Policy{Archive: a}.Forget(ctx, pd.TrailStore(b.Ent), []pdid.Id{who})
+	got, err := trail.Policy{Archive: a, Signer: key}.Forget(ctx, pd.TrailStore(b.Ent), []pdid.Id{who})
 	x.NoError(err)
 	x.NotZero(got.Archived)
 
@@ -571,8 +575,9 @@ func TestEachTenantKeepsItsTrailForItsOwnWindow(t *testing.T) {
 	}
 
 	p, err := config.AuditConfig{
-		Archive: t.TempDir(),
-		Retain:  90 * 24 * time.Hour,
+		Archive:     t.TempDir(),
+		Checkpoints: config.AuditCheckpointsConfig{Key: pdtest.Key(t)},
+		Retain:      90 * 24 * time.Hour,
 	}.Policy()
 	x.NoError(err)
 
@@ -658,6 +663,7 @@ func TestARowTwoTenantsMayReadLastsAsLongAsTheLongerKeepsIt(t *testing.T) {
 
 	p := trail.Policy{
 		Archive: flob.NewMemStores(),
+		Signer:  pdtest.Signer(t),
 		Tenants: func(ctx context.Context, id pdid.Id) (trail.Tenant, error) {
 			k := answers[id]
 			return trail.Tenant{Keep: &k}, nil
@@ -733,6 +739,7 @@ func TestAHeldTenantKeepsItsTrail(t *testing.T) {
 
 	p := trail.Policy{
 		Archive: flob.NewMemStores(),
+		Signer:  pdtest.Signer(t),
 		Keep:    trail.Keep{Retain: time.Hour},
 		Tenants: func(ctx context.Context, id pdid.Id) (trail.Tenant, error) { return vs[id], nil },
 	}
@@ -1247,7 +1254,7 @@ func TestWhatTheTrailSaysIsSealedThroughTheAppsOwnStore(t *testing.T) {
 	master, err := age.GenerateX25519Identity()
 	x.NoError(err)
 	keys := &trail.Keys{Store: flob.NewOsStores(t.TempDir()), Master: []age.Recipient{master.Recipient()}}
-	p := trail.Policy{Archive: flob.NewOsStores(t.TempDir()), Keep: trail.Keep{Retain: time.Nanosecond}, Keys: keys}
+	p := trail.Policy{Archive: flob.NewOsStores(t.TempDir()), Keep: trail.Keep{Retain: time.Nanosecond}, Keys: keys, Signer: pdtest.Signer(t)}
 	x.NoError(p.Valid())
 
 	s := pd.TrailStore(b.Ent)

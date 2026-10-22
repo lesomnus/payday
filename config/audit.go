@@ -413,8 +413,9 @@ type AuditCheckpointsConfig struct {
 	WriteOnce bool `yaml:"write_once"`
 
 	// Key is what checkpoints and the manifest's rows are signed with --
-	// Ed25519, ECDSA or RSA -- and empty signs nothing. It is one of three
-	// things, told apart by how it begins:
+	// Ed25519, ECDSA or RSA -- and an archive is refused without one
+	// (payday#115): there is no account of an archive that nothing signs. It
+	// is one of three things, told apart by how it begins:
 	//
 	//   - `-----BEGIN`: the PEM document of a key, as `openssl genpkey`
 	//     writes one, which is how a secret is given through the environment
@@ -648,6 +649,15 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 
 	if err := p.Valid(); err != nil {
 		return trail.Policy{}, err
+	}
+
+	// An archive is kept with a key that signs its account (payday#115), and
+	// one the process can sign with: keys to trust and none to sign with
+	// verify, and a deployment's process acts. There is no development key
+	// to fall back on; `pd new`'s `init` writes one of a deployment's own.
+	// Last, so that what else is wrong is said first.
+	if p.Archive != nil && p.Signer == nil {
+		return trail.Policy{}, fmt.Errorf("audit.checkpoints.key: %w", trail.ErrNoKey)
 	}
 
 	return p, nil

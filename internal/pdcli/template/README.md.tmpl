@@ -155,7 +155,9 @@ up from inside one, so the first row of a deployment cannot arrive over the API
 — what puts it there is `Server.Ungated`, which is not a privilege anybody
 holds but a server instance this process was handed. Running it twice is an
 error rather than a no-op, because an `init` that quietly did nothing is one
-somebody runs against the wrong deployment and believes.
+somebody runs against the wrong deployment and believes. A configuration that
+names the trail an archive and no key to sign it with is given a key of its own
+beside the archive, and `init` says where; a key that signs is never committed.
 
 The configuration is a file, then the environment over the top of it. It is read
 on the **root** command, so it has happened whichever subcommand runs, and

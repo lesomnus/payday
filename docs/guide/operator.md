@@ -204,12 +204,14 @@ v, err := policy.Verify(ctx, pd.TrailStore(db), full)
 Keep checkpoints apart from the archive, on a store that refuses deletion —
 `audit.checkpoints.dir` — so that somebody who can write the database and the
 archive both cannot rewrite what the archive held, and give the operator a
-command that runs this, `full` on a schedule. Sign them with
-`audit.checkpoints.key`, a key mounted as a secret, to start with; a key the
-process cannot give away — a TPM, an HSM, Vault, a cloud KMS — is named there by
-its URI once the app imports what speaks to it (see
-[keys in a device](../runtime.md#keys-in-a-device)), and any other
-`crypto.Signer` is handed in as `trail.Policy.Signer`.
+command that runs this, `full` on a schedule. They are signed with
+`audit.checkpoints.key`, and an archive is refused without one: a key mounted as
+a secret, to start with, which `openssl genpkey -algorithm ed25519` or
+`trail.GenerateKey` makes; a key the process cannot give away — a TPM, an HSM,
+Vault, a cloud KMS — is named there by its URI once the app imports what speaks
+to it (see [keys in a device](../runtime.md#keys-in-a-device)), and any other
+`crypto.Signer` is handed in as `trail.Policy.Signer`. A deployment that archived
+without a key sets one and accepts once (`Policy.Accept`).
 
 The live rows can be checked as well. With `audit.digest.key`, each row of the
 trail keeps a keyed digest of the row its write left. The key is a file of

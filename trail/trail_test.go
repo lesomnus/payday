@@ -505,6 +505,7 @@ func TestTheMostSpecificAnswerWins(t *testing.T) {
 	x := require.New(t)
 
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    Keep{Retain: 90 * day, Destroy: 2 * year},
 		By:      map[pdid.Domain]Keep{robot: {}},
@@ -644,6 +645,7 @@ func TestAPolicyBelowItsOwnFloorIsRefused(t *testing.T) {
 	x := require.New(t)
 
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    Keep{Retain: 30 * day, Destroy: 180 * day},
 		Min:     Floor{Destroy: year},
@@ -672,6 +674,7 @@ func TestEachTenantIsSweptOnItsOwnWindow(t *testing.T) {
 
 	month := Keep{Retain: 30 * day, Destroy: year}
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    Keep{Retain: 90 * day, Destroy: 2 * year},
 		Tenants: func(ctx context.Context, id pdid.Id) (Tenant, error) {
@@ -715,6 +718,7 @@ func TestARowThatNamesTwoTenantsIsKeptForTheLongerOne(t *testing.T) {
 	answers := map[pdid.Id]Keep{short: month, long: quarter}
 
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    Keep{Retain: 90 * day, Destroy: 2 * year},
 		Tenants: func(ctx context.Context, id pdid.Id) (Tenant, error) {
@@ -761,6 +765,7 @@ func TestATenantWithNoAnswerKeepsEverything(t *testing.T) {
 	other := s.add(fakeRow{tenant: fine.Uuid(), domain: person, created: ago(200 * day)})
 
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    Keep{Retain: 90 * day, Destroy: 2 * year},
 		Tenants: func(ctx context.Context, id pdid.Id) (Tenant, error) {
@@ -791,6 +796,7 @@ func TestTheArchiveIsDestroyedOnEachTenantsWindow(t *testing.T) {
 
 	year1 := Keep{Retain: 30 * day, Destroy: year}
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    Keep{Retain: 30 * day, Destroy: 2 * year},
 		Tenants: func(ctx context.Context, id pdid.Id) (Tenant, error) {
@@ -830,6 +836,7 @@ func TestADiscardIsRecorded(t *testing.T) {
 	s.add(fakeRow{tenant: tenant.Uuid(), domain: robot, created: ago(60 * day)})
 
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    Keep{Retain: 30 * day, Discard: true},
 	}
@@ -889,7 +896,7 @@ func TestAClosedMonthIsFoldedIntoOneChunk(t *testing.T) {
 		x.NoError(err)
 	}
 
-	p := Policy{Archive: a, Keep: Keep{Retain: 30 * day, Destroy: 10 * year}}
+	p := Policy{Signer: signer, Archive: a, Keep: Keep{Retain: 30 * day, Destroy: 10 * year}}
 	p.Pass(ctx, &fakeStore{})
 
 	cs, err := chunksIn(ctx, a, ns)
@@ -944,7 +951,7 @@ func TestTheFilesOfAVersionBeforeAreAdopted(t *testing.T) {
 	x.NoError(os.WriteFile(filepath.Join(dir, name), buf.Bytes(), 0o640))
 	x.NoError(os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("not ours"), 0o640))
 
-	p := Policy{Archive: flob.NewOsStores(dir)}
+	p := Policy{Signer: signer, Archive: flob.NewOsStores(dir)}
 	s := &fakeStore{}
 	p.Pass(ctx, s)
 
@@ -1076,7 +1083,7 @@ func TestForgettingRewritesOnlyWhatItMust(t *testing.T) {
 	s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(60 * day), value: "somebody else"})
 	s.add(fakeRow{tenant: other.Uuid(), domain: person, created: ago(60 * day), value: "a third"})
 
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}}
 	p.Pass(ctx, s)
 
 	before, err := chunksIn(ctx, p.Archive, other.String())
@@ -1132,6 +1139,7 @@ func TestAPreviewIsWhatAPassWouldTake(t *testing.T) {
 	month := Keep{Retain: 30 * day, Destroy: year}
 	answers := map[pdid.Id]Tenant{other: {}}
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    Keep{Retain: 90 * day, Destroy: 2 * year},
 		By:      map[pdid.Domain]Keep{robot: {}},

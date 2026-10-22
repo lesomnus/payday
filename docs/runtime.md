@@ -586,8 +586,8 @@ way through is no finding, and no clock is asked. What it finds:
 | `relabelled` | a blob whose labels are not the ones the manifest recorded, or a checkpoint whose labels do not say which it is |
 | `altered` | a blob whose bytes are no longer its digest (`full` only) |
 | `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts — but not a checkpoint a later one the deployment signed names, whatever signed it (a key rotated out) |
-| `unsigned` | a row with no signature when the policy names a key; a checkpoint with none after one that had one |
-| `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to (not the one before an acceptance); or one of two the store keeps under one number |
+| `unsigned` | a row with no signature; a checkpoint with none that no checkpoint the deployment signed names |
+| `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to (not the one before an acceptance); or one of two the store keeps under one number, both the deployment's word |
 | `reordered` | a checkpoint that names one after it as the one before |
 | `unkept` | a checkpoint the database numbered, or the one after it names, that the store does not keep; or the numbers a checkpoint skips over to the one it names that no checkpoint the store keeps says it is — taken away, lost to a store restored from an older copy, or numbered by a pass a crash stopped — until an operator accepts |
 | `behind` | a checkpoint the store keeps that the database never numbered: a database restored from before it, until an operator accepts |
@@ -634,8 +634,8 @@ archive — `trail.Archive`, `Policy.Collect` when it leaves a receipt,
 `Policy.Purge`, `Policy.Forget`, `Policy.PurgeTenant` and `Policy.Accept`: the
 next number, taken under a row lock so that two never share one, and every blob
 the manifest has at that moment, written whole to the checkpoint store, naming
-the one before it, and signed when the deployment gives it something to sign
-with. An act that changed nothing takes none, and nor does a question
+the one before it, and signed. An act that changed nothing takes none, and nor
+does a question
 (`Policy.Doomed`, `Policy.PlanTenantPurge`, `Policy.Preview`, `Policy.Read`).
 Each manifest row says which checkpoints it was in, so `Verify` recomputes the
 latest one from the rows and compares — and reads again when a checkpoint was
@@ -645,18 +645,18 @@ old.
 
 **What decides is the deployment's word.** Whoever can write the checkpoint
 store — the archive's own, by default — can put a checkpoint there, numbered as
-they like. With a key, a checkpoint counts when its signature is good and by a
-key the policy trusts, and so does every one such a checkpoint names as the one
-before it, down the chain: it names it by digest, and a checkpoint is read only
-while its bytes are its digest, so the one named is what was there when the
-one naming it was signed. Only those decide whether the database is `behind`,
-what the latest rows are compared with, what the next checkpoint is numbered
-after and names, and which numbers an acceptance quieted. Any other is
-`unsigned` or `forged`, and that is all it is: one numbered ahead of the
-database stops no act, and an acceptance is not numbered after it. Until the
-store keeps one a trusted key signed — a deployment that gave itself a key,
-until its next act — the unsigned ones are all there is, and count as they
-did.
+they like. A checkpoint counts when its signature is good and by a key the
+policy trusts, and so does every one such a checkpoint names as the one before
+it, down the chain: it names it by digest, and a checkpoint is read only while
+its bytes are its digest, so the one named is what was there when the one
+naming it was signed. Only those decide whether the database is `behind`, what
+the latest rows are compared with, what the next checkpoint is numbered after
+and names, and which numbers an acceptance quieted. Any other is `unsigned` or
+`forged`, and that is all it is: one numbered ahead of the database stops no
+act, and an acceptance is not numbered after it. It is more in one store
+only: one where none counts and one is kept under the database's latest number
+— an archive kept without a key until now, below — which takes no checkpoint
+until an operator has accepted its history.
 
 **No checkpoint is taken over rows that no longer add up to the latest one.**
 `Verify` recomputes the latest two, and with a checkpoint at the end of every
@@ -699,13 +699,25 @@ when each has a device of its own, and one rotated out until the next key has
 signed a checkpoint and the rows the old one signed are accepted again
 ([below](#keys-in-a-device)).
 
+**An archive is kept with a key.** `audit.archive` with no
+`audit.checkpoints.key` is a process that does not start, and says how to make
+one. Every row of the account and every checkpoint is signed, and nothing an
+archive holds is decided by anything else: a row or a checkpoint without a
+good signature is a finding, and that is all it is. An act asked of a policy
+with no key to sign with is refused before it writes anything
+(`trail.ErrNoKey`), and a policy given only keys to trust — a verifier —
+answers questions and takes no act. There is no development key: one
+everybody knew would sign forgeries for anybody, the day it reached a
+deployment. `pd new`'s `init` writes a key of the deployment's own beside an
+archive that names none, and `pdtest.Key` is a test's own.
+
 An operator who has looked at what verification found and decided the archive
-is right — a crash, a blob restored from a backup, rows from before the
-deployment had a key — calls `Policy.Accept` with why, and the manifest says
-what the archive holds from then on. Accepting a row is signing it, so a policy
-that names a key accepts only with its signer. The acceptance ends in a
-checkpoint that says why, which is also how a deployment whose rows no longer
-add up to the latest checkpoint goes on taking them.
+is right — a crash, a blob restored from a backup, an archive kept without a
+key until now — calls `Policy.Accept` with why, and the manifest says what the
+archive holds from then on. Accepting a row is signing it, so a policy accepts
+only with its signer. The acceptance ends in a checkpoint that says why, which
+is also how a deployment whose rows no longer add up to the latest checkpoint
+goes on taking them.
 
 And how a database restored from a backup goes on. One older than the latest
 checkpoint has numbered fewer than the store keeps, `behind`, and while it is
@@ -725,7 +737,7 @@ made them say: a chunk put there with a row to match, a row relabelled so that
 a pass destroys its chunk early, a row marked erased and its chunk taken away.
 Two things are there for that, and a third that is the storage's:
 
-- **Every row is signed.** With a key, each row of the manifest carries a
+- **Every row is signed.** Each row of the manifest carries a
   signature by `Policy.Signer` over what it says — which row it is, its
   namespace, digest, intent, state and labels — written with it, in every state
   it is ever in: adding, present, erasing, erased. A row that says anything the
@@ -792,20 +804,23 @@ nor a relabel of one gets through. An appliance was not tried: one that refuses
 moving a directory out of the staging area, or commits a file when it is
 created rather than when it is closed, is one this layout does not fit.
 
-**Without a key** nothing is signed and nothing is held to a signature, as
-before: the rows are covered up to the latest checkpoint and by nothing after
-it, and the process says so where it comes up. The checkpoints are still
-chained, which is worth what the store they are on is.
+**An archive kept without a key until now.** A payday before #115 kept one that
+way, and its rows and checkpoints have no signature. Given a key, each is
+`unsigned`, and none is what an act decides by: a chunk past its window is kept.
+Nor does an act take a checkpoint after them, since one would name none of them
+and the history before the key would be off the chain for good: every act says
+so, after doing what it does, until an operator who has looked accepts, once.
+The acceptance signs the rows as they stand and names the checkpoint the
+database numbered last as the one before it -- of two, the one the database's
+rows add up to -- which takes in, down the chain, every checkpoint before the
+key; it is the one place a checkpoint nobody signed is taken in, and only the
+database's own, never one ahead of it. Before the database has numbered one,
+there is no history to take in, and what the store keeps stops nothing. The
+first pass with a key does not do any of this itself: a row with no signature
+looks the same as one whose signature somebody took off, and a pass that signed
+every row it found without one would sign whatever was put there that way.
 
-**Rows from before.** A row written before rows were signed, or while the
-deployment had no key, has no signature. With a key each is `unsigned`, and not
-what an act decides by, until an operator who has looked accepts it with
-`Policy.Accept`, which signs it as it stands. The first pass with a key does not
-sign them itself: a row with no signature looks the same as one whose signature
-somebody took off, and a pass that signed every row it found without one would
-sign whatever was put there that way.
-
-**What is still out of reach.** With a key, two kinds of thing.
+**What is still out of reach.** Two kinds of thing.
 
 - **What an act still at it has written**, or one a crash stopped. Its rows are
   after the latest checkpoint until its own is taken, so a blob it added can be

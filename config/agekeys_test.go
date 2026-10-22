@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/lesomnus/payday/config"
+	"github.com/lesomnus/payday/pdtest"
 )
 
 // The age plugin these are tried against is this test binary, run under the
@@ -83,7 +84,7 @@ func TestTheMasterMayBeInADevice(t *testing.T) {
 	native, err := age.GenerateX25519Identity()
 	x.NoError(err)
 
-	serving, err := config.AuditConfig{Archive: t.TempDir(), Retain: 1, Keys: config.AuditKeysConfig{
+	serving, err := config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Key: pdtest.Key(t)}, Keys: config.AuditKeysConfig{
 		Dir: t.TempDir(), Master: []string{recipient, native.Recipient().String()},
 	}}.Policy()
 	x.NoError(err)
@@ -99,7 +100,7 @@ func TestTheMasterMayBeInADevice(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "master.txt")
 	x.NoError(os.WriteFile(path, []byte("# the device's\n"+identity+"\n"), 0o600))
 	for _, v := range []string{identity, path} {
-		reading, err := config.AuditConfig{Archive: t.TempDir(), Retain: 1, Keys: config.AuditKeysConfig{
+		reading, err := config.AuditConfig{Archive: t.TempDir(), Retain: 1, Checkpoints: config.AuditCheckpointsConfig{Key: pdtest.Key(t)}, Keys: config.AuditKeysConfig{
 			Dir: t.TempDir(), Master: []string{recipient}, Identity: v,
 		}}.Policy()
 		x.NoError(err)
