@@ -325,73 +325,233 @@ func TestARowChangedWithoutTheKeyIsFound(t *testing.T) {
 	})
 }
 
-// TestRowsFromBeforeTheKeyAreAcceptedOnce.
-//
-// A deployment that had no key, and then has one: its rows say nothing the key
-// signed, so they are findings and nothing a pass decides by -- a chunk past
-// its window is kept -- until an operator accepts them, which signs them as
-// they stand. Accepting is signing, so a policy with keys to trust and none to
-// sign with accepts nothing.
-func TestRowsFromBeforeTheKeyAreAcceptedOnce(t *testing.T) {
+// keyless is an archive as a payday that kept it without a key left it: a
+// tenant's chunk, the manifest's row for it with no signature, and a
+// checkpoint over it that nobody signed.
+func keyless(t *testing.T) (*fakeStore, Policy, Chunk, flob.Digest) {
 	x := require.New(t)
 	ctx := t.Context()
 
 	tenant := newTenant()
-	s := &fakeStore{}
-	s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(400 * day), value: "a"})
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}}
-	p.Pass(ctx, s)
+	r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(400 * day), value: "a"}
+	c := Chunk{Namespace: tenant.String(), Kind: "person", Month: monthOf(r.created), Rows: 1, First: r.created, Last: r.created}
 
-	cs, err := chunksIn(ctx, p.Archive, tenant.String())
+	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}}
+	c.Digest = plant(t, p.Archive, c, r.doc())
+
+	s := &fakeStore{}
+	key, err := s.Adding(ctx, c.Namespace, "", labelsOf(c.labels()), nobody)
 	x.NoError(err)
-	x.Len(cs, 1)
-	for _, v := range s.rowsOf() {
-		x.Empty(v.Signature.Sig, "a row signed with no key")
-	}
+	x.NoError(s.Added(ctx, key, string(c.Digest), labelsOf(c.labels()), nobody))
+
+	k, rows, err := s.Checkpoint(ctx, 0)
+	x.NoError(err)
+
+	return s, p, c, planted(t, p, checkpointOf(k, time.Now(), rows), nil)
+}
+
+// TestAnArchiveKeptWithoutAKeyIsAcceptedOnce.
+//
+// A deployment that archived without a key, and then has one (#115): its rows
+// say nothing the key signed and neither do its checkpoints, so each is a
+// finding and nothing an act decides by -- a chunk past its window is kept --
+// and no act takes a checkpoint after them, which would leave them off the
+// chain for good. An operator accepts once: the rows signed as they stand, and
+// the checkpoint the database numbered last named by the acceptance, which
+// takes in the history before the key. Accepting is signing, so a policy with
+// keys to trust and none to sign with accepts nothing.
+func TestAnArchiveKeptWithoutAKeyIsAcceptedOnce(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	s, p, c, first := keyless(t)
 
 	key := newKey(t)
 	p.Signer = key
 	p.Keep.Destroy = year
-	p.Pass(ctx, s)
-	x.True(there(t, p.Archive, cs[0]), "a pass destroyed a chunk by a row nobody signed")
 
 	v, err := p.Verify(ctx, s, false)
 	x.NoError(err)
 	x.Equal([]string{"unsigned"}, kinds(v))
+	x.Len(v.Findings, 2, "the row and the checkpoint: %v", v.Findings)
 
-	_, err = Policy{Archive: p.Archive, Trust: []crypto.PublicKey{key.Public()}}.Accept(ctx, s, "rows from before the key")
-	x.ErrorContains(err, "sign", "accepted without the key")
+	p.Pass(ctx, s)
+	x.True(there(t, p.Archive, c), "a pass destroyed a chunk by a row nobody signed")
+	x.Equal(1, latestOf(t, s), "a checkpoint was taken after a history nobody signed")
 
-	_, err = p.Accept(ctx, s, "rows from before the key")
+	s.add(fakeRow{tenant: newTenant().Uuid(), domain: person, created: ago(40 * day), value: "after the key"})
+	_, err = Archive(ctx, s, p, Kinds{}, time.Now())
+	x.ErrorIs(err, errUnkeyed)
+	x.Equal(1, latestOf(t, s))
+
+	_, err = Policy{Archive: p.Archive, Trust: []crypto.PublicKey{key.Public()}}.Accept(ctx, s, "an archive kept without a key")
+	x.ErrorIs(err, ErrNoKey, "accepted without the key")
+
+	_, err = p.Accept(ctx, s, "an archive kept without a key until now")
 	x.NoError(err)
-	v, err = p.Verify(ctx, s, false)
+	x.Equal(2, latestOf(t, s))
+	x.Equal(first, numbered(t, p, 2).c.Prev, "the acceptance did not take in the history before the key")
+
+	v, err = p.Verify(ctx, s, true)
 	x.NoError(err)
 	x.True(v.Ok(), "%v", v.Findings)
 
 	p.Pass(ctx, s)
-	x.False(there(t, p.Archive, cs[0]), "a chunk outlived its window once its row was accepted")
+	x.False(there(t, p.Archive, c), "a chunk outlived its window once its row was accepted")
+	x.Equal(3, latestOf(t, s))
 }
 
-// TestWithoutAKeyNothingIsHeldToASignature.
+// TestAnAcceptanceGoesOnFromWhatTheDatabaseNumbered: of the checkpoints
+// nobody signed that say they are the one the database numbered last, an
+// acceptance of an archive kept without a key names the one the database's
+// rows add up to -- not whichever is first by digest, which anybody who can
+// write the checkpoint store can make theirs -- and the others stay findings.
+// Before the database has numbered one, what the store keeps is nobody's
+// history, and stops no act.
+func TestAnAcceptanceGoesOnFromWhatTheDatabaseNumbered(t *testing.T) {
+	t.Run("of two numbered alike", func(t *testing.T) {
+		x := require.New(t)
+		ctx := t.Context()
+
+		s, p, _, first := keyless(t)
+		p.Signer = newKey(t)
+
+		for i := 0; ; i++ {
+			x.Less(i, 64, "no checkpoint first by digest")
+			if planted(t, p, over(1), nil) < first {
+				break
+			}
+		}
+
+		_, err := p.Accept(ctx, s, "an archive kept without a key until now")
+		x.NoError(err)
+		x.Equal(first, numbered(t, p, 2).c.Prev, "the acceptance went on from one the database never took")
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"unsigned"}, kinds(v), "%v", v.Findings)
+	})
+	t.Run("before the database numbered any", func(t *testing.T) {
+		x := require.New(t)
+		ctx := t.Context()
+
+		// Numbered as the database has numbered, and as its first will be.
+		s := &fakeStore{}
+		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Signer: newKey(t)}
+		planted(t, p, over(0), nil)
+		planted(t, p, over(1), nil)
+
+		x.NoError(oneMore(t, s, p), "what the store kept before the database numbered one stopped an act")
+		x.Equal(1, latestOf(t, s))
+		x.Empty(numbered(t, p, 1).c.Prev, "the first checkpoint went on from somebody's")
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"unsigned"}, kinds(v), "%v", v.Findings)
+		x.Len(v.Findings, 2, "%v", v.Findings)
+	})
+}
+
+// TestAnArchiveIsKeptWithAKey.
 //
-// What a deployment with no key had before rows were signed, and says where it
-// comes up; and a verifier given the deployment's public key holds the same
-// rows to it.
-func TestWithoutAKeyNothingIsHeldToASignature(t *testing.T) {
+// There is no archive without a key (#115). A policy with one and no key to
+// sign or trust with is refused, an act asked of one is refused before it
+// writes anything, and a verifier -- the public half, and nothing to sign
+// with -- holds every row and checkpoint to it, and takes no act.
+func TestAnArchiveIsKeptWithAKey(t *testing.T) {
 	x := require.New(t)
 	ctx := t.Context()
 
-	s, p, _ := manifestedArchive(t, nil)
-	for _, v := range s.rowsOf() {
-		x.Empty(v.Signature.Sig)
-	}
+	key := newKey(t)
+	s, p, tenant := manifestedArchive(t, key)
+	s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(40 * day), value: "more"})
 
-	v, err := p.Verify(ctx, s, true)
+	none := Policy{Archive: p.Archive, Keep: p.Keep}
+	x.ErrorIs(none.Valid(), ErrNoKey)
+
+	before := s.rowsOf()
+	acts := map[string]func() error{
+		"archive": func() error {
+			_, err := Archive(ctx, s, none, Kinds{}, time.Now())
+			return err
+		},
+		"forget": func() error {
+			_, err := none.Forget(ctx, s, []pdid.Id{tenant})
+			return err
+		},
+		"purge": func() error {
+			_, _, err := none.Purge(ctx, s, Before(time.Now()))
+			return err
+		},
+		"a tenant's purge": func() error {
+			_, err := none.PurgeTenant(ctx, s, tenant)
+			return err
+		},
+		"discard": func() error {
+			_, _, err := none.Collect(ctx, s, Kinds{}, time.Now())
+			return err
+		},
+		"accept": func() error {
+			_, err := none.Accept(ctx, s, "looked at")
+			return err
+		},
+	}
+	for name, act := range acts {
+		x.ErrorIs(act(), ErrNoKey, name)
+	}
+	none.Pass(ctx, s)
+	x.Equal(before, s.rowsOf(), "an act without a key wrote the manifest")
+	x.Equal(1, latestOf(t, s), "an act without a key took a checkpoint")
+
+	// Nor does it take any row on no key's word: none is signed by a key it
+	// trusts.
+	v, err := none.Verify(ctx, s, false)
+	x.NoError(err)
+	x.False(v.Ok(), "a policy with no key believed the rows")
+	x.Contains(kinds(v), "forged")
+
+	verifier := Policy{Archive: p.Archive, Trust: []crypto.PublicKey{key.Public()}}
+	x.NoError(verifier.Valid())
+	x.Contains(verifier.String(), "nothing to sign with")
+	v, err = verifier.Verify(ctx, s, true)
 	x.NoError(err)
 	x.True(v.Ok(), "%v", v.Findings)
-	x.Contains(p.String(), "unsigned")
+	_, err = Archive(ctx, s, verifier, Kinds{}, time.Now())
+	x.ErrorIs(err, ErrNoKey)
 
-	v, err = Policy{Archive: p.Archive, Trust: []crypto.PublicKey{newKey(t).Public()}}.Verify(ctx, s, false)
+	// A row nobody signed is a finding to it, as to the deployment.
+	s.put(Archived{Namespace: tenant.String(), Digest: string(flob.DigestFromBytes([]byte("a chunk nobody wrote"))), State: Present})
+	v, err = verifier.Verify(ctx, s, false)
 	x.NoError(err)
 	x.Equal([]string{"unsigned"}, kinds(v))
+
+	// Nor does it write the manifest when a question would fill it: what it
+	// would write, it has nothing to sign.
+	fresh := Policy{Archive: flob.NewMemStores(), Trust: []crypto.PublicKey{key.Public()}}
+	r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(40 * day)}
+	plant(t, fresh.Archive, Chunk{Namespace: tenant.String(), Kind: "person", Month: monthOf(r.created), Rows: 1, First: r.created, Last: r.created}, r.doc())
+	empty := &fakeStore{}
+	_, _, err = fresh.Doomed(ctx, empty, Before(time.Now()))
+	x.ErrorIs(err, ErrNoKey)
+	x.Empty(empty.rowsOf(), "a verifier wrote rows nobody signed")
+}
+
+// TestWithNoManifestNoChunkIsTrusted: what an act decides by is the labels the
+// manifest's signed rows recorded, and with no manifest there are none -- a
+// chunk's own labels are whoever wrote them.
+func TestWithNoManifestNoChunkIsTrusted(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	tenant := newTenant()
+	p := Policy{Archive: flob.NewMemStores(), Signer: signer}
+	r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(400 * day)}
+	plant(t, p.Archive, Chunk{Namespace: tenant.String(), Kind: "person", Month: monthOf(r.created), Rows: 1, First: r.created, Last: r.created}, r.doc())
+
+	x2, err := p.start(nil)
+	x.NoError(err)
+	trusted, rest, err := x2.chunks(ctx, []string{tenant.String()}, false)
+	x.NoError(err)
+	x.Empty(trusted, "a chunk was decided by its own labels")
+	x.Len(rest, 1)
 }

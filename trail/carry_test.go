@@ -99,7 +99,7 @@ func carriesForward(t *testing.T, lease spin.Lease) {
 	c.write(inDb, day, 2)
 	c.write(before, 2*year, -1)
 
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: year}, Digest: c.d, Lease: lease}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: year}, Digest: c.d, Lease: lease}
 	p.Pass(t.Context(), c.s)
 
 	got := c.carried()
@@ -129,7 +129,7 @@ func TestNothingIsCarriedWithoutAKey(t *testing.T) {
 	c.s.live[still.Uuid()] = true
 	c.write(still, 2*year, 1)
 
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: year}}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: year}}
 	p.Pass(t.Context(), c.s)
 
 	c.x.Empty(c.carried())

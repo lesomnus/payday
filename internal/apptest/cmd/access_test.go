@@ -686,7 +686,7 @@ func TestTheAccessRecordIsKeptAsAKindOfItsOwn(t *testing.T) {
 
 	a := flob.NewMemStores()
 	s := pd.TrailStore(b.Ent)
-	n, err := trail.Archive(ctx, s, trail.Policy{Archive: a}, trail.Kinds{}, time.Now().Add(time.Hour))
+	n, err := trail.Archive(ctx, s, trail.Policy{Archive: a, Signer: pdtest.Signer(t)}, trail.Kinds{}, time.Now().Add(time.Hour))
 	x.NoError(err)
 	x.Equal(trails+1, n)
 
@@ -728,8 +728,9 @@ func TestTheAccessRecordIsKeptAsAKindOfItsOwn(t *testing.T) {
 		x.Len(b.accessed(t, ctx), 1)
 
 		p, err := config.AuditConfig{
-			Archive: t.TempDir(),
-			Retain:  90 * 24 * time.Hour,
+			Archive:     t.TempDir(),
+			Checkpoints: config.AuditCheckpointsConfig{Key: pdtest.Key(t)},
+			Retain:      90 * 24 * time.Hour,
 			By: map[string]config.AuditKeepConfig{
 				"access": {Retain: time.Nanosecond},
 			},

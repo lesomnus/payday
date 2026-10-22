@@ -38,6 +38,18 @@ func newKey(t *testing.T) crypto.Signer {
 	return k
 }
 
+// signer is what a test's policy signs the archive's account with when the
+// test is not about the key: an archive is kept with one (#115). It is made
+// afresh for each run, as no key that signs is ever written down.
+var signer = func() crypto.Signer {
+	_, k, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	return k
+}()
+
 // nobody is what somebody who writes the database and holds no key signs a row
 // with: nothing.
 func nobody(_, _ Archived) (Signature, error) { return Signature{}, nil }
@@ -176,7 +188,7 @@ func TestAnArchiveFromBeforeTheManifestIsTakenAsItIs(t *testing.T) {
 
 	s := &fakeStore{}
 	s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(40 * day)})
-	p := Policy{Archive: a, Keep: Keep{Retain: 30 * day}}
+	p := Policy{Signer: signer, Archive: a, Keep: Keep{Retain: 30 * day}}
 	p.Pass(ctx, s)
 
 	x.Equal(Present, s.state(tenant.String(), old), "what was there before was not taken in")
@@ -226,7 +238,7 @@ func TestWhatChangesBehindTheManifestsBackIsFound(t *testing.T) {
 		month = time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
 
 		s := &fakeStore{}
-		p := Policy{Archive: flob.NewMemStores()}
+		p := Policy{Signer: signer, Archive: flob.NewMemStores()}
 		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: month.Add(10 * day), value: "a"})
 		_, err := Archive(ctx, s, p, Kinds{}, time.Now())
 		x.NoError(err)
@@ -290,7 +302,7 @@ func TestWhatChangesBehindTheManifestsBackIsFound(t *testing.T) {
 		tenant := newTenant()
 		s := &fakeStore{}
 		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(40 * day), value: "a"})
-		p := Policy{Archive: flob.NewOsStores(dir), Keep: Keep{Retain: 30 * day}}
+		p := Policy{Signer: signer, Archive: flob.NewOsStores(dir), Keep: Keep{Retain: 30 * day}}
 		p.Pass(ctx, s)
 
 		cs, err := chunksIn(ctx, p.Archive, tenant.String())
@@ -376,7 +388,7 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 		tenant := newTenant()
 		s := &fakeStore{}
 		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(40 * day), value: "a"})
-		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: year}}
+		p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: year}}
 		p.Pass(ctx, s)
 
 		cs, err := chunksIn(ctx, p.Archive, tenant.String())
@@ -410,7 +422,7 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 		tenant := newTenant()
 		s := &fakeStore{}
 		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(400 * day), value: "a"})
-		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}}
+		p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}}
 		p.Pass(ctx, s)
 
 		cs, err := chunksIn(ctx, p.Archive, tenant.String())
@@ -429,7 +441,7 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 
 	t.Run("a chunk of everybody's is read by the tenants the manifest recorded", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 
 		cs, err := chunksIn(ctx, p.Archive, SharedNamespace)
 		x.NoError(err)
@@ -451,7 +463,7 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 
 	t.Run("a chunk put there is not read", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 
 		r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(35 * day), value: "planted"}
 		plant(t, p.Archive, Chunk{Namespace: tenant.String(), Kind: "person", Month: month(r.created), Run: "x", Rows: 1,
@@ -469,7 +481,7 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 		tenant := newTenant()
 		s := &fakeStore{}
 		s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(40 * day), value: "a"})
-		p := Policy{Archive: flob.NewOsStores(dir), Keep: Keep{Retain: 30 * day}}
+		p := Policy{Signer: signer, Archive: flob.NewOsStores(dir), Keep: Keep{Retain: 30 * day}}
 		p.Pass(ctx, s)
 
 		cs, err := chunksIn(ctx, p.Archive, tenant.String())
@@ -491,7 +503,7 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 
 	t.Run("forgetting blanks a chunk put there, and does not take it in", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 
 		who := uuid.NewV7()
 		r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: who, domain: person, created: ago(35 * day), value: "about them"}
@@ -515,7 +527,7 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 
 	t.Run("a tenant leaving takes what was put there with it, and takes none of it in", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 
 		// One in its namespace, and one of everybody's whose labels do not say
 		// it is the tenant's and whose rows do.
@@ -709,7 +721,7 @@ func TestWhatIsNotItsDigestIsWrittenAgainByNothing(t *testing.T) {
 			// Through the manifest, which says whether anything was written
 			// at all.
 			s := &fakeStore{}
-			_, err = refile(ctx, Policy{Archive: a}.manifested(s), "run", nil, c)
+			_, err = refile(ctx, Policy{Signer: signer, Archive: a}.manifested(s), "run", nil, c)
 			x.ErrorIs(err, ErrAltered)
 
 			x.Empty(s.archived, "rows of a file that is not its digest were filed, even if taken back")
@@ -817,7 +829,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 
 	t.Run("a write", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 
 		// Stopped after the blob and before the row says so.
 		key, err := s.Adding(ctx, tenant.String(), "the-intent", nil, p.signing())
@@ -840,7 +852,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 
 	t.Run("a write that never happened", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 
 		_, err := s.Adding(ctx, tenant.String(), "lost", nil, p.signing())
 		x.NoError(err)
@@ -858,7 +870,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 
 	t.Run("an erase", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 		cs, err := chunksIn(ctx, p.Archive, tenant.String())
 		x.NoError(err)
 		c := cs[0]
@@ -877,7 +889,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 
 	t.Run("an erase the database alone asks for", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 		cs, err := chunksIn(ctx, p.Archive, tenant.String())
 		x.NoError(err)
 		c := cs[0]
@@ -892,19 +904,24 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 		x.True(slices.ContainsFunc(cs, func(v Chunk) bool { return v.Digest == c.Digest }), "a row in the database destroyed a chunk")
 		x.Equal(Erasing, s.state(c.Namespace, c.Digest), "an erase younger than a day was undone")
 
-		// And undone once nothing can be making it any more.
+		// Nor is it undone once nothing can be making it any more: nobody
+		// signed it, so a pass says nothing of it next, and it is the
+		// operator's to look at.
 		s.mu.Lock()
 		for i := range s.archived {
 			s.archived[i].Updated = s.archived[i].Updated.Add(-2 * day)
 		}
 		s.mu.Unlock()
 		p.Pass(ctx, s)
-		x.Equal(Present, s.state(c.Namespace, c.Digest))
+		x.Equal(Erasing, s.state(c.Namespace, c.Digest), "a pass moved along a row nobody signed")
+		cs, err = chunksIn(ctx, p.Archive, tenant.String())
+		x.NoError(err)
+		x.True(slices.ContainsFunc(cs, func(v Chunk) bool { return v.Digest == c.Digest }), "a row nobody signed destroyed a chunk")
 	})
 
 	t.Run("an erase another pass is making", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 		cs, err := chunksIn(ctx, p.Archive, tenant.String())
 		x.NoError(err)
 		c := cs[0]
@@ -923,7 +940,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 
 	t.Run("a write of what another pass is erasing", func(t *testing.T) {
 		x := require.New(t)
-		s, p, tenant := manifestedArchive(t, nil)
+		s, p, tenant := manifestedArchive(t, signer)
 
 		// Two passes moved the same rows, so the two chunks are one blob: the
 		// second write finds the first's, and the first destroys it before
@@ -935,7 +952,7 @@ func TestWhatIsInFlightIsNoFindingAndACrashIsSettled(t *testing.T) {
 		m, err := first.Use(c.Namespace).Add(ctx, flob.Meta{Labels: c.labels()}, bytes.NewReader(gz(t, r.doc())))
 		x.NoError(err)
 
-		between := Policy{Archive: hooked{p.Archive, func() {
+		between := Policy{Signer: signer, Archive: hooked{p.Archive, func() {
 			x.NoError(first.Use(c.Namespace).Erase(ctx, m.Digest))
 		}}}
 		_, err = between.manifested(s).Use(c.Namespace).Add(ctx, flob.Meta{Labels: c.labels()}, bytes.NewReader(gz(t, r.doc())))
@@ -1041,9 +1058,12 @@ func TestACheckpointIsWhatTheArchiveHeld(t *testing.T) {
 		key := newKey(t)
 		s, p, _ := manifestedArchive(t, key)
 
-		forger := p
-		forger.Signer = newKey(t)
-		forger.Pass(ctx, s)
+		// The next one, signed by somebody who does not hold the key. A pass
+		// that held only theirs would take none: it trusts none of the
+		// checkpoints the store keeps.
+		rows, err := s.At(ctx, latestOf(t, s))
+		x.NoError(err)
+		planted(t, p, checkpointOf(latestOf(t, s)+1, time.Now(), rows), newKey(t))
 
 		v, err := p.Verify(ctx, s, false)
 		x.NoError(err)
@@ -1054,38 +1074,15 @@ func TestACheckpointIsWhatTheArchiveHeld(t *testing.T) {
 		x := require.New(t)
 		s, p, _ := manifestedArchive(t, newKey(t))
 
-		unsigned := p
-		unsigned.Signer = nil
-		unsigned.Pass(ctx, s)
+		// Taken without the key, which no act is: put there.
+		latest := latestOf(t, s)
+		rows, err := s.At(ctx, latest)
+		x.NoError(err)
+		planted(t, p, checkpointOf(latest+1, time.Now(), rows), nil)
 
 		v, err := p.Verify(ctx, s, false)
 		x.NoError(err)
 		x.Equal([]string{"unsigned"}, kinds(v))
-	})
-
-	t.Run("a deployment that was given a key later", func(t *testing.T) {
-		x := require.New(t)
-		s, p, _ := manifestedArchive(t, nil)
-
-		// Its checkpoints begin unsigned, which is no finding. Its rows were
-		// written unsigned, which is one until an operator says they are
-		// right: a row with no signature looks the same as one whose signature
-		// somebody took off.
-		p.Signer = newKey(t)
-		p.Pass(ctx, s)
-
-		v, err := p.Verify(ctx, s, false)
-		x.NoError(err)
-		x.Equal([]string{"unsigned"}, kinds(v))
-		for _, f := range v.Findings {
-			x.Zero(f.Checkpoint, "a checkpoint from before the key: %v", f)
-		}
-
-		_, err = p.Accept(ctx, s, "the rows from before the deployment had a key")
-		x.NoError(err)
-		v, err = p.Verify(ctx, s, false)
-		x.NoError(err)
-		x.True(v.Ok(), "%v", v.Findings)
 	})
 
 	t.Run("a deployment with nothing to archive yet", func(t *testing.T) {
@@ -1110,7 +1107,7 @@ func TestACheckpointIsWhatTheArchiveHeld(t *testing.T) {
 
 	t.Run("a manifest emptied beside checkpoints", func(t *testing.T) {
 		x := require.New(t)
-		s, p, _ := manifestedArchive(t, nil)
+		s, p, _ := manifestedArchive(t, signer)
 		was, err := inventory(ctx, p.Archive)
 		x.NoError(err)
 
@@ -1156,7 +1153,7 @@ func TestACheckpointIsWhatTheArchiveHeld(t *testing.T) {
 		worm := flob.NewMemStores().Use("checkpoints")
 		s := &fakeStore{}
 		s.add(fakeRow{tenant: newTenant().Uuid(), domain: person, created: ago(40 * day)})
-		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Checkpoints: worm}
+		p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Checkpoints: worm}
 		p.Pass(ctx, s)
 
 		ks, err := checkpointsIn(ctx, worm)
@@ -1184,7 +1181,7 @@ func TestTwoPassesAtOnce(t *testing.T) {
 	for range 50 {
 		s.add(fakeRow{tenant: newTenant().Uuid(), domain: person, created: ago(40 * day)})
 	}
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: 35 * day}}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: 35 * day}}
 
 	wg := sync.WaitGroup{}
 	for range 2 {
@@ -1238,18 +1235,20 @@ func TestACheckpointIsSignedByWhatHoldsTheKey(t *testing.T) {
 			x.True(v.Ok(), "%v", v.Findings)
 			x.Equal(1, v.Checkpoint)
 
-			// Somebody else's key, of the same kind.
-			forger := p
+			// Somebody else's key, of the same kind, signing the next one.
+			var forger crypto.Signer
 			switch key.Public().(type) {
 			case *ecdsa.PublicKey:
-				forger.Signer, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+				forger, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 			case *rsa.PublicKey:
-				forger.Signer, err = rsa.GenerateKey(rand.Reader, 2048)
+				forger, err = rsa.GenerateKey(rand.Reader, 2048)
 			default:
-				forger.Signer = newKey(t)
+				forger = newKey(t)
 			}
 			x.NoError(err)
-			forger.Pass(ctx, s)
+			rows, err := s.At(ctx, latestOf(t, s))
+			x.NoError(err)
+			planted(t, p, checkpointOf(latestOf(t, s)+1, time.Now(), rows), forger)
 
 			v, err = p.Verify(ctx, s, false)
 			x.NoError(err)

@@ -421,7 +421,7 @@ func TestACheckpointNobodyVouchesForDecidesNothing(t *testing.T) {
 
 		v, err := p.Verify(ctx, s, false)
 		x.NoError(err)
-		x.Equal([]string{"rewritten", "unsigned"}, kinds(v), "%v", v.Findings)
+		x.Equal([]string{"unsigned"}, kinds(v), "%v", v.Findings)
 		x.NotContains(v.Findings, Finding{Kind: "rewritten", Checkpoint: 3, Note: "it kept 0 blobs; of them the manifest has lost 0, and gained 3 it never had"})
 
 		x.NoError(oneMore(t, s, p), "the rows were held to a checkpoint nobody signed")

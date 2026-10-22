@@ -368,6 +368,39 @@ jobs:
       - run: go tool pd gen --check .
         working-directory: widget
 
+      # An archive is kept with a key (payday#115). `init` gives a deployment
+      # that names an archive and no key one of its own, beside the archive,
+      # says where, and writes over none; and the process is refused until the
+      # key is named, with how to make one.
+      - name: and its first key
+        working-directory: widget
+        run: |
+          d="${RUNNER_TEMP}/widget-key"
+          mkdir -p "$d"
+          export WIDGET_AUDIT_ARCHIVE="$d/audit"
+          export WIDGET_DB_DSN="file:$d/widget.db?_pragma=foreign_keys(1)"
+          key="$d/audit-checkpoints.pem"
+          go build -o "$d/widget" ./cmd/widget
+
+          "$d/widget" init | tee "$d/init.log"
+          grep -qF "$key" "$d/init.log"
+          grep -q 'BEGIN PRIVATE KEY' "$key"
+          test "$(stat -c %a "$key")" = 600
+          was=$(sha256sum "$key")
+
+          if "$d/widget" init --tenant another > "$d/again.log" 2>&1; then echo 'a second init wrote over the key' >&2; exit 1; fi
+          grep -q 'is one already' "$d/again.log" || { cat "$d/again.log"; exit 1; }
+          test "$(sha256sum "$key")" = "$was"
+
+          if timeout 30 "$d/widget" serve > "$d/serve.log" 2>&1; then echo 'an archive with no key came up' >&2; exit 1; fi
+          grep -q 'audit.checkpoints.key' "$d/serve.log" || { cat "$d/serve.log"; exit 1; }
+          grep -q 'openssl genpkey' "$d/serve.log" || { cat "$d/serve.log"; exit 1; }
+
+          # Named, it comes up: still serving when it is stopped.
+          code=0
+          WIDGET_AUDIT_CHECKPOINTS_KEY="$key" timeout 10 "$d/widget" serve > "$d/up.log" 2>&1 || code=$?
+          test "$code" = 124 || { cat "$d/up.log"; exit 1; }
+
       # And that what it wrote is formatted. An app starts its life with
       # whatever `pd new` put in it, so a template that is not gofmt-clean makes
       # every scaffold fail its own first format check -- which was true of the

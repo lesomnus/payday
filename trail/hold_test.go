@@ -75,7 +75,7 @@ func TestAHeldTenantIsMovedAndNeverDestroyed(t *testing.T) {
 		free: {Keep: &discard},
 		held: {Keep: &discard, Hold: onHold()},
 	}
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 90 * day}, Tenants: answers(vs)}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 90 * day}, Tenants: answers(vs)}
 
 	p.Pass(ctx, s)
 	x.False(s.has(gone.id))
@@ -150,7 +150,7 @@ func TestADiscardWindowDestroysWhatTheArchiveHolds(t *testing.T) {
 		s := &fakeStore{}
 		r := s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(60 * day)})
 		vs := map[pdid.Id]Tenant{tenant: {Keep: &discard, Hold: onHold()}}
-		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 90 * day}, Tenants: answers(vs)}
+		p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 90 * day}, Tenants: answers(vs)}
 
 		p.Pass(ctx, s)
 		p.Pass(ctx, s)
@@ -174,7 +174,7 @@ func TestADiscardWindowDestroysWhatTheArchiveHolds(t *testing.T) {
 		r := s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(60 * day)})
 		long := Keep{Retain: 30 * day, Destroy: 365 * day}
 		vs := map[pdid.Id]Tenant{tenant: {Keep: &long}}
-		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 90 * day}, Tenants: answers(vs)}
+		p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 90 * day}, Tenants: answers(vs)}
 
 		p.Pass(ctx, s)
 		x.Contains(docsIn(t, p.Archive), r.id)
@@ -191,7 +191,7 @@ func TestADiscardWindowDestroysWhatTheArchiveHolds(t *testing.T) {
 		tenant := newTenant()
 		s := &fakeStore{}
 		r := s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(60 * day)})
-		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: 365 * day}}
+		p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day, Destroy: 365 * day}}
 
 		p.Pass(ctx, s)
 		x.Contains(docsIn(t, p.Archive), r.id)
@@ -215,6 +215,7 @@ func TestAHoldOnSomeKindsHoldsOnlyThose(t *testing.T) {
 
 	discard := Keep{Retain: 30 * day, Discard: true}
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    discard,
 		Tenants: answers(map[pdid.Id]Tenant{held: {Keep: &discard, Hold: onHold(person)}}),
@@ -242,6 +243,7 @@ func TestARowSharedWithAHeldTenantIsHeld(t *testing.T) {
 
 	discard := Keep{Retain: 30 * day, Discard: true}
 	p := Policy{
+		Signer:  signer,
 		Archive: flob.NewMemStores(),
 		Keep:    discard,
 		Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}}),
@@ -273,6 +275,7 @@ func TestAHoldKeepsItsOwnRowsOfAFileOfEverybodys(t *testing.T) {
 	x.NoError(err)
 
 	p := Policy{
+		Signer:  signer,
 		Archive: a,
 		Keep:    Keep{Retain: 30 * day, Destroy: year},
 		Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}}),
@@ -314,7 +317,7 @@ func TestPurgeByHandLeavesWhatIsHeldAndSaysSo(t *testing.T) {
 	b := s.add(fakeRow{tenant: held.Uuid(), domain: person, created: ago(60 * day)})
 
 	vs := map[pdid.Id]Tenant{}
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Tenants: answers(vs)}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Tenants: answers(vs)}
 	p.Pass(ctx, s)
 
 	vs[held] = Tenant{Hold: onHold()}
@@ -346,7 +349,7 @@ func TestCollectingByHandLeavesWhatIsHeld(t *testing.T) {
 	a := s.add(fakeRow{tenant: free.Uuid(), domain: person, created: ago(60 * day)})
 	b := s.add(fakeRow{tenant: held.Uuid(), domain: person, created: ago(60 * day)})
 
-	p := Policy{Archive: flob.NewMemStores(), Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
 
 	n, h, err := p.Collect(ctx, s, Kinds{}, time.Now())
 	x.NoError(err)
@@ -379,7 +382,7 @@ func TestErasingASubjectLeavesWhatAHoldIsOnAndSaysWhose(t *testing.T) {
 	oldHeld := s.add(fakeRow{tenant: held.Uuid(), object: who, domain: person, created: ago(60 * day), value: "a name"})
 
 	vs := map[pdid.Id]Tenant{}
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Tenants: answers(vs)}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Tenants: answers(vs)}
 	p.Pass(ctx, s)
 
 	newFree := s.add(fakeRow{tenant: free.Uuid(), object: who, domain: person, created: ago(day), value: "a name"})
@@ -459,7 +462,7 @@ func TestATenantLeaves(t *testing.T) {
 		[][]byte{legacyMine.doc(), legacyShared.doc(), legacyTheirs.doc()})
 	x.NoError(err)
 
-	p := Policy{Archive: a, Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
+	p := Policy{Signer: signer, Archive: a, Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
 
 	plan, err := p.PlanTenantPurge(ctx, s, leaving)
 	x.NoError(err)
@@ -518,7 +521,7 @@ func TestATenantUnderAHoldIsNotPurged(t *testing.T) {
 	s := &fakeStore{}
 	r := s.add(fakeRow{tenant: held.Uuid(), domain: person, created: ago(day)})
 
-	p := Policy{Archive: flob.NewMemStores(), Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
 
 	_, err := p.PurgeTenant(ctx, s, held)
 	x.ErrorIs(err, ErrHeld)
@@ -546,7 +549,7 @@ func TestAPreviewKnowsAboutTheHold(t *testing.T) {
 	s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(60 * day)})
 
 	discard := Keep{Retain: 30 * day, Discard: true}
-	p := Policy{Archive: flob.NewMemStores(), Keep: discard}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: discard}
 
 	got, err := p.Preview(ctx, s, tenant, Tenant{Keep: &discard})
 	x.NoError(err)
@@ -577,7 +580,7 @@ func TestAPassGivesBackWhatTheArchiveNoLongerHolds(t *testing.T) {
 	x := require.New(t)
 
 	a := &reclaiming{MemStores: flob.NewMemStores()}
-	p := Policy{Archive: a, Keep: Keep{Retain: 30 * day, Destroy: year}}
+	p := Policy{Signer: signer, Archive: a, Keep: Keep{Retain: 30 * day, Destroy: year}}
 	p.Pass(t.Context(), &fakeStore{})
 
 	x.Equal([]time.Duration{Reclaimed}, a.asked)

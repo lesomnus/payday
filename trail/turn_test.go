@@ -90,7 +90,7 @@ func TestAnActOnTheRowsTakesItsTurnWithAPass(t *testing.T) {
 			tenant := newTenant()
 			inner := &fakeStore{}
 			r := inner.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(40 * day), value: "what it said"})
-			p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Lease: spin.Local()}
+			p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Lease: spin.Local()}
 
 			// The act, asked while the pass holds the row it has read, given
 			// long enough for anything that does not wait for the pass.
@@ -124,7 +124,7 @@ func TestATenantThatLeftIsMadeNoKeyAgain(t *testing.T) {
 
 	leaving, staying := newTenant(), newTenant()
 	k, master := sealing(t)
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Hour}, Keys: k}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Hour}, Keys: k}
 	opens := p
 	opens.Keys = &Keys{Store: k.Store, Master: k.Master, Identities: []age.Identity{master}}
 
@@ -176,7 +176,7 @@ func TestATenantThatLeftIsMadeNoKeyAgain(t *testing.T) {
 		// The tenant leaves the moment a pass has made it a key: its mark
 		// is there before the pass asks again.
 		k.Store = leavingAsMade{Stores: k.Store, k: k, ns: leaving.String()}
-		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Hour}, Keys: k}
+		p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Hour}, Keys: k}
 
 		s := &fakeStore{}
 		r := s.add(fakeRow{tenant: leaving.Uuid(), domain: person, created: ago(day), value: "its own"})

@@ -114,7 +114,7 @@ func (s *stuck) add(c Chunk, err error) bool {
 func (p Policy) Collect(ctx context.Context, s Store, of Kinds, before time.Time) (_ int, _ Held, err error) {
 	h := Held{}
 
-	x, err := p.start(s)
+	x, err := p.act(s)
 	if err != nil {
 		return 0, h, err
 	}
@@ -209,7 +209,11 @@ func (p Policy) purge(ctx context.Context, s Store, cut func(kind string) (time.
 		return nil, h, errors.New("no archive to destroy from")
 	}
 
-	x, err := p.start(s)
+	start := p.act
+	if dry {
+		start = p.start
+	}
+	x, err := start(s)
 	if err != nil {
 		return nil, h, err
 	}
@@ -359,7 +363,7 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgo
 		return out, nil
 	}
 
-	x, err := p.start(s)
+	x, err := p.act(s)
 	if err != nil {
 		return out, err
 	}
@@ -585,7 +589,11 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 		return out, errors.New("no tenant")
 	}
 
-	x, err := p.start(s)
+	start := p.act
+	if dry {
+		start = p.start
+	}
+	x, err := start(s)
 	if err != nil {
 		return out, err
 	}

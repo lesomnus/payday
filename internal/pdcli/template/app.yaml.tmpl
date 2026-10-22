@@ -72,16 +72,18 @@ spin:
 #
 # `checkpoints:` is where every pass, and every act that changes the archive,
 # leaves what the archive held, which the database's account of it is checked
-# against. Kept apart from the
-# archive on a disk that refuses deletion, and signed with a key mounted as a
-# secret -- Ed25519, ECDSA or RSA, as `openssl genpkey` writes one -- they are
-# what catches an archive somebody rewrote. A key in a device is named here by
-# its URI -- `pkcs11:` for an HSM, `tpm:`, `hashivault://`, `awskms://` -- once
-# `cmd` imports what speaks to it, `config/signerpkcs11` and its siblings. The
-# key signs every row of the account too, and `write_once` says the disk keeps
-# what it is given, so that the process never erases a checkpoint either -- it
-# is the disk's promise, and on an ordinary one it keeps nothing from whoever
-# holds it.
+# against. Kept apart from the archive on a disk that refuses deletion, and
+# signed with a key mounted as a secret -- Ed25519, ECDSA or RSA, as `openssl
+# genpkey` writes one -- they are what catches an archive somebody rewrote. An
+# archive is refused without `key:`: there is no account of one that nothing
+# signs, and no key everybody knows to fall back on. `init` writes one of this
+# deployment's own beside the archive when none is named, for development. A key
+# in a device is named here by its URI -- `pkcs11:` for an HSM, `tpm:`,
+# `hashivault://`, `awskms://` -- once `cmd` imports what speaks to it,
+# `config/signerpkcs11` and its siblings. The key signs every row of the account
+# too, and `write_once` says the disk keeps what it is given, so that the
+# process never erases a checkpoint either -- it is the disk's promise, and on
+# an ordinary one it keeps nothing from whoever holds it.
 #
 # `keys:` seals what the archive's rows say, a key per tenant, so that a tenant
 # that leaves takes its trail out of the archive's backups as well. `master` is

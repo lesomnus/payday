@@ -2,12 +2,17 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 
 	"github.com/lesomnus/xli"
 	"github.com/lesomnus/xli/flg"
 
 	"github.com/lesomnus/payday/pdid"
+	"github.com/lesomnus/payday/trail"
 
 	app "{{.Module}}"
 	"{{.Module}}/cmd"
@@ -43,6 +48,22 @@ func NewCmdInit(c *cmd.Config) *xli.Command {
 			holder, ok := flg.Find[string](self, "holder")
 			if !ok || holder == "" {
 				holder = "admin"
+			}
+
+			// An archive is kept with a key that signs its account, and a
+			// process is refused one without it. A development deployment
+			// that names an archive and no key is given one of its own --
+			// there is no key everybody knows, which would sign forgeries for
+			// anybody -- written beside the archive, and told where.
+			if c.Audit.Archive != "" && c.Audit.Checkpoints.Key == "" {
+				path, err := keyFor(c.Audit.Archive)
+				if err != nil {
+					return err
+				}
+
+				c.Audit.Checkpoints.Key = path
+				self.Printf("the trail's archive is signed with a key of this deployment's own, written to %s\n", path)
+				self.Printf("name it as audit.checkpoints.key, or {{.Env}}_AUDIT_CHECKPOINTS_KEY, before serving\n\n")
 			}
 
 			s, err := cmd.Build(ctx, *c)
@@ -89,4 +110,32 @@ func NewCmdInit(c *cmd.Config) *xli.Command {
 			return nil
 		}),
 	}
+}
+
+// keyFor writes a key for the trail's archive to sign its account with, made
+// fresh, beside the archive, and answers the file it is in. A file already
+// there is somebody's key, and is not written over.
+func keyFor(archive string) (string, error) {
+	doc, _, err := trail.GenerateKey()
+	if err != nil {
+		return "", err
+	}
+
+	path := filepath.Clean(archive) + "-checkpoints.pem"
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return "", fmt.Errorf("a key for the trail: %w", err)
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, fs.ErrExist) {
+		return "", fmt.Errorf("a key for the trail: %s is one already; name it as audit.checkpoints.key, or move it away for a new one", path)
+	}
+	if err != nil {
+		return "", fmt.Errorf("a key for the trail: %w", err)
+	}
+	if _, err := f.Write(doc); err != nil {
+		f.Close()
+		return "", fmt.Errorf("a key for the trail: %w", err)
+	}
+
+	return path, f.Close()
 }

@@ -15,7 +15,8 @@ import (
 
 // Signature is what the deployment's key said of one row of the manifest: a
 // signature over what the row says, and the public half of the key that made
-// it, PKIX. Both are empty on a row written without a key.
+// it, PKIX. Both are empty on a row nothing signed, which is a finding: one an
+// archive kept without a key wrote, before #115, or one somebody wrote since.
 //
 // # Why a row is signed
 //
@@ -100,17 +101,18 @@ func (p Policy) trusted() []crypto.PublicKey {
 	return out
 }
 
-// keyed answers whether the policy holds the manifest's rows to a signature,
-// which it does whenever it names a key: its signer's, or one it trusts.
+// rowFinding is what is wrong with a row's signature: nothing, or the kind of
+// finding it is and why. Every row is held to one: an archive is kept with a
+// key that signs its account (#115), so a row that says anything no trusted
+// key signed is a finding, and nothing more.
 //
 // # A row with no signature
 //
-// It looks the same whether it was written before rows were signed, while the
-// deployment had no key, or had its signature taken off since -- and only
-// somebody who knows which can say. So with a key, every such row is a finding
-// until an operator who has looked accepts it with [Policy.Accept], which signs
-// it as it stands; without one, nothing is signed and nothing is held to a
-// signature, which is what the manifest was before rows were signed.
+// It looks the same whether it was written before rows were signed, by a
+// deployment that archived without a key, or had its signature taken off
+// since -- and only somebody who knows which can say. So every such row is a
+// finding until an operator who has looked accepts it with [Policy.Accept],
+// which signs it as it stands.
 //
 // The other way was considered: the first pass with a key signing every row it
 // finds without one, as the first pass fills an empty manifest. It is safe only
@@ -120,25 +122,17 @@ func (p Policy) trusted() []crypto.PublicKey {
 // where the database's credentials do not reach and read before every act.
 //
 // A process that names keys to trust and has none to sign with -- a verifier,
-// given the public halves -- holds what it would write itself to the same
-// rule: it should not be writing the archive, and a row it writes is a finding.
-func (p Policy) keyed() bool { return p.Signer != nil || len(p.Trust) > 0 }
-
-// rowFinding is what is wrong with a row's signature: nothing, or the kind of
-// finding it is and why.
+// given the public halves -- holds the rows to them as any does, and takes no
+// act: it has nothing to sign what it would write with.
 func (p Policy) rowFinding(v Archived, trusted []crypto.PublicKey) (string, string) {
 	switch {
 	case len(v.Signature.Sig) == 0:
-		if !p.keyed() {
-			return "", ""
-		}
-
-		return "unsigned", "no signature, and the policy names a key"
+		return "unsigned", "no signature"
 
 	case !verified(v.Signature.Key, statement(v), v.Signature.Sig):
 		return "forged", "its signature is not over what it says"
 
-	case len(trusted) > 0 && !trusts(trusted, v.Signature.Key):
+	case !trusts(trusted, v.Signature.Key):
 		return "forged", "signed by a key nobody trusts: " + base64.StdEncoding.EncodeToString(v.Signature.Key)
 	}
 
@@ -188,10 +182,11 @@ func (p Policy) vouching() Sign {
 	return func(_, is Archived) (Signature, error) { return p.signRow(is) }
 }
 
-// signRow signs a row with the policy's key, and signs nothing without one.
+// signRow signs a row with the policy's key, and is refused without one: a row
+// written unsigned is a finding the moment it is written.
 func (p Policy) signRow(v Archived) (Signature, error) {
 	if p.Signer == nil {
-		return Signature{}, nil
+		return Signature{}, ErrNoKey
 	}
 
 	der, sig, err := sign(p.Signer, statement(v))

@@ -666,6 +666,13 @@ func (p Policy) Valid() error {
 		}
 	}
 
+	// An archive is kept with a key (#115): one to sign its account with, or
+	// for a verifier, ones to hold it to. Last, so that what else is wrong is
+	// said first.
+	if p.Archive != nil && p.Signer == nil && len(p.Trust) == 0 {
+		return fmt.Errorf("audit.checkpoints.key: %w", ErrNoKey)
+	}
+
 	return nil
 }
 
@@ -727,14 +734,13 @@ func (p Policy) String() string {
 }
 
 // accounted is what the archive's account is worth, said where the process
-// comes up -- above all when it is worth less: without a key, whoever can write
-// both the database and the archive can change the two after the latest
-// checkpoint and nothing says so, and checkpoints in the archive are as easy
-// to rewrite as the archive is.
+// comes up -- above all when it is worth less: checkpoints in the archive are
+// as easy to rewrite as the archive is. It is always signed (#115); a policy
+// that only trusts keys verifies, and takes no act.
 func (p Policy) accounted() string {
-	v := "the archive's account and its checkpoints unsigned"
-	if p.Signer != nil {
-		v = "the archive's account and its checkpoints signed"
+	v := "the archive's account and its checkpoints signed"
+	if p.Signer == nil {
+		v = "the archive's account and its checkpoints verified, and nothing to sign with"
 	}
 
 	switch {
@@ -812,7 +818,7 @@ func Sweep(s Store, p Policy) spin.Spinner {
 // and taking the process down would be a retention policy that is also an
 // outage.
 func (p Policy) Pass(ctx context.Context, s Store) {
-	x, err := p.start(s)
+	x, err := p.act(s)
 	if err != nil {
 		log.From(ctx).WarnContext(ctx, "trail: a pass", "err", err)
 
@@ -949,6 +955,34 @@ type pass struct {
 type answer struct {
 	t   Tenant
 	err error
+}
+
+// ErrNoKey is an archive with no key to sign its account with.
+//
+// The manifest's every row and every checkpoint is signed, and nothing an
+// archive holds is decided by anything else: a row or a checkpoint without a
+// good signature is a finding, and that is all it is. So an archive is kept
+// with a key -- `audit.checkpoints.key`, where the process comes up -- and an
+// act that changes one is refused without it, rather than writing what would
+// be found the moment it is written. A policy that only trusts keys answers
+// questions, and takes no act.
+//
+// There is no development key to fall back on. A key everybody knew would sign
+// forgeries for anybody, the day one reached a deployment; a development
+// deployment is given one of its own, as `pd new`'s `init` writes one.
+var ErrNoKey = errors.New("the archive's account is signed, and there is no key to sign it with: " +
+	"make one -- `openssl genpkey -algorithm ed25519 -out checkpoints.pem`, or trail.GenerateKey -- " +
+	"keep it apart from the database's and the archive's credentials, and name it as audit.checkpoints.key; " +
+	"an archive kept without one until now is accepted once after (`trail accept`)")
+
+// act is [Policy.start] for an act that changes the archive, which is refused
+// without a key to sign what it writes ([ErrNoKey]).
+func (p Policy) act(s Store) (*pass, error) {
+	if p.Archive != nil && p.Signer == nil {
+		return nil, ErrNoKey
+	}
+
+	return p.start(s)
 }
 
 func (p Policy) start(s Store) (*pass, error) {

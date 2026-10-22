@@ -3,6 +3,45 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An archive is kept with a key
+
+**Applies if** you keep the trail's archive (`audit.archive`, or
+`trail.Policy.Archive`). Part of payday#115.
+
+- **`audit.archive` with no `audit.checkpoints.key` is refused** where the
+  process comes up, with `trail.ErrNoKey`, which says how to make one: `openssl
+  genpkey -algorithm ed25519 -out checkpoints.pem`, or `trail.GenerateKey`,
+  mounted as a secret and named there -- or a key in a device, by its URI. Keys
+  to trust and none to sign with are refused too: a deployment's process acts,
+  and a verifier is a policy built in code with `Trust` alone.
+- **There is no keyless path.** A row of the manifest or a checkpoint without a
+  good signature is a finding and nothing more, whatever the policy says; an
+  act asked of a policy with an archive and no `Signer` is refused before it
+  writes anything (`trail.ErrNoKey`); `trail.Policy.Valid` refuses an archive
+  with no key at all. The window in which unsigned checkpoints decided, until
+  the store kept a signed one, is gone.
+- **An archive kept without a key until now** sets one, and then runs `trail
+  accept --why ...` once. Until then every row and every checkpoint it has is
+  `unsigned`, nothing is destroyed by them, and no act takes a checkpoint after
+  them -- each says so in its error, after doing what it does (`no trusted key
+  signed the checkpoints the store keeps`). The acceptance signs the rows as
+  they stand, and names the checkpoint the database numbered last as the one
+  before it -- of two, the one the database's rows add up to -- which takes in
+  the history before the key; `trail verify` is clean after it. A deployment
+  that changed its key without trusting the old one is told the same, and puts
+  the old one in `audit.checkpoints.trust` instead.
+- **Development and tests.** `pd new`'s `init` writes a key of the deployment's
+  own beside an archive that names none (`<archive>-checkpoints.pem`, ignored
+  by the scaffold's `.gitignore`) and prints where; name it as
+  `audit.checkpoints.key` before serving. An app of an earlier scaffold adds the
+  same to its `init`, or makes one by hand. In a test, `pdtest.Key(t)` is the
+  PEM document `audit.checkpoints.key` reads and `pdtest.Signer(t)` the signer
+  `trail.Policy` takes, fresh each time; policies that share an archive share
+  one. Nothing that signs is committed.
+- **A store keeping two checkpoints of one number is `rewritten` only when both
+  are the deployment's word**; one nobody vouches for beside another is the
+  `unsigned` or `forged` it is.
+
 ## An index is stored under the name it declares, and `rename.Indexes` moves it there
 
 **Applies if** you generate with `pd gen` and migrate a database an earlier
