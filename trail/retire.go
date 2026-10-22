@@ -219,25 +219,134 @@ func (x *pass) retired(ctx context.Context) (map[pdid.Id]time.Time, error) {
 // unretire erases the records of a tenant's retirement, once nothing is kept
 // of it: its purge, at once or at the end of its floors.
 func (x *pass) unretire(ctx context.Context, tenant pdid.Id) error {
+	_, err := x.lift(ctx, tenant)
+	return err
+}
+
+// lift erases the records of a tenant's retirement, through the manifest, and
+// answers how many there were and when the last of them was written.
+func (x *pass) lift(ctx context.Context, tenant pdid.Id) (TenantReturn, error) {
+	out := TenantReturn{}
 	if x.m == nil {
-		return nil
+		return out, nil
 	}
 	if err := x.trust(ctx); err != nil {
-		return err
+		return out, err
 	}
 
 	vs, err := x.retirements(ctx)
 	if err != nil {
-		return err
+		return out, err
 	}
 	for _, v := range vs {
 		if v.tenant != tenant {
 			continue
 		}
 		if err := x.p.Archive.Use(RetiredNamespace).Erase(ctx, v.digest); err != nil && !errors.Is(err, flob.ErrNotExist) {
-			return fmt.Errorf("the record that %s retired: %w", tenant, err)
+			return out, fmt.Errorf("the record that %s retired: %w", tenant, err)
+		}
+
+		out.Records++
+		if v.at.After(out.Retired) {
+			out.Retired = v.at
 		}
 	}
 
-	return nil
+	return out, nil
+}
+
+// Retired is the tenants that have retired ([Policy.RetireTenant]), by when
+// each last did: the ones whose records the manifest accounts for, which every
+// pass goes by -- not yet purged at the end of their floors, nor taken back
+// ([Policy.Return]).
+//
+// It is what tells a tenant that left this way apart from one that never did,
+// for an app about to put one back under the identifier it had. It writes
+// nothing of its own; but it reads the manifest as an act does, and an archive
+// whose manifest is empty is taken in first, as its first pass would take it,
+// so it needs [Policy.Signer] as an act does ([ErrNoKey]).
+func (p Policy) Retired(ctx context.Context, s Store) (map[pdid.Id]time.Time, error) {
+	x, err := p.act(s)
+	if err != nil {
+		return nil, err
+	}
+	if x.m == nil {
+		return map[pdid.Id]time.Time{}, nil
+	}
+	if err := x.trust(ctx); err != nil {
+		return nil, err
+	}
+
+	return x.retired(ctx)
+}
+
+// TenantReturn is what taking a tenant back did ([Policy.Return]).
+type TenantReturn struct {
+	// Retired is when it last retired, and the zero time for a tenant that
+	// had not: one purged, or one that never left.
+	Retired time.Time
+
+	// Records is how many records of its retirement were lifted.
+	Records int
+}
+
+// Return takes back a tenant that retired ([Policy.RetireTenant]), for an app
+// that puts one back under the identifier it had: a tenant restored from its
+// export into the deployment it left.
+//
+// # Why it is needed
+//
+// The record of a retirement is what every pass goes by, whatever the app
+// answers: a tenant that left keeps nothing of its own, what a floor is on goes
+// as the floor passes, and once the last has passed it is purged, its key with
+// it. A tenant back under its identifier would still be that tenant to the
+// trail -- what it writes taken by the next pass, and the whole of its trail
+// at the end. Return erases the records, through the manifest and signed as
+// everything there is, so that from then on the passes take it for a tenant of
+// the app's: its windows are the app's answer again, and what the retirement
+// kept and its key are its own.
+//
+// # What it leaves
+//
+// A purged tenant needs nothing taken back. The mark its key leaves ([Keys])
+// is of what was written before it left, and what it writes after is sealed to
+// a key of its own. So Return leaves the mark where it is -- lifting it would
+// seal what was written before to a key made after, which is what the mark is
+// there to stop -- and answers a tenant that had not retired with nothing done.
+//
+// It is an act of the trail's: in the trail's turn on [Policy.Lease], it writes
+// a [Receipt], `return-tenant`, and ends in a checkpoint, and it needs
+// [Policy.Signer] to sign what it writes ([ErrNoKey]). Call it before the app
+// writes anything of the tenant back, for a pass between the two takes what
+// was written.
+func (p Policy) Return(ctx context.Context, s Store, tenant pdid.Id) (_ TenantReturn, err error) {
+	if tenant.IsZero() {
+		return TenantReturn{}, errors.New("no tenant")
+	}
+
+	x, err := p.act(s)
+	if err != nil {
+		return TenantReturn{}, err
+	}
+	if x.m == nil {
+		// No archive, and so no record: a retirement with floors needs one,
+		// and one with none kept nothing and left none.
+		return TenantReturn{}, nil
+	}
+	ctx, give, err := x.turn(ctx)
+	if err != nil {
+		return TenantReturn{}, err
+	}
+	defer give()
+	defer x.cover(ctx, "return-tenant", &err)
+
+	out, err := x.lift(ctx, tenant)
+	if err != nil || out.Records == 0 {
+		return out, err
+	}
+	log.From(ctx).InfoContext(ctx, "trail: a retired tenant is back", "tenant", tenant, "retired", out.Retired, "records", out.Records)
+
+	x.r.add(Receipt{Act: "return-tenant", Where: "archive", Tenant: tenant.String()})
+
+	return out, x.r.write(ctx, x.p.Archive)
 }

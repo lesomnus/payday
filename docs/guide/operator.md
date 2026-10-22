@@ -217,6 +217,19 @@ archive it is refused. The callback goes on being asked about a retired tenant
 for its hold — answer one without an error once its contract is gone — and
 its windows are not asked: it keeps what its floors are on, and nothing else.
 
+A tenant put back under the identifier it had — restored from its export into
+the deployment it retired from — is still the tenant that left to every pass,
+until it is taken back. Do that before writing anything of it:
+
+```go
+back, err := policy.Return(ctx, pd.TrailStore(db), tenant)
+// back.Records is how many records of its retirement were lifted, and
+// back.Retired when it had retired; a purged tenant needs nothing taken back.
+```
+
+`policy.Retired` answers which tenants have retired, for a restore's dry run
+to say so.
+
 ## 6. Showing that the archive is what it was
 
 What a customer or an auditor asks of an archive after *was it deleted* is *has
