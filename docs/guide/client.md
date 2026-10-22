@@ -50,6 +50,7 @@ export async function open(transport: Transport, identity: string): Promise<App>
 	const at = { name: 'widget', identity }
 
 	const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) })
+	void deleteOtherDisks(at)
 	await store.hydrate()
 
 	return { store, queries: new Queries(store, transport, entities) }
@@ -83,9 +84,15 @@ is every tab's, so this is what keeps a tab left holding one person's store
 from reading the next person's rows into it, or sending what it kept as them.
 `web.Cors` allows the header for a page on another origin.
 
-**The disk is optional.** Delete those two lines and everything still works —
-the store is a store either way and lives as long as the tab does. What the
-mirror buys is that a reload draws the page it had rather than a spinner for it.
+**The disk is optional.** Delete it and everything still works — the store is
+a store either way and lives as long as the tab does. What the mirror buys is
+that a reload draws the page it had rather than a spinner for it. Once this
+caller's mirror is open, every other caller's is deleted, and not waited on
+([§5](#5-persistence)).
+
+`open` is `pd new`'s `src/store.ts`, and `pd new` writes `src/` once: a page
+made before the `deleteOtherDisks` line was in it has an `open` without it, and
+the line is the app's to add.
 
 `src/main.tsx` is what calls it. Both of the things above have to be settled
 before React starts — which transport, and whose store — because rendering over

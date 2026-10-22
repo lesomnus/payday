@@ -74,8 +74,8 @@ var Floors = []Floor{{
 	Why:     "the browser's transport for that client, of connect's release",
 }, {
 	Name:    "@lesomnus/payday",
-	Minimum: "0.1.1",
-	Why:     "payday's half of the page, which the template's src is written against",
+	Minimum: "0.1.2",
+	Why:     "payday's half of the page, which the template's src is written against: its store.ts deletes other callers' mirrors with deleteOtherDisks, which 0.1.2 brought",
 }, {
 	Name:    "typescript",
 	Minimum: "5.9.3",

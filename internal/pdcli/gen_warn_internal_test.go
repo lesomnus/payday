@@ -38,19 +38,29 @@ func TestTheDoctorSaysWhatIsBelowAFloor(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "proto", "app"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "ts"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "ts", "package.json"),
-		[]byte(`{"devDependencies": {"typescript": "~5.8.3", "vite": "^7.2.0"}}`), 0o644))
+		[]byte(`{"dependencies": {"@lesomnus/payday": "^0.1.1"}, "devDependencies": {"typescript": "~5.8.3", "vite": "^7.2.0"}}`), 0o644))
 
 	l, err := Discover(root)
 	require.NoError(t, err)
 
-	var named []Finding
+	var named, payday []Finding
 	for _, v := range doctorVersions(context.Background(), l) {
 		require.False(t, v.Fatal, v.What)
 		if strings.Contains(v.What, "typescript") || strings.Contains(v.What, "vite") {
 			named = append(named, v)
 		}
+		if strings.Contains(v.What, "@lesomnus/payday") {
+			payday = append(payday, v)
+		}
 	}
 	require.Len(t, named, 1, "%+v", named)
 	require.Contains(t, named[0].What, "typescript 5.8.3, older than 5.9.3")
 	require.Equal(t, "go tool pd upgrade", named[0].Fix)
+
+	// A page from before the template's store.ts swept with deleteOtherDisks
+	// is told so, and why, and how to move -- not stopped.
+	require.Len(t, payday, 1, "%+v", payday)
+	require.Contains(t, payday[0].What, "@lesomnus/payday 0.1.1, older than 0.1.2")
+	require.Contains(t, payday[0].What, "deleteOtherDisks")
+	require.Equal(t, "go tool pd upgrade", payday[0].Fix)
 }
