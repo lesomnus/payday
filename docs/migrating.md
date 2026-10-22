@@ -3,6 +3,29 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A tenant may retire, keeping what the deployment's floors are on
+
+**Applies if** you take a tenant's trail out when it leaves (`Policy.PurgeTenant`)
+and the deployment keeps floors (`audit.min`, `audit.by.<kind>.min`). Nothing
+changes until you call the new one (part of payday#115).
+
+- **`Policy.RetireTenant`**, beside `PurgeTenant`, and `Policy.PlanTenantRetire`
+  beside `PlanTenantPurge`. It takes what a purge takes but for what a floor is
+  still on, and leaves that -- and the tenant's key -- for the passes to destroy
+  as each floor passes; a pass purges what is left once the last has.
+  `TenantPurge.Kept` says what stayed, by kind, and `Until` when it goes.
+- **Which one is yours to choose**, per contract or by the law a tenant is
+  under: a field of your contract entity, read where you offboard. PIPA's
+  access record is kept a year whoever leaves, which is a retirement.
+- **Expose both** where an operator takes a tenant out by hand -- a `retire`
+  beside `purge` -- with their plans as the dry run.
+- **The callback is still asked about a retired tenant**, for its hold. Answer
+  without an error once its contract is gone: an error keeps everything, as it
+  always has. Its windows are not asked.
+- **It needs the archive**: with floors and no `audit.archive` it is refused.
+  Receipts are `retire-tenant`, with `kept`, `kinds` and `until`, and the
+  archive gains a namespace, `_retired`, of one blob a retired tenant.
+
 ## An archive is kept with a key
 
 **Applies if** you keep the trail's archive (`audit.archive`, or

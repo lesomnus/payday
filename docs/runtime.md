@@ -1008,7 +1008,9 @@ kept as long as the archive is and which no purge reaches. `trail.Keys`
   another tenant's hold is on readable after this one has gone. Grace keeps a
   key, because nothing before the purge touches it; a hold refuses its
   destruction, because a held tenant is not purged; a window that destroys every
-  chunk of a tenant leaves its key, since the tenant is still there.
+  chunk of a tenant leaves its key, since the tenant is still there. A tenant
+  that retires (below) keeps its key until the last of what its floors are on
+  has gone, and a pass destroys it then.
 - **And leaves a mark where its key was**, saying when. A key is made by the
   process that first has a row to seal, so no key is no answer: a row written
   before the mark — the other side of a transfer, or one a pass read a moment
@@ -1083,6 +1085,36 @@ offboarding gives.
 It refuses a tenant under a hold and one the app has no answer for, goes round
 again until a round finds nothing (a pass can write a chunk after the
 namespace was erased), and writes a receipt.
+
+**Or it retires**, `Policy.RetireTenant` (`Policy.PlanTenantRetire` says what it
+would take), which is a purge but for what a floor of the deployment's is still
+on. The floors — `audit.min`, `audit.by.<kind>.min` — are what the deployment
+owes whoever it answers to, the access record Korea's PIPA has a processor
+keep for a year among them, and a purge takes that with the tenant. Which of
+the two is the operator's, by the contract or the law, and not payday's.
+
+- What goes **at once** is what a purge takes, of every kind under no floor,
+  and of every row whose floor has already passed.
+- What **stays**, as it is: a row of a kind under a floor that is still on it
+  — the floor's longer clock, from when the row was written — in the
+  database, in the archive (a chunk whose newest row is under one), in the
+  files from before, and the contents of what it shares. So does the tenant's
+  key.
+- **The passes** take the tenant to keep nothing of its own, which the floors
+  raise: each kind's rows go once its floor has passed, whatever the
+  deployment's window for it. Its contract is not asked; its hold is, and
+  holds as it would.
+- **Once the last floor has passed** — `TenantPurge.Until`, by the floors as
+  they are then — a pass purges what is left, as `Policy.PurgeTenant`: a chunk
+  that held rows of both sides of a floor, the contents of what it shared, and
+  its key.
+
+The record that it retired is a blob of `_retired`, written through the
+manifest and signed, so that a pass knows a tenant has left whether or not the
+app still answers for it, and nobody can make one think so that has not. So a
+tenant retires into the archive: with floors and no archive it is refused. Its
+receipts are `retire-tenant`, saying what went, what was kept of which kinds,
+and until when.
 
 #### A pass and what erases take turns
 

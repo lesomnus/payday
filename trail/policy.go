@@ -835,6 +835,12 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 			x.adopt(ctx)
 		}
 		x.refile(ctx)
+
+		// And the tenants that retired, which the manifest says now that it
+		// has been read.
+		if x.retirees, err = x.retired(ctx); err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: the tenants that retired", "err", err)
+		}
 	}
 
 	if p.Tenants == nil {
@@ -844,6 +850,12 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 		}
 
 		x.drain(ctx, Scope{Kinds: Except(named...)}, p.Keep, false, "*")
+
+		// A tenant that retired is on its floors and no window of the
+		// deployment's, which is longer.
+		for _, id := range slices.SortedFunc(maps.Keys(x.retirees), byId) {
+			x.tenant(ctx, id)
+		}
 	} else {
 		x.tenant(ctx, pdid.Nil)
 
@@ -873,6 +885,26 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 
 	if err := x.r.write(ctx, x.p.Archive); err != nil {
 		log.From(ctx).WarnContext(ctx, "trail: the receipts of a pass", "err", err)
+	}
+
+	// A tenant whose every floor has passed since it retired is purged of
+	// what is left, its key with it -- by the policy as it was handed in, an
+	// act of its own with its receipts and its checkpoint.
+	for _, id := range slices.SortedFunc(maps.Keys(x.retirees), byId) {
+		if x.now.Before(x.retirees[id].Add(p.longestFloor())) {
+			continue
+		}
+
+		got, err := p.PurgeTenant(ctx, s, id)
+		if err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: a retired tenant's floors have passed, and what is left of it is not purged yet",
+				"tenant", id, "err", err)
+
+			continue
+		}
+
+		log.From(ctx).InfoContext(ctx, "trail: a retired tenant's floors have passed, and what was left of it is purged",
+			"tenant", id, "removed", got.Removed, "chunks", got.Chunks, "keys", got.Keys)
 	}
 
 	if x.m != nil {
@@ -950,6 +982,11 @@ type pass struct {
 	// touched is whether the act has changed the manifest, which is what
 	// decides whether it ends in a checkpoint; see [pass.cover].
 	touched atomic.Bool
+
+	// retirees is the tenants that retired keeping what a floor is on, by
+	// when each did, as a pass reads them out of the archive; see
+	// [Policy.RetireTenant]. Nil for an act that is not a pass.
+	retirees map[pdid.Id]time.Time
 }
 
 type answer struct {
@@ -1193,18 +1230,32 @@ func (x *pass) adopt(ctx context.Context) {
 
 // answer is one tenant's answer, asked once a pass. Nobody -- the zero tenant
 // -- is the deployment, and is never asked.
+//
+// A tenant that retired keeping what its floors are on answers that it keeps
+// nothing, which the floors raise ([Policy.retiring]), whatever its contract
+// said: the app is still asked, for the hold it may be under.
 func (x *pass) answer(ctx context.Context, id pdid.Id) (Tenant, bool) {
-	if id.IsZero() || x.p.Tenants == nil {
+	if id.IsZero() {
 		return Tenant{}, true
 	}
 	if v, ok := x.answers[id]; ok {
 		return v.t, v.err == nil
 	}
 
-	t, err := x.p.Tenants(ctx, id)
-	if err != nil {
-		log.From(ctx).WarnContext(ctx, "trail: a tenant has no answer, so nothing of theirs is moved or destroyed this pass",
-			"tenant", id, "err", err)
+	_, retired := x.retirees[id]
+	if x.p.Tenants == nil && !retired {
+		return Tenant{}, true
+	}
+
+	t, err := Tenant{}, error(nil)
+	if x.p.Tenants != nil {
+		if t, err = x.p.Tenants(ctx, id); err != nil {
+			log.From(ctx).WarnContext(ctx, "trail: a tenant has no answer, so nothing of theirs is moved or destroyed this pass",
+				"tenant", id, "err", err)
+		}
+	}
+	if retired && err == nil {
+		t = x.p.retiring(t.Hold)
 	}
 
 	x.answers[id] = answer{t: t, err: err}
@@ -1563,7 +1614,7 @@ func (x *pass) archive(ctx context.Context) {
 	plans := []plan{}
 	going := []Chunk{}
 	for _, ns := range nss {
-		if ns == ReceiptNamespace || ns == CheckpointNamespace {
+		if ns == ReceiptNamespace || ns == CheckpointNamespace || ns == RetiredNamespace {
 			continue
 		}
 

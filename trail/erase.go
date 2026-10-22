@@ -2,9 +2,11 @@ package trail
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -533,7 +535,41 @@ type TenantPurge struct {
 	// Keys is the keys its rows were sealed with, destroyed before anything
 	// else; see [Keys].
 	Keys int
+
+	// Kept is what a retirement left for the passes, by kind: the rows of the
+	// database and of the archive that a floor of the deployment's is still on
+	// ([Policy.RetireTenant]). Until is when the last of those floors passes,
+	// and with it the tenant's key goes. Both are empty for a purge, which
+	// keeps nothing.
+	Kept  map[string]int
+	Until time.Time
 }
+
+// keep counts one kept row of a kind, or `n` of them.
+func (v *TenantPurge) keep(kind string, n int) {
+	if n <= 0 {
+		return
+	}
+	if v.Kept == nil {
+		v.Kept = map[string]int{}
+	}
+
+	v.Kept[kind] += n
+}
+
+// kept is how many rows Kept counts, all kinds together.
+func (v TenantPurge) kept() int {
+	n := 0
+	for _, k := range v.Kept {
+		n += k
+	}
+
+	return n
+}
+
+// spare answers, of a row of kind `d` written at `at`, whether the tenant's
+// leaving keeps it for now: nil keeps nothing, which is a purge.
+type spare func(d pdid.Domain, at time.Time) bool
 
 // PurgeTenant removes one tenant's trail: its rows in the database, and its
 // namespace in the archive.
@@ -575,18 +611,29 @@ type TenantPurge struct {
 // more it leaves as it is, as [Policy.Forget] does, and answers [ErrAltered]
 // for once it has done the rest.
 func (p Policy) PurgeTenant(ctx context.Context, s Store, tenant pdid.Id) (TenantPurge, error) {
-	return p.purgeTenant(ctx, s, tenant, false)
+	return p.leave(ctx, s, tenant, false, false)
 }
 
 // PlanTenantPurge is what [Policy.PurgeTenant] would do, and does nothing.
 func (p Policy) PlanTenantPurge(ctx context.Context, s Store, tenant pdid.Id) (TenantPurge, error) {
-	return p.purgeTenant(ctx, s, tenant, true)
+	return p.leave(ctx, s, tenant, true, false)
 }
 
-func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bool) (_ TenantPurge, err error) {
+// leave is a tenant's trail taken out: all of it, or with `retire` all but
+// what a floor of the deployment's is still on; see [Policy.RetireTenant].
+func (p Policy) leave(ctx context.Context, s Store, tenant pdid.Id, dry bool, retire bool) (_ TenantPurge, err error) {
 	out := TenantPurge{}
 	if tenant.IsZero() {
 		return out, errors.New("no tenant")
+	}
+
+	act := "purge-tenant"
+	if retire {
+		act = "retire-tenant"
+		if p.Archive == nil && p.longestFloor() > 0 {
+			return out, errors.New("a tenant retires into the archive, which keeps what its floors are on and the record that it left; " +
+				"audit.archive names none, so purge it")
+		}
 	}
 
 	start := p.act
@@ -598,7 +645,7 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 		return out, err
 	}
 	if !dry {
-		defer x.cover(ctx, "purge-tenant", &err)
+		defer x.cover(ctx, act, &err)
 	}
 
 	if p.Tenants != nil {
@@ -613,18 +660,31 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 		x.answers[tenant] = answer{t: t}
 	}
 
-	if err := x.purgeKeys(ctx, tenant, dry, &out); err != nil {
-		return out, err
+	// What a retirement keeps: the rows a floor of the deployment's is still
+	// on, by their kind and when they were written.
+	var keeps spare
+	if retire && p.longestFloor() > 0 {
+		keeps = func(d pdid.Domain, at time.Time) bool { return p.floored(d, at, x.now) }
+		out.Until = x.now.Add(p.longestFloor()).UTC()
+	}
+
+	// A purge's key goes first. A retirement's goes with the last of what it
+	// keeps, which is only known once the rounds have counted it.
+	if keeps == nil {
+		if err := x.purgeKeys(ctx, tenant, act, dry, &out); err != nil {
+			return out, err
+		}
 	}
 
 	left := &stuck{}
+	saved := &spared{}
 	for round := 0; round < 3; round++ {
-		n, err := x.purgeDatabase(ctx, tenant, dry, round == 0, &out)
+		n, err := x.purgeDatabase(ctx, tenant, dry, round == 0, &out, keeps, saved)
 		if err != nil {
 			return out, errors.Join(left.err, err)
 		}
 
-		m, err := x.purgeArchive(ctx, tenant, dry, round == 0, &out, left)
+		m, err := x.purgeArchive(ctx, tenant, dry, round == 0, &out, left, keeps, saved)
 		if err != nil {
 			return out, errors.Join(left.err, err)
 		}
@@ -632,36 +692,64 @@ func (p Policy) purgeTenant(ctx context.Context, s Store, tenant pdid.Id, dry bo
 			break
 		}
 	}
+	if out.kept() == 0 {
+		out.Until = time.Time{}
+	}
 
 	if dry {
+		if keeps != nil && out.kept() == 0 {
+			// Nothing is kept, so the key goes as a purge's would.
+			if err := x.purgeKeys(ctx, tenant, act, dry, &out); err != nil {
+				return out, err
+			}
+		}
+
 		return out, left.err
 	}
 
-	// Again, for the key a pass sealing the tenant's rows at the same moment
-	// made after the first went.
-	if err := x.purgeKeys(ctx, tenant, dry, &out); err != nil {
-		return out, err
+	// What is left to say of it: that it retired, for the passes that take
+	// the rest as each floor passes -- or, once nothing is kept, nothing.
+	var end error
+	if out.kept() > 0 {
+		end = x.retire(ctx, tenant)
+	} else {
+		// Again, for the key a pass sealing the tenant's rows at the same
+		// moment made after the first went -- or the first time, for a
+		// retirement that kept nothing.
+		if err := x.purgeKeys(ctx, tenant, act, dry, &out); err != nil {
+			return out, err
+		}
+		end = x.unretire(ctx, tenant)
 	}
 
+	kinds := slices.Sorted(maps.Keys(out.Kept))
 	x.r.add(Receipt{
-		Act: "purge-tenant", Where: "database", Tenant: tenant.String(),
+		Act: act, Where: "database", Tenant: tenant.String(),
 		Rows: out.Removed, Blanked: out.Blanked, Held: out.Held.Rows,
+		Kept: saved.database, Kinds: kinds, Until: out.Until,
 	})
 	if p.Archive != nil {
 		x.r.add(Receipt{
-			Act: "purge-tenant", Where: "archive", Tenant: tenant.String(),
+			Act: act, Where: "archive", Tenant: tenant.String(),
 			Rows: out.Rows, Chunks: out.Chunks, Blanked: out.Edited,
+			Kept: saved.archive, Kinds: kinds, Until: out.Until,
 		})
 	}
 
-	return out, errors.Join(left.err, x.r.write(ctx, x.p.Archive))
+	return out, errors.Join(left.err, end, x.r.write(ctx, x.p.Archive))
+}
+
+// spared is what a retirement kept, counted by where.
+type spared struct {
+	database int
+	archive  int
 }
 
 // purgeKeys destroys the keys a tenant's rows were sealed with, and writes the
 // receipt for it at once: of everything a purge does, this is the part that
 // cannot be undone, and the one a later failure must not leave without a
 // record.
-func (x *pass) purgeKeys(ctx context.Context, tenant pdid.Id, dry bool, out *TenantPurge) error {
+func (x *pass) purgeKeys(ctx context.Context, tenant pdid.Id, act string, dry bool, out *TenantPurge) error {
 	if x.p.Keys == nil {
 		return nil
 	}
@@ -676,7 +764,7 @@ func (x *pass) purgeKeys(ctx context.Context, tenant pdid.Id, dry bool, out *Ten
 		return nil
 	}
 
-	x.r.add(Receipt{Act: "purge-tenant", Where: "keys", Tenant: tenant.String(), Keys: n})
+	x.r.add(Receipt{Act: act, Where: "keys", Tenant: tenant.String(), Keys: n})
 
 	return x.r.write(ctx, x.p.Archive)
 }
@@ -685,7 +773,7 @@ func (x *pass) purgeKeys(ctx context.Context, tenant pdid.Id, dry bool, out *Ten
 // many rows it reached this round. In the trail's turn, for the reason
 // [Policy.Forget]'s is: a pass holding a copy of one of these rows has written
 // it into the archive by then, where the archive's half finds it.
-func (x *pass) purgeDatabase(ctx context.Context, tenant pdid.Id, dry bool, first bool, out *TenantPurge) (_ int, err error) {
+func (x *pass) purgeDatabase(ctx context.Context, tenant pdid.Id, dry bool, first bool, out *TenantPurge, keeps spare, saved *spared) (_ int, err error) {
 	s := x.s
 	touched := 0
 	if !dry {
@@ -698,7 +786,47 @@ func (x *pass) purgeDatabase(ctx context.Context, tenant pdid.Id, dry bool, firs
 
 	// What was its alone.
 	alone := Scope{Whose: Alone, Tenant: tenant}
-	if dry {
+	switch {
+	case keeps != nil:
+		// Row by row, past what a floor keeps.
+		at := Cursor{}
+		for {
+			vs, err := s.Heads(ctx, alone, forever, at, Batch)
+			if err != nil {
+				return touched, err
+			}
+
+			keys := []any{}
+			for _, v := range vs {
+				at = Cursor{Created: v.Created, Key: v.Key}
+				if keeps(v.Domain, v.Created) {
+					if first {
+						out.keep(nameOf(v.Domain), 1)
+						saved.database++
+					}
+
+					continue
+				}
+
+				keys = append(keys, v.Key)
+			}
+
+			n := len(keys)
+			if !dry {
+				if n, err = forget(ctx, s, keys); err != nil {
+					out.Removed += n
+					return touched + n, err
+				}
+			}
+
+			out.Removed += n
+			touched += n
+			if len(vs) < Batch {
+				break
+			}
+		}
+
+	case dry:
 		n, err := s.Count(ctx, alone, forever)
 		if err != nil {
 			return 0, err
@@ -706,31 +834,33 @@ func (x *pass) purgeDatabase(ctx context.Context, tenant pdid.Id, dry bool, firs
 
 		out.Removed += n
 		touched += n
-	}
-	for !dry {
-		vs, err := s.Heads(ctx, alone, forever, Cursor{}, Batch)
-		if err != nil {
-			return touched, err
-		}
-		if len(vs) == 0 {
-			break
-		}
 
-		keys := make([]any, len(vs))
-		for i, v := range vs {
-			keys[i] = v.Key
-		}
+	default:
+		for {
+			vs, err := s.Heads(ctx, alone, forever, Cursor{}, Batch)
+			if err != nil {
+				return touched, err
+			}
+			if len(vs) == 0 {
+				break
+			}
 
-		n, err := forget(ctx, s, keys)
-		out.Removed += n
-		touched += n
-		if err != nil {
-			return touched, err
-		}
-		if n == 0 {
-			// Read and not removed: another writer has them, and going round
-			// again would read the same ones for ever.
-			break
+			keys := make([]any, len(vs))
+			for i, v := range vs {
+				keys[i] = v.Key
+			}
+
+			n, err := forget(ctx, s, keys)
+			out.Removed += n
+			touched += n
+			if err != nil {
+				return touched, err
+			}
+			if n == 0 {
+				// Read and not removed: another writer has them, and going
+				// round again would read the same ones for ever.
+				break
+			}
 		}
 	}
 
@@ -751,6 +881,11 @@ func (x *pass) purgeDatabase(ctx context.Context, tenant pdid.Id, dry bool, firs
 		for _, v := range vs {
 			at = Cursor{Created: v.Created, Key: v.Key}
 
+			if keeps != nil && keeps(v.Domain, v.Created) {
+				out.keep(nameOf(v.Domain), 1)
+				saved.database++
+				continue
+			}
 			if x.held(ctx, others(v.Tenants, tenant), v.Domain, true, &out.Held) {
 				out.Held.keep(1, 0)
 				continue
@@ -780,7 +915,7 @@ func (x *pass) purgeDatabase(ctx context.Context, tenant pdid.Id, dry bool, firs
 // this round. A chunk of another namespace that is not its digest any more is
 // written again by nothing: it goes into `left`, for Verify, and the rest of
 // the round goes on.
-func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first bool, out *TenantPurge, left *stuck) (int, error) {
+func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first bool, out *TenantPurge, left *stuck, keeps spare, saved *spared) (int, error) {
 	a := x.p.Archive
 	if a == nil {
 		return 0, nil
@@ -801,6 +936,20 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 		c := r.c
 		if c.Namespace != tenant.String() {
 			continue
+		}
+
+		// Whole, as a pass destroys one: a chunk goes once its newest row
+		// is past what keeps it. One the manifest does not account for is
+		// nothing a floor keeps.
+		if keeps != nil && r.trusted {
+			if d, _ := kindOf(c.Kind); keeps(d, newest(c)) {
+				if first {
+					out.keep(c.Kind, c.Rows)
+					saved.archive += c.Rows
+				}
+
+				continue
+			}
 		}
 
 		if !dry {
@@ -832,6 +981,11 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 				if !v.filed(tenant) {
 					return line, kept, nil
 				}
+				if keeps != nil {
+					if at, err := time.Parse(time.RFC3339Nano, v.Created); err == nil && keeps(pdid.Domain(v.Domain), at) {
+						return line, floored, nil
+					}
+				}
 
 				rest := others(v.tenants(), tenant)
 				if len(rest) == 0 {
@@ -856,6 +1010,8 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 
 			if first {
 				out.Held.keep(v.held, 0)
+				out.keep(cmp.Or(c.Kind, "*"), v.floored)
+				saved.archive += v.floored
 			}
 			if v.changed+v.dropped > 0 {
 				out.Rewritten++
