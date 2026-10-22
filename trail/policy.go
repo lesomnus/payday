@@ -479,9 +479,12 @@ type Policy struct {
 	Signer crypto.Signer
 
 	// Trust is the keys besides [Policy.Signer]'s whose signatures on a
-	// checkpoint or a row [Policy.Verify] believes: a key rotated out, each
-	// replica's own when each has a device of its own, or the deployment's for
-	// a verifier that is not given the signer. [ParsePublicKey] reads one.
+	// checkpoint or a row [Policy.Verify] believes: each replica's own when
+	// each has a device of its own, the deployment's for a verifier that is
+	// not given the signer, or a key rotated out -- until the next key has
+	// signed a checkpoint, which vouches for the ones before it whatever
+	// signed them, and the rows the old one signed are accepted again. A key
+	// here is believed for whatever it signs. [ParsePublicKey] reads one.
 	Trust []crypto.PublicKey
 
 	// Keys seals what the archive's rows say, a key per tenant; see [Keys].

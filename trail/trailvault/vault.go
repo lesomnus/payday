@@ -13,6 +13,12 @@
 // and `TRANSIT_SECRET_ENGINE_PATH` for the mount, `transit` when nothing says.
 // The URI's `addr`, `mount`, `namespace` and `ca-cert` say the same and win.
 //
+// The address is `https://`. Plain `http://` is refused but for a Vault on this
+// machine -- `localhost`, a loopback address: a dev server, or an agent's API
+// proxy beside the process -- since across a network it would carry the token
+// in the clear, and the key's public half, which the process trusts for what
+// it signs.
+//
 // # The token
 //
 // A token in `VAULT_TOKEN` is read once. `token-file=<path>` is read at every
@@ -65,6 +71,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -152,8 +159,13 @@ func ParseURI(v string) (*URI, error) {
 	if r.Addr == "" {
 		return nil, errors.New("no address: VAULT_ADDR, or addr=")
 	}
-	if a, err := url.Parse(r.Addr); err != nil || (a.Scheme != "https" && a.Scheme != "http") || a.Host == "" {
+	a, err := url.Parse(r.Addr)
+	if err != nil || (a.Scheme != "https" && a.Scheme != "http") || a.Host == "" {
 		return nil, errors.New("the address is not an http:// or https:// URL")
+	}
+	if a.Scheme == "http" && !loopback(a.Hostname()) {
+		return nil, errors.New("the address is http:// on another host: the token would cross the network in the clear, " +
+			"and so would the key's public half, which the process trusts for what it signs; a Vault on another host is https://")
 	}
 	r.Addr = strings.TrimRight(r.Addr, "/")
 	r.Mount = strings.Trim(r.Mount, "/")
@@ -162,6 +174,19 @@ func ParseURI(v string) (*URI, error) {
 	}
 
 	return r, nil
+}
+
+// loopback answers whether a host is this machine: `localhost`, or an address
+// of the loopback network. Plain http reaches only such a Vault -- a dev
+// server, an agent's proxy beside the process -- since nothing between the two
+// can read or change what crosses.
+func loopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // Signer is a key in Transit, at one version, which signs and does not give

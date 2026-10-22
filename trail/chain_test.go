@@ -2,7 +2,13 @@ package trail
 
 import (
 	"bytes"
+	"context"
+	"crypto"
 	"encoding/json"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -51,7 +57,7 @@ func rewrite(t *testing.T, p Policy, was stored, fn func(c *Checkpoint)) flob.Di
 
 // numbered is the checkpoint the store keeps under a number.
 func numbered(t *testing.T, p Policy, k int) stored {
-	ch, err := readChain(t.Context(), p.checkpoints())
+	ch, err := p.readChain(t.Context())
 	require.NoError(t, err)
 	vs := ch.numbered(k)
 	require.Len(t, vs, 1)
@@ -73,7 +79,7 @@ func TestEachCheckpointNamesTheOneBefore(t *testing.T) {
 		x := require.New(t)
 		s, p := chained(t, 3, nil)
 
-		ch, err := readChain(ctx, p.checkpoints())
+		ch, err := p.readChain(ctx)
 		x.NoError(err)
 		vs := ch.ordered()
 		x.Len(vs, 3)
@@ -170,13 +176,15 @@ func TestEachCheckpointNamesTheOneBefore(t *testing.T) {
 			l.Set(labelK, strconv.Itoa(k))
 			x.NoError(p.checkpoints().Label(ctx, d, l))
 		}
-		two, three, four := numbered(t, p, 2), numbered(t, p, 3), numbered(t, p, 4)
+		two, four := numbered(t, p, 2), numbered(t, p, 4)
 		label(two.d, 4)
 		label(four.d, 7)
 
+		// By what each says, the fourth is the newest below the fifth,
+		// whatever its labels say.
 		p.Pass(ctx, s)
 		x.NotEqual(two.d, numbered(t, p, 5).c.Prev, "the next checkpoint named one by its labels")
-		x.Equal(three.d, numbered(t, p, 5).c.Prev)
+		x.Equal(four.d, numbered(t, p, 5).c.Prev)
 	})
 
 	t.Run("one whose labels were taken off", func(t *testing.T) {
@@ -329,4 +337,354 @@ func TestAWriteOnceStoreKeepsWhatItIsGiven(t *testing.T) {
 	x.Contains(p.String(), "write-once")
 
 	x.NotContains(Policy{Archive: p.Archive, Checkpoints: flob.NewMemStores().Use("checkpoints")}.String(), "write-once")
+}
+
+// planted is a checkpoint put in the store by somebody who can write it and
+// not by a pass: labelled as one, numbered as they like, and signed by `key`,
+// or by nobody with nil.
+func planted(t *testing.T, p Policy, c Checkpoint, key crypto.Signer) flob.Digest {
+	t.Helper()
+
+	b, err := json.Marshal(c)
+	require.NoError(t, err)
+	v := signed{Checkpoint: b}
+	if key != nil {
+		v.Key, v.Sig, err = sign(key, b)
+		require.NoError(t, err)
+	}
+	doc, err := json.Marshal(v)
+	require.NoError(t, err)
+
+	l := flob.Labels{}
+	l.Set(labelFormat, formatCheckpoint)
+	l.Set(labelK, strconv.Itoa(c.K))
+	m, err := p.checkpoints().Add(t.Context(), flob.Meta{Labels: l}, bytes.NewReader(gzipped(t, doc)))
+	require.NoError(t, err)
+
+	return m.Digest
+}
+
+// over is a checkpoint that says the archive held nothing, numbered k.
+func over(k int) Checkpoint {
+	return Checkpoint{K: k, At: time.Now().UTC(), Blobs: []Kept{}, Digest: digestOf(nil)}
+}
+
+// oneMore moves one more row into the archive, which is an act that ends in
+// a checkpoint.
+func oneMore(t *testing.T, s *fakeStore, p Policy) error {
+	s.add(fakeRow{tenant: newTenant().Uuid(), domain: person, created: ago(40 * day), value: "one more"})
+	_, err := Archive(t.Context(), s, p, Kinds{}, time.Now())
+
+	return err
+}
+
+// TestACheckpointNobodyVouchesForDecidesNothing.
+//
+// Whoever can write the checkpoint store -- the archive's own, by default --
+// can put a checkpoint there, numbered as they like. Without the key it is
+// one nobody signed, or one by a key nobody trusts: a finding, and nothing
+// else. It is not what makes the database behind, not what the latest rows
+// are compared with, not what the next checkpoint is numbered after or names,
+// and not what says which gaps were accepted.
+func TestACheckpointNobodyVouchesForDecidesNothing(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("numbered ahead of the database", func(t *testing.T) {
+		x := require.New(t)
+		s, p := chained(t, 3, nil)
+		three := numbered(t, p, 3)
+
+		// As high as the manifest numbers: an acceptance numbered after it
+		// would be one it refuses.
+		planted(t, p, over(1<<32-1), nil)
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"unsigned"}, kinds(v), "%v", v.Findings)
+
+		x.NoError(oneMore(t, s, p), "a checkpoint nobody signed stopped an act")
+		x.Equal(4, latestOf(t, s))
+		x.Equal(three.d, numbered(t, p, 4).c.Prev)
+
+		_, err = p.Accept(ctx, s, "looked at")
+		x.NoError(err)
+		x.Equal(5, latestOf(t, s), "an acceptance numbered after a checkpoint nobody signed")
+		x.Equal(numbered(t, p, 4).d, numbered(t, p, 5).c.Prev)
+	})
+
+	t.Run("numbered as the latest", func(t *testing.T) {
+		x := require.New(t)
+		s, p := chained(t, 3, nil)
+
+		// Saying the archive held nothing, which the rows do not add up to.
+		planted(t, p, over(3), nil)
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"rewritten", "unsigned"}, kinds(v), "%v", v.Findings)
+		x.NotContains(v.Findings, Finding{Kind: "rewritten", Checkpoint: 3, Note: "it kept 0 blobs; of them the manifest has lost 0, and gained 3 it never had"})
+
+		x.NoError(oneMore(t, s, p), "the rows were held to a checkpoint nobody signed")
+		x.Equal(4, latestOf(t, s))
+	})
+
+	t.Run("signed by a key nobody trusts", func(t *testing.T) {
+		x := require.New(t)
+		s, p := chained(t, 3, nil)
+
+		// Naming one the store does not keep, and labelled as another: what
+		// it says of the chain is nobody's word either.
+		c := over(1000)
+		c.Prev = flob.DigestFromBytes([]byte("nothing the store keeps"))
+		d := planted(t, p, c, newKey(t))
+		l := flob.Labels{}
+		l.Set(labelFormat, formatCheckpoint)
+		l.Set(labelK, "7")
+		x.NoError(p.checkpoints().Label(ctx, d, l))
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"forged"}, kinds(v), "%v", v.Findings)
+
+		x.NoError(oneMore(t, s, p))
+		x.Equal(4, latestOf(t, s))
+	})
+
+	t.Run("newer than the one before", func(t *testing.T) {
+		x := require.New(t)
+		s, p := chained(t, 3, nil)
+		three := numbered(t, p, 3)
+
+		// Two numbered and never kept -- passes a crash stopped -- and one
+		// nobody signed, saying it is the second of them.
+		for range 2 {
+			_, _, err := s.Checkpoint(ctx, 0)
+			x.NoError(err)
+		}
+		planted(t, p, over(5), nil)
+
+		p.Pass(ctx, s)
+		x.Equal(three.d, numbered(t, p, 6).c.Prev, "the next named one nobody signed")
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"unkept", "unsigned"}, kinds(v), "%v", v.Findings)
+	})
+
+	t.Run("saying the archive held something", func(t *testing.T) {
+		x := require.New(t)
+
+		// A deployment with nothing to archive yet, whose first checkpoint is
+		// over nothing (#81).
+		s := &fakeStore{}
+		p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Signer: newKey(t)}
+		p.Pass(ctx, s)
+
+		c := over(7)
+		c.Blobs = []Kept{{Namespace: newTenant().String(), Digest: flob.DigestFromBytes([]byte("a chunk"))}}
+		c.Count, c.Digest = 1, digestOf(c.Blobs)
+		planted(t, p, c, nil)
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"unsigned"}, kinds(v), "%v", v.Findings)
+	})
+
+	t.Run("saying it was an acceptance", func(t *testing.T) {
+		x := require.New(t)
+		s, p := chained(t, 3, nil)
+
+		// A number the next went past, which only an acceptance quiets.
+		x.NoError(p.checkpoints().Erase(ctx, numbered(t, p, 3).d))
+		p.Pass(ctx, s)
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"unkept"}, kinds(v))
+
+		c := over(4)
+		c.Accepted = "nothing to see"
+		planted(t, p, c, nil)
+
+		v, err = p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Contains(kinds(v), "unkept", "an acceptance nobody signed quieted a number skipped over")
+	})
+
+	t.Run("an acceptance of the latest number", func(t *testing.T) {
+		x := require.New(t)
+		s, p := chained(t, 3, nil)
+
+		// A row the latest two were taken over, taken away: neither adds up.
+		s.mu.Lock()
+		first := s.archived[0]
+		s.archived = slices.DeleteFunc(s.archived, func(v Archived) bool { return v.Key == first.Key })
+		s.mu.Unlock()
+
+		// And one nobody signed, saying it accepted the rows as they are now.
+		rows, err := s.At(ctx, 3)
+		x.NoError(err)
+		c := checkpointOf(3, time.Now(), rows)
+		c.Accepted = "nothing to see"
+		planted(t, p, c, nil)
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.True(slices.ContainsFunc(v.Findings, func(f Finding) bool { return f.Kind == "rewritten" && f.Checkpoint == 2 }),
+			"the one before the latest went uncompared for an acceptance nobody signed: %v", v.Findings)
+	})
+}
+
+// racing is a store whose next checkpoint has another act's beside it: one
+// numbered after it and written before it, or with `first`, one numbered and
+// written in full once the chain was read and before it was numbered.
+type racing struct {
+	*fakeStore
+	p     Policy
+	first bool
+	done  bool
+}
+
+func (r *racing) Checkpoint(ctx context.Context, after int) (int, []Archived, error) {
+	if r.first && !r.done {
+		r.done = true
+		if _, err := r.p.checkpoint(ctx, r.fakeStore, ""); err != nil {
+			return 0, nil, err
+		}
+	}
+
+	k, rows, err := r.fakeStore.Checkpoint(ctx, after)
+	if err == nil && !r.done {
+		r.done = true
+		if _, err := r.p.checkpoint(ctx, r.fakeStore, ""); err != nil {
+			return k, rows, err
+		}
+	}
+
+	return k, rows, err
+}
+
+// TestTwoCheckpointsAtOnceAreNoGap.
+//
+// Every act ends in a checkpoint, and acts run in more than one process: two
+// can be numbered one after the other, and the second written before the
+// first. Each then names the one before the first, which is no gap, since the
+// store keeps the number it went past -- and still is one once the first is
+// taken away.
+func TestTwoCheckpointsAtOnceAreNoGap(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	s, p := chained(t, 2, nil)
+	_, err := p.checkpoint(ctx, &racing{fakeStore: s, p: p}, "")
+	x.NoError(err)
+	x.Equal(numbered(t, p, 2).d, numbered(t, p, 3).c.Prev)
+	x.Equal(numbered(t, p, 2).d, numbered(t, p, 4).c.Prev)
+
+	v, err := p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+
+	x.NoError(p.checkpoints().Erase(ctx, numbered(t, p, 3).d))
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"unkept"}, kinds(v))
+	x.Equal(3, v.Findings[0].Checkpoint)
+
+	t.Run("one kept meanwhile is the one named", func(t *testing.T) {
+		x := require.New(t)
+
+		// The other act's numbered and kept after this one read the chain,
+		// and before this one was numbered: this one names it.
+		s, p := chained(t, 2, nil)
+		_, err := p.checkpoint(ctx, &racing{fakeStore: s, p: p, first: true}, "")
+		x.NoError(err)
+		x.Equal(numbered(t, p, 3).d, numbered(t, p, 4).c.Prev)
+	})
+}
+
+// TestAKeyRotatedOutNeedNotBeTrusted.
+//
+// The checkpoints a key signed before it was rotated out are named, down the
+// chain, by the first one the next key signed, and are what they were without
+// the old key being trusted. So the old key leaves `trust` once the next has
+// signed a checkpoint and the rows it signed have been accepted again, and
+// what it signs after that -- a key that leaked, say -- is forged, and decides
+// nothing.
+func TestAKeyRotatedOutNeedNotBeTrusted(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	old, next := newKey(t), newKey(t)
+	s := &fakeStore{}
+	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Signer: old}
+	for i := range 2 {
+		s.add(fakeRow{tenant: newTenant().Uuid(), domain: person, created: ago(40 * day), value: strconv.Itoa(i)})
+		p.Pass(ctx, s)
+	}
+
+	// Rotated: the next key signs, and the old one is trusted until the next
+	// has signed a checkpoint.
+	p.Signer, p.Trust = next, []crypto.PublicKey{old.Public()}
+	x.NoError(oneMore(t, s, p))
+	v, err := p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+
+	// Then not at all. Its checkpoints are what the chain says they were; its
+	// rows are not on any chain, and are found until they are accepted again.
+	p.Trust = nil
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.NotEmpty(v.Findings)
+	for _, f := range v.Findings {
+		x.NotEmpty(f.Namespace, "a checkpoint the old key signed is a finding: %v", f)
+		x.Equal("forged", f.Kind)
+	}
+
+	_, err = p.Accept(ctx, s, "the rows the old key signed, signed again with the next")
+	x.NoError(err)
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.True(v.Ok(), "%v", v.Findings)
+
+	// What the old key signs now is nobody's word.
+	planted(t, p, over(1000), old)
+	v, err = p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"forged"}, kinds(v), "%v", v.Findings)
+	x.NoError(oneMore(t, s, p))
+}
+
+// TestACheckpointIsReadOnlyAsItsDigest: what a checkpoint names as the one
+// before it is a digest, and a checkpoint vouches for the one it names only if
+// what is read under that digest is what was there.
+func TestACheckpointIsReadOnlyAsItsDigest(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	dir := t.TempDir()
+	s, p := chained(t, 3, flob.NewOsStores(dir).Use(CheckpointNamespace))
+	one, two := numbered(t, p, 1), numbered(t, p, 2)
+
+	// The second's bytes made the first's, under the second's name.
+	path := func(d flob.Digest) string {
+		found := ""
+		x.NoError(filepath.WalkDir(dir, func(p string, e fs.DirEntry, err error) error {
+			if err == nil && !e.IsDir() && e.Name() == "blob" && strings.Contains(p, d.Encoded()[4:]) && strings.Contains(p, "repos") {
+				found = p
+			}
+			return err
+		}))
+		x.NotEmpty(found, "where %s is kept", d)
+
+		return found
+	}
+	b, err := os.ReadFile(path(one.d))
+	x.NoError(err)
+	x.NoError(os.WriteFile(path(two.d), b, 0o640))
+
+	v, err := p.Verify(ctx, s, false)
+	x.NoError(err)
+	x.Equal([]string{"forged"}, kinds(v), "%v", v.Findings)
+	x.Contains(v.Findings[0].Note, "not its digest")
 }

@@ -432,9 +432,10 @@ type AuditCheckpointsConfig struct {
 	Key string `yaml:"key"`
 
 	// Trust is the public keys besides Key's own whose signatures a
-	// verification believes -- a key rotated out, or the deployment's for a
-	// verifier that is not given its private half -- each PKIX, base64, or
-	// the PEM document of one.
+	// verification believes -- a key rotated out, until the next has signed a
+	// checkpoint and the rows it signed are accepted again, or the
+	// deployment's for a verifier that is not given its private half -- each
+	// PKIX, base64, or the PEM document of one. See `trail.Policy.Trust`.
 	Trust []string `yaml:"trust"`
 }
 

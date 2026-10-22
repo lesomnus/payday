@@ -3,6 +3,35 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A checkpoint nobody vouches for decides nothing
+
+**Applies if** you keep the trail's archive (`audit.archive`, or
+`trail.Policy.Archive`), rotate the checkpoint key, or sign through Vault. Part
+of payday#115. Nothing in your code changes.
+
+- **A checkpoint nobody signed, or signed by a key nobody trusts, decides
+  nothing** once the store keeps one your key signed: not whether the database
+  is `behind`, not what the latest rows are compared with, not what the next
+  checkpoint is numbered after or names, and not which numbers an acceptance
+  quieted. It is `unsigned` or `forged`, and that is all. A checkpoint one of
+  yours names as the one before it counts whatever signed it, and so does
+  every one before that, which is why a checkpoint is now read only while its
+  bytes are its digest: one that is not is `forged`, "it does not read".
+  `Policy.ReadCheckpoints` reads the ones that count.
+- **A number the store keeps is no gap.** Two acts that take a checkpoint at
+  the same moment can be written the other way round, and both name the one
+  before the first; that was `unkept` for the number between, and is no
+  finding. The next checkpoint names the newest below it by what each says,
+  whatever its labels say.
+- **A key rotated out can leave `trust`.** Keep it there until the next key has
+  signed a checkpoint and the rows the old one signed have been accepted again
+  (`trail accept`), then take it out: the checkpoints it signed are what the
+  chain says they were without it, and what it signs after that is `forged`.
+  Left in `trust`, it is believed for whatever it signs, as before.
+- **Vault over plain `http` is refused** but on this machine (`localhost`, a
+  loopback address). `VAULT_ADDR`, or the URI's `addr=`, names an `https://`
+  address for a Vault on another host.
+
 ## A check of the rows finds what a database writer can make of the trail
 
 **Applies if** you call the generated `pd.Digests`, give an operator a command
@@ -140,6 +169,7 @@ other list.
   every column but a string, a time and an identifier, so an int64 past 2^53
   came back as a neighbour and a page repeated its last row. A cursor a client
   holds carries on: its bytes are what they were.
+
 ## The gate asks an `Apply` about the edges it moves
 
 **Applies if** an entity has an edge that can move onto a row behind the wall
@@ -156,6 +186,7 @@ other list.
   engine does not do.
 - `Apply` is still closed at the transport unless `allow_general_writes` opens
   it; this is the rule about the row that holds wherever it is called from.
+
 ## A broker and a lease are built on the process's context, and `PlainInProcess` believes only this process
 
 **Applies if** your `cmd.Build` or your serve command builds a broker or a

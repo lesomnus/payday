@@ -61,6 +61,20 @@ func TestAURINamesAKeyAndTheEnvironmentTheRest(t *testing.T) {
 	x.NoError(err)
 	x.Equal("transit", u.Mount)
 
+	// Plain http reaches this machine, and nothing else.
+	for _, v := range []string{"http://localhost:8200", "http://127.0.0.1:8200", "http://127.8.0.1:8200", "http://[::1]:8200"} {
+		_, err := ParseURI("hashivault://checkpoints?addr=" + v)
+		x.NoError(err, v)
+	}
+	for _, v := range []string{"http://vault.internal:8200", "http://10.0.0.7:8200", "http://[2001:db8::1]:8200", "http://localhost.example:8200"} {
+		_, err := ParseURI("hashivault://checkpoints?addr=" + v)
+		x.ErrorContains(err, "another host", v)
+	}
+	t.Setenv("VAULT_ADDR", "http://vault.internal:8200")
+	_, err = ParseURI("hashivault://checkpoints")
+	x.ErrorContains(err, "another host", "the environment's address")
+	quiet(t)
+
 	for v, want := range map[string]string{
 		"hashivault://checkpoints":                               "VAULT_ADDR",
 		"hashivault://checkpoints?addr=vault:8200":               "http",
