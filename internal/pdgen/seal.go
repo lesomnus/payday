@@ -1,0 +1,318 @@
+package pdgen
+
+import (
+	"strings"
+
+	"google.golang.org/protobuf/compiler/protogen"
+
+	"github.com/lesomnus/payday/pdpb"
+)
+
+// emitSeals writes what keeps the rows' seals (payday#115): which kinds are
+// sealed, what a write does to a seal, where a transaction keeps the seals it
+// wrote until it commits, the statement that writes them, and the read a
+// check of the rows makes of them.
+//
+// # Kept as the trail is
+//
+// A seal is written in the transaction of the write that leaves its row, by
+// the recorder that writes the write's line, and it is kept for that
+// transaction's commit the way the trail is ([emitKeptTrail]): written there
+// with the rest, a statement for every few hundred, and ahead of any statement
+// about the table the transaction sends. So an import of a hundred thousand
+// rows of a sealed kind is a few hundred statements more, and not a hundred
+// thousand.
+//
+// One row of the table per row sealed, under the row's own identifier, so a
+// write seals by writing over the seal before it: one INSERT that answers a
+// conflict on the key with the new values, which both engines have. The last
+// word of a transaction about a row is the one written, which is the seal of
+// the row as the transaction leaves it.
+func emitSeals(g *protogen.GeneratedFile, s *Schema, p Paths) {
+	v := s.Own(pdpb.Own_OWN_ROW_SEAL)
+	if v == nil {
+		g.P("// rowSeal is nothing here: this schema has no table of seals.")
+		g.P("type rowSeal struct{}")
+		g.P("")
+		g.P("func (v *rowSeal) in(", pkgUuid.Ident("UUID"), ") *rowSeal { return v }")
+		g.P("")
+		g.P("// keepSeals does nothing: this schema has no table of seals.")
+		g.P("func keepSeals(", pkgCtx.Ident("Context"), ", *", p.Ent.Ident("Client"), ", ...*rowSeal) error { return nil }")
+		g.P("")
+		return
+	}
+
+	e := v.GoName()
+	sealPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+
+	g.P("// isSealed is whether rows of `key`'s kind are sealed: it is on the trail and")
+	g.P("// declares a field `personal`, which the trail's digest leaves out and the")
+	g.P("// row's seal covers (payday#115).")
+	g.P("func isSealed(key ", pkgPdid.Ident("Id"), ") bool {")
+	kinds := []string{}
+	for _, v := range s.Sorted() {
+		if v.Sealed() {
+			kinds = append(kinds, v.GoName()+"Domain")
+		}
+	}
+	if len(kinds) > 0 {
+		g.P("	switch key.Domain() {")
+		g.P("	case ", strings.Join(kinds, ", "), ":")
+		g.P("		return true")
+		g.P("	}")
+		g.P("")
+	}
+	g.P("	return false")
+	g.P("}")
+	g.P("")
+
+	g.P("// rowSeal is what a write does to the seal of one row: writes `sum`, over the")
+	g.P("// fields `fields` lists, filed under `tenant` -- or, `gone`, removes it, for")
+	g.P("// a write that took the row.")
+	g.P("type rowSeal struct {")
+	g.P("	object ", pkgPdid.Ident("Id"))
+	g.P("	tenant ", pkgUuid.Ident("UUID"))
+	g.P("	sum    []byte")
+	g.P("	fields []uint32")
+	g.P("	gone   bool")
+	g.P("}")
+	g.P("")
+	g.P("// in is `v` filed under `tenant`: where the write that made it filed its")
+	g.P("// line. Nil for nil, which is a write that does nothing to a seal.")
+	g.P("func (v *rowSeal) in(tenant ", pkgUuid.Ident("UUID"), ") *rowSeal {")
+	g.P("	if v == nil {")
+	g.P("		return nil")
+	g.P("	}")
+	g.P("")
+	g.P("	c := *v")
+	g.P("	c.tenant = tenant")
+	g.P("	return &c")
+	g.P("}")
+	g.P("")
+
+	g.P("// keepSeals does what `vs` say to the seals of their rows, in the transaction `db`")
+	g.P("// runs in: kept for its commit when it keeps anything, as the trail is, and")
+	g.P("// written now when it does not. A nil of `vs` is a write that does nothing")
+	g.P("// to a seal.")
+	g.P("func keepSeals(ctx ", pkgCtx.Ident("Context"), ", db *", p.Ent.Ident("Client"), ", vs ...*rowSeal) error {")
+	g.P("	vs = ", pkgSlices.Ident("DeleteFunc"), "(vs, func(v *rowSeal) bool { return v == nil })")
+	g.P("	if len(vs) == 0 {")
+	g.P("		return nil")
+	g.P("	}")
+	g.P("	if k, ok := ", pkgDialect.Ident("KeepOf"), "(db.Driver()); ok {")
+	g.P("		return keptSealsOf(k, db).add(ctx, vs)")
+	g.P("	}")
+	g.P("")
+	g.P("	return writeSeals(ctx, db, vs)")
+	g.P("}")
+	g.P("")
+
+	table := sealPkg.Ident("Table")
+	g.P("// keptSeals is the seals a transaction has written and not yet sent, kept by")
+	g.P("// it ([dialect.Keep]) and written by its commit, a few hundred at a time")
+	g.P("// before that, or ahead of any statement about the table -- as [keptTrail]")
+	g.P("// is, and for the same reasons.")
+	g.P("type keptSeals struct {")
+	g.P("	db      *", p.Ent.Ident("Client"))
+	g.P("	vs      []*rowSeal")
+	g.P("	writing bool")
+	g.P("}")
+	g.P("")
+	g.P("// keptSealsKey is what a transaction keeps its [keptSeals] under.")
+	g.P("type keptSealsKey struct{}")
+	g.P("")
+	g.P("// keptSealsAbout is whether a statement is about the seals: the table's")
+	g.P("// name as a word of it.")
+	g.P("var keptSealsAbout = ", pkgRegexp.Ident("MustCompile"), "(`\\b` + ", pkgRegexp.Ident("QuoteMeta"), "(", table, ") + `\\b`).MatchString")
+	g.P("")
+	g.P("func keptSealsOf(k *", pkgDialect.Ident("Keep"), ", db *", p.Ent.Ident("Client"), ") *keptSeals {")
+	g.P("	return k.Value(keptSealsKey{}, func() any {")
+	g.P("		v := &keptSeals{db: db}")
+	g.P("		k.BeforeCommit(v.write)")
+	g.P("		k.BeforeStatement(keptSealsAbout, v.write)")
+	g.P("		return v")
+	g.P("	}).(*keptSeals)")
+	g.P("}")
+	g.P("")
+	g.P("func (v *keptSeals) add(ctx ", pkgCtx.Ident("Context"), ", vs []*rowSeal) error {")
+	g.P("	v.vs = append(v.vs, vs...)")
+	g.P("	if len(v.vs) < keptSealsRows {")
+	g.P("		return nil")
+	g.P("	}")
+	g.P("")
+	g.P("	return v.write(ctx)")
+	g.P("}")
+	g.P("")
+	g.P("func (v *keptSeals) write(ctx ", pkgCtx.Ident("Context"), ") error {")
+	g.P("	if v.writing || len(v.vs) == 0 {")
+	g.P("		return nil")
+	g.P("	}")
+	g.P("	v.writing = true")
+	g.P("	defer func() { v.writing = false }()")
+	g.P("")
+	g.P("	vs := v.vs")
+	g.P("	v.vs = nil")
+	g.P("")
+	g.P("	return writeSeals(ctx, v.db, vs)")
+	g.P("}")
+	g.P("")
+	g.P("// keptSealsRows is how many seals one statement writes.")
+	g.P("const keptSealsRows = 500")
+	g.P("")
+
+	g.P("// writeSeals sends what `vs` say: the last word about each row, the seals in")
+	g.P("// an INSERT that writes over the seal there is, a few hundred a statement,")
+	g.P("// and the seals of rows that went in one DELETE.")
+	g.P("func writeSeals(ctx ", pkgCtx.Ident("Context"), ", db *", p.Ent.Ident("Client"), ", vs []*rowSeal) error {")
+	g.P("	last := map[", pkgPdid.Ident("Id"), "]*rowSeal{}")
+	g.P("	order := []", pkgPdid.Ident("Id"), "{}")
+	g.P("	for _, v := range vs {")
+	g.P("		if _, ok := last[v.object]; !ok {")
+	g.P("			order = append(order, v.object)")
+	g.P("		}")
+	g.P("		last[v.object] = v")
+	g.P("	}")
+	g.P("")
+	g.P("	put := []*rowSeal{}")
+	g.P("	gone := []", pkgUuid.Ident("UUID"), "{}")
+	g.P("	for _, k := range order {")
+	g.P("		if v := last[k]; v.gone {")
+	g.P("			gone = append(gone, ", pkgUuid.Ident("UUID"), "(k))")
+	g.P("		} else {")
+	g.P("			put = append(put, v)")
+	g.P("		}")
+	g.P("	}")
+	g.P("")
+	g.P("	drv := db.Driver()")
+	g.P("	for page := range ", pkgSlices.Ident("Chunk"), "(put, keptSealsRows) {")
+	g.P("		q := ", pkgEntSql.Ident("Dialect"), "(drv.Dialect()).Insert(", table, ").")
+	g.P("			Columns(", sealPkg.Ident("FieldId"), ", ", sealPkg.Ident("FieldTenantId"), ", ", sealPkg.Ident("FieldSum"), ", ", sealPkg.Ident("FieldFields"), ")")
+	g.P("		for _, v := range page {")
+	g.P("			fields, err := ", pkgJson.Ident("Marshal"), "(v.fields)")
+	g.P("			if err != nil {")
+	g.P("				return err")
+	g.P("			}")
+	g.P("			q.Values(", pkgUuid.Ident("UUID"), "(v.object), v.tenant, v.sum, ", pkgJson.Ident("RawMessage"), "(fields))")
+	g.P("		}")
+	g.P("		q.OnConflict(", pkgEntSql.Ident("ConflictColumns"), "(", sealPkg.Ident("FieldId"), "), ", pkgEntSql.Ident("ResolveWithNewValues"), "())")
+	g.P("")
+	g.P("		query, args := q.Query()")
+	g.P("		var res ", pkgSql.Ident("Result"))
+	g.P("		if err := drv.Exec(ctx, query, args, &res); err != nil {")
+	g.P("			return ", pkgFmt.Ident("Errorf"), "(\"write the seals: %w\", err)")
+	g.P("		}")
+	g.P("	}")
+	g.P("	for page := range ", pkgSlices.Ident("Chunk"), "(gone, keptSealsRows) {")
+	g.P("		if _, err := db.", e, ".Delete().Where(", sealPkg.Ident("IdIn"), "(page...)).Exec(ctx); err != nil {")
+	g.P("			return ", pkgFmt.Ident("Errorf"), "(\"remove the seals: %w\", err)")
+	g.P("		}")
+	g.P("	}")
+	g.P("")
+	g.P("	return nil")
+	g.P("}")
+	g.P("")
+
+	g.P("// carrySeals binds the seals of the rows a pass carried a line forward for")
+	g.P("// to the lines it wrote ([audit.Digest.CarrySeal]): what each said of its")
+	g.P("// row, copied, and bound to the new line. A row with no seal has none to")
+	g.P("// carry.")
+	g.P("func carrySeals(ctx ", pkgCtx.Ident("Context"), ", db *", p.Ent.Ident("Client"), ", d *", pkgAudit.Ident("Digest"),
+		", lines map[", pkgPdid.Ident("Id"), "]", pkgAudit.Ident("Line"), ", tenants map[", pkgPdid.Ident("Id"), "]", pkgUuid.Ident("UUID"), ") error {")
+	g.P("	if len(lines) == 0 {")
+	g.P("		return nil")
+	g.P("	}")
+	g.P("")
+	g.P("	seals, err := sealsOf(ctx, db, ", pkgSlices.Ident("Collect"), "(", pkgMaps.Ident("Keys"), "(lines)))")
+	g.P("	if err != nil {")
+	g.P("		return err")
+	g.P("	}")
+	g.P("")
+	g.P("	vs := make([]*rowSeal, 0, len(seals))")
+	g.P("	for id, v := range seals {")
+	g.P("		sum, err := d.CarrySeal(v.Sum, id, lines[id])")
+	g.P("		if err != nil {")
+	g.P("			return ", pkgFmt.Ident("Errorf"), "(\"carry the seal of %s forward: %w\", id, err)")
+	g.P("		}")
+	g.P("		vs = append(vs, &rowSeal{object: id, tenant: tenants[id], sum: sum, fields: v.Fields})")
+	g.P("	}")
+	g.P("")
+	g.P("	return writeSeals(ctx, db, vs)")
+	g.P("}")
+	g.P("")
+
+	g.P("// sealsOf is the seal of each of `ids` that has one, as a check of the rows")
+	g.P("// reads it.")
+	g.P("func sealsOf(ctx ", pkgCtx.Ident("Context"), ", db *", p.Ent.Ident("Client"), ", ids []", pkgPdid.Ident("Id"), ") (map[", pkgPdid.Ident("Id"), "]", pkgAudit.Ident("Sealed"), ", error) {")
+	g.P("	out := map[", pkgPdid.Ident("Id"), "]", pkgAudit.Ident("Sealed"), "{}")
+	g.P("	if len(ids) == 0 {")
+	g.P("		return out, nil")
+	g.P("	}")
+	g.P("")
+	g.P("	vs, err := db.", e, ".Query().Where(", sealPkg.Ident("IdIn"), "(uuids(ids)...)).All(ctx)")
+	g.P("	if err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("	for _, v := range vs {")
+	g.P("		out[", pkgPdid.Ident("Id"), "(v.Id)] = ", pkgAudit.Ident("Sealed"), "{Sum: v.Sum, Fields: v.Fields}")
+	g.P("	}")
+	g.P("")
+	g.P("	return out, nil")
+	g.P("}")
+	g.P("")
+}
+
+// emitTrailSeals writes the trail store's half of the seals: blanking the ones
+// of a person forgotten, and removing the ones of a tenant that leaves
+// ([trail.Store.BlankSeals], [trail.Store.PurgeSeals]). With no table of seals
+// there is nothing to blank, and both say so.
+func emitTrailSeals(g *protogen.GeneratedFile, s *Schema, p Paths) {
+	v := s.Own(pdpb.Own_OWN_ROW_SEAL)
+	if v == nil {
+		g.P("func (s trailStore) BlankSeals(", pkgCtx.Ident("Context"), ", []", pkgPdid.Ident("Id"), ", func(", pkgPdid.Ident("Id"), ") []byte) (int, error) {")
+		g.P("	return 0, nil")
+		g.P("}")
+		g.P("")
+		g.P("func (s trailStore) PurgeSeals(", pkgCtx.Ident("Context"), ", ", pkgPdid.Ident("Id"), ") (int, error) {")
+		g.P("	return 0, nil")
+		g.P("}")
+		g.P("")
+		return
+	}
+
+	e := v.GoName()
+	sealPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+
+	g.P("func (s trailStore) BlankSeals(ctx ", pkgCtx.Ident("Context"), ", objects []", pkgPdid.Ident("Id"), ", forgotten func(", pkgPdid.Ident("Id"), ") []byte) (int, error) {")
+	g.P("	n := 0")
+	g.P("	for page := range ", pkgSlices.Ident("Chunk"), "(objects, ", pkgAudit.Ident("RowsPage"), ") {")
+	g.P("		ids, err := s.db.", e, ".Query().Where(", sealPkg.Ident("IdIn"), "(uuids(page)...)).Ids(ctx)")
+	g.P("		if err != nil || len(ids) == 0 {")
+	g.P("			if err != nil {")
+	g.P("				return n, err")
+	g.P("			}")
+	g.P("			continue")
+	g.P("		}")
+	g.P("		if forgotten == nil {")
+	g.P("			k, err := s.db.", e, ".Delete().Where(", sealPkg.Ident("IdIn"), "(ids...)).Exec(ctx)")
+	g.P("			n += k")
+	g.P("			if err != nil {")
+	g.P("				return n, err")
+	g.P("			}")
+	g.P("			continue")
+	g.P("		}")
+	g.P("		for _, id := range ids {")
+	g.P("			if err := s.db.", e, ".UpdateOneId(id).SetSum(forgotten(", pkgPdid.Ident("Id"), "(id))).Exec(ctx); err != nil {")
+	g.P("				return n, err")
+	g.P("			}")
+	g.P("			n++")
+	g.P("		}")
+	g.P("	}")
+	g.P("")
+	g.P("	return n, nil")
+	g.P("}")
+	g.P("")
+	g.P("func (s trailStore) PurgeSeals(ctx ", pkgCtx.Ident("Context"), ", tenant ", pkgPdid.Ident("Id"), ") (int, error) {")
+	g.P("	return s.db.", e, ".Delete().Where(", sealPkg.Ident("TenantId"), "(tenant.Uuid())).Exec(ctx)")
+	g.P("}")
+	g.P("")
+}

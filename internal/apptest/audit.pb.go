@@ -535,28 +535,33 @@ type Audit_builder struct {
 	// name is a label, and a field renamed is the same column.
 	Fields []uint32
 	// A keyed digest of the row this write left (payday#102): HMAC-SHA256,
-	// under the deployment's `audit.digest.key`, of the row as `value` would
-	// hold it -- a field declared `secret` or `personal` cleared -- restricted
-	// to the fields in `digest_fields`, and of which thing it is and of that
-	// list. It is what says a live row is the one the last write the trail
-	// recorded left: digest the row again, and one somebody changed in the
-	// database past the servers does not match.
+	// under the deployment's `audit.digest.key`, of the row with a field
+	// declared `personal` cleared -- a `secret` is covered (payday#115) --
+	// restricted to the fields in `digest_fields`, and of which thing it is and
+	// of that list. It is what says a live row is the one the last write the
+	// trail recorded left: digest the row again, and one somebody changed in the
+	// database past the servers does not match. The personal fields are the
+	// row's seal's to vouch for (`RowSeal`), which lives beside the row and not
+	// on the trail.
 	//
 	// Keyed, because a row of the trail in the database is not signed until a
 	// pass archives it, and a digest anybody can compute is one whoever can
 	// write the database computes again for the row they changed. The key is a
 	// file the process is given, not a row anything reads.
 	//
-	// A byte of version, and two halves of eight bytes of a key's fingerprint
-	// -- so a digest made before a rotation is checked with the key it was made
-	// under -- and an HMAC each (payday#115). The first is this line's own: of
-	// its `id`, its `date_created` to the microsecond, its `action` and the
-	// thing it is about, and of the second, so that a digest copied onto
-	// another line is not that line's. The second is the row's. An erase that
-	// took its row keeps the first alone, which says the row went; one that
-	// left it, the row as it stamped it. Version 1 is the row's half alone,
-	// bound to no line, and is still checked. Empty for a deployment with no
-	// key, and for a row written before this.
+	// A byte of version, a byte of flags, and two halves of eight bytes of a
+	// key's fingerprint -- so a digest made before a rotation is checked with
+	// the key it was made under -- and an HMAC each (payday#115). The first is
+	// this line's own: of its flags, its `id`, its `date_created` to the
+	// microsecond, its `action` and the thing it is about, and of the second,
+	// so that a digest copied onto another line is not that line's. The second
+	// is the row's. The flags say whether the write sealed the row, so a row
+	// whose seal was taken off is told from a row from before seals. An erase
+	// that took its row keeps the first alone, which says the row went; one that
+	// left it, the row as it stamped it. Version 2 is the same with no flags,
+	// and version 1 the row's half alone, bound to no line; both are still
+	// checked. Empty for a deployment with no key, and for a row written before
+	// this.
 	//
 	// Defaulted, for the reason `domain` gives: the recorder is not the only
 	// writer of this table, and a column another writer must fill in is one it
@@ -566,7 +571,8 @@ type Audit_builder struct {
 	// that wrote it knew them, less what it cleared. So a column a later
 	// migration adds is outside every digest made before it, and an old row
 	// still matches; a column it covers that a migration rewrote does not,
-	// which is the point.
+	// which is the point. A digest from before payday#115 left a `secret` out,
+	// and says so here.
 	DigestFields []uint32
 }
 

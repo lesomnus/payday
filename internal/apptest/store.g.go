@@ -39,6 +39,7 @@ type Server interface {
 	Reading() ReadingServiceServer
 	Holder() HolderServiceServer
 	Outbox() OutboxServiceServer
+	RowSeal() RowSealServiceServer
 	Seal() SealServiceServer
 	Tally() TallyServiceServer
 	Pulse() PulseServiceServer
@@ -62,6 +63,7 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterReadingServiceServer(g, s.Reading())
 	RegisterHolderServiceServer(g, s.Holder())
 	RegisterOutboxServiceServer(g, s.Outbox())
+	RegisterRowSealServiceServer(g, s.RowSeal())
 	RegisterSealServiceServer(g, s.Seal())
 	RegisterTallyServiceServer(g, s.Tally())
 	RegisterPulseServiceServer(g, s.Pulse())
@@ -81,6 +83,7 @@ type UnimplementedServer struct {
 	ReadingServer  ReadingServiceServer
 	HolderServer   HolderServiceServer
 	OutboxServer   OutboxServiceServer
+	RowSealServer  RowSealServiceServer
 	SealServer     SealServiceServer
 	TallyServer    TallyServiceServer
 	PulseServer    PulseServiceServer
@@ -101,6 +104,7 @@ func (UnimplementedServer) Fleet() FleetServiceServer     { return Unimplemented
 func (UnimplementedServer) Reading() ReadingServiceServer { return UnimplementedReadingServiceServer{} }
 func (UnimplementedServer) Holder() HolderServiceServer   { return UnimplementedHolderServiceServer{} }
 func (UnimplementedServer) Outbox() OutboxServiceServer   { return UnimplementedOutboxServiceServer{} }
+func (UnimplementedServer) RowSeal() RowSealServiceServer { return UnimplementedRowSealServiceServer{} }
 func (UnimplementedServer) Seal() SealServiceServer       { return UnimplementedSealServiceServer{} }
 func (UnimplementedServer) Tally() TallyServiceServer     { return UnimplementedTallyServiceServer{} }
 func (UnimplementedServer) Pulse() PulseServiceServer     { return UnimplementedPulseServiceServer{} }
@@ -119,6 +123,7 @@ type StaticServer struct {
 	ReadingServer  ReadingServiceServer
 	HolderServer   HolderServiceServer
 	OutboxServer   OutboxServiceServer
+	RowSealServer  RowSealServiceServer
 	SealServer     SealServiceServer
 	TallyServer    TallyServiceServer
 	PulseServer    PulseServiceServer
@@ -137,6 +142,7 @@ func (s StaticServer) Fleet() FleetServiceServer       { return s.FleetServer }
 func (s StaticServer) Reading() ReadingServiceServer   { return s.ReadingServer }
 func (s StaticServer) Holder() HolderServiceServer     { return s.HolderServer }
 func (s StaticServer) Outbox() OutboxServiceServer     { return s.OutboxServer }
+func (s StaticServer) RowSeal() RowSealServiceServer   { return s.RowSealServer }
 func (s StaticServer) Seal() SealServiceServer         { return s.SealServer }
 func (s StaticServer) Tally() TallyServiceServer       { return s.TallyServer }
 func (s StaticServer) Pulse() PulseServiceServer       { return s.PulseServer }
@@ -155,6 +161,7 @@ type Client interface {
 	Reading() ReadingServiceClient
 	Holder() HolderServiceClient
 	Outbox() OutboxServiceClient
+	RowSeal() RowSealServiceClient
 	Seal() SealServiceClient
 	Tally() TallyServiceClient
 	Pulse() PulseServiceClient
@@ -175,6 +182,7 @@ func NewClient(c *grpc.ClientConn) Client {
 		_Reading:  NewReadingServiceClient(c),
 		_Holder:   NewHolderServiceClient(c),
 		_Outbox:   NewOutboxServiceClient(c),
+		_RowSeal:  NewRowSealServiceClient(c),
 		_Seal:     NewSealServiceClient(c),
 		_Tally:    NewTallyServiceClient(c),
 		_Pulse:    NewPulseServiceClient(c),
@@ -195,6 +203,7 @@ type client struct {
 	_Reading  ReadingServiceClient
 	_Holder   HolderServiceClient
 	_Outbox   OutboxServiceClient
+	_RowSeal  RowSealServiceClient
 	_Seal     SealServiceClient
 	_Tally    TallyServiceClient
 	_Pulse    PulseServiceClient
@@ -213,6 +222,7 @@ func (c *client) Fleet() FleetServiceClient       { return c._Fleet }
 func (c *client) Reading() ReadingServiceClient   { return c._Reading }
 func (c *client) Holder() HolderServiceClient     { return c._Holder }
 func (c *client) Outbox() OutboxServiceClient     { return c._Outbox }
+func (c *client) RowSeal() RowSealServiceClient   { return c._RowSeal }
 func (c *client) Seal() SealServiceClient         { return c._Seal }
 func (c *client) Tally() TallyServiceClient       { return c._Tally }
 func (c *client) Pulse() PulseServiceClient       { return c._Pulse }

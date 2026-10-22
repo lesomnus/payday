@@ -37,6 +37,7 @@ import (
 	pulse "github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	rowseal "github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
 	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	tally "github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
@@ -102,22 +103,23 @@ func Check() error { return version.Same(Payday) }
 // trail says what kind of thing it was long after the row is gone. So a
 // number is chosen once and never given to something else.
 const (
-	AccessDomain   pdid.Domain = 6  // "access"
-	ArchivedDomain pdid.Domain = 5  // "archived"
-	AuditDomain    pdid.Domain = 3  // "audit"
-	CellDomain     pdid.Domain = 10 // "cell"
-	FleetDomain    pdid.Domain = 9  // "fleet"
-	HolderDomain   pdid.Domain = 2  // "holder"
-	JointDomain    pdid.Domain = 8  // "joint"
-	OutboxDomain   pdid.Domain = 4  // "outbox"
-	PairingDomain  pdid.Domain = 12 // "pairing"
-	PulseDomain    pdid.Domain = 16 // "pulse"
-	ReadingDomain  pdid.Domain = 11 // "reading"
-	RobotDomain    pdid.Domain = 7  // "robot"
-	SealDomain     pdid.Domain = 14 // "seal"
-	TallyDomain    pdid.Domain = 15 // "tally"
-	TenantDomain   pdid.Domain = 1  // "tenant"
-	ThingDomain    pdid.Domain = 13 // "thing"
+	AccessDomain   pdid.Domain = 6   // "access"
+	ArchivedDomain pdid.Domain = 5   // "archived"
+	AuditDomain    pdid.Domain = 3   // "audit"
+	CellDomain     pdid.Domain = 10  // "cell"
+	FleetDomain    pdid.Domain = 9   // "fleet"
+	HolderDomain   pdid.Domain = 2   // "holder"
+	JointDomain    pdid.Domain = 8   // "joint"
+	OutboxDomain   pdid.Domain = 4   // "outbox"
+	PairingDomain  pdid.Domain = 12  // "pairing"
+	PulseDomain    pdid.Domain = 16  // "pulse"
+	ReadingDomain  pdid.Domain = 11  // "reading"
+	RobotDomain    pdid.Domain = 7   // "robot"
+	RowSealDomain  pdid.Domain = 255 // "row-seal"
+	SealDomain     pdid.Domain = 14  // "seal"
+	TallyDomain    pdid.Domain = 15  // "tally"
+	TenantDomain   pdid.Domain = 1   // "tenant"
+	ThingDomain    pdid.Domain = 13  // "thing"
 )
 
 func init() {
@@ -133,6 +135,7 @@ func init() {
 	pdid.Register("app.Pulse", PulseDomain, "pulse")
 	pdid.Register("app.Reading", ReadingDomain, "reading")
 	pdid.Register("app.Robot", RobotDomain, "robot")
+	pdid.Register("app.RowSeal", RowSealDomain, "row-seal")
 	pdid.Register("app.Seal", SealDomain, "seal")
 	pdid.Register("app.Tally", TallyDomain, "tally")
 	pdid.Register("app.Tenant", TenantDomain, "tenant")
@@ -156,6 +159,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Pulse":    PulseDomain,
 	"app.Reading":  ReadingDomain,
 	"app.Robot":    RobotDomain,
+	"app.RowSeal":  RowSealDomain,
 	"app.Seal":     SealDomain,
 	"app.Tally":    TallyDomain,
 	"app.Tenant":   TenantDomain,
@@ -332,6 +336,16 @@ func (wall) RobotScope(ctx context.Context) (predicate.Robot, error) {
 	return robot.TenantIdIn(vs...), nil
 }
 
+// RowSealScope: a row belongs to the tenant its "tenant_id" names, which it holds without an edge.
+func (wall) RowSealScope(ctx context.Context) (predicate.RowSeal, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return rowseal.TenantIdIn(vs...), nil
+}
+
 // SealScope: declared `global`, so it is not behind the wall at all.
 func (wall) SealScope(ctx context.Context) (predicate.Seal, error) {
 	return nil, nil
@@ -466,6 +480,11 @@ func (x grouped) RobotScope(ctx context.Context) (predicate.Robot, error) {
 	}
 
 	return robot.CellIdIn(vs...), nil
+}
+
+// RowSealScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) RowSealScope(ctx context.Context) (predicate.RowSeal, error) {
+	return nil, nil
 }
 
 // SealScope: in no set -- it declared no field 3, so this narrows nothing.
@@ -4139,10 +4158,11 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 
 	// The line this is, decided before it is written, and the keyed digest
 	// it keeps of the row the write left, bound to it: of the row without
-	// what the entity declared `secret:` or `personal:`, over the fields
-	// this build knows, or of the line alone for a write that took the row.
+	// what the entity declared `personal:`, over the fields this build
+	// knows, or of the line alone for a write that took the row. And, for a
+	// kind that declares a field personal, the row's seal, written with it.
 	at := line(s, v.Action)
-	digest, covered, err := digested(r.content.Digest, v.Object, row, at)
+	digest, covered, sealing, err := digested(r.content.Digest, v.Object, row, at)
 	if err != nil {
 		return status.Errorf(codes.Internal, "the trail of %s: %s", c.Method, err)
 	}
@@ -4172,7 +4192,11 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 			q.SetCounterpartTenantId(uuid.UUID(v.Counterpart))
 		}
 
-		return keptTrailOf(k, s.Store.Db).add(ctx, q)
+		if err := keptTrailOf(k, s.Store.Db).add(ctx, q); err != nil {
+			return err
+		}
+
+		return keepSeals(ctx, s.Store.Db, sealing.in(tenant))
 	}
 
 	_, err = s.Audit().Add(ctx, apptest.AuditAddRequest_builder{
@@ -4192,8 +4216,11 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 		DigestFields:        covered,
 		CounterpartTenantId: v.CounterpartBytes(),
 	}.Build())
+	if err != nil {
+		return err
+	}
 
-	return err
+	return keepSeals(ctx, s.Store.Db, sealing.in(tenant))
 }
 
 // notNull is `v` as a column that says it always has bytes takes it.
@@ -4251,6 +4278,8 @@ func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.Fiel
 		return describedReading.md, describedReading.secret, describedReading.personal
 	case RobotDomain:
 		return describedRobot.md, describedRobot.secret, describedRobot.personal
+	case RowSealDomain:
+		return describedRowSeal.md, describedRowSeal.secret, describedRowSeal.personal
 	case SealDomain:
 		return describedSeal.md, describedSeal.secret, describedSeal.personal
 	case TallyDomain:
@@ -4320,6 +4349,9 @@ var (
 	describedRobot = describe((*apptest.Robot)(nil),
 		[]protoreflect.FieldNumber{8},
 		[]protoreflect.FieldNumber{32})
+	describedRowSeal = describe((*apptest.RowSeal)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
 	describedSeal = describe((*apptest.Seal)(nil),
 		[]protoreflect.FieldNumber{8, 9},
 		[]protoreflect.FieldNumber{})
@@ -4760,27 +4792,47 @@ func line(s bare.Server, action string) audit1.Line {
 // digested is the digest the line `at` keeps of `row`, the row a write left
 // of the thing `key` names, and the fields it covers: empty for a
 // deployment that keeps none, and of the line alone for a write that left
-// no row (payday#115).
+// no row (payday#115) -- and what the write does to the row's seal, nil
+// for a kind that declares no field `personal`.
 //
-// What it covers is the entity's fields less the ones it declared `secret`
-// or `personal`, which the digest leaves out however the row it is handed
-// was read.
-func digested(d *audit1.Digest, key pdid.Id, row proto.Message, at audit1.Line) ([]byte, []uint32, error) {
-	md, secret, personal := described(key)
+// What the digest covers is the entity's fields less the ones it declared
+// `personal`, which it leaves out however the row it is handed was read:
+// the line that keeps it outlives the row, in the archive, and the person.
+// A field declared `secret` is covered, since a keyed MAC of a verifier is
+// neither a copy of it nor a way to test a guess at it without the key. The
+// seal covers every field, the personal ones among them, and lives beside
+// the row for as long as it does; a write that took the row removes it.
+func digested(d *audit1.Digest, key pdid.Id, row proto.Message, at audit1.Line) ([]byte, []uint32, *rowSeal, error) {
+	md, _, personal := described(key)
 	switch {
 	case d == nil || md == nil:
-		return []byte{}, []uint32{}, nil
+		return []byte{}, []uint32{}, nil, nil
 	case row == nil:
-		return d.Gone(key, at), []uint32{}, nil
+		var gone *rowSeal
+		if isSealed(key) {
+			gone = &rowSeal{object: key, gone: true}
+		}
+
+		return d.Gone(key, at), []uint32{}, gone, nil
 	}
 
-	covered := audit1.Covered(md, slices.Concat(secret, personal))
+	covered := audit1.Covered(md, personal)
+	if isSealed(key) {
+		all := audit1.Covered(md, nil)
+		sum, sealSum, err := d.OfSealed(key, row, covered, all, at)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return sum, covered, &rowSeal{object: key, sum: sealSum, fields: all}, nil
+	}
+
 	sum, err := d.Of(key, row, covered, at)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return sum, covered, nil
+	return sum, covered, nil, nil
 }
 
 // keptTrail is the trail a transaction has recorded and not written yet.
@@ -4847,6 +4899,204 @@ func (v *keptTrail) write(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// isSealed is whether rows of `key`'s kind are sealed: it is on the trail and
+// declares a field `personal`, which the trail's digest leaves out and the
+// row's seal covers (payday#115).
+func isSealed(key pdid.Id) bool {
+	switch key.Domain() {
+	case HolderDomain, RobotDomain:
+		return true
+	}
+
+	return false
+}
+
+// rowSeal is what a write does to the seal of one row: writes `sum`, over the
+// fields `fields` lists, filed under `tenant` -- or, `gone`, removes it, for
+// a write that took the row.
+type rowSeal struct {
+	object pdid.Id
+	tenant uuid.UUID
+	sum    []byte
+	fields []uint32
+	gone   bool
+}
+
+// in is `v` filed under `tenant`: where the write that made it filed its
+// line. Nil for nil, which is a write that does nothing to a seal.
+func (v *rowSeal) in(tenant uuid.UUID) *rowSeal {
+	if v == nil {
+		return nil
+	}
+
+	c := *v
+	c.tenant = tenant
+	return &c
+}
+
+// keepSeals does what `vs` say to the seals of their rows, in the transaction `db`
+// runs in: kept for its commit when it keeps anything, as the trail is, and
+// written now when it does not. A nil of `vs` is a write that does nothing
+// to a seal.
+func keepSeals(ctx context.Context, db *ent.Client, vs ...*rowSeal) error {
+	vs = slices.DeleteFunc(vs, func(v *rowSeal) bool { return v == nil })
+	if len(vs) == 0 {
+		return nil
+	}
+	if k, ok := dialect.KeepOf(db.Driver()); ok {
+		return keptSealsOf(k, db).add(ctx, vs)
+	}
+
+	return writeSeals(ctx, db, vs)
+}
+
+// keptSeals is the seals a transaction has written and not yet sent, kept by
+// it ([dialect.Keep]) and written by its commit, a few hundred at a time
+// before that, or ahead of any statement about the table -- as [keptTrail]
+// is, and for the same reasons.
+type keptSeals struct {
+	db      *ent.Client
+	vs      []*rowSeal
+	writing bool
+}
+
+// keptSealsKey is what a transaction keeps its [keptSeals] under.
+type keptSealsKey struct{}
+
+// keptSealsAbout is whether a statement is about the seals: the table's
+// name as a word of it.
+var keptSealsAbout = regexp.MustCompile(`\b` + regexp.QuoteMeta(rowseal.Table) + `\b`).MatchString
+
+func keptSealsOf(k *dialect.Keep, db *ent.Client) *keptSeals {
+	return k.Value(keptSealsKey{}, func() any {
+		v := &keptSeals{db: db}
+		k.BeforeCommit(v.write)
+		k.BeforeStatement(keptSealsAbout, v.write)
+		return v
+	}).(*keptSeals)
+}
+
+func (v *keptSeals) add(ctx context.Context, vs []*rowSeal) error {
+	v.vs = append(v.vs, vs...)
+	if len(v.vs) < keptSealsRows {
+		return nil
+	}
+
+	return v.write(ctx)
+}
+
+func (v *keptSeals) write(ctx context.Context) error {
+	if v.writing || len(v.vs) == 0 {
+		return nil
+	}
+	v.writing = true
+	defer func() { v.writing = false }()
+
+	vs := v.vs
+	v.vs = nil
+
+	return writeSeals(ctx, v.db, vs)
+}
+
+// keptSealsRows is how many seals one statement writes.
+const keptSealsRows = 500
+
+// writeSeals sends what `vs` say: the last word about each row, the seals in
+// an INSERT that writes over the seal there is, a few hundred a statement,
+// and the seals of rows that went in one DELETE.
+func writeSeals(ctx context.Context, db *ent.Client, vs []*rowSeal) error {
+	last := map[pdid.Id]*rowSeal{}
+	order := []pdid.Id{}
+	for _, v := range vs {
+		if _, ok := last[v.object]; !ok {
+			order = append(order, v.object)
+		}
+		last[v.object] = v
+	}
+
+	put := []*rowSeal{}
+	gone := []uuid.UUID{}
+	for _, k := range order {
+		if v := last[k]; v.gone {
+			gone = append(gone, uuid.UUID(k))
+		} else {
+			put = append(put, v)
+		}
+	}
+
+	drv := db.Driver()
+	for page := range slices.Chunk(put, keptSealsRows) {
+		q := sql.Dialect(drv.Dialect()).Insert(rowseal.Table).
+			Columns(rowseal.FieldId, rowseal.FieldTenantId, rowseal.FieldSum, rowseal.FieldFields)
+		for _, v := range page {
+			fields, err := json.Marshal(v.fields)
+			if err != nil {
+				return err
+			}
+			q.Values(uuid.UUID(v.object), v.tenant, v.sum, json.RawMessage(fields))
+		}
+		q.OnConflict(sql.ConflictColumns(rowseal.FieldId), sql.ResolveWithNewValues())
+
+		query, args := q.Query()
+		var res sql1.Result
+		if err := drv.Exec(ctx, query, args, &res); err != nil {
+			return fmt.Errorf("write the seals: %w", err)
+		}
+	}
+	for page := range slices.Chunk(gone, keptSealsRows) {
+		if _, err := db.RowSeal.Delete().Where(rowseal.IdIn(page...)).Exec(ctx); err != nil {
+			return fmt.Errorf("remove the seals: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// carrySeals binds the seals of the rows a pass carried a line forward for
+// to the lines it wrote ([audit.Digest.CarrySeal]): what each said of its
+// row, copied, and bound to the new line. A row with no seal has none to
+// carry.
+func carrySeals(ctx context.Context, db *ent.Client, d *audit1.Digest, lines map[pdid.Id]audit1.Line, tenants map[pdid.Id]uuid.UUID) error {
+	if len(lines) == 0 {
+		return nil
+	}
+
+	seals, err := sealsOf(ctx, db, slices.Collect(maps.Keys(lines)))
+	if err != nil {
+		return err
+	}
+
+	vs := make([]*rowSeal, 0, len(seals))
+	for id, v := range seals {
+		sum, err := d.CarrySeal(v.Sum, id, lines[id])
+		if err != nil {
+			return fmt.Errorf("carry the seal of %s forward: %w", id, err)
+		}
+		vs = append(vs, &rowSeal{object: id, tenant: tenants[id], sum: sum, fields: v.Fields})
+	}
+
+	return writeSeals(ctx, db, vs)
+}
+
+// sealsOf is the seal of each of `ids` that has one, as a check of the rows
+// reads it.
+func sealsOf(ctx context.Context, db *ent.Client, ids []pdid.Id) (map[pdid.Id]audit1.Sealed, error) {
+	out := map[pdid.Id]audit1.Sealed{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+
+	vs, err := db.RowSeal.Query().Where(rowseal.IdIn(uuids(ids)...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range vs {
+		out[pdid.Id(v.Id)] = audit1.Sealed{Sum: v.Sum, Fields: v.Fields}
+	}
+
+	return out, nil
 }
 
 // Digests checks every row of every kind on the trail -- every kind but the
@@ -5016,7 +5266,12 @@ func checkedHolder(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			if err != nil {
+				return err
+			}
+
+			seals, err := sealsOf(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded, Seals: seals}
 			return err
 		})
 
@@ -5025,6 +5280,7 @@ func checkedHolder(db *ent.Client) audit1.Kind {
 
 	return audit1.Kind{
 		Domain: HolderDomain,
+		Sealed: true,
 		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
 			return read(ctx, holder.IdGT(uuid.UUID(after)))
 		},
@@ -5200,7 +5456,12 @@ func checkedRobot(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			if err != nil {
+				return err
+			}
+
+			seals, err := sealsOf(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded, Seals: seals}
 			return err
 		})
 
@@ -5209,6 +5470,7 @@ func checkedRobot(db *ent.Client) audit1.Kind {
 
 	return audit1.Kind{
 		Domain: RobotDomain,
+		Sealed: true,
 		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
 			return read(ctx, robot.IdGT(uuid.UUID(after)))
 		},
@@ -5945,6 +6207,9 @@ func unread(ids []pdid.Id, rows []audit1.Live) pdid.Id {
 // [RecordErased] says for each of them that has no row.
 func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action string, content audit1.Contents, rows []audit1.Live) error {
 	qs := make([]*ent.AuditCreate, 0, len(rows))
+	// And the seal of each row of a sealed kind, as its write would leave it:
+	// written over the one there is, or removed with the row.
+	seals := make([]*rowSeal, 0, len(rows))
 	for _, v := range rows {
 		w, err := audit1.Of(ctx, action, v.Object, nil)
 		if err != nil {
@@ -5952,7 +6217,7 @@ func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action strin
 		}
 
 		at := line(s, action)
-		digest, covered, err := digested(content.Digest, v.Object, v.Row, at)
+		digest, covered, sealing, err := digested(content.Digest, v.Object, v.Row, at)
 		if err != nil {
 			return fmt.Errorf("the trail of %s: %w", action, err)
 		}
@@ -5966,6 +6231,7 @@ func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action strin
 		if tenant == uuid.Nil() {
 			tenant = uuid.UUID(w.Tenant)
 		}
+		seals = append(seals, sealing.in(tenant))
 		domain := uint32(v.Object.Domain())
 
 		q := db.Audit.Create().
@@ -5995,7 +6261,7 @@ func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action strin
 		}
 	}
 
-	return nil
+	return keepSeals(ctx, db, seals...)
 }
 
 func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Domain, vs []trail.Carried) (int, error) {
@@ -6060,12 +6326,19 @@ func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Dom
 			return n, err
 		}
 		qs := []*ent.AuditCreate{}
+		// The seals of the rows carried for, which go with their lines.
+		rebound := map[pdid.Id]audit1.Line{}
+		tenants := map[pdid.Id]uuid.UUID{}
 		for _, v := range page {
 			if !there[v.Object] {
 				continue
 			}
 
 			at := line(srv, trail.CarriedAction)
+			if isSealed(v.Object) {
+				rebound[v.Object] = at
+				tenants[v.Object] = v.Tenant.Uuid()
+			}
 			sum, err := digest.Carry(v.Sum, v.Object, at)
 			if err != nil {
 				return n, fmt.Errorf("carry %s forward: %w", v.Object, err)
@@ -6093,6 +6366,9 @@ func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Dom
 				return n, fmt.Errorf("write the trail: %w", err)
 			}
 			n += len(vs)
+		}
+		if err := carrySeals(ctx, s.db, digest, rebound, tenants); err != nil {
+			return n, err
 		}
 	}
 
@@ -7784,6 +8060,39 @@ func archivedRows(vs []*ent.Archived) []trail.Archived {
 	return out
 }
 
+func (s trailStore) BlankSeals(ctx context.Context, objects []pdid.Id, forgotten func(pdid.Id) []byte) (int, error) {
+	n := 0
+	for page := range slices.Chunk(objects, audit1.RowsPage) {
+		ids, err := s.db.RowSeal.Query().Where(rowseal.IdIn(uuids(page)...)).Ids(ctx)
+		if err != nil || len(ids) == 0 {
+			if err != nil {
+				return n, err
+			}
+			continue
+		}
+		if forgotten == nil {
+			k, err := s.db.RowSeal.Delete().Where(rowseal.IdIn(ids...)).Exec(ctx)
+			n += k
+			if err != nil {
+				return n, err
+			}
+			continue
+		}
+		for _, id := range ids {
+			if err := s.db.RowSeal.UpdateOneId(id).SetSum(forgotten(pdid.Id(id))).Exec(ctx); err != nil {
+				return n, err
+			}
+			n++
+		}
+	}
+
+	return n, nil
+}
+
+func (s trailStore) PurgeSeals(ctx context.Context, tenant pdid.Id) (int, error) {
+	return s.db.RowSeal.Delete().Where(rowseal.TenantId(tenant.Uuid())).Exec(ctx)
+}
+
 // TrailOf is a reader of the archive's documents as the messages they hold:
 // what `policy.Read` and `policy.ReadTenant` are handed, and `trail.Read`,
 // `trail.ReadTenant` and `trail.ReadFiles`, which check nothing.
@@ -8702,6 +9011,7 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		&apptest.Pulse{},
 		&apptest.Reading{},
 		&apptest.Robot{},
+		&apptest.RowSeal{},
 		&apptest.Seal{},
 		&apptest.Tally{},
 		&apptest.Tenant{},

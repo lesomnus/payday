@@ -20,6 +20,7 @@ import { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, Rob
 import { HolderSchema } from './app/payday/holder_pb.js'
 import { OutboxSchema } from './app/payday/outbox_pb.js'
 import { PulseSchema, TallySchema } from './app/tally_pb.js'
+import { RowSealSchema } from './app/payday/rowseal_pb.js'
 import { SealSchema } from './app/seal_pb.js'
 import { TenantSchema } from './app/payday/tenant_pb.js'
 import { ThingSchema } from './shared/thing_pb.js'
@@ -30,6 +31,7 @@ import { CellService, FleetService, JointService, PairingService, ReadingService
 import { HolderService } from './app/payday/holder_svc_pb.js'
 import { OutboxService } from './app/payday/outbox_svc_pb.js'
 import { PulseService, TallyService } from './app/tally_svc_pb.js'
+import { RowSealService } from './app/payday/rowseal_svc_pb.js'
 import { SealService } from './app/seal_svc_pb.js'
 import { TenantService } from './app/payday/tenant_svc_pb.js'
 import { ThingService } from './shared/thing_svc_pb.js'
@@ -169,6 +171,16 @@ export const Robot = {
 	service: RobotService,
 } as const satisfies EntityDesc
 
+/** app.RowSeal, as the store holds it. */
+export const RowSeal = {
+	typeName: "app.RowSeal",
+	schema: RowSealSchema,
+	domain: 255,
+	key: "id",
+	ids: ["id", "tenantId"],
+	service: RowSealService,
+} as const satisfies EntityDesc
+
 /** app.Seal, as the store holds it. */
 export const Seal = {
 	typeName: "app.Seal",
@@ -218,5 +230,5 @@ export const Thing = {
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse, Reading, Robot, Seal, Tally, Tenant, Thing] as const
+export const entities = [Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing] as const
 

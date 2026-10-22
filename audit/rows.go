@@ -77,12 +77,29 @@ type Recorded struct {
 type Page struct {
 	Rows     []Live
 	Recorded map[pdid.Id]Recorded
+
+	// Seals is the seal of each of the rows that has one, for a kind that is
+	// sealed ([Kind.Sealed]), read in the same snapshot.
+	Seals map[pdid.Id]Sealed
+}
+
+// Sealed is what a check needs of a row's seal: the seal, and the fields it
+// covers, which are kept beside it as a digest's are. See [Digest.Seal].
+type Sealed struct {
+	Sum    []byte
+	Fields []uint32
 }
 
 // Kind is what a check reads of one kind of thing. The generated `Digests`
 // makes one for each kind on the trail.
 type Kind struct {
 	Domain pdid.Domain
+
+	// Sealed is whether the kind's rows are sealed: it declares a field
+	// `personal`, which the trail's digest leaves out and a seal covers
+	// (payday#115). A row of it whose digest matches is checked against its
+	// seal too.
+	Sealed bool
 
 	// After is the rows after `after` in identifier order, at most
 	// [RowsPage] of them; none at the end. The zero identifier is before
@@ -179,6 +196,20 @@ type Rows struct {
 	// newest line of the trail about them had left the database.
 	Archived int
 
+	// Unsealed is the rows of a sealed kind whose digest matches and whose
+	// newest line was written by a write that sealed nothing: by a build from
+	// before seals, or before the kind declared the field personal. What
+	// their personal fields are, nothing vouches for yet. They are counted
+	// rather than found, as [Rows.BeforeDigests] are -- and listed, and in
+	// [Rows.Digest], so that the acceptance that seals them (an app's `trail
+	// rows --accept`, with `Record`) seals the rows somebody reviewed.
+	Unsealed []pdid.Id
+
+	// Forgotten is how many of the rows that match have a seal that says
+	// their personal fields were forgotten ([Digest.Forgotten]): the digest
+	// vouches for the rest of them, and nothing for what the person was.
+	Forgotten int
+
 	// Skipped is the kinds the check did not read, each with why, so that a
 	// check that found nothing says what it did not look at.
 	Skipped []Skipped
@@ -193,11 +224,13 @@ func (r Rows) Ok() bool {
 }
 
 // Digest is the findings as one digest: each a line of which finding it is and
-// the row, in an order of their own. An acceptance of a check -- an app's
-// `trail rows --accept`, which puts the rows on the trail with `Record` -- names
-// it, and is refused when a check now finds anything else (payday#115): what
-// is accepted is what somebody looked at, and no row found after they did. The
-// counts are not in it, nor the order the rows were read in.
+// the row, in an order of their own -- and the rows nothing seals yet
+// ([Rows.Unsealed]), which an acceptance seals. An acceptance of a check -- an
+// app's `trail rows --accept`, which puts the rows on the trail with `Record`
+// -- names it, and is refused when a check now finds anything else
+// (payday#115): what is accepted is what somebody looked at, and no row found
+// after they did. The counts are not in it, nor the order the rows were read
+// in.
 func (r Rows) Digest() string {
 	b := &bytes.Buffer{}
 	for _, l := range []struct {
@@ -210,6 +243,7 @@ func (r Rows) Digest() string {
 		{"not-on-trail", r.NotOnTrail},
 		{"missing", r.Missing},
 		{"key-not-held", r.KeyNotHeld},
+		{"unsealed", r.Unsealed},
 	} {
 		vs := slices.Clone(l.ids)
 		slices.SortFunc(vs, func(a, b pdid.Id) int { return bytes.Compare(a[:], b[:]) })
@@ -257,7 +291,7 @@ func CheckKind(ctx context.Context, d *Digest, k Kind, archived Archived, out *R
 			seen[v.Object] = true
 		}
 
-		rest, err := check(d, p.Rows, p.Recorded, out)
+		rest, err := check(d, k, p, p.Recorded, out)
 		if err != nil {
 			return err
 		}
@@ -296,7 +330,7 @@ func CheckKind(ctx context.Context, d *Digest, k Kind, archived Archived, out *R
 			}
 		}
 
-		rest, err := check(d, p.Rows, recorded, out)
+		rest, err := check(d, k, p, recorded, out)
 		if err != nil {
 			return err
 		}
@@ -309,11 +343,11 @@ func CheckKind(ctx context.Context, d *Digest, k Kind, archived Archived, out *R
 	return gone(ctx, d, k, seen, said, out)
 }
 
-// check checks the rows `recorded` says something about and adds what it found
-// to `out`, and answers with the rest, unread.
-func check(d *Digest, rows []Live, recorded map[pdid.Id]Recorded, out *Rows) ([]Live, error) {
+// check checks the rows of `p` that `recorded` says something about and adds
+// what it found to `out`, and answers with the rest, unread.
+func check(d *Digest, k Kind, p Page, recorded map[pdid.Id]Recorded, out *Rows) ([]Live, error) {
 	rest := []Live{}
-	for _, v := range rows {
+	for _, v := range p.Rows {
 		r, ok := recorded[v.Object]
 		if !ok {
 			rest = append(rest, v)
@@ -343,7 +377,13 @@ func check(d *Digest, rows []Live, recorded map[pdid.Id]Recorded, out *Rows) ([]
 
 		switch verdict {
 		case Matches:
-			out.Matches++
+			if !k.Sealed {
+				out.Matches++
+				break
+			}
+			if err := checkSealed(d, v, r, p.Seals, out); err != nil {
+				return nil, err
+			}
 		case Retired:
 			out.Retired++
 		case KeyNotHeld:
@@ -356,6 +396,50 @@ func check(d *Digest, rows []Live, recorded map[pdid.Id]Recorded, out *Rows) ([]
 	}
 
 	return rest, nil
+}
+
+// checkSealed is the rest of a check of a row of a sealed kind whose digest
+// matches: its personal fields, against its seal (payday#115).
+//
+// The newest line says whether its write sealed the row, bound into its MAC.
+// One that sealed nothing is a row from before seals, counted until it is
+// sealed; one that did and has no seal is a row somebody took the seal off,
+// which is a change to it the trail did not record.
+func checkSealed(d *Digest, v Live, r Recorded, seals map[pdid.Id]Sealed, out *Rows) error {
+	if !Sealing(r.Digest) {
+		out.Unsealed = append(out.Unsealed, v.Object)
+		return nil
+	}
+
+	s, ok := seals[v.Object]
+	if !ok || len(s.Sum) == 0 {
+		out.Differs = append(out.Differs, v.Object)
+		return nil
+	}
+
+	verdict, err := d.CheckSeal(s.Sum, v.Object, v.Row, s.Fields, r.Line)
+	if err != nil && !errors.Is(err, ErrSeal) {
+		return err
+	}
+
+	switch verdict {
+	case Matches:
+		out.Matches++
+	case Forgotten:
+		out.Matches++
+		out.Forgotten++
+	case Retired:
+		out.Retired++
+	case KeyNotHeld:
+		out.KeyNotHeld = append(out.KeyNotHeld, v.Object)
+		out.unheldPrints(d, sealPrints(s.Sum))
+	case Forged:
+		out.Forged = append(out.Forged, v.Object)
+	default:
+		out.Differs = append(out.Differs, v.Object)
+	}
+
+	return nil
 }
 
 // gone is the third pass of [CheckKind]: what the trail is about and the first
@@ -480,7 +564,13 @@ func (d *Digest) began(id pdid.Id, r Recorded, v Verdict) error {
 // unheld files a digest under a key the check was not given.
 func (o *Rows) unheld(d *Digest, id pdid.Id, sum []byte) {
 	o.KeyNotHeld = append(o.KeyNotHeld, id)
-	for _, p := range prints(sum) {
+	o.unheldPrints(d, prints(sum))
+}
+
+// unheldPrints adds to [Rows.Unheld] each of `ps` the check does not hold and
+// was not told was let go, once.
+func (o *Rows) unheldPrints(d *Digest, ps []Fingerprint) {
+	for _, p := range ps {
 		if _, v := d.keyOf(p); v == KeyNotHeld && !slices.Contains(o.Unheld, p) {
 			o.Unheld = append(o.Unheld, p)
 		}
@@ -493,10 +583,14 @@ func prints(sum []byte) []Fingerprint {
 	switch {
 	case len(sum) == onlyRow && sum[0] == 1:
 		return []Fingerprint{Fingerprint(sum[1:9])}
-	case len(sum) == onlyLine && sum[0] == DigestVersion:
+	case len(sum) == onlyLine && sum[0] == 2:
 		return []Fingerprint{Fingerprint(sum[1:9])}
-	case len(sum) == lineAndRow && sum[0] == DigestVersion:
+	case len(sum) == lineAndRow && sum[0] == 2:
 		return []Fingerprint{Fingerprint(sum[1:9]), Fingerprint(sum[onlyLine : onlyLine+8])}
+	case len(sum) == onlyLine3 && sum[0] == DigestVersion:
+		return []Fingerprint{Fingerprint(sum[head : head+8])}
+	case len(sum) == lineAndRow3 && sum[0] == DigestVersion:
+		return []Fingerprint{Fingerprint(sum[head : head+8]), Fingerprint(sum[onlyLine3 : onlyLine3+8])}
 	}
 
 	return nil
