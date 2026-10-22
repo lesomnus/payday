@@ -1412,6 +1412,50 @@ deployment's lease, `Policy.Lease`, under a name of their own (`trail.Turn`):
   turn, and look through the archive after it, where a pass that held the rows
   has put them by then; `Policy.Collect` discards in its own.
 
+#### An erasure decided in a transaction is owed, then paid
+
+An app decides an erasure in a transaction of its own — a person
+pseudonymized, a membership ended — and the trail's erasure belongs in it.
+But the archive takes no part in a transaction: an act that wrote it as it
+went, then rolled back, would leave the archive after an erasure that never
+happened, the manifest no longer its account, and a checkpoint the database
+never numbered (`behind`, which stops every act until an operator accepts).
+Written after the commit by the process that committed, a crash in between
+would lose the archive's half without a word.
+
+So `Policy.Forget` on a store inside a transaction (`Store.InTx`) does the
+database's half there — blanks the rows, in the trail's turn, as it always
+did — and writes one row of payday's `Owed` per object, in the same
+transaction: the archive's half, owed. It writes nothing the archive keeps,
+and `Forgotten.Owed` says so. A rollback takes the owed rows with the rest; a
+commit keeps them for whatever pays them:
+
+- **`Policy.Pay(ctx, s)`**, for an app that wants the archive's half at once,
+  right after its commit;
+- **the next pass**, before it moves anything — a row moved into a chunk first
+  would be one more copy of what is owed to be forgotten.
+
+Paying forgets each object in both halves, writes `Forget`'s receipts, removes
+the owed rows that are done and ends in a checkpoint. A row is removed only
+once both halves are done and their receipts are written: blanking a blank row
+changes nothing, so a process that stops part of the way leaves it for the
+next pass, and paying twice is paying once. One whose archive's half could not
+be done — a chunk whose bytes are not its digest — stays owed. Outside a
+transaction `Forget` owes and pays at once, so its own crash is covered too.
+
+**A hold keeps a debt.** An owed erasure a legal hold keeps part of stays
+owed, the rows the hold is on kept as they were, and says whose holds
+(`Owed.held_by`, `Policy.Owing` by tenant). The pass that finds the hold lifted
+pays the rest, and nobody has to ask again.
+
+**Every other act is refused inside a transaction**, with `trail.ErrInTx`,
+before it writes anything: a pass, `Archive`, `Collect`, `Purge`,
+`PurgeTenant`, `RetireTenant`, `Return`, `ExportTenant`, `Accept` and `Pay`.
+What has to happen in an app's transaction is the erasure, and only that is
+taken there. Questions — `Verify`, `Doomed`, `Preview`, `Read`, the plans,
+`Retired`, `Owing` — are answered, since what they write, if anything, is the
+database's alone.
+
 What a pass does inside the archive — a fold, a file filed by tenant — is
 the erasures' rounds to answer, as it was. It is not the loop's lease,
 `payday.trail`, which one process holds for as long as it runs the passes: an

@@ -69,6 +69,21 @@ func (h *Held) by(id pdid.Id) {
 	h.By = append(h.By, id)
 }
 
+// merge counts what another kept into this, and whose holds.
+func (h *Held) merge(o Held) {
+	if h == nil {
+		return
+	}
+
+	h.keep(o.Rows, o.Chunks)
+	for _, id := range o.By {
+		h.by(id)
+	}
+	for _, id := range o.Unanswered {
+		h.unanswered(id)
+	}
+}
+
 func (h *Held) unanswered(id pdid.Id) {
 	if h == nil || slices.Contains(h.Unanswered, id) {
 		return
@@ -312,6 +327,12 @@ type Forgotten struct {
 	// what the person was, and goes whatever a hold keeps of the trail -- a
 	// hold keeps the record of what happened, and a seal is no part of it.
 	Seals int
+
+	// Owed is how many of the objects the archive's half of forgetting is
+	// still owed for ([Owed]): every one, for an erasure decided inside a
+	// transaction, which owes it there; and outside one, those a hold kept
+	// part of, which the pass that finds the hold lifted finishes.
+	Owed int
 }
 
 // Forget blanks the contents of every row about these objects, in the database
@@ -369,38 +390,239 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgo
 	if len(objects) == 0 {
 		return out, nil
 	}
+	if s == nil {
+		return out, errors.New("no store to forget in")
+	}
 
+	// Inside an app's transaction: the database's half now, and the
+	// archive's owed, both in the transaction, so that a rollback takes both
+	// and a commit keeps what pays the rest.
+	if s.InTx() {
+		x, err := p.start(s)
+		if err != nil {
+			return out, err
+		}
+		if err := x.blankAbout(ctx, s, objects, &out, nil); err != nil {
+			return out, err
+		}
+		if err := s.Owe(ctx, objects); err != nil {
+			return out, fmt.Errorf("the erasure owed: %w", err)
+		}
+		out.Owed = len(objects)
+
+		return out, nil
+	}
+
+	// Outside one, owed first and paid at once: a process that stops in
+	// between leaves the debt for the next pass, and nothing is lost.
+	if err := s.Owe(ctx, objects); err != nil {
+		return out, fmt.Errorf("the erasure owed: %w", err)
+	}
+	paid, err := p.pay(ctx, s, objects)
+
+	return paid.Forgotten, err
+}
+
+// Paid is what paying the erasures owed did ([Policy.Pay]).
+type Paid struct {
+	// Forgotten is what was reached of both halves, of every object paid
+	// for: the rows blanked, the rows a hold kept, the seals.
+	Forgotten
+
+	// Objects is how many erasures owed were paid, in both halves, and
+	// removed.
+	Objects int
+}
+
+// Pay pays the erasures owed ([Owed]): forgets each object in both halves, as
+// [Policy.Forget] does outside a transaction, writes its receipts, and removes
+// the ones done -- after an app's transaction that owed them has committed,
+// for an app that wants the archive's half at once. A pass pays what is owed
+// before it moves anything, so an app that does not call it is paid at the
+// next one.
+//
+// # Done, and not before
+//
+// An erasure owed is removed once both halves are done and their receipts are
+// written, and not before. Blanking a blank row, or a chunk with nothing of
+// them left, changes nothing, so a process that stops part of the way leaves
+// it for the next pass, which does again only what is left: paying twice is
+// paying once. One whose archive's half failed -- a chunk whose bytes are not
+// its digest, which is left for [Policy.Verify] -- stays owed until it can be
+// done.
+//
+// # Under a hold
+//
+// One a legal hold keeps part of stays owed, the rows the hold is on kept as
+// they were, and says whose holds kept it ([Owed.HeldBy], [Policy.Owing]). The
+// pass that finds them lifted pays the rest, and nobody has to ask again.
+//
+// It is an act: in the trail's turn on [Policy.Lease] for the database's half,
+// ended in a checkpoint, and refused inside a transaction ([ErrInTx]).
+func (p Policy) Pay(ctx context.Context, s Store) (Paid, error) {
+	return p.pay(ctx, s, nil)
+}
+
+// pay is [Policy.Pay], of the erasures owed for `only` when it names
+// objects, and of every one otherwise.
+func (p Policy) pay(ctx context.Context, s Store, only []pdid.Id) (_ Paid, err error) {
 	x, err := p.act(s)
 	if err != nil {
-		return out, err
+		return Paid{}, err
 	}
 	defer x.cover(ctx, "forget", &err)
 
-	// The database, in the trail's turn: a pass holding a copy of one of
-	// these rows has written it into the archive by then, where the archive's
-	// half finds it.
-	if err := x.blankAbout(ctx, s, objects, &out); err != nil {
-		return out, err
+	return x.pay(ctx, only)
+}
+
+// pay pays what is owed, a batch at a time, oldest first.
+func (x *pass) pay(ctx context.Context, only []pdid.Id) (Paid, error) {
+	out := Paid{}
+	of := map[pdid.Id]bool{}
+	for _, v := range only {
+		of[v] = true
 	}
 
-	held := out.Held.Rows
-	x.r.add(Receipt{Act: "forget", Where: "database", Blanked: out.Rows, Objects: len(objects), Held: held})
+	at := Cursor{}
+	for {
+		vs, err := x.s.Owed(ctx, at, Batch)
+		if err != nil {
+			return out, fmt.Errorf("the erasures owed: %w", err)
+		}
+		if len(vs) == 0 {
+			break
+		}
+		at = Cursor{Created: vs[len(vs)-1].Created, Key: vs[len(vs)-1].Key}
 
-	// The archive. Its receipt is written whatever it answered, since what it
-	// blanked before it stopped is gone all the same.
+		if len(only) > 0 {
+			vs = slices.DeleteFunc(vs, func(v Owed) bool { return !of[v.Object] })
+		}
+		if len(vs) > 0 {
+			if err := x.payOwed(ctx, vs, &out); err != nil {
+				return out, err
+			}
+		}
+
+		if len(vs) < Batch && len(only) > 0 {
+			break
+		}
+	}
+
+	return out, nil
+}
+
+// payOwed pays one batch of what is owed: both halves of every object in it,
+// their receipts, and then the ones no hold kept, removed.
+func (x *pass) payOwed(ctx context.Context, vs []Owed, out *Paid) error {
+	objects := []pdid.Id{}
+	seen := map[pdid.Id]bool{}
+	for _, v := range vs {
+		if !seen[v.Object] {
+			seen[v.Object] = true
+			objects = append(objects, v.Object)
+		}
+	}
+
+	// Whose holds kept which object, in either half.
+	whose := map[pdid.Id][]pdid.Id{}
+	f := Forgotten{}
+	if err := x.blankAbout(ctx, x.s, objects, &f, whose); err != nil {
+		return err
+	}
+	held := f.Held.Rows
+	x.r.add(Receipt{Act: "forget", Where: "database", Blanked: f.Rows, Objects: len(objects), Held: held})
+
 	var aerr error
-	if p.Archive != nil {
+	if x.p.Archive != nil {
 		var n, k int
-		n, k, aerr = x.forget(ctx, objects, &out.Held)
-		out.Archived = n
-		x.r.add(Receipt{Act: "forget", Where: "archive", Blanked: n, Chunks: k, Objects: len(objects), Held: out.Held.Rows - held})
+		n, k, aerr = x.forget(ctx, objects, &f.Held, whose)
+		f.Archived = n
+		x.r.add(Receipt{Act: "forget", Where: "archive", Blanked: n, Chunks: k, Objects: len(objects), Held: f.Held.Rows - held})
 	}
 
-	return out, errors.Join(aerr, x.r.write(ctx, x.p.Archive))
+	// The receipts before anything owed goes: a debt removed is one whose
+	// erasure is on the record.
+	if err := errors.Join(aerr, x.r.write(ctx, x.p.Archive)); err != nil {
+		out.add(f)
+		out.Owed += len(vs)
+		return err
+	}
+
+	paid := []any{}
+	for _, v := range vs {
+		if by := whose[v.Object]; len(by) > 0 {
+			if err := x.s.Kept(ctx, v.Key, by); err != nil {
+				return err
+			}
+			f.Owed++
+			continue
+		}
+		paid = append(paid, v.Key)
+	}
+	n, err := x.s.Paid(ctx, paid)
+	out.Objects += n
+	out.add(f)
+
+	return err
+}
+
+// add counts what one batch of a payment reached into the whole.
+func (v *Paid) add(f Forgotten) {
+	v.Rows += f.Rows
+	v.Archived += f.Archived
+	v.Seals += f.Seals
+	v.Owed += f.Owed
+	v.Held.merge(f.Held)
+}
+
+// Owing is what is owed of the trail's erasures and not yet paid
+// ([Policy.Owing]).
+type Owing struct {
+	// Objects is how many erasures are owed, and Oldest when the oldest was
+	// owed: one owed long ago and still there is one a hold keeps, or one
+	// that cannot be done.
+	Objects int
+	Oldest  time.Time
+
+	// Held is, by the tenant whose hold kept it, how many of them a hold
+	// kept part of when they were last paid: what an operator looks at to
+	// see what waits for a hold to lift.
+	Held map[pdid.Id]int
+}
+
+// Owing answers what is owed of the trail's erasures: how many, since when,
+// and, by tenant, how many a legal hold keeps. It reads the store, and changes
+// nothing.
+func (p Policy) Owing(ctx context.Context, s Store) (Owing, error) {
+	out := Owing{Held: map[pdid.Id]int{}}
+	at := Cursor{}
+	for {
+		vs, err := s.Owed(ctx, at, Batch)
+		if err != nil {
+			return out, err
+		}
+		for _, v := range vs {
+			out.Objects++
+			if out.Oldest.IsZero() || v.Created.Before(out.Oldest) {
+				out.Oldest = v.Created
+			}
+			for _, t := range v.HeldBy {
+				out.Held[t]++
+			}
+		}
+		if len(vs) < Batch {
+			break
+		}
+		at = Cursor{Created: vs[len(vs)-1].Created, Key: vs[len(vs)-1].Key}
+	}
+
+	return out, nil
 }
 
 // blankAbout is the database's half of [Policy.Forget], in the trail's turn.
-func (x *pass) blankAbout(ctx context.Context, s Store, objects []pdid.Id, out *Forgotten) error {
+// When `whose` is not nil it is told, of each object a hold kept rows about,
+// whose holds.
+func (x *pass) blankAbout(ctx context.Context, s Store, objects []pdid.Id, out *Forgotten, whose map[pdid.Id][]pdid.Id) error {
 	held, give, err := x.turn(ctx)
 	if err != nil {
 		return err
@@ -436,6 +658,30 @@ func (x *pass) blankAbout(ctx context.Context, s Store, objects []pdid.Id, out *
 		}
 	}
 
+	// Which of them a hold kept, asked of each alone, which is the rare
+	// case: a row read without its document does not say whose it is about.
+	if whose != nil && out.Held.Rows > 0 {
+		for _, o := range objects {
+			at := Cursor{}
+			for {
+				vs, err := s.Heads(held, Scope{Objects: []pdid.Id{o}}, forever, at, Batch)
+				if err != nil {
+					return err
+				}
+				for _, v := range vs {
+					at = Cursor{Created: v.Created, Key: v.Key}
+					var h Held
+					if x.held(held, v.Tenants, v.Domain, true, &h) {
+						whose[o] = keptBy(whose[o], h)
+					}
+				}
+				if len(vs) < Batch {
+					break
+				}
+			}
+		}
+	}
+
 	// And the rows' seals, in the same turn: a pass carrying a line forward
 	// carries its row's seal, and one doing so beside this would write back
 	// the seal this blanked.
@@ -443,6 +689,17 @@ func (x *pass) blankAbout(ctx context.Context, s Store, objects []pdid.Id, out *
 	out.Seals += n
 
 	return err
+}
+
+// keptBy is the tenants whose holds kept something, those of `h` added.
+func keptBy(by []pdid.Id, h Held) []pdid.Id {
+	for _, id := range slices.Concat(h.By, h.Unanswered) {
+		if !slices.Contains(by, id) {
+			by = append(by, id)
+		}
+	}
+
+	return by
 }
 
 // forgotten is what a forgotten row's seal is replaced with: a seal that says
@@ -456,8 +713,13 @@ func (x *pass) forgotten() func(pdid.Id) []byte {
 }
 
 // forget is the archive's half of [Policy.Forget], and answers how many rows
-// about them it reached and how many chunks it wrote again.
-func (x *pass) forget(ctx context.Context, objects []pdid.Id, h *Held) (int, int, error) {
+// about them it reached and how many chunks it wrote again. When `kept` is not
+// nil it is told, of each object a hold kept a row about, whose holds.
+func (x *pass) forget(ctx context.Context, objects []pdid.Id, h *Held, whose map[pdid.Id][]pdid.Id) (int, int, error) {
+	ids := make(map[string]pdid.Id, len(objects))
+	for _, v := range objects {
+		ids[encoded(v)] = v
+	}
 	of := make(map[string]bool, len(objects))
 	marks := make([][]byte, 0, len(objects))
 	for _, v := range objects {
@@ -496,7 +758,12 @@ func (x *pass) forget(ctx context.Context, objects []pdid.Id, h *Held) (int, int
 				if !of[v.Object] {
 					return line, kept, nil
 				}
-				if x.held(ctx, v.tenants(), pdid.Domain(v.Domain), true, h) {
+				var hh Held
+				if x.held(ctx, v.tenants(), pdid.Domain(v.Domain), true, &hh) {
+					h.merge(hh)
+					if whose != nil {
+						whose[ids[v.Object]] = keptBy(whose[ids[v.Object]], hh)
+					}
 					return line, heldBack, nil
 				}
 				if !v.contents() {

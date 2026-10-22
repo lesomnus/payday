@@ -873,6 +873,16 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 		}
 	}
 
+	// The erasures owed, before anything moves: a row moved into a chunk
+	// first would be one more copy of what is owed to be forgotten. What a
+	// hold keeps stays owed, and is said.
+	if paid, err := x.pay(ctx, nil); err != nil {
+		log.From(ctx).WarnContext(ctx, "trail: the erasures owed, and what is left of them is paid by the next pass", "err", err, "paid", paid.Objects)
+	} else if paid.Objects > 0 || paid.Owed > 0 {
+		log.From(ctx).InfoContext(ctx, "trail: erasures owed, paid", "paid", paid.Objects, "rows", paid.Rows, "archived", paid.Archived,
+			"held", paid.Owed, "by", paid.Held.By)
+	}
+
 	if p.Tenants == nil {
 		named := p.Named()
 		for _, d := range named {
@@ -1042,9 +1052,34 @@ var ErrNoKey = errors.New("the archive's account is signed, and there is no key 
 	"keep it apart from the database's and the archive's credentials, and name it as audit.checkpoints.key; " +
 	"an archive kept without one until now is accepted once after (`trail accept`)")
 
+// ErrInTx is an act that changes the archive, asked of a store inside a
+// transaction that has not committed ([Store.InTx]).
+//
+// The archive and the checkpoint store take no part in the database's
+// transaction. An act writes them as it goes -- chunks written again,
+// receipts, and at its end a checkpoint the transaction numbers -- so a
+// transaction rolled back after it would take the database back to before the
+// act and leave the archive after it: the manifest no longer the account of
+// what the archive holds, and a checkpoint the database never numbered, which
+// is `behind` and stops every act after it until an operator accepts. Nor is
+// the commit a moment to write it at: written just before, the archive would
+// be ahead of a commit that then failed, and written just after, by the
+// process that committed, it would be lost to a crash in between.
+//
+// So an act is asked once the transaction has committed, of a store that is in
+// none. The one an app has to decide in its own transaction, an erasure, is
+// [Policy.Forget], which owes the archive's half there instead of writing it
+// ([Owed]). A question is answered: what it writes, if anything, is the
+// database's alone.
+var ErrInTx = errors.New("an act on the trail's archive was asked inside a transaction that has not committed, and the archive takes no part in it; ask once the transaction has committed")
+
 // act is [Policy.start] for an act that changes the archive, which is refused
-// without a key to sign what it writes ([ErrNoKey]).
+// inside a transaction ([ErrInTx]) and without a key to sign what it writes
+// ([ErrNoKey]).
 func (p Policy) act(s Store) (*pass, error) {
+	if s != nil && s.InTx() {
+		return nil, ErrInTx
+	}
 	if p.Archive != nil && p.Signer == nil {
 		return nil, ErrNoKey
 	}

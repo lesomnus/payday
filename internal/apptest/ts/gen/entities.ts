@@ -19,6 +19,7 @@ import { AuditSchema } from './app/payday/audit_pb.js'
 import { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, RobotSchema } from './app/robot_pb.js'
 import { HolderSchema } from './app/payday/holder_pb.js'
 import { OutboxSchema } from './app/payday/outbox_pb.js'
+import { OwedSchema } from './app/payday/owed_pb.js'
 import { PulseSchema, TallySchema } from './app/tally_pb.js'
 import { RowSealSchema } from './app/payday/rowseal_pb.js'
 import { SealSchema } from './app/seal_pb.js'
@@ -30,6 +31,7 @@ import { AuditService } from './app/payday/audit_svc_pb.js'
 import { CellService, FleetService, JointService, PairingService, ReadingService, RobotService } from './app/robot_svc_pb.js'
 import { HolderService } from './app/payday/holder_svc_pb.js'
 import { OutboxService } from './app/payday/outbox_svc_pb.js'
+import { OwedService } from './app/payday/owed_svc_pb.js'
 import { PulseService, TallyService } from './app/tally_svc_pb.js'
 import { RowSealService } from './app/payday/rowseal_svc_pb.js'
 import { SealService } from './app/seal_svc_pb.js'
@@ -123,6 +125,16 @@ export const Outbox = {
 	key: "id",
 	ids: ["id", "tenantId", "actorId", "objectId"],
 	service: OutboxService,
+} as const satisfies EntityDesc
+
+/** app.Owed, as the store holds it. */
+export const Owed = {
+	typeName: "app.Owed",
+	schema: OwedSchema,
+	domain: 254,
+	key: "id",
+	ids: ["id", "object"],
+	service: OwedService,
 } as const satisfies EntityDesc
 
 /** app.Pairing, as the store holds it. */
@@ -230,5 +242,5 @@ export const Thing = {
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing] as const
+export const entities = [Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing] as const
 

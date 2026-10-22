@@ -16,6 +16,7 @@ import (
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	owed "github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	pulse "github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
@@ -389,6 +390,7 @@ type Scope interface {
 	ReadingScope(ctx context.Context) (predicate.Reading, error)
 	HolderScope(ctx context.Context) (predicate.Holder, error)
 	OutboxScope(ctx context.Context) (predicate.Outbox, error)
+	OwedScope(ctx context.Context) (predicate.Owed, error)
 	RowSealScope(ctx context.Context) (predicate.RowSeal, error)
 	SealScope(ctx context.Context) (predicate.Seal, error)
 	TallyScope(ctx context.Context) (predicate.Tally, error)
@@ -444,6 +446,9 @@ func (Unscoped) HolderScope(_ context.Context) (predicate.Holder, error) {
 	return nil, nil
 }
 func (Unscoped) OutboxScope(_ context.Context) (predicate.Outbox, error) {
+	return nil, nil
+}
+func (Unscoped) OwedScope(_ context.Context) (predicate.Owed, error) {
 	return nil, nil
 }
 func (Unscoped) RowSealScope(_ context.Context) (predicate.RowSeal, error) {
@@ -738,6 +743,26 @@ func (ss Scopes) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
 	return outbox.And(ps...), nil
 }
 
+func (ss Scopes) OwedScope(ctx context.Context) (predicate.Owed, error) {
+	ps := make([]predicate.Owed, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.OwedScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return owed.And(ps...), nil
+}
+
 func (ss Scopes) RowSealScope(ctx context.Context) (predicate.RowSeal, error) {
 	ps := make([]predicate.RowSeal, 0, len(ss))
 	for _, s := range ss {
@@ -1006,6 +1031,7 @@ func (s Server) Fleet() apptest.FleetServiceServer     { return FleetServiceServ
 func (s Server) Reading() apptest.ReadingServiceServer { return ReadingServiceServer{Store: s.Store} }
 func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceServer{Store: s.Store} }
 func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }
+func (s Server) Owed() apptest.OwedServiceServer       { return OwedServiceServer{Store: s.Store} }
 func (s Server) RowSeal() apptest.RowSealServiceServer { return RowSealServiceServer{Store: s.Store} }
 func (s Server) Seal() apptest.SealServiceServer       { return SealServiceServer{Store: s.Store} }
 func (s Server) Tally() apptest.TallyServiceServer     { return TallyServiceServer{Store: s.Store} }

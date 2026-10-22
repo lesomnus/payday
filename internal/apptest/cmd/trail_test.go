@@ -13,6 +13,7 @@ import (
 	"filippo.io/age"
 	"github.com/lesomnus/flob"
 	"github.com/lesomnus/z"
+	"github.com/protobuf-orm/ent/dialect"
 	"github.com/stretchr/testify/require"
 
 	"github.com/lesomnus/payday/config"
@@ -1296,4 +1297,99 @@ func TestWhatTheTrailSaysIsSealedThroughTheAppsOwnStore(t *testing.T) {
 		})))
 		x.Zero(n, "a tenant's trail outlived it")
 	})
+}
+
+// TestAnErasureIsOwedInItsTransaction (#115) is the real store and a real
+// transaction, SQLite and PostgreSQL: an erasure decided in an app's
+// transaction blanks the database's rows there and owes the archive's half
+// there. Rolled back, both go -- the rows say what they said, nothing is
+// owed, and the archive and its checkpoints never heard of it. Committed, the
+// debt is there, and paying it does the archive's half and removes it.
+func TestAnErasureIsOwedInItsTransaction(t *testing.T) {
+	x := require.New(t)
+	b, ctx := keeping(t, "value")
+
+	v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "one",
+	}.Build())
+	x.NoError(err)
+	who := must(pdid.From(v.GetId()))
+
+	key, _, err := trail.GenerateKey()
+	x.NoError(err)
+	p := trail.Policy{Archive: flob.NewMemStores(), Signer: must(trail.ParseKey(key))}
+	_, err = trail.Archive(ctx, pd.TrailStore(b.Ent), p, trail.Kinds{}, time.Now().Add(time.Hour))
+	x.NoError(err)
+	latest, _, err := pd.TrailStore(b.Ent).Latest(ctx)
+	x.NoError(err)
+
+	said := func() (db int, archived int) {
+		db, err := b.Ent.Audit.Query().Where(entaudit.ObjectId(who.Uuid()), entaudit.ValueNEQ([]byte{})).Count(ctx)
+		x.NoError(err)
+		x.NoError(p.Read(ctx, pd.TrailStore(b.Ent), pd.TrailOf(func(v *app.Audit) error {
+			if pdid.Id(v.GetObjectId()) == who && len(v.GetValue()) > 0 {
+				archived++
+			}
+			return nil
+		})))
+		return db, archived
+	}
+	owed := func() int {
+		vs, err := pd.TrailStore(b.Ent).Owed(ctx, trail.Cursor{}, 10)
+		x.NoError(err)
+		return len(vs)
+	}
+	_, archived := said()
+	x.Positive(archived, "nothing about them was archived, so this proves nothing")
+
+	inTx := func(fn func(s trail.Store) error) func() error {
+		drv, tx, err := dialect.BeginTx(ctx, b.Drv)
+		x.NoError(err)
+		s := pd.TrailStore(b.Ent.WithDriver(drv))
+		x.True(s.InTx(), "a store in a transaction says it is in none")
+		x.NoError(fn(s))
+		return func() error { return tx.Commit() }
+	}
+
+	// Rolled back.
+	drv, tx, err := dialect.BeginTx(ctx, b.Drv)
+	x.NoError(err)
+	in := pd.TrailStore(b.Ent.WithDriver(drv))
+	x.True(in.InTx())
+	x.False(pd.TrailStore(b.Ent).InTx())
+	got, err := p.Forget(ctx, in, []pdid.Id{who})
+	x.NoError(err)
+	x.Equal(1, got.Owed)
+	x.NoError(tx.Rollback())
+
+	x.Zero(owed(), "a debt outlived the transaction that owed it")
+	_, archived = said()
+	x.Positive(archived, "the archive was written inside a transaction that rolled back")
+	k, _, err := pd.TrailStore(b.Ent).Latest(ctx)
+	x.NoError(err)
+	x.Equal(latest, k, "a checkpoint was numbered inside the transaction")
+	ok, err := p.Verify(ctx, pd.TrailStore(b.Ent), true)
+	x.NoError(err)
+	x.True(ok.Ok(), "%v", ok.Findings)
+
+	// Committed: owed, then paid.
+	commit := inTx(func(s trail.Store) error {
+		_, err := p.Forget(ctx, s, []pdid.Id{who})
+		return err
+	})
+	x.NoError(commit())
+	x.Equal(1, owed())
+
+	paid, err := p.Pay(ctx, pd.TrailStore(b.Ent))
+	x.NoError(err)
+	x.Equal(1, paid.Objects)
+	x.Positive(paid.Archived)
+	x.Zero(owed(), "a debt paid is still owed")
+	db, archived := said()
+	x.Zero(db)
+	x.Zero(archived, "the archive still says something about them")
+	ok, err = p.Verify(ctx, pd.TrailStore(b.Ent), true)
+	x.NoError(err)
+	x.True(ok.Ok(), "%v", ok.Findings)
 }

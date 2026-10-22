@@ -1009,11 +1009,11 @@ func (e *Entity) Serves() bool {
 
 // Records answers whether the entity is one of payday's own records of what
 // happens -- the trail, the outbox, the archive's manifest, the access record,
-// the rows' seals -- which payday writes beneath the servers, and which nothing
-// records in turn.
+// the rows' seals, the erasures owed -- which payday writes beneath the
+// servers, and which nothing records in turn.
 func (e *Entity) Records() bool {
 	switch e.Own {
-	case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED, pdpb.Own_OWN_ACCESS, pdpb.Own_OWN_ROW_SEAL:
+	case pdpb.Own_OWN_AUDIT, pdpb.Own_OWN_OUTBOX, pdpb.Own_OWN_ARCHIVED, pdpb.Own_OWN_ACCESS, pdpb.Own_OWN_ROW_SEAL, pdpb.Own_OWN_OWED:
 		return true
 	}
 

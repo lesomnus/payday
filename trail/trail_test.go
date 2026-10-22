@@ -2,6 +2,7 @@ package trail
 
 import (
 	"bytes"
+	"cmp"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
@@ -117,9 +118,75 @@ type fakeStore struct {
 	// each was filed under.
 	seals    map[uuid.UUID][]byte
 	sealedIn map[uuid.UUID]uuid.UUID
+
+	// owed is the erasures owed, as the generated store keeps them on
+	// `Owed`; inTx is a store on a client bound to a transaction.
+	owed []Owed
+	inTx bool
+
+	// archivedAbout is a row a test archived about somebody it forgets.
+	archivedAbout uuid.UUID
 }
 
 var _ Store = (*fakeStore)(nil)
+
+func (s *fakeStore) InTx() bool { return s.inTx }
+
+func (s *fakeStore) Owe(_ context.Context, objects []pdid.Id) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, v := range objects {
+		s.owed = append(s.owed, Owed{Key: uuid.NewV7(), Object: v, Created: time.Now()})
+	}
+
+	return nil
+}
+
+func (s *fakeStore) Owed(_ context.Context, after Cursor, limit int) ([]Owed, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	vs := slices.Clone(s.owed)
+	slices.SortFunc(vs, func(a, b Owed) int {
+		return cmp.Or(a.Created.Compare(b.Created), a.Key.(uuid.UUID).Compare(b.Key.(uuid.UUID)))
+	})
+	out := []Owed{}
+	for _, v := range vs {
+		if after.Key != nil && cmp.Or(v.Created.Compare(after.Created), v.Key.(uuid.UUID).Compare(after.Key.(uuid.UUID))) <= 0 {
+			continue
+		}
+		out = append(out, v)
+		if len(out) == limit {
+			break
+		}
+	}
+
+	return out, nil
+}
+
+func (s *fakeStore) Paid(_ context.Context, keys []any) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	n := len(s.owed)
+	s.owed = slices.DeleteFunc(s.owed, func(v Owed) bool { return slices.Contains(keys, v.Key) })
+
+	return n - len(s.owed), nil
+}
+
+func (s *fakeStore) Kept(_ context.Context, key any, by []pdid.Id) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i, v := range s.owed {
+		if v.Key == key {
+			s.owed[i].HeldBy = slices.Clone(by)
+		}
+	}
+
+	return nil
+}
 
 func (s *fakeStore) add(r fakeRow) fakeRow {
 	s.mu.Lock()

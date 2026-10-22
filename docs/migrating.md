@@ -3,6 +3,51 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An erasure decided in a transaction is owed, then paid
+
+**Applies to every app** (a new table), and to one that calls
+`trail.Policy.Forget` inside its own transaction, or hand-writes a
+`trail.Store`. Part of payday#115. Regenerate: payday's entities gain `Owed`
+(`OWN_OWED`, domain 254), which `pd gen` copies in and a migration makes a
+table of.
+
+- **`Policy.Forget` on a store inside a transaction** (`Store.InTx`) blanks the
+  database's rows as before and owes the archive's half, one `Owed` row per
+  object in the same transaction, writing nothing to the archive:
+  `Forgotten.Owed` says how many. A rollback takes the debt with it. Outside a
+  transaction it owes and pays at once, as before but crash-safe.
+- **`Policy.Pay(ctx, s)`** pays what is owed — both halves, `Forget`'s receipts,
+  a checkpoint — after your commit, and a pass pays it before it moves anything
+  if you do not. A debt a legal hold keeps part of stays until the hold lifts,
+  and the pass after pays the rest; `Policy.Owing` says what is owed, since
+  when, and how much under whose hold.
+- **Every other act inside a transaction is refused** with `trail.ErrInTx`
+  before it writes anything: a pass, `Archive`, `Collect`, `Purge`,
+  `PurgeTenant`, `RetireTenant`, `Return`, `ExportTenant`, `Accept`, `Pay`.
+  Questions are answered, and `Retired` is one now.
+- **`trail.Store` gains `InTx`, `Owe`, `Owed`, `Paid` and `Kept`.** A generated
+  store has them; a hand-written one adds them, and a test's fake answers
+  `InTx` false.
+- **Code that walks your tables leaves `owed` to the trail**, as it leaves
+  `rowseal`: it is the deployment's, of no tenant, and no export carries it
+  (`owed.Table`).
+
+What the apps on payday change:
+
+- **rove:** pseudonymize and departure keep calling `Forget` in the domain
+  transaction, and the trail's erasure is now atomic with them; they may call
+  `Pay` with `pd.TrailStore` on the deployment's client after the commit for
+  the archive's half at once, or leave it to the next pass. The `held` count an
+  event records is the database's half's unless they pay. Its offboarding
+  walks every table, so `owed` goes beside `rowseal` among the trail's and
+  the withheld.
+- **roster:** `forget` commits its transaction and then calls `Forget` with
+  the deployment's client, which still works and now owes and pays at once.
+  A crash between that commit and the call loses the trail's erasure; calling
+  `Forget` with the transaction's client before the commit owes it atomically
+  instead, and the next pass pays. Both apps get the new table on their next
+  migration.
+
 ## A tenant's trail can be taken out
 
 **Applies if** you call `Policy.Retired`, or give an operator a way to answer a

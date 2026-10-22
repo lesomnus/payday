@@ -461,6 +461,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 
 	emitManifest(g, s, p)
 	emitTrailSeals(g, s, p)
+	emitOwed(g, s, p)
 
 	g.P("// TrailOf is a reader of the archive's documents as the messages they hold:")
 	g.P("// what `policy.Read` and `policy.ReadTenant` are handed, and `trail.Read`,")

@@ -356,10 +356,52 @@ type Store interface {
 	// many went: what a tenant leaving takes with it.
 	PurgeSeals(ctx context.Context, tenant pdid.Id) (int, error)
 
+	// InTx answers whether what the store writes is part of a transaction
+	// that has not committed: a store on a client bound to one, its own or
+	// one it shares. The archive takes no part in it, so [Policy.Forget]
+	// owes the archive's half there rather than write it, and every other act
+	// refuses such a store ([ErrInTx]).
+	InTx() bool
+
+	// Owe writes that the archive's half of forgetting each of these objects
+	// is owed ([Owed]): in the store's transaction when it is in one, so that
+	// a rollback takes it with the rest.
+	Owe(ctx context.Context, objects []pdid.Id) error
+
+	// Owed answers up to `limit` of the erasures owed, oldest first, past
+	// `after`.
+	Owed(ctx context.Context, after Cursor, limit int) ([]Owed, error)
+
+	// Paid removes the erasures owed these keys name, and answers how many
+	// went: each one paid in both halves.
+	Paid(ctx context.Context, keys []any) (int, error)
+
+	// Kept says of an erasure owed that the holds of these tenants kept part
+	// of it when it was last paid, and nothing for none.
+	Kept(ctx context.Context, key any, by []pdid.Id) error
+
 	// Manifest is the database's account of what the archive holds; see
 	// [Archived]. It is in the store because the database is where it has to
 	// be: somewhere the archive's own storage cannot reach.
 	Manifest
+}
+
+// Owed is an erasure owed, as the store keeps it: the archive's half of
+// forgetting an object, written in the transaction that decided it and paid
+// after it committed ([Policy.Forget], [Policy.Pay]).
+type Owed struct {
+	// Key is what identifies it to the store, handed back to [Store.Paid].
+	Key any
+
+	// Object is what is to be forgotten.
+	Object pdid.Id
+
+	// Created is when it was owed, which is what it is read in the order of.
+	Created time.Time
+
+	// HeldBy is the tenants whose holds kept part of it when it was last
+	// paid ([Store.Kept]).
+	HeldBy []pdid.Id
 }
 
 // Batch is how many rows one pass reads and removes at a time.

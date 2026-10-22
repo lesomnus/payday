@@ -105,6 +105,18 @@ func (f OutboxFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OutboxMutation", m)
 }
 
+// The OwedFunc type is an adapter to allow the use of ordinary
+// function as Owed mutator.
+type OwedFunc func(context.Context, *ent.OwedMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OwedFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OwedMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OwedMutation", m)
+}
+
 // The PairingFunc type is an adapter to allow the use of ordinary
 // function as Pairing mutator.
 type PairingFunc func(context.Context, *ent.PairingMutation) (ent.Value, error)

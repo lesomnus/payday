@@ -275,11 +275,15 @@ type Retirement struct {
 // It is what tells a tenant that left this way apart from one that never did,
 // for an app about to put one back under the identifier it had, and what an
 // operator asked to preserve what one left reads first: whether it is still
-// there. It writes nothing of its own; but it reads the manifest as an act
-// does, and an archive whose manifest is empty is taken in first, as its first
-// pass would take it, so it needs [Policy.Signer] as an act does ([ErrNoKey]).
+// there. It is a question, answered inside a transaction too; but it reads
+// the manifest as an act does, and an archive whose manifest is empty is taken
+// in first, as its first pass would take it, so it needs [Policy.Signer] as an
+// act does ([ErrNoKey]).
 func (p Policy) Retired(ctx context.Context, s Store) (map[pdid.Id]Retirement, error) {
-	x, err := p.act(s)
+	if p.Archive != nil && p.Signer == nil {
+		return nil, ErrNoKey
+	}
+	x, err := p.start(s)
 	if err != nil {
 		return nil, err
 	}
