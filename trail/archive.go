@@ -56,6 +56,11 @@ const (
 	// a flob store; see [Adopt]. They hold every tenant's rows together, so
 	// the deployment's policy decides them, as it did.
 	LegacyNamespace = "_legacy"
+
+	// RetiredNamespace holds the record of each tenant that left keeping what
+	// the deployment's floors are on, until they have passed; see
+	// [Policy.RetireTenant].
+	RetiredNamespace = "_retired"
 )
 
 // The labels a chunk carries. Everything a pass decides is decided from these,
@@ -645,14 +650,16 @@ func chunkOrder(a, b Chunk) int {
 }
 
 // chunkNamespaces is every namespace of the archive that holds chunks: all of
-// them but the receipts and the checkpoints.
+// them but the receipts, the checkpoints and the record of who retired.
 func chunkNamespaces(ctx context.Context, a flob.Stores) ([]string, error) {
 	nss, err := namespaces(ctx, a)
 	if err != nil {
 		return nil, err
 	}
 
-	return slices.DeleteFunc(nss, func(ns string) bool { return ns == ReceiptNamespace || ns == CheckpointNamespace }), nil
+	return slices.DeleteFunc(nss, func(ns string) bool {
+		return ns == ReceiptNamespace || ns == CheckpointNamespace || ns == RetiredNamespace
+	}), nil
 }
 
 // Chunks is every chunk in the archive, oldest month first, by its own labels.
@@ -959,6 +966,10 @@ const (
 	// heldBack is a row the edit is about and a legal hold kept as it was.
 	heldBack
 
+	// floored is a row the edit is about and a floor of the deployment's
+	// keeps as it was, for now: a retired tenant's ([Policy.RetireTenant]).
+	floored
+
 	// changed is a row written in place of what it was.
 	changed
 
@@ -968,8 +979,8 @@ const (
 
 // tally is an edit's rows, counted by what it did with them.
 type tally struct {
-	same, held, changed, dropped, left int
-	first, last                        time.Time
+	same, held, floored, changed, dropped, left int
+	first, last                                 time.Time
 }
 
 // edit writes a chunk again with every row passed through `fn`, and erases the
@@ -1038,6 +1049,8 @@ func edit(ctx context.Context, a flob.Stores, c Chunk, dry bool, pre func([]byte
 				v.same++
 			case heldBack:
 				v.held++
+			case floored:
+				v.floored++
 			case changed:
 				v.changed++
 			case dropped:
@@ -1464,7 +1477,8 @@ type Receipt struct {
 
 	// Act is `discard` (rows leaving the database with no copy), `destroy` (a
 	// chunk at the end of its window), `purge` (chunks by hand), `forget` (a
-	// subject's contents) or `purge-tenant` (a tenant leaving) -- or
+	// subject's contents), `purge-tenant` (a tenant leaving) or
+	// `retire-tenant` (a tenant leaving, but for what a floor keeps) -- or
 	// `finding`, which is no destruction: what a pass found the archive's
 	// manifest does not account for.
 	Act string `json:"act"`
@@ -1510,6 +1524,14 @@ type Receipt struct {
 	// Keys is how many keys went: a tenant's, when it left and its trail was
 	// sealed; see [Keys].
 	Keys int `json:"keys,omitempty"`
+
+	// Kept is the rows a retirement left where they are, because a floor of
+	// the deployment's is still on them, of these Kinds, and Until is when
+	// the last of the floors passes and the tenant's key goes with what is
+	// left ([Policy.RetireTenant]).
+	Kept  int       `json:"kept,omitempty"`
+	Kinds []string  `json:"kinds,omitempty"`
+	Until time.Time `json:"until,omitzero"`
 }
 
 // receipts gathers one act's receipts, to be written as one blob.

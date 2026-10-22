@@ -188,6 +188,35 @@ got, err := policy.PurgeTenant(ctx, pd.TrailStore(db), tenant)
 It refuses while a hold is on, and answers what another tenant's hold kept of
 the rows the two of them share.
 
+Or it **retires**, `trail.Policy.RetireTenant`, which is the same but for what
+the deployment's floors are on: `audit.min` and `audit.by.<kind>.min` are what
+the deployment owes whoever it answers to — the access record PIPA has a
+processor keep for a year — and a purge takes that with the tenant. A
+retirement leaves those rows, and the tenant's key, for as long as each floor
+has to run, and the passes destroy them as it does; once the last has passed,
+a pass purges what is left. Everything else goes at once, as a purge's does.
+
+Which of the two is the contract's to say, or the law the tenant is under: a
+field on the same entity, read where the app offboards.
+
+```go
+leave := policy.PurgeTenant
+plan := policy.PlanTenantPurge
+if v.KeepFloors {
+	leave, plan = policy.RetireTenant, policy.PlanTenantRetire
+}
+
+ahead, err := plan(ctx, pd.TrailStore(db), tenant)
+// ahead.Kept is what stays, by kind, and ahead.Until when the last of it goes.
+
+got, err := leave(ctx, pd.TrailStore(db), tenant)
+```
+
+A retirement is recorded in the archive, so it needs one; with floors and no
+archive it is refused. The callback goes on being asked about a retired tenant
+for its hold — answer one without an error once its contract is gone — and
+its windows are not asked: it keeps what its floors are on, and nothing else.
+
 ## 6. Showing that the archive is what it was
 
 What a customer or an auditor asks of an archive after *was it deleted* is *has
