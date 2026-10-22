@@ -427,6 +427,19 @@ jobs:
           cd .. && go tool pd gen --ts .
           cd ts && npm run build
 
+      # And what its store leaves on a browser somebody used before: opening
+      # a caller's store deletes every other caller's mirror. The build says
+      # the page compiles and no more, so this runs the page's own `open` on
+      # fake-indexeddb, with a test runner installed for it alone -- at the
+      # versions payday's own page tests run with.
+      - name: and the mirrors it leaves
+        working-directory: widget/ts
+        run: |
+          dev() { node -p "require('${GITHUB_WORKSPACE}/payday/internal/apptest/ts/package.json').devDependencies['$1']"; }
+          npm install --no-save "vitest@$(dev vitest)" "fake-indexeddb@$(dev fake-indexeddb)"
+          cp "${GITHUB_WORKSPACE}/payday/.github/scaffold/store.test.ts" .
+          npx vitest run store.test.ts
+
       # Compile the rendered template against the pair sandbox init prints.
       # Building apptest alone cannot catch stale APIs in the sandbox template.
       - name: and its sandbox

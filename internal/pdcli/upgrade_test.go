@@ -84,8 +84,8 @@ func generator(t *testing.T, l pdcli.Layout, version string) string {
 	return filepath.Join(bin, "protoc-gen-es")
 }
 
-// older is the page a long-lived app has: a TypeScript and a protobuf runtime
-// from before the floors, and the rest at or above them.
+// older is the page a long-lived app has: a TypeScript, a protobuf runtime and
+// a payday from before the floors, and the rest at or above them.
 func older(t *testing.T) pdcli.Layout {
 	return page(t, app(t, "github.com/acme/thing"),
 		map[string]string{
@@ -184,7 +184,7 @@ func TestAnUpgradeMovesWhatIsBelowItsFloorToItsFloor(t *testing.T) {
 	for _, v := range vs {
 		got[v.Name] = v
 	}
-	x.Len(got, 2, "%+v", vs)
+	x.Len(got, 3, "%+v", vs)
 
 	x.Equal("dependencies", got["@bufbuild/protobuf"].Section)
 	x.Equal("2.10.0", got["@bufbuild/protobuf"].From)
@@ -194,6 +194,13 @@ func TestAnUpgradeMovesWhatIsBelowItsFloorToItsFloor(t *testing.T) {
 	x.Equal("devDependencies", got["typescript"].Section)
 	x.Equal("^5.9.3", got["typescript"].To, "the floor, in TypeScript 5")
 	x.False(got["typescript"].Partner)
+
+	// What the template's store.ts calls was 0.1.2's, so a page from before it
+	// moves there -- and no further, though `pd new` writes a later one.
+	x.Equal("dependencies", got["@lesomnus/payday"].Section)
+	x.Equal("0.1.1", got["@lesomnus/payday"].From)
+	x.Equal("^0.1.2", got["@lesomnus/payday"].To)
+	x.False(got["@lesomnus/payday"].Partner)
 
 	_, moved := got["@bufbuild/protoc-gen-es"]
 	x.False(moved, "above its own floor, and in the same major as the runtime that moves")
@@ -237,7 +244,7 @@ func TestAnUpgradeCrossesAMajorOnlyToTheTemplates(t *testing.T) {
 	x.Equal(targets["vite"].Range, got["vite"].To, "Vite 6 is below 7.2.0, a later major")
 	x.Equal(targets["@vitejs/plugin-react"].Range, got["@vitejs/plugin-react"].To, "with Vite")
 	x.True(got["@vitejs/plugin-react"].Partner, "5.2.0 is above its own floor, and moves only because Vite does")
-	x.Equal("^0.1.1", got["@lesomnus/payday"].To, "0.0.5 is below 0.1.1, in the same major")
+	x.Equal("^0.1.2", got["@lesomnus/payday"].To, "0.0.5 is below 0.1.2, in the same major")
 }
 
 // TestAnUpgradeIsOneResolution: what moves is set in package.json by npm, each

@@ -3,6 +3,26 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## `pd new`'s store deletes everybody else's mirror, and a page needs payday 0.1.2
+
+**Applies if** your app was made with `pd new` -- its `ts/src/store.ts` -- or
+its page has `@lesomnus/payday` below 0.1.2.
+
+- **The store `pd new` writes calls `deleteOtherDisks(at)`** once the caller's
+  mirror is open, and does not wait on it, as the 0.1.2 entry below asks of
+  every page. A page made before this has an `open` that does not, and keeps
+  everybody else's mirror on the browser until it is added:
+
+  ```ts
+  const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) })
+  void deleteOtherDisks(at)
+  await store.hydrate()
+  ```
+
+- **The page's floor for `@lesomnus/payday` is 0.1.2**, the release that
+  brought `deleteOtherDisks`. `pd doctor` says so of a page below it, and
+  `pd upgrade` moves it to `^0.1.2`; nothing is refused.
+
 ## A store closes after what it was told, and a forget says how it went
 
 **Applies if** a page of yours calls `Store.forget` or `Store.close` -- `pd new`'s

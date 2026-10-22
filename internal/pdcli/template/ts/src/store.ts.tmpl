@@ -21,7 +21,7 @@ import type { Transport } from '@connectrpc/connect'
 import { Queries } from '@lesomnus/payday/query'
 import type { App } from '@lesomnus/payday/react'
 import { Store } from '@lesomnus/payday/store'
-import { openDisk } from '@lesomnus/payday/store/idb'
+import { deleteOtherDisks, openDisk } from '@lesomnus/payday/store/idb'
 
 import { entities } from '../gen/entities.js'
 
@@ -42,17 +42,26 @@ import { entities } from '../gen/entities.js'
  * in again.
  *
  * The mirror is what makes a reload draw the page it had rather than a spinner
- * for it. Delete these two lines and everything still works -- the store is a
- * store either way, and it lives as long as the tab does.
+ * for it. Delete the disk and everything still works -- the store is a store
+ * either way, and it lives as long as the tab does.
  *
  * It expires after a week; `openDisk(entities, at, { keep })` is the knob, and
  * `Infinity` turns it off. What it bounds is both how large a mirror gets and
  * how old the answer a reload draws may be.
+ *
+ * And once this caller's mirror is open, every other caller's goes
+ * (`deleteOtherDisks`). A mirror is swept only when its own caller opens it
+ * again, so one left by somebody who stopped using this browser would keep
+ * their rows, answers and unsent writes for as long as the browser keeps the
+ * database: they are not owed what they left here, and whoever uses it now is
+ * owed not finding it. Not waited on -- a database another page holds open
+ * answers late, and the page draws meanwhile.
  */
 export async function open(transport: Transport, identity: string): Promise<App> {
 	const at = { name: '{{.Name}}', identity }
 
 	const store = Store.open(entities, { ...at, disk: await openDisk(entities, at) })
+	void deleteOtherDisks(at)
 	await store.hydrate()
 
 	return { store, queries: new Queries(store, transport, entities) }
