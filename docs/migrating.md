@@ -3,6 +3,30 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A tenant's trail can be taken out
+
+**Applies if** you call `Policy.Retired`, or give an operator a way to answer a
+demand to preserve a tenant's trail. Part of payday#115.
+
+- **`Policy.Retired` answers a `Retirement` for each tenant**, `At` and
+  `Until` — when it retired, and until when its floors keep what they keep, by
+  the floors as they are — where it answered a time. `TenantReturn.Retired` is
+  still a time.
+- **`Policy.ExportTenant(ctx, s, tenant, trail.Export{By, Why, To}, w)`** writes
+  every row of the trail that names the tenant as one bundle, encrypted to
+  `To` (`age` recipients) and never otherwise: the database's rows, its own
+  chunks as kept, each chunk's rows of it opened, and a signed manifest naming
+  the newest checkpoint and its witnesses' receipts. It is an act: it needs
+  `Policy.Signer`, takes the trail's turn, writes a receipt `export-tenant`
+  (`By`, `Why`, and the manifest's digest in `Of`) and a checkpoint after. Sealed
+  rows need the master's private half (`audit.keys.identity`), or it is
+  refused with `ErrSealed`.
+- **`trail.OpenTenantExport(r, identities, trusted, fn)`** reads a bundle and
+  answers its manifest once every file is what it says and a trusted key
+  signed it; anything else is `ErrExportAltered`.
+- **Record an export as a download** of people's data, with its reason, as
+  your access record does any: payday does not know who a row is about.
+
 ## A Rekor log is a witness
 
 **Applies if** you name witnesses (`audit.checkpoints.witnesses`), or write a
@@ -137,8 +161,9 @@ payday#115.
   the tenant back. Until then every pass takes it to have left, whatever your
   callback answers: what it writes goes at the next pass, and its whole trail
   and its key once its last floor has passed.
-- **`Policy.Retired(ctx, s)`** is the tenants that have retired and when, for a
-  restore's dry run to say so.
+- **`Policy.Retired(ctx, s)`** is the tenants that have retired, when, and
+  until when their floors keep what they keep, for a restore's dry run to say
+  so.
 - **A purged tenant needs nothing.** The mark its key left is of what was
   written before it left, and what it writes after is sealed to a key of its
   own; `Return` answers it with nothing done.

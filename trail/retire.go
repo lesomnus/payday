@@ -255,29 +255,52 @@ func (x *pass) lift(ctx context.Context, tenant pdid.Id) (TenantReturn, error) {
 	return out, nil
 }
 
-// Retired is the tenants that have retired ([Policy.RetireTenant]), by when
-// each last did: the ones whose records the manifest accounts for, which every
-// pass goes by -- not yet purged at the end of their floors, nor taken back
-// ([Policy.Return]).
+// Retirement is a tenant's retirement as its record says it.
+type Retirement struct {
+	// At is when it last retired.
+	At time.Time `json:"at"`
+
+	// Until is when the last of the deployment's floors passes for it, by
+	// the floors as they are now: what it kept goes as each passes, and at
+	// Until the pass that purges what is left takes its key too. A floor
+	// lowered meanwhile brings it nearer.
+	Until time.Time `json:"until"`
+}
+
+// Retired is the tenants that have retired ([Policy.RetireTenant]): the ones
+// whose records the manifest accounts for, which every pass goes by -- not yet
+// purged at the end of their floors, nor taken back ([Policy.Return]) -- with
+// when each retired and until when what it kept is kept.
 //
 // It is what tells a tenant that left this way apart from one that never did,
-// for an app about to put one back under the identifier it had. It writes
-// nothing of its own; but it reads the manifest as an act does, and an archive
-// whose manifest is empty is taken in first, as its first pass would take it,
-// so it needs [Policy.Signer] as an act does ([ErrNoKey]).
-func (p Policy) Retired(ctx context.Context, s Store) (map[pdid.Id]time.Time, error) {
+// for an app about to put one back under the identifier it had, and what an
+// operator asked to preserve what one left reads first: whether it is still
+// there. It writes nothing of its own; but it reads the manifest as an act
+// does, and an archive whose manifest is empty is taken in first, as its first
+// pass would take it, so it needs [Policy.Signer] as an act does ([ErrNoKey]).
+func (p Policy) Retired(ctx context.Context, s Store) (map[pdid.Id]Retirement, error) {
 	x, err := p.act(s)
 	if err != nil {
 		return nil, err
 	}
 	if x.m == nil {
-		return map[pdid.Id]time.Time{}, nil
+		return map[pdid.Id]Retirement{}, nil
 	}
 	if err := x.trust(ctx); err != nil {
 		return nil, err
 	}
 
-	return x.retired(ctx)
+	vs, err := x.retired(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := map[pdid.Id]Retirement{}
+	for id, at := range vs {
+		out[id] = Retirement{At: at, Until: at.Add(p.longestFloor()).UTC()}
+	}
+
+	return out, nil
 }
 
 // TenantReturn is what taking a tenant back did ([Policy.Return]).
