@@ -177,13 +177,158 @@ describe('the mirror is that caller and that schema', () => {
 		a.put(Robot.typeName, v)
 		await a.flushed()
 
-		a.forget()
-		await a.flushed()
-		a.close()
+		// What a page that signs out does: forget and close, with nothing
+		// awaited between them. The close is awaited only to know when to look.
+		void a.forget()
+		await a.close()
 
 		const b = await opened()
 		expect(b.row(Robot.typeName, v.id)).toBeUndefined()
-		b.close()
+		expect(b.all(Tenant.typeName)).toEqual([])
+		await b.close()
+	})
+})
+
+describe('a mirror is closed after what it was told', () => {
+	it('keeps a row written just before it closed', async () => {
+		const a = await opened()
+		const v = robot('arm-01', new Date('2026-01-01T00:00:00Z'))
+		a.put(Robot.typeName, v)
+		await a.close()
+
+		const b = await opened()
+		expect(b.get<RobotMsg>(Robot.typeName, v.id)?.alias).toBe('arm-01')
+		await b.close()
+	})
+
+	it('is not held open by rows that keep arriving', async () => {
+		const a = await opened()
+		const closed = a.close()
+
+		// A `Watch` that has not stopped yet, still feeding the store.
+		const late = robot('arm-02', new Date('2026-01-01T00:00:00Z'))
+		a.put(Robot.typeName, late)
+		await within(closed)
+
+		expect(a.get<RobotMsg>(Robot.typeName, late.id)?.alias).toBe('arm-02')
+		const b = await opened()
+		expect(b.row(Robot.typeName, late.id)).toBeUndefined()
+		await b.close()
+	})
+
+	it('answers the same however often it is asked', async () => {
+		const a = await opened()
+		expect(a.close()).toBe(a.close())
+		await a.close()
+	})
+})
+
+describe('a forget that did not reach the mirror', () => {
+	/** refusing is a mirror that cannot be cleared, and says whether it was closed. */
+	function refusing(): Disk & { closed: boolean } {
+		return {
+			closed: false,
+			async load() {
+				return { rows: [], blobs: [] }
+			},
+			async save() {},
+			async clear() {
+				throw new Error('cleared nothing')
+			},
+			close() {
+				this.closed = true
+			},
+		}
+	}
+
+	it('says so, and so does the close, which closes the mirror all the same', async () => {
+		const disk = refusing()
+		const store = Store.open(entities, { ...at, disk })
+		store.put(Robot.typeName, robot('arm-01', new Date('2026-01-01T00:00:00Z')))
+
+		const forgot = store.forget()
+		const closed = store.close()
+
+		await expect(forgot).rejects.toThrow('cleared nothing')
+		await expect(closed).rejects.toThrow('cleared nothing')
+		expect(disk.closed).toBe(true)
+
+		// And the store forgot whatever its mirror did.
+		expect(store.all(Robot.typeName)).toEqual([])
+	})
+
+	it('is a forget that went well, if the next one does', async () => {
+		let refuse = true
+		const disk: Disk = {
+			async load() {
+				return { rows: [], blobs: [] }
+			},
+			async save() {},
+			async clear() {
+				if (refuse) throw new Error('cleared nothing')
+			},
+			close() {},
+		}
+		const store = Store.open(entities, { ...at, disk })
+
+		await expect(store.forget()).rejects.toThrow('cleared nothing')
+		refuse = false
+		await store.forget()
+		await store.close()
+	})
+
+	it('is not a row that did not reach it, which is for flushed to say', async () => {
+		const disk: Disk = {
+			async load() {
+				return { rows: [], blobs: [] }
+			},
+			async save() {
+				throw new Error('quota')
+			},
+			async clear() {},
+			close() {},
+		}
+		const store = Store.open(entities, { ...at, disk })
+		store.put(Robot.typeName, robot('arm-01', new Date('2026-01-01T00:00:00Z')))
+
+		await expect(store.flushed()).rejects.toThrow('quota')
+		await store.close()
+	})
+
+	it('is refused once the mirror is closed, rather than answered as done', async () => {
+		const a = await opened()
+		a.put(Robot.typeName, robot('arm-01', new Date('2026-01-01T00:00:00Z')))
+		await a.close()
+
+		await expect(a.forget()).rejects.toThrow(/closed before it was told to forget/)
+	})
+
+	it('is no failure when another page deleted the mirror, which leaves nothing of theirs', async () => {
+		const a = await opened()
+		a.put(Robot.typeName, robot('arm-01', new Date('2026-01-01T00:00:00Z')))
+		await a.flushed()
+
+		await within(deleteDisk(at))
+
+		await a.forget()
+		await a.close()
+	})
+
+	it('is one when another page moved the mirror on, which still holds it', async () => {
+		const a = await opened()
+		a.put(Robot.typeName, robot('arm-01', new Date('2026-01-01T00:00:00Z')))
+		await a.flushed()
+
+		// A later deploy's page, opening the same caller's mirror at a later
+		// version: this page lets go of it, and the rows stay where that page
+		// holds them.
+		const later = await held(`payday/${at.name}:${at.identity}`, 3)
+		try {
+			await expect(a.forget()).rejects.toThrow(/let go/)
+			await expect(a.close()).rejects.toThrow(/let go/)
+		} finally {
+			later.close()
+		}
 	})
 })
 
@@ -410,10 +555,10 @@ describe('a reloaded page draws its list on the first frame', () => {
 		await a.flushed()
 
 		// An answer is a list of identifiers this caller was allowed to see,
-		// which is the part of a mirror that most wants throwing away.
-		a.forget()
-		await a.flushed()
-		a.close()
+		// which is the part of a mirror that most wants throwing away. Forgotten
+		// and closed as a page signing out does it, awaiting nothing between.
+		void a.forget()
+		await a.close()
 
 		const b = await opened()
 		const qb = new Queries(b, answering([], () => new Promise<never>(() => {})), entities)

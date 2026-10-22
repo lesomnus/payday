@@ -108,12 +108,24 @@ async function boot(): Promise<void> {
 	 * that caller could see, but it is *that caller's*, and leaving it where
 	 * the next one opens the same page is the kind of thing that looks like a
 	 * leak whether or not it is one.
+	 *
+	 * The mirror closes once the forget has reached it, and the page starts
+	 * again once it has closed. A close that rejects is a forget that did not
+	 * reach the disk, said where whoever is trying this page will look.
 	 */
 	const out = (): void => {
-		app.store.forget()
-		app.store.close()
 		localStorage.removeItem('credential')
-		void boot()
+
+		void (async () => {
+			void app.store.forget()
+			try {
+				await app.store.close()
+			} catch (err) {
+				console.error('signed out, and this browser still holds what was forgotten:', err)
+			}
+
+			await boot()
+		})()
 	}
 
 	root.render(

@@ -142,6 +142,9 @@ export class Writes {
 		this.done = true
 		this.set([])
 
+		// What this fails with is the forget's to say: `Disk.clear`, which the
+		// store queues behind it, throws the writes away with the rest of the
+		// mirror, and [Store.forget] and [Store.close] answer with how that went.
 		void this.disk?.clear().catch(() => {})
 	}
 

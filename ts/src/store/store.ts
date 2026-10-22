@@ -142,6 +142,15 @@ export class Store {
 	private flushing: Promise<void> = Promise.resolve()
 	private failed: unknown
 
+	/** What [Store.close] answers, once it has been asked. */
+	private closing: Promise<void> | undefined
+
+	/** Whether the mirror has been closed, after which nothing reaches it. */
+	private shut = false
+
+	/** What the last [Store.forget] did to the mirror, for [Store.close]. */
+	private forgotten: Promise<void> = Promise.resolve()
+
 	private constructor(app: string, identity: string, by: Map<string, EntityDesc>, disk: Disk | undefined) {
 		this.name = `${app}:${identity}`
 		this.identity = identity
@@ -227,9 +236,75 @@ export class Store {
 		if (this.failed !== undefined) throw this.failed
 	}
 
-	/** close lets go of the mirror. */
-	close(): void {
-		this.disk?.close()
+	/**
+	 * close lets go of the mirror, once everything this store was told to write
+	 * to it has had its turn -- a [Store.forget] above all -- and answers when
+	 * it has.
+	 *
+	 * Writing out is behind the reads, a turn or more late, so a mirror closed
+	 * at once closes under what is still queued for it: those writes fail where
+	 * nobody sees, and a forget among them leaves the signed-out caller's rows
+	 * and answers on the disk, for the next person on that browser. Closed once
+	 * the queue has drained instead, so `forget(); close()`, which is what
+	 * signing out is, leaves nothing behind whether or not anybody waits.
+	 *
+	 * Nothing has to await it. A page that wants to know the mirror is closed
+	 * -- before it opens the next caller's, or tells somebody this browser
+	 * holds nothing of theirs -- does. Asked twice, it answers the same.
+	 *
+	 * A row written after it is kept in memory and not written out, so a store
+	 * still being fed, by a `Watch` that has not stopped yet, cannot hold its
+	 * mirror open for as long as rows keep coming. A forget after it still goes
+	 * ahead of the close.
+	 *
+	 * # A forget that did not reach the mirror
+	 *
+	 * The mirror is closed all the same, and the answer rejects with what the
+	 * forget failed with.
+	 *
+	 * Closed, because a connection left open holds up every other page's delete
+	 * and upgrade of the database -- the thing letting go is for -- and nothing
+	 * would ever close it later. Rejected, and not written to a console, because
+	 * what to do about it is the app's: tell the person this browser still
+	 * holds what they saw, or delete the mirror (`deleteDisk`). A library's
+	 * console line is one an app can neither route nor act on, and this package
+	 * writes none. Not awaited, the rejection is an unhandled one, which a
+	 * browser prints with its error: loud rather than lost.
+	 *
+	 * A forget's failure only. A row that did not reach the mirror costs the
+	 * next reload a spinner, which [Store.flushed] is there to say; a forget
+	 * that did not reach it leaves a signed-out caller's data on the disk.
+	 */
+	close(): Promise<void> {
+		if (this.closing !== undefined) return this.closing
+
+		const disk = this.disk
+		this.closing = (async () => {
+			try {
+				await this.drained()
+			} finally {
+				this.shut = true
+				disk?.close()
+			}
+
+			await this.forgotten
+		})()
+
+		return this.closing
+	}
+
+	/**
+	 * drained answers when nothing is queued for the mirror any more: what was on
+	 * the chain when it was asked, and whatever was put on it meanwhile.
+	 */
+	private async drained(): Promise<void> {
+		for (;;) {
+			while (this.scheduled) await Promise.resolve()
+
+			const last = this.flushing
+			await last
+			if (last === this.flushing && !this.scheduled) return
+		}
 	}
 
 	/**
@@ -439,8 +514,14 @@ export class Store {
 	 * It is for signing out, and not for a session that ended by itself. One
 	 * that idled out is the same caller once they sign in again, and what they
 	 * were keeping is theirs to send then; see [Queries.send].
+	 *
+	 * The store forgets at once; the mirror does when the writes queued for it
+	 * ahead of this have gone, and what this answers is when it has -- or why it
+	 * could not. Nothing has to await it: [Store.close] closes the mirror only
+	 * after it, and rejects with what it failed with. A store already closed
+	 * has no mirror left to clear, and this rejects saying so.
 	 */
-	forget(): void {
+	forget(): Promise<void> {
 		this.batch(() => {
 			for (const [typeName, rows] of this.rows) {
 				for (const id of rows.keys()) this.dirty(`${typeName}/${id}`)
@@ -463,7 +544,16 @@ export class Store {
 		this.writes.clear()
 
 		const disk = this.disk
-		if (disk !== undefined) this.chain(() => disk.clear())
+		if (disk === undefined) return Promise.resolve()
+		if (this.shut) {
+			return Promise.reject(
+				new Error('store: its mirror was closed before it was told to forget, so nothing cleared it; deleteDisk deletes it'),
+			)
+		}
+
+		this.forgotten = this.chain(() => disk.clear())
+
+		return this.forgotten
 	}
 
 	/**
@@ -539,14 +629,14 @@ export class Store {
 	 * those would be writing a query's identity to disk.
 	 */
 	private mirror(k: Key): void {
-		if (this.disk === undefined) return
+		if (this.disk === undefined || this.closing !== undefined) return
 
 		this.queued.add(k)
 		this.schedule()
 	}
 
 	private mirrorBlob(k: string): void {
-		if (this.disk === undefined) return
+		if (this.disk === undefined || this.closing !== undefined) return
 
 		this.queuedBlobs.add(k)
 		this.schedule()
@@ -586,27 +676,29 @@ export class Store {
 	}
 
 	/**
-	 * chain runs one mirror write after the last one has finished.
+	 * chain runs one mirror write after the last one has finished, and answers
+	 * with how that write went, for whoever asked for it -- a [Store.forget].
 	 *
 	 * A thunk and not a promise, so the transaction is **opened** in turn as
 	 * well: two overlapping ones commit in whatever order the database chose,
 	 * and the later write is not always the later commit -- which would leave
 	 * the mirror holding a row the store had already moved past.
 	 */
-	private chain(work: () => Promise<void>): void {
-		this.flushing = this.flushing.then(() =>
-			work().then(
-				() => {
-					this.failed = undefined
-				},
-				(err: unknown) => {
-					// Swallowed here and remembered for [Store.flushed]. A
-					// mirror that failed is a mirror, and the store above it is
-					// still the truth.
-					this.failed = err
-				},
-			),
+	private chain(work: () => Promise<void>): Promise<void> {
+		const done = this.flushing.then(work)
+		this.flushing = done.then(
+			() => {
+				this.failed = undefined
+			},
+			(err: unknown) => {
+				// Remembered here for [Store.flushed], and answered to whoever
+				// asked for this write. A mirror that failed is a mirror, and
+				// the store above it is still the truth.
+				this.failed = err
+			},
 		)
+
+		return done
 	}
 
 	private fire(k: Key): void {

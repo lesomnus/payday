@@ -201,15 +201,27 @@ async function boot(): Promise<void> {
 	 * Letting go of the store: forgetting it first when its person signed out,
 	 * and in any case asking again who is signed in. Once, however many calls
 	 * come back refused.
+	 *
+	 * The mirror closes once the forget has reached it, and the page starts
+	 * again once it has closed. A close that rejects is a forget that did not
+	 * reach the disk: what the person signed out of is still on this browser,
+	 * and they are told so rather than left believing it is not.
 	 */
 	let left = false
 	const leave = (forget: boolean): void => {
 		if (left) return
 		left = true
 
-		if (forget) app.store.forget()
-		app.store.close()
-		void boot()
+		void (async () => {
+			if (forget) void app.store.forget()
+			try {
+				await app.store.close()
+			} catch {
+				return askToSignIn('signed out, but this browser still holds what you saw: clear its data for this site to remove it')
+			}
+
+			await boot()
+		})()
 	}
 	drawn = { identity, leave }
 

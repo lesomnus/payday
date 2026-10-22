@@ -542,6 +542,38 @@ describe('a write is sent as the caller its store is for', () => {
 		expect((await robot(id)).alias).toBe(alias)
 	})
 
+	it('goes with a sign-out, and is not sent when its caller signs in again', async () => {
+		const ref = await tenantRef()
+		const alice = await holder('admin')
+		const id = pdid.newId(RobotDomain).bytes
+
+		const b = browser()
+		await b.signIn(alice)
+		const { store, queries } = await page(b)
+
+		offline = true
+		await queries.send(RobotService.method.add, { id, tenant: ref, alias: named('w') })
+
+		// Signing out as a page does it: the session ends, and the store is
+		// forgotten and closed with nothing awaited between the two.
+		await b.end()
+		void store.forget()
+		await store.close()
+
+		// The same person signs in again -- the same store, opened by the page
+		// they sign in at -- and nothing of what they signed out of goes.
+		offline = false
+		await b.signIn(alice)
+		expect((await b.which()).identity).toBe(at.identity)
+		const again = await opened(b.transport)
+		await again.queries.flush()
+
+		expect(again.queries.writes()).toEqual([])
+		expect(calls).not.toContain('Add')
+		await expect(robot(id)).rejects.toMatchObject({ code: Code.NotFound })
+		await again.store.close()
+	})
+
 	it('waits for a sign-in when its session ended, rather than being refused', async () => {
 		const ref = await tenantRef()
 		const id = pdid.newId(RobotDomain).bytes
