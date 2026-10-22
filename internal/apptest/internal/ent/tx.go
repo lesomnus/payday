@@ -28,6 +28,8 @@ type Tx struct {
 	Joint *JointClient
 	// Outbox is the client for interacting with the Outbox builders.
 	Outbox *OutboxClient
+	// Owed is the client for interacting with the Owed builders.
+	Owed *OwedClient
 	// Pairing is the client for interacting with the Pairing builders.
 	Pairing *PairingClient
 	// Pulse is the client for interacting with the Pulse builders.
@@ -185,6 +187,7 @@ func (tx *Tx) init() {
 	tx.Holder = NewHolderClient(tx.config)
 	tx.Joint = NewJointClient(tx.config)
 	tx.Outbox = NewOutboxClient(tx.config)
+	tx.Owed = NewOwedClient(tx.config)
 	tx.Pairing = NewPairingClient(tx.config)
 	tx.Pulse = NewPulseClient(tx.config)
 	tx.Reading = NewReadingClient(tx.config)

@@ -41,6 +41,9 @@ type Joint func(*sql.Selector)
 // Outbox is the predicate function for outbox builders.
 type Outbox func(*sql.Selector)
 
+// Owed is the predicate function for owed builders.
+type Owed func(*sql.Selector)
+
 // Pairing is the predicate function for pairing builders.
 type Pairing func(*sql.Selector)
 

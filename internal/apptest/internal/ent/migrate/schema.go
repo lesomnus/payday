@@ -282,6 +282,26 @@ var (
 			},
 		},
 	}
+	// OwedColumns holds the columns for the "owed" table.
+	OwedColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "object", Type: field.TypeUuid},
+		{Name: "held_by", Type: field.TypeJson, Nullable: true},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+	}
+	// OwedTable holds the schema information for the "owed" table.
+	OwedTable = &schema.Table{
+		Name:       "owed",
+		Columns:    OwedColumns,
+		PrimaryKey: []*schema.Column{OwedColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "owed_owed",
+				Unique:  false,
+				Columns: []*schema.Column{OwedColumns[3], OwedColumns[0]},
+			},
+		},
+	}
 	// PairingColumns holds the columns for the "pairing" table.
 	PairingColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -517,6 +537,7 @@ var (
 		HolderTable,
 		JointTable,
 		OutboxTable,
+		OwedTable,
 		PairingTable,
 		PulseTable,
 		ReadingTable,
@@ -557,6 +578,9 @@ func init() {
 	}
 	OutboxTable.Annotation = &entsql.Annotation{
 		Table: "outbox",
+	}
+	OwedTable.Annotation = &entsql.Annotation{
+		Table: "owed",
 	}
 	PairingTable.ForeignKeys[0].RefTable = RobotTable
 	PairingTable.ForeignKeys[1].RefTable = RobotTable

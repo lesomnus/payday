@@ -32,6 +32,7 @@ import (
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	owed "github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	pulse "github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
@@ -111,6 +112,7 @@ const (
 	HolderDomain   pdid.Domain = 2   // "holder"
 	JointDomain    pdid.Domain = 8   // "joint"
 	OutboxDomain   pdid.Domain = 4   // "outbox"
+	OwedDomain     pdid.Domain = 254 // "owed"
 	PairingDomain  pdid.Domain = 12  // "pairing"
 	PulseDomain    pdid.Domain = 16  // "pulse"
 	ReadingDomain  pdid.Domain = 11  // "reading"
@@ -131,6 +133,7 @@ func init() {
 	pdid.Register("app.Holder", HolderDomain, "holder")
 	pdid.Register("app.Joint", JointDomain, "joint")
 	pdid.Register("app.Outbox", OutboxDomain, "outbox")
+	pdid.Register("app.Owed", OwedDomain, "owed")
 	pdid.Register("app.Pairing", PairingDomain, "pairing")
 	pdid.Register("app.Pulse", PulseDomain, "pulse")
 	pdid.Register("app.Reading", ReadingDomain, "reading")
@@ -155,6 +158,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Holder":   HolderDomain,
 	"app.Joint":    JointDomain,
 	"app.Outbox":   OutboxDomain,
+	"app.Owed":     OwedDomain,
 	"app.Pairing":  PairingDomain,
 	"app.Pulse":    PulseDomain,
 	"app.Reading":  ReadingDomain,
@@ -185,6 +189,7 @@ var IndexRenames = []rename.Index{
 	{Table: "holder", From: "holder_alias_tenant_id", To: "holder_slug"},
 	{Table: "holder", From: "holder_tenant_id_date_created_id", To: "holder_page"},
 	{Table: "outbox", From: "outbox_id", To: "outbox_queue"},
+	{Table: "owed", From: "owed_date_created_id", To: "owed_owed"},
 	{Table: "reading", From: "reading_tenant_id_date_created", To: "reading_wall"},
 	{Table: "robot", From: "robot_tenant_id_date_created_id", To: "robot_page"},
 	{Table: "robot", From: "robot_alias_tenant_id", To: "robot_slug"},
@@ -297,6 +302,11 @@ func (wall) JointScope(ctx context.Context) (predicate.Joint, error) {
 
 // OutboxScope: declared `global`, so it is not behind the wall at all.
 func (wall) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
+	return nil, nil
+}
+
+// OwedScope: declared `global`, so it is not behind the wall at all.
+func (wall) OwedScope(ctx context.Context) (predicate.Owed, error) {
 	return nil, nil
 }
 
@@ -454,6 +464,11 @@ func (x grouped) JointScope(ctx context.Context) (predicate.Joint, error) {
 
 // OutboxScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
+	return nil, nil
+}
+
+// OwedScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) OwedScope(ctx context.Context) (predicate.Owed, error) {
 	return nil, nil
 }
 
@@ -4270,6 +4285,8 @@ func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.Fiel
 		return describedJoint.md, describedJoint.secret, describedJoint.personal
 	case OutboxDomain:
 		return describedOutbox.md, describedOutbox.secret, describedOutbox.personal
+	case OwedDomain:
+		return describedOwed.md, describedOwed.secret, describedOwed.personal
 	case PairingDomain:
 		return describedPairing.md, describedPairing.secret, describedPairing.personal
 	case PulseDomain:
@@ -4335,6 +4352,9 @@ var (
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
 	describedOutbox = describe((*apptest.Outbox)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedOwed = describe((*apptest.Owed)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
 	describedPairing = describe((*apptest.Pairing)(nil),
@@ -8093,6 +8113,93 @@ func (s trailStore) PurgeSeals(ctx context.Context, tenant pdid.Id) (int, error)
 	return s.db.RowSeal.Delete().Where(rowseal.TenantId(tenant.Uuid())).Exec(ctx)
 }
 
+// InTx is whether the client is bound to a transaction -- one it began, or
+// one begun with `dialect.BeginTx` that it shares. The archive takes no
+// part in it: an erasure is owed there rather than written, and every other
+// act is refused (`trail.ErrInTx`).
+func (s trailStore) InTx() bool { return s.db.InTx() }
+
+func (s trailStore) Owe(ctx context.Context, objects []pdid.Id) error {
+	now := time.Now()
+	qs := make([]*ent.OwedCreate, 0, len(objects))
+	for _, v := range objects {
+		qs = append(qs, s.db.Owed.Create().
+			SetId(pdid.New(OwedDomain).Uuid()).
+			SetObject(v.Uuid()).
+			SetHeldBy([][]byte{}).
+			SetDateCreated(now))
+	}
+	for vs := range slices.Chunk(qs, keptTrailRows) {
+		if err := s.db.Owed.CreateBulk(vs...).Exec(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s trailStore) Owed(ctx context.Context, after trail.Cursor, limit int) ([]trail.Owed, error) {
+	q := s.db.Owed.Query()
+	if after.Key != nil {
+		id, err := cursorOf(after.Key)
+		if err != nil {
+			return nil, err
+		}
+
+		q = q.Where(owed.Or(
+			owed.DateCreatedGT(after.Created),
+			owed.And(owed.DateCreatedEQ(after.Created), owed.IdGT(id)),
+		))
+	}
+
+	vs, err := q.Order(ent.Asc(owed.FieldDateCreated, owed.FieldId)).Limit(limit).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]trail.Owed, 0, len(vs))
+	for _, v := range vs {
+		by := make([]pdid.Id, 0, len(v.HeldBy))
+		for _, b := range v.HeldBy {
+			if id, err := pdid.From(b); err == nil {
+				by = append(by, id)
+			}
+		}
+		out = append(out, trail.Owed{Key: v.Id, Object: pdid.Id(v.Object), Created: v.DateCreated, HeldBy: by})
+	}
+
+	return out, nil
+}
+
+func (s trailStore) Paid(ctx context.Context, keys []any) (int, error) {
+	ids := make([]uuid.UUID, 0, len(keys))
+	for _, k := range keys {
+		id, ok := k.(uuid.UUID)
+		if !ok {
+			return 0, fmt.Errorf("trail: %T is not a key this store gave out", k)
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	return s.db.Owed.Delete().Where(owed.IdIn(ids...)).Exec(ctx)
+}
+
+func (s trailStore) Kept(ctx context.Context, key any, by []pdid.Id) error {
+	id, ok := key.(uuid.UUID)
+	if !ok {
+		return fmt.Errorf("trail: %T is not a key this store gave out", key)
+	}
+	bs := make([][]byte, len(by))
+	for i, v := range by {
+		bs[i] = v.Bytes()
+	}
+
+	return s.db.Owed.UpdateOneId(id).SetHeldBy(bs).Exec(ctx)
+}
+
 // TrailOf is a reader of the archive's documents as the messages they hold:
 // what `policy.Read` and `policy.ReadTenant` are handed, and `trail.Read`,
 // `trail.ReadTenant` and `trail.ReadFiles`, which check nothing.
@@ -9007,6 +9114,7 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		&apptest.Holder{},
 		&apptest.Joint{},
 		&apptest.Outbox{},
+		&apptest.Owed{},
 		&apptest.Pairing{},
 		&apptest.Pulse{},
 		&apptest.Reading{},

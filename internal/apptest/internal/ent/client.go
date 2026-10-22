@@ -19,6 +19,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
@@ -53,6 +54,8 @@ type Client struct {
 	Joint *JointClient
 	// Outbox is the client for interacting with the Outbox builders.
 	Outbox *OutboxClient
+	// Owed is the client for interacting with the Owed builders.
+	Owed *OwedClient
 	// Pairing is the client for interacting with the Pairing builders.
 	Pairing *PairingClient
 	// Pulse is the client for interacting with the Pulse builders.
@@ -89,6 +92,7 @@ func (c *Client) init() {
 	c.Holder = NewHolderClient(c.config)
 	c.Joint = NewJointClient(c.config)
 	c.Outbox = NewOutboxClient(c.config)
+	c.Owed = NewOwedClient(c.config)
 	c.Pairing = NewPairingClient(c.config)
 	c.Pulse = NewPulseClient(c.config)
 	c.Reading = NewReadingClient(c.config)
@@ -198,6 +202,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Holder:   NewHolderClient(cfg),
 		Joint:    NewJointClient(cfg),
 		Outbox:   NewOutboxClient(cfg),
+		Owed:     NewOwedClient(cfg),
 		Pairing:  NewPairingClient(cfg),
 		Pulse:    NewPulseClient(cfg),
 		Reading:  NewReadingClient(cfg),
@@ -234,6 +239,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Holder:   NewHolderClient(cfg),
 		Joint:    NewJointClient(cfg),
 		Outbox:   NewOutboxClient(cfg),
+		Owed:     NewOwedClient(cfg),
 		Pairing:  NewPairingClient(cfg),
 		Pulse:    NewPulseClient(cfg),
 		Reading:  NewReadingClient(cfg),
@@ -319,8 +325,8 @@ func (c *Client) InTx() bool {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Access, c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox,
-		c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal, c.Tally, c.Tenant,
-		c.Thing,
+		c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal, c.Tally,
+		c.Tenant, c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -331,8 +337,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Access, c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox,
-		c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal, c.Tally, c.Tenant,
-		c.Thing,
+		c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal, c.Tally,
+		c.Tenant, c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -357,6 +363,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Joint.mutate(ctx, m)
 	case *OutboxMutation:
 		return c.Outbox.mutate(ctx, m)
+	case *OwedMutation:
+		return c.Owed.mutate(ctx, m)
 	case *PairingMutation:
 		return c.Pairing.mutate(ctx, m)
 	case *PulseMutation:
@@ -1505,6 +1513,139 @@ func (c *OutboxClient) mutate(ctx context.Context, m *OutboxMutation) (Value, er
 		return (&OutboxDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Outbox mutation op: %q", m.Op())
+	}
+}
+
+// OwedClient is a client for the Owed schema.
+type OwedClient struct {
+	config
+}
+
+// NewOwedClient returns a client for the Owed from the given config.
+func NewOwedClient(c config) *OwedClient {
+	return &OwedClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `owed.Hooks(f(g(h())))`.
+func (c *OwedClient) Use(hooks ...Hook) {
+	c.hooks.Owed = append(c.hooks.Owed, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `owed.Intercept(f(g(h())))`.
+func (c *OwedClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Owed = append(c.inters.Owed, interceptors...)
+}
+
+// Create returns a builder for creating a Owed entity.
+func (c *OwedClient) Create() *OwedCreate {
+	mutation := newOwedMutation(c.config, OpCreate)
+	return &OwedCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Owed entities.
+func (c *OwedClient) CreateBulk(builders ...*OwedCreate) *OwedCreateBulk {
+	return &OwedCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *OwedClient) MapCreateBulk(slice any, setFunc func(*OwedCreate, int)) *OwedCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &OwedCreateBulk{err: fmt.Errorf("calling to OwedClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*OwedCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &OwedCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Owed.
+func (c *OwedClient) Update() *OwedUpdate {
+	mutation := newOwedMutation(c.config, OpUpdate)
+	return &OwedUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *OwedClient) UpdateOne(_m *Owed) *OwedUpdateOne {
+	mutation := newOwedMutation(c.config, OpUpdateOne, withOwed(_m))
+	return &OwedUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneId returns an update builder for the given id.
+func (c *OwedClient) UpdateOneId(id uuid.UUID) *OwedUpdateOne {
+	mutation := newOwedMutation(c.config, OpUpdateOne, withOwedId(id))
+	return &OwedUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Owed.
+func (c *OwedClient) Delete() *OwedDelete {
+	mutation := newOwedMutation(c.config, OpDelete)
+	return &OwedDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *OwedClient) DeleteOne(_m *Owed) *OwedDeleteOne {
+	return c.DeleteOneId(_m.Id)
+}
+
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *OwedClient) DeleteOneId(id uuid.UUID) *OwedDeleteOne {
+	builder := c.Delete().Where(owed.Id(id))
+	builder.mutation.id = &id
+	builder.mutation.SetOp(OpDeleteOne)
+	return &OwedDeleteOne{builder}
+}
+
+// Query returns a query builder for Owed.
+func (c *OwedClient) Query() *OwedQuery {
+	return &OwedQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeOwed},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Owed entity by its id.
+func (c *OwedClient) Get(ctx context.Context, id uuid.UUID) (*Owed, error) {
+	return c.Query().Where(owed.Id(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *OwedClient) GetX(ctx context.Context, id uuid.UUID) *Owed {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *OwedClient) Hooks() []Hook {
+	return c.hooks.Owed
+}
+
+// Interceptors returns the client interceptors.
+func (c *OwedClient) Interceptors() []Interceptor {
+	return c.inters.Owed
+}
+
+func (c *OwedClient) mutate(ctx context.Context, m *OwedMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&OwedCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&OwedUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&OwedUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&OwedDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Owed mutation op: %q", m.Op())
 	}
 }
 
@@ -2820,11 +2961,11 @@ func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, erro
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse,
-		Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Hook
+		Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Owed, Pairing,
+		Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Hook
 	}
 	inters struct {
-		Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Pairing, Pulse,
-		Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Interceptor
+		Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Owed, Pairing,
+		Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Interceptor
 	}
 )
