@@ -418,7 +418,7 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgo
 	if err := s.Owe(ctx, objects); err != nil {
 		return out, fmt.Errorf("the erasure owed: %w", err)
 	}
-	paid, err := p.pay(ctx, s, objects)
+	paid, err := p.Pay(ctx, s, objects...)
 
 	return paid.Forgotten, err
 }
@@ -434,12 +434,22 @@ type Paid struct {
 	Objects int
 }
 
-// Pay pays the erasures owed ([Owed]): forgets each object in both halves, as
-// [Policy.Forget] does outside a transaction, writes its receipts, and removes
-// the ones done -- after an app's transaction that owed them has committed,
-// for an app that wants the archive's half at once. A pass pays what is owed
-// before it moves anything, so an app that does not call it is paid at the
-// next one.
+// Pay pays the erasures owed ([Owed]) for these objects, or every one when it
+// names none: forgets each object in both halves, as [Policy.Forget] does
+// outside a transaction, writes its receipts, and removes the ones done. A
+// pass pays every one before it moves anything, so an app that does not call
+// this is paid at the next one.
+//
+// # These, after the transaction that owed them
+//
+// An app that wants the archive's half at once calls it after its
+// transaction has committed, naming the objects it forgot there. What it
+// hears is then what its own erasure reached, and nothing else is paid: not
+// a debt another transaction owed, which is that one's or the pass's, and not
+// one a hold has kept since -- which a payment of every one would go through
+// again each time, an archive's walk apiece, and count again in what it
+// answers. Paying every one is the pass's, which is how a lifted hold is
+// found.
 //
 // # Done, and not before
 //
@@ -459,23 +469,18 @@ type Paid struct {
 //
 // It is an act: in the trail's turn on [Policy.Lease] for the database's half,
 // ended in a checkpoint, and refused inside a transaction ([ErrInTx]).
-func (p Policy) Pay(ctx context.Context, s Store) (Paid, error) {
-	return p.pay(ctx, s, nil)
-}
-
-// pay is [Policy.Pay], of the erasures owed for `only` when it names
-// objects, and of every one otherwise.
-func (p Policy) pay(ctx context.Context, s Store, only []pdid.Id) (_ Paid, err error) {
+func (p Policy) Pay(ctx context.Context, s Store, objects ...pdid.Id) (_ Paid, err error) {
 	x, err := p.act(s)
 	if err != nil {
 		return Paid{}, err
 	}
 	defer x.cover(ctx, "forget", &err)
 
-	return x.pay(ctx, only)
+	return x.pay(ctx, objects)
 }
 
-// pay pays what is owed, a batch at a time, oldest first.
+// pay pays what is owed for `only` when it names objects, and every one
+// otherwise, a batch at a time, oldest first.
 func (x *pass) pay(ctx context.Context, only []pdid.Id) (Paid, error) {
 	out := Paid{}
 	of := map[pdid.Id]bool{}
@@ -494,6 +499,10 @@ func (x *pass) pay(ctx context.Context, only []pdid.Id) (Paid, error) {
 		}
 		at = Cursor{Created: vs[len(vs)-1].Created, Key: vs[len(vs)-1].Key}
 
+		// Whether this was the last page is the page's to say, and not what
+		// is left of it once the others' are set aside: a batch of debts
+		// none of them ours is no end of the ones that are.
+		last := len(vs) < Batch
 		if len(only) > 0 {
 			vs = slices.DeleteFunc(vs, func(v Owed) bool { return !of[v.Object] })
 		}
@@ -502,8 +511,7 @@ func (x *pass) pay(ctx context.Context, only []pdid.Id) (Paid, error) {
 				return out, err
 			}
 		}
-
-		if len(vs) < Batch && len(only) > 0 {
+		if last {
 			break
 		}
 	}

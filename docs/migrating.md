@@ -16,11 +16,13 @@ table of.
   object in the same transaction, writing nothing to the archive:
   `Forgotten.Owed` says how many. A rollback takes the debt with it. Outside a
   transaction it owes and pays at once, as before but crash-safe.
-- **`Policy.Pay(ctx, s)`** pays what is owed — both halves, `Forget`'s receipts,
-  a checkpoint — after your commit, and a pass pays it before it moves anything
-  if you do not. A debt a legal hold keeps part of stays until the hold lifts,
-  and the pass after pays the rest; `Policy.Owing` says what is owed, since
-  when, and how much under whose hold.
+- **`Policy.Pay(ctx, s, objects...)`** pays what is owed for the objects you
+  forgot — both halves, `Forget`'s receipts, a checkpoint — after your commit,
+  and a pass pays it before it moves anything if you do not. Name them: naming
+  none pays every debt, as a pass does, including those a hold keeps. A debt a
+  legal hold keeps part of stays until the hold lifts, and the pass after pays
+  the rest; `Policy.Owing` says what is owed, since when, and how much under
+  whose hold.
 - **Every other act inside a transaction is refused** with `trail.ErrInTx`
   before it writes anything: a pass, `Archive`, `Collect`, `Purge`,
   `PurgeTenant`, `RetireTenant`, `Return`, `ExportTenant`, `Accept`, `Pay`.
@@ -36,17 +38,17 @@ What the apps on payday change:
 
 - **rove:** pseudonymize and departure keep calling `Forget` in the domain
   transaction, and the trail's erasure is now atomic with them; they may call
-  `Pay` with `pd.TrailStore` on the deployment's client after the commit for
-  the archive's half at once, or leave it to the next pass. The `held` count an
-  event records is the database's half's unless they pay. Its offboarding
-  walks every table, so `owed` goes beside `rowseal` among the trail's and
-  the withheld.
+  `Pay` with `pd.TrailStore` on the deployment's client after the commit,
+  naming the objects, for the archive's half at once, or leave it to the next
+  pass. The `held` count an event records is the database's half's unless
+  they pay. Its offboarding walks every table, so `owed` goes beside `rowseal`
+  among the trail's and the withheld.
 - **roster:** `forget` commits its transaction and then calls `Forget` with
   the deployment's client, which still works and now owes and pays at once.
   A crash between that commit and the call loses the trail's erasure; calling
   `Forget` with the transaction's client before the commit owes it atomically
-  instead, and the next pass pays. Both apps get the new table on their next
-  migration.
+  instead, and `Pay` naming the same objects after the commit, or the next
+  pass, pays. Both apps get the new table on their next migration.
 
 ## A tenant's trail can be taken out
 
