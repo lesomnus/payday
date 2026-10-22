@@ -101,10 +101,10 @@ func (w *Witness) Hear(ctx context.Context, s trail.Signed) (trail.Witnessed, er
 }
 
 // Latest reads every statement the store keeps of `chain`, and answers the
-// highest number, and of two of that number the one heard first -- and the
-// number it heard two statements of most lately, its first statement and the
-// last heard that was something else (trail.Heard.Twice). A blob that holds no
-// statement, or whose bytes are not its digest, is passed over.
+// highest number, and of two of that number the one heard first -- and every
+// number it heard as two statements or more, each its first statement and one
+// of the others (trail.Heard.Twice). A blob that holds no statement, or whose
+// bytes are not its digest, is passed over.
 func (w *Witness) Latest(ctx context.Context, chain string) (trail.Heard, error) {
 	walker, ok := flob.AsWalker(w.s)
 	if !ok {
@@ -152,28 +152,27 @@ func (w *Witness) Latest(ctx context.Context, chain string) (trail.Heard, error)
 		return trail.Heard{}, err
 	}
 
-	// Of the numbers heard as two statements, the one heard so most lately:
-	// its first statement, and the last heard that was something else.
-	var first, again *seen
+	// Every number heard as two statements or more: its first, and each
+	// other it was heard as after it, once.
 	for _, k := range ks {
 		vs := byK[k]
-		for i := range vs[1:] {
-			v := &vs[i+1]
-			if v.digest != vs[0].digest && (again == nil || v.at.After(again.at)) {
-				first, again = &vs[0], v
+		said := map[flob.Digest]bool{vs[0].digest: true}
+		for _, v := range vs[1:] {
+			if said[v.digest] {
+				continue
 			}
+			said[v.digest] = true
+
+			first, err := w.read(ctx, vs[0].blob)
+			if err != nil {
+				return trail.Heard{}, err
+			}
+			again, err := w.read(ctx, v.blob)
+			if err != nil {
+				return trail.Heard{}, err
+			}
+			out.Twice = append(out.Twice, trail.Twice{First: first, Again: again})
 		}
-	}
-	if again != nil {
-		f, err := w.read(ctx, first.blob)
-		if err != nil {
-			return trail.Heard{}, err
-		}
-		a, err := w.read(ctx, again.blob)
-		if err != nil {
-			return trail.Heard{}, err
-		}
-		out.Twice = &trail.Twice{First: f, Again: a}
 	}
 
 	return out, nil

@@ -2279,10 +2279,12 @@ type Accepted struct {
 	// More is how many were accepted past the keys kept.
 	More int `json:"more,omitempty"`
 
-	// Twice is, by witness, the number it heard twice that the acceptance was
-	// of -- a count wound back, which the operator looked at -- and is a
-	// finding no more; one heard twice after it is. See [Heard.Twice].
-	Twice map[string]HeardTwice `json:"twice,omitempty"`
+	// Twice is, by witness, the pairs of statements of one number it heard
+	// that the acceptance took in -- a count wound back, which the operator
+	// looked at -- and are findings no more. Each is a pair: another
+	// statement of the same number heard after it is one of its own. See
+	// [Heard.Twice].
+	Twice map[string][]HeardTwice `json:"twice,omitempty"`
 
 	// Checkpoint and At are the checkpoint it ended in, as a verification
 	// lists it ([Verified.Accepted]). The checkpoint keeps them as its own,
@@ -2474,7 +2476,7 @@ func (p Policy) Accept(ctx context.Context, s Store, a Acceptance) (Verified, er
 	}
 
 	kept := acceptedOf(a, v.Findings)
-	kept.Twice = twices(v.Heard)
+	kept.Twice = v.chain.twices(v.Heard)
 	log.From(ctx).InfoContext(ctx, "trail: the manifest, made to say what the archive holds",
 		"by", a.By, "why", a.Why, "of", string(a.Of), "findings", len(v.Findings))
 

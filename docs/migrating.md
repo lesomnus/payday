@@ -24,9 +24,10 @@ when you are ready.
   binary does not open, a witness named twice, or witnesses without an archive,
   are refused where the process comes up.
 - **What a verification finds of them**: one a witness heard that the store does
-  not keep (`unkept`) or keeps as something else (`rewritten`), a number a
-  witness heard as two statements -- the count wound back below the head,
-  `Heard.Twice` -- (`rewritten`, until an acceptance of it, `Accepted.Twice`),
+  not keep (`unkept`) or keeps as something else (`rewritten`), each pair of
+  statements of one number a witness heard -- the count wound back below the
+  head, `Heard.Twice` -- (`rewritten`, until an acceptance takes that pair in,
+  `Accepted.Twice`),
   the newest the store keeps that no witness that answers heard within
   `audit.checkpoints.hear_within` (`unheard`, a new kind; twice `audit.every`
   when empty), and an answer whose signature is not good (`forged`).

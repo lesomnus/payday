@@ -54,10 +54,10 @@ type Witness interface {
 
 	// Latest is the newest statement of a chain the witness heard: the
 	// highest number, and of two of that number, the one it heard first.
-	// Nothing heard is zero. A witness that can also tell it heard one
-	// number twice, as two statements -- the count wound back and the
-	// number taken again -- says so in [Heard.Twice]. [ErrDeaf] is a witness
-	// that only tells, and has nothing to answer with.
+	// Nothing heard is zero. A witness that can also tell it heard a number
+	// as two statements -- the count wound back and the number taken again
+	// -- says each in [Heard.Twice]. [ErrDeaf] is a witness that only tells,
+	// and has nothing to answer with.
 	Latest(ctx context.Context, chain string) (Heard, error)
 }
 
@@ -94,24 +94,25 @@ type Heard struct {
 
 	At time.Time `json:"at"`
 
-	// Twice is, of the chain, the number the witness heard two statements of
-	// most lately, when there is one: nil for none. A number heard twice is a
-	// count wound back -- the newest checkpoints taken away while every
-	// witness was away, and numbered again -- and is found below the head,
-	// where the newest no longer says it. The one heard most lately, so that
-	// an acceptance of one wound back hides no later one.
-	Twice *Twice `json:"twice,omitempty"`
+	// Twice is, of the chain, every number the witness heard as two
+	// statements or more: each the first it heard, and one of the others,
+	// lowest number first. A number heard twice is a count wound back -- the
+	// newest checkpoints taken away while every witness was away, and
+	// numbered again -- and is found below the head, where the newest no
+	// longer says it. Every one, and not the latest or the lowest: a single
+	// one would be the one an acceptance of it hides another behind.
+	Twice []Twice `json:"twice,omitempty"`
 }
 
 // Twice is a number a witness heard two statements of: the first it heard,
-// and the one it heard last that was something else.
+// and another, heard after it.
 type Twice struct {
 	First Heard `json:"first"`
 	Again Heard `json:"again"`
 }
 
 // HeardTwice is a number a witness heard twice, as an acceptance keeps it:
-// the number and the two digests, which it was of ([Accepted.Twice]).
+// the number and the two digests ([Accepted.Twice]).
 type HeardTwice struct {
 	K     int         `json:"k"`
 	First flob.Digest `json:"first"`
@@ -293,12 +294,13 @@ func (p Policy) heardAhead(ctx context.Context) int {
 	return n
 }
 
-// acceptedTwice answers whether an acceptance the chain vouches for was of
-// this number a witness heard twice: one that an operator looked at, which is
-// a finding no more. A number heard twice after it is one of its own.
+// acceptedTwice answers whether an acceptance the chain vouches for took in
+// this pair of statements a witness heard of one number: one that an
+// operator looked at, which is a finding no more. Another statement of the
+// same number heard after it is a pair of its own.
 func (ch chain) acceptedTwice(witness string, t HeardTwice) bool {
 	for _, v := range ch.decided() {
-		if a := v.c.Accepted; a != nil && a.Twice[witness] == t {
+		if a := v.c.Accepted; a != nil && slices.Contains(a.Twice[witness], t) {
 			return true
 		}
 	}
@@ -306,13 +308,17 @@ func (ch chain) acceptedTwice(witness string, t HeardTwice) bool {
 	return false
 }
 
-// twices is what an acceptance keeps of the numbers the witnesses that
-// answered heard twice, by witness.
-func twices(hs map[string]Heard) map[string]HeardTwice {
-	out := map[string]HeardTwice{}
-	for name, h := range hs {
-		if h.Twice != nil {
-			out[name] = h.Twice.heardTwice()
+// twices is, by witness, the pairs of statements of one number the witnesses
+// that answered heard that no acceptance took in yet: what an acceptance of
+// them takes in. They are findings of the verification it is of, and bound by
+// its digest as every finding is.
+func (ch chain) twices(hs map[string]Heard) map[string][]HeardTwice {
+	out := map[string][]HeardTwice{}
+	for _, name := range slices.Sorted(maps.Keys(hs)) {
+		for _, t := range hs[name].Twice {
+			if v := t.heardTwice(); !ch.acceptedTwice(name, v) {
+				out[name] = append(out[name], v)
+			}
 		}
 	}
 	if len(out) == 0 {
@@ -354,11 +360,15 @@ func (p Policy) witnessFindings(ctx context.Context, ch chain, out *Verified) []
 			continue
 		}
 
-		if t := h.Twice; t != nil && !ch.acceptedTwice(name, t.heardTwice()) {
+		for _, t := range h.Twice {
+			if ch.acceptedTwice(name, t.heardTwice()) {
+				continue
+			}
+
 			switch {
 			case !verified(t.First.Key, t.First.Statement, t.First.Sig) || !verified(t.Again.Key, t.Again.Statement, t.Again.Sig):
 				fs = append(fs, Finding{Kind: "forged", Checkpoint: t.First.K, Digest: t.First.Digest,
-					Note: fmt.Sprintf("witness %s answers that it heard it twice, and a signature is not good", name)})
+					Note: fmt.Sprintf("witness %s answers that it heard it again as %s, and a signature is not good", name, t.Again.Digest)})
 			default:
 				fs = append(fs, Finding{Kind: "rewritten", Checkpoint: t.First.K, Digest: t.First.Digest,
 					Note: fmt.Sprintf("witness %s heard it as %s, and again as %s: the count was wound back and the number taken again", name, t.First.Digest, t.Again.Digest)})

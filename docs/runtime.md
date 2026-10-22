@@ -809,12 +809,16 @@ restore (`Acceptance.Restored`).
 And below the head. Every witness away while the count is wound back and the
 deployment numbers again what was taken away: told it all when it is back, a
 witness's newest is the deployment's newest, and the head says nothing. It
-heard those numbers twice, as two statements, and a witness that can tell says
-so (`Heard.Twice`; the store witness does): the number it heard so most lately,
-its first statement and the last that was something else. That is `rewritten`
-at that number, below the head. An acceptance keeps what it was of
-(`Accepted.Twice`), which is a finding no more — and only that: a count wound
-back again after it is heard so more lately still, and found as before.
+heard each of those numbers as two statements, and a witness that can tell
+says so (`Heard.Twice`; the store witness does): every number it heard as two
+statements or more, each its first and one of the others. Each pair is
+`rewritten` at its number, below the head, until an acceptance takes it in
+(`Accepted.Twice`) — the pairs it was shown, as findings bound by its digest,
+and no other: a rewind left out of what an operator was shown is found after
+the acceptance, as one an attacker wound back before a rewind they meant to be
+accepted would be, and a third statement of a number taken in is a pair of its
+own. Every pair and not one, since the one would be what an acceptance hides
+the rest behind.
 
 Two are payday's, each a package of its own:
 

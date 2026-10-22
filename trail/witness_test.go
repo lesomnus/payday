@@ -2,9 +2,11 @@ package trail
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"slices"
 	"strconv"
 	"sync"
@@ -24,6 +26,10 @@ type ear struct {
 	deaf  bool
 	away  error
 	hard  error
+
+	// hide is the numbers it does not say it heard twice -- an answer that
+	// left them out -- for a test of what an acceptance takes in.
+	hide func(k int) bool
 }
 
 func (e *ear) Hear(_ context.Context, s Signed) (Witnessed, error) {
@@ -60,19 +66,25 @@ func (e *ear) Latest(_ context.Context, chain string) (Heard, error) {
 		}
 	}
 
-	// The number heard as two statements most lately: its first statement,
-	// and the last heard that was something else.
+	// Every number heard as two statements or more: its first, and each other
+	// it was heard as after it, once.
 	firsts := map[int]Heard{}
 	for _, h := range e.heard {
 		if f, ok := firsts[h.K]; h.Chain == chain && (!ok || h.At.Before(f.At)) {
 			firsts[h.K] = h
 		}
 	}
+	said := map[flob.Digest]bool{}
 	for _, h := range e.heard {
-		if f := firsts[h.K]; h.Chain == chain && h.Digest != f.Digest && (out.Twice == nil || h.At.After(out.Twice.Again.At)) {
-			out.Twice = &Twice{First: f, Again: h}
+		f := firsts[h.K]
+		if h.Chain != chain || h.Digest == f.Digest || said[h.Digest] || (e.hide != nil && e.hide(h.K)) {
+			continue
 		}
+
+		said[h.Digest] = true
+		out.Twice = append(out.Twice, Twice{First: f, Again: h})
 	}
+	slices.SortFunc(out.Twice, func(a, b Twice) int { return cmp.Compare(a.First.K, b.First.K) })
 
 	return out, nil
 }
@@ -233,45 +245,92 @@ func windBack(t *testing.T, s *fakeStore, p Policy, e *ear, n int) {
 	p.Pass(ctx, s)
 }
 
+// at is a verification's findings by the checkpoint each is about, and the
+// digest it names.
+func at(v Verified) map[int]flob.Digest {
+	out := map[int]flob.Digest{}
+	for _, f := range v.Findings {
+		out[f.Checkpoint] = f.Digest
+	}
+
+	return out
+}
+
 // TestANumberTakenAgainIsFoundByItsWitness (#115).
 //
 // Every witness away while the newest checkpoints are taken away and the count
 // wound back, and the deployment numbers them again. Told them when it is
-// back, the witness's newest is the deployment's newest -- and it heard those
-// numbers twice, which is `rewritten` below the head: of the numbers it heard
-// twice, the one it heard so most lately. An operator who looked accepts it,
-// and it is a finding no more; a count wound back again after the acceptance
-// is found as before.
+// back, the witness's newest is the deployment's newest -- and it heard each
+// of those numbers as two statements, which is `rewritten` at each, below the
+// head. An acceptance takes in the pairs it was shown and no others: one that
+// a witness's answer left out is found after it, as one an attacker wound back
+// before a rewind they meant to be accepted would be; and a third statement
+// of a number taken in is a pair of its own.
 func TestANumberTakenAgainIsFoundByItsWitness(t *testing.T) {
-	x := require.New(t)
 	ctx := t.Context()
 
-	e := &ear{}
-	s, p := heardBy(t, 3, map[string]Witness{"ear": e})
-	three := numbered(t, p, 3).d
-	windBack(t, s, p, e, 2)
+	t.Run("every number taken again", func(t *testing.T) {
+		x := require.New(t)
+		e := &ear{}
+		s, p := heardBy(t, 3, map[string]Witness{"ear": e})
+		two, three := numbered(t, p, 2).d, numbered(t, p, 3).d
+		windBack(t, s, p, e, 2)
 
-	v, err := p.Verify(ctx, s, false)
-	x.NoError(err)
-	x.Equal([]string{"rewritten"}, kinds(v))
-	x.Equal(3, v.Findings[0].Checkpoint)
-	x.Equal(three, v.Findings[0].Digest)
-	x.Contains(v.Findings[0].Note, "wound back")
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"rewritten"}, kinds(v))
+		x.Equal(map[int]flob.Digest{2: two, 3: three}, at(v), "%v", v.Findings)
+		x.Contains(v.Findings[0].Note, "wound back")
 
-	_, err = accept(t, p, s, Acceptance{Why: "the store's disk was restored from an older copy while the witness was away"})
-	x.NoError(err)
-	v, err = p.Verify(ctx, s, false)
-	x.NoError(err)
-	x.True(v.Ok(), "%v", v.Findings)
+		_, err = accept(t, p, s, Acceptance{Why: "the store's disk was restored from an older copy while the witness was away"})
+		x.NoError(err)
+		v, err = p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.True(v.Ok(), "%v", v.Findings)
+	})
+	t.Run("an acceptance takes in what it was shown", func(t *testing.T) {
+		x := require.New(t)
+		e := &ear{}
+		s, p := heardBy(t, 3, map[string]Witness{"ear": e})
+		windBack(t, s, p, e, 1)
+		p.Pass(ctx, s)
+		windBack(t, s, p, e, 1)
 
-	// Another pass, and the count wound back past it alone: the acceptance is
-	// still in the chain, and is of the number heard twice before.
-	p.Pass(ctx, s)
-	windBack(t, s, p, e, 1)
-	v, err = p.Verify(ctx, s, false)
-	x.NoError(err)
-	x.Equal([]string{"rewritten"}, kinds(v), "an acceptance of one count wound back hid the next")
-	x.Equal(latestOf(t, s)-2, v.Findings[0].Checkpoint)
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]int{3, 6}, slices.Sorted(maps.Keys(at(v))), "%v", v.Findings)
+
+		// The later rewind accepted, by an answer that left the earlier out.
+		e.set(func(e *ear) { e.hide = func(k int) bool { return k == 3 } })
+		_, err = accept(t, p, s, Acceptance{Why: "the restore of last night"})
+		x.NoError(err)
+		e.set(func(e *ear) { e.hide = nil })
+
+		v, err = p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Len(v.Findings, 1, "%v", v.Findings)
+		x.Equal("rewritten", v.Findings[0].Kind)
+		x.Equal(3, v.Findings[0].Checkpoint, "the earlier rewind was hidden by the acceptance of the later")
+
+		_, err = accept(t, p, s, Acceptance{Why: "and the one before it, looked at"})
+		x.NoError(err)
+		v, err = p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.True(v.Ok(), "%v", v.Findings)
+
+		// A third statement of a number taken in.
+		b := []byte(`{"k":3,"at":"2026-10-22T00:00:00Z","said":"a third time"}`)
+		key, sig, err := sign(p.Signer, b)
+		x.NoError(err)
+		e.set(func(e *ear) {
+			e.heard = append(e.heard, Heard{Signed: Signed{K: 3, Digest: flob.DigestFromBytes(b), Statement: b, Key: key, Sig: sig}, At: time.Now()})
+		})
+		v, err = p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Len(v.Findings, 1, "%v", v.Findings)
+		x.Equal("rewritten", v.Findings[0].Kind)
+		x.Equal(3, v.Findings[0].Checkpoint, "a third statement of a number taken in was taken in with it")
+	})
 }
 
 // TestACheckpointNoWitnessHeardIsFound (#115): the newest checkpoint, once it
