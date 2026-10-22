@@ -15,10 +15,19 @@
 #
 #	repository:   lesomnus/payday
 #	workflow:     npm.yaml
-#	environment:  (none)
+#	environment:  npm
 #
 # The workflow filename is part of what npm checks, so renaming this file
 # revokes it until the registration is changed to match.
+#
+# The job runs in the repository's `npm` environment, whose deployment policy
+# admits the `ts/v*` tags and nothing else. Named in the registration, the
+# environment is part of what npm checks too: a run that is not in it -- this
+# file changed to leave it out, a copy of it on a branch -- is refused, and a
+# run that is in it is one the policy admitted. A registration that names no
+# environment carries no claim about one -- npm records `environment` only
+# when it is given -- and so matches a run in any environment or none, which
+# is why the job could run in it before the registration named it.
 name: npm
 
 on:
@@ -29,7 +38,9 @@ on:
   push:
     tags: ['ts/v*']
 
-  # And by hand, for a re-run that failed on something other than the build.
+  # And by hand, for a re-run that failed on something other than the build --
+  # on the tag (`gh workflow run npm.yaml --ref ts/v0.1.2`), since the `npm`
+  # environment admits nothing else.
   workflow_dispatch:
 
 # Each action by the commit its version had when it was written here, as in
@@ -38,6 +49,9 @@ on:
 jobs:
   stage:
     runs-on: ubuntu-26.04
+    # The environment the registration on npmjs.com names; see "Registering
+    # it" above.
+    environment: npm
     permissions:
       # What OIDC needs, and the whole reason there is no token here.
       id-token: write
