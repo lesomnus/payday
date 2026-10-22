@@ -227,7 +227,8 @@ it changed*. The database keeps an account of every blob of the archive, and
 v, err := policy.Verify(ctx, pd.TrailStore(db), full)
 // v.Findings: a chunk missing, one nobody wrote, bytes that are not their
 // digest, a checkpoint the manifest no longer adds up to. Empty is the
-// archive as the database says it is.
+// archive as the database says it is. v.Digest is the findings as one
+// digest, and v.Accepted the latest acceptances: print both.
 ```
 
 Keep checkpoints apart from the archive, on a store that refuses deletion —
@@ -240,7 +241,7 @@ a secret, to start with, which `openssl genpkey -algorithm ed25519` or
 Vault, a cloud KMS — is named there by its URI once the app imports what speaks
 to it (see [keys in a device](../runtime.md#keys-in-a-device)), and any other
 `crypto.Signer` is handed in as `trail.Policy.Signer`. A deployment that archived
-without a key sets one and accepts once (`Policy.Accept`).
+without a key sets one and accepts once (`Policy.Accept`, below).
 
 The live rows can be checked as well. With `audit.digest.key`, each row of the
 trail keeps a keyed digest of the row its write left. The key is a file of
@@ -249,10 +250,13 @@ generated `pd.Digests`, handed the policy so that it reads the archive too,
 finds a row somebody changed in the database past the servers, one somebody
 added there and one somebody removed: give the operator a command that runs
 it, on a schedule too, and that fails on every list it answers with and prints
-the kinds it skipped. And one that accepts what an operator has looked at --
-rows a migration rewrote, rows written before the trail could say anything
-about them -- by recording them, `pd.Record(ctx, db, contents, action, ids)`,
-or `pd.RecordErased` for ones that are gone. See
+the kinds it skipped, and the findings as one digest, `audit.Rows.Digest`. And
+one that accepts what an operator has looked at -- rows a migration rewrote,
+rows written before the trail could say anything about them -- by recording
+them, `pd.Record(ctx, db, contents, action, ids)`, or `pd.RecordErased` for ones
+that are gone: given the digest the operator looked at, and refused when a
+check now answers another, so that a row found after they looked is not
+recorded with the rest. See
 [a digest of the row the write left](../runtime.md#a-digest-of-the-row-the-write-left).
 
 A deployment that was given its digest key after its first write says when, in
@@ -265,14 +269,34 @@ the latest checkpoint is found too, and each checkpoint names the one before
 it. On a WORM mount, say so — `audit.checkpoints.write_once: true` — and the
 process never erases or relabels a checkpoint either; on S3 with Object Lock,
 hand the store in as `trail.WriteOnce(store)`. Rows written before the
-deployment had a key are findings until an operator accepts them once,
-`policy.Accept(ctx, pd.TrailStore(db), why)`, which signs them as they stand.
+deployment had a key are findings until an operator accepts them once, which
+signs them as they stand.
 
 Every act that changes the archive ends in a checkpoint, as a pass does. Once
 the rows no longer add up to the latest one, none is taken — every act says so
 in its error, after doing what it does — until an operator who has looked
-accepts, and the acceptance is a checkpoint that says why. Have the command
-that runs `Verify` page somebody rather than log.
+accepts. Have the command that runs `Verify` page somebody rather than log.
+
+An acceptance is of what the operator looked at, by the digest the
+verification printed, and says who and why:
+
+```go
+v, err := policy.Accept(ctx, pd.TrailStore(db), trail.Acceptance{
+	Of:  digest, // what `verify` printed, as the operator gives it back
+	By:  who,    // the operator, as your command knows them
+	Why: why,
+})
+```
+
+It verifies again and is refused (`trail.ErrUnreviewed`) when that finds
+anything else, so give the operator the digest with the findings and take it
+back from them, never from a verification of your command's own. The
+acceptance ends in a signed checkpoint that keeps who, why, the digest and what
+was accepted, and in a receipt (`accept`). A database restored from a backup
+older than the latest checkpoint is accepted only as that: the command takes
+the checkpoint the backup holds and passes it as `Restored`, and the operator
+looks first at what `Verify` lists as `lost` — what the newest checkpoint says
+the archive held, and it no longer does.
 
 An export of a tenant's trail — a tenant leaving, a person asking what is kept
 about them — reads the archive the same way:

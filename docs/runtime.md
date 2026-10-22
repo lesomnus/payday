@@ -591,11 +591,14 @@ way through is no finding, and no clock is asked. What it finds:
 | `reordered` | a checkpoint that names one after it as the one before |
 | `unkept` | a checkpoint the database numbered, or the one after it names, that the store does not keep; or the numbers a checkpoint skips over to the one it names that no checkpoint the store keeps says it is — taken away, lost to a store restored from an older copy, or numbered by a pass a crash stopped — until an operator accepts |
 | `behind` | a checkpoint the store keeps that the database never numbered: a database restored from before it, until an operator accepts |
+| `lost` | while the database is `behind`: a blob the newest checkpoint the deployment vouches for says the archive held, and the archive holds no more and the database has no row of — gone since the backup, or taken away by somebody who rolled the database back to hide it |
 | `emptied` | a manifest with no rows beside checkpoints of an archive that held something (a checkpoint over nothing, a deployment's first pass, is not one) |
 
 Every pass starts with the light half — names and labels, no bytes read —
 settles what was in flight, says what it found (a warning, and a receipt,
-`finding`), and goes on.
+`finding`), and goes on. A verification also answers its findings as one
+digest, `Verified.Digest`, which an acceptance of them names, and the latest
+acceptances the checkpoints keep, `Verified.Accepted`.
 
 **What an act decides by is the manifest.** A chunk's month, kind and tenants
 are the labels the manifest recorded for it, not the ones on the blob, which
@@ -713,17 +716,36 @@ archive that names none, and `pdtest.Key` is a test's own.
 
 An operator who has looked at what verification found and decided the archive
 is right — a crash, a blob restored from a backup, an archive kept without a
-key until now — calls `Policy.Accept` with why, and the manifest says what the
-archive holds from then on. Accepting a row is signing it, so a policy accepts
-only with its signer. The acceptance ends in a checkpoint that says why, which
-is also how a deployment whose rows no longer add up to the latest checkpoint
-goes on taking them.
+key until now — calls `Policy.Accept`, and the manifest says what the archive
+holds from then on. Accepting a row is signing it, so a policy accepts only
+with its signer.
+
+**An acceptance is of what was looked at.** It names the findings by the digest
+the verification answered (`Acceptance.Of`), says who accepts and why, and
+verifies again first: when that finds anything else it is refused
+(`trail.ErrUnreviewed`), so a finding nobody looked at is never taken in beside
+the ones somebody did. What signing the rows brings to light — the blob a row
+nobody signed said the archive held, compared now — was not looked at either,
+and is the next verification's to find. It is an act of the trail's, in the
+trail's turn, and kept as one: the checkpoint it ends in keeps who accepted,
+why, the digest of what was looked at, how many findings of each kind and which
+— the first hundred — signed and named by every checkpoint after it; and a
+receipt, `accept`, says the same. That checkpoint is also how a deployment
+whose rows no longer add up to the latest checkpoint goes on taking them.
 
 And how a database restored from a backup goes on. One older than the latest
 checkpoint has numbered fewer than the store keeps, `behind`, and while it is
-no act takes a checkpoint: it would take a number one already has. An
-acceptance is numbered after the newest the store keeps -- by what each says,
-whatever its labels -- and names that one as the one before it, so the
+no act takes a checkpoint: it would take a number one already has. It is
+accepted only as the restore it is, naming the checkpoint the backup holds
+(`Acceptance.Restored`), which is the latest the database has numbered — zero
+for a backup from before the first. Its own latest checkpoints are from before
+the backup, so what was taken away since would look like what the backup never
+had, and so would what somebody took away and then hid by rolling the database
+back: a verification of a database behind the store also finds each blob the
+newest checkpoint the deployment vouches for says the archive held, and it
+holds no more (`lost`), and the acceptance of the restore is of those as of
+every finding. It is numbered after the newest the store keeps -- by what each
+says, whatever its labels -- and names that one as the one before it, so the
 checkpoints from after the backup stay in the chain as what the archive held
 then, and the database's numbering goes on past them. `Manifest.Checkpoint`
 takes that floor, `after`, in the transaction that numbers it.

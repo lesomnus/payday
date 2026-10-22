@@ -3,6 +3,8 @@ package audit
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
@@ -188,6 +190,36 @@ type Rows struct {
 func (r Rows) Ok() bool {
 	return len(r.Differs) == 0 && len(r.Forged) == 0 && len(r.NoDigest) == 0 &&
 		len(r.NotOnTrail) == 0 && len(r.Missing) == 0 && len(r.KeyNotHeld) == 0
+}
+
+// Digest is the findings as one digest: each a line of which finding it is and
+// the row, in an order of their own. An acceptance of a check -- an app's
+// `trail rows --accept`, which puts the rows on the trail with `Record` -- names
+// it, and is refused when a check now finds anything else (payday#115): what
+// is accepted is what somebody looked at, and no row found after they did. The
+// counts are not in it, nor the order the rows were read in.
+func (r Rows) Digest() string {
+	b := &bytes.Buffer{}
+	for _, l := range []struct {
+		name string
+		ids  []pdid.Id
+	}{
+		{"differs", r.Differs},
+		{"forged", r.Forged},
+		{"no-digest", r.NoDigest},
+		{"not-on-trail", r.NotOnTrail},
+		{"missing", r.Missing},
+		{"key-not-held", r.KeyNotHeld},
+	} {
+		vs := slices.Clone(l.ids)
+		slices.SortFunc(vs, func(a, b pdid.Id) int { return bytes.Compare(a[:], b[:]) })
+		for _, v := range slices.Compact(vs) {
+			fmt.Fprintf(b, "%s %s\n", l.name, v)
+		}
+	}
+
+	sum := sha256.Sum256(b.Bytes())
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 // CheckKind checks every row of one kind and adds what it found to `out`.

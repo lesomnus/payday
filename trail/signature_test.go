@@ -384,10 +384,10 @@ func TestAnArchiveKeptWithoutAKeyIsAcceptedOnce(t *testing.T) {
 	x.ErrorIs(err, errUnkeyed)
 	x.Equal(1, latestOf(t, s))
 
-	_, err = Policy{Archive: p.Archive, Trust: []crypto.PublicKey{key.Public()}}.Accept(ctx, s, "an archive kept without a key")
+	_, err = accept(t, Policy{Archive: p.Archive, Trust: []crypto.PublicKey{key.Public()}}, s, Acceptance{Why: "an archive kept without a key"})
 	x.ErrorIs(err, ErrNoKey, "accepted without the key")
 
-	_, err = p.Accept(ctx, s, "an archive kept without a key until now")
+	_, err = accept(t, p, s, Acceptance{Why: "an archive kept without a key until now"})
 	x.NoError(err)
 	x.Equal(2, latestOf(t, s))
 	x.Equal(first, numbered(t, p, 2).c.Prev, "the acceptance did not take in the history before the key")
@@ -423,7 +423,7 @@ func TestAnAcceptanceGoesOnFromWhatTheDatabaseNumbered(t *testing.T) {
 			}
 		}
 
-		_, err := p.Accept(ctx, s, "an archive kept without a key until now")
+		_, err := accept(t, p, s, Acceptance{Why: "an archive kept without a key until now"})
 		x.NoError(err)
 		x.Equal(first, numbered(t, p, 2).c.Prev, "the acceptance went on from one the database never took")
 
@@ -492,7 +492,7 @@ func TestAnArchiveIsKeptWithAKey(t *testing.T) {
 			return err
 		},
 		"accept": func() error {
-			_, err := none.Accept(ctx, s, "looked at")
+			_, err := accept(t, none, s, Acceptance{Why: "looked at"})
 			return err
 		},
 	}

@@ -91,7 +91,7 @@ func TestEveryActEndsInACheckpoint(t *testing.T) {
 	x.NoError(err)
 	x.Equal(6, latestOf(t, s), "purge-tenant")
 
-	_, err = p.Accept(ctx, s, "nothing was wrong, and an acceptance says so")
+	_, err = accept(t, p, s, Acceptance{Why: "nothing was wrong, and an acceptance says so"})
 	x.NoError(err)
 	x.Equal(7, latestOf(t, s), "accept")
 
@@ -150,14 +150,14 @@ func TestAChunkAnActWroteIsFoundWhenItIsTakenAwayWithItsRow(t *testing.T) {
 
 	// Until an operator has looked.
 	const why = "the chunk was taken away by hand; the rows it held are in the backup"
-	_, err = p.Accept(ctx, s, why)
+	_, err = accept(t, p, s, Acceptance{Why: why})
 	x.NoError(err)
 	x.Equal(3, latestOf(t, s))
 
 	cs := []Checkpoint{}
 	x.NoError(p.ReadCheckpoints(ctx, func(c Checkpoint) error { cs = append(cs, c); return nil }))
-	x.Equal(why, cs[len(cs)-1].Accepted)
-	x.Empty(cs[0].Accepted)
+	x.Equal(why, cs[len(cs)-1].Accepted.Why)
+	x.Nil(cs[0].Accepted)
 
 	// Clean at once: the rows are compared with the acceptance, and not with
 	// the one before it, which is what the operator accepted they no longer
@@ -385,18 +385,18 @@ func TestADatabaseRestoredFromBeforeTheLatestCheckpointGoesOnOnceAccepted(t *tes
 	// An acceptance is a signature, as it was.
 	unkeyed := p
 	unkeyed.Signer, unkeyed.Trust = nil, []crypto.PublicKey{key.Public()}
-	_, err = unkeyed.Accept(ctx, s, "restored from the backup")
+	_, err = accept(t, unkeyed, s, Acceptance{Why: "restored from the backup", Restored: restored(1)})
 	x.Error(err)
 	x.Equal(1, latestOf(t, s))
 
 	const why = "the database restored from the backup of 2026-10-01; the chunks since are ours"
-	_, err = p.Accept(ctx, s, why)
+	_, err = accept(t, p, s, Acceptance{Why: why, Restored: restored(1)})
 	x.NoError(err)
 
 	// After the store's newest, and naming it.
 	x.Equal(4, latestOf(t, s))
 	c := numbered(t, p, 4).c
-	x.Equal(why, c.Accepted)
+	x.Equal(why, c.Accepted.Why)
 	x.Equal(third, c.Prev)
 
 	v, err = p.Verify(ctx, s, true)

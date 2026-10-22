@@ -1058,7 +1058,7 @@ func TestOnlyTheFirstPassTakesInTheFilesOfAVersionBefore(t *testing.T) {
 	}
 
 	// An operator who has looked takes it in, as the first pass would have.
-	_, err = p.Accept(ctx, s, "the March file was restored from the old directory's backup")
+	_, err = accept(t, p, s, Acceptance{Why: "the March file was restored from the old directory's backup"})
 	x.NoError(err)
 	_, err = os.Stat(filepath.Join(dir, name))
 	x.ErrorIs(err, os.ErrNotExist, "an acceptance left the file in the directory")

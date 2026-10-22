@@ -908,7 +908,7 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 	}
 
 	if x.m != nil {
-		if c, err := x.p.checkpoint(ctx, x.s, ""); err != nil {
+		if c, err := x.p.checkpoint(ctx, x.s, nil); err != nil {
 			log.From(ctx).WarnContext(ctx, "trail: the checkpoint of a pass", "err", err)
 		} else {
 			log.From(ctx).InfoContext(ctx, "trail: a checkpoint", "k", c.K, "blobs", c.Count)
@@ -1067,7 +1067,7 @@ func (x *pass) cover(ctx context.Context, act string, err *error) {
 		return
 	}
 
-	c, cerr := x.p.checkpoint(ctx, x.s, "")
+	c, cerr := x.p.checkpoint(ctx, x.s, nil)
 	if cerr != nil {
 		*err = errors.Join(*err, fmt.Errorf("the checkpoint after it: %w", cerr))
 

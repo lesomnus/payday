@@ -65,6 +65,26 @@ func kinds(v Verified) []string {
 	return slices.Compact(out)
 }
 
+// accept is an operator who has looked at what a verification of `s` finds
+// now, accepting it: `a`, of that verification's digest, by "an operator"
+// when it names nobody.
+func accept(t *testing.T, p Policy, s Store, a Acceptance) (Verified, error) {
+	t.Helper()
+
+	v, err := p.Verify(t.Context(), s, a.Full)
+	require.NoError(t, err)
+
+	a.Of = v.Digest
+	if a.By == "" {
+		a.By = "an operator"
+	}
+
+	return p.Accept(t.Context(), s, a)
+}
+
+// restored is the checkpoint a backup holds, as an acceptance names it.
+func restored(k int) *int { return &k }
+
 // plant adds a blob the way somebody who is not a pass would: past the
 // manifest, with the labels that make a pass take it for a chunk.
 func plant(t *testing.T, a flob.Stores, c Chunk, docs ...[]byte) flob.Digest {
@@ -275,7 +295,7 @@ func TestWhatChangesBehindTheManifestsBackIsFound(t *testing.T) {
 		x.Equal([]string{"unaccounted"}, kinds(v), "the fold is not in the manifest")
 
 		// An operator who has looked, and says the archive is right.
-		_, err = p.Accept(ctx, s, "restored from the backup of 2026-10-01")
+		_, err = accept(t, p, s, Acceptance{Why: "restored from the backup of 2026-10-01"})
 		x.NoError(err)
 		v, err = p.Verify(ctx, s, false)
 		x.NoError(err)
@@ -1135,7 +1155,7 @@ func TestACheckpointIsWhatTheArchiveHeld(t *testing.T) {
 
 		// Until an operator accepts what the archive holds, which is numbered
 		// after the checkpoint the store keeps, and goes on from there (#70).
-		_, err = p.Accept(ctx, s, "a database restored from before the first pass")
+		_, err = accept(t, p, s, Acceptance{Why: "a database restored from before the first pass", Restored: restored(0)})
 		x.NoError(err)
 		x.Equal(2, latestOf(t, s))
 		for k := range was {

@@ -255,7 +255,7 @@ func TestEachCheckpointNamesTheOneBefore(t *testing.T) {
 		x.Contains(v.Findings[0].Note, "checkpoint 4 names 2")
 
 		// Until an operator, who knows of the crash, accepts it.
-		_, err = p.Accept(ctx, s, "a pass the deployment's restart stopped")
+		_, err = accept(t, p, s, Acceptance{Why: "a pass the deployment's restart stopped"})
 		x.NoError(err)
 		v, err = p.Verify(ctx, s, false)
 		x.NoError(err)
@@ -278,7 +278,7 @@ func TestEachCheckpointNamesTheOneBefore(t *testing.T) {
 		x.Equal([]string{"unkept"}, kinds(v))
 		x.Equal(3, v.Findings[0].Checkpoint)
 
-		_, err = p.Accept(ctx, s, "the checkpoint store restored from a copy made before checkpoint 3")
+		_, err = accept(t, p, s, Acceptance{Why: "the checkpoint store restored from a copy made before checkpoint 3"})
 		x.NoError(err)
 		v, err = p.Verify(ctx, s, true)
 		x.NoError(err)
@@ -406,7 +406,7 @@ func TestACheckpointNobodyVouchesForDecidesNothing(t *testing.T) {
 		x.Equal(4, latestOf(t, s))
 		x.Equal(three.d, numbered(t, p, 4).c.Prev)
 
-		_, err = p.Accept(ctx, s, "looked at")
+		_, err = accept(t, p, s, Acceptance{Why: "looked at"})
 		x.NoError(err)
 		x.Equal(5, latestOf(t, s), "an acceptance numbered after a checkpoint nobody signed")
 		x.Equal(numbered(t, p, 4).d, numbered(t, p, 5).c.Prev)
@@ -502,7 +502,7 @@ func TestACheckpointNobodyVouchesForDecidesNothing(t *testing.T) {
 		x.Equal([]string{"unkept"}, kinds(v))
 
 		c := over(4)
-		c.Accepted = "nothing to see"
+		c.Accepted = &Accepted{Acceptance: Acceptance{By: "nobody", Why: "nothing to see"}}
 		planted(t, p, c, nil)
 
 		v, err = p.Verify(ctx, s, false)
@@ -524,7 +524,7 @@ func TestACheckpointNobodyVouchesForDecidesNothing(t *testing.T) {
 		rows, err := s.At(ctx, 3)
 		x.NoError(err)
 		c := checkpointOf(3, time.Now(), rows)
-		c.Accepted = "nothing to see"
+		c.Accepted = &Accepted{Acceptance: Acceptance{By: "nobody", Why: "nothing to see"}}
 		planted(t, p, c, nil)
 
 		v, err := p.Verify(ctx, s, false)
@@ -547,7 +547,7 @@ type racing struct {
 func (r *racing) Checkpoint(ctx context.Context, after int) (int, []Archived, error) {
 	if r.first && !r.done {
 		r.done = true
-		if _, err := r.p.checkpoint(ctx, r.fakeStore, ""); err != nil {
+		if _, err := r.p.checkpoint(ctx, r.fakeStore, nil); err != nil {
 			return 0, nil, err
 		}
 	}
@@ -555,7 +555,7 @@ func (r *racing) Checkpoint(ctx context.Context, after int) (int, []Archived, er
 	k, rows, err := r.fakeStore.Checkpoint(ctx, after)
 	if err == nil && !r.done {
 		r.done = true
-		if _, err := r.p.checkpoint(ctx, r.fakeStore, ""); err != nil {
+		if _, err := r.p.checkpoint(ctx, r.fakeStore, nil); err != nil {
 			return k, rows, err
 		}
 	}
@@ -575,7 +575,7 @@ func TestTwoCheckpointsAtOnceAreNoGap(t *testing.T) {
 	ctx := t.Context()
 
 	s, p := chained(t, 2, nil)
-	_, err := p.checkpoint(ctx, &racing{fakeStore: s, p: p}, "")
+	_, err := p.checkpoint(ctx, &racing{fakeStore: s, p: p}, nil)
 	x.NoError(err)
 	x.Equal(numbered(t, p, 2).d, numbered(t, p, 3).c.Prev)
 	x.Equal(numbered(t, p, 2).d, numbered(t, p, 4).c.Prev)
@@ -596,7 +596,7 @@ func TestTwoCheckpointsAtOnceAreNoGap(t *testing.T) {
 		// The other act's numbered and kept after this one read the chain,
 		// and before this one was numbered: this one names it.
 		s, p := chained(t, 2, nil)
-		_, err := p.checkpoint(ctx, &racing{fakeStore: s, p: p, first: true}, "")
+		_, err := p.checkpoint(ctx, &racing{fakeStore: s, p: p, first: true}, nil)
 		x.NoError(err)
 		x.Equal(numbered(t, p, 3).d, numbered(t, p, 4).c.Prev)
 	})
@@ -641,7 +641,7 @@ func TestAKeyRotatedOutNeedNotBeTrusted(t *testing.T) {
 		x.Equal("forged", f.Kind)
 	}
 
-	_, err = p.Accept(ctx, s, "the rows the old key signed, signed again with the next")
+	_, err = accept(t, p, s, Acceptance{Why: "the rows the old key signed, signed again with the next"})
 	x.NoError(err)
 	v, err = p.Verify(ctx, s, false)
 	x.NoError(err)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"maps"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -412,4 +413,22 @@ func TestAThingTheTrailSaysIsARowAndIsNotIsMissing(t *testing.T) {
 	x.Equal([]pdid.Id{removed, silent, archived}, out.Missing)
 	x.Zero(out.Read, "none of them is a row")
 	x.False(out.Ok())
+}
+
+// TestWhatACheckFoundIsOneDigest (payday#115): what an acceptance of the rows
+// names, so that it is of what somebody looked at. The rows found and which
+// finding each is are in it; the order they were read in, and what was fine,
+// are not.
+func TestWhatACheckFoundIsOneDigest(t *testing.T) {
+	x := require.New(t)
+
+	a, b := pdid.New(thing), pdid.New(thing)
+	looked := audit.Rows{Read: 3, Matches: 1, Differs: []pdid.Id{a, b}}
+
+	x.Equal(looked.Digest(), audit.Rows{Read: 9, Matches: 7, Differs: []pdid.Id{b, a}}.Digest())
+	x.NotEqual(looked.Digest(), audit.Rows{Differs: []pdid.Id{a}}.Digest(), "a row less")
+	x.NotEqual(looked.Digest(), audit.Rows{Differs: []pdid.Id{a, b, pdid.New(thing)}}.Digest(), "a row more")
+	x.NotEqual(looked.Digest(), audit.Rows{Differs: []pdid.Id{a}, NotOnTrail: []pdid.Id{b}}.Digest(), "a row found as another finding")
+	x.NotEqual(looked.Digest(), audit.Rows{}.Digest())
+	x.True(strings.HasPrefix(looked.Digest(), "sha256:"))
 }

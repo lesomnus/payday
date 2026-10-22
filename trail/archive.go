@@ -1480,7 +1480,8 @@ type Receipt struct {
 	// subject's contents), `purge-tenant` (a tenant leaving) or
 	// `retire-tenant` (a tenant leaving, but for what a floor keeps) -- or
 	// `finding`, which is no destruction: what a pass found the archive's
-	// manifest does not account for.
+	// manifest does not account for, and `accept`, what an operator accepted
+	// of it ([Policy.Accept]), which may be.
 	Act string `json:"act"`
 
 	// Where is `database`, `archive`, or `keys` for the key store.
@@ -1513,8 +1514,16 @@ type Receipt struct {
 	Held int `json:"held,omitempty"`
 
 	// Findings is what a pass found the archive's manifest does not account
-	// for, by kind, for the act `finding`; see [Finding].
+	// for, by kind, for the act `finding`, and what an operator accepted of
+	// it, for `accept`; see [Finding].
 	Findings map[string]int `json:"findings,omitempty"`
+
+	// By and Why are who accepted, and why, and Of the digest of what they
+	// looked at ([Acceptance]), for the act `accept`. The checkpoint the
+	// acceptance ended in keeps them too, signed.
+	By  string `json:"by,omitempty"`
+	Why string `json:"why,omitempty"`
+	Of  string `json:"of,omitempty"`
 
 	// Objects is how many subjects [Forget] was asked about. Their identifiers
 	// are not here: a receipt is the one record of an erasure that is kept,
