@@ -326,11 +326,12 @@ type Forgotten struct {
 	// Seals is the rows' seals it blanked (payday#115): a seal is a MAC of
 	// what the person was, and goes whatever a hold keeps of the trail -- a
 	// hold keeps the record of what happened, and a seal is no part of it.
+	// None inside a transaction, which owes them with the archive's half.
 	Seals int
 
-	// Owed is how many of the objects the archive's half of forgetting is
-	// still owed for ([Owed]): every one, for an erasure decided inside a
-	// transaction, which owes it there; and outside one, those a hold kept
+	// Owed is how many of the objects forgetting is still owed for ([Owed]):
+	// every one, for an erasure decided inside a transaction, which owes the
+	// archive's half and the seals there; and outside one, those a hold kept
 	// part of, which the pass that finds the hold lifted finishes.
 	Owed int
 }
@@ -385,6 +386,41 @@ type Forgotten struct {
 // would hand it a name of its own. The erasure goes on with the rest, writes
 // its receipts, and answers [ErrAltered] for each such chunk -- to be looked
 // at, and erased again once it is settled.
+//
+// # Inside a transaction, in no turn
+//
+// On a store inside an app's transaction ([Store.InTx]) it blanks the
+// database's rows there, and owes the rest there ([Owed]): the archive's half
+// and the rows' seals, which [Policy.Pay] or the next pass pays once the
+// transaction has committed. It writes nothing else, and it takes no turn on
+// [Policy.Lease].
+//
+// The turn keeps a pass and an erasure from each writing what the other read.
+// A pass copies rows into a chunk and then forgets them, and an erasure that
+// looked through the archive before the chunk was written would leave the copy
+// it did not find; a pass carrying a line forward writes back its row's seal,
+// and one beside an erasure would write back the seal the erasure blanked.
+// Taken inside a transaction the turn keeps neither apart: it is given back
+// before the transaction commits, and a pass taking it then still reads the
+// rows and the seals as they were -- the transaction's writes are nobody's
+// until it commits -- and writes what it read once they are. And it is a wait
+// a pass can be inside of: a pass in its turn waits on the rows the
+// transaction blanked, and the transaction, forgetting again, waits for the
+// turn, which no database's deadlock detector sees, because the turn is none
+// of its locks. That is a transaction and a pass waiting on each other for
+// ever.
+//
+// So what a pass could undo is not done inside the transaction. The archive's
+// half and the seals are owed, and paid after the commit in a turn of their
+// own: a pass holds its turn from reading a chunk's rows until the chunk is
+// written and the rows forgotten, so the payment comes after any chunk a pass
+// made of the rows as they were, and finds it; and a carry holds its turn
+// while it reads and writes a seal, so a carry before the payment is blanked
+// by it, and one after carries the forgotten seal forward as forgotten.
+// What is done inside -- the database's rows blanked -- is nothing a pass
+// writes back: it copies them into a chunk, which is the archive's half, and
+// removes them. A pass and a transaction blanking the same rows wait on each
+// other as any two writers of a row do, which the database sees.
 func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgotten, err error) {
 	out := Forgotten{}
 	if len(objects) == 0 {
@@ -394,15 +430,16 @@ func (p Policy) Forget(ctx context.Context, s Store, objects []pdid.Id) (_ Forgo
 		return out, errors.New("no store to forget in")
 	}
 
-	// Inside an app's transaction: the database's half now, and the
-	// archive's owed, both in the transaction, so that a rollback takes both
-	// and a commit keeps what pays the rest.
+	// Inside an app's transaction: the database's rows now, and the rest
+	// owed, both in the transaction, so that a rollback takes both and a
+	// commit keeps what pays the rest -- and in no turn; see "Inside a
+	// transaction, in no turn" above.
 	if s.InTx() {
 		x, err := p.start(s)
 		if err != nil {
 			return out, err
 		}
-		if err := x.blankAbout(ctx, s, objects, &out, nil); err != nil {
+		if err := x.blankRows(ctx, s, objects, &out, nil); err != nil {
 			return out, err
 		}
 		if err := s.Owe(ctx, objects); err != nil {
@@ -627,9 +664,9 @@ func (p Policy) Owing(ctx context.Context, s Store) (Owing, error) {
 	return out, nil
 }
 
-// blankAbout is the database's half of [Policy.Forget], in the trail's turn.
-// When `whose` is not nil it is told, of each object a hold kept rows about,
-// whose holds.
+// blankAbout is the database's half of [Policy.Forget] -- its rows and their
+// seals -- in the trail's turn. When `whose` is not nil it is told, of each
+// object a hold kept rows about, whose holds.
 func (x *pass) blankAbout(ctx context.Context, s Store, objects []pdid.Id, out *Forgotten, whose map[pdid.Id][]pdid.Id) error {
 	held, give, err := x.turn(ctx)
 	if err != nil {
@@ -637,6 +674,23 @@ func (x *pass) blankAbout(ctx context.Context, s Store, objects []pdid.Id, out *
 	}
 	defer give()
 
+	if err := x.blankRows(held, s, objects, out, whose); err != nil {
+		return err
+	}
+
+	// And the rows' seals, in the same turn: a pass carrying a line forward
+	// carries its row's seal, and one doing so beside this would write back
+	// the seal this blanked.
+	n, err := s.BlankSeals(held, objects, x.forgotten())
+	out.Seals += n
+
+	return err
+}
+
+// blankRows blanks the database's rows about these objects but the ones a
+// hold is on, and asks for no turn: [pass.blankAbout] holds one around it,
+// and inside a transaction it is done in none (see [Policy.Forget]).
+func (x *pass) blankRows(held context.Context, s Store, objects []pdid.Id, out *Forgotten, whose map[pdid.Id][]pdid.Id) error {
 	at := Cursor{}
 	for {
 		vs, err := s.Heads(held, Scope{Objects: objects}, forever, at, Batch)
@@ -690,13 +744,7 @@ func (x *pass) blankAbout(ctx context.Context, s Store, objects []pdid.Id, out *
 		}
 	}
 
-	// And the rows' seals, in the same turn: a pass carrying a line forward
-	// carries its row's seal, and one doing so beside this would write back
-	// the seal this blanked.
-	n, err := s.BlankSeals(held, objects, x.forgotten())
-	out.Seals += n
-
-	return err
+	return nil
 }
 
 // keptBy is the tenants whose holds kept something, those of `h` added.

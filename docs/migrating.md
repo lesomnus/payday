@@ -15,7 +15,11 @@ table of.
   database's rows as before and owes the archive's half, one `Owed` row per
   object in the same transaction, writing nothing to the archive:
   `Forgotten.Owed` says how many. A rollback takes the debt with it. Outside a
-  transaction it owes and pays at once, as before but crash-safe.
+  transaction it owes and pays at once, as before but crash-safe. Inside one
+  it takes no turn on `Policy.Lease` — a turn given back before the commit
+  kept nothing apart, and two erasures in one transaction beside a pass waited
+  on each other for ever — and the rows' seals are owed with the archive's
+  half: `Forgotten.Seals` is zero there, and `Paid.Seals` counts them.
 - **`Policy.Pay(ctx, s, objects...)`** pays what is owed for the objects you
   forgot — both halves, `Forget`'s receipts, a checkpoint — after your commit,
   and a pass pays it before it moves anything if you do not. Name them: naming

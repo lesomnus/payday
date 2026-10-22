@@ -1410,7 +1410,8 @@ deployment's lease, `Policy.Lease`, under a name of their own (`trail.Turn`):
   chunk and not for a pass;
 - `Policy.Forget` and `Policy.PurgeTenant` change the database's rows in their
   turn, and look through the archive after it, where a pass that held the rows
-  has put them by then; `Policy.Collect` discards in its own.
+  has put them by then; `Policy.Collect` discards in its own. `Forget` inside
+  an app's transaction takes no turn; see below.
 
 #### An erasure decided in a transaction is owed, then paid
 
@@ -1423,12 +1424,11 @@ never numbered (`behind`, which stops every act until an operator accepts).
 Written after the commit by the process that committed, a crash in between
 would lose the archive's half without a word.
 
-So `Policy.Forget` on a store inside a transaction (`Store.InTx`) does the
-database's half there — blanks the rows, in the trail's turn, as it always
-did — and writes one row of payday's `Owed` per object, in the same
-transaction: the archive's half, owed. It writes nothing the archive keeps,
-and `Forgotten.Owed` says so. A rollback takes the owed rows with the rest; a
-commit keeps them for whatever pays them:
+So `Policy.Forget` on a store inside a transaction (`Store.InTx`) blanks the
+database's rows there and writes one row of payday's `Owed` per object, in the
+same transaction: the archive's half and the rows' seals, owed. It writes
+nothing the archive keeps, and `Forgotten.Owed` says so. A rollback takes the
+owed rows with the rest; a commit keeps them for whatever pays them:
 
 - **`Policy.Pay(ctx, s, objects...)`**, for an app that wants the archive's
   half at once, right after its commit, naming the objects it forgot: only
@@ -1446,6 +1446,28 @@ changes nothing, so a process that stops part of the way leaves it for the
 next pass, and paying twice is paying once. One whose archive's half could not
 be done — a chunk whose bytes are not its digest — stays owed. Outside a
 transaction `Forget` owes and pays at once, so its own crash is covered too.
+
+**Inside a transaction, in no turn.** The turn keeps a pass and an erasure
+from each writing what the other read: a chunk a pass made of rows an erasure
+then did not find in the archive, and a seal a pass carrying a line forward
+writes back. Taken inside a transaction it keeps neither apart, because it is
+given back before the commit: a pass taking it then still reads the rows and
+the seals as they were, and writes what it read once the transaction commits.
+And it is a wait a pass can be inside of — a pass in its turn waiting on rows
+the transaction blanked, and the transaction, forgetting a second thing,
+waiting for the turn — which no deadlock detector sees, since the turn is none
+of the database's locks: a transaction and a pass waiting on each other for
+ever. So `Forget` takes no turn there, and does there only what no pass writes
+back. The database's rows are blanked, which a pass never writes back: it
+copies rows into a chunk and removes them, and the chunk is the archive's
+half. The archive's half and the seals are owed, and paid after the commit in
+a turn of their own. A pass holds its turn from reading a chunk's rows until
+the chunk is written, so the payment comes after any chunk made of the rows
+as they were, and finds it; a carry holds its turn while it reads and writes
+a seal, so one before the payment is blanked by it, and one after carries the
+forgotten seal forward as forgotten. A pass and a transaction blanking the
+same rows wait on each other as any two writers of a row do, which the
+database sees and settles.
 
 **A hold keeps a debt.** An owed erasure a legal hold keeps part of stays
 owed, the rows the hold is on kept as they were, and says whose holds

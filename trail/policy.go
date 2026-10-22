@@ -516,7 +516,10 @@ type Policy struct {
 	// copy -- and so has a tenant's purge, and a discard by hand. With a
 	// lease, [Policy.Forget] and [Policy.PurgeTenant] change the database's
 	// rows only in their turn, [Policy.Collect] discards them in its own, and
-	// a pass holds the turn for each chunk's worth of rows it moves.
+	// a pass holds the turn for each chunk's worth of rows it moves. Inside
+	// an app's transaction [Policy.Forget] takes none: it does there only
+	// what no pass writes back, and owes the rest (see its "Inside a
+	// transaction, in no turn").
 	//
 	// Nil takes no turns, which is the pass that can write back what an
 	// erasure blanked a moment before; the process says so where it comes
