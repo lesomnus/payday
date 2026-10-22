@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"uuid"
+
 	"filippo.io/age"
 	"github.com/lesomnus/flob"
 	"github.com/stretchr/testify/require"
@@ -108,6 +110,59 @@ func TestAnActOnTheRowsTakesItsTurnWithAPass(t *testing.T) {
 			tc.gone(t, p, inner, r)
 		})
 	}
+}
+
+// TestAnErasureInATransactionWaitsForNoTurn (#115).
+//
+// Inside an app's transaction the turn keeps nothing apart -- it is given back
+// before the transaction commits -- and waiting for it there is waiting for a
+// pass that may be waiting on the transaction. So an erasure asked inside one
+// while a pass holds rows it has read does not wait: it blanks the database's
+// row and owes the rest, the row's seal with the archive's half. The pass
+// writes its chunk of the row as it was, and the payment after the commit,
+// in a turn of its own, finds that chunk and blanks it and the seal.
+func TestAnErasureInATransactionWaitsForNoTurn(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	tenant := newTenant()
+	inner := &fakeStore{}
+	r := inner.add(fakeRow{tenant: tenant.Uuid(), object: uuid.NewV7(), domain: person, created: ago(40 * day), value: "what it said"})
+	inner.seals = map[uuid.UUID][]byte{r.object: []byte("a MAC of what they were")}
+	p := Policy{Signer: signer, Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Lease: spin.Local()}
+	who := pdid.Id(r.object)
+
+	// Asked while the pass holds the row it has read, given long enough for
+	// anything that waits for the pass to find it would wait.
+	var during error
+	var got Forgotten
+	var seal []byte
+	s := &racy{fakeStore: inner, hook: func() {
+		soon, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+		defer cancel()
+
+		inner.inTx = true
+		got, during = p.Forget(soon, inner, []pdid.Id{who})
+		inner.inTx = false
+		seal = bytes.Clone(inner.seals[r.object])
+	}}
+	p.Pass(ctx, s)
+	x.NoError(during, "an erasure inside a transaction waited for the pass's turn")
+	x.Equal(1, got.Owed)
+	x.Equal(1, got.Rows, "the database's row was not blanked")
+	x.Zero(got.Seals, "a seal was blanked inside the transaction, where a pass carrying it forward could write it back")
+	x.Equal("a MAC of what they were", string(seal), "the seal was not left to the payment")
+	said := base64.StdEncoding.EncodeToString([]byte(r.value))
+	x.True(bytes.Contains(bytesOf(t, p.Archive), []byte(said)), "the pass did not copy the row as it was, so this proves nothing")
+
+	// Committed, and paid.
+	paid, err := p.Pay(ctx, inner, who)
+	x.NoError(err)
+	x.Equal(1, paid.Objects)
+	x.Equal(1, paid.Seals, "the payment did not blank the seal")
+	x.NotEqual("a MAC of what they were", string(inner.seals[r.object]))
+	x.False(bytes.Contains(bytesOf(t, p.Archive), []byte(said)), "what the pass copied of the row is in the archive after the payment")
+	x.Empty(inner.owed)
 }
 
 // TestATenantThatLeftIsMadeNoKeyAgain.

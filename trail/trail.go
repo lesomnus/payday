@@ -359,8 +359,9 @@ type Store interface {
 	// InTx answers whether what the store writes is part of a transaction
 	// that has not committed: a store on a client bound to one, its own or
 	// one it shares. The archive takes no part in it, so [Policy.Forget]
-	// owes the archive's half there rather than write it, and every other act
-	// refuses such a store ([ErrInTx]).
+	// owes the archive's half there rather than write it -- and the rows'
+	// seals, which a pass could write back -- and every other act refuses
+	// such a store ([ErrInTx]).
 	InTx() bool
 
 	// Owe writes that the archive's half of forgetting each of these objects
@@ -387,8 +388,8 @@ type Store interface {
 }
 
 // Owed is an erasure owed, as the store keeps it: the archive's half of
-// forgetting an object, written in the transaction that decided it and paid
-// after it committed ([Policy.Forget], [Policy.Pay]).
+// forgetting an object, and its row's seal, written in the transaction that
+// decided it and paid after it committed ([Policy.Forget], [Policy.Pay]).
 type Owed struct {
 	// Key is what identifies it to the store, handed back to [Store.Paid].
 	Key any
