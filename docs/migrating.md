@@ -3,6 +3,41 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The newest checkpoint is heard outside the database: witnesses
+
+**Applies if** you keep the trail's archive (`audit.archive`). Part of
+payday#115. Nothing is required but reading what changed; witnesses are named
+when you are ready.
+
+- **The checkpoint store is read for what each blob holds**, never by its
+  labels. A checkpoint relabelled or with its labels taken off counts as one --
+  it makes the database `behind`, and an archive whose checkpoint store keeps
+  any blob is no longer filled from what it holds. A blob that is neither a
+  checkpoint nor a witness's receipt is a finding (`forged`, "it does not
+  read"). A store kept for checkpoints alone, as `audit.checkpoints.dir` and the
+  archive's `_checkpoints` are, has none.
+- **`audit.checkpoints.witnesses`** names where every checkpoint is heard
+  (`trail.Policy.Witnesses` in code): `log:` and `store:<dir>` are payday's, each
+  linked in like a signer -- `import _ "github.com/lesomnus/payday/config/witnesslog"`,
+  `.../config/witnessstore`. An app made by `pd new` links both in `cli`; add the
+  same file (`cli/witness.go`) to an app of an earlier scaffold. A scheme this
+  binary does not open, a witness named twice, or witnesses without an archive,
+  are refused where the process comes up.
+- **What a verification finds of them**: one a witness heard that the store does
+  not keep (`unkept`) or keeps as something else (`rewritten`), the newest the
+  store keeps that no witness that answers heard within
+  `audit.checkpoints.hear_within` (`unheard`, a new kind; twice `audit.every`
+  when empty), and an answer whose signature is not good (`forged`).
+  `Verified.Heard` is what each witness that answers heard last: print it with
+  the findings.
+- **No act takes a checkpoint under a number a witness heard** and the database
+  has not numbered, and an acceptance is numbered past every one a witness
+  heard. A database behind what a witness heard is accepted as a restore
+  (`Acceptance.Restored`), as one behind the store is.
+- **Set the alerts** on the log witness the runtime docs give: the gauge
+  `payday.trail.checkpoint` going down, and two log lines of one `k` with two
+  digests. Without them it tells nobody.
+
 ## An acceptance is of what was reviewed, and is kept
 
 **Applies if** you give an operator a command that accepts what `Verify` found

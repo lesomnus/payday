@@ -585,13 +585,14 @@ way through is no finding, and no clock is asked. What it finds:
 | `unaccounted` | a blob that is there, and the manifest never added; or a file of the directory format in the archive's directory after its first checkpoint |
 | `relabelled` | a blob whose labels are not the ones the manifest recorded, or a checkpoint whose labels do not say which it is |
 | `altered` | a blob whose bytes are no longer its digest (`full` only) |
-| `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts — but not a checkpoint a later one the deployment signed names, whatever signed it (a key rotated out) |
+| `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts — but not a checkpoint a later one the deployment signed names, whatever signed it (a key rotated out); a blob of the checkpoint store that is neither a checkpoint nor a witness's receipt; or a statement a witness answers whose signature is not good |
 | `unsigned` | a row with no signature; a checkpoint with none that no checkpoint the deployment signed names |
-| `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to (not the one before an acceptance); or one of two the store keeps under one number, both the deployment's word |
+| `rewritten` | one of the latest two checkpoints, which the manifest's rows no longer add up to (not the one before an acceptance); or one of two the store keeps under one number, both the deployment's word; or one the store keeps as other than a witness heard |
 | `reordered` | a checkpoint that names one after it as the one before |
-| `unkept` | a checkpoint the database numbered, or the one after it names, that the store does not keep; or the numbers a checkpoint skips over to the one it names that no checkpoint the store keeps says it is — taken away, lost to a store restored from an older copy, or numbered by a pass a crash stopped — until an operator accepts |
+| `unkept` | a checkpoint the database numbered, the one after it names, or a witness heard, that the store does not keep; or the numbers a checkpoint skips over to the one it names that no checkpoint the store keeps says it is — taken away, lost to a store restored from an older copy, or numbered by a pass a crash stopped — until an operator accepts |
 | `behind` | a checkpoint the store keeps that the database never numbered: a database restored from before it, until an operator accepts |
 | `lost` | while the database is `behind`: a blob the newest checkpoint the deployment vouches for says the archive held, and the archive holds no more and the database has no row of — gone since the backup, or taken away by somebody who rolled the database back to hide it |
+| `unheard` | the newest checkpoint the store keeps, older than `audit.checkpoints.hear_within`, that no witness that answers heard ([witnesses](#witnesses)) |
 | `emptied` | a manifest with no rows beside checkpoints of an archive that held something (a checkpoint over nothing, a deployment's first pass, is not one) |
 
 Every pass starts with the light half — names and labels, no bytes read —
@@ -749,6 +750,90 @@ says, whatever its labels -- and names that one as the one before it, so the
 checkpoints from after the backup stay in the chain as what the archive held
 then, and the database's numbering goes on past them. `Manifest.Checkpoint`
 takes that floor, `after`, in the transaction that numbers it.
+
+**The store is read for what it holds.** Every blob the checkpoint store keeps
+is read, and is what it holds — a checkpoint, or a witness's receipt of one —
+whatever its labels say: a checkpoint with its labels changed or taken off is
+as much a checkpoint as before, and still makes the database `behind`, the
+archive one that has had a checkpoint, and the next numbered past it. A blob
+that holds neither is `forged`, "it does not read". Labels are written for
+whoever lists the store by hand, and compared (`relabelled`), and decide
+nothing.
+
+#### Witnesses
+
+A checkpoint names the one before it, so the chain below the newest is checked.
+The newest itself — the head — is known only to the database's count and to the
+checkpoint store, and whoever can write the database and take objects out of
+the store can cut the chain short there: take the newest checkpoints away, wind
+the count back, and the next act numbers past what is left. Nothing in the two
+says so, on a store that allows deletes. A **witness** is somewhere they do not
+reach that heard each checkpoint as it was taken (`trail.Witness`):
+
+```go
+type Witness interface {
+	Hear(ctx context.Context, s Signed) (Witnessed, error)
+	Latest(ctx context.Context, chain string) (Heard, error)
+}
+```
+
+A deployment names one or several in `audit.checkpoints.witnesses`, each by a
+scheme registered with `config.RegisterWitness` and linked in by the app as a
+signer is (`trail.Policy.Witnesses` in code). Each is told of every checkpoint
+as it is taken — its number, what the store keeps it under, the one before it,
+and the statement as signed (`trail.Signed`) — and what it answers is kept
+beside the checkpoint in the checkpoint store. One that cannot hear does not
+stop the trail: the act says so in the log, and the next pass tells it again,
+oldest first, along with every checkpoint taken before it was named (a hundred
+a pass).
+
+A verification asks each what it heard last (`Latest`) and holds the chain to
+every one that answers, saying what each did (`Verified.Heard`):
+
+- a checkpoint a witness heard that the store does not keep is `unkept`,
+  "the chain was cut short there" when it is past the newest the store keeps,
+  and one the store keeps as something else is `rewritten`;
+- the newest the store keeps, once it is older than
+  `audit.checkpoints.hear_within` (twice `audit.every` when empty) and no
+  witness that answers heard it, is `unheard` — so keeping every witness from
+  hearing, or from answering, is no way past them;
+- what a witness answers is held to its signature, and one that is not good is
+  `forged`: somebody wrote to the witness.
+
+No act takes a checkpoint under a number a witness that answers has heard and
+the database has not numbered: the count was wound back, and it would take
+the number again. An acceptance is numbered past every one a witness heard, as
+past every one the store keeps, and a database behind them is accepted as a
+restore (`Acceptance.Restored`). A number heard twice is answered as the first
+heard; a witness that was away while the count was wound back and the
+deployment numbered past the head again answers the newest, and what it heard
+twice is in what it keeps — the log witness's alert below is what says so at
+the time.
+
+Two are payday's, each a package of its own:
+
+- **`store:<dir>`** (`config/witnessstore`, `trail/witnessstore`) keeps every
+  statement it hears in a flob store of its own — in code, any flob store,
+  `witnessstore.New` — and is read by the statements it holds, never by labels.
+  Its worth is where it is: on a disk that refuses deletion, or a bucket under
+  Object Lock, mounted with credentials neither the database's nor the
+  archive's, so that what it heard stays heard whoever holds the deployment's.
+  It only ever adds.
+- **`log:`** (`config/witnesslog`, `trail/witnesslog`) writes a line of the log
+  for every checkpoint, `trail: a checkpoint, heard` with `k`, `digest` and
+  `prev`, and records the gauge `payday.trail.checkpoint` at its number. It
+  answers nothing (`trail.ErrDeaf`): the monitoring outside is the witness, and
+  it is one only with the alerts on it. Set two: one when the gauge goes down —
+  `payday_trail_checkpoint < max_over_time(payday_trail_checkpoint[30d])`, or
+  your system's spelling of it — and one when the logs hold two lines of one
+  `k` with two `digest`s; and a third, if the deployment takes a checkpoint at
+  least every pass, when the gauge has not moved for longer than two passes.
+
+What a witness hears is a statement in a chain (`Signed.Chain`): the
+deployment's checkpoints are the chain named by nothing, and a tenant whose
+contract names witnesses of its own is to have a chain of its own — a statement
+of its part of each checkpoint, naming its statement before — told the same
+way. A witness answers for each chain apart.
 
 #### After the latest checkpoint
 

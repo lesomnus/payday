@@ -487,6 +487,19 @@ type Policy struct {
 	// here is believed for whatever it signs. [ParsePublicKey] reads one.
 	Trust []crypto.PublicKey
 
+	// Witnesses hear every checkpoint, somewhere outside the database and
+	// the archive, by the name a finding says each by -- the configuration's
+	// own, `audit.checkpoints.witnesses` -- and a verification holds the
+	// chain to the ones that answer; see [Witness]. Nil is the head of the
+	// chain known to nothing but the database and the store.
+	Witnesses map[string]Witness
+
+	// HearWithin is how long the newest checkpoint may go unheard by every
+	// witness that answers before that is a finding (`unheard`). Empty is
+	// twice [Policy.Every]: a witness that was away is told again by the next
+	// pass.
+	HearWithin time.Duration
+
 	// Keys seals what the archive's rows say, a key per tenant; see [Keys].
 	// Nil seals nothing, and an archive written with it is what one was
 	// before.
@@ -630,6 +643,16 @@ func (p Policy) Valid() error {
 			return fmt.Errorf("audit.archive: %w", errUnwalkable)
 		}
 	}
+	for name, w := range p.Witnesses {
+		switch {
+		case name == "":
+			return errors.New("audit.checkpoints.witnesses: a witness is named, so that a finding can say which")
+		case w == nil:
+			return fmt.Errorf("audit.checkpoints.witnesses: %s is no witness", name)
+		case p.Archive == nil:
+			return errors.New("audit.checkpoints.witnesses: there is no archive, and so no checkpoint to hear")
+		}
+	}
 	if p.Checkpoints != nil {
 		if _, ok := flob.AsWalker(p.Checkpoints); !ok {
 			return fmt.Errorf("audit.checkpoints: %w", errUnwalkable)
@@ -752,6 +775,12 @@ func (p Policy) accounted() string {
 		v += ", the checkpoints kept on a store of their own"
 	}
 
+	if len(p.Witnesses) == 0 {
+		v += ", and heard by no witness: the newest is known to the database and the store alone"
+	} else {
+		v += ", and heard by " + strings.Join(slices.Sorted(maps.Keys(p.Witnesses)), ", ")
+	}
+
 	return v
 }
 
@@ -831,6 +860,7 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 		// the one that takes the archive as it is -- and by no pass after it.
 		first := x.first(ctx)
 		x.verify(ctx)
+		x.retell(ctx)
 		if first {
 			x.adopt(ctx)
 		}

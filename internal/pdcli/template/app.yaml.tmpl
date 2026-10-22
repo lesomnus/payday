@@ -85,6 +85,14 @@ spin:
 # process never erases a checkpoint either -- it is the disk's promise, and on
 # an ordinary one it keeps nothing from whoever holds it.
 #
+# `witnesses:` hear every checkpoint outside the database and the archive, so
+# that the newest is known to something whoever holds the two cannot reach: a
+# verification finds a checkpoint a witness heard that the store no longer
+# keeps, and the newest one if no witness heard it. `log:` tells the log and a
+# gauge, `payday.trail.checkpoint`, which the monitoring alerts on when it goes
+# down; `store:` and a directory keeps what it hears on a disk of its own, with
+# credentials of its own, best one that refuses deletion. `cli` links both.
+#
 # `keys:` seals what the archive's rows say, a key per tenant, so that a tenant
 # that leaves takes its trail out of the archive's backups as well. `master` is
 # the public half of a key `age-keygen` made and is kept offline -- or a
@@ -99,6 +107,7 @@ spin:
 #     dir: /mnt/worm/{{.Name}}/checkpoints
 #     write_once: true
 #     key: /run/secrets/checkpoints.pem
+#     witnesses: ["log:", "store:/mnt/witness/{{.Name}}"]
 #   keys:
 #     dir: /var/lib/{{.Name}}/audit-keys
 #     master: age1…
