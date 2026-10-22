@@ -1381,7 +1381,7 @@ func TestAnErasureIsOwedInItsTransaction(t *testing.T) {
 	x.NoError(commit())
 	x.Equal(1, owed())
 
-	paid, err := p.Pay(ctx, pd.TrailStore(b.Ent))
+	paid, err := p.Pay(ctx, pd.TrailStore(b.Ent), who)
 	x.NoError(err)
 	x.Equal(1, paid.Objects)
 	x.Positive(paid.Archived)

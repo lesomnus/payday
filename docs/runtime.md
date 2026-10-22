@@ -1430,8 +1430,12 @@ transaction: the archive's half, owed. It writes nothing the archive keeps,
 and `Forgotten.Owed` says so. A rollback takes the owed rows with the rest; a
 commit keeps them for whatever pays them:
 
-- **`Policy.Pay(ctx, s)`**, for an app that wants the archive's half at once,
-  right after its commit;
+- **`Policy.Pay(ctx, s, objects...)`**, for an app that wants the archive's
+  half at once, right after its commit, naming the objects it forgot: only
+  their debts are paid, and what it answers is that erasure's. Naming none
+  pays every one, which is the pass's — a debt a hold keeps would be gone
+  through again, an archive's walk apiece, by every payment after every
+  commit;
 - **the next pass**, before it moves anything — a row moved into a chunk first
   would be one more copy of what is owed to be forgotten.
 

@@ -198,6 +198,84 @@ func TestForgettingOutsideATransactionOwesAndPaysAtOnce(t *testing.T) {
 	x.False(archived)
 }
 
+// TestPayingTheseLeavesTheRestOwed: an app paying after its commit names
+// what it forgot, and only that is paid -- a debt another transaction owed
+// stays for that one or the pass, and what is answered is the erasure's own.
+// Naming nobody pays every one, as a pass does.
+func TestPayingTheseLeavesTheRestOwed(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	s, p, _, who := about(t)
+	other := pdid.Id(uuid.NewV7())
+	x.NoError(s.Owe(ctx, []pdid.Id{other}))
+
+	s.inTx = true
+	_, err := p.Forget(ctx, s, []pdid.Id{who})
+	x.NoError(err)
+	s.inTx = false
+
+	paid, err := p.Pay(ctx, s, who)
+	x.NoError(err)
+	x.Equal(1, paid.Objects, "what was paid is not what was named")
+	x.Equal(1, paid.Archived)
+	_, archived := sayingAbout(t, s, p, who)
+	x.False(archived, "the archive still says something about them")
+	x.Len(s.owed, 1)
+	x.Equal(other, s.owed[0].Object, "a debt nobody named was paid, and the one named was not")
+
+	paid, err = p.Pay(ctx, s)
+	x.NoError(err)
+	x.Equal(1, paid.Objects)
+	x.Empty(s.owed, "naming nobody left a debt")
+}
+
+// TestPayingTheseFindsThemBehindABatchOfOthers: what is owed is read a batch
+// at a time, oldest first, and the debts named are found on whatever page
+// they are on -- behind a batch of others a hold keeps, say -- rather than
+// taken for none after a page that held none of them. Forget outside a
+// transaction pays this way too, and answered nothing owed while it left its
+// own debt behind.
+func TestPayingTheseFindsThemBehindABatchOfOthers(t *testing.T) {
+	ctx := t.Context()
+
+	for name, forget := range map[string]func(*fakeStore, Policy, pdid.Id) (Forgotten, error){
+		"outside a transaction": func(s *fakeStore, p Policy, who pdid.Id) (Forgotten, error) {
+			return p.Forget(ctx, s, []pdid.Id{who})
+		},
+		"paid after one": func(s *fakeStore, p Policy, who pdid.Id) (Forgotten, error) {
+			s.inTx = true
+			_, err := p.Forget(ctx, s, []pdid.Id{who})
+			s.inTx = false
+			if err != nil {
+				return Forgotten{}, err
+			}
+			paid, err := p.Pay(ctx, s, who)
+
+			return paid.Forgotten, err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			x := require.New(t)
+
+			s, p, _, who := about(t)
+			s.mu.Lock()
+			for range Batch {
+				s.owed = append(s.owed, Owed{Key: uuid.NewV7(), Object: pdid.Id(uuid.NewV7()), Created: ago(day)})
+			}
+			s.mu.Unlock()
+
+			got, err := forget(s, p, who)
+			x.NoError(err)
+			x.Equal(1, got.Archived, "the archive's half was not paid")
+			x.Zero(got.Owed)
+			_, archived := sayingAbout(t, s, p, who)
+			x.False(archived, "the archive still says something about them")
+			x.Len(s.owed, Batch, "its own debt was left behind the others, or one of theirs was paid")
+		})
+	}
+}
+
 // TestEveryOtherActIsRefusedInATransaction: an act that writes the archive is
 // refused inside a transaction, before it writes anything, and a question is
 // answered.
