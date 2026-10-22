@@ -1014,7 +1014,7 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		}
 	}
 
-	fs, err := p.verifyCheckpoints(ctx, s, reading{inv, after}, &out)
+	fs, err := p.verifyCheckpoints(ctx, s, reading{inv, after, full}, &out)
 	if err != nil {
 		return out, err
 	}
@@ -1030,6 +1030,9 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 type reading struct {
 	archive map[blobKey]map[string]string
 	rows    []Archived
+
+	// full is a verification that reads everything again.
+	full bool
 }
 
 // looseFindings is the files a version before this one would have written into
@@ -1429,7 +1432,7 @@ func (ch chain) addsUp(ctx context.Context, m Manifest, latest int) error {
 	}
 	for _, v := range kept {
 		if got := checkpointOf(latest, v.c.At, rows); got.Digest != v.c.Digest {
-			return fmt.Errorf("checkpoint %d: %s: %w", latest, checkpointDiff(v.c, got), errRewritten)
+			return fmt.Errorf("checkpoint %d: %s: %w", latest, ch.diff(ctx, v, got), errRewritten)
 		}
 	}
 
@@ -1495,10 +1498,54 @@ func (p Policy) prevOf(ctx context.Context, ch chain, k int) (flob.Digest, error
 }
 
 // stored is a checkpoint as it was read back.
+//
+// One a process has read before is had from memory ([readKnown]) without its
+// blobs or its statement -- `light` -- which [chain.whole] reads again where
+// they are asked for; `has` and `good` are whether it is signed and the
+// signature is over what it says, as it was read.
 type stored struct {
 	c Checkpoint
 	s signed
 	d flob.Digest
+
+	has, good bool
+	light     bool
+}
+
+// known is what the checkpoint stores this process reads were read for, by
+// digest: a checkpoint without its blobs and its statement, or a witness's
+// receipt of one. A blob is named by its digest and read only while its bytes
+// are it, so what one digest was read as is what it is wherever it is kept;
+// whether a store keeps it is its listing's to say, which is read every time.
+// Without this every act and every verification reads every checkpoint the
+// deployment ever took, and each witness's receipt of it.
+var known sync.Map
+
+// knownAs is what [known] keeps of a blob.
+type knownAs struct {
+	v stored
+	w *witnessed
+}
+
+// readKnown is [readStored], from [known] when this process has read the
+// blob before; what is read is kept there. A blob that does not read is read
+// again every time.
+func readKnown(ctx context.Context, s flob.Store, d flob.Digest) (stored, *witnessed, error) {
+	if h, ok := known.Load(d); ok {
+		h := h.(knownAs)
+		return h.v, h.w, nil
+	}
+
+	v, w, err := readStored(ctx, s, d)
+	if err != nil {
+		return v, w, err
+	}
+
+	l := v
+	l.c.Blobs, l.s.Checkpoint, l.light = nil, nil, true
+	known.Store(d, knownAs{l, w})
+
+	return v, w, nil
 }
 
 // listed is a blob of the checkpoint store as the store lists it: its digest,
@@ -1585,6 +1632,24 @@ type chain struct {
 	// receipt from; see [Witness]. The store's word, which says what to tell
 	// a witness again and nothing else.
 	heard map[flob.Digest]map[string]bool
+
+	// store is where it was read from, for [chain.whole].
+	store flob.Store
+}
+
+// whole is a checkpoint with its blobs and its statement: as it was read, or
+// read again when it was had from memory without them.
+func (ch chain) whole(ctx context.Context, v stored) (stored, error) {
+	if !v.light {
+		return v, nil
+	}
+
+	w, _, err := readStored(ctx, ch.store, v.d)
+	if err == nil && w.c.Digest != v.c.Digest {
+		err = ErrAltered
+	}
+
+	return w, err
 }
 
 // readChain reads every blob the policy's checkpoint store lists, for what it
@@ -1627,13 +1692,29 @@ type chain struct {
 // later one as the one before it; one whose labels do not say which it is;
 // and the numbers one skips over.
 func (p Policy) readChain(ctx context.Context) (chain, error) {
+	return p.readChainFrom(ctx, false)
+}
+
+// readChainFrom is [Policy.readChain], reading every blob from the store
+// again when `fresh` -- a full verification, which is how one changed in
+// place under a name this process read before is found -- and from what this
+// process has read before when not.
+func (p Policy) readChainFrom(ctx context.Context, fresh bool) (chain, error) {
 	s := p.checkpoints()
 	ls, err := listCheckpoints(ctx, s)
 	if err != nil {
 		return chain{}, err
 	}
 
-	ch := chain{kept: map[flob.Digest]stored{}, labelled: map[flob.Digest]int{}, vouched: map[flob.Digest]bool{}, heard: map[flob.Digest]map[string]bool{}}
+	read := readKnown
+	if fresh {
+		read = func(ctx context.Context, s flob.Store, d flob.Digest) (stored, *witnessed, error) {
+			known.Delete(d)
+			return readKnown(ctx, s, d)
+		}
+	}
+
+	ch := chain{kept: map[flob.Digest]stored{}, labelled: map[flob.Digest]int{}, vouched: map[flob.Digest]bool{}, heard: map[flob.Digest]map[string]bool{}, store: s}
 	todo := []flob.Digest{}
 	listed := map[flob.Digest]bool{}
 	for _, v := range ls {
@@ -1657,7 +1738,13 @@ func (p Policy) readChain(ctx context.Context) (chain, error) {
 		}
 		seen[d] = true
 
-		v, w, err := readStored(ctx, s, d)
+		// From memory only what the store lists: one only a checkpoint names
+		// is asked of the store, which is what says it is taken away.
+		from := readStored
+		if listed[d] {
+			from = read
+		}
+		v, w, err := from(ctx, s, d)
 		if err != nil {
 			unread[d] = err
 			continue
@@ -1757,8 +1844,7 @@ func (p Policy) readChain(ctx context.Context) (chain, error) {
 // its signature good, and by one of these keys -- rather than by a later one
 // naming it. See [Policy.readChain].
 func vouches(v stored, trusted []crypto.PublicKey) bool {
-	has, good := signature(v.s)
-	return has && good && trusts(trusted, v.s.Key)
+	return v.has && v.good && trusts(trusted, v.s.Key)
 }
 
 // unkeyed is the checkpoints kept that say they are number k and that
@@ -1805,7 +1891,7 @@ func (ch chain) goesOn(ctx context.Context, m Manifest, k int) (flob.Digest, err
 // a finding, for an operator to look at and the acceptance of the restore to
 // name (see [Policy.Accept]). One the manifest still says the archive holds
 // is `missing` already, and one being erased has its row.
-func (ch chain) lost(k int, now reading) []Finding {
+func (ch chain) lost(ctx context.Context, k int, now reading) ([]Finding, error) {
 	rowed := map[blobKey]bool{}
 	for _, v := range now.rows {
 		if v.Digest != "" {
@@ -1816,6 +1902,11 @@ func (ch chain) lost(k int, now reading) []Finding {
 	out := []Finding{}
 	seen := map[blobKey]bool{}
 	for _, v := range ch.numbered(k) {
+		v, err := ch.whole(ctx, v)
+		if err != nil {
+			return nil, fmt.Errorf("checkpoint %d: %w", k, err)
+		}
+
 		for _, b := range v.c.Blobs {
 			key := blobKey{b.Namespace, b.Digest}
 			if _, ok := now.archive[key]; ok || rowed[key] || seen[key] {
@@ -1829,7 +1920,7 @@ func (ch chain) lost(k int, now reading) []Finding {
 	}
 	slices.SortFunc(out, findingOrder)
 
-	return out
+	return out, nil
 }
 
 // recentAccepted is how many acceptances a verification lists.
@@ -2050,6 +2141,7 @@ func readStored(ctx context.Context, s flob.Store, d flob.Digest) (stored, *witn
 	if err := json.Unmarshal(out.s.Checkpoint, &out.c); err != nil {
 		return out, nil, err
 	}
+	out.has, out.good = signature(out.s)
 
 	return out, nil, nil
 }
@@ -2064,6 +2156,10 @@ func (p Policy) ReadCheckpoints(ctx context.Context, fn func(Checkpoint) error) 
 	}
 
 	for _, v := range ch.decided() {
+		v, err := ch.whole(ctx, v)
+		if err != nil {
+			return fmt.Errorf("checkpoint %d: %w", v.c.K, err)
+		}
 		if err := fn(v.c); err != nil {
 			return err
 		}
@@ -2107,7 +2203,7 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, now reading, ou
 	fs := []Finding{}
 	empty := len(now.rows) == 0
 
-	ch, err := p.readChain(ctx)
+	ch, err := p.readChainFrom(ctx, now.full)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -2124,7 +2220,11 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, now reading, ou
 	}
 	if k := ch.newest(); k > latest {
 		fs = append(fs, Finding{Kind: "behind", Checkpoint: k, Note: fmt.Sprintf("the database has numbered %d checkpoints, and the store keeps one numbered %d: a database restored from before it", latest, k)})
-		fs = append(fs, ch.lost(k, now)...)
+		lost, err := ch.lost(ctx, k, now)
+		if err != nil {
+			return nil, 0, err
+		}
+		fs = append(fs, lost...)
 	}
 	out.Accepted = ch.accepted()
 	out.chain = ch
@@ -2143,7 +2243,7 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, now reading, ou
 	trusted := p.trusted()
 	for _, v := range ch.ordered() {
 		k := v.c.K
-		switch has, good := signature(v.s); {
+		switch has, good := v.has, v.good; {
 		case has && !good:
 			fs = append(fs, Finding{Kind: "forged", Checkpoint: k, Note: "its signature is not good"})
 		case ch.vouched[v.d]:
@@ -2193,7 +2293,7 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, now reading, ou
 		}
 		for _, v := range ch.numbered(k) {
 			if got := checkpointOf(k, v.c.At, rows); got.Digest != v.c.Digest {
-				fs = append(fs, Finding{Kind: "rewritten", Checkpoint: k, Note: checkpointDiff(v.c, got)})
+				fs = append(fs, Finding{Kind: "rewritten", Checkpoint: k, Note: ch.diff(ctx, v, got)})
 			}
 			newest = max(newest, k)
 		}
@@ -2214,6 +2314,17 @@ func signature(v signed) (bool, bool) {
 	}
 
 	return true, verified(v.Key, v.Checkpoint, v.Sig)
+}
+
+// diff is [checkpointDiff] of a checkpoint read whole, and how many blobs it
+// kept when it cannot be.
+func (ch chain) diff(ctx context.Context, v stored, got Checkpoint) string {
+	w, err := ch.whole(ctx, v)
+	if err != nil {
+		return fmt.Sprintf("it kept %d blobs, and the manifest's rows add up to %d; it does not read again: %v", v.c.Count, got.Count, err)
+	}
+
+	return checkpointDiff(w.c, got)
 }
 
 // checkpointDiff says how the rows differ from what a checkpoint kept.
