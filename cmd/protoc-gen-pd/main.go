@@ -230,6 +230,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitWatchRecorder(out, s, paths)
 	pdgen.EmitOutbox(out, s, paths)
 	pdgen.EmitTrail(out, s, paths, root)
+	pdgen.EmitPast(out, s, paths, root)
 	pdgen.EmitAccess(out, s, paths, root)
 	pdgen.EmitCost(out, s, root)
 	pdgen.EmitBatch(out, s, paths, root, p.Files)

@@ -19,6 +19,10 @@
 // them, and a `Move` is on the trail for the same reason an `Add` is -- nothing
 // listed it.
 //
+// And it keeps a past (payday#151): a `Move` is one transaction, which records
+// the event it is -- `app.RobotMoved` -- and the fact of the cell it changed,
+// beside the write, so that the three commit together or not at all.
+//
 // What the trail says it was is `Move`, not the `Patch` below. That is
 // `bare.Change.Method`, which carries the RPC gRPC dispatched for the whole
 // request rather than the leg being written -- so an operation written by hand
@@ -34,27 +38,43 @@ import (
 	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/gate"
+	"github.com/lesomnus/payday/past"
 	"github.com/lesomnus/payday/pderr"
+	"github.com/lesomnus/payday/pdid"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
 // Core is the layer that answers what this app wrote.
+//
+// It holds the driver the stack below it talks to, because an operation is
+// one transaction begun on it -- inside a batch, the batch's, which it joins
+// -- and the trail's content, which the past records an act beneath the
+// servers with (payday#151).
 type Core struct {
 	app.Overlay
+
+	drv     dialect.Driver
+	content audit.Contents
 }
 
-func New(next app.Server) Core { return Core{app.NewOverlay(next)} }
+func New(next app.Server, drv dialect.Driver, content audit.Contents) Core {
+	return Core{app.NewOverlay(next), drv, content}
+}
 
 // Build makes a builder of this layer so that it can be stacked.
-func Build() app.Builder { return builder{} }
+func Build(drv dialect.Driver, content audit.Contents) app.Builder { return builder{drv, content} }
 
-type builder struct{}
+type builder struct {
+	drv     dialect.Driver
+	content audit.Contents
+}
 
-func (builder) Build(next app.Server) (app.Server, error) { return New(next), nil }
+func (b builder) Build(next app.Server) (app.Server, error) { return New(next, b.drv, b.content), nil }
 
 var (
 	_ app.Server               = Core{}
@@ -67,13 +87,42 @@ var (
 // behind it and has no way to make itself again, so a layer that did not write
 // it would be missing from the rebuilt stack and the requests inside a
 // transaction would go around it. `pd doctor` is what finds a layer that forgot.
+//
+// And it carries the driver: inside a transaction that is the transaction,
+// and one an operation begins on it joins it rather than opening a second.
 func (s Core) WithDriver(drv dialect.Driver) (app.Server, error) {
 	next, err := enttx.Rebind(s.Next(), drv)
 	if err != nil {
 		return nil, err
 	}
 
-	return New(next), nil
+	return New(next, drv, s.content), nil
+}
+
+// tx runs `f` as one operation: in one transaction, with the stack below on
+// it and the past written in it. What `f` writes and the event it records
+// commit together or not at all.
+func (s Core) tx(ctx context.Context, f func(ctx context.Context, next app.Server, st past.Store) error) error {
+	drv, tx, err := dialect.BeginTx(ctx, s.drv)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	next, err := enttx.Rebind(s.Next(), drv)
+	if err != nil {
+		return err
+	}
+	st, err := pd.Past(next, drv, s.content)
+	if err != nil {
+		return err
+	}
+
+	if err := f(ctx, next, st); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 type coreRobot struct {
@@ -116,52 +165,83 @@ func (s coreRobot) Move(ctx context.Context, req *app.RobotMoveRequest) (*app.Ro
 		return nil, err
 	}
 
-	// Read through the wall, so this is also the check that the caller holds it.
-	v, err := s.RobotServiceServer.Get(ctx, app.RobotGetRequest_builder{
-		Ref: req.GetRef(),
-	}.Build())
-	if err != nil {
-		return nil, err
-	}
-
-	to := req.GetTo()
-	if to == nil {
-		// Out of every cell, which is a move like any other: `Robot.cell` is
-		// nullable, so there is somewhere for it to go.
-		return s.RobotServiceServer.Patch(ctx, app.RobotPatchRequest_builder{
-			Ref:         app.RobotRef_builder{Id: v.GetId()}.Build(),
-			CellNull:    proto.Bool(true),
-			DateUpdated: v.GetDateUpdated(),
+	var out *app.Robot
+	err := s.tx(ctx, func(ctx context.Context, next app.Server, st past.Store) error {
+		// Read through the wall, so this is also the check that the caller
+		// holds it.
+		v, err := next.Robot().Get(ctx, app.RobotGetRequest_builder{
+			Ref: req.GetRef(),
 		}.Build())
-	}
-
-	// The destination, read through the wall for the reason above. `Next()`
-	// rather than this layer, because there is nothing this layer adds to a
-	// cell and going through itself would be a loop waiting for somebody to
-	// add one.
-	cell, err := s.Core.Next().Cell().Get(ctx, app.CellGetRequest_builder{
-		Ref: to,
-	}.Build())
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			return nil, gate.ErrNotFound("Cell")
+		if err != nil {
+			return err
+		}
+		id, err := pdid.From(v.GetId())
+		if err != nil {
+			return err
 		}
 
+		patch := app.RobotPatchRequest_builder{
+			Ref: app.RobotRef_builder{Id: v.GetId()}.Build(),
+			// Carried from the row that was read, which is what makes this
+			// refuse a move racing another write rather than overwriting it.
+			DateUpdated: v.GetDateUpdated(),
+		}.Build()
+
+		var to []byte
+		if req.GetTo() == nil {
+			// Out of every cell, which is a move like any other: `Robot.cell`
+			// is nullable, so there is somewhere for it to go.
+			patch.SetCellNull(true)
+		} else {
+			// The destination, read through the wall for the reason above.
+			// The servers below rather than this layer, because there is
+			// nothing this layer adds to a cell and going through itself would
+			// be a loop waiting for somebody to add one.
+			cell, err := next.Cell().Get(ctx, app.CellGetRequest_builder{
+				Ref: req.GetTo(),
+			}.Build())
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return gate.ErrNotFound("Cell")
+				}
+
+				return err
+			}
+			if string(v.GetCell().GetId()) == string(cell.GetId()) {
+				return pderr.Invalidf("to", "it is already there")
+			}
+
+			to = cell.GetId()
+			patch.SetCell(app.CellRef_builder{Id: to}.Build())
+		}
+
+		// The event the move is, before what it changes, and in the same
+		// transaction: a move refused below takes its event with it.
+		ctx, op, err := past.Begin(ctx, st, past.Event{
+			Subject: id,
+			Value: app.RobotMoved_builder{
+				Robot: v.GetId(),
+				From:  v.GetCell().GetId(),
+				To:    to,
+			}.Build(),
+		})
+		if err != nil {
+			return err
+		}
+
+		// One write, through the servers below -- so the trail, the watch and
+		// the outbox are told exactly as they are for anything else.
+		if out, err = next.Robot().Patch(ctx, patch); err != nil {
+			return err
+		}
+
+		// And the fact of what it changed: the cell, from when it moved. The
+		// version moved too, and is no part of what a robot was.
+		return op.Set(ctx, past.Fact{Subject: id, Values: past.Changes(v, out)})
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	if string(v.GetCell().GetId()) == string(cell.GetId()) {
-		return nil, pderr.Invalidf("to", "it is already there")
-	}
-
-	// One write, through the servers below -- so the trail, the watch and the
-	// outbox are told exactly as they are for anything else.
-	//
-	// `DateUpdated` is carried from the row that was read, which is what makes
-	// this refuse a move racing another write rather than overwriting it.
-	return s.RobotServiceServer.Patch(ctx, app.RobotPatchRequest_builder{
-		Ref:         app.RobotRef_builder{Id: v.GetId()}.Build(),
-		Cell:        app.CellRef_builder{Id: cell.GetId()}.Build(),
-		DateUpdated: v.GetDateUpdated(),
-	}.Build())
+	return out, nil
 }

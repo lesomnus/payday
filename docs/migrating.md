@@ -3,6 +3,35 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The past is recorded and read through the `past` package
+
+**Applies to an app that declares a past**, whose `pd.g.go` gains `pd.Past`
+when it regenerates -- the third part of payday#151. An app with no past
+regenerates nothing new. No schema changes and no migration: the tables are the
+ones the first part made.
+
+- **`pd.Past(next, drv, content) (past.Store, error)`** is the app's Event and
+  Fact as the `past` package writes and reads them: written through `next`, the
+  stack an operation writes through, put on `drv`, its transaction; read through
+  ent on `drv`. `content` is the trail's (`c.Audit.Contents()`), for the one act
+  of the past beneath the servers.
+- **An operation is recorded** with `past.Begin(ctx, st, past.Event{...})`, in
+  its own transaction -- refused outside one -- and writes facts with
+  `op.Set(ctx, past.Fact{...})`; `op.Child` and `op.Batch` for an operation over
+  many things, `past.Event.Id` for one a client may send twice
+  (`past.ErrDone`). A layer that records operations holds the driver its stack
+  talks to and carries it in `WithDriver`, as apptest's `server/core` now does.
+- **Write facts through the package, not the generated Fact server.** A fact's
+  value is `past.Encode`'s canonical JSON, a personal or secret field's
+  withheld, and what it supersedes is the package's to say; a row written by
+  hand is one no read can be sure of. Sealing the two tables to the package is
+  the sixth part of payday#151.
+- **Read** with `past.StateAt`, `State.Into`, `past.Diff`, `past.Facts` (the
+  statements they were written in), `past.Timeline` and `past.Events`, each
+  narrowed to the caller's tenants. **Correct** with `op.Correct`, `op.Retract`,
+  `op.CorrectEvent` and `op.RetractEvent`. **Take a reason out** with
+  `past.Redact`, which is on the trail as `payday.past.redact`.
+- [Keeping a past](guide/past.md#6-recording-an-operation) is the guide.
 ## The panel writes an event's value out, given the registry
 
 **Applies if** a page of yours mounts `<Devtools>`, which has something to

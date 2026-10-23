@@ -51,6 +51,7 @@ table is for finding the right one.
 | [`seen`](../seen) | what a transaction has already asked about the rows it names, so the gate and the sink ask each question once rather than once per write |
 | [`audit`](../audit) | the trail. A recorder inside the transaction, and a layer serving the trail's own RPCs |
 | [`access`](../access) | the access record: who read or wrote whose personal data, from where, and how it ended. An interceptor, and the writer it hands rows to |
+| [`past`](../past) | an app's past, for one that declares one: an event for each operation and facts of what its resources were, recorded in the operation's transaction and read back at a moment, as known now or then. Through the `pd.Past` an app is generated |
 
 ### Naming things
 
@@ -100,6 +101,7 @@ in CI is what keeps that true.
 | the batch dispatcher | it has to know every RPC the app has |
 | whose data a message carries (`Subjects`, `SubjectRefs`), and the access record's recorder and writer | they read the app's messages by what its schema declared `personal`, and write its `Access` |
 | `pd.EventKinds`, in an app that declares a past: every event message by the kind its rows are written under | each is a message type of yours, read back from a row's `kind` |
+| `pd.Past`, in an app that declares a past: its Event and Fact as the `past` package writes and reads them | a write goes through your servers on the operation's transaction, a read through your ent client, and the tenant of a subject is found as the trail finds a row's |
 | `ts/gen/events.ts`, in every app: `events`, a protobuf-es registry of the event messages, and `kinds` | the page's transport is handed it, and it names the app's schemas |
 
 An app that declares a past also has `proto/<pkg>/payday/past.lock` beside the
@@ -185,6 +187,7 @@ Everything payday enforces is placed as far left as it goes.
 | the access record is wired | `pd doctor` says which of its interceptor, writer and recorder the app's code does not name — missing, nothing fails and nothing is recorded |
 | a download says what it is for | the access interceptor refuses one without `payday-reason-bin`, and one whose row cannot be written |
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
+| an event and what it is about commit together | `past.Begin` refuses a store on no transaction, and `pd.Past` puts the stack on the operation's driver rather than trusting it to be there |
 | `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
 | the wire does not break | `buf breaking` in CI, against the published label and the branch |
 | an error is logged as the error, and one to a record | a test, `internal/logcheck`, over payday's packages, the code it generates and what `pd new` writes; and of what the `otelslog` bridge does with an error, which is what makes it the rule (see [logging an error](guide/server.md#10-logging-an-error)) |
@@ -467,7 +470,8 @@ make sure there is nothing else:
   nothing to carry.
 - **A row an app writes beneath the servers on purpose is recorded** as the act
   that wrote it -- a workspace restored from its export, rows a migration
-  rewrote and an operator accepted. `pd.Record(ctx, db, contents, action, ids)`
+  rewrote and an operator accepted, an event's reason taken out at a person's
+  request (`past.Redact`). `pd.Record(ctx, db, contents, action, ids)`
   writes one line of the trail for each, in the transaction that wrote them, by
   whoever the context is framed as, keeping the digest of the row as a Get reads
   it and nothing of what it holds. One it removes on purpose -- what a person

@@ -212,11 +212,11 @@ func TestTheCopiesAreTheAppsAndGoWithTheDeclaration(t *testing.T) {
 	// And gone with it, with what was generated from them -- once the app's
 	// event messages are plain messages again, since an event message with no
 	// past to be kept in is refused.
-	x.NoError(os.WriteFile(robot, []byte(strings.Replace(src, "past: {event: 17, fact: 18}", "", 1)), 0o644))
+	plain := regexp.MustCompile(`(?m)^\s*option \(payday\.event\) = .*$`)
+	x.NoError(os.WriteFile(robot, []byte(plain.ReplaceAllString(strings.Replace(src, "past: {event: 17, fact: 18}", "", 1), "")), 0o644))
 	x.NoError(os.Remove(l.Path(pdcli.DirExt, "payday", "event.ext.proto")))
 	machine := l.Path(pdcli.DirProto, "app", "machine.proto")
-	x.NoError(os.WriteFile(machine, []byte(regexp.MustCompile(`(?m)^\s*option \(payday\.event\) = .*$`).
-		ReplaceAllString(read(machine), "")), 0o644))
+	x.NoError(os.WriteFile(machine, []byte(plain.ReplaceAllString(read(machine), "")), 0o644))
 	lock := filepath.Join(l.Root, l.DirPd(), pdcli.LockFile)
 	locked := read(lock)
 

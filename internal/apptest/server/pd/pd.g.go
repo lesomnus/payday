@@ -47,6 +47,7 @@ import (
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
+	past "github.com/lesomnus/payday/past"
 	pderr "github.com/lesomnus/payday/pderr"
 	pdid "github.com/lesomnus/payday/pdid"
 	pdpb "github.com/lesomnus/payday/pdpb"
@@ -192,7 +193,9 @@ var Domains = map[string]pdid.Domain{
 // of it may be.
 var EventKinds = map[string]protoreflect.MessageType{
 	"app.MachineStarted": (*apptest.MachineStarted)(nil).ProtoReflect().Type(),
+	"correct":            (*apptest.Corrected)(nil).ProtoReflect().Type(),
 	"machine.service":    (*apptest.MachineServiced)(nil).ProtoReflect().Type(),
+	"robot.move":         (*apptest.RobotMoved)(nil).ProtoReflect().Type(),
 }
 
 // IndexRenames are the indexes this schema names, by what an earlier build
@@ -9508,6 +9511,353 @@ func TrailOf(fn func(*apptest.Audit) error) func(doc []byte) error {
 
 		return fn(v)
 	}
+}
+
+// Past is this app's past as the `past` package writes and reads it
+// (payday#151): its Event and Fact, written through `next` -- the stack an
+// operation writes through -- on `drv`, and read through ent on `drv`.
+// `content` is the trail's (`audit.content`, `audit.digest.key`), what an
+// act of the past beneath the servers is recorded with: see [Record].
+//
+//	drv, tx, err := dialect.BeginTx(ctx, s.drv)
+//	...
+//	st, err := pd.Past(s.Next(), drv, content)
+//	ctx, op, err := past.Begin(ctx, st, past.Event{Subject: id, Value: moved})
+//
+// `next` is put on `drv` here rather than trusted to be, so that every
+// write of the past is in the transaction its operation is; it answers
+// an error for a stack a layer of which cannot be put on another driver,
+// whose writes would go around that layer.
+func Past(next apptest.Server, drv dialect.Driver, content audit1.Contents) (past.Store, error) {
+	s, err := enttx.Rebind(next, drv)
+	if err != nil {
+		return nil, err
+	}
+
+	return pastStore{next: s, drv: drv, db: ent.NewClient(ent.Driver(drv)), content: content}, nil
+}
+
+type pastStore struct {
+	next    apptest.Server
+	drv     dialect.Driver
+	db      *ent.Client
+	content audit1.Contents
+}
+
+var _ past.Store = pastStore{}
+
+// Kinds is [EventKinds].
+func (pastStore) Kinds() map[string]protoreflect.MessageType { return EventKinds }
+
+func (s pastStore) Driver() dialect.Driver { return s.drv }
+
+// AddEvents writes each event through the Event server: an Add for one, an
+// AddMany of at most a page for more.
+func (s pastStore) AddEvents(ctx context.Context, vs []past.EventRow) ([]pdid.Id, error) {
+	reqs := make([]*apptest.EventAddRequest, len(vs))
+	for i, v := range vs {
+		req := apptest.EventAddRequest_builder{
+			Tenant:      apptest.TenantRef_builder{Id: v.Tenant.Bytes()}.Build(),
+			Kind:        v.Kind,
+			OccurredAt:  timestamppb.New(v.At),
+			Reason:      v.Reason,
+			DateCreated: timestamppb.New(v.Recorded),
+			Value:       v.Value,
+		}.Build()
+		if !v.Id.IsZero() {
+			req.SetId(v.Id.Bytes())
+		}
+		if !v.Actor.IsZero() {
+			req.SetActorId(v.Actor.Bytes())
+		}
+		if !v.Subject.IsZero() {
+			req.SetSubjectId(v.Subject.Bytes())
+		}
+		if !v.Cause.IsZero() {
+			req.SetCauseId(v.Cause.Bytes())
+		}
+		if len(v.Trace) > 0 {
+			req.SetTraceId(v.Trace)
+		}
+		reqs[i] = req
+	}
+
+	out := make([]pdid.Id, 0, len(reqs))
+	if len(reqs) == 1 {
+		v, err := s.next.Event().Add(ctx, reqs[0])
+		if err != nil {
+			return nil, err
+		}
+		id, err := pdid.From(v.GetId())
+		if err != nil {
+			return nil, err
+		}
+
+		return append(out, id), nil
+	}
+	for page := range slices.Chunk(reqs, bare.EventAddManyMax) {
+		res, err := s.next.Event().AddMany(ctx, apptest.EventAddManyRequest_builder{Items: page}.Build())
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range res.GetItems() {
+			id, err := pdid.From(v.GetId())
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, id)
+		}
+	}
+
+	return out, nil
+}
+
+// AddFacts writes each fact through the Fact server, as [pastStore.AddEvents]
+// writes events.
+func (s pastStore) AddFacts(ctx context.Context, vs []past.FactRow) error {
+	reqs := make([]*apptest.FactAddRequest, len(vs))
+	for i, v := range vs {
+		field, domain := uint32(v.Field), uint32(v.Domain)
+		reqs[i] = apptest.FactAddRequest_builder{
+			Tenant:      apptest.TenantRef_builder{Id: v.Tenant.Bytes()}.Build(),
+			SubjectId:   v.Subject.Bytes(),
+			Key:         v.Key,
+			Value:       v.Value,
+			FieldNumber: &field,
+			Domain:      &domain,
+			ValidFrom:   timestamppb.New(v.From),
+			EventId:     v.Event.Bytes(),
+			DateCreated: timestamppb.New(v.Recorded),
+		}.Build()
+	}
+
+	if len(reqs) == 1 {
+		_, err := s.next.Fact().Add(ctx, reqs[0])
+		return err
+	}
+	for page := range slices.Chunk(reqs, bare.FactAddManyMax) {
+		if _, err := s.next.Fact().AddMany(ctx, apptest.FactAddManyRequest_builder{Items: page}.Build()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Supersede is a Patch of each fact, held to the version it was read at.
+func (s pastStore) Supersede(ctx context.Context, vs []past.FactRow, at time.Time, by pdid.Id) error {
+	for _, v := range vs {
+		if _, err := s.next.Fact().Patch(ctx, apptest.FactPatchRequest_builder{
+			Ref:          apptest.FactRef_builder{Id: v.Id.Bytes()}.Build(),
+			DateUpdated:  timestamppb.New(v.Version),
+			SupersededAt: timestamppb.New(at),
+			SupersededBy: by.Bytes(),
+		}.Build()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Events reads events through ent, by the predicates the package built.
+func (s pastStore) Events(ctx context.Context, q past.Select) ([]past.EventRow, error) {
+	query := s.db.Event.Query()
+	for _, v := range q.Where {
+		query = query.Where(predicate.Event(v))
+	}
+	for _, v := range q.Order {
+		query = query.Order(event.OrderOption(v))
+	}
+	if q.Limit > 0 {
+		query = query.Limit(q.Limit)
+	}
+
+	vs, err := query.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]past.EventRow, len(vs))
+	for i, v := range vs {
+		r := past.EventRow{
+			Id:       pdid.Id(v.Id),
+			Tenant:   pdid.Id(v.TenantId),
+			Kind:     v.Kind,
+			At:       v.OccurredAt,
+			Reason:   v.Reason,
+			Trace:    v.TraceId,
+			Value:    v.Value,
+			Recorded: v.DateCreated,
+		}
+		if v.ActorId != nil {
+			r.Actor = pdid.Id(*v.ActorId)
+		}
+		if v.SubjectId != nil {
+			r.Subject = pdid.Id(*v.SubjectId)
+		}
+		if v.CauseId != nil {
+			r.Cause = pdid.Id(*v.CauseId)
+		}
+		out[i] = r
+	}
+
+	return out, nil
+}
+
+// Facts reads facts through ent, by the predicates the package built.
+func (s pastStore) Facts(ctx context.Context, q past.Select) ([]past.FactRow, error) {
+	query := s.db.Fact.Query()
+	for _, v := range q.Where {
+		query = query.Where(predicate.Fact(v))
+	}
+	for _, v := range q.Order {
+		query = query.Order(fact.OrderOption(v))
+	}
+	if q.Limit > 0 {
+		query = query.Limit(q.Limit)
+	}
+
+	vs, err := query.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]past.FactRow, len(vs))
+	for i, v := range vs {
+		r := past.FactRow{
+			Id:         pdid.Id(v.Id),
+			Tenant:     pdid.Id(v.TenantId),
+			Subject:    pdid.Id(v.SubjectId),
+			Domain:     pdid.Domain(v.Domain),
+			Field:      protoreflect.FieldNumber(v.FieldNumber),
+			Key:        v.Key,
+			Value:      v.Value,
+			From:       v.ValidFrom,
+			Recorded:   v.DateCreated,
+			Event:      pdid.Id(v.EventId),
+			Version:    v.DateUpdated,
+			Superseded: v.SupersededAt,
+		}
+		if v.SupersededBy != nil {
+			r.SupersededBy = pdid.Id(*v.SupersededBy)
+		}
+		out[i] = r
+	}
+
+	return out, nil
+}
+
+// Describe is [described]: what the trail withholds of a row is what a
+// fact withholds of a field.
+func (pastStore) Describe(subject pdid.Id) (past.Description, bool) {
+	md, secret, personal := described(subject)
+	if md == nil {
+		return past.Description{}, false
+	}
+
+	return past.Description{Message: md, Secret: secret, Personal: personal}, true
+}
+
+// TenantOf reads each row as a check of the rows reads it, past the wall,
+// and its tenant as the recorder finds the one a write is filed under
+// ([subject]): the same answer to the same question, which is whose a row is.
+func (s pastStore) TenantOf(ctx context.Context, ids []pdid.Id) (map[pdid.Id]pdid.Id, error) {
+	srv, err := bare.NewServer(s.db)
+	if err != nil {
+		return nil, err
+	}
+
+	byKind := map[pdid.Domain][]pdid.Id{}
+	for _, v := range ids {
+		byKind[v.Domain()] = append(byKind[v.Domain()], v)
+	}
+
+	out := map[pdid.Id]pdid.Id{}
+	for _, d := range slices.Sorted(maps.Keys(byKind)) {
+		for page := range slices.Chunk(byKind[d], audit1.RowsPage) {
+			var rows []audit1.Live
+			global := false
+			switch d {
+			case CellDomain:
+				rows, err = rowsCell(ctx, s.db, cell.IdIn(uuids(page)...))
+			case EventDomain:
+				rows, err = rowsEvent(ctx, s.db, event.IdIn(uuids(page)...))
+			case FactDomain:
+				rows, err = rowsFact(ctx, s.db, fact.IdIn(uuids(page)...))
+			case FleetDomain:
+				rows, err = rowsFleet(ctx, s.db, fleet.IdIn(uuids(page)...))
+				global = true
+			case HolderDomain:
+				rows, err = rowsHolder(ctx, s.db, holder.IdIn(uuids(page)...))
+			case JointDomain:
+				rows, err = rowsJoint(ctx, s.db, joint.IdIn(uuids(page)...))
+			case MachineDomain:
+				rows, err = rowsMachine(ctx, s.db, machine.IdIn(uuids(page)...))
+			case PairingDomain:
+				rows, err = rowsPairing(ctx, s.db, pairing.IdIn(uuids(page)...))
+			case PulseDomain:
+				rows, err = rowsPulse(ctx, s.db, pulse.IdIn(uuids(page)...))
+				global = true
+			case ReadingDomain:
+				rows, err = rowsReading(ctx, s.db, reading.IdIn(uuids(page)...))
+			case RobotDomain:
+				rows, err = rowsRobot(ctx, s.db, robot.IdIn(uuids(page)...))
+			case SealDomain:
+				rows, err = rowsSeal(ctx, s.db, seal.IdIn(uuids(page)...))
+				global = true
+			case TallyDomain:
+				rows, err = rowsTally(ctx, s.db, tally.IdIn(uuids(page)...))
+			case TenantDomain:
+				rows, err = rowsTenant(ctx, s.db, tenant.IdIn(uuids(page)...))
+			case ThingDomain:
+				rows, err = rowsThing(ctx, s.db, thing.IdIn(uuids(page)...))
+				global = true
+			default:
+				return nil, fmt.Errorf("%s is of a kind whose tenant this app cannot say, so it is the subject of no past", page[0])
+			}
+			if err != nil {
+				return nil, err
+			}
+
+			for _, v := range rows {
+				if global {
+					out[v.Object] = pdid.Nil
+					continue
+				}
+
+				t, _, err := subject(ctx, srv, v.Object, v.Row, false)
+				if err != nil {
+					return nil, err
+				}
+				if t == uuid.Nil() {
+					// Behind the wall and reaching no tenant -- a first hop
+					// left empty -- which the wall shows to nobody: as no row.
+					continue
+				}
+				out[v.Object] = pdid.Id(t)
+			}
+		}
+	}
+
+	return out, nil
+}
+
+// Redact blanks the reason of an event through ent -- an event has no
+// Patch -- and puts that on the trail as `action`, in the same transaction:
+// a line by whoever `ctx` is framed as, with the event's digest as it is
+// now and its seal made again ([Record]).
+func (s pastStore) Redact(ctx context.Context, id pdid.Id, action string) error {
+	n, err := s.db.Event.Update().Where(event.IdEQ(uuid.UUID(id))).SetReason("").Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return status.Error(codes.NotFound, "Event not found")
+	}
+
+	_, err = Record(ctx, s.db, s.content, action, []pdid.Id{id})
+	return err
 }
 
 // personal is what a message holding a field declared `personal` is to the

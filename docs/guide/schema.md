@@ -841,6 +841,12 @@ field of one never removed or changed -- and `pd gen` holds the app to that
 with a lock, `proto/app/payday/past.lock`, which it only ever adds to. That is
 [Keeping a past](past.md).
 
+Rows of the two are written and read by the `past` package, through the
+`pd.Past` `pd gen` writes beside them -- an event in its operation's
+transaction, a fact as the canonical JSON of each field it holds, a personal
+value withheld -- and not by hand through their generated servers:
+[Recording an operation](past.md#6-recording-an-operation).
+
 ### An RPC of your own
 
 The CRUD of an entity is generated and the general writes are closed, so an

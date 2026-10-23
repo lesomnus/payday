@@ -1,9 +1,22 @@
 {
   "events": {
+    "app.Corrected": "correct",
     "app.MachineServiced": "machine.service",
-    "app.MachineStarted": "app.MachineStarted"
+    "app.MachineStarted": "app.MachineStarted",
+    "app.RobotMoved": "robot.move"
   },
   "messages": {
+    "app.Corrected": {
+      "1": {
+        "json": "event",
+        "kind": "bytes"
+      },
+      "2": {
+        "json": "at",
+        "kind": "message",
+        "type": "google.protobuf.Timestamp"
+      }
+    },
     "app.MachineServiced": {
       "1": {
         "json": "machine",
@@ -49,6 +62,20 @@
     "app.MachineStarted": {
       "1": {
         "json": "machine",
+        "kind": "bytes"
+      }
+    },
+    "app.RobotMoved": {
+      "1": {
+        "json": "robot",
+        "kind": "bytes"
+      },
+      "2": {
+        "json": "from",
+        "kind": "bytes"
+      },
+      "3": {
+        "json": "to",
         "kind": "bytes"
       }
     }
