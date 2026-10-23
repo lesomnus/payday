@@ -100,3 +100,65 @@ func TestDsnDefaults(t *testing.T) {
 		})
 	}
 }
+
+// TestDsnPragmas pins what a driver's registered PRAGMAs do to a DSN, which
+// says `_pragma` once for each it asks for.
+func TestDsnPragmas(t *testing.T) {
+	RegisterDsnPragma("pragma_test", "busy_timeout", "60000")
+
+	for _, c := range []struct {
+		name   string
+		driver string
+		dsn    string
+		want   string
+	}{
+		{
+			name:   "a DSN that asks for no PRAGMA gets it",
+			driver: "pragma_test",
+			dsn:    "file:roster.db",
+			want:   "file:roster.db?_pragma=busy_timeout%2860000%29",
+		},
+		{
+			// Which is the case it is for: another PRAGMA is no reason to
+			// leave this one out.
+			name:   "and one that asks for others gets it ahead of them",
+			driver: "pragma_test",
+			dsn:    "file:roster.db?_pragma=foreign_keys(1)&_pragma=journal_mode(wal)",
+			want:   "file:roster.db?_pragma=busy_timeout%2860000%29&_pragma=foreign_keys%281%29&_pragma=journal_mode%28wal%29",
+		},
+		{
+			name:   "behind an encryption key, which comes first",
+			driver: "pragma_test",
+			dsn:    "file:roster.db?_pragma=textkey('x')&_pragma=foreign_keys(1)",
+			want:   "file:roster.db?_pragma=textkey%28%27x%27%29&_pragma=busy_timeout%2860000%29&_pragma=foreign_keys%281%29",
+		},
+		{
+			name:   "one already asked for is left alone",
+			driver: "pragma_test",
+			dsn:    "file:roster.db?_pragma=foreign_keys(1)&_pragma=busy_timeout(10000)",
+			want:   "file:roster.db?_pragma=foreign_keys(1)&_pragma=busy_timeout(10000)",
+		},
+		{
+			name:   "however it is spelled",
+			driver: "pragma_test",
+			dsn:    "file:roster.db?_pragma=BUSY_TIMEOUT%20%3D%205000",
+			want:   "file:roster.db?_pragma=BUSY_TIMEOUT%20%3D%205000",
+		},
+		{
+			name:   "a bare path is a filename, so it is not touched",
+			driver: "pragma_test",
+			dsn:    "roster.db",
+			want:   "roster.db",
+		},
+		{
+			name:   "a driver that registered nothing gets nothing",
+			driver: "pgx",
+			dsn:    "postgres://app:app@127.0.0.1/app?sslmode=disable",
+			want:   "postgres://app:app@127.0.0.1/app?sslmode=disable",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			require.Equal(t, c.want, withDsnDefaults(c.driver, c.dsn))
+		})
+	}
+}

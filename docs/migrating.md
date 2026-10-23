@@ -3,6 +3,36 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A SQLite DSN that names no busy timeout waits a minute for a lock
+
+**Applies to an app on SQLite whose DSN asks for a PRAGMA and names no
+`busy_timeout`**, which is the DSN `pd new` writes:
+`file:app.db?_pragma=foreign_keys(1)`. Nothing has to change. An app that names
+a `busy_timeout` of its own keeps it, and PostgreSQL has none of this.
+
+The `sqlite3` driver waits a minute for a lock only when a DSN asks for no
+PRAGMA at all. `foreign_keys(1)` is one, so such a DSN waited for nothing, and
+under the `_txlock=immediate` that `DbConfig.Open` adds, the second of any two
+writes at once was refused with `database is locked`. kamino's console signing
+in for the first time sent three lists at once, and two of them answered 500.
+`DbConfig.Open` now adds `_pragma=busy_timeout(60000)`, the driver's own minute,
+to a `sqlite3` DSN that names no timeout. It goes ahead of the DSN's own PRAGMAs
+and after an encryption key.
+
+- **To check a deployment**, look at its DSN. A `busy_timeout` in it is what it
+  waits, as before. Without one, it waited for nothing and now waits a minute.
+- **The sandbox** (`sqlite3-wasm`) is not touched. Its driver refuses the
+  parameter, and its database has one connection.
+
+What the apps on payday change:
+
+- **rove**, **roster**, **shale** and **khala**'s deployment configuration
+  already name a timeout. khala's `khala.yaml` for development does not, and it
+  waits now.
+- **kamino** names none in `kamiadm.yaml` or `deploy/kamiadm.yaml`, which is the
+  console failure above. It waits once it is on this payday, or sooner if it
+  says `_pragma=busy_timeout(…)` in its DSN.
+
 ## A Watch filter's language is a package of its own
 
 **Applies to every app**, which regenerates -- `pd.Resources` says where its
