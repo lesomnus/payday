@@ -20,6 +20,11 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // numbered by the app, so these are the numbers nothing here holds, and an
 // overlay adds to the Event what an app adopting its own events would --
 // `proto/ext/payday/event.ext.proto`.
+//
+// It says nothing of `domains:`, so payday's Archived and Access are at 5 and
+// 6, as in every app whose own entities never held those (payday#163). pdcli's
+// TestARenumberedAppKeepsItsTrailAndItsAccessRecord runs a copy of this app
+// that gives them 240 and 241.
 option (payday.app) = {
   past: {event: 17, fact: 18}
 };

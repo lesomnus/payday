@@ -114,6 +114,12 @@ type Layout struct {
 	// and at which domains (payday#151). Read off the file that says
 	// `option (payday.app)`, like [Layout.ProtoPkg] -- see [Past].
 	Past *Past
+
+	// Domains is what the app declared of the domains of payday's Archived and
+	// Access, and nil for an app that declared none: whether the two are
+	// copied in at numbers of the app's own rather than payday's (payday#163).
+	// Read off the same file as [Layout.Past] -- see [AppDomains].
+	Domains *AppDomains
 }
 
 // The names under [Layout.Root]. They are constants rather than fields for the
@@ -221,6 +227,9 @@ func Discover(dir string) (Layout, error) {
 		return Layout{}, err
 	}
 	if l.Past, err = readPast(l); err != nil {
+		return Layout{}, err
+	}
+	if l.Domains, err = readDomains(l); err != nil {
 		return Layout{}, err
 	}
 

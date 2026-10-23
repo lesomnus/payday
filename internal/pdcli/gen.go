@@ -137,7 +137,9 @@ var pdImport = regexp.MustCompile(`(?m)^import "payday/([^"]+)";$`)
 // directory they are in, and the README written beside them.
 //
 // The past is copied the same way, into an app that declares one, and taken
-// out of one that does not; see [Gen.past].
+// out of one that does not; see [Gen.past]. And Archived and Access are copied
+// at the numbers an app gives them, when it gives them any (payday#163); see
+// [Gen.numbering].
 func (g Gen) entities(ctx context.Context) error {
 	src, err := SchemaDir()
 	if err != nil {
@@ -163,7 +165,11 @@ func (g Gen) entities(ctx context.Context) error {
 	}
 
 	for _, v := range vs {
-		if err := g.copyEntity(ctx, v, dst, nil); err != nil {
+		edit, err := g.numbering(filepath.Base(v))
+		if err != nil {
+			return err
+		}
+		if err := g.copyEntity(ctx, v, dst, edit); err != nil {
 			return err
 		}
 	}
@@ -268,30 +274,16 @@ func (g Gen) past(ctx context.Context, dst string) error {
 		n := g.Layout.Past.Domain(v.Own)
 		g.say("  past: %s, domain %d", v.Message, n)
 
+		// The template's placeholder, `domain: 0`: no domain at all, and so
+		// nothing a copy left unnumbered could pass for.
 		if err := g.copyEntity(ctx, filepath.Join(src, v.Name), dst, func(b []byte) ([]byte, error) {
-			return numbered(b, n)
+			return numbered(b, 0, n)
 		}); err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-// placeholder is the `domain: 0` a template of the past says in place of the
-// number an app gives it.
-var placeholder = regexp.MustCompile(`(?m)^(\s*)domain: 0$`)
-
-// numbered is a template of the past with the app's number where its
-// placeholder was. Exactly one, or the template is not one this was written
-// for: a second would number something nobody meant, and none would leave a
-// domain of zero, which generation refuses in a file the app did not write.
-func numbered(b []byte, n uint32) ([]byte, error) {
-	if m := placeholder.FindAllIndex(b, -1); len(m) != 1 {
-		return nil, fmt.Errorf("payday's template says `domain: 0` %d times, and is numbered by replacing the one", len(m))
-	}
-
-	return placeholder.ReplaceAll(b, []byte(fmt.Sprintf("${1}domain: %d", n))), nil
 }
 
 // copied is what this directory says about itself, and it is a file beside the
@@ -314,6 +306,9 @@ until the next one -- the past's lock apart, below.
 - ` + "`event.proto`" + ` and ` + "`fact.proto`" + ` are here when the app declares a past
   -- ` + "`option (payday.app) = {past: {event: 17, fact: 16}};`" + ` -- numbered as it
   declares, and go when the declaration does.
+- ` + "`archived.proto`" + ` and ` + "`access.proto`" + ` are at domains 5 and 6, or at the
+  numbers the app gives them when its own entities hold those --
+  ` + "`option (payday.app) = {domains: {archived: 240, access: 241}};`" + `.
 - ` + "`*_svc.g.proto`" + ` are the service contracts generated from them, the same
   as the ones beside your own entities.
 - ` + "`" + LockFile + "`" + `, with a past, is the record of every event message the app

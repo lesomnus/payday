@@ -88,7 +88,7 @@ change, and comes out once main and the registry's `dev` both have it.
 
 | | |
 | --- | --- |
-| `schema/payday/` | payday's own entities, as `.proto` sources apps copy |
+| `schema/payday/` | payday's own entities, as `.proto` sources apps copy -- `archived.proto` and `access.proto` at the domains an app gives them, when its own entities hold their 5 and 6 (`option (payday.app) = {domains: ...}`, payday#163) |
 | `schema/past/` | its `Event` and `Fact`, copied only into an app that declares a past, at the domains it declares (`option (payday.app) = {past: ...}`, payday#151) |
 | `internal/pdgen/` | the `protoc-gen-pd` plugin — layers, walls, `List`/`Watch` |
 | `internal/pdcli/` | the `pd` command, and `template/` is what `pd new` writes |

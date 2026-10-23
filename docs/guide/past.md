@@ -43,8 +43,11 @@ option (payday.app) = {past: {event: 17, fact: 16}};
 ```
 
 Two numbers of your own, in `7`–`247`, different, and held by no other
-entity: a table every app has gets a number payday fixes, and a table an app
-opts into is numbered by the app. `pd gen` writes `proto/app/payday/event.proto`
+entity: a table every app has keeps the number payday gives it, and a table an
+app opts into is numbered by the app. (Two of the first kind may be numbered by
+an app too, Archived and Access, and only where its own entities already hold
+their 5 and 6: the same option says it,
+[the schema guide §7](schema.md#when-yours-hold-5-or-6-paydays-archived-and-access).) `pd gen` writes `proto/app/payday/event.proto`
 and `fact.proto` and everything generated from them on every run, and takes
 them out on the first run after the line goes; a migration makes the tables.
 
