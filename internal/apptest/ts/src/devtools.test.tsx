@@ -13,8 +13,9 @@
  * `query.test.ts`'s question, and it asks it of the real one.
  */
 
-import { create, toJson } from '@bufbuild/protobuf'
-import { timestampFromDate } from '@bufbuild/protobuf/wkt'
+import { create, toJson, type Registry } from '@bufbuild/protobuf'
+import { anyPack, timestampFromDate } from '@bufbuild/protobuf/wkt'
+import type { Transport } from '@connectrpc/connect'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -26,12 +27,16 @@ import { Store } from '@lesomnus/payday/store'
 
 import type { EntityDesc } from '@lesomnus/payday/store'
 
-import { entities, Audit, Cell, Robot, Tenant } from '../gen/entities.js'
+import { entities, Audit, Cell, Event, Robot, Tenant } from '../gen/entities.js'
 import { RobotSchema, type Robot as RobotMsg } from '../gen/app/robot_pb.js'
 import { AuditSchema } from '../gen/app/payday/audit_pb.js'
+import { EventSchema, type Event as EventMsg } from '../gen/app/payday/event_pb.js'
 import { TenantSchema } from '../gen/app/payday/tenant_pb.js'
+import { MachineServicedSchema, Mode } from '../gen/app/machine_pb.js'
 import { RobotService, RobotListResponseSchema } from '../gen/app/robot_svc_pb.js'
-import { AuditDomain, RobotDomain, TenantDomain } from '../gen/domains.js'
+import { EventService, EventListResponseSchema } from '../gen/app/payday/event_svc_pb.js'
+import { AuditDomain, EventDomain, RobotDomain, TenantDomain } from '../gen/domains.js'
+import { events } from '../gen/events.js'
 
 const id = pdid.newId(RobotDomain).bytes
 
@@ -107,11 +112,11 @@ afterEach(() => {
 	store.close()
 })
 
-async function mount(ungated?: unknown): Promise<void> {
+async function mount(given: { ungated?: Transport; registry?: Registry } = {}): Promise<void> {
 	await act(async () =>
 		void render(
 			<Provider app={app}>
-				<Devtools entities={entities} {...(ungated === undefined ? {} : { ungated: ungated as never })} />
+				<Devtools entities={entities} {...given} />
 			</Provider>,
 		),
 	)
@@ -179,6 +184,13 @@ function edge(of: EntityDesc, name: string, label = 'served'): HTMLElement {
 	const cell = screen.getByLabelText(label).querySelectorAll('tbody td')[at]
 
 	return cell?.querySelector('button') as HTMLElement
+}
+
+/** text is what one column of the first served row says, by column as [edge] is. */
+function text(of: EntityDesc, name: string, label = 'served'): string {
+	const at = of.schema.fields.findIndex((f) => f.localName === name)
+
+	return screen.getByLabelText(label).querySelectorAll('tbody td')[at]?.textContent ?? ''
 }
 
 /** tab switches to one of the three. */
@@ -261,7 +273,7 @@ describe('the way past the wall', () => {
 			},
 		} as never
 
-		await mount(ungated)
+		await mount({ ungated })
 		await pick(Robot.typeName)
 		expect(other).toBe(0)
 
@@ -472,6 +484,112 @@ describe('the get form', () => {
 		const names = Array.from(screen.getByLabelText('entity').querySelectorAll('option'), (o) => o.textContent)
 		expect(names).toContain(Cell.typeName)
 		expect(names.length).toBeGreaterThan(listable(entities).length)
+	})
+})
+
+// An event's value is an Any: the message its kind declares, named by a type
+// URL and held as that message's bytes (payday#151). It is the one field a
+// descriptor does not describe, so protobuf JSON can write what it holds only
+// with the type registered -- which is what `registry` hands the panel.
+describe('an event', () => {
+	let event: EventMsg
+
+	/** What the event holds, as protobuf JSON writes it. */
+	const held = {
+		'@type': 'type.googleapis.com/app.MachineServiced',
+		machine: 'BwcHBwcHBwcHBwcHBwcHBw==',
+		mode: 'MODE_SERVICE',
+		parts: [{ serial: 'P-1', count: 2 }],
+	}
+
+	/**
+	 * server answers with the one event: a page of it, or it.
+	 *
+	 * Its value is as protobuf-es reads one off the binary wire -- a type URL
+	 * and bytes -- which is what a sandbox's transport hands the panel, and
+	 * what a Connect transport given the registry does too.
+	 */
+	function server() {
+		return {
+			async unary(method: { name: string }, _s: unknown, _t: unknown, _h: unknown, req: unknown) {
+				asked.push({ method: method.name, req })
+
+				return {
+					stream: false,
+					service: EventService,
+					method,
+					header: new Headers(),
+					message: method.name === 'List' ? create(EventListResponseSchema, { items: [event] }) : event,
+					trailer: new Headers(),
+				}
+			},
+			async *stream() {
+				throw new Error('no streams here')
+			},
+		} as never
+	}
+
+	beforeEach(() => {
+		event = create(EventSchema, {
+			id: pdid.newId(EventDomain).bytes,
+			kind: 'machine.service',
+			value: anyPack(
+				MachineServicedSchema,
+				create(MachineServicedSchema, {
+					machine: new Uint8Array(16).fill(7),
+					mode: Mode.SERVICE,
+					parts: [{ serial: 'P-1', count: 2 }],
+				}),
+			),
+		})
+		app = { store, queries: new Queries(store, server(), entities) }
+	})
+
+	/** look looks the event up in the get tab, as somebody would. */
+	async function look(): Promise<void> {
+		await tab('get')
+		await pick(Event.typeName)
+		await act(async () => {
+			fireEvent.change(screen.getByLabelText('ref.key'), { target: { value: 'id' } })
+		})
+		await act(async () => {
+			fireEvent.change(screen.getByLabelText('ref.id'), { target: { value: pdid.from(event.id).toString() } })
+		})
+		await act(async () => void fireEvent.click(screen.getByText('look up')))
+	}
+
+	it('shows what it holds in the table, given the registry', async () => {
+		await mount({ registry: events })
+		await pick(Event.typeName)
+
+		// One line of protobuf JSON, as the get tab writes it: the message
+		// and the type it is, rather than `$typeName` and its bytes as an
+		// object of numbered keys.
+		expect(JSON.parse(text(Event, 'value'))).toEqual(held)
+	})
+
+	it('is a document in the get tab, given the registry', async () => {
+		await mount({ registry: events })
+		await look()
+
+		const doc = JSON.parse(document.querySelector('pre')?.textContent ?? '') as Record<string, unknown>
+		expect(doc.kind).toBe('machine.service')
+		expect(doc.value).toMatchObject(held)
+	})
+
+	// What is known of it without its type is the type it names and how big
+	// it is. A cell that threw would take the panel down with it.
+	it('says what it can without one, and why it is no document', async () => {
+		await mount()
+		await pick(Event.typeName)
+
+		const bytes = event.value?.value.byteLength ?? 0
+		expect(bytes).toBeGreaterThan(0)
+		expect(text(Event, 'value')).toBe(`type.googleapis.com/app.MachineServiced, ${String(bytes)} bytes`)
+
+		await look()
+		expect(screen.getByText(/"type\.googleapis\.com\/app\.MachineServiced" is not in the type registry/)).toBeDefined()
+		expect(document.querySelector('pre'), 'nothing is shown as if it were the row').toBeNull()
 	})
 })
 
