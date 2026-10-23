@@ -32,7 +32,14 @@ func copies(t *testing.T, event, fact int) string {
 
 	b := &strings.Builder{}
 	b.WriteString("import \"google/protobuf/any.proto\";\n")
-	for name, n := range map[string]int{"event": event, "fact": fact} {
+
+	// In the one order, Event and then Fact, as `pd gen` lists them: a refusal
+	// names the first of the two it meets, and a map's order is a coin toss.
+	for _, v := range []struct {
+		name string
+		n    int
+	}{{"event", event}, {"fact", fact}} {
+		name, n := v.name, v.n
 		v, err := os.ReadFile(filepath.Join("..", "..", "schema", "past", name+".proto"))
 		require.NoError(t, err)
 
