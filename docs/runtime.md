@@ -81,7 +81,7 @@ table is for finding the right one.
 | | |
 | --- | --- |
 | [`schema`](../schema) | payday's own entities, embedded, so an app's copies can be checked against them |
-| [`pdpb`](../pdpb) | the generated Go for what a schema declares — `(payday.entity)`, `(payday.field)`, `(payday.app)` — and for the two services payday serves on an app's behalf: `BatchService`, and the `TokenService` that `auth.Remote` asks |
+| [`pdpb`](../pdpb) | the generated Go for what a schema declares — `(payday.entity)`, `(payday.field)`, `(payday.app)`, `(payday.event)` — and for the two services payday serves on an app's behalf: `BatchService`, and the `TokenService` that `auth.Remote` asks |
 
 ## 3. What is generated
 
@@ -99,6 +99,15 @@ in CI is what keeps that true.
 | `List` and `Watch` — request, response, RPC, implementation | the ent query builder is your type |
 | the batch dispatcher | it has to know every RPC the app has |
 | whose data a message carries (`Subjects`, `SubjectRefs`), and the access record's recorder and writer | they read the app's messages by what its schema declared `personal`, and write its `Access` |
+| `pd.EventKinds`, in an app that declares a past: every event message by the kind its rows are written under | each is a message type of yours, read back from a row's `kind` |
+| `ts/gen/events.ts`, in every app: `events`, a protobuf-es registry of the event messages, and `kinds` | the page's transport is handed it, and it names the app's schemas |
+
+An app that declares a past also has `proto/<pkg>/payday/past.lock` beside the
+copies of payday's entities: not code, and not written over, but the record of
+every event message the app ever declared, which `pd gen` holds the schema to
+and only adds to. A row of an event is read back by name for as long as it is
+kept, so what it was written with is never taken back; see
+[Keeping a past](guide/past.md#4-the-lock).
 
 ### `List` and `Watch` are the same machine
 

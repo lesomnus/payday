@@ -84,7 +84,7 @@ func main() {
 	fs.StringVar(&o.Bare, "bare", o.Bare, "directory of the generated servers")
 	fs.StringVar(&o.Out, "out", o.Out, "directory this plugin writes into")
 	fs.StringVar(&o.Name, "name", o.Name, "name of the file this plugin writes")
-	fs.StringVar(&o.Stage, "stage", "go", "which pass: `proto` writes the List into the contract, `ts` the domain table, `go` everything else")
+	fs.StringVar(&o.Stage, "stage", "go", "which pass: `proto` writes the List into the contract, `ts` the domain table, the store's declarations and the event registry, `go` everything else")
 	fs.StringVar(&o.Payday, "version", o.Payday, "the payday this generation is from, stamped into the generated package")
 
 	protogen.Options{ParamFunc: fs.Set}.Run(func(p *protogen.Plugin) error {
@@ -174,6 +174,12 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 			return pdgen.TsSource{Msg: pdgen.TsImport(at[v.FullName()]), Svc: p}
 		}))
 
+		// The event messages, as a registry a transport is handed. Written
+		// whether or not there is a past, so that a page passes it from the day
+		// it is made; see [pdgen.TsEvents].
+		ev := p.NewGeneratedFile("events.ts", "")
+		ev.P(pdgen.TsEvents(s, pdgen.TsEventSource))
+
 		return nil
 	}
 
@@ -207,6 +213,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 
 	pdgen.EmitPayday(out, o.Payday)
 	pdgen.EmitDomains(out, s)
+	pdgen.EmitEventKinds(out, s)
 	pdgen.EmitIndexRenames(out, s)
 	pdgen.EmitMinter(out, s, paths)
 	pdgen.EmitWall(out, s, paths)

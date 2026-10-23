@@ -1,0 +1,64 @@
+{
+  "events": {
+    "app.MachineServiced": "machine.service",
+    "app.MachineStarted": "app.MachineStarted"
+  },
+  "messages": {
+    "app.MachineServiced": {
+      "1": {
+        "json": "machine",
+        "kind": "bytes"
+      },
+      "2": {
+        "json": "by",
+        "kind": "bytes"
+      },
+      "3": {
+        "json": "mode",
+        "kind": "enum",
+        "type": "app.Mode"
+      },
+      "4": {
+        "json": "parts",
+        "kind": "message",
+        "type": "app.MachineServiced.Part",
+        "list": true
+      },
+      "5": {
+        "json": "swapped",
+        "kind": "message",
+        "type": "app.MachineServiced.Part",
+        "map": "string"
+      },
+      "6": {
+        "json": "due",
+        "kind": "message",
+        "type": "google.protobuf.Timestamp"
+      }
+    },
+    "app.MachineServiced.Part": {
+      "1": {
+        "json": "serial",
+        "kind": "string"
+      },
+      "2": {
+        "json": "count",
+        "kind": "uint32"
+      }
+    },
+    "app.MachineStarted": {
+      "1": {
+        "json": "machine",
+        "kind": "bytes"
+      }
+    }
+  },
+  "enums": {
+    "app.Mode": {
+      "0": "MODE_UNSPECIFIED",
+      "1": "MODE_IDLE",
+      "2": "MODE_RUN",
+      "3": "MODE_SERVICE"
+    }
+  }
+}

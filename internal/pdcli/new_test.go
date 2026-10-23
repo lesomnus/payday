@@ -343,9 +343,11 @@ func TestTheTemplateImportsWhatGenerationWrites(t *testing.T) {
 	x.NoError((pdcli.New{Dir: dir, Module: "github.com/acme/thing"}).Write())
 
 	// payday writes these itself, at the root of `gen/` rather than under any
-	// package: they are one declaration per entity for the local store, and
-	// there is no `.proto` they correspond to.
-	want := []string{"../gen/entities.js", "../gen/domains.js"}
+	// package: they are one declaration per entity for the local store, the
+	// domain table, and the registry of the app's event messages -- written
+	// for every app, past or none -- and there is no `.proto` they correspond
+	// to.
+	want := []string{"../gen/entities.js", "../gen/domains.js", "../gen/events.js"}
 
 	// One `.proto` becomes a module for its messages and one for the contract
 	// generated from it, both named after the file.

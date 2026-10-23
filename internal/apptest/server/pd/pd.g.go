@@ -33,6 +33,7 @@ import (
 	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
+	machine "github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	owed "github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
@@ -115,6 +116,7 @@ const (
 	FleetDomain    pdid.Domain = 9   // "fleet"
 	HolderDomain   pdid.Domain = 2   // "holder"
 	JointDomain    pdid.Domain = 8   // "joint"
+	MachineDomain  pdid.Domain = 19  // "machine"
 	OutboxDomain   pdid.Domain = 4   // "outbox"
 	OwedDomain     pdid.Domain = 254 // "owed"
 	PairingDomain  pdid.Domain = 12  // "pairing"
@@ -138,6 +140,7 @@ func init() {
 	pdid.Register("app.Fleet", FleetDomain, "fleet")
 	pdid.Register("app.Holder", HolderDomain, "holder")
 	pdid.Register("app.Joint", JointDomain, "joint")
+	pdid.Register("app.Machine", MachineDomain, "machine")
 	pdid.Register("app.Outbox", OutboxDomain, "outbox")
 	pdid.Register("app.Owed", OwedDomain, "owed")
 	pdid.Register("app.Pairing", PairingDomain, "pairing")
@@ -165,6 +168,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Fleet":    FleetDomain,
 	"app.Holder":   HolderDomain,
 	"app.Joint":    JointDomain,
+	"app.Machine":  MachineDomain,
 	"app.Outbox":   OutboxDomain,
 	"app.Owed":     OwedDomain,
 	"app.Pairing":  PairingDomain,
@@ -176,6 +180,19 @@ var Domains = map[string]pdid.Domain{
 	"app.Tally":    TallyDomain,
 	"app.Tenant":   TenantDomain,
 	"shared.Thing": ThingDomain,
+}
+
+// EventKinds is every event message this app declares, by the kind its rows
+// are written under: the message's `option (payday.event) = {kind: ...}`, or
+// its full name when it says none.
+//
+// A row of payday's Event says which message its `value` holds by its kind,
+// so this is how a kind is read back into a message -- and the lock beside
+// the schema, `past.lock`, is what keeps every kind in it for as long as a row
+// of it may be.
+var EventKinds = map[string]protoreflect.MessageType{
+	"app.MachineStarted": (*apptest.MachineStarted)(nil).ProtoReflect().Type(),
+	"machine.service":    (*apptest.MachineServiced)(nil).ProtoReflect().Type(),
 }
 
 // IndexRenames are the indexes this schema names, by what an earlier build
@@ -333,6 +350,16 @@ func (wall) JointScope(ctx context.Context) (predicate.Joint, error) {
 	}
 
 	return joint.HasRobotWith(robot.TenantIdIn(vs...)), nil
+}
+
+// MachineScope: a row belongs to the tenant its "tenant" reaches.
+func (wall) MachineScope(ctx context.Context) (predicate.Machine, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return machine.TenantIdIn(vs...), nil
 }
 
 // OutboxScope: declared `global`, so it is not behind the wall at all.
@@ -504,6 +531,11 @@ func (x grouped) HolderScope(ctx context.Context) (predicate.Holder, error) {
 
 // JointScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) JointScope(ctx context.Context) (predicate.Joint, error) {
+	return nil, nil
+}
+
+// MachineScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) MachineScope(ctx context.Context) (predicate.Machine, error) {
 	return nil, nil
 }
 
@@ -2342,6 +2374,125 @@ func (s sinkJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*
 	seen.Forget(s.store.Db.Driver(), "Joint", req.GetRef())
 
 	return s.JointServiceServer.Apply(ctx, req)
+}
+
+type sinkMachine struct {
+	apptest.MachineServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Machine() apptest.MachineServiceServer {
+	v := sinkMachine{s.Server.Machine(), s.Server.Store, s.w, s.namer, s.joined}
+	v.MachineServiceServer = bare.MachineWithAddRule(v.MachineServiceServer, v.admit)
+	return v
+}
+
+// admit decides the name of a row an Add of Machine writes, refusing one
+// that was given and cannot be one.
+//
+// It is asked of an Add and of every item of an AddMany; see [Sink.Machine].
+//
+// The name goes through [Sink.WithNamer], which is unset in most
+// deployments and then means: fold what was given, and make a name up
+// when nothing was -- for the reason `bare.Minter` makes a key up. An app
+// whose rows have to be named says so with `slug.Required`; see
+// `slug.Names` for why that is the way round it is.
+func (s sinkMachine) admit(ctx context.Context, req *apptest.MachineAddRequest) (*apptest.MachineAddRequest, error) {
+	// Copied rather than written to: the request belongs to whoever called,
+	// and for a call made in this process that is a message they may still
+	// be holding -- a server that changed a caller's own field would be
+	// changing a value they can read back.
+	r := proto.CloneOf(req)
+
+	v, err := slug.NameWith(ctx, s.namer, "app.Machine", req.GetAlias(), req)
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+	r.SetAlias(v)
+
+	return r, nil
+}
+
+// Add tries again when the name it made up was taken.
+//
+// The name is [sinkMachine.admit]'s, and every try goes through it, so a
+// name made up is made up again and a name given is the same each time.
+func (s sinkMachine) Add(ctx context.Context, req *apptest.MachineAddRequest) (*apptest.Machine, error) {
+	// How many names to try. More than one only when the caller named
+	// nothing -- then the name is this server's and a collision is this
+	// server's to resolve. A name the caller gave is theirs, and quietly
+	// choosing a different one would write a row they did not ask for.
+	//
+	// And only when this Add opens its own transaction; see [Sink.joined].
+	tries := 1
+	if req.GetAlias() == "" && !s.joined {
+		tries = slug.Tries
+	}
+
+	for try := 0; ; try++ {
+		res, err := s.MachineServiceServer.Add(ctx, req)
+		if err == nil || try+1 >= tries || status.Code(err) != codes.AlreadyExists {
+			// Whatever it was, said in the words it was said in. Rewriting
+			// it into "no free name" would assert the one thing this cannot
+			// know -- a duplicate key is the same code -- and would say it
+			// loudest exactly when it is wrong.
+			return res, err
+		}
+	}
+}
+
+// Patch folds a name it was given, and says nothing about one it was not.
+//
+// The presence is the whole of the difference from [sinkMachine.Add]: a patch
+// that does not mention the alias is not a patch setting it to the empty
+// string, and refusing one would make every patch of any other field carry
+// the name along.
+//
+// The namer is **not** asked here, and that is the second difference. It
+// decides the name of a row being made; a patch that cleared the alias is
+// a caller asking for something invalid, and answering that with an
+// invented name would hand them a row they did not ask for.
+//
+// And it forgets what the transaction was told about the row; see
+// [sinkMachine.Apply].
+func (s sinkMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
+	seen.Forget(s.store.Db.Driver(), "Machine", req.GetRef())
+
+	if !req.HasAlias() {
+		return s.MachineServiceServer.Patch(ctx, req)
+	}
+
+	v, err := slug.ParseAlias(req.GetAlias())
+	if err != nil {
+		return nil, pderr.At("alias", err)
+	}
+
+	req = proto.CloneOf(req)
+	req.SetAlias(v)
+
+	return s.MachineServiceServer.Patch(ctx, req)
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*apptest.MachineEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Machine", req)
+
+	return s.MachineServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
+	seen.Forget(s.store.Db.Driver(), "Machine", req.GetRef())
+
+	return s.MachineServiceServer.Apply(ctx, req)
 }
 
 type sinkPairing struct {
@@ -4305,6 +4456,139 @@ func (s gateJoint) admit(ctx context.Context, req *apptest.JointAddRequest) (*ap
 	return req, nil
 }
 
+type gateMachine struct {
+	Gate
+	apptest.MachineServiceServer
+}
+
+func (s Gate) Machine() apptest.MachineServiceServer {
+	v := gateMachine{s, s.Next().Machine()}
+	v.MachineServiceServer = bare.MachineWithAddRule(v.MachineServiceServer, v.admit)
+	return v
+}
+
+// admit refuses a Machine put into a Tenant this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `tenant` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Tenant, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Machine].
+func (s gateMachine) admit(ctx context.Context, req *apptest.MachineAddRequest) (*apptest.MachineAddRequest, error) {
+	if ref := req.GetTenant(); ref != nil {
+		if err := seen.Visible(ctx, s.Gate.drv, "Tenant", ref, func() error {
+			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Tenant")
+			}
+
+			return nil, err
+		}
+	}
+
+	if ref := req.GetRobot(); ref != nil {
+		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
+			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Robot")
+			}
+
+			return nil, err
+		}
+	}
+
+	return req, nil
+}
+
+// Patch refuses an edge moved onto a row this caller cannot see.
+//
+// The wall narrows the row being written and says nothing about what the
+// write points **at**. An edge is a read -- a `Select` walks it -- so one
+// moved out of the caller's scope is a way through the wall one hop later,
+// exactly as it would have been at `Add`.
+func (s gateMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
+	if ref := req.GetRobot(); ref != nil {
+		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
+			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Robot")
+			}
+
+			return nil, err
+		}
+	}
+
+	return s.MachineServiceServer.Patch(ctx, req)
+}
+
+// Apply refuses a document that moves an edge onto a row this caller cannot
+// see, as Patch refuses a request that does.
+//
+// A document names the row an edge points at by its key, and the server
+// behind writes that key into the column as it is -- compiling a document
+// reads nothing. So the read Patch is asked is asked here of the key the
+// document lands in the column, compiled the way the server behind will.
+func (s gateMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
+	if !req.HasPatch() {
+		// Nothing written, and the server behind refuses it in its own words.
+		return s.MachineServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(gateMachineEntity, req.GetPatch())
+	if err != nil {
+		// Refused here rather than passed on, in the codes the server behind
+		// gives the same document: one this layer cannot read is one it can
+		// say nothing about.
+		if errors.Is(err, ormpatch.ErrUnsupported) {
+			return nil, status.Errorf(codes.Unimplemented, "%s", err)
+		}
+
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+	if w, ok := plan.WriteTo(18); ok {
+		if k, ok := w.Op.(ormpatch.SetEdge); ok {
+			ref := apptest.RobotRef_builder{Id: k.Key.Bytes()}.Build()
+			if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
+				_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+					Ref: ref,
+				}.Build())
+				return err
+			}); err != nil {
+				if status.Code(err) == codes.NotFound {
+					return nil, gate.ErrNotFound("Robot")
+				}
+
+				return nil, err
+			}
+		}
+	}
+
+	return s.MachineServiceServer.Apply(ctx, req)
+}
+
+// gateMachineEntity is what a Machine document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var gateMachineEntity = ormpatch.MustEntityOf((*apptest.Machine)(nil).ProtoReflect().Descriptor().ParentFile(), "Machine")
+
 type gatePairing struct {
 	Gate
 	apptest.PairingServiceServer
@@ -4825,6 +5109,8 @@ func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.Fiel
 		return describedHolder.md, describedHolder.secret, describedHolder.personal
 	case JointDomain:
 		return describedJoint.md, describedJoint.secret, describedJoint.personal
+	case MachineDomain:
+		return describedMachine.md, describedMachine.secret, describedMachine.personal
 	case OutboxDomain:
 		return describedOutbox.md, describedOutbox.secret, describedOutbox.personal
 	case OwedDomain:
@@ -4899,6 +5185,9 @@ var (
 	describedJoint = describe((*apptest.Joint)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
+	describedMachine = describe((*apptest.Machine)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{24})
 	describedOutbox = describe((*apptest.Outbox)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
@@ -4961,6 +5250,7 @@ func added(by string) bool {
 		apptest.FleetService_Add_FullMethodName,
 		apptest.HolderService_Add_FullMethodName,
 		apptest.JointService_Add_FullMethodName,
+		apptest.MachineService_Add_FullMethodName,
 		apptest.PairingService_Add_FullMethodName,
 		apptest.ReadingService_Add_FullMethodName,
 		apptest.ReadingService_AddMany_FullMethodName,
@@ -5188,6 +5478,38 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 
 		return k, b, nil
 
+	case MachineDomain:
+		row, ok := image.(*apptest.Machine)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
+		}
+
+		b := []byte{}
+		if keep {
+			kept := row
+			kept = proto.Clone(row).(*apptest.Machine)
+			_, secret, personal := described(key)
+			audit1.Clear(kept, secret)
+			audit1.Clear(kept, personal)
+
+			v, err := proto.Marshal(kept)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		if !row.HasTenant() {
+			return uuid.Nil(), b, nil
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
 	case PairingDomain:
 		row, ok := image.(*apptest.Pairing)
 		if !ok {
@@ -5381,6 +5703,8 @@ func left(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) 
 		vs, err = rowsHolder(ctx, s.Db, holder.IdEQ(uuid.UUID(key)))
 	case JointDomain:
 		vs, err = rowsJoint(ctx, s.Db, joint.IdEQ(uuid.UUID(key)))
+	case MachineDomain:
+		vs, err = rowsMachine(ctx, s.Db, machine.IdEQ(uuid.UUID(key)))
 	case PairingDomain:
 		vs, err = rowsPairing(ctx, s.Db, pairing.IdEQ(uuid.UUID(key)))
 	case PulseDomain:
@@ -5541,7 +5865,7 @@ func (v *keptTrail) write(ctx context.Context) error {
 // row's seal covers (payday#115).
 func isSealed(key pdid.Id) bool {
 	switch key.Domain() {
-	case EventDomain, HolderDomain, RobotDomain:
+	case EventDomain, HolderDomain, MachineDomain, RobotDomain:
 		return true
 	}
 
@@ -5778,6 +6102,9 @@ func Digests(ctx context.Context, db *ent.Client, d *audit1.Digest, p trail.Poli
 	}
 	if err := audit1.CheckKind(ctx, d, checkedJoint(db), archived, &out); err != nil {
 		return out, fmt.Errorf("joint: %w", err)
+	}
+	if err := audit1.CheckKind(ctx, d, checkedMachine(db), archived, &out); err != nil {
+		return out, fmt.Errorf("machine: %w", err)
 	}
 	if err := audit1.CheckKind(ctx, d, checkedPairing(db), archived, &out); err != nil {
 		return out, fmt.Errorf("pairing: %w", err)
@@ -6079,6 +6406,58 @@ func checkedJoint(db *ent.Client) audit1.Kind {
 			var out map[pdid.Id]*audit1.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 				rows, err := rowsJoint(ctx, db, joint.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedMachine is what a check of the rows reads of the machine kind.
+func checkedMachine(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Machine) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsMachine(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			if err != nil {
+				return err
+			}
+
+			seals, err := sealsOf(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded, Seals: seals}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: MachineDomain,
+		Sealed: true,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, machine.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, machine.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, MachineDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsMachine(ctx, db, machine.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6540,6 +6919,26 @@ func rowsJoint(ctx context.Context, db *ent.Client, ps ...predicate.Joint) ([]au
 	return out, nil
 }
 
+// rowsMachine is the rows `ps` says of the machine kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsMachine(ctx context.Context, db *ent.Client, ps ...predicate.Machine) ([]audit1.Live, error) {
+	q := db.Machine.Query().Where(ps...)
+	bare.MachineSelectInit(q, nil)
+
+	vs, err := q.Order(machine.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
 // rowsPairing is the rows `ps` says of the pairing kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
@@ -6930,6 +7329,8 @@ func record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 				rows, err = rowsHolder(ctx, db, holder.IdIn(uuids(page)...))
 			case JointDomain:
 				rows, err = rowsJoint(ctx, db, joint.IdIn(uuids(page)...))
+			case MachineDomain:
+				rows, err = rowsMachine(ctx, db, machine.IdIn(uuids(page)...))
 			case PairingDomain:
 				rows, err = rowsPairing(ctx, db, pairing.IdIn(uuids(page)...))
 			case ReadingDomain:
@@ -7070,6 +7471,8 @@ func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Dom
 			rows, err = rowsHolder(ctx, s.db, holder.IdIn(uuids(ids)...))
 		case JointDomain:
 			rows, err = rowsJoint(ctx, s.db, joint.IdIn(uuids(ids)...))
+		case MachineDomain:
+			rows, err = rowsMachine(ctx, s.db, machine.IdIn(uuids(ids)...))
 		case PairingDomain:
 			rows, err = rowsPairing(ctx, s.db, pairing.IdIn(uuids(ids)...))
 		case ReadingDomain:
@@ -7456,64 +7859,6 @@ func (s Intercept) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	return Intercept{Overlay: apptest.NewOverlay(next), unary: s.unary, stream: s.stream}, nil
 }
 
-func (s Intercept) Access() apptest.AccessServiceServer {
-	return interceptAccess{s, s.Next().Access()}
-}
-
-type interceptAccess struct {
-	Intercept
-	apptest.AccessServiceServer
-}
-
-func (s interceptAccess) Get(ctx context.Context, req *apptest.AccessGetRequest) (*apptest.Access, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AccessServiceServer,
-		apptest.AccessService_Get_FullMethodName, req, s.AccessServiceServer.Get)
-}
-
-func (s interceptAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*apptest.AccessListResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AccessServiceServer,
-		apptest.AccessService_List_FullMethodName, req, s.AccessServiceServer.List)
-}
-
-func (s Intercept) Audit() apptest.AuditServiceServer {
-	return interceptAudit{s, s.Next().Audit()}
-}
-
-type interceptAudit struct {
-	Intercept
-	apptest.AuditServiceServer
-}
-
-func (s interceptAudit) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Add_FullMethodName, req, s.AuditServiceServer.Add)
-}
-
-func (s interceptAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*apptest.Audit, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Get_FullMethodName, req, s.AuditServiceServer.Get)
-}
-
-func (s interceptAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Patch_FullMethodName, req, s.AuditServiceServer.Patch)
-}
-
-func (s interceptAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Apply_FullMethodName, req, s.AuditServiceServer.Apply)
-}
-
-func (s interceptAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Erase_FullMethodName, req, s.AuditServiceServer.Erase)
-}
-
-func (s interceptAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_List_FullMethodName, req, s.AuditServiceServer.List)
-}
-
 func (s Intercept) Tenant() apptest.TenantServiceServer {
 	return interceptTenant{s, s.Next().Tenant()}
 }
@@ -7551,74 +7896,6 @@ func (s interceptTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*ap
 func (s interceptTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
 		apptest.TenantService_List_FullMethodName, req, s.TenantServiceServer.List)
-}
-
-func (s Intercept) Event() apptest.EventServiceServer {
-	return interceptEvent{s, s.Next().Event()}
-}
-
-type interceptEvent struct {
-	Intercept
-	apptest.EventServiceServer
-}
-
-func (s interceptEvent) Add(ctx context.Context, req *apptest.EventAddRequest) (*apptest.Event, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
-		apptest.EventService_Add_FullMethodName, req, s.EventServiceServer.Add)
-}
-
-func (s interceptEvent) AddMany(ctx context.Context, req *apptest.EventAddManyRequest) (*apptest.EventAddManyResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
-		apptest.EventService_AddMany_FullMethodName, req, s.EventServiceServer.AddMany)
-}
-
-func (s interceptEvent) Get(ctx context.Context, req *apptest.EventGetRequest) (*apptest.Event, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
-		apptest.EventService_Get_FullMethodName, req, s.EventServiceServer.Get)
-}
-
-func (s interceptEvent) List(ctx context.Context, req *apptest.EventListRequest) (*apptest.EventListResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
-		apptest.EventService_List_FullMethodName, req, s.EventServiceServer.List)
-}
-
-func (s Intercept) Fact() apptest.FactServiceServer {
-	return interceptFact{s, s.Next().Fact()}
-}
-
-type interceptFact struct {
-	Intercept
-	apptest.FactServiceServer
-}
-
-func (s interceptFact) Add(ctx context.Context, req *apptest.FactAddRequest) (*apptest.Fact, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
-		apptest.FactService_Add_FullMethodName, req, s.FactServiceServer.Add)
-}
-
-func (s interceptFact) AddMany(ctx context.Context, req *apptest.FactAddManyRequest) (*apptest.FactAddManyResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
-		apptest.FactService_AddMany_FullMethodName, req, s.FactServiceServer.AddMany)
-}
-
-func (s interceptFact) Get(ctx context.Context, req *apptest.FactGetRequest) (*apptest.Fact, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
-		apptest.FactService_Get_FullMethodName, req, s.FactServiceServer.Get)
-}
-
-func (s interceptFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
-		apptest.FactService_Patch_FullMethodName, req, s.FactServiceServer.Patch)
-}
-
-func (s interceptFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
-		apptest.FactService_Apply_FullMethodName, req, s.FactServiceServer.Apply)
-}
-
-func (s interceptFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
-		apptest.FactService_List_FullMethodName, req, s.FactServiceServer.List)
 }
 
 func (s Intercept) Thing() apptest.ThingServiceServer {
@@ -7887,6 +8164,166 @@ func (s interceptReading) Apply(ctx context.Context, req *apptest.ReadingApplyRe
 func (s interceptReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
 		apptest.ReadingService_Erase_FullMethodName, req, s.ReadingServiceServer.Erase)
+}
+
+func (s Intercept) Machine() apptest.MachineServiceServer {
+	return interceptMachine{s, s.Next().Machine()}
+}
+
+type interceptMachine struct {
+	Intercept
+	apptest.MachineServiceServer
+}
+
+func (s interceptMachine) Add(ctx context.Context, req *apptest.MachineAddRequest) (*apptest.Machine, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.MachineServiceServer,
+		apptest.MachineService_Add_FullMethodName, req, s.MachineServiceServer.Add)
+}
+
+func (s interceptMachine) Get(ctx context.Context, req *apptest.MachineGetRequest) (*apptest.Machine, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.MachineServiceServer,
+		apptest.MachineService_Get_FullMethodName, req, s.MachineServiceServer.Get)
+}
+
+func (s interceptMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.MachineServiceServer,
+		apptest.MachineService_Patch_FullMethodName, req, s.MachineServiceServer.Patch)
+}
+
+func (s interceptMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.MachineServiceServer,
+		apptest.MachineService_Apply_FullMethodName, req, s.MachineServiceServer.Apply)
+}
+
+func (s interceptMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*apptest.MachineEraseResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.MachineServiceServer,
+		apptest.MachineService_Erase_FullMethodName, req, s.MachineServiceServer.Erase)
+}
+
+func (s Intercept) Access() apptest.AccessServiceServer {
+	return interceptAccess{s, s.Next().Access()}
+}
+
+type interceptAccess struct {
+	Intercept
+	apptest.AccessServiceServer
+}
+
+func (s interceptAccess) Get(ctx context.Context, req *apptest.AccessGetRequest) (*apptest.Access, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AccessServiceServer,
+		apptest.AccessService_Get_FullMethodName, req, s.AccessServiceServer.Get)
+}
+
+func (s interceptAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*apptest.AccessListResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AccessServiceServer,
+		apptest.AccessService_List_FullMethodName, req, s.AccessServiceServer.List)
+}
+
+func (s Intercept) Audit() apptest.AuditServiceServer {
+	return interceptAudit{s, s.Next().Audit()}
+}
+
+type interceptAudit struct {
+	Intercept
+	apptest.AuditServiceServer
+}
+
+func (s interceptAudit) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Add_FullMethodName, req, s.AuditServiceServer.Add)
+}
+
+func (s interceptAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*apptest.Audit, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Get_FullMethodName, req, s.AuditServiceServer.Get)
+}
+
+func (s interceptAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Patch_FullMethodName, req, s.AuditServiceServer.Patch)
+}
+
+func (s interceptAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Apply_FullMethodName, req, s.AuditServiceServer.Apply)
+}
+
+func (s interceptAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_Erase_FullMethodName, req, s.AuditServiceServer.Erase)
+}
+
+func (s interceptAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
+		apptest.AuditService_List_FullMethodName, req, s.AuditServiceServer.List)
+}
+
+func (s Intercept) Event() apptest.EventServiceServer {
+	return interceptEvent{s, s.Next().Event()}
+}
+
+type interceptEvent struct {
+	Intercept
+	apptest.EventServiceServer
+}
+
+func (s interceptEvent) Add(ctx context.Context, req *apptest.EventAddRequest) (*apptest.Event, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
+		apptest.EventService_Add_FullMethodName, req, s.EventServiceServer.Add)
+}
+
+func (s interceptEvent) AddMany(ctx context.Context, req *apptest.EventAddManyRequest) (*apptest.EventAddManyResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
+		apptest.EventService_AddMany_FullMethodName, req, s.EventServiceServer.AddMany)
+}
+
+func (s interceptEvent) Get(ctx context.Context, req *apptest.EventGetRequest) (*apptest.Event, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
+		apptest.EventService_Get_FullMethodName, req, s.EventServiceServer.Get)
+}
+
+func (s interceptEvent) List(ctx context.Context, req *apptest.EventListRequest) (*apptest.EventListResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
+		apptest.EventService_List_FullMethodName, req, s.EventServiceServer.List)
+}
+
+func (s Intercept) Fact() apptest.FactServiceServer {
+	return interceptFact{s, s.Next().Fact()}
+}
+
+type interceptFact struct {
+	Intercept
+	apptest.FactServiceServer
+}
+
+func (s interceptFact) Add(ctx context.Context, req *apptest.FactAddRequest) (*apptest.Fact, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_Add_FullMethodName, req, s.FactServiceServer.Add)
+}
+
+func (s interceptFact) AddMany(ctx context.Context, req *apptest.FactAddManyRequest) (*apptest.FactAddManyResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_AddMany_FullMethodName, req, s.FactServiceServer.AddMany)
+}
+
+func (s interceptFact) Get(ctx context.Context, req *apptest.FactGetRequest) (*apptest.Fact, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_Get_FullMethodName, req, s.FactServiceServer.Get)
+}
+
+func (s interceptFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_Patch_FullMethodName, req, s.FactServiceServer.Patch)
+}
+
+func (s interceptFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_Apply_FullMethodName, req, s.FactServiceServer.Apply)
+}
+
+func (s interceptFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_List_FullMethodName, req, s.FactServiceServer.List)
 }
 
 func (s Intercept) Holder() apptest.HolderServiceServer {
@@ -9128,6 +9565,21 @@ func init() {
 		refs[r.FullName()] = r.Fields().ByName("id")
 	}
 	{
+		md := (&apptest.Machine{}).ProtoReflect().Descriptor()
+		fs := md.Fields()
+		personals[md.FullName()] = personal{
+			key: fs.ByNumber(1),
+			fields: []protoreflect.FieldDescriptor{
+				fs.ByNumber(24),
+			},
+			tenant: func(m protoreflect.Message) pdid.Id {
+				return accessKeyOf(m.Get(fs.ByName("tenant")).Message())
+			},
+		}
+		r := (&apptest.MachineRef{}).ProtoReflect().Descriptor()
+		refs[r.FullName()] = r.Fields().ByName("id")
+	}
+	{
 		md := (&apptest.Robot{}).ProtoReflect().Descriptor()
 		fs := md.Fields()
 		personals[md.FullName()] = personal{
@@ -9391,12 +9843,16 @@ func (accessRecorder) Snapshots(method string) bare.SnapshotOptions {
 		apptest.HolderService_Add_FullMethodName,
 		apptest.HolderService_Patch_FullMethodName,
 		apptest.HolderService_Apply_FullMethodName,
+		apptest.MachineService_Add_FullMethodName,
+		apptest.MachineService_Patch_FullMethodName,
+		apptest.MachineService_Apply_FullMethodName,
 		apptest.RobotService_Add_FullMethodName,
 		apptest.RobotService_AddMany_FullMethodName,
 		apptest.RobotService_Patch_FullMethodName,
 		apptest.RobotService_Apply_FullMethodName:
 		return bare.SnapshotOptions{Value: true}
 	case apptest.HolderService_Erase_FullMethodName,
+		apptest.MachineService_Erase_FullMethodName,
 		apptest.RobotService_Erase_FullMethodName:
 		return bare.SnapshotOptions{Previous: true}
 	}
@@ -9703,26 +10159,6 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.TenantRef{}
 	case apptest.TenantService_List_FullMethodName:
 		v = &apptest.TenantListRequest{}
-	case apptest.EventService_Add_FullMethodName:
-		v = &apptest.EventAddRequest{}
-	case apptest.EventService_AddMany_FullMethodName:
-		v = &apptest.EventAddManyRequest{}
-	case apptest.EventService_Get_FullMethodName:
-		v = &apptest.EventGetRequest{}
-	case apptest.EventService_List_FullMethodName:
-		v = &apptest.EventListRequest{}
-	case apptest.FactService_Add_FullMethodName:
-		v = &apptest.FactAddRequest{}
-	case apptest.FactService_AddMany_FullMethodName:
-		v = &apptest.FactAddManyRequest{}
-	case apptest.FactService_Get_FullMethodName:
-		v = &apptest.FactGetRequest{}
-	case apptest.FactService_Patch_FullMethodName:
-		v = &apptest.FactPatchRequest{}
-	case apptest.FactService_Apply_FullMethodName:
-		v = &apptest.FactApplyRequest{}
-	case apptest.FactService_List_FullMethodName:
-		v = &apptest.FactListRequest{}
 	case apptest.ThingService_Add_FullMethodName:
 		v = &apptest.ThingAddRequest{}
 	case apptest.ThingService_Get_FullMethodName:
@@ -9803,6 +10239,36 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.ReadingApplyRequest{}
 	case apptest.ReadingService_Erase_FullMethodName:
 		v = &apptest.ReadingRef{}
+	case apptest.MachineService_Add_FullMethodName:
+		v = &apptest.MachineAddRequest{}
+	case apptest.MachineService_Get_FullMethodName:
+		v = &apptest.MachineGetRequest{}
+	case apptest.MachineService_Patch_FullMethodName:
+		v = &apptest.MachinePatchRequest{}
+	case apptest.MachineService_Apply_FullMethodName:
+		v = &apptest.MachineApplyRequest{}
+	case apptest.MachineService_Erase_FullMethodName:
+		v = &apptest.MachineRef{}
+	case apptest.EventService_Add_FullMethodName:
+		v = &apptest.EventAddRequest{}
+	case apptest.EventService_AddMany_FullMethodName:
+		v = &apptest.EventAddManyRequest{}
+	case apptest.EventService_Get_FullMethodName:
+		v = &apptest.EventGetRequest{}
+	case apptest.EventService_List_FullMethodName:
+		v = &apptest.EventListRequest{}
+	case apptest.FactService_Add_FullMethodName:
+		v = &apptest.FactAddRequest{}
+	case apptest.FactService_AddMany_FullMethodName:
+		v = &apptest.FactAddManyRequest{}
+	case apptest.FactService_Get_FullMethodName:
+		v = &apptest.FactGetRequest{}
+	case apptest.FactService_Patch_FullMethodName:
+		v = &apptest.FactPatchRequest{}
+	case apptest.FactService_Apply_FullMethodName:
+		v = &apptest.FactApplyRequest{}
+	case apptest.FactService_List_FullMethodName:
+		v = &apptest.FactListRequest{}
 	case apptest.HolderService_Add_FullMethodName:
 		v = &apptest.HolderAddRequest{}
 	case apptest.HolderService_Get_FullMethodName:
@@ -9865,26 +10331,6 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Tenant().Erase(ctx, v.(*apptest.TenantRef))
 	case apptest.TenantService_List_FullMethodName:
 		res, err = s.Tenant().List(ctx, v.(*apptest.TenantListRequest))
-	case apptest.EventService_Add_FullMethodName:
-		res, err = s.Event().Add(ctx, v.(*apptest.EventAddRequest))
-	case apptest.EventService_AddMany_FullMethodName:
-		res, err = s.Event().AddMany(ctx, v.(*apptest.EventAddManyRequest))
-	case apptest.EventService_Get_FullMethodName:
-		res, err = s.Event().Get(ctx, v.(*apptest.EventGetRequest))
-	case apptest.EventService_List_FullMethodName:
-		res, err = s.Event().List(ctx, v.(*apptest.EventListRequest))
-	case apptest.FactService_Add_FullMethodName:
-		res, err = s.Fact().Add(ctx, v.(*apptest.FactAddRequest))
-	case apptest.FactService_AddMany_FullMethodName:
-		res, err = s.Fact().AddMany(ctx, v.(*apptest.FactAddManyRequest))
-	case apptest.FactService_Get_FullMethodName:
-		res, err = s.Fact().Get(ctx, v.(*apptest.FactGetRequest))
-	case apptest.FactService_Patch_FullMethodName:
-		res, err = s.Fact().Patch(ctx, v.(*apptest.FactPatchRequest))
-	case apptest.FactService_Apply_FullMethodName:
-		res, err = s.Fact().Apply(ctx, v.(*apptest.FactApplyRequest))
-	case apptest.FactService_List_FullMethodName:
-		res, err = s.Fact().List(ctx, v.(*apptest.FactListRequest))
 	case apptest.ThingService_Add_FullMethodName:
 		res, err = s.Thing().Add(ctx, v.(*apptest.ThingAddRequest))
 	case apptest.ThingService_Get_FullMethodName:
@@ -9965,6 +10411,36 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Reading().Apply(ctx, v.(*apptest.ReadingApplyRequest))
 	case apptest.ReadingService_Erase_FullMethodName:
 		res, err = s.Reading().Erase(ctx, v.(*apptest.ReadingRef))
+	case apptest.MachineService_Add_FullMethodName:
+		res, err = s.Machine().Add(ctx, v.(*apptest.MachineAddRequest))
+	case apptest.MachineService_Get_FullMethodName:
+		res, err = s.Machine().Get(ctx, v.(*apptest.MachineGetRequest))
+	case apptest.MachineService_Patch_FullMethodName:
+		res, err = s.Machine().Patch(ctx, v.(*apptest.MachinePatchRequest))
+	case apptest.MachineService_Apply_FullMethodName:
+		res, err = s.Machine().Apply(ctx, v.(*apptest.MachineApplyRequest))
+	case apptest.MachineService_Erase_FullMethodName:
+		res, err = s.Machine().Erase(ctx, v.(*apptest.MachineRef))
+	case apptest.EventService_Add_FullMethodName:
+		res, err = s.Event().Add(ctx, v.(*apptest.EventAddRequest))
+	case apptest.EventService_AddMany_FullMethodName:
+		res, err = s.Event().AddMany(ctx, v.(*apptest.EventAddManyRequest))
+	case apptest.EventService_Get_FullMethodName:
+		res, err = s.Event().Get(ctx, v.(*apptest.EventGetRequest))
+	case apptest.EventService_List_FullMethodName:
+		res, err = s.Event().List(ctx, v.(*apptest.EventListRequest))
+	case apptest.FactService_Add_FullMethodName:
+		res, err = s.Fact().Add(ctx, v.(*apptest.FactAddRequest))
+	case apptest.FactService_AddMany_FullMethodName:
+		res, err = s.Fact().AddMany(ctx, v.(*apptest.FactAddManyRequest))
+	case apptest.FactService_Get_FullMethodName:
+		res, err = s.Fact().Get(ctx, v.(*apptest.FactGetRequest))
+	case apptest.FactService_Patch_FullMethodName:
+		res, err = s.Fact().Patch(ctx, v.(*apptest.FactPatchRequest))
+	case apptest.FactService_Apply_FullMethodName:
+		res, err = s.Fact().Apply(ctx, v.(*apptest.FactApplyRequest))
+	case apptest.FactService_List_FullMethodName:
+		res, err = s.Fact().List(ctx, v.(*apptest.FactListRequest))
 	case apptest.HolderService_Add_FullMethodName:
 		res, err = s.Holder().Add(ctx, v.(*apptest.HolderAddRequest))
 	case apptest.HolderService_Get_FullMethodName:
@@ -10015,6 +10491,7 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		&apptest.Fleet{},
 		&apptest.Holder{},
 		&apptest.Joint{},
+		&apptest.Machine{},
 		&apptest.Outbox{},
 		&apptest.Owed{},
 		&apptest.Pairing{},
@@ -10340,6 +10817,49 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				return nil, err
 			}
 			return publicResource(v), nil
+		case *apptest.Machine:
+			ctx, err := read.Allow(ctx, apptest.MachineService_Get_FullMethodName, 1)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.MachineNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), machine.Table, []resourcesql.Column{
+				{Number: 1, Name: machine.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: machine.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 4, Name: machine.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 8, Name: machine.FieldModel, Type: 9, Nullable: false, Key: 0},
+				{Number: 9, Name: machine.FieldHours, Type: 3, Nullable: false, Key: 0},
+				{Number: 10, Name: machine.FieldLoad, Type: 1, Nullable: false, Key: 0},
+				{Number: 11, Name: machine.FieldRunning, Type: 8, Nullable: false, Key: 0},
+				{Number: 12, Name: machine.FieldFirmware, Type: 12, Nullable: false, Key: 0},
+				{Number: 16, Name: machine.FieldCycles, Type: 4, Nullable: false, Key: 0},
+				{Number: 18, Name: machine.RobotColumn, Type: 64, Nullable: true, Key: 1},
+				{Number: 19, Name: machine.FieldMode, Type: 14, Nullable: false, Key: 0},
+				{Number: 20, Name: machine.FieldDateServiced, Type: 65, Nullable: true, Key: 0},
+				{Number: 24, Name: machine.FieldOperator, Type: 9, Nullable: false, Key: 0},
+				{Number: 13, Name: machine.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 14, Name: machine.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+				{Number: 15, Name: machine.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Machine.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
 		case *apptest.Pairing:
 			ctx, err := read.Allow(ctx, apptest.PairingService_Get_FullMethodName, 1)
 			if err != nil {
@@ -10624,6 +11144,14 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.JointService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.MachineService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.MachineService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.MachineService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.MachineService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.PairingService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.PairingService_Patch_FullMethodName:
@@ -10694,7 +11222,7 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 		return nil
 	}
 	switch image.ProtoReflect().Descriptor().FullName() {
-	case "app.Access", "app.Audit", "app.Cell", "app.Event", "app.Fact", "app.Fleet", "app.Holder", "app.Joint", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Tenant", "shared.Thing":
+	case "app.Access", "app.Audit", "app.Cell", "app.Event", "app.Fact", "app.Fleet", "app.Holder", "app.Joint", "app.Machine", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Tenant", "shared.Thing":
 	default:
 		return nil
 	}

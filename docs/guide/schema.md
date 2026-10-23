@@ -811,6 +811,36 @@ neither in words that point here:
 Neither applies to an app that declares no past: a calendar's `Event` is its
 own.
 
+#### What an event holds
+
+An event keeps no sentence. Its `value` holds a message you declare for its
+kind of operation, marked as one:
+
+```proto
+message RobotMoved {
+  option (payday.event) = {kind: "robot.move"};
+
+  bytes robot = 1;
+  bytes from = 2;
+  bytes to = 3;
+}
+```
+
+The kind is what its rows are written under, and the message's full name when
+the option names none; two messages of one app have two kinds. It may be
+declared anywhere in your files, inside another message too, and holds scalars,
+enums, messages of your own, lists, maps and protobuf's own types -- but no
+`(payday.field)`, in it or in anything it holds, since an event names people by
+identifier only; no entity, and no message of a generated contract, since a row
+would keep a row whole or a slug; and no `Any`. An entity cannot be one, and an
+app with no past cannot have one.
+
+A row keeps the message as its canonical JSON and reads it back by name for as
+long as the tenant keeps its history, so a message is never deleted and a
+field of one never removed or changed -- and `pd gen` holds the app to that
+with a lock, `proto/app/payday/past.lock`, which it only ever adds to. That is
+[Keeping a past](past.md).
+
 ### An RPC of your own
 
 The CRUD of an entity is generated and the general writes are closed, so an
@@ -901,6 +931,9 @@ only test for whether it belongs on this list.
 | a past declared in two files | two answers to the number its copies are written with |
 | a message `Event` or `Fact`, or a file `event.proto` or `fact.proto`, of an app that declares a past | a name defined twice, or two files written as one |
 | a copy of the past with no declaration, or at another number | a table numbered by nothing the schema says |
+| an event message holding a `(payday.field)`, an entity, a contract's message or an `Any`, anywhere in it | a person, a row or a slug kept for as long as history is, or a message nothing declared |
+| an entity that is an event message, two of one kind, or one in an app that declares no past | a row that says it holds either, or an event with no table |
+| an event message, a field, a kind or an enum value that the past's lock holds, gone or changed | every row written before it, no longer read or read as something else |
 | two `go_package`, or two proto packages | two Go packages is two ent schemas, and the wall is an edge |
 | generated code from a different payday | a wall written by one version, read by another |
 | the database not matching the schema | a server up on a table that is not there |

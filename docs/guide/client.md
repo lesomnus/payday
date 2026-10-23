@@ -24,7 +24,7 @@ whose `src/` holds four TypeScript files, and only the last of them is yours:
 
 | | |
 | --- | --- |
-| `gen/` | messages, service descriptors, `domains.ts`, and one `entities.ts` declaration per entity |
+| `gen/` | messages, service descriptors, `domains.ts`, one `entities.ts` declaration per entity, and `events.ts`, the registry of what the app's events hold |
 | `src/client.ts` | `createClient` per service — for a script, a one-off call, or [several writes as one transaction](batch.md) |
 | `src/store.ts` | the store and the queries a page reads through — §2 |
 | `src/main.tsx` | the transport, the credential, and the `Provider` around the page — §2 |
@@ -466,6 +466,33 @@ visit. Three of the four fields are worth putting on the screen:
 
 `internal/apptest/ts/src/devtools-page.tsx` in this repository draws all of it,
 in about forty lines.
+
+### The registry a Connect transport is handed
+
+A transport that speaks Connect's JSON -- `createConnectTransport`, which is
+what `pd new` writes in both `main.tsx` and `session.tsx` -- is handed the
+registry of the app's event messages:
+
+```ts
+import { events } from '../gen/events.js'
+
+const transport = createConnectTransport({
+	baseUrl: ADDR,
+	jsonOptions: { registry: events },
+})
+```
+
+An event keeps its value as an `Any`, and JSON names the message an `Any` holds
+by its type, `{"@type": "type.googleapis.com/app.RobotMoved", …}`. protobuf-es
+reads that only with the type registered, so without the registry a List of
+events fails -- the whole page of it, on the first row that holds a value --
+and until the first such row is written, nothing says the line is missing.
+`pd gen --ts` writes `gen/events.ts` for every app, empty for one with no past,
+so that the line is there from the day a page is made.
+
+A page made before this has transports without it, and the line is the app's
+to add. The same registry is what `anyUnpack(ev.value, events)` reads a value
+with; see [Keeping a past](past.md#5-reading-an-event-back).
 
 ## 8. The panel
 

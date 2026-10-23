@@ -19,6 +19,7 @@ comments, which are where the detail actually lives.
 | [Refusals](guide/errors.md) | a field-level error, from the server to a form field |
 | [Putting a login in front of an app](guide/signing-in.md) | a session cookie, where it lives, and whether you need an identity provider at all |
 | [What the operator keeps about a tenant](guide/operator.md) | a plan, a contract, how long its history lasts: an entity the tenant reads and only the operator writes |
+| [Keeping a past](guide/past.md) | an app's events and facts: declaring them, the messages an event holds, the lock that keeps old events readable, and reading them back |
 | [Testing](guide/testing.md) | the harness, the two seams, and golden files |
 
 ## References

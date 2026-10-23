@@ -55,6 +55,20 @@ func HolderOrErr(p Holder, err error) Holder {
 // Joint is the predicate function for joint builders.
 type Joint func(*sql.Selector)
 
+// Machine is the predicate function for machine builders.
+type Machine func(*sql.Selector)
+
+// MachineOrErr calls the predicate only if the error is not nit.
+func MachineOrErr(p Machine, err error) Machine {
+	return func(s *sql.Selector) {
+		if err != nil {
+			s.AddError(err)
+			return
+		}
+		p(s)
+	}
+}
+
 // Outbox is the predicate function for outbox builders.
 type Outbox func(*sql.Selector)
 

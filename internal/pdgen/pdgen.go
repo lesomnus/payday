@@ -199,6 +199,11 @@ type Schema struct {
 	// are payday's entities and are in [Schema.Entities] like the rest, found
 	// by their marker; this is what says whether they should be.
 	Past *Past
+
+	// Events are the app's event messages -- `option (payday.event)` -- by
+	// full name: what a row of the past's Event holds, one message per kind of
+	// operation. Empty for nearly every app, and refused in one with no past.
+	Events []*Event
 }
 
 // Read gathers what the schema declared and refuses what it did not.
@@ -214,15 +219,24 @@ type Schema struct {
 func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	s := &Schema{}
 
-	if err := checkFieldOptions(g, files); err != nil {
-		return nil, err
-	}
-
 	past, err := readPast(files)
 	if err != nil {
 		return nil, err
 	}
 	s.Past = past
+
+	// Before the field options, which would refuse a `(payday.field)` in an
+	// event message with advice for a message an entity holds; see
+	// [readEvents].
+	events, err := readEvents(g, files)
+	if err != nil {
+		return nil, err
+	}
+	s.Events = events
+
+	if err := checkFieldOptions(g, files); err != nil {
+		return nil, err
+	}
 
 	// By file and then by declaration, so that the output does not move about
 	// between runs for reasons nobody asked for.
@@ -244,6 +258,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 
 			s.Entities = append(s.Entities, v)
 		}
+	}
+	if err := s.checkEvents(); err != nil {
+		return nil, err
 	}
 	if len(s.Entities) == 0 {
 		return s, nil

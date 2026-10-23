@@ -82,3 +82,28 @@ func TestAStalePinIsExplainedInTheWordsOfTheBufThatRuns(t *testing.T) {
 		t.Errorf("explained a value no payday has:\n%s", v)
 	}
 }
+
+// TestAStalePinIsExplainedForAnOptionItDoesNotHave: what the buf payday pins
+// said, word for word, of an app that marks an event message against a pin
+// from before `(payday.event)` (payday#151) -- the option and not a field of
+// one, so there is nothing to read at the line it points to. Both forms an
+// option is written in are said the same way, and said once.
+func TestAStalePinIsExplainedForAnOptionItDoesNotHave(t *testing.T) {
+	const said = "proto/app/thing.proto:10:11:cannot find `payday.event` in this scope\n" +
+		"proto/app/thing.proto:16:11:cannot find `payday.event` in this scope\n"
+
+	v := whyStale("", []byte(said))
+	for _, want := range []string{"`(payday.event)`", "buf dep update"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("does not say %q:\n%s", want, v)
+		}
+	}
+	if n := strings.Count(v, "payday.event"); n != 1 {
+		t.Errorf("names the option %d times:\n%s", n, v)
+	}
+
+	// An option no payday has is a typo, and no pin.
+	if v := whyStale("", []byte("proto/app/thing.proto:10:11:cannot find `payday.evnet` in this scope")); v != "" {
+		t.Errorf("explained a typo as a stale pin:\n%s", v)
+	}
+}

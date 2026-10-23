@@ -20,6 +20,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
@@ -58,6 +59,8 @@ type Client struct {
 	Holder *HolderClient
 	// Joint is the client for interacting with the Joint builders.
 	Joint *JointClient
+	// Machine is the client for interacting with the Machine builders.
+	Machine *MachineClient
 	// Outbox is the client for interacting with the Outbox builders.
 	Outbox *OutboxClient
 	// Owed is the client for interacting with the Owed builders.
@@ -99,6 +102,7 @@ func (c *Client) init() {
 	c.Fleet = NewFleetClient(c.config)
 	c.Holder = NewHolderClient(c.config)
 	c.Joint = NewJointClient(c.config)
+	c.Machine = NewMachineClient(c.config)
 	c.Outbox = NewOutboxClient(c.config)
 	c.Owed = NewOwedClient(c.config)
 	c.Pairing = NewPairingClient(c.config)
@@ -211,6 +215,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Fleet:    NewFleetClient(cfg),
 		Holder:   NewHolderClient(cfg),
 		Joint:    NewJointClient(cfg),
+		Machine:  NewMachineClient(cfg),
 		Outbox:   NewOutboxClient(cfg),
 		Owed:     NewOwedClient(cfg),
 		Pairing:  NewPairingClient(cfg),
@@ -250,6 +255,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Fleet:    NewFleetClient(cfg),
 		Holder:   NewHolderClient(cfg),
 		Joint:    NewJointClient(cfg),
+		Machine:  NewMachineClient(cfg),
 		Outbox:   NewOutboxClient(cfg),
 		Owed:     NewOwedClient(cfg),
 		Pairing:  NewPairingClient(cfg),
@@ -337,8 +343,8 @@ func (c *Client) InTx() bool {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Access, c.Archived, c.Audit, c.Cell, c.Event, c.Fact, c.Fleet, c.Holder,
-		c.Joint, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal,
-		c.Seal, c.Tally, c.Tenant, c.Thing,
+		c.Joint, c.Machine, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot,
+		c.RowSeal, c.Seal, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -349,8 +355,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Access, c.Archived, c.Audit, c.Cell, c.Event, c.Fact, c.Fleet, c.Holder,
-		c.Joint, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal,
-		c.Seal, c.Tally, c.Tenant, c.Thing,
+		c.Joint, c.Machine, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot,
+		c.RowSeal, c.Seal, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -377,6 +383,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Holder.mutate(ctx, m)
 	case *JointMutation:
 		return c.Joint.mutate(ctx, m)
+	case *MachineMutation:
+		return c.Machine.mutate(ctx, m)
 	case *OutboxMutation:
 		return c.Outbox.mutate(ctx, m)
 	case *OwedMutation:
@@ -1694,6 +1702,171 @@ func (c *JointClient) mutate(ctx context.Context, m *JointMutation) (Value, erro
 		return (&JointDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Joint mutation op: %q", m.Op())
+	}
+}
+
+// MachineClient is a client for the Machine schema.
+type MachineClient struct {
+	config
+}
+
+// NewMachineClient returns a client for the Machine from the given config.
+func NewMachineClient(c config) *MachineClient {
+	return &MachineClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `machine.Hooks(f(g(h())))`.
+func (c *MachineClient) Use(hooks ...Hook) {
+	c.hooks.Machine = append(c.hooks.Machine, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `machine.Intercept(f(g(h())))`.
+func (c *MachineClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Machine = append(c.inters.Machine, interceptors...)
+}
+
+// Create returns a builder for creating a Machine entity.
+func (c *MachineClient) Create() *MachineCreate {
+	mutation := newMachineMutation(c.config, OpCreate)
+	return &MachineCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Machine entities.
+func (c *MachineClient) CreateBulk(builders ...*MachineCreate) *MachineCreateBulk {
+	return &MachineCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MachineClient) MapCreateBulk(slice any, setFunc func(*MachineCreate, int)) *MachineCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MachineCreateBulk{err: fmt.Errorf("calling to MachineClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MachineCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MachineCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Machine.
+func (c *MachineClient) Update() *MachineUpdate {
+	mutation := newMachineMutation(c.config, OpUpdate)
+	return &MachineUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MachineClient) UpdateOne(_m *Machine) *MachineUpdateOne {
+	mutation := newMachineMutation(c.config, OpUpdateOne, withMachine(_m))
+	return &MachineUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneId returns an update builder for the given id.
+func (c *MachineClient) UpdateOneId(id uuid.UUID) *MachineUpdateOne {
+	mutation := newMachineMutation(c.config, OpUpdateOne, withMachineId(id))
+	return &MachineUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Machine.
+func (c *MachineClient) Delete() *MachineDelete {
+	mutation := newMachineMutation(c.config, OpDelete)
+	return &MachineDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MachineClient) DeleteOne(_m *Machine) *MachineDeleteOne {
+	return c.DeleteOneId(_m.Id)
+}
+
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *MachineClient) DeleteOneId(id uuid.UUID) *MachineDeleteOne {
+	builder := c.Delete().Where(machine.Id(id))
+	builder.mutation.id = &id
+	builder.mutation.SetOp(OpDeleteOne)
+	return &MachineDeleteOne{builder}
+}
+
+// Query returns a query builder for Machine.
+func (c *MachineClient) Query() *MachineQuery {
+	return &MachineQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMachine},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Machine entity by its id.
+func (c *MachineClient) Get(ctx context.Context, id uuid.UUID) (*Machine, error) {
+	return c.Query().Where(machine.Id(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MachineClient) GetX(ctx context.Context, id uuid.UUID) *Machine {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTenant queries the tenant edge of a Machine.
+func (c *MachineClient) QueryTenant(_m *Machine) *TenantQuery {
+	query := (&TenantClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.Id
+		step := sqlgraph.NewStep(
+			sqlgraph.From(machine.Table, machine.FieldId, id),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
+			sqlgraph.Edge(sqlgraph.M2O, false, machine.TenantTable, machine.TenantColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRobot queries the robot edge of a Machine.
+func (c *MachineClient) QueryRobot(_m *Machine) *RobotQuery {
+	query := (&RobotClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.Id
+		step := sqlgraph.NewStep(
+			sqlgraph.From(machine.Table, machine.FieldId, id),
+			sqlgraph.To(robot.Table, robot.FieldId),
+			sqlgraph.Edge(sqlgraph.M2O, false, machine.RobotTable, machine.RobotColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *MachineClient) Hooks() []Hook {
+	return c.hooks.Machine
+}
+
+// Interceptors returns the client interceptors.
+func (c *MachineClient) Interceptors() []Interceptor {
+	return c.inters.Machine
+}
+
+func (c *MachineClient) mutate(ctx context.Context, m *MachineMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MachineCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MachineUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MachineUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MachineDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Machine mutation op: %q", m.Op())
 	}
 }
 
@@ -3275,12 +3448,13 @@ func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, erro
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Outbox, Owed,
-		Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Hook
+		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Machine,
+		Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant,
+		Thing []ent.Hook
 	}
 	inters struct {
-		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Outbox, Owed,
-		Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant,
+		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Machine,
+		Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant,
 		Thing []ent.Interceptor
 	}
 )

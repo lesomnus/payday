@@ -17,6 +17,7 @@ import (
 	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
+	machine "github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	owed "github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
@@ -379,12 +380,7 @@ func snapshotOrNil(v proto.Message) proto.Message {
 // Embed [Unscoped] to write out only the entities there is something to
 // say about.
 type Scope interface {
-	AccessScope(ctx context.Context) (predicate.Access, error)
-	ArchivedScope(ctx context.Context) (predicate.Archived, error)
-	AuditScope(ctx context.Context) (predicate.Audit, error)
 	TenantScope(ctx context.Context) (predicate.Tenant, error)
-	EventScope(ctx context.Context) (predicate.Event, error)
-	FactScope(ctx context.Context) (predicate.Fact, error)
 	ThingScope(ctx context.Context) (predicate.Thing, error)
 	CellScope(ctx context.Context) (predicate.Cell, error)
 	RobotScope(ctx context.Context) (predicate.Robot, error)
@@ -392,6 +388,12 @@ type Scope interface {
 	JointScope(ctx context.Context) (predicate.Joint, error)
 	FleetScope(ctx context.Context) (predicate.Fleet, error)
 	ReadingScope(ctx context.Context) (predicate.Reading, error)
+	MachineScope(ctx context.Context) (predicate.Machine, error)
+	AccessScope(ctx context.Context) (predicate.Access, error)
+	ArchivedScope(ctx context.Context) (predicate.Archived, error)
+	AuditScope(ctx context.Context) (predicate.Audit, error)
+	EventScope(ctx context.Context) (predicate.Event, error)
+	FactScope(ctx context.Context) (predicate.Fact, error)
 	HolderScope(ctx context.Context) (predicate.Holder, error)
 	OutboxScope(ctx context.Context) (predicate.Outbox, error)
 	OwedScope(ctx context.Context) (predicate.Owed, error)
@@ -413,22 +415,7 @@ type Unscoped struct{}
 
 var _ Scope = Unscoped{}
 
-func (Unscoped) AccessScope(_ context.Context) (predicate.Access, error) {
-	return nil, nil
-}
-func (Unscoped) ArchivedScope(_ context.Context) (predicate.Archived, error) {
-	return nil, nil
-}
-func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
-	return nil, nil
-}
 func (Unscoped) TenantScope(_ context.Context) (predicate.Tenant, error) {
-	return nil, nil
-}
-func (Unscoped) EventScope(_ context.Context) (predicate.Event, error) {
-	return nil, nil
-}
-func (Unscoped) FactScope(_ context.Context) (predicate.Fact, error) {
 	return nil, nil
 }
 func (Unscoped) ThingScope(_ context.Context) (predicate.Thing, error) {
@@ -450,6 +437,24 @@ func (Unscoped) FleetScope(_ context.Context) (predicate.Fleet, error) {
 	return nil, nil
 }
 func (Unscoped) ReadingScope(_ context.Context) (predicate.Reading, error) {
+	return nil, nil
+}
+func (Unscoped) MachineScope(_ context.Context) (predicate.Machine, error) {
+	return nil, nil
+}
+func (Unscoped) AccessScope(_ context.Context) (predicate.Access, error) {
+	return nil, nil
+}
+func (Unscoped) ArchivedScope(_ context.Context) (predicate.Archived, error) {
+	return nil, nil
+}
+func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
+	return nil, nil
+}
+func (Unscoped) EventScope(_ context.Context) (predicate.Event, error) {
+	return nil, nil
+}
+func (Unscoped) FactScope(_ context.Context) (predicate.Fact, error) {
 	return nil, nil
 }
 func (Unscoped) HolderScope(_ context.Context) (predicate.Holder, error) {
@@ -493,66 +498,6 @@ type Scopes []Scope
 
 var _ Scope = Scopes{}
 
-func (ss Scopes) AccessScope(ctx context.Context) (predicate.Access, error) {
-	ps := make([]predicate.Access, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.AccessScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return access.And(ps...), nil
-}
-
-func (ss Scopes) ArchivedScope(ctx context.Context) (predicate.Archived, error) {
-	ps := make([]predicate.Archived, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.ArchivedScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return archived.And(ps...), nil
-}
-
-func (ss Scopes) AuditScope(ctx context.Context) (predicate.Audit, error) {
-	ps := make([]predicate.Audit, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.AuditScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return audit.And(ps...), nil
-}
-
 func (ss Scopes) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	ps := make([]predicate.Tenant, 0, len(ss))
 	for _, s := range ss {
@@ -571,46 +516,6 @@ func (ss Scopes) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	}
 
 	return tenant.And(ps...), nil
-}
-
-func (ss Scopes) EventScope(ctx context.Context) (predicate.Event, error) {
-	ps := make([]predicate.Event, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.EventScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return event.And(ps...), nil
-}
-
-func (ss Scopes) FactScope(ctx context.Context) (predicate.Fact, error) {
-	ps := make([]predicate.Fact, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.FactScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return fact.And(ps...), nil
 }
 
 func (ss Scopes) ThingScope(ctx context.Context) (predicate.Thing, error) {
@@ -751,6 +656,126 @@ func (ss Scopes) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 	}
 
 	return reading.And(ps...), nil
+}
+
+func (ss Scopes) MachineScope(ctx context.Context) (predicate.Machine, error) {
+	ps := make([]predicate.Machine, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.MachineScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return machine.And(ps...), nil
+}
+
+func (ss Scopes) AccessScope(ctx context.Context) (predicate.Access, error) {
+	ps := make([]predicate.Access, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.AccessScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return access.And(ps...), nil
+}
+
+func (ss Scopes) ArchivedScope(ctx context.Context) (predicate.Archived, error) {
+	ps := make([]predicate.Archived, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.ArchivedScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return archived.And(ps...), nil
+}
+
+func (ss Scopes) AuditScope(ctx context.Context) (predicate.Audit, error) {
+	ps := make([]predicate.Audit, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.AuditScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return audit.And(ps...), nil
+}
+
+func (ss Scopes) EventScope(ctx context.Context) (predicate.Event, error) {
+	ps := make([]predicate.Event, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.EventScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return event.And(ps...), nil
+}
+
+func (ss Scopes) FactScope(ctx context.Context) (predicate.Fact, error) {
+	ps := make([]predicate.Fact, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.FactScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return fact.And(ps...), nil
 }
 
 func (ss Scopes) HolderScope(ctx context.Context) (predicate.Holder, error) {
@@ -1028,7 +1053,7 @@ func ItemError(i int, err error) error {
 // is rendered for that dialect, not just what this server writes.
 //
 // That set is also what a soft erasure needs, so this is the whole
-// check. Cell, Fleet, Holder, Joint, Robot, Seal and Thing free the names they held when a row
+// check. Cell, Fleet, Holder, Joint, Machine, Robot, Seal and Thing free the names they held when a row
 // is erased, which is a unique index covering only the rows that are
 // still there -- a partial index, and the dialects above are the ones
 // that have one. MySQL does not, and ent writes the annotation out for
@@ -1066,14 +1091,7 @@ func (s Server) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 	return s, nil
 }
 
-func (s Server) Access() apptest.AccessServiceServer { return AccessServiceServer{Store: s.Store} }
-func (s Server) Archived() apptest.ArchivedServiceServer {
-	return ArchivedServiceServer{Store: s.Store}
-}
-func (s Server) Audit() apptest.AuditServiceServer     { return AuditServiceServer{Store: s.Store} }
 func (s Server) Tenant() apptest.TenantServiceServer   { return TenantServiceServer{Store: s.Store} }
-func (s Server) Event() apptest.EventServiceServer     { return EventServiceServer{Store: s.Store} }
-func (s Server) Fact() apptest.FactServiceServer       { return FactServiceServer{Store: s.Store} }
 func (s Server) Thing() apptest.ThingServiceServer     { return ThingServiceServer{Store: s.Store} }
 func (s Server) Cell() apptest.CellServiceServer       { return CellServiceServer{Store: s.Store} }
 func (s Server) Robot() apptest.RobotServiceServer     { return RobotServiceServer{Store: s.Store} }
@@ -1081,6 +1099,14 @@ func (s Server) Pairing() apptest.PairingServiceServer { return PairingServiceSe
 func (s Server) Joint() apptest.JointServiceServer     { return JointServiceServer{Store: s.Store} }
 func (s Server) Fleet() apptest.FleetServiceServer     { return FleetServiceServer{Store: s.Store} }
 func (s Server) Reading() apptest.ReadingServiceServer { return ReadingServiceServer{Store: s.Store} }
+func (s Server) Machine() apptest.MachineServiceServer { return MachineServiceServer{Store: s.Store} }
+func (s Server) Access() apptest.AccessServiceServer   { return AccessServiceServer{Store: s.Store} }
+func (s Server) Archived() apptest.ArchivedServiceServer {
+	return ArchivedServiceServer{Store: s.Store}
+}
+func (s Server) Audit() apptest.AuditServiceServer     { return AuditServiceServer{Store: s.Store} }
+func (s Server) Event() apptest.EventServiceServer     { return EventServiceServer{Store: s.Store} }
+func (s Server) Fact() apptest.FactServiceServer       { return FactServiceServer{Store: s.Store} }
 func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceServer{Store: s.Store} }
 func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }
 func (s Server) Owed() apptest.OwedServiceServer       { return OwedServiceServer{Store: s.Store} }

@@ -1,12 +1,14 @@
 package cmd_test
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -14,6 +16,7 @@ import (
 	app "github.com/lesomnus/payday/internal/apptest"
 	entevent "github.com/lesomnus/payday/internal/apptest/internal/ent/event"
 	entfact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
+	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
 // TestThePastIsWrittenAndReadBack: payday's Event and Fact, which are in this
@@ -175,4 +178,61 @@ func TestThePastIsWrittenAndReadBack(t *testing.T) {
 		x.Len(fs, 3)
 		x.Equal(uint32(5), fs[0].FieldNumber)
 	})
+}
+
+// TestAnEventIsReadBackByItsKind: `pd.EventKinds` names each of this app's
+// event messages by the kind its rows are written under -- one that names no
+// kind, by its full name -- and an event holding one, written through the
+// server and kept as JSON in the database, is read back into the message its
+// kind names, whole: an enum by its name, a list and a map of a message of its
+// own, a time.
+func TestAnEventIsReadBackByItsKind(t *testing.T) {
+	x := require.New(t)
+
+	names := map[string]protoreflect.FullName{}
+	for kind, v := range pd.EventKinds {
+		names[kind] = v.Descriptor().FullName()
+	}
+	x.Equal(map[string]protoreflect.FullName{
+		"machine.service":    "app.MachineServiced",
+		"app.MachineStarted": "app.MachineStarted",
+	}, names)
+
+	b, ctx := build(t)
+	as := b.as(ctx)
+
+	part := func(serial string, count uint32) *app.MachineServiced_Part {
+		return app.MachineServiced_Part_builder{Serial: serial, Count: count}.Build()
+	}
+	sent := app.MachineServiced_builder{
+		Machine: bytes.Repeat([]byte{7}, 16),
+		By:      b.Holder.Bytes(),
+		Mode:    app.Mode_MODE_SERVICE,
+		Parts:   []*app.MachineServiced_Part{part("P-1", 2), part("P-2", 1)},
+		Swapped: map[string]*app.MachineServiced_Part{"left": part("P-0", 1)},
+		Due:     timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
+	}.Build()
+	held, err := anypb.New(sent)
+	x.NoError(err)
+
+	ev, err := b.Walled.Event().Add(as, app.EventAddRequest_builder{
+		Tenant:     app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Kind:       "machine.service",
+		OccurredAt: timestamppb.Now(),
+		Value:      held,
+	}.Build())
+	x.NoError(err)
+
+	got, err := b.Walled.Event().Get(as, app.EventGetRequest_builder{
+		Ref:    app.EventRef_builder{Id: ev.GetId()}.Build(),
+		Select: app.EventSelect_builder{All: z.Ptr(true)}.Build(),
+	}.Build())
+	x.NoError(err)
+
+	typ, ok := pd.EventKinds[got.GetKind()]
+	x.True(ok, "no event message for kind %q", got.GetKind())
+
+	v := typ.New().Interface()
+	x.NoError(got.GetValue().UnmarshalTo(v))
+	x.True(proto.Equal(sent, v), "%v", v)
 }

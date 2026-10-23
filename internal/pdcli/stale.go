@@ -24,6 +24,11 @@ import (
 //	proto/app/robot.proto:24:3:cannot resolve message field name for `payday.App`
 //	proto/app/payday/event.proto:141:10:cannot find `OWN_EVENT` in this scope
 //
+// and an option it has no extension for at all, as an event message names
+// one (payday#151):
+//
+//	proto/app/machine.proto:10:11:cannot find `payday.event` in this scope
+//
 // and in those of the one buf had before it, which a buf named by [BufEnv] may
 // still be:
 //
@@ -31,6 +36,7 @@ import (
 var (
 	staleField  = regexp.MustCompile("(?m)^(\\S+?):(\\d+):(\\d+):cannot resolve message field name for `(payday\\.\\w+)`")
 	staleValue  = regexp.MustCompile("cannot find `(OWN_\\w+)` in this scope")
+	staleExt    = regexp.MustCompile("cannot find `\\.?(payday\\.\\w+)` in this scope")
 	staleOption = regexp.MustCompile(`option \((payday\.\w+)\): (?:field (\w+) not found|enum payday\.\w+ has no value named (\w+))`)
 )
 
@@ -79,6 +85,11 @@ func whyStale(work string, b []byte) string {
 	for _, m := range staleValue.FindAllSubmatch(b, -1) {
 		if _, ok := pdpb.Own_value[string(m[1])]; ok {
 			add("`" + string(m[1]) + "`")
+		}
+	}
+	for _, m := range staleExt.FindAllSubmatch(b, -1) {
+		if _, err := protoregistry.GlobalTypes.FindExtensionByName(protoreflect.FullName(m[1])); err == nil {
+			add("`(" + string(m[1]) + ")`")
 		}
 	}
 	for _, m := range staleOption.FindAllSubmatch(b, -1) {
