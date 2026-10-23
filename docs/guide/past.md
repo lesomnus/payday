@@ -325,6 +325,39 @@ return tx.Commit()
 `past.WithClock(st, now)` tells a store the time by an app's own clock: the
 servers' (`bare.WithClock`), or a test's.
 
+### Nothing else writes them
+
+Your Event and Fact have one writer, and it is the package. The generated
+`Audit` layer refuses every write of either that `pd.Past`'s store did not hand
+the servers -- `Add` and `AddMany` of both, `Patch` and `Apply` of a fact --
+however it arrives: a call over the wire, an operation of a batch, the ungated
+stack, your own code. The answer is `PermissionDenied`, to every caller alike:
+
+```
+a past is written by the past package: an event by past.Begin, and a fact by the op it answers
+```
+
+A fact written by hand is a row no read of the past can be sure of -- not the
+canonical JSON of its value, not withheld where it should be, superseding
+nothing -- and an event whose `actor_id` the request says is who did it,
+forged. So which of their verbs are internal is payday's to say, and not left
+to your policy as an entity of your own is
+([the server guide](server.md#except-the-pasts-which-payday-seals)).
+
+- **Wherever the layer that records it is.** The store marks each context it
+  hands the servers with a key only the generated `pd` package can make, and
+  the mark goes down with the write: a layer above the gate records the past
+  as one beneath `Audit` does. A layer beneath `Audit` is beneath its
+  refusals, as it is beneath the trail's.
+- **Only what it hands the servers.** The context `Begin` answers, and the one
+  `pd.PastIn` hands its work, carry no mark: a row written by hand with either
+  is refused like any other, on the very transaction the store writes on.
+- **Your own store writes nothing.** A `past.Store` of your own making is
+  refused as any other writer is; one that wraps `pd.Past`'s, as
+  `past.WithClock` does, writes through it.
+- **Reads are as they were**, and so are the writes the package makes beneath
+  the servers: a reason taken out (§11) and what an expiry takes (§12).
+
 ## 7. Facts
 
 A **fact** is one statement about one resource, its subject: from a moment on,

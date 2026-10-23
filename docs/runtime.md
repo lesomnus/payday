@@ -101,7 +101,7 @@ in CI is what keeps that true.
 | the batch dispatcher | it has to know every RPC the app has |
 | whose data a message carries (`Subjects`, `SubjectRefs`), and the access record's recorder and writer | they read the app's messages by what its schema declared `personal`, and write its `Access` |
 | `pd.EventKinds`, in an app that declares a past: every event message by the kind its rows are written under | each is a message type of yours, read back from a row's `kind` |
-| `pd.Past`, in an app that declares a past: its Event and Fact as the `past` package writes and reads them | a write goes through your servers on the operation's transaction, a read through your ent client, and the tenant of a subject is found as the trail finds a row's |
+| `pd.Past`, in an app that declares a past: its Event and Fact as the `past` package writes and reads them, and the one writer of them the `Audit` layer lets through | a write goes through your servers on the operation's transaction, a read through your ent client, and the tenant of a subject is found as the trail finds a row's |
 | `pd.PastNames`, in an app that declares a past: what names the people and things a sentence of an event names, as they are called when it is read | a row of any of your entities is read through your ent client and your wall, and whether its title is somebody's data is what your schema declared `personal` |
 | every column of yours and the past's that names an event, `(payday.field) = {event: true}`, in `pd.Past`'s store, and the deletes an expiry makes beneath the servers, each put on the trail through `pd.RecordErased` | they are your tables and columns, by the names ent gives them, and a delete of your Event and Fact is a statement of your ent client |
 | `pd.PastIn` and `pd.PastTenants`, what `past.Expirer` runs on: a tenant's transaction as the deployment's work in it, and every tenant with a past | the transaction is begun on your driver and the store built on your ungated stack; the tenants are read off your Event |
@@ -191,6 +191,7 @@ Everything payday enforces is placed as far left as it goes.
 | a download says what it is for | the access interceptor refuses one without `payday-reason-bin`, and one whose row cannot be written |
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
 | an event and what it is about commit together | `past.Begin` refuses a store on no transaction, and `pd.Past` puts the stack on the operation's driver rather than trusting it to be there |
+| the past is written by the `past` package alone | the generator writes it: the `Audit` layer refuses every write of Event and Fact that `pd.Past`'s store did not mark -- over the wire, in a batch, through the ungated instance, from the app's own code above it -- with `PermissionDenied`, and the mark is a context key only the generated package can make (see [the server guide](guide/server.md#except-the-pasts-which-payday-seals)) |
 | a name a sentence of the past says is on the access record | the runtime writes it: `past.Reading.Name` says whose data the name is (`access.Saw`) every time a sentence says it, and `pd.PastNames` reads the name through the wall |
 | an event a row that stays names outlives its window | the generator writes every column that says it names an event into the store the expiry asks, and refuses a column that says so and cannot be asked; the expiry takes no event a row that stays names, and what it takes it puts on the trail in the same transaction |
 | `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
@@ -1525,7 +1526,10 @@ that fails keeps all it would have taken, being one transaction.
   Erase -- an event is never changed and a fact only superseded -- so an
   expiry's deletes are ent's, and each row it takes is put on the trail as the
   act that took it (`pd.RecordErased`, `payday.past.expire`) in the same
-  transaction. A check of the rows then finds it gone, as the trail says.
+  transaction. A check of the rows then finds it gone, as the trail says. The
+  `Audit` layer, which refuses a write of either that the `past` package did
+  not make, never sees them; the receipt, an event like any other, is the
+  store's write and goes through it.
 - **What names an event keeps it.** The columns that do say so in the schema
   (`(payday.field) = {event: true}`), and the generator writes every one into
   the store, so an event goes only once nothing that stays names it. An app's

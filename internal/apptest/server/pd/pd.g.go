@@ -4940,6 +4940,10 @@ func (s gateStint) admit(ctx context.Context, req *apptest.StintAddRequest) (*ap
 
 // Audit is the layer that refuses a trail row written by hand.
 //
+// And, of this app's past, a row of its Event or its Fact that the
+// `past` package did not write (payday#151): what no read of the past could
+// be sure of, written by whoever asked. See [pastWrite].
+//
 // The Rpcs exist because the trail is an entity like any other and a test is
 // far plainer for having them. A deployment serves none of the ones that
 // write: a trail somebody can edit is evidence of nothing.
@@ -5003,6 +5007,107 @@ func (s auditService) Erase(ctx context.Context, req *apptest.AuditRef) (*apptes
 func errTrail() error {
 	return status.Error(codes.Unimplemented,
 		"the trail is written by what happened, not by anybody asking")
+}
+
+// Event is the past's Event as the Audit layer serves it: read as any
+// entity is, and written by the `past` package alone ([pastWrite]).
+func (s Audit) Event() apptest.EventServiceServer {
+	return auditEvent{s, s.Next().Event()}
+}
+
+type auditEvent struct {
+	Audit
+	apptest.EventServiceServer
+}
+
+func (s auditEvent) Add(ctx context.Context, req *apptest.EventAddRequest) (*apptest.Event, error) {
+	if !isPastWrite(ctx) {
+		return nil, errPast()
+	}
+
+	return s.EventServiceServer.Add(ctx, req)
+}
+
+func (s auditEvent) AddMany(ctx context.Context, req *apptest.EventAddManyRequest) (*apptest.EventAddManyResponse, error) {
+	if !isPastWrite(ctx) {
+		return nil, errPast()
+	}
+
+	return s.EventServiceServer.AddMany(ctx, req)
+}
+
+// Fact is the past's Fact as the Audit layer serves it: read as any
+// entity is, and written by the `past` package alone ([pastWrite]).
+func (s Audit) Fact() apptest.FactServiceServer {
+	return auditFact{s, s.Next().Fact()}
+}
+
+type auditFact struct {
+	Audit
+	apptest.FactServiceServer
+}
+
+func (s auditFact) Add(ctx context.Context, req *apptest.FactAddRequest) (*apptest.Fact, error) {
+	if !isPastWrite(ctx) {
+		return nil, errPast()
+	}
+
+	return s.FactServiceServer.Add(ctx, req)
+}
+
+func (s auditFact) AddMany(ctx context.Context, req *apptest.FactAddManyRequest) (*apptest.FactAddManyResponse, error) {
+	if !isPastWrite(ctx) {
+		return nil, errPast()
+	}
+
+	return s.FactServiceServer.AddMany(ctx, req)
+}
+
+func (s auditFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
+	if !isPastWrite(ctx) {
+		return nil, errPast()
+	}
+
+	return s.FactServiceServer.Patch(ctx, req)
+}
+
+func (s auditFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
+	if !isPastWrite(ctx) {
+		return nil, errPast()
+	}
+
+	return s.FactServiceServer.Apply(ctx, req)
+}
+
+// pastWrite marks a context the past's store hands the servers (`Past`):
+// the one thing the Audit layer lets a write of Event or Fact through
+// on (payday#151).
+//
+// Unexported, so that nothing outside this package can put one on a
+// context: not an app's code, not a batch, not a call over the wire. And
+// the store marks the contexts it hands the servers and no other -- not the
+// one an operation goes on with, nor the one `PastIn` hands its work -- so
+// a mark goes no further than the write it is on.
+type pastWrite struct{}
+
+// pastWriting is `ctx` as the past's store hands it to the servers.
+func pastWriting(ctx context.Context) context.Context {
+	return context.WithValue(ctx, pastWrite{}, pastWrite{})
+}
+
+// isPastWrite is whether `ctx` is one the past's store handed the servers.
+func isPastWrite(ctx context.Context) bool {
+	_, ok := ctx.Value(pastWrite{}).(pastWrite)
+	return ok
+}
+
+// errPast is PermissionDenied, to every caller alike. Not the trail's
+// Unimplemented: these verbs are served, to the store's writes. What is
+// refused is what wrote the request, which no credential changes -- so the
+// sentence says what does write one.
+func errPast() error {
+	return status.Error(codes.PermissionDenied,
+		"a past is written by the past package: an event by past.Begin, and a fact by the op it answers")
 }
 
 // Recorder writes one row of the trail for every write the generated
@@ -9776,6 +9881,10 @@ func TrailOf(fn func(*apptest.Audit) error) func(doc []byte) error {
 // write of the past is in the transaction its operation is; it answers
 // an error for a stack a layer of which cannot be put on another driver,
 // whose writes would go around that layer.
+//
+// Its writes are the only ones of Event and Fact the Audit layer lets
+// through, wherever in `next` that layer is: each is marked for it, on the
+// context handed to the servers and no other ([pastWrite]).
 func Past(next apptest.Server, drv dialect.Driver, content audit1.Contents) (past.Store, error) {
 	s, err := enttx.Rebind(next, drv)
 	if err != nil {
@@ -9800,8 +9909,11 @@ func (pastStore) Kinds() map[string]protoreflect.MessageType { return EventKinds
 func (s pastStore) Driver() dialect.Driver { return s.drv }
 
 // AddEvents writes each event through the Event server: an Add for one, an
-// AddMany of at most a page for more.
+// AddMany of at most a page for more. On a context marked as the past's
+// write, which is what the Audit layer lets one through on.
 func (s pastStore) AddEvents(ctx context.Context, vs []past.EventRow) ([]pdid.Id, error) {
+	ctx = pastWriting(ctx)
+
 	reqs := make([]*apptest.EventAddRequest, len(vs))
 	for i, v := range vs {
 		req := apptest.EventAddRequest_builder{
@@ -9863,6 +9975,8 @@ func (s pastStore) AddEvents(ctx context.Context, vs []past.EventRow) ([]pdid.Id
 // AddFacts writes each fact through the Fact server, as [pastStore.AddEvents]
 // writes events.
 func (s pastStore) AddFacts(ctx context.Context, vs []past.FactRow) error {
+	ctx = pastWriting(ctx)
+
 	reqs := make([]*apptest.FactAddRequest, len(vs))
 	for i, v := range vs {
 		field, domain := uint32(v.Field), uint32(v.Domain)
@@ -9892,8 +10006,11 @@ func (s pastStore) AddFacts(ctx context.Context, vs []past.FactRow) error {
 	return nil
 }
 
-// Supersede is a Patch of each fact, held to the version it was read at.
+// Supersede is a Patch of each fact, held to the version it was read at,
+// on a context marked as the past's write.
 func (s pastStore) Supersede(ctx context.Context, vs []past.FactRow, at time.Time, by pdid.Id) error {
+	ctx = pastWriting(ctx)
+
 	for _, v := range vs {
 		if _, err := s.next.Fact().Patch(ctx, apptest.FactPatchRequest_builder{
 			Ref:          apptest.FactRef_builder{Id: v.Id.Bytes()}.Build(),
@@ -10332,6 +10449,11 @@ func (s pastStore) Erased(ctx context.Context, action string, ids []pdid.Id) err
 // `ungated` is the stack with no wall, as for every sweep: an expiry is the
 // deployment acting on itself, and nobody's in the tenant. Never one a caller
 // reaches.
+//
+// What `f` is handed writes the past through the store and no other way:
+// the store marks what it hands the servers, and the context `f` is given
+// is no write of the past's, so a row `f` writes by hand with it is refused
+// as any other is ([pastWrite]).
 func PastIn(ungated apptest.Server, drv dialect.Driver, content audit1.Contents) func(ctx context.Context, tenant pdid.Id, f func(ctx context.Context, s past.Store) error) error {
 	return func(ctx context.Context, tenant pdid.Id, f func(ctx context.Context, s past.Store) error) error {
 		ctx = frame.Into(ctx, frame.New(pdid.Nil, tenant, frame.Grant{}).WithScope(frame.Only(tenant)))

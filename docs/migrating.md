@@ -3,6 +3,46 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## Only the `past` package writes the past
+
+**Applies to an app that declares a past**, which regenerates -- the sixth part
+of payday#151 -- and whose `Audit` layer then refuses every write of its Event
+and Fact that `pd.Past`'s store did not make. No schema changes and no
+migration; an app with no past regenerates nothing new.
+
+- **A write by hand is `PermissionDenied`**: `EventService` `Add` and
+  `AddMany`, `FactService` `Add`, `AddMany`, `Patch` and `Apply`, from a caller
+  over the wire, inside a batch, through `Ungated`, or from your own code
+  through the stack -- *a past is written by the past package: an event by
+  past.Begin, and a fact by the op it answers*. Look for each of those calls,
+  and those methods in a batch, a seed or a tool: each moves to `past.Begin`
+  and the `*past.Op` it answers, and a test that needs a row as one was before
+  the past writes it through a server built without the layers
+  (`pd.NewSink`).
+- **A layer that records the past may be anywhere in the stack**: the store
+  marks what it hands the servers for the `Audit` layer, and the mark goes down
+  with each write. A layer beneath `Audit` writes past it, as it writes past
+  the trail's refusals. The store marks nothing else -- not the context
+  `past.Begin` answers, nor the one `pd.PastIn` hands its work -- and a
+  `past.Store` of your own making writes nothing.
+- **Reads are as they were**, and so are the package's writes beneath the
+  servers, `past.Redact` and `past.Expire`'s.
+- [The server guide](guide/server.md#except-the-pasts-which-payday-seals) says
+  why payday decides this one, and [keeping a
+  past](guide/past.md#nothing-else-writes-them) what it means for an app.
+
+What the apps on payday change:
+
+- **rove** keeps no past of payday's yet. When it adopts one, its domain
+  layer's hand-written writes of its history move to the package in the same
+  change -- `t.next.Event().Add` in `begin` and `child`, `addFact`'s
+  `Fact().Add` and `AddMany`, `supersedeFact`'s `Fact().Patch`, and
+  `register`'s `AddMany` of both -- or the first of them is refused: the
+  layer is above the gate, so every write it makes meets `Audit`. Its `tenant
+  import` writes the tables through ent, beneath the servers, and is not
+  touched.
+- **roster** keeps no past, and changes nothing.
+
 ## A tenant's past is let go by its window
 
 **Applies to an app that declares a past**, which regenerates -- the fifth part

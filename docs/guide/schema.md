@@ -871,7 +871,8 @@ with a lock, `proto/app/payday/past.lock`, which it only ever adds to. That is
 Rows of the two are written and read by the `past` package, through the
 `pd.Past` `pd gen` writes beside them -- an event in its operation's
 transaction, a fact as the canonical JSON of each field it holds, a personal
-value withheld -- and not by hand through their generated servers:
+value withheld -- and never by hand through their generated servers, whose
+`Audit` layer refuses a write the package did not make:
 [Recording an operation](past.md#6-recording-an-operation). They leave by the
 tenant's window, and an event stays while a row that stays names it: the
 past's own mark their columns, and a row of yours that names the operation that

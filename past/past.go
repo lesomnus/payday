@@ -33,6 +33,20 @@
 //	...
 //	return tx.Commit()
 //
+// # The one writer of the past
+//
+// The app's Event and Fact are written by this package and by nothing else:
+// the generated Audit layer refuses every write of either that `pd.Past`'s
+// store did not hand the servers -- a call over the wire, an operation of a
+// batch, the ungated server, the app's own code -- with PermissionDenied. A
+// fact written by hand is a row no read here can be sure of, and an event that
+// names its own actor is who did it, forged. The store marks each context it
+// hands the servers with a key only the generated package can make, wherever
+// in the stack the layer that records the past is, and no other context: not
+// the one an operation goes on with, nor the one `pd.PastIn` hands its work.
+// A [Store] of the app's own making is refused as any other writer is; one
+// that wraps `pd.Past`'s, as [WithClock] does, writes through it.
+//
 // # An operation
 //
 // [Begin] records the event an operation is, in the transaction it is
@@ -144,7 +158,9 @@ import (
 
 // Store is an app's past as this package writes and reads it: its Event and
 // Fact, through its own generated servers and its own ent client. `pd.Past`
-// is the one `pd gen` writes into an app that declares a past.
+// is the one `pd gen` writes into an app that declares a past, and the one
+// whose writes the app's Audit layer lets through: it marks what it hands the
+// servers, and a write of either that is not marked is refused.
 //
 // It is mechanical, and decides nothing. Every write it is asked for goes
 // through the servers it was built on, so the wall, the trail and every

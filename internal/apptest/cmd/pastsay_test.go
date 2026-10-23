@@ -276,9 +276,11 @@ func TestAnEventFromBeforeThePastIsSaidAsItWasWritten(t *testing.T) {
 	alice := b.person(t, ctx, "alice")
 	s := core.Sentences(b.Walled.Event())
 
-	// As it was written: a row of the app's, before the past wrote any.
+	// As it was written: a row of the app's own servers, before the past
+	// wrote any -- and before the Audit layer refused one it did not.
+	sink := b.beforeThePast(t)
 	before := func(desc string) pdid.Id {
-		v, err := b.Ungated.Event().Add(ctx, app.EventAddRequest_builder{
+		v, err := sink.Event().Add(ctx, app.EventAddRequest_builder{
 			Tenant:     app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
 			Kind:       "robot.oil",
 			ActorId:    alice.Bytes(),
