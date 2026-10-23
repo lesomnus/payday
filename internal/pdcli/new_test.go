@@ -55,6 +55,7 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 		"cmd/config.go",
 		"cli/cli.go",
 		"cli/driver.go",
+		"cli/filter.go",
 		"cli/telemetry.go",
 		"cmd/auth.go",
 		"cmd/thing/main.go",
@@ -71,14 +72,16 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 //
 // An import is a property of the package that writes it, and an app's sandbox
 // imports `cmd` for `Build`. So anything named in `cmd` is linked into the page
-// whether the page can use it or not, and two things there are large: the
-// wazero SQLite driver, which was 15 MB of payday's own sandbox module, and the
-// migration engine `Schema.Create` reaches, which was another 10.5 MB. The page
-// opens "sqlite3-wasm" and executes a script; it needs neither.
+// whether the page can use it or not, and three things there are large: the
+// wazero SQLite driver, which was 15 MB of payday's own sandbox module, the
+// migration engine `Schema.Create` reaches, which was another 10.5 MB, and CEL,
+// the language a Watch filter is evaluated in, which was 10 MB more
+// (payday#163). The page opens "sqlite3-wasm", executes a script and serves no
+// Watch; it needs none of them.
 //
-// Nothing else would say so. The sandbox works either way, neither is ever
-// used, and the only symptom is what the browser downloads -- which is how both
-// went unnoticed until the module was measured. So the check is on which
+// Nothing else would say so. The sandbox works either way, none of them is
+// ever used, and the only symptom is what the browser downloads -- which is how
+// each went unnoticed until the module was measured. So the check is on which
 // package the import is written in.
 func TestTheEnginesAreNotInTheSandbox(t *testing.T) {
 	x := require.New(t)
@@ -89,6 +92,10 @@ func TestTheEnginesAreNotInTheSandbox(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(dir, "cli", "driver.go"))
 	x.NoError(err)
 	x.Contains(string(b), `_ "github.com/lesomnus/payday/config/dbsqlite3"`)
+
+	b, err = os.ReadFile(filepath.Join(dir, "cli", "filter.go"))
+	x.NoError(err)
+	x.Contains(string(b), `_ "github.com/lesomnus/payday/resource/resourcecel"`)
 
 	// And not in `cmd`, which is the half a sandbox imports. Every file of the
 	// package rather than the one they were written in, because the next one to
@@ -106,7 +113,7 @@ func TestTheEnginesAreNotInTheSandbox(t *testing.T) {
 		x.NoError(err)
 
 		n++
-		for _, bad := range []string{"payday/config/db", "/internal/ent/migrate"} {
+		for _, bad := range []string{"payday/config/db", "/internal/ent/migrate", "payday/resource/resourcecel"} {
 			x.NotContains(string(b), bad,
 				"cmd/%s: the sandbox imports this package, so %s is linked into the page; it belongs in cli/",
 				e.Name(), bad)

@@ -3,8 +3,9 @@
 // `cmd` is the wiring both entry points share -- `Build` is there, and the
 // sandbox calls it to stand up the same server the process stands up. This
 // package is everything on the other side of that: parsing arguments, the
-// database engine a process opens, and deciding what to do about the shape of a
-// database that was already there.
+// database engine a process opens, the language its Watch filters are
+// evaluated in, and deciding what to do about the shape of a database that was
+// already there.
 //
 // # Why a package and not a build tag
 //
@@ -13,6 +14,8 @@
 // Measured on this app: the wazero SQLite engine was 15 MB of the sandbox
 // module and Atlas, which `entschema.Check` and `Schema.Create` reach, another
 // 10.5 MB -- 26 MB of a 72 MB download, to answer questions a page never asks.
+// CEL, which payday's generated code once brought into `cmd` through
+// `payday/resource`, was another 10 MB (payday#163).
 //
 // Both were first fixed with `//go:build !js`, which worked and was wrong: a
 // tag refuses to compile what would compile, and says nothing about why. What

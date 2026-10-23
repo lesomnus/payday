@@ -1,4 +1,4 @@
-package resource
+package resourcecel
 
 import (
 	"context"
@@ -8,17 +8,19 @@ import (
 
 	"cel.dev/cel-go/cel"
 	"cel.dev/cel-go/common/types"
-	"github.com/lesomnus/payday/pdpb"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/lesomnus/payday/pdpb"
+	"github.com/lesomnus/payday/resource"
 )
 
 func TestWireFilterMatchesNativeCEL(t *testing.T) {
-	s, _, created := testServer(t)
+	created := created(t, "public")
 	before := &pdpb.WatchEvent{}
 	require.NoError(t, created.GetValue().UnmarshalTo(before))
 	after := proto.Clone(before).(*pdpb.WatchEvent)
@@ -26,7 +28,7 @@ func TestWireFilterMatchesNativeCEL(t *testing.T) {
 	nested, err := anypb.New(wrapperspb.String("nested"))
 	require.NoError(t, err)
 	after.SetValue(nested)
-	event, err := Event(created.GetId(), time.Now(), "/app/Patch", "/batch", pdpb.ChangeKind_CHANGE_KIND_UPDATED, before, after)
+	event, err := resource.Event(created.GetId(), time.Now(), "/app/Patch", "/batch", pdpb.ChangeKind_CHANGE_KIND_UPDATED, before, after)
 	require.NoError(t, err)
 	native, err := cel.NewEnv(cel.Types(&pdpb.WatchEvent{}), cel.Variable("event", cel.ObjectType("payday.WatchEvent")))
 	require.NoError(t, err)
@@ -43,8 +45,7 @@ func TestWireFilterMatchesNativeCEL(t *testing.T) {
 			require.NoError(t, issues.Err())
 			old, err := native.Program(ast)
 			require.NoError(t, err)
-			wire, err := s.compile(expr)
-			require.NoError(t, err)
+			wire := compile(t, expr)
 			vars := map[string]any{"event": event}
 			want, _, nativeErr := old.Eval(vars)
 			got, _, wireErr := wire.Eval(vars)
@@ -57,30 +58,30 @@ func TestWireFilterMatchesNativeCEL(t *testing.T) {
 }
 
 func TestWireFilterLeavesUnrequestedPayloadUnread(t *testing.T) {
-	s, _, event := testServer(t)
+	s, w, event := testServer(t, identity)
 	event.GetValue().Value = []byte{0x80}
-	p, err := s.compile(`type(event.value) == payday.WatchEvent`)
-	require.NoError(t, err)
+	p := compile(t, `type(event.value) == payday.WatchEvent`)
 	v, _, err := p.Eval(map[string]any{"event": event})
 	require.NoError(t, err)
 	require.Equal(t, types.True, v)
-	p, err = s.compile(`has(event.value.method)`)
-	require.NoError(t, err)
+	p = compile(t, `has(event.value.method)`)
 	_, _, err = p.Eval(map[string]any{"event": event})
 	require.Error(t, err)
 	// The serving path still decodes and authorizes first. A metadata-only filter
 	// must not turn a corrupt stored image into a delivered event.
-	_, err = s.public(t.Context(), event)
-	require.Equal(t, codes.Internal, status.Code(err))
+	stream := newStream(t)
+	done := start(t, s, `type(event.value) == payday.WatchEvent`, stream)
+	publish(w, event)
+	require.Equal(t, codes.Internal, status.Code(result(t, done)))
+	require.Empty(t, stream.sent)
 }
 
 func TestWireFilterUsesProjectedImage(t *testing.T) {
-	s, w, event := testServer(t)
-	before := proto.Clone(event)
-	s.project = func(_ context.Context, v proto.Message) (proto.Message, error) {
+	s, w, event := testServer(t, func(_ context.Context, v proto.Message) (proto.Message, error) {
 		v.(*pdpb.WatchEvent).SetMethod("redacted")
 		return v, nil
-	}
+	})
+	before := proto.Clone(event)
 	stream := newStream(t)
 	done := start(t, s, `event.value.method == "redacted"`, stream)
 	publish(w, event)
@@ -98,7 +99,7 @@ func TestWireFilterUsesProjectedImage(t *testing.T) {
 }
 
 func TestWireFilterDeepAnyErrorIsSanitized(t *testing.T) {
-	s, w, event := testServer(t)
+	s, w, event := testServer(t, identity)
 	var nested proto.Message = wrapperspb.String("private-error-sentinel")
 	for range 103 {
 		var err error

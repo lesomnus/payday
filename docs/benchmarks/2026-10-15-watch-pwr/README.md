@@ -23,7 +23,10 @@ materialize messages eagerly.
 ## Method
 
 The reproducible benchmark is
-[`resource/wire_benchmark_test.go`](../../../resource/wire_benchmark_test.go).
+[`resource/wire_benchmark_test.go`](https://github.com/lesomnus/payday/blob/86176f1f7e728466a297810338a8861fb0051777/resource/wire_benchmark_test.go)
+at that commit. It has since moved with CEL (payday#163): the `filter` stage is
+`BenchmarkWatchFilter` in `resource/resourcecel`, and what `project_filter` adds
+to it is `BenchmarkProject` in `resource`.
 Both implementations use the same serving-path CEL cost and interrupt limits,
 compiled before timing. The `native` environment reproduces the previous standard
 CEL provider; `pwr` uses the current server environment. Each iteration allocates

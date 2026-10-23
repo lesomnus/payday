@@ -3,8 +3,9 @@
 // `cmd` is the wiring both entry points share -- `Build` is there, and an app's
 // sandbox calls it to stand up the same server the process stands up. This
 // package is everything on the other side of that: parsing arguments, the
-// database engine a process opens, and what to do about the shape of a database
-// that was already there.
+// database engine a process opens, the language its Watch filters are
+// evaluated in, and what to do about the shape of a database that was already
+// there.
 //
 // # Why a package and not a build tag
 //
@@ -12,7 +13,8 @@
 // engine named in `cmd` is linked into the sandbox whether the page can use it
 // or not, and neither is small: measured on payday's own app, the wazero SQLite
 // engine was 15 MB of the sandbox module and Atlas -- which `Schema.Create`
-// reaches -- another 10.5 MB, out of 72 MB the browser had to download.
+// reaches -- another 10.5 MB, out of 72 MB the browser had to download. CEL,
+// which `filter.go` links, was 10 MB more.
 //
 // A `//go:build !js` on each would also have done it, and is worse: a tag
 // refuses to compile what would compile, and says nothing about why. What is

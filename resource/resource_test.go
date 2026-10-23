@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type testStream struct {
@@ -67,6 +69,16 @@ func start(t *testing.T, s *Server, filter string, stream *testStream) <-chan er
 	}
 	return done
 }
+
+// refused is a watch that is expected to end before it is subscribed: a
+// refusal that regressed ends it on the deadline, as an error the test reads,
+// rather than leaving it open for the run's timeout to find.
+func refused(t *testing.T, s *Server, filter string) error {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	t.Cleanup(cancel)
+	return s.Watch(pdpb.WatchRequest_builder{Filter: filter}.Build(), &testStream{ctx: ctx, ready: make(chan struct{}), sent: make(chan *pdpb.WatchEvent, 256)})
+}
 func newStream(t *testing.T) *testStream {
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
@@ -85,60 +97,164 @@ func result(t *testing.T, done <-chan error) error {
 func publish(w *watch.Watch, v *pdpb.WatchEvent) {
 	w.Broker().Publish(context.Background(), watch.Event{Changes: []watch.Change{{Resource: v}}})
 }
-
-func TestInvalidFilters(t *testing.T) {
-	s, _, _ := testServer(t)
-	for _, filter := range []string{"42", "event.value", "event.", strings.Repeat(" ", MaxExpression+1), strings.Repeat("(", MaxDepth+1) + "true" + strings.Repeat(")", MaxDepth+1)} {
-		_, err := s.compile(filter)
-		require.Equal(t, codes.InvalidArgument, status.Code(err))
-	}
-}
-
-func TestRuntimeErrorsAndLimits(t *testing.T) {
-	xs := "[" + strings.Repeat("0,", 49) + "0]"
-	costly := xs + ".all(a," + xs + ".all(b," + xs + ".all(c," + xs + ".all(d,true))))"
-	for _, test := range []struct {
-		name, filter string
-		code         codes.Code
-	}{
-		{"dynamic field", "event.value.missing == 1", codes.InvalidArgument},
-		{"cost", costly, codes.ResourceExhausted},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			s, w, event := testServer(t)
-			stream := newStream(t)
-			done := start(t, s, test.filter, stream)
-			publish(w, event)
-			err := result(t, done)
-			require.Equal(t, test.code, status.Code(err))
-			require.NotContains(t, err.Error(), "public")
-		})
-	}
-}
-
-func TestDeniedImagesNeverReachCEL(t *testing.T) {
-	s, w, event := testServer(t)
-	s.project = func(_ context.Context, v proto.Message) (proto.Message, error) {
-		if v.(*pdpb.WatchEvent).GetMethod() == "public" {
-			return nil, nil
-		}
-		return v, nil
-	}
-	stream := newStream(t)
-	done := start(t, s, `event.value.method == "visible" || event.value.missing == 1`, stream)
-	publish(w, event)
-	id := pdid.New(1)
-	visible, err := Event(id[:], time.Now(), "/app/Add", "/app/Add", pdpb.ChangeKind_CHANGE_KIND_CREATED, nil, pdpb.WatchEvent_builder{Id: id[:], Method: "visible"}.Build())
-	require.NoError(t, err)
-	publish(w, visible)
+func received(t *testing.T, stream *testStream, done <-chan error) *pdpb.WatchEvent {
+	t.Helper()
 	select {
 	case got := <-stream.sent:
-		require.True(t, proto.Equal(visible, got))
+		return got
 	case err := <-done:
 		t.Fatal(err)
 	case <-time.After(time.Second):
 		t.Fatal("authorized event did not arrive")
 	}
+	return nil
+}
+
+// A language for the tests of the server, which links none: CEL's own are in
+// resourcecel, whose import would put it in this binary as well.
+type compiler func(filter string) (Filter, error)
+
+func (c compiler) Compile(filter string) (Filter, error) { return c(filter) }
+
+type matcher func(context.Context, *pdpb.WatchEvent) (bool, error)
+
+func (m matcher) Match(ctx context.Context, event *pdpb.WatchEvent) (bool, error) {
+	return m(ctx, event)
+}
+
+func filtered(m matcher) Filters {
+	return compiler(func(string) (Filter, error) { return m, nil })
+}
+
+// TestAServerWithNoLanguageRefusesAFilter, which is what an app's sandbox is:
+// nothing in this binary links a language, as nothing in a page does.
+func TestAServerWithNoLanguageRefusesAFilter(t *testing.T) {
+	s, w, event := testServer(t)
+	require.Nil(t, s.filters)
+
+	// Refused before anything is subscribed, rather than served as though the
+	// filter were not there.
+	err := refused(t, s, "true")
+	require.Equal(t, codes.Unimplemented, status.Code(err))
+	require.Contains(t, status.Convert(err).Message(), "resource/resourcecel")
+
+	// And no filter needs no language.
+	stream := newStream(t)
+	done := start(t, s, "", stream)
+	publish(w, event)
+	require.True(t, proto.Equal(event, received(t, stream, done)))
+}
+
+// TestATooLargeFilterIsRefusedWhateverItIsWrittenIn: the bound is on what a
+// caller may send, and no language is asked to read it.
+func TestATooLargeFilterIsRefusedWhateverItIsWrittenIn(t *testing.T) {
+	s, _, _ := testServer(t)
+	asked := false
+	s.filters = compiler(func(string) (Filter, error) { asked = true; return nil, errors.New("asked") })
+	err := refused(t, s, strings.Repeat(" ", MaxExpression+1))
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+	require.False(t, asked)
+}
+
+// TestAFilterIsAskedOnlyOfWhatMayBeSent: an image the subscriber may not read
+// never reaches the filter, and what does is the projected image, not the one
+// the write recorded.
+func TestAFilterIsAskedOnlyOfWhatMayBeSent(t *testing.T) {
+	s, w, event := testServer(t)
+	s.project = func(_ context.Context, v proto.Message) (proto.Message, error) {
+		if v.(*pdpb.WatchEvent).GetMethod() == "hidden" {
+			return nil, nil
+		}
+		v.(*pdpb.WatchEvent).SetCallMethod("projected")
+		return v, nil
+	}
+	// Appended on the watch's goroutine, and read once the event it sends has
+	// arrived, which is after.
+	var asked []string
+	s.filters = filtered(func(_ context.Context, e *pdpb.WatchEvent) (bool, error) {
+		image := &pdpb.WatchEvent{}
+		if err := e.GetValue().UnmarshalTo(image); err != nil {
+			return false, err
+		}
+		asked = append(asked, image.GetMethod()+"/"+image.GetCallMethod())
+		return image.GetMethod() == "public", nil
+	})
+
+	id := pdid.New(1)
+	hidden, err := Event(id[:], time.Now(), "/app/Add", "/app/Add", pdpb.ChangeKind_CHANGE_KIND_CREATED, nil, pdpb.WatchEvent_builder{Id: id[:], Method: "hidden"}.Build())
+	require.NoError(t, err)
+	refused, err := Event(id[:], time.Now(), "/app/Add", "/app/Add", pdpb.ChangeKind_CHANGE_KIND_CREATED, nil, pdpb.WatchEvent_builder{Id: id[:], Method: "refused"}.Build())
+	require.NoError(t, err)
+	before := proto.Clone(event)
+
+	stream := newStream(t)
+	done := start(t, s, "anything", stream)
+	publish(w, hidden)
+	publish(w, refused)
+	publish(w, event)
+
+	got := received(t, stream, done)
+	image := &pdpb.WatchEvent{}
+	require.NoError(t, got.GetValue().UnmarshalTo(image))
+	require.Equal(t, "projected", image.GetCallMethod())
+	require.Equal(t, []string{"refused/projected", "public/projected"}, asked)
+	require.True(t, proto.Equal(before, event), "projection changed the shared event")
+}
+
+// TestWhatAFilterFailsWithIsWhatTheSubscriberIsTold, when it is a status, and
+// nothing of it when it is not: the language did not shape it to be read.
+func TestWhatAFilterFailsWithIsWhatTheSubscriberIsTold(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		err  error
+		code codes.Code
+	}{
+		{"status", status.Error(codes.ResourceExhausted, "over budget"), codes.ResourceExhausted},
+		{"not a status", errors.New("private-error-sentinel"), codes.Internal},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			s, w, event := testServer(t)
+			s.filters = filtered(func(context.Context, *pdpb.WatchEvent) (bool, error) { return false, test.err })
+			stream := newStream(t)
+			done := start(t, s, "anything", stream)
+			publish(w, event)
+			err := result(t, done)
+			require.Equal(t, test.code, status.Code(err))
+			require.NotContains(t, err.Error(), "private-error-sentinel")
+		})
+	}
+}
+
+// TestAFilterCompiledToNothingIsNotNoFilter: nil is how the server says "every
+// event", and a language that answered it for a filter would have the stream
+// served as though none were sent.
+func TestAFilterCompiledToNothingIsNotNoFilter(t *testing.T) {
+	s, _, _ := testServer(t)
+	s.filters = compiler(func(string) (Filter, error) { return nil, nil })
+	err := refused(t, s, "anything")
+	require.Equal(t, codes.Internal, status.Code(err))
+}
+
+// TestALanguageIsRegisteredOnce, and a server made after it compiles in it.
+func TestALanguageIsRegisteredOnce(t *testing.T) {
+	require.Nil(t, registered())
+	t.Cleanup(func() { language.l = nil })
+
+	var told []protoreflect.FullName
+	RegisterLanguage(func(types []protoreflect.MessageDescriptor) (Filters, error) {
+		for _, d := range types {
+			told = append(told, d.FullName())
+		}
+		return filtered(func(context.Context, *pdpb.WatchEvent) (bool, error) { return true, nil }), nil
+	})
+	s, err := New(&pdpb.UnimplementedBatchServiceServer{}, nil, func(_ context.Context, v proto.Message) (proto.Message, error) { return v, nil }, &pdpb.BatchRequest{})
+	require.NoError(t, err)
+	require.NotNil(t, s.filters)
+	require.Equal(t, []protoreflect.FullName{"payday.WatchEvent", "payday.BatchRequest"}, told)
+
+	require.PanicsWithValue(t, "resource: a filter language is registered already", func() {
+		RegisterLanguage(func([]protoreflect.MessageDescriptor) (Filters, error) { return nil, nil })
+	})
 }
 
 func TestBacklogIsAnError(t *testing.T) {

@@ -1,16 +1,25 @@
 // Package resource serves operations across resource types. Watch is a live
 // stream of immutable mutation images; it does not replace List or provide replay.
+//
+// # The filter language is not here
+//
+// A subscription's filter is CEL, and CEL is
+// [github.com/lesomnus/payday/resource/resourcecel], which a process links by
+// importing it. Everything an app generates imports this package, and so does
+// the app's sandbox; that package says why that keeps CEL out of this one.
+//
+// A [Server] whose binary links no language serves Batch, and a Watch with no
+// filter. A Watch with one is refused, `Unimplemented`, rather than served as
+// though it had none: a filter says what the subscriber is not to be sent, and
+// a stream that ignored it would send exactly that.
 package resource
 
 import (
 	"bytes"
 	"context"
 	"errors"
+	"sync"
 
-	"cel.dev/cel-go/cel"
-	"cel.dev/cel-go/common/types"
-	"cel.dev/cel-go/interpreter"
-	pwrcel "github.com/lesomnus/pwr/cel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -24,9 +33,9 @@ import (
 )
 
 const (
+	// MaxExpression is the longest filter a subscription may send, in bytes,
+	// whatever it is written in: it is refused before a language reads it.
 	MaxExpression = 16 << 10
-	MaxDepth      = 64
-	MaxCost       = 100_000
 	MaxEventBytes = 4 << 20
 )
 
@@ -45,8 +54,63 @@ type Select func(context.Context, *pdpb.WatchEvent) (bool, error)
 type RecorderOptions struct {
 	// Previous captures the preimage of updates using a row lock. By default,
 	// updates include only Value. Deletions always capture Previous because it
-	// is their only payload for authorization and CEL; creations have no Previous.
+	// is their only payload for authorization and filtering; creations have no
+	// Previous.
 	Previous bool
+}
+
+// Filter is one subscription's filter, compiled.
+type Filter interface {
+	// Match is asked of each event the subscriber may read, after its images
+	// were projected: it sees what the stream would send and nothing it would
+	// not. An error ends the subscription and is what the subscriber is told,
+	// so it is a status, and it never says a value the event held -- the event
+	// is somebody's data, and the error is read by whoever wrote the filter.
+	Match(ctx context.Context, event *pdpb.WatchEvent) (bool, error)
+}
+
+// Filters compiles the filters of one [Server].
+type Filters interface {
+	// Compile answers the filter a subscription sent, and never a nil Filter
+	// with no error. One that does not compile is InvalidArgument, saying why:
+	// the reason is about the caller's own text and nobody's data.
+	Compile(filter string) (Filter, error)
+}
+
+// Language makes the [Filters] of a [Server] as it is made, told the types a
+// filter may name: the event first, then every resource the server serves.
+type Language func(types []protoreflect.MessageDescriptor) (Filters, error)
+
+var language struct {
+	sync.Mutex
+	l Language
+}
+
+// RegisterLanguage makes a Watch filter mean something: every [Server] made
+// after it compiles its filters in `l`.
+//
+// [github.com/lesomnus/payday/resource/resourcecel] calls it as it is
+// imported, and nothing else should. A filter is CEL, which is what the field
+// says to whoever writes one, and a second language for it would be a second
+// meaning -- so a second registration panics, as a second driver of one name
+// does.
+func RegisterLanguage(l Language) {
+	if l == nil {
+		panic("resource: RegisterLanguage with a nil language")
+	}
+
+	language.Lock()
+	defer language.Unlock()
+	if language.l != nil {
+		panic("resource: a filter language is registered already")
+	}
+	language.l = l
+}
+
+func registered() Language {
+	language.Lock()
+	defer language.Unlock()
+	return language.l
 }
 
 type Server struct {
@@ -54,7 +118,10 @@ type Server struct {
 	batch   pdpb.BatchServiceServer
 	watch   *watch.Watch
 	project Project
-	env     *cel.Env
+
+	// filters is nil in a binary that links no language: see the package
+	// comment.
+	filters Filters
 }
 
 func New(batch pdpb.BatchServiceServer, w *watch.Watch, project Project, messages ...proto.Message) (*Server, error) {
@@ -68,50 +135,45 @@ func New(batch pdpb.BatchServiceServer, w *watch.Watch, project Project, message
 		}
 		descriptors = append(descriptors, m.ProtoReflect().Descriptor())
 	}
-	adapter, err := pwrcel.New(descriptors...)
-	if err != nil {
-		return nil, err
+	s := &Server{batch: batch, watch: w, project: project}
+	if l := registered(); l != nil {
+		filters, err := l(descriptors)
+		if err != nil {
+			return nil, err
+		}
+		s.filters = filters
 	}
-	options := append(adapter.EnvOptions(), cel.Variable("event", cel.ObjectType("payday.WatchEvent")),
-		cel.ParserExpressionSizeLimit(MaxExpression), cel.ParserRecursionLimit(MaxDepth),
-		cel.Constant("payday.CHANGE_KIND_UNSPECIFIED", cel.IntType, types.Int(pdpb.ChangeKind_CHANGE_KIND_UNSPECIFIED)),
-		cel.Constant("payday.CHANGE_KIND_CREATED", cel.IntType, types.Int(pdpb.ChangeKind_CHANGE_KIND_CREATED)),
-		cel.Constant("payday.CHANGE_KIND_UPDATED", cel.IntType, types.Int(pdpb.ChangeKind_CHANGE_KIND_UPDATED)),
-		cel.Constant("payday.CHANGE_KIND_DELETED", cel.IntType, types.Int(pdpb.ChangeKind_CHANGE_KIND_DELETED)))
-	env, err := cel.NewEnv(options...)
-	if err != nil {
-		return nil, err
-	}
-	return &Server{batch: batch, watch: w, project: project, env: env}, nil
+	return s, nil
 }
 
 func (s *Server) Batch(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.BatchResponse, error) {
 	return s.batch.Do(ctx, req)
 }
 
-func (s *Server) compile(filter string) (cel.Program, error) {
+// compile is the filter a subscription sent, as what its events are matched
+// by. Nil, with no error, is every event the subscriber may read: an empty
+// filter needs no language to mean that.
+func (s *Server) compile(filter string) (Filter, error) {
 	if len(filter) > MaxExpression {
 		return nil, status.Error(codes.InvalidArgument, "watch filter is too large")
 	}
 	if filter == "" {
-		filter = "true"
+		return nil, nil
 	}
-	ast, issues := s.env.Compile(filter)
-	if issues.Err() != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "watch filter: %s", issues.Err())
+	if s.filters == nil {
+		return nil, status.Error(codes.Unimplemented, "watch filter: this server links no filter language (payday's resource/resourcecel), so it serves only a watch with no filter")
 	}
-	if !ast.OutputType().IsExactType(cel.BoolType) {
-		return nil, status.Error(codes.InvalidArgument, "watch filter must return bool")
+	f, err := s.filters.Compile(filter)
+	if err == nil && f == nil {
+		// Nil is what serves the stream unfiltered, which is the one answer a
+		// filter must not get.
+		return nil, status.Error(codes.Internal, "watch filter compiled to nothing")
 	}
-	p, err := s.env.Program(ast, cel.CostLimit(MaxCost), cel.InterruptCheckFrequency(64))
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "watch filter cannot be evaluated")
-	}
-	return p, nil
+	return f, err
 }
 
 func (s *Server) Watch(req *pdpb.WatchRequest, out grpc.ServerStreamingServer[pdpb.WatchEvent]) error {
-	p, err := s.compile(req.GetFilter())
+	f, err := s.compile(req.GetFilter())
 	if err != nil {
 		return err
 	}
@@ -143,22 +205,13 @@ func (s *Server) Watch(req *pdpb.WatchRequest, out grpc.ServerStreamingServer[pd
 				if event == nil {
 					continue
 				}
-				// Project first: CEL must only see this subscriber's public image.
-				// The adapter reads its Any bytes through pwr, avoiding a second
-				// full payload decode without serializing the event envelope.
-				v, _, err := p.ContextEval(ctx, map[string]any{"event": event})
+				// Project first: the filter must only see this subscriber's
+				// public image.
+				ok, err := match(ctx, f, event)
 				if err != nil {
-					if ctx.Err() != nil {
-						return status.FromContextError(ctx.Err()).Err()
-					}
-					var cancelled interpreter.EvalCancelledError
-					if errors.As(err, &cancelled) && cancelled.Cause == interpreter.CostLimitExceeded {
-						return status.Error(codes.ResourceExhausted, "watch filter exceeded its evaluation budget")
-					}
-					// The CEL error may embed a field's value. Never return it to the caller.
-					return status.Error(codes.InvalidArgument, "watch filter failed on an authorized event; guard dynamic fields with type and presence checks")
+					return err
 				}
-				if v == types.True {
+				if ok {
 					if err := out.Send(event); err != nil {
 						return err
 					}
@@ -166,6 +219,27 @@ func (s *Server) Watch(req *pdpb.WatchRequest, out grpc.ServerStreamingServer[pd
 			}
 		}
 	}
+}
+
+// match asks a subscription's filter about one event it may be sent.
+func match(ctx context.Context, f Filter, event *pdpb.WatchEvent) (bool, error) {
+	if f == nil {
+		return true, nil
+	}
+	ok, err := f.Match(ctx, event)
+	if err == nil {
+		return ok, nil
+	}
+	if ctx.Err() != nil {
+		return false, status.FromContextError(ctx.Err()).Err()
+	}
+	if _, isStatus := status.FromError(err); !isStatus {
+		// What a language answered is sent to the subscriber, and an error
+		// that is not a status is one nobody shaped for that: it may say a
+		// value the event held.
+		return false, status.Error(codes.Internal, "watch filter failed")
+	}
+	return false, err
 }
 
 func (s *Server) public(ctx context.Context, source *pdpb.WatchEvent) (*pdpb.WatchEvent, error) {
