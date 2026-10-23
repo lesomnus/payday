@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/lesomnus/payday/access"
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/gate"
@@ -87,6 +88,13 @@ type Server struct {
 	// putting a rule in here that says some row is special; see
 	// `docs/tenancy.md`.
 	Policy gate.Policy
+
+	// Contents is what the trail keeps of each kind's writes, as the recorder
+	// was given it (`audit.content`, `audit.digest.key`): what a write made
+	// beneath the servers on purpose is put on the trail with -- the past's
+	// redaction of a reason, `pd.Record` -- so that its digest is the one a
+	// check of the rows makes again.
+	Contents audit.Contents
 
 	// Access is the access record's writer (payday#111): what a read's row
 	// waits in to be written with the others of its second, and what writes a
@@ -197,7 +205,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	// two calls with their own names rather than one `Add` on the wire. See
 	// [Slow].
 	stacked, err := app.Build(walled.WithWatch(w),
-		core.Build(),
+		core.Build(drv, content),
 		pd.AuditBuild(),
 		pd.SecretBuild(),
 		pd.InterceptBuild([]grpc.UnaryServerInterceptor{Slow(slowCall)}, nil),
@@ -218,7 +226,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		return nil, err
 	}
 
-	s := &Server{Db: db, Ent: client, Drv: drv, Dialect: dialect, Watch: w, Walled: stacked, Ungated: ungated}
+	s := &Server{Db: db, Ent: client, Drv: drv, Dialect: dialect, Watch: w, Walled: stacked, Ungated: ungated, Contents: content}
 
 	// The access record's reads are written a second at a time, by a loop of
 	// each process's own that writes what it holds once more as it stops.

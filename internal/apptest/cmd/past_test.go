@@ -196,6 +196,8 @@ func TestAnEventIsReadBackByItsKind(t *testing.T) {
 	x.Equal(map[string]protoreflect.FullName{
 		"machine.service":    "app.MachineServiced",
 		"app.MachineStarted": "app.MachineStarted",
+		"robot.move":         "app.RobotMoved",
+		"correct":            "app.Corrected",
 	}, names)
 
 	b, ctx := build(t)

@@ -49,7 +49,7 @@ func TestAnInterceptorRunsBetweenLayers(t *testing.T) {
 		b, ctx := build(t)
 
 		var saw []string
-		s := b.stack(t, core.Build(), pd.InterceptBuild([]grpc.UnaryServerInterceptor{
+		s := b.stack(t, core.Build(b.Drv, b.Contents), pd.InterceptBuild([]grpc.UnaryServerInterceptor{
 			func(ctx context.Context, req any, info *grpc.UnaryServerInfo, next grpc.UnaryHandler) (any, error) {
 				saw = append(saw, info.FullMethod)
 				return next(ctx, req)
@@ -73,7 +73,7 @@ func TestAnInterceptorRunsBetweenLayers(t *testing.T) {
 		x := require.New(t)
 		b, ctx := build(t)
 
-		s := b.stack(t, core.Build(), pd.InterceptBuild([]grpc.UnaryServerInterceptor{
+		s := b.stack(t, core.Build(b.Drv, b.Contents), pd.InterceptBuild([]grpc.UnaryServerInterceptor{
 			func(ctx context.Context, req any, info *grpc.UnaryServerInfo, next grpc.UnaryHandler) (any, error) {
 				if info.FullMethod == app.RobotService_Add_FullMethodName {
 					return nil, status.Error(codes.ResourceExhausted, "not today")
@@ -108,7 +108,7 @@ func TestAnInterceptorRunsBetweenLayers(t *testing.T) {
 			}
 		}
 
-		s := b.stack(t, core.Build(), pd.InterceptBuild([]grpc.UnaryServerInterceptor{mark("a"), mark("b")}, nil))
+		s := b.stack(t, core.Build(b.Drv, b.Contents), pd.InterceptBuild([]grpc.UnaryServerInterceptor{mark("a"), mark("b")}, nil))
 
 		_, err := s.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
 			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
@@ -189,7 +189,7 @@ func TestAStreamInterceptorMayPutItselfInTheWay(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
-	s := b.stack(t, core.Build(), pd.InterceptBuild(nil, nil), pd.GateBuild())
+	s := b.stack(t, core.Build(b.Drv, b.Contents), pd.InterceptBuild(nil, nil), pd.GateBuild())
 
 	v, err := s.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
 		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
@@ -206,7 +206,7 @@ func TestAStreamInterceptorMayPutItselfInTheWay(t *testing.T) {
 	mine := newFakeStream(wctx)
 	out := newFakeStream(wctx)
 
-	watched := b.stack(t, core.Build(), pd.InterceptBuild(nil, []grpc.StreamServerInterceptor{
+	watched := b.stack(t, core.Build(b.Drv, b.Contents), pd.InterceptBuild(nil, []grpc.StreamServerInterceptor{
 		func(srv any, ss grpc.ServerStream, i *grpc.StreamServerInfo, next grpc.StreamHandler) error {
 			info = i
 

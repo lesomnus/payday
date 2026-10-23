@@ -383,3 +383,61 @@ message Shift {
 }
 
 var _ = protogen.GoImportPath("")
+
+// TestThePastsStoreIsWrittenWithAPast: `pd.Past` is written into an app that
+// declares a past and into no other, and it says the tenant of a subject the
+// way the kind of the subject has one -- read for a kind behind the wall, a
+// row of no tenant for one behind none, and no subject at all for one of
+// payday's own records or a kind no server writes and the trail does not
+// read.
+func TestThePastsStoreIsWrittenWithAPast(t *testing.T) {
+	emit := func(t *testing.T, src string) string {
+		t.Helper()
+
+		s, p, err := readPlugin(t, map[string]string{"test/schema.proto": inPkg("fleet", src)})
+		require.NoError(t, err)
+
+		g := p.NewGeneratedFile("pd.go", "example.com/app/server/pd")
+		g.P("package pd")
+		g.P()
+		pdgen.EmitPast(g, s, pdgen.Paths{Ent: "example.com/app/internal/ent", Bare: "example.com/app/server/bare"}, "example.com/app")
+
+		b, err := g.Content()
+		require.NoError(t, err)
+
+		return string(b)
+	}
+
+	x := require.New(t)
+
+	out := emit(t, past(t, entity("Robot", `domain: 7`, `Tenant tenant = 2 [(orm.edge) = {immutable: true}];`)+
+		entity("Fleet", `domain: 9, global: {}`)+`
+message Lock {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  option (orm.message) = {};
+  option (payday.entity) = {domain: 10, erase: {hard: {}}, trail: {off: {why: "a lock"}}};
+}
+`))
+	x.Contains(out, "func Past(next app.Server, drv dialect.Driver, content audit.Contents) (past.Store, error) {")
+	x.Contains(out, "s, err := enttx.Rebind(next, drv)", "the stack is put on the operation's transaction, not trusted to be")
+	x.Contains(out, "\t\t\tcase RobotDomain:\n\t\t\t\trows, err = rowsRobot(ctx, s.db, robot.IdIn(uuids(page)...))\n\t\t\tcase")
+	x.Contains(out, "\t\t\tcase FleetDomain:\n\t\t\t\trows, err = rowsFleet(ctx, s.db, fleet.IdIn(uuids(page)...))\n\t\t\t\tglobal = true\n")
+	x.NotContains(out, "case AuditDomain:", "payday's own records are no subject")
+	x.NotContains(out, "case LockDomain:", "a kind behind the wall no server writes and the trail does not read")
+	x.Contains(out, "func (s pastStore) Redact(")
+	x.Contains(out, "Record(ctx, s.db, s.content, action,")
+
+	x.NotContains(emit(t, ownAll(t)+tenantedRobot), "func Past(", "an app with no past was given a store of one")
+}
+
+// tenantedRobot is a robot behind the wall, for a schema that needs an entity
+// of the app's own.
+const tenantedRobot = `
+message Robot {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 7, erase: {hard: {}}};
+}
+`

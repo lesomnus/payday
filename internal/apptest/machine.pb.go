@@ -725,6 +725,94 @@ func (b0 MachineStarted_builder) Build() *MachineStarted {
 	return m0
 }
 
+// Corrected is what an event correcting another one holds: which, and when it
+// happened -- or no moment, for one that never did. Its facts are the ones
+// the correction writes, and the ones it supersedes say it was this.
+type Corrected struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Event []byte                 `protobuf:"bytes,1,opt,name=event"`
+	xxx_hidden_At    *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=at"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *Corrected) Reset() {
+	*x = Corrected{}
+	mi := &file_app_machine_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Corrected) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Corrected) ProtoMessage() {}
+
+func (x *Corrected) ProtoReflect() protoreflect.Message {
+	mi := &file_app_machine_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Corrected) GetEvent() []byte {
+	if x != nil {
+		return x.xxx_hidden_Event
+	}
+	return nil
+}
+
+func (x *Corrected) GetAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_At
+	}
+	return nil
+}
+
+func (x *Corrected) SetEvent(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Event = v
+}
+
+func (x *Corrected) SetAt(v *timestamppb.Timestamp) {
+	x.xxx_hidden_At = v
+}
+
+func (x *Corrected) HasAt() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_At != nil
+}
+
+func (x *Corrected) ClearAt() {
+	x.xxx_hidden_At = nil
+}
+
+type Corrected_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Event []byte
+	At    *timestamppb.Timestamp
+}
+
+func (b0 Corrected_builder) Build() *Corrected {
+	m0 := &Corrected{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Event = b.Event
+	x.xxx_hidden_At = b.At
+	return m0
+}
+
 // What a machine is built as.
 type Machine_Spec struct {
 	state            protoimpl.MessageState `protogen:"opaque.v1"`
@@ -736,7 +824,7 @@ type Machine_Spec struct {
 
 func (x *Machine_Spec) Reset() {
 	*x = Machine_Spec{}
-	mi := &file_app_machine_proto_msgTypes[4]
+	mi := &file_app_machine_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -748,7 +836,7 @@ func (x *Machine_Spec) String() string {
 func (*Machine_Spec) ProtoMessage() {}
 
 func (x *Machine_Spec) ProtoReflect() protoreflect.Message {
-	mi := &file_app_machine_proto_msgTypes[4]
+	mi := &file_app_machine_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -808,7 +896,7 @@ type MachineServiced_Part struct {
 
 func (x *MachineServiced_Part) Reset() {
 	*x = MachineServiced_Part{}
-	mi := &file_app_machine_proto_msgTypes[6]
+	mi := &file_app_machine_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -820,7 +908,7 @@ func (x *MachineServiced_Part) String() string {
 func (*MachineServiced_Part) ProtoMessage() {}
 
 func (x *MachineServiced_Part) ProtoReflect() protoreflect.Message {
-	mi := &file_app_machine_proto_msgTypes[6]
+	mi := &file_app_machine_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -919,7 +1007,11 @@ const file_app_machine_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\rR\x05count:\x15\x92\xbb\x16\x11\n" +
 	"\x0fmachine.service\"0\n" +
 	"\x0eMachineStarted\x12\x18\n" +
-	"\amachine\x18\x01 \x01(\fR\amachine:\x04\x92\xbb\x16\x00*K\n" +
+	"\amachine\x18\x01 \x01(\fR\amachine:\x04\x92\xbb\x16\x00\"\\\n" +
+	"\tCorrected\x12\x14\n" +
+	"\x05event\x18\x01 \x01(\fR\x05event\x12*\n" +
+	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at:\r\x92\xbb\x16\t\n" +
+	"\acorrect*K\n" +
 	"\x04Mode\x12\x14\n" +
 	"\x10MODE_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tMODE_IDLE\x10\x01\x12\f\n" +
@@ -927,40 +1019,42 @@ const file_app_machine_proto_rawDesc = "" +
 	"\fMODE_SERVICE\x10\x03B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_machine_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_app_machine_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_app_machine_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_app_machine_proto_goTypes = []any{
 	(Mode)(0),                     // 0: app.Mode
 	(*Machine)(nil),               // 1: app.Machine
 	(*MachineServiced)(nil),       // 2: app.MachineServiced
 	(*MachineStarted)(nil),        // 3: app.MachineStarted
-	nil,                           // 4: app.Machine.SettingsEntry
-	(*Machine_Spec)(nil),          // 5: app.Machine.Spec
-	nil,                           // 6: app.MachineServiced.SwappedEntry
-	(*MachineServiced_Part)(nil),  // 7: app.MachineServiced.Part
-	(*Tenant)(nil),                // 8: app.Tenant
-	(*Robot)(nil),                 // 9: app.Robot
-	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
+	(*Corrected)(nil),             // 4: app.Corrected
+	nil,                           // 5: app.Machine.SettingsEntry
+	(*Machine_Spec)(nil),          // 6: app.Machine.Spec
+	nil,                           // 7: app.MachineServiced.SwappedEntry
+	(*MachineServiced_Part)(nil),  // 8: app.MachineServiced.Part
+	(*Tenant)(nil),                // 9: app.Tenant
+	(*Robot)(nil),                 // 10: app.Robot
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
 }
 var file_app_machine_proto_depIdxs = []int32{
-	8,  // 0: app.Machine.tenant:type_name -> app.Tenant
-	9,  // 1: app.Machine.robot:type_name -> app.Robot
+	9,  // 0: app.Machine.tenant:type_name -> app.Tenant
+	10, // 1: app.Machine.robot:type_name -> app.Robot
 	0,  // 2: app.Machine.mode:type_name -> app.Mode
-	10, // 3: app.Machine.date_serviced:type_name -> google.protobuf.Timestamp
-	5,  // 4: app.Machine.spec:type_name -> app.Machine.Spec
-	4,  // 5: app.Machine.settings:type_name -> app.Machine.SettingsEntry
-	10, // 6: app.Machine.date_updated:type_name -> google.protobuf.Timestamp
-	10, // 7: app.Machine.date_erased:type_name -> google.protobuf.Timestamp
-	10, // 8: app.Machine.date_created:type_name -> google.protobuf.Timestamp
+	11, // 3: app.Machine.date_serviced:type_name -> google.protobuf.Timestamp
+	6,  // 4: app.Machine.spec:type_name -> app.Machine.Spec
+	5,  // 5: app.Machine.settings:type_name -> app.Machine.SettingsEntry
+	11, // 6: app.Machine.date_updated:type_name -> google.protobuf.Timestamp
+	11, // 7: app.Machine.date_erased:type_name -> google.protobuf.Timestamp
+	11, // 8: app.Machine.date_created:type_name -> google.protobuf.Timestamp
 	0,  // 9: app.MachineServiced.mode:type_name -> app.Mode
-	7,  // 10: app.MachineServiced.parts:type_name -> app.MachineServiced.Part
-	6,  // 11: app.MachineServiced.swapped:type_name -> app.MachineServiced.SwappedEntry
-	10, // 12: app.MachineServiced.due:type_name -> google.protobuf.Timestamp
-	7,  // 13: app.MachineServiced.SwappedEntry.value:type_name -> app.MachineServiced.Part
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	8,  // 10: app.MachineServiced.parts:type_name -> app.MachineServiced.Part
+	7,  // 11: app.MachineServiced.swapped:type_name -> app.MachineServiced.SwappedEntry
+	11, // 12: app.MachineServiced.due:type_name -> google.protobuf.Timestamp
+	11, // 13: app.Corrected.at:type_name -> google.protobuf.Timestamp
+	8,  // 14: app.MachineServiced.SwappedEntry.value:type_name -> app.MachineServiced.Part
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_app_machine_proto_init() }
@@ -976,7 +1070,7 @@ func file_app_machine_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_machine_proto_rawDesc), len(file_app_machine_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -489,6 +489,104 @@ func (b0 Robot_builder) Build() *Robot {
 	return m0
 }
 
+// RobotMoved is what an event of a robot's move holds (payday#151): the robot,
+// the cell it left and the cell it went to, each by identifier -- empty for
+// none, since a robot may be in no cell. `RobotService.Move` records one, and
+// the fact of the robot's cell it changed.
+type RobotMoved struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Robot []byte                 `protobuf:"bytes,1,opt,name=robot"`
+	xxx_hidden_From  []byte                 `protobuf:"bytes,2,opt,name=from"`
+	xxx_hidden_To    []byte                 `protobuf:"bytes,3,opt,name=to"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *RobotMoved) Reset() {
+	*x = RobotMoved{}
+	mi := &file_app_robot_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RobotMoved) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RobotMoved) ProtoMessage() {}
+
+func (x *RobotMoved) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RobotMoved) GetRobot() []byte {
+	if x != nil {
+		return x.xxx_hidden_Robot
+	}
+	return nil
+}
+
+func (x *RobotMoved) GetFrom() []byte {
+	if x != nil {
+		return x.xxx_hidden_From
+	}
+	return nil
+}
+
+func (x *RobotMoved) GetTo() []byte {
+	if x != nil {
+		return x.xxx_hidden_To
+	}
+	return nil
+}
+
+func (x *RobotMoved) SetRobot(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Robot = v
+}
+
+func (x *RobotMoved) SetFrom(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_From = v
+}
+
+func (x *RobotMoved) SetTo(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_To = v
+}
+
+type RobotMoved_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Robot []byte
+	From  []byte
+	To    []byte
+}
+
+func (b0 RobotMoved_builder) Build() *RobotMoved {
+	m0 := &RobotMoved{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Robot = b.Robot
+	x.xxx_hidden_From = b.From
+	x.xxx_hidden_To = b.To
+	return m0
+}
+
 // Joint reaches its tenant through the Robot it is part of, which is what a
 // `via` of more than one step is for. Nothing else about it is interesting.
 // Pairing is two robots that work together, and the entity `agrees:` is for.
@@ -521,7 +619,7 @@ type Pairing struct {
 
 func (x *Pairing) Reset() {
 	*x = Pairing{}
-	mi := &file_app_robot_proto_msgTypes[2]
+	mi := &file_app_robot_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -533,7 +631,7 @@ func (x *Pairing) String() string {
 func (*Pairing) ProtoMessage() {}
 
 func (x *Pairing) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[2]
+	mi := &file_app_robot_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -656,7 +754,7 @@ type Joint struct {
 
 func (x *Joint) Reset() {
 	*x = Joint{}
-	mi := &file_app_robot_proto_msgTypes[3]
+	mi := &file_app_robot_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -668,7 +766,7 @@ func (x *Joint) String() string {
 func (*Joint) ProtoMessage() {}
 
 func (x *Joint) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[3]
+	mi := &file_app_robot_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -792,7 +890,7 @@ type Fleet struct {
 
 func (x *Fleet) Reset() {
 	*x = Fleet{}
-	mi := &file_app_robot_proto_msgTypes[4]
+	mi := &file_app_robot_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +902,7 @@ func (x *Fleet) String() string {
 func (*Fleet) ProtoMessage() {}
 
 func (x *Fleet) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[4]
+	mi := &file_app_robot_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -903,7 +1001,7 @@ type Reading struct {
 
 func (x *Reading) Reset() {
 	*x = Reading{}
-	mi := &file_app_robot_proto_msgTypes[5]
+	mi := &file_app_robot_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -915,7 +1013,7 @@ func (x *Reading) String() string {
 func (*Reading) ProtoMessage() {}
 
 func (x *Reading) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_proto_msgTypes[5]
+	mi := &file_app_robot_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1098,7 +1196,14 @@ const file_app_robot_proto_rawDesc = "" +
 	"\a\n" +
 	"\x05alias\x10\x01\x12\x06\n" +
 	"\x04\n" +
-	"\x02id:\x00\"\xf6\x01\n" +
+	"\x02id:\x00\"X\n" +
+	"\n" +
+	"RobotMoved\x12\x14\n" +
+	"\x05robot\x18\x01 \x01(\fR\x05robot\x12\x12\n" +
+	"\x04from\x18\x02 \x01(\fR\x04from\x12\x0e\n" +
+	"\x02to\x18\x03 \x01(\fR\x02to:\x10\x92\xbb\x16\f\n" +
+	"\n" +
+	"robot.move\"\xf6\x01\n" +
 	"\aPairing\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12&\n" +
 	"\x04lead\x18\x02 \x01(\v2\n" +
@@ -1134,36 +1239,37 @@ const file_app_robot_proto_rawDesc = "" +
 	"\frobot.tenant\x1a\ttenant_idB<\xca\xc7\x16\x06\n" +
 	"\x04\b\x11\x10\x12Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_app_robot_proto_goTypes = []any{
 	(*Cell)(nil),                  // 0: app.Cell
 	(*Robot)(nil),                 // 1: app.Robot
-	(*Pairing)(nil),               // 2: app.Pairing
-	(*Joint)(nil),                 // 3: app.Joint
-	(*Fleet)(nil),                 // 4: app.Fleet
-	(*Reading)(nil),               // 5: app.Reading
-	(*Tenant)(nil),                // 6: app.Tenant
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
-	(*Thing)(nil),                 // 8: shared.Thing
+	(*RobotMoved)(nil),            // 2: app.RobotMoved
+	(*Pairing)(nil),               // 3: app.Pairing
+	(*Joint)(nil),                 // 4: app.Joint
+	(*Fleet)(nil),                 // 5: app.Fleet
+	(*Reading)(nil),               // 6: app.Reading
+	(*Tenant)(nil),                // 7: app.Tenant
+	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	(*Thing)(nil),                 // 9: shared.Thing
 }
 var file_app_robot_proto_depIdxs = []int32{
-	6,  // 0: app.Cell.tenant:type_name -> app.Tenant
-	7,  // 1: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
-	6,  // 2: app.Robot.tenant:type_name -> app.Tenant
-	8,  // 3: app.Robot.thing:type_name -> shared.Thing
+	7,  // 0: app.Cell.tenant:type_name -> app.Tenant
+	8,  // 1: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
+	7,  // 2: app.Robot.tenant:type_name -> app.Tenant
+	9,  // 3: app.Robot.thing:type_name -> shared.Thing
 	0,  // 4: app.Robot.cell:type_name -> app.Cell
-	7,  // 5: app.Robot.date_attested:type_name -> google.protobuf.Timestamp
-	7,  // 6: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
-	7,  // 7: app.Robot.date_created:type_name -> google.protobuf.Timestamp
-	7,  // 8: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
+	8,  // 5: app.Robot.date_attested:type_name -> google.protobuf.Timestamp
+	8,  // 6: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
+	8,  // 7: app.Robot.date_created:type_name -> google.protobuf.Timestamp
+	8,  // 8: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
 	1,  // 9: app.Pairing.lead:type_name -> app.Robot
 	1,  // 10: app.Pairing.follow:type_name -> app.Robot
-	7,  // 11: app.Pairing.date_created:type_name -> google.protobuf.Timestamp
+	8,  // 11: app.Pairing.date_created:type_name -> google.protobuf.Timestamp
 	1,  // 12: app.Joint.robot:type_name -> app.Robot
-	7,  // 13: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
-	7,  // 14: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
+	8,  // 13: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
+	8,  // 14: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
 	1,  // 15: app.Reading.robot:type_name -> app.Robot
-	7,  // 16: app.Reading.date_created:type_name -> google.protobuf.Timestamp
+	8,  // 16: app.Reading.date_created:type_name -> google.protobuf.Timestamp
 	17, // [17:17] is the sub-list for method output_type
 	17, // [17:17] is the sub-list for method input_type
 	17, // [17:17] is the sub-list for extension type_name
@@ -1184,7 +1290,7 @@ func file_app_robot_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_robot_proto_rawDesc), len(file_app_robot_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

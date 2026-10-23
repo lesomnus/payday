@@ -36,7 +36,7 @@ func TestTheSlowLogNamesTheCallThatWasSlow(t *testing.T) {
 	ctx = log.Into(ctx, slog.New(slog.NewJSONHandler(said, nil)))
 
 	s := b.stack(t,
-		core.Build(),
+		core.Build(b.Drv, b.Contents),
 		pd.AuditBuild(),
 		pd.InterceptBuild([]grpc.UnaryServerInterceptor{cmd.Slow(0)}, nil),
 		pd.GateBuild())
@@ -73,7 +73,7 @@ func TestASlowLogSaysNothingAboutACallThatWasNot(t *testing.T) {
 	ctx = log.Into(ctx, slog.New(slog.NewJSONHandler(said, nil)))
 
 	s := b.stack(t,
-		core.Build(),
+		core.Build(b.Drv, b.Contents),
 		pd.AuditBuild(),
 		pd.InterceptBuild([]grpc.UnaryServerInterceptor{cmd.Slow(time.Hour)}, nil),
 		pd.GateBuild())
@@ -93,7 +93,7 @@ func TestASlowLogChangesNothingAboutTheAnswer(t *testing.T) {
 	b, ctx := build(t)
 
 	s := b.stack(t,
-		core.Build(),
+		core.Build(b.Drv, b.Contents),
 		pd.InterceptBuild([]grpc.UnaryServerInterceptor{cmd.Slow(0)}, nil),
 		pd.GateBuild())
 

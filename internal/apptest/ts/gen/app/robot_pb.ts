@@ -19,7 +19,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot.proto.
  */
 export const file_app_robot: GenFile = /*@__PURE__*/
-  fileDesc("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", [file_app_payday_tenant, file_shared_thing, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("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", [file_app_payday_tenant, file_shared_thing, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Cell was added to answer one question: what does adding an entity cost?
@@ -194,6 +194,38 @@ export const RobotSchema: GenMessage<Robot> = /*@__PURE__*/
   messageDesc(file_app_robot, 1);
 
 /**
+ * RobotMoved is what an event of a robot's move holds (payday#151): the robot,
+ * the cell it left and the cell it went to, each by identifier -- empty for
+ * none, since a robot may be in no cell. `RobotService.Move` records one, and
+ * the fact of the robot's cell it changed.
+ *
+ * @generated from message app.RobotMoved
+ */
+export type RobotMoved = Message<"app.RobotMoved"> & {
+  /**
+   * @generated from field: bytes robot = 1;
+   */
+  robot: Uint8Array;
+
+  /**
+   * @generated from field: bytes from = 2;
+   */
+  from: Uint8Array;
+
+  /**
+   * @generated from field: bytes to = 3;
+   */
+  to: Uint8Array;
+};
+
+/**
+ * Describes the message app.RobotMoved.
+ * Use `create(RobotMovedSchema)` to create a new message.
+ */
+export const RobotMovedSchema: GenMessage<RobotMoved> = /*@__PURE__*/
+  messageDesc(file_app_robot, 2);
+
+/**
  * Joint reaches its tenant through the Robot it is part of, which is what a
  * `via` of more than one step is for. Nothing else about it is interesting.
  * Pairing is two robots that work together, and the entity `agrees:` is for.
@@ -244,7 +276,7 @@ export type Pairing = Message<"app.Pairing"> & {
  * Use `create(PairingSchema)` to create a new message.
  */
 export const PairingSchema: GenMessage<Pairing> = /*@__PURE__*/
-  messageDesc(file_app_robot, 2);
+  messageDesc(file_app_robot, 3);
 
 /**
  * @generated from message app.Joint
@@ -289,7 +321,7 @@ export type Joint = Message<"app.Joint"> & {
  * Use `create(JointSchema)` to create a new message.
  */
 export const JointSchema: GenMessage<Joint> = /*@__PURE__*/
-  messageDesc(file_app_robot, 3);
+  messageDesc(file_app_robot, 4);
 
 /**
  * Fleet is shared by the whole deployment, and says so. A reader of the schema
@@ -323,7 +355,7 @@ export type Fleet = Message<"app.Fleet"> & {
  * Use `create(FleetSchema)` to create a new message.
  */
 export const FleetSchema: GenMessage<Fleet> = /*@__PURE__*/
-  messageDesc(file_app_robot, 4);
+  messageDesc(file_app_robot, 5);
 
 /**
  * Reading is an entity nobody names.
@@ -380,5 +412,5 @@ export type Reading = Message<"app.Reading"> & {
  * Use `create(ReadingSchema)` to create a new message.
  */
 export const ReadingSchema: GenMessage<Reading> = /*@__PURE__*/
-  messageDesc(file_app_robot, 5);
+  messageDesc(file_app_robot, 6);
 

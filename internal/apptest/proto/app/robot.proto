@@ -233,6 +233,18 @@ message Robot {
   };
 }
 
+// RobotMoved is what an event of a robot's move holds (payday#151): the robot,
+// the cell it left and the cell it went to, each by identifier -- empty for
+// none, since a robot may be in no cell. `RobotService.Move` records one, and
+// the fact of the robot's cell it changed.
+message RobotMoved {
+  option (payday.event) = {kind: "robot.move"};
+
+  bytes robot = 1;
+  bytes from = 2;
+  bytes to = 3;
+}
+
 // Joint reaches its tenant through the Robot it is part of, which is what a
 // `via` of more than one step is for. Nothing else about it is interesting.
 // Pairing is two robots that work together, and the entity `agrees:` is for.
