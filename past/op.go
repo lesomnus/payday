@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/lesomnus/payday/gate"
@@ -374,14 +375,9 @@ func kindOf(s Store, v proto.Message) (string, *anypb.Any, error) {
 	}
 
 	md := v.ProtoReflect().Descriptor()
-	o, _ := proto.GetExtension(md.Options(), pdpb.E_Event).(*pdpb.EventMessage)
-	if o == nil {
+	kind, ok := declared(md)
+	if !ok {
 		return "", nil, status.Errorf(codes.InvalidArgument, "%s says no (payday.event), so it is no event message", md.FullName())
-	}
-
-	kind := o.GetKind()
-	if kind == "" {
-		kind = string(md.FullName())
 	}
 	if t, ok := s.Kinds()[kind]; !ok || t.Descriptor().FullName() != md.FullName() {
 		return "", nil, status.Errorf(codes.InvalidArgument,
@@ -394,6 +390,22 @@ func kindOf(s Store, v proto.Message) (string, *anypb.Any, error) {
 	}
 
 	return kind, value, nil
+}
+
+// declared is the kind an event holding a message of `md` is written under --
+// what its `(payday.event)` says, or its full name where that names none --
+// and false for a message that declares no `(payday.event)` at all: what an
+// event is written under, and what a sentence of it is said for.
+func declared(md protoreflect.MessageDescriptor) (string, bool) {
+	o, _ := proto.GetExtension(md.Options(), pdpb.E_Event).(*pdpb.EventMessage)
+	if o == nil {
+		return "", false
+	}
+	if kind := o.GetKind(); kind != "" {
+		return kind, true
+	}
+
+	return string(md.FullName()), true
 }
 
 // lock holds `id` until the transaction `drv` is in ends, on PostgreSQL: a

@@ -51,7 +51,7 @@ table is for finding the right one.
 | [`seen`](../seen) | what a transaction has already asked about the rows it names, so the gate and the sink ask each question once rather than once per write |
 | [`audit`](../audit) | the trail. A recorder inside the transaction, and a layer serving the trail's own RPCs |
 | [`access`](../access) | the access record: who read or wrote whose personal data, from where, and how it ended. An interceptor, and the writer it hands rows to |
-| [`past`](../past) | an app's past, for one that declares one: an event for each operation and facts of what its resources were, recorded in the operation's transaction and read back at a moment, as known now or then. Through the `pd.Past` an app is generated |
+| [`past`](../past) | an app's past, for one that declares one: an event for each operation and facts of what its resources were, recorded in the operation's transaction and read back at a moment, as known now or then; and an event said when it is read, in the reader's language, naming people as they are called then. Through the `pd.Past` and `pd.PastNames` an app is generated |
 
 ### Naming things
 
@@ -102,6 +102,7 @@ in CI is what keeps that true.
 | whose data a message carries (`Subjects`, `SubjectRefs`), and the access record's recorder and writer | they read the app's messages by what its schema declared `personal`, and write its `Access` |
 | `pd.EventKinds`, in an app that declares a past: every event message by the kind its rows are written under | each is a message type of yours, read back from a row's `kind` |
 | `pd.Past`, in an app that declares a past: its Event and Fact as the `past` package writes and reads them | a write goes through your servers on the operation's transaction, a read through your ent client, and the tenant of a subject is found as the trail finds a row's |
+| `pd.PastNames`, in an app that declares a past: what names the people and things a sentence of an event names, as they are called when it is read | a row of any of your entities is read through your ent client and your wall, and whether its title is somebody's data is what your schema declared `personal` |
 | `ts/gen/events.ts`, in every app: `events`, a protobuf-es registry of the event messages, and `kinds` | the page's transport is handed it, and it names the app's schemas |
 
 An app that declares a past also has `proto/<pkg>/payday/past.lock` beside the
@@ -188,6 +189,7 @@ Everything payday enforces is placed as far left as it goes.
 | a download says what it is for | the access interceptor refuses one without `payday-reason-bin`, and one whose row cannot be written |
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
 | an event and what it is about commit together | `past.Begin` refuses a store on no transaction, and `pd.Past` puts the stack on the operation's driver rather than trusting it to be there |
+| a name a sentence of the past says is on the access record | the runtime writes it: `past.Reading.Name` says whose data the name is (`access.Saw`) every time a sentence says it, and `pd.PastNames` reads the name through the wall |
 | `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
 | the wire does not break | `buf breaking` in CI, against the published label and the branch |
 | an error is logged as the error, and one to a record | a test, `internal/logcheck`, over payday's packages, the code it generates and what `pd new` writes; and of what the `otelslog` bridge does with an error, which is what makes it the rule (see [logging an error](guide/server.md#10-logging-an-error)) |
@@ -1538,7 +1540,9 @@ saying what it shows. An `Any` is read only where payday packs one -- a batch's
 operations and answers, a watch's events -- and once: one an app's rows hold is
 its own data, which no declaration describes, and a message packed in one
 packed in another is work that grows with the square of its size. What no declaration can see, the app says:
-`access.Saw(ctx, ...)` for a name put into a sentence or a column of a file. A
+`access.Saw(ctx, ...)` for a name put into a sentence or a column of a file --
+and the past's sentences say their own, each name as `past.Reading.Name` puts it
+in one. A
 write is the rows it wrote, before or after it (`pd.AccessRecorder`, which asks
 `bare` for those images); a refused call is the rows its request named by key. A
 call that carried nobody's data leaves nothing.

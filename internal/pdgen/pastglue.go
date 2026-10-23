@@ -1,12 +1,18 @@
 package pdgen
 
 import (
+	"slices"
+
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/lesomnus/payday/pdpb"
 )
 
-const pkgPast = protogen.GoImportPath("github.com/lesomnus/payday/past")
+const (
+	pkgPast   = protogen.GoImportPath("github.com/lesomnus/payday/past")
+	pkgHeader = protogen.GoImportPath("github.com/lesomnus/payday/header")
+)
 
 // EmitPast writes `pd.Past`, the app's past as the `past` package writes and
 // reads it (payday#151): a `past.Store` over the app's Event and Fact.
@@ -376,6 +382,114 @@ func EmitPast(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("")
 	g.P("	_, err = Record(ctx, s.db, s.content, action, []", pkgPdid.Ident("Id"), "{id})")
 	g.P("	return err")
+	g.P("}")
+	g.P("")
+
+	emitPastNames(g, s, p)
+}
+
+// emitPastNames writes `pd.PastNames`, what names the people and things a
+// sentence of the past names, as they are called when it is read: the
+// `past.Names` an app has without writing one of its own.
+//
+// Generated for the reason `pd.Past` is: a row is read through the app's own
+// ent client, narrowed by its own wall, and payday can name neither. What a
+// row is called is not decided here either -- it is `header.Of(row).Title()`,
+// which is what every other reader of a row it has no type for shows -- and
+// whose data saying it shows is what the schema already declared: the row's
+// own, when the field the title was read off is `personal`.
+//
+// Of the entities that have something to be called by, an `alias` or a
+// `name`, and not payday's records, which have neither. An identifier of any
+// other kind is named by nothing, and a sentence says it as itself.
+func emitPastNames(g *protogen.GeneratedFile, s *Schema, p Paths) {
+	type titled struct {
+		v           *Entity
+		alias, name bool
+	}
+	var vs []titled
+	for _, v := range s.Sorted() {
+		if v.Records() {
+			continue
+		}
+
+		fs := v.Descriptor().Fields()
+		alias, name := fs.ByName("alias"), fs.ByName("name")
+		has := func(fd protoreflect.FieldDescriptor) bool {
+			return fd != nil && fd.Kind() == protoreflect.StringKind && !fd.IsList() && !fd.IsMap()
+		}
+		if !has(alias) && !has(name) {
+			continue
+		}
+		vs = append(vs, titled{
+			v:     v,
+			alias: has(alias) && slices.Contains(v.Personal, string(alias.Name())),
+			name:  has(name) && slices.Contains(v.Personal, string(name.Name())),
+		})
+	}
+
+	g.P("// PastNames is what names the people and things a sentence of this app's")
+	g.P("// past names, as they are called when it is read (payday#151): a row of any")
+	g.P("// entity with a name or an alias, by `header.Of(row).Title()` -- its name,")
+	g.P("// else its alias -- read on `drv` through the wall, so that a sentence names")
+	g.P("// nothing its reader could not read for themselves.")
+	g.P("//")
+	g.P("// A title read off a field the entity declares `personal` -- a holder's --")
+	g.P("// is that person's data, and it answers the row as whose it is, which the")
+	g.P("// `past` package puts on the access record of the call that said it. An")
+	g.P("// identifier of a row that is gone, of one the caller may not see, or of a")
+	g.P("// kind with nothing to be called by is named by nothing.")
+	g.P("//")
+	g.P("//	r := sentences.Read(ctx, pd.PastNames(drv), locale, zone)")
+	g.P("func PastNames(drv ", pkgDialect.Ident("Driver"), ") ", pkgPast.Ident("Names"), " {")
+	g.P("	return pastNames{db: ", p.Ent.Ident("NewClient"), "(", p.Ent.Ident("Driver"), "(drv))}")
+	g.P("}")
+	g.P("")
+	g.P("type pastNames struct{ db *", p.Ent.Ident("Client"), " }")
+	g.P("")
+	g.P("var _ ", pkgPast.Ident("Names"), " = pastNames{}")
+	g.P("")
+	g.P("// Name reads the row `id` names through the wall, and answers what it is")
+	g.P("// called and -- where that was read off a field declared `personal` -- the")
+	g.P("// row, as whose data saying it is.")
+	g.P("func (n pastNames) Name(ctx ", pkgCtx.Ident("Context"), ", id ", pkgPdid.Ident("Id"), ") (string, []", pkgAccess.Ident("Subject"), ", error) {")
+	g.P("	var row ", pkgProto.Ident("Message"))
+	g.P("	var alias, name bool")
+	g.P("	switch id.Domain() {")
+	for _, t := range vs {
+		e := t.v.GoName()
+		entPkg := p.Ent + "/" + protogen.GoImportPath(t.v.EntPkg())
+		g.P("	case ", e, "Domain:")
+		g.P("		p, err := ", p.Bare.Ident(e+"Narrow"), "(ctx, Wall(), ", entPkg.Ident("IdEQ"), "(id.Uuid()))")
+		g.P("		if err != nil {")
+		g.P("			return \"\", nil, err")
+		g.P("		}")
+		g.P("		v, err := n.db.", e, ".Query().Where(p).Only(ctx)")
+		g.P("		if err != nil {")
+		g.P("			return pastUnnamed(err)")
+		g.P("		}")
+		g.P("		row, alias, name = v.Proto(), ", t.alias, ", ", t.name)
+	}
+	g.P("	default:")
+	g.P("		return \"\", nil, nil")
+	g.P("	}")
+	g.P("")
+	g.P("	h := ", pkgHeader.Ident("Of"), "(row)")
+	g.P("	if h.Name != \"\" && name || h.Name == \"\" && h.Alias != \"\" && alias {")
+	g.P("		return h.Title(), []", pkgAccess.Ident("Subject"), "{{Id: id, Tenant: h.Tenant}}, nil")
+	g.P("	}")
+	g.P("")
+	g.P("	return h.Title(), nil, nil")
+	g.P("}")
+	g.P("")
+	g.P("// pastUnnamed is a row that could not be read: named by nothing when there")
+	g.P("// is none to read -- gone, or behind the wall -- and the error otherwise.")
+	g.P("func pastUnnamed(err error) (string, []", pkgAccess.Ident("Subject"), ", error) {")
+	g.P("	if ", p.Ent.Ident("IsNotFound"), "(err) {")
+	g.P("		return \"\", nil, nil")
+	g.P("	}")
+	g.P("")
+	g.P("	return \"\", nil, err")
 	g.P("}")
 	g.P("")
 }

@@ -75,6 +75,28 @@
 // its facts and its events, newest first. Every read is narrowed to the
 // tenants the caller may see, as the wall narrows every read of a server.
 //
+// # Saying what happened
+//
+// An event keeps no sentence, and is said when it is read. An app says, for
+// each kind and in each language it is read in, what an event of it says --
+// [Say], given the reading, the event and the message it holds -- and reads
+// events with a [Reading] ([Sentences.Read]): in the reader's locale, or its
+// language, or the app's default, and where none of them says one, as its
+// kind and its fields ([Reading.Say]). A thing the message holds by value is
+// said as it holds it, which is what it was called then; a person it holds by
+// identifier is named as they are called now ([Reading.Name], by the app's
+// [Names] -- `pd.PastNames` is one), and every name a sentence says is a row
+// of the access record of the call that read it. [Unsaid] is for the test
+// that every kind is said in every language.
+//
+//	r := sentences.Read(ctx, pd.PastNames(drv), "ko", zone)
+//	for _, ev := range events {
+//		say(r.Say(ev))
+//	}
+//	if err := r.Err(); err != nil { // a name that could not be read
+//		return err
+//	}
+//
 // # What is not kept, and the one act that takes something out
 //
 // An event names people by identifier and holds nothing of theirs -- `pd gen`

@@ -13,9 +13,9 @@ keeps it for an app that asks, in two tables of its own (payday#151):
 This page is declaring a past, the messages an event holds, the rules that keep
 old events readable, the lock that holds an app to them, and the registries a
 server and a page read events with; then the `past` package, which records an
-operation and the facts it writes, reads them back at a moment, corrects them,
-and takes a reason out. Making a sentence of an event and letting history
-expire come in the parts of payday#151 after this one.
+operation and the facts it writes, reads them back at a moment, says what
+happened in the reader's language, corrects it, and takes a reason out.
+Letting history expire comes in a part of payday#151 after this one.
 
 - [1. Declaring a past](#1-declaring-a-past)
 - [2. What an event holds](#2-what-an-event-holds)
@@ -25,8 +25,9 @@ expire come in the parts of payday#151 after this one.
 - [6. Recording an operation](#6-recording-an-operation)
 - [7. Facts](#7-facts)
 - [8. Reading the past](#8-reading-the-past)
-- [9. Correcting it](#9-correcting-it)
-- [10. Taking a reason out](#10-taking-a-reason-out)
+- [9. Saying what happened](#9-saying-what-happened)
+- [10. Correcting it](#10-correcting-it)
+- [11. Taking a reason out](#11-taking-a-reason-out)
 
 ## 1. Declaring a past
 
@@ -428,7 +429,101 @@ changed := past.Diff(states1[robot], states2[robot])
   (`access.Saw`). What a page shows of it is an RPC of the app's, whose answer
   declares the field `personal` too.
 
-## 9. Correcting it
+## 9. Saying what happened
+
+An event keeps no sentence (§2). The app says, for each kind and in each
+language it is read in, what an event of it says -- once, where it starts -- and
+a sentence is made from the event as it is read: in the reader's language and
+zone, with the people in it named as they are called then.
+
+```go
+s := past.NewSentences("en") // what a reader of a language nothing is said in reads
+s.TimeLayout("en", "Jan 2 15:04")
+s.TimeLayout("ko", "1월 2일 15:04")
+
+// An identifier as an event message holds one.
+id := func(b []byte) pdid.Id { v, _ := pdid.From(b); return v }
+
+past.Say(s, "en", func(r *past.Reading, ev past.EventRow, m *app.MachineServiced) string {
+	return fmt.Sprintf("%s serviced %s, due %s",
+		r.Name(id(m.GetBy())), r.Name(id(m.GetMachine())), r.Time(m.GetDue().AsTime()))
+})
+past.Say(s, "ko", func(r *past.Reading, ev past.EventRow, m *app.MachineServiced) string {
+	return fmt.Sprintf("%s: %s 정비, 다음 정비 %s",
+		r.Name(id(m.GetBy())), r.Name(id(m.GetMachine())), r.Time(m.GetDue().AsTime()))
+})
+```
+
+An answer made of events reads them with a reading of its own:
+
+```go
+r := s.Read(ctx, pd.PastNames(drv), locale, zone)
+for _, ev := range events {
+	e.SetSummary(r.Say(ev))
+}
+if err := r.Err(); err != nil {
+	return nil, err
+}
+```
+
+- **Which language.** `r.Say(ev)` says an event as the reader's locale says it,
+  then its language -- `en` for `en-GB` -- then the default locale and its
+  language. Where none of them says it, it is the event's kind and what its
+  message holds, field by field, each identifier as itself:
+  `machine.service {machine: 0199…, by: 0199…, mode: MODE_SERVICE}`. That names
+  nobody -- nothing there knows which identifier is a person -- and no event is
+  ever said as nothing. A sentence that answers empty is none, and the next one
+  in that line says the event. `r.Time(t)` writes a moment in the reading's
+  zone, as the locale the sentence is said in writes one: an English sentence
+  said to a reader of French writes its dates as English does.
+- **People as they are called now, things as they were.** A person is in an
+  event by identifier (§2), and a sentence names them with `r.Name(id)`: as
+  they are called when it is read, so somebody renamed reads by the new name
+  and somebody forgotten by the pseudonym they were left with. A thing the
+  message holds by value -- a serial, a tag, what it was called -- is said as
+  the message holds it: that is a record, and nobody's data. `r.Name` of an
+  identifier nothing names says the identifier, and of none -- the actor of the
+  deployment's own work -- says nothing, for the sentence to say in its own
+  words.
+- **Every name said is on the access record.** A name put in a sentence is that
+  person's data shown, and no declaration of the answer it goes out in can see
+  it there. So `r.Name` puts whose it is on the access record of the call the
+  reading is for (`access.Saw`), every time a sentence says it. A robot's name
+  is nobody's, and records nothing.
+- **`pd.PastNames(drv)`** is the `past.Names` `pd gen` writes into an app that
+  declares a past: a row of any entity with an alias or a name, by
+  `header.Of(row).Title()` -- its name, else its alias -- read through the wall,
+  so that a sentence names nobody its reader could not read for themselves. A
+  title read off a field the entity declares `personal`, a holder's, is whose
+  data it says; one of a row gone, behind the wall, or of a kind with nothing
+  to be called by is named by nothing. An app that names somebody another way
+  -- a membership by the person record it is of -- writes its own: `Name(ctx,
+  id)` answers the name and the rows it read it off, as whose data it is.
+- **A reading is for one answer.** It asks each name once, however often its
+  sentences say it, and the next answer is a reading of its own, which asks
+  again. A name it could not read is said as its identifier and is the
+  reading's `Err`: an answer asks it once its sentences are said, and answers
+  the error rather than sentences that name nobody.
+- **Every kind in every language.** `past.Unsaid(s, locale, pd.EventKinds)` is
+  the kinds the locale's own language says nothing of -- not counting the
+  default, which is a language the reader did not ask for. An app's test holds
+  it empty, so that a kind it declares later is not read as its fields:
+
+  ```go
+  for _, l := range []string{"en", "ko"} {
+  	require.Empty(t, past.Unsaid(s, l, pd.EventKinds), l)
+  }
+  ```
+
+- **Rows from before the past.** An app that adopts its own table of events as
+  it stood has rows that hold no message, and keep the sentence they were
+  written with in a field of its own, which an overlay adds (§1).
+  `s.Legacy(f)` says them: the past neither writes nor reads the app's own
+  fields, so `f` reads them of the row `ev.Id` names, with `r.Context()`, and
+  says what went wrong with `r.Fail(err)`. Without it, such a row is said as its
+  kind.
+
+## 10. Correcting it
 
 Nothing is changed in place. A correction supersedes what it corrects and
 writes what is right as the correcting operation's, so what the system said
@@ -446,7 +541,7 @@ A correction is an operation like any other, with an event message of the app's
 saying what it corrected. A supersession is held to the version of the row it
 read, so two operations that read one fact cannot both replace it.
 
-## 10. Taking a reason out
+## 11. Taking a reason out
 
 An event's reason is the one free text the past keeps, and nothing can tell
 whether somebody is named in it -- which is why the Event declares it

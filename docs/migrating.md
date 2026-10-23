@@ -3,6 +3,47 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An event is said when it is read
+
+**Applies to an app that declares a past**, whose `pd.g.go` gains
+`pd.PastNames` when it regenerates -- the fourth part of payday#151. An app
+with no past regenerates nothing new. No schema changes and no migration.
+
+- **An app says its events** once, where it starts: `past.NewSentences(locale)`
+  -- the language a reader of one nothing is said in reads -- and a sentence for
+  each kind in each language, `past.Say(s, locale, func(r *past.Reading, ev
+  past.EventRow, m *app.RobotMoved) string)`, with how a moment is written in
+  each, `s.TimeLayout(locale, layout)`.
+- **An answer of events reads them** with a reading of its own,
+  `s.Read(ctx, names, locale, zone)`, and says each with `r.Say(ev)`: in the
+  reader's locale, its language, the default or the default's language, and as
+  the event's kind and fields where none of them says it. It asks `r.Err()`
+  once they are said: a name it could not read is said as its identifier.
+- **A sentence names a person with `r.Name(id)`**, as they are called now, and
+  that puts them on the access record of the call -- `access.Saw`, which an
+  app no longer writes for a name the past says. A thing the message holds by
+  value is said as it holds it.
+- **`pd.PastNames(drv)`** is the `past.Names` an app has without writing one: a
+  row's `header` title -- name, else alias -- read through the wall, whose data
+  it is when that field is declared `personal`. An app that names somebody
+  another way implements `Name(ctx, id) (string, []access.Subject, error)`.
+- **A test that every kind is said**: `past.Unsaid(s, locale, pd.EventKinds)`,
+  empty for every language the app is read in. It does not count the default,
+  which is another language.
+- **Rows from before the past**, which hold no message and keep their sentence in
+  the app's own overlay field, are said by `s.Legacy(f)`: `f` reads that field
+  of the row `ev.Id` names with `r.Context()`.
+- [Keeping a past](guide/past.md#9-saying-what-happened) is the guide.
+
+What the apps on payday change:
+
+- **rove** keeps no past of payday's yet. When it adopts one, its `namer` is its
+  `past.Names` -- a membership named by the person record it is of, which the
+  default does not do -- its Korean sentences move to `past.Say` with a test of
+  `past.Unsaid(…, "ko", pd.EventKinds)`, and today's `namer.say` of `desc` and
+  `payload` is its `Legacy`.
+- **roster** keeps no past, and changes nothing.
+
 ## The past is recorded and read through the `past` package
 
 **Applies to an app that declares a past**, whose `pd.g.go` gains `pd.Past`
