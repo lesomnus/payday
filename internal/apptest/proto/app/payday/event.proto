@@ -66,10 +66,17 @@ message Event {
   // that changes many things records an event of its own and a child for each
   // thing it changed, with that thing as the subject and this naming the
   // operation's event.
-  bytes cause_id = 18 [(orm.field) = {
-    type: TYPE_UUID
-    nullable: true
-  }];
+  //
+  // It names an event, so the one it names stays while this one does: an
+  // operation's event outlives its window for as long as one of its children
+  // is still what a row that stays was written by.
+  bytes cause_id = 18 [
+    (orm.field) = {
+      type: TYPE_UUID
+      nullable: true
+    },
+    (payday.field) = {event: true}
+  ];
   // What was done, as the message the app declares for its kind.
   //
   // It is kept as that message's canonical protobuf JSON, so what a row holds

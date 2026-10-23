@@ -225,6 +225,18 @@ func (f SealFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SealMutation", m)
 }
 
+// The StintFunc type is an adapter to allow the use of ordinary
+// function as Stint mutator.
+type StintFunc func(context.Context, *ent.StintMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f StintFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.StintMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.StintMutation", m)
+}
+
 // The TallyFunc type is an adapter to allow the use of ordinary
 // function as Tally mutator.
 type TallyFunc func(context.Context, *ent.TallyMutation) (ent.Value, error)

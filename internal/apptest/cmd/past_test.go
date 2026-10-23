@@ -198,6 +198,7 @@ func TestAnEventIsReadBackByItsKind(t *testing.T) {
 		"app.MachineStarted": "app.MachineStarted",
 		"robot.move":         "app.RobotMoved",
 		"correct":            "app.Corrected",
+		"past.expire":        "app.PastExpired",
 	}, names)
 
 	b, ctx := build(t)

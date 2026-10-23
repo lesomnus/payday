@@ -201,22 +201,26 @@ func TestTheCopiesAreTheAppsAndGoWithTheDeclaration(t *testing.T) {
 	robot := l.Path(pdcli.DirProto, "app", "robot.proto")
 	src := read(robot)
 	x.Contains(src, "past: {event: 17, fact: 18}")
-	x.NoError(os.WriteFile(robot, []byte(strings.Replace(src, "past: {event: 17, fact: 18}", "past: {event: 20, fact: 21}", 1)), 0o644))
+	x.NoError(os.WriteFile(robot, []byte(strings.Replace(src, "past: {event: 17, fact: 18}", "past: {event: 21, fact: 22}", 1)), 0o644))
 
 	l, err := pdcli.Discover(l.Root)
 	x.NoError(err)
 	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
-	x.Contains(read(event), "domain: 20")
-	x.Contains(read(fact), "domain: 21")
+	x.Contains(read(event), "domain: 21")
+	x.Contains(read(fact), "domain: 22")
 
 	// And gone with it, with what was generated from them -- once the app's
-	// event messages are plain messages again, since an event message with no
-	// past to be kept in is refused.
-	plain := regexp.MustCompile(`(?m)^\s*option \(payday\.event\) = .*$`)
-	x.NoError(os.WriteFile(robot, []byte(plain.ReplaceAllString(strings.Replace(src, "past: {event: 17, fact: 18}", "", 1), "")), 0o644))
+	// own files say nothing of a past either, since an event message with no
+	// past to be kept in is refused, and so is a column that names an event of
+	// it.
+	x.NoError(os.WriteFile(robot, []byte(strings.Replace(src, "past: {event: 17, fact: 18}", "", 1)), 0o644))
 	x.NoError(os.Remove(l.Path(pdcli.DirExt, "payday", "event.ext.proto")))
-	machine := l.Path(pdcli.DirProto, "app", "machine.proto")
-	x.NoError(os.WriteFile(machine, []byte(plain.ReplaceAllString(read(machine), "")), 0o644))
+	plain := regexp.MustCompile(`(?m)^\s*option \(payday\.event\) = .*$|,\s*\(payday\.field\) = \{event: true\}`)
+	own, err := filepath.Glob(l.Path(pdcli.DirProto, "app", "*.proto"))
+	x.NoError(err)
+	for _, p := range own {
+		x.NoError(os.WriteFile(p, []byte(plain.ReplaceAllString(read(p), "")), 0o644))
+	}
 	lock := filepath.Join(l.Root, l.DirPd(), pdcli.LockFile)
 	locked := read(lock)
 

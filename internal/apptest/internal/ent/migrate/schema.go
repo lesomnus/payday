@@ -260,6 +260,11 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{FactColumns[9]},
 			},
+			{
+				Name:    "fact_superseded",
+				Unique:  false,
+				Columns: []*schema.Column{FactColumns[11]},
+			},
 		},
 	}
 	// FleetColumns holds the columns for the "fleet" table.
@@ -601,6 +606,37 @@ var (
 		Columns:    SealColumns,
 		PrimaryKey: []*schema.Column{SealColumns[0]},
 	}
+	// StintColumns holds the columns for the "stint" table.
+	StintColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "robot_id", Type: field.TypeUuid},
+		{Name: "valid_from", Type: field.TypeTime, Nullable: true},
+		{Name: "valid_to", Type: field.TypeTime, Nullable: true},
+		{Name: "event_id", Type: field.TypeUuid},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+	}
+	// StintTable holds the schema information for the "stint" table.
+	StintTable = &schema.Table{
+		Name:       "stint",
+		Columns:    StintColumns,
+		PrimaryKey: []*schema.Column{StintColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "stint_tenant_tenant",
+				Columns:    []*schema.Column{StintColumns[6]},
+				RefColumns: []*schema.Column{TenantColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "stint_event",
+				Unique:  false,
+				Columns: []*schema.Column{StintColumns[4]},
+			},
+		},
+	}
 	// TallyColumns holds the columns for the "tally" table.
 	TallyColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -689,6 +725,7 @@ var (
 		RobotTable,
 		RowsealTable,
 		SealTable,
+		StintTable,
 		TallyTable,
 		TenantTable,
 		ThingTable,
@@ -763,6 +800,10 @@ func init() {
 	}
 	SealTable.Annotation = &entsql.Annotation{
 		Table: "seal",
+	}
+	StintTable.ForeignKeys[0].RefTable = TenantTable
+	StintTable.Annotation = &entsql.Annotation{
+		Table: "stint",
 	}
 	TallyTable.ForeignKeys[0].RefTable = TenantTable
 	TallyTable.Annotation = &entsql.Annotation{

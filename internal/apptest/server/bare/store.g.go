@@ -27,6 +27,7 @@ import (
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	rowseal "github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
 	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	stint "github.com/lesomnus/payday/internal/apptest/internal/ent/stint"
 	tally "github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
@@ -399,6 +400,7 @@ type Scope interface {
 	OwedScope(ctx context.Context) (predicate.Owed, error)
 	RowSealScope(ctx context.Context) (predicate.RowSeal, error)
 	SealScope(ctx context.Context) (predicate.Seal, error)
+	StintScope(ctx context.Context) (predicate.Stint, error)
 	TallyScope(ctx context.Context) (predicate.Tally, error)
 	PulseScope(ctx context.Context) (predicate.Pulse, error)
 }
@@ -470,6 +472,9 @@ func (Unscoped) RowSealScope(_ context.Context) (predicate.RowSeal, error) {
 	return nil, nil
 }
 func (Unscoped) SealScope(_ context.Context) (predicate.Seal, error) {
+	return nil, nil
+}
+func (Unscoped) StintScope(_ context.Context) (predicate.Stint, error) {
 	return nil, nil
 }
 func (Unscoped) TallyScope(_ context.Context) (predicate.Tally, error) {
@@ -878,6 +883,26 @@ func (ss Scopes) SealScope(ctx context.Context) (predicate.Seal, error) {
 	return seal.And(ps...), nil
 }
 
+func (ss Scopes) StintScope(ctx context.Context) (predicate.Stint, error) {
+	ps := make([]predicate.Stint, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.StintScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return stint.And(ps...), nil
+}
+
 func (ss Scopes) TallyScope(ctx context.Context) (predicate.Tally, error) {
 	ps := make([]predicate.Tally, 0, len(ss))
 	for _, s := range ss {
@@ -1112,5 +1137,6 @@ func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceSer
 func (s Server) Owed() apptest.OwedServiceServer       { return OwedServiceServer{Store: s.Store} }
 func (s Server) RowSeal() apptest.RowSealServiceServer { return RowSealServiceServer{Store: s.Store} }
 func (s Server) Seal() apptest.SealServiceServer       { return SealServiceServer{Store: s.Store} }
+func (s Server) Stint() apptest.StintServiceServer     { return StintServiceServer{Store: s.Store} }
 func (s Server) Tally() apptest.TallyServiceServer     { return TallyServiceServer{Store: s.Store} }
 func (s Server) Pulse() apptest.PulseServiceServer     { return PulseServiceServer{Store: s.Store} }

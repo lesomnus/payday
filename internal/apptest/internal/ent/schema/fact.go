@@ -68,6 +68,8 @@ func (Fact) Indexes() []ent.Index {
 			StorageKey("fact_field"),
 		index.Fields("event_id").
 			StorageKey("fact_event"),
+		index.Fields("superseded_by").
+			StorageKey("fact_superseded"),
 	}
 }
 

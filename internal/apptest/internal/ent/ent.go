@@ -27,6 +27,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/stint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
@@ -111,6 +112,7 @@ func checkColumn(t, c string) error {
 			robot.Table:    robot.ValidColumn,
 			rowseal.Table:  rowseal.ValidColumn,
 			seal.Table:     seal.ValidColumn,
+			stint.Table:    stint.ValidColumn,
 			tally.Table:    tally.ValidColumn,
 			tenant.Table:   tenant.ValidColumn,
 			thing.Table:    thing.ValidColumn,

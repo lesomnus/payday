@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXkipQcKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24SIwoFdHJhaWwYCiABKAsyFC5wYXlkYXkuRW50aXR5LlRyYWlsGggKBlRlbmFudBpFCghUZW5hbnRlZBILCgN2aWEYASABKAkSDQoFZmllbGQYAiADKAkSDQoFc3RhbXAYAyABKAkSDgoGYWdyZWVzGAQgAygJGooBCgVUcmFpbBIxCghyZWNvcmRlZBgBIAEoCzIdLnBheWRheS5FbnRpdHkuVHJhaWwuUmVjb3JkZWRIABInCgNvZmYYAiABKAsyGC5wYXlkYXkuRW50aXR5LlRyYWlsLk9mZkgAGgoKCFJlY29yZGVkGhIKA09mZhILCgN3aHkYASABKAlCBQoDaG93GggKBkdsb2JhbBoqCgVFcmFzZRIhCgRoYXJkGAEgASgLMhMucGF5ZGF5LkVudGl0eS5IYXJkGgYKBEhhcmQasAEKBExpc3QSIwoFb3JkZXIYASADKAsyFC5wYXlkYXkuRW50aXR5Lk9yZGVyEhYKBHdpdGgYAiADKAsyCC5vcm0uUmVmEhQKAmJ5GAMgAygLMggub3JtLlJlZhIMCgRzaXplGAQgASgNEgsKA21heBgFIAEoDRIPCgdmaWx0ZXJzGAYgASgNEikKBm9yZGVycxgHIAMoCzIZLnBheWRheS5FbnRpdHkuTmFtZWRPcmRlcho/CgpOYW1lZE9yZGVyEgwKBG5hbWUYASABKAkSIwoFb3JkZXIYAiADKAsyFC5wYXlkYXkuRW50aXR5Lk9yZGVyGgcKBVdhdGNoGi4KBU9yZGVyEhcKBWZpZWxkGAEgASgLMggub3JtLlJlZhIMCgRkZXNjGAIgASgIQgkKB3RlbmFuY3kiUwoFRmllbGQSDgoGc2VjcmV0GAEgASgIEg8KB3N0YW1wZWQYAiABKAgSFwoIcGVyc29uYWwYAyABKAhCBaoBAggBSgQIBBAFUgppbXBlcnNvbmFsKrgBCgNPd24SEwoPT1dOX1VOU1BFQ0lGSUVEEAASDgoKT1dOX1RFTkFOVBABEg4KCk9XTl9IT0xERVIQAhINCglPV05fQVVESVQQAxIOCgpPV05fT1VUQk9YEAQSEAoMT1dOX0FSQ0hJVkVEEAUSDgoKT1dOX0FDQ0VTUxAGEhAKDE9XTl9ST1dfU0VBTBAHEgwKCE9XTl9PV0VEEAgSDQoJT1dOX0VWRU5UEAkSDAoIT1dOX0ZBQ1QQCkImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_orm_ref]);
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXkipQcKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24SIwoFdHJhaWwYCiABKAsyFC5wYXlkYXkuRW50aXR5LlRyYWlsGggKBlRlbmFudBpFCghUZW5hbnRlZBILCgN2aWEYASABKAkSDQoFZmllbGQYAiADKAkSDQoFc3RhbXAYAyABKAkSDgoGYWdyZWVzGAQgAygJGooBCgVUcmFpbBIxCghyZWNvcmRlZBgBIAEoCzIdLnBheWRheS5FbnRpdHkuVHJhaWwuUmVjb3JkZWRIABInCgNvZmYYAiABKAsyGC5wYXlkYXkuRW50aXR5LlRyYWlsLk9mZkgAGgoKCFJlY29yZGVkGhIKA09mZhILCgN3aHkYASABKAlCBQoDaG93GggKBkdsb2JhbBoqCgVFcmFzZRIhCgRoYXJkGAEgASgLMhMucGF5ZGF5LkVudGl0eS5IYXJkGgYKBEhhcmQasAEKBExpc3QSIwoFb3JkZXIYASADKAsyFC5wYXlkYXkuRW50aXR5Lk9yZGVyEhYKBHdpdGgYAiADKAsyCC5vcm0uUmVmEhQKAmJ5GAMgAygLMggub3JtLlJlZhIMCgRzaXplGAQgASgNEgsKA21heBgFIAEoDRIPCgdmaWx0ZXJzGAYgASgNEikKBm9yZGVycxgHIAMoCzIZLnBheWRheS5FbnRpdHkuTmFtZWRPcmRlcho/CgpOYW1lZE9yZGVyEgwKBG5hbWUYASABKAkSIwoFb3JkZXIYAiADKAsyFC5wYXlkYXkuRW50aXR5Lk9yZGVyGgcKBVdhdGNoGi4KBU9yZGVyEhcKBWZpZWxkGAEgASgLMggub3JtLlJlZhIMCgRkZXNjGAIgASgIQgkKB3RlbmFuY3kiYgoFRmllbGQSDgoGc2VjcmV0GAEgASgIEg8KB3N0YW1wZWQYAiABKAgSFwoIcGVyc29uYWwYAyABKAhCBaoBAggBEg0KBWV2ZW50GAUgASgISgQIBBAFUgppbXBlcnNvbmFsKrgBCgNPd24SEwoPT1dOX1VOU1BFQ0lGSUVEEAASDgoKT1dOX1RFTkFOVBABEg4KCk9XTl9IT0xERVIQAhINCglPV05fQVVESVQQAxIOCgpPV05fT1VUQk9YEAQSEAoMT1dOX0FSQ0hJVkVEEAUSDgoKT1dOX0FDQ0VTUxAGEhAKDE9XTl9ST1dfU0VBTBAHEgwKCE9XTl9PV0VEEAgSDQoJT1dOX0VWRU5UEAkSDAoIT1dOX0ZBQ1QQCkImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_orm_ref]);
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -886,6 +886,55 @@ export type Field = Message<"payday.Field"> & {
    * @generated from field: bool personal = 3 [features.field_presence = EXPLICIT];
    */
   personal: boolean;
+
+  /**
+   * Event marks a column that names an event of the app's past (payday#151):
+   * the operation that wrote the row, or the one that replaced it.
+   *
+   *   bytes event_id = 19 [
+   *     (orm.field) = {type: TYPE_UUID},
+   *     (payday.field) = {event: true}
+   *   ];
+   *
+   * # What it does
+   *
+   * It keeps the event. A tenant's past expires by the tenant's window, and an
+   * event goes once nothing that stays still names it: a row that stays says
+   * what it is with the operation that wrote it, and that operation's event is
+   * how it says so. The expiry asks every column marked this, and `pd gen`
+   * lists them for it -- the past's own, a fact's event and the event that
+   * superseded it and an event's cause, which payday's templates mark, and an
+   * app's: a time row's, a stock movement's.
+   *
+   * # Why a declaration
+   *
+   * Because nothing else says it. A `TYPE_UUID` column is an identifier of
+   * anything, and the identifier's domain is a property of the row, not of the
+   * column: one that names an event today is not, to anything reading the
+   * schema, one that names an event. An expiry that guessed from a name --
+   * `*_event_id` -- would take an event a column it did not guess still names,
+   * and that is a row whose history is gone with nothing having failed.
+   *
+   * # What it may be on
+   *
+   * A `bytes` column of `TYPE_UUID` of an entity, one identifier to a row, in
+   * an app that declares a past: a list holds identifiers no index finds, an
+   * edge is to a row and not to an event, and an app with no past has no
+   * events to keep. Of payday's Event, only its cause: an event an event names
+   * stays while that one does, and the expiry follows that by the one column it
+   * knows. Generation refuses it anywhere else.
+   *
+   * # What it does not do
+   *
+   * Make the identifier an edge. Nothing checks that the event is there -- the
+   * row is written in the operation's transaction, beside it -- and nothing is
+   * deleted with it. Nor does it index the column, which is the schema's to
+   * say: give it an index that begins with it, or every expiry reads the whole
+   * table for each event it asks about.
+   *
+   * @generated from field: bool event = 5;
+   */
+  event: boolean;
 };
 
 /**

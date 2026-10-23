@@ -23,9 +23,13 @@ const (
 	colRecorded = "date_created"
 
 	colCause = "cause_id"
+	colKind  = "kind"
+	colAt    = "occurred_at"
 
+	colDomain       = "domain"
 	colField        = "field_number"
 	colKey          = "key"
+	colValue        = "value"
 	colFrom         = "valid_from"
 	colEvent        = "event_id"
 	colSuperseded   = "superseded_at"

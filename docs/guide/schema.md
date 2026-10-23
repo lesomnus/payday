@@ -461,6 +461,33 @@ places:
 It is advice and not a refusal. Generation does what it always did, and which a
 field is stays the schema's to say.
 
+### A column that names an event
+
+In an app that keeps a past, a row an operation writes often names the
+operation's event -- a time row, a stock movement. Say so on the column:
+
+```proto
+bytes event_id = 11 [
+  (orm.field) = {type: TYPE_UUID},
+  (payday.field) = {event: true}
+];
+```
+
+What it changes is the past's **expiry**: an event goes once no row that stays
+names it, and the columns that can are the ones that say so -- the past's own,
+which payday's Event and Fact mark, and yours. A column that does not say it is
+not asked, whatever it is called, and the event it names goes with its window
+while the row goes on naming it. `pd gen` lists every one in the store the
+`past` package expires through; see [Letting it go](past.md#12-letting-it-go).
+
+It goes on a `bytes` column of `TYPE_UUID` of an entity, one identifier to a
+row, in an app that declares a past -- generation refuses it on any other type,
+on a list, an edge or the key, and in an app with no past -- and of payday's
+Event only its `cause_id` says it, which the expiry follows up a chain of
+operations. It makes the column no edge: nothing checks that the event is
+there, and nothing is deleted with it. Give the column an index that begins with
+it, or every expiry reads the whole table for each event it asks about.
+
 ---
 
 ## 4. `alias` — the name a person writes
@@ -845,7 +872,11 @@ Rows of the two are written and read by the `past` package, through the
 `pd.Past` `pd gen` writes beside them -- an event in its operation's
 transaction, a fact as the canonical JSON of each field it holds, a personal
 value withheld -- and not by hand through their generated servers:
-[Recording an operation](past.md#6-recording-an-operation).
+[Recording an operation](past.md#6-recording-an-operation). They leave by the
+tenant's window, and an event stays while a row that stays names it: the
+past's own mark their columns, and a row of yours that names the operation that
+wrote it marks its column too ([a column that names an
+event](#a-column-that-names-an-event)).
 
 ### An RPC of your own
 
@@ -940,6 +971,7 @@ only test for whether it belongs on this list.
 | an event message holding a `(payday.field)`, an entity, a contract's message or an `Any`, anywhere in it | a person, a row or a slug kept for as long as history is, or a message nothing declared |
 | an entity that is an event message, two of one kind, or one in an app that declares no past | a row that says it holds either, or an event with no table |
 | an event message, a field, a kind or an enum value that the past's lock holds, gone or changed | every row written before it, no longer read or read as something else |
+| `event: true` on anything but a `bytes` column of `TYPE_UUID` -- a list, an edge, the key -- in an app with no past, or on payday's Event beside its cause | an event the expiry keeps by a column it cannot ask, or takes while the schema said a row named it |
 | two `go_package`, or two proto packages | two Go packages is two ent schemas, and the wall is an edge |
 | generated code from a different payday | a wall written by one version, read by another |
 | the database not matching the schema | a server up on a table that is not there |

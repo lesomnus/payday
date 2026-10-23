@@ -29,6 +29,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/stint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
@@ -63,6 +64,7 @@ const (
 	TypeRobot    = "Robot"
 	TypeRowSeal  = "RowSeal"
 	TypeSeal     = "Seal"
+	TypeStint    = "Stint"
 	TypeTally    = "Tally"
 	TypeTenant   = "Tenant"
 	TypeThing    = "Thing"
@@ -4867,6 +4869,240 @@ func (m *SealMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldDateCreated(ctx)
 	}
 	return nil, fmt.Errorf("unknown Seal field %s", name)
+}
+
+// StintMutation represents an operation that mutates the Stint nodes in the graph.
+type StintMutation struct {
+	stint.Mutation
+	config
+	id       *uuid.UUID
+	done     bool
+	oldValue func(context.Context) (*Stint, error)
+}
+
+var _ ent.Mutation = (*StintMutation)(nil)
+
+// stintOption allows management of the mutation configuration using functional options.
+type stintOption func(*StintMutation)
+
+// newStintMutation creates new mutation for the Stint entity.
+func newStintMutation(c config, op Op, opts ...stintOption) *StintMutation {
+	m := &StintMutation{
+		Mutation: *stint.NewMutation(op),
+		config:   c,
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// SetId sets the value of the id field. Note that this
+// operation is only accepted on creation of Stint entities.
+func (m *StintMutation) SetId(id uuid.UUID) {
+	m.id = &id
+}
+
+// Id returns the Id value in the mutation. Note that the Id is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *StintMutation) Id() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// withStintId sets the Id field of the mutation.
+func withStintId(id uuid.UUID) stintOption {
+	return func(m *StintMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Stint
+		)
+		m.oldValue = func(ctx context.Context) (*Stint, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Stint.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withStint sets the old Stint of the mutation.
+func withStint(node *Stint) stintOption {
+	return func(m *StintMutation) {
+		m.oldValue = func(context.Context) (*Stint, error) {
+			return node, nil
+		}
+		m.id = &node.Id
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m StintMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m StintMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// Ids queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *StintMutation) Ids(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.Op().Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.Id()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.Op().Is(OpUpdate | OpDelete):
+		return m.Client().Stint.Query().Where(m.Predicates()...).Ids(ctx)
+	default:
+		return nil, fmt.Errorf("Ids is not allowed on %s operations", m.Op())
+	}
+}
+
+// OldRobotId returns the old "robot_id" field's value of the Stint entity.
+// If the Stint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StintMutation) OldRobotId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldRobotId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldRobotId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRobotId: %w", err)
+	}
+	return oldValue.RobotId, nil
+}
+
+// OldValidFrom returns the old "valid_from" field's value of the Stint entity.
+// If the Stint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StintMutation) OldValidFrom(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldValidFrom is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldValidFrom requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldValidFrom: %w", err)
+	}
+	return oldValue.ValidFrom, nil
+}
+
+// OldValidTo returns the old "valid_to" field's value of the Stint entity.
+// If the Stint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StintMutation) OldValidTo(ctx context.Context) (v *time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldValidTo is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldValidTo requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldValidTo: %w", err)
+	}
+	return oldValue.ValidTo, nil
+}
+
+// OldEventId returns the old "event_id" field's value of the Stint entity.
+// If the Stint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StintMutation) OldEventId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldEventId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldEventId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEventId: %w", err)
+	}
+	return oldValue.EventId, nil
+}
+
+// OldDateCreated returns the old "date_created" field's value of the Stint entity.
+// If the Stint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StintMutation) OldDateCreated(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateCreated is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateCreated requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateCreated: %w", err)
+	}
+	return oldValue.DateCreated, nil
+}
+
+// OldTenantId returns the old "tenant_id" field's value of the Stint entity.
+// If the Stint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StintMutation) OldTenantId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldTenantId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldTenantId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTenantId: %w", err)
+	}
+	return oldValue.TenantId, nil
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *StintMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case stint.FieldRobotId:
+		return m.OldRobotId(ctx)
+	case stint.FieldValidFrom:
+		return m.OldValidFrom(ctx)
+	case stint.FieldValidTo:
+		return m.OldValidTo(ctx)
+	case stint.FieldEventId:
+		return m.OldEventId(ctx)
+	case stint.FieldDateCreated:
+		return m.OldDateCreated(ctx)
+	case stint.FieldTenantId:
+		return m.OldTenantId(ctx)
+	}
+	return nil, fmt.Errorf("unknown Stint field %s", name)
 }
 
 // TallyMutation represents an operation that mutates the Tally nodes in the graph.

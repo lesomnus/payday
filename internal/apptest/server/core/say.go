@@ -125,6 +125,17 @@ func Sentences(events app.EventServiceServer) *past.Sentences {
 		return fmt.Sprintf("%s: 이전 기록을 %s의 일로 고침", actor(r, ev, "시스템"), r.Time(m.GetAt().AsTime()))
 	})
 
+	// The receipt of an expiry: how many of what went, and from before when.
+	// It names nobody and says nothing of what went, which is gone.
+	past.Say(s, "en", func(r *past.Reading, ev past.EventRow, m *app.PastExpired) string {
+		return fmt.Sprintf("%s let go of what was over before %s (facts: %d, events: %d, stints: %d)",
+			actor(r, ev, "The deployment"), r.Time(m.GetBefore().AsTime()), m.GetFacts(), m.GetEvents(), m.GetStints())
+	})
+	past.Say(s, "ko", func(r *past.Reading, ev past.EventRow, m *app.PastExpired) string {
+		return fmt.Sprintf("%s: %s 이전에 끝난 기록 정리 (사실 %d건, 이벤트 %d건, 배치 %d건)",
+			actor(r, ev, "시스템"), r.Time(m.GetBefore().AsTime()), m.GetFacts(), m.GetEvents(), m.GetStints())
+	})
+
 	// A row from before: the sentence it was written with, which marks who
 	// did it as `{actor}` -- named now, as every sentence names a person -- in
 	// whatever language it was written in.

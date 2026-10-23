@@ -26,6 +26,7 @@ import { OwedSchema } from './app/payday/owed_pb.js'
 import { PulseSchema, TallySchema } from './app/tally_pb.js'
 import { RowSealSchema } from './app/payday/rowseal_pb.js'
 import { SealSchema } from './app/seal_pb.js'
+import { StintSchema } from './app/stint_pb.js'
 import { TenantSchema } from './app/payday/tenant_pb.js'
 import { ThingSchema } from './shared/thing_pb.js'
 import { AccessService } from './app/payday/access_svc_pb.js'
@@ -41,6 +42,7 @@ import { OwedService } from './app/payday/owed_svc_pb.js'
 import { PulseService, TallyService } from './app/tally_svc_pb.js'
 import { RowSealService } from './app/payday/rowseal_svc_pb.js'
 import { SealService } from './app/seal_svc_pb.js'
+import { StintService } from './app/stint_svc_pb.js'
 import { TenantService } from './app/payday/tenant_svc_pb.js'
 import { ThingService } from './shared/thing_svc_pb.js'
 
@@ -248,6 +250,17 @@ export const Seal = {
 	service: SealService,
 } as const satisfies EntityDesc
 
+/** app.Stint, as the store holds it. */
+export const Stint = {
+	typeName: "app.Stint",
+	schema: StintSchema,
+	domain: 20,
+	refs: [{ field: "tenant", to: "app.Tenant" }],
+	key: "id",
+	ids: ["id", "robotId", "eventId"],
+	service: StintService,
+} as const satisfies EntityDesc
+
 /** app.Tally, as the store holds it. */
 export const Tally = {
 	typeName: "app.Tally",
@@ -285,5 +298,5 @@ export const Thing = {
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Machine, Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing] as const
+export const entities = [Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Machine, Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Stint, Tally, Tenant, Thing] as const
 

@@ -125,9 +125,67 @@ A tenant that has left still has a trail, so the callback is asked about
 tenants that no longer exist. What it answers is what your offboarding says:
 the deployment's windows, or a short one once its grace is over.
 
-If the app keeps history of its own — events, time rows — have that read the
-same entity, so that the two never disagree about how long this tenant's
-history lasts.
+### And the past's window, from the same row
+
+An app that keeps a past (`option (payday.app) = {past: ...}`) lets it go by a
+window too, asked of it per tenant as the trail's is: `past.Expirer.Window`, or
+the `past.Window` it hands `past.Expire` itself. **Answer both from one
+source**, the same row. The trail keeps the writes that made the past, so two
+answers are a trail that outlives the history it records -- holding as values
+what the past let go -- or a past whose making the trail has already
+forgotten. And a hold has to hold both: a legal claim on a tenant's history is
+on the history and on its record.
+
+```go
+// window is how long this tenant keeps its history, and its holds, as of now:
+// the one answer both the trail and the past are given.
+func window(ctx context.Context, db *ent.Client, tenant pdid.Id) (time.Duration, []string, error) {
+	v, err := db.Contract.Query().Where(contract.TenantIdEQ(tenant.Uuid())).Only(ctx)
+	if ent.IsNotFound(err) {
+		return 0, nil, nil // forever, and no hold
+	}
+	if err != nil {
+		return 0, nil, err
+	}
+
+	var holds []string
+	if v.HoldReason != "" {
+		holds = []string{v.HoldReason}
+	}
+	return time.Duration(v.HistoryDays) * 24 * time.Hour, holds, nil
+}
+
+p.Tenants = func(ctx context.Context, tenant pdid.Id) (trail.Tenant, error) {
+	keep, holds, err := window(ctx, db, tenant)
+	if err != nil {
+		return trail.Tenant{}, err
+	}
+
+	t := trail.Tenant{}
+	if keep > 0 {
+		t.Keep = &trail.Keep{Retain: 90 * 24 * time.Hour, Destroy: keep}
+	}
+	if len(holds) > 0 {
+		t.Hold = &trail.Hold{Why: strings.Join(holds, "; ")}
+	}
+	return t, nil
+}
+
+expirer := past.Expirer{
+	Tenants: pd.PastTenants(db),
+	Window: func(ctx context.Context, tenant pdid.Id) (past.Window, error) {
+		keep, holds, err := window(ctx, db, tenant)
+		return past.Window{Keep: keep, Holds: holds}, err
+	},
+	In: pd.PastIn(ungated, drv, content),
+}
+```
+
+Both read an error the same way -- nothing of the tenant's goes that pass -- and
+both apply a window from the next pass that reads it, so a grace is the
+callback's to answer for either, as below. If the app keeps history of its own
+beside the past -- time rows, documents -- have that read the same row as
+well, so that nothing disagrees about how long this tenant's history lasts.
 
 ## 4. When a window shortens
 

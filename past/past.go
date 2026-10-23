@@ -105,6 +105,27 @@
 // declares personal: the trail records that it was written and never what it
 // said. When a person asks for a text to be taken out, [Redact] blanks one
 // event's reason, and records that on the trail as the act it is.
+//
+// # Letting it go
+//
+// A tenant keeps its past for as long as its [Window] says -- the app's to
+// answer, from the source the trail's windows are answered from -- and what was
+// over before the window began goes ([Expire]): a fact superseded by then, or
+// replaced by then by one that still stands, and an event of before then that
+// nothing that stays names. What names an event is what says so in the schema,
+// `(payday.field) = {event: true}` -- the past's own columns and the app's --
+// which `pd gen` lists in the store ([Store.Pointers]); the app takes its own
+// rows that name events first, in the same transaction, so an event only they
+// named goes with them. Each row taken is on the trail as taken. [Expiry] says
+// what no window ends and the receipt of what one took, [Preview] counts what
+// an expiry would take and takes nothing, and [Expirer] is the loop that does
+// it in every tenant.
+//
+//	err := pd.PastIn(ungated, drv, content)(ctx, tenant, func(ctx context.Context, st past.Store) error {
+//		// the app's own rows that name events, first
+//		_, err := past.Expire(ctx, st, tenant, past.Window{Keep: keep, Holds: holds}, time.Now(), expiry)
+//		return err
+//	})
 package past
 
 import (
@@ -118,6 +139,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/lesomnus/payday/pdid"
+	"github.com/lesomnus/payday/pdpb"
 )
 
 // Store is an app's past as this package writes and reads it: its Event and
@@ -174,6 +196,45 @@ type Store interface {
 	// event has no Patch -- and puts that on the trail as the act `action`
 	// (`pd.Record`), in the same transaction.
 	Redact(ctx context.Context, id pdid.Id, action string) error
+
+	// Pointers is every column of the app's that names an event: the past's
+	// own -- an event's cause, a fact's event and the event that superseded it
+	// -- and the app's, `(payday.field) = {event: true}`. What [Expire] asks
+	// of each event it would take.
+	Pointers() []Pointer
+
+	// DeleteEvents and DeleteFacts delete the rows `ids` names beneath the
+	// servers -- neither entity has an Erase, since neither is changed but by
+	// this package -- and answer how many went. Neither puts it on the trail:
+	// [Store.Erased] does.
+	DeleteEvents(ctx context.Context, ids []pdid.Id) (int, error)
+	DeleteFacts(ctx context.Context, ids []pdid.Id) (int, error)
+
+	// Erased puts on the trail that the rows `ids` were deleted beneath the
+	// servers, as the act `action` (`pd.RecordErased`): by whoever `ctx` is
+	// framed as, filed under its tenant, in the same transaction.
+	Erased(ctx context.Context, action string, ids []pdid.Id) error
+
+	// CountEvents and CountFacts count the rows `where` takes: predicates
+	// over payday's own column names, as a [Select]'s are.
+	CountEvents(ctx context.Context, where []func(*sql.Selector)) (int, error)
+	CountFacts(ctx context.Context, where []func(*sql.Selector)) (int, error)
+}
+
+// Pointer is a column of the app's that names an event, as [Store.Pointers]
+// answers it: `(payday.field) = {event: true}`.
+type Pointer struct {
+	// Domain is the entity whose rows hold it.
+	Domain pdid.Domain
+
+	// Table and Column are the names SQL knows them by.
+	Table  string
+	Column string
+
+	// Own is payday's entity the column is of: [pdpb.Own_OWN_EVENT] for an
+	// event's cause, [pdpb.Own_OWN_FACT] for what wrote a fact and what
+	// superseded it, and the zero value for a column of the app's own.
+	Own pdpb.Own
 }
 
 // EventRow is a row of the app's Event, as this package writes it and reads

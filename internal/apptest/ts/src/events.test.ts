@@ -48,7 +48,7 @@ describe('the event registry', () => {
 
 		// A message that names no kind is written under its full name.
 		expect(kinds['app.MachineStarted']).toBe(MachineStartedSchema)
-		expect(Object.keys(kinds).sort()).toEqual(['app.MachineStarted', 'correct', 'machine.service', 'robot.move'])
+		expect(Object.keys(kinds).sort()).toEqual(['app.MachineStarted', 'correct', 'machine.service', 'past.expire', 'robot.move'])
 
 		for (const v of Object.values(kinds)) {
 			expect(events.getMessage(v.typeName)).toBe(v)

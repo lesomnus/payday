@@ -256,11 +256,11 @@ func TestEveryKindIsSaidInEveryLanguage(t *testing.T) {
 	x := require.New(t)
 	s := core.Sentences(app.UnimplementedEventServiceServer{})
 
-	x.Len(pd.EventKinds, 4, "each of this app's kinds, so that a test of none is not a test of all")
+	x.Len(pd.EventKinds, 5, "each of this app's kinds, so that a test of none is not a test of all")
 	for _, l := range []string{"en", "ko"} {
 		x.Empty(past.Unsaid(s, l, pd.EventKinds), "unsaid in %s", l)
 	}
-	x.Equal([]string{"app.MachineStarted", "correct", "machine.service", "robot.move"}, past.Unsaid(s, "fr", pd.EventKinds),
+	x.Equal([]string{"app.MachineStarted", "correct", "machine.service", "past.expire", "robot.move"}, past.Unsaid(s, "fr", pd.EventKinds),
 		"and a language it says nothing in says none of them")
 }
 

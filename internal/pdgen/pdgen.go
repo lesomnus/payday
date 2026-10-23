@@ -81,6 +81,11 @@ type Entity struct {
 	// the declaration changes is that `pd doctor` stops asking.
 	NotPersonal []string
 
+	// Pointers are the columns declared `(payday.field).event`: each names an
+	// event of the app's past, which an expiry keeps while a row that stays
+	// names it (payday#151). By name, which is the column's.
+	Pointers []string
+
 	// Domain is what identifiers of this entity carry.
 	Domain uint8
 
@@ -269,6 +274,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	if err := s.checkPast(); err != nil {
 		return nil, err
 	}
+	if err := s.checkPointers(); err != nil {
+		return nil, err
+	}
 	if err := s.check(); err != nil {
 		return nil, err
 	}
@@ -396,6 +404,7 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 	var personalNumbers []uint32
 	var notPersonal []string
 	var stamped []string
+	var pointers []string
 	for prop := range e.Props() {
 		f, _ := proto.GetExtension(prop.Descriptor().Options(), pdpb.E_Field).(*pdpb.Field)
 		if f.GetSecret() {
@@ -423,6 +432,12 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		if f.GetStamped() {
 			stamped = append(stamped, prop.Name())
 		}
+		if f.GetEvent() {
+			if err := checkPointer(e, prop); err != nil {
+				return nil, err
+			}
+			pointers = append(pointers, prop.Name())
+		}
 	}
 
 	v := &Entity{
@@ -434,6 +449,7 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		PersonalNumbers: personalNumbers,
 		NotPersonal:     notPersonal,
 		Stamped:         stamped,
+		Pointers:        pointers,
 		Domain:          uint8(d),
 		Name:            pdid.Name(opts.GetName(), string(e.FullName().Name())),
 		Own:             opts.GetOwn(),

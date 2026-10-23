@@ -601,6 +601,7 @@ type Field struct {
 	xxx_hidden_Secret      bool                   `protobuf:"varint,1,opt,name=secret"`
 	xxx_hidden_Stamped     bool                   `protobuf:"varint,2,opt,name=stamped"`
 	xxx_hidden_Personal    bool                   `protobuf:"varint,3,opt,name=personal"`
+	xxx_hidden_Event       bool                   `protobuf:"varint,5,opt,name=event"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -653,6 +654,13 @@ func (x *Field) GetPersonal() bool {
 	return false
 }
 
+func (x *Field) GetEvent() bool {
+	if x != nil {
+		return x.xxx_hidden_Event
+	}
+	return false
+}
+
 func (x *Field) SetSecret(v bool) {
 	x.xxx_hidden_Secret = v
 }
@@ -663,7 +671,11 @@ func (x *Field) SetStamped(v bool) {
 
 func (x *Field) SetPersonal(v bool) {
 	x.xxx_hidden_Personal = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *Field) SetEvent(v bool) {
+	x.xxx_hidden_Event = v
 }
 
 func (x *Field) HasPersonal() bool {
@@ -833,6 +845,50 @@ type Field_builder struct {
 	// the rest of the message has none: unset and false are different
 	// statements, and the doctor has to tell them apart.
 	Personal *bool
+	// Event marks a column that names an event of the app's past (payday#151):
+	// the operation that wrote the row, or the one that replaced it.
+	//
+	//   bytes event_id = 19 [
+	//     (orm.field) = {type: TYPE_UUID},
+	//     (payday.field) = {event: true}
+	//   ];
+	//
+	// # What it does
+	//
+	// It keeps the event. A tenant's past expires by the tenant's window, and an
+	// event goes once nothing that stays still names it: a row that stays says
+	// what it is with the operation that wrote it, and that operation's event is
+	// how it says so. The expiry asks every column marked this, and `pd gen`
+	// lists them for it -- the past's own, a fact's event and the event that
+	// superseded it and an event's cause, which payday's templates mark, and an
+	// app's: a time row's, a stock movement's.
+	//
+	// # Why a declaration
+	//
+	// Because nothing else says it. A `TYPE_UUID` column is an identifier of
+	// anything, and the identifier's domain is a property of the row, not of the
+	// column: one that names an event today is not, to anything reading the
+	// schema, one that names an event. An expiry that guessed from a name --
+	// `*_event_id` -- would take an event a column it did not guess still names,
+	// and that is a row whose history is gone with nothing having failed.
+	//
+	// # What it may be on
+	//
+	// A `bytes` column of `TYPE_UUID` of an entity, one identifier to a row, in
+	// an app that declares a past: a list holds identifiers no index finds, an
+	// edge is to a row and not to an event, and an app with no past has no
+	// events to keep. Of payday's Event, only its cause: an event an event names
+	// stays while that one does, and the expiry follows that by the one column it
+	// knows. Generation refuses it anywhere else.
+	//
+	// # What it does not do
+	//
+	// Make the identifier an edge. Nothing checks that the event is there -- the
+	// row is written in the operation's transaction, beside it -- and nothing is
+	// deleted with it. Nor does it index the column, which is the schema's to
+	// say: give it an index that begins with it, or every expiry reads the whole
+	// table for each event it asks about.
+	Event bool
 }
 
 func (b0 Field_builder) Build() *Field {
@@ -842,9 +898,10 @@ func (b0 Field_builder) Build() *Field {
 	x.xxx_hidden_Secret = b.Secret
 	x.xxx_hidden_Stamped = b.Stamped
 	if b.Personal != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
 		x.xxx_hidden_Personal = *b.Personal
 	}
+	x.xxx_hidden_Event = b.Event
 	return m0
 }
 
@@ -2040,11 +2097,12 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x05Order\x12\x1e\n" +
 	"\x05field\x18\x01 \x01(\v2\b.orm.RefR\x05field\x12\x12\n" +
 	"\x04desc\x18\x02 \x01(\bR\x04descB\t\n" +
-	"\atenancy\"n\n" +
+	"\atenancy\"\x84\x01\n" +
 	"\x05Field\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
 	"\astamped\x18\x02 \x01(\bR\astamped\x12!\n" +
-	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonalJ\x04\b\x04\x10\x05R\n" +
+	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonal\x12\x14\n" +
+	"\x05event\x18\x05 \x01(\bR\x05eventJ\x04\b\x04\x10\x05R\n" +
 	"impersonal*\xb8\x01\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +

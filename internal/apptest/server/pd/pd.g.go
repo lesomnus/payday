@@ -44,6 +44,7 @@ import (
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	rowseal "github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
 	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	stint "github.com/lesomnus/payday/internal/apptest/internal/ent/stint"
 	tally "github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
@@ -127,6 +128,7 @@ const (
 	RobotDomain    pdid.Domain = 7   // "robot"
 	RowSealDomain  pdid.Domain = 255 // "row-seal"
 	SealDomain     pdid.Domain = 14  // "seal"
+	StintDomain    pdid.Domain = 20  // "stint"
 	TallyDomain    pdid.Domain = 15  // "tally"
 	TenantDomain   pdid.Domain = 1   // "tenant"
 	ThingDomain    pdid.Domain = 13  // "thing"
@@ -151,6 +153,7 @@ func init() {
 	pdid.Register("app.Robot", RobotDomain, "robot")
 	pdid.Register("app.RowSeal", RowSealDomain, "row-seal")
 	pdid.Register("app.Seal", SealDomain, "seal")
+	pdid.Register("app.Stint", StintDomain, "stint")
 	pdid.Register("app.Tally", TallyDomain, "tally")
 	pdid.Register("app.Tenant", TenantDomain, "tenant")
 	pdid.Register("shared.Thing", ThingDomain, "thing")
@@ -179,6 +182,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Robot":    RobotDomain,
 	"app.RowSeal":  RowSealDomain,
 	"app.Seal":     SealDomain,
+	"app.Stint":    StintDomain,
 	"app.Tally":    TallyDomain,
 	"app.Tenant":   TenantDomain,
 	"shared.Thing": ThingDomain,
@@ -196,6 +200,7 @@ var EventKinds = map[string]protoreflect.MessageType{
 	"app.MachineStarted": (*apptest.MachineStarted)(nil).ProtoReflect().Type(),
 	"correct":            (*apptest.Corrected)(nil).ProtoReflect().Type(),
 	"machine.service":    (*apptest.MachineServiced)(nil).ProtoReflect().Type(),
+	"past.expire":        (*apptest.PastExpired)(nil).ProtoReflect().Type(),
 	"robot.move":         (*apptest.RobotMoved)(nil).ProtoReflect().Type(),
 }
 
@@ -222,6 +227,7 @@ var IndexRenames = []rename.Index{
 	{Table: "fact", From: "fact_subject_id_field_number_key_valid_from", To: "fact_subject"},
 	{Table: "fact", From: "fact_tenant_id_domain_field_number_key_valid_from", To: "fact_field"},
 	{Table: "fact", From: "fact_event_id", To: "fact_event"},
+	{Table: "fact", From: "fact_superseded_by", To: "fact_superseded"},
 	{Table: "holder", From: "holder_alias_tenant_id", To: "holder_slug"},
 	{Table: "holder", From: "holder_tenant_id_date_created_id", To: "holder_page"},
 	{Table: "outbox", From: "outbox_id", To: "outbox_queue"},
@@ -230,6 +236,7 @@ var IndexRenames = []rename.Index{
 	{Table: "robot", From: "robot_tenant_id_date_created_id", To: "robot_page"},
 	{Table: "robot", From: "robot_alias_tenant_id", To: "robot_slug"},
 	{Table: "robot", From: "robot_tenant_id_alias_id", To: "robot_by_alias"},
+	{Table: "stint", From: "stint_event_id", To: "stint_event"},
 	{Table: "tenant", From: "tenant_date_created_id", To: "tenant_page"},
 	{Table: "thing", From: "thing_date_created_id", To: "thing_page"},
 }
@@ -427,6 +434,16 @@ func (wall) SealScope(ctx context.Context) (predicate.Seal, error) {
 	return nil, nil
 }
 
+// StintScope: a row belongs to the tenant its "tenant" reaches.
+func (wall) StintScope(ctx context.Context) (predicate.Stint, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return stint.TenantIdIn(vs...), nil
+}
+
 // TallyScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) TallyScope(ctx context.Context) (predicate.Tally, error) {
 	vs, all, err := frame.Narrow(ctx)
@@ -585,6 +602,11 @@ func (x grouped) RowSealScope(ctx context.Context) (predicate.RowSeal, error) {
 
 // SealScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) SealScope(ctx context.Context) (predicate.Seal, error) {
+	return nil, nil
+}
+
+// StintScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) StintScope(ctx context.Context) (predicate.Stint, error) {
 	return nil, nil
 }
 
@@ -3460,6 +3482,45 @@ func (s sinkSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*ap
 	return s.SealServiceServer.Apply(ctx, req)
 }
 
+type sinkStint struct {
+	apptest.StintServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Stint() apptest.StintServiceServer {
+	return sinkStint{s.Server.Stint(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkStint) Erase(ctx context.Context, req *apptest.StintRef) (*apptest.StintEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Stint", req)
+
+	return s.StintServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkStint) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
+	seen.Forget(s.store.Db.Driver(), "Stint", req.GetRef())
+
+	return s.StintServiceServer.Apply(ctx, req)
+}
+
+// Patch forgets what the transaction was told about the row, before it is
+// written; see [sinkStint.Apply].
+func (s sinkStint) Patch(ctx context.Context, req *apptest.StintPatchRequest) (*apptest.Stint, error) {
+	seen.Forget(s.store.Db.Driver(), "Stint", req.GetRef())
+
+	return s.StintServiceServer.Patch(ctx, req)
+}
+
 type sinkTenant struct {
 	apptest.TenantServiceServer
 	store  bare.Store
@@ -4833,6 +4894,50 @@ func (s gateRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*
 // parsed from the file that declares it, as the server behind parses it.
 var gateRobotEntity = ormpatch.MustEntityOf((*apptest.Robot)(nil).ProtoReflect().Descriptor().ParentFile(), "Robot")
 
+type gateStint struct {
+	Gate
+	apptest.StintServiceServer
+}
+
+func (s Gate) Stint() apptest.StintServiceServer {
+	v := gateStint{s, s.Next().Stint()}
+	v.StintServiceServer = bare.StintWithAddRule(v.StintServiceServer, v.admit)
+	return v
+}
+
+// admit refuses a Stint put into a Tenant this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `tenant` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Tenant, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Stint].
+func (s gateStint) admit(ctx context.Context, req *apptest.StintAddRequest) (*apptest.StintAddRequest, error) {
+	if ref := req.GetTenant(); ref != nil {
+		if err := seen.Visible(ctx, s.Gate.drv, "Tenant", ref, func() error {
+			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Tenant")
+			}
+
+			return nil, err
+		}
+	}
+
+	return req, nil
+}
+
 // Audit is the layer that refuses a trail row written by hand.
 //
 // The Rpcs exist because the trail is an entity like any other and a test is
@@ -5131,6 +5236,8 @@ func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.Fiel
 		return describedRowSeal.md, describedRowSeal.secret, describedRowSeal.personal
 	case SealDomain:
 		return describedSeal.md, describedSeal.secret, describedSeal.personal
+	case StintDomain:
+		return describedStint.md, describedStint.secret, describedStint.personal
 	case TallyDomain:
 		return describedTally.md, describedTally.secret, describedTally.personal
 	case TenantDomain:
@@ -5216,6 +5323,9 @@ var (
 	describedSeal = describe((*apptest.Seal)(nil),
 		[]protoreflect.FieldNumber{8, 9},
 		[]protoreflect.FieldNumber{})
+	describedStint = describe((*apptest.Stint)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
 	describedTally = describe((*apptest.Tally)(nil),
 		[]protoreflect.FieldNumber{9},
 		[]protoreflect.FieldNumber{})
@@ -5261,6 +5371,7 @@ func added(by string) bool {
 		apptest.RobotService_Add_FullMethodName,
 		apptest.RobotService_AddMany_FullMethodName,
 		apptest.SealService_Add_FullMethodName,
+		apptest.StintService_Add_FullMethodName,
 		apptest.TenantService_Add_FullMethodName,
 		apptest.ThingService_Add_FullMethodName:
 		return true
@@ -5620,6 +5731,33 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 
 		return k, b, nil
 
+	case StintDomain:
+		row, ok := image.(*apptest.Stint)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
+		}
+
+		b := []byte{}
+		if keep {
+			kept := row
+			v, err := proto.Marshal(kept)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		if !row.HasTenant() {
+			return uuid.Nil(), b, nil
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
 	case TallyDomain:
 		row, ok := image.(*apptest.Tally)
 		if !ok {
@@ -5719,6 +5857,8 @@ func left(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) 
 		vs, err = rowsRobot(ctx, s.Db, robot.IdEQ(uuid.UUID(key)))
 	case SealDomain:
 		vs, err = rowsSeal(ctx, s.Db, seal.IdEQ(uuid.UUID(key)))
+	case StintDomain:
+		vs, err = rowsStint(ctx, s.Db, stint.IdEQ(uuid.UUID(key)))
 	case TallyDomain:
 		vs, err = rowsTally(ctx, s.Db, tally.IdEQ(uuid.UUID(key)))
 	case TenantDomain:
@@ -6121,6 +6261,9 @@ func Digests(ctx context.Context, db *ent.Client, d *audit1.Digest, p trail.Poli
 	}
 	if err := audit1.CheckKind(ctx, d, checkedSeal(db), archived, &out); err != nil {
 		return out, fmt.Errorf("seal: %w", err)
+	}
+	if err := audit1.CheckKind(ctx, d, checkedStint(db), archived, &out); err != nil {
+		return out, fmt.Errorf("stint: %w", err)
 	}
 	if err := audit1.CheckKind(ctx, d, checkedTally(db), archived, &out); err != nil {
 		return out, fmt.Errorf("tally: %w", err)
@@ -6665,6 +6808,52 @@ func checkedSeal(db *ent.Client) audit1.Kind {
 	}
 }
 
+// checkedStint is what a check of the rows reads of the stint kind.
+func checkedStint(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Stint) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsStint(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: StintDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, stint.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, stint.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, StintDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsStint(ctx, db, stint.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
 // checkedTally is what a check of the rows reads of the tally kind.
 func checkedTally(db *ent.Client) audit1.Kind {
 	read := func(ctx context.Context, ps ...predicate.Tally) (audit1.Page, error) {
@@ -7042,6 +7231,26 @@ func rowsSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audi
 	return out, nil
 }
 
+// rowsStint is the rows `ps` says of the stint kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsStint(ctx context.Context, db *ent.Client, ps ...predicate.Stint) ([]audit1.Live, error) {
+	q := db.Stint.Query().Where(ps...)
+	bare.StintSelectInit(q, nil)
+
+	vs, err := q.Order(stint.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
 // rowsTally is the rows `ps` says of the tally kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
@@ -7346,6 +7555,8 @@ func record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 				rows, err = rowsRobot(ctx, db, robot.IdIn(uuids(page)...))
 			case SealDomain:
 				rows, err = rowsSeal(ctx, db, seal.IdIn(uuids(page)...))
+			case StintDomain:
+				rows, err = rowsStint(ctx, db, stint.IdIn(uuids(page)...))
 			case TallyDomain:
 				rows, err = rowsTally(ctx, db, tally.IdIn(uuids(page)...))
 			case TenantDomain:
@@ -7488,6 +7699,8 @@ func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Dom
 			rows, err = rowsRobot(ctx, s.db, robot.IdIn(uuids(ids)...))
 		case SealDomain:
 			rows, err = rowsSeal(ctx, s.db, seal.IdIn(uuids(ids)...))
+		case StintDomain:
+			rows, err = rowsStint(ctx, s.db, stint.IdIn(uuids(ids)...))
 		case TallyDomain:
 			rows, err = rowsTally(ctx, s.db, tally.IdIn(uuids(ids)...))
 		case TenantDomain:
@@ -8409,6 +8622,40 @@ func (s interceptSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest)
 func (s interceptSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.SealServiceServer,
 		apptest.SealService_Erase_FullMethodName, req, s.SealServiceServer.Erase)
+}
+
+func (s Intercept) Stint() apptest.StintServiceServer {
+	return interceptStint{s, s.Next().Stint()}
+}
+
+type interceptStint struct {
+	Intercept
+	apptest.StintServiceServer
+}
+
+func (s interceptStint) Add(ctx context.Context, req *apptest.StintAddRequest) (*apptest.Stint, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.StintServiceServer,
+		apptest.StintService_Add_FullMethodName, req, s.StintServiceServer.Add)
+}
+
+func (s interceptStint) Get(ctx context.Context, req *apptest.StintGetRequest) (*apptest.Stint, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.StintServiceServer,
+		apptest.StintService_Get_FullMethodName, req, s.StintServiceServer.Get)
+}
+
+func (s interceptStint) Patch(ctx context.Context, req *apptest.StintPatchRequest) (*apptest.Stint, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.StintServiceServer,
+		apptest.StintService_Patch_FullMethodName, req, s.StintServiceServer.Patch)
+}
+
+func (s interceptStint) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.StintServiceServer,
+		apptest.StintService_Apply_FullMethodName, req, s.StintServiceServer.Apply)
+}
+
+func (s interceptStint) Erase(ctx context.Context, req *apptest.StintRef) (*apptest.StintEraseResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.StintServiceServer,
+		apptest.StintService_Erase_FullMethodName, req, s.StintServiceServer.Erase)
 }
 
 // WatchRecorder answers with the recorder that remembers a write for `w`.
@@ -9807,6 +10054,8 @@ func (s pastStore) TenantOf(ctx context.Context, ids []pdid.Id) (map[pdid.Id]pdi
 			case SealDomain:
 				rows, err = rowsSeal(ctx, s.db, seal.IdIn(uuids(page)...))
 				global = true
+			case StintDomain:
+				rows, err = rowsStint(ctx, s.db, stint.IdIn(uuids(page)...))
 			case TallyDomain:
 				rows, err = rowsTally(ctx, s.db, tally.IdIn(uuids(page)...))
 			case TenantDomain:
@@ -9999,6 +10248,140 @@ func pastUnnamed(err error) (string, []access1.Subject, error) {
 	}
 
 	return "", nil, err
+}
+
+// Pointers is [pastPointers].
+func (pastStore) Pointers() []past.Pointer { return pastPointers }
+
+// pastPointers is every column of this app's that names an event,
+// `(payday.field) = {event: true}`: what the expiry asks of each event it
+// would take, whether a row that stays names it.
+var pastPointers = []past.Pointer{
+	{Domain: EventDomain, Table: event.Table, Column: event.FieldCauseId, Own: pdpb.Own_OWN_EVENT},
+	{Domain: FactDomain, Table: fact.Table, Column: fact.FieldEventId, Own: pdpb.Own_OWN_FACT},
+	{Domain: FactDomain, Table: fact.Table, Column: fact.FieldSupersededBy, Own: pdpb.Own_OWN_FACT},
+	{Domain: StintDomain, Table: stint.Table, Column: stint.FieldEventId, Own: pdpb.Own_OWN_UNSPECIFIED},
+}
+
+// DeleteEvents deletes the rows `ids` names through ent, a page at a time:
+// Event has no Erase, and its rows leave by expiry or with their tenant.
+// What it takes is put on the trail by [pastStore.Erased].
+func (s pastStore) DeleteEvents(ctx context.Context, ids []pdid.Id) (int, error) {
+	n := 0
+	for page := range slices.Chunk(ids, audit1.RowsPage) {
+		k, err := s.db.Event.Delete().Where(event.IdIn(uuids(page)...)).Exec(ctx)
+		n += k
+		if err != nil {
+			return n, err
+		}
+	}
+
+	return n, nil
+}
+
+// CountEvents counts the rows `where` takes, through ent.
+func (s pastStore) CountEvents(ctx context.Context, where []func(*sql.Selector)) (int, error) {
+	query := s.db.Event.Query()
+	for _, v := range where {
+		query = query.Where(predicate.Event(v))
+	}
+
+	return query.Count(ctx)
+}
+
+// DeleteFacts deletes the rows `ids` names through ent, a page at a time:
+// Fact has no Erase, and its rows leave by expiry or with their tenant.
+// What it takes is put on the trail by [pastStore.Erased].
+func (s pastStore) DeleteFacts(ctx context.Context, ids []pdid.Id) (int, error) {
+	n := 0
+	for page := range slices.Chunk(ids, audit1.RowsPage) {
+		k, err := s.db.Fact.Delete().Where(fact.IdIn(uuids(page)...)).Exec(ctx)
+		n += k
+		if err != nil {
+			return n, err
+		}
+	}
+
+	return n, nil
+}
+
+// CountFacts counts the rows `where` takes, through ent.
+func (s pastStore) CountFacts(ctx context.Context, where []func(*sql.Selector)) (int, error) {
+	query := s.db.Fact.Query()
+	for _, v := range where {
+		query = query.Where(predicate.Fact(v))
+	}
+
+	return query.Count(ctx)
+}
+
+// Erased puts on the trail the rows `ids`, deleted beneath the servers, as the
+// act `action` ([RecordErased]): by whoever `ctx` is framed as, filed under
+// its tenant, in the same transaction.
+func (s pastStore) Erased(ctx context.Context, action string, ids []pdid.Id) error {
+	_, err := RecordErased(ctx, s.db, s.content, action, ids)
+	return err
+}
+
+// PastIn is where the past's expiry does a tenant's (payday#151): `f`, in a
+// transaction of its own on `drv`, with the context framed as the
+// deployment's work in `tenant` -- nobody's, and of that tenant alone -- and a
+// store of the past through `ungated` put on that transaction. Committed when
+// `f` answers nil, and rolled back otherwise. What `past.Expirer.In` is.
+//
+// `ungated` is the stack with no wall, as for every sweep: an expiry is the
+// deployment acting on itself, and nobody's in the tenant. Never one a caller
+// reaches.
+func PastIn(ungated apptest.Server, drv dialect.Driver, content audit1.Contents) func(ctx context.Context, tenant pdid.Id, f func(ctx context.Context, s past.Store) error) error {
+	return func(ctx context.Context, tenant pdid.Id, f func(ctx context.Context, s past.Store) error) error {
+		ctx = frame.Into(ctx, frame.New(pdid.Nil, tenant, frame.Grant{}).WithScope(frame.Only(tenant)))
+
+		tdrv, tx, err := dialect.BeginTx(ctx, drv)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		s, err := Past(ungated, tdrv, content)
+		if err != nil {
+			return err
+		}
+		if err := f(ctx, s); err != nil {
+			return err
+		}
+
+		return tx.Commit()
+	}
+}
+
+// PastTenants is every tenant with a past, a page of at most `limit` after
+// `after` in the order of their identifiers: what `past.Expirer.Tenants` is.
+// One seek per tenant, the next `tenant_id` of the Event after the last, which
+// its index on the tenant answers without reading the rows between. A fact
+// names the event that wrote it, which stays while it does, so a tenant with
+// facts has events.
+func PastTenants(db *ent.Client) func(ctx context.Context, after pdid.Id, limit int) ([]pdid.Id, error) {
+	return func(ctx context.Context, after pdid.Id, limit int) ([]pdid.Id, error) {
+		out := []pdid.Id{}
+		last := after.Uuid()
+		for len(out) < limit {
+			v, err := db.Event.Query().
+				Where(predicate.Event(sql.FieldGT(event.FieldTenantId, last))).
+				Order(ent.Asc(event.FieldTenantId)).
+				First(ctx)
+			switch {
+			case ent.IsNotFound(err):
+				return out, nil
+			case err != nil:
+				return out, err
+			}
+
+			out = append(out, pdid.Id(v.TenantId))
+			last = v.TenantId
+		}
+
+		return out, nil
+	}
 }
 
 // personal is what a message holding a field declared `personal` is to the
@@ -10791,6 +11174,16 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.SealApplyRequest{}
 	case apptest.SealService_Erase_FullMethodName:
 		v = &apptest.SealRef{}
+	case apptest.StintService_Add_FullMethodName:
+		v = &apptest.StintAddRequest{}
+	case apptest.StintService_Get_FullMethodName:
+		v = &apptest.StintGetRequest{}
+	case apptest.StintService_Patch_FullMethodName:
+		v = &apptest.StintPatchRequest{}
+	case apptest.StintService_Apply_FullMethodName:
+		v = &apptest.StintApplyRequest{}
+	case apptest.StintService_Erase_FullMethodName:
+		v = &apptest.StintRef{}
 	default:
 		// Including every Rpc written by hand: those live on a service of
 		// their own, which `Server` has no accessor for.
@@ -10963,6 +11356,16 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Seal().Apply(ctx, v.(*apptest.SealApplyRequest))
 	case apptest.SealService_Erase_FullMethodName:
 		res, err = s.Seal().Erase(ctx, v.(*apptest.SealRef))
+	case apptest.StintService_Add_FullMethodName:
+		res, err = s.Stint().Add(ctx, v.(*apptest.StintAddRequest))
+	case apptest.StintService_Get_FullMethodName:
+		res, err = s.Stint().Get(ctx, v.(*apptest.StintGetRequest))
+	case apptest.StintService_Patch_FullMethodName:
+		res, err = s.Stint().Patch(ctx, v.(*apptest.StintPatchRequest))
+	case apptest.StintService_Apply_FullMethodName:
+		res, err = s.Stint().Apply(ctx, v.(*apptest.StintApplyRequest))
+	case apptest.StintService_Erase_FullMethodName:
+		res, err = s.Stint().Erase(ctx, v.(*apptest.StintRef))
 	default:
 		return nil, batch.ErrNoMethod(m)
 	}
@@ -11000,6 +11403,7 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		&apptest.Robot{},
 		&apptest.RowSeal{},
 		&apptest.Seal{},
+		&apptest.Stint{},
 		&apptest.Tally{},
 		&apptest.Tenant{},
 		&apptest.Thing{},
@@ -11491,6 +11895,40 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				return nil, err
 			}
 			return publicResource(v), nil
+		case *apptest.Stint:
+			ctx, err := read.Allow(ctx, apptest.StintService_Get_FullMethodName, 1)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.StintNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), stint.Table, []resourcesql.Column{
+				{Number: 1, Name: stint.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: stint.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 8, Name: stint.FieldRobotId, Type: 64, Nullable: false, Key: 0},
+				{Number: 9, Name: stint.FieldValidFrom, Type: 65, Nullable: false, Key: 0},
+				{Number: 10, Name: stint.FieldValidTo, Type: 65, Nullable: true, Key: 0},
+				{Number: 11, Name: stint.FieldEventId, Type: 64, Nullable: false, Key: 0},
+				{Number: 15, Name: stint.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Stint.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
 		case *apptest.Tenant:
 			ctx, err := read.Allow(ctx, apptest.TenantService_Get_FullMethodName, 1)
 			if err != nil {
@@ -11688,6 +12126,14 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.SealService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.StintService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.StintService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.StintService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.StintService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.TenantService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.TenantService_Patch_FullMethodName:
@@ -11722,7 +12168,7 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 		return nil
 	}
 	switch image.ProtoReflect().Descriptor().FullName() {
-	case "app.Access", "app.Audit", "app.Cell", "app.Event", "app.Fact", "app.Fleet", "app.Holder", "app.Joint", "app.Machine", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Tenant", "shared.Thing":
+	case "app.Access", "app.Audit", "app.Cell", "app.Event", "app.Fact", "app.Fleet", "app.Holder", "app.Joint", "app.Machine", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Stint", "app.Tenant", "shared.Thing":
 	default:
 		return nil
 	}
