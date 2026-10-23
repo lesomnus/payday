@@ -3,6 +3,55 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An app may number payday's Archived and Access
+
+**Applies to an app with an entity of its own at domain 5 or 6**, which `pd
+gen` has refused since payday's `Archived` took 5 (2026-10-11) and its `Access`
+6 (2026-10-21) -- *two entities declare one domain*. It keeps its entity where
+it is, and gives payday's a number of its own (payday#163). **Every other app
+changes nothing**: with nothing declared the two stay at 5 and 6, and a
+regeneration brings only payday's `app.proto` with `payday.Domains` in it.
+
+- **To declare them**, move the app's `buf.build/payday/payday` pin to a `dev`
+  that has `payday.Domains` (`buf dep update`), and say it on the file that says
+  the package is the app's -- in the one `option (payday.app)`, beside a past if
+  it declares one:
+
+  ```proto
+  option (payday.app) = {domains: {archived: 240, access: 241}};
+  ```
+
+  Either may be said alone, the other staying at payday's number. Each is in
+  7..247, the two different, and neither held by another entity or by the
+  past; only these two are numbered, and a `domains:` naming another of
+  payday's -- `owed:`, `row_seal:` -- is refused. `pd gen` writes the copies at
+  these numbers and everything generated follows; an entity at 5 or 6 with
+  nothing declared is now refused with this line, at numbers nothing holds.
+- **Nothing to migrate.** An app that numbers either has no row of it under 5
+  or 6: with an entity at one of them it could not generate with the table at
+  all. The migration that takes it to this payday makes the two tables, and
+  their rows carry the declared numbers from the first.
+- **Choose them once.** A domain is in every identifier of the rows it names,
+  so the line is not taken out again once a row of either is written: the
+  rows would be under a number nothing registers. The archive files the access
+  record as `access` whatever its number, and `audit.by.access` names it so.
+- **A pin from before this** answers the declaration with `cannot resolve
+  message field name for payday.App`, and `pd gen` says that is the pin.
+- `pd entity add` skips the declared numbers, and does not count them as the
+  highest of the app's own.
+- [The schema guide's §7](guide/schema.md#when-yours-hold-5-or-6-paydays-archived-and-access)
+  says how; [the generation contract](schema.md#domains-come-from-the-schema)
+  why these two and no others.
+
+What the apps on payday change:
+
+- **kamino** keeps `Robot` at 5 and `Model` at 6, whose numbers are in every
+  robot's identifier and in its device certificates, and declares both.
+- **khala** keeps `Robot` at 5 and declares `archived:`. Its own entities at
+  248..254 move into its range on its side, which is not this: Owed and RowSeal
+  keep 254 and 255.
+- **rove** and **roster** have nothing at 5 or 6, and change nothing.
+
 ## `pd doctor` asks what an app's past gets wrong
 
 **Applies to an app that declares a past**, which `pd doctor` now asks four

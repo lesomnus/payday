@@ -309,13 +309,31 @@ func (e Entity) free() (int, error) {
 	// apps had numbered up from 7 -- a row's seal, at 255 -- it numbered down
 	// from the top, where no app's entity is, so the highest of those is not
 	// the one an app's next is past.
+	//
+	// Nor are the numbers an app gave payday's Archived and Access (payday#163),
+	// for the same reason: they are payday's entities, wherever the app put
+	// them, and an app that put them at 240 has not used everything below it.
+	// So they are skipped -- never offered -- and nothing else. They are in
+	// `taken` once a generation has written the copies and not before, which
+	// is why they are held apart, from the declaration, whatever the files say.
+	skip := map[int]bool{}
+	for _, n := range numberedFiles {
+		if d, ok := e.Layout.Domains.Domain(n.Own); ok {
+			skip[int(d)] = true
+		}
+	}
+
 	next := 6
 	for n := range taken {
-		if n > next && n < PaydaysFromTop {
+		if n > next && n < PaydaysFromTop && !skip[n] {
 			next = n
 		}
 	}
-	if next++; next < PaydaysFromTop {
+	next++
+	for skip[next] {
+		next++
+	}
+	if next < PaydaysFromTop {
 		return next, nil
 	}
 

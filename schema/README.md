@@ -19,6 +19,19 @@ set edge — and an app adds its own in 8..12 and from 16. An overlay that
 redeclares a number payday owns is refused: protobuf-merge takes the overlay's
 word, so `alias` would quietly become whatever it said.
 
+Each says its domain once and is copied at it, with one exception:
+`archived.proto` and `access.proto` say 5 and 6, which apps on payday had spent
+on entities of their own before payday took them. An app whose own entity holds
+one gives payday's a number of its own, on the file that says its package is
+the app's:
+
+```proto
+option (payday.app) = {domains: {archived: 240, access: 241}};
+```
+
+and `pd gen` writes it over the one `domain:` line of the copy before the
+overlay is merged (payday#163). The rest keep theirs in every app.
+
 ## `past/`
 
 Two more, which an app has only when it asks for them: an `Event` for each of
@@ -36,9 +49,9 @@ the declaration goes.
 
 **Their domains are the app's.** Each file says `domain: 0`, which is no domain
 at all, and `pd gen` writes the declared number in its place. A table every app
-has gets a number payday fixes; a table an app opts into is numbered by the app,
-because payday would otherwise be taking a number from every app that had
-already spent it. Every field number they declare is payday's -- their 8..12
+has keeps the number payday gives it; a table an app opts into is numbered by
+the app, because payday would otherwise be taking a number from every app that
+had already spent it. Every field number they declare is payday's -- their 8..12
 included -- and an overlay adds at the ones they leave empty.
 
 What a row of the Event holds is a message the app declares for each kind of

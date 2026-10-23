@@ -10,6 +10,9 @@ until the next one -- the past's lock apart, below.
 - `event.proto` and `fact.proto` are here when the app declares a past
   -- `option (payday.app) = {past: {event: 17, fact: 16}};` -- numbered as it
   declares, and go when the declaration does.
+- `archived.proto` and `access.proto` are at domains 5 and 6, or at the
+  numbers the app gives them when its own entities hold those --
+  `option (payday.app) = {domains: {archived: 240, access: 241}};`.
 - `*_svc.g.proto` are the service contracts generated from them, the same
   as the ones beside your own entities.
 - `past.lock`, with a past, is the record of every event message the app

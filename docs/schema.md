@@ -96,14 +96,15 @@ the same refusals -- on every run, and takes them out again on the first run
 after the declaration goes. Nothing about them is per app but the two numbers
 and what the app's overlays add.
 
-**Those two numbers are the app's.** A table every app has gets a domain payday
-fixes, which is what lets one app name another's rows: a tenant is domain 1 in
-every payday app. A table an app opts into cannot be given one -- payday would
-be taking a number from every app that had already spent it, and these arrived
-after apps had -- so the app numbers it, as it numbers its own entities. The
-generator finds both by their `own:` marker, never by number. Any table payday
-later offers to opt into is numbered the same way; [§5](#domains-come-from-the-schema)
-has the ranges.
+**Those two numbers are the app's.** A table every app has keeps the domain
+payday gives it, which is what lets one app name another's rows: a tenant is
+domain 1 in every payday app. A table an app opts into cannot be given one --
+payday would be taking a number from every app that had already spent it, and
+these arrived after apps had -- so the app numbers it, as it numbers its own
+entities. The generator finds both by their `own:` marker, never by number. Any
+table payday later offers to opt into is numbered the same way;
+[§5](#domains-come-from-the-schema) has the ranges, and the two tables every app
+has that an app may number all the same.
 
 ## 2. Overlays: adding, never overriding
 
@@ -421,8 +422,8 @@ alternative — a hand-maintained `domain.go` with constants, a `String()` and a
 `DomainString()` — compiles fine when you add an entity and forget one of the
 three.
 
-**The rule for the numbers is whose the table is.** A table every app has gets
-a number payday fixes: 1..6 from the bottom -- Tenant 1, Holder 2, Audit 3,
+**The rule for the numbers is whose the table is.** A table every app has keeps
+the number payday gives it: 1..6 from the bottom -- Tenant 1, Holder 2, Audit 3,
 Outbox 4, Archived 5, Access 6 -- and, for what it added once apps were
 numbering theirs up from 7, from the top down: RowSeal 255, Owed 254. So 1..6
 and 248..255 are payday's. Everything else is the app's, 7..247: its own
@@ -430,6 +431,37 @@ entities, and the tables it opts into -- the past's Event and Fact take the two
 numbers its declaration gives them, which `pd gen` refuses in payday's ranges,
 the same for both, or held by another entity. The rules for choosing one are in
 [the schema guide](guide/schema.md#2-what-you-have-to-say-and-what-you-may-leave-out).
+
+**But Archived and Access, which an app may number** (payday#163). payday gave
+them 5 and 6 -- on 2026-10-11 and 2026-10-21 -- after apps on payday had spent
+both on entities of their own, and two of those cannot move: a fleet's robots
+and models, whose domains are in every identifier the fleet has issued and in
+device certificates. payday's two can. No identifier of theirs is held anywhere
+but in the app's own database and archive, and nothing of payday's finds them
+by number. So an app whose own entity holds 5 or 6 keeps it, and says where
+payday's goes instead, on the file that says its package is its own:
+
+```proto
+option (payday.app) = {domains: {archived: 240, access: 241}};
+```
+
+Either may be said alone. The numbers are held to the past's rules -- 7..247,
+the two different, neither one another entity holds, the past's included --
+and an app that says nothing has them at 5 and 6, which is every app whose own
+entities never held either. `pd gen` writes the number into the copy of
+`archived.proto` or `access.proto` before the overlay is merged, and everything
+that knows it is generated from there: the constant, the registration that
+names the kind, what the manifest and the access record mint their rows'
+identifiers with, and how a document of the archive is told to be the access
+record's. The archive files a row under its kind's **name**, `access`, so a
+deployment's configuration (`audit.by.access`) and its chunks read the same
+whatever the number. An entity of the app's at 5 or 6 with nothing declared is
+refused with the line to write.
+
+The rest keep theirs: Tenant 1, Holder 2, Audit 3, Outbox 4, Owed 254 and
+RowSeal 255. The exception is for the two whose numbers apps had spent where
+they could not take them back, and not a second way of numbering payday's
+entities; an app whose own entity holds one of the others moves its own.
 
 Both the write path and the read path check the byte, and they check it in
 different places on purpose. Writing is `Minter`: the generated `Add` asks it

@@ -610,7 +610,10 @@ changing. What that does not say is whether the archive still holds **what it
 should**: a chunk taken away, or one put there by somebody who is not the
 deployment, looks like any other. So the database keeps an account of the
 archive — the **manifest**, payday's `Archived` entity, one row per blob —
-somewhere the archive's own storage cannot reach.
+somewhere the archive's own storage cannot reach. Its domain is 5, or the number
+an app whose own entity holds 5 gives it (`option (payday.app) = {domains:
+{archived: ...}}`, payday#163); what minted its rows' identifiers is generated
+from the copy either way.
 
 Every change to the archive goes through it, by the archive every act is handed
 (a decorator on the `flob.Stores`), so no act changes the archive without it:
@@ -1555,7 +1558,9 @@ person a screen showed: a list of a hundred people is a hundred people and no
 write at all.
 
 So it is a table of its own beside the trail: `Access`, payday's entity, copied
-into every app, domain 6. A row is what one call did to somebody's personal
+into every app -- domain 6, or the number an app whose own entity holds 6 gives
+it (`option (payday.app) = {domains: {access: ...}}`, payday#163). A row is what
+one call did to somebody's personal
 data, filed under the tenant that data was in: who called (`actor_id`,
 `actor_tenant_id`), `action` (the RPC), `kind` -- `write`, `download`, or `read`
 for anything else it carried -- `result` (`ok`, or the code it was refused
@@ -1610,7 +1615,9 @@ call that carried nobody's data leaves nothing.
 **It is kept by the trail's machinery**, not a copy of it. The generated
 `TrailStore` reads both tables, so access rows leave the database on a window,
 are archived, sealed, checkpointed, destroyed, and leave with their tenant, as
-a kind of their own, `access`:
+a kind of their own, `access` -- by that name, which is what the archive files
+a chunk under and a configuration says, so a deployment reads the same whatever
+number its app gave the table:
 
 ```yaml
 audit:

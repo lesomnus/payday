@@ -135,3 +135,32 @@ func TestAStalePinIsExplainedForAColumnThatNamesAnEvent(t *testing.T) {
 		}
 	}
 }
+
+// TestAStalePinIsExplainedForPaydaysDomains: what the buf payday pins said,
+// word for word but for where, of an app that gives payday's Archived and
+// Access domains against a `dev` from before `payday.Domains` (payday#163) --
+// read where buf points, in the option that declares a past as well, which the
+// pin has and is not named.
+func TestAStalePinIsExplainedForPaydaysDomains(t *testing.T) {
+	const said = "app/proto/app/robot.proto:4:3:cannot resolve message field name for `payday.App`\n"
+
+	work := t.TempDir()
+	at := filepath.Join(work, "app", "proto", "app", "robot.proto")
+	if err := os.MkdirAll(filepath.Dir(at), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := "package app;\noption (payday.app) = {\n  past: {event: 17, fact: 18}\n  domains: {archived: 240, access: 241}\n};\n"
+	if err := os.WriteFile(at, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	v := whyStale(work, []byte(said))
+	for _, want := range []string{"`domains:`", "buf dep update"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("does not say %q:\n%s", want, v)
+		}
+	}
+	if strings.Contains(v, "`past:`") {
+		t.Errorf("named a field the pin has:\n%s", v)
+	}
+}

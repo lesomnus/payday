@@ -117,6 +117,9 @@ identifier lie about what it used to be.
 - Two entities sharing one is refused.
 - payday's past, when you declare one, takes two of yours: the numbers you give
   it ([§7](#your-past-paydays-event-and-fact)).
+- payday's Archived and Access are `5` and `6`. An entity of yours that held one
+  of those before payday took it keeps it, and you give payday's a number of
+  yours instead ([§7](#when-yours-hold-5-or-6-paydays-archived-and-access)).
 
 `pd entity add` writes one past the highest number the schema holds, rather than
 the lowest that is free, so it does not hand back the number of an entity you
@@ -789,6 +792,53 @@ One thing an overlay may not say is what the file **is**. A file-level
 entity file — is refused, because the merge would put it on every field of every
 message in the contract, including the ones the generator wrote.
 
+### When yours hold 5 or 6: payday's Archived and Access
+
+payday's `Archived` -- the database's account of the trail's archive -- is
+domain 5 and its `Access`, the access record, is 6, in every app that says
+nothing. They took those numbers after apps on payday had spent them, so an app
+whose own entity already holds one is refused:
+
+```
+app.Robot declares domain 5, which payday gives its Archived where an app gives it no other. A domain is one entity's, so an old identifier would start lying about what it named. An app whose own entity holds one of payday's numbers keeps it, and gives payday's entity a number of its own instead, on the file that says the package is the app's:
+
+    option (payday.app) = {domains: {archived: 21}};
+```
+
+Keep yours: its number is in every identifier you have issued. Give payday's a
+number of yours, on the file that says the package is yours -- beside your past,
+if you declare one, in the same option:
+
+```proto
+// proto/app/app.proto
+option (payday.app) = {
+  past: {event: 17, fact: 16}
+  domains: {archived: 240, access: 241}
+};
+```
+
+Either may be said alone, and the other stays where payday puts it. `pd gen`
+writes the copy at your number on every run, and everything generated from it
+follows -- the constant (`pd.ArchivedDomain`), the identifiers the manifest and
+the access record mint, how the archive tells the access record's rows from the
+trail's. What does not move is the kind's **name**: the access record is filed
+in the archive, and configured, as `access` (`audit.by.access`), whatever its
+number.
+
+The numbers are held as the past's are: anything in `7`–`247` your schema does
+not hold, the two different, neither one your past takes. One of payday's --
+`5` itself included, which is what saying nothing is for -- or one number for
+both is refused before anything is compiled, and one another entity holds when
+the schema is read. Choose them once: a domain is in every identifier of the
+rows it names, and an app that numbered Archived and later takes the line out
+has rows minted under a number nothing registers any more.
+
+Only these two move. payday's Tenant, Holder, Audit, Outbox, Owed and RowSeal
+keep 1, 2, 3, 4, 254 and 255, and an entity of yours at one of those moves
+instead. A `domains:` that names one of them -- `owed:`, `row_seal:` -- is
+refused as one that keeps its number, and one that names the past's is pointed
+at `past:`.
+
 ### Your past: payday's Event and Fact
 
 payday ships two entities an app has only by asking: an **Event** for each of
@@ -973,6 +1023,9 @@ only test for whether it belongs on this list.
 | a past declared in two files | two answers to the number its copies are written with |
 | a message `Event` or `Fact`, or a file `event.proto` or `fact.proto`, of an app that declares a past | a name defined twice, or two files written as one |
 | a copy of the past with no declaration, or at another number | a table numbered by nothing the schema says |
+| an entity at payday's Archived's or Access's number, with nothing giving payday's another; or one given a number in payday's ranges, one for both, the past's, or one another entity holds | identifiers that say the wrong kind of row, or nothing |
+| payday's domains given in two files, or given to one of its entities that keeps its number | two answers to the number its copies are written with, or a number nothing writes |
+| a copy of Archived or Access at a number other than the one given, or than payday's where none is | a table numbered by nothing the schema says |
 | an event message holding a `(payday.field)`, an entity, a contract's message or an `Any`, anywhere in it | a person, a row or a slug kept for as long as history is, or a message nothing declared |
 | an entity that is an event message, two of one kind, or one in an app that declares no past | a row that says it holds either, or an event with no table |
 | an event message, a field, a kind or an enum value that the past's lock holds, gone or changed | every row written before it, no longer read or read as something else |
@@ -1021,7 +1074,9 @@ watched.
 
 It skips the two numbers an app's past is declared at, which no file holds
 until the next generation writes the copies, and refuses `Event` and `Fact` in
-an app that declares one.
+an app that declares one. It skips the numbers an app gives payday's Archived
+and Access as well, and does not count them as the highest of the app's own:
+an app that put them at 240 has not used everything below it.
 
 `pd entity list` prints what is declared and which domain each holds.
 

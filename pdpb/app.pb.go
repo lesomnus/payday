@@ -50,16 +50,18 @@ const (
 // It was presence and nothing else for as long as there was nothing else to
 // say: a file either says it or does not. It is a message rather than a `bool`
 // so that something could be added to it without every app that set it having
-// to change, and [App.past] is the first thing that was.
+// to change, and [App.past] is the first thing that was, [App.domains] the
+// second.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
 // them from the option meant to settle it would be worse than getting none.
 type App struct {
-	state           protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Past *Past                  `protobuf:"bytes,1,opt,name=past"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Past    *Past                  `protobuf:"bytes,1,opt,name=past"`
+	xxx_hidden_Domains *Domains               `protobuf:"bytes,2,opt,name=domains"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *App) Reset() {
@@ -94,8 +96,19 @@ func (x *App) GetPast() *Past {
 	return nil
 }
 
+func (x *App) GetDomains() *Domains {
+	if x != nil {
+		return x.xxx_hidden_Domains
+	}
+	return nil
+}
+
 func (x *App) SetPast(v *Past) {
 	x.xxx_hidden_Past = v
+}
+
+func (x *App) SetDomains(v *Domains) {
+	x.xxx_hidden_Domains = v
 }
 
 func (x *App) HasPast() bool {
@@ -105,8 +118,19 @@ func (x *App) HasPast() bool {
 	return x.xxx_hidden_Past != nil
 }
 
+func (x *App) HasDomains() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Domains != nil
+}
+
 func (x *App) ClearPast() {
 	x.xxx_hidden_Past = nil
+}
+
+func (x *App) ClearDomains() {
+	x.xxx_hidden_Domains = nil
 }
 
 type App_builder struct {
@@ -125,6 +149,17 @@ type App_builder struct {
 	// reason [App] is: where an app's parts are is read off what it already
 	// wrote, and this is one more line of what it wrote.
 	Past *Past
+	// Domains gives payday's `Archived` and `Access` numbers of the app's own,
+	// for an app whose own entities already hold the ones payday gives them
+	// (payday#163):
+	//
+	//	option (payday.app) = {domains: {archived: 240, access: 241}};
+	//
+	// `pd gen` writes the copies of the two at these numbers, on every run, and
+	// everything generated from them follows. An app that says nothing has them
+	// at 5 and 6, which is every app whose own entities never held either; one
+	// that says one of them has the other where payday puts it.
+	Domains *Domains
 }
 
 func (b0 App_builder) Build() *App {
@@ -132,6 +167,7 @@ func (b0 App_builder) Build() *App {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Past = b.Past
+	x.xxx_hidden_Domains = b.Domains
 	return m0
 }
 
@@ -139,12 +175,14 @@ func (b0 App_builder) Build() *App {
 //
 // # Why the app numbers them
 //
-// A table every app has gets a number payday fixes: a tenant is domain 1 in
-// every payday app, which is what lets one app name another's rows. A table an
-// app opts into is numbered by the app, because payday cannot fix a number for
-// it without taking that number from every app that already spent it -- and
-// these two arrived after apps had. The generator finds them by their `own:`
-// marker, never by their number, so nothing of payday's depends on which.
+// A table every app has keeps the number payday gives it: a tenant is domain 1
+// in every payday app, which is what lets one app name another's rows. (Two
+// such tables an app may number all the same, where its own entities had spent
+// their numbers first: see [Domains].) A table an app opts into is numbered by
+// the app, because payday cannot fix a number for it without taking that
+// number from every app that already spent it -- and these two arrived after
+// apps had. The generator finds them by their `own:` marker, never by their
+// number, so nothing of payday's depends on which.
 //
 // Each is a domain like any other: 7..247, the two different, and neither one
 // another entity of the app's declares. 1..6 and 248..255 are payday's. And
@@ -224,29 +262,136 @@ func (b0 Past_builder) Build() *Past {
 	return m0
 }
 
+// Domains is the domain of each of the two entities of payday's that an app may
+// number itself: `Archived`, the account the database keeps of the trail's
+// archive, and `Access`, the access record. Zero is the number payday gives
+// it.
+//
+// # Why these two, and only when the app says
+//
+// A table every app has keeps the number payday gives it, so that one number
+// means one thing in every payday app. These two were given theirs -- 5 on
+// 2026-10-11, 6 on 2026-10-21 -- after apps on payday had already spent them:
+// a fleet whose robots carry domain 5 in every identifier, and in device
+// certificates already issued, cannot move its robots. payday's two can move,
+// since no identifier of theirs is held anywhere but the app's own database
+// and archive. So an app whose own entity holds 5 or 6 keeps it, and says here
+// where payday's goes instead.
+//
+// Nothing of payday's depends on which. The generator finds both by their
+// `own:` marker, the archive files a row under its kind's name -- `access`,
+// whatever the number -- and everything that knows the number is generated
+// from the copy. The others keep theirs: Tenant 1, Holder 2, Audit 3, Outbox
+// 4, Owed 254 and RowSeal 255.
+//
+// Each is a domain like any other: 7..247, the two different, and neither one
+// another entity of the app's holds, the past's included. And like any other
+// it is chosen once and never changed, since an identifier carries it for as
+// long as anything names the row.
+type Domains struct {
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Archived uint32                 `protobuf:"varint,1,opt,name=archived"`
+	xxx_hidden_Access   uint32                 `protobuf:"varint,2,opt,name=access"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *Domains) Reset() {
+	*x = Domains{}
+	mi := &file_payday_app_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Domains) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Domains) ProtoMessage() {}
+
+func (x *Domains) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_app_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Domains) GetArchived() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Archived
+	}
+	return 0
+}
+
+func (x *Domains) GetAccess() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Access
+	}
+	return 0
+}
+
+func (x *Domains) SetArchived(v uint32) {
+	x.xxx_hidden_Archived = v
+}
+
+func (x *Domains) SetAccess(v uint32) {
+	x.xxx_hidden_Access = v
+}
+
+type Domains_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Archived is the domain of `Archived`, one row per blob of the trail's
+	// archive: 5 when this says nothing.
+	Archived uint32
+	// Access is the domain of `Access`, one row per call that carried somebody's
+	// personal data: 6 when this says nothing.
+	Access uint32
+}
+
+func (b0 Domains_builder) Build() *Domains {
+	m0 := &Domains{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Archived = b.Archived
+	x.xxx_hidden_Access = b.Access
+	return m0
+}
+
 var File_payday_app_proto protoreflect.FileDescriptor
 
 const file_payday_app_proto_rawDesc = "" +
 	"\n" +
-	"\x10payday/app.proto\x12\x06payday\"'\n" +
+	"\x10payday/app.proto\x12\x06payday\"R\n" +
 	"\x03App\x12 \n" +
-	"\x04past\x18\x01 \x01(\v2\f.payday.PastR\x04past\"0\n" +
+	"\x04past\x18\x01 \x01(\v2\f.payday.PastR\x04past\x12)\n" +
+	"\adomains\x18\x02 \x01(\v2\x0f.payday.DomainsR\adomains\"0\n" +
 	"\x04Past\x12\x14\n" +
 	"\x05event\x18\x01 \x01(\rR\x05event\x12\x12\n" +
-	"\x04fact\x18\x02 \x01(\rR\x04factB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x04fact\x18\x02 \x01(\rR\x04fact\"=\n" +
+	"\aDomains\x12\x1a\n" +
+	"\barchived\x18\x01 \x01(\rR\barchived\x12\x16\n" +
+	"\x06access\x18\x02 \x01(\rR\x06accessB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_payday_app_proto_goTypes = []any{
-	(*App)(nil),  // 0: payday.App
-	(*Past)(nil), // 1: payday.Past
+	(*App)(nil),     // 0: payday.App
+	(*Past)(nil),    // 1: payday.Past
+	(*Domains)(nil), // 2: payday.Domains
 }
 var file_payday_app_proto_depIdxs = []int32{
 	1, // 0: payday.App.past:type_name -> payday.Past
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 1: payday.App.domains:type_name -> payday.Domains
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_payday_app_proto_init() }
@@ -260,7 +405,7 @@ func file_payday_app_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_app_proto_rawDesc), len(file_payday_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

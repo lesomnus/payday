@@ -278,20 +278,11 @@ func (s *Schema) checkPointers() error {
 // its rows were minted under, and the one to say again. The first number from
 // the app's that nothing holds, for one that is not there.
 func (s *Schema) copied(own pdpb.Own) int {
-	taken := map[int]bool{}
 	for _, v := range s.Entities {
 		if v.Own == own {
 			return int(v.Domain)
 		}
-
-		taken[int(v.Domain)] = true
 	}
 
-	for n := AppDomainMin; n <= AppDomainMax; n++ {
-		if !taken[n] {
-			return n
-		}
-	}
-
-	return AppDomainMin
+	return s.free()
 }

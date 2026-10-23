@@ -205,6 +205,12 @@ type Schema struct {
 	// by their marker; this is what says whether they should be.
 	Past *Past
 
+	// Domains is what the app declared of the domains of payday's Archived and
+	// Access, and nil for an app that declared none (payday#163): the two are
+	// in [Schema.Entities] wherever they are, found by their marker, and this
+	// says where they should be.
+	Domains *AppDomains
+
 	// Events are the app's event messages -- `option (payday.event)` -- by
 	// full name: what a row of the past's Event holds, one message per kind of
 	// operation. Empty for nearly every app, and refused in one with no past.
@@ -229,6 +235,12 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return nil, err
 	}
 	s.Past = past
+
+	domains, err := readDomains(files, past)
+	if err != nil {
+		return nil, err
+	}
+	s.Domains = domains
 
 	// Before the field options, which would refuse a `(payday.field)` in an
 	// event message with advice for a message an entity holds; see
@@ -272,6 +284,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	}
 
 	if err := s.checkPast(); err != nil {
+		return nil, err
+	}
+	if err := s.checkDomains(); err != nil {
 		return nil, err
 	}
 	if err := s.checkPointers(); err != nil {

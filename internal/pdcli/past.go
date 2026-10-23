@@ -158,6 +158,10 @@ func appOf(name string, b []byte) (*pdpb.App, error) {
 		// and `(payday.app).past.fact = 16` are two lines of one value.
 		v := &pdpb.App{}
 		if err := prototext.Unmarshal([]byte(text), v); err != nil {
+			if why := keptBy(err); why != "" {
+				return nil, fmt.Errorf("%s: option (payday.app): %s", name, why)
+			}
+
 			return nil, fmt.Errorf("%s: option (payday.app): %w", name, err)
 		}
 		proto.Merge(app, v)
