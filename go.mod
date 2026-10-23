@@ -27,7 +27,7 @@ require (
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/miekg/pkcs11 v1.1.2
 	github.com/ncruces/go-sqlite3 v0.35.3
-	github.com/protobuf-orm/ent v0.0.0-20261021205026-b333b8f2153a
+	github.com/protobuf-orm/ent v0.0.0-20261023220616-4d86cf345c31
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20261017212716-3430237a8656
 	github.com/stretchr/testify v1.12.1
 	github.com/transparency-dev/merkle v0.0.2

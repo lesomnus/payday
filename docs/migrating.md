@@ -3,6 +3,39 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A sandbox keeps only the methods it calls
+
+**Applies to every app**, which regenerates: the one file that moves is
+`internal/ent/runtime/runtime.go`, whose stamp says which ent generated the
+client. No schema, migration or code changes, and an app with a sandbox finds
+it a third smaller (payday#170).
+
+Every field the ent schema made listed its Go type's methods with
+`reflect.Type.Method`, and the generated client's `runtime.go` makes the
+schema's fields at init, for their defaults and value scanners. A program that
+can reach that call keeps every exported method of every type converted to an
+interface, used or not, so each sandbox carried all of them: 24 MB of payday's
+own 63, and 17 MB of the 54 that a fresh `pd new` app's sandbox was. Every app
+has paid it since payday's `Audit` took a column default (payday#87), which put
+the schema in every app's `runtime.go`. protobuf-orm/ent lists the methods in
+its loader now, which only codegen runs (protobuf-orm/ent#20), and payday's
+`go.mod` brings it. A process keeps its methods either way: it links
+`text/template`, which calls them by name -- xli renders its help with it, and
+CEL imports it.
+
+- **A sandbox can be held to it.** Link it with `-ldflags=-dumpdep`, under
+  `GOOS=js` and its tags, and no line of the dump may say `<ReflectMethod>`.
+  `TestTheSandboxLetsTheLinkerPruneMethods` in
+  `internal/apptest/cli/sandbox_test.go` is payday's, and it names the chain
+  the linker took to the call when it fails. An app's own code brings the cost
+  back the same way: `text/template` does, and so does anything else that
+  calls a method by a name or an index it computes.
+
+What the apps on payday change: each regenerates, and nothing else. roster's
+sandbox measured 90.0 MB before and 56.6 MB after, at c4ae61c. khala's measured
+46.9 MB on payday c0f5e7d, and 27.9 MB with its `runtime.go`'s `init` taken
+out, which is about what this gives back.
+
 ## A SQLite DSN that names no busy timeout waits a minute for a lock
 
 **Applies to an app on SQLite whose DSN asks for a PRAGMA and names no
