@@ -3,6 +3,31 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A read that carries on from a cursor starts at it
+
+**Applies to every app**, which regenerates: `pd.g.go` changes, and nothing
+else does -- no schema, no migration, no API. `pd gen --check` says so until it
+is regenerated.
+
+- **The trail store's reads and a check of the rows page by one comparison of
+  the pair**, `(date_created, id) > (a, b)`, where they paged by
+  `date_created > a OR (date_created = a AND id > b)`. The rows are the same.
+  What changes is that PostgreSQL starts each page at its cursor, where it read
+  the kind's or the tenant's lines from the first one and filtered: every read
+  of the whole was quadratic. `pd.Digests` -- a `trail rows` command -- over a
+  million lines of the trail took three minutes; a page from the middle of one
+  kind is 143 ms before and 0.18 ms after, and a pass's batch from the middle
+  of one tenant's lines 141 ms and 0.36 ms. The reads are a pass's (`Older`,
+  `Heads`), the access record's beside them, the erasures owed (`Owed`), and
+  the trail read by kind in a check of the rows.
+- **A `trail.Store` of your own** pages as it likes. One that copied the OR
+  from the generated store reads the same way, and is fixed the same way.
+
+What the apps on payday change:
+
+- **rove** and **roster:** regenerate with the payday that has this, and
+  nothing else.
+
 ## An event holds a message the app declares, and a lock keeps it readable
 
 **Applies to every app with a page**, which regenerates: `pd gen --ts` now
