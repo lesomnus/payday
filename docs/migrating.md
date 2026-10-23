@@ -1416,6 +1416,39 @@ it. Regenerate; nothing has to change, and one line makes it cheaper.
   Without it every question is asked as before. `seen` says what is remembered
   and why a write does not make it forget.
 
+## Fields 4..7 and 13..15 are the header's
+
+**Applies if** an entity of yours has a field of its own at 4..7 or 13..15. Those
+numbers are the header's (e8198ac, 2026-10-15): `alias`, `name` and `desc` at 4,
+5 and 6, each a `string`; `labels` at 7, a `map<string, string>`; and
+`date_updated`, `date_erased` and `date_created` at 13, 14 and 15, each a
+`google.protobuf.Timestamp`. A field there that is not the header's, by name and
+by shape, is refused by `pd gen` and `pd doctor`:
+
+```
+app.Robot: serial: field number 5 is reserved for name (string); leave it empty or declare string name = 5; app fields belong at 8..12 or 16+
+```
+
+payday reads these numbers by name across every entity, and holds them so that
+a header field it adds later finds them empty in every app. An entity that
+leaves them empty, or holds the header's own fields there, changes nothing.
+
+- **Move the field to a free number** -- 8..12, or 16 and up -- keeping its
+  name, its type and its options, and leave the old number empty.
+- **That changes the wire.** A field is its number in binary protobuf, so a
+  client built before the move -- a generated client, a message stored as bytes
+  -- writes and reads the field at the old number, where the server now has
+  nothing: what it sends is dropped, and what it asks for is empty. Build what
+  speaks binary again from the new schema.
+- **And what old rows of the trail say.** A row of the trail that kept a
+  write's `value` holds the row as it was written, in binary, with the field at
+  its old number. Read with the new schema it is an unknown field; and if the
+  entity later declares the header's field at that number -- `name`, at 5 -- an
+  old value of the same wire type reads as that field.
+- **Nothing changes for the database, or for JSON.** A column is named after its
+  field and so is a JSON member, so neither moves with the number: there is no
+  migration, and a page or a client that speaks JSON reads the field as before.
+
 ## An acceptance carries a restored database on, and is clean at once
 
 **Applies if** you restore an app's database from a backup, or accept what
