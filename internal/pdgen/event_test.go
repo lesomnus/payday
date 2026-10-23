@@ -431,6 +431,81 @@ message Lock {
 	x.NotContains(emit(t, ownAll(t)+tenantedRobot), "func Past(", "an app with no past was given a store of one")
 }
 
+// TestThePastsNamesAreWrittenWithAPast: `pd.PastNames` is written into an app
+// that declares a past and into no other, and names a row of each entity that
+// has something to be called by -- an alias, a name -- through the wall, as
+// the title the header reads of it: whose data that is when the field it was
+// read off is declared personal, and nobody's otherwise.
+func TestThePastsNamesAreWrittenWithAPast(t *testing.T) {
+	emit := func(t *testing.T, src string) string {
+		t.Helper()
+
+		s, p, err := readPlugin(t, map[string]string{"test/schema.proto": inPkg("fleet", src)})
+		require.NoError(t, err)
+
+		g := p.NewGeneratedFile("pd.go", "example.com/app/server/pd")
+		g.P("package pd")
+		g.P()
+		pdgen.EmitPast(g, s, pdgen.Paths{Ent: "example.com/app/internal/ent", Bare: "example.com/app/server/bare"}, "example.com/app")
+
+		b, err := g.Content()
+		require.NoError(t, err)
+
+		return string(b)
+	}
+
+	x := require.New(t)
+
+	out := emit(t, past(t, entity("Robot", `domain: 7`, `Tenant tenant = 2 [(orm.edge) = {immutable: true}];`)+`
+message Person {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  string alias = 4 [(payday.field) = {personal: false}];
+  string name = 5 [(payday.field) = {personal: true}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 8, erase: {hard: {}}};
+}
+
+message Lock {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 10, erase: {hard: {}}};
+}
+`))
+	x.Contains(out, "func PastNames(drv dialect.Driver) past.Names {")
+	at, end := strings.Index(out, "func (n pastNames) Name("), strings.Index(out, "func pastUnnamed(")
+	x.True(at >= 0 && end > at, "Name, and the helper after it")
+	names := out[at:end]
+
+	// The block a kind is named by: its case, to the next.
+	block := func(kind string) string {
+		i := strings.Index(names, "\tcase "+kind+"Domain:\n")
+		if i < 0 {
+			return ""
+		}
+		v := names[i+1:]
+		if j := strings.Index(v, "\tcase "); j >= 0 {
+			v = v[:j]
+		} else if j := strings.Index(v, "\tdefault:"); j >= 0 {
+			v = v[:j]
+		}
+		return v
+	}
+
+	x.Contains(block("Person"), "p, err := bare.PersonNarrow(ctx, Wall(), person.IdEQ(id.Uuid()))", "through the wall")
+	x.Contains(block("Person"), "v, err := n.db.Person.Query().Where(p).Only(ctx)")
+	x.Contains(block("Person"), "row, alias, name = v.Proto(), false, true", "a person's name is theirs, and the handle they declare is not")
+	x.Contains(block("Holder"), "row, alias, name = v.Proto(), true, true", "payday's holder: both declared personal")
+	x.Contains(block("Robot"), "row, alias, name = v.Proto(), false, false", "an alias nothing declares is nobody's")
+	x.Contains(block("Tenant"), "row, alias, name = v.Proto(), false, false")
+	x.Empty(block("Lock"), "nothing to be called by")
+	x.Empty(block("Audit"), "payday's own records are named by nothing")
+	x.Contains(names, "h := header.Of(row)", "what a row is called is the header's title")
+
+	x.NotContains(emit(t, ownAll(t)+tenantedRobot), "func PastNames(", "an app with no past was given names of one")
+}
+
 // tenantedRobot is a robot behind the wall, for a schema that needs an entity
 // of the app's own.
 const tenantedRobot = `

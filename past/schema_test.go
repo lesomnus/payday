@@ -22,6 +22,7 @@ const thingProto = `
 edition = "2023";
 package past.test;
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
 import "payday.proto";
@@ -96,6 +97,32 @@ message Named {
 
 message Plain {
   bytes thing = 1;
+}
+
+// What a sentence nothing says is made of: one field of every kind an event
+// message holds.
+message Serviced {
+  option (payday.event) = {kind: "thing.service"};
+
+  bytes thing = 1;
+  bytes by = 2;
+  Mode mode = 3;
+  repeated Part parts = 4;
+  map<string, Part> swapped = 5;
+  google.protobuf.Timestamp due = 6;
+  string note = 7;
+  bytes blob = 8;
+  google.protobuf.Duration took = 9;
+  double load = 10;
+  bool done = 11;
+  int64 count = 12;
+  float ratio = 13;
+  uint32 left = 14;
+
+  message Part {
+    string serial = 1;
+    uint32 count = 2;
+  }
 }
 `
 

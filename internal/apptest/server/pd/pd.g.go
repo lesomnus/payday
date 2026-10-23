@@ -22,6 +22,7 @@ import (
 	frame "github.com/lesomnus/payday/frame"
 	gate "github.com/lesomnus/payday/gate"
 	grpcx "github.com/lesomnus/payday/grpcx"
+	header "github.com/lesomnus/payday/header"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	access "github.com/lesomnus/payday/internal/apptest/internal/ent/access"
@@ -9858,6 +9859,146 @@ func (s pastStore) Redact(ctx context.Context, id pdid.Id, action string) error 
 
 	_, err = Record(ctx, s.db, s.content, action, []pdid.Id{id})
 	return err
+}
+
+// PastNames is what names the people and things a sentence of this app's
+// past names, as they are called when it is read (payday#151): a row of any
+// entity with a name or an alias, by `header.Of(row).Title()` -- its name,
+// else its alias -- read on `drv` through the wall, so that a sentence names
+// nothing its reader could not read for themselves.
+//
+// A title read off a field the entity declares `personal` -- a holder's --
+// is that person's data, and it answers the row as whose it is, which the
+// `past` package puts on the access record of the call that said it. An
+// identifier of a row that is gone, of one the caller may not see, or of a
+// kind with nothing to be called by is named by nothing.
+//
+//	r := sentences.Read(ctx, pd.PastNames(drv), locale, zone)
+func PastNames(drv dialect.Driver) past.Names {
+	return pastNames{db: ent.NewClient(ent.Driver(drv))}
+}
+
+type pastNames struct{ db *ent.Client }
+
+var _ past.Names = pastNames{}
+
+// Name reads the row `id` names through the wall, and answers what it is
+// called and -- where that was read off a field declared `personal` -- the
+// row, as whose data saying it is.
+func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subject, error) {
+	var row proto.Message
+	var alias, name bool
+	switch id.Domain() {
+	case CellDomain:
+		p, err := bare.CellNarrow(ctx, Wall(), cell.IdEQ(id.Uuid()))
+		if err != nil {
+			return "", nil, err
+		}
+		v, err := n.db.Cell.Query().Where(p).Only(ctx)
+		if err != nil {
+			return pastUnnamed(err)
+		}
+		row, alias, name = v.Proto(), false, false
+	case FleetDomain:
+		p, err := bare.FleetNarrow(ctx, Wall(), fleet.IdEQ(id.Uuid()))
+		if err != nil {
+			return "", nil, err
+		}
+		v, err := n.db.Fleet.Query().Where(p).Only(ctx)
+		if err != nil {
+			return pastUnnamed(err)
+		}
+		row, alias, name = v.Proto(), false, false
+	case HolderDomain:
+		p, err := bare.HolderNarrow(ctx, Wall(), holder.IdEQ(id.Uuid()))
+		if err != nil {
+			return "", nil, err
+		}
+		v, err := n.db.Holder.Query().Where(p).Only(ctx)
+		if err != nil {
+			return pastUnnamed(err)
+		}
+		row, alias, name = v.Proto(), true, true
+	case JointDomain:
+		p, err := bare.JointNarrow(ctx, Wall(), joint.IdEQ(id.Uuid()))
+		if err != nil {
+			return "", nil, err
+		}
+		v, err := n.db.Joint.Query().Where(p).Only(ctx)
+		if err != nil {
+			return pastUnnamed(err)
+		}
+		row, alias, name = v.Proto(), false, false
+	case MachineDomain:
+		p, err := bare.MachineNarrow(ctx, Wall(), machine.IdEQ(id.Uuid()))
+		if err != nil {
+			return "", nil, err
+		}
+		v, err := n.db.Machine.Query().Where(p).Only(ctx)
+		if err != nil {
+			return pastUnnamed(err)
+		}
+		row, alias, name = v.Proto(), false, false
+	case RobotDomain:
+		p, err := bare.RobotNarrow(ctx, Wall(), robot.IdEQ(id.Uuid()))
+		if err != nil {
+			return "", nil, err
+		}
+		v, err := n.db.Robot.Query().Where(p).Only(ctx)
+		if err != nil {
+			return pastUnnamed(err)
+		}
+		row, alias, name = v.Proto(), false, false
+	case SealDomain:
+		p, err := bare.SealNarrow(ctx, Wall(), seal.IdEQ(id.Uuid()))
+		if err != nil {
+			return "", nil, err
+		}
+		v, err := n.db.Seal.Query().Where(p).Only(ctx)
+		if err != nil {
+			return pastUnnamed(err)
+		}
+		row, alias, name = v.Proto(), false, false
+	case TenantDomain:
+		p, err := bare.TenantNarrow(ctx, Wall(), tenant.IdEQ(id.Uuid()))
+		if err != nil {
+			return "", nil, err
+		}
+		v, err := n.db.Tenant.Query().Where(p).Only(ctx)
+		if err != nil {
+			return pastUnnamed(err)
+		}
+		row, alias, name = v.Proto(), false, false
+	case ThingDomain:
+		p, err := bare.ThingNarrow(ctx, Wall(), thing.IdEQ(id.Uuid()))
+		if err != nil {
+			return "", nil, err
+		}
+		v, err := n.db.Thing.Query().Where(p).Only(ctx)
+		if err != nil {
+			return pastUnnamed(err)
+		}
+		row, alias, name = v.Proto(), false, false
+	default:
+		return "", nil, nil
+	}
+
+	h := header.Of(row)
+	if h.Name != "" && name || h.Name == "" && h.Alias != "" && alias {
+		return h.Title(), []access1.Subject{{Id: id, Tenant: h.Tenant}}, nil
+	}
+
+	return h.Title(), nil, nil
+}
+
+// pastUnnamed is a row that could not be read: named by nothing when there
+// is none to read -- gone, or behind the wall -- and the error otherwise.
+func pastUnnamed(err error) (string, []access1.Subject, error) {
+	if ent.IsNotFound(err) {
+		return "", nil, nil
+	}
+
+	return "", nil, err
 }
 
 // personal is what a message holding a field declared `personal` is to the
