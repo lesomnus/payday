@@ -139,6 +139,16 @@ func CheckOwn(s *Schema) error {
 // [Schema.checkPast]'s to say. And what an overlay may add to them is a field
 // at any number the template leaves empty -- 6 and 17 of an Event, 11 of a Fact
 // -- since their 8..12 are payday's.
+//
+// # And the two an app may number
+//
+// payday's Archived and Access are compared the same way, as though what ships
+// said the copy's number: `pd gen` writes the app's there when it declares one
+// (payday#163), and whether the copy's is the declared one, or payday's where
+// nothing is declared, is [Schema.checkDomains]'s to say. Only the domain:
+// every other entity of payday's is held to the number it ships with here, and
+// anything else in these two's declaration is payday's as it is in every
+// other's.
 func CheckOverlay(s *Schema) error {
 	owned, err := schema.Owned()
 	if err != nil {
@@ -187,7 +197,7 @@ func CheckOverlay(s *Schema) error {
 		d := declared[v.Own]
 		e, _ := proto.GetExtension(v.Written, pdpb.E_Entity).(*pdpb.Entity)
 		shipped := d.Entity
-		if opted[v.Own] {
+		if opted[v.Own] || numbered(v.Own) {
 			shipped = proto.Clone(shipped).(*pdpb.Entity)
 			shipped.SetDomain(e.GetDomain())
 		}

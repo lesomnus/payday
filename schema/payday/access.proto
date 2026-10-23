@@ -131,6 +131,10 @@ message Access {
   };
   option (payday.entity) = {
     own: OWN_ACCESS
+
+    // 6 in every app but one whose own entity held 6 before this did, which
+    // gives this a number of its own -- `option (payday.app) = {domains:
+    // {access: ...}}` -- and `pd gen` writes it over this line (payday#163).
     domain: 6
     erase: {hard: {}}
     tenanted: {
