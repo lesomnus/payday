@@ -3,6 +3,42 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## `pd doctor` asks what an app's past gets wrong
+
+**Applies to an app that declares a past**, which `pd doctor` now asks four
+things of -- the seventh part of payday#151. Nothing regenerates, `pd gen`
+refuses nothing new, and there is no migration; `pd doctor` exits non-zero on a
+schema its lock refuses, which `pd gen` stops on. An app with no past is asked
+nothing new.
+
+- **A lock out of step with its schema.** The comparison `pd gen` makes of the
+  event messages and `past.lock`, made without writing it. A schema the lock
+  refuses is said as `pd gen` refuses it, as a finding that stops a generation.
+  A lock that does not hold all the schema declares -- not there beside event
+  messages, or committed without what a change added -- says what it lacks: run
+  `pd gen`, and commit it.
+- **A column named for an event that does not say it names one**: a `bytes`
+  column of `TYPE_UUID` called `event_id` or `…_event_id`, not named for an
+  entity of the app's, without `(payday.field) = {event: true}`. The expiry asks
+  only the columns that say so. Say it, and index it.
+- **A field of an event message named for something about a person**, in the
+  message or in one it holds: `email`, `phone`, `first_name`, the words `pd
+  doctor` asks an entity's fields about. An event names people by identifier;
+  hold that instead.
+- **A page whose transport cannot read an event**: a file of `ts/src` that makes
+  a transport that speaks JSON and says `jsonOptions` nowhere, in itself or in a
+  module of the page it imports. Hand it the registry, as the second part's
+  entry below says: `jsonOptions: { registry: events }`.
+- [Keeping a past](guide/past.md#13-what-pd-doctor-asks) is the guide.
+
+What the apps on payday change:
+
+- **rove** keeps no past of payday's yet. When it adopts one, `pd doctor` asks
+  about the `event_id` of its time rows and stock movements until they say
+  `event: true`, as the fifth part's entry has them do, and names
+  `ts/src/api.ts`, whose `createConnectTransport` is handed no `jsonOptions`.
+- **roster** keeps no past, and changes nothing.
+
 ## Only the `past` package writes the past
 
 **Applies to an app that declares a past**, which regenerates -- the sixth part

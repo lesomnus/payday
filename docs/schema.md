@@ -180,6 +180,17 @@ the other answer, which is why that field of `payday.Field` has presence. A
 finding and not a fatal one: the trail does what it did, and the decision is
 the schema's.
 
+**What a past gets wrong and still generates** (payday#151). A column the
+past's expiry would have to ask and is not told of: one named for an event --
+`event_id`, `…_event_id`, a `bytes` column of `TYPE_UUID` -- that does not say
+`(payday.field) = {event: true}`, whose event the expiry takes while the row
+goes on naming it. A field of an event message named for somebody, in the
+message or one it holds, which no declaration can answer, since an event
+message takes none: it names people by identifier only. And the lock, held to
+the schema as `pd gen` holds it, without writing it. Each is asked of an app
+that declares a past and of no other; what they say is
+[Keeping a past](guide/past.md#13-what-pd-doctor-asks).
+
 ### The number ranges
 
 payday reads some numbers by name across every entity, so that code holding a

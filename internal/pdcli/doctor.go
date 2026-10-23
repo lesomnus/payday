@@ -137,6 +137,7 @@ func Doctor(ctx context.Context, l Layout) []Finding {
 	vs = append(vs, doctorLayers(l)...)
 	vs = append(vs, doctorAccess(l)...)
 	vs = append(vs, doctorSandbox(ctx, l)...)
+	vs = append(vs, doctorPage(l)...)
 	vs = append(vs, doctorVersions(ctx, l)...)
 
 	return vs
