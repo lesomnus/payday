@@ -231,11 +231,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("			return nil, err")
 	g.P("		}")
 	g.P("")
-	g.P("		q = q.Where(", entPkg.Ident("Or"), "(")
-	g.P("			", entPkg.Ident("DateCreatedGT"), "(after.Created),")
-	g.P("			", entPkg.Ident("And"), "(", entPkg.Ident("DateCreatedEQ"), "(after.Created), ",
-		entPkg.Ident("IdGT"), "(id)),")
-	g.P("		))")
+	emitAfter(g, "		", entPkg, "after.Created", "id")
 	g.P("	}")
 	g.P("")
 	g.P("	return q.")
@@ -496,6 +492,46 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("	}")
 	g.P("}")
 	g.P("")
+}
+
+// emitAfter writes `q` narrowed to the rows after the one a cursor names, in
+// the order every read that carries on from one goes in -- `date_created`,
+// then the key -- where `created` and `key` are what the generated code holds
+// the cursor's two in. Those reads are the trail store's, of the trail, the
+// access record and the erasures owed, and a check of the rows reading the
+// trail the other way round.
+//
+// # One comparison of the pair
+//
+// It was `date_created > a OR (date_created = a AND id > b)`, which is the same
+// rows, and which no database starts an index's range at: an OR is a filter,
+// so each page was read from the first entry the rest of the query allows --
+// the kind's first line, or the tenant's -- up to the cursor, one page more
+// than the page before. A read of the whole was quadratic. A check of the rows
+// over a deployment's million lines of the trail took three minutes, with
+// PostgreSQL a core busy throughout and the app waiting on it. The page from
+// the middle of a kind of 647,926 lines read 323,964 of them only to throw
+// them away, in 143 ms; it now reads one more than it answers, in 0.18 ms.
+//
+// The row value is the order said once, and PostgreSQL and SQLite both start
+// the range at it. Every index a read of the trail or the access record by
+// kind or by tenant uses ends in `date_created`, so there it starts at
+// `date_created >= a` and filters what was written at that instant; `owed`'s
+// ends in the key as well, and there it is the whole bound -- which is where
+// it counts, because one `Owe` stamps every object it owes with one instant.
+//
+// Rejected: the OR kept, with `date_created >= a` in front of it. It is the
+// first half of that and not the second -- the rows owed by one call read
+// again from the first of them, page after page -- and it says the order three
+// times.
+func emitAfter(g *protogen.GeneratedFile, indent string, pkg protogen.GoImportPath, created, key string) {
+	g.P(indent, "// After the cursor, as one comparison of the pair: an index starts the read")
+	g.P(indent, "// at it, where the OR it means is a filter and every page is read from the")
+	g.P(indent, "// first row.")
+	g.P(indent, "q = q.Where(func(s *", pkgEntSql.Ident("Selector"), ") {")
+	g.P(indent, "	s.Where(", pkgEntSql.Ident("CompositeGT"), "([]string{s.C(", pkg.Ident("FieldDateCreated"), "), s.C(", pkg.Ident("FieldId"), ")}, ",
+		created, ", ", key, "))")
+	g.P(indent, "})")
 }
 
 // emitManifest writes the database's half of the archive: [trail.Manifest] on

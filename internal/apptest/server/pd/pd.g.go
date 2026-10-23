@@ -7192,17 +7192,20 @@ func goneOf(ctx context.Context, db *ent.Client, ids []pdid.Id, rows []audit1.Li
 
 // trailObjects hands `yield` the things of kind `d` the database's trail is
 // about, a page of its lines at a time, oldest first -- by the index on
-// `(domain, date_created)`, which a DISTINCT over the table would not use.
-// A thing with more than one line is handed more than once.
+// `(domain, date_created)`, which a DISTINCT over the table would not use,
+// and each page from where the one before ended rather than from the kind's
+// first line. A thing with more than one line is handed more than once.
 func trailObjects(ctx context.Context, db *ent.Client, d pdid.Domain, yield func([]pdid.Id) error) error {
 	var after *ent.Audit
 	for {
 		q := db.Audit.Query().Where(audit.DomainEQ(uint32(d)))
 		if after != nil {
-			q = q.Where(audit.Or(
-				audit.DateCreatedGT(after.DateCreated),
-				audit.And(audit.DateCreatedEQ(after.DateCreated), audit.IdGT(after.Id)),
-			))
+			// After the cursor, as one comparison of the pair: an index starts the read
+			// at it, where the OR it means is a filter and every page is read from the
+			// first row.
+			q = q.Where(func(s *sql.Selector) {
+				s.Where(sql.CompositeGT([]string{s.C(audit.FieldDateCreated), s.C(audit.FieldId)}, after.DateCreated, after.Id))
+			})
 		}
 
 		vs, err := q.
@@ -8775,10 +8778,12 @@ func (s trailStore) older(k trail.Scope, at time.Time, after trail.Cursor, limit
 			return nil, err
 		}
 
-		q = q.Where(audit.Or(
-			audit.DateCreatedGT(after.Created),
-			audit.And(audit.DateCreatedEQ(after.Created), audit.IdGT(id)),
-		))
+		// After the cursor, as one comparison of the pair: an index starts the read
+		// at it, where the OR it means is a filter and every page is read from the
+		// first row.
+		q = q.Where(func(s *sql.Selector) {
+			s.Where(sql.CompositeGT([]string{s.C(audit.FieldDateCreated), s.C(audit.FieldId)}, after.Created, id))
+		})
 	}
 
 	return q.
@@ -8998,10 +9003,12 @@ func (s trailStore) accessRows(ctx context.Context, k trail.Scope, at time.Time,
 			return nil, err
 		}
 
-		q = q.Where(access.Or(
-			access.DateCreatedGT(after.Created),
-			access.And(access.DateCreatedEQ(after.Created), access.IdGT(id)),
-		))
+		// After the cursor, as one comparison of the pair: an index starts the read
+		// at it, where the OR it means is a filter and every page is read from the
+		// first row.
+		q = q.Where(func(s *sql.Selector) {
+			s.Where(sql.CompositeGT([]string{s.C(access.FieldDateCreated), s.C(access.FieldId)}, after.Created, id))
+		})
 	}
 	q = q.Order(ent.Asc(access.FieldDateCreated, access.FieldId)).Limit(limit)
 	if !docs {
@@ -9418,10 +9425,12 @@ func (s trailStore) Owed(ctx context.Context, after trail.Cursor, limit int) ([]
 			return nil, err
 		}
 
-		q = q.Where(owed.Or(
-			owed.DateCreatedGT(after.Created),
-			owed.And(owed.DateCreatedEQ(after.Created), owed.IdGT(id)),
-		))
+		// After the cursor, as one comparison of the pair: an index starts the read
+		// at it, where the OR it means is a filter and every page is read from the
+		// first row.
+		q = q.Where(func(s *sql.Selector) {
+			s.Where(sql.CompositeGT([]string{s.C(owed.FieldDateCreated), s.C(owed.FieldId)}, after.Created, id))
+		})
 	}
 
 	vs, err := q.Order(ent.Asc(owed.FieldDateCreated, owed.FieldId)).Limit(limit).All(ctx)
