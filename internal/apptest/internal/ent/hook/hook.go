@@ -57,6 +57,30 @@ func (f CellFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CellMutation", m)
 }
 
+// The EventFunc type is an adapter to allow the use of ordinary
+// function as Event mutator.
+type EventFunc func(context.Context, *ent.EventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f EventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.EventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EventMutation", m)
+}
+
+// The FactFunc type is an adapter to allow the use of ordinary
+// function as Fact mutator.
+type FactFunc func(context.Context, *ent.FactMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f FactFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FactMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FactMutation", m)
+}
+
 // The FleetFunc type is an adapter to allow the use of ordinary
 // function as Fleet mutator.
 type FleetFunc func(context.Context, *ent.FleetMutation) (ent.Value, error)

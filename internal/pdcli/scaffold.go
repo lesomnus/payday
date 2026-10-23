@@ -5,10 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/lesomnus/payday/internal/pdgen"
 )
 
 // Entity writes a new entity into the app's schema.
@@ -106,6 +109,13 @@ func (e Entity) Add() (string, error) {
 		return "", err
 	}
 	switch {
+	case ships && e.Layout.Past != nil && slices.ContainsFunc(pastFiles, func(v pastFile) bool { return v.Message == e.Name }):
+		// The past's, which is payday's in an app that declares one and
+		// nobody's in one that does not: a calendar's `Event` is its own.
+		return "", fmt.Errorf(
+			"payday writes a message %s into this app, for the past %s declares; add to it with an overlay at %s",
+			e.Name, e.Layout.Past.At,
+			filepath.ToSlash(filepath.Join(DirExt, "payday", strings.ToLower(e.Name)+".ext.proto")))
 	case ships:
 		// Named as payday's rather than by the path it will be copied to: in
 		// an app that has not generated yet there is no such file to open, and
@@ -211,6 +221,14 @@ func (e Entity) each(fn func(p string, own bool, b []byte)) error {
 		dirs = append(dirs, protoDir{at: d, own: true})
 	}
 
+	// And the past, in an app that declares one: copied in by the next
+	// generation, so held here before there is a copy on disk to show for it.
+	if e.Layout.Past != nil {
+		if d, err := PastDir(); err == nil {
+			dirs = append(dirs, protoDir{at: d, own: true})
+		}
+	}
+
 	for _, d := range dirs {
 		err := filepath.WalkDir(d.at, func(p string, _ os.DirEntry, err error) error {
 			if err != nil || !strings.HasSuffix(p, ".proto") {
@@ -258,6 +276,14 @@ func (e Entity) free() (int, error) {
 		return 0, err
 	}
 
+	// The past's, which no file says until the next generation writes the
+	// copies: the template's own `domain:` is a placeholder, and the number is
+	// in the declaration.
+	if p := e.Layout.Past; p != nil {
+		taken[int(p.Event)] = true
+		taken[int(p.Fact)] = true
+	}
+
 	// One past the highest, rather than the lowest that is free, and starting
 	// at 7 -- payday keeps the low numbers for what it ships, and the gap means
 	// an entity added to payday later does not have to take one an app uses.
@@ -298,8 +324,8 @@ func (e Entity) free() (int, error) {
 
 // PaydaysFromTop is the lowest of the domains payday numbers its own entities
 // down from the top with: the ones it added after apps were numbering theirs
-// up from 7. An app's entity takes a number below it.
-const PaydaysFromTop = 248
+// up from 7. An app's entity takes a number below it, and so does its past.
+const PaydaysFromTop = pdgen.AppDomainMax + 1
 
 var domainAt = regexp.MustCompile(`(?m)^\s*domain:\s*(\d+)`)
 

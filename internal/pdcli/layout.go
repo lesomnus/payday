@@ -108,6 +108,12 @@ type Layout struct {
 	// and what every path in a template is relative to. It is [Layout.Root] for
 	// an app that is one module, and above it for a workspace of several.
 	Work string
+
+	// Past is what the app declared of its past, and nil for an app that
+	// declared none: whether payday's `Event` and `Fact` are written into it,
+	// and at which domains (payday#151). Read off the file that says
+	// `option (payday.app)`, like [Layout.ProtoPkg] -- see [Past].
+	Past *Past
 }
 
 // The names under [Layout.Root]. They are constants rather than fields for the
@@ -214,6 +220,9 @@ func Discover(dir string) (Layout, error) {
 	if l.ProtoPkg, err = readProtoPkg(l); err != nil {
 		return Layout{}, err
 	}
+	if l.Past, err = readPast(l); err != nil {
+		return Layout{}, err
+	}
 
 	return l, nil
 }
@@ -283,12 +292,15 @@ var goPkgAt = regexp.MustCompile(`(?m)^option go_package\s*=\s*"([^"]*)"`)
 
 var protoPkgAt = regexp.MustCompile(`(?m)^package\s+([^;\s]+)\s*;`)
 
-// protoAppAt is `option (payday.app) = …`, however it is spaced.
+// protoAppAt is `option (payday.app) = …`, however it is spaced, and with the
+// leading dot a fully qualified name may carry: `(.payday.app)` is the same
+// option to a compiler.
 //
 // Read with a pattern rather than by parsing, because this runs **before** the
 // schema is compiled: it is what decides where the files a compile needs are
-// copied to, so it cannot depend on the compile having happened.
-var protoAppAt = regexp.MustCompile(`(?m)^\s*option\s*\(\s*payday\.app\s*\)`)
+// copied to, so it cannot depend on the compile having happened. What a file
+// it matches declares of its past is parsed; see [readPast].
+var protoAppAt = regexp.MustCompile(`(?m)^\s*option\s*\(\s*\.?payday\.app\s*\)`)
 
 // ProtoPkgDefault is where payday's entities go in an app that has declared no
 // entity of its own yet, and is what `pd new` writes.

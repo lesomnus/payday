@@ -7,6 +7,9 @@ until the next one.
   rather than imported because everything generated from them has to be one set
   of types in one Go package: an ent schema in another package cannot have an
   edge to one here, and the wall between tenants is an edge.
+- `event.proto` and `fact.proto` are here when the app declares a past
+  -- `option (payday.app) = {past: {event: 17, fact: 16}};` -- numbered as it
+  declares, and go when the declaration does.
 - `*_svc.g.proto` are the service contracts generated from them, the same
   as the ones beside your own entities.
 

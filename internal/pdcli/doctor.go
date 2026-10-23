@@ -559,6 +559,11 @@ func doctorBuf(l Layout) []Finding {
 // What neither can do is find a **missing** overlay or a stale copy of payday's
 // own entities, since those are only visible by generating; `pd gen --check` is
 // for that.
+//
+// The past's two are payday's entities too, and are merged only into an app
+// that declares a past (payday#151). So an overlay of one is an overlay of
+// something this app has when it declares one, and of nothing when it does not
+// -- a file never merged, the same as a typo, with another fix.
 func doctorSchema(l Layout) []Finding {
 	var vs []Finding
 
@@ -584,9 +589,27 @@ func doctorSchema(l Layout) []Finding {
 			continue
 		}
 
+		if i := slices.IndexFunc(pastFiles, func(p pastFile) bool { return p.Name == name }); i >= 0 {
+			if l.Past != nil {
+				continue
+			}
+
+			vs = append(vs, Finding{
+				What: fmt.Sprintf("%s extends payday's %s, which is written into an app that declares a past, "+
+					"and this one declares none -- so it is never merged",
+					l.Rel(DirExt, "payday", filepath.Base(v)), pastFiles[i].Message),
+				Fix: "option (payday.app) = {past: {event: <domain>, fact: <domain>}};",
+			})
+
+			continue
+		}
+
 		var names []string
 		for _, m := range mine {
 			names = append(names, strings.TrimSuffix(filepath.Base(m), ".proto"))
+		}
+		for _, p := range pastFiles {
+			names = append(names, strings.TrimSuffix(p.Name, ".proto")+" (with a past)")
 		}
 
 		vs = append(vs, Finding{

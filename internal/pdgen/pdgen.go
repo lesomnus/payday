@@ -193,6 +193,12 @@ type Schema struct {
 	// generic reader can never be taught to ask about, and then it may as well
 	// have been 8.
 	Set *Entity
+
+	// Past is what the app declared of its past -- the domains its Event and
+	// Fact take -- and nil for an app that declared none (payday#151). The two
+	// are payday's entities and are in [Schema.Entities] like the rest, found
+	// by their marker; this is what says whether they should be.
+	Past *Past
 }
 
 // Read gathers what the schema declared and refuses what it did not.
@@ -211,6 +217,12 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	if err := checkFieldOptions(g, files); err != nil {
 		return nil, err
 	}
+
+	past, err := readPast(files)
+	if err != nil {
+		return nil, err
+	}
+	s.Past = past
 
 	// By file and then by declaration, so that the output does not move about
 	// between runs for reasons nobody asked for.
@@ -237,6 +249,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return s, nil
 	}
 
+	if err := s.checkPast(); err != nil {
+		return nil, err
+	}
 	if err := s.check(); err != nil {
 		return nil, err
 	}
@@ -579,11 +594,19 @@ func (s *Schema) check() error {
 			// tenant is put up from inside one, who a holder may be added
 			// to, that the trail is written by what happened -- it says of
 			// the RPCs it knows, and it was written one row at a time.
-			if v.Rpcs().HasAddMany() {
+			//
+			// But for the past's two, which are written the way an app's own
+			// entities are and none of that is said of: an operation over a
+			// few hundred things writes a few hundred children, and a
+			// resource is made with a fact for each of its fields -- each a
+			// statement of its own, without it (payday#151). By name, so that
+			// an entity payday adds later is held to the rule until somebody
+			// decides it is not.
+			if v.Rpcs().HasAddMany() && v.Own != pdpb.Own_OWN_EVENT && v.Own != pdpb.Own_OWN_FACT {
 				return fmt.Errorf(
 					"%s asks for AddMany, and it is payday's: its rules are written for an Add "+
-						"of one row, and none of payday's entities has one -- an app adds "+
-						"them one at a time, or in a batch", v.FullName())
+						"of one row, and none of payday's entities has one but its Event and Fact "+
+						"-- an app adds them one at a time, or in a batch", v.FullName())
 			}
 		}
 		if u, ok := byDomain[v.Domain]; ok {

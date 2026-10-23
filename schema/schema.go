@@ -30,11 +30,26 @@ import (
 	"github.com/lesomnus/payday/pdpb"
 )
 
-//go:embed payday/*.proto
+//go:embed payday/*.proto past/*.proto
 var files embed.FS
 
-// FS is payday's entities as they ship, for whatever copies them.
+// FS is payday's entities as they ship, for whatever copies them: those every
+// app has in `payday/`, and those an app has only when it declares them in
+// `past/`.
 func FS() fs.FS { return files }
+
+// The directories of [FS], by what is in them.
+const (
+	// DirOwn is the entities every app has, which `pd gen` copies in whole on
+	// every run.
+	DirOwn = "payday"
+
+	// DirPast is the two an app has only when it declares a past -- `option
+	// (payday.app) = {past: {event: 17, fact: 16}}` -- at the domains it chose
+	// (payday#151). Their own `domain:` is zero, which is no domain at all, and
+	// `pd gen` writes the app's number in its place.
+	DirPast = "past"
+)
 
 // Field is what payday declared at one number.
 type Field struct {
@@ -58,6 +73,7 @@ var (
 	once    sync.Once
 	owned   map[pdpb.Own]map[int32]Field
 	options map[pdpb.Own]Options
+	opted   map[pdpb.Own]bool
 	fail    error
 )
 
@@ -88,16 +104,32 @@ func OwnedOptions() (map[pdpb.Own]Options, error) {
 	return options, fail
 }
 
-func load() { owned, options, fail = read() }
+// Opted answers with the markers of payday's entities that an app has only
+// when it declares them -- `Event` and `Fact`, its past (payday#151) -- and
+// [Owned] answers about these as it does about every other.
+//
+// Read off the directory they ship in rather than written out, the way
+// [Owned] is read off what ships: an entity is opted into because it is in
+// [DirPast], so one added there is opted into by having been added.
+func Opted() (map[pdpb.Own]bool, error) {
+	once.Do(load)
+	return opted, fail
+}
 
-func read() (map[pdpb.Own]map[int32]Field, map[pdpb.Own]Options, error) {
+func load() { owned, options, opted, fail = read() }
+
+func read() (map[pdpb.Own]map[int32]Field, map[pdpb.Own]Options, map[pdpb.Own]bool, error) {
+	// Compiled as one, since the past imports the tenant -- `payday/tenant.proto`,
+	// which resolves out of the same files.
 	names := []string{}
-	es, err := files.ReadDir("payday")
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, e := range es {
-		names = append(names, path.Join("payday", e.Name()))
+	for _, d := range []string{DirOwn, DirPast} {
+		es, err := files.ReadDir(d)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		for _, e := range es {
+			names = append(names, path.Join(d, e.Name()))
+		}
 	}
 
 	c := protocompile.Compiler{
@@ -117,11 +149,12 @@ func read() (map[pdpb.Own]map[int32]Field, map[pdpb.Own]Options, error) {
 
 	fds, err := c.Compile(context.Background(), names...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("read payday's own entities: %w", err)
+		return nil, nil, nil, fmt.Errorf("read payday's own entities: %w", err)
 	}
 
 	vs := map[pdpb.Own]map[int32]Field{}
 	declared := map[pdpb.Own]Options{}
+	past := map[pdpb.Own]bool{}
 	for _, fd := range fds {
 		// The compiler resolves `payday.proto` out of the global registry and
 		// makes a *dynamicpb.Message of an option written against it, which
@@ -129,7 +162,7 @@ func read() (map[pdpb.Own]map[int32]Field, map[pdpb.Own]Options, error) {
 		// round-trip through the wire form brings it back as the linked one.
 		own, err := ownOf(fd)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		ms := fd.Messages()
@@ -153,10 +186,13 @@ func read() (map[pdpb.Own]map[int32]Field, map[pdpb.Own]Options, error) {
 
 			vs[d.own] = fs
 			declared[d.own] = d.opts
+			if path.Dir(fd.Path()) == DirPast {
+				past[d.own] = true
+			}
 		}
 	}
 
-	return vs, declared, nil
+	return vs, declared, past, nil
 }
 
 // decl is one entity's marker and its options, read off the wire form.

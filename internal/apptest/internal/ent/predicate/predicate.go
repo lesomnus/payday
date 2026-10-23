@@ -18,6 +18,23 @@ type Audit func(*sql.Selector)
 // Cell is the predicate function for cell builders.
 type Cell func(*sql.Selector)
 
+// Event is the predicate function for event builders.
+type Event func(*sql.Selector)
+
+// EventOrErr calls the predicate only if the error is not nit.
+func EventOrErr(p Event, err error) Event {
+	return func(s *sql.Selector) {
+		if err != nil {
+			s.AddError(err)
+			return
+		}
+		p(s)
+	}
+}
+
+// Fact is the predicate function for fact builders.
+type Fact func(*sql.Selector)
+
 // Fleet is the predicate function for fleet builders.
 type Fleet func(*sql.Selector)
 

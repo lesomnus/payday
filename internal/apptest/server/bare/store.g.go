@@ -12,6 +12,8 @@ import (
 	archived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	event "github.com/lesomnus/payday/internal/apptest/internal/ent/event"
+	fact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
@@ -381,6 +383,8 @@ type Scope interface {
 	ArchivedScope(ctx context.Context) (predicate.Archived, error)
 	AuditScope(ctx context.Context) (predicate.Audit, error)
 	TenantScope(ctx context.Context) (predicate.Tenant, error)
+	EventScope(ctx context.Context) (predicate.Event, error)
+	FactScope(ctx context.Context) (predicate.Fact, error)
 	ThingScope(ctx context.Context) (predicate.Thing, error)
 	CellScope(ctx context.Context) (predicate.Cell, error)
 	RobotScope(ctx context.Context) (predicate.Robot, error)
@@ -419,6 +423,12 @@ func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
 	return nil, nil
 }
 func (Unscoped) TenantScope(_ context.Context) (predicate.Tenant, error) {
+	return nil, nil
+}
+func (Unscoped) EventScope(_ context.Context) (predicate.Event, error) {
+	return nil, nil
+}
+func (Unscoped) FactScope(_ context.Context) (predicate.Fact, error) {
 	return nil, nil
 }
 func (Unscoped) ThingScope(_ context.Context) (predicate.Thing, error) {
@@ -561,6 +571,46 @@ func (ss Scopes) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	}
 
 	return tenant.And(ps...), nil
+}
+
+func (ss Scopes) EventScope(ctx context.Context) (predicate.Event, error) {
+	ps := make([]predicate.Event, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.EventScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return event.And(ps...), nil
+}
+
+func (ss Scopes) FactScope(ctx context.Context) (predicate.Fact, error) {
+	ps := make([]predicate.Fact, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.FactScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return fact.And(ps...), nil
 }
 
 func (ss Scopes) ThingScope(ctx context.Context) (predicate.Thing, error) {
@@ -1022,6 +1072,8 @@ func (s Server) Archived() apptest.ArchivedServiceServer {
 }
 func (s Server) Audit() apptest.AuditServiceServer     { return AuditServiceServer{Store: s.Store} }
 func (s Server) Tenant() apptest.TenantServiceServer   { return TenantServiceServer{Store: s.Store} }
+func (s Server) Event() apptest.EventServiceServer     { return EventServiceServer{Store: s.Store} }
+func (s Server) Fact() apptest.FactServiceServer       { return FactServiceServer{Store: s.Store} }
 func (s Server) Thing() apptest.ThingServiceServer     { return ThingServiceServer{Store: s.Store} }
 func (s Server) Cell() apptest.CellServiceServer       { return CellServiceServer{Store: s.Store} }
 func (s Server) Robot() apptest.RobotServiceServer     { return RobotServiceServer{Store: s.Store} }

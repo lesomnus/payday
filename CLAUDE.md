@@ -78,13 +78,15 @@ change, and comes out once main and the registry's `dev` both have it.
 - `internal/apptest/**/*.g.go`, `*.pb.go`, `server/bare/`, `server/pd/`,
   `internal/ent/`, `ts/gen/` — regenerate instead
 - `internal/apptest/proto/app/payday/*.proto` — these are **copies**. The source is
-  `schema/payday/`, and `pd gen` copies and rewrites the package line
+  `schema/payday/`, and `schema/past/` for `event.proto` and `fact.proto`, and
+  `pd gen` copies and rewrites the package line
 
 ## Where things live
 
 | | |
 | --- | --- |
 | `schema/payday/` | payday's own entities, as `.proto` sources apps copy |
+| `schema/past/` | its `Event` and `Fact`, copied only into an app that declares a past, at the domains it declares (`option (payday.app) = {past: ...}`, payday#151) |
 | `internal/pdgen/` | the `protoc-gen-pd` plugin — layers, walls, `List`/`Watch` |
 | `internal/pdcli/` | the `pd` command, and `template/` is what `pd new` writes |
 | everything else at the root | a runtime package; the package comment is its documentation |

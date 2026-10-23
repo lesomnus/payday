@@ -47,17 +47,19 @@ const (
 // package of its own. The shared message is then the same name everywhere it is
 // read, and nothing else has to be.
 //
-// This is presence and nothing else: a file either says it or does not. It is a
-// message rather than a `bool` so that something can be added to it later
-// without every app that set it having to change.
+// It was presence and nothing else for as long as there was nothing else to
+// say: a file either says it or does not. It is a message rather than a `bool`
+// so that something could be added to it without every app that set it having
+// to change, and [App.past] is the first thing that was.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
 // them from the option meant to settle it would be worse than getting none.
 type App struct {
-	state         protoimpl.MessageState `protogen:"opaque.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Past *Past                  `protobuf:"bytes,1,opt,name=past"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *App) Reset() {
@@ -85,15 +87,140 @@ func (x *App) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+func (x *App) GetPast() *Past {
+	if x != nil {
+		return x.xxx_hidden_Past
+	}
+	return nil
+}
+
+func (x *App) SetPast(v *Past) {
+	x.xxx_hidden_Past = v
+}
+
+func (x *App) HasPast() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Past != nil
+}
+
+func (x *App) ClearPast() {
+	x.xxx_hidden_Past = nil
+}
+
 type App_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
+	// Past says this app keeps its past, and which domains the two entities it is
+	// kept in take (payday#151):
+	//
+	//	option (payday.app) = {past: {event: 17, fact: 16}};
+	//
+	// `pd gen` then writes payday's `Event` and `Fact` into the app beside its
+	// other entities, on every run, and takes them out again when this goes. An
+	// app that says nothing has neither, which is every app until it says so.
+	//
+	// It is said here, in the schema, and not in a file of `pd`'s own, for the
+	// reason [App] is: where an app's parts are is read off what it already
+	// wrote, and this is one more line of what it wrote.
+	Past *Past
 }
 
 func (b0 App_builder) Build() *App {
 	m0 := &App{}
 	b, x := &b0, m0
 	_, _ = b, x
+	x.xxx_hidden_Past = b.Past
+	return m0
+}
+
+// Past is the domain of each of the two entities an app's past is kept in.
+//
+// # Why the app numbers them
+//
+// A table every app has gets a number payday fixes: a tenant is domain 1 in
+// every payday app, which is what lets one app name another's rows. A table an
+// app opts into is numbered by the app, because payday cannot fix a number for
+// it without taking that number from every app that already spent it -- and
+// these two arrived after apps had. The generator finds them by their `own:`
+// marker, never by their number, so nothing of payday's depends on which.
+//
+// Each is a domain like any other: 7..247, the two different, and neither one
+// another entity of the app's declares. 1..6 and 248..255 are payday's. And
+// like any other it is chosen once and never changed, since an identifier
+// carries it for as long as anything names the row.
+type Past struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Event uint32                 `protobuf:"varint,1,opt,name=event"`
+	xxx_hidden_Fact  uint32                 `protobuf:"varint,2,opt,name=fact"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *Past) Reset() {
+	*x = Past{}
+	mi := &file_payday_app_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Past) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Past) ProtoMessage() {}
+
+func (x *Past) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_app_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Past) GetEvent() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Event
+	}
+	return 0
+}
+
+func (x *Past) GetFact() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Fact
+	}
+	return 0
+}
+
+func (x *Past) SetEvent(v uint32) {
+	x.xxx_hidden_Event = v
+}
+
+func (x *Past) SetFact(v uint32) {
+	x.xxx_hidden_Fact = v
+}
+
+type Past_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Event is the domain of `Event`, one row per operation.
+	Event uint32
+	// Fact is the domain of `Fact`, one row per field of a resource from a moment
+	// on.
+	Fact uint32
+}
+
+func (b0 Past_builder) Build() *Past {
+	m0 := &Past{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Event = b.Event
+	x.xxx_hidden_Fact = b.Fact
 	return m0
 }
 
@@ -101,19 +228,25 @@ var File_payday_app_proto protoreflect.FileDescriptor
 
 const file_payday_app_proto_rawDesc = "" +
 	"\n" +
-	"\x10payday/app.proto\x12\x06payday\"\x05\n" +
-	"\x03AppB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x10payday/app.proto\x12\x06payday\"'\n" +
+	"\x03App\x12 \n" +
+	"\x04past\x18\x01 \x01(\v2\f.payday.PastR\x04past\"0\n" +
+	"\x04Past\x12\x14\n" +
+	"\x05event\x18\x01 \x01(\rR\x05event\x12\x12\n" +
+	"\x04fact\x18\x02 \x01(\rR\x04factB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_payday_app_proto_goTypes = []any{
-	(*App)(nil), // 0: payday.App
+	(*App)(nil),  // 0: payday.App
+	(*Past)(nil), // 1: payday.Past
 }
 var file_payday_app_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: payday.App.past:type_name -> payday.Past
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_payday_app_proto_init() }
@@ -127,7 +260,7 @@ func file_payday_app_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_app_proto_rawDesc), len(file_payday_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

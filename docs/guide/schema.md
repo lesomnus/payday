@@ -112,9 +112,11 @@ given to something else.** An identifier outlives the row it named — that is
 most of what carrying the domain buys — so reusing a number makes an old
 identifier lie about what it used to be.
 
-- `1`–`6` are payday's. Yours start at `7`.
+- `1`–`6` and `248`–`255` are payday's. Yours are `7`–`247`.
 - `0` is refused: it is what an identifier nothing registered reads as.
 - Two entities sharing one is refused.
+- payday's past, when you declare one, takes two of yours: the numbers you give
+  it ([§7](#your-past-paydays-event-and-fact)).
 
 `pd entity add` writes one past the highest number the schema holds, rather than
 the lowest that is free, so it does not hand back the number of an entity you
@@ -691,8 +693,8 @@ news.
 
 ## 7. Adding to payday's entities
 
-payday's four are copied into your schema on every generation, so editing them
-lasts until the next `pd gen`. What lasts is an **overlay**:
+payday's entities are copied into your schema on every generation, so editing
+them lasts until the next `pd gen`. What lasts is an **overlay**:
 
 ```proto
 // proto/ext/payday/holder.ext.proto
@@ -720,6 +722,7 @@ You may add at any number payday does not use; changing one it does is refused:
 ```
 an overlay may add to one of payday's entities and may not change it.
 payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.
+Of its Event and Fact, payday keeps every number they declare, and an app's own go at any other.
 Of its options, an overlay may add an index to (orm.message), and nothing else.
 
   app.Holder: 4 is payday's "alias" (string) and was redeclared as "handle" (string)
@@ -756,6 +759,57 @@ One thing an overlay may not say is what the file **is**. A file-level
 `features.` option — `features.field_presence = IMPLICIT` copied down from the
 entity file — is refused, because the merge would put it on every field of every
 message in the contract, including the ones the generator wrote.
+
+### Your past: payday's Event and Fact
+
+payday ships two entities an app has only by asking: an **Event** for each of
+its operations -- what was done, to what, by whom, when and why -- and a
+**Fact** for each field of a resource from a moment on (payday#151). Ask on the
+file that says the package is yours, with the two domains they take:
+
+```proto
+// proto/app/app.proto
+option (payday.app) = {past: {event: 17, fact: 16}};
+```
+
+`pd gen` writes them into `proto/app/payday/event.proto` and `fact.proto` on
+every run, beside payday's other entities and like them, and takes them out on
+the first run after the line goes. The numbers are yours because the tables are:
+anything in `7`–`247` your schema does not hold, the two different. A number of
+payday's, or one number for both, is refused before anything is compiled, and
+one another entity declares when the schema is read.
+
+Add to them the way you add to the rest, with an overlay at
+`proto/ext/payday/event.ext.proto` or `fact.ext.proto`: a field at any number
+the template leaves empty, and an index. Every number the template declares is
+payday's -- an Event's 8..12 are its kind, its actor, when, why and what about --
+so what is free is what it leaves empty: 17 and from 20 on an Event, 11, 18 and
+from 22 on a Fact, and on both the header's numbers, which hold the header's
+fields here as everywhere (`desc` at 6), and 3, the set edge. An app moving its
+own events into payday's table keeps what they had:
+
+```proto
+// proto/ext/payday/event.ext.proto
+message Event {
+  string desc = 6 [(payday.field) = {personal: false}];
+  string payload = 17;
+}
+```
+
+Two things are refused readably rather than left to buf, because buf would name
+neither in words that point here:
+
+- **A message of yours called `Event` or `Fact`**, in any of your packages. In
+  yours it is a name defined twice; in another it is two Go types of one name in
+  the one Go package everything is generated into. An app with events of its
+  own takes them out, and adds what they have that payday's do not with an
+  overlay.
+- **A file of yours called `event.proto` or `fact.proto`.** Generated Go is named
+  after the file and not its directory, so it and payday's copy would both be
+  `event.pb.go`.
+
+Neither applies to an app that declares no past: a calendar's `Event` is its
+own.
 
 ### An RPC of your own
 
@@ -843,6 +897,10 @@ only test for whether it belongs on this list.
 | an overlay adding to payday's options, beyond an index | an entity declared differently from the one payday's layers were written for |
 | an overlay setting a file-level `features.` option | the whole contract silently changed by one line |
 | a field of `Audit` or `Access` named or JSON-named `sealed` | a row of the archive that reads as sealed and is sealed by nothing |
+| a past numbered in payday's ranges, the same for both, or with a number another entity holds | identifiers that say the wrong kind of row, or nothing |
+| a past declared in two files | two answers to the number its copies are written with |
+| a message `Event` or `Fact`, or a file `event.proto` or `fact.proto`, of an app that declares a past | a name defined twice, or two files written as one |
+| a copy of the past with no declaration, or at another number | a table numbered by nothing the schema says |
 | two `go_package`, or two proto packages | two Go packages is two ent schemas, and the wall is an edge |
 | generated code from a different payday | a wall written by one version, read by another |
 | the database not matching the schema | a server up on a table that is not there |
@@ -884,6 +942,10 @@ What comes back is a draft to finish rather than a finished entity: it ends in a
 generation would refuse — the erased field is written on every path, because
 saying what `Erase` does is owed by every entity and not only by one that is
 watched.
+
+It skips the two numbers an app's past is declared at, which no file holds
+until the next generation writes the copies, and refuses `Event` and `Fact` in
+an app that declares one.
 
 `pd entity list` prints what is declared and which domain each holds.
 

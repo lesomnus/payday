@@ -16,7 +16,10 @@ entities, or when you want to know why an identifier looks the way it does.
 
 ## 1. What payday owns
 
-Four entities: **Tenant**, **Holder**, **Audit**, **Outbox**.
+The entities every app has: **Tenant** and **Holder**, the trail's **Audit**,
+**Archived**, **Access**, **RowSeal** and **Owed**, and the **Outbox**. And two an
+app has only when it asks for them: its past, **Event** and **Fact** --
+[below](#tables-an-app-opts-into).
 
 They are owned because everything that reads a request reads them. The wall
 narrows by tenant, the trail stamps who acted, a rate limit counts against
@@ -75,6 +78,33 @@ more than the schema. That is also what lets a deployment add the constraints
 the schema cannot state, such as a foreign key that carries the tenant so a
 reference cannot cross one.
 
+### Tables an app opts into
+
+Some of what payday ships is not every app's business, and an app has it only by
+declaring it. The past is the first: an **Event** for each of an app's
+operations, and a **Fact** for each field of a resource from a moment on
+(payday#151). An app declares it once, on the file that says its package is the
+app's:
+
+```proto
+option (payday.app) = {past: {event: 17, fact: 16}};
+```
+
+`pd gen` then copies `payday/schema/past/event.proto` and `fact.proto` into the
+app beside the rest -- the same copy, merged with the same overlays and held to
+the same refusals -- on every run, and takes them out again on the first run
+after the declaration goes. Nothing about them is per app but the two numbers
+and what the app's overlays add.
+
+**Those two numbers are the app's.** A table every app has gets a domain payday
+fixes, which is what lets one app name another's rows: a tenant is domain 1 in
+every payday app. A table an app opts into cannot be given one -- payday would
+be taking a number from every app that had already spent it, and these arrived
+after apps had -- so the app numbers it, as it numbers its own entities. The
+generator finds both by their `own:` marker, never by number. Any table payday
+later offers to opt into is numbered the same way; [§5](#domains-come-from-the-schema)
+has the ranges.
+
 ## 2. Overlays: adding, never overriding
 
 An overlay is a fragment declaring what your app adds to one of payday's
@@ -94,14 +124,16 @@ compile — they name messages that exist only after the merge.
 ### What is refused
 
 **Touching a payday-owned field number.** Adding is allowed; redeclaring is a
-generation failure. The check is there because merging takes the overlay's word
-and says nothing about it: without it `string alias = 4` becomes
-`int64 alias = 4` and the app still compiles, while the wall goes on reading a
-tenant and `auth` goes on looking a holder up — both against a column that is no
-longer what they were written for. What is compared is what payday shipped
-against what is about to be generated, by number: the name it was given, the
-kind it holds, and for a message field what it points at. The numbers you may
-use, and the refusal itself, are in
+generation failure. Of the past's Event and Fact, every number their template
+declares is payday's -- their 8..12 are not the app's, as they are elsewhere --
+and an overlay adds at the numbers they leave empty. The check is there because
+merging takes the overlay's word and says nothing about it: without it
+`string alias = 4` becomes `int64 alias = 4` and the app still compiles, while
+the wall goes on reading a tenant and `auth` goes on looking a holder up — both
+against a column that is no longer what they were written for. What is compared
+is what payday shipped against what is about to be generated, by number: the
+name it was given, the kind it holds, and for a message field what it points at.
+The numbers you may use, and the refusal itself, are in
 [the schema guide](guide/schema.md#7-adding-to-paydays-entities).
 
 **Adding to payday's options.** The merge also merges options. Where payday's
@@ -134,7 +166,10 @@ opened: the generation succeeds and the first sign is a missing column. `pd
 doctor` reads the directory the other way round — every `*.ext.proto` in it,
 against what payday ships — and reports the file together with the entities
 payday does have, because the cause is nearly always a typo. It is a finding and
-not a fatal one: nothing about the app is broken, and the fix is a rename.
+not a fatal one: nothing about the app is broken, and the fix is a rename. An
+overlay of the past's `event` or `fact` is merged only into an app that declares
+a past, so in one that does not it is a file never merged as well, and the
+finding says to declare one.
 
 **A field that may hold a person and says nothing.** `personal` keeps a
 person's values off the trail (#92), and a field nobody declared is copied onto
@@ -375,8 +410,14 @@ alternative — a hand-maintained `domain.go` with constants, a `String()` and a
 `DomainString()` — compiles fine when you add an entity and forget one of the
 three.
 
-payday keeps the low numbers for what it ships — Tenant 1, Holder 2, Audit 3,
-Outbox 4 — and an app's own start at 7; the rules for choosing one are in
+**The rule for the numbers is whose the table is.** A table every app has gets
+a number payday fixes: 1..6 from the bottom -- Tenant 1, Holder 2, Audit 3,
+Outbox 4, Archived 5, Access 6 -- and, for what it added once apps were
+numbering theirs up from 7, from the top down: RowSeal 255, Owed 254. So 1..6
+and 248..255 are payday's. Everything else is the app's, 7..247: its own
+entities, and the tables it opts into -- the past's Event and Fact take the two
+numbers its declaration gives them, which `pd gen` refuses in payday's ranges,
+the same for both, or held by another entity. The rules for choosing one are in
 [the schema guide](guide/schema.md#2-what-you-have-to-say-and-what-you-may-leave-out).
 
 Both the write path and the read path check the byte, and they check it in
