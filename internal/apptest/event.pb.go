@@ -323,6 +323,10 @@ type Event_builder struct {
 	// that changes many things records an event of its own and a child for each
 	// thing it changed, with that thing as the subject and this naming the
 	// operation's event.
+	//
+	// It names an event, so the one it names stays while this one does: an
+	// operation's event outlives its window for as long as one of its children
+	// is still what a row that stays was written by.
 	CauseId []byte
 	// What was done, as the message the app declares for its kind.
 	//
@@ -359,7 +363,7 @@ var File_app_payday_event_proto protoreflect.FileDescriptor
 
 const file_app_payday_event_proto_rawDesc = "" +
 	"\n" +
-	"\x16app/payday/event.proto\x12\x03app\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xc0\x06\n" +
+	"\x16app/payday/event.proto\x12\x03app\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xc6\x06\n" +
 	"\x05Event\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x1a\n" +
@@ -373,8 +377,8 @@ const file_app_payday_event_proto_rawDesc = "" +
 	"subject_id\x18\f \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\tsubjectId\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12(\n" +
-	"\btrace_id\x18\x10 \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\x18\x00R\atraceId\x12#\n" +
-	"\bcause_id\x18\x12 \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\acauseId\x128\n" +
+	"\btrace_id\x18\x10 \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\x18\x00R\atraceId\x12)\n" +
+	"\bcause_id\x18\x12 \x01(\fB\x0e\xea\x82\x16\x04\x10@8\x01\xaa\xc1\x16\x02(\x01R\acauseId\x128\n" +
 	"\x05value\x18\x13 \x01(\v2\x14.google.protobuf.AnyB\f\xea\x82\x16\x028\x01\xaa\xc1\x16\x02\x18\x00R\x05value\x12\x1a\n" +
 	"\x04desc\x18\x06 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x00R\x04desc:\xe5\x01\xca\xfc\x15{\x12\b\x82\x01\x02\x12\x00\x8a\x01\x00\x1a,\x12\x04page\x1a\n" +
 	"\n" +

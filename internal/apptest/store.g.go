@@ -45,6 +45,7 @@ type Server interface {
 	Owed() OwedServiceServer
 	RowSeal() RowSealServiceServer
 	Seal() SealServiceServer
+	Stint() StintServiceServer
 	Tally() TallyServiceServer
 	Pulse() PulseServiceServer
 }
@@ -73,6 +74,7 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterOwedServiceServer(g, s.Owed())
 	RegisterRowSealServiceServer(g, s.RowSeal())
 	RegisterSealServiceServer(g, s.Seal())
+	RegisterStintServiceServer(g, s.Stint())
 	RegisterTallyServiceServer(g, s.Tally())
 	RegisterPulseServiceServer(g, s.Pulse())
 }
@@ -97,6 +99,7 @@ type UnimplementedServer struct {
 	OwedServer     OwedServiceServer
 	RowSealServer  RowSealServiceServer
 	SealServer     SealServiceServer
+	StintServer    StintServiceServer
 	TallyServer    TallyServiceServer
 	PulseServer    PulseServiceServer
 }
@@ -122,6 +125,7 @@ func (UnimplementedServer) Outbox() OutboxServiceServer   { return Unimplemented
 func (UnimplementedServer) Owed() OwedServiceServer       { return UnimplementedOwedServiceServer{} }
 func (UnimplementedServer) RowSeal() RowSealServiceServer { return UnimplementedRowSealServiceServer{} }
 func (UnimplementedServer) Seal() SealServiceServer       { return UnimplementedSealServiceServer{} }
+func (UnimplementedServer) Stint() StintServiceServer     { return UnimplementedStintServiceServer{} }
 func (UnimplementedServer) Tally() TallyServiceServer     { return UnimplementedTallyServiceServer{} }
 func (UnimplementedServer) Pulse() PulseServiceServer     { return UnimplementedPulseServiceServer{} }
 
@@ -145,6 +149,7 @@ type StaticServer struct {
 	OwedServer     OwedServiceServer
 	RowSealServer  RowSealServiceServer
 	SealServer     SealServiceServer
+	StintServer    StintServiceServer
 	TallyServer    TallyServiceServer
 	PulseServer    PulseServiceServer
 }
@@ -168,6 +173,7 @@ func (s StaticServer) Outbox() OutboxServiceServer     { return s.OutboxServer }
 func (s StaticServer) Owed() OwedServiceServer         { return s.OwedServer }
 func (s StaticServer) RowSeal() RowSealServiceServer   { return s.RowSealServer }
 func (s StaticServer) Seal() SealServiceServer         { return s.SealServer }
+func (s StaticServer) Stint() StintServiceServer       { return s.StintServer }
 func (s StaticServer) Tally() TallyServiceServer       { return s.TallyServer }
 func (s StaticServer) Pulse() PulseServiceServer       { return s.PulseServer }
 
@@ -191,6 +197,7 @@ type Client interface {
 	Owed() OwedServiceClient
 	RowSeal() RowSealServiceClient
 	Seal() SealServiceClient
+	Stint() StintServiceClient
 	Tally() TallyServiceClient
 	Pulse() PulseServiceClient
 }
@@ -216,6 +223,7 @@ func NewClient(c *grpc.ClientConn) Client {
 		_Owed:     NewOwedServiceClient(c),
 		_RowSeal:  NewRowSealServiceClient(c),
 		_Seal:     NewSealServiceClient(c),
+		_Stint:    NewStintServiceClient(c),
 		_Tally:    NewTallyServiceClient(c),
 		_Pulse:    NewPulseServiceClient(c),
 	}
@@ -241,6 +249,7 @@ type client struct {
 	_Owed     OwedServiceClient
 	_RowSeal  RowSealServiceClient
 	_Seal     SealServiceClient
+	_Stint    StintServiceClient
 	_Tally    TallyServiceClient
 	_Pulse    PulseServiceClient
 }
@@ -264,6 +273,7 @@ func (c *client) Outbox() OutboxServiceClient     { return c._Outbox }
 func (c *client) Owed() OwedServiceClient         { return c._Owed }
 func (c *client) RowSeal() RowSealServiceClient   { return c._RowSeal }
 func (c *client) Seal() SealServiceClient         { return c._Seal }
+func (c *client) Stint() StintServiceClient       { return c._Stint }
 func (c *client) Tally() TallyServiceClient       { return c._Tally }
 func (c *client) Pulse() PulseServiceClient       { return c._Pulse }
 

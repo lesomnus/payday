@@ -19,6 +19,7 @@
 import { createRegistry, type DescMessage } from '@bufbuild/protobuf'
 
 import { CorrectedSchema, MachineServicedSchema, MachineStartedSchema } from './app/machine_pb.js'
+import { PastExpiredSchema } from './app/stint_pb.js'
 import { RobotMovedSchema } from './app/robot_pb.js'
 
 /** Each event message, by the kind its rows are written under. */
@@ -26,9 +27,10 @@ export const kinds = {
 	"app.MachineStarted": MachineStartedSchema,
 	"correct": CorrectedSchema,
 	"machine.service": MachineServicedSchema,
+	"past.expire": PastExpiredSchema,
 	"robot.move": RobotMovedSchema,
 } as const satisfies Readonly<Record<string, DescMessage>>
 
 /** Every event message, for a transport's `jsonOptions` and for `anyUnpack`. */
-export const events = createRegistry(MachineStartedSchema, CorrectedSchema, MachineServicedSchema, RobotMovedSchema)
+export const events = createRegistry(MachineStartedSchema, CorrectedSchema, MachineServicedSchema, PastExpiredSchema, RobotMovedSchema)
 

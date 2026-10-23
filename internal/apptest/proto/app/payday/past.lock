@@ -3,6 +3,7 @@
     "app.Corrected": "correct",
     "app.MachineServiced": "machine.service",
     "app.MachineStarted": "app.MachineStarted",
+    "app.PastExpired": "past.expire",
     "app.RobotMoved": "robot.move"
   },
   "messages": {
@@ -63,6 +64,25 @@
       "1": {
         "json": "machine",
         "kind": "bytes"
+      }
+    },
+    "app.PastExpired": {
+      "1": {
+        "json": "before",
+        "kind": "message",
+        "type": "google.protobuf.Timestamp"
+      },
+      "2": {
+        "json": "facts",
+        "kind": "uint32"
+      },
+      "3": {
+        "json": "events",
+        "kind": "uint32"
+      },
+      "4": {
+        "json": "stints",
+        "kind": "uint32"
       }
     },
     "app.RobotMoved": {

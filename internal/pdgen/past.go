@@ -3,8 +3,11 @@ package pdgen
 import (
 	"fmt"
 
+	"github.com/protobuf-orm/protobuf-orm/graph"
+	"github.com/protobuf-orm/protobuf-orm/ormpb"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/schema"
@@ -195,6 +198,75 @@ func (s *Schema) checkPast() error {
 					"entity's, so an old identifier would start lying about what it named. "+
 					"Give the past a number nothing holds",
 				v.FullName(), w.n, s.Past.At, w.name)
+		}
+	}
+
+	return nil
+}
+
+// checkPointer refuses `(payday.field) = {event: true}` on a column that cannot
+// name an event: anything but a `bytes` column of `TYPE_UUID` holding one
+// identifier, and the key.
+//
+// What reads it is the past's expiry, which asks of each event it would take
+// whether a row that stays names it: `NOT EXISTS (... WHERE col = event.id)`.
+// A list holds its identifiers as a document no such comparison finds, an edge
+// names a row of the entity it is to, and the key names the row itself -- so on
+// any of them the declaration would keep nothing, and say it did.
+func checkPointer(e graph.Entity, prop graph.Prop) error {
+	if _, ok := prop.(graph.Edge); ok {
+		return fmt.Errorf(
+			"%s: event: true on an edge, which names a row of the entity it is to; an event is named "+
+				"by its identifier, in a column of its own:\n\n"+
+				"    bytes event_id = %d [(orm.field) = {type: TYPE_UUID}, (payday.field) = {event: true}];",
+			prop.FullName(), prop.Number())
+	}
+
+	switch {
+	case prop.Number() == e.Key().Number():
+		return fmt.Errorf("%s: event: true on the key, which names this row and no event", prop.FullName())
+
+	case prop.Descriptor().Kind() != protoreflect.BytesKind || prop.Type() != ormpb.Type_TYPE_UUID:
+		return fmt.Errorf(
+			"%s: event: true on a column of %s; an event is named by its identifier, a `bytes` column of "+
+				"`TYPE_UUID`", prop.FullName(), prop.Type())
+
+	case prop.IsList():
+		return fmt.Errorf(
+			"%s: event: true on a list, whose identifiers are kept as one document that no comparison "+
+				"of a column finds; one row naming many events is a row of each, in an entity of its own",
+			prop.FullName())
+	}
+
+	return nil
+}
+
+// checkPointers refuses an event pointer the past cannot follow: one in an app
+// that declares no past, and one on payday's Event other than its cause.
+//
+// The second is a rule about the expiry. An event an event names stays while
+// that one does, which is a chain: a child keeps its operation's event, and
+// that one its own cause. The expiry follows the chain by `cause_id`, which it
+// reads off every event it takes, and would not see a link made by another
+// column -- an event the past kept one pass and took the next, with nothing
+// having changed.
+func (s *Schema) checkPointers() error {
+	for _, v := range s.Entities {
+		for _, p := range v.Pointers {
+			switch {
+			case s.Past == nil:
+				return fmt.Errorf(
+					"%s.%s: event: true names an event of the app's past, and this app declares none; "+
+						"declare one, or say nothing:\n\n"+
+						"    option (payday.app) = {past: {event: %d, fact: %d}};",
+					v.FullName(), p, s.copied(pdpb.Own_OWN_EVENT), s.copied(pdpb.Own_OWN_FACT))
+
+			case v.Own == pdpb.Own_OWN_EVENT && p != "cause_id":
+				return fmt.Errorf(
+					"%s.%s: event: true on payday's Event, whose one is its cause: an event it names stays "+
+						"while it does, and the past follows that chain by `cause_id` alone",
+					v.FullName(), p)
+			}
 		}
 	}
 

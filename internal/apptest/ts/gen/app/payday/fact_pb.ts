@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/fact.proto.
  */
 export const file_app_payday_fact: GenFile = /*@__PURE__*/
-  fileDesc("ChVhcHAvcGF5ZGF5L2ZhY3QucHJvdG8SA2FwcCKfBgoERmFjdBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoGdGVuYW50GAIgASgLMgsuYXBwLlRlbmFudEIG8oIWAkABEhoKCnN1YmplY3RfaWQYCCABKAxCBuqCFgIQQBILCgNrZXkYCSABKAkSDQoFdmFsdWUYCiABKAkSHQoMZmllbGRfbnVtYmVyGAwgASgNQgfqghYDggEAEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAEhcKBmRvbWFpbhgQIAEoDUIH6oIWA4IBABI3Cgp2YWxpZF9mcm9tGBEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4IBABIYCghldmVudF9pZBgTIAEoDEIG6oIWAhBAEj8KDXN1cGVyc2VkZWRfYXQYFCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgzqghYCOAGqwRYCEAESHwoNc3VwZXJzZWRlZF9ieRgVIAEoDEII6oIWBBBAOAE6uwLK/BXkARILggECEgCKAQCSAQAaLBIEcGFnZRoKCgZ0ZW5hbnQQAhoQCgxkYXRlX2NyZWF0ZWQQDxoGCgJpZBABGkQSB3N1YmplY3QaDgoKc3ViamVjdF9pZBAIGhAKDGZpZWxkX251bWJlchAMGgcKA2tleRAJGg4KCnZhbGlkX2Zyb20QERpKEgVmaWVsZBoKCgZ0ZW5hbnQQAhoKCgZkb21haW4QEBoQCgxmaWVsZF9udW1iZXIQDBoHCgNrZXkQCRoOCgp2YWxpZF9mcm9tEBEaFRIFZXZlbnQaDAoIZXZlbnRfaWQQE4q7Fk4IEjJEChAKDgoMZGF0ZV9jcmVhdGVkCgYKBAoCaWQaBQoDcmVmGgwKCnN1YmplY3RfaWQaDgoMZmllbGRfbnVtYmVyIGQo6AdCAgoASApCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
+  fileDesc("ChVhcHAvcGF5ZGF5L2ZhY3QucHJvdG8SA2FwcCLMBgoERmFjdBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoGdGVuYW50GAIgASgLMgsuYXBwLlRlbmFudEIG8oIWAkABEhoKCnN1YmplY3RfaWQYCCABKAxCBuqCFgIQQBILCgNrZXkYCSABKAkSDQoFdmFsdWUYCiABKAkSHQoMZmllbGRfbnVtYmVyGAwgASgNQgfqghYDggEAEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAEhcKBmRvbWFpbhgQIAEoDUIH6oIWA4IBABI3Cgp2YWxpZF9mcm9tGBEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4IBABIeCghldmVudF9pZBgTIAEoDEIM6oIWAhBAqsEWAigBEj8KDXN1cGVyc2VkZWRfYXQYFCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgzqghYCOAGqwRYCEAESJQoNc3VwZXJzZWRlZF9ieRgVIAEoDEIO6oIWBBBAOAGqwRYCKAE63ALK/BWFAhILggECEgCKAQCSAQAaLBIEcGFnZRoKCgZ0ZW5hbnQQAhoQCgxkYXRlX2NyZWF0ZWQQDxoGCgJpZBABGkQSB3N1YmplY3QaDgoKc3ViamVjdF9pZBAIGhAKDGZpZWxkX251bWJlchAMGgcKA2tleRAJGg4KCnZhbGlkX2Zyb20QERpKEgVmaWVsZBoKCgZ0ZW5hbnQQAhoKCgZkb21haW4QEBoQCgxmaWVsZF9udW1iZXIQDBoHCgNrZXkQCRoOCgp2YWxpZF9mcm9tEBEaFRIFZXZlbnQaDAoIZXZlbnRfaWQQExofEgpzdXBlcnNlZGVkGhEKDXN1cGVyc2VkZWRfYnkQFYq7Fk4IEjJEChAKDgoMZGF0ZV9jcmVhdGVkCgYKBAoCaWQaBQoDcmVmGgwKCnN1YmplY3RfaWQaDgoMZmllbGRfbnVtYmVyIGQo6AdCAgoASApCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
 
 /**
  * Fact is one field of one resource from a moment on: "from `valid_from`, field
@@ -123,7 +123,7 @@ export type Fact = Message<"app.Fact"> & {
   validFrom?: Timestamp | undefined;
 
   /**
-   * The event that wrote this.
+   * The event that wrote this, which stays while this does.
    *
    * @generated from field: bytes event_id = 19;
    */
@@ -132,7 +132,8 @@ export type Fact = Message<"app.Fact"> & {
   /**
    * When a correction or a later fact replaced this one, and the event that
    * did. The deployment's to say and never a request's, so an Add refuses the
-   * first; both are written once, by the Patch that supersedes the row.
+   * first; both are written once, by the Patch that supersedes the row. The
+   * event stays while this does, as the one that wrote it does.
    *
    * @generated from field: google.protobuf.Timestamp superseded_at = 20;
    */

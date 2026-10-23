@@ -386,6 +386,7 @@ func EmitPast(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("")
 
 	emitPastNames(g, s, p)
+	emitPastExpiry(g, s, p, root)
 }
 
 // emitPastNames writes `pd.PastNames`, what names the people and things a
@@ -490,6 +491,158 @@ func emitPastNames(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("	}")
 	g.P("")
 	g.P("	return \"\", nil, err")
+	g.P("}")
+	g.P("")
+}
+
+// emitPastExpiry writes what the past's expiry asks of the store, and the two
+// things `past.Expirer` is built from (payday#151): every column of the app's
+// that names an event, the deletes beneath the servers and the act that puts
+// them on the trail, the counts a preview is made of; and `PastIn` and
+// `PastTenants`, a tenant's transaction and the tenants there are.
+//
+// # The columns, which only the schema knows
+//
+// An event goes once no row that stays names it, so the expiry has to know
+// every column that can: the past's own, which payday's templates mark, and the
+// app's, which it marks itself -- `(payday.field) = {event: true}`, read into
+// [Entity.Pointers]. Each is written here by the names ent gives its table and
+// its column, so a table renamed is a compile error and not a check that asks
+// about a table nobody has.
+//
+// # Deletes beneath the servers
+//
+// Neither entity has an Erase: an event is never changed and a fact only
+// superseded, so their rows leave by expiry or with their tenant and nothing a
+// caller asks for. So the deletes are ent's, and every row they take is put on
+// the trail as the act that took it ([RecordErased]), in the same transaction.
+func emitPastExpiry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
+	ev, fact := s.Own(pdpb.Own_OWN_EVENT), s.Own(pdpb.Own_OWN_FACT)
+	e, f := ev.GoName(), fact.GoName()
+	evPkg := p.Ent + "/" + protogen.GoImportPath(ev.EntPkg())
+	factPkg := p.Ent + "/" + protogen.GoImportPath(fact.EntPkg())
+	pred := p.Ent + "/predicate"
+
+	g.P("// Pointers is [pastPointers].")
+	g.P("func (pastStore) Pointers() []", pkgPast.Ident("Pointer"), " { return pastPointers }")
+	g.P("")
+	g.P("// pastPointers is every column of this app's that names an event,")
+	g.P("// `(payday.field) = {event: true}`: what the expiry asks of each event it")
+	g.P("// would take, whether a row that stays names it.")
+	g.P("var pastPointers = []", pkgPast.Ident("Pointer"), "{")
+	for _, v := range s.Sorted() {
+		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		for _, name := range v.Pointers {
+			g.P("	{Domain: ", v.GoName(), "Domain, Table: ", entPkg.Ident("Table"), ", Column: ", entPkg.Ident("Field"+pascal(name)),
+				", Own: ", pkgPdpb.Ident("Own_"+v.Own.String()), "},")
+		}
+	}
+	g.P("}")
+	g.P("")
+
+	for _, v := range []struct {
+		name, kind string
+		pkg        protogen.GoImportPath
+	}{{e, "Events", evPkg}, {f, "Facts", factPkg}} {
+		g.P("// Delete", v.kind, " deletes the rows `ids` names through ent, a page at a time:")
+		g.P("// ", v.name, " has no Erase, and its rows leave by expiry or with their tenant.")
+		g.P("// What it takes is put on the trail by [pastStore.Erased].")
+		g.P("func (s pastStore) Delete", v.kind, "(ctx ", pkgCtx.Ident("Context"), ", ids []", pkgPdid.Ident("Id"), ") (int, error) {")
+		g.P("	n := 0")
+		g.P("	for page := range ", pkgSlices.Ident("Chunk"), "(ids, ", pkgAudit.Ident("RowsPage"), ") {")
+		g.P("		k, err := s.db.", v.name, ".Delete().Where(", v.pkg.Ident("IdIn"), "(uuids(page)...)).Exec(ctx)")
+		g.P("		n += k")
+		g.P("		if err != nil {")
+		g.P("			return n, err")
+		g.P("		}")
+		g.P("	}")
+		g.P("")
+		g.P("	return n, nil")
+		g.P("}")
+		g.P("")
+		g.P("// Count", v.kind, " counts the rows `where` takes, through ent.")
+		g.P("func (s pastStore) Count", v.kind, "(ctx ", pkgCtx.Ident("Context"), ", where []func(*", pkgEntSql.Ident("Selector"), ")) (int, error) {")
+		g.P("	query := s.db.", v.name, ".Query()")
+		g.P("	for _, v := range where {")
+		g.P("		query = query.Where(", pred.Ident(v.name), "(v))")
+		g.P("	}")
+		g.P("")
+		g.P("	return query.Count(ctx)")
+		g.P("}")
+		g.P("")
+	}
+
+	g.P("// Erased puts on the trail the rows `ids`, deleted beneath the servers, as the")
+	g.P("// act `action` ([RecordErased]): by whoever `ctx` is framed as, filed under")
+	g.P("// its tenant, in the same transaction.")
+	g.P("func (s pastStore) Erased(ctx ", pkgCtx.Ident("Context"), ", action string, ids []", pkgPdid.Ident("Id"), ") error {")
+	g.P("	_, err := RecordErased(ctx, s.db, s.content, action, ids)")
+	g.P("	return err")
+	g.P("}")
+	g.P("")
+
+	g.P("// PastIn is where the past's expiry does a tenant's (payday#151): `f`, in a")
+	g.P("// transaction of its own on `drv`, with the context framed as the")
+	g.P("// deployment's work in `tenant` -- nobody's, and of that tenant alone -- and a")
+	g.P("// store of the past through `ungated` put on that transaction. Committed when")
+	g.P("// `f` answers nil, and rolled back otherwise. What `past.Expirer.In` is.")
+	g.P("//")
+	g.P("// `ungated` is the stack with no wall, as for every sweep: an expiry is the")
+	g.P("// deployment acting on itself, and nobody's in the tenant. Never one a caller")
+	g.P("// reaches.")
+	g.P("func PastIn(ungated ", root.Ident("Server"), ", drv ", pkgDialect.Ident("Driver"), ", content ", pkgAudit.Ident("Contents"), ") func(ctx ",
+		pkgCtx.Ident("Context"), ", tenant ", pkgPdid.Ident("Id"), ", f func(ctx ", pkgCtx.Ident("Context"), ", s ", pkgPast.Ident("Store"), ") error) error {")
+	g.P("	return func(ctx ", pkgCtx.Ident("Context"), ", tenant ", pkgPdid.Ident("Id"), ", f func(ctx ", pkgCtx.Ident("Context"), ", s ", pkgPast.Ident("Store"), ") error) error {")
+	g.P("		ctx = ", pkgFrame.Ident("Into"), "(ctx, ", pkgFrame.Ident("New"), "(", pkgPdid.Ident("Nil"), ", tenant, ", pkgFrame.Ident("Grant"), "{}).WithScope(", pkgFrame.Ident("Only"), "(tenant)))")
+	g.P("")
+	g.P("		tdrv, tx, err := ", pkgDialect.Ident("BeginTx"), "(ctx, drv)")
+	g.P("		if err != nil {")
+	g.P("			return err")
+	g.P("		}")
+	g.P("		defer tx.Rollback()")
+	g.P("")
+	g.P("		s, err := Past(ungated, tdrv, content)")
+	g.P("		if err != nil {")
+	g.P("			return err")
+	g.P("		}")
+	g.P("		if err := f(ctx, s); err != nil {")
+	g.P("			return err")
+	g.P("		}")
+	g.P("")
+	g.P("		return tx.Commit()")
+	g.P("	}")
+	g.P("}")
+	g.P("")
+
+	g.P("// PastTenants is every tenant with a past, a page of at most `limit` after")
+	g.P("// `after` in the order of their identifiers: what `past.Expirer.Tenants` is.")
+	g.P("// One seek per tenant, the next `tenant_id` of the ", e, " after the last, which")
+	g.P("// its index on the tenant answers without reading the rows between. A fact")
+	g.P("// names the event that wrote it, which stays while it does, so a tenant with")
+	g.P("// facts has events.")
+	g.P("func PastTenants(db *", p.Ent.Ident("Client"), ") func(ctx ", pkgCtx.Ident("Context"), ", after ", pkgPdid.Ident("Id"),
+		", limit int) ([]", pkgPdid.Ident("Id"), ", error) {")
+	g.P("	return func(ctx ", pkgCtx.Ident("Context"), ", after ", pkgPdid.Ident("Id"), ", limit int) ([]", pkgPdid.Ident("Id"), ", error) {")
+	g.P("		out := []", pkgPdid.Ident("Id"), "{}")
+	g.P("		last := after.Uuid()")
+	g.P("		for len(out) < limit {")
+	g.P("			v, err := db.", e, ".Query().")
+	g.P("				Where(", pred.Ident(e), "(", pkgEntSql.Ident("FieldGT"), "(", evPkg.Ident("FieldTenantId"), ", last))).")
+	g.P("				Order(", p.Ent.Ident("Asc"), "(", evPkg.Ident("FieldTenantId"), ")).")
+	g.P("				First(ctx)")
+	g.P("			switch {")
+	g.P("			case ", p.Ent.Ident("IsNotFound"), "(err):")
+	g.P("				return out, nil")
+	g.P("			case err != nil:")
+	g.P("				return out, err")
+	g.P("			}")
+	g.P("")
+	g.P("			out = append(out, ", pkgPdid.Ident("Id"), "(v.TenantId))")
+	g.P("			last = v.TenantId")
+	g.P("		}")
+	g.P("")
+	g.P("		return out, nil")
+	g.P("	}")
 	g.P("}")
 	g.P("")
 }

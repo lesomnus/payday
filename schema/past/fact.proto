@@ -81,20 +81,27 @@ message Fact {
   // `date_created` is when it was known.
   google.protobuf.Timestamp valid_from = 17 [(orm.field) = {default: ""}];
 
-  // The event that wrote this.
-  bytes event_id = 19 [(orm.field) = {type: TYPE_UUID}];
+  // The event that wrote this, which stays while this does.
+  bytes event_id = 19 [
+    (orm.field) = {type: TYPE_UUID},
+    (payday.field) = {event: true}
+  ];
 
   // When a correction or a later fact replaced this one, and the event that
   // did. The deployment's to say and never a request's, so an Add refuses the
-  // first; both are written once, by the Patch that supersedes the row.
+  // first; both are written once, by the Patch that supersedes the row. The
+  // event stays while this does, as the one that wrote it does.
   google.protobuf.Timestamp superseded_at = 20 [
     (orm.field) = {nullable: true},
     (payday.field) = {stamped: true}
   ];
-  bytes superseded_by = 21 [(orm.field) = {
-    type: TYPE_UUID
-    nullable: true
-  }];
+  bytes superseded_by = 21 [
+    (orm.field) = {
+      type: TYPE_UUID
+      nullable: true
+    },
+    (payday.field) = {event: true}
+  ];
 
   option (orm.message) = {
     // AddMany as well as Add: a resource is made with a fact for each of its
@@ -181,6 +188,18 @@ message Fact {
           {
             name: "event_id"
             number: 19
+          }
+        ]
+      },
+      // What an event superseded. Read by nothing but the expiry, which asks
+      // of each event it would take whether a fact that stays names it, and
+      // without this reads every fact of every tenant to say no.
+      {
+        name: "superseded"
+        refs: [
+          {
+            name: "superseded_by"
+            number: 21
           }
         ]
       }

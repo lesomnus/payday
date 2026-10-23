@@ -266,3 +266,111 @@ func TestOnlyThePastMayAddMany(t *testing.T) {
 	x.Error(err, "payday's holder was given an AddMany")
 	x.Contains(err.Error(), "fleet.Holder asks for AddMany, and it is payday's")
 }
+
+// stint is an entity of the app's own, behind the wall, holding `fields`: a
+// time row, the kind that names the event that wrote it.
+func stint(fields ...string) string {
+	return entity("Stint", `domain: 9`, append([]string{`Tenant tenant = 2 [(orm.edge) = {immutable: true}];`}, fields...)...)
+}
+
+// TestAColumnSaysItNamesAnEvent: `(payday.field) = {event: true}` is read off
+// a `bytes` column of `TYPE_UUID` -- of the past's own, an event's cause and a
+// fact's event and what superseded it, which its templates mark, and of an
+// app's -- and a column that does not say so is not one, whatever it is called:
+// the expiry asks each of them, and only them, before it takes an event
+// (payday#151).
+func TestAColumnSaysItNamesAnEvent(t *testing.T) {
+	x := require.New(t)
+
+	s, err := readAs(t, "fleet", past(t, stint(
+		`bytes event_id = 8 [(orm.field) = {type: TYPE_UUID}, (payday.field) = {event: true}];`,
+		`bytes moved_event_id = 10 [(orm.field) = {type: TYPE_UUID, nullable: true}];`,
+	)))
+	x.NoError(err)
+
+	got := map[string][]string{}
+	for _, v := range s.Entities {
+		if len(v.Pointers) > 0 {
+			got[v.GoName()] = v.Pointers
+		}
+	}
+	x.Equal(map[string][]string{
+		"Event": {"cause_id"},
+		"Fact":  {"event_id", "superseded_by"},
+		"Stint": {"event_id"},
+	}, got)
+}
+
+// TestAColumnThatCannotNameAnEventIsRefused: one that says it does is a
+// `bytes` column of `TYPE_UUID` holding one identifier, in an app that keeps a
+// past, and of payday's Event only its cause. Anywhere else the expiry would
+// ask it for nothing -- a list no comparison of a column finds, an edge to a
+// row, the row's own key -- or not follow it, and keep nothing by it while the
+// schema said it did.
+func TestAColumnThatCannotNameAnEventIsRefused(t *testing.T) {
+	event := func(field string) string {
+		return strings.Replace(copies(t, 20, 21), "message Event {", "message Event {\n  "+field, 1)
+	}
+
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			"a string",
+			past(t, stint(`string event_id = 8 [(payday.field) = {event: true}];`)),
+			"fleet.Stint.event_id: event: true on a column of TYPE_STRING",
+		},
+		{
+			"bytes that are no identifier",
+			past(t, stint(`bytes event_id = 8 [(payday.field) = {event: true}];`)),
+			"fleet.Stint.event_id: event: true on a column of TYPE_BYTES",
+		},
+		{
+			"a list of them",
+			past(t, stint(`repeated bytes event_ids = 8 [(orm.field) = {type: TYPE_UUID}, (payday.field) = {event: true}];`)),
+			"fleet.Stint.event_ids: event: true on a list",
+		},
+		{
+			"an edge",
+			past(t, stint(`Tenant moved_by = 8 [(orm.edge) = {nullable: true}, (payday.field) = {event: true}];`)),
+			"fleet.Stint.moved_by: event: true on an edge",
+		},
+		{
+			"the key",
+			past(t, `
+message Stint {
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}, (payday.field) = {event: true}];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  option (orm.message) = {rpc: {crud: true}};
+  option (payday.entity) = {domain: 9, erase: {hard: {}}};
+}
+`),
+			"fleet.Stint.id: event: true on the key",
+		},
+		{
+			"in an app with no past",
+			ownAll(t) + stint(`bytes event_id = 8 [(orm.field) = {type: TYPE_UUID}, (payday.field) = {event: true}];`),
+			"fleet.Stint.event_id: event: true names an event of the app's past, and this app declares none",
+		},
+		{
+			"on payday's Event, beside its cause",
+			declare(20, 21) + ownAll(t) +
+				event(`bytes reverts = 17 [(orm.field) = {type: TYPE_UUID, nullable: true}, (payday.field) = {event: true}];`),
+			"fleet.Event.reverts: event: true on payday's Event, whose one is its cause",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := readAs(t, "fleet", tc.src)
+			require.Error(t, err, "it was read")
+			require.Contains(t, err.Error(), tc.want)
+		})
+	}
+
+	t.Run("and an Event's field of the app's that names none is the app's", func(t *testing.T) {
+		_, err := readAs(t, "fleet", declare(20, 21)+ownAll(t)+
+			event(`bytes reverts = 17 [(orm.field) = {type: TYPE_UUID, nullable: true}];`))
+		require.NoError(t, err)
+	})
+}

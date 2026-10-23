@@ -107,3 +107,31 @@ func TestAStalePinIsExplainedForAnOptionItDoesNotHave(t *testing.T) {
 		t.Errorf("explained a typo as a stale pin:\n%s", v)
 	}
 }
+
+// TestAStalePinIsExplainedForAColumnThatNamesAnEvent: what the buf payday pins
+// said, word for word, of a column marked `(payday.field) = {event: true}`
+// against the `dev` from before the field (payday#151) -- which payday's own
+// Event and Fact say, so an app that declares a past meets it in the copies
+// before any file of its own says it.
+func TestAStalePinIsExplainedForAColumnThatNamesAnEvent(t *testing.T) {
+	const said = "proto/app/stint.proto:12:23:cannot resolve message field name for `payday.Field`\n"
+
+	work := t.TempDir()
+	at := filepath.Join(work, "proto", "app", "stint.proto")
+	if err := os.MkdirAll(filepath.Dir(at), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := "edition = \"2023\";\n\npackage app;\n\nimport \"orm.proto\";\nimport \"payday.proto\";\n\n" +
+		"message Stint {\n  bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true}];\n  bytes event_id = 11 [\n" +
+		"    (orm.field) = {type: TYPE_UUID},\n    (payday.field) = {event: true}\n  ];\n}\n"
+	if err := os.WriteFile(at, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	v := whyStale(work, []byte(said))
+	for _, want := range []string{"`event:`", "buf dep update"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("does not say %q:\n%s", want, v)
+		}
+	}
+}

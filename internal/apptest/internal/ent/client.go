@@ -29,6 +29,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/stint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
@@ -77,6 +78,8 @@ type Client struct {
 	RowSeal *RowSealClient
 	// Seal is the client for interacting with the Seal builders.
 	Seal *SealClient
+	// Stint is the client for interacting with the Stint builders.
+	Stint *StintClient
 	// Tally is the client for interacting with the Tally builders.
 	Tally *TallyClient
 	// Tenant is the client for interacting with the Tenant builders.
@@ -111,6 +114,7 @@ func (c *Client) init() {
 	c.Robot = NewRobotClient(c.config)
 	c.RowSeal = NewRowSealClient(c.config)
 	c.Seal = NewSealClient(c.config)
+	c.Stint = NewStintClient(c.config)
 	c.Tally = NewTallyClient(c.config)
 	c.Tenant = NewTenantClient(c.config)
 	c.Thing = NewThingClient(c.config)
@@ -224,6 +228,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Robot:    NewRobotClient(cfg),
 		RowSeal:  NewRowSealClient(cfg),
 		Seal:     NewSealClient(cfg),
+		Stint:    NewStintClient(cfg),
 		Tally:    NewTallyClient(cfg),
 		Tenant:   NewTenantClient(cfg),
 		Thing:    NewThingClient(cfg),
@@ -264,6 +269,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Robot:    NewRobotClient(cfg),
 		RowSeal:  NewRowSealClient(cfg),
 		Seal:     NewSealClient(cfg),
+		Stint:    NewStintClient(cfg),
 		Tally:    NewTallyClient(cfg),
 		Tenant:   NewTenantClient(cfg),
 		Thing:    NewThingClient(cfg),
@@ -344,7 +350,7 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Access, c.Archived, c.Audit, c.Cell, c.Event, c.Fact, c.Fleet, c.Holder,
 		c.Joint, c.Machine, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot,
-		c.RowSeal, c.Seal, c.Tally, c.Tenant, c.Thing,
+		c.RowSeal, c.Seal, c.Stint, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -356,7 +362,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Access, c.Archived, c.Audit, c.Cell, c.Event, c.Fact, c.Fleet, c.Holder,
 		c.Joint, c.Machine, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot,
-		c.RowSeal, c.Seal, c.Tally, c.Tenant, c.Thing,
+		c.RowSeal, c.Seal, c.Stint, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -401,6 +407,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.RowSeal.mutate(ctx, m)
 	case *SealMutation:
 		return c.Seal.mutate(ctx, m)
+	case *StintMutation:
+		return c.Stint.mutate(ctx, m)
 	case *TallyMutation:
 		return c.Tally.mutate(ctx, m)
 	case *TenantMutation:
@@ -3030,6 +3038,155 @@ func (c *SealClient) mutate(ctx context.Context, m *SealMutation) (Value, error)
 	}
 }
 
+// StintClient is a client for the Stint schema.
+type StintClient struct {
+	config
+}
+
+// NewStintClient returns a client for the Stint from the given config.
+func NewStintClient(c config) *StintClient {
+	return &StintClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `stint.Hooks(f(g(h())))`.
+func (c *StintClient) Use(hooks ...Hook) {
+	c.hooks.Stint = append(c.hooks.Stint, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `stint.Intercept(f(g(h())))`.
+func (c *StintClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Stint = append(c.inters.Stint, interceptors...)
+}
+
+// Create returns a builder for creating a Stint entity.
+func (c *StintClient) Create() *StintCreate {
+	mutation := newStintMutation(c.config, OpCreate)
+	return &StintCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Stint entities.
+func (c *StintClient) CreateBulk(builders ...*StintCreate) *StintCreateBulk {
+	return &StintCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *StintClient) MapCreateBulk(slice any, setFunc func(*StintCreate, int)) *StintCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &StintCreateBulk{err: fmt.Errorf("calling to StintClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*StintCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &StintCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Stint.
+func (c *StintClient) Update() *StintUpdate {
+	mutation := newStintMutation(c.config, OpUpdate)
+	return &StintUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *StintClient) UpdateOne(_m *Stint) *StintUpdateOne {
+	mutation := newStintMutation(c.config, OpUpdateOne, withStint(_m))
+	return &StintUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneId returns an update builder for the given id.
+func (c *StintClient) UpdateOneId(id uuid.UUID) *StintUpdateOne {
+	mutation := newStintMutation(c.config, OpUpdateOne, withStintId(id))
+	return &StintUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Stint.
+func (c *StintClient) Delete() *StintDelete {
+	mutation := newStintMutation(c.config, OpDelete)
+	return &StintDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *StintClient) DeleteOne(_m *Stint) *StintDeleteOne {
+	return c.DeleteOneId(_m.Id)
+}
+
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *StintClient) DeleteOneId(id uuid.UUID) *StintDeleteOne {
+	builder := c.Delete().Where(stint.Id(id))
+	builder.mutation.id = &id
+	builder.mutation.SetOp(OpDeleteOne)
+	return &StintDeleteOne{builder}
+}
+
+// Query returns a query builder for Stint.
+func (c *StintClient) Query() *StintQuery {
+	return &StintQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeStint},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Stint entity by its id.
+func (c *StintClient) Get(ctx context.Context, id uuid.UUID) (*Stint, error) {
+	return c.Query().Where(stint.Id(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *StintClient) GetX(ctx context.Context, id uuid.UUID) *Stint {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTenant queries the tenant edge of a Stint.
+func (c *StintClient) QueryTenant(_m *Stint) *TenantQuery {
+	query := (&TenantClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.Id
+		step := sqlgraph.NewStep(
+			sqlgraph.From(stint.Table, stint.FieldId, id),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
+			sqlgraph.Edge(sqlgraph.M2O, false, stint.TenantTable, stint.TenantColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *StintClient) Hooks() []Hook {
+	return c.hooks.Stint
+}
+
+// Interceptors returns the client interceptors.
+func (c *StintClient) Interceptors() []Interceptor {
+	return c.inters.Stint
+}
+
+func (c *StintClient) mutate(ctx context.Context, m *StintMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&StintCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&StintUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&StintUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&StintDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Stint mutation op: %q", m.Op())
+	}
+}
+
 // TallyClient is a client for the Tally schema.
 type TallyClient struct {
 	config
@@ -3449,12 +3606,12 @@ func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, erro
 type (
 	hooks struct {
 		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Machine,
-		Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant,
-		Thing []ent.Hook
+		Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Stint, Tally,
+		Tenant, Thing []ent.Hook
 	}
 	inters struct {
 		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Machine,
-		Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant,
-		Thing []ent.Interceptor
+		Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Stint, Tally,
+		Tenant, Thing []ent.Interceptor
 	}
 )

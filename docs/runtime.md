@@ -51,7 +51,7 @@ table is for finding the right one.
 | [`seen`](../seen) | what a transaction has already asked about the rows it names, so the gate and the sink ask each question once rather than once per write |
 | [`audit`](../audit) | the trail. A recorder inside the transaction, and a layer serving the trail's own RPCs |
 | [`access`](../access) | the access record: who read or wrote whose personal data, from where, and how it ended. An interceptor, and the writer it hands rows to |
-| [`past`](../past) | an app's past, for one that declares one: an event for each operation and facts of what its resources were, recorded in the operation's transaction and read back at a moment, as known now or then; and an event said when it is read, in the reader's language, naming people as they are called then. Through the `pd.Past` and `pd.PastNames` an app is generated |
+| [`past`](../past) | an app's past, for one that declares one: an event for each operation and facts of what its resources were, recorded in the operation's transaction and read back at a moment, as known now or then; an event said when it is read, in the reader's language, naming people as they are called then; and what a tenant's window no longer reaches let go, each row on the trail as taken. Through the `pd.Past`, `pd.PastNames`, `pd.PastIn` and `pd.PastTenants` an app is generated |
 
 ### Naming things
 
@@ -103,6 +103,8 @@ in CI is what keeps that true.
 | `pd.EventKinds`, in an app that declares a past: every event message by the kind its rows are written under | each is a message type of yours, read back from a row's `kind` |
 | `pd.Past`, in an app that declares a past: its Event and Fact as the `past` package writes and reads them | a write goes through your servers on the operation's transaction, a read through your ent client, and the tenant of a subject is found as the trail finds a row's |
 | `pd.PastNames`, in an app that declares a past: what names the people and things a sentence of an event names, as they are called when it is read | a row of any of your entities is read through your ent client and your wall, and whether its title is somebody's data is what your schema declared `personal` |
+| every column of yours and the past's that names an event, `(payday.field) = {event: true}`, in `pd.Past`'s store, and the deletes an expiry makes beneath the servers, each put on the trail through `pd.RecordErased` | they are your tables and columns, by the names ent gives them, and a delete of your Event and Fact is a statement of your ent client |
+| `pd.PastIn` and `pd.PastTenants`, what `past.Expirer` runs on: a tenant's transaction as the deployment's work in it, and every tenant with a past | the transaction is begun on your driver and the store built on your ungated stack; the tenants are read off your Event |
 | `ts/gen/events.ts`, in every app: `events`, a protobuf-es registry of the event messages, and `kinds` | the page's transport is handed it, and it names the app's schemas |
 
 An app that declares a past also has `proto/<pkg>/payday/past.lock` beside the
@@ -190,6 +192,7 @@ Everything payday enforces is placed as far left as it goes.
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
 | an event and what it is about commit together | `past.Begin` refuses a store on no transaction, and `pd.Past` puts the stack on the operation's driver rather than trusting it to be there |
 | a name a sentence of the past says is on the access record | the runtime writes it: `past.Reading.Name` says whose data the name is (`access.Saw`) every time a sentence says it, and `pd.PastNames` reads the name through the wall |
+| an event a row that stays names outlives its window | the generator writes every column that says it names an event into the store the expiry asks, and refuses a column that says so and cannot be asked; the expiry takes no event a row that stays names, and what it takes it puts on the trail in the same transaction |
 | `Patch` and `Apply` are closed | at the **transport**, not in a layer — a layer would close them to the server itself |
 | the wire does not break | `buf breaking` in CI, against the published label and the branch |
 | an error is logged as the error, and one to a record | a test, `internal/logcheck`, over payday's packages, the code it generates and what `pd new` writes; and of what the `otelslog` bridge does with an error, which is what makes it the rule (see [logging an error](guide/server.md#10-logging-an-error)) |
@@ -253,7 +256,8 @@ in the process that holds its lease, and the serve command builds the lease from
 - **A loop is named.** The name is what the processes agree on, so `Run` refuses
   an exclusive loop with none of its own and two with one name, before anything
   starts. A `spin.Func` is called by its type and so has none; `spin.Called`
-  names one. `payday.outbox` and `payday.trail` are payday's.
+  names one. `payday.outbox`, `payday.trail` and `payday.past.expire` are
+  payday's.
 - **A rename is a new lock.** A process of the old build holds the old name and
   one of the new build the new one, so through a rolling upgrade that runs both
   the loop runs in one of each, for as long as the upgrade takes.
@@ -1505,6 +1509,33 @@ lease nothing takes turns, and the process says so where it comes up; a lease
 that holds nothing (`none`) is no lease for this, so a process that runs no
 loops acts without one. `pd new`'s `Build` hands the policy the lease
 `spin.lease` names.
+
+### The past's expiry is one of them (payday#151)
+
+`past.Expirer` applies each tenant's window to its past as the trail's pass
+applies it to the trail: every tenant with a past, each in a transaction of its
+own, asked its window and its holds -- the app's answer, as
+`trail.Policy.Tenants` is the app's -- and what that window no longer reaches
+taken. Nothing else applies it, so an outage of it is a deployment keeping
+history it said it would not. It logs and goes on rather than giving up: a
+tenant whose window cannot be read keeps everything that pass, and an expiry
+that fails keeps all it would have taken, being one transaction.
+
+- **Beneath the servers, and on the trail.** Neither Event nor Fact has an
+  Erase -- an event is never changed and a fact only superseded -- so an
+  expiry's deletes are ent's, and each row it takes is put on the trail as the
+  act that took it (`pd.RecordErased`, `payday.past.expire`) in the same
+  transaction. A check of the rows then finds it gone, as the trail says.
+- **What names an event keeps it.** The columns that do say so in the schema
+  (`(payday.field) = {event: true}`), and the generator writes every one into
+  the store, so an event goes only once nothing that stays names it. An app's
+  own rows that name events are its to expire, first and in the same
+  transaction, which is why an app with any runs its own loop and calls
+  `past.Expire` from it.
+- **Safe to run twice.** What a pass took is not there for the next, and on
+  PostgreSQL two expiries of one tenant take turns on a transaction's advisory
+  lock -- so the moment around a failover in which a lease runs a loop in two
+  processes takes nothing twice (`payday.past.expire`).
 
 ### The access record (#111)
 

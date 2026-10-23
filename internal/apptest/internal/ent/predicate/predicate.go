@@ -93,6 +93,9 @@ type RowSeal func(*sql.Selector)
 // Seal is the predicate function for seal builders.
 type Seal func(*sql.Selector)
 
+// Stint is the predicate function for stint builders.
+type Stint func(*sql.Selector)
+
 // Tally is the predicate function for tally builders.
 type Tally func(*sql.Selector)
 

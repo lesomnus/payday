@@ -3,6 +3,52 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A tenant's past is let go by its window
+
+**Applies to an app that declares a past**, which regenerates -- the fifth part
+of payday#151 -- and gets a migration: payday's Fact gains an index on
+`superseded_by`, which the expiry asks of every event it would take. An app with
+no past regenerates nothing new. It needs a `buf.build/payday/payday` pin with
+`(payday.field).event`, since payday's Event and Fact now say it: until the pin
+moves (`buf dep update`), the copies are refused with `cannot resolve message
+field name for payday.Field`, and `pd gen` says that is the pin.
+
+- **A column of yours that names an event says so**: `(payday.field) = {event:
+  true}`, on a `bytes` column of `TYPE_UUID` -- a time row's `event_id`, a stock
+  movement's. An event the expiry would take stays while a row that stays names
+  it, and only a column that says so is asked. Give it an index that begins
+  with it. `pd gen` refuses it on any other type, a list, an edge or the key, in
+  an app with no past, and on payday's Event beside its `cause_id`.
+- **`past.Expire(ctx, st, tenant, past.Window{Keep, Holds}, now, past.Expiry{...})`**
+  takes what the window no longer reaches, in your transaction, after your own
+  rows that name events: facts superseded or replaced by the cut, and events
+  before it that nothing that stays names, each row on the trail as
+  `payday.past.expire` (`pd.RecordErased`). `Expiry` holds what no window ends
+  -- `KeepKinds`, and `KeepFacts{Domain, Field, Key, Values}`, each value as
+  `past.Encode` writes it -- and `Receipt`, the event of yours it records of what
+  went.
+- **`past.Preview`** counts what an expiry would take and takes nothing, told
+  by the predicate your own expiry deletes by what of your tables goes
+  (`map[pdid.Domain]past.Going`). A dry run is `Expire` in a transaction rolled
+  back.
+- **`past.Expirer`**, a `spin.Spinner` called `payday.past.expire`, is the loop
+  of an app whose past is what it expires, built on what `pd gen` now writes:
+  `pd.PastTenants(client)` and `pd.PastIn(ungated, drv, content)`, the
+  tenant's transaction as the deployment's work in it.
+- **Answer the past's window and the trail's from one source**
+  ([the operator's guide](guide/operator.md#and-the-pasts-window-from-the-same-row)).
+- [Keeping a past](guide/past.md#12-letting-it-go) is the guide.
+
+What the apps on payday change:
+
+- **rove** keeps no past of payday's yet. When it adopts one, its time rows'
+  and stock movements' `event_id` say `event: true`, and its expiry
+  (`server/domain/expire.go`) calls `past.Expire` once its own rows and
+  documents are gone, keeping `asset.add` and the statuses that took an asset
+  out of use, with `retention.expired` as the receipt; its windows answer both
+  from `server/retention`, as they do the trail's today.
+- **roster** keeps no past, and changes nothing.
+
 ## An event is said when it is read
 
 **Applies to an app that declares a past**, whose `pd.g.go` gains

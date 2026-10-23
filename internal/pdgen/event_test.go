@@ -410,7 +410,8 @@ func TestThePastsStoreIsWrittenWithAPast(t *testing.T) {
 
 	x := require.New(t)
 
-	out := emit(t, past(t, entity("Robot", `domain: 7`, `Tenant tenant = 2 [(orm.edge) = {immutable: true}];`)+
+	out := emit(t, past(t, entity("Robot", `domain: 7`, `Tenant tenant = 2 [(orm.edge) = {immutable: true}];`,
+		`bytes moved_by = 8 [(orm.field) = {type: TYPE_UUID, nullable: true}, (payday.field) = {event: true}];`)+
 		entity("Fleet", `domain: 9, global: {}`)+`
 message Lock {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
@@ -427,6 +428,24 @@ message Lock {
 	x.NotContains(out, "case LockDomain:", "a kind behind the wall no server writes and the trail does not read")
 	x.Contains(out, "func (s pastStore) Redact(")
 	x.Contains(out, "Record(ctx, s.db, s.content, action,")
+
+	// What the expiry asks of it: every column that names an event, the
+	// past's and the app's, by the names ent gives them.
+	x.Contains(out, "var pastPointers = []past.Pointer{\n"+
+		"\t{Domain: EventDomain, Table: event.Table, Column: event.FieldCauseId, Own: pdpb.Own_OWN_EVENT},\n"+
+		"\t{Domain: FactDomain, Table: fact.Table, Column: fact.FieldEventId, Own: pdpb.Own_OWN_FACT},\n"+
+		"\t{Domain: FactDomain, Table: fact.Table, Column: fact.FieldSupersededBy, Own: pdpb.Own_OWN_FACT},\n"+
+		"\t{Domain: RobotDomain, Table: robot.Table, Column: robot.FieldMovedBy, Own: pdpb.Own_OWN_UNSPECIFIED},\n"+
+		"}\n")
+	x.Contains(out, "func (s pastStore) DeleteEvents(ctx context.Context, ids []pdid.Id) (int, error) {")
+	x.Contains(out, "func (s pastStore) DeleteFacts(ctx context.Context, ids []pdid.Id) (int, error) {")
+	x.Contains(out, "func (s pastStore) CountFacts(ctx context.Context, where []func(*sql.Selector)) (int, error) {")
+	x.Contains(out, "_, err := RecordErased(ctx, s.db, s.content, action, ids)", "what an expiry takes is on the trail")
+	x.Contains(out, "func PastIn(ungated app.Server, drv dialect.Driver, content audit.Contents) func(")
+	x.Contains(out, "ctx = frame.Into(ctx, frame.New(pdid.Nil, tenant, frame.Grant{}).WithScope(frame.Only(tenant)))",
+		"the deployment's work in the tenant, and in it alone")
+	x.Contains(out, "s, err := Past(ungated, tdrv, content)", "on the transaction it began")
+	x.Contains(out, "func PastTenants(db *ent.Client) func(")
 
 	x.NotContains(emit(t, ownAll(t)+tenantedRobot), "func Past(", "an app with no past was given a store of one")
 }

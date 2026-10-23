@@ -14,8 +14,8 @@ This page is declaring a past, the messages an event holds, the rules that keep
 old events readable, the lock that holds an app to them, and the registries a
 server and a page read events with; then the `past` package, which records an
 operation and the facts it writes, reads them back at a moment, says what
-happened in the reader's language, corrects it, and takes a reason out.
-Letting history expire comes in a part of payday#151 after this one.
+happened in the reader's language, corrects it, takes a reason out, and lets
+what a tenant's window no longer reaches go.
 
 - [1. Declaring a past](#1-declaring-a-past)
 - [2. What an event holds](#2-what-an-event-holds)
@@ -28,6 +28,7 @@ Letting history expire comes in a part of payday#151 after this one.
 - [9. Saying what happened](#9-saying-what-happened)
 - [10. Correcting it](#10-correcting-it)
 - [11. Taking a reason out](#11-taking-a-reason-out)
+- [12. Letting it go](#12-letting-it-go)
 
 ## 1. Declaring a past
 
@@ -558,3 +559,157 @@ as: the line keeps the event's digest as it is now, and its row's seal is made
 again of it (`pd.Record`). So a check of the rows (`pd.Digests`) finds the event
 as the trail says it is -- and the same blanking done in the database past the
 servers is a row that differs, which is what the check is there to find.
+
+## 12. Letting it go
+
+A tenant keeps its past for as long as its **window** says, and what was over
+before the window begins goes: `now` less the window is the cut. How long a
+tenant's window is -- a plan, a contract, a setting of its own -- and whether a
+legal hold is on it is your data, and you answer it, from the same source as
+the trail's windows (see [one window](#one-window-for-the-past-and-its-trail)
+below). `past.Expire` takes the rest, in one transaction:
+
+```go
+err := pd.PastIn(ungated, drv, content)(ctx, tenant, func(ctx context.Context, st past.Store) error {
+	// Your own rows that name events first, on this transaction (below).
+
+	_, err := past.Expire(ctx, st, tenant, past.Window{Keep: keep, Holds: holds}, time.Now(), past.Expiry{
+		KeepKinds: []string{"robot.add"}, // the operation that made one
+		KeepFacts: []past.FactKeep{{
+			Domain: pd.RobotDomain,
+			Field:  16,            // its status
+			Values: []string{"4"}, // STATUS_SCRAPPED, which took it out of use
+		}},
+		Receipt: receipt,
+	})
+	return err
+})
+```
+
+`pd.PastIn(ungated, drv, content)` opens the transaction, frames the context as
+the deployment's work in the tenant -- nobody's, and of that tenant alone -- and
+builds the store on it, through the stack with no wall: an expiry is the
+deployment acting on itself, so hand it the ungated stack and never one a
+caller reaches. `Expire` refuses a store on no transaction (`past.ErrNotInTx`)
+and a context framed in another tenant than the one it expires.
+
+### What goes
+
+- **A fact** superseded by the cut -- a correction replaced it -- or one a later
+  fact of its field replaced by then: one that had begun by the cut, was written
+  down by it, and still stands. So what each field held when the window began
+  stays, and what anything was at a moment inside the window reads as it did,
+  as known now and as known at any moment inside it (`past.StateAt`). What it
+  was before the window is what goes.
+- **An event** that happened and was written down before the cut, of a kind no
+  exception keeps, that **no row that stays names**: no fact it wrote or
+  superseded, no event that is part of it, and no row of yours whose column says
+  it names an event. The facts go first, so an event only they named goes with
+  them, and an operation's event goes with the last of its children.
+- **Nothing** while a legal hold is on, whatever the window says, and nothing
+  for a window of zero, which is forever.
+
+### What names an event
+
+A column says it does: `(payday.field) = {event: true}`, on a `bytes` column of
+`TYPE_UUID` ([the schema guide](schema.md#a-column-that-names-an-event)).
+payday's templates mark the past's own -- a fact's `event_id` and
+`superseded_by`, an event's `cause_id` -- and an app marks the ones of its rows
+that name the operation that wrote them: a time row's, a stock movement's.
+`pd gen` lists every one in the store (`Store.Pointers()`), and an expiry asks
+each of them about each event before it takes it, so give each an index that
+begins with it.
+
+**Your own rows go first**, in the same transaction: what of them your rules say
+is over, through your servers, so that the trail has each as the erase it is --
+`enttx.Rebind(ungated, st.Driver())` is your stack on the expiry's transaction.
+Then `Expire`, which finds the events only those rows named unnamed, and takes
+them. Done the other way round, such an event stays until the next pass.
+
+### What no window ends
+
+- **`KeepKinds`**: the kinds of event that are a record whatever their age --
+  the operation that made a thing, the one that disposed of it. A kind no
+  message declares any more is one rows were written under once, and may be
+  kept.
+- **`KeepFacts`**: facts of one field of one kind of resource -- every value of
+  it, or the ones listed -- that a later value does not make history: the
+  status that took a thing out of use. Each value is the text a fact keeps, as
+  `past.Encode` writes it -- `"retired"` for a string, `4` for an enum -- and one
+  written any other way is refused rather than matching nothing. It keeps a fact
+  from going for having been replaced; one a correction superseded goes as any
+  other, since what was corrected was never the record.
+
+### Each row on the trail
+
+Neither Event nor Fact has an Erase, so the rows are deleted beneath the
+servers: by identifier, a page at a time, read in the order an index keeps --
+and each page put on the trail, in the same transaction, as taken by
+`payday.past.expire` (`Expiry.Act` says another), by whoever the context is
+framed as and filed under the tenant (`pd.RecordErased`). So a check of the rows
+(`pd.Digests`) finds each as the trail says it is: gone. A delete done past this
+is a row the trail says is there, which is what the check is for.
+
+What a pass took is not there to take again: a second pass takes nothing. On
+PostgreSQL an expiry holds the tenant until its transaction ends, so two of one
+tenant take turns rather than taking the same rows side by side.
+
+### A receipt
+
+`Expiry.Receipt` makes the event an expiry records of what it took: a message of
+your own, from `past.Expired` -- the cut, and how many facts and events went.
+It is asked whenever a window applied, after the rows went, and `nil` records
+nothing that time; the receipt is written through your servers like any event,
+as the deployment's own. Say how many of what and never what they said: the
+rows went, and a receipt that kept them would be where they went. An app whose
+own rows went first says how many in the same message.
+
+### Before a window is shortened
+
+```go
+x, err := past.Preview(ctx, st, tenant, next, time.Now(), expiry, map[pdid.Domain]past.Going{
+	pd.StintDomain: func(cut time.Time) func(*sql.Selector) { return stint.And(stint.ValidToNotNil(), stint.ValidToLTE(cut)) },
+})
+```
+
+`Preview` counts what `Expire` would take, and takes nothing: no row is deleted
+or held, so a tenant's owner may ask it before a shorter window is saved, as
+often as they like. It counts by the predicates an expiry deletes by, with the
+chain of events an event that stays keeps -- which it says as one `WITH
+RECURSIVE` statement. Your rows are still there when it asks, so it is told, by
+the domain of each of your tables that name events, the predicate your own
+expiry deletes that table's rows by; a table it is told nothing of keeps every
+row, and every event one of them names. Write the predicate so that it holds
+under a NOT: a comparison of a nullable column says `IS NOT NULL` too.
+
+A **dry run** is `Expire` in a transaction you roll back: what it says is what a
+run does, to the row, and what it took comes back with the rollback.
+
+### The loop
+
+```go
+s.Spin = append(s.Spin, past.Expirer{
+	Tenants: pd.PastTenants(client),          // every tenant with a past
+	Window:  windows.Of,                      // yours, and the trail's from the same source
+	In:      pd.PastIn(s.Ungated, drv, content),
+	Every:   time.Hour,
+	Expiry:  expiry,
+})
+```
+
+`past.Expirer` is `Expire` in every tenant with a past, each in a transaction of
+its own, every `Every`: a `spin.Spinner` called `payday.past.expire`, which a
+lease runs in one process of the deployment. A tenant whose window cannot be
+read keeps everything that pass, as the trail's does, and the rest go on; one
+kept forever or under a hold opens no transaction. It is for an app whose past
+is what it expires. One with rows of its own that name events runs its own loop
+that takes those and then calls `Expire`, as above -- the way rove's does.
+
+### One window for the past and its trail
+
+The trail keeps the writes that made the past -- every event and fact was
+written through the servers -- and its windows are answered per tenant too
+(`trail.Policy.Tenants`). Answer both from **one** source: a trail that
+outlives the past it records keeps, as values, what the past let go, and a
+past the trail has forgotten the making of is history nobody can vouch for.
+[The operator's guide](operator.md#3-the-trail-asks-it) has the shape.

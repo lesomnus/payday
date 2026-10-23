@@ -1,0 +1,81 @@
+edition = "2023";
+
+package app;
+
+import "app/payday/tenant.proto";
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// Stint is a time row of this app's own (payday#151): a robot in a cell from
+// one moment until another, written by an operation whose event it names.
+//
+// It is what rove keeps as placements, links and stewardships, and it is here
+// for the one thing payday has to know of such a row: `event_id` names an event
+// of the past, so the past's expiry keeps that event while the row stays. The
+// row itself is the app's to expire -- one that ended before the window, before
+// the past's own expiry and in its transaction -- through its server, so the
+// trail has it as the erase it is.
+message Stint {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+
+  // The robot, by identifier and not an edge: what a robot was outlives it.
+  bytes robot_id = 8 [(orm.field) = {type: TYPE_UUID}];
+
+  google.protobuf.Timestamp valid_from = 9 [(orm.field) = {default: ""}];
+
+  // When it ended, and null while it holds.
+  google.protobuf.Timestamp valid_to = 10 [(orm.field) = {nullable: true}];
+
+  // The operation that wrote it, which stays while this does.
+  bytes event_id = 11 [
+    (orm.field) = {type: TYPE_UUID},
+    (payday.field) = {event: true}
+  ];
+
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {
+    immutable: true
+    default: ""
+  }];
+
+  option (orm.message) = {
+    rpc: {crud: true}
+    indexes: [
+      // What the expiry asks of each event it would take: whether a stint
+      // names it. Without it, every stint of every tenant, for each event.
+      {
+        name: "event"
+        refs: [
+          {
+            name: "event_id"
+            number: 11
+          }
+        ]
+      }
+    ]
+  };
+  option (payday.entity) = {
+    domain: 20
+    erase: {hard: {}}
+  };
+}
+
+// PastExpired is the receipt an expiry of this app's past records (payday#151):
+// how many of what went, and from before when -- the past's own rows and the
+// stints the app took before them -- and never what any of them said.
+message PastExpired {
+  option (payday.event) = {kind: "past.expire"};
+
+  google.protobuf.Timestamp before = 1;
+  uint32 facts = 2;
+  uint32 events = 3;
+  uint32 stints = 4;
+}
