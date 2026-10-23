@@ -120,6 +120,9 @@ var pdImport = regexp.MustCompile(`(?m)^import "payday/([^"]+)";$`)
 // an app's own entity imports one by name, and a file a person writes should
 // not have to spell a generated suffix. What says they are generated is the
 // directory they are in, and the README written beside them.
+//
+// The past is copied the same way, into an app that declares one, and taken
+// out of one that does not; see [Gen.past].
 func (g Gen) entities(ctx context.Context) error {
 	src, err := SchemaDir()
 	if err != nil {
@@ -134,55 +137,146 @@ func (g Gen) entities(ctx context.Context) error {
 		return fmt.Errorf("%s: payday ships no entities here", src)
 	}
 
+	// Before anything is written, so that a refusal leaves the tree as it was.
+	if err := checkPastNames(g.Layout); err != nil {
+		return err
+	}
+
 	dst := filepath.Join(g.Out, g.Layout.DirPd())
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return err
 	}
 
 	for _, v := range vs {
-		name := filepath.Base(v)
-		ext := g.Layout.Path(DirExt, "payday", strings.TrimSuffix(name, ".proto")+".ext.proto")
+		if err := g.copyEntity(ctx, v, dst, nil); err != nil {
+			return err
+		}
+	}
+	if err := g.past(ctx, dst); err != nil {
+		return err
+	}
 
-		var b []byte
-		if _, err := os.Stat(ext); err == nil {
-			g.say("  merge %s + %s", name, filepath.Base(ext))
+	return os.WriteFile(filepath.Join(dst, "README.md"), []byte(copied), 0o644)
+}
 
-			// The same refusal the contract merge makes, because it is the
-			// same union: a file-level `features.` here lands on the whole
-			// copied entity, payday's own fields included. The line is even
-			// easier to carry into an entity overlay -- the entity file it is
-			// copied from starts with one.
-			if err := CheckOverlayFile(ext); err != nil {
-				return err
-			}
+// copyEntity copies one of payday's entities into `dst`, merged with the app's
+// overlay of it when there is one. `edit`, when it is given, is what is done to
+// payday's file before the overlay meets it.
+func (g Gen) copyEntity(ctx context.Context, v string, dst string, edit func([]byte) ([]byte, error)) error {
+	name := filepath.Base(v)
+	ext := g.Layout.Path(DirExt, "payday", strings.TrimSuffix(name, ".proto")+".ext.proto")
 
-			b, err = g.run(ctx, "go", "tool", "protobuf-merge", v, ext)
-			if err != nil {
-				return err
-			}
-		} else {
-			b, err = os.ReadFile(v)
-			if err != nil {
-				return err
-			}
+	b, err := os.ReadFile(v)
+	if err != nil {
+		return err
+	}
+	if edit != nil {
+		if b, err = edit(b); err != nil {
+			return fmt.Errorf("%s: %w", name, err)
+		}
+	}
+
+	if _, err := os.Stat(ext); err == nil {
+		g.say("  merge %s + %s", name, filepath.Base(ext))
+
+		// The same refusal the contract merge makes, because it is the
+		// same union: a file-level `features.` here lands on the whole
+		// copied entity, payday's own fields included. The line is even
+		// easier to carry into an entity overlay -- the entity file it is
+		// copied from starts with one.
+		if err := CheckOverlayFile(ext); err != nil {
+			return err
 		}
 
-		b = goPackage.ReplaceAll(b, []byte(fmt.Sprintf("option go_package = %q;", g.Layout.GoPackage())))
-		b = protoPackage.ReplaceAll(b, []byte(fmt.Sprintf("package %s;", g.Layout.ProtoPkg)))
+		// protobuf-merge takes files, so one that was edited has to be one
+		// again.
+		at := v
+		if edit != nil {
+			if at, err = writeTemp(b, "*.proto"); err != nil {
+				return err
+			}
+			defer os.Remove(at)
+		}
 
-		// And what they import of each other, since they have moved with them.
-		// `payday.proto` is deliberately not matched: it is the options file and
-		// stays where it is, which is what keeps `payday.entity` one name in
-		// every app rather than one per app.
-		b = pdImport.ReplaceAll(b, []byte(
-			fmt.Sprintf(`import "%s/payday/$1";`, filepath.ToSlash(g.Layout.ProtoPkg))))
-
-		if err := os.WriteFile(filepath.Join(dst, name), b, 0o644); err != nil {
+		b, err = g.run(ctx, "go", "tool", "protobuf-merge", at, ext)
+		if err != nil {
 			return err
 		}
 	}
 
-	return os.WriteFile(filepath.Join(dst, "README.md"), []byte(copied), 0o644)
+	b = goPackage.ReplaceAll(b, []byte(fmt.Sprintf("option go_package = %q;", g.Layout.GoPackage())))
+	b = protoPackage.ReplaceAll(b, []byte(fmt.Sprintf("package %s;", g.Layout.ProtoPkg)))
+
+	// And what they import of each other, since they have moved with them.
+	// `payday.proto` is deliberately not matched: it is the options file and
+	// stays where it is, which is what keeps `payday.entity` one name in
+	// every app rather than one per app.
+	b = pdImport.ReplaceAll(b, []byte(
+		fmt.Sprintf(`import "%s/payday/$1";`, filepath.ToSlash(g.Layout.ProtoPkg))))
+
+	return os.WriteFile(filepath.Join(dst, name), b, 0o644)
+}
+
+// past copies payday's `Event` and `Fact` into an app that declares a past,
+// each numbered with the domain the app declared for it, and takes them out of
+// one that does not (payday#151).
+//
+// **Every run**, as the rest of payday's entities are, so that what an app has
+// is what the payday it generates with ships and what its overlays add -- and
+// the overlays are merged on the same path theirs are, with the same refusals.
+//
+// The number is put in **before** the overlay is merged, into the one line of
+// the template that is a placeholder: the template is payday's file, written to
+// be numbered, and the merge is a reprinting that payday does not control the
+// shape of.
+//
+// Taking them out is the other half, and it is not left to anything else. A
+// copy left behind is a schema with an `Event` the app no longer declares,
+// which `pdgen.Read` refuses -- correctly, and in a file this wrote.
+func (g Gen) past(ctx context.Context, dst string) error {
+	if g.Layout.Past == nil {
+		for _, v := range pastFiles {
+			if err := os.Remove(filepath.Join(dst, v.Name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	src, err := PastDir()
+	if err != nil {
+		return err
+	}
+
+	for _, v := range pastFiles {
+		n := g.Layout.Past.Domain(v.Own)
+		g.say("  past: %s, domain %d", v.Message, n)
+
+		if err := g.copyEntity(ctx, filepath.Join(src, v.Name), dst, func(b []byte) ([]byte, error) {
+			return numbered(b, n)
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// placeholder is the `domain: 0` a template of the past says in place of the
+// number an app gives it.
+var placeholder = regexp.MustCompile(`(?m)^(\s*)domain: 0$`)
+
+// numbered is a template of the past with the app's number where its
+// placeholder was. Exactly one, or the template is not one this was written
+// for: a second would number something nobody meant, and none would leave a
+// domain of zero, which generation refuses in a file the app did not write.
+func numbered(b []byte, n uint32) ([]byte, error) {
+	if m := placeholder.FindAllIndex(b, -1); len(m) != 1 {
+		return nil, fmt.Errorf("payday's template says `domain: 0` %d times, and is numbered by replacing the one", len(m))
+	}
+
+	return placeholder.ReplaceAll(b, []byte(fmt.Sprintf("${1}domain: %d", n))), nil
 }
 
 // copied is what this directory says about itself, and it is a file beside the
@@ -202,6 +296,9 @@ until the next one.
   rather than imported because everything generated from them has to be one set
   of types in one Go package: an ent schema in another package cannot have an
   edge to one here, and the wall between tenants is an edge.
+- ` + "`event.proto`" + ` and ` + "`fact.proto`" + ` are here when the app declares a past
+  -- ` + "`option (payday.app) = {past: {event: 17, fact: 16}};`" + ` -- numbered as it
+  declares, and go when the declaration does.
 - ` + "`*_svc.g.proto`" + ` are the service contracts generated from them, the same
   as the ones beside your own entities.
 
@@ -794,7 +891,7 @@ func (g Gen) buf(ctx context.Context, template string, args ...string) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("buf generate: %w\n%s%s", err, stderr.String(), whyStale(stderr.Bytes()))
+		return fmt.Errorf("buf generate: %w\n%s%s", err, stderr.String(), whyStale(g.Layout.Work, stderr.Bytes()))
 	}
 
 	// What a plugin says of a generation that succeeds is a warning -- a list
@@ -807,45 +904,6 @@ func (g Gen) buf(ctx context.Context, template string, args ...string) error {
 	}
 
 	return nil
-}
-
-// staleOption is what buf says about a `(payday.entity)` written against a
-// newer payday than the one the app has pinned.
-var staleOption = regexp.MustCompile(`option \(payday\.entity\): field (\w+) not found`)
-
-// whyStale explains that failure, because the message buf gives names the
-// symptom and nothing else.
-//
-// The app's schema is copied in from **this** payday and the option it is
-// written against comes from `buf.build/payday/payday`, so the two can be of
-// different ages. `pd gen` writes `buf.lock` only when nothing has, which is
-// right -- a pin is the app's to move -- and it means an app that has generated
-// once stays where it was pinned however far payday travels afterwards.
-//
-// What comes out of that is `field own not found` on a file the app never
-// wrote, naming a field it has never heard of. Nothing in it says the word
-// "pin", and the file it points at is regenerated on every run, so the obvious
-// readings are all wrong: a corrupt copy, a bad merge, a broken payday.
-func whyStale(b []byte) string {
-	m := staleOption.FindAllSubmatch(b, -1)
-	if len(m) == 0 {
-		return ""
-	}
-
-	seen := map[string]bool{}
-	names := []string{}
-	for _, v := range m {
-		if k := string(v[1]); !seen[k] {
-			seen[k], names = true, append(names, "`"+k+":`")
-		}
-	}
-
-	return fmt.Sprintf(
-		"\npayday's entities were copied in from the payday you are running, and they say %s -- "+
-			"which the `payday.entity` option this app has pinned does not have.\n\n"+
-			"    buf dep update\n\n"+
-			"`pd gen` writes buf.lock only when nothing has, because a pin is yours to move.",
-		strings.Join(names, ", "))
 }
 
 // run answers with what a command wrote to stdout, and with its stderr in the

@@ -3,6 +3,46 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An app may declare its past, and `pd gen` writes Event and Fact into it
+
+**Applies to every app**, which regenerates -- the README `pd gen` writes beside
+payday's copies says more -- and to one that wants payday's `Event` and `Fact`,
+the first part of payday#151. Nothing else changes for an app that declares no
+past: it has neither.
+
+- **To declare one**, move the app's `buf.build/payday/payday` pin to a `dev`
+  that has `payday.Past` (`buf dep update`), and say it once, on the file that
+  says the package is the app's:
+
+  ```proto
+  option (payday.app) = {past: {event: 17, fact: 16}};
+  ```
+
+  Two domains of the app's, in 7..247, different, and held by no other entity.
+  `pd gen` writes `proto/<pkg>/payday/event.proto` and `fact.proto` and
+  everything generated from them, on every run, and takes them out on the first
+  run after the line goes. A migration makes the two tables.
+- **An app with its own `Event` or `Fact`** -- or a file of its own called
+  `event.proto` or `fact.proto` -- takes it out before declaring: `pd gen`
+  refuses the declaration beside one, before buf runs. What the app's had that
+  payday's do not goes in an overlay, `proto/ext/payday/event.ext.proto` or
+  `fact.ext.proto`, at a number payday's leave empty -- 6 and 17 of an Event, 11
+  of a Fact; the schema guide's §7 has the rest.
+- **A Fact's field is `field_number`**, its number in the subject's descriptor.
+  Not `field`: ent's generated mutation already has methods by that name, which
+  take any field, and a column of it does not compile.
+- **A pin from before this** answers a declared past with `cannot resolve message
+  field name for payday.App` and `cannot find OWN_EVENT in this scope`, and
+  `pd gen` says that is the pin. It had stopped saying so of any option: the buf
+  it pins words the failure differently from the one the explanation was written
+  against, and the explanation matched nothing.
+- `pd entity add` skips the two numbers, and refuses `Event` and `Fact` in an
+  app that declares a past.
+- What the two are written with comes in the parts after this one -- an event's
+  message and the lock that keeps it readable, then the `past` package. Until
+  then they are entities like any other: written and read through their
+  generated servers, behind the wall, and in the trail with `reason` personal.
+
 ## `pd new`'s store deletes everybody else's mirror, and a page needs payday 0.1.2
 
 **Applies if** your app was made with `pd new` -- its `ts/src/store.ts` -- or

@@ -163,6 +163,105 @@ var (
 			},
 		},
 	}
+	// EventColumns holds the columns for the "event" table.
+	EventColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "kind", Type: field.TypeString},
+		{Name: "actor_id", Type: field.TypeUuid, Nullable: true},
+		{Name: "occurred_at", Type: field.TypeTime, Nullable: true},
+		{Name: "reason", Type: field.TypeString},
+		{Name: "subject_id", Type: field.TypeUuid, Nullable: true},
+		{Name: "date_updated", Type: field.TypeTime},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "trace_id", Type: field.TypeBytes, Nullable: true},
+		{Name: "cause_id", Type: field.TypeUuid, Nullable: true},
+		{Name: "value", Type: field.TypeJson, Nullable: true},
+		{Name: "desc", Type: field.TypeString},
+		{Name: "tenant_id", Type: field.TypeUuid},
+	}
+	// EventTable holds the schema information for the "event" table.
+	EventTable = &schema.Table{
+		Name:       "event",
+		Columns:    EventColumns,
+		PrimaryKey: []*schema.Column{EventColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "event_tenant_tenant",
+				Columns:    []*schema.Column{EventColumns[12]},
+				RefColumns: []*schema.Column{TenantColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "event_page",
+				Unique:  false,
+				Columns: []*schema.Column{EventColumns[12], EventColumns[7], EventColumns[0]},
+			},
+			{
+				Name:    "event_subject",
+				Unique:  false,
+				Columns: []*schema.Column{EventColumns[5], EventColumns[3]},
+			},
+			{
+				Name:    "event_cause",
+				Unique:  false,
+				Columns: []*schema.Column{EventColumns[9]},
+			},
+		},
+	}
+	// FactColumns holds the columns for the "fact" table.
+	FactColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "subject_id", Type: field.TypeUuid},
+		{Name: "key", Type: field.TypeString},
+		{Name: "value", Type: field.TypeString},
+		{Name: "field_number", Type: field.TypeUint32, Nullable: true, Default: 0},
+		{Name: "date_updated", Type: field.TypeTime},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "domain", Type: field.TypeUint32, Nullable: true, Default: 0},
+		{Name: "valid_from", Type: field.TypeTime, Nullable: true},
+		{Name: "event_id", Type: field.TypeUuid},
+		{Name: "superseded_at", Type: field.TypeTime, Nullable: true},
+		{Name: "superseded_by", Type: field.TypeUuid, Nullable: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+	}
+	// FactTable holds the schema information for the "fact" table.
+	FactTable = &schema.Table{
+		Name:       "fact",
+		Columns:    FactColumns,
+		PrimaryKey: []*schema.Column{FactColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "fact_tenant_tenant",
+				Columns:    []*schema.Column{FactColumns[12]},
+				RefColumns: []*schema.Column{TenantColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "fact_page",
+				Unique:  false,
+				Columns: []*schema.Column{FactColumns[12], FactColumns[6], FactColumns[0]},
+			},
+			{
+				Name:    "fact_subject",
+				Unique:  false,
+				Columns: []*schema.Column{FactColumns[1], FactColumns[4], FactColumns[2], FactColumns[8]},
+			},
+			{
+				Name:    "fact_field",
+				Unique:  false,
+				Columns: []*schema.Column{FactColumns[12], FactColumns[7], FactColumns[4], FactColumns[2], FactColumns[8]},
+			},
+			{
+				Name:    "fact_event",
+				Unique:  false,
+				Columns: []*schema.Column{FactColumns[9]},
+			},
+		},
+	}
 	// FleetColumns holds the columns for the "fleet" table.
 	FleetColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -533,6 +632,8 @@ var (
 		ArchivedTable,
 		AuditTable,
 		CellTable,
+		EventTable,
+		FactTable,
 		FleetTable,
 		HolderTable,
 		JointTable,
@@ -563,6 +664,14 @@ func init() {
 	CellTable.ForeignKeys[0].RefTable = TenantTable
 	CellTable.Annotation = &entsql.Annotation{
 		Table: "cell",
+	}
+	EventTable.ForeignKeys[0].RefTable = TenantTable
+	EventTable.Annotation = &entsql.Annotation{
+		Table: "event",
+	}
+	FactTable.ForeignKeys[0].RefTable = TenantTable
+	FactTable.Annotation = &entsql.Annotation{
+		Table: "fact",
 	}
 	FleetTable.Annotation = &entsql.Annotation{
 		Table: "fleet",

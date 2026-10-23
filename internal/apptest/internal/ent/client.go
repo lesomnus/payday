@@ -15,6 +15,8 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/event"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
@@ -46,6 +48,10 @@ type Client struct {
 	Audit *AuditClient
 	// Cell is the client for interacting with the Cell builders.
 	Cell *CellClient
+	// Event is the client for interacting with the Event builders.
+	Event *EventClient
+	// Fact is the client for interacting with the Fact builders.
+	Fact *FactClient
 	// Fleet is the client for interacting with the Fleet builders.
 	Fleet *FleetClient
 	// Holder is the client for interacting with the Holder builders.
@@ -88,6 +94,8 @@ func (c *Client) init() {
 	c.Archived = NewArchivedClient(c.config)
 	c.Audit = NewAuditClient(c.config)
 	c.Cell = NewCellClient(c.config)
+	c.Event = NewEventClient(c.config)
+	c.Fact = NewFactClient(c.config)
 	c.Fleet = NewFleetClient(c.config)
 	c.Holder = NewHolderClient(c.config)
 	c.Joint = NewJointClient(c.config)
@@ -198,6 +206,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Archived: NewArchivedClient(cfg),
 		Audit:    NewAuditClient(cfg),
 		Cell:     NewCellClient(cfg),
+		Event:    NewEventClient(cfg),
+		Fact:     NewFactClient(cfg),
 		Fleet:    NewFleetClient(cfg),
 		Holder:   NewHolderClient(cfg),
 		Joint:    NewJointClient(cfg),
@@ -235,6 +245,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Archived: NewArchivedClient(cfg),
 		Audit:    NewAuditClient(cfg),
 		Cell:     NewCellClient(cfg),
+		Event:    NewEventClient(cfg),
+		Fact:     NewFactClient(cfg),
 		Fleet:    NewFleetClient(cfg),
 		Holder:   NewHolderClient(cfg),
 		Joint:    NewJointClient(cfg),
@@ -324,9 +336,9 @@ func (c *Client) InTx() bool {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Access, c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox,
-		c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal, c.Tally,
-		c.Tenant, c.Thing,
+		c.Access, c.Archived, c.Audit, c.Cell, c.Event, c.Fact, c.Fleet, c.Holder,
+		c.Joint, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal,
+		c.Seal, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -336,9 +348,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Access, c.Archived, c.Audit, c.Cell, c.Fleet, c.Holder, c.Joint, c.Outbox,
-		c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal, c.Tally,
-		c.Tenant, c.Thing,
+		c.Access, c.Archived, c.Audit, c.Cell, c.Event, c.Fact, c.Fleet, c.Holder,
+		c.Joint, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal,
+		c.Seal, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -355,6 +367,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Audit.mutate(ctx, m)
 	case *CellMutation:
 		return c.Cell.mutate(ctx, m)
+	case *EventMutation:
+		return c.Event.mutate(ctx, m)
+	case *FactMutation:
+		return c.Fact.mutate(ctx, m)
 	case *FleetMutation:
 		return c.Fleet.mutate(ctx, m)
 	case *HolderMutation:
@@ -933,6 +949,304 @@ func (c *CellClient) mutate(ctx context.Context, m *CellMutation) (Value, error)
 		return (&CellDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Cell mutation op: %q", m.Op())
+	}
+}
+
+// EventClient is a client for the Event schema.
+type EventClient struct {
+	config
+}
+
+// NewEventClient returns a client for the Event from the given config.
+func NewEventClient(c config) *EventClient {
+	return &EventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `event.Hooks(f(g(h())))`.
+func (c *EventClient) Use(hooks ...Hook) {
+	c.hooks.Event = append(c.hooks.Event, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `event.Intercept(f(g(h())))`.
+func (c *EventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Event = append(c.inters.Event, interceptors...)
+}
+
+// Create returns a builder for creating a Event entity.
+func (c *EventClient) Create() *EventCreate {
+	mutation := newEventMutation(c.config, OpCreate)
+	return &EventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Event entities.
+func (c *EventClient) CreateBulk(builders ...*EventCreate) *EventCreateBulk {
+	return &EventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EventClient) MapCreateBulk(slice any, setFunc func(*EventCreate, int)) *EventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EventCreateBulk{err: fmt.Errorf("calling to EventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Event.
+func (c *EventClient) Update() *EventUpdate {
+	mutation := newEventMutation(c.config, OpUpdate)
+	return &EventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EventClient) UpdateOne(_m *Event) *EventUpdateOne {
+	mutation := newEventMutation(c.config, OpUpdateOne, withEvent(_m))
+	return &EventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneId returns an update builder for the given id.
+func (c *EventClient) UpdateOneId(id uuid.UUID) *EventUpdateOne {
+	mutation := newEventMutation(c.config, OpUpdateOne, withEventId(id))
+	return &EventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Event.
+func (c *EventClient) Delete() *EventDelete {
+	mutation := newEventMutation(c.config, OpDelete)
+	return &EventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EventClient) DeleteOne(_m *Event) *EventDeleteOne {
+	return c.DeleteOneId(_m.Id)
+}
+
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *EventClient) DeleteOneId(id uuid.UUID) *EventDeleteOne {
+	builder := c.Delete().Where(event.Id(id))
+	builder.mutation.id = &id
+	builder.mutation.SetOp(OpDeleteOne)
+	return &EventDeleteOne{builder}
+}
+
+// Query returns a query builder for Event.
+func (c *EventClient) Query() *EventQuery {
+	return &EventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Event entity by its id.
+func (c *EventClient) Get(ctx context.Context, id uuid.UUID) (*Event, error) {
+	return c.Query().Where(event.Id(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EventClient) GetX(ctx context.Context, id uuid.UUID) *Event {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTenant queries the tenant edge of a Event.
+func (c *EventClient) QueryTenant(_m *Event) *TenantQuery {
+	query := (&TenantClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.Id
+		step := sqlgraph.NewStep(
+			sqlgraph.From(event.Table, event.FieldId, id),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
+			sqlgraph.Edge(sqlgraph.M2O, false, event.TenantTable, event.TenantColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *EventClient) Hooks() []Hook {
+	return c.hooks.Event
+}
+
+// Interceptors returns the client interceptors.
+func (c *EventClient) Interceptors() []Interceptor {
+	return c.inters.Event
+}
+
+func (c *EventClient) mutate(ctx context.Context, m *EventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Event mutation op: %q", m.Op())
+	}
+}
+
+// FactClient is a client for the Fact schema.
+type FactClient struct {
+	config
+}
+
+// NewFactClient returns a client for the Fact from the given config.
+func NewFactClient(c config) *FactClient {
+	return &FactClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `fact.Hooks(f(g(h())))`.
+func (c *FactClient) Use(hooks ...Hook) {
+	c.hooks.Fact = append(c.hooks.Fact, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `fact.Intercept(f(g(h())))`.
+func (c *FactClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Fact = append(c.inters.Fact, interceptors...)
+}
+
+// Create returns a builder for creating a Fact entity.
+func (c *FactClient) Create() *FactCreate {
+	mutation := newFactMutation(c.config, OpCreate)
+	return &FactCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Fact entities.
+func (c *FactClient) CreateBulk(builders ...*FactCreate) *FactCreateBulk {
+	return &FactCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *FactClient) MapCreateBulk(slice any, setFunc func(*FactCreate, int)) *FactCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &FactCreateBulk{err: fmt.Errorf("calling to FactClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*FactCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &FactCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Fact.
+func (c *FactClient) Update() *FactUpdate {
+	mutation := newFactMutation(c.config, OpUpdate)
+	return &FactUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *FactClient) UpdateOne(_m *Fact) *FactUpdateOne {
+	mutation := newFactMutation(c.config, OpUpdateOne, withFact(_m))
+	return &FactUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneId returns an update builder for the given id.
+func (c *FactClient) UpdateOneId(id uuid.UUID) *FactUpdateOne {
+	mutation := newFactMutation(c.config, OpUpdateOne, withFactId(id))
+	return &FactUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Fact.
+func (c *FactClient) Delete() *FactDelete {
+	mutation := newFactMutation(c.config, OpDelete)
+	return &FactDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *FactClient) DeleteOne(_m *Fact) *FactDeleteOne {
+	return c.DeleteOneId(_m.Id)
+}
+
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *FactClient) DeleteOneId(id uuid.UUID) *FactDeleteOne {
+	builder := c.Delete().Where(fact.Id(id))
+	builder.mutation.id = &id
+	builder.mutation.SetOp(OpDeleteOne)
+	return &FactDeleteOne{builder}
+}
+
+// Query returns a query builder for Fact.
+func (c *FactClient) Query() *FactQuery {
+	return &FactQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeFact},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Fact entity by its id.
+func (c *FactClient) Get(ctx context.Context, id uuid.UUID) (*Fact, error) {
+	return c.Query().Where(fact.Id(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *FactClient) GetX(ctx context.Context, id uuid.UUID) *Fact {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTenant queries the tenant edge of a Fact.
+func (c *FactClient) QueryTenant(_m *Fact) *TenantQuery {
+	query := (&TenantClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.Id
+		step := sqlgraph.NewStep(
+			sqlgraph.From(fact.Table, fact.FieldId, id),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
+			sqlgraph.Edge(sqlgraph.M2O, false, fact.TenantTable, fact.TenantColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *FactClient) Hooks() []Hook {
+	return c.hooks.Fact
+}
+
+// Interceptors returns the client interceptors.
+func (c *FactClient) Interceptors() []Interceptor {
+	return c.inters.Fact
+}
+
+func (c *FactClient) mutate(ctx context.Context, m *FactMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&FactCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&FactUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&FactUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&FactDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Fact mutation op: %q", m.Op())
 	}
 }
 
@@ -2961,11 +3275,12 @@ func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, erro
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Owed, Pairing,
-		Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Hook
+		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Outbox, Owed,
+		Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Hook
 	}
 	inters struct {
-		Access, Archived, Audit, Cell, Fleet, Holder, Joint, Outbox, Owed, Pairing,
-		Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing []ent.Interceptor
+		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Outbox, Owed,
+		Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant,
+		Thing []ent.Interceptor
 	}
 )

@@ -119,7 +119,7 @@ func describe(ctx context.Context, l Layout) (*descriptorpb.FileDescriptorSet, e
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("%w\n%s%s", err, stderr.String(), whyStale(stderr.Bytes()))
+		return nil, fmt.Errorf("%w\n%s%s", err, stderr.String(), whyStale(l.Work, stderr.Bytes()))
 	}
 
 	b, err := os.ReadFile(out.Name())

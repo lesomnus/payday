@@ -1,0 +1,114 @@
+edition = "2023";
+package app;
+
+import "app/payday/event.proto";
+import "app/payday/tenant_svc.g.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+service EventService {
+  // Add creates a new Event
+  rpc Add(EventAddRequest) returns (Event);
+  // AddMany creates up to 1000 new Event rows in one call, all of them or none
+  rpc AddMany(EventAddManyRequest) returns (EventAddManyResponse);
+  // Get retrieves a Event
+  rpc Get(EventGetRequest) returns (Event);
+  // List reads Events a page at a time.
+  rpc List(EventListRequest) returns (EventListResponse);
+}
+
+message EventAddRequest {
+  bytes id = 1;
+  TenantRef tenant = 2;
+  string kind = 8 [features.field_presence = IMPLICIT];
+  bytes actor_id = 9;
+  google.protobuf.Timestamp occurred_at = 10;
+  string reason = 11 [features.field_presence = IMPLICIT];
+  bytes subject_id = 12;
+  google.protobuf.Timestamp date_created = 15;
+  bytes trace_id = 16;
+  bytes cause_id = 18;
+  google.protobuf.Any value = 19;
+  string desc = 6 [features.field_presence = IMPLICIT];
+}
+
+message EventAddManyRequest {
+  repeated EventAddRequest items = 1;
+}
+
+message EventAddManyResponse {
+  repeated Event items = 1;
+}
+
+message EventGetRequest {
+  EventRef ref = 1;
+  EventSelect select = 2;
+}
+
+message EventRef {
+  oneof key {
+    bytes id = 1;
+  }
+}
+
+message EventSelect {
+  bool all = 1;
+  TenantSelect tenant = 2;
+  bool kind = 8;
+  bool actor_id = 9;
+  bool occurred_at = 10;
+  bool reason = 11;
+  bool subject_id = 12;
+  bool date_updated = 13;
+  bool date_created = 15;
+  bool trace_id = 16;
+  bool cause_id = 18;
+  bool value = 19;
+  bool desc = 6;
+}
+
+message EventListRequest {
+  // Bounded because the work is: each filter is a predicate in the same query,
+  // so this is what says how much of the database one request may read.
+  repeated EventFilter filters = 1;
+
+  // How many to answer with. Nothing said is what the schema declared, and more
+  // than the cap is the cap -- a caller asking for more than there is meant no
+  // harm, so it is not an error and it is not the whole table either.
+  int32 size = 2 [features.field_presence = IMPLICIT];
+
+  // Where to carry on from: the "next" of the answer before. It names the last
+  // row of that page rather than counting rows from the start, so a row added
+  // ahead of the page does not shift it and a caller reading through never sees
+  // one twice or misses one.
+  string after = 3 [features.field_presence = IMPLICIT];
+
+  // Read the order the other way round, every column of it at once -- newest
+  // first where it is oldest first -- which the index the order walks walks
+  // from the other end. A cursor is of the way it was read, so the next page
+  // carries on that way, and one of the other way is refused.
+  bool reverse = 4 [features.field_presence = IMPLICIT];
+}
+
+message EventListResponse {
+  repeated Event items = 1;
+
+  // What to ask for next, and empty when this was the last of them.
+  //
+  // Empty means there is no more *for now*: a list is read as it is, and one
+  // that has grown since answers a fresh call. It is not empty merely because
+  // the page came back short -- a page is short when the last row of it was the
+  // last row there was, which is a thing the server can only know by having
+  // looked.
+  string next = 2 [features.field_presence = IMPLICIT];
+}
+
+message EventFilter {
+  EventRef ref = 1;
+  bytes subject_id = 2;
+  string kind = 3;
+  bytes actor_id = 4;
+  bytes cause_id = 5;
+}

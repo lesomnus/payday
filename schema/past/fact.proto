@@ -1,0 +1,219 @@
+edition = "2023";
+
+package payday;
+
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+import "payday/tenant.proto";
+
+option features.field_presence = IMPLICIT;
+
+// The Go package is the app's, and `pd gen` writes it in. Copied only into an
+// app that declares a past, as `event.proto` beside this is.
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// Fact is one field of one resource from a moment on: "from `valid_from`, field
+// `field_number` of `subject_id` was `value`" (payday#151).
+//
+// It is typed by the resource's own descriptor rather than by a table of facts
+// per kind of resource: `domain` says which entity the subject is,
+// `field_number` which of its fields, `key` which entry of a map field, and
+// `value` the one value. So a fact names nothing an app made up -- no key of its
+// own -- and one table holds the facts of everything.
+//
+// One row per field and not one per moment, so that a field can be read as it
+// was at any moment, corrected after the fact, and kept for as long as its own
+// rule says. A row is written once and changed only by being superseded:
+// `superseded_at` and `superseded_by` are set once, by a Patch, when a correction
+// or a later fact replaces it.
+//
+// **The numbers declared here are payday's.** An overlay in
+// `proto/ext/payday/fact.ext.proto` adds fields at the ones left empty -- 11
+// among them -- and indexes, and nothing else.
+message Fact {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+
+  // The resource this is a field of. An identifier and not an edge, so that one
+  // table holds the facts of every kind of resource -- and a fact is what the
+  // resource was, which goes on being true after the row is gone.
+  bytes subject_id = 8 [(orm.field) = {type: TYPE_UUID}];
+
+  // The entry of a map field this is about, and empty for any other field.
+  string key = 9;
+
+  // The one value the field held, as its canonical JSON. `null` is the field
+  // cleared, and empty is a value withheld: a field the resource declares
+  // personal or secret is recorded as having changed, and never as what to.
+  //
+  // Text and not a JSON column, because empty is not JSON, and because text
+  // written one way for one value makes `=` exact in SQL.
+  string value = 10;
+
+  // Which of the subject's fields, by its number in the subject's descriptor --
+  // `protoreflect.FieldNumber`, which is what it is called in Go as well. Zero
+  // on a row written before the column was, which is what the default is for:
+  // a table that has rows can be given it.
+  //
+  // Not `field`: ent's generated mutation already has `AddField`, `ClearField`
+  // and the rest, which take any field by its name, and a column of that name
+  // collides with them and does not compile.
+  uint32 field_number = 12 [(orm.field) = {default: ""}];
+
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {
+    immutable: true
+    default: ""
+  }];
+
+  // Which entity the subject is, by its domain. A field number means something
+  // only within one entity, so a read across resources has to say which; the
+  // identifier carries it too, at byte nine, and no database indexes into a
+  // byte of a uuid. Zero on a row written before the column was.
+  uint32 domain = 16 [(orm.field) = {default: ""}];
+
+  // When the value became true, which is not when it was written down:
+  // `date_created` is when it was known.
+  google.protobuf.Timestamp valid_from = 17 [(orm.field) = {default: ""}];
+
+  // The event that wrote this.
+  bytes event_id = 19 [(orm.field) = {type: TYPE_UUID}];
+
+  // When a correction or a later fact replaced this one, and the event that
+  // did. The deployment's to say and never a request's, so an Add refuses the
+  // first; both are written once, by the Patch that supersedes the row.
+  google.protobuf.Timestamp superseded_at = 20 [
+    (orm.field) = {nullable: true},
+    (payday.field) = {stamped: true}
+  ];
+  bytes superseded_by = 21 [(orm.field) = {
+    type: TYPE_UUID
+    nullable: true
+  }];
+
+  option (orm.message) = {
+    // AddMany as well as Add: a resource is made with a fact for each of its
+    // fields, and those are one statement rather than one each. A Patch is how
+    // a fact is superseded.
+    rpc: {
+      add: {many: {}}
+      get: {}
+      patch: {}
+    }
+    indexes: [
+      // The order its list reads in, the tenant first: every read is narrowed
+      // to one.
+      {
+        name: "page"
+        refs: [
+          {
+            name: "tenant"
+            number: 2
+          },
+          {
+            name: "date_created"
+            number: 15
+          },
+          {
+            name: "id"
+            number: 1
+          }
+        ]
+      },
+      // One resource's field, as it was at a moment.
+      {
+        name: "subject"
+        refs: [
+          {
+            name: "subject_id"
+            number: 8
+          },
+          {
+            name: "field_number"
+            number: 12
+          },
+          {
+            name: "key"
+            number: 9
+          },
+          {
+            name: "valid_from"
+            number: 17
+          }
+        ]
+      },
+      // One field across every resource of an entity, in a tenant. Named, as
+      // the others are, after its column without the suffix.
+      {
+        name: "field"
+        refs: [
+          {
+            name: "tenant"
+            number: 2
+          },
+          {
+            name: "domain"
+            number: 16
+          },
+          {
+            name: "field_number"
+            number: 12
+          },
+          {
+            name: "key"
+            number: 9
+          },
+          {
+            name: "valid_from"
+            number: 17
+          }
+        ]
+      },
+      // What an event wrote.
+      {
+        name: "event"
+        refs: [
+          {
+            name: "event_id"
+            number: 19
+          }
+        ]
+      }
+    ]
+  };
+  option (payday.entity) = {
+    // payday's own, found by this and never by its name or its number. An app
+    // never writes this; see `Own` in entity.proto.
+    own: OWN_FACT
+
+    // The app's: `pd gen` writes the number the app declared in
+    // `option (payday.app) = {past: ...}` in place of this zero.
+    domain: 0
+
+    // A fact is not erased one at a time: its rows go when they expire, or with
+    // their tenant, and either is a delete.
+    erase: {hard: {}}
+
+    // Nothing about tenancy, which is the declaration: behind the wall, by the
+    // edge called `tenant`.
+
+    list: {
+      order: [
+        {field: {name: "date_created"}},
+        {field: {name: "id"}}
+      ]
+      by: [
+        {name: "ref"},
+        {name: "subject_id"},
+        {name: "field_number"}
+      ]
+      size: 100
+      max: 1000
+    }
+  };
+}

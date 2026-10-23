@@ -13,6 +13,8 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/event"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
@@ -94,6 +96,8 @@ func checkColumn(t, c string) error {
 			archived.Table: archived.ValidColumn,
 			audit.Table:    audit.ValidColumn,
 			cell.Table:     cell.ValidColumn,
+			event.Table:    event.ValidColumn,
+			fact.Table:     fact.ValidColumn,
 			fleet.Table:    fleet.ValidColumn,
 			holder.Table:   holder.ValidColumn,
 			joint.Table:    joint.ValidColumn,

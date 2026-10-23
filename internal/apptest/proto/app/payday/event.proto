@@ -1,0 +1,180 @@
+edition = "2023";
+package app;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+import "app/payday/tenant.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// Event is one operation of the app's: what was done, to what, by whom, when it
+// happened and why (payday#151).
+//
+// What was done is `value`, a message the app declares for each kind of
+// operation, and `kind` says which. No sentence is kept: one is made when the
+// event is read, in the reader's language, naming the people in it as they are
+// called then -- which a sentence written down at the time could not do once
+// somebody was renamed or forgotten.
+//
+// An event is never changed, so there is no Patch, and never erased one at a
+// time: its rows leave when they expire, or with their tenant.
+//
+// **The numbers declared here are payday's.** An overlay in
+// `proto/ext/payday/event.ext.proto` adds fields at the ones left empty -- 6 and
+// 17 are the ones an app adopting its own events into this table has needed --
+// and indexes, and nothing else.
+message Event {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+  // What kind of operation this was, which says what `value` holds. It is a
+  // word of the app's and about no one.
+  string kind = 8 [(payday.field) = {personal: false}];
+  // The holder that asked, and empty for the deployment's own work.
+  bytes actor_id = 9 [(orm.field) = {
+    type: TYPE_UUID
+    nullable: true
+  }];
+  // When it happened, which is not always when it was written down.
+  google.protobuf.Timestamp occurred_at = 10 [(orm.field) = {default: ""}];
+  // Why, in the words of whoever asked. Free text, and nothing can tell whether
+  // somebody is named in it, so it is personal: the trail records that it was
+  // written and never what it said.
+  string reason = 11 [(payday.field) = {personal: true}];
+  // The thing this was about, so that its timeline can find it.
+  bytes subject_id = 12 [(orm.field) = {
+    type: TYPE_UUID
+    nullable: true
+  }];
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {
+    immutable: true
+    default: ""
+  }];
+  // The trace the operation was part of, empty if it was not traced.
+  bytes trace_id = 16 [
+    (orm.field) = {default: ""},
+    (payday.field) = {personal: false}
+  ];
+  // The operation this is part of, and empty on an operation's own event. One
+  // that changes many things records an event of its own and a child for each
+  // thing it changed, with that thing as the subject and this naming the
+  // operation's event.
+  bytes cause_id = 18 [(orm.field) = {
+    type: TYPE_UUID
+    nullable: true
+  }];
+  // What was done, as the message the app declares for its kind.
+  //
+  // It is kept as that message's canonical protobuf JSON, so what a row holds
+  // is read back by name: a message type an app ever wrote is not deleted, and
+  // a field of one is not renamed, or the rows of it no longer read. It names
+  // people by identifier and holds nothing of theirs, which is why it is not
+  // personal and `reason` is.
+  google.protobuf.Any value = 19 [
+    (orm.field) = {nullable: true},
+    (payday.field) = {personal: false}
+  ];
+  option (orm.message) = {
+    // AddMany as well as Add: an operation over many things writes a child for
+    // each thing it changed, a few hundred to a statement rather than one each.
+    rpc: {
+      add: {many: {}}
+      get: {}
+    }
+    indexes: [
+      // The order its list reads in, the tenant first: every read is narrowed
+      // to one.
+      {
+        name: "page"
+        refs: [
+          {
+            name: "tenant"
+            number: 2
+          },
+          {
+            name: "date_created"
+            number: 15
+          },
+          {
+            name: "id"
+            number: 1
+          }
+        ]
+      },
+      // One thing's timeline.
+      {
+        name: "subject"
+        refs: [
+          {
+            name: "subject_id"
+            number: 12
+          },
+          {
+            name: "occurred_at"
+            number: 10
+          }
+        ]
+      },
+      // An operation's children.
+      {
+        name: "cause"
+        refs: [
+          {
+            name: "cause_id"
+            number: 18
+          }
+        ]
+      }
+    ]
+  };
+  option (payday.entity) = {
+    // payday's own, so that generation finds it whatever an app called the
+    // proto package and whatever number the app gave it. An app never writes
+    // this; see `Own` in entity.proto.
+    own: OWN_EVENT
+
+    // Nothing about tenancy, which is the declaration: behind the wall, by the
+    // edge called `tenant`.
+
+    // The app's, and the one thing in this file that is: `pd gen` writes the
+    // number the app declared in `option (payday.app) = {past: ...}` in place
+    // of this zero. Zero is no domain at all, so this file is not an entity
+    // until it has been copied.
+    domain: 17
+
+    // An event is not erased one at a time, as it is not changed: its rows go
+    // when they expire, or with their tenant, and either is a delete.
+    erase: {hard: {}}
+
+    // What happened last, first.
+    list: {
+      order: [
+        {
+          field: {name: "date_created"}
+          desc: true
+        },
+        {
+          field: {name: "id"}
+          desc: true
+        }
+      ]
+      by: [
+        {name: "ref"},
+        {name: "subject_id"},
+        {name: "kind"},
+        {name: "actor_id"},
+        {name: "cause_id"}
+      ]
+      size: 50
+      max: 500
+    }
+  };
+  string desc = 6 [(payday.field) = {personal: false}];
+}

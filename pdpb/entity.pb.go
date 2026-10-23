@@ -50,20 +50,28 @@ const (
 	// an app's transaction and paid after it commits (payday#115). See
 	// `trail.Policy.Forget` and `trail.Policy.Pay`.
 	Own_OWN_OWED Own = 8
+	// An app's past (payday#151): an event for each of its operations, and a
+	// fact for each field of a resource from a moment on. These two are copied
+	// only into an app that declares them, at the domains it chose -- see
+	// `payday.Past` -- and every other entity here is in every app.
+	Own_OWN_EVENT Own = 9
+	Own_OWN_FACT  Own = 10
 )
 
 // Enum value maps for Own.
 var (
 	Own_name = map[int32]string{
-		0: "OWN_UNSPECIFIED",
-		1: "OWN_TENANT",
-		2: "OWN_HOLDER",
-		3: "OWN_AUDIT",
-		4: "OWN_OUTBOX",
-		5: "OWN_ARCHIVED",
-		6: "OWN_ACCESS",
-		7: "OWN_ROW_SEAL",
-		8: "OWN_OWED",
+		0:  "OWN_UNSPECIFIED",
+		1:  "OWN_TENANT",
+		2:  "OWN_HOLDER",
+		3:  "OWN_AUDIT",
+		4:  "OWN_OUTBOX",
+		5:  "OWN_ARCHIVED",
+		6:  "OWN_ACCESS",
+		7:  "OWN_ROW_SEAL",
+		8:  "OWN_OWED",
+		9:  "OWN_EVENT",
+		10: "OWN_FACT",
 	}
 	Own_value = map[string]int32{
 		"OWN_UNSPECIFIED": 0,
@@ -75,6 +83,8 @@ var (
 		"OWN_ACCESS":      6,
 		"OWN_ROW_SEAL":    7,
 		"OWN_OWED":        8,
+		"OWN_EVENT":       9,
+		"OWN_FACT":        10,
 	}
 )
 
@@ -2035,7 +2045,7 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\x06secret\x18\x01 \x01(\bR\x06secret\x12\x18\n" +
 	"\astamped\x18\x02 \x01(\bR\astamped\x12!\n" +
 	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonalJ\x04\b\x04\x10\x05R\n" +
-	"impersonal*\x9b\x01\n" +
+	"impersonal*\xb8\x01\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -2049,7 +2059,10 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\n" +
 	"OWN_ACCESS\x10\x06\x12\x10\n" +
 	"\fOWN_ROW_SEAL\x10\a\x12\f\n" +
-	"\bOWN_OWED\x10\bB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\bOWN_OWED\x10\b\x12\r\n" +
+	"\tOWN_EVENT\x10\t\x12\f\n" +
+	"\bOWN_FACT\x10\n" +
+	"B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 14)

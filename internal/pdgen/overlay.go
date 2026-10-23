@@ -46,8 +46,19 @@ import (
 // purpose -- a tenant called `test.Tenant` is a perfectly good schema to ask
 // questions of, and is not an app. What makes the invariant true is `pd gen`
 // having just copied the files in, so it is asserted where that is known.
+//
+// # And the past, when there is one
+//
+// payday's Event and Fact are copied only into an app that declares a past
+// ([Schema.Past]), so what is required is what payday ships less those two,
+// and the two as well when the schema declares them. An app that does not
+// declare one has neither, and that is not something gone.
 func CheckOwn(s *Schema) error {
 	owned, err := schema.Owned()
+	if err != nil {
+		return err
+	}
+	opted, err := schema.Opted()
 	if err != nil {
 		return err
 	}
@@ -55,14 +66,32 @@ func CheckOwn(s *Schema) error {
 	// From what payday ships rather than a list written here, so an entity
 	// added to payday's schema is covered by having been added.
 	gone := []string{}
+	past := []string{}
 	for own := range owned {
-		if !s.Has(own) {
+		switch {
+		case s.Has(own):
+		case !opted[own]:
 			gone = append(gone, own.String())
+		case s.Past != nil:
+			past = append(past, own.String())
 		}
+	}
+	sort.Strings(past)
+
+	if len(gone) == 0 && len(past) > 0 {
+		// Said apart, because what took them out is not what takes the others:
+		// the declaration is what puts them in.
+		return fmt.Errorf(
+			"%s: %s declares a past, and nothing in this schema carries the marker. `pd gen` "+
+				"writes payday's Event and Fact into the app on every run while the declaration "+
+				"is there, so something removed a copy or its marker, or this was generated "+
+				"without `pd gen`",
+			strings.Join(past, ", "), s.Past.At)
 	}
 	if len(gone) == 0 {
 		return nil
 	}
+	gone = append(gone, past...)
 	sort.Strings(gone)
 
 	return fmt.Errorf(
@@ -100,12 +129,26 @@ func CheckOwn(s *Schema) error {
 // refused the same way a number is. What an overlay may add is an index: a key
 // over the fields it added is what those fields are often for, and an index
 // narrows what may be written without changing what anything reads.
+//
+// # The past's two
+//
+// payday's Event and Fact are held to their templates the same way, with one
+// difference: what payday ships says `domain: 0` and the copy says the app's
+// number, which `pd gen` wrote there. So the template is compared as though it
+// said the copy's number, and whether that is the number the app declared is
+// [Schema.checkPast]'s to say. And what an overlay may add to them is a field
+// at any number the template leaves empty -- 6 and 17 of an Event, 11 of a Fact
+// -- since their 8..12 are payday's.
 func CheckOverlay(s *Schema) error {
 	owned, err := schema.Owned()
 	if err != nil {
 		return err
 	}
 	declared, err := schema.OwnedOptions()
+	if err != nil {
+		return err
+	}
+	opted, err := schema.Opted()
 	if err != nil {
 		return err
 	}
@@ -126,6 +169,10 @@ func CheckOverlay(s *Schema) error {
 		for n, w := range want {
 			g, ok := got[n]
 			switch {
+			case !ok && opted[v.Own]:
+				errs = append(errs, fmt.Sprintf(
+					"%s: %d is payday's %q and is gone; the past is written and read by it",
+					v.FullName(), n, w.Name))
 			case !ok:
 				errs = append(errs, fmt.Sprintf(
 					"%s: %d is payday's %q and is gone; the wall and `auth` read these",
@@ -139,7 +186,12 @@ func CheckOverlay(s *Schema) error {
 
 		d := declared[v.Own]
 		e, _ := proto.GetExtension(v.Written, pdpb.E_Entity).(*pdpb.Entity)
-		for _, p := range added(e.ProtoReflect(), d.Entity.ProtoReflect(), "") {
+		shipped := d.Entity
+		if opted[v.Own] {
+			shipped = proto.Clone(shipped).(*pdpb.Entity)
+			shipped.SetDomain(e.GetDomain())
+		}
+		for _, p := range added(e.ProtoReflect(), shipped.ProtoReflect(), "") {
 			errs = append(errs, fmt.Sprintf(
 				"%s: (payday.entity) %s is not payday's; an overlay may not add to payday's declaration",
 				v.FullName(), p))
@@ -160,6 +212,7 @@ func CheckOverlay(s *Schema) error {
 	return fmt.Errorf(
 		"an overlay may add to one of payday's entities and may not change it.\n"+
 			"payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.\n"+
+			"Of its Event and Fact, payday keeps every number they declare, and an app's own go at any other.\n"+
 			"Of its options, an overlay may add an index to (orm.message), and nothing else.\n\n  %s",
 		strings.Join(errs, "\n  "))
 }

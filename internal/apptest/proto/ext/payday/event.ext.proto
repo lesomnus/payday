@@ -1,0 +1,11 @@
+// What this app adds to payday's Event, which it has because it declares a
+// past (`app/robot.proto`).
+//
+// It is the overlay an app adopting its own events into payday's table writes
+// first: the sentence each of its events used to keep, at the number the header
+// holds for it. Rows written before the adoption keep theirs; payday's own
+// events keep none, and say one when they are read. Not personal: a sentence
+// of an event names people by a mark and an identifier, never by a name.
+message Event {
+  string desc = 6 [(payday.field) = {personal: false}];
+}

@@ -30,6 +30,8 @@ type Server interface {
 	Archived() ArchivedServiceServer
 	Audit() AuditServiceServer
 	Tenant() TenantServiceServer
+	Event() EventServiceServer
+	Fact() FactServiceServer
 	Thing() ThingServiceServer
 	Cell() CellServiceServer
 	Robot() RobotServiceServer
@@ -55,6 +57,8 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterArchivedServiceServer(g, s.Archived())
 	RegisterAuditServiceServer(g, s.Audit())
 	RegisterTenantServiceServer(g, s.Tenant())
+	RegisterEventServiceServer(g, s.Event())
+	RegisterFactServiceServer(g, s.Fact())
 	RegisterThingServiceServer(g, s.Thing())
 	RegisterCellServiceServer(g, s.Cell())
 	RegisterRobotServiceServer(g, s.Robot())
@@ -76,6 +80,8 @@ type UnimplementedServer struct {
 	ArchivedServer ArchivedServiceServer
 	AuditServer    AuditServiceServer
 	TenantServer   TenantServiceServer
+	EventServer    EventServiceServer
+	FactServer     FactServiceServer
 	ThingServer    ThingServiceServer
 	CellServer     CellServiceServer
 	RobotServer    RobotServiceServer
@@ -98,6 +104,8 @@ func (UnimplementedServer) Archived() ArchivedServiceServer {
 }
 func (UnimplementedServer) Audit() AuditServiceServer     { return UnimplementedAuditServiceServer{} }
 func (UnimplementedServer) Tenant() TenantServiceServer   { return UnimplementedTenantServiceServer{} }
+func (UnimplementedServer) Event() EventServiceServer     { return UnimplementedEventServiceServer{} }
+func (UnimplementedServer) Fact() FactServiceServer       { return UnimplementedFactServiceServer{} }
 func (UnimplementedServer) Thing() ThingServiceServer     { return UnimplementedThingServiceServer{} }
 func (UnimplementedServer) Cell() CellServiceServer       { return UnimplementedCellServiceServer{} }
 func (UnimplementedServer) Robot() RobotServiceServer     { return UnimplementedRobotServiceServer{} }
@@ -118,6 +126,8 @@ type StaticServer struct {
 	ArchivedServer ArchivedServiceServer
 	AuditServer    AuditServiceServer
 	TenantServer   TenantServiceServer
+	EventServer    EventServiceServer
+	FactServer     FactServiceServer
 	ThingServer    ThingServiceServer
 	CellServer     CellServiceServer
 	RobotServer    RobotServiceServer
@@ -138,6 +148,8 @@ func (s StaticServer) Access() AccessServiceServer     { return s.AccessServer }
 func (s StaticServer) Archived() ArchivedServiceServer { return s.ArchivedServer }
 func (s StaticServer) Audit() AuditServiceServer       { return s.AuditServer }
 func (s StaticServer) Tenant() TenantServiceServer     { return s.TenantServer }
+func (s StaticServer) Event() EventServiceServer       { return s.EventServer }
+func (s StaticServer) Fact() FactServiceServer         { return s.FactServer }
 func (s StaticServer) Thing() ThingServiceServer       { return s.ThingServer }
 func (s StaticServer) Cell() CellServiceServer         { return s.CellServer }
 func (s StaticServer) Robot() RobotServiceServer       { return s.RobotServer }
@@ -158,6 +170,8 @@ type Client interface {
 	Archived() ArchivedServiceClient
 	Audit() AuditServiceClient
 	Tenant() TenantServiceClient
+	Event() EventServiceClient
+	Fact() FactServiceClient
 	Thing() ThingServiceClient
 	Cell() CellServiceClient
 	Robot() RobotServiceClient
@@ -180,6 +194,8 @@ func NewClient(c *grpc.ClientConn) Client {
 		_Archived: NewArchivedServiceClient(c),
 		_Audit:    NewAuditServiceClient(c),
 		_Tenant:   NewTenantServiceClient(c),
+		_Event:    NewEventServiceClient(c),
+		_Fact:     NewFactServiceClient(c),
 		_Thing:    NewThingServiceClient(c),
 		_Cell:     NewCellServiceClient(c),
 		_Robot:    NewRobotServiceClient(c),
@@ -202,6 +218,8 @@ type client struct {
 	_Archived ArchivedServiceClient
 	_Audit    AuditServiceClient
 	_Tenant   TenantServiceClient
+	_Event    EventServiceClient
+	_Fact     FactServiceClient
 	_Thing    ThingServiceClient
 	_Cell     CellServiceClient
 	_Robot    RobotServiceClient
@@ -222,6 +240,8 @@ func (c *client) Access() AccessServiceClient     { return c._Access }
 func (c *client) Archived() ArchivedServiceClient { return c._Archived }
 func (c *client) Audit() AuditServiceClient       { return c._Audit }
 func (c *client) Tenant() TenantServiceClient     { return c._Tenant }
+func (c *client) Event() EventServiceClient       { return c._Event }
+func (c *client) Fact() FactServiceClient         { return c._Fact }
 func (c *client) Thing() ThingServiceClient       { return c._Thing }
 func (c *client) Cell() CellServiceClient         { return c._Cell }
 func (c *client) Robot() RobotServiceClient       { return c._Robot }

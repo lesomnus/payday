@@ -14,7 +14,15 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // This package is the app's own, which is where payday's entities are copied
 // to. It is said out loud because this app has a second package -- see
 // `shared/thing.proto` -- and payday will not guess between them.
-option (payday.app) = {};
+//
+// And it keeps a past (payday#151): payday's Event and Fact are written into it
+// beside the rest, at the two domains after this app's own. An app's past is
+// numbered by the app, so these are the numbers nothing here holds, and an
+// overlay adds to the Event what an app adopting its own events would --
+// `proto/ext/payday/event.ext.proto`.
+option (payday.app) = {
+  past: {event: 17, fact: 18}
+};
 
 // Cell was added to answer one question: what does adding an entity cost?
 // Nothing below this line is Go, and nothing else in this app was touched.

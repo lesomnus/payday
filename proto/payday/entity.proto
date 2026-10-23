@@ -459,6 +459,13 @@ enum Own {
   // an app's transaction and paid after it commits (payday#115). See
   // `trail.Policy.Forget` and `trail.Policy.Pay`.
   OWN_OWED = 8;
+
+  // An app's past (payday#151): an event for each of its operations, and a
+  // fact for each field of a resource from a moment on. These two are copied
+  // only into an app that declares them, at the domains it chose -- see
+  // `payday.Past` -- and every other entity here is in every app.
+  OWN_EVENT = 9;
+  OWN_FACT = 10;
 }
 
 // Field is what payday adds to one field of an entity.

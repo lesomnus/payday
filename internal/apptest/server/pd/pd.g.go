@@ -28,6 +28,8 @@ import (
 	archived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	event "github.com/lesomnus/payday/internal/apptest/internal/ent/event"
+	fact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
@@ -108,6 +110,8 @@ const (
 	ArchivedDomain pdid.Domain = 5   // "archived"
 	AuditDomain    pdid.Domain = 3   // "audit"
 	CellDomain     pdid.Domain = 10  // "cell"
+	EventDomain    pdid.Domain = 17  // "event"
+	FactDomain     pdid.Domain = 18  // "fact"
 	FleetDomain    pdid.Domain = 9   // "fleet"
 	HolderDomain   pdid.Domain = 2   // "holder"
 	JointDomain    pdid.Domain = 8   // "joint"
@@ -129,6 +133,8 @@ func init() {
 	pdid.Register("app.Archived", ArchivedDomain, "archived")
 	pdid.Register("app.Audit", AuditDomain, "audit")
 	pdid.Register("app.Cell", CellDomain, "cell")
+	pdid.Register("app.Event", EventDomain, "event")
+	pdid.Register("app.Fact", FactDomain, "fact")
 	pdid.Register("app.Fleet", FleetDomain, "fleet")
 	pdid.Register("app.Holder", HolderDomain, "holder")
 	pdid.Register("app.Joint", JointDomain, "joint")
@@ -154,6 +160,8 @@ var Domains = map[string]pdid.Domain{
 	"app.Archived": ArchivedDomain,
 	"app.Audit":    AuditDomain,
 	"app.Cell":     CellDomain,
+	"app.Event":    EventDomain,
+	"app.Fact":     FactDomain,
 	"app.Fleet":    FleetDomain,
 	"app.Holder":   HolderDomain,
 	"app.Joint":    JointDomain,
@@ -186,6 +194,13 @@ var IndexRenames = []rename.Index{
 	{Table: "audit", From: "audit_domain_date_created", To: "audit_by_domain"},
 	{Table: "audit", From: "audit_tenant_id_domain_date_created", To: "audit_by_tenant_domain"},
 	{Table: "audit", From: "audit_actor_id_date_created", To: "audit_by_actor"},
+	{Table: "event", From: "event_tenant_id_date_created_id", To: "event_page"},
+	{Table: "event", From: "event_subject_id_occurred_at", To: "event_subject"},
+	{Table: "event", From: "event_cause_id", To: "event_cause"},
+	{Table: "fact", From: "fact_tenant_id_date_created_id", To: "fact_page"},
+	{Table: "fact", From: "fact_subject_id_field_number_key_valid_from", To: "fact_subject"},
+	{Table: "fact", From: "fact_tenant_id_domain_field_number_key_valid_from", To: "fact_field"},
+	{Table: "fact", From: "fact_event_id", To: "fact_event"},
 	{Table: "holder", From: "holder_alias_tenant_id", To: "holder_slug"},
 	{Table: "holder", From: "holder_tenant_id_date_created_id", To: "holder_page"},
 	{Table: "outbox", From: "outbox_id", To: "outbox_queue"},
@@ -273,6 +288,26 @@ func (wall) CellScope(ctx context.Context) (predicate.Cell, error) {
 	}
 
 	return cell.TenantIdIn(vs...), nil
+}
+
+// EventScope: a row belongs to the tenant its "tenant" reaches.
+func (wall) EventScope(ctx context.Context) (predicate.Event, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return event.TenantIdIn(vs...), nil
+}
+
+// FactScope: a row belongs to the tenant its "tenant" reaches.
+func (wall) FactScope(ctx context.Context) (predicate.Fact, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return fact.TenantIdIn(vs...), nil
 }
 
 // FleetScope: declared `global`, so it is not behind the wall at all.
@@ -445,6 +480,16 @@ func (x grouped) CellScope(ctx context.Context) (predicate.Cell, error) {
 	}
 
 	return cell.IdIn(vs...), nil
+}
+
+// EventScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) EventScope(ctx context.Context) (predicate.Event, error) {
+	return nil, nil
+}
+
+// FactScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) FactScope(ctx context.Context) (predicate.Fact, error) {
+	return nil, nil
 }
 
 // FleetScope: in no set -- it declared no field 3, so this narrows nothing.
@@ -1155,6 +1200,407 @@ func (s sinkCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*ap
 	seen.Forget(s.store.Db.Driver(), "Cell", req.GetRef())
 
 	return s.CellServiceServer.Apply(ctx, req)
+}
+
+type sinkEvent struct {
+	apptest.EventServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Event() apptest.EventServiceServer {
+	return sinkEvent{s.Server.Event(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// orderEvent is how Events come back.
+//
+// The last column is the key, and it is not decoration: a cursor cannot
+// tell apart two rows equal in every column of the order, so the page after
+// the first of them either repeats the second or skips it. Rows written by
+// one request are stamped a moment apart at best.
+var orderEvent = []sqlpage.Order{
+	{Column: event.FieldDateCreated, Desc: true},
+	{Column: event.FieldId, Desc: true},
+}
+
+func afterEvent(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 time.Time
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextEvent(last *ent.Event, tag string) (string, error) {
+	return pdNext(tag, last.DateCreated, last.Id)
+}
+
+// orderByEvent is an order as ent orders a query by it.
+func orderByEvent(by []sqlpage.Order) []event.OrderOption {
+	out := make([]event.OrderOption, len(by))
+	for i, o := range by {
+		if o.Desc {
+			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
+			continue
+		}
+
+		out[i] = sql.OrderByField(o.Column).ToFunc()
+	}
+
+	return out
+}
+
+const (
+	// EventPageSize is what a request that did not say gets, and
+	// EventPageLimit is the most it gets however loudly it asks.
+	EventPageSize  = 50
+	EventPageLimit = 500
+
+	// EventFilterLimit is how many filters one request may carry. Each is a
+	// predicate in the same query, so it is what says how much of the
+	// database a request may ask to read -- and it is refused rather than
+	// clamped, because dropping half the filters would answer a question
+	// nobody asked.
+	EventFilterLimit = 32
+)
+
+// List answers with the Events that match any of the given filters, or with
+// every one there is if the request named none, a page at a time.
+func (s sinkEvent) List(ctx context.Context, req *apptest.EventListRequest) (*apptest.EventListResponse, error) {
+	q := s.store.Db.Event.Query()
+
+	// Through the same narrowing every generated read goes through, and not
+	// by asking the scope alone: what narrows a read is the wall today and
+	// the wall and something else tomorrow, and a list that reached past it
+	// would be the one read that missed the something else.
+	if p, err := bare.EventNarrow(ctx, s.store.Scope, nil); err != nil {
+		return nil, err
+	} else if p != nil {
+		q.Where(p)
+	}
+
+	if fs := req.GetFilters(); len(fs) > 0 {
+		if len(fs) > EventFilterLimit {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"filters: %d of them, and %d is the most one list carries", len(fs), EventFilterLimit)
+		}
+
+		ps := make([]predicate.Event, 0, len(fs))
+		for i, f := range fs {
+			p, err := filterEvent(f)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "filters[%d]: %s", i, err)
+			}
+
+			ps = append(ps, p)
+		}
+
+		q.Where(event.Or(ps...))
+	}
+
+	// Which order, and which way: one the schema declared, and never one a
+	// request makes up, since an order is a walk of an index.
+	by, after, next, tag := orderEvent, afterEvent, nextEvent, ""
+	if req.GetReverse() {
+		// The same index, walked from the other end.
+		by, tag = pdReverse(by), tag+"/reverse"
+	}
+
+	if v := req.GetAfter(); v != "" {
+		p, err := after(v, by, tag)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
+		}
+
+		q.Where(p)
+	}
+
+	// One row more than the page, which is how "is there another" is answered
+	// without a second query and without a count. The extra is dropped before
+	// the answer is built; it was only ever asked for to see whether it was
+	// there -- so a full last page answers with no cursor rather than sending
+	// the caller back for an empty one.
+	size := sqlpage.Size(int(req.GetSize()), EventPageSize, EventPageLimit)
+	us, err := q.Order(orderByEvent(by)...).Limit(size + 1).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	more := len(us) > size
+	if more {
+		us = us[:size]
+	}
+
+	items := make([]*apptest.Event, len(us))
+	for i, u := range us {
+		items[i] = u.Proto()
+	}
+
+	res := apptest.EventListResponse_builder{Items: items}.Build()
+	if more {
+		v, err := next(us[len(us)-1], tag)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "next: %s", err)
+		}
+
+		res.SetNext(v)
+	}
+
+	return res, nil
+}
+
+// filterEvent turns one filter into the predicate that selects what it
+// names. Naming nothing is refused, since the request asked for "these" and
+// did not say which.
+func filterEvent(f *apptest.EventFilter) (predicate.Event, error) {
+	ps := make([]predicate.Event, 0, 1)
+	if f.HasRef() {
+		p, err := bare.EventPick(f.GetRef())
+		if err != nil {
+			return nil, err
+		}
+
+		ps = append(ps, p)
+	}
+	if f.HasSubjectId() {
+		k, err := entuuid.FromBytes(f.GetSubjectId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "subject_id: %s", err)
+		}
+
+		ps = append(ps, event.SubjectIdEQ(k))
+	}
+	if f.HasKind() {
+		ps = append(ps, event.KindEQ(f.GetKind()))
+	}
+	if f.HasActorId() {
+		k, err := entuuid.FromBytes(f.GetActorId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
+		}
+
+		ps = append(ps, event.ActorIdEQ(k))
+	}
+	if f.HasCauseId() {
+		k, err := entuuid.FromBytes(f.GetCauseId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "cause_id: %s", err)
+		}
+
+		ps = append(ps, event.CauseIdEQ(k))
+	}
+	if len(ps) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
+	}
+
+	return event.And(ps...), nil
+}
+
+type sinkFact struct {
+	apptest.FactServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Fact() apptest.FactServiceServer {
+	return sinkFact{s.Server.Fact(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
+	seen.Forget(s.store.Db.Driver(), "Fact", req.GetRef())
+
+	return s.FactServiceServer.Apply(ctx, req)
+}
+
+// Patch forgets what the transaction was told about the row, before it is
+// written; see [sinkFact.Apply].
+func (s sinkFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
+	seen.Forget(s.store.Db.Driver(), "Fact", req.GetRef())
+
+	return s.FactServiceServer.Patch(ctx, req)
+}
+
+// orderFact is how Facts come back.
+//
+// The last column is the key, and it is not decoration: a cursor cannot
+// tell apart two rows equal in every column of the order, so the page after
+// the first of them either repeats the second or skips it. Rows written by
+// one request are stamped a moment apart at best.
+var orderFact = []sqlpage.Order{
+	{Column: fact.FieldDateCreated, Desc: false},
+	{Column: fact.FieldId, Desc: false},
+}
+
+func afterFact(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
+	var (
+		at0 time.Time
+		at1 uuid.UUID
+	)
+	if err := pdAfter(v, tag, &at0, &at1); err != nil {
+		return nil, err
+	}
+
+	return sqlpage.After(by, []any{at0, at1})
+}
+
+func nextFact(last *ent.Fact, tag string) (string, error) {
+	return pdNext(tag, last.DateCreated, last.Id)
+}
+
+// orderByFact is an order as ent orders a query by it.
+func orderByFact(by []sqlpage.Order) []fact.OrderOption {
+	out := make([]fact.OrderOption, len(by))
+	for i, o := range by {
+		if o.Desc {
+			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
+			continue
+		}
+
+		out[i] = sql.OrderByField(o.Column).ToFunc()
+	}
+
+	return out
+}
+
+const (
+	// FactPageSize is what a request that did not say gets, and
+	// FactPageLimit is the most it gets however loudly it asks.
+	FactPageSize  = 100
+	FactPageLimit = 1000
+
+	// FactFilterLimit is how many filters one request may carry. Each is a
+	// predicate in the same query, so it is what says how much of the
+	// database a request may ask to read -- and it is refused rather than
+	// clamped, because dropping half the filters would answer a question
+	// nobody asked.
+	FactFilterLimit = 32
+)
+
+// List answers with the Facts that match any of the given filters, or with
+// every one there is if the request named none, a page at a time.
+func (s sinkFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
+	q := s.store.Db.Fact.Query()
+
+	// Through the same narrowing every generated read goes through, and not
+	// by asking the scope alone: what narrows a read is the wall today and
+	// the wall and something else tomorrow, and a list that reached past it
+	// would be the one read that missed the something else.
+	if p, err := bare.FactNarrow(ctx, s.store.Scope, nil); err != nil {
+		return nil, err
+	} else if p != nil {
+		q.Where(p)
+	}
+
+	if fs := req.GetFilters(); len(fs) > 0 {
+		if len(fs) > FactFilterLimit {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"filters: %d of them, and %d is the most one list carries", len(fs), FactFilterLimit)
+		}
+
+		ps := make([]predicate.Fact, 0, len(fs))
+		for i, f := range fs {
+			p, err := filterFact(f)
+			if err != nil {
+				return nil, status.Errorf(codes.InvalidArgument, "filters[%d]: %s", i, err)
+			}
+
+			ps = append(ps, p)
+		}
+
+		q.Where(fact.Or(ps...))
+	}
+
+	// Which order, and which way: one the schema declared, and never one a
+	// request makes up, since an order is a walk of an index.
+	by, after, next, tag := orderFact, afterFact, nextFact, ""
+	if req.GetReverse() {
+		// The same index, walked from the other end.
+		by, tag = pdReverse(by), tag+"/reverse"
+	}
+
+	if v := req.GetAfter(); v != "" {
+		p, err := after(v, by, tag)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "after: %s", err)
+		}
+
+		q.Where(p)
+	}
+
+	// One row more than the page, which is how "is there another" is answered
+	// without a second query and without a count. The extra is dropped before
+	// the answer is built; it was only ever asked for to see whether it was
+	// there -- so a full last page answers with no cursor rather than sending
+	// the caller back for an empty one.
+	size := sqlpage.Size(int(req.GetSize()), FactPageSize, FactPageLimit)
+	us, err := q.Order(orderByFact(by)...).Limit(size + 1).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	more := len(us) > size
+	if more {
+		us = us[:size]
+	}
+
+	items := make([]*apptest.Fact, len(us))
+	for i, u := range us {
+		items[i] = u.Proto()
+	}
+
+	res := apptest.FactListResponse_builder{Items: items}.Build()
+	if more {
+		v, err := next(us[len(us)-1], tag)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "next: %s", err)
+		}
+
+		res.SetNext(v)
+	}
+
+	return res, nil
+}
+
+// filterFact turns one filter into the predicate that selects what it
+// names. Naming nothing is refused, since the request asked for "these" and
+// did not say which.
+func filterFact(f *apptest.FactFilter) (predicate.Fact, error) {
+	ps := make([]predicate.Fact, 0, 1)
+	if f.HasRef() {
+		p, err := bare.FactPick(f.GetRef())
+		if err != nil {
+			return nil, err
+		}
+
+		ps = append(ps, p)
+	}
+	if f.HasSubjectId() {
+		k, err := entuuid.FromBytes(f.GetSubjectId())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "subject_id: %s", err)
+		}
+
+		ps = append(ps, fact.SubjectIdEQ(k))
+	}
+	if f.HasFieldNumber() {
+		ps = append(ps, fact.FieldNumberEQ(f.GetFieldNumber()))
+	}
+	if len(ps) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
+	}
+
+	return fact.And(ps...), nil
 }
 
 type sinkFleet struct {
@@ -3723,6 +4169,98 @@ func (s gateCell) admit(ctx context.Context, req *apptest.CellAddRequest) (*appt
 	return req, nil
 }
 
+type gateEvent struct {
+	Gate
+	apptest.EventServiceServer
+}
+
+func (s Gate) Event() apptest.EventServiceServer {
+	v := gateEvent{s, s.Next().Event()}
+	v.EventServiceServer = bare.EventWithAddRule(v.EventServiceServer, v.admit)
+	return v
+}
+
+// admit refuses a Event put into a Tenant this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `tenant` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Tenant, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Event].
+func (s gateEvent) admit(ctx context.Context, req *apptest.EventAddRequest) (*apptest.EventAddRequest, error) {
+	if ref := req.GetTenant(); ref != nil {
+		if err := seen.Visible(ctx, s.Gate.drv, "Tenant", ref, func() error {
+			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Tenant")
+			}
+
+			return nil, err
+		}
+	}
+
+	return req, nil
+}
+
+type gateFact struct {
+	Gate
+	apptest.FactServiceServer
+}
+
+func (s Gate) Fact() apptest.FactServiceServer {
+	v := gateFact{s, s.Next().Fact()}
+	v.FactServiceServer = bare.FactWithAddRule(v.FactServiceServer, v.admit)
+	return v
+}
+
+// admit refuses a Fact put into a Tenant this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `tenant` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Tenant, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Fact].
+func (s gateFact) admit(ctx context.Context, req *apptest.FactAddRequest) (*apptest.FactAddRequest, error) {
+	if req.HasSupersededAt() {
+		return nil, pderr.Invalidf("superseded_at", "is established by this deployment and not asserted by a request")
+	}
+
+	if ref := req.GetTenant(); ref != nil {
+		if err := seen.Visible(ctx, s.Gate.drv, "Tenant", ref, func() error {
+			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Tenant")
+			}
+
+			return nil, err
+		}
+	}
+
+	return req, nil
+}
+
 type gateJoint struct {
 	Gate
 	apptest.JointServiceServer
@@ -4277,6 +4815,10 @@ func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.Fiel
 		return describedAudit.md, describedAudit.secret, describedAudit.personal
 	case CellDomain:
 		return describedCell.md, describedCell.secret, describedCell.personal
+	case EventDomain:
+		return describedEvent.md, describedEvent.secret, describedEvent.personal
+	case FactDomain:
+		return describedFact.md, describedFact.secret, describedFact.personal
 	case FleetDomain:
 		return describedFleet.md, describedFleet.secret, describedFleet.personal
 	case HolderDomain:
@@ -4340,6 +4882,12 @@ var (
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
 	describedCell = describe((*apptest.Cell)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedEvent = describe((*apptest.Event)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{11})
+	describedFact = describe((*apptest.Fact)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
 	describedFleet = describe((*apptest.Fleet)(nil),
@@ -4406,6 +4954,10 @@ func added(by string) bool {
 	switch by {
 	case apptest.AuditService_Add_FullMethodName,
 		apptest.CellService_Add_FullMethodName,
+		apptest.EventService_Add_FullMethodName,
+		apptest.EventService_AddMany_FullMethodName,
+		apptest.FactService_Add_FullMethodName,
+		apptest.FactService_AddMany_FullMethodName,
 		apptest.FleetService_Add_FullMethodName,
 		apptest.HolderService_Add_FullMethodName,
 		apptest.JointService_Add_FullMethodName,
@@ -4483,6 +5035,65 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 
 	case CellDomain:
 		row, ok := image.(*apptest.Cell)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
+		}
+
+		b := []byte{}
+		if keep {
+			kept := row
+			v, err := proto.Marshal(kept)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		if !row.HasTenant() {
+			return uuid.Nil(), b, nil
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
+	case EventDomain:
+		row, ok := image.(*apptest.Event)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
+		}
+
+		b := []byte{}
+		if keep {
+			kept := row
+			kept = proto.Clone(row).(*apptest.Event)
+			_, secret, personal := described(key)
+			audit1.Clear(kept, secret)
+			audit1.Clear(kept, personal)
+
+			v, err := proto.Marshal(kept)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		if !row.HasTenant() {
+			return uuid.Nil(), b, nil
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
+	case FactDomain:
+		row, ok := image.(*apptest.Fact)
 		if !ok {
 			return uuid.Nil(), []byte{}, nil
 		}
@@ -4760,6 +5371,10 @@ func left(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) 
 	switch key.Domain() {
 	case CellDomain:
 		vs, err = rowsCell(ctx, s.Db, cell.IdEQ(uuid.UUID(key)))
+	case EventDomain:
+		vs, err = rowsEvent(ctx, s.Db, event.IdEQ(uuid.UUID(key)))
+	case FactDomain:
+		vs, err = rowsFact(ctx, s.Db, fact.IdEQ(uuid.UUID(key)))
 	case FleetDomain:
 		vs, err = rowsFleet(ctx, s.Db, fleet.IdEQ(uuid.UUID(key)))
 	case HolderDomain:
@@ -4926,7 +5541,7 @@ func (v *keptTrail) write(ctx context.Context) error {
 // row's seal covers (payday#115).
 func isSealed(key pdid.Id) bool {
 	switch key.Domain() {
-	case HolderDomain, RobotDomain:
+	case EventDomain, HolderDomain, RobotDomain:
 		return true
 	}
 
@@ -5149,6 +5764,12 @@ func Digests(ctx context.Context, db *ent.Client, d *audit1.Digest, p trail.Poli
 	if err := audit1.CheckKind(ctx, d, checkedCell(db), archived, &out); err != nil {
 		return out, fmt.Errorf("cell: %w", err)
 	}
+	if err := audit1.CheckKind(ctx, d, checkedEvent(db), archived, &out); err != nil {
+		return out, fmt.Errorf("event: %w", err)
+	}
+	if err := audit1.CheckKind(ctx, d, checkedFact(db), archived, &out); err != nil {
+		return out, fmt.Errorf("fact: %w", err)
+	}
 	if err := audit1.CheckKind(ctx, d, checkedFleet(db), archived, &out); err != nil {
 		return out, fmt.Errorf("fleet: %w", err)
 	}
@@ -5216,6 +5837,104 @@ func checkedCell(db *ent.Client) audit1.Kind {
 			var out map[pdid.Id]*audit1.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 				rows, err := rowsCell(ctx, db, cell.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedEvent is what a check of the rows reads of the event kind.
+func checkedEvent(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Event) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsEvent(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			if err != nil {
+				return err
+			}
+
+			seals, err := sealsOf(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded, Seals: seals}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: EventDomain,
+		Sealed: true,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, event.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, event.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, EventDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsEvent(ctx, db, event.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedFact is what a check of the rows reads of the fact kind.
+func checkedFact(db *ent.Client) audit1.Kind {
+	read := func(ctx context.Context, ps ...predicate.Fact) (audit1.Page, error) {
+		var out audit1.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsFact(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit1.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit1.Kind{
+		Domain: FactDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
+			return read(ctx, fact.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
+			return read(ctx, fact.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, FactDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
+			var out map[pdid.Id]*audit1.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsFact(ctx, db, fact.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -5721,6 +6440,46 @@ func rowsCell(ctx context.Context, db *ent.Client, ps ...predicate.Cell) ([]audi
 	return out, nil
 }
 
+// rowsEvent is the rows `ps` says of the event kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsEvent(ctx context.Context, db *ent.Client, ps ...predicate.Event) ([]audit1.Live, error) {
+	q := db.Event.Query().Where(ps...)
+	bare.EventSelectInit(q, nil)
+
+	vs, err := q.Order(event.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
+// rowsFact is the rows `ps` says of the fact kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsFact(ctx context.Context, db *ent.Client, ps ...predicate.Fact) ([]audit1.Live, error) {
+	q := db.Fact.Query().Where(ps...)
+	bare.FactSelectInit(q, nil)
+
+	vs, err := q.Order(fact.ById()).Limit(audit1.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit1.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
 // rowsFleet is the rows `ps` says of the fleet kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
@@ -6161,6 +6920,10 @@ func record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 			switch d {
 			case CellDomain:
 				rows, err = rowsCell(ctx, db, cell.IdIn(uuids(page)...))
+			case EventDomain:
+				rows, err = rowsEvent(ctx, db, event.IdIn(uuids(page)...))
+			case FactDomain:
+				rows, err = rowsFact(ctx, db, fact.IdIn(uuids(page)...))
 			case FleetDomain:
 				rows, err = rowsFleet(ctx, db, fleet.IdIn(uuids(page)...))
 			case HolderDomain:
@@ -6297,6 +7060,10 @@ func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Dom
 		switch d {
 		case CellDomain:
 			rows, err = rowsCell(ctx, s.db, cell.IdIn(uuids(ids)...))
+		case EventDomain:
+			rows, err = rowsEvent(ctx, s.db, event.IdIn(uuids(ids)...))
+		case FactDomain:
+			rows, err = rowsFact(ctx, s.db, fact.IdIn(uuids(ids)...))
 		case FleetDomain:
 			rows, err = rowsFleet(ctx, s.db, fleet.IdIn(uuids(ids)...))
 		case HolderDomain:
@@ -6784,6 +7551,74 @@ func (s interceptTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*ap
 func (s interceptTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
 		apptest.TenantService_List_FullMethodName, req, s.TenantServiceServer.List)
+}
+
+func (s Intercept) Event() apptest.EventServiceServer {
+	return interceptEvent{s, s.Next().Event()}
+}
+
+type interceptEvent struct {
+	Intercept
+	apptest.EventServiceServer
+}
+
+func (s interceptEvent) Add(ctx context.Context, req *apptest.EventAddRequest) (*apptest.Event, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
+		apptest.EventService_Add_FullMethodName, req, s.EventServiceServer.Add)
+}
+
+func (s interceptEvent) AddMany(ctx context.Context, req *apptest.EventAddManyRequest) (*apptest.EventAddManyResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
+		apptest.EventService_AddMany_FullMethodName, req, s.EventServiceServer.AddMany)
+}
+
+func (s interceptEvent) Get(ctx context.Context, req *apptest.EventGetRequest) (*apptest.Event, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
+		apptest.EventService_Get_FullMethodName, req, s.EventServiceServer.Get)
+}
+
+func (s interceptEvent) List(ctx context.Context, req *apptest.EventListRequest) (*apptest.EventListResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.EventServiceServer,
+		apptest.EventService_List_FullMethodName, req, s.EventServiceServer.List)
+}
+
+func (s Intercept) Fact() apptest.FactServiceServer {
+	return interceptFact{s, s.Next().Fact()}
+}
+
+type interceptFact struct {
+	Intercept
+	apptest.FactServiceServer
+}
+
+func (s interceptFact) Add(ctx context.Context, req *apptest.FactAddRequest) (*apptest.Fact, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_Add_FullMethodName, req, s.FactServiceServer.Add)
+}
+
+func (s interceptFact) AddMany(ctx context.Context, req *apptest.FactAddManyRequest) (*apptest.FactAddManyResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_AddMany_FullMethodName, req, s.FactServiceServer.AddMany)
+}
+
+func (s interceptFact) Get(ctx context.Context, req *apptest.FactGetRequest) (*apptest.Fact, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_Get_FullMethodName, req, s.FactServiceServer.Get)
+}
+
+func (s interceptFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_Patch_FullMethodName, req, s.FactServiceServer.Patch)
+}
+
+func (s interceptFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_Apply_FullMethodName, req, s.FactServiceServer.Apply)
+}
+
+func (s interceptFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
+		apptest.FactService_List_FullMethodName, req, s.FactServiceServer.List)
 }
 
 func (s Intercept) Thing() apptest.ThingServiceServer {
@@ -8258,6 +9093,21 @@ var (
 
 func init() {
 	{
+		md := (&apptest.Event{}).ProtoReflect().Descriptor()
+		fs := md.Fields()
+		personals[md.FullName()] = personal{
+			key: fs.ByNumber(1),
+			fields: []protoreflect.FieldDescriptor{
+				fs.ByNumber(11),
+			},
+			tenant: func(m protoreflect.Message) pdid.Id {
+				return accessKeyOf(m.Get(fs.ByName("tenant")).Message())
+			},
+		}
+		r := (&apptest.EventRef{}).ProtoReflect().Descriptor()
+		refs[r.FullName()] = r.Fields().ByName("id")
+	}
+	{
 		md := (&apptest.Holder{}).ProtoReflect().Descriptor()
 		fs := md.Fields()
 		personals[md.FullName()] = personal{
@@ -8536,7 +9386,9 @@ type accessKept struct{ call *access1.Call }
 // data left and erased, which are what say whose it was.
 func (accessRecorder) Snapshots(method string) bare.SnapshotOptions {
 	switch method {
-	case apptest.HolderService_Add_FullMethodName,
+	case apptest.EventService_Add_FullMethodName,
+		apptest.EventService_AddMany_FullMethodName,
+		apptest.HolderService_Add_FullMethodName,
 		apptest.HolderService_Patch_FullMethodName,
 		apptest.HolderService_Apply_FullMethodName,
 		apptest.RobotService_Add_FullMethodName,
@@ -8670,6 +9522,14 @@ func accessDoc(doc []byte) bool {
 // the rest.
 func Cost(method string, req any) int {
 	switch method {
+	case apptest.EventService_AddMany_FullMethodName:
+		if v, ok := req.(*apptest.EventAddManyRequest); ok {
+			return max(len(v.GetItems()), 1)
+		}
+	case apptest.FactService_AddMany_FullMethodName:
+		if v, ok := req.(*apptest.FactAddManyRequest); ok {
+			return max(len(v.GetItems()), 1)
+		}
 	case apptest.ReadingService_AddMany_FullMethodName:
 		if v, ok := req.(*apptest.ReadingAddManyRequest); ok {
 			return max(len(v.GetItems()), 1)
@@ -8843,6 +9703,26 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.TenantRef{}
 	case apptest.TenantService_List_FullMethodName:
 		v = &apptest.TenantListRequest{}
+	case apptest.EventService_Add_FullMethodName:
+		v = &apptest.EventAddRequest{}
+	case apptest.EventService_AddMany_FullMethodName:
+		v = &apptest.EventAddManyRequest{}
+	case apptest.EventService_Get_FullMethodName:
+		v = &apptest.EventGetRequest{}
+	case apptest.EventService_List_FullMethodName:
+		v = &apptest.EventListRequest{}
+	case apptest.FactService_Add_FullMethodName:
+		v = &apptest.FactAddRequest{}
+	case apptest.FactService_AddMany_FullMethodName:
+		v = &apptest.FactAddManyRequest{}
+	case apptest.FactService_Get_FullMethodName:
+		v = &apptest.FactGetRequest{}
+	case apptest.FactService_Patch_FullMethodName:
+		v = &apptest.FactPatchRequest{}
+	case apptest.FactService_Apply_FullMethodName:
+		v = &apptest.FactApplyRequest{}
+	case apptest.FactService_List_FullMethodName:
+		v = &apptest.FactListRequest{}
 	case apptest.ThingService_Add_FullMethodName:
 		v = &apptest.ThingAddRequest{}
 	case apptest.ThingService_Get_FullMethodName:
@@ -8985,6 +9865,26 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Tenant().Erase(ctx, v.(*apptest.TenantRef))
 	case apptest.TenantService_List_FullMethodName:
 		res, err = s.Tenant().List(ctx, v.(*apptest.TenantListRequest))
+	case apptest.EventService_Add_FullMethodName:
+		res, err = s.Event().Add(ctx, v.(*apptest.EventAddRequest))
+	case apptest.EventService_AddMany_FullMethodName:
+		res, err = s.Event().AddMany(ctx, v.(*apptest.EventAddManyRequest))
+	case apptest.EventService_Get_FullMethodName:
+		res, err = s.Event().Get(ctx, v.(*apptest.EventGetRequest))
+	case apptest.EventService_List_FullMethodName:
+		res, err = s.Event().List(ctx, v.(*apptest.EventListRequest))
+	case apptest.FactService_Add_FullMethodName:
+		res, err = s.Fact().Add(ctx, v.(*apptest.FactAddRequest))
+	case apptest.FactService_AddMany_FullMethodName:
+		res, err = s.Fact().AddMany(ctx, v.(*apptest.FactAddManyRequest))
+	case apptest.FactService_Get_FullMethodName:
+		res, err = s.Fact().Get(ctx, v.(*apptest.FactGetRequest))
+	case apptest.FactService_Patch_FullMethodName:
+		res, err = s.Fact().Patch(ctx, v.(*apptest.FactPatchRequest))
+	case apptest.FactService_Apply_FullMethodName:
+		res, err = s.Fact().Apply(ctx, v.(*apptest.FactApplyRequest))
+	case apptest.FactService_List_FullMethodName:
+		res, err = s.Fact().List(ctx, v.(*apptest.FactListRequest))
 	case apptest.ThingService_Add_FullMethodName:
 		res, err = s.Thing().Add(ctx, v.(*apptest.ThingAddRequest))
 	case apptest.ThingService_Get_FullMethodName:
@@ -9110,6 +10010,8 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		&apptest.Archived{},
 		&apptest.Audit{},
 		&apptest.Cell{},
+		&apptest.Event{},
+		&apptest.Fact{},
 		&apptest.Fleet{},
 		&apptest.Holder{},
 		&apptest.Joint{},
@@ -9256,6 +10158,81 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				return nil, err
 			}
 			query := db.Cell.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Event:
+			ctx, err := read.Allow(ctx, apptest.EventService_Get_FullMethodName, 1)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.EventNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), event.Table, []resourcesql.Column{
+				{Number: 1, Name: event.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: event.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 8, Name: event.FieldKind, Type: 9, Nullable: false, Key: 0},
+				{Number: 10, Name: event.FieldOccurredAt, Type: 65, Nullable: false, Key: 0},
+				{Number: 11, Name: event.FieldReason, Type: 9, Nullable: false, Key: 0},
+				{Number: 13, Name: event.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 15, Name: event.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 16, Name: event.FieldTraceId, Type: 12, Nullable: false, Key: 0},
+				{Number: 6, Name: event.FieldDesc, Type: 9, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Event.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
+		case *apptest.Fact:
+			ctx, err := read.Allow(ctx, apptest.FactService_Get_FullMethodName, 1)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.FactNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), fact.Table, []resourcesql.Column{
+				{Number: 1, Name: fact.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: fact.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 8, Name: fact.FieldSubjectId, Type: 64, Nullable: false, Key: 0},
+				{Number: 9, Name: fact.FieldKey, Type: 9, Nullable: false, Key: 0},
+				{Number: 10, Name: fact.FieldValue, Type: 9, Nullable: false, Key: 0},
+				{Number: 12, Name: fact.FieldFieldNumber, Type: 13, Nullable: false, Key: 0},
+				{Number: 13, Name: fact.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 15, Name: fact.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 16, Name: fact.FieldDomain, Type: 13, Nullable: false, Key: 0},
+				{Number: 17, Name: fact.FieldValidFrom, Type: 65, Nullable: false, Key: 0},
+				{Number: 19, Name: fact.FieldEventId, Type: 64, Nullable: false, Key: 0},
+				{Number: 20, Name: fact.FieldSupersededAt, Type: 65, Nullable: true, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Fact.Query()
 			if pred != nil {
 				query.Where(pred)
 			}
@@ -9611,6 +10588,18 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.CellService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.EventService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.EventService_AddMany_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.FactService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.FactService_AddMany_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.FactService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.FactService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.FleetService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.FleetService_Patch_FullMethodName:
@@ -9705,7 +10694,7 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 		return nil
 	}
 	switch image.ProtoReflect().Descriptor().FullName() {
-	case "app.Access", "app.Audit", "app.Cell", "app.Fleet", "app.Holder", "app.Joint", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Tenant", "shared.Thing":
+	case "app.Access", "app.Audit", "app.Cell", "app.Event", "app.Fact", "app.Fleet", "app.Holder", "app.Joint", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Tenant", "shared.Thing":
 	default:
 		return nil
 	}
