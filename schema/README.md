@@ -41,3 +41,7 @@ because payday would otherwise be taking a number from every app that had
 already spent it. Every field number they declare is payday's -- their 8..12
 included -- and an overlay adds at the ones they leave empty.
 
+What a row of the Event holds is a message the app declares for each kind of
+operation, `option (payday.event)`, and `pd gen` keeps a lock beside the copies
+that holds every one of them to what rows of it were written with -- see
+`docs/guide/past.md`.

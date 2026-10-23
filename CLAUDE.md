@@ -80,6 +80,9 @@ change, and comes out once main and the registry's `dev` both have it.
 - `internal/apptest/proto/app/payday/*.proto` — these are **copies**. The source is
   `schema/payday/`, and `schema/past/` for `event.proto` and `fact.proto`, and
   `pd gen` copies and rewrites the package line
+- `internal/apptest/proto/app/payday/past.lock` — the past's lock (payday#151):
+  `pd gen` only adds to it and refuses a schema that lost what it holds. Edit it
+  by hand only to take back a type no deployment ever wrote a row of
 
 ## Where things live
 

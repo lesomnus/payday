@@ -96,8 +96,9 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 	return append(doctorPersonal(schema), doctorTrailOff(schema)...)
 }
 
-// describe is the app's schema as descriptors, from buf.
-func describe(ctx context.Context, l Layout) (*descriptorpb.FileDescriptorSet, error) {
+// describe is the app's schema as descriptors, from buf: the whole workspace,
+// or the inputs named.
+func describe(ctx context.Context, l Layout, inputs ...string) (*descriptorpb.FileDescriptorSet, error) {
 	name, err := Buf(ctx)
 	if err != nil {
 		return nil, err
@@ -113,7 +114,7 @@ func describe(ctx context.Context, l Layout) (*descriptorpb.FileDescriptorSet, e
 	out.Close()
 	defer os.Remove(out.Name())
 
-	cmd := exec.CommandContext(ctx, name, "build", "-o", out.Name())
+	cmd := exec.CommandContext(ctx, name, append(append([]string{"build"}, inputs...), "-o", out.Name())...)
 	cmd.Dir = l.Work
 
 	var stderr bytes.Buffer

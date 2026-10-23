@@ -284,9 +284,12 @@ once the server serves sessions.
 
 `go tool pd gen --ts .` writes the messages and service descriptors into
 `ts/gen`, along with `entities.ts` — one declaration per entity, which is what
-the local store is built from. Nothing there is behaviour, and nothing is
-generated per service: `ts/src/client.ts` turns a descriptor into a client in one
-line, for whatever does not want to go through the store.
+the local store is built from — and `events.ts`, the registry of the messages
+this app's events hold, which both page starts hand their transport: empty
+until the app keeps a past, and the reason a List of events reads once it does.
+Nothing there is behaviour, and nothing is generated per service:
+`ts/src/client.ts` turns a descriptor into a client in one line, for whatever
+does not want to go through the store.
 
 ## What is enforced, and why
 

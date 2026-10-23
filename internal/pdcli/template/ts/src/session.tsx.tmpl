@@ -46,6 +46,7 @@ import { parse } from '@lesomnus/payday/pdid'
 import { Provider } from '@lesomnus/payday/react'
 
 import { HolderService } from '../gen/app/payday/holder_svc_pb.js'
+import { events } from '../gen/events.js'
 import { open } from './store.js'
 import { Page } from './page.js'
 import './style.css'
@@ -168,6 +169,9 @@ async function boot(): Promise<void> {
 	const transport = createConnectTransport({
 		baseUrl: ADDR,
 		fetch: send,
+		// What this app's events hold, without which Connect's JSON cannot read
+		// an Any; see `main.tsx`.
+		jsonOptions: { registry: events },
 		interceptors: [
 			(next) => async (req) => {
 				try {

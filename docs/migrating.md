@@ -3,6 +3,55 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An event holds a message the app declares, and a lock keeps it readable
+
+**Applies to every app with a page**, which regenerates: `pd gen --ts` now
+writes `ts/gen/events.ts` for every app, and a page `pd new` made before this
+hands its transport nothing from it. And to an app that keeps a past, whose
+events hold messages it now declares -- the second part of payday#151.
+
+- **A page's Connect transport is handed the event registry.** `pd new`'s
+  `main.tsx` and `session.tsx` now say so; a page made before adds the line to
+  each `createConnectTransport`:
+
+  ```ts
+  import { events } from '../gen/events.js'
+
+  createConnectTransport({ baseUrl: ADDR, jsonOptions: { registry: events } })
+  ```
+
+  Without it, a List of events fails whole once one of them holds a value:
+  JSON names the message an `Any` holds by its type, and protobuf-es reads one
+  only with the type registered. An app with no past has the file, empty, and
+  loses nothing by passing it. No `@lesomnus/payday` release is needed:
+  `jsonOptions` is connect-web's.
+- **An event message is marked**, and its rows are written under its kind:
+
+  ```proto
+  message RobotMoved {
+    option (payday.event) = {kind: "robot.move"};
+    bytes robot = 1;
+  }
+  ```
+
+  Move the app's `buf.build/payday/payday` pin to a `dev` that has
+  `payday.EventMessage` (`buf dep update`) first. A pin from before answers
+  `cannot find payday.event in this scope`, and `pd gen` says that is the pin.
+- **`pd gen` refuses** an event message with a `(payday.field)`, an entity, a
+  message of a generated contract or an `Any` anywhere in it; an entity that is
+  one; two of one kind; and one in an app that declares no past.
+- **`proto/<pkg>/payday/past.lock` is new**, beside the copies, in every app
+  that declares a past -- `{}` until it declares an event message. Commit it.
+  `pd gen` only adds to it, and refuses a schema that deleted an event message,
+  removed a field of one or changed its JSON name, kind, type or shape, renamed
+  or removed a value of an enum one holds, or changed a kind. `pd gen --check`
+  covers it. Taking a type back is a hand edit of the lock, for a type no
+  deployment ever wrote a row of.
+- **`pd.EventKinds`** is written into `server/pd/pd.g.go` of an app that
+  declares a past: every event message by its kind, to read a row's value back
+  with.
+- [Keeping a past](guide/past.md) is the guide to all of it.
+
 ## An app may declare its past, and `pd gen` writes Event and Fact into it
 
 **Applies to every app**, which regenerates -- the README `pd gen` writes beside

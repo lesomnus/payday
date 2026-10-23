@@ -3,6 +3,7 @@ package pdcli_test
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -200,17 +201,24 @@ func TestTheCopiesAreTheAppsAndGoWithTheDeclaration(t *testing.T) {
 	robot := l.Path(pdcli.DirProto, "app", "robot.proto")
 	src := read(robot)
 	x.Contains(src, "past: {event: 17, fact: 18}")
-	x.NoError(os.WriteFile(robot, []byte(strings.Replace(src, "past: {event: 17, fact: 18}", "past: {event: 19, fact: 20}", 1)), 0o644))
+	x.NoError(os.WriteFile(robot, []byte(strings.Replace(src, "past: {event: 17, fact: 18}", "past: {event: 20, fact: 21}", 1)), 0o644))
 
 	l, err := pdcli.Discover(l.Root)
 	x.NoError(err)
 	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
-	x.Contains(read(event), "domain: 19")
-	x.Contains(read(fact), "domain: 20")
+	x.Contains(read(event), "domain: 20")
+	x.Contains(read(fact), "domain: 21")
 
-	// And gone with it, with what was generated from them.
+	// And gone with it, with what was generated from them -- once the app's
+	// event messages are plain messages again, since an event message with no
+	// past to be kept in is refused.
 	x.NoError(os.WriteFile(robot, []byte(strings.Replace(src, "past: {event: 17, fact: 18}", "", 1)), 0o644))
 	x.NoError(os.Remove(l.Path(pdcli.DirExt, "payday", "event.ext.proto")))
+	machine := l.Path(pdcli.DirProto, "app", "machine.proto")
+	x.NoError(os.WriteFile(machine, []byte(regexp.MustCompile(`(?m)^\s*option \(payday\.event\) = .*$`).
+		ReplaceAllString(read(machine), "")), 0o644))
+	lock := filepath.Join(l.Root, l.DirPd(), pdcli.LockFile)
+	locked := read(lock)
 
 	l, err = pdcli.Discover(l.Root)
 	x.NoError(err)
@@ -231,6 +239,10 @@ func TestTheCopiesAreTheAppsAndGoWithTheDeclaration(t *testing.T) {
 		_, err := os.Stat(p)
 		x.ErrorIs(err, os.ErrNotExist, "%s outlived the declaration", p)
 	}
+
+	// But the lock, which is a record of what rows were written with: a past
+	// declared again is held to it.
+	x.Equal(locked, read(lock), "the lock went with the declaration")
 
 	// Which a second run agrees with.
 	vs, err := pdcli.Gen{Layout: l}.Check(t.Context())

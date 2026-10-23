@@ -30,6 +30,8 @@ type Tx struct {
 	Holder *HolderClient
 	// Joint is the client for interacting with the Joint builders.
 	Joint *JointClient
+	// Machine is the client for interacting with the Machine builders.
+	Machine *MachineClient
 	// Outbox is the client for interacting with the Outbox builders.
 	Outbox *OutboxClient
 	// Owed is the client for interacting with the Owed builders.
@@ -192,6 +194,7 @@ func (tx *Tx) init() {
 	tx.Fleet = NewFleetClient(tx.config)
 	tx.Holder = NewHolderClient(tx.config)
 	tx.Joint = NewJointClient(tx.config)
+	tx.Machine = NewMachineClient(tx.config)
 	tx.Outbox = NewOutboxClient(tx.config)
 	tx.Owed = NewOwedClient(tx.config)
 	tx.Pairing = NewPairingClient(tx.config)

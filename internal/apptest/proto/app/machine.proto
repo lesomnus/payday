@@ -1,0 +1,148 @@
+edition = "2023";
+
+package app;
+
+import "app/payday/tenant.proto";
+import "app/robot.proto";
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// Machine holds one value of every kind a field can hold: scalars, an
+// identifier, an edge, an enum, a time, a message, a list, a map, and a field
+// about a person.
+//
+// It is here for the past (payday#151). A fact is one field of a resource from
+// a moment on, typed by the resource's descriptor and written as the JSON of
+// that one value -- so what writes a fact has to be right about every kind
+// there is, and this is the descriptor it is tried against. Nothing else about
+// a machine matters.
+message Machine {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+
+  // A machine's own handle, about no one.
+  string alias = 4 [(payday.field) = {personal: false}];
+
+  // The scalars: a word, a count past what a double holds exactly, a
+  // measurement, a switch, a few bytes, and a count with no sign. The bytes
+  // have a default, as every bytes column that may be left out does: a nil one
+  // is SQL NULL to PostgreSQL, and an empty blob only to SQLite.
+  string model = 8 [(payday.field) = {personal: false}];
+  int64 hours = 9;
+  double load = 10;
+  bool running = 11;
+  bytes firmware = 12 [
+    (orm.field) = {default: ""},
+    (payday.field) = {personal: false}
+  ];
+  uint64 cycles = 16;
+
+  // An identifier of something this app does not keep: who made it.
+  bytes maker_id = 17 [(orm.field) = {
+    type: TYPE_UUID
+    nullable: true
+  }];
+
+  // An edge, to a row behind the same wall.
+  Robot robot = 18 [(orm.edge) = {nullable: true}];
+
+  Mode mode = 19;
+
+  google.protobuf.Timestamp date_serviced = 20 [(orm.field) = {nullable: true}];
+
+  // A message, kept whole in one column.
+  Spec spec = 21 [(payday.field) = {personal: false}];
+
+  // A list, and a map: one value each to a row, and to a fact a list is one
+  // value and a map is a value per key.
+  repeated string tags = 22 [(payday.field) = {personal: false}];
+  map<string, string> settings = 23 [(payday.field) = {personal: false}];
+
+  // Who runs it, by name: a field about a person, which a fact records the
+  // change of and never the value.
+  string operator = 24 [(payday.field) = {personal: true}];
+
+  // What a machine is built as.
+  message Spec {
+    uint32 axes = 1;
+    double reach = 2;
+  }
+
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+
+  // Erased softly, which is what saying nothing about erasure means: the
+  // row is stamped and stays, so it cannot be read or changed, its alias
+  // comes free again, and the trail can still say what it held.
+  google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
+
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {
+    immutable: true
+    default: ""
+  }];
+
+  option (orm.message) = {
+    rpc: {crud: true}
+  };
+  option (payday.entity) = {
+    domain: 19
+  };
+}
+
+// Mode is what a machine is doing, and what one was left doing.
+enum Mode {
+  MODE_UNSPECIFIED = 0;
+  MODE_IDLE = 1;
+  MODE_RUN = 2;
+  MODE_SERVICE = 3;
+}
+
+// MachineServiced is what an event of a machine's service holds: what was put
+// in, what it was left doing, and when it is due again (payday#151).
+//
+// An event keeps this and no sentence. It names the machine and whoever
+// serviced it by identifier, and holds nothing of anybody's: a sentence is
+// made from it when it is read, naming them as they are called then.
+//
+// Every field it holds is in the lock beside the copies of payday's entities,
+// `app/payday/past.lock`, and a row of it is read back by that for as long as
+// it is kept -- so none of them is removed, renamed but for its `json_name`, or
+// made to hold something else, and nor is a value of `Mode`.
+message MachineServiced {
+  option (payday.event) = {kind: "machine.service"};
+
+  bytes machine = 1;
+  bytes by = 2;
+
+  Mode mode = 3;
+
+  // What was put in, in the order it was.
+  repeated Part parts = 4;
+
+  // What was taken out, by the slot it was in.
+  map<string, Part> swapped = 5;
+
+  google.protobuf.Timestamp due = 6;
+
+  // One part: what it is, and how many.
+  message Part {
+    string serial = 1;
+    uint32 count = 2;
+  }
+}
+
+// MachineStarted names no kind, so its rows are written under its full name,
+// `app.MachineStarted`.
+message MachineStarted {
+  option (payday.event) = {};
+
+  bytes machine = 1;
+}

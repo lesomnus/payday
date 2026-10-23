@@ -22,6 +22,7 @@ import { createRoot } from 'react-dom/client'
 import { Provider } from '@lesomnus/payday/react'
 import { identityOf } from '@lesomnus/payday/store'
 
+import { events } from '../gen/events.js'
 import { open } from './store.js'
 import { Page } from './page.js'
 import './style.css'
@@ -91,6 +92,12 @@ async function boot(): Promise<void> {
 
 	const transport = createConnectTransport({
 		baseUrl: ADDR,
+		// The messages this app's events hold. Connect's JSON names the message
+		// an Any holds by its type, and protobuf-es reads one only with the type
+		// registered: without this, a List of events fails on the first row
+		// that holds a value. `pd gen --ts` writes it whether or not the app
+		// keeps a past, so it is here from the start.
+		jsonOptions: { registry: events },
 		interceptors: [
 			(next) => (req) => {
 				req.header.set('authorization', `Plain ${who}`)

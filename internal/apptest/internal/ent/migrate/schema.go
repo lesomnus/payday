@@ -356,6 +356,49 @@ var (
 			},
 		},
 	}
+	// MachineColumns holds the columns for the "machine" table.
+	MachineColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "alias", Type: field.TypeString},
+		{Name: "model", Type: field.TypeString},
+		{Name: "hours", Type: field.TypeInt64},
+		{Name: "load", Type: field.TypeFloat64},
+		{Name: "running", Type: field.TypeBool},
+		{Name: "firmware", Type: field.TypeBytes, Nullable: true},
+		{Name: "cycles", Type: field.TypeUint64},
+		{Name: "maker_id", Type: field.TypeUuid, Nullable: true},
+		{Name: "mode", Type: field.TypeInt32},
+		{Name: "date_serviced", Type: field.TypeTime, Nullable: true},
+		{Name: "spec", Type: field.TypeJson, Nullable: true},
+		{Name: "tags", Type: field.TypeJson, Nullable: true},
+		{Name: "settings", Type: field.TypeJson, Nullable: true},
+		{Name: "operator", Type: field.TypeString},
+		{Name: "date_updated", Type: field.TypeTime},
+		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+		{Name: "robot_id", Type: field.TypeUuid, Nullable: true},
+	}
+	// MachineTable holds the schema information for the "machine" table.
+	MachineTable = &schema.Table{
+		Name:       "machine",
+		Columns:    MachineColumns,
+		PrimaryKey: []*schema.Column{MachineColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "machine_tenant_tenant",
+				Columns:    []*schema.Column{MachineColumns[18]},
+				RefColumns: []*schema.Column{TenantColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "machine_robot_robot",
+				Columns:    []*schema.Column{MachineColumns[19]},
+				RefColumns: []*schema.Column{RobotColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// OutboxColumns holds the columns for the "outbox" table.
 	OutboxColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -637,6 +680,7 @@ var (
 		FleetTable,
 		HolderTable,
 		JointTable,
+		MachineTable,
 		OutboxTable,
 		OwedTable,
 		PairingTable,
@@ -684,6 +728,11 @@ func init() {
 	JointTable.ForeignKeys[0].RefTable = RobotTable
 	JointTable.Annotation = &entsql.Annotation{
 		Table: "joint",
+	}
+	MachineTable.ForeignKeys[0].RefTable = TenantTable
+	MachineTable.ForeignKeys[1].RefTable = RobotTable
+	MachineTable.Annotation = &entsql.Annotation{
+		Table: "machine",
 	}
 	OutboxTable.Annotation = &entsql.Annotation{
 		Table: "outbox",

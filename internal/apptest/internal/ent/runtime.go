@@ -9,6 +9,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/event"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/schema"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -52,6 +53,11 @@ func init() {
 	// holderDescProfile is the schema descriptor for profile field.
 	holderDescProfile := holderFields[9].Descriptor()
 	holder.ValueScanner.Profile = holderDescProfile.ValueScanner.(field.TypeValueScanner[*apptest.Profile])
+	machineFields := schema.Machine{}.Fields()
+	_ = machineFields
+	// machineDescSpec is the schema descriptor for spec field.
+	machineDescSpec := machineFields[11].Descriptor()
+	machine.ValueScanner.Spec = machineDescSpec.ValueScanner.(field.TypeValueScanner[*apptest.Machine_Spec])
 	thingFields := schema.Thing{}.Fields()
 	_ = thingFields
 	// thingDescDescription is the schema descriptor for description field.

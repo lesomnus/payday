@@ -20,6 +20,7 @@ import { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, Rob
 import { EventSchema } from './app/payday/event_pb.js'
 import { FactSchema } from './app/payday/fact_pb.js'
 import { HolderSchema } from './app/payday/holder_pb.js'
+import { MachineSchema } from './app/machine_pb.js'
 import { OutboxSchema } from './app/payday/outbox_pb.js'
 import { OwedSchema } from './app/payday/owed_pb.js'
 import { PulseSchema, TallySchema } from './app/tally_pb.js'
@@ -34,6 +35,7 @@ import { CellService, FleetService, JointService, PairingService, ReadingService
 import { EventService } from './app/payday/event_svc_pb.js'
 import { FactService } from './app/payday/fact_svc_pb.js'
 import { HolderService } from './app/payday/holder_svc_pb.js'
+import { MachineService } from './app/machine_svc_pb.js'
 import { OutboxService } from './app/payday/outbox_svc_pb.js'
 import { OwedService } from './app/payday/owed_svc_pb.js'
 import { PulseService, TallyService } from './app/tally_svc_pb.js'
@@ -143,6 +145,19 @@ export const Joint = {
 	key: "id",
 	ids: ["id"],
 	service: JointService,
+} as const satisfies EntityDesc
+
+/** app.Machine, as the store holds it. */
+export const Machine = {
+	typeName: "app.Machine",
+	schema: MachineSchema,
+	domain: 19,
+	version: "dateUpdated",
+	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "robot", to: "app.Robot" }],
+	alias: "alias",
+	key: "id",
+	ids: ["id", "makerId"],
+	service: MachineService,
 } as const satisfies EntityDesc
 
 /** app.Outbox, as the store holds it. */
@@ -270,5 +285,5 @@ export const Thing = {
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing] as const
+export const entities = [Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Machine, Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Tally, Tenant, Thing] as const
 

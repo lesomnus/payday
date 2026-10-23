@@ -117,6 +117,18 @@ func (f JointFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.JointMutation", m)
 }
 
+// The MachineFunc type is an adapter to allow the use of ordinary
+// function as Machine mutator.
+type MachineFunc func(context.Context, *ent.MachineMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MachineFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MachineMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MachineMutation", m)
+}
+
 // The OutboxFunc type is an adapter to allow the use of ordinary
 // function as Outbox mutator.
 type OutboxFunc func(context.Context, *ent.OutboxMutation) (ent.Value, error)

@@ -5,6 +5,7 @@ package payday;
 import "google/protobuf/descriptor.proto";
 import "payday/app.proto";
 import "payday/entity.proto";
+import "payday/past.proto";
 
 option go_package = "github.com/lesomnus/payday/pdpb";
 
@@ -12,6 +13,12 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 // starts a block above it with room to grow in either direction.
 extend google.protobuf.MessageOptions {
   Entity entity = 46001;
+
+  // What a message is when it is not an entity but what one kind of the app's
+  // events holds (payday#151): `option (payday.event) = {kind: "robot.move"};`.
+  // The next number of the message block. See [EventMessage] for what is
+  // refused of one.
+  EventMessage event = 46002;
 }
 
 // The field block, one above the message one for the same reason: room to grow
