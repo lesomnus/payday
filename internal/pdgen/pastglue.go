@@ -32,9 +32,13 @@ const (
 // declaration -- and only beside the trail, whose readers it reuses: the
 // tenant of a subject is found the way the recorder finds a row's, and an act
 // beneath the servers goes on the trail through `Record`.
+//
+// And the one writer of them: every context the store hands the servers is
+// marked for the Audit layer, which refuses a write of either that is not
+// ([emitAuditPast]).
 func EmitPast(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
-	ev, fact := s.Own(pdpb.Own_OWN_EVENT), s.Own(pdpb.Own_OWN_FACT)
-	if ev == nil || fact == nil || s.Tenant == nil || !s.Has(pdpb.Own_OWN_AUDIT) {
+	ev, fact := pastGlued(s)
+	if ev == nil {
 		return
 	}
 
@@ -58,6 +62,10 @@ func EmitPast(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("// write of the past is in the transaction its operation is; it answers")
 	g.P("// an error for a stack a layer of which cannot be put on another driver,")
 	g.P("// whose writes would go around that layer.")
+	g.P("//")
+	g.P("// Its writes are the only ones of ", e, " and ", f, " the Audit layer lets")
+	g.P("// through, wherever in `next` that layer is: each is marked for it, on the")
+	g.P("// context handed to the servers and no other ([pastWrite]).")
 	g.P("func Past(next ", root.Ident("Server"), ", drv ", pkgDialect.Ident("Driver"), ", content ", pkgAudit.Ident("Contents"),
 		") (", pkgPast.Ident("Store"), ", error) {")
 	g.P("	s, err := ", pkgEnttx.Ident("Rebind"), "(next, drv)")
@@ -84,8 +92,11 @@ func EmitPast(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("")
 
 	g.P("// AddEvents writes each event through the ", e, " server: an Add for one, an")
-	g.P("// AddMany of at most a page for more.")
+	g.P("// AddMany of at most a page for more. On a context marked as the past's")
+	g.P("// write, which is what the Audit layer lets one through on.")
 	g.P("func (s pastStore) AddEvents(ctx ", pkgCtx.Ident("Context"), ", vs []", pkgPast.Ident("EventRow"), ") ([]", pkgPdid.Ident("Id"), ", error) {")
+	g.P("	ctx = pastWriting(ctx)")
+	g.P("")
 	g.P("	reqs := make([]*", root.Ident(e+"AddRequest"), ", len(vs))")
 	g.P("	for i, v := range vs {")
 	g.P("		req := ", root.Ident(e+"AddRequest_builder"), "{")
@@ -148,6 +159,8 @@ func EmitPast(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("// AddFacts writes each fact through the ", f, " server, as [pastStore.AddEvents]")
 	g.P("// writes events.")
 	g.P("func (s pastStore) AddFacts(ctx ", pkgCtx.Ident("Context"), ", vs []", pkgPast.Ident("FactRow"), ") error {")
+	g.P("	ctx = pastWriting(ctx)")
+	g.P("")
 	g.P("	reqs := make([]*", root.Ident(f+"AddRequest"), ", len(vs))")
 	g.P("	for i, v := range vs {")
 	g.P("		field, domain := uint32(v.Field), uint32(v.Domain)")
@@ -178,9 +191,12 @@ func EmitPast(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("}")
 	g.P("")
 
-	g.P("// Supersede is a Patch of each fact, held to the version it was read at.")
+	g.P("// Supersede is a Patch of each fact, held to the version it was read at,")
+	g.P("// on a context marked as the past's write.")
 	g.P("func (s pastStore) Supersede(ctx ", pkgCtx.Ident("Context"), ", vs []", pkgPast.Ident("FactRow"), ", at ", pkgTime.Ident("Time"),
 		", by ", pkgPdid.Ident("Id"), ") error {")
+	g.P("	ctx = pastWriting(ctx)")
+	g.P("")
 	g.P("	for _, v := range vs {")
 	g.P("		if _, err := s.next.", f, "().Patch(ctx, ", root.Ident(f+"PatchRequest_builder"), "{")
 	g.P("			Ref:          ", root.Ident(f+"Ref_builder"), "{Id: v.Id.Bytes()}.Build(),")
@@ -590,6 +606,11 @@ func emitPastExpiry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen
 	g.P("// `ungated` is the stack with no wall, as for every sweep: an expiry is the")
 	g.P("// deployment acting on itself, and nobody's in the tenant. Never one a caller")
 	g.P("// reaches.")
+	g.P("//")
+	g.P("// What `f` is handed writes the past through the store and no other way:")
+	g.P("// the store marks what it hands the servers, and the context `f` is given")
+	g.P("// is no write of the past's, so a row `f` writes by hand with it is refused")
+	g.P("// as any other is ([pastWrite]).")
 	g.P("func PastIn(ungated ", root.Ident("Server"), ", drv ", pkgDialect.Ident("Driver"), ", content ", pkgAudit.Ident("Contents"), ") func(ctx ",
 		pkgCtx.Ident("Context"), ", tenant ", pkgPdid.Ident("Id"), ", f func(ctx ", pkgCtx.Ident("Context"), ", s ", pkgPast.Ident("Store"), ") error) error {")
 	g.P("	return func(ctx ", pkgCtx.Ident("Context"), ", tenant ", pkgPdid.Ident("Id"), ", f func(ctx ", pkgCtx.Ident("Context"), ", s ", pkgPast.Ident("Store"), ") error) error {")
@@ -643,6 +664,153 @@ func emitPastExpiry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen
 	g.P("")
 	g.P("		return out, nil")
 	g.P("	}")
+	g.P("}")
+	g.P("")
+}
+
+// pastGlued is payday's Event and Fact in a schema `pd gen` writes the past's
+// store into, and nil and nil in any other: one that declares a past, beside
+// the tenant and the trail the store reuses.
+//
+// One answer for the store and the Audit layer's half of it
+// ([emitAuditPast]), because each is wrong without the other: refusals with no
+// store are a past nothing can write, and a store with no refusals is one
+// anybody can write around.
+func pastGlued(s *Schema) (*Entity, *Entity) {
+	ev, fact := s.Own(pdpb.Own_OWN_EVENT), s.Own(pdpb.Own_OWN_FACT)
+	if ev == nil || fact == nil || s.Tenant == nil || !s.Has(pdpb.Own_OWN_AUDIT) {
+		return nil, nil
+	}
+
+	return ev, fact
+}
+
+// emitAuditPast writes the Audit layer's half of the past (payday#151): its
+// Event and its Fact, which refuse every write but the ones `pd.Past`'s store
+// hands the servers, and the key that store marks those with.
+//
+// # Why payday seals these, when it leaves which verbs are internal to an app
+//
+// The server guide leaves a verb only an app's own operations call to the app,
+// since which they are is a property of the app and not of its schema. These
+// two are payday's, and so is what makes a row of them right. A fact is the
+// canonical JSON of one field, withheld where the field is personal, and
+// supersedes what it replaces: one written by hand is a row no read of the
+// past can be sure of, a state at a moment or a diff saying what nothing did.
+// An event's actor is the caller's frame, and a request that names one is who
+// did it, forged. And with no policy -- the app `pd new` writes has none --
+// every caller in a tenant reaches both Adds. So the rule is the schema's
+// after all, and it is generated rather than left for each app to find.
+//
+// # Why a key on the context
+//
+// A layer cannot tell what wrote a request by what it is handed: a call over
+// the wire, an operation of a batch and the store's own write are each a
+// context and a message. What only the store can do is put a value on the
+// context whose type nothing outside the generated package can name -- not an
+// app's code, not a batch's dispatch, not gRPC -- so that is what is read. An
+// identity of the caller would be a credential, which somebody can hold; this
+// is a line of code, which only the store is.
+//
+// # Where it is
+//
+// In the Audit layer, beside the trail's own refusals and for their reason: it
+// is the layer every stack of an app is built with, the ungated one too, so
+// whatever enters a stack above it -- a call, a batch, the deployment's own
+// tool -- meets it. The store's writes carry their mark down through every
+// layer between, so a layer that records the past may be anywhere: above the
+// gate, as rove's domain layer is, or beneath Audit, as apptest's core is.
+// What it does not reach is beneath it: a layer of the app's under Audit
+// writes past it, as it writes past the trail's refusals.
+//
+// # What it does not touch
+//
+// Reads, which the wall and the policy answer as they do any entity's. And the
+// writes the store makes beneath the servers -- a reason redacted, what an
+// expiry takes -- which no server sees, and which the store puts on the trail
+// as the acts they are.
+func emitAuditPast(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath) {
+	ev, fact := pastGlued(s)
+	if ev == nil {
+		return
+	}
+
+	for _, v := range []*Entity{ev, fact} {
+		name := v.GoName()
+		lower := "audit" + name
+		r := v.Rpcs()
+
+		g.P("// ", name, " is the past's ", name, " as the Audit layer serves it: read as any")
+		g.P("// entity is, and written by the `past` package alone ([pastWrite]).")
+		g.P("func (s Audit) ", name, "() ", root.Ident(name+"ServiceServer"), " {")
+		g.P("	return ", lower, "{s, s.Next().", name, "()}")
+		g.P("}")
+		g.P("")
+		g.P("type ", lower, " struct {")
+		g.P("	Audit")
+		g.P("	", root.Ident(name+"ServiceServer"))
+		g.P("}")
+		g.P("")
+
+		// Every verb that writes, of the ones the entity has: what a template
+		// of payday's declares is what is served, so it is read off it rather
+		// than listed, and a verb a later template adds is refused with the
+		// rest rather than left open beside them.
+		for _, m := range []struct {
+			rpc, in, out string
+			has          bool
+		}{
+			{"Add", name + "AddRequest", name, r.HasAdd()},
+			{"AddMany", name + "AddManyRequest", name + "AddManyResponse", r.HasAddMany()},
+			{"Patch", name + "PatchRequest", name, r.HasPatch()},
+			{"Apply", name + "ApplyRequest", name, r.HasPatch()},
+			{"Erase", name + "Ref", name + "EraseResponse", r.HasErase()},
+		} {
+			if !m.has {
+				continue
+			}
+
+			g.P("func (s ", lower, ") ", m.rpc, "(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(m.in),
+				") (*", root.Ident(m.out), ", error) {")
+			g.P("	if !isPastWrite(ctx) {")
+			g.P("		return nil, errPast()")
+			g.P("	}")
+			g.P("")
+			g.P("	return s.", name, "ServiceServer.", m.rpc, "(ctx, req)")
+			g.P("}")
+			g.P("")
+		}
+	}
+
+	g.P("// pastWrite marks a context the past's store hands the servers (`Past`):")
+	g.P("// the one thing the Audit layer lets a write of ", ev.GoName(), " or ", fact.GoName(), " through")
+	g.P("// on (payday#151).")
+	g.P("//")
+	g.P("// Unexported, so that nothing outside this package can put one on a")
+	g.P("// context: not an app's code, not a batch, not a call over the wire. And")
+	g.P("// the store marks the contexts it hands the servers and no other -- not the")
+	g.P("// one an operation goes on with, nor the one `PastIn` hands its work -- so")
+	g.P("// a mark goes no further than the write it is on.")
+	g.P("type pastWrite struct{}")
+	g.P("")
+	g.P("// pastWriting is `ctx` as the past's store hands it to the servers.")
+	g.P("func pastWriting(ctx ", pkgCtx.Ident("Context"), ") ", pkgCtx.Ident("Context"), " {")
+	g.P("	return ", pkgCtx.Ident("WithValue"), "(ctx, pastWrite{}, pastWrite{})")
+	g.P("}")
+	g.P("")
+	g.P("// isPastWrite is whether `ctx` is one the past's store handed the servers.")
+	g.P("func isPastWrite(ctx ", pkgCtx.Ident("Context"), ") bool {")
+	g.P("	_, ok := ctx.Value(pastWrite{}).(pastWrite)")
+	g.P("	return ok")
+	g.P("}")
+	g.P("")
+	g.P("// errPast is PermissionDenied, to every caller alike. Not the trail's")
+	g.P("// Unimplemented: these verbs are served, to the store's writes. What is")
+	g.P("// refused is what wrote the request, which no credential changes -- so the")
+	g.P("// sentence says what does write one.")
+	g.P("func errPast() error {")
+	g.P("	return ", pkgStatus.Ident("Error"), "(", pkgCodes.Ident("PermissionDenied"), ",")
+	g.P("		\"a past is written by the past package: an event by past.Begin, and a fact by the op it answers\")")
 	g.P("}")
 	g.P("")
 }

@@ -735,6 +735,10 @@ func byKey(v *Entity) bool {
 // transaction that makes a write, so every RPC that changes anything is on the
 // trail without anybody having listed them. The layer is here because a trail a
 // deployment can edit is evidence of nothing.
+//
+// In an app that keeps a past, the layer refuses an Event or a Fact the `past`
+// package did not write as well, for a reason of the same kind: see
+// [emitAuditPast].
 func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	// Refused by [CheckOwn] before this, for a real app; see there.
 	if !s.Has(pdpb.Own_OWN_AUDIT) {
@@ -742,6 +746,12 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	}
 
 	g.P("// Audit is the layer that refuses a trail row written by hand.")
+	if ev, fact := pastGlued(s); ev != nil {
+		g.P("//")
+		g.P("// And, of this app's past, a row of its ", ev.GoName(), " or its ", fact.GoName(), " that the")
+		g.P("// `past` package did not write (payday#151): what no read of the past could")
+		g.P("// be sure of, written by whoever asked. See [pastWrite].")
+	}
 	g.P("//")
 	g.P("// The Rpcs exist because the trail is an entity like any other and a test is")
 	g.P("// far plainer for having them. A deployment serves none of the ones that")
@@ -811,6 +821,7 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("}")
 	g.P("")
 
+	emitAuditPast(g, s, root)
 	emitRecorder(g, s, p, root)
 }
 

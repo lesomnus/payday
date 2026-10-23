@@ -535,3 +535,79 @@ message Robot {
   option (payday.entity) = {domain: 7, erase: {hard: {}}};
 }
 `
+
+// TestThePastIsWrittenByItsStoreAlone: the Audit layer of an app that keeps a
+// past refuses every verb of its Event and Fact that writes, unless the
+// context is one the store marked, and the store marks every context it hands
+// the servers and no other. Reads are not touched, the verbs are payday's to
+// say, and an app with no past has none of it.
+func TestThePastIsWrittenByItsStoreAlone(t *testing.T) {
+	emit := func(t *testing.T, src string) string {
+		t.Helper()
+
+		s, p, err := readPlugin(t, map[string]string{"test/schema.proto": inPkg("fleet", src)})
+		require.NoError(t, err)
+
+		g := p.NewGeneratedFile("pd.go", "example.com/app/server/pd")
+		g.P("package pd")
+		g.P()
+		paths := pdgen.Paths{Ent: "example.com/app/internal/ent", Bare: "example.com/app/server/bare"}
+		pdgen.EmitAudit(g, s, paths, "example.com/app")
+		pdgen.EmitPast(g, s, paths, "example.com/app")
+
+		b, err := g.Content()
+		require.NoError(t, err)
+
+		return string(b)
+	}
+	refuses := func(recv, rpc, in, out string) string {
+		return "func (s " + recv + ") " + rpc + "(ctx context.Context, req *app." + in + ") (*app." + out + ", error) {\n" +
+			"\tif !isPastWrite(ctx) {\n" +
+			"\t\treturn nil, errPast()\n" +
+			"\t}\n\n" +
+			"\treturn s." + strings.TrimPrefix(recv, "audit") + "ServiceServer." + rpc + "(ctx, req)\n}\n"
+	}
+
+	x := require.New(t)
+
+	out := emit(t, past(t, ""))
+	x.Contains(out, "func (s Audit) Event() app.EventServiceServer {\n\treturn auditEvent{s, s.Next().Event()}\n}")
+	x.Contains(out, "func (s Audit) Fact() app.FactServiceServer {\n\treturn auditFact{s, s.Next().Fact()}\n}")
+	for _, v := range [][4]string{
+		{"auditEvent", "Add", "EventAddRequest", "Event"},
+		{"auditEvent", "AddMany", "EventAddManyRequest", "EventAddManyResponse"},
+		{"auditFact", "Add", "FactAddRequest", "Fact"},
+		{"auditFact", "AddMany", "FactAddManyRequest", "FactAddManyResponse"},
+		{"auditFact", "Patch", "FactPatchRequest", "Fact"},
+		{"auditFact", "Apply", "FactApplyRequest", "Fact"},
+	} {
+		x.Contains(out, refuses(v[0], v[1], v[2], v[3]))
+	}
+	for _, v := range []string{"auditEvent) Get(", "auditEvent) List(", "auditFact) Get(", "auditFact) List(", "auditEvent) Patch(", "auditEvent) Erase(", "auditFact) Erase("} {
+		x.NotContains(out, v, "a verb that reads, or one the entity does not have")
+	}
+	x.Contains(out, "codes.PermissionDenied")
+	x.Contains(out, `"a past is written by the past package: `)
+
+	// Each write the store makes, on a context it marked.
+	for _, v := range []string{
+		"func (s pastStore) AddEvents(ctx context.Context, vs []past.EventRow) ([]pdid.Id, error) {\n\tctx = pastWriting(ctx)\n",
+		"func (s pastStore) AddFacts(ctx context.Context, vs []past.FactRow) error {\n\tctx = pastWriting(ctx)\n",
+		"func (s pastStore) Supersede(ctx context.Context, vs []past.FactRow, at time.Time, by pdid.Id) error {\n\tctx = pastWriting(ctx)\n",
+	} {
+		x.Contains(out, v)
+	}
+	x.Equal(3, strings.Count(out, "pastWriting(ctx)\n"), "and nothing else: not what PastIn hands its work")
+
+	// And which verbs they are is payday's: an app cannot give either one
+	// that the layer would have to know of.
+	src := past(t, "")
+	more := strings.Replace(src, "      get: {}\n    }", "      get: {}\n      erase: {}\n    }", 1)
+	x.NotEqual(src, more, "no Event rpc to add a verb to")
+	_, _, err := readPlugin(t, map[string]string{"test/schema.proto": inPkg("fleet", more)})
+	x.ErrorContains(err, "fleet.Event: (orm.message) rpc.erase is not payday's")
+
+	none := emit(t, ownAll(t)+tenantedRobot)
+	x.NotContains(none, "func (s Audit) Event()", "an app with no past was given a layer of one")
+	x.NotContains(none, "pastWrite")
+}

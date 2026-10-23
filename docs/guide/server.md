@@ -27,7 +27,7 @@ and the innermost one runs the statement.
   grpc.Server
     └ interceptors ......... who is calling, how often, what is closed
       └ Gate ............... may this caller do this at all      (generated)
-        └ Audit ............ the trail's own service             (generated)
+        └ Audit ............ the trail's own service, the past's (generated)
           └ your layers .... your rules                          (yours)
             └ Sink ......... the wall, the minter, the trail     (generated)
               └ ent
@@ -347,6 +347,7 @@ drifts later into a compile error rather than another refusal at run time.
 | --- | --- |
 | "only an admin may erase a Robot" | your layer, or a `gate.Policy` |
 | "only our own operations write a History row" | your `gate.Policy`, or a layer in front -- see [a verb only your own operations call](#a-verb-only-your-own-operations-call) |
+| "only the `past` package writes payday's Event and Fact" | **not yours** — the generated `Audit` layer, in an app that keeps a past; see [the past's, which payday seals](#except-the-pasts-which-payday-seals) |
 | "an alias is lowercased before it is stored" | your layer |
 | "a Robot is only visible inside its tenant" | **not yours** — declare `tenanted:` and it is generated |
 | "who is calling" | **not yours** — `auth`, in the interceptors |
@@ -365,7 +366,9 @@ wall, the trail and the watch are all on it. What it does not want is a caller
 reaching those methods directly.
 
 Which verbs are internal is a property of your app, not of the schema, so payday
-leaves it to you. There are two ways, and **both cover a batch**.
+leaves it to you -- all but the past's, which it decides
+([below](#except-the-pasts-which-payday-seals)). There are two ways, and **both
+cover a batch**.
 
 **Leave them out of your `gate.Policy`.** A policy that answers from a list of
 what each caller may do refuses every method the list does not name. A verb
@@ -424,6 +427,59 @@ What does **not** work:
   server, and with it the path your own layer writes through.
 - **`grpcx.GeneralWrite`.** It opens or closes `Patch` and `Apply` for every
   entity at once. It is not a per-entity switch.
+
+#### Except the past's, which payday seals
+
+payday's own Event and Fact, in an app that keeps a past (payday#151), are
+the exception: which of their verbs are internal is not left to you. The
+generated `Audit` layer refuses every write of either that the `past`
+package did not make -- `Add` and `AddMany` of both, `Patch` and `Apply` of a
+fact -- from a caller over the wire, inside a batch, through `Ungated`, or
+from your own code through the stack, with `PermissionDenied`:
+
+```
+a past is written by the past package: an event by past.Begin, and a fact by the op it answers
+```
+
+It departs from the rule above because what makes a row of these two right is
+payday's, and not a property of your app:
+
+- **A fact written by hand breaks what reads it.** A fact's value is the
+  canonical JSON of one field, withheld where the field is personal, and it
+  supersedes what it replaces; `past.StateAt` and `past.Diff` are folds over
+  exactly that. A row that says `red` where the package writes `"red"`, or that
+  left standing what it should have superseded, is a state at a moment and a
+  diff that say what nothing did -- and nothing fails.
+- **A caller-supplied `actor_id` forges who did what.** `past.Begin` reads who
+  did it, and in which tenant, off the caller's frame. `EventService/Add`
+  takes both from the request.
+- **The app `pd new` writes has no policy**, and with none a caller may call
+  every generated verb in their own tenant, these among them. Closing them
+  would be each app's to remember.
+
+How the layer tells: `pd.Past`'s store marks each context it hands the servers
+with a key of the generated `pd` package's own, which nothing outside that
+package can make -- not your code, not a batch, not gRPC -- and the layer lets
+a write through on that mark alone. It is not about who is asking, so it is no
+credential anybody could hold; and the store marks no other context, not the
+one an operation goes on with nor the one `pd.PastIn` hands its work.
+
+- **Record through the package**: `past.Begin`, and the `*past.Op` it answers
+  ([keeping a past](past.md#6-recording-an-operation)). A layer that records the
+  past may be anywhere in the stack -- above the gate, as rove's domain layer
+  is, or beneath `Audit`, as apptest's `core` is -- since the mark goes down
+  with each write.
+- **A layer beneath `Audit` is beneath its refusals**, the trail's and the
+  past's alike. It is your code in your stack: nothing of yours there writes
+  these two but through `pd.Past`.
+- **Reads are not touched.** `Get` and `List` are the wall's and the policy's,
+  as any entity's are.
+- **What the package writes beneath the servers** -- a reason redacted, what an
+  expiry takes -- meets no server, and is on the trail as the act it is.
+- **A row from before the past** -- one an app adopting its own events into
+  payday's table already had -- is in the table already. A test that needs one
+  writes it through a server built without the layers, `pd.NewSink`, as that
+  app's servers wrote it then.
 
 ### Changing what the trail records
 
