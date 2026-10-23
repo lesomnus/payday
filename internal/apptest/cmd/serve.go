@@ -337,6 +337,10 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 	guard := c.Server.Guard(s.Policy)
 	if b, err := pd.Batch(s.Walled, s.Drv, guard); err == nil {
 		pdpb.RegisterBatchServiceServer(g, b)
+
+		// Its Watch evaluates a filter because `cli/filter.go` links the
+		// language, and not because of anything here: this package is the
+		// sandbox's too, and a language named in it is linked into the page.
 		resources, err := pd.Resources(s.Walled, s.Drv, guard, s.Watch,
 			pd.ResourceProjector(s.Ent, pd.Wall(), guard))
 		if err != nil {

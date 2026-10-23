@@ -113,6 +113,15 @@ Nothing short of generating a second set of stubs recovers it, and a second set
 of stubs is a second implementation — see below. So it is a cost this takes
 knowingly, and it compresses like the code it is.
 
+**What a page cannot use is not linked, and a test says so.** The same rule cuts
+the other way: an import is linked whether anything calls it or not, so an engine
+only a process uses is imported only by what only the process imports — the
+database driver, the migration engine, and CEL, the language a Watch filter is
+written in. CEL was 10 MB on its own when the generated code brought it in
+through `payday/resource` (payday#163); it is `resource/resourcecel` now, which an
+app's `cli` imports and its sandbox does not. `TestTheSandboxCarriesNoEngine`
+lists this app's sandbox under `GOOS=js` and fails on any of them.
+
 **The Go runtime is 1.8 MB — 2.6%.** Which is the whole answer to making it
 smaller by using a smaller Go.
 

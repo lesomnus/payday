@@ -11501,6 +11501,10 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 // Resources serves the common Batch and Watch API. project is required so custom
 // read layers cannot silently disappear from historical reads. ResourceProjector
 // handles bare.Scope and declared secrets; compose any additional read rules.
+//
+// Watch evaluates a filter in the language the binary links, which is CEL when
+// something imports github.com/lesomnus/payday/resource/resourcecel: a process,
+// never what its sandbox imports too. A binary that links none refuses a filter.
 func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch.Watch, project resource.Project) (*resource.Server, error) {
 	b, err := Batch(s, drv, guard)
 	if err != nil {

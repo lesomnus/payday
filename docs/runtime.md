@@ -70,6 +70,8 @@ table is for finding the right one.
 | [`config`](../config) | the blocks every app is configured with, and a loader that fills in any struct |
 | [`spin`](../spin) | background work a layer has, found rather than declared |
 | [`watch`](../watch) | publishes what a call changed, once its transaction committed |
+| [`resource`](../resource) | the shared Batch and Watch service, and the event both of a change's delivery paths carry |
+| [`resource/resourcecel`](../resource/resourcecel) | CEL, the language a Watch filter is written in. A process imports it; a sandbox does not, and is 10 MB lighter for it |
 | [`batch`](../batch) | several writes as one transaction, with the four transport rules re-applied per operation |
 | [`pderr`](../pderr) | the shape of a refusal: which field, and why |
 | [`version`](../version) | what build is running, read from what the toolchain already stamps |
@@ -186,6 +188,8 @@ Everything payday enforces is placed as far left as it goes.
 | generated code and linked payday agree | `version.Same`, refused at `NewSink` |
 | the database is not behind the schema | `entschema.Check`, before anything is served on it |
 | the runtime assumes no file system | CI builds `GOOS=js GOARCH=wasm` |
+| a sandbox links no engine only a process uses | `TestTheSandboxCarriesNoEngine` lists payday's own sandbox under `GOOS=js` — no driver, migration engine or filter language — and `pd new`'s tests hold the template's `cmd` to naming none of them |
+| a Watch filter is never ignored | a server whose binary links no filter language refuses one with `Unimplemented` |
 | every layer is an `enttx.Binder` | `pd doctor` finds one that is not — a missing `WithDriver` is nothing until the first transaction |
 | the access record is wired | `pd doctor` says which of its interceptor, writer and recorder the app's code does not name — missing, nothing fails and nothing is recorded |
 | a download says what it is for | the access interceptor refuses one without `payday-reason-bin`, and one whose row cannot be written |

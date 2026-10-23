@@ -3,6 +3,40 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A Watch filter's language is a package of its own
+
+**Applies to every app**, which regenerates -- `pd.Resources` says where its
+filters come from, and nothing else in the generated code moves -- and **to an
+app that serves `ResourceService`** (`pd.Resources`, which `pd new` has wired
+since payday#74), which adds one import. CEL is out of `payday/resource`, and
+everything an app generates imports that package, so every sandbox carried
+cel-go, ANTLR and `text/template`: 10 MB of payday's own (payday#163). No schema
+changes and no migration.
+
+- **Link the language where the process is wired**: `import _
+  "github.com/lesomnus/payday/resource/resourcecel"`, in what only the process
+  imports -- `cli/filter.go`, as `pd new` now writes it -- and never in `cmd` or
+  anything else a sandbox imports. Without it a `Watch` with a filter is
+  refused `Unimplemented`, and `Batch` and a `Watch` with no filter are served
+  as they were. Nothing says so at startup: an app that calls `pd.Resources`
+  owes the import.
+- **`resource.MaxDepth` and `resource.MaxCost` are `resourcecel`'s**, beside the
+  CEL they bound. `resource.MaxExpression` stays: it is refused before any
+  language reads it.
+- **A sandbox can be held to it**: `GOOS=js GOARCH=wasm go list -tags
+  grpcnotrace -deps ./wasm` names no `cel.dev/` package.
+  `internal/apptest/cli/sandbox_test.go` is payday's.
+- [The resources guide](guide/resources.md#wire-the-server) is the wiring.
+
+What the apps on payday change:
+
+- **rove** serves no `ResourceService`, and regenerates: the CEL its process
+  linked through `server/pd` is gone from it.
+- **roster** the same.
+- **kamino** and **khala** serve none either, and each has a sandbox: what
+  regenerating takes out of it is the chain khala's
+  `TestTheSandboxCarriesNoEngine` refused.
+
 ## An app may number payday's Archived and Access
 
 **Applies to an app with an entity of its own at domain 5 or 6**, which `pd

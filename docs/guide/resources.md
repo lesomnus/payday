@@ -61,8 +61,24 @@ or projection cost, and does not change the resource-specific Watch implementati
 
 ## Wire the server
 
-The generated application template registers both service endpoints. For an
-application with custom wiring:
+The generated application template registers both service endpoints, and its
+process links the language a filter is written in:
+
+```go
+// cli/filter.go
+import _ "github.com/lesomnus/payday/resource/resourcecel"
+```
+
+Import it where a database driver is imported: in what only the process imports,
+never in `cmd` or anything else an app's sandbox imports, since whatever the
+sandbox imports is linked into the page -- CEL was 10 MB of payday's own. Without
+the import, `ResourceService` still serves `Batch` and a `Watch` with no filter,
+and refuses a filter with `Unimplemented` rather than ignoring it. To hold a
+sandbox to it, list what the page links: `GOOS=js GOARCH=wasm go list -tags
+grpcnotrace -deps ./wasm` names no `cel.dev/` package
+(`internal/apptest/cli/sandbox_test.go` is payday's own).
+
+For an application with custom wiring:
 
 ```go
 guard := c.Server.Guard(policy)
@@ -176,11 +192,14 @@ bypasses it. Do not call Broker.Publish from inside an uncommitted transaction.
 ## Bounds and failures
 
 Filters are compiled once per subscription and must return bool. The default
-bounds are 16 KiB of expression text, parser depth 64 and 100,000 evaluation cost
-units per event. Invalid expressions and dynamic-field evaluation failures return
-`InvalidArgument`; evaluation-budget exhaustion and subscriber backlog/connection
-loss return `ResourceExhausted`. Evaluation errors do not include resource values.
-A disabled broker returns `Unavailable`. Resource envelopes are limited to 4 MiB.
+bounds are 16 KiB of expression text (`resource.MaxExpression`, refused before any
+language reads it), parser depth 64 and 100,000 evaluation cost units per event
+(`resourcecel.MaxDepth`, `resourcecel.MaxCost`). Invalid expressions and
+dynamic-field evaluation failures return `InvalidArgument`; evaluation-budget
+exhaustion and subscriber backlog/connection loss return `ResourceExhausted`.
+Evaluation errors do not include resource values. A filter sent to a server that
+links no filter language returns `Unimplemented`. A disabled broker returns
+`Unavailable`. Resource envelopes are limited to 4 MiB.
 
 The PostgreSQL broker fragments large public payloads into notifications below
 8,000 bytes, sends each publication in a transaction, and reassembles with bounded
