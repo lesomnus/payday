@@ -43,6 +43,7 @@ import {
 	type DescMessage,
 	type DescMethodUnary,
 	type DescService,
+	type Registry,
 } from '@bufbuild/protobuf'
 import { timestampDate } from '@bufbuild/protobuf/wkt'
 import { createClient, type Transport } from '@connectrpc/connect'
@@ -114,6 +115,30 @@ export interface Props {
 	 * URLs only the app's own bundler can write. `./code.tsx` says the rest.
 	 */
 	monaco?: MonacoLike
+
+	/**
+	 * The messages an `Any` may hold, which is the generated `events` -- the
+	 * registry the page's Connect transport is handed.
+	 *
+	 *     import { events } from '../gen/events.js'
+	 *     <Devtools entities={entities} registry={events} />
+	 *
+	 * An `Any` is the one field its descriptor does not describe: what it holds
+	 * is named by a type URL when it is written, and its bytes are that
+	 * message's. Protobuf JSON writes the message out -- `{"@type": …, …its
+	 * fields}` -- so it can write one only with that type registered, and an
+	 * Event's `value` is one.
+	 *
+	 * Absent, a row holding one is not a document: the `Get` tab says so
+	 * rather than showing it, and a table shows the type it names and how big
+	 * it is. An app that keeps no past has an empty `events` and loses nothing.
+	 *
+	 * Handed in rather than read off the transport. A transport keeps its
+	 * options to itself, and one that speaks binary -- a sandbox's, gRPC-web --
+	 * reads an `Any` as bytes and was never given a registry: the panel is the
+	 * first thing that has to write one out.
+	 */
+	registry?: Registry
 }
 
 /** Kept is what the panel remembers between reloads. */
@@ -1084,6 +1109,7 @@ export function Devtools(props: Props): ReactNode {
 							names={names}
 							back={{ go: back, can: trail.length > 0 }}
 							entities={props.entities}
+							registry={props.registry}
 						/>
 					) : kept.tab === 'get' ? (
 						<Get
@@ -1102,6 +1128,7 @@ export function Devtools(props: Props): ReactNode {
 							find={find}
 							names={names}
 							back={{ go: back, can: trail.length > 0 }}
+							registry={props.registry}
 							diff={kept.diff}
 							{...(props.monaco === undefined ? {} : { monaco: props.monaco })}
 							{...(looking?.typeName === entity.typeName ? { id: looking.id } : {})}
@@ -1123,6 +1150,7 @@ export function Devtools(props: Props): ReactNode {
 							find={find}
 							names={names}
 							back={{ go: back, can: trail.length > 0 }}
+							registry={props.registry}
 						/>
 					)}
 				</div>
@@ -1179,6 +1207,9 @@ interface View {
 
 	/** What a reference is called, and how to go and find out. */
 	names: Names
+
+	/** What an `Any` may hold, for writing one out; see [Props.registry]. */
+	registry: Registry | undefined
 
 	/** The sidebar above and below the view's own form; see [Pane]. */
 	head: ReactNode
@@ -1456,7 +1487,13 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 			try {
 				const req = build(method.input, v)
 				const row = await call(props.entity, props.transport, 'get', req)
-				const json = toJson(method.output, row as never, { alwaysEmitImplicit: true }) as Record<string, unknown>
+
+				// With the registry, or an `Any` in the row is a document
+				// that cannot be written: see [Props.registry].
+				const json = toJson(method.output, row as never, {
+					alwaysEmitImplicit: true,
+					registry: props.registry,
+				}) as Record<string, unknown>
 
 				setWas(json)
 				setNow(JSON.stringify(json, null, 2))
@@ -1465,7 +1502,7 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 				setErr(String(e))
 			}
 		},
-		[method, props.entity, props.transport],
+		[method, props.entity, props.transport, props.registry],
 	)
 
 	// Following an edge is an identifier arriving from above: it fills the form
@@ -1529,7 +1566,7 @@ function Get(props: View & { transport: Transport; id?: string; monaco?: MonacoL
 				if (v !== undefined) req[v.jsonName] = was[v.jsonName]
 			}
 
-			await app.queries.call(patch, fromJson(patch.input, req as never))
+			await app.queries.call(patch, fromJson(patch.input, req as never, { registry: props.registry }))
 			await ask(vals)
 		} catch (e) {
 			setErr(String(e))
@@ -1738,13 +1775,14 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 					to: to(f.localName),
 					names: named(f.localName) ? props.names : undefined,
 					utc: props.utc,
+					registry: props.registry,
 				})
 
 				return wants(text) !== undefined
 			}),
 		)
 		// `wants` is rebuilt every render; what it stands for is the query.
-	}, [props.rows, props.find.q, props.find.how, props.hidden, props.entity]) // eslint-disable-line react-hooks/exhaustive-deps
+	}, [props.rows, props.find.q, props.find.how, props.hidden, props.entity, props.registry]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	/**
 	 * The last column somebody turned, so that shift reaches back to it.
@@ -1913,6 +1951,7 @@ function Table(props: View & { label: string; rows: Record<string, unknown>[]; o
 												to={to(f.localName)}
 												names={named(f.localName) ? props.names : undefined}
 												utc={props.utc}
+												registry={props.registry}
 												hit={typeof wants === 'string' ? undefined : wants}
 												look={props.look}
 												onRaw={(v) =>
@@ -2088,6 +2127,9 @@ interface Value {
 
 	/** Whether a timestamp is shown as UTC; see [Kept.utc]. */
 	utc: boolean
+
+	/** What an `Any` may hold; see [Props.registry]. */
+	registry: Registry | undefined
 }
 
 /**
@@ -2124,9 +2166,41 @@ function shown(props: Value): string {
 		return when(timestampDate(v as never), props.utc)
 	}
 
+	if (typeof v === 'object' && props.field.fieldKind === 'message') {
+		return jsonOf(props.field.message, v, props.registry)
+	}
+
 	if (typeof v === 'object') return JSON.stringify(v)
 
 	return String(v)
+}
+
+/**
+ * jsonOf is a message in a cell, as protobuf JSON on one line.
+ *
+ * Protobuf JSON and not `JSON.stringify` of the object protobuf-es builds,
+ * which writes `$typeName` into every cell and an `Any`'s bytes as an object of
+ * numbered keys -- so a cell showed how protobuf-es holds a message rather than
+ * what it says, and an Event's `value` said nothing about what was done. It is
+ * also the spelling the `Get` tab writes the row in, so a value reads the same
+ * in both.
+ *
+ * An `Any` the registry does not name has no such spelling. It is shown as the
+ * two things known of it without its type -- the type it names and how big it
+ * is -- as bytes are, and anything else that cannot be written says why: a cell
+ * that threw would take the whole panel with it.
+ */
+function jsonOf(desc: DescMessage, v: object, registry: Registry | undefined): string {
+	try {
+		return JSON.stringify(toJson(desc, v as never, { registry }))
+	} catch (e) {
+		const any = v as { typeUrl?: unknown; value?: unknown }
+		if (desc.typeName === 'google.protobuf.Any' && typeof any.typeUrl === 'string' && any.value instanceof Uint8Array) {
+			return `${any.typeUrl}, ${String(any.value.byteLength)} bytes`
+		}
+
+		return String(e)
+	}
 }
 
 /**

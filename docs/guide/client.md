@@ -492,7 +492,8 @@ so that the line is there from the day a page is made.
 
 A page made before this has transports without it, and the line is the app's
 to add. The same registry is what `anyUnpack(ev.value, events)` reads a value
-with; see [Keeping a past](past.md#5-reading-an-event-back).
+with; see [Keeping a past](past.md#5-reading-an-event-back). And it is the
+panel's `registry`, which writes one out; see [§8](#8-the-panel).
 
 ## 8. The panel
 
@@ -529,6 +530,25 @@ it is sitting on top of.
 around it — the transport, the editor, and the progress a first load needs —
 and it is what payday's own sandbox is looked at through. The four lines above
 are the part that is the panel.
+
+**Hand it `events` as well**, the registry the page's Connect transport is
+handed ([above](#the-registry-a-connect-transport-is-handed)):
+
+```tsx
+import { events } from '../gen/events.js'
+
+<Devtools entities={entities} registry={events} />
+```
+
+The panel writes a row out as protobuf JSON -- the `get` tab's document, and a
+cell holding a message -- and an event keeps its value as an `Any`, which
+protobuf JSON can write only with the type it holds registered. Without it, the
+`get` tab says so rather than showing an event that holds a value, and a table
+shows the type the value names and how big it is. Hand it over even where the
+transport needs none: a sandbox's speaks binary, which reads an `Any` as bytes,
+so the panel is the first thing that writes one out. An app with no past has
+`events`, empty, and loses nothing by passing it. `registry` came with
+`@lesomnus/payday` 0.1.4.
 
 ### What is in it
 

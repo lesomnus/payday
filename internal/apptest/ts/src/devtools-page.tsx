@@ -22,6 +22,7 @@ import { Devtools, type MonacoLike } from '@lesomnus/payday/react/devtools'
 import { Store } from '@lesomnus/payday/store'
 
 import { entities } from '../gen/entities.js'
+import { events } from '../gen/events.js'
 import { app as client } from './client.js'
 import { start } from './sandbox.js'
 
@@ -131,7 +132,12 @@ function Page(): React.ReactNode {
 			</p>
 			{app === undefined ? <Starting got={got} /> : (
 				<Provider app={app}>
-					<Devtools entities={entities} {...(edit === undefined ? {} : { monaco: edit })} />
+					{/*
+						The registry, though this transport needs none: it
+						speaks binary, where an event's value is bytes. The
+						panel is what writes one out as JSON.
+					*/}
+					<Devtools entities={entities} registry={events} {...(edit === undefined ? {} : { monaco: edit })} />
 				</Provider>
 			)}
 		</main>
