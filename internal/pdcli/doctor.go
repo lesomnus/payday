@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -247,28 +248,112 @@ func doctorSandbox(ctx context.Context, l Layout) []Finding {
 
 	// One file, both imports. Two files is two realms, and the global one
 	// installs is not the one the other looks for.
-	w := l.Path("ts", "src", "sandbox-worker.ts")
-	b, err := os.ReadFile(w)
+	both, halves := sandboxWorkers(l)
 	switch {
-	case err != nil:
+	case len(both) > 0:
+		// One is all it takes. A driver imported again on the main thread
+		// as well is a copy nobody reads, and not this.
+
+	case len(halves) == 0:
 		vs = append(vs, Finding{
 			What: fmt.Sprintf("%s builds a wasm server and %s is not there to run it",
 				l.Rel(DirWasm), l.Rel("ts", "src", "sandbox-worker.ts")),
 			Fix: "import 'sqlite3-wasm-go'\nimport '@lesomnus/grpc-dgram/wasm/worker'",
 		})
 
-	case !bytes.Contains(b, []byte("sqlite3-wasm-go")),
-		!bytes.Contains(b, []byte("@lesomnus/grpc-dgram/wasm/worker")):
-		vs = append(vs, Finding{
-			What: fmt.Sprintf("%s does not import both halves, and they have to be in one file to be in one realm",
-				l.Rel("ts", "src", "sandbox-worker.ts")),
-			Fix: "import 'sqlite3-wasm-go'\nimport '@lesomnus/grpc-dgram/wasm/worker'",
-		})
+	default:
+		for _, h := range halves {
+			vs = append(vs, Finding{
+				What: fmt.Sprintf("%s imports %s and not %s, and they have to be in one file to be in one realm",
+					h.at, h.has, h.lacks),
+				Fix: "import 'sqlite3-wasm-go'\nimport '@lesomnus/grpc-dgram/wasm/worker'",
+			})
+		}
 	}
 
 	vs = append(vs, doctorWasmExec(ctx, l)...)
 
 	return vs
+}
+
+// A sandbox worker is the file that imports both of these, and it is found by
+// that rather than by its name. `pd sandbox init` writes
+// ts/src/sandbox-worker.ts, but where the pages are is the app's: roster's are
+// in ts/lib, and the worker moved with them.
+//
+// What is matched is an import and not a mention, since a worker's own
+// comment names the driver's global, and a vite config excludes the transport
+// from pre-bundling by its package name.
+var (
+	importsDriver = importOf("sqlite3-wasm-go")
+	importsWorker = importOf("@lesomnus/grpc-dgram/wasm/worker")
+)
+
+func importOf(name string) *regexp.Regexp {
+	q := regexp.QuoteMeta(name)
+	return regexp.MustCompile(`(?m)(^[ \t]*import[ \t]*|\bfrom[ \t]*|\bimport[ \t]*\([ \t]*)['"]` + q + `['"]`)
+}
+
+// half is a file that imports one of the two and not the other.
+type half struct {
+	at    string
+	has   string
+	lacks string
+}
+
+// sandboxWorkers reads what is under ts/ that a page could be built from:
+// what is generated, installed or built is not.
+func sandboxWorkers(l Layout) (both []string, halves []half) {
+	skip := map[string]bool{
+		"node_modules":      true,
+		"dist":              true,
+		"public":            true,
+		"test-results":      true,
+		"playwright-report": true,
+	}
+
+	root := l.Path(DirTs)
+	gen := l.Path(DirTsGen)
+	_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if p != root && (skip[d.Name()] || strings.HasPrefix(d.Name(), ".") || p == gen) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		switch filepath.Ext(p) {
+		case ".ts", ".tsx", ".mts", ".js", ".jsx", ".mjs":
+		default:
+			return nil
+		}
+
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return nil
+		}
+
+		at := p
+		if v, err := filepath.Rel(l.Root, p); err == nil {
+			at = l.Rel(v)
+		}
+
+		driver, worker := importsDriver.Match(b), importsWorker.Match(b)
+		switch {
+		case driver && worker:
+			both = append(both, at)
+		case driver:
+			halves = append(halves, half{at, "sqlite3-wasm-go", "@lesomnus/grpc-dgram/wasm/worker"})
+		case worker:
+			halves = append(halves, half{at, "@lesomnus/grpc-dgram/wasm/worker", "sqlite3-wasm-go"})
+		}
+
+		return nil
+	})
+
+	return both, halves
 }
 
 // doctorWasmExec compares the copy the page serves with the one this toolchain

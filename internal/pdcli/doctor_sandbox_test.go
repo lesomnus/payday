@@ -156,3 +156,81 @@ func TestTheFourWaysASandboxGoesQuietlyWrong(t *testing.T) {
 		x.Contains(got, "go env GOROOT")
 	})
 }
+
+// TestTheWorkerIsTheFileThatImportsBothHalves, wherever it is.
+//
+// `pd sandbox init` writes ts/src/sandbox-worker.ts, and an app whose pages are
+// somewhere else moves it with them: roster's is ts/lib/sandbox-worker.ts. A
+// doctor that looked for the one path told such an app its worker was missing
+// on every run, which is a finding nobody acts on and teaches them to skip the
+// rest.
+func TestTheWorkerIsTheFileThatImportsBothHalves(t *testing.T) {
+	worker := filepath.Join("ts", "src", "sandbox-worker.ts")
+
+	t.Run("kept beside the pages", func(t *testing.T) {
+		x := require.New(t)
+		dir, l := sandboxed(t, x)
+
+		b, err := os.ReadFile(filepath.Join(dir, worker))
+		x.NoError(err)
+		x.NoError(os.Remove(filepath.Join(dir, worker)))
+		x.NoError(os.MkdirAll(filepath.Join(dir, "ts", "lib"), 0o755))
+		x.NoError(os.WriteFile(filepath.Join(dir, "ts", "lib", "sandbox-worker.ts"), b, 0o644))
+
+		got := found(t, l)
+		x.NotContains(got, "sandbox-worker")
+		x.NotContains(got, "one realm")
+	})
+
+	t.Run("not there at all", func(t *testing.T) {
+		x := require.New(t)
+		dir, l := sandboxed(t, x)
+
+		x.NoError(os.Remove(filepath.Join(dir, worker)))
+
+		got := found(t, l)
+		x.Contains(got, "is not there to run it")
+		x.Contains(got, "ts/src/sandbox-worker.ts")
+	})
+
+	t.Run("in two files", func(t *testing.T) {
+		x := require.New(t)
+		dir, l := sandboxed(t, x)
+
+		// The driver moved to the page, which is the mistake the worker's
+		// own comment is about.
+		x.NoError(os.WriteFile(filepath.Join(dir, worker),
+			[]byte("import '@lesomnus/grpc-dgram/wasm/worker'\n"), 0o644))
+		x.NoError(os.WriteFile(filepath.Join(dir, "ts", "src", "page.ts"),
+			[]byte("import \"sqlite3-wasm-go\";\n"), 0o644))
+
+		got := found(t, l)
+		x.Contains(got, "ts/src/sandbox-worker.ts imports @lesomnus/grpc-dgram/wasm/worker and not sqlite3-wasm-go")
+		x.Contains(got, "ts/src/page.ts imports sqlite3-wasm-go and not @lesomnus/grpc-dgram/wasm/worker")
+		x.Contains(got, "one realm")
+	})
+
+	t.Run("named and not imported", func(t *testing.T) {
+		x := require.New(t)
+		dir, l := sandboxed(t, x)
+
+		x.NoError(os.Remove(filepath.Join(dir, worker)))
+
+		// A comment that names the driver's global, a config that names
+		// both packages, and a dependency's own worker: none of them is a
+		// file the page builds that imports them.
+		x.NoError(os.WriteFile(filepath.Join(dir, "ts", "src", "notes.ts"), []byte(
+			"// sqlite3-wasm: globalThis[\"sqlite3-wasm-go\"] is not installed\n"+
+				"// import the sqlite3-wasm-go package from the same worker\n"), 0o644))
+		x.NoError(os.WriteFile(filepath.Join(dir, "ts", "vite.config.ts"), []byte(
+			"export default { optimizeDeps: { exclude: ['@lesomnus/grpc-dgram', 'sqlite3-wasm-go'] },\n"+
+				"  server: { headers: { 'Cross-Origin-Embedder-Policy': 'require-corp' } } }\n"), 0o644))
+		x.NoError(os.MkdirAll(filepath.Join(dir, "ts", "node_modules", "w"), 0o755))
+		x.NoError(os.WriteFile(filepath.Join(dir, "ts", "node_modules", "w", "index.js"), []byte(
+			"import 'sqlite3-wasm-go'\nimport '@lesomnus/grpc-dgram/wasm/worker'\n"), 0o644))
+
+		got := found(t, l)
+		x.Contains(got, "is not there to run it")
+		x.NotContains(got, "one realm")
+	})
+}
