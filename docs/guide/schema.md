@@ -477,8 +477,10 @@ What it changes is the past's **expiry**: an event goes once no row that stays
 names it, and the columns that can are the ones that say so -- the past's own,
 which payday's Event and Fact mark, and yours. A column that does not say it is
 not asked, whatever it is called, and the event it names goes with its window
-while the row goes on naming it. `pd gen` lists every one in the store the
-`past` package expires through; see [Letting it go](past.md#12-letting-it-go).
+while the row goes on naming it -- so `pd doctor` asks about one named for an
+event, `event_id` or `…_event_id`, that says nothing. `pd gen` lists every one
+in the store the `past` package expires through; see
+[Letting it go](past.md#12-letting-it-go).
 
 It goes on a `bytes` column of `TYPE_UUID` of an entity, one identifier to a
 row, in an app that declares a past -- generation refuses it on any other type,
@@ -860,7 +862,9 @@ enums, messages of your own, lists, maps and protobuf's own types -- but no
 `(payday.field)`, in it or in anything it holds, since an event names people by
 identifier only; no entity, and no message of a generated contract, since a row
 would keep a row whole or a slug; and no `Any`. An entity cannot be one, and an
-app with no past cannot have one.
+app with no past cannot have one. Since nothing in one is declared, a field of
+one named for something about a person -- `email`, `phone_number` -- is one `pd
+doctor` asks about by its name.
 
 A row keeps the message as its canonical JSON and reads it back by name for as
 long as the tenant keeps its history, so a message is never deleted and a

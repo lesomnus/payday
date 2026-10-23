@@ -491,9 +491,11 @@ and until the first such row is written, nothing says the line is missing.
 so that the line is there from the day a page is made.
 
 A page made before this has transports without it, and the line is the app's
-to add. The same registry is what `anyUnpack(ev.value, events)` reads a value
-with; see [Keeping a past](past.md#5-reading-an-event-back). And it is the
-panel's `registry`, which writes one out; see [§8](#8-the-panel).
+to add; in an app that keeps a past, `pd doctor` names each file of `ts/src`
+whose transport speaks JSON and is handed none. The same registry is what
+`anyUnpack(ev.value, events)` reads a value with; see
+[Keeping a past](past.md#5-reading-an-event-back). And it is the panel's
+`registry`, which writes one out; see [§8](#8-the-panel).
 
 ## 8. The panel
 

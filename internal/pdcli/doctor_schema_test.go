@@ -44,6 +44,15 @@ func TestTheReferenceAppIsWell(t *testing.T) {
 	v := found(t, apptest(t, x))
 	x.NotContains(v, "pd gen would refuse")
 	x.NotContains(v, "says nothing of", "every field of the reference app that may hold a person says which it is")
+
+	// It keeps a past, and what it keeps is as the doctor would have it: every
+	// column that names an event says so, no event message holds a person,
+	// the lock is what a generation writes, and no transport of its page
+	// speaks JSON without the registry.
+	x.NotContains(v, "named for an event")
+	x.NotContains(v, "named for something about a person")
+	x.NotContains(v, "past.lock")
+	x.NotContains(v, "hands it no registry")
 }
 
 // TestDoctorAsksWhatAFieldOfAnEntityThatHoldsPeopleIs: an entity with a

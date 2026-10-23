@@ -15,7 +15,8 @@ old events readable, the lock that holds an app to them, and the registries a
 server and a page read events with; then the `past` package, which records an
 operation and the facts it writes, reads them back at a moment, says what
 happened in the reader's language, corrects it, takes a reason out, and lets
-what a tenant's window no longer reaches go.
+what a tenant's window no longer reaches go; and what `pd doctor` asks of an
+app that keeps one.
 
 - [1. Declaring a past](#1-declaring-a-past)
 - [2. What an event holds](#2-what-an-event-holds)
@@ -29,6 +30,7 @@ what a tenant's window no longer reaches go.
 - [10. Correcting it](#10-correcting-it)
 - [11. Taking a reason out](#11-taking-a-reason-out)
 - [12. Letting it go](#12-letting-it-go)
+- [13. What `pd doctor` asks](#13-what-pd-doctor-asks)
 
 ## 1. Declaring a past
 
@@ -108,7 +110,9 @@ An event names whoever it is about -- the holder who did it, the person it was
 done to -- by identifier, and holds nothing of theirs. That is what lets the
 trail, the access record and erasure leave history alone: there is nothing of a
 person in it to find. A sentence names them when it is read, as they are called
-then, and says so to the access record.
+then, and says so to the access record. A field of one named for something
+about a person -- `email`, `phone_number` -- is one `pd doctor` asks about
+([§13](#13-what-pd-doctor-asks)).
 
 The one free text an event keeps is the Event's own `reason`, why it was done,
 in the words of whoever asked. Nothing can tell whether somebody is named in
@@ -187,7 +191,9 @@ what this schema no longer declares as it was. ...
 ```
 
 Commit it. `pd gen --check` regenerates it like everything else it writes, so
-a lock behind its schema fails CI the way a stale generated file does.
+a lock behind its schema fails CI the way a stale generated file does, and `pd
+doctor` makes the same comparison and writes nothing
+([§13](#13-what-pd-doctor-asks)).
 
 **Taking something back is a hand edit**, of the schema and the lock together,
 in one change a reviewer reads. It is right for one thing only: a type no
@@ -239,8 +245,9 @@ const transport = createConnectTransport({
 })
 ```
 
-A page made before this has transports without it; add the line there. See
-[the page](client.md#the-registry-a-connect-transport-is-handed).
+A page made before this has transports without it; add the line there, and
+`pd doctor` names each file that still needs it ([§13](#13-what-pd-doctor-asks)).
+See [the page](client.md#the-registry-a-connect-transport-is-handed).
 
 ## 6. Recording an operation
 
@@ -651,7 +658,8 @@ payday's templates mark the past's own -- a fact's `event_id` and
 that name the operation that wrote them: a time row's, a stock movement's.
 `pd gen` lists every one in the store (`Store.Pointers()`), and an expiry asks
 each of them about each event before it takes it, so give each an index that
-begins with it.
+begins with it. A column named for an event that does not say so is one `pd
+doctor` asks about ([§13](#13-what-pd-doctor-asks)).
 
 **Your own rows go first**, in the same transaction: what of them your rules say
 is over, through your servers, so that the trail has each as the erase it is --
@@ -746,3 +754,40 @@ written through the servers -- and its windows are answered per tenant too
 outlives the past it records keeps, as values, what the past let go, and a
 past the trail has forgotten the making of is history nobody can vouch for.
 [The operator's guide](operator.md#3-the-trail-asks-it) has the shape.
+
+## 13. What `pd doctor` asks
+
+`pd gen` refuses what it can tell is wrong. What it cannot tell -- what a column
+or a field means, what a page does with its transport -- and what it says only
+once a generation has started, `pd doctor` asks of an app that keeps a past. A
+schema its lock refuses is said as stopping a generation, which it does; the
+rest is advice, and a generation does what it did.
+
+- **A schema its lock refuses, or a lock behind its schema.** The comparison of
+  §4, made without writing the lock. A schema that lost or changed what the lock
+  holds is said in the words `pd gen` refuses it in. A lock that does not hold
+  all the schema declares -- one not written yet, or committed without what a
+  change added -- says what it lacks: until `pd gen` adds that, nothing refuses
+  a change to it, and `pd gen --check` fails. Run `pd gen`, and commit the lock.
+- **A column named for an event that does not say it names one**: a `bytes`
+  column of `TYPE_UUID` called `event_id` or `…_event_id`, without
+  `(payday.field) = {event: true}`. The expiry asks only the columns that say so
+  (§12), and takes the event while the row goes on naming it. Say it, and give it
+  an index. A column named for an entity of yours -- `calendar_event_id` beside a
+  `CalendarEvent` -- names a row of that, and is not asked about; one that names
+  something else is better called after what it names.
+- **A field of an event message named for something about a person**, in the
+  message or in one it holds: `email`, `phone`, `address`, `first_name` and the
+  rest of the words [the schema guide](schema.md#saying-a-field-is-about-no-one)
+  lists. An event names people by identifier (§2), and nothing in one can be
+  declared, so its name is what is asked about. Hold the identifier. A field
+  about no one -- a machine's network address -- is called something that does
+  not say otherwise, keeping its `json_name` if rows of it were written.
+- **A page whose transport cannot read an event**: a file of `ts/src` that makes
+  a transport that speaks JSON -- `createConnectTransport`, or gRPC-web told
+  `useBinaryFormat: false` -- where `jsonOptions` is said nowhere, in the file or
+  in a module of the page it imports, or only as a literal with no registry in
+  it (§5). The fix it gives is the import from where the file is, and the line.
+  It reads a page generously: a registry handed under names of its own, built
+  beside the transport or in another module of the page, is handed; a transport
+  that speaks binary needs none; and a test is not the page.

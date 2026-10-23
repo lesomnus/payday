@@ -161,8 +161,10 @@ func namedForSomebody(name string) bool {
 
 // where is the line a field is declared on, as a path from the app's root, or
 // the file alone when the schema was built without its source.
-func where(p graph.Prop) string {
-	d := p.Descriptor()
+func where(p graph.Prop) string { return whereField(p.Descriptor()) }
+
+// whereField is [where] of a field of any message, an entity's or not.
+func whereField(d protoreflect.FieldDescriptor) string {
 	f := d.ParentFile()
 	at := DirProto + "/" + f.Path()
 

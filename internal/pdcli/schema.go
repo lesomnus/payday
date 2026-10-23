@@ -93,7 +93,11 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 	// hold a person and that the schema says nothing about. See personal.go.
 	// And what it accepts and a check of the rows then does not look at: a
 	// kind kept off the trail that holds a secret. See doctor_trail.go.
-	return append(doctorPersonal(schema), doctorTrailOff(schema)...)
+	// And of an app that keeps a past, what it accepts and the past then gets
+	// wrong, and its lock as a generation would hold it. See doctor_past.go.
+	vs := append(doctorPersonal(schema), doctorTrailOff(schema)...)
+
+	return append(vs, doctorPast(l, schema)...)
 }
 
 // describe is the app's schema as descriptors, from buf: the whole workspace,
