@@ -134,6 +134,50 @@ func RegisterDsnDefault(driver string, key string, value string) {
 	q[key] = value
 }
 
+// dsnPragmas holds the PRAGMAs each driver wants asked for when a configuration
+// does not ask for them, by name.
+var dsnPragmas = map[string]map[string]string{}
+
+// RegisterDsnPragma records a `_pragma=name(value)` [DbConfig.Open] adds to a
+// DSN opened with `driver` that asks for no PRAGMA called `name`.
+//
+// It is [RegisterDsnDefault] for the one parameter a DSN says more than once.
+// `_pragma` is a list -- `?_pragma=foreign_keys(1)&_pragma=journal_mode(wal)`
+// -- so "set unless the key is there" would set nothing: the key is in nearly
+// every DSN, for some PRAGMA that has nothing to do with this one. What is
+// asked is whether this PRAGMA is.
+//
+// It goes in ahead of the DSN's own, after an encryption key if there is one.
+// That is the order the driver documents, and the reason for it is the PRAGMA
+// this exists for: a busy timeout is what lets the ones after it wait for a
+// lock rather than fail on it.
+//
+// Only a DSN with a scheme is touched, and a PRAGMA already in it is kept,
+// however it is spelled: `busy_timeout(10000)`, `BUSY_TIMEOUT = 10000`.
+func RegisterDsnPragma(driver string, name string, value string) {
+	q, ok := dsnPragmas[driver]
+	if !ok {
+		q = map[string]string{}
+		dsnPragmas[driver] = q
+	}
+
+	q[strings.ToLower(name)] = value
+}
+
+// pragmaName is the name a `_pragma` value asks for: `busy_timeout` of
+// `busy_timeout(10000)` and of ` BUSY_TIMEOUT = 10000`.
+func pragmaName(v string) string {
+	if i := strings.IndexAny(v, "(="); i >= 0 {
+		v = v[:i]
+	}
+
+	return strings.ToLower(strings.TrimSpace(v))
+}
+
+// keyPragmas are the PRAGMAs that have to come before every other one, since
+// nothing can be read from an encrypted database until it has its key.
+var keyPragmas = map[string]bool{"key": true, "hexkey": true, "textkey": true}
+
 // Drivers lists the registered drivers in lexical order.
 func Drivers() []string {
 	return slices.Sorted(maps.Keys(dialects))
@@ -265,14 +309,15 @@ func writesImmediately(dialect, dsn string) string {
 }
 
 // withDsnDefaults adds what the driver registered with [RegisterDsnDefault] and
-// the DSN does not already say.
+// [RegisterDsnPragma] and the DSN does not already say.
 //
 // A DSN with no scheme is left alone for the reason a bare path is: it is a
 // filename to SQLite rather than a URI, so a query string appended to one
 // becomes part of the name.
 func withDsnDefaults(driver, dsn string) string {
 	defaults := dsnDefaults[driver]
-	if len(defaults) == 0 {
+	pragmas := dsnPragmas[driver]
+	if len(defaults) == 0 && len(pragmas) == 0 {
 		return dsn
 	}
 
@@ -289,6 +334,20 @@ func withDsnDefaults(driver, dsn string) string {
 		}
 
 		q.Set(k, defaults[k])
+		changed = true
+	}
+	for _, name := range slices.Sorted(maps.Keys(pragmas)) {
+		vs := q["_pragma"]
+		if slices.ContainsFunc(vs, func(v string) bool { return pragmaName(v) == name }) {
+			continue
+		}
+
+		at := 0
+		for at < len(vs) && keyPragmas[pragmaName(vs[at])] {
+			at++
+		}
+
+		q["_pragma"] = slices.Insert(slices.Clone(vs), at, name+"("+pragmas[name]+")")
 		changed = true
 	}
 	if !changed {

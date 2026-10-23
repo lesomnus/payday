@@ -36,4 +36,20 @@ func init() {
 	// and a fixed-width layout keeps each value's own zone, so it sorts only if
 	// every caller stores UTC.
 	config.RegisterDsnDefault("sqlite3", "_timefmt", "unixepoch_nano")
+
+	// A busy timeout, because asking for any PRAGMA turns the driver's own off.
+	//
+	// This driver waits a minute for a lock when a DSN asks for no PRAGMA, and
+	// the DSN an app is told to write asks for one: `foreign_keys(1)`, above,
+	// which SQLite leaves off unless asked. With any `_pragma` at all the driver
+	// sets no timeout, and a connection that finds the database locked is
+	// refused at once. Under the `_txlock=immediate` [config.DbConfig.Open] adds,
+	// so that two writers queue rather than deadlock, that is every write that
+	// overlaps another: two RPCs at once, and one of them answers `database is
+	// locked` from a database that is working perfectly.
+	//
+	// The queue `_txlock` promises is only a queue with a wait, so the wait is
+	// put back: the driver's own minute, for a DSN that names no timeout of its
+	// own. A deployment that wants another says so, `busy_timeout(10000)`.
+	config.RegisterDsnPragma("sqlite3", "busy_timeout", "60000")
 }
