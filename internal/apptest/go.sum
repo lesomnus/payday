@@ -119,8 +119,8 @@ github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3I
 github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 h1:KPpdlQLZcHfTMQRi6bFQ7ogNO0ltFT4PmtwTLW4W+14=
 github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741/go.mod h1:pxMtw7cyUw6B2bRH0ZBANSPg+AoSud1I1iyJHI69jH4=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/protobuf-orm/ent v0.0.0-20261023220616-4d86cf345c31 h1:94jQGufJFjNmkd+Jwajh65QTbSYJzoai1C7Fndn3A0s=
-github.com/protobuf-orm/ent v0.0.0-20261023220616-4d86cf345c31/go.mod h1:JKSVsmxOY0wMq7X+n6Kikb9T20FZHhXYwbY31ijmoM0=
+github.com/protobuf-orm/ent v0.0.0-20261024093555-2248bed4984b h1:pV7jGltkg6BQIrkJo6rW+/JOnGbWXhVqMTj5u+TKSJI=
+github.com/protobuf-orm/ent v0.0.0-20261024093555-2248bed4984b/go.mod h1:JKSVsmxOY0wMq7X+n6Kikb9T20FZHhXYwbY31ijmoM0=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20261017212716-3430237a8656 h1:dVr9HD7HgeUh1c+xhTfjKzwfpKTUDNMcVfMPOt8HPkI=
 github.com/protobuf-orm/protobuf-orm v0.0.0-20261017212716-3430237a8656/go.mod h1:OYlbo4/9t+Hgj/XZwdgN8Z9MyViTLPHxBWLUR4+j52o=
 github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260906232518-fa1777a2628d h1:+AMXRkD7EN/P4MVMC745X53Mxw+5HaQuSM0/+2FabEw=
