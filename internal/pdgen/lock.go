@@ -3,7 +3,9 @@ package pdgen
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"slices"
 	"sort"
@@ -13,18 +15,21 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-// Lock is the record of every event message an app has declared, and of what
-// a row of each holds (payday#151): `proto/<pkg>/payday/past.lock`.
+// Lock is the record of every kind of event an app has declared, of the
+// message the rows of each hold, and of what a row of each message holds
+// (payday#151): `proto/<pkg>/payday/past.lock`.
 //
 // # Why a lock
 //
 // A row of payday's Event keeps its value as the canonical protobuf JSON of
 // the message its kind names, and reads it back by name, for as long as the
 // tenant keeps its history -- which is longer than any version of the code
-// that wrote it. So an event message is never deleted, a field of one is never
-// removed and keeps its JSON name, its kind and whether it is a list or a map,
-// and a value of an enum one holds is never renamed: each of those is every
-// row written before it no longer reading, or reading as something else.
+// that wrote it. So a kind is never dropped and never moved to another
+// message, a message its rows hold is never deleted, a field of one is never
+// removed and keeps its JSON name, its kind and whether it is a list or a
+// map, and a value of an enum one holds is never renamed: each of those is
+// every row written before it no longer reading, or reading as something
+// else.
 //
 // `buf breaking` says some of that, and forgets it: it compares one change
 // with the one before, so a deletion that lands is the new baseline, and the
@@ -34,17 +39,20 @@ import (
 //
 // # What it records
 //
-// Exactly what decides whether an old row still reads, and no more. A field is
-// recorded by number with its JSON name and not its name, so renaming one that
-// keeps its `json_name` is not a change here, as it is not to a row. Its kind
-// is protobuf's, and its type the full name of the message or enum it holds.
-// Every message an event message holds is recorded as it is, and every enum
-// one of them holds, by number, with the name a row is written with --
-// protobuf's own types excepted, which protobuf keeps.
+// Exactly what decides whether an old row still reads, and no more. A kind is
+// recorded with the full name of its message, and a message once, however
+// many kinds hold it: what a row of a kind is read back with is its message,
+// so a message may take more kinds and its rows of the others read as they
+// did. A field is recorded by number with its JSON name and not its name, so
+// renaming one that keeps its `json_name` is not a change here, as it is not
+// to a row. Its kind is protobuf's, and its type the full name of the message
+// or enum it holds. Every message an event message holds is recorded as it
+// is, and every enum one of them holds, by number, with the name a row is
+// written with -- protobuf's own types excepted, which protobuf keeps.
 type Lock struct {
-	// Events is every event message by full name, with the kind its rows are
-	// written under.
-	Events map[string]string `json:"events,omitempty"`
+	// Kinds is every kind of event, with the full name of the event message
+	// its rows hold.
+	Kinds map[string]string `json:"kinds,omitempty"`
 
 	// Messages is every message an event message holds, the event messages
 	// themselves among them, by full name.
@@ -86,12 +94,14 @@ type LockEnum map[int32]string
 // lock never records an event message that holds an Any or a person.
 func EventsLock(s *Schema) *Lock {
 	l := &Lock{
-		Events:   map[string]string{},
+		Kinds:    map[string]string{},
 		Messages: map[string]LockMessage{},
 		Enums:    map[string]LockEnum{},
 	}
 	for _, v := range s.Events {
-		l.Events[string(v.FullName())] = v.Kind
+		for _, kind := range v.Kinds {
+			l.Kinds[kind] = string(v.FullName())
+		}
 		l.message(v.Message.Desc)
 	}
 
@@ -176,7 +186,8 @@ func (e *ErrLock) Error() string {
 		b.WriteString("\n")
 	}
 	b.WriteString("\nPut back what went. A field may be renamed if its `json_name` stays what it was, " +
-		"and anything may be added; nothing in the lock is otherwise taken back. A type no " +
+		"and anything may be added -- a field, a message, a kind of a message; nothing in the lock is " +
+		"otherwise taken back, and a kind is never moved to another message. A type or a kind no " +
 		"deployment ever wrote a row of is taken out of the lock by hand, in a change a reviewer " +
 		"sees: https://github.com/lesomnus/payday/blob/main/docs/guide/past.md#4-the-lock")
 
@@ -186,30 +197,36 @@ func (e *ErrLock) Error() string {
 // Admit is the lock with `next` -- the lock of what the schema declares now --
 // added to it, and refuses a schema that lost or changed anything in it.
 //
-// Lost is an event message gone or no longer one, a kind changed, a message
-// one of them holds gone, a field removed or changed in its JSON name, its
-// kind, its type or whether it is a list or a map, and an enum value removed
-// or renamed. Everything else is added: a message, a field, a value.
+// Lost is a kind no message declares now -- its message gone, no longer an
+// event message, or no longer holding it -- or one another message declares
+// now; a message one of them holds gone; a field removed or changed in its
+// JSON name, its kind, its type or whether it is a list or a map; and an enum
+// value removed or renamed. Everything else is added: a kind, a message, a
+// field, a value.
 //
 // The answer is a union and never a replacement, so that whatever the lock
 // holds stays in it even where nothing here refuses its absence.
 func (l *Lock) Admit(next *Lock) (*Lock, error) {
 	var lost []string
 
-	for name, kind := range l.Events {
-		now, ok := next.Events[name]
+	// The event messages, whose going their kinds' lines say.
+	events := map[string]bool{}
+	for kind, name := range l.Kinds {
+		events[name] = true
+
+		now, ok := next.Kinds[kind]
 		switch {
 		case !ok:
-			lost = append(lost, fmt.Sprintf("%s: was an event message of kind %q, and is not one now", name, kind))
-		case now != kind:
-			lost = append(lost, fmt.Sprintf("%s: was of kind %q, and is of kind %q now", name, kind, now))
+			lost = append(lost, fmt.Sprintf("kind %q: its rows hold %s, and no message declares it now", kind, name))
+		case now != name:
+			lost = append(lost, fmt.Sprintf("kind %q: its rows hold %s, and %s declares it now", kind, name, now))
 		}
 	}
 
 	for name, was := range l.Messages {
 		now, ok := next.Messages[name]
 		if !ok {
-			if _, event := l.Events[name]; !event {
+			if !events[name] {
 				lost = append(lost, fmt.Sprintf("%s: was held by an event message, and none holds it now", name))
 			}
 			continue
@@ -281,12 +298,12 @@ func (f LockField) shape() string {
 
 func (l *Lock) union(next *Lock) *Lock {
 	v := &Lock{
-		Events:   maps.Clone(l.Events),
+		Kinds:    maps.Clone(l.Kinds),
 		Messages: map[string]LockMessage{},
 		Enums:    map[string]LockEnum{},
 	}
-	if v.Events == nil {
-		v.Events = map[string]string{}
+	if v.Kinds == nil {
+		v.Kinds = map[string]string{}
 	}
 	for name, m := range l.Messages {
 		v.Messages[name] = maps.Clone(m)
@@ -295,7 +312,7 @@ func (l *Lock) union(next *Lock) *Lock {
 		v.Enums[name] = maps.Clone(e)
 	}
 
-	maps.Copy(v.Events, next.Events)
+	maps.Copy(v.Kinds, next.Kinds)
 	for name, m := range next.Messages {
 		if v.Messages[name] == nil {
 			v.Messages[name] = LockMessage{}
@@ -312,14 +329,42 @@ func (l *Lock) union(next *Lock) *Lock {
 	return v
 }
 
+// ErrLockOfEvents is a lock a payday from before a message could hold several
+// kinds (payday#171) wrote: it records each event message's one kind, under
+// `events`, where a lock now records each kind's message, under `kinds`. The
+// same record the other way round, which is a hand edit to make once.
+var ErrLockOfEvents = errors.New(`records each event message's kind under "events", as a payday from ` +
+	`before payday#171 wrote it, and a lock now records each kind's message under "kinds": write each ` +
+	`"app.Message": "kind" of "events" as "kind": "app.Message" under "kinds", and run pd gen again. A ` +
+	`lock no deployment ever wrote a row under may be deleted instead, for pd gen to write from the schema`)
+
 // ReadLock is a lock as it is committed, and an empty one for none at all.
+//
+// A key it does not know is refused rather than dropped. The lock is written
+// back with what is new added to it, so a key dropped on the way in -- one a
+// newer payday writes, or an older one did -- is a record of what rows were
+// written with gone from the lock without a word, which is the one thing it
+// is there to never do.
 func ReadLock(b []byte) (*Lock, error) {
 	v := &Lock{}
 	if len(bytes.TrimSpace(b)) == 0 {
 		return v, nil
 	}
-	if err := json.Unmarshal(b, v); err != nil {
+
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v); err != nil {
+		var old struct {
+			Events json.RawMessage `json:"events"`
+		}
+		if json.Unmarshal(b, &old) == nil && old.Events != nil {
+			return nil, ErrLockOfEvents
+		}
+
 		return nil, err
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return nil, errors.New("holds more than one JSON value")
 	}
 
 	return v, nil

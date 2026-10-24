@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/protobuf-orm/ent/dialect"
@@ -42,8 +44,15 @@ type Event struct {
 	// the trail ([Redact]).
 	Reason string
 
+	// Kind is which of the kinds its message holds the event is: what it is
+	// written under, and what a sentence of it is said for. A message of one
+	// kind is its event's kind, and Kind may say it or be empty; one of
+	// several cannot say which operation its event was, so Kind says it. A
+	// kind the message does not hold is refused.
+	Kind string
+
 	// Value is what was done: a message the app declares an event message,
-	// `option (payday.event)`, whose kind the event is written under.
+	// `option (payday.event)`, holding what an event of its kind holds.
 	Value proto.Message
 }
 
@@ -122,8 +131,9 @@ func Detach(ctx context.Context) context.Context {
 // and in which tenant from the caller's frame, which a call without one is
 // refused for; the trace from the span; what it is part of from `ctx`, when
 // that is an operation in this transaction; its kind from what `ev.Value`
-// declares, which the app's schema must declare as well -- so that none of it
-// is a thing a caller could say otherwise.
+// declares -- the one its message holds, or of several the one `ev.Kind`
+// names -- which the app's schema must declare as well, so that none of it is
+// a thing a caller could say otherwise.
 //
 // The subject is a row of the caller's tenant, or of no tenant, and one of
 // another is refused as not found. An identifier that names no row is taken
@@ -153,7 +163,7 @@ func Begin(ctx context.Context, s Store, ev Event) (context.Context, *Op, error)
 		return ctx, nil, status.Error(codes.FailedPrecondition, "an event is filed under the tenant of whoever did it, and this caller is of none")
 	}
 
-	kind, value, err := kindOf(s, ev.Value)
+	kind, value, err := kindOf(s, ev.Kind, ev.Value)
 	if err != nil {
 		return ctx, nil, err
 	}
@@ -242,7 +252,7 @@ func (o *Op) Batch(ctx context.Context, children []Child) ([]*Op, error) {
 	rows := make([]EventRow, len(children))
 	subjects := make([]pdid.Id, 0, len(children))
 	for i, c := range children {
-		kind, value, err := kindOf(o.s, c.Event.Value)
+		kind, value, err := kindOf(o.s, c.Event.Kind, c.Event.Value)
 		if err != nil {
 			return nil, fmt.Errorf("child %d: %w", i, err)
 		}
@@ -367,17 +377,35 @@ func (o *Op) agree(ctx context.Context, events, facts []pdid.Id) error {
 	return nil
 }
 
-// kindOf is the kind an event holding `v` is written under, read off what
-// `v` declares, and `v` as the event keeps it.
-func kindOf(s Store, v proto.Message) (string, *anypb.Any, error) {
+// kindOf is the kind an event holding `v` is written under, and `v` as the
+// event keeps it: `kind`, which is one of the kinds `v` declares, or the one
+// it declares where `kind` is empty.
+//
+// A message of several kinds cannot say which an event is -- a correction and
+// a retraction hold one message -- so an event of one says it, and a kind the
+// message does not declare is refused rather than written: a row of it would
+// be said as an operation it was not, and read back by a kind whose message is
+// another.
+func kindOf(s Store, kind string, v proto.Message) (string, *anypb.Any, error) {
 	if v == nil || !v.ProtoReflect().IsValid() {
 		return "", nil, status.Error(codes.InvalidArgument, "an event holds what happened: a message the app declares with (payday.event)")
 	}
 
 	md := v.ProtoReflect().Descriptor()
-	kind, ok := declared(md)
+	kinds, ok := declared(md)
 	if !ok {
 		return "", nil, status.Errorf(codes.InvalidArgument, "%s says no (payday.event), so it is no event message", md.FullName())
+	}
+	switch {
+	case kind == "" && len(kinds) == 1:
+		kind = kinds[0]
+	case kind == "":
+		return "", nil, status.Errorf(codes.InvalidArgument,
+			"%s is what events of %s hold, and an event of it says which it is: past.Event{Kind: %q, ...}",
+			md.FullName(), sayKinds(kinds), kinds[0])
+	case !slices.Contains(kinds, kind):
+		return "", nil, status.Errorf(codes.InvalidArgument,
+			"%s is what events of %s hold, and not of %q", md.FullName(), sayKinds(kinds), kind)
 	}
 	if t, ok := s.Kinds()[kind]; !ok || t.Descriptor().FullName() != md.FullName() {
 		return "", nil, status.Errorf(codes.InvalidArgument,
@@ -392,20 +420,38 @@ func kindOf(s Store, v proto.Message) (string, *anypb.Any, error) {
 	return kind, value, nil
 }
 
-// declared is the kind an event holding a message of `md` is written under --
-// what its `(payday.event)` says, or its full name where that names none --
-// and false for a message that declares no `(payday.event)` at all: what an
-// event is written under, and what a sentence of it is said for.
-func declared(md protoreflect.MessageDescriptor) (string, bool) {
+// declared is the kinds an event holding a message of `md` may be written
+// under -- what its `(payday.event)` says, in the order it says them, or its
+// full name alone where that names none -- and false for a message that
+// declares no `(payday.event)` at all: what an event is written under, and
+// what a sentence of it is said for.
+//
+// As `pd gen` reads them, which refuses a kind said empty or twice, so a
+// schema it accepted says each kind once.
+func declared(md protoreflect.MessageDescriptor) ([]string, bool) {
 	o, _ := proto.GetExtension(md.Options(), pdpb.E_Event).(*pdpb.EventMessage)
 	if o == nil {
-		return "", false
+		return nil, false
 	}
-	if kind := o.GetKind(); kind != "" {
-		return kind, true
+	if kinds := o.GetKinds(); len(kinds) > 0 {
+		return kinds, true
 	}
 
-	return string(md.FullName()), true
+	return []string{string(md.FullName())}, true
+}
+
+// sayKinds is kinds as an answer names them: `kind "a"`, `kinds "a" and "b"`,
+// `kinds "a", "b" and "c"`.
+func sayKinds(kinds []string) string {
+	vs := make([]string, len(kinds))
+	for i, v := range kinds {
+		vs[i] = strconv.Quote(v)
+	}
+	if len(vs) == 1 {
+		return "kind " + vs[0]
+	}
+
+	return "kinds " + strings.Join(vs[:len(vs)-1], ", ") + " and " + vs[len(vs)-1]
 }
 
 // lock holds `id` until the transaction `drv` is in ends, on PostgreSQL: a

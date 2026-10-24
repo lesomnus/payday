@@ -112,17 +112,32 @@ func Sentences(events app.EventServiceServer) *past.Sentences {
 		return fmt.Sprintf("%s: %s 가동", actor(r, ev, "시스템"), name(r, m.GetMachine()))
 	})
 
-	past.Say(s, "en", func(r *past.Reading, ev past.EventRow, m *app.Corrected) string {
+	// A correction and a retraction hold one message, and each is said in a
+	// sentence of its own, reading what of it its kind uses: a correction the
+	// moment the event happened at instead, and a retraction nothing but which
+	// event, the event never having happened. So each is said with
+	// `past.SayKind`; `past.Say` of a message of several kinds is refused.
+	//
+	// A retraction was a `correct` holding no moment until `retract` was a
+	// kind, and rows of it say so still: a message that takes a kind leaves
+	// the rows of its others as they were written.
+	past.SayKind(s, "correct", "en", func(r *past.Reading, ev past.EventRow, m *app.Corrected) string {
 		if !m.HasAt() {
 			return fmt.Sprintf("%s said an earlier event never happened", actor(r, ev, "The deployment"))
 		}
 		return fmt.Sprintf("%s said an earlier event happened on %s", actor(r, ev, "The deployment"), r.Time(m.GetAt().AsTime()))
 	})
-	past.Say(s, "ko", func(r *past.Reading, ev past.EventRow, m *app.Corrected) string {
+	past.SayKind(s, "correct", "ko", func(r *past.Reading, ev past.EventRow, m *app.Corrected) string {
 		if !m.HasAt() {
 			return fmt.Sprintf("%s: 이전 기록을 없던 일로 함", actor(r, ev, "시스템"))
 		}
 		return fmt.Sprintf("%s: 이전 기록을 %s의 일로 고침", actor(r, ev, "시스템"), r.Time(m.GetAt().AsTime()))
+	})
+	past.SayKind(s, "retract", "en", func(r *past.Reading, ev past.EventRow, m *app.Corrected) string {
+		return fmt.Sprintf("%s took back an earlier event, which never happened", actor(r, ev, "The deployment"))
+	})
+	past.SayKind(s, "retract", "ko", func(r *past.Reading, ev past.EventRow, m *app.Corrected) string {
+		return fmt.Sprintf("%s: 이전 기록을 없던 일로 되돌림", actor(r, ev, "시스템"))
 	})
 
 	// The receipt of an expiry: how many of what went, and from before when.

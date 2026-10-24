@@ -892,35 +892,46 @@ own.
 
 #### What an event holds
 
-An event keeps no sentence. Its `value` holds a message you declare for its
-kind of operation, marked as one:
+An event keeps no sentence. Its `value` holds a message you declare for what
+its kind of operation holds, marked as one with the kinds it holds:
 
 ```proto
 message RobotMoved {
-  option (payday.event) = {kind: "robot.move"};
+  option (payday.event) = {kinds: "robot.move"};
 
   bytes robot = 1;
   bytes from = 2;
   bytes to = 3;
 }
+
+message RobotParked {
+  option (payday.event) = {kinds: ["robot.park", "robot.unpark"]};
+
+  bytes robot = 1;
+  bytes bay = 2; // where it is parked; an unpark holds none
+}
 ```
 
-The kind is what its rows are written under, and the message's full name when
-the option names none; two messages of one app have two kinds. It may be
-declared anywhere in your files, inside another message too, and holds scalars,
-enums, messages of your own, lists, maps and protobuf's own types -- but no
-`(payday.field)`, in it or in anything it holds, since an event names people by
-identifier only; no entity, and no message of a generated contract, since a row
-would keep a row whole or a slug; and no `Any`. An entity cannot be one, and an
-app with no past cannot have one. Since nothing in one is declared, a field of
-one named for something about a person -- `email`, `phone_number` -- is one `pd
-doctor` asks about by its name.
+A kind is what its rows are written under, and the message's full name when the
+option names none. A kind is one message's, and a message holds as many as the
+operations whose events hold much the same, each using what of it it needs; an
+event of a message of several says which it is. Across the messages a domain's
+kinds hold -- `robot` of `robot.park` -- a field of one name has one number and
+one type. A message may be declared anywhere in your files, inside another
+message too, and holds scalars, enums, messages of your own, lists, maps and
+protobuf's own types -- but no `(payday.field)`, in it or in anything it holds,
+since an event names people by identifier only; no entity, and no message of a
+generated contract, since a row would keep a row whole or a slug; and no
+`Any`. An entity cannot be one, and an app with no past cannot have one. Since
+nothing in one is declared, a field of one named for something about a person
+-- `email`, `phone_number` -- is one `pd doctor` asks about by its name.
 
 A row keeps the message as its canonical JSON and reads it back by name for as
-long as the tenant keeps its history, so a message is never deleted and a
-field of one never removed or changed -- and `pd gen` holds the app to that
-with a lock, `proto/app/payday/past.lock`, which it only ever adds to. That is
-[Keeping a past](past.md).
+long as the tenant keeps its history, so a kind is never dropped or moved to
+another message, a message is never deleted and a field of one never removed
+or changed -- and `pd gen` holds the app to that with a lock,
+`proto/app/payday/past.lock`, which it only ever adds to. That is [Keeping a
+past](past.md).
 
 Rows of the two are written and read by the `past` package, through the
 `pd.Past` `pd gen` writes beside them -- an event in its operation's
@@ -1027,8 +1038,9 @@ only test for whether it belongs on this list.
 | payday's domains given in two files, or given to one of its entities that keeps its number | two answers to the number its copies are written with, or a number nothing writes |
 | a copy of Archived or Access at a number other than the one given, or than payday's where none is | a table numbered by nothing the schema says |
 | an event message holding a `(payday.field)`, an entity, a contract's message or an `Any`, anywhere in it | a person, a row or a slug kept for as long as history is, or a message nothing declared |
-| an entity that is an event message, two of one kind, or one in an app that declares no past | a row that says it holds either, or an event with no table |
-| an event message, a field, a kind or an enum value that the past's lock holds, gone or changed | every row written before it, no longer read or read as something else |
+| an entity that is an event message, two of one kind, a kind said empty or twice, or one in an app that declares no past | a row that says it holds either, or an event with no table |
+| a field of one name at two numbers, or of two types, across the event messages of one domain's kinds | one name read as two fields by whatever reads the domain's events |
+| an event message, a field, a kind or an enum value that the past's lock holds, gone or changed -- a kind moved to another message among them | every row written before it, no longer read or read as something else |
 | `event: true` on anything but a `bytes` column of `TYPE_UUID` -- a list, an edge, the key -- in an app with no past, or on payday's Event beside its cause | an event the expiry keeps by a column it cannot ask, or takes while the schema said a row named it |
 | two `go_package`, or two proto packages | two Go packages is two ent schemas, and the wall is an edge |
 | generated code from a different payday | a wall written by one version, read by another |

@@ -20,17 +20,32 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// EventMessage says a message is what one kind of the app's events holds: the
-// `value` of a row of payday's Event, in an app that declares a past
+// EventMessage says a message is what the app's events of one or more kinds
+// hold: the `value` of a row of payday's Event, in an app that declares a past
 // (payday#151).
 //
 //	message RobotMoved {
-//	  option (payday.event) = {kind: "robot.move"};
+//	  option (payday.event) = {kinds: "robot.move"};
 //
 //	  bytes robot = 1;
 //	  bytes from = 2;
 //	  bytes to = 3;
 //	}
+//
+//	// What a correction holds: the event it is of, and when that happened
+//	// instead -- which a retraction, of an event that never happened, leaves
+//	// empty.
+//	message Corrected {
+//	  option (payday.event) = {kinds: ["correct", "retract"]};
+//
+//	  bytes event = 1;
+//	  google.protobuf.Timestamp at = 2;
+//	}
+//
+// A kind is the operation -- what a list of events is filtered by, and what a
+// sentence is said for -- and the message is what its events hold. Kinds whose
+// events hold much the same are one message, and each kind's events hold the
+// fields it uses of it.
 //
 // An event keeps no sentence. It keeps this message, and a sentence is made
 // from it when the event is read -- in the reader's language, naming the people
@@ -54,18 +69,23 @@ const (
 //   - a field holding an entity, or a message of a generated contract -- a row
 //     whole, or a Ref with a slug in it;
 //   - a `google.protobuf.Any`, whose message nothing here declared;
-//   - an entity that says it is one, or two messages of one kind.
+//   - an entity that says it is one, a kind two messages say, and a kind said
+//     empty or twice;
+//   - a field whose name another message of the same domain's kinds holds at
+//     another number, or holding another type: a kind's domain is what it says
+//     before its first `.`, and one name is one field across a domain.
 //
-// And it keeps `proto/<pkg>/payday/past.lock`, the record of every event
-// message the app ever declared: a message in it is not deleted, a field of one
-// is not removed and keeps its JSON name, its kind and whether it is a list or
-// a map, and a value of an enum one holds is not renamed. `pd gen` only adds to
-// it.
+// And it keeps `proto/<pkg>/payday/past.lock`, the record of every kind the
+// app ever declared and of the message its rows hold: a kind in it is not
+// dropped or moved to another message, a field of one of those messages is
+// not removed and keeps its JSON name, its kind and whether it is a list or a
+// map, and a value of an enum one holds is not renamed. `pd gen` only adds to
+// it, so a message may take more kinds and never give one up.
 type EventMessage struct {
-	state           protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Kind string                 `protobuf:"bytes,1,opt,name=kind"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Kinds []string               `protobuf:"bytes,1,rep,name=kinds"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *EventMessage) Reset() {
@@ -93,34 +113,39 @@ func (x *EventMessage) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *EventMessage) GetKind() string {
+func (x *EventMessage) GetKinds() []string {
 	if x != nil {
-		return x.xxx_hidden_Kind
+		return x.xxx_hidden_Kinds
 	}
-	return ""
+	return nil
 }
 
-func (x *EventMessage) SetKind(v string) {
-	x.xxx_hidden_Kind = v
+func (x *EventMessage) SetKinds(v []string) {
+	x.xxx_hidden_Kinds = v
 }
 
 type EventMessage_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	// Kind is what the rows of this message are written under -- the event's
-	// `kind`, which a list of events is filtered by -- and the message's full
-	// name when it says none. Two messages of one app have two kinds.
+	// Kinds are what the rows of this message are written under -- each an
+	// event's `kind` -- and the message's full name alone when it says none. A
+	// kind is one message's, and an event of a message of several says which
+	// of them it is (`past.Event.Kind`).
 	//
-	// Chosen once, like a field's number: a row says which message its value is
-	// by its kind, so the lock refuses a kind that changed.
-	Kind string
+	// Each is chosen once, like a field's number: a row says which message its
+	// value is by its kind, so the lock refuses a kind dropped or moved to
+	// another message, and a message may only take more.
+	//
+	// At 1, where `string kind` was until payday#171: a declaration compiled
+	// against that is read as its one kind.
+	Kinds []string
 }
 
 func (b0 EventMessage_builder) Build() *EventMessage {
 	m0 := &EventMessage{}
 	b, x := &b0, m0
 	_, _ = b, x
-	x.xxx_hidden_Kind = b.Kind
+	x.xxx_hidden_Kinds = b.Kinds
 	return m0
 }
 
@@ -128,9 +153,9 @@ var File_payday_past_proto protoreflect.FileDescriptor
 
 const file_payday_past_proto_rawDesc = "" +
 	"\n" +
-	"\x11payday/past.proto\x12\x06payday\"\"\n" +
-	"\fEventMessage\x12\x12\n" +
-	"\x04kind\x18\x01 \x01(\tR\x04kindB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x11payday/past.proto\x12\x06payday\"$\n" +
+	"\fEventMessage\x12\x14\n" +
+	"\x05kinds\x18\x01 \x03(\tR\x05kindsB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_past_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_payday_past_proto_goTypes = []any{

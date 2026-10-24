@@ -292,7 +292,14 @@ func writeHistory(t *testing.T, b *built, ctx context.Context) *history {
 	moveR := moved(r.GetId())
 	started := app.MachineStarted_builder{Machine: m.GetId()}.Build()
 	serviced := app.MachineServiced_builder{Machine: m.GetId()}.Build()
-	corrected := func(ev pdid.Id) *app.Corrected { return app.Corrected_builder{Event: ev.Bytes()}.Build() }
+	// A correction of when an event happened, and a retraction of one that
+	// never did: one message, of two kinds.
+	correcting := func(subject, ev pdid.Id, at time.Time) past.Event {
+		return past.Event{Subject: subject, Kind: "correct", Value: app.Corrected_builder{Event: ev.Bytes(), At: timestamppb.New(at)}.Build()}
+	}
+	retracting := func(subject, ev pdid.Id) past.Event {
+		return past.Event{Subject: subject, Kind: "retract", Value: app.Corrected_builder{Event: ev.Bytes()}.Build()}
+	}
 
 	// The robot's cell: A from 9/1, B from 9/5, that move corrected on 9/8 to
 	// have been on 9/4, and A again from 10/15. The window begins in B, by the
@@ -301,7 +308,7 @@ func writeHistory(t *testing.T, b *built, ctx context.Context) *history {
 	e1 := b.done(t, as, sep(1), about(rid, moveR), sets(rid, sep(1), in(roomA)))
 	e2 := b.done(t, as, sep(5), about(rid, moveR), sets(rid, sep(5), in(roomB)))
 	f1, f2 := b.factOf(t, ctx, e1, cellFd), b.factOf(t, ctx, e2, cellFd)
-	e3 := b.done(t, as, sep(8), about(rid, corrected(e2)), func(ctx context.Context, _ app.Server, _ past.Store, op *past.Op) error {
+	e3 := b.done(t, as, sep(8), correcting(rid, e2, sep(4)), func(ctx context.Context, _ app.Server, _ past.Store, op *past.Op) error {
 		return op.Correct(ctx, f2, sep(4))
 	})
 	e4 := b.done(t, as, oct(15), about(rid, moveR), sets(rid, oct(15), in(roomA)))
@@ -329,7 +336,7 @@ func writeHistory(t *testing.T, b *built, ctx context.Context) *history {
 	h1 := b.done(t, as, sep(1), about(mid, started), sets(mid, sep(1), past.To(hours, protoreflect.ValueOfInt64(1))))
 	h2 := b.done(t, as, sep(3), about(mid, started), sets(mid, sep(3), past.To(hours, protoreflect.ValueOfInt64(2))))
 	h2f := b.factOf(t, ctx, h2, hours)
-	h3 := b.done(t, as, oct(15), about(mid, corrected(h2)), func(ctx context.Context, _ app.Server, _ past.Store, op *past.Op) error {
+	h3 := b.done(t, as, oct(15), retracting(mid, h2), func(ctx context.Context, _ app.Server, _ past.Store, op *past.Op) error {
 		return op.Retract(ctx, h2f)
 	})
 	h.fact(b.factOf(t, ctx, h1, hours), true, "hours whose next was retracted after the cut")
@@ -354,7 +361,7 @@ func writeHistory(t *testing.T, b *built, ctx context.Context) *history {
 	d3 := b.done(t, as, sep(3), about(mid, started), sets(mid, sep(3), modeOf(app.Mode_MODE_RUN)))
 	d4 := b.done(t, as, sep(4), about(mid, started), sets(mid, sep(4), modeOf(app.Mode_MODE_SERVICE)))
 	d4f := b.factOf(t, ctx, d4, mode)
-	d5 := b.done(t, as, sep(6), about(mid, corrected(d4)), func(ctx context.Context, _ app.Server, _ past.Store, op *past.Op) error {
+	d5 := b.done(t, as, sep(6), retracting(mid, d4), func(ctx context.Context, _ app.Server, _ past.Store, op *past.Op) error {
 		return op.Retract(ctx, d4f)
 	})
 	h.fact(b.factOf(t, ctx, d1, mode), false, "idle, which service replaced")

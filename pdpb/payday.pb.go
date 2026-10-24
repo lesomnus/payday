@@ -60,10 +60,10 @@ var file_payday_proto_extTypes = []protoimpl.ExtensionInfo{
 var (
 	// optional payday.Entity entity = 46001;
 	E_Entity = &file_payday_proto_extTypes[0]
-	// What a message is when it is not an entity but what one kind of the app's
-	// events holds (payday#151): `option (payday.event) = {kind: "robot.move"};`.
-	// The next number of the message block. See [EventMessage] for what is
-	// refused of one.
+	// What a message is when it is not an entity but what the app's events of
+	// one or more kinds hold (payday#151): `option (payday.event) = {kinds:
+	// "robot.move"};`. The next number of the message block. See
+	// [EventMessage] for what is refused of one.
 	//
 	// optional payday.EventMessage event = 46002;
 	E_Event = &file_payday_proto_extTypes[1]

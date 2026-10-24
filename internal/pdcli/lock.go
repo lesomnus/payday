@@ -13,8 +13,9 @@ import (
 )
 
 // LockFile is the past's lock, beside the copies of payday's entities in
-// [Layout.DirPd]: the record of every event message the app ever declared
-// (payday#151). See [pdgen.Lock] for why it exists and what it records.
+// [Layout.DirPd]: the record of every kind of event the app ever declared, and
+// of the message its rows hold (payday#151). See [pdgen.Lock] for why it
+// exists and what it records.
 //
 // Beside the copies, because what it is about is payday's Event, and because
 // `pd gen --check` hashes that directory already: a lock left behind a schema
@@ -69,7 +70,7 @@ func (r run) lock(ctx context.Context) error {
 
 	was, err := pdgen.ReadLock(b)
 	if err != nil {
-		return fmt.Errorf("%s: %w; it is JSON `pd gen` writes, and a hand edit of it has to stay that", name, err)
+		return errors.New(unreadLock(name, err))
 	}
 
 	now, err := was.Admit(pdgen.EventsLock(s))
@@ -88,4 +89,16 @@ func (r run) lock(ctx context.Context) error {
 	}
 
 	return os.WriteFile(at, v, 0o644)
+}
+
+// unreadLock is why the lock `name` could not be read, as `pd gen` and `pd
+// doctor` both say it: a lock of the payday before a message held several
+// kinds in the words that say how it is written now, and anything else as the
+// JSON it is.
+func unreadLock(name string, err error) string {
+	if errors.Is(err, pdgen.ErrLockOfEvents) {
+		return fmt.Sprintf("%s %s", name, err)
+	}
+
+	return fmt.Sprintf("%s: %s; it is JSON `pd gen` writes, and a hand edit of it has to stay that", name, err)
 }

@@ -23,45 +23,78 @@ type kindsOnly struct {
 func (s kindsOnly) Kinds() map[string]protoreflect.MessageType { return s.kinds }
 
 // TestAKindIsWhatItsMessageDeclares: an event is written under the kind its
-// message declares, or its full name when it declares none -- and a message
-// that declares nothing, or one the app's schema does not declare by that
-// kind, is no event's.
+// message declares, or its full name when it declares none -- and of a message
+// of several kinds, under the one the event says. A message that declares
+// nothing, one the app's schema does not declare by that kind, an event of a
+// message of several that says none of them, and a kind its message does not
+// hold are no event's.
 func TestAKindIsWhatItsMessageDeclares(t *testing.T) {
-	happened, named, plain := message("Happened"), message("Named"), message("Plain")
+	happened, named, plain, corrected := message("Happened"), message("Named"), message("Plain"), message("Corrected")
 	s := kindsOnly{kinds: map[string]protoreflect.MessageType{
 		"thing.happen":    dynamicpb.NewMessageType(happened),
 		"past.test.Named": dynamicpb.NewMessageType(named),
+		"thing.correct":   dynamicpb.NewMessageType(corrected),
+		"thing.retract":   dynamicpb.NewMessageType(corrected),
 	}}
 
 	t.Run("declared, and by its full name", func(t *testing.T) {
 		x := require.New(t)
 
-		kind, v, err := kindOf(s, dynamicpb.NewMessage(happened))
+		kind, v, err := kindOf(s, "", dynamicpb.NewMessage(happened))
 		x.NoError(err)
 		x.Equal("thing.happen", kind)
 		x.Equal("type.googleapis.com/past.test.Happened", v.GetTypeUrl())
 
-		kind, _, err = kindOf(s, dynamicpb.NewMessage(named))
+		kind, _, err = kindOf(s, "", dynamicpb.NewMessage(named))
 		x.NoError(err)
 		x.Equal("past.test.Named", kind)
+
+		kind, _, err = kindOf(s, "thing.happen", dynamicpb.NewMessage(happened))
+		x.NoError(err, "the one kind of a message of one, said")
+		x.Equal("thing.happen", kind)
+	})
+
+	t.Run("of a message of several, the one the event says", func(t *testing.T) {
+		x := require.New(t)
+
+		kind, v, err := kindOf(s, "thing.retract", dynamicpb.NewMessage(corrected))
+		x.NoError(err)
+		x.Equal("thing.retract", kind)
+		x.Equal("type.googleapis.com/past.test.Corrected", v.GetTypeUrl())
+
+		kind, _, err = kindOf(s, "thing.correct", dynamicpb.NewMessage(corrected))
+		x.NoError(err)
+		x.Equal("thing.correct", kind)
 	})
 
 	for name, c := range map[string]struct {
-		s Store
-		v proto.Message
+		s    Store
+		kind string
+		v    proto.Message
+		says string
 	}{
-		"no message":             {s, nil},
-		"one that declares none": {s, dynamicpb.NewMessage(plain)},
+		"no message":             {s, "", nil, "a message the app declares with (payday.event)"},
+		"one that declares none": {s, "", dynamicpb.NewMessage(plain), "says no (payday.event)"},
 		"one the app does not declare": {kindsOnly{kinds: map[string]protoreflect.MessageType{
 			"past.test.Named": dynamicpb.NewMessageType(named),
-		}}, dynamicpb.NewMessage(happened)},
+		}}, "", dynamicpb.NewMessage(happened), `is of kind "thing.happen", which this app's schema does not declare`},
 		"another under its kind": {kindsOnly{kinds: map[string]protoreflect.MessageType{
 			"thing.happen": dynamicpb.NewMessageType(named),
-		}}, dynamicpb.NewMessage(happened)},
+		}}, "", dynamicpb.NewMessage(happened), `is of kind "thing.happen", which this app's schema does not declare`},
+		"one of several kinds, of none": {s, "", dynamicpb.NewMessage(corrected),
+			`past.test.Corrected is what events of kinds "thing.correct" and "thing.retract" hold, and an event of it says which it is: past.Event{Kind: "thing.correct", ...}`},
+		"a kind its message does not hold": {s, "thing.happen", dynamicpb.NewMessage(corrected),
+			`past.test.Corrected is what events of kinds "thing.correct" and "thing.retract" hold, and not of "thing.happen"`},
+		"another kind than the one of a message of one": {s, "thing.correct", dynamicpb.NewMessage(happened),
+			`past.test.Happened is what events of kind "thing.happen" hold, and not of "thing.correct"`},
+		"a kind of its message the app does not declare": {kindsOnly{kinds: map[string]protoreflect.MessageType{
+			"thing.correct": dynamicpb.NewMessageType(corrected),
+		}}, "thing.retract", dynamicpb.NewMessage(corrected), `is of kind "thing.retract", which this app's schema does not declare`},
 	} {
 		t.Run("refused: "+name, func(t *testing.T) {
-			_, _, err := kindOf(c.s, c.v)
+			_, _, err := kindOf(c.s, c.kind, c.v)
 			require.Equal(t, codes.InvalidArgument, status.Code(err), "%v", err)
+			require.ErrorContains(t, err, c.says)
 		})
 	}
 }

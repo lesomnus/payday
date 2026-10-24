@@ -188,19 +188,20 @@ var Domains = map[string]pdid.Domain{
 	"shared.Thing": ThingDomain,
 }
 
-// EventKinds is every event message this app declares, by the kind its rows
-// are written under: the message's `option (payday.event) = {kind: ...}`, or
-// its full name when it says none.
+// EventKinds is the message each kind of this app's events holds, by kind:
+// every kind a message's `option (payday.event) = {kinds: ...}` says, or its
+// full name when it says none. Several kinds may hold one message.
 //
 // A row of payday's Event says which message its `value` holds by its kind,
 // so this is how a kind is read back into a message -- and the lock beside
-// the schema, `past.lock`, is what keeps every kind in it for as long as a row
-// of it may be.
+// the schema, `past.lock`, is what keeps every kind in it, and the message
+// it holds, for as long as a row of it may be.
 var EventKinds = map[string]protoreflect.MessageType{
 	"app.MachineStarted": (*apptest.MachineStarted)(nil).ProtoReflect().Type(),
 	"correct":            (*apptest.Corrected)(nil).ProtoReflect().Type(),
 	"machine.service":    (*apptest.MachineServiced)(nil).ProtoReflect().Type(),
 	"past.expire":        (*apptest.PastExpired)(nil).ProtoReflect().Type(),
+	"retract":            (*apptest.Corrected)(nil).ProtoReflect().Type(),
 	"robot.move":         (*apptest.RobotMoved)(nil).ProtoReflect().Type(),
 }
 

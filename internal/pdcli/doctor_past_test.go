@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -176,7 +178,7 @@ option features.field_presence = IMPLICIT;
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
 message VisitNoted {
-  option (payday.event) = {kind: "visit.note"};
+  option (payday.event) = {kinds: "visit.note"};
 
   bytes visit = 1;
   string ` + host + ` = 2;
@@ -240,6 +242,37 @@ func TestDoctorAsksAboutAFieldOfAnEventMessageNamedForSomebody(t *testing.T) {
 	x.NotContains(found(t, l), "named for something about a person")
 }
 
+// TestDoctorSaysANameThatIsTwoFieldsInADomain: a field of one name at two
+// numbers across the messages of a domain's kinds is a schema `pd gen`
+// refuses, and the doctor says it in the words a generation stops on.
+func TestDoctorSaysANameThatIsTwoFieldsInADomain(t *testing.T) {
+	x := require.New(t)
+	l := genApp(t)
+
+	ownProto(t, l, "repaired.proto", `edition = "2023";
+
+package app;
+
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// Of the domain machine.service is of, holding the machine at another number.
+message MachineRepaired {
+  option (payday.event) = {kinds: "machine.repair"};
+
+  bytes part = 1;
+  bytes machine = 2;
+}
+`)
+
+	v := found(t, l)
+	x.Contains(v, `app.MachineRepaired and app.MachineServiced: machine: is 2 in the first and 1 in the second, `+
+		`and both hold kinds of "machine".`)
+	x.Contains(v, "    bytes machine = 2;  // app.MachineRepaired\n    bytes machine = 1;  // app.MachineServiced\n")
+}
+
 // TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt: the comparison `pd gen`
 // makes of the event messages and `past.lock`, made without writing the lock.
 // A schema the lock refuses is said in the words a generation would refuse it
@@ -288,8 +321,11 @@ func TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt(t *testing.T) {
 		x := require.New(t)
 		l := genApp(t)
 
+		// An event message, and a kind a message it still holds takes.
 		_, v := lockOf(t, l)
-		delete(v.Events, "app.MachineStarted")
+		delete(v.Kinds, "app.MachineStarted")
+		delete(v.Messages, "app.MachineStarted")
+		delete(v.Kinds, "retract")
 		delete(v.Messages, "app.MachineServiced.Part")
 		delete(v.Messages["app.MachineServiced"], 6)
 		delete(v.Enums["app.Mode"], 3)
@@ -302,10 +338,27 @@ func TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt(t *testing.T) {
 			"it lacks that leaves rows unreadable, and `pd gen --check` fails on it, until `pd gen` adds it and it "+
 			"is committed", f.What)
 		x.Equal("go tool pd gen app\n\nwhich adds\n\n"+
-			"  app.MachineStarted: an event message of kind \"app.MachineStarted\"\n"+
+			"  kind \"app.MachineStarted\", whose rows hold app.MachineStarted\n"+
+			"  kind \"retract\", whose rows hold app.Corrected\n"+
 			"  app.MachineServiced (6): \"due\"\n"+
 			"  app.MachineServiced.Part: a message an event message holds\n"+
 			"  app.Mode: 3, MODE_SERVICE", f.Fix)
+		still(t, l, b)
+	})
+
+	t.Run("of the payday before a message held several kinds", func(t *testing.T) {
+		x := require.New(t)
+		l := genApp(t)
+
+		// Each event message by its one kind, as that payday wrote it.
+		b := []byte(`{"events": {"app.MachineServiced": "machine.service"}, "messages": {}}` + "\n")
+		x.NoError(os.WriteFile(filepath.Join(l.Root, l.DirPd(), pdcli.LockFile), b, 0o644))
+
+		f := findingOf(t, l, "past.lock")
+		x.True(f.Fatal, "pd gen stops on it")
+		x.Contains(f.What, `pd gen would refuse this schema: proto/app/payday/past.lock records each event message's kind under "events"`)
+		x.Contains(f.What, `write each "app.Message": "kind" of "events" as "kind": "app.Message" under "kinds"`)
+		x.NotContains(f.What, "hand edit of it has to stay that", "it is JSON, and the JSON is not what is wrong")
 		still(t, l, b)
 	})
 
@@ -318,7 +371,8 @@ func TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt(t *testing.T) {
 
 		f := findingOf(t, l, "past.lock")
 		x.False(f.Fatal, "pd gen writes it, and goes on")
-		x.Contains(f.What, fmt.Sprintf("proto/app/payday/past.lock is not there, and this schema declares %d event messages", len(v.Events)))
+		messages := slices.Compact(slices.Sorted(maps.Values(v.Kinds)))
+		x.Contains(f.What, fmt.Sprintf("proto/app/payday/past.lock is not there, and this schema declares %d event messages", len(messages)))
 		x.Equal("go tool pd gen app", f.Fix)
 		still(t, l, nil)
 	})

@@ -274,7 +274,7 @@ func doctorLock(l Layout, s *pdgen.Schema) []Finding {
 	was, err := pdgen.ReadLock(b)
 	if err != nil {
 		return []Finding{{
-			What:  fmt.Sprintf("pd gen would refuse this schema: %s: %s; it is JSON `pd gen` writes, and a hand edit of it has to stay that", name, err),
+			What:  fmt.Sprintf("pd gen would refuse this schema: %s", unreadLock(name, err)),
 			Fatal: true,
 		}}
 	}
@@ -311,21 +311,24 @@ func doctorLock(l Layout, s *pdgen.Schema) []Finding {
 	}}
 }
 
-// lacking is what `now` declares and `was` does not hold, each as a line: an
-// event message, a message one holds, a field of a message the lock holds, an
-// enum, a value of an enum the lock holds. A message or an enum the lock does
-// not hold is said once, and not field by field.
+// lacking is what `now` declares and `was` does not hold, each as a line: a
+// kind and its message, a message an event message holds, a field of a
+// message the lock holds, an enum, a value of an enum the lock holds. A
+// message or an enum the lock does not hold is said once, and not field by
+// field -- an event message by its kinds.
 func lacking(was, now *pdgen.Lock) []string {
 	var vs []string
-	for _, name := range slices.Sorted(maps.Keys(now.Events)) {
-		if _, ok := was.Events[name]; !ok {
-			vs = append(vs, fmt.Sprintf("  %s: an event message of kind %q", name, now.Events[name]))
+	events := map[string]bool{}
+	for _, kind := range slices.Sorted(maps.Keys(now.Kinds)) {
+		events[now.Kinds[kind]] = true
+		if _, ok := was.Kinds[kind]; !ok {
+			vs = append(vs, fmt.Sprintf("  kind %q, whose rows hold %s", kind, now.Kinds[kind]))
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(now.Messages)) {
 		held, ok := was.Messages[name]
 		if !ok {
-			if _, event := now.Events[name]; !event {
+			if !events[name] {
 				vs = append(vs, fmt.Sprintf("  %s: a message an event message holds", name))
 			}
 			continue

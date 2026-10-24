@@ -72,7 +72,7 @@ message Stint {
 // how many of what went, and from before when -- the past's own rows and the
 // stints the app took before them -- and never what any of them said.
 message PastExpired {
-  option (payday.event) = {kind: "past.expire"};
+  option (payday.event) = {kinds: "past.expire"};
 
   google.protobuf.Timestamp before = 1;
   uint32 facts = 2;

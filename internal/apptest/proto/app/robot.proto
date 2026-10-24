@@ -243,7 +243,7 @@ message Robot {
 // none, since a robot may be in no cell. `RobotService.Move` records one, and
 // the fact of the robot's cell it changed.
 message RobotMoved {
-  option (payday.event) = {kind: "robot.move"};
+  option (payday.event) = {kinds: "robot.move"};
 
   bytes robot = 1;
   bytes from = 2;

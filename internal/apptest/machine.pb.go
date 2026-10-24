@@ -725,9 +725,15 @@ func (b0 MachineStarted_builder) Build() *MachineStarted {
 	return m0
 }
 
-// Corrected is what an event correcting another one holds: which, and when it
-// happened -- or no moment, for one that never did. Its facts are the ones
-// the correction writes, and the ones it supersedes say it was this.
+// Corrected is what an event correcting another one holds, of two kinds: a
+// correction, that the event happened at another moment -- which event, and
+// when -- and a retraction, that it never happened, which holds which and no
+// moment. One message, because the two hold the same but for that moment, and
+// each kind is said in a sentence of its own. Its facts are the ones the
+// correction writes, and the ones it supersedes say it was this.
+//
+// `retract` was added after `correct`, as a kind may be: the lock keeps every
+// kind the message ever held, and a message only ever takes more.
 type Corrected struct {
 	state            protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Event []byte                 `protobuf:"bytes,1,opt,name=event"`
@@ -1007,11 +1013,12 @@ const file_app_machine_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\rR\x05count:\x15\x92\xbb\x16\x11\n" +
 	"\x0fmachine.service\"0\n" +
 	"\x0eMachineStarted\x12\x18\n" +
-	"\amachine\x18\x01 \x01(\fR\amachine:\x04\x92\xbb\x16\x00\"\\\n" +
+	"\amachine\x18\x01 \x01(\fR\amachine:\x04\x92\xbb\x16\x00\"e\n" +
 	"\tCorrected\x12\x14\n" +
 	"\x05event\x18\x01 \x01(\fR\x05event\x12*\n" +
-	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at:\r\x92\xbb\x16\t\n" +
-	"\acorrect*K\n" +
+	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at:\x16\x92\xbb\x16\x12\n" +
+	"\acorrect\n" +
+	"\aretract*K\n" +
 	"\x04Mode\x12\x14\n" +
 	"\x10MODE_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tMODE_IDLE\x10\x01\x12\f\n" +

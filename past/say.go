@@ -81,9 +81,9 @@ func NewSentences(locale string) *Sentences {
 	return &Sentences{def: locale, by: map[string]map[string]sayer{}, layouts: map[string]string{}}
 }
 
-// Say says each event of the kind the message `M` declares -- a generated
-// type, `*app.RobotMoved` -- in `locale`, with `f`: given the reading, the
-// event and the message it holds, the sentence.
+// Say says each event of the kind the message `M` holds -- a generated type,
+// `*app.RobotMoved` -- in `locale`, with `f`: given the reading, the event and
+// the message it holds, the sentence.
 //
 // The message holds what happened as it was then. A thing it holds by value
 // -- a tag, a serial, what it was called -- is said as it is held: that is a
@@ -93,25 +93,59 @@ func NewSentences(locale string) *Sentences {
 //
 // A sentence that says nothing -- empty -- is none, and the event is said as
 // the next locale says it ([Reading.Say]). It panics for a message that
-// declares no `(payday.event)` and for a kind already said in `locale`: either
-// is the code saying something it does not mean, where it starts.
+// declares no `(payday.event)`, for a kind already said in `locale`, and for a
+// message of several kinds, whose events are of operations that say different
+// things: each of those is said with [SayKind], and one sentence for all of
+// them is that, said of each. Any of the three is the code saying something
+// it does not mean, where it starts.
 func Say[M proto.Message](s *Sentences, locale string, f func(*Reading, EventRow, M) string) {
-	var m M
-	if any(m) == nil {
-		panic("past: a sentence is said of a message type, *app.RobotMoved, and this is an interface")
-	}
-	s.say(locale, m.ProtoReflect().Type(), func(r *Reading, ev EventRow, v proto.Message) string {
+	s.say("", locale, typeOf[M](), func(r *Reading, ev EventRow, v proto.Message) string {
 		return f(r, ev, v.(M))
 	})
 }
 
-// say is [Say] of the message type `typ`, which need not be a Go type of its
-// own.
-func (s *Sentences) say(locale string, typ protoreflect.MessageType, f func(*Reading, EventRow, proto.Message) string) {
+// SayKind says each event of `kind`, which is one of the kinds the message `M`
+// holds, in `locale`, with `f`: as [Say] says the one kind of a message of
+// one.
+//
+// It is how each kind of a message of several is said: a correction and a
+// retraction hold one message, and are said in sentences of their own, each
+// reading what of the message its kind uses. A kind the message does not hold
+// panics, as everything [Say] refuses does.
+func SayKind[M proto.Message](s *Sentences, kind, locale string, f func(*Reading, EventRow, M) string) {
+	if kind == "" {
+		panic("past: a kind is said by its name, and this names none")
+	}
+	s.say(kind, locale, typeOf[M](), func(r *Reading, ev EventRow, v proto.Message) string {
+		return f(r, ev, v.(M))
+	})
+}
+
+// typeOf is the message type of `M`, read off its type parameter.
+func typeOf[M proto.Message]() protoreflect.MessageType {
+	var m M
+	if any(m) == nil {
+		panic("past: a sentence is said of a message type, *app.RobotMoved, and this is an interface")
+	}
+
+	return m.ProtoReflect().Type()
+}
+
+// say is [Say] -- `kind` empty -- and [SayKind] of the message type `typ`,
+// which need not be a Go type of its own.
+func (s *Sentences) say(kind, locale string, typ protoreflect.MessageType, f func(*Reading, EventRow, proto.Message) string) {
 	md := typ.Descriptor()
-	kind, ok := declared(md)
+	kinds, ok := declared(md)
 	if !ok {
 		panic(fmt.Sprintf("past: %s says no (payday.event), so no event holds one to be said", md.FullName()))
+	}
+	switch {
+	case kind == "" && len(kinds) > 1:
+		panic(fmt.Sprintf("past: %s is what events of %s hold, which are said each with past.SayKind", md.FullName(), sayKinds(kinds)))
+	case kind == "":
+		kind = kinds[0]
+	case !slices.Contains(kinds, kind):
+		panic(fmt.Sprintf("past: %s is what events of %s hold, and not of %q", md.FullName(), sayKinds(kinds), kind))
 	}
 
 	l := tag(locale)
@@ -203,6 +237,9 @@ type Reading struct {
 	locale   string
 	speaking string
 
+	// kind is the kind of the event being said, while it is said.
+	kind string
+
 	zone *time.Location
 
 	// named is each name asked, and the people whose data it is.
@@ -226,6 +263,10 @@ type named struct {
 // message this binary cannot read -- of a type it does not link -- is said as
 // its kind.
 func (r *Reading) Say(ev EventRow) string {
+	was := r.kind
+	r.kind = ev.Kind
+	defer func() { r.kind = was }()
+
 	if ev.Value == nil {
 		if f := r.s.legacy; f != nil {
 			if v := r.in(r.locale, func() string { return f(r, ev) }); v != "" {
@@ -322,6 +363,11 @@ func (r *Reading) Locale() string { return r.speaking }
 // Zone is the zone the reader reads a moment in.
 func (r *Reading) Zone() *time.Location { return r.zone }
 
+// Kind is the kind of the event being said -- in a sentence, its event's,
+// which `ev.Kind` says too -- and empty otherwise: for what a sentence hands
+// the reading to rather than the event, a part said alike of several kinds.
+func (r *Reading) Kind() string { return r.kind }
+
 // Context is the call the reading is for: what a sentence that reads more of
 // the app's own -- a legacy row's fields -- reads it with.
 func (r *Reading) Context() context.Context { return r.ctx }
@@ -351,8 +397,10 @@ func (r *Reading) Err() error { return r.err }
 //		require.Empty(t, past.Unsaid(sentences, l, pd.EventKinds), l)
 //	}
 //
-// A kind said with a message of another type than `kinds` has for it is not
-// said, since an event of the kind holds one of those.
+// Each kind of a message of several is asked of on its own: one of them said
+// leaves the others unsaid until they are. A kind said with a message of
+// another type than `kinds` has for it is not said, since an event of the
+// kind holds one of those.
 func Unsaid(s *Sentences, locale string, kinds map[string]protoreflect.MessageType) []string {
 	l := tag(locale)
 	if l == "" {

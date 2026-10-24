@@ -55,8 +55,11 @@ func TestTheLockIsWrittenBesideTheCopies(t *testing.T) {
 
 	l := genApp(t)
 	committed, v := lockOf(t, l)
-	x.Equal("machine.service", v.Events["app.MachineServiced"])
-	x.Equal("app.MachineStarted", v.Events["app.MachineStarted"], "a message that names no kind is its full name")
+	x.Equal("app.MachineServiced", v.Kinds["machine.service"])
+	x.Equal("app.MachineStarted", v.Kinds["app.MachineStarted"], "a message that names no kind is its full name")
+	x.Equal("app.Corrected", v.Kinds["correct"], "a message of two kinds, by each")
+	x.Equal("app.Corrected", v.Kinds["retract"])
+	x.Len(v.Messages["app.Corrected"], 2, "and its fields once")
 
 	x.NoError(os.Remove(filepath.Join(l.Root, l.DirPd(), pdcli.LockFile)))
 	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
@@ -69,10 +72,10 @@ func TestTheLockIsWrittenBesideTheCopies(t *testing.T) {
 	x.Contains(string(b), "`past.lock`", "the directory's README does not say what the lock is")
 }
 
-// TestTheLockIsAddedTo: a field added to an event message, a message added,
-// and a field renamed that keeps the JSON name its rows are written with are
-// what a schema may do -- the first two are added to the lock, and the rename
-// is no change to it, as it is none to a row.
+// TestTheLockIsAddedTo: a field added to an event message, a message added, a
+// kind a message takes, and a field renamed that keeps the JSON name its rows
+// are written with are what a schema may do -- the first three are added to
+// the lock, and the rename is no change to it, as it is none to a row.
 func TestTheLockIsAddedTo(t *testing.T) {
 	x := require.New(t)
 
@@ -90,12 +93,15 @@ func TestTheLockIsAddedTo(t *testing.T) {
 	editMachine(t, l,
 		"  google.protobuf.Timestamp due = 6;\n", "  google.protobuf.Timestamp due = 6;\n  string site = 7;\n",
 		"message MachineStarted {", "message MachineStopped {\n  option (payday.event) = {};\n  bytes machine = 1;\n}\n\nmessage MachineStarted {",
+		`{kinds: "machine.service"}`, `{kinds: ["machine.service", "machine.repair"]}`,
 	)
 	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
 
 	_, v := lockOf(t, l)
 	x.Equal(pdgen.LockField{JSON: "site", Kind: "string"}, v.Messages["app.MachineServiced"][7])
-	x.Equal("app.MachineStopped", v.Events["app.MachineStopped"])
+	x.Equal("app.MachineStopped", v.Kinds["app.MachineStopped"])
+	x.Equal("app.MachineServiced", v.Kinds["machine.repair"], "a kind a message took")
+	x.Equal("app.MachineServiced", v.Kinds["machine.service"], "and the one it held")
 	x.Equal(pdgen.LockField{JSON: "by", Kind: "bytes"}, v.Messages["app.MachineServiced"][2], "what was there is kept")
 }
 
@@ -110,15 +116,30 @@ func TestTheLockRefusesWhatARowCouldNotBeReadBackWithout(t *testing.T) {
 	}{
 		"an event message deleted": {
 			[]string{"message MachineStarted {\n  option (payday.event) = {};\n\n  bytes machine = 1;\n}\n", ""},
-			`app.MachineStarted: was an event message of kind "app.MachineStarted", and is not one now`,
+			`kind "app.MachineStarted": its rows hold app.MachineStarted, and no message declares it now`,
 		},
 		"an event message that is not one now": {
 			[]string{"  option (payday.event) = {};\n\n  bytes machine = 1;", "  bytes machine = 1;"},
-			`app.MachineStarted: was an event message of kind "app.MachineStarted", and is not one now`,
+			`kind "app.MachineStarted": its rows hold app.MachineStarted, and no message declares it now`,
 		},
 		"a kind changed": {
-			[]string{`{kind: "machine.service"}`, `{kind: "machine.serviced"}`},
-			`app.MachineServiced: was of kind "machine.service", and is of kind "machine.serviced" now`,
+			[]string{`{kinds: "machine.service"}`, `{kinds: "machine.serviced"}`},
+			`kind "machine.service": its rows hold app.MachineServiced, and no message declares it now`,
+		},
+		"a kind of several dropped": {
+			[]string{`{kinds: ["correct", "retract"]}`, `{kinds: "correct"}`},
+			`kind "retract": its rows hold app.Corrected, and no message declares it now`,
+		},
+		"a kind that is its message's full name, named another": {
+			[]string{"message MachineStarted {\n  option (payday.event) = {};", "message MachineStarted {\n  option (payday.event) = {kinds: \"machine.start\"};"},
+			`kind "app.MachineStarted": its rows hold app.MachineStarted, and no message declares it now`,
+		},
+		"a kind moved to another message": {
+			[]string{
+				`{kinds: ["correct", "retract"]}`, `{kinds: "correct"}`,
+				"message MachineStarted {\n  option (payday.event) = {};", "message MachineStarted {\n  option (payday.event) = {kinds: [\"app.MachineStarted\", \"retract\"]};",
+			},
+			`kind "retract": its rows hold app.Corrected, and app.MachineStarted declares it now`,
 		},
 		"a field removed": {
 			[]string{"  google.protobuf.Timestamp due = 6;\n", ""},

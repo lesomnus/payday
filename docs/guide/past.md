@@ -5,8 +5,8 @@ to a thing, by whom, when and why, and what the thing was from when. payday
 keeps it for an app that asks, in two tables of its own (payday#151):
 
 - an **Event** for each operation the app records -- its kind, who asked, when
-  it happened, why, what it was about, and a message the app declares for that
-  kind of operation;
+  it happened, why, what it was about, and a message the app declares for what
+  that kind of operation holds, which several kinds may share;
 - a **Fact** for each field of a resource from a moment on, pointing at the
   event that wrote it.
 
@@ -56,24 +56,33 @@ schema guide's [§7](schema.md#your-past-paydays-event-and-fact).
 
 ## 2. What an event holds
 
-An event keeps no sentence. It keeps a **message** you declare for its kind of
-operation, in its `value`, and a sentence is made from that when the event is
-read -- in the reader's language, in the tenant's zone, naming the people in
-it as they are called then. A sentence written down at the time could do none
-of that: it is frozen in one language and one zone, and it goes on naming
-somebody by the name they had.
+An event keeps no sentence. It keeps a **message** you declare for what its
+kind of operation holds, in its `value`, and a sentence is made from that when
+the event is read -- in the reader's language, in the tenant's zone, naming the
+people in it as they are called then. A sentence written down at the time could
+do none of that: it is frozen in one language and one zone, and it goes on
+naming somebody by the name they had.
 
-Mark the message with `(payday.event)`:
+Mark the message with `(payday.event)`, and say the kinds of event it holds:
 
 ```proto
 // What a robot's move holds.
 message RobotMoved {
-  option (payday.event) = {kind: "robot.move"};
+  option (payday.event) = {kinds: "robot.move"};
 
   bytes robot = 1;
   bytes from = 2;
   bytes to = 3;
   Pace pace = 4;
+}
+
+// What a robot parked holds, and one taken out of its bay -- which goes to
+// no bay, and leaves `bay` empty.
+message RobotParked {
+  option (payday.event) = {kinds: ["robot.park", "robot.unpark"]};
+
+  bytes robot = 1;
+  bytes bay = 2;
 }
 
 // Its kind is its full name, `app.RobotStopped`, since it names none.
@@ -85,17 +94,79 @@ message RobotStopped {
 }
 ```
 
-The **kind** is what the event's rows are written under, which a list of events
-is filtered by and which says what `value` holds. It is the message's full name
-unless the option says one, and like a field's number it is chosen once. A
-message may be declared anywhere in your files, inside another message too.
+The **kind** is what the event's rows are written under: the operation, which a
+list of events is filtered by, a sentence is said for (§9), and which says what
+`value` holds. A message's kinds are the ones its option names, or its full name
+alone where it names none. Like a field's number each is chosen once, and a kind
+is one message's. A message may be declared anywhere in your files, inside
+another message too.
+
+### Kinds, and the messages they hold
+
+A kind is the operation and the message is what its events hold, so kinds whose
+events hold much the same are one message, and each kind's events hold what of
+it they use: a park holds the robot and its bay, an unpark the robot alone. A
+message is the shape of a family of operations, and not one more thing to
+declare for each.
+
+- **What a kind uses is yours to say.** Nothing in the schema says which fields
+  a kind holds -- an unpark holding a bay is not refused -- so say it beside the
+  message, as above, and write its events so. A field a kind does not use is
+  left empty.
+- **Writing one names its kind**, `past.Event{Kind: "robot.unpark", ...}`: a
+  message of several cannot say which its event is (§6). One of one kind may
+  leave it out.
+- **A sentence is said for each kind** (§9), and reads what its kind uses: an
+  unpark says no bay, and need not ask whether one is there.
+- **A reader reads the message by the event's kind** (§5), and is handed the
+  same message for each of its kinds. What the kind does not use reads as
+  nothing -- a field with no presence as its zero -- and says nothing about the
+  event.
+- **Group by what they hold.** Kinds that hold different things are messages of
+  their own: one message of twelve fields, each kind using two of them, says
+  nothing of what any kind holds -- and each of its twelve names is then one
+  field across its domain (below).
+
+### One name, one field, in a domain
+
+A kind's **domain** is what it says before its first `.`: `robot` of
+`robot.park`. A word, and not an entity's domain, which is the number its
+identifiers carry. Across the messages a domain's kinds hold, **a field of one
+name is one field**, at one number and holding one type -- `robot` above is
+`bytes robot = 1` in both of the robot's messages -- so that whatever reads the
+domain's events, a decoder or a filter or a column of an export, reads it at one
+number whichever kind an event is. `pd gen` refuses a name that is two, naming
+the messages, the field and both numbers, as it refuses a header field out of
+place:
+
+```
+app.RobotMoved and app.RobotParked: robot: is 1 in the first and 2 in the second, and both hold kinds of "robot".
+
+    bytes robot = 1;  // app.RobotMoved
+    bytes robot = 2;  // app.RobotParked
+```
+
+It names neither as the one to change, which is not a thing it can tell: one
+rows were written of keeps its numbers (§4), and is renamed with its
+`json_name` kept rather than renumbered.
+
+- **A message of kinds of two domains is in both**, and held to each of them.
+- **A message's own fields, by name.** Not a message it holds, whose fields are
+  its own; and not a JSON name, so a field renamed with its `json_name` kept, as
+  one rows were written of is, answers to the name it has now.
+- **Its type is what it holds** -- `bytes`, `app.Pace`, `repeated string`,
+  `map<string, app.Part>` -- and not its presence, which a row's JSON does not
+  show.
+- **A kind that is its message's full name** is of the first word of its
+  package, `app` of `app.RobotStopped`: the messages of every kind that names
+  none are of one domain.
 
 ### What one may hold
 
 Scalars, enums, messages of your own -- declared inside it or not -- lists and
 maps of any of them, and protobuf's own types: a `Timestamp`, a `Duration`.
 Each of the things below is refused by `pd gen`, because a row would keep it
-for as long as the event is kept:
+for as long as the event is kept, or read it as something else:
 
 | | |
 | --- | --- |
@@ -104,7 +175,9 @@ for as long as the event is kept:
 | a field holding a message of a generated contract -- a `RobotRef` | the API's message, which moves with the entity; a Ref carries a slug, which is somebody's name for the row |
 | a `google.protobuf.Any` | a message nothing declared, which no rule here can be held to |
 | an entity that says it is an event message | a table where a row's value was meant |
-| two messages of one kind | a row that says it holds either |
+| a kind two messages say | a row that says it holds either |
+| a kind said empty, or twice by one message | a declaration that says what it did not mean |
+| a field of one name at two numbers, or of two types, across the messages of one domain's kinds | one name read as two fields |
 | an event message in an app that declares no past | an event with no table to be kept in |
 
 ### People, by identifier
@@ -141,12 +214,19 @@ which is longer than any version of the code. So:
 
 - **A value of an enum one holds is never renamed or removed.** JSON writes an
   enum by its name.
-- **A kind is never changed.**
+- **A kind is never dropped, nor moved to another message.** Its rows were
+  written with its message and are read back by it. A message may take more
+  kinds, and never gives one up -- not by naming kinds where it named none
+  either, which drops its full name.
 - **A message ships one release before anything writes it.** A binary older
   than the message cannot read rows of it, so a rollback across the release
-  that started writing one is a rollback to a server that fails on them.
+  that started writing one is a rollback to a server that fails on them. A kind
+  a message takes asks less: a binary older than the kind reads the rows'
+  values, their message being one it links, but its `pd.EventKinds` names
+  nothing for the kind, and it says them as their kind and fields, having no
+  sentence of it.
 
-Adding is always fine: a message, a field, a value.
+Adding is always fine: a message, a kind of one, a field, a value.
 
 ## 4. The lock
 
@@ -154,18 +234,24 @@ Adding is always fine: a message, a field, a value.
 the one before, so a deletion that lands is the next change's baseline. Rows do
 not forget. So an app that keeps a past has a **lock**,
 `proto/<pkg>/payday/past.lock`, beside the copies of payday's entities: the
-record of every event message it has declared, and of what a row of each holds.
-In part:
+record of every kind of event it has declared, of the message the rows of each
+hold, and of what a row of each message holds. In part:
 
 ```json
 {
-  "events": {
-    "app.RobotMoved": "robot.move"
+  "kinds": {
+    "robot.move": "app.RobotMoved",
+    "robot.park": "app.RobotParked",
+    "robot.unpark": "app.RobotParked"
   },
   "messages": {
     "app.RobotMoved": {
       "1": {"json": "robot", "kind": "bytes"},
       "4": {"json": "pace", "kind": "enum", "type": "app.Pace"}
+    },
+    "app.RobotParked": {
+      "1": {"json": "robot", "kind": "bytes"},
+      "2": {"json": "bay", "kind": "bytes"}
     }
   },
   "enums": {
@@ -174,16 +260,29 @@ In part:
 }
 ```
 
-Each event message by full name with its kind; each field by number, with its
-JSON name, its kind, the message or enum it holds, and whether it is a list or
-a map -- of a map, the kind of its key; every message an event message holds,
-recorded the same way; and every enum one holds, by number, with the name a row
-is written with. Protobuf's own types are named and not looked inside.
+Each kind with the full name of its message; each message once, however many
+kinds hold it, and each of its fields by number, with its JSON name, its kind,
+the message or enum it holds, and whether it is a list or a map -- of a map,
+the kind of its key; every message an event message holds, recorded the same
+way; and every enum one holds, by number, with the name a row is written with.
+Protobuf's own types are named and not looked inside.
 
 `pd gen` builds the schema, holds it to the lock and writes the lock back with
-what is new added. It **only adds**. A schema that lost or changed anything in
-the lock is refused, before any code is generated from it, with a line for each
-thing:
+what is new added. It **only adds**:
+
+| | |
+| --- | --- |
+| a kind, a message, a field, an enum's value | added |
+| a kind a message takes beside the ones it holds | added: the rows of the others read as they did |
+| a field renamed, its `json_name` kept | no change, as it is none to a row |
+| a kind dropped -- by its message, or with it, or by naming kinds where it named none | refused |
+| a kind another message declares now | refused: its rows hold the one it was |
+| a message an event message held, gone | refused |
+| a field removed, or changed in its JSON name, its kind, its type, or whether it is a list or a map | refused |
+| an enum's value removed or renamed | refused |
+
+A schema refused is refused before any code is generated from it, with a line
+for each thing:
 
 ```
 the event messages, held to the past's lock: proto/app/payday/past.lock holds
@@ -191,7 +290,14 @@ what this schema no longer declares as it was. ...
 
   app.Pace: 2 was PACE_RUN, and is PACE_RUNNING now
   app.RobotMoved (2): was written as "from", and is "origin" now
+  kind "robot.unpark": its rows hold app.RobotParked, and no message declares it now
 ```
+
+A key the lock does not know is refused rather than dropped: the lock is
+written back, and one dropped on the way in is a record gone without a word. A
+lock of a payday before a message could hold several kinds (payday#171)
+records each message's kind under `events`, and is told to be written as
+`kinds`, each kind with its message -- the same record the other way round.
 
 Commit it. `pd gen --check` regenerates it like everything else it writes, so
 a lock behind its schema fails CI the way a stale generated file does, and `pd
@@ -199,9 +305,10 @@ doctor` makes the same comparison and writes nothing
 ([§13](#13-what-pd-doctor-asks)).
 
 **Taking something back is a hand edit**, of the schema and the lock together,
-in one change a reviewer reads. It is right for one thing only: a type no
-deployment ever wrote a row of -- a message added on a branch and dropped before
-it shipped. For anything a row exists of, it is a row that stops reading.
+in one change a reviewer reads. It is right for one thing only: a type or a
+kind no deployment ever wrote a row of -- a message added on a branch and
+dropped before it shipped. For anything a row exists of, it is a row that stops
+reading.
 
 An app that stops declaring a past keeps its lock: rows of the past may still
 be in the database, and a past declared again is held to what they were
@@ -210,7 +317,8 @@ written with.
 ## 5. Reading an event back
 
 **In Go**, `pd gen` writes `pd.EventKinds` into `server/pd/pd.g.go` of an app
-that declares a past: every event message by its kind.
+that declares a past: the message each kind holds, by kind -- a message of
+several kinds once for each.
 
 ```go
 typ, ok := pd.EventKinds[ev.GetKind()]
@@ -224,6 +332,10 @@ if err := ev.GetValue().UnmarshalTo(v); err != nil {
 }
 ```
 
+An event of `robot.unpark` and one of `robot.park` are both read into an
+`app.RobotParked`; which it was is the event's kind, and what the kind does not
+use is empty (§2).
+
 **In TypeScript**, `pd gen --ts` writes `ts/gen/events.ts`, for every app:
 
 ```ts
@@ -233,8 +345,8 @@ anyUnpack(ev.value, events)                // the message, whichever kind it is
 anyUnpack(ev.value, kinds['robot.move'])   // typed as RobotMoved
 ```
 
-`events` is a protobuf-es registry of every event message, and `kinds` is each
-by its kind. An app with no past has both, empty.
+`events` is a protobuf-es registry of every event message, each once, and
+`kinds` is the message each kind holds. An app with no past has both, empty.
 
 **Hand the registry to the transport.** Connect's JSON names the message an Any
 holds by its type, and protobuf-es reads one only with that type registered --
@@ -307,6 +419,12 @@ return tx.Commit()
   `(payday.event)`, which the app's schema must declare too. The moment it is
   written down is taken by `Begin`, to the microsecond; `Event.At` says when it
   happened, when that is another moment.
+- **Which of its message's kinds.** A message of one kind is its event's kind,
+  and `Event.Kind` may say it or not. A message of several cannot say which
+  operation it was, so the event does -- `past.Event{Kind: "robot.unpark",
+  Value: parked}` -- and one that says none is refused, as is a kind its
+  message does not hold, with `InvalidArgument`. A child and a batch of them
+  are held to the same, and a batch with one such child writes none of them.
 - **The subject is of the caller's tenant.** One of another tenant is refused as
   not found, whatever path the row reaches its tenant by; a row behind no wall
   is everybody's to be about. An identifier that names no row is taken at its
@@ -496,6 +614,14 @@ past.Say(s, "ko", func(r *past.Reading, ev past.EventRow, m *app.MachineServiced
 	return fmt.Sprintf("%s: %s 정비, 다음 정비 %s",
 		r.Name(id(m.GetBy())), r.Name(id(m.GetMachine())), r.Time(m.GetDue().AsTime()))
 })
+
+// A message of several kinds, a sentence for each: what each kind uses of it.
+past.SayKind(s, "robot.park", "en", func(r *past.Reading, ev past.EventRow, m *app.RobotParked) string {
+	return fmt.Sprintf("%s parked %s in %s", r.Name(ev.Actor), r.Name(id(m.GetRobot())), r.Name(id(m.GetBay())))
+})
+past.SayKind(s, "robot.unpark", "en", func(r *past.Reading, ev past.EventRow, m *app.RobotParked) string {
+	return fmt.Sprintf("%s took %s out of its bay", r.Name(ev.Actor), r.Name(id(m.GetRobot())))
+})
 ```
 
 An answer made of events reads them with a reading of its own:
@@ -510,6 +636,22 @@ if err := r.Err(); err != nil {
 }
 ```
 
+- **A sentence for each kind.** `past.Say` says the one kind of a message of
+  one. A message of several is said with `past.SayKind(s, kind, locale, f)`, once
+  for each of its kinds, each sentence reading what its kind uses -- an unpark
+  has no bay to say. `past.Say` of a message of several panics where the app
+  starts: one sentence of all of them would say a park and an unpark alike, and
+  a kind the message takes later would be said by a sentence written before it.
+  One function for several kinds is that, said of each, with `ev.Kind` -- or
+  `r.Kind()`, for what the sentence hands the reading to -- saying which:
+
+  ```go
+  for _, k := range []string{"robot.park", "robot.unpark"} {
+  	past.SayKind(s, k, "en", parked)
+  }
+  ```
+
+  `past.SayKind` of a kind its message does not hold panics too.
 - **Which language.** `r.Say(ev)` says an event as the reader's locale says it,
   then its language -- `en` for `en-GB` -- then the default locale and its
   language. Where none of them says it, it is the event's kind and what its
@@ -550,8 +692,10 @@ if err := r.Err(); err != nil {
   the error rather than sentences that name nobody.
 - **Every kind in every language.** `past.Unsaid(s, locale, pd.EventKinds)` is
   the kinds the locale's own language says nothing of -- not counting the
-  default, which is a language the reader did not ask for. An app's test holds
-  it empty, so that a kind it declares later is not read as its fields:
+  default, which is a language the reader did not ask for -- each kind of a
+  message of several on its own: one of them said is not the others. An app's
+  test holds it empty, so that a kind it declares later, or a message takes, is
+  not read as its fields:
 
   ```go
   for _, l := range []string{"en", "ko"} {
@@ -768,10 +912,12 @@ rest is advice, and a generation does what it did.
 
 - **A schema its lock refuses, or a lock behind its schema.** The comparison of
   §4, made without writing the lock. A schema that lost or changed what the lock
-  holds is said in the words `pd gen` refuses it in. A lock that does not hold
-  all the schema declares -- one not written yet, or committed without what a
-  change added -- says what it lacks: until `pd gen` adds that, nothing refuses
-  a change to it, and `pd gen --check` fails. Run `pd gen`, and commit the lock.
+  holds -- a kind dropped or moved among them -- is said in the words `pd gen`
+  refuses it in, and so is a lock it cannot read, one of `events` among them. A
+  lock that does not hold all the schema declares -- one not written yet, or
+  committed without what a change added, a kind a message took -- says what it
+  lacks: until `pd gen` adds that, nothing refuses a change to it, and `pd gen
+  --check` fails. Run `pd gen`, and commit the lock.
 - **A column named for an event that does not say it names one**: a `bytes`
   column of `TYPE_UUID` called `event_id` or `…_event_id`, without
   `(payday.field) = {event: true}`. The expiry asks only the columns that say so

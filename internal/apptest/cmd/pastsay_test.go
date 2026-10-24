@@ -8,6 +8,7 @@ import (
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -256,12 +257,71 @@ func TestEveryKindIsSaidInEveryLanguage(t *testing.T) {
 	x := require.New(t)
 	s := core.Sentences(app.UnimplementedEventServiceServer{})
 
-	x.Len(pd.EventKinds, 5, "each of this app's kinds, so that a test of none is not a test of all")
+	x.Len(pd.EventKinds, 6, "each of this app's kinds, so that a test of none is not a test of all")
 	for _, l := range []string{"en", "ko"} {
 		x.Empty(past.Unsaid(s, l, pd.EventKinds), "unsaid in %s", l)
 	}
-	x.Equal([]string{"app.MachineStarted", "correct", "machine.service", "past.expire", "robot.move"}, past.Unsaid(s, "fr", pd.EventKinds),
+	x.Equal([]string{"app.MachineStarted", "correct", "machine.service", "past.expire", "retract", "robot.move"}, past.Unsaid(s, "fr", pd.EventKinds),
 		"and a language it says nothing in says none of them")
+}
+
+// TestEachKindOfAMessageIsSaidInItsOwnWords: a correction and a retraction
+// hold one message, and each is said by the sentence of its kind -- the one
+// reading the moment it holds, the other the event alone. A retraction from
+// before `retract` was a kind is a `correct` holding no moment, and is said as
+// one still.
+func TestEachKindOfAMessageIsSaidInItsOwnWords(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+	as := b.as(ctx)
+	s := core.Sentences(b.Walled.Event())
+
+	m := machine(t, b, as)
+	ev := b.serviced(t, as, m, b.Holder)
+	recorded := func(kind string, at *timestamppb.Timestamp) pdid.Id {
+		var id pdid.Id
+		x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
+			_, op, err := past.Begin(ctx, s, past.Event{Kind: kind, Value: app.Corrected_builder{Event: ev.Bytes(), At: at}.Build()})
+			if err != nil {
+				return err
+			}
+			id = op.Id()
+
+			return nil
+		}))
+
+		return id
+	}
+	corrected := recorded("correct", timestamppb.New(time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)))
+	retracted := recorded("retract", nil)
+	before := recorded("correct", nil)
+
+	x.Equal("admin said an earlier event happened on Sep 28 00:00", b.said(t, as, s, "en", nil, corrected))
+	x.Equal("admin took back an earlier event, which never happened", b.said(t, as, s, "en", nil, retracted))
+	x.Equal("admin: 이전 기록을 9월 28일 00:00의 일로 고침", b.said(t, as, s, "ko", nil, corrected))
+	x.Equal("admin: 이전 기록을 없던 일로 되돌림", b.said(t, as, s, "ko", nil, retracted))
+	x.Equal("admin said an earlier event never happened", b.said(t, as, s, "en", nil, before))
+
+	// Each kind of the message is said of its own: a language that says one
+	// of them leaves the other to the next in line.
+	t.Run("and each is said on its own", func(t *testing.T) {
+		x := require.New(t)
+
+		s := past.NewSentences("en")
+		past.SayKind(s, "correct", "en", func(*past.Reading, past.EventRow, *app.Corrected) string { return "corrected" })
+		past.SayKind(s, "retract", "en", func(*past.Reading, past.EventRow, *app.Corrected) string { return "retracted" })
+		past.SayKind(s, "retract", "ko", func(r *past.Reading, _ past.EventRow, _ *app.Corrected) string { return r.Kind() + " 되돌림" })
+		x.Equal([]string{"correct"}, past.Unsaid(s, "ko", map[string]protoreflect.MessageType{
+			"correct": pd.EventKinds["correct"],
+			"retract": pd.EventKinds["retract"],
+		}))
+
+		x.Equal("retract 되돌림", b.said(t, as, s, "ko", nil, retracted))
+		x.Equal("corrected", b.said(t, as, s, "ko", nil, corrected), "as the default says it")
+		x.Panics(func() {
+			past.Say(s, "de", func(*past.Reading, past.EventRow, *app.Corrected) string { return "korrigiert" })
+		}, "one sentence of a message of two kinds")
+	})
 }
 
 // TestAnEventFromBeforeThePastIsSaidAsItWasWritten: a row an app adopting its

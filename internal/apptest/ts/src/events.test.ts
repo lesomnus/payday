@@ -14,7 +14,7 @@ import { anyUnpack } from '@bufbuild/protobuf/wkt'
 import { describe, expect, it } from 'vitest'
 
 import { EventListResponseSchema } from '../gen/app/payday/event_svc_pb.js'
-import { MachineServicedSchema, MachineStartedSchema, Mode } from '../gen/app/machine_pb.js'
+import { CorrectedSchema, MachineServicedSchema, MachineStartedSchema, Mode } from '../gen/app/machine_pb.js'
 import { events, kinds } from '../gen/events.js'
 
 /** A machine's identifier: sixteen bytes, as base64, which is how JSON has bytes. */
@@ -43,16 +43,26 @@ const noted = { kind: 'machine.note' } satisfies JsonObject
 const page = { items: [serviced, noted] } satisfies JsonObject
 
 describe('the event registry', () => {
-	it('names each event message by the kind its rows are written under', () => {
+	it('names the message each kind of event holds', () => {
 		expect(kinds['machine.service']).toBe(MachineServicedSchema)
 
 		// A message that names no kind is written under its full name.
 		expect(kinds['app.MachineStarted']).toBe(MachineStartedSchema)
-		expect(Object.keys(kinds).sort()).toEqual(['app.MachineStarted', 'correct', 'machine.service', 'past.expire', 'robot.move'])
+
+		// And one of two kinds is named by each: a correction and a
+		// retraction hold one message.
+		expect(kinds['correct']).toBe(CorrectedSchema)
+		expect(kinds['retract']).toBe(CorrectedSchema)
+		expect(Object.keys(kinds).sort()).toEqual(['app.MachineStarted', 'correct', 'machine.service', 'past.expire', 'retract', 'robot.move'])
 
 		for (const v of Object.values(kinds)) {
 			expect(events.getMessage(v.typeName)).toBe(v)
 		}
+	})
+
+	it('holds each message once, however many kinds hold it', () => {
+		const names = [...events].map((v) => v.typeName).sort()
+		expect(names).toEqual(['app.Corrected', 'app.MachineServiced', 'app.MachineStarted', 'app.PastExpired', 'app.RobotMoved'])
 	})
 
 	it('reads a List of events whose values are Anys, and a List is not read without it', () => {
