@@ -43,7 +43,7 @@ func emitSeals(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	}
 
 	e := v.GoName()
-	sealPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+	sealPkg := p.EntPkg(v)
 
 	g.P("// isSealed is whether rows of `key`'s kind are sealed: it is on the trail and")
 	g.P("// declares a field `personal`, which the trail's digest leaves out and the")
@@ -280,7 +280,7 @@ func emitTrailSeals(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	}
 
 	e := v.GoName()
-	sealPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+	sealPkg := p.EntPkg(v)
 
 	g.P("func (s trailStore) BlankSeals(ctx ", pkgCtx.Ident("Context"), ", objects []", pkgPdid.Ident("Id"), ", forgotten func(", pkgPdid.Ident("Id"), ") []byte) (int, error) {")
 	g.P("	n := 0")

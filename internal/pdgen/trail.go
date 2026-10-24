@@ -87,7 +87,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 
 	v := s.Own(pdpb.Own_OWN_AUDIT)
 	e := v.GoName()
-	entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+	entPkg := p.EntPkg(v)
 	pred := p.Ent + "/predicate"
 
 	// The access record's rows are rows of this store too (payday#111), so
@@ -96,7 +96,7 @@ func EmitTrail(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	acc := s.Own(pdpb.Own_OWN_ACCESS)
 	var accPkg protogen.GoImportPath
 	if acc != nil {
-		accPkg = p.Ent + "/" + protogen.GoImportPath(acc.EntPkg())
+		accPkg = p.EntPkg(acc)
 	}
 
 	g.P("// TrailStore is the audit table as [trail.Store] sees it.")
@@ -545,7 +545,7 @@ func emitAfter(g *protogen.GeneratedFile, indent string, pkg protogen.GoImportPa
 func emitManifest(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	v := s.Own(pdpb.Own_OWN_ARCHIVED)
 	e := v.GoName()
-	pkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+	pkg := p.EntPkg(v)
 	field := func(name string) protogen.GoIdent { return pkg.Ident(name) }
 
 	g.P("// archivedCounter is the manifest's one row that is not a blob: the number")

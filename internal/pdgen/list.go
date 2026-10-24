@@ -525,8 +525,7 @@ func emitForget(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath
 
 func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root protogen.GoImportPath) {
 	e := v.GoName()
-	low := v.EntPkg()
-	entPkg := p.Ent + "/" + protogen.GoImportPath(low)
+	entPkg := p.EntPkg(v)
 	l := v.List
 
 	// The order, as entpage reads it and as ent orders by. Written out once so
@@ -770,7 +769,7 @@ func emitOrderCursor(g *protogen.GeneratedFile, v *Entity, name string, by []Ord
 // built the request wrong.
 func emitFilter(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoImportPath) {
 	e := v.GoName()
-	entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+	entPkg := p.EntPkg(v)
 
 	g.P("// filter", e, " turns one filter into the predicate that selects what it")
 	g.P("// names. Naming nothing is refused, since the request asked for \"these\" and")

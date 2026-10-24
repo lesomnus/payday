@@ -22,6 +22,48 @@ type Paths struct {
 	Bare protogen.GoImportPath
 }
 
+// EntPkg is the import path of the package ent generates for `v`, as this file
+// imports it: under `ent` and the entity's own name, `entRobot`, and never
+// under the package's name.
+//
+// ent names the package after the entity, folded down -- `Image` is `image` --
+// and protogen names an import after the last element of its path. So that was
+// a name the app chose, in a file whose every other name is payday's: a
+// parameter `image` in `left`, a type `wall`, a page of identifiers `page`. The
+// two met, and an app with an entity named `Image` did not compile, on a line
+// of payday's (hday.io/workday, 2026-10-25). Renaming what payday's side holds
+// was the other way, and it is a list nobody keeps: every name a generator
+// writes in a scope that names a package of ent's, against every name an app
+// may not have chosen yet. A name with a capital in it is none of ent's, whose
+// are all lower case, and none of this file's own begins with `ent`.
+//
+// protogen takes the name from the path and offers no other way to give one,
+// so the path carries it: an element of its own behind [aliased], which no
+// import path has, and which [RewriteImport] takes back off where the import is
+// written.
+func (p Paths) EntPkg(v *Entity) protogen.GoImportPath { return entPkg(p.Ent, v.GoName()) }
+
+// aliased is what an ent package's path carries its import's name behind; see
+// [Paths.EntPkg]. A Go import path has no element that begins with a dot.
+const aliased = "/.payday/"
+
+// entPkg is [Paths.EntPkg] for the entity whose type is called `name`.
+func entPkg(ent protogen.GoImportPath, name string) protogen.GoImportPath {
+	return ent + "/" + protogen.GoImportPath(strings.ToLower(name)) + aliased + protogen.GoImportPath("ent"+name)
+}
+
+// RewriteImport is the path a generated file imports `v` by: an ent package's
+// own, for a path [Paths.EntPkg] answered, and `v` for any other. It is the
+// plugin's [protogen.Options.ImportRewriteFunc], which protogen calls once it
+// has named the import from the path it was given.
+func RewriteImport(v protogen.GoImportPath) protogen.GoImportPath {
+	if i := strings.Index(string(v), aliased); i >= 0 {
+		return v[:i]
+	}
+
+	return v
+}
+
 const (
 	pkgPdid    = protogen.GoImportPath("github.com/lesomnus/payday/pdid")
 	pkgFrame   = protogen.GoImportPath("github.com/lesomnus/payday/frame")
@@ -311,7 +353,7 @@ func EmitGrouped(g *protogen.GeneratedFile, s *Schema, p Paths) {
 		g.P("	}")
 		g.P("")
 
-		at := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		at := p.EntPkg(v)
 		if v.IsSet {
 			// From inside the set there is exactly one, the same way a tenant
 			// is its own wall.
@@ -342,7 +384,7 @@ func whySet(v *Entity, s *Schema) string {
 // walk out along the edges the schema named until it reaches one.
 func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) string {
 	tenantIn := fmt.Sprintf("%s(vs...)",
-		g.QualifiedGoIdent((p.Ent + "/" + protogen.GoImportPath(s.Tenant.EntPkg())).Ident("IdIn")))
+		g.QualifiedGoIdent(p.EntPkg(s.Tenant).Ident("IdIn")))
 
 	if v.IsTenant {
 		// From inside a tenant there is exactly one, which is what a tenant
@@ -358,7 +400,7 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 		// Several columns is OR, and it is the trail: one write has a tenant
 		// whose row changed and a tenant whose actor made it, and the record is
 		// readable by both.
-		at := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		at := p.EntPkg(v)
 
 		vs := make([]string, len(v.Columns))
 		for i, name := range v.Columns {
@@ -379,7 +421,7 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 		// It is read here rather than walked because it cannot be stale: every
 		// edge on the path is immutable, which is what `checkStamp` refuses a
 		// path without.
-		at := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		at := p.EntPkg(v)
 
 		return fmt.Sprintf("%s(vs...)", g.QualifiedGoIdent(at.Ident(pascal(v.Stamp)+"In")))
 	}
@@ -402,8 +444,7 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 		}
 
 		steps = append(steps, fmt.Sprintf("%s(", g.QualifiedGoIdent(
-			(p.Ent+"/"+protogen.GoImportPath(strings.ToLower(string(at.FullName().Name())))).
-				Ident("Has"+pascal(name)+"With"))))
+			entPkg(p.Ent, string(at.FullName().Name())).Ident("Has"+pascal(name)+"With"))))
 		at = e.Target()
 	}
 
@@ -432,7 +473,7 @@ func predicateOf(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths) strin
 // `<Edge>IdIn` exists exactly when the key is on that table, and there is no
 // assumption left to check.
 func collapse(g *protogen.GeneratedFile, at graph.Entity, name string, p Paths) string {
-	pkg := p.Ent + "/" + protogen.GoImportPath(strings.ToLower(string(at.FullName().Name())))
+	pkg := entPkg(p.Ent, string(at.FullName().Name()))
 
 	return fmt.Sprintf("%s(vs...)", g.QualifiedGoIdent(pkg.Ident(pascal(name)+"IdIn")))
 }

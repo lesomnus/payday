@@ -32,7 +32,7 @@ func emitDigests(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	if a == nil {
 		return
 	}
-	trailPkg := p.Ent + "/" + protogen.GoImportPath(a.EntPkg())
+	trailPkg := p.EntPkg(a)
 	pred := p.Ent + "/predicate"
 	archive := s.Has(pdpb.Own_OWN_ARCHIVED)
 
@@ -97,7 +97,7 @@ func emitDigests(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 	sealing := s.Has(pdpb.Own_OWN_ROW_SEAL)
 	for _, v := range kinds {
 		e := v.GoName()
-		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		entPkg := p.EntPkg(v)
 		sealed := sealing && v.Sealed()
 
 		g.P("// checked", e, " is what a check of the rows reads of the ", v.Name, " kind.")
@@ -168,7 +168,7 @@ func emitDigests(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		}
 
 		e := v.GoName()
-		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		entPkg := p.EntPkg(v)
 
 		g.P("// rows", e, " is the rows `ps` says of the ", v.Name, " kind -- every row there is,")
 		g.P("// live or erased softly -- at most a page of them in identifier order, each as")
@@ -463,7 +463,7 @@ func emitRecord(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	g.P("			switch d {")
 	for _, v := range kinds {
 		e := v.GoName()
-		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		entPkg := p.EntPkg(v)
 		g.P("			case ", e, "Domain:")
 		g.P("				rows, err = rows", e, "(ctx, db, ", entPkg.Ident("IdIn"), "(uuids(page)...))")
 	}
@@ -624,7 +624,7 @@ func emitCarry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	}
 
 	a := s.Own(pdpb.Own_OWN_AUDIT)
-	trailPkg := p.Ent + "/" + protogen.GoImportPath(a.EntPkg())
+	trailPkg := p.EntPkg(a)
 	sealing := s.Has(pdpb.Own_OWN_ROW_SEAL)
 
 	g.P("func (s trailStore) Carry(ctx ", pkgCtx.Ident("Context"), ", digest *", pkgAudit.Ident("Digest"), ", d ", pkgPdid.Ident("Domain"),
@@ -640,7 +640,7 @@ func emitCarry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("		var err error")
 	g.P("		switch d {")
 	for _, v := range kinds {
-		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		entPkg := p.EntPkg(v)
 		g.P("		case ", v.GoName(), "Domain:")
 		g.P("			rows, err = rows", v.GoName(), "(ctx, s.db, ", entPkg.Ident("IdIn"), "(uuids(ids)...))")
 	}

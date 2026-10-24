@@ -45,7 +45,7 @@ func emitOwed(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	}
 
 	e := v.GoName()
-	pkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+	pkg := p.EntPkg(v)
 
 	g.P("func (s trailStore) Owe(ctx ", pkgCtx.Ident("Context"), ", objects []", pkgPdid.Ident("Id"), ") error {")
 	g.P("	now := ", pkgTime.Ident("Now"), "()")

@@ -3,6 +3,39 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An ent package is imported under a name of payday's
+
+**Applies to every app**, which regenerates: `server/pd/pd.g.go` imports the
+package ent writes for each entity as `ent` and the entity's name --
+`entRobot` -- where it used ent's own name for it, `robot`. No schema,
+migration or code changes, and nothing outside `server/pd` names those imports
+(#174).
+
+ent names that package after the entity, folded down, so it was the one name
+in the file an app chose, beside every name payday's generator writes there.
+The two met. An app with an entity named `Image` did not compile, on a line of
+`server/pd` it cannot edit: `left`, which reads the row a write left for the
+trail, called the row it was handed `image`, and `image.IdEQ` was then the
+parameter's. Neither did an app with an entity named after one of the forty
+or so other names payday writes where a package of ent's is named: a type of
+the file's own (`Wall`, `Recorder`), a function (`Line`, `Snapshot`,
+`Subject`), a local (`Page`, `Key`, `Message`, `Read`). The import's name is
+payday's now: no ent package has a capital in its name, and no name payday
+writes begins with `ent`.
+
+- **An app with such an entity generates and compiles.** One with none sees
+  the import names move, and payday's own `audit` and `access` lose the `1`
+  protogen gave them beside the app's packages of those names.
+- **Some names still do not compile.** An entity named `Record`, `Scope`,
+  `Previous`, `Pred` or `Doc` meets a name of what protoc-gen-orm-ent writes
+  into `server/bare`, and one named `Name` a name of ent's client: those are
+  theirs. One named `Next` gives the app's `Server` a `Next()` beside the one
+  every layer has for the server behind it.
+
+What the apps on payday change: each regenerates, and nothing else.
+hday.io/workday's `Image` is what found it, on its first generation since
+`left` was written (#126).
+
 ## The trail and the access record have an index by time
 
 **Applies to every app**: payday's `Audit` and `Access` each declare one more
@@ -16,8 +49,7 @@ a tenant, a kind, an actor. So each batch of it read the table and sorted what
 it found, and a pass cost its batches times the table. Those reads are:
 
 - **a pass of a `trail.Policy` with no `Tenants`**: every kind but the ones
-  it names, across the deployment, beside the access record. roster's sweep is
-  one;
+  it names, across the deployment, beside the access record;
 - **`trail.Archive` and `Policy.Collect` over every kind**, which is what an
   operator's command asks;
 - **a `List` of the trail or the access record that names no filter**, from
@@ -62,8 +94,13 @@ few lines, and goes by time for one with many, where it is faster.
   One statement at a time and outside a transaction, as `CONCURRENTLY` is.
   On SQLite the migration's `CREATE INDEX` holds the write lock for as long.
 
-What the apps on payday change: each regenerates and migrates. roster, whose
-sweep passes over the whole deployment, is the one whose passes this changes.
+What the apps on payday change: each regenerates and migrates. roster's sweep
+is not one of those reads: its `serve` hands `trail.Sweep` the policy
+`forget.Held` makes, whose `Tenants` is `Holds(db)`, so a pass goes tenant by
+tenant on the indexes it had, as it has since roster#105. What reads across
+the deployment there is an operator's `roster trail prune --older-than` or
+`--before` with no `--kind`: its reads of a million lines took 74 s before
+this and 2 s after, by roster's own measurement.
 
 ## A deep page of a list starts at its cursor
 

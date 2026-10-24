@@ -1116,7 +1116,7 @@ func keepsTrail(s *Schema) bool {
 // written. A few hundred rows a statement is already a few hundred times fewer
 // statements.
 func emitKeptTrail(g *protogen.GeneratedFile, s *Schema, p Paths) {
-	table := (p.Ent + "/" + protogen.GoImportPath(s.Own(pdpb.Own_OWN_AUDIT).EntPkg())).Ident("Table")
+	table := p.EntPkg(s.Own(pdpb.Own_OWN_AUDIT)).Ident("Table")
 
 	g.P("// keptTrail is the trail a transaction has recorded and not written yet.")
 	g.P("//")
@@ -1651,7 +1651,7 @@ func emitLeft(g *protogen.GeneratedFile, s *Schema, p Paths) {
 			continue
 		}
 
-		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		entPkg := p.EntPkg(v)
 		g.P("	case ", v.GoName(), "Domain:")
 		g.P("		vs, err = rows", v.GoName(), "(ctx, s.Db, ", entPkg.Ident("IdEQ"), "(", pkgUuid.Ident("UUID"), "(key)))")
 	}

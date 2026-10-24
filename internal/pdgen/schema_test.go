@@ -121,7 +121,7 @@ func readPlugin(t *testing.T, files map[string]string) (*pdgen.Schema, *protogen
 		add(f)
 	}
 
-	p, err := protogen.Options{}.New(req)
+	p, err := protogen.Options{ImportRewriteFunc: pdgen.RewriteImport}.New(req)
 	if err != nil {
 		t.Fatalf("build the plugin request: %v", err)
 	}
