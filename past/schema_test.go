@@ -84,7 +84,7 @@ message Thing {
 }
 
 message Happened {
-  option (payday.event) = {kind: "thing.happen"};
+  option (payday.event) = {kinds: "thing.happen"};
 
   bytes thing = 1;
 }
@@ -99,10 +99,19 @@ message Plain {
   bytes thing = 1;
 }
 
+// Two kinds of one message: a correction holds both of its fields, and a
+// retraction which event alone, the event never having happened.
+message Corrected {
+  option (payday.event) = {kinds: ["thing.correct", "thing.retract"]};
+
+  bytes event = 1;
+  google.protobuf.Timestamp at = 2;
+}
+
 // What a sentence nothing says is made of: one field of every kind an event
 // message holds.
 message Serviced {
-  option (payday.event) = {kind: "thing.service"};
+  option (payday.event) = {kinds: "thing.service"};
 
   bytes thing = 1;
   bytes by = 2;

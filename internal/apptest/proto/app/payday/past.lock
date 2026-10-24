@@ -1,10 +1,11 @@
 {
-  "events": {
-    "app.Corrected": "correct",
-    "app.MachineServiced": "machine.service",
+  "kinds": {
     "app.MachineStarted": "app.MachineStarted",
-    "app.PastExpired": "past.expire",
-    "app.RobotMoved": "robot.move"
+    "correct": "app.Corrected",
+    "machine.service": "app.MachineServiced",
+    "past.expire": "app.PastExpired",
+    "retract": "app.Corrected",
+    "robot.move": "app.RobotMoved"
   },
   "messages": {
     "app.Corrected": {

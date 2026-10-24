@@ -34,3 +34,18 @@ lint:
 breaking:
   use:
     - FILE
+  # One change, on purpose and before any deployment wrote a row under it: an
+  # event message declares the kinds it holds, `repeated string kinds = 1`,
+  # where it declared one, `string kind = 1`. The same number, so a declaration
+  # compiled against the old one is read as its one kind. An option an app
+  # writes and `pd gen` reads, so nothing generated against it moves but the
+  # app's own declaration, which says `kinds:` now. This goes once main and the
+  # registry's `dev` both have the change -- left here, it is a hole in the
+  # check.
+  ignore_only:
+    FIELD_SAME_CARDINALITY:
+      - proto/payday/past.proto
+    FIELD_SAME_JSON_NAME:
+      - proto/payday/past.proto
+    FIELD_SAME_NAME:
+      - proto/payday/past.proto

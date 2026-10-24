@@ -3,6 +3,73 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An event message holds several kinds, and a name is one field across a domain
+
+**Applies to an app that declares an event message**, `option (payday.event)`,
+which so far is rove's adoption of the past (rove#184, unmerged) and payday's
+apptest: nothing deployed has written a row under either. Every other app
+changes nothing, and regenerates `ts/gen/payday/past_pb.ts` when it moves its
+`buf.build/payday/payday` pin.
+
+A message was one kind's, so an app whose operations held much the same thing
+-- an assignment and its correction, a park and an unpark -- declared a message
+for each, and spent a field's number on a name as each happened to number it.
+Now a message says the kinds it holds, each kind's events use what of it they
+need, and a field of one name is one field across a domain's kinds
+(payday#171).
+
+- **The option says `kinds`**, a list, where it said `kind`:
+
+  ```proto
+  option (payday.event) = {kinds: "robot.move"};
+  option (payday.event) = {kinds: ["robot.park", "robot.unpark"]};
+  option (payday.event) = {}; // its full name, as before
+  ```
+
+  `{kind: ...}` no longer compiles: move the app's `buf.build/payday/payday` pin
+  to a `dev` with `EventMessage.kinds` (`buf dep update`) and say `kinds:`. It
+  is field 1, where `kind` was, so an option compiled before reads as its one
+  kind. `pd gen` refuses a kind two messages say, as before, and a kind said
+  empty or twice.
+- **The lock records each kind and its message**, under `kinds`, and each
+  message once. A lock written before records each message's kind under
+  `events`, and `pd gen` and `pd doctor` refuse it with how to write it: each
+  `"app.Message": "kind"` of `events` as `"kind": "app.Message"` under `kinds`.
+  One no deployment wrote a row under -- rove#184's -- may be deleted instead,
+  for `pd gen` to write. From then on a kind is never dropped, nor moved to
+  another message, and a message may take more; a key the lock does not know is
+  refused rather than dropped.
+- **An event of a message of several kinds says which it is**: `past.Event{Kind:
+  "robot.unpark", Value: ...}`, to `past.Begin`, `Op.Child` and `Op.Batch`
+  alike. One that says none, or a kind its message does not hold, is refused
+  `InvalidArgument`, and a batch with one such child writes none of them. An
+  event of a message of one kind may leave `Kind` empty, as every event did.
+- **Each kind of a message of several is said on its own**:
+  `past.SayKind(s, kind, locale, f)`. `past.Say` says the one kind of a message
+  of one, and panics for a message of several, where the app starts.
+  `Reading.Kind` is the kind of the event being said, and `past.Unsaid` counts
+  each kind, so a kind a message takes is unsaid until it is said.
+- **A field of one name has one number and one type** across the event
+  messages of one domain's kinds, a kind's domain being what it says before its
+  first `.` -- `robot` of `robot.park`. `pd gen` refuses a schema that gives a
+  name two, naming the messages, the field and both numbers or types. A message
+  of kinds of two domains is held to both, and one that names no kinds, being
+  of its full name, is of none.
+- **The registries name every kind**: `pd.EventKinds` maps each kind of a
+  message of several to that message, and so does `ts/gen/events.ts`'s `kinds`;
+  its `events` registry holds each message once.
+- [Keeping a past](guide/past.md#kinds-and-the-messages-they-hold) is the guide.
+
+What the apps on payday change:
+
+- **rove**'s adoption of the past (rove#184) is redone on this: its 72 kinds
+  keep their names and share messages where they hold much the same, each
+  shared message's field numbers the domain's, each `past.Begin` of one naming
+  its kind, and each kind of one said with `past.SayKind`. Its lock is written
+  again rather than converted.
+- **roster**, **shale**, **kamino**, **khala** and **observatory** declare no
+  event message.
+
 ## A sandbox keeps only the methods it calls
 
 **Applies to every app**, which regenerates: the one file that moves is

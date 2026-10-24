@@ -22,18 +22,25 @@ import (
 // language and zone, naming people as they are called then (payday#151).
 
 var (
-	happenedMd = message("Happened")
-	namedMd    = message("Named")
-	plainMd    = message("Plain")
-	servicedMd = message("Serviced")
-	partMd     = servicedMd.Messages().ByName("Part")
+	happenedMd  = message("Happened")
+	namedMd     = message("Named")
+	plainMd     = message("Plain")
+	servicedMd  = message("Serviced")
+	partMd      = servicedMd.Messages().ByName("Part")
+	correctedMd = message("Corrected")
 )
 
 // sayOf says the messages of `md` in `locale` with `f`, as [Say] says the
 // messages of a Go type: these are dynamic, and [Say] reads its message type
 // off its type parameter.
 func sayOf(s *Sentences, locale string, md protoreflect.MessageDescriptor, f func(*Reading, EventRow, protoreflect.Message) string) {
-	s.say(locale, dynamicpb.NewMessageType(md), func(r *Reading, ev EventRow, m proto.Message) string {
+	sayKindOf(s, "", locale, md, f)
+}
+
+// sayKindOf says the events of `kind`, whose messages are of `md`, as
+// [SayKind] says them of a Go type.
+func sayKindOf(s *Sentences, kind, locale string, md protoreflect.MessageDescriptor, f func(*Reading, EventRow, protoreflect.Message) string) {
+	s.say(kind, locale, dynamicpb.NewMessageType(md), func(r *Reading, ev EventRow, m proto.Message) string {
 		return f(r, ev, m.ProtoReflect())
 	})
 }
@@ -80,6 +87,40 @@ func TestASentenceIsSaidInTheReadersLanguage(t *testing.T) {
 			require.Equal(t, want, s.Read(t.Context(), nil, locale, nil).Say(ev))
 		})
 	}
+}
+
+// TestEachKindOfAMessageIsSaidInASentenceOfItsOwn: one message of two kinds,
+// said of each: an event is said by the sentence of its kind, which reads what
+// of the message its kind uses -- and the reading says the kind while it says
+// it, to whatever the sentence hands the reading to.
+func TestEachKindOfAMessageIsSaidInASentenceOfItsOwn(t *testing.T) {
+	at := correctedMd.Fields().ByName("at")
+	when := func(r *Reading, m protoreflect.Message) string {
+		ts := m.Get(at).Message()
+		return r.Kind() + " " + r.Time(time.Unix(ts.Get(ts.Descriptor().Fields().ByName("seconds")).Int(), 0))
+	}
+
+	s := NewSentences("en")
+	sayKindOf(s, "thing.correct", "en", correctedMd, func(r *Reading, ev EventRow, m protoreflect.Message) string {
+		return "corrected to " + when(r, m)
+	})
+	sayKindOf(s, "thing.retract", "en", correctedMd, func(r *Reading, ev EventRow, m protoreflect.Message) string {
+		return ev.Kind + ": " + r.Kind() + ", which never happened"
+	})
+	sayKindOf(s, "thing.retract", "ko", correctedMd, says("없던 일"))
+
+	m := dynamicpb.NewMessage(correctedMd)
+	m.Set(at, protoreflect.ValueOfMessage(timestamppb.New(time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)).ProtoReflect()))
+
+	x := require.New(t)
+	r := s.Read(t.Context(), nil, "en", nil)
+	x.Equal("corrected to thing.correct 2026-09-28 00:00", r.Say(eventOf(t, "thing.correct", m)))
+	x.Equal("thing.retract: thing.retract, which never happened", r.Say(eventOf(t, "thing.retract", dynamicpb.NewMessage(correctedMd))))
+	x.Empty(r.Kind(), "and no kind once it is said")
+
+	x.Equal("ko: 없던 일", s.Read(t.Context(), nil, "ko", nil).Say(eventOf(t, "thing.retract", m)))
+	x.Equal("corrected to thing.correct 2026-09-28 00:00", s.Read(t.Context(), nil, "ko", nil).Say(eventOf(t, "thing.correct", m)),
+		"a kind Korean says nothing of is said as the default says it, though its message's other kind is said in Korean")
 }
 
 // TestAnEventNothingSaysIsItsKindAndWhatItHolds: an event no locale a reader
@@ -301,6 +342,25 @@ func TestUnsaidIsWhatALanguageDoesNotSay(t *testing.T) {
 	x.Equal([]string{"thing.happen"}, Unsaid(s, "ko", map[string]protoreflect.MessageType{
 		"thing.happen": dynamicpb.NewMessageType(namedMd),
 	}), "said with a message an event of the kind does not hold")
+
+	t.Run("each kind of a message of several", func(t *testing.T) {
+		x := require.New(t)
+
+		kinds := map[string]protoreflect.MessageType{
+			"thing.happen":  dynamicpb.NewMessageType(happenedMd),
+			"thing.correct": dynamicpb.NewMessageType(correctedMd),
+			"thing.retract": dynamicpb.NewMessageType(correctedMd),
+		}
+
+		s := NewSentences("en")
+		sayOf(s, "en", happenedMd, says("happened"))
+		sayKindOf(s, "thing.correct", "en", correctedMd, says("corrected"))
+		x.Equal([]string{"thing.retract"}, Unsaid(s, "en", kinds), "one of its kinds said is not the other")
+
+		sayKindOf(s, "thing.retract", "en", correctedMd, says("retracted"))
+		x.Empty(Unsaid(s, "en", kinds))
+		x.Equal([]string{"thing.correct", "thing.happen", "thing.retract"}, Unsaid(s, "ko", kinds))
+	})
 }
 
 // TestAnEventOfNoMessageIsSaidByLegacy: a row from before the app's events
@@ -330,8 +390,9 @@ func TestAnEventOfNoMessageIsSaidByLegacy(t *testing.T) {
 }
 
 // TestWhatIsSaidIsSaidOnce: a message that is no event's, a kind said twice
-// in one locale, and a sentence of no language are the code saying what it
-// does not mean, and are refused where it starts.
+// in one locale, a sentence of no language, a message of several kinds said as
+// if it were one, and a kind its message does not hold are the code saying
+// what it does not mean, and are refused where it starts.
 func TestWhatIsSaidIsSaidOnce(t *testing.T) {
 	x := require.New(t)
 
@@ -343,6 +404,20 @@ func TestWhatIsSaidIsSaidOnce(t *testing.T) {
 	x.Panics(func() { NewSentences("") })
 	x.Panics(func() { s.TimeLayout("", "15:04") })
 	x.Panics(func() { Say(s, "en", func(*Reading, EventRow, proto.Message) string { return "" }) }, "a message of no type")
+	x.Panics(func() { SayKind(s, "thing.happen", "en", func(*Reading, EventRow, proto.Message) string { return "" }) }, "a message of no type")
+
+	// A message of several kinds is said of each: one sentence said of all
+	// of them at once would say a correction and a retraction alike.
+	x.PanicsWithValue(`past: past.test.Corrected is what events of kinds "thing.correct" and "thing.retract" hold, which are said each with past.SayKind`,
+		func() { sayOf(s, "en", correctedMd, says("corrected")) })
+	x.PanicsWithValue(`past: past.test.Corrected is what events of kinds "thing.correct" and "thing.retract" hold, and not of "thing.happen"`,
+		func() { sayKindOf(s, "thing.happen", "en", correctedMd, says("happened")) })
+	x.Panics(func() { sayKindOf(s, "thing.correct", "en", happenedMd, says("happened")) }, "a kind of another message")
+	x.Panics(func() { sayKindOf(s, "thing.happen", "en", happenedMd, says("again")) }, "said twice, the second time by its name")
+	x.NotPanics(func() { sayKindOf(s, "thing.correct", "en", correctedMd, says("corrected")) })
+	x.Panics(func() { sayKindOf(s, "thing.correct", "en", correctedMd, says("again")) })
+	x.NotPanics(func() { sayKindOf(s, "thing.retract", "en", correctedMd, says("retracted")) }, "the other kind of the message")
 
 	x.NotPanics(func() { sayOf(s, "en-GB", happenedMd, says("happened")) })
+	x.NotPanics(func() { sayKindOf(s, "thing.happen", "ko", happenedMd, says("일어남")) }, "the one kind of a message of one, by its name")
 }

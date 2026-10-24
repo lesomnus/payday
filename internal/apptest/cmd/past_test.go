@@ -225,12 +225,12 @@ func TestThePastIsWrittenAndReadBack(t *testing.T) {
 	})
 }
 
-// TestAnEventIsReadBackByItsKind: `pd.EventKinds` names each of this app's
-// event messages by the kind its rows are written under -- one that names no
-// kind, by its full name -- and an event holding one, written through the
-// server and kept as JSON in the database, is read back into the message its
-// kind names, whole: an enum by its name, a list and a map of a message of its
-// own, a time.
+// TestAnEventIsReadBackByItsKind: `pd.EventKinds` names the message each of
+// this app's kinds of event holds -- a message that names no kind, by its full
+// name, and one of two kinds by each -- and an event holding one, written
+// through the server and kept as JSON in the database, is read back into the
+// message its kind names, whole: an enum by its name, a list and a map of a
+// message of its own, a time.
 func TestAnEventIsReadBackByItsKind(t *testing.T) {
 	x := require.New(t)
 
@@ -243,6 +243,7 @@ func TestAnEventIsReadBackByItsKind(t *testing.T) {
 		"app.MachineStarted": "app.MachineStarted",
 		"robot.move":         "app.RobotMoved",
 		"correct":            "app.Corrected",
+		"retract":            "app.Corrected",
 		"past.expire":        "app.PastExpired",
 	}, names)
 

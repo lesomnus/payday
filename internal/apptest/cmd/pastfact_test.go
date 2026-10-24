@@ -161,7 +161,7 @@ func TestAStatementIsReadBackAsWritten(t *testing.T) {
 	corrected := from.AddDate(0, 0, -3)
 	var second pdid.Id
 	x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
-		_, op, err := past.Begin(ctx, s, past.Event{Value: app.Corrected_builder{Event: first.Bytes(), At: timestamppb.New(corrected)}.Build()})
+		_, op, err := past.Begin(ctx, s, past.Event{Kind: "correct", Value: app.Corrected_builder{Event: first.Bytes(), At: timestamppb.New(corrected)}.Build()})
 		if err != nil {
 			return err
 		}
@@ -209,7 +209,7 @@ func TestAStatementIsReadBackAsWritten(t *testing.T) {
 		x := require.New(t)
 
 		x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
-			_, op, err := past.Begin(ctx, s, past.Event{Value: app.Corrected_builder{Event: first.Bytes()}.Build()})
+			_, op, err := past.Begin(ctx, s, past.Event{Kind: "retract", Value: app.Corrected_builder{Event: first.Bytes()}.Build()})
 			if err != nil {
 				return err
 			}
@@ -223,7 +223,7 @@ func TestAStatementIsReadBackAsWritten(t *testing.T) {
 
 		// A fact that no longer stands is no fact to retract.
 		pdtest.NewX(t).ErrCode(codes.NotFound, b.operate(t, as, func(ctx context.Context, s past.Store) error {
-			_, op, err := past.Begin(ctx, s, past.Event{Value: app.Corrected_builder{Event: first.Bytes()}.Build()})
+			_, op, err := past.Begin(ctx, s, past.Event{Kind: "retract", Value: app.Corrected_builder{Event: first.Bytes()}.Build()})
 			if err != nil {
 				return err
 			}
@@ -267,7 +267,7 @@ func TestAWholeEventIsCorrected(t *testing.T) {
 
 	var correction pdid.Id
 	x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
-		_, op, err := past.Begin(ctx, s, past.Event{Value: app.Corrected_builder{Event: serviced.Bytes(), At: timestamppb.New(day(28))}.Build()})
+		_, op, err := past.Begin(ctx, s, past.Event{Kind: "correct", Value: app.Corrected_builder{Event: serviced.Bytes(), At: timestamppb.New(day(28))}.Build()})
 		if err != nil {
 			return err
 		}
@@ -305,7 +305,7 @@ func TestAWholeEventIsCorrected(t *testing.T) {
 	x.False(ok, "it was not so on 9/20, by what is known now")
 
 	x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
-		_, op, err := past.Begin(ctx, s, past.Event{Value: app.Corrected_builder{Event: correction.Bytes()}.Build()})
+		_, op, err := past.Begin(ctx, s, past.Event{Kind: "retract", Value: app.Corrected_builder{Event: correction.Bytes()}.Build()})
 		if err != nil {
 			return err
 		}
@@ -316,7 +316,7 @@ func TestAWholeEventIsCorrected(t *testing.T) {
 
 	// An operation of another tenant's is none to correct.
 	pdtest.NewX(t).ErrCode(codes.NotFound, b.operate(t, b.elsewhere(t, ctx), func(ctx context.Context, s past.Store) error {
-		_, op, err := past.Begin(ctx, s, past.Event{Value: app.Corrected_builder{Event: serviced.Bytes()}.Build()})
+		_, op, err := past.Begin(ctx, s, past.Event{Kind: "correct", Value: app.Corrected_builder{Event: serviced.Bytes(), At: timestamppb.New(day(1))}.Build()})
 		if err != nil {
 			return err
 		}
@@ -661,7 +661,7 @@ func TestASupersededFactIsNotSupersededAgain(t *testing.T) {
 	}))
 
 	retract := func(ctx context.Context, s past.Store) error {
-		_, op, err := past.Begin(ctx, s, past.Event{Value: app.Corrected_builder{Event: row.Event.Bytes()}.Build()})
+		_, op, err := past.Begin(ctx, s, past.Event{Kind: "retract", Value: app.Corrected_builder{Event: row.Event.Bytes()}.Build()})
 		if err != nil {
 			return err
 		}

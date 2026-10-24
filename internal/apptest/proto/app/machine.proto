@@ -117,7 +117,7 @@ enum Mode {
 // it is kept -- so none of them is removed, renamed but for its `json_name`, or
 // made to hold something else, and nor is a value of `Mode`.
 message MachineServiced {
-  option (payday.event) = {kind: "machine.service"};
+  option (payday.event) = {kinds: "machine.service"};
 
   bytes machine = 1;
   bytes by = 2;
@@ -147,11 +147,17 @@ message MachineStarted {
   bytes machine = 1;
 }
 
-// Corrected is what an event correcting another one holds: which, and when it
-// happened -- or no moment, for one that never did. Its facts are the ones
-// the correction writes, and the ones it supersedes say it was this.
+// Corrected is what an event correcting another one holds, of two kinds: a
+// correction, that the event happened at another moment -- which event, and
+// when -- and a retraction, that it never happened, which holds which and no
+// moment. One message, because the two hold the same but for that moment, and
+// each kind is said in a sentence of its own. Its facts are the ones the
+// correction writes, and the ones it supersedes say it was this.
+//
+// `retract` was added after `correct`, as a kind may be: the lock keeps every
+// kind the message ever held, and a message only ever takes more.
 message Corrected {
-  option (payday.event) = {kind: "correct"};
+  option (payday.event) = {kinds: ["correct", "retract"]};
 
   bytes event = 1;
   google.protobuf.Timestamp at = 2;

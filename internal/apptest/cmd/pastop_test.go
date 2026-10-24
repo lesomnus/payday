@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/lesomnus/payday/frame"
@@ -250,6 +251,115 @@ func TestAnEventSaysWhatItIs(t *testing.T) {
 		})
 		pdtest.NewX(t).ErrCode(codes.InvalidArgument, err)
 	})
+}
+
+// TestAnEventOfAMessageOfSeveralKindsSaysWhichItIs: a correction and a
+// retraction hold one message, and an event of it is written under the kind
+// it says -- begun, as a child and in a batch alike -- and read back by that
+// kind into the message both hold. One that says none of its kinds, or a
+// kind its message does not hold, is refused, and a batch with one such child
+// writes none of the others. A message of one kind may say it, and may not say
+// another.
+func TestAnEventOfAMessageOfSeveralKindsSaysWhichItIs(t *testing.T) {
+	b, ctx := build(t)
+	as := b.as(ctx)
+	s := b.pastOf(t, b.Drv)
+
+	of := func(kind string) past.Event {
+		return past.Event{Kind: kind, Value: app.Corrected_builder{Event: pdid.New(pd.EventDomain).Bytes()}.Build()}
+	}
+
+	t.Run("begun, as a child and in a batch", func(t *testing.T) {
+		x := require.New(t)
+
+		var op, child pdid.Id
+		var batch []*past.Op
+		x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
+			_, o, err := past.Begin(ctx, s, of("correct"))
+			if err != nil {
+				return err
+			}
+			op = o.Id()
+
+			c, err := o.Child(ctx, of("retract"))
+			if err != nil {
+				return err
+			}
+			child = c.Id()
+
+			batch, err = o.Batch(ctx, []past.Child{
+				{Event: of("retract")},
+				{Event: of("correct")},
+				{Event: past.Event{Kind: "robot.move", Value: moved(nil)}},
+				{Event: past.Event{Value: moved(nil)}},
+			})
+			return err
+		}))
+
+		x.Equal("correct", eventOf(t, as, s, op).Kind)
+		x.Equal("retract", eventOf(t, as, s, child).Kind)
+		x.Equal("retract", eventOf(t, as, s, batch[0].Id()).Kind)
+		x.Equal("correct", eventOf(t, as, s, batch[1].Id()).Kind)
+		x.Equal("robot.move", eventOf(t, as, s, batch[2].Id()).Kind, "the one kind of a message of one, said")
+		x.Equal("robot.move", eventOf(t, as, s, batch[3].Id()).Kind, "and not said")
+
+		for _, id := range []pdid.Id{op, child} {
+			v := eventOf(t, as, s, id)
+			typ, ok := pd.EventKinds[v.Kind]
+			x.True(ok)
+			got := typ.New().Interface()
+			x.NoError(v.Value.UnmarshalTo(got))
+			x.Equal(protoreflect.FullName("app.Corrected"), got.ProtoReflect().Descriptor().FullName(), "read back by its kind")
+		}
+	})
+
+	for name, c := range map[string]struct {
+		ev   past.Event
+		says string
+	}{
+		"none of its kinds": {of(""),
+			`app.Corrected is what events of kinds "correct" and "retract" hold, and an event of it says which it is: past.Event{Kind: "correct", ...}`},
+		"a kind of another message": {of("robot.move"),
+			`app.Corrected is what events of kinds "correct" and "retract" hold, and not of "robot.move"`},
+		"a kind of no message": {of("correct.later"),
+			`app.Corrected is what events of kinds "correct" and "retract" hold, and not of "correct.later"`},
+		"another kind than its one": {past.Event{Kind: "retract", Value: moved(nil)},
+			`app.RobotMoved is what events of kind "robot.move" hold, and not of "retract"`},
+	} {
+		t.Run("refused: "+name, func(t *testing.T) {
+			pdtest.NewX(t).ErrCode(codes.InvalidArgument, b.operate(t, as, func(ctx context.Context, s past.Store) error {
+				_, _, err := past.Begin(ctx, s, c.ev)
+				require.ErrorContains(t, err, c.says)
+				return err
+			}))
+
+			pdtest.NewX(t).ErrCode(codes.InvalidArgument, b.operate(t, as, func(ctx context.Context, s past.Store) error {
+				_, o, err := past.Begin(ctx, s, past.Event{Value: moved(nil)})
+				require.NoError(t, err)
+
+				_, err = o.Child(ctx, c.ev)
+				require.ErrorContains(t, err, c.says)
+				return err
+			}))
+
+			pdtest.NewX(t).ErrCode(codes.InvalidArgument, b.operate(t, as, func(ctx context.Context, s past.Store) error {
+				_, o, err := past.Begin(ctx, s, past.Event{Value: moved(nil)})
+				require.NoError(t, err)
+
+				_, err = o.Batch(ctx, []past.Child{{Event: of("retract")}, {Event: c.ev}})
+				require.ErrorContains(t, err, "child 1: ")
+				require.ErrorContains(t, err, c.says)
+
+				// In the transaction it was refused in: the child that said
+				// its kind was not written either.
+				vs, rerr := past.Events(ctx, s, past.EventQuery{Causes: []pdid.Id{o.Id()}})
+				require.NoError(t, rerr)
+				require.Empty(t, vs, "a batch with a child refused wrote the others")
+
+				return err
+			}))
+		})
+	}
 }
 
 // TestAnOperationCalledInsideAnotherIsPartOfIt: in the transaction of the

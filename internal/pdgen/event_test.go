@@ -17,17 +17,26 @@ func past(t *testing.T, src string) string {
 	return declare(20, 21) + ownAll(t) + copies(t, 20, 21) + src
 }
 
-// TestAnEventMessageIsReadWithItsKind: a message that says it is what an
-// event holds is read with the kind it says, or its full name when it says
-// none -- and found where it is declared, inside another message too, since a
-// registry missing one is a row of it that a page cannot read.
-func TestAnEventMessageIsReadWithItsKind(t *testing.T) {
+// TestAnEventMessageIsReadWithItsKinds: a message that says it is what an
+// event holds is read with the kinds it says, in the order it says them, or
+// its full name when it says none -- and found where it is declared, inside
+// another message too, since a registry missing one is a row of it that a
+// page cannot read.
+func TestAnEventMessageIsReadWithItsKinds(t *testing.T) {
 	x := require.New(t)
 
 	s, err := readAs(t, "fleet", past(t, `
 message RobotMoved {
-  option (payday.event) = {kind: "robot.move"};
+  option (payday.event) = {kinds: "robot.move"};
   bytes robot = 1;
+}
+
+// One message of two kinds: a robot parked, and one taken out of its bay,
+// which holds no bay to say.
+message RobotParked {
+  option (payday.event) = {kinds: ["robot.park", "robot.unpark"]};
+  bytes robot = 1;
+  bytes bay = 2;
 }
 
 message RobotStopped {
@@ -45,7 +54,7 @@ message Shift {
 
 // What an event holds may be another event's message, and a message of its own.
 message Handover {
-  option (payday.event) = {kind: "shift.handover"};
+  option (payday.event) = {kinds: "shift.handover"};
   Shift.Began began = 1;
   Note note = 2;
 }
@@ -56,16 +65,30 @@ message Note {
 `))
 	x.NoError(err)
 
-	kinds := map[string]string{}
+	kinds := map[string][]string{}
 	for _, v := range s.Events {
-		kinds[string(v.FullName())] = v.Kind
+		kinds[string(v.FullName())] = v.Kinds
+	}
+	x.Equal(map[string][]string{
+		"fleet.RobotMoved":   {"robot.move"},
+		"fleet.RobotParked":  {"robot.park", "robot.unpark"},
+		"fleet.RobotStopped": {"fleet.RobotStopped"},
+		"fleet.Shift.Began":  {"fleet.Shift.Began"},
+		"fleet.Handover":     {"shift.handover"},
+	}, kinds)
+
+	by := map[string]string{}
+	for _, v := range s.EventKinds() {
+		by[v.Kind] = string(v.Event.FullName())
 	}
 	x.Equal(map[string]string{
-		"fleet.RobotMoved":   "robot.move",
+		"robot.move":         "fleet.RobotMoved",
+		"robot.park":         "fleet.RobotParked",
+		"robot.unpark":       "fleet.RobotParked",
 		"fleet.RobotStopped": "fleet.RobotStopped",
 		"fleet.Shift.Began":  "fleet.Shift.Began",
-		"fleet.Handover":     "shift.handover",
-	}, kinds)
+		"shift.handover":     "fleet.Handover",
+	}, by, "each kind, with its message")
 }
 
 // TestAnEventMessageNeedsAPast: an event is a row of payday's Event, which an
@@ -99,22 +122,30 @@ func TestAnEntityIsNotAnEventMessage(t *testing.T) {
 }
 
 // TestAKindIsOneMessages: a row says which message its value is by its kind,
-// whether the kind is written out or is another message's full name.
+// whether the kind is written out or is another message's full name, and
+// whichever of a message's several kinds it is.
 func TestAKindIsOneMessages(t *testing.T) {
 	for name, src := range map[string]string{
 		"both written out": `
 message RobotMoved {
-  option (payday.event) = {kind: "robot.move"};
+  option (payday.event) = {kinds: "robot.move"};
 }
 message RobotWalked {
-  option (payday.event) = {kind: "robot.move"};
+  option (payday.event) = {kinds: "robot.move"};
 }`,
 		"one the other's name": `
 message RobotMoved {
   option (payday.event) = {};
 }
 message RobotWalked {
-  option (payday.event) = {kind: "fleet.RobotMoved"};
+  option (payday.event) = {kinds: "fleet.RobotMoved"};
+}`,
+		"one of several": `
+message RobotMoved {
+  option (payday.event) = {kinds: ["robot.move", "robot.walk"]};
+}
+message RobotWalked {
+  option (payday.event) = {kinds: ["robot.stroll", "robot.walk"]};
 }`,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -126,6 +157,236 @@ message RobotWalked {
 			x.Contains(err.Error(), "a kind is one message's")
 		})
 	}
+}
+
+// TestAKindIsAWordSaidOnce: a kind said empty is no kind -- saying none is
+// how a message is of its full name -- and one said twice by a message is the
+// declaration saying something it did not mean.
+func TestAKindIsAWordSaidOnce(t *testing.T) {
+	for name, tc := range map[string]struct {
+		kinds string
+		want  string
+	}{
+		"empty":           {`""`, "fleet.RobotMoved: says a kind that is empty"},
+		"empty, of two":   {`["robot.move", ""]`, "fleet.RobotMoved: says a kind that is empty"},
+		"twice":           {`["robot.move", "robot.move"]`, `fleet.RobotMoved: says kind "robot.move" twice`},
+		"twice, of three": {`["robot.move", "robot.walk", "robot.move"]`, `fleet.RobotMoved: says kind "robot.move" twice`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			x := require.New(t)
+
+			_, err := readAs(t, "fleet", past(t, `
+message RobotMoved {
+  option (payday.event) = {kinds: `+tc.kinds+`};
+  bytes robot = 1;
+}`))
+			x.Error(err)
+			x.Contains(err.Error(), tc.want)
+		})
+	}
+}
+
+// TestAFieldNameIsOneFieldAcrossADomain: across the event messages of a
+// domain's kinds -- a kind's domain being what it says before its first `.` --
+// a field of one name has one number and one type, and a schema that gives it
+// two is refused with both messages, the field and both numbers or types. A
+// message of kinds of two domains is held to both. What is not asked: a name
+// in two domains, a message one holds, a field renamed with its JSON name
+// kept, which answers to its new name, and a message that names no kinds,
+// whose full name is of no domain.
+func TestAFieldNameIsOneFieldAcrossADomain(t *testing.T) {
+	assigned := `
+message AssetAssigned {
+  option (payday.event) = {kinds: ["asset.assign", "asset.release"]};
+  bytes asset = 1;
+  bytes holder = 2;
+  bytes role = 3;
+  repeated string tags = 4;
+}
+`
+	for name, tc := range map[string]struct {
+		src  string
+		want []string
+	}{
+		"another number": {assigned + `
+message AssetCorrected {
+  option (payday.event) = {kinds: "asset.correct"};
+  bytes asset = 1;
+  bytes event = 2;
+  bytes role = 4;
+}`, []string{
+			`fleet.AssetAssigned and fleet.AssetCorrected: role: is 3 in the first and 4 in the second, and both hold kinds of "asset".`,
+			"\n\n    bytes role = 3;  // fleet.AssetAssigned\n    bytes role = 4;  // fleet.AssetCorrected\n\n",
+			"`asset` of `asset.assign`",
+		}},
+
+		"another type": {assigned + `
+message AssetCorrected {
+  option (payday.event) = {kinds: "asset.correct"};
+  bytes asset = 1;
+  bytes event = 2;
+  string role = 3;
+}`, []string{
+			`fleet.AssetAssigned and fleet.AssetCorrected: role: holds bytes in the first and string in the second, and both hold kinds of "asset".`,
+			"\n\n    bytes role = 3;  // fleet.AssetAssigned\n    string role = 3;  // fleet.AssetCorrected\n\n",
+		}},
+
+		"a list where it is one value": {assigned + `
+message AssetTagged {
+  option (payday.event) = {kinds: "asset.tag"};
+  bytes asset = 1;
+  string tags = 4;
+}`, []string{
+			`fleet.AssetAssigned and fleet.AssetTagged: tags: holds repeated string in the first and string in the second`,
+			"\n\n    repeated string tags = 4;  // fleet.AssetAssigned\n    string tags = 4;  // fleet.AssetTagged\n\n",
+		}},
+
+		"another message": {assigned + `
+message AssetMoved {
+  option (payday.event) = {kinds: "asset.move"};
+  Place asset = 1;
+}
+message Place {
+  string label = 1;
+}`, []string{
+			`fleet.AssetAssigned and fleet.AssetMoved: asset: holds bytes in the first and fleet.Place in the second`,
+		}},
+
+		"both": {assigned + `
+message AssetCorrected {
+  option (payday.event) = {kinds: "asset.correct"};
+  string role = 5;
+}`, []string{
+			`fleet.AssetAssigned and fleet.AssetCorrected: role: is 3 holding bytes in the first and 5 holding string in the second`,
+		}},
+
+		"a message of two domains, by its second": {assigned + `
+message RobotMoved {
+  option (payday.event) = {kinds: "robot.move"};
+  bytes robot = 1;
+}
+message AssetCarried {
+  option (payday.event) = {kinds: ["asset.carry", "robot.carry"]};
+  bytes asset = 1;
+  bytes robot = 2;
+}`, []string{
+			`fleet.AssetCarried and fleet.RobotMoved: robot: is 2 in the first and 1 in the second, and both hold kinds of "robot".`,
+			"`robot` of `robot.carry`",
+		}},
+	} {
+		t.Run("refused: "+name, func(t *testing.T) {
+			x := require.New(t)
+
+			_, err := readAs(t, "fleet", past(t, tc.src))
+			x.Error(err, "a name that is two fields in a domain was read")
+			for _, v := range tc.want {
+				x.Contains(err.Error(), v)
+			}
+			x.Contains(err.Error(), "keeps its `json_name`")
+		})
+	}
+
+	// A message that names no kinds is of its full name, which is of no
+	// domain: the first word of it is its package's, which nobody chose, and
+	// were it a domain every such message of the package would have to number
+	// its fields as every other one does.
+	t.Run("a kind a message did not name is of no domain", func(t *testing.T) {
+		x := require.New(t)
+
+		// Two of their full names, `at` at 1 and at 2, beside a message of a
+		// kind named in `fleet` holding it at 3.
+		src := `
+message RobotStopped {
+  option (payday.event) = {};
+  google.protobuf.Timestamp at = 1;
+}
+message MachineStopped {
+  option (payday.event) = {};
+  bytes machine = 1;
+  google.protobuf.Timestamp at = 2;
+}
+message ShiftEnded {
+  option (payday.event) = {kinds: "fleet.shift_end"};
+  bytes shift = 1;
+  bytes by = 2;
+  google.protobuf.Timestamp at = 3;
+}
+`
+		_, err := readAs(t, "fleet", past(t, src))
+		x.NoError(err, "messages that name no kinds were held to each other, or to a kind of the word their package begins with")
+
+		// A kind chosen in the domain is held to the other chosen one.
+		_, err = readAs(t, "fleet", past(t, src+`
+message ShiftBegan {
+  option (payday.event) = {kinds: "fleet.shift_begin"};
+  bytes shift = 1;
+  google.protobuf.Timestamp at = 4;
+}`))
+		x.ErrorContains(err, `fleet.ShiftBegan and fleet.ShiftEnded: at: is 4 in the first and 3 in the second, and both hold kinds of "fleet".`)
+
+		// And so is a full name a message names, which is a kind it chose.
+		_, err = readAs(t, "fleet", past(t, src+`
+message RobotParked {
+  option (payday.event) = {kinds: "fleet.RobotParked"};
+  google.protobuf.Timestamp at = 5;
+}`))
+		x.ErrorContains(err, `fleet.RobotParked and fleet.ShiftEnded: at: is 5 in the first and 3 in the second, and both hold kinds of "fleet".`)
+	})
+
+	t.Run("as the guide says it", func(t *testing.T) {
+		_, err := readAs(t, "app", past(t, `
+message RobotMoved {
+  option (payday.event) = {kinds: "robot.move"};
+  bytes robot = 1;
+}
+message RobotParked {
+  option (payday.event) = {kinds: ["robot.park", "robot.unpark"]};
+  bytes bay = 1;
+  bytes robot = 2;
+}`))
+		require.ErrorContains(t, err, "app.RobotMoved and app.RobotParked: robot: is 1 in the first and 2 in the second, "+
+			"and both hold kinds of \"robot\".\n\n"+
+			"    bytes robot = 1;  // app.RobotMoved\n"+
+			"    bytes robot = 2;  // app.RobotParked\n", "docs/guide/past.md quotes it so")
+	})
+
+	t.Run("and what is not asked", func(t *testing.T) {
+		x := require.New(t)
+
+		_, err := readAs(t, "fleet", past(t, assigned+`
+// The same field at the same number, holding the same, in another message
+// of the domain -- and another presence, which its JSON does not show.
+message AssetCorrected {
+  option (payday.event) = {kinds: "asset.correct"};
+  bytes asset = 1;
+  bytes event = 2;
+  bytes role = 3 [features.field_presence = EXPLICIT];
+  repeated string tags = 4;
+}
+
+// The same names, at other numbers, in another domain.
+message RobotAssigned {
+  option (payday.event) = {kinds: "robot.assign"};
+  bytes robot = 1;
+  string role = 2;
+  bytes asset = 5;
+}
+
+// A field renamed with its JSON name kept answers to the name it has now,
+// and a message an event message holds has fields of its own.
+message AssetHandedOver {
+  option (payday.event) = {kinds: "asset.hand"};
+  bytes asset = 1;
+  bytes given_role = 5 [json_name = "role"];
+  Hand hand = 6;
+}
+message Hand {
+  string role = 1;
+  bytes holder = 7;
+}
+`))
+		x.NoError(err)
+	})
 }
 
 // TestAnEventMessageNamesPeopleByIdentifierOnly: any `(payday.field)`, in the
@@ -304,9 +565,10 @@ message RobotMoved {
 	})
 }
 
-// TestTheGoRegistryIsWrittenWithAPast: `pd.EventKinds` is every event message
-// by its kind, the nested ones by their Go names -- and nothing at all in an
-// app with no past, which has no Event to hold one.
+// TestTheGoRegistryIsWrittenWithAPast: `pd.EventKinds` is the message of
+// every kind, the nested ones by their Go names and a message of two kinds
+// for each -- and nothing at all in an app with no past, which has no Event to
+// hold one.
 func TestTheGoRegistryIsWrittenWithAPast(t *testing.T) {
 	emit := func(t *testing.T, src string) string {
 		t.Helper()
@@ -329,16 +591,22 @@ func TestTheGoRegistryIsWrittenWithAPast(t *testing.T) {
 
 	out := emit(t, past(t, `
 message RobotMoved {
-  option (payday.event) = {kind: "robot.move"};
+  option (payday.event) = {kinds: "robot.move"};
+}
+message RobotParked {
+  option (payday.event) = {kinds: ["robot.park", "robot.unpark"]};
 }
 message Shift {
   message Began {
     option (payday.event) = {};
   }
 }`))
-	x.Contains(out, "var EventKinds = map[string]protoreflect.MessageType{")
-	x.Contains(out, `"robot.move":        (*app.RobotMoved)(nil).ProtoReflect().Type(),`)
-	x.Contains(out, `"fleet.Shift.Began": (*app.Shift_Began)(nil).ProtoReflect().Type(),`)
+	x.Contains(out, "var EventKinds = map[string]protoreflect.MessageType{\n"+
+		"\t\"fleet.Shift.Began\": (*app.Shift_Began)(nil).ProtoReflect().Type(),\n"+
+		"\t\"robot.move\":        (*app.RobotMoved)(nil).ProtoReflect().Type(),\n"+
+		"\t\"robot.park\":        (*app.RobotParked)(nil).ProtoReflect().Type(),\n"+
+		"\t\"robot.unpark\":      (*app.RobotParked)(nil).ProtoReflect().Type(),\n"+
+		"}\n", "every kind, in order, and a message of two once for each")
 
 	out = emit(t, past(t, ""))
 	x.Contains(out, "var EventKinds = map[string]protoreflect.MessageType{}", "a past with no events yet has an empty registry")
@@ -348,8 +616,10 @@ message Shift {
 
 // TestTheTypeScriptRegistryIsWrittenForEveryApp: `events.ts` names each event
 // message's schema by protobuf-es's name for it, from the file protobuf-es
-// wrote it into, and the kinds as literals TypeScript reads as written -- and
-// is there, empty, for an app with no past, whose page passes it all the same.
+// wrote it into, and the kinds as literals TypeScript reads as written, a
+// message of two kinds by each -- with the registry holding each message once
+// -- and is there, empty, for an app with no past, whose page passes it all
+// the same.
 func TestTheTypeScriptRegistryIsWrittenForEveryApp(t *testing.T) {
 	x := require.New(t)
 
@@ -357,7 +627,10 @@ func TestTheTypeScriptRegistryIsWrittenForEveryApp(t *testing.T) {
 	// `%q` writes as a `\U` escape -- one JavaScript does not have.
 	s, err := readAs(t, "fleet", past(t, `
 message RobotMoved {
-  option (payday.event) = {kind: "robot.move é\U000e0001"};
+  option (payday.event) = {kinds: "robot.move é\U000e0001"};
+}
+message RobotParked {
+  option (payday.event) = {kinds: ["robot.park", "robot.unpark"]};
 }
 message Shift {
   message Began {
@@ -368,10 +641,16 @@ message Shift {
 
 	out := pdgen.TsEvents(s, pdgen.TsEventSource)
 	x.Contains(out, "import { createRegistry, type DescMessage } from '@bufbuild/protobuf'")
-	x.Contains(out, "import { RobotMovedSchema, Shift_BeganSchema } from './test/schema_pb.js'")
-	x.Contains(out, "\t\"fleet.Shift.Began\": Shift_BeganSchema,\n\t\"robot.move é\U000e0001\": RobotMovedSchema,\n")
+	x.Contains(out, "import { RobotMovedSchema, RobotParkedSchema, Shift_BeganSchema } from './test/schema_pb.js'")
+	x.Contains(out, "export const kinds = {\n"+
+		"\t\"fleet.Shift.Began\": Shift_BeganSchema,\n"+
+		"\t\"robot.move é\U000e0001\": RobotMovedSchema,\n"+
+		"\t\"robot.park\": RobotParkedSchema,\n"+
+		"\t\"robot.unpark\": RobotParkedSchema,\n"+
+		"} as const")
 	x.NotContains(out, `\U`)
-	x.Contains(out, "export const events = createRegistry(Shift_BeganSchema, RobotMovedSchema)")
+	x.Contains(out, "export const events = createRegistry(RobotMovedSchema, RobotParkedSchema, Shift_BeganSchema)\n",
+		"each message once, by its full name")
 
 	s, err = readAs(t, "fleet", ownAll(t))
 	x.NoError(err)
