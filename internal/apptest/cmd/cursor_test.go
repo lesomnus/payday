@@ -140,13 +140,23 @@ func instants(per int) func(i int) time.Time {
 func (p *paging) lines(t *testing.T, ctx context.Context, d pdid.Domain, n, per int) {
 	t.Helper()
 
+	p.spread(t, ctx, []uuid.UUID{p.Tenant.Uuid()}, func(int) pdid.Domain { return d }, n, per)
+}
+
+// spread writes `n` lines of the trail, `per` of them to an instant, filed
+// under each of `tenants` in turn and about things of kind `kind(i)`: a
+// deployment's trail, which a pass that names no tenant reads across.
+func (p *paging) spread(t *testing.T, ctx context.Context, tenants []uuid.UUID, kind func(i int) pdid.Domain, n, per int) {
+	t.Helper()
+
 	at := instants(per)
 	qs := make([]*ent.AuditCreate, n)
 	for i := range qs {
+		tenant, d := tenants[i%len(tenants)], kind(i)
 		qs[i] = p.Ent.Audit.Create().
 			SetId(uuid.NewV7()).
-			SetTenantId(p.Tenant.Uuid()).
-			SetActorTenantId(p.Tenant.Uuid()).
+			SetTenantId(tenant).
+			SetActorTenantId(tenant).
 			SetActorId(uuid.Nil()).
 			SetTraceId([]byte{}).
 			SetAction("/test/Write").
@@ -158,6 +168,35 @@ func (p *paging) lines(t *testing.T, ctx context.Context, d pdid.Domain, n, per 
 	}
 	for i := 0; i < n; i += 500 {
 		require.NoError(t, p.Ent.Audit.CreateBulk(qs[i:min(i+500, n)]...).Exec(ctx))
+	}
+}
+
+// accesses writes `n` rows of the access record, `per` of them to an instant,
+// filed under each of `tenants` in turn.
+func (p *paging) accesses(t *testing.T, ctx context.Context, tenants []uuid.UUID, n, per int) {
+	t.Helper()
+
+	at := instants(per)
+	qs := make([]*ent.AccessCreate, n)
+	for i := range qs {
+		tenant := tenants[i%len(tenants)]
+		qs[i] = p.Ent.Access.Create().
+			SetId(pdid.New(pd.AccessDomain).Uuid()).
+			SetTenantId(tenant).
+			SetActorId(p.Holder.Uuid()).
+			SetActorTenantId(tenant).
+			SetTraceId([]byte{}).
+			SetAction("/test/Read").
+			SetKind("read").
+			SetResult("ok").
+			SetDateCreated(at(i)).
+			SetValue([]byte{}).
+			SetDomain(uint32(pd.AccessDomain)).
+			SetSubjects([][]byte{}).
+			SetSubjectCount(0)
+	}
+	for i := 0; i < n; i += 500 {
+		require.NoError(t, p.Ent.Access.CreateBulk(qs[i:min(i+500, n)]...).Exec(ctx))
 	}
 }
 
@@ -202,10 +241,18 @@ func keyOf(t *testing.T, k any) uuid.UUID {
 // started before its cursor. What a page that starts at it throws away is the
 // rows written at its cursor's instant that were on the page before.
 //
-// With sequential scans and bitmap scans off, which is the plan a deployment's
-// trail gets and not the one a test's few hundred rows do: a table this small
-// is read as fast whole, and what is asked here is whether an index can start
-// the read at the cursor at all.
+// And one that answered twice a page or more: a page that did not stop at its
+// end, but read every row past its cursor out of an index that is not in the
+// page's order and sorted them. Such a scan throws nothing away -- the rows of
+// a whole index it skips by a condition on a column after its first are not
+// counted -- and reads the table. What a page that stops answers past its end
+// is the rows written at its last instant, which are sorted by their keys.
+//
+// With sequential scans, bitmap scans and sorts of a whole input off, which is
+// the plan a deployment's trail gets and not the one a test's few hundred rows
+// do: a table this small is read as fast whole, or sorted as fast as read in
+// order, and what is asked here is whether an index can start the read at the
+// cursor and end it at the page at all.
 func (p *paging) startsAtItsCursor(t *testing.T, ctx context.Context, q sent, table string, limit int) {
 	t.Helper()
 
@@ -213,7 +260,7 @@ func (p *paging) startsAtItsCursor(t *testing.T, ctx context.Context, q sent, ta
 	require.NoError(t, err)
 	defer tx.Rollback()
 
-	for _, v := range []string{"SET LOCAL enable_seqscan = off", "SET LOCAL enable_bitmapscan = off"} {
+	for _, v := range []string{"SET LOCAL enable_seqscan = off", "SET LOCAL enable_bitmapscan = off", "SET LOCAL enable_sort = off"} {
 		_, err := tx.ExecContext(ctx, v)
 		require.NoError(t, err)
 	}
@@ -234,6 +281,9 @@ func (p *paging) startsAtItsCursor(t *testing.T, ctx context.Context, q sent, ta
 	require.Lessf(t, v.Removed, float64(limit),
 		"a page of %d read %v rows of %s by %s %s (%s) and threw %v of them away (%s): it read from before its cursor\n\n%s",
 		limit, v.Rows+v.Removed, table, v.Node, v.Index, v.Cond, v.Removed, v.Filter, q.query)
+	require.Lessf(t, v.Rows, float64(2*limit),
+		"a page of %d read %v rows of %s by %s %s (%s) and sorted them: it read past the end of its page\n\n%s",
+		limit, v.Rows, table, v.Node, v.Index, v.Cond, q.query)
 }
 
 // planned is a node of a plan as PostgreSQL explains one in JSON, as much of
@@ -347,27 +397,7 @@ func TestAPassReadsTheAccessRecordFromWhereItLeftOff(t *testing.T) {
 	p, ctx := pagingOf(t, config.AuditConfig{})
 
 	n, limit := 600, 50
-	at := instants(3)
-	qs := make([]*ent.AccessCreate, n)
-	for i := range qs {
-		qs[i] = p.Ent.Access.Create().
-			SetId(pdid.New(pd.AccessDomain).Uuid()).
-			SetTenantId(p.Tenant.Uuid()).
-			SetActorId(p.Holder.Uuid()).
-			SetActorTenantId(p.Tenant.Uuid()).
-			SetTraceId([]byte{}).
-			SetAction("/test/Read").
-			SetKind("read").
-			SetResult("ok").
-			SetDateCreated(at(i)).
-			SetValue([]byte{}).
-			SetDomain(uint32(pd.AccessDomain)).
-			SetSubjects([][]byte{}).
-			SetSubjectCount(0)
-	}
-	for i := 0; i < n; i += 500 {
-		x.NoError(p.Ent.Access.CreateBulk(qs[i:min(i+500, n)]...).Exec(ctx))
-	}
+	p.accesses(t, ctx, []uuid.UUID{p.Tenant.Uuid()}, n, 3)
 
 	got := p.heads(t, ctx, trail.Scope{Kinds: trail.Only(pd.AccessDomain), Whose: trail.FiledUnder, Tenant: p.Tenant}, limit)
 
@@ -379,6 +409,96 @@ func TestAPassReadsTheAccessRecordFromWhereItLeftOff(t *testing.T) {
 	for _, v := range vs {
 		want = append(want, v.Id)
 	}
+	x.Len(want, n)
+	x.Equal(want, got, "every row once, in the order the database keeps them in")
+
+	pages := p.sent.pages("access")
+	x.Len(pages, n/limit+1)
+	if !explains() {
+		return
+	}
+	for _, v := range pages {
+		p.startsAtItsCursor(t, ctx, v, "access", limit)
+	}
+}
+
+// TestAPassOverTheDeploymentReadsTheTrailFromWhereItLeftOff: a scope that
+// names no tenant, and no kind to read, is the trail read by time alone -- the
+// default pass of a policy with no `Tenants`, every kind but the named ones,
+// and `trail.Archive` and `Policy.Collect` over every kind. Every other index
+// of the trail begins with what a read is narrowed by, so these had none to
+// start at, and each batch read the table (payday#157).
+func TestAPassOverTheDeploymentReadsTheTrailFromWhereItLeftOff(t *testing.T) {
+	p, ctx := pagingOf(t, config.AuditConfig{})
+
+	// Three tenants' lines, the deployment's own among them, in turn. Every
+	// sixteenth is a robot's, which the first scope leaves out: forty of
+	// them, fewer than a page, so that a page which starts at its cursor
+	// throws away fewer than a page whichever of them it reads past.
+	//
+	// The lines the app wrote as it was set up, of its tenant and its holder,
+	// are the deployment's too, and none of them is a robot's.
+	setup, err := p.Ent.Audit.Query().Where(entaudit.DomainNEQ(uint32(pd.RobotDomain))).Count(ctx)
+	require.NoError(t, err)
+
+	n, limit := 640, 50
+	tenants := []uuid.UUID{p.Tenant.Uuid(), uuid.NewV7(), uuid.Nil()}
+	p.spread(t, ctx, tenants, func(i int) pdid.Domain {
+		if i%16 == 0 {
+			return pd.RobotDomain
+		}
+		return pd.HolderDomain
+	}, n, 3)
+
+	for _, c := range []struct {
+		name string
+		of   trail.Scope
+		want int
+	}{
+		{"every kind but the named", trail.Scope{Kinds: trail.Except(pd.RobotDomain)}, setup + n - n/16},
+		{"every kind", trail.Scope{}, setup + n},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			x := require.New(t)
+			got := p.heads(t, ctx, c.of, limit)
+
+			q := p.Ent.Audit.Query().Order(ent.Asc(entaudit.FieldDateCreated, entaudit.FieldId))
+			if len(c.of.Except) > 0 {
+				q = q.Where(entaudit.DomainNEQ(uint32(pd.RobotDomain)))
+			}
+			want, err := q.Ids(ctx)
+			x.NoError(err)
+			x.Len(want, c.want)
+			x.Equal(want, got, "every row once, in the order the database keeps them in")
+
+			pages := p.sent.pages("audit")
+			x.Len(pages, c.want/limit+1)
+			if !explains() {
+				return
+			}
+			for _, v := range pages {
+				p.startsAtItsCursor(t, ctx, v, "audit", limit)
+			}
+		})
+	}
+}
+
+// TestAPassOverTheDeploymentReadsTheAccessRecordFromWhereItLeftOff: the
+// access record read by time alone, as a pass that names no tenant reads it
+// beside the trail (payday#157).
+func TestAPassOverTheDeploymentReadsTheAccessRecordFromWhereItLeftOff(t *testing.T) {
+	x := require.New(t)
+	p, ctx := pagingOf(t, config.AuditConfig{})
+
+	n, limit := 600, 50
+	p.accesses(t, ctx, []uuid.UUID{p.Tenant.Uuid(), uuid.NewV7(), uuid.Nil()}, n, 3)
+
+	got := p.heads(t, ctx, trail.Scope{Kinds: trail.Only(pd.AccessDomain)}, limit)
+
+	want, err := p.Ent.Access.Query().
+		Order(ent.Asc(entaccess.FieldDateCreated, entaccess.FieldId)).
+		Ids(ctx)
+	x.NoError(err)
 	x.Len(want, n)
 	x.Equal(want, got, "every row once, in the order the database keeps them in")
 

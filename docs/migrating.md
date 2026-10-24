@@ -3,6 +3,68 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The trail and the access record have an index by time
+
+**Applies to every app**: payday's `Audit` and `Access` each declare one more
+index, `by_time` on `(date_created, id)`. `pd gen` copies them in, and the
+app's migration makes `audit_by_time` and `access_by_time`. No code changes
+(#157).
+
+A read of the trail narrowed by no tenant and no one kind had no index to start
+at, since every index the trail had begins with what a read is narrowed by --
+a tenant, a kind, an actor. So each batch of it read the table and sorted what
+it found, and a pass cost its batches times the table. Those reads are:
+
+- **a pass of a `trail.Policy` with no `Tenants`**: every kind but the ones
+  it names, across the deployment, beside the access record. roster's sweep is
+  one;
+- **`trail.Archive` and `Policy.Collect` over every kind**, which is what an
+  operator's command asks;
+- **a `List` of the trail or the access record that names no filter**, from
+  the deployment's side of the wall, newest first.
+
+On a million lines of the trail and 300,000 rows of the access record, on
+PostgreSQL 17:
+
+| | before | after |
+| --- | ---: | ---: |
+| a pass over every kind but one: 450,000 lines in 450 batches | 69.1 s | 2.3 s |
+| one of its batches, from the middle | 70--733 ms, a scan of the table | 0.33--0.45 ms, a range of the index |
+| a pass over every kind: 500,000 lines | 83.6 s | 1.3 s |
+| a pass over the access record: 150,000 rows | 8.9 s | 0.28 s |
+| a `List` of the trail with no filter, the newest 50 | 118 ms | 0.02 ms |
+
+A pass per tenant -- rove's, whose windows are each tenant's -- reads what it
+did: PostgreSQL keeps `audit_trail` for a small tenant, and reads a tenant
+holding most of the trail by time instead, which is no slower. The wall's
+`List` of one tenant's trail stays on the tenant's indexes for a tenant of a
+few lines, and goes by time for one with many, where it is faster.
+
+- **Every line of the trail and every access row writes one more index
+  entry**, in every app, whether it ever passes over the whole deployment or
+  not. It goes at the end of the index, where a line's time puts it: 39 MB
+  for the million lines above, 12 MB for the 300,000 rows. A line written as
+  the recorder writes one, a statement each, took 206--348 µs with it and
+  190--564 µs without, six rounds of 20,000 each way: less than what a write
+  varies by on a busy machine.
+- **On a table with rows, the migration builds each while the table is locked
+  for writes.** On the million lines above that took 7--9 s for
+  `audit_by_time` and 1--3 s for `access_by_time`, on a busy machine. A
+  deployment that cannot pause its writes that long builds them first, by
+  hand, under the names the migration expects, and the migration finds them
+  made and leaves them:
+
+  ```sql
+  CREATE INDEX CONCURRENTLY IF NOT EXISTS audit_by_time ON audit (date_created, id);
+  CREATE INDEX CONCURRENTLY IF NOT EXISTS access_by_time ON access (date_created, id);
+  ```
+
+  One statement at a time and outside a transaction, as `CONCURRENTLY` is.
+  On SQLite the migration's `CREATE INDEX` holds the write lock for as long.
+
+What the apps on payday change: each regenerates and migrates. roster, whose
+sweep passes over the whole deployment, is the one whose passes this changes.
+
 ## A deep page of a list starts at its cursor
 
 **Applies to every app**, which regenerates: the one file that moves is
