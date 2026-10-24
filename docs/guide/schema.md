@@ -915,16 +915,17 @@ message RobotParked {
 A kind is what its rows are written under, and the message's full name when the
 option names none. A kind is one message's, and a message holds as many as the
 operations whose events hold much the same, each using what of it it needs; an
-event of a message of several says which it is. Across the messages a domain's
-kinds hold -- `robot` of `robot.park` -- a field of one name has one number and
-one type. A message may be declared anywhere in your files, inside another
-message too, and holds scalars, enums, messages of your own, lists, maps and
-protobuf's own types -- but no `(payday.field)`, in it or in anything it holds,
-since an event names people by identifier only; no entity, and no message of a
-generated contract, since a row would keep a row whole or a slug; and no
-`Any`. An entity cannot be one, and an app with no past cannot have one. Since
-nothing in one is declared, a field of one named for something about a person
--- `email`, `phone_number` -- is one `pd doctor` asks about by its name.
+event of a message of several says which it is. Across the messages of the
+kinds you name in one domain -- `robot` of `robot.park` -- a field of one name
+has one number and one type. A message may be declared anywhere in your files,
+inside another message too, and holds scalars, enums, messages of your own,
+lists, maps and protobuf's own types -- but no `(payday.field)`, in it or in
+anything it holds, since an event names people by identifier only; no entity,
+and no message of a generated contract, since a row would keep a row whole or a
+slug; and no `Any`. An entity cannot be one, and an app with no past cannot
+have one. Since nothing in one is declared, a field of one named for something
+about a person -- `email`, `phone_number` -- is one `pd doctor` asks about by
+its name.
 
 A row keeps the message as its canonical JSON and reads it back by name for as
 long as the tenant keeps its history, so a kind is never dropped or moved to

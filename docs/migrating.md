@@ -51,10 +51,10 @@ need, and a field of one name is one field across a domain's kinds
   each kind, so a kind a message takes is unsaid until it is said.
 - **A field of one name has one number and one type** across the event
   messages of one domain's kinds, a kind's domain being what it says before its
-  first `.` -- `robot` of `robot.park`, and of a kind that is its message's full
-  name, its package's first word. `pd gen` refuses a schema that gives a name
-  two, naming the messages, the field and both numbers or types. A message of
-  kinds of two domains is held to both.
+  first `.` -- `robot` of `robot.park`. `pd gen` refuses a schema that gives a
+  name two, naming the messages, the field and both numbers or types. A message
+  of kinds of two domains is held to both, and one that names no kinds, being
+  of its full name, is of none.
 - **The registries name every kind**: `pd.EventKinds` maps each kind of a
   message of several to that message, and so does `ts/gen/events.ts`'s `kinds`;
   its `events` registry holds each message once.

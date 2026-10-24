@@ -57,8 +57,9 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 //   - an entity that says it is one, a kind two messages say, and a kind said
 //     empty or twice;
 //   - a field whose name another message of the same domain's kinds holds at
-//     another number, or holding another type: a kind's domain is what it says
-//     before its first `.`, and one name is one field across a domain.
+//     another number, or holding another type: a kind it names is of the
+//     domain it says before its first `.` -- the full name of a message that
+//     names none is of no domain -- and one name is one field across a domain.
 //
 // And it keeps `proto/<pkg>/payday/past.lock`, the record of every kind the
 // app ever declared and of the message its rows hold: a kind in it is not

@@ -37,6 +37,12 @@ type Event struct {
 	// Kinds is the declaration's `kinds`, in the order it says them, and the
 	// message's full name alone when it said none. A kind is one message's.
 	Kinds []string
+
+	// Named says Kinds are the ones the declaration names, and false for a
+	// message that named none, whose one kind is its full name: a kind the
+	// app chose, and one it did not. Only a kind it chose is of a domain
+	// ([kindDomain]).
+	Named bool
 }
 
 // FullName is the event message's.
@@ -79,8 +85,8 @@ func readEvents(g *graph.Graph, files []*protogen.File) ([]*Event, error) {
 			}
 
 			o, _ := proto.GetExtension(opts, pdpb.E_Event).(*pdpb.EventMessage)
-			v := &Event{Message: m, Kinds: o.GetKinds()}
-			if len(v.Kinds) == 0 {
+			v := &Event{Message: m, Kinds: o.GetKinds(), Named: len(o.GetKinds()) > 0}
+			if !v.Named {
 				v.Kinds = []string{string(m.Desc.FullName())}
 			}
 
@@ -135,10 +141,16 @@ func readEvents(g *graph.Graph, files []*protogen.File) ([]*Event, error) {
 	return vs, nil
 }
 
-// kindDomain is the domain a kind is of: what it says before its first `.`,
-// `asset` of `asset.assign`, and the whole of one that says none. A kind that
-// is a message's full name -- of a message that declares none -- is of the
-// first word of its package, `app` of `app.MachineStarted`.
+// kindDomain is the domain a kind an app named is of: what it says before its
+// first `.`, `asset` of `asset.assign`, and the whole of one that says none.
+//
+// A kind a message did not name -- its full name, `app.MachineStarted`, of a
+// message that names no kinds -- is of no domain, and is never asked for one.
+// The word before its first `.` is its package's, which nobody chose as a
+// domain of operations: were it one, every message of the package that names
+// no kinds would have to number its fields as every other such message does,
+// which is not what the rule is for. A full name a message does name is a kind
+// it chose, and of a domain like any other.
 //
 // A word, and not an entity's domain, which is the number its identifiers
 // carry: the two are named alike because each is what a thing is of, and are
@@ -150,8 +162,8 @@ func kindDomain(kind string) string {
 
 // checkEventDomains refuses a field of one name at two numbers, or holding
 // two types, across the event messages of one domain's kinds: each message
-// is of the domain of each of its kinds ([kindDomain]), and so may be of
-// several.
+// is of the domain of each kind it names ([kindDomain]), and so may be of
+// several -- or of none, when it names no kinds and is of its full name.
 //
 // # Why
 //
@@ -180,6 +192,10 @@ func kindDomain(kind string) string {
 func checkEventDomains(vs []*Event) error {
 	in := map[string][]*Event{}
 	for _, v := range vs {
+		if !v.Named {
+			continue
+		}
+
 		of := map[string]bool{}
 		for _, kind := range v.Kinds {
 			d := kindDomain(kind)

@@ -129,8 +129,8 @@ declare for each.
 
 ### One name, one field, in a domain
 
-A kind's **domain** is what it says before its first `.`: `robot` of
-`robot.park`. A word, and not an entity's domain, which is the number its
+A kind you name is of a **domain**, what it says before its first `.`: `robot`
+of `robot.park`. A word, and not an entity's domain, which is the number its
 identifiers carry. Across the messages a domain's kinds hold, **a field of one
 name is one field**, at one number and holding one type -- `robot` above is
 `bytes robot = 1` in both of the robot's messages -- so that whatever reads the
@@ -157,9 +157,12 @@ rows were written of keeps its numbers (§4), and is renamed with its
 - **Its type is what it holds** -- `bytes`, `app.Pace`, `repeated string`,
   `map<string, app.Part>` -- and not its presence, which a row's JSON does not
   show.
-- **A kind that is its message's full name** is of the first word of its
-  package, `app` of `app.RobotStopped`: the messages of every kind that names
-  none are of one domain.
+- **A kind a message did not name is of no domain.** `app.RobotStopped`, the
+  full name of a message that names no kinds, begins with its package's word,
+  which nobody chose as a domain of operations; were it one, every such message
+  of the package would have to number its fields as every other one does. Its
+  fields are held to nothing here. A full name a message does name is a kind
+  it chose, of a domain like any other.
 
 ### What one may hold
 

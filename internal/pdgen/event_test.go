@@ -191,8 +191,9 @@ message RobotMoved {
 // a field of one name has one number and one type, and a schema that gives it
 // two is refused with both messages, the field and both numbers or types. A
 // message of kinds of two domains is held to both. What is not asked: a name
-// in two domains, a message one holds, and a field renamed with its JSON name
-// kept, which answers to its new name.
+// in two domains, a message one holds, a field renamed with its JSON name
+// kept, which answers to its new name, and a message that names no kinds,
+// whose full name is of no domain.
 func TestAFieldNameIsOneFieldAcrossADomain(t *testing.T) {
 	assigned := `
 message AssetAssigned {
@@ -272,19 +273,6 @@ message AssetCarried {
 			`fleet.AssetCarried and fleet.RobotMoved: robot: is 2 in the first and 1 in the second, and both hold kinds of "robot".`,
 			"`robot` of `robot.carry`",
 		}},
-
-		"kinds that are their messages' full names": {`
-message RobotStopped {
-  option (payday.event) = {};
-  google.protobuf.Timestamp at = 1;
-}
-message MachineStopped {
-  option (payday.event) = {};
-  bytes machine = 1;
-  google.protobuf.Timestamp at = 2;
-}`, []string{
-			`fleet.MachineStopped and fleet.RobotStopped: at: is 2 in the first and 1 in the second, and both hold kinds of "fleet".`,
-		}},
 	} {
 		t.Run("refused: "+name, func(t *testing.T) {
 			x := require.New(t)
@@ -297,6 +285,53 @@ message MachineStopped {
 			x.Contains(err.Error(), "keeps its `json_name`")
 		})
 	}
+
+	// A message that names no kinds is of its full name, which is of no
+	// domain: the first word of it is its package's, which nobody chose, and
+	// were it a domain every such message of the package would have to number
+	// its fields as every other one does.
+	t.Run("a kind a message did not name is of no domain", func(t *testing.T) {
+		x := require.New(t)
+
+		// Two of their full names, `at` at 1 and at 2, beside a message of a
+		// kind named in `fleet` holding it at 3.
+		src := `
+message RobotStopped {
+  option (payday.event) = {};
+  google.protobuf.Timestamp at = 1;
+}
+message MachineStopped {
+  option (payday.event) = {};
+  bytes machine = 1;
+  google.protobuf.Timestamp at = 2;
+}
+message ShiftEnded {
+  option (payday.event) = {kinds: "fleet.shift_end"};
+  bytes shift = 1;
+  bytes by = 2;
+  google.protobuf.Timestamp at = 3;
+}
+`
+		_, err := readAs(t, "fleet", past(t, src))
+		x.NoError(err, "messages that name no kinds were held to each other, or to a kind of the word their package begins with")
+
+		// A kind chosen in the domain is held to the other chosen one.
+		_, err = readAs(t, "fleet", past(t, src+`
+message ShiftBegan {
+  option (payday.event) = {kinds: "fleet.shift_begin"};
+  bytes shift = 1;
+  google.protobuf.Timestamp at = 4;
+}`))
+		x.ErrorContains(err, `fleet.ShiftBegan and fleet.ShiftEnded: at: is 4 in the first and 3 in the second, and both hold kinds of "fleet".`)
+
+		// And so is a full name a message names, which is a kind it chose.
+		_, err = readAs(t, "fleet", past(t, src+`
+message RobotParked {
+  option (payday.event) = {kinds: "fleet.RobotParked"};
+  google.protobuf.Timestamp at = 5;
+}`))
+		x.ErrorContains(err, `fleet.RobotParked and fleet.ShiftEnded: at: is 5 in the first and 3 in the second, and both hold kinds of "fleet".`)
+	})
 
 	t.Run("as the guide says it", func(t *testing.T) {
 		_, err := readAs(t, "app", past(t, `
