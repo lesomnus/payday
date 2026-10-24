@@ -3,6 +3,34 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A deep page of a list starts at its cursor
+
+**Applies to every app**, which regenerates: the one file that moves is
+`internal/ent/runtime/runtime.go`, whose stamp says which ent generated the
+client. No schema, migration or code changes.
+
+Every generated `List` and `Watch` that pages by a cursor narrows a page to
+the rows after it with protobuf-orm/ent's `sqlpage.After`, which wrote the
+order out as `c1 > a1 OR (c1 = a1 AND c2 > a2)`. PostgreSQL starts no index
+range at that OR: it read each page's rows from the list's first and filtered,
+so a deep page cost every row before it and a walk through a table the square
+of its size -- the shape #154 took out of the trail store. protobuf-orm/ent#22
+says *after* in the shape each engine starts at: the row value `(c1, c2) >
+(a1, a2)` on PostgreSQL and SQLite when the order runs one way, and otherwise
+the OR behind an inclusive bound on its leading columns, which is what an order
+of mixed directions (`alias DESC, id`) and MySQL get. On a million rows, the
+page of 500 after the middle of one tenant's half went from 30 ms warm, a
+quarter of a million rows read and thrown away, to 0.13 ms; a walk through that
+half in pages of 500 from 66 s to 0.75 s. The rows a page answers are the same.
+
+- **A list of your own on `sqlpage.After`** gets the same with the module.
+- **A field may be named after a method every mutation has** -- `field`,
+  `fields`, `edge`, `ids` -- and the client compiles (protobuf-orm/ent#21). It
+  did not, so #151 named `Fact`'s column `field_number`. Nothing that compiled
+  is renamed.
+
+What the apps on payday change: each regenerates, and nothing else.
+
 ## An event message holds several kinds, and a name is one field across a domain
 
 **Applies to an app that declares an event message**, `option (payday.event)`,
