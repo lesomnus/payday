@@ -57,7 +57,7 @@ func EmitResources(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 			continue
 		}
 		name := e.GoName()
-		ep := p.Ent + "/" + protogen.GoImportPath(e.EntPkg())
+		ep := p.EntPkg(e)
 		g.P("case *", root.Ident(name), ":")
 		g.P("ctx,err:=read.Allow(ctx,", root.Ident(name+"Service_Get_FullMethodName"), ",1);if err!=nil {")
 		g.P("switch ", pkgStatus.Ident("Code"), "(err) {case ", pkgCodes.Ident("PermissionDenied"), ",", pkgCodes.Ident("Unauthenticated"), ",", pkgCodes.Ident("Unimplemented"), ":return nil,nil};return nil,err}")

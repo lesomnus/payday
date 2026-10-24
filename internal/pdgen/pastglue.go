@@ -43,8 +43,8 @@ func EmitPast(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	}
 
 	e, f, t := ev.GoName(), fact.GoName(), s.Tenant.GoName()
-	evPkg := p.Ent + "/" + protogen.GoImportPath(ev.EntPkg())
-	factPkg := p.Ent + "/" + protogen.GoImportPath(fact.EntPkg())
+	evPkg := p.EntPkg(ev)
+	factPkg := p.EntPkg(fact)
 	pred := p.Ent + "/predicate"
 
 	g.P("// Past is this app's past as the `past` package writes and reads it")
@@ -345,7 +345,7 @@ func EmitPast(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 			continue
 		}
 
-		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		entPkg := p.EntPkg(v)
 		g.P("			case ", v.GoName(), "Domain:")
 		g.P("				rows, err = rows", v.GoName(), "(ctx, s.db, ", entPkg.Ident("IdIn"), "(uuids(page)...))")
 		if v.IsGlobal {
@@ -475,7 +475,7 @@ func emitPastNames(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("	switch id.Domain() {")
 	for _, t := range vs {
 		e := t.v.GoName()
-		entPkg := p.Ent + "/" + protogen.GoImportPath(t.v.EntPkg())
+		entPkg := p.EntPkg(t.v)
 		g.P("	case ", e, "Domain:")
 		g.P("		p, err := ", p.Bare.Ident(e+"Narrow"), "(ctx, Wall(), ", entPkg.Ident("IdEQ"), "(id.Uuid()))")
 		g.P("		if err != nil {")
@@ -535,8 +535,8 @@ func emitPastNames(g *protogen.GeneratedFile, s *Schema, p Paths) {
 func emitPastExpiry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	ev, fact := s.Own(pdpb.Own_OWN_EVENT), s.Own(pdpb.Own_OWN_FACT)
 	e, f := ev.GoName(), fact.GoName()
-	evPkg := p.Ent + "/" + protogen.GoImportPath(ev.EntPkg())
-	factPkg := p.Ent + "/" + protogen.GoImportPath(fact.EntPkg())
+	evPkg := p.EntPkg(ev)
+	factPkg := p.EntPkg(fact)
 	pred := p.Ent + "/predicate"
 
 	g.P("// Pointers is [pastPointers].")
@@ -547,7 +547,7 @@ func emitPastExpiry(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen
 	g.P("// would take, whether a row that stays names it.")
 	g.P("var pastPointers = []", pkgPast.Ident("Pointer"), "{")
 	for _, v := range s.Sorted() {
-		entPkg := p.Ent + "/" + protogen.GoImportPath(v.EntPkg())
+		entPkg := p.EntPkg(v)
 		for _, name := range v.Pointers {
 			g.P("	{Domain: ", v.GoName(), "Domain, Table: ", entPkg.Ident("Table"), ", Column: ", entPkg.Ident("Field"+pascal(name)),
 				", Own: ", pkgPdpb.Ident("Own_"+v.Own.String()), "},")

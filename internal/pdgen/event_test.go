@@ -701,8 +701,8 @@ message Lock {
 `))
 	x.Contains(out, "func Past(next app.Server, drv dialect.Driver, content audit.Contents) (past.Store, error) {")
 	x.Contains(out, "s, err := enttx.Rebind(next, drv)", "the stack is put on the operation's transaction, not trusted to be")
-	x.Contains(out, "\t\t\tcase RobotDomain:\n\t\t\t\trows, err = rowsRobot(ctx, s.db, robot.IdIn(uuids(page)...))\n\t\t\tcase")
-	x.Contains(out, "\t\t\tcase FleetDomain:\n\t\t\t\trows, err = rowsFleet(ctx, s.db, fleet.IdIn(uuids(page)...))\n\t\t\t\tglobal = true\n")
+	x.Contains(out, "\t\t\tcase RobotDomain:\n\t\t\t\trows, err = rowsRobot(ctx, s.db, entRobot.IdIn(uuids(page)...))\n\t\t\tcase")
+	x.Contains(out, "\t\t\tcase FleetDomain:\n\t\t\t\trows, err = rowsFleet(ctx, s.db, entFleet.IdIn(uuids(page)...))\n\t\t\t\tglobal = true\n")
 	x.NotContains(out, "case AuditDomain:", "payday's own records are no subject")
 	x.NotContains(out, "case LockDomain:", "a kind behind the wall no server writes and the trail does not read")
 	x.Contains(out, "func (s pastStore) Redact(")
@@ -711,10 +711,10 @@ message Lock {
 	// What the expiry asks of it: every column that names an event, the
 	// past's and the app's, by the names ent gives them.
 	x.Contains(out, "var pastPointers = []past.Pointer{\n"+
-		"\t{Domain: EventDomain, Table: event.Table, Column: event.FieldCauseId, Own: pdpb.Own_OWN_EVENT},\n"+
-		"\t{Domain: FactDomain, Table: fact.Table, Column: fact.FieldEventId, Own: pdpb.Own_OWN_FACT},\n"+
-		"\t{Domain: FactDomain, Table: fact.Table, Column: fact.FieldSupersededBy, Own: pdpb.Own_OWN_FACT},\n"+
-		"\t{Domain: RobotDomain, Table: robot.Table, Column: robot.FieldMovedBy, Own: pdpb.Own_OWN_UNSPECIFIED},\n"+
+		"\t{Domain: EventDomain, Table: entEvent.Table, Column: entEvent.FieldCauseId, Own: pdpb.Own_OWN_EVENT},\n"+
+		"\t{Domain: FactDomain, Table: entFact.Table, Column: entFact.FieldEventId, Own: pdpb.Own_OWN_FACT},\n"+
+		"\t{Domain: FactDomain, Table: entFact.Table, Column: entFact.FieldSupersededBy, Own: pdpb.Own_OWN_FACT},\n"+
+		"\t{Domain: RobotDomain, Table: entRobot.Table, Column: entRobot.FieldMovedBy, Own: pdpb.Own_OWN_UNSPECIFIED},\n"+
 		"}\n")
 	x.Contains(out, "func (s pastStore) DeleteEvents(ctx context.Context, ids []pdid.Id) (int, error) {")
 	x.Contains(out, "func (s pastStore) DeleteFacts(ctx context.Context, ids []pdid.Id) (int, error) {")
@@ -791,7 +791,7 @@ message Lock {
 		return v
 	}
 
-	x.Contains(block("Person"), "p, err := bare.PersonNarrow(ctx, Wall(), person.IdEQ(id.Uuid()))", "through the wall")
+	x.Contains(block("Person"), "p, err := bare.PersonNarrow(ctx, Wall(), entPerson.IdEQ(id.Uuid()))", "through the wall")
 	x.Contains(block("Person"), "v, err := n.db.Person.Query().Where(p).Only(ctx)")
 	x.Contains(block("Person"), "row, alias, name = v.Proto(), false, true", "a person's name is theirs, and the handle they declare is not")
 	x.Contains(block("Holder"), "row, alias, name = v.Proto(), true, true", "payday's holder: both declared personal")

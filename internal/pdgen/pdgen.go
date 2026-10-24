@@ -1065,10 +1065,6 @@ func (s *Schema) Sorted() []*Entity {
 // GoName is the identifier this entity is known by in Go.
 func (e *Entity) GoName() string { return string(e.FullName().Name()) }
 
-// EntPkg is the name ent gives the package of predicates for this entity,
-// which is its type name folded down.
-func (e *Entity) EntPkg() string { return strings.ToLower(e.GoName()) }
-
 // Serves answers whether the entity has a service with a method in it: one its
 // schema asks for, or a `List` or `Watch` payday adds. A layer wraps only what
 // an entity has, and one with none has nothing to wrap. Whether its writes are

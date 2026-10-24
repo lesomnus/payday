@@ -16,8 +16,8 @@ import (
 	errors "errors"
 	fmt "fmt"
 	log "github.com/lesomnus/otx/log"
-	access1 "github.com/lesomnus/payday/access"
-	audit1 "github.com/lesomnus/payday/audit"
+	access "github.com/lesomnus/payday/access"
+	audit "github.com/lesomnus/payday/audit"
 	batch "github.com/lesomnus/payday/batch"
 	frame "github.com/lesomnus/payday/frame"
 	gate "github.com/lesomnus/payday/gate"
@@ -25,29 +25,29 @@ import (
 	header "github.com/lesomnus/payday/header"
 	apptest "github.com/lesomnus/payday/internal/apptest"
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
-	access "github.com/lesomnus/payday/internal/apptest/internal/ent/access"
-	archived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
-	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
-	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
-	event "github.com/lesomnus/payday/internal/apptest/internal/ent/event"
-	fact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
-	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
-	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
-	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
-	machine "github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
-	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
-	owed "github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
-	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
+	entAccess "github.com/lesomnus/payday/internal/apptest/internal/ent/access"
+	entArchived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
+	entAudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
+	entCell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	entEvent "github.com/lesomnus/payday/internal/apptest/internal/ent/event"
+	entFact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
+	entFleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
+	entHolder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
+	entJoint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
+	entMachine "github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
+	entOutbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
+	entOwed "github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
+	entPairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
-	pulse "github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
-	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
-	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
-	rowseal "github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
-	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
-	stint "github.com/lesomnus/payday/internal/apptest/internal/ent/stint"
-	tally "github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
-	tenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
-	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
+	entPulse "github.com/lesomnus/payday/internal/apptest/internal/ent/pulse"
+	entReading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
+	entRobot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
+	entRowSeal "github.com/lesomnus/payday/internal/apptest/internal/ent/rowseal"
+	entSeal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
+	entStint "github.com/lesomnus/payday/internal/apptest/internal/ent/stint"
+	entTally "github.com/lesomnus/payday/internal/apptest/internal/ent/tally"
+	entTenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
+	entThing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
 	past "github.com/lesomnus/payday/past"
 	pderr "github.com/lesomnus/payday/pderr"
@@ -293,7 +293,7 @@ func (wall) AccessScope(ctx context.Context) (predicate.Access, error) {
 		return nil, err
 	}
 
-	return access.Or(access.TenantIdIn(vs...), access.ActorTenantIdIn(vs...)), nil
+	return entAccess.Or(entAccess.TenantIdIn(vs...), entAccess.ActorTenantIdIn(vs...)), nil
 }
 
 // ArchivedScope: declared `global`, so it is not behind the wall at all.
@@ -308,7 +308,7 @@ func (wall) AuditScope(ctx context.Context) (predicate.Audit, error) {
 		return nil, err
 	}
 
-	return audit.Or(audit.TenantIdIn(vs...), audit.ActorTenantIdIn(vs...), audit.CounterpartTenantIdIn(vs...)), nil
+	return entAudit.Or(entAudit.TenantIdIn(vs...), entAudit.ActorTenantIdIn(vs...), entAudit.CounterpartTenantIdIn(vs...)), nil
 }
 
 // CellScope: a row belongs to the tenant its "tenant" reaches.
@@ -318,7 +318,7 @@ func (wall) CellScope(ctx context.Context) (predicate.Cell, error) {
 		return nil, err
 	}
 
-	return cell.TenantIdIn(vs...), nil
+	return entCell.TenantIdIn(vs...), nil
 }
 
 // EventScope: a row belongs to the tenant its "tenant" reaches.
@@ -328,7 +328,7 @@ func (wall) EventScope(ctx context.Context) (predicate.Event, error) {
 		return nil, err
 	}
 
-	return event.TenantIdIn(vs...), nil
+	return entEvent.TenantIdIn(vs...), nil
 }
 
 // FactScope: a row belongs to the tenant its "tenant" reaches.
@@ -338,7 +338,7 @@ func (wall) FactScope(ctx context.Context) (predicate.Fact, error) {
 		return nil, err
 	}
 
-	return fact.TenantIdIn(vs...), nil
+	return entFact.TenantIdIn(vs...), nil
 }
 
 // FleetScope: declared `global`, so it is not behind the wall at all.
@@ -353,7 +353,7 @@ func (wall) HolderScope(ctx context.Context) (predicate.Holder, error) {
 		return nil, err
 	}
 
-	return holder.TenantIdIn(vs...), nil
+	return entHolder.TenantIdIn(vs...), nil
 }
 
 // JointScope: a row belongs to the tenant its "robot.tenant" reaches.
@@ -363,7 +363,7 @@ func (wall) JointScope(ctx context.Context) (predicate.Joint, error) {
 		return nil, err
 	}
 
-	return joint.HasRobotWith(robot.TenantIdIn(vs...)), nil
+	return entJoint.HasRobotWith(entRobot.TenantIdIn(vs...)), nil
 }
 
 // MachineScope: a row belongs to the tenant its "tenant" reaches.
@@ -373,7 +373,7 @@ func (wall) MachineScope(ctx context.Context) (predicate.Machine, error) {
 		return nil, err
 	}
 
-	return machine.TenantIdIn(vs...), nil
+	return entMachine.TenantIdIn(vs...), nil
 }
 
 // OutboxScope: declared `global`, so it is not behind the wall at all.
@@ -393,7 +393,7 @@ func (wall) PairingScope(ctx context.Context) (predicate.Pairing, error) {
 		return nil, err
 	}
 
-	return pairing.HasLeadWith(robot.TenantIdIn(vs...)), nil
+	return entPairing.HasLeadWith(entRobot.TenantIdIn(vs...)), nil
 }
 
 // PulseScope: declared `global`, so it is not behind the wall at all.
@@ -409,7 +409,7 @@ func (wall) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 		return nil, err
 	}
 
-	return reading.TenantIdIn(vs...), nil
+	return entReading.TenantIdIn(vs...), nil
 }
 
 // RobotScope: a row belongs to the tenant its "tenant" reaches.
@@ -419,7 +419,7 @@ func (wall) RobotScope(ctx context.Context) (predicate.Robot, error) {
 		return nil, err
 	}
 
-	return robot.TenantIdIn(vs...), nil
+	return entRobot.TenantIdIn(vs...), nil
 }
 
 // RowSealScope: a row belongs to the tenant its "tenant_id" names, which it holds without an edge.
@@ -429,7 +429,7 @@ func (wall) RowSealScope(ctx context.Context) (predicate.RowSeal, error) {
 		return nil, err
 	}
 
-	return rowseal.TenantIdIn(vs...), nil
+	return entRowSeal.TenantIdIn(vs...), nil
 }
 
 // SealScope: declared `global`, so it is not behind the wall at all.
@@ -444,7 +444,7 @@ func (wall) StintScope(ctx context.Context) (predicate.Stint, error) {
 		return nil, err
 	}
 
-	return stint.TenantIdIn(vs...), nil
+	return entStint.TenantIdIn(vs...), nil
 }
 
 // TallyScope: a row belongs to the tenant its "tenant" reaches.
@@ -454,7 +454,7 @@ func (wall) TallyScope(ctx context.Context) (predicate.Tally, error) {
 		return nil, err
 	}
 
-	return tally.TenantIdIn(vs...), nil
+	return entTally.TenantIdIn(vs...), nil
 }
 
 // TenantScope: a tenant is inside itself, which is what a tenant being a wall comes down to.
@@ -464,7 +464,7 @@ func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 		return nil, err
 	}
 
-	return tenant.IdIn(vs...), nil
+	return entTenant.IdIn(vs...), nil
 }
 
 // ThingScope: declared `global`, so it is not behind the wall at all.
@@ -530,7 +530,7 @@ func (x grouped) CellScope(ctx context.Context) (predicate.Cell, error) {
 		return nil, err
 	}
 
-	return cell.IdIn(vs...), nil
+	return entCell.IdIn(vs...), nil
 }
 
 // EventScope: in no set -- it declared no field 3, so this narrows nothing.
@@ -595,7 +595,7 @@ func (x grouped) RobotScope(ctx context.Context) (predicate.Robot, error) {
 		return nil, err
 	}
 
-	return robot.CellIdIn(vs...), nil
+	return entRobot.CellIdIn(vs...), nil
 }
 
 // RowSealScope: in no set -- it declared no field 3, so this narrows nothing.
@@ -739,8 +739,8 @@ func (s Sink) Access() apptest.AccessServiceServer {
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
 var orderAccess = []sqlpage.Order{
-	{Column: access.FieldDateCreated, Desc: true},
-	{Column: access.FieldId, Desc: true},
+	{Column: entAccess.FieldDateCreated, Desc: true},
+	{Column: entAccess.FieldId, Desc: true},
 }
 
 func afterAccess(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
@@ -760,8 +760,8 @@ func nextAccess(last *ent.Access, tag string) (string, error) {
 }
 
 // orderByAccess is an order as ent orders a query by it.
-func orderByAccess(by []sqlpage.Order) []access.OrderOption {
-	out := make([]access.OrderOption, len(by))
+func orderByAccess(by []sqlpage.Order) []entAccess.OrderOption {
+	out := make([]entAccess.OrderOption, len(by))
 	for i, o := range by {
 		if o.Desc {
 			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
@@ -819,7 +819,7 @@ func (s sinkAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*
 			ps = append(ps, p)
 		}
 
-		q.Where(access.Or(ps...))
+		q.Where(entAccess.Or(ps...))
 	}
 
 	// Which order, and which way: one the schema declared, and never one a
@@ -884,7 +884,7 @@ func filterAccess(f *apptest.AccessFilter) (predicate.Access, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
 		}
 
-		ps = append(ps, access.ActorIdEQ(k))
+		ps = append(ps, entAccess.ActorIdEQ(k))
 	}
 	if f.HasTenantId() {
 		k, err := entuuid.FromBytes(f.GetTenantId())
@@ -892,7 +892,7 @@ func filterAccess(f *apptest.AccessFilter) (predicate.Access, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
 		}
 
-		ps = append(ps, access.TenantIdEQ(k))
+		ps = append(ps, entAccess.TenantIdEQ(k))
 	}
 	if f.HasActorTenantId() {
 		k, err := entuuid.FromBytes(f.GetActorTenantId())
@@ -900,16 +900,16 @@ func filterAccess(f *apptest.AccessFilter) (predicate.Access, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
 		}
 
-		ps = append(ps, access.ActorTenantIdEQ(k))
+		ps = append(ps, entAccess.ActorTenantIdEQ(k))
 	}
 	if f.HasKind() {
-		ps = append(ps, access.KindEQ(f.GetKind()))
+		ps = append(ps, entAccess.KindEQ(f.GetKind()))
 	}
 	if len(ps) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
 	}
 
-	return access.And(ps...), nil
+	return entAccess.And(ps...), nil
 }
 
 type sinkAudit struct {
@@ -958,8 +958,8 @@ func (s sinkAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
 var orderAudit = []sqlpage.Order{
-	{Column: audit.FieldDateCreated, Desc: true},
-	{Column: audit.FieldId, Desc: true},
+	{Column: entAudit.FieldDateCreated, Desc: true},
+	{Column: entAudit.FieldId, Desc: true},
 }
 
 func afterAudit(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
@@ -979,8 +979,8 @@ func nextAudit(last *ent.Audit, tag string) (string, error) {
 }
 
 // orderByAudit is an order as ent orders a query by it.
-func orderByAudit(by []sqlpage.Order) []audit.OrderOption {
-	out := make([]audit.OrderOption, len(by))
+func orderByAudit(by []sqlpage.Order) []entAudit.OrderOption {
+	out := make([]entAudit.OrderOption, len(by))
 	for i, o := range by {
 		if o.Desc {
 			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
@@ -1038,7 +1038,7 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 			ps = append(ps, p)
 		}
 
-		q.Where(audit.Or(ps...))
+		q.Where(entAudit.Or(ps...))
 	}
 
 	// Which order, and which way: one the schema declared, and never one a
@@ -1103,7 +1103,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "object_id: %s", err)
 		}
 
-		ps = append(ps, audit.ObjectIdEQ(k))
+		ps = append(ps, entAudit.ObjectIdEQ(k))
 	}
 	if f.HasActorId() {
 		k, err := entuuid.FromBytes(f.GetActorId())
@@ -1111,7 +1111,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
 		}
 
-		ps = append(ps, audit.ActorIdEQ(k))
+		ps = append(ps, entAudit.ActorIdEQ(k))
 	}
 	if f.HasTenantId() {
 		k, err := entuuid.FromBytes(f.GetTenantId())
@@ -1119,7 +1119,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "tenant_id: %s", err)
 		}
 
-		ps = append(ps, audit.TenantIdEQ(k))
+		ps = append(ps, entAudit.TenantIdEQ(k))
 	}
 	if f.HasActorTenantId() {
 		k, err := entuuid.FromBytes(f.GetActorTenantId())
@@ -1127,7 +1127,7 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "actor_tenant_id: %s", err)
 		}
 
-		ps = append(ps, audit.ActorTenantIdEQ(k))
+		ps = append(ps, entAudit.ActorTenantIdEQ(k))
 	}
 	if f.HasCounterpartTenantId() {
 		k, err := entuuid.FromBytes(f.GetCounterpartTenantId())
@@ -1135,13 +1135,13 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "counterpart_tenant_id: %s", err)
 		}
 
-		ps = append(ps, audit.CounterpartTenantIdEQ(k))
+		ps = append(ps, entAudit.CounterpartTenantIdEQ(k))
 	}
 	if len(ps) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
 	}
 
-	return audit.And(ps...), nil
+	return entAudit.And(ps...), nil
 }
 
 type sinkCell struct {
@@ -1282,8 +1282,8 @@ func (s Sink) Event() apptest.EventServiceServer {
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
 var orderEvent = []sqlpage.Order{
-	{Column: event.FieldDateCreated, Desc: true},
-	{Column: event.FieldId, Desc: true},
+	{Column: entEvent.FieldDateCreated, Desc: true},
+	{Column: entEvent.FieldId, Desc: true},
 }
 
 func afterEvent(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
@@ -1303,8 +1303,8 @@ func nextEvent(last *ent.Event, tag string) (string, error) {
 }
 
 // orderByEvent is an order as ent orders a query by it.
-func orderByEvent(by []sqlpage.Order) []event.OrderOption {
-	out := make([]event.OrderOption, len(by))
+func orderByEvent(by []sqlpage.Order) []entEvent.OrderOption {
+	out := make([]entEvent.OrderOption, len(by))
 	for i, o := range by {
 		if o.Desc {
 			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
@@ -1362,7 +1362,7 @@ func (s sinkEvent) List(ctx context.Context, req *apptest.EventListRequest) (*ap
 			ps = append(ps, p)
 		}
 
-		q.Where(event.Or(ps...))
+		q.Where(entEvent.Or(ps...))
 	}
 
 	// Which order, and which way: one the schema declared, and never one a
@@ -1435,10 +1435,10 @@ func filterEvent(f *apptest.EventFilter) (predicate.Event, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "subject_id: %s", err)
 		}
 
-		ps = append(ps, event.SubjectIdEQ(k))
+		ps = append(ps, entEvent.SubjectIdEQ(k))
 	}
 	if f.HasKind() {
-		ps = append(ps, event.KindEQ(f.GetKind()))
+		ps = append(ps, entEvent.KindEQ(f.GetKind()))
 	}
 	if f.HasActorId() {
 		k, err := entuuid.FromBytes(f.GetActorId())
@@ -1446,7 +1446,7 @@ func filterEvent(f *apptest.EventFilter) (predicate.Event, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "actor_id: %s", err)
 		}
 
-		ps = append(ps, event.ActorIdEQ(k))
+		ps = append(ps, entEvent.ActorIdEQ(k))
 	}
 	if f.HasCauseId() {
 		k, err := entuuid.FromBytes(f.GetCauseId())
@@ -1454,13 +1454,13 @@ func filterEvent(f *apptest.EventFilter) (predicate.Event, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "cause_id: %s", err)
 		}
 
-		ps = append(ps, event.CauseIdEQ(k))
+		ps = append(ps, entEvent.CauseIdEQ(k))
 	}
 	if len(ps) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
 	}
 
-	return event.And(ps...), nil
+	return entEvent.And(ps...), nil
 }
 
 type sinkFact struct {
@@ -1499,8 +1499,8 @@ func (s sinkFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*ap
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
 var orderFact = []sqlpage.Order{
-	{Column: fact.FieldDateCreated, Desc: false},
-	{Column: fact.FieldId, Desc: false},
+	{Column: entFact.FieldDateCreated, Desc: false},
+	{Column: entFact.FieldId, Desc: false},
 }
 
 func afterFact(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
@@ -1520,8 +1520,8 @@ func nextFact(last *ent.Fact, tag string) (string, error) {
 }
 
 // orderByFact is an order as ent orders a query by it.
-func orderByFact(by []sqlpage.Order) []fact.OrderOption {
-	out := make([]fact.OrderOption, len(by))
+func orderByFact(by []sqlpage.Order) []entFact.OrderOption {
+	out := make([]entFact.OrderOption, len(by))
 	for i, o := range by {
 		if o.Desc {
 			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
@@ -1579,7 +1579,7 @@ func (s sinkFact) List(ctx context.Context, req *apptest.FactListRequest) (*appt
 			ps = append(ps, p)
 		}
 
-		q.Where(fact.Or(ps...))
+		q.Where(entFact.Or(ps...))
 	}
 
 	// Which order, and which way: one the schema declared, and never one a
@@ -1652,16 +1652,16 @@ func filterFact(f *apptest.FactFilter) (predicate.Fact, error) {
 			return nil, status.Errorf(codes.InvalidArgument, "subject_id: %s", err)
 		}
 
-		ps = append(ps, fact.SubjectIdEQ(k))
+		ps = append(ps, entFact.SubjectIdEQ(k))
 	}
 	if f.HasFieldNumber() {
-		ps = append(ps, fact.FieldNumberEQ(f.GetFieldNumber()))
+		ps = append(ps, entFact.FieldNumberEQ(f.GetFieldNumber()))
 	}
 	if len(ps) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
 	}
 
-	return fact.And(ps...), nil
+	return entFact.And(ps...), nil
 }
 
 type sinkFleet struct {
@@ -1909,8 +1909,8 @@ func (s sinkHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) 
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
 var orderHolder = []sqlpage.Order{
-	{Column: holder.FieldDateCreated, Desc: false},
-	{Column: holder.FieldId, Desc: false},
+	{Column: entHolder.FieldDateCreated, Desc: false},
+	{Column: entHolder.FieldId, Desc: false},
 }
 
 func afterHolder(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
@@ -1930,8 +1930,8 @@ func nextHolder(last *ent.Holder, tag string) (string, error) {
 }
 
 // orderByHolder is an order as ent orders a query by it.
-func orderByHolder(by []sqlpage.Order) []holder.OrderOption {
-	out := make([]holder.OrderOption, len(by))
+func orderByHolder(by []sqlpage.Order) []entHolder.OrderOption {
+	out := make([]entHolder.OrderOption, len(by))
 	for i, o := range by {
 		if o.Desc {
 			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
@@ -1989,7 +1989,7 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 			ps = append(ps, p)
 		}
 
-		q.Where(holder.Or(ps...))
+		q.Where(entHolder.Or(ps...))
 	}
 
 	// Which order, and which way: one the schema declared, and never one a
@@ -2067,7 +2067,7 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 				return nil, status.Errorf(codes.InvalidArgument, "tenant: %s", err)
 			}
 
-			ps = append(ps, holder.TenantIdEQ(k))
+			ps = append(ps, entHolder.TenantIdEQ(k))
 		} else {
 			// Named some other way -- an alias, a slug. Resolving it
 			// would be a read, and a predicate is built without one, so
@@ -2078,7 +2078,7 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 				return nil, err
 			}
 
-			ps = append(ps, holder.HasTenantWith(q))
+			ps = append(ps, entHolder.HasTenantWith(q))
 		}
 	}
 	if m := f.GetLabels(); len(m) > 0 {
@@ -2091,8 +2091,8 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 		for _, k := range ks {
 			ps = append(ps, predicate.Holder(func(s *sql.Selector) {
 				s.Where(sql.And(
-					sqljson.HasKey(holder.FieldLabels, sqljson.Path(k)),
-					sqljson.ValueEQ(holder.FieldLabels, m[k], sqljson.Path(k)),
+					sqljson.HasKey(entHolder.FieldLabels, sqljson.Path(k)),
+					sqljson.ValueEQ(entHolder.FieldLabels, m[k], sqljson.Path(k)),
 				))
 			}))
 		}
@@ -2101,7 +2101,7 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
 	}
 
-	return holder.And(ps...), nil
+	return entHolder.And(ps...), nil
 }
 
 // HolderService is the prefix of every Rpc of that service, which is how a
@@ -2925,20 +2925,20 @@ func (s sinkRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
 var orderRobot = []sqlpage.Order{
-	{Column: robot.FieldDateCreated, Desc: false},
-	{Column: robot.FieldId, Desc: false},
+	{Column: entRobot.FieldDateCreated, Desc: false},
+	{Column: entRobot.FieldId, Desc: false},
 }
 
 // orderRobotAlias is the order a request names as ALIAS.
 var orderRobotAlias = []sqlpage.Order{
-	{Column: robot.FieldAlias, Desc: false},
-	{Column: robot.FieldId, Desc: false},
+	{Column: entRobot.FieldAlias, Desc: false},
+	{Column: entRobot.FieldId, Desc: false},
 }
 
 // orderRobotAliasDesc is the order a request names as ALIAS_DESC.
 var orderRobotAliasDesc = []sqlpage.Order{
-	{Column: robot.FieldAlias, Desc: true},
-	{Column: robot.FieldId, Desc: false},
+	{Column: entRobot.FieldAlias, Desc: true},
+	{Column: entRobot.FieldId, Desc: false},
 }
 
 func afterRobot(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
@@ -2990,8 +2990,8 @@ func nextRobotAliasDesc(last *ent.Robot, tag string) (string, error) {
 }
 
 // orderByRobot is an order as ent orders a query by it.
-func orderByRobot(by []sqlpage.Order) []robot.OrderOption {
-	out := make([]robot.OrderOption, len(by))
+func orderByRobot(by []sqlpage.Order) []entRobot.OrderOption {
+	out := make([]entRobot.OrderOption, len(by))
 	for i, o := range by {
 		if o.Desc {
 			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
@@ -3049,7 +3049,7 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 			ps = append(ps, p)
 		}
 
-		q.Where(robot.Or(ps...))
+		q.Where(entRobot.Or(ps...))
 	}
 
 	// Which order, and which way: one the schema declared, and never one a
@@ -3138,7 +3138,7 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 				return nil, status.Errorf(codes.InvalidArgument, "tenant: %s", err)
 			}
 
-			ps = append(ps, robot.TenantIdEQ(k))
+			ps = append(ps, entRobot.TenantIdEQ(k))
 		} else {
 			// Named some other way -- an alias, a slug. Resolving it
 			// would be a read, and a predicate is built without one, so
@@ -3149,7 +3149,7 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 				return nil, err
 			}
 
-			ps = append(ps, robot.HasTenantWith(q))
+			ps = append(ps, entRobot.HasTenantWith(q))
 		}
 	}
 	if f.HasThing() {
@@ -3163,7 +3163,7 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 				return nil, status.Errorf(codes.InvalidArgument, "thing: %s", err)
 			}
 
-			ps = append(ps, robot.ThingIdEQ(k))
+			ps = append(ps, entRobot.ThingIdEQ(k))
 		} else {
 			// Named some other way -- an alias, a slug. Resolving it
 			// would be a read, and a predicate is built without one, so
@@ -3174,14 +3174,14 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 				return nil, err
 			}
 
-			ps = append(ps, robot.HasThingWith(q))
+			ps = append(ps, entRobot.HasThingWith(q))
 		}
 	}
 	if len(ps) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
 	}
 
-	return robot.And(ps...), nil
+	return entRobot.And(ps...), nil
 }
 
 // RobotService is the prefix of every Rpc of that service, which is how a
@@ -3650,8 +3650,8 @@ func (s sinkTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) 
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
 var orderTenant = []sqlpage.Order{
-	{Column: tenant.FieldDateCreated, Desc: false},
-	{Column: tenant.FieldId, Desc: false},
+	{Column: entTenant.FieldDateCreated, Desc: false},
+	{Column: entTenant.FieldId, Desc: false},
 }
 
 func afterTenant(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
@@ -3671,8 +3671,8 @@ func nextTenant(last *ent.Tenant, tag string) (string, error) {
 }
 
 // orderByTenant is an order as ent orders a query by it.
-func orderByTenant(by []sqlpage.Order) []tenant.OrderOption {
-	out := make([]tenant.OrderOption, len(by))
+func orderByTenant(by []sqlpage.Order) []entTenant.OrderOption {
+	out := make([]entTenant.OrderOption, len(by))
 	for i, o := range by {
 		if o.Desc {
 			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
@@ -3730,7 +3730,7 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 			ps = append(ps, p)
 		}
 
-		q.Where(tenant.Or(ps...))
+		q.Where(entTenant.Or(ps...))
 	}
 
 	// Which order, and which way: one the schema declared, and never one a
@@ -3801,7 +3801,7 @@ func filterTenant(f *apptest.TenantFilter) (predicate.Tenant, error) {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
 	}
 
-	return tenant.And(ps...), nil
+	return entTenant.And(ps...), nil
 }
 
 type sinkThing struct {
@@ -3930,8 +3930,8 @@ func (s sinkThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*
 // the first of them either repeats the second or skips it. Rows written by
 // one request are stamped a moment apart at best.
 var orderThing = []sqlpage.Order{
-	{Column: thing.FieldDateCreated, Desc: false},
-	{Column: thing.FieldId, Desc: false},
+	{Column: entThing.FieldDateCreated, Desc: false},
+	{Column: entThing.FieldId, Desc: false},
 }
 
 func afterThing(v string, by []sqlpage.Order, tag string) (func(*sql.Selector), error) {
@@ -3951,8 +3951,8 @@ func nextThing(last *ent.Thing, tag string) (string, error) {
 }
 
 // orderByThing is an order as ent orders a query by it.
-func orderByThing(by []sqlpage.Order) []thing.OrderOption {
-	out := make([]thing.OrderOption, len(by))
+func orderByThing(by []sqlpage.Order) []entThing.OrderOption {
+	out := make([]entThing.OrderOption, len(by))
 	for i, o := range by {
 		if o.Desc {
 			out[i] = sql.OrderByField(o.Column, sql.OrderDesc()).ToFunc()
@@ -4010,7 +4010,7 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 			ps = append(ps, p)
 		}
 
-		q.Where(thing.Or(ps...))
+		q.Where(entThing.Or(ps...))
 	}
 
 	// Which order, and which way: one the schema declared, and never one a
@@ -4081,7 +4081,7 @@ func filterThing(f *apptest.ThingFilter) (predicate.Thing, error) {
 		return nil, status.Error(codes.InvalidArgument, "a filter that names nothing")
 	}
 
-	return thing.And(ps...), nil
+	return entThing.And(ps...), nil
 }
 
 // pdAfter reads a cursor into the values it carries, refusing one of another
@@ -5127,9 +5127,9 @@ func errPast() error {
 // The content is asked for rather than defaulted, so that a deployment's
 // `audit.content` is not something an app can configure and then forget to
 // hand over: the zero value is the default, and passing it says so.
-func Recorder(content audit1.Contents) bare.Recorder { return recorder{content} }
+func Recorder(content audit.Contents) bare.Recorder { return recorder{content} }
 
-type recorder struct{ content audit1.Contents }
+type recorder struct{ content audit.Contents }
 
 var _ bare.SnapshotRecorder = recorder{}
 
@@ -5154,7 +5154,7 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 	// write may be kept: a field declared `secret:` or `personal:` belongs
 	// to one entity, and the identifier's domain byte is the only thing
 	// that says which.
-	key, err := audit1.Identifier(c.Key)
+	key, err := audit.Identifier(c.Key)
 	if err != nil {
 		return err
 	}
@@ -5167,23 +5167,23 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 	// the empty row.
 	doc := c.Patch
 	if doc == nil && c.Value != nil && added(c.By) {
-		if doc, err = audit1.Created(c.Value); err != nil {
+		if doc, err = audit.Created(c.Value); err != nil {
 			return status.Errorf(codes.Internal, "the trail of %s: %s", c.Method, err)
 		}
 	}
 	fields := []uint32{}
 	if md != nil {
-		fields = audit1.FieldsOf(doc, md)
+		fields = audit.FieldsOf(doc, md)
 	}
 
 	var patch proto.Message
-	if level != audit1.ContentFields {
-		if v := audit1.Withhold(doc, slices.Concat(secret, personal)); v != nil {
+	if level != audit.ContentFields {
+		if v := audit.Withhold(doc, slices.Concat(secret, personal)); v != nil {
 			patch = v
 		}
 	}
 
-	v, err := audit1.Of(ctx, c.Method, c.Key, patch)
+	v, err := audit.Of(ctx, c.Method, c.Key, patch)
 	if err != nil {
 		return err
 	}
@@ -5197,7 +5197,7 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 		return err
 	}
 
-	tenant, value, err := subject(ctx, s, v.Object, row, level == audit1.ContentValue)
+	tenant, value, err := subject(ctx, s, v.Object, row, level == audit.ContentValue)
 	if err != nil {
 		return err
 	}
@@ -5456,7 +5456,7 @@ var (
 func hidden(key pdid.Id, p *patchpb.Patch) *patchpb.Patch {
 	_, secret, _ := described(key)
 
-	return audit1.Withhold(p, secret)
+	return audit.Withhold(p, secret)
 }
 
 // added is whether `by`, the write a server made, made a row: an Add, or an
@@ -5584,8 +5584,8 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			kept := row
 			kept = proto.Clone(row).(*apptest.Event)
 			_, secret, personal := described(key)
-			audit1.Clear(kept, secret)
-			audit1.Clear(kept, personal)
+			audit.Clear(kept, secret)
+			audit.Clear(kept, personal)
 
 			v, err := proto.Marshal(kept)
 			if err != nil {
@@ -5643,8 +5643,8 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			kept := row
 			kept = proto.Clone(row).(*apptest.Holder)
 			_, secret, personal := described(key)
-			audit1.Clear(kept, secret)
-			audit1.Clear(kept, personal)
+			audit.Clear(kept, secret)
+			audit.Clear(kept, personal)
 
 			v, err := proto.Marshal(kept)
 			if err != nil {
@@ -5712,8 +5712,8 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			kept := row
 			kept = proto.Clone(row).(*apptest.Machine)
 			_, secret, personal := described(key)
-			audit1.Clear(kept, secret)
-			audit1.Clear(kept, personal)
+			audit.Clear(kept, secret)
+			audit.Clear(kept, personal)
 
 			v, err := proto.Marshal(kept)
 			if err != nil {
@@ -5818,8 +5818,8 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			kept := row
 			kept = proto.Clone(row).(*apptest.Robot)
 			_, secret, personal := described(key)
-			audit1.Clear(kept, secret)
-			audit1.Clear(kept, personal)
+			audit.Clear(kept, secret)
+			audit.Clear(kept, personal)
 
 			v, err := proto.Marshal(kept)
 			if err != nil {
@@ -5877,8 +5877,8 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 			kept := row
 			kept = proto.Clone(row).(*apptest.Tally)
 			_, secret, personal := described(key)
-			audit1.Clear(kept, secret)
-			audit1.Clear(kept, personal)
+			audit.Clear(kept, secret)
+			audit.Clear(kept, personal)
 
 			v, err := proto.Marshal(kept)
 			if err != nil {
@@ -5938,41 +5938,41 @@ func left(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) 
 		return image, nil
 	}
 
-	var vs []audit1.Live
+	var vs []audit.Live
 	var err error
 	switch key.Domain() {
 	case CellDomain:
-		vs, err = rowsCell(ctx, s.Db, cell.IdEQ(uuid.UUID(key)))
+		vs, err = rowsCell(ctx, s.Db, entCell.IdEQ(uuid.UUID(key)))
 	case EventDomain:
-		vs, err = rowsEvent(ctx, s.Db, event.IdEQ(uuid.UUID(key)))
+		vs, err = rowsEvent(ctx, s.Db, entEvent.IdEQ(uuid.UUID(key)))
 	case FactDomain:
-		vs, err = rowsFact(ctx, s.Db, fact.IdEQ(uuid.UUID(key)))
+		vs, err = rowsFact(ctx, s.Db, entFact.IdEQ(uuid.UUID(key)))
 	case FleetDomain:
-		vs, err = rowsFleet(ctx, s.Db, fleet.IdEQ(uuid.UUID(key)))
+		vs, err = rowsFleet(ctx, s.Db, entFleet.IdEQ(uuid.UUID(key)))
 	case HolderDomain:
-		vs, err = rowsHolder(ctx, s.Db, holder.IdEQ(uuid.UUID(key)))
+		vs, err = rowsHolder(ctx, s.Db, entHolder.IdEQ(uuid.UUID(key)))
 	case JointDomain:
-		vs, err = rowsJoint(ctx, s.Db, joint.IdEQ(uuid.UUID(key)))
+		vs, err = rowsJoint(ctx, s.Db, entJoint.IdEQ(uuid.UUID(key)))
 	case MachineDomain:
-		vs, err = rowsMachine(ctx, s.Db, machine.IdEQ(uuid.UUID(key)))
+		vs, err = rowsMachine(ctx, s.Db, entMachine.IdEQ(uuid.UUID(key)))
 	case PairingDomain:
-		vs, err = rowsPairing(ctx, s.Db, pairing.IdEQ(uuid.UUID(key)))
+		vs, err = rowsPairing(ctx, s.Db, entPairing.IdEQ(uuid.UUID(key)))
 	case PulseDomain:
-		vs, err = rowsPulse(ctx, s.Db, pulse.IdEQ(uuid.UUID(key)))
+		vs, err = rowsPulse(ctx, s.Db, entPulse.IdEQ(uuid.UUID(key)))
 	case ReadingDomain:
-		vs, err = rowsReading(ctx, s.Db, reading.IdEQ(uuid.UUID(key)))
+		vs, err = rowsReading(ctx, s.Db, entReading.IdEQ(uuid.UUID(key)))
 	case RobotDomain:
-		vs, err = rowsRobot(ctx, s.Db, robot.IdEQ(uuid.UUID(key)))
+		vs, err = rowsRobot(ctx, s.Db, entRobot.IdEQ(uuid.UUID(key)))
 	case SealDomain:
-		vs, err = rowsSeal(ctx, s.Db, seal.IdEQ(uuid.UUID(key)))
+		vs, err = rowsSeal(ctx, s.Db, entSeal.IdEQ(uuid.UUID(key)))
 	case StintDomain:
-		vs, err = rowsStint(ctx, s.Db, stint.IdEQ(uuid.UUID(key)))
+		vs, err = rowsStint(ctx, s.Db, entStint.IdEQ(uuid.UUID(key)))
 	case TallyDomain:
-		vs, err = rowsTally(ctx, s.Db, tally.IdEQ(uuid.UUID(key)))
+		vs, err = rowsTally(ctx, s.Db, entTally.IdEQ(uuid.UUID(key)))
 	case TenantDomain:
-		vs, err = rowsTenant(ctx, s.Db, tenant.IdEQ(uuid.UUID(key)))
+		vs, err = rowsTenant(ctx, s.Db, entTenant.IdEQ(uuid.UUID(key)))
 	case ThingDomain:
-		vs, err = rowsThing(ctx, s.Db, thing.IdEQ(uuid.UUID(key)))
+		vs, err = rowsThing(ctx, s.Db, entThing.IdEQ(uuid.UUID(key)))
 	default:
 		return nil, nil
 	}
@@ -5987,13 +5987,13 @@ func left(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) 
 // before it is written so that the digest it keeps can be bound to it
 // (payday#115): its key, as the servers mint one for the trail, and its
 // moment by their clock, to the microsecond every database keeps.
-func line(s bare.Server, action string) audit1.Line {
+func line(s bare.Server, action string) audit.Line {
 	at := time.Now()
 	if s.Now != nil {
 		at = s.Now()
 	}
 
-	return audit1.Line{
+	return audit.Line{
 		Id:      pdid.New(AuditDomain),
 		Created: at.UTC().Truncate(time.Microsecond),
 		Action:  action,
@@ -6013,7 +6013,7 @@ func line(s bare.Server, action string) audit1.Line {
 // neither a copy of it nor a way to test a guess at it without the key. The
 // seal covers every field, the personal ones among them, and lives beside
 // the row for as long as it does; a write that took the row removes it.
-func digested(d *audit1.Digest, key pdid.Id, row proto.Message, at audit1.Line) ([]byte, []uint32, *rowSeal, error) {
+func digested(d *audit.Digest, key pdid.Id, row proto.Message, at audit.Line) ([]byte, []uint32, *rowSeal, error) {
 	md, _, personal := described(key)
 	switch {
 	case d == nil || md == nil:
@@ -6027,9 +6027,9 @@ func digested(d *audit1.Digest, key pdid.Id, row proto.Message, at audit1.Line) 
 		return d.Gone(key, at), []uint32{}, gone, nil
 	}
 
-	covered := audit1.Covered(md, personal)
+	covered := audit.Covered(md, personal)
 	if isSealed(key) {
-		all := audit1.Covered(md, nil)
+		all := audit.Covered(md, nil)
 		sum, sealSum, err := d.OfSealed(key, row, covered, all, at)
 		if err != nil {
 			return nil, nil, nil, err
@@ -6073,7 +6073,7 @@ const keptTrailRows = 500
 // keptTrailAbout is whether a statement is about the trail: the table's
 // name as a word of it. Every statement that is about it has what is kept
 // written first, so that it finds every row the transaction recorded.
-var keptTrailAbout = regexp.MustCompile(`\b` + regexp.QuoteMeta(audit.Table) + `\b`).MatchString
+var keptTrailAbout = regexp.MustCompile(`\b` + regexp.QuoteMeta(entAudit.Table) + `\b`).MatchString
 
 func keptTrailOf(k *dialect.Keep, db *ent.Client) *keptTrail {
 	return k.Value(keptTrailKey{}, func() any {
@@ -6178,7 +6178,7 @@ type keptSealsKey struct{}
 
 // keptSealsAbout is whether a statement is about the seals: the table's
 // name as a word of it.
-var keptSealsAbout = regexp.MustCompile(`\b` + regexp.QuoteMeta(rowseal.Table) + `\b`).MatchString
+var keptSealsAbout = regexp.MustCompile(`\b` + regexp.QuoteMeta(entRowSeal.Table) + `\b`).MatchString
 
 func keptSealsOf(k *dialect.Keep, db *ent.Client) *keptSeals {
 	return k.Value(keptSealsKey{}, func() any {
@@ -6239,8 +6239,8 @@ func writeSeals(ctx context.Context, db *ent.Client, vs []*rowSeal) error {
 
 	drv := db.Driver()
 	for page := range slices.Chunk(put, keptSealsRows) {
-		q := sql.Dialect(drv.Dialect()).Insert(rowseal.Table).
-			Columns(rowseal.FieldId, rowseal.FieldTenantId, rowseal.FieldSum, rowseal.FieldFields)
+		q := sql.Dialect(drv.Dialect()).Insert(entRowSeal.Table).
+			Columns(entRowSeal.FieldId, entRowSeal.FieldTenantId, entRowSeal.FieldSum, entRowSeal.FieldFields)
 		for _, v := range page {
 			fields, err := json.Marshal(v.fields)
 			if err != nil {
@@ -6248,7 +6248,7 @@ func writeSeals(ctx context.Context, db *ent.Client, vs []*rowSeal) error {
 			}
 			q.Values(uuid.UUID(v.object), v.tenant, v.sum, json.RawMessage(fields))
 		}
-		q.OnConflict(sql.ConflictColumns(rowseal.FieldId), sql.ResolveWithNewValues())
+		q.OnConflict(sql.ConflictColumns(entRowSeal.FieldId), sql.ResolveWithNewValues())
 
 		query, args := q.Query()
 		var res sql1.Result
@@ -6257,7 +6257,7 @@ func writeSeals(ctx context.Context, db *ent.Client, vs []*rowSeal) error {
 		}
 	}
 	for page := range slices.Chunk(gone, keptSealsRows) {
-		if _, err := db.RowSeal.Delete().Where(rowseal.IdIn(page...)).Exec(ctx); err != nil {
+		if _, err := db.RowSeal.Delete().Where(entRowSeal.IdIn(page...)).Exec(ctx); err != nil {
 			return fmt.Errorf("remove the seals: %w", err)
 		}
 	}
@@ -6269,7 +6269,7 @@ func writeSeals(ctx context.Context, db *ent.Client, vs []*rowSeal) error {
 // to the lines it wrote ([audit.Digest.CarrySeal]): what each said of its
 // row, copied, and bound to the new line. A row with no seal has none to
 // carry.
-func carrySeals(ctx context.Context, db *ent.Client, d *audit1.Digest, lines map[pdid.Id]audit1.Line, tenants map[pdid.Id]uuid.UUID) error {
+func carrySeals(ctx context.Context, db *ent.Client, d *audit.Digest, lines map[pdid.Id]audit.Line, tenants map[pdid.Id]uuid.UUID) error {
 	if len(lines) == 0 {
 		return nil
 	}
@@ -6293,18 +6293,18 @@ func carrySeals(ctx context.Context, db *ent.Client, d *audit1.Digest, lines map
 
 // sealsOf is the seal of each of `ids` that has one, as a check of the rows
 // reads it.
-func sealsOf(ctx context.Context, db *ent.Client, ids []pdid.Id) (map[pdid.Id]audit1.Sealed, error) {
-	out := map[pdid.Id]audit1.Sealed{}
+func sealsOf(ctx context.Context, db *ent.Client, ids []pdid.Id) (map[pdid.Id]audit.Sealed, error) {
+	out := map[pdid.Id]audit.Sealed{}
 	if len(ids) == 0 {
 		return out, nil
 	}
 
-	vs, err := db.RowSeal.Query().Where(rowseal.IdIn(uuids(ids)...)).All(ctx)
+	vs, err := db.RowSeal.Query().Where(entRowSeal.IdIn(uuids(ids)...)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for _, v := range vs {
-		out[pdid.Id(v.Id)] = audit1.Sealed{Sum: v.Sum, Fields: v.Fields}
+		out[pdid.Id(v.Id)] = audit.Sealed{Sum: v.Sum, Fields: v.Fields}
 	}
 
 	return out, nil
@@ -6324,62 +6324,62 @@ func sealsOf(ctx context.Context, db *ent.Client, ids []pdid.Id) (map[pdid.Id]au
 // trail about it in one read-only transaction, so `db` is the database and
 // not a transaction. With no archive, what is not in the database is not on
 // the trail.
-func Digests(ctx context.Context, db *ent.Client, d *audit1.Digest, p trail.Policy) (audit1.Rows, error) {
-	var archived audit1.Archived
+func Digests(ctx context.Context, db *ent.Client, d *audit.Digest, p trail.Policy) (audit.Rows, error) {
+	var archived audit.Archived
 	if p.Archive != nil {
 		n, err := p.Newest(ctx, TrailStore(db))
 		if err != nil {
-			return audit1.Rows{}, fmt.Errorf("the archive: %w", err)
+			return audit.Rows{}, fmt.Errorf("the archive: %w", err)
 		}
 		archived = archivedDigests(n)
 	}
 
-	out := audit1.Rows{Skipped: []audit1.Skipped{
+	out := audit.Rows{Skipped: []audit.Skipped{
 		{Kind: "pulse", Why: "a heartbeat each process writes every few seconds; a record of each is noise"},
 	}}
-	if err := audit1.CheckKind(ctx, d, checkedCell(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedCell(db), archived, &out); err != nil {
 		return out, fmt.Errorf("cell: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedEvent(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedEvent(db), archived, &out); err != nil {
 		return out, fmt.Errorf("event: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedFact(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedFact(db), archived, &out); err != nil {
 		return out, fmt.Errorf("fact: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedFleet(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedFleet(db), archived, &out); err != nil {
 		return out, fmt.Errorf("fleet: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedHolder(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedHolder(db), archived, &out); err != nil {
 		return out, fmt.Errorf("holder: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedJoint(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedJoint(db), archived, &out); err != nil {
 		return out, fmt.Errorf("joint: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedMachine(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedMachine(db), archived, &out); err != nil {
 		return out, fmt.Errorf("machine: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedPairing(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedPairing(db), archived, &out); err != nil {
 		return out, fmt.Errorf("pairing: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedReading(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedReading(db), archived, &out); err != nil {
 		return out, fmt.Errorf("reading: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedRobot(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedRobot(db), archived, &out); err != nil {
 		return out, fmt.Errorf("robot: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedSeal(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedSeal(db), archived, &out); err != nil {
 		return out, fmt.Errorf("seal: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedStint(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedStint(db), archived, &out); err != nil {
 		return out, fmt.Errorf("stint: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedTally(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedTally(db), archived, &out); err != nil {
 		return out, fmt.Errorf("tally: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedTenant(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedTenant(db), archived, &out); err != nil {
 		return out, fmt.Errorf("tenant: %w", err)
 	}
-	if err := audit1.CheckKind(ctx, d, checkedThing(db), archived, &out); err != nil {
+	if err := audit.CheckKind(ctx, d, checkedThing(db), archived, &out); err != nil {
 		return out, fmt.Errorf("thing: %w", err)
 	}
 
@@ -6387,9 +6387,9 @@ func Digests(ctx context.Context, db *ent.Client, d *audit1.Digest, p trail.Poli
 }
 
 // checkedCell is what a check of the rows reads of the cell kind.
-func checkedCell(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Cell) (audit1.Page, error) {
-		var out audit1.Page
+func checkedCell(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Cell) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsCell(ctx, db, ps...)
 			if err != nil {
@@ -6397,28 +6397,28 @@ func checkedCell(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: CellDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, cell.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entCell.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, cell.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entCell.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, CellDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsCell(ctx, db, cell.IdIn(uuids(ids)...))
+				rows, err := rowsCell(ctx, db, entCell.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6433,9 +6433,9 @@ func checkedCell(db *ent.Client) audit1.Kind {
 }
 
 // checkedEvent is what a check of the rows reads of the event kind.
-func checkedEvent(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Event) (audit1.Page, error) {
-		var out audit1.Page
+func checkedEvent(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Event) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsEvent(ctx, db, ps...)
 			if err != nil {
@@ -6448,29 +6448,29 @@ func checkedEvent(db *ent.Client) audit1.Kind {
 			}
 
 			seals, err := sealsOf(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded, Seals: seals}
+			out = audit.Page{Rows: rows, Recorded: recorded, Seals: seals}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: EventDomain,
 		Sealed: true,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, event.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entEvent.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, event.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entEvent.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, EventDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsEvent(ctx, db, event.IdIn(uuids(ids)...))
+				rows, err := rowsEvent(ctx, db, entEvent.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6485,9 +6485,9 @@ func checkedEvent(db *ent.Client) audit1.Kind {
 }
 
 // checkedFact is what a check of the rows reads of the fact kind.
-func checkedFact(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Fact) (audit1.Page, error) {
-		var out audit1.Page
+func checkedFact(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Fact) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsFact(ctx, db, ps...)
 			if err != nil {
@@ -6495,28 +6495,28 @@ func checkedFact(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: FactDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, fact.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entFact.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, fact.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entFact.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, FactDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsFact(ctx, db, fact.IdIn(uuids(ids)...))
+				rows, err := rowsFact(ctx, db, entFact.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6531,9 +6531,9 @@ func checkedFact(db *ent.Client) audit1.Kind {
 }
 
 // checkedFleet is what a check of the rows reads of the fleet kind.
-func checkedFleet(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Fleet) (audit1.Page, error) {
-		var out audit1.Page
+func checkedFleet(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Fleet) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsFleet(ctx, db, ps...)
 			if err != nil {
@@ -6541,28 +6541,28 @@ func checkedFleet(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: FleetDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, fleet.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entFleet.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, fleet.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entFleet.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, FleetDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsFleet(ctx, db, fleet.IdIn(uuids(ids)...))
+				rows, err := rowsFleet(ctx, db, entFleet.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6577,9 +6577,9 @@ func checkedFleet(db *ent.Client) audit1.Kind {
 }
 
 // checkedHolder is what a check of the rows reads of the holder kind.
-func checkedHolder(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Holder) (audit1.Page, error) {
-		var out audit1.Page
+func checkedHolder(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Holder) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsHolder(ctx, db, ps...)
 			if err != nil {
@@ -6592,29 +6592,29 @@ func checkedHolder(db *ent.Client) audit1.Kind {
 			}
 
 			seals, err := sealsOf(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded, Seals: seals}
+			out = audit.Page{Rows: rows, Recorded: recorded, Seals: seals}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: HolderDomain,
 		Sealed: true,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, holder.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entHolder.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, holder.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entHolder.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, HolderDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsHolder(ctx, db, holder.IdIn(uuids(ids)...))
+				rows, err := rowsHolder(ctx, db, entHolder.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6629,9 +6629,9 @@ func checkedHolder(db *ent.Client) audit1.Kind {
 }
 
 // checkedJoint is what a check of the rows reads of the joint kind.
-func checkedJoint(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Joint) (audit1.Page, error) {
-		var out audit1.Page
+func checkedJoint(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Joint) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsJoint(ctx, db, ps...)
 			if err != nil {
@@ -6639,28 +6639,28 @@ func checkedJoint(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: JointDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, joint.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entJoint.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, joint.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entJoint.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, JointDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsJoint(ctx, db, joint.IdIn(uuids(ids)...))
+				rows, err := rowsJoint(ctx, db, entJoint.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6675,9 +6675,9 @@ func checkedJoint(db *ent.Client) audit1.Kind {
 }
 
 // checkedMachine is what a check of the rows reads of the machine kind.
-func checkedMachine(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Machine) (audit1.Page, error) {
-		var out audit1.Page
+func checkedMachine(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Machine) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsMachine(ctx, db, ps...)
 			if err != nil {
@@ -6690,29 +6690,29 @@ func checkedMachine(db *ent.Client) audit1.Kind {
 			}
 
 			seals, err := sealsOf(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded, Seals: seals}
+			out = audit.Page{Rows: rows, Recorded: recorded, Seals: seals}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: MachineDomain,
 		Sealed: true,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, machine.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entMachine.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, machine.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entMachine.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, MachineDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsMachine(ctx, db, machine.IdIn(uuids(ids)...))
+				rows, err := rowsMachine(ctx, db, entMachine.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6727,9 +6727,9 @@ func checkedMachine(db *ent.Client) audit1.Kind {
 }
 
 // checkedPairing is what a check of the rows reads of the pairing kind.
-func checkedPairing(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Pairing) (audit1.Page, error) {
-		var out audit1.Page
+func checkedPairing(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Pairing) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsPairing(ctx, db, ps...)
 			if err != nil {
@@ -6737,28 +6737,28 @@ func checkedPairing(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: PairingDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, pairing.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entPairing.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, pairing.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entPairing.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, PairingDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsPairing(ctx, db, pairing.IdIn(uuids(ids)...))
+				rows, err := rowsPairing(ctx, db, entPairing.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6773,9 +6773,9 @@ func checkedPairing(db *ent.Client) audit1.Kind {
 }
 
 // checkedReading is what a check of the rows reads of the reading kind.
-func checkedReading(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Reading) (audit1.Page, error) {
-		var out audit1.Page
+func checkedReading(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Reading) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsReading(ctx, db, ps...)
 			if err != nil {
@@ -6783,28 +6783,28 @@ func checkedReading(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: ReadingDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, reading.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entReading.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, reading.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entReading.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, ReadingDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsReading(ctx, db, reading.IdIn(uuids(ids)...))
+				rows, err := rowsReading(ctx, db, entReading.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6819,9 +6819,9 @@ func checkedReading(db *ent.Client) audit1.Kind {
 }
 
 // checkedRobot is what a check of the rows reads of the robot kind.
-func checkedRobot(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Robot) (audit1.Page, error) {
-		var out audit1.Page
+func checkedRobot(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Robot) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsRobot(ctx, db, ps...)
 			if err != nil {
@@ -6834,29 +6834,29 @@ func checkedRobot(db *ent.Client) audit1.Kind {
 			}
 
 			seals, err := sealsOf(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded, Seals: seals}
+			out = audit.Page{Rows: rows, Recorded: recorded, Seals: seals}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: RobotDomain,
 		Sealed: true,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, robot.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entRobot.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, robot.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entRobot.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, RobotDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsRobot(ctx, db, robot.IdIn(uuids(ids)...))
+				rows, err := rowsRobot(ctx, db, entRobot.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6871,9 +6871,9 @@ func checkedRobot(db *ent.Client) audit1.Kind {
 }
 
 // checkedSeal is what a check of the rows reads of the seal kind.
-func checkedSeal(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Seal) (audit1.Page, error) {
-		var out audit1.Page
+func checkedSeal(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Seal) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsSeal(ctx, db, ps...)
 			if err != nil {
@@ -6881,28 +6881,28 @@ func checkedSeal(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: SealDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, seal.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entSeal.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, seal.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entSeal.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, SealDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsSeal(ctx, db, seal.IdIn(uuids(ids)...))
+				rows, err := rowsSeal(ctx, db, entSeal.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6917,9 +6917,9 @@ func checkedSeal(db *ent.Client) audit1.Kind {
 }
 
 // checkedStint is what a check of the rows reads of the stint kind.
-func checkedStint(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Stint) (audit1.Page, error) {
-		var out audit1.Page
+func checkedStint(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Stint) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsStint(ctx, db, ps...)
 			if err != nil {
@@ -6927,28 +6927,28 @@ func checkedStint(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: StintDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, stint.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entStint.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, stint.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entStint.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, StintDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsStint(ctx, db, stint.IdIn(uuids(ids)...))
+				rows, err := rowsStint(ctx, db, entStint.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -6963,9 +6963,9 @@ func checkedStint(db *ent.Client) audit1.Kind {
 }
 
 // checkedTally is what a check of the rows reads of the tally kind.
-func checkedTally(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Tally) (audit1.Page, error) {
-		var out audit1.Page
+func checkedTally(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Tally) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsTally(ctx, db, ps...)
 			if err != nil {
@@ -6973,28 +6973,28 @@ func checkedTally(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: TallyDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, tally.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entTally.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, tally.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entTally.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, TallyDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsTally(ctx, db, tally.IdIn(uuids(ids)...))
+				rows, err := rowsTally(ctx, db, entTally.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -7009,9 +7009,9 @@ func checkedTally(db *ent.Client) audit1.Kind {
 }
 
 // checkedTenant is what a check of the rows reads of the tenant kind.
-func checkedTenant(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Tenant) (audit1.Page, error) {
-		var out audit1.Page
+func checkedTenant(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Tenant) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsTenant(ctx, db, ps...)
 			if err != nil {
@@ -7019,28 +7019,28 @@ func checkedTenant(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: TenantDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, tenant.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entTenant.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, tenant.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entTenant.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, TenantDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsTenant(ctx, db, tenant.IdIn(uuids(ids)...))
+				rows, err := rowsTenant(ctx, db, entTenant.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -7055,9 +7055,9 @@ func checkedTenant(db *ent.Client) audit1.Kind {
 }
 
 // checkedThing is what a check of the rows reads of the thing kind.
-func checkedThing(db *ent.Client) audit1.Kind {
-	read := func(ctx context.Context, ps ...predicate.Thing) (audit1.Page, error) {
-		var out audit1.Page
+func checkedThing(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Thing) (audit.Page, error) {
+		var out audit.Page
 		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 			rows, err := rowsThing(ctx, db, ps...)
 			if err != nil {
@@ -7065,28 +7065,28 @@ func checkedThing(db *ent.Client) audit1.Kind {
 			}
 
 			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit1.Page{Rows: rows, Recorded: recorded}
+			out = audit.Page{Rows: rows, Recorded: recorded}
 			return err
 		})
 
 		return out, err
 	}
 
-	return audit1.Kind{
+	return audit.Kind{
 		Domain: ThingDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit1.Page, error) {
-			return read(ctx, thing.IdGT(uuid.UUID(after)))
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entThing.IdGT(uuid.UUID(after)))
 		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit1.Page, error) {
-			return read(ctx, thing.IdIn(uuids(ids)...))
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entThing.IdIn(uuids(ids)...))
 		},
 		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
 			return trailObjects(ctx, db, ThingDomain, yield)
 		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit1.Recorded, error) {
-			var out map[pdid.Id]*audit1.Recorded
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsThing(ctx, db, thing.IdIn(uuids(ids)...))
+				rows, err := rowsThing(ctx, db, entThing.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -7103,18 +7103,18 @@ func checkedThing(db *ent.Client) audit1.Kind {
 // rowsCell is the rows `ps` says of the cell kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsCell(ctx context.Context, db *ent.Client, ps ...predicate.Cell) ([]audit1.Live, error) {
+func rowsCell(ctx context.Context, db *ent.Client, ps ...predicate.Cell) ([]audit.Live, error) {
 	q := db.Cell.Query().Where(ps...)
 	bare.CellSelectInit(q, nil)
 
-	vs, err := q.Order(cell.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entCell.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7123,18 +7123,18 @@ func rowsCell(ctx context.Context, db *ent.Client, ps ...predicate.Cell) ([]audi
 // rowsEvent is the rows `ps` says of the event kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsEvent(ctx context.Context, db *ent.Client, ps ...predicate.Event) ([]audit1.Live, error) {
+func rowsEvent(ctx context.Context, db *ent.Client, ps ...predicate.Event) ([]audit.Live, error) {
 	q := db.Event.Query().Where(ps...)
 	bare.EventSelectInit(q, nil)
 
-	vs, err := q.Order(event.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entEvent.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7143,18 +7143,18 @@ func rowsEvent(ctx context.Context, db *ent.Client, ps ...predicate.Event) ([]au
 // rowsFact is the rows `ps` says of the fact kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsFact(ctx context.Context, db *ent.Client, ps ...predicate.Fact) ([]audit1.Live, error) {
+func rowsFact(ctx context.Context, db *ent.Client, ps ...predicate.Fact) ([]audit.Live, error) {
 	q := db.Fact.Query().Where(ps...)
 	bare.FactSelectInit(q, nil)
 
-	vs, err := q.Order(fact.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entFact.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7163,18 +7163,18 @@ func rowsFact(ctx context.Context, db *ent.Client, ps ...predicate.Fact) ([]audi
 // rowsFleet is the rows `ps` says of the fleet kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsFleet(ctx context.Context, db *ent.Client, ps ...predicate.Fleet) ([]audit1.Live, error) {
+func rowsFleet(ctx context.Context, db *ent.Client, ps ...predicate.Fleet) ([]audit.Live, error) {
 	q := db.Fleet.Query().Where(ps...)
 	bare.FleetSelectInit(q, nil)
 
-	vs, err := q.Order(fleet.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entFleet.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7183,18 +7183,18 @@ func rowsFleet(ctx context.Context, db *ent.Client, ps ...predicate.Fleet) ([]au
 // rowsHolder is the rows `ps` says of the holder kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsHolder(ctx context.Context, db *ent.Client, ps ...predicate.Holder) ([]audit1.Live, error) {
+func rowsHolder(ctx context.Context, db *ent.Client, ps ...predicate.Holder) ([]audit.Live, error) {
 	q := db.Holder.Query().Where(ps...)
 	bare.HolderSelectInit(q, nil)
 
-	vs, err := q.Order(holder.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entHolder.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7203,18 +7203,18 @@ func rowsHolder(ctx context.Context, db *ent.Client, ps ...predicate.Holder) ([]
 // rowsJoint is the rows `ps` says of the joint kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsJoint(ctx context.Context, db *ent.Client, ps ...predicate.Joint) ([]audit1.Live, error) {
+func rowsJoint(ctx context.Context, db *ent.Client, ps ...predicate.Joint) ([]audit.Live, error) {
 	q := db.Joint.Query().Where(ps...)
 	bare.JointSelectInit(q, nil)
 
-	vs, err := q.Order(joint.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entJoint.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7223,18 +7223,18 @@ func rowsJoint(ctx context.Context, db *ent.Client, ps ...predicate.Joint) ([]au
 // rowsMachine is the rows `ps` says of the machine kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsMachine(ctx context.Context, db *ent.Client, ps ...predicate.Machine) ([]audit1.Live, error) {
+func rowsMachine(ctx context.Context, db *ent.Client, ps ...predicate.Machine) ([]audit.Live, error) {
 	q := db.Machine.Query().Where(ps...)
 	bare.MachineSelectInit(q, nil)
 
-	vs, err := q.Order(machine.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entMachine.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7243,18 +7243,18 @@ func rowsMachine(ctx context.Context, db *ent.Client, ps ...predicate.Machine) (
 // rowsPairing is the rows `ps` says of the pairing kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsPairing(ctx context.Context, db *ent.Client, ps ...predicate.Pairing) ([]audit1.Live, error) {
+func rowsPairing(ctx context.Context, db *ent.Client, ps ...predicate.Pairing) ([]audit.Live, error) {
 	q := db.Pairing.Query().Where(ps...)
 	bare.PairingSelectInit(q, nil)
 
-	vs, err := q.Order(pairing.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entPairing.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7263,17 +7263,17 @@ func rowsPairing(ctx context.Context, db *ent.Client, ps ...predicate.Pairing) (
 // rowsPulse is the rows `ps` says of the pulse kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsPulse(ctx context.Context, db *ent.Client, ps ...predicate.Pulse) ([]audit1.Live, error) {
+func rowsPulse(ctx context.Context, db *ent.Client, ps ...predicate.Pulse) ([]audit.Live, error) {
 	q := db.Pulse.Query().Where(ps...)
 
-	vs, err := q.Order(pulse.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entPulse.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7282,18 +7282,18 @@ func rowsPulse(ctx context.Context, db *ent.Client, ps ...predicate.Pulse) ([]au
 // rowsReading is the rows `ps` says of the reading kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsReading(ctx context.Context, db *ent.Client, ps ...predicate.Reading) ([]audit1.Live, error) {
+func rowsReading(ctx context.Context, db *ent.Client, ps ...predicate.Reading) ([]audit.Live, error) {
 	q := db.Reading.Query().Where(ps...)
 	bare.ReadingSelectInit(q, nil)
 
-	vs, err := q.Order(reading.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entReading.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7302,18 +7302,18 @@ func rowsReading(ctx context.Context, db *ent.Client, ps ...predicate.Reading) (
 // rowsRobot is the rows `ps` says of the robot kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsRobot(ctx context.Context, db *ent.Client, ps ...predicate.Robot) ([]audit1.Live, error) {
+func rowsRobot(ctx context.Context, db *ent.Client, ps ...predicate.Robot) ([]audit.Live, error) {
 	q := db.Robot.Query().Where(ps...)
 	bare.RobotSelectInit(q, nil)
 
-	vs, err := q.Order(robot.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entRobot.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7322,18 +7322,18 @@ func rowsRobot(ctx context.Context, db *ent.Client, ps ...predicate.Robot) ([]au
 // rowsSeal is the rows `ps` says of the seal kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audit1.Live, error) {
+func rowsSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audit.Live, error) {
 	q := db.Seal.Query().Where(ps...)
 	bare.SealSelectInit(q, nil)
 
-	vs, err := q.Order(seal.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entSeal.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7342,18 +7342,18 @@ func rowsSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audi
 // rowsStint is the rows `ps` says of the stint kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsStint(ctx context.Context, db *ent.Client, ps ...predicate.Stint) ([]audit1.Live, error) {
+func rowsStint(ctx context.Context, db *ent.Client, ps ...predicate.Stint) ([]audit.Live, error) {
 	q := db.Stint.Query().Where(ps...)
 	bare.StintSelectInit(q, nil)
 
-	vs, err := q.Order(stint.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entStint.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7362,17 +7362,17 @@ func rowsStint(ctx context.Context, db *ent.Client, ps ...predicate.Stint) ([]au
 // rowsTally is the rows `ps` says of the tally kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsTally(ctx context.Context, db *ent.Client, ps ...predicate.Tally) ([]audit1.Live, error) {
+func rowsTally(ctx context.Context, db *ent.Client, ps ...predicate.Tally) ([]audit.Live, error) {
 	q := db.Tally.Query().Where(ps...)
 
-	vs, err := q.Order(tally.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entTally.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7381,18 +7381,18 @@ func rowsTally(ctx context.Context, db *ent.Client, ps ...predicate.Tally) ([]au
 // rowsTenant is the rows `ps` says of the tenant kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsTenant(ctx context.Context, db *ent.Client, ps ...predicate.Tenant) ([]audit1.Live, error) {
+func rowsTenant(ctx context.Context, db *ent.Client, ps ...predicate.Tenant) ([]audit.Live, error) {
 	q := db.Tenant.Query().Where(ps...)
 	bare.TenantSelectInit(q, nil)
 
-	vs, err := q.Order(tenant.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entTenant.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7401,18 +7401,18 @@ func rowsTenant(ctx context.Context, db *ent.Client, ps ...predicate.Tenant) ([]
 // rowsThing is the rows `ps` says of the thing kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
-func rowsThing(ctx context.Context, db *ent.Client, ps ...predicate.Thing) ([]audit1.Live, error) {
+func rowsThing(ctx context.Context, db *ent.Client, ps ...predicate.Thing) ([]audit.Live, error) {
 	q := db.Thing.Query().Where(ps...)
 	bare.ThingSelectInit(q, nil)
 
-	vs, err := q.Order(thing.ById()).Limit(audit1.RowsPage).All(ctx)
+	vs, err := q.Order(entThing.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]audit1.Live, len(vs))
+	out := make([]audit.Live, len(vs))
 	for i, v := range vs {
-		out[i] = audit1.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
 	}
 
 	return out, nil
@@ -7437,7 +7437,7 @@ func snapshot(ctx context.Context, db *ent.Client, fn func(context.Context, *ent
 }
 
 // objects is what `rows` are about.
-func objects(rows []audit1.Live) []pdid.Id {
+func objects(rows []audit.Live) []pdid.Id {
 	out := make([]pdid.Id, len(rows))
 	for i, v := range rows {
 		out[i] = v.Object
@@ -7449,16 +7449,16 @@ func objects(rows []audit1.Live) []pdid.Id {
 // newestDigests is what the newest line of the trail in the database about
 // each of `ids` keeps of its digest, and the line itself: the lines about
 // them read newest first, and the first of each thing's kept.
-func newestDigests(ctx context.Context, db *ent.Client, ids []pdid.Id) (map[pdid.Id]audit1.Recorded, error) {
-	out := map[pdid.Id]audit1.Recorded{}
+func newestDigests(ctx context.Context, db *ent.Client, ids []pdid.Id) (map[pdid.Id]audit.Recorded, error) {
+	out := map[pdid.Id]audit.Recorded{}
 	if len(ids) == 0 {
 		return out, nil
 	}
 
 	vs, err := db.Audit.Query().
-		Where(audit.ObjectIdIn(uuids(ids)...)).
-		Order(audit.ByDateCreated(sql.OrderDesc()), audit.ById(sql.OrderDesc())).
-		Select(audit.FieldId, audit.FieldDateCreated, audit.FieldAction, audit.FieldObjectId, audit.FieldDigest, audit.FieldDigestFields).
+		Where(entAudit.ObjectIdIn(uuids(ids)...)).
+		Order(entAudit.ByDateCreated(sql.OrderDesc()), entAudit.ById(sql.OrderDesc())).
+		Select(entAudit.FieldId, entAudit.FieldDateCreated, entAudit.FieldAction, entAudit.FieldObjectId, entAudit.FieldDigest, entAudit.FieldDigestFields).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -7467,10 +7467,10 @@ func newestDigests(ctx context.Context, db *ent.Client, ids []pdid.Id) (map[pdid
 	for _, v := range vs {
 		k := pdid.Id(v.ObjectId)
 		if _, ok := out[k]; !ok {
-			out[k] = audit1.Recorded{
+			out[k] = audit.Recorded{
 				Digest: v.Digest,
 				Fields: v.DigestFields,
-				Line:   audit1.Line{Id: v.Id, Created: v.DateCreated, Action: v.Action},
+				Line:   audit.Line{Id: v.Id, Created: v.DateCreated, Action: v.Action},
 			}
 		}
 	}
@@ -7481,7 +7481,7 @@ func newestDigests(ctx context.Context, db *ent.Client, ids []pdid.Id) (map[pdid
 // goneOf is, of `ids`, the ones `rows` -- the ones of them that are rows --
 // does not have, each with the newest line of the trail in the database
 // about it, and nil for one the database's trail says nothing about.
-func goneOf(ctx context.Context, db *ent.Client, ids []pdid.Id, rows []audit1.Live) (map[pdid.Id]*audit1.Recorded, error) {
+func goneOf(ctx context.Context, db *ent.Client, ids []pdid.Id, rows []audit.Live) (map[pdid.Id]*audit.Recorded, error) {
 	there := map[pdid.Id]bool{}
 	for _, v := range rows {
 		there[v.Object] = true
@@ -7499,7 +7499,7 @@ func goneOf(ctx context.Context, db *ent.Client, ids []pdid.Id, rows []audit1.Li
 		return nil, err
 	}
 
-	out := make(map[pdid.Id]*audit1.Recorded, len(absent))
+	out := make(map[pdid.Id]*audit.Recorded, len(absent))
 	for _, id := range absent {
 		if r, ok := lines[id]; ok {
 			out[id] = &r
@@ -7519,20 +7519,20 @@ func goneOf(ctx context.Context, db *ent.Client, ids []pdid.Id, rows []audit1.Li
 func trailObjects(ctx context.Context, db *ent.Client, d pdid.Domain, yield func([]pdid.Id) error) error {
 	var after *ent.Audit
 	for {
-		q := db.Audit.Query().Where(audit.DomainEQ(uint32(d)))
+		q := db.Audit.Query().Where(entAudit.DomainEQ(uint32(d)))
 		if after != nil {
 			// After the cursor, as one comparison of the pair: an index starts the read
 			// at it, where the OR it means is a filter and every page is read from the
 			// first row.
 			q = q.Where(func(s *sql.Selector) {
-				s.Where(sql.CompositeGT([]string{s.C(audit.FieldDateCreated), s.C(audit.FieldId)}, after.DateCreated, after.Id))
+				s.Where(sql.CompositeGT([]string{s.C(entAudit.FieldDateCreated), s.C(entAudit.FieldId)}, after.DateCreated, after.Id))
 			})
 		}
 
 		vs, err := q.
-			Order(audit.ByDateCreated(), audit.ById()).
-			Select(audit.FieldId, audit.FieldDateCreated, audit.FieldObjectId).
-			Limit(audit1.RowsPage).
+			Order(entAudit.ByDateCreated(), entAudit.ById()).
+			Select(entAudit.FieldId, entAudit.FieldDateCreated, entAudit.FieldObjectId).
+			Limit(audit.RowsPage).
 			All(ctx)
 		if err != nil {
 			return err
@@ -7548,7 +7548,7 @@ func trailObjects(ctx context.Context, db *ent.Client, d pdid.Domain, yield func
 		if err := yield(ids); err != nil {
 			return err
 		}
-		if len(vs) < audit1.RowsPage {
+		if len(vs) < audit.RowsPage {
 			return nil
 		}
 
@@ -7558,16 +7558,16 @@ func trailObjects(ctx context.Context, db *ent.Client, d pdid.Domain, yield func
 
 // archivedDigests is what the newest line of the archive about each thing
 // of a kind keeps, as a check of the rows asks for it; see [trail.Newest].
-func archivedDigests(n *trail.Newest) audit1.Archived {
-	return func(ctx context.Context, kind pdid.Domain) (map[pdid.Id]audit1.Recorded, error) {
+func archivedDigests(n *trail.Newest) audit.Archived {
+	return func(ctx context.Context, kind pdid.Domain) (map[pdid.Id]audit.Recorded, error) {
 		vs, err := n.All(ctx, kind)
 		if err != nil {
 			return nil, err
 		}
 
-		out := make(map[pdid.Id]audit1.Recorded, len(vs))
+		out := make(map[pdid.Id]audit.Recorded, len(vs))
 		for k, v := range vs {
-			out[k] = audit1.Recorded{Digest: v.Digest, Fields: v.DigestFields, Line: v.Line()}
+			out[k] = audit.Recorded{Digest: v.Digest, Fields: v.DigestFields, Line: v.Line()}
 		}
 
 		return out, nil
@@ -7597,7 +7597,7 @@ func uuids(ids []pdid.Id) []uuid.UUID {
 // ...}}`) is passed over; one that is no row at all is an error, since that
 // is [RecordErased]'s. A row erased softly is a row. It answers how many it
 // recorded.
-func Record(ctx context.Context, db *ent.Client, content audit1.Contents, action string, ids []pdid.Id) (int, error) {
+func Record(ctx context.Context, db *ent.Client, content audit.Contents, action string, ids []pdid.Id) (int, error) {
 	return record(ctx, db, content, action, ids, true)
 }
 
@@ -7612,12 +7612,12 @@ func Record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 // is framed as, as the recorder files an erase that took its row. One that
 // is still a row is an error -- that is [Record]'s -- and one of a kind kept
 // off the trail is passed over. It answers how many it recorded.
-func RecordErased(ctx context.Context, db *ent.Client, content audit1.Contents, action string, ids []pdid.Id) (int, error) {
+func RecordErased(ctx context.Context, db *ent.Client, content audit.Contents, action string, ids []pdid.Id) (int, error) {
 	return record(ctx, db, content, action, ids, false)
 }
 
 // record is [Record] when `there`, and [RecordErased] when not.
-func record(ctx context.Context, db *ent.Client, content audit1.Contents, action string, ids []pdid.Id, there bool) (int, error) {
+func record(ctx context.Context, db *ent.Client, content audit.Contents, action string, ids []pdid.Id, there bool) (int, error) {
 	if action == "" {
 		return 0, errors.New("an act on the trail is named")
 	}
@@ -7638,39 +7638,39 @@ func record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 
 	n := 0
 	for _, d := range slices.Sorted(maps.Keys(byKind)) {
-		for page := range slices.Chunk(byKind[d], audit1.RowsPage) {
-			var rows []audit1.Live
+		for page := range slices.Chunk(byKind[d], audit.RowsPage) {
+			var rows []audit.Live
 			switch d {
 			case CellDomain:
-				rows, err = rowsCell(ctx, db, cell.IdIn(uuids(page)...))
+				rows, err = rowsCell(ctx, db, entCell.IdIn(uuids(page)...))
 			case EventDomain:
-				rows, err = rowsEvent(ctx, db, event.IdIn(uuids(page)...))
+				rows, err = rowsEvent(ctx, db, entEvent.IdIn(uuids(page)...))
 			case FactDomain:
-				rows, err = rowsFact(ctx, db, fact.IdIn(uuids(page)...))
+				rows, err = rowsFact(ctx, db, entFact.IdIn(uuids(page)...))
 			case FleetDomain:
-				rows, err = rowsFleet(ctx, db, fleet.IdIn(uuids(page)...))
+				rows, err = rowsFleet(ctx, db, entFleet.IdIn(uuids(page)...))
 			case HolderDomain:
-				rows, err = rowsHolder(ctx, db, holder.IdIn(uuids(page)...))
+				rows, err = rowsHolder(ctx, db, entHolder.IdIn(uuids(page)...))
 			case JointDomain:
-				rows, err = rowsJoint(ctx, db, joint.IdIn(uuids(page)...))
+				rows, err = rowsJoint(ctx, db, entJoint.IdIn(uuids(page)...))
 			case MachineDomain:
-				rows, err = rowsMachine(ctx, db, machine.IdIn(uuids(page)...))
+				rows, err = rowsMachine(ctx, db, entMachine.IdIn(uuids(page)...))
 			case PairingDomain:
-				rows, err = rowsPairing(ctx, db, pairing.IdIn(uuids(page)...))
+				rows, err = rowsPairing(ctx, db, entPairing.IdIn(uuids(page)...))
 			case ReadingDomain:
-				rows, err = rowsReading(ctx, db, reading.IdIn(uuids(page)...))
+				rows, err = rowsReading(ctx, db, entReading.IdIn(uuids(page)...))
 			case RobotDomain:
-				rows, err = rowsRobot(ctx, db, robot.IdIn(uuids(page)...))
+				rows, err = rowsRobot(ctx, db, entRobot.IdIn(uuids(page)...))
 			case SealDomain:
-				rows, err = rowsSeal(ctx, db, seal.IdIn(uuids(page)...))
+				rows, err = rowsSeal(ctx, db, entSeal.IdIn(uuids(page)...))
 			case StintDomain:
-				rows, err = rowsStint(ctx, db, stint.IdIn(uuids(page)...))
+				rows, err = rowsStint(ctx, db, entStint.IdIn(uuids(page)...))
 			case TallyDomain:
-				rows, err = rowsTally(ctx, db, tally.IdIn(uuids(page)...))
+				rows, err = rowsTally(ctx, db, entTally.IdIn(uuids(page)...))
 			case TenantDomain:
-				rows, err = rowsTenant(ctx, db, tenant.IdIn(uuids(page)...))
+				rows, err = rowsTenant(ctx, db, entTenant.IdIn(uuids(page)...))
 			case ThingDomain:
-				rows, err = rowsThing(ctx, db, thing.IdIn(uuids(page)...))
+				rows, err = rowsThing(ctx, db, entThing.IdIn(uuids(page)...))
 			default:
 				// Kept off the trail, so no act on it is recorded.
 				continue
@@ -7686,9 +7686,9 @@ func record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 				return n, fmt.Errorf("%s is still a row", rows[0].Object)
 			}
 			if !there {
-				rows = make([]audit1.Live, len(page))
+				rows = make([]audit.Live, len(page))
 				for i, id := range page {
-					rows[i] = audit1.Live{Object: id}
+					rows[i] = audit.Live{Object: id}
 				}
 			}
 
@@ -7703,9 +7703,9 @@ func record(ctx context.Context, db *ent.Client, content audit1.Contents, action
 }
 
 // unread is the first of `ids` that `rows` does not have.
-func unread(ids []pdid.Id, rows []audit1.Live) pdid.Id {
+func unread(ids []pdid.Id, rows []audit.Live) pdid.Id {
 	for _, id := range ids {
-		if !slices.ContainsFunc(rows, func(v audit1.Live) bool { return v.Object == id }) {
+		if !slices.ContainsFunc(rows, func(v audit.Live) bool { return v.Object == id }) {
 			return id
 		}
 	}
@@ -7715,13 +7715,13 @@ func unread(ids []pdid.Id, rows []audit1.Live) pdid.Id {
 
 // recordRows writes the line [Record] says for each of `rows`, and the one
 // [RecordErased] says for each of them that has no row.
-func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action string, content audit1.Contents, rows []audit1.Live) error {
+func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action string, content audit.Contents, rows []audit.Live) error {
 	qs := make([]*ent.AuditCreate, 0, len(rows))
 	// And the seal of each row of a sealed kind, as its write would leave it:
 	// written over the one there is, or removed with the row.
 	seals := make([]*rowSeal, 0, len(rows))
 	for _, v := range rows {
-		w, err := audit1.Of(ctx, action, v.Object, nil)
+		w, err := audit.Of(ctx, action, v.Object, nil)
 		if err != nil {
 			return err
 		}
@@ -7774,47 +7774,47 @@ func recordRows(ctx context.Context, db *ent.Client, s bare.Server, action strin
 	return keepSeals(ctx, db, seals...)
 }
 
-func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Domain, vs []trail.Carried) (int, error) {
+func (s trailStore) Carry(ctx context.Context, digest *audit.Digest, d pdid.Domain, vs []trail.Carried) (int, error) {
 	n := 0
-	for page := range slices.Chunk(vs, audit1.RowsPage) {
+	for page := range slices.Chunk(vs, audit.RowsPage) {
 		ids := make([]pdid.Id, len(page))
 		for i, v := range page {
 			ids[i] = v.Object
 		}
 
-		var rows []audit1.Live
+		var rows []audit.Live
 		var err error
 		switch d {
 		case CellDomain:
-			rows, err = rowsCell(ctx, s.db, cell.IdIn(uuids(ids)...))
+			rows, err = rowsCell(ctx, s.db, entCell.IdIn(uuids(ids)...))
 		case EventDomain:
-			rows, err = rowsEvent(ctx, s.db, event.IdIn(uuids(ids)...))
+			rows, err = rowsEvent(ctx, s.db, entEvent.IdIn(uuids(ids)...))
 		case FactDomain:
-			rows, err = rowsFact(ctx, s.db, fact.IdIn(uuids(ids)...))
+			rows, err = rowsFact(ctx, s.db, entFact.IdIn(uuids(ids)...))
 		case FleetDomain:
-			rows, err = rowsFleet(ctx, s.db, fleet.IdIn(uuids(ids)...))
+			rows, err = rowsFleet(ctx, s.db, entFleet.IdIn(uuids(ids)...))
 		case HolderDomain:
-			rows, err = rowsHolder(ctx, s.db, holder.IdIn(uuids(ids)...))
+			rows, err = rowsHolder(ctx, s.db, entHolder.IdIn(uuids(ids)...))
 		case JointDomain:
-			rows, err = rowsJoint(ctx, s.db, joint.IdIn(uuids(ids)...))
+			rows, err = rowsJoint(ctx, s.db, entJoint.IdIn(uuids(ids)...))
 		case MachineDomain:
-			rows, err = rowsMachine(ctx, s.db, machine.IdIn(uuids(ids)...))
+			rows, err = rowsMachine(ctx, s.db, entMachine.IdIn(uuids(ids)...))
 		case PairingDomain:
-			rows, err = rowsPairing(ctx, s.db, pairing.IdIn(uuids(ids)...))
+			rows, err = rowsPairing(ctx, s.db, entPairing.IdIn(uuids(ids)...))
 		case ReadingDomain:
-			rows, err = rowsReading(ctx, s.db, reading.IdIn(uuids(ids)...))
+			rows, err = rowsReading(ctx, s.db, entReading.IdIn(uuids(ids)...))
 		case RobotDomain:
-			rows, err = rowsRobot(ctx, s.db, robot.IdIn(uuids(ids)...))
+			rows, err = rowsRobot(ctx, s.db, entRobot.IdIn(uuids(ids)...))
 		case SealDomain:
-			rows, err = rowsSeal(ctx, s.db, seal.IdIn(uuids(ids)...))
+			rows, err = rowsSeal(ctx, s.db, entSeal.IdIn(uuids(ids)...))
 		case StintDomain:
-			rows, err = rowsStint(ctx, s.db, stint.IdIn(uuids(ids)...))
+			rows, err = rowsStint(ctx, s.db, entStint.IdIn(uuids(ids)...))
 		case TallyDomain:
-			rows, err = rowsTally(ctx, s.db, tally.IdIn(uuids(ids)...))
+			rows, err = rowsTally(ctx, s.db, entTally.IdIn(uuids(ids)...))
 		case TenantDomain:
-			rows, err = rowsTenant(ctx, s.db, tenant.IdIn(uuids(ids)...))
+			rows, err = rowsTenant(ctx, s.db, entTenant.IdIn(uuids(ids)...))
 		case ThingDomain:
-			rows, err = rowsThing(ctx, s.db, thing.IdIn(uuids(ids)...))
+			rows, err = rowsThing(ctx, s.db, entThing.IdIn(uuids(ids)...))
 		default:
 			// A kind no check reads, so there is nothing to carry forward to.
 			return n, nil
@@ -7829,8 +7829,8 @@ func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Dom
 		}
 
 		about, err := s.db.Audit.Query().
-			Where(audit.ObjectIdIn(uuids(ids)...)).
-			Select(audit.FieldObjectId).
+			Where(entAudit.ObjectIdIn(uuids(ids)...)).
+			Select(entAudit.FieldObjectId).
 			All(ctx)
 		if err != nil {
 			return n, err
@@ -7845,7 +7845,7 @@ func (s trailStore) Carry(ctx context.Context, digest *audit1.Digest, d pdid.Dom
 		}
 		qs := []*ent.AuditCreate{}
 		// The seals of the rows carried for, which go with their lines.
-		rebound := map[pdid.Id]audit1.Line{}
+		rebound := map[pdid.Id]audit.Line{}
 		tenants := map[pdid.Id]uuid.UUID{}
 		for _, v := range page {
 			if !there[v.Object] {
@@ -8967,7 +8967,7 @@ func (d drain) once(ctx context.Context) (int, error) {
 	// carries the millisecond it was minted and a sequence within it, so the
 	// key **is** the order and there is no column to keep in step.
 	vs, err := d.db.Outbox.Query().
-		Order(outbox.ById()).
+		Order(entOutbox.ById()).
 		Limit(DrainSize).
 		All(ctx)
 	if err != nil {
@@ -9008,7 +9008,7 @@ func (d drain) once(ctx context.Context) (int, error) {
 	// And only then. A row deleted before it was published is an event that
 	// nothing will ever say again.
 	if _, err := d.db.Outbox.Delete().
-		Where(outbox.IdIn(ks...)).
+		Where(entOutbox.IdIn(ks...)).
 		Exec(ctx); err != nil {
 		return 0, err
 	}
@@ -9044,9 +9044,9 @@ var _ trail.Store = trailStore{}
 func (s trailStore) of(k trail.Scope) *ent.AuditQuery {
 	q := s.db.Audit.Query()
 	if len(k.Only) > 0 {
-		q = q.Where(audit.DomainIn(numbers(k.Only)...))
+		q = q.Where(entAudit.DomainIn(numbers(k.Only)...))
 	} else if len(k.Except) > 0 {
-		q = q.Where(audit.DomainNotIn(numbers(k.Except)...))
+		q = q.Where(entAudit.DomainNotIn(numbers(k.Except)...))
 	}
 
 	if len(k.Objects) > 0 {
@@ -9055,22 +9055,22 @@ func (s trailStore) of(k trail.Scope) *ent.AuditQuery {
 			ids[i] = v.Uuid()
 		}
 
-		q = q.Where(audit.ObjectIdIn(ids...))
+		q = q.Where(entAudit.ObjectIdIn(ids...))
 	}
 
 	t := k.Tenant.Uuid()
 	switch k.Whose {
 	case trail.FiledUnder:
-		q = q.Where(audit.TenantIdEQ(t))
+		q = q.Where(entAudit.TenantIdEQ(t))
 	case trail.Alone:
 		q = q.Where(trailAlone(t))
 	case trail.Together:
 		q = q.Where(
-			audit.Or(audit.TenantIdEQ(t), audit.ActorTenantIdEQ(t), audit.CounterpartTenantIdEQ(t)),
-			audit.Not(trailAlone(t)),
+			entAudit.Or(entAudit.TenantIdEQ(t), entAudit.ActorTenantIdEQ(t), entAudit.CounterpartTenantIdEQ(t)),
+			entAudit.Not(trailAlone(t)),
 		)
 	case trail.Sharing:
-		q = q.Where(audit.TenantIdEQ(t), audit.Not(trailAlone(t)))
+		q = q.Where(entAudit.TenantIdEQ(t), entAudit.Not(trailAlone(t)))
 	}
 
 	return q
@@ -9082,10 +9082,10 @@ func (s trailStore) of(k trail.Scope) *ent.AuditQuery {
 func trailAlone(t uuid.UUID) predicate.Audit {
 	none := uuid.Nil()
 
-	return audit.And(
-		audit.TenantIdEQ(t),
-		audit.ActorTenantIdIn(t, none),
-		audit.Or(audit.CounterpartTenantIdIsNil(), audit.CounterpartTenantIdIn(t, none)),
+	return entAudit.And(
+		entAudit.TenantIdEQ(t),
+		entAudit.ActorTenantIdIn(t, none),
+		entAudit.Or(entAudit.CounterpartTenantIdIsNil(), entAudit.CounterpartTenantIdIn(t, none)),
 	)
 }
 
@@ -9098,8 +9098,8 @@ func (s trailStore) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pd
 	for len(out) < limit {
 		next, found := uuid.Nil(), false
 		v, err := s.db.Audit.Query().
-			Where(audit.TenantIdGT(last)).
-			Order(ent.Asc(audit.FieldTenantId)).
+			Where(entAudit.TenantIdGT(last)).
+			Order(ent.Asc(entAudit.FieldTenantId)).
 			First(ctx)
 		switch {
 		case err == nil:
@@ -9108,8 +9108,8 @@ func (s trailStore) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pd
 			return out, err
 		}
 		w, err := s.db.Access.Query().
-			Where(access.TenantIdGT(last)).
-			Order(ent.Asc(access.FieldTenantId)).
+			Where(entAccess.TenantIdGT(last)).
+			Order(ent.Asc(entAccess.FieldTenantId)).
 			First(ctx)
 		switch {
 		case err == nil && (!found || w.TenantId.Compare(next) < 0):
@@ -9130,7 +9130,7 @@ func (s trailStore) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pd
 
 // older is a scope's rows written before `at`, past `after`, oldest first.
 func (s trailStore) older(k trail.Scope, at time.Time, after trail.Cursor, limit int) (*ent.AuditQuery, error) {
-	q := s.of(k).Where(audit.DateCreatedLT(at))
+	q := s.of(k).Where(entAudit.DateCreatedLT(at))
 	if after.Key != nil {
 		id, err := cursorOf(after.Key)
 		if err != nil {
@@ -9141,12 +9141,12 @@ func (s trailStore) older(k trail.Scope, at time.Time, after trail.Cursor, limit
 		// at it, where the OR it means is a filter and every page is read from the
 		// first row.
 		q = q.Where(func(s *sql.Selector) {
-			s.Where(sql.CompositeGT([]string{s.C(audit.FieldDateCreated), s.C(audit.FieldId)}, after.Created, id))
+			s.Where(sql.CompositeGT([]string{s.C(entAudit.FieldDateCreated), s.C(entAudit.FieldId)}, after.Created, id))
 		})
 	}
 
 	return q.
-		Order(ent.Asc(audit.FieldDateCreated, audit.FieldId)).
+		Order(ent.Asc(entAudit.FieldDateCreated, entAudit.FieldId)).
 		Limit(limit), nil
 }
 
@@ -9194,12 +9194,12 @@ func (s trailStore) Heads(ctx context.Context, k trail.Scope, at time.Time, afte
 	}
 
 	vs, err := q.Select(
-		audit.FieldId,
-		audit.FieldDateCreated,
-		audit.FieldDomain,
-		audit.FieldTenantId,
-		audit.FieldActorTenantId,
-		audit.FieldCounterpartTenantId,
+		entAudit.FieldId,
+		entAudit.FieldDateCreated,
+		entAudit.FieldDomain,
+		entAudit.FieldTenantId,
+		entAudit.FieldActorTenantId,
+		entAudit.FieldCounterpartTenantId,
 	).All(ctx)
 	if err != nil {
 		return nil, err
@@ -9224,12 +9224,12 @@ func (s trailStore) Heads(ctx context.Context, k trail.Scope, at time.Time, afte
 }
 
 func (s trailStore) Count(ctx context.Context, k trail.Scope, at time.Time) (int, error) {
-	n, err := s.of(k).Where(audit.DateCreatedLT(at)).Count(ctx)
+	n, err := s.of(k).Where(entAudit.DateCreatedLT(at)).Count(ctx)
 	if err != nil {
 		return n, err
 	}
 	if q := s.accessOf(k); q != nil {
-		m, err := q.Where(access.DateCreatedLT(at)).Count(ctx)
+		m, err := q.Where(entAccess.DateCreatedLT(at)).Count(ctx)
 		return n + m, err
 	}
 
@@ -9248,12 +9248,12 @@ func (s trailStore) Forget(ctx context.Context, keys []any) (int, error) {
 		return 0, err
 	}
 
-	n, err := s.db.Audit.Delete().Where(audit.IdIn(ids...)).Exec(ctx)
+	n, err := s.db.Audit.Delete().Where(entAudit.IdIn(ids...)).Exec(ctx)
 	if err != nil || len(accessed) == 0 {
 		return n, err
 	}
 
-	m, err := s.db.Access.Delete().Where(access.IdIn(accessed...)).Exec(ctx)
+	m, err := s.db.Access.Delete().Where(entAccess.IdIn(accessed...)).Exec(ctx)
 	return n + m, err
 }
 
@@ -9268,7 +9268,7 @@ func (s trailStore) Blank(ctx context.Context, keys []any) (int, error) {
 	}
 
 	n, err := s.db.Audit.Update().
-		Where(audit.IdIn(ids...)).
+		Where(entAudit.IdIn(ids...)).
 		SetValue([]byte{}).
 		SetPatch([]byte{}).
 		Save(ctx)
@@ -9276,7 +9276,7 @@ func (s trailStore) Blank(ctx context.Context, keys []any) (int, error) {
 		return n, err
 	}
 
-	m, err := s.db.Access.Update().Where(access.IdIn(accessed...)).SetValue([]byte{}).Save(ctx)
+	m, err := s.db.Access.Update().Where(entAccess.IdIn(accessed...)).SetValue([]byte{}).Save(ctx)
 	return n + m, err
 }
 
@@ -9328,13 +9328,13 @@ func (s trailStore) accessOf(k trail.Scope) *ent.AccessQuery {
 	t := k.Tenant.Uuid()
 	switch k.Whose {
 	case trail.FiledUnder:
-		q = q.Where(access.TenantIdEQ(t))
+		q = q.Where(entAccess.TenantIdEQ(t))
 	case trail.Alone:
 		q = q.Where(accessAlone(t))
 	case trail.Together:
-		q = q.Where(access.Or(access.TenantIdEQ(t), access.ActorTenantIdEQ(t)), access.Not(accessAlone(t)))
+		q = q.Where(entAccess.Or(entAccess.TenantIdEQ(t), entAccess.ActorTenantIdEQ(t)), entAccess.Not(accessAlone(t)))
 	case trail.Sharing:
-		q = q.Where(access.TenantIdEQ(t), access.Not(accessAlone(t)))
+		q = q.Where(entAccess.TenantIdEQ(t), entAccess.Not(accessAlone(t)))
 	}
 
 	return q
@@ -9343,7 +9343,7 @@ func (s trailStore) accessOf(k trail.Scope) *ent.AccessQuery {
 // accessAlone is an access row filed under `t` that names no other tenant:
 // the caller is of `t`, or is nobody.
 func accessAlone(t uuid.UUID) predicate.Access {
-	return access.And(access.TenantIdEQ(t), access.ActorTenantIdIn(t, uuid.Nil()))
+	return entAccess.And(entAccess.TenantIdEQ(t), entAccess.ActorTenantIdIn(t, uuid.Nil()))
 }
 
 // accessRows is the access record's rows of a scope written before `at`,
@@ -9355,7 +9355,7 @@ func (s trailStore) accessRows(ctx context.Context, k trail.Scope, at time.Time,
 		return nil, nil
 	}
 
-	q = q.Where(access.DateCreatedLT(at))
+	q = q.Where(entAccess.DateCreatedLT(at))
 	if after.Key != nil {
 		id, err := cursorOf(after.Key)
 		if err != nil {
@@ -9366,12 +9366,12 @@ func (s trailStore) accessRows(ctx context.Context, k trail.Scope, at time.Time,
 		// at it, where the OR it means is a filter and every page is read from the
 		// first row.
 		q = q.Where(func(s *sql.Selector) {
-			s.Where(sql.CompositeGT([]string{s.C(access.FieldDateCreated), s.C(access.FieldId)}, after.Created, id))
+			s.Where(sql.CompositeGT([]string{s.C(entAccess.FieldDateCreated), s.C(entAccess.FieldId)}, after.Created, id))
 		})
 	}
-	q = q.Order(ent.Asc(access.FieldDateCreated, access.FieldId)).Limit(limit)
+	q = q.Order(ent.Asc(entAccess.FieldDateCreated, entAccess.FieldId)).Limit(limit)
 	if !docs {
-		q = q.Select(access.FieldId, access.FieldDateCreated, access.FieldTenantId, access.FieldActorTenantId).AccessQuery
+		q = q.Select(entAccess.FieldId, entAccess.FieldDateCreated, entAccess.FieldTenantId, entAccess.FieldActorTenantId).AccessQuery
 	}
 
 	vs, err := q.All(ctx)
@@ -9498,14 +9498,14 @@ func (s trailStore) Drop(ctx context.Context, key any) error {
 		return fmt.Errorf("trail: %T is not a key this store gave out", key)
 	}
 
-	_, err := s.db.Archived.Delete().Where(archived.IdEQ(id), archived.StateEQ(trail.Adding)).Exec(ctx)
+	_, err := s.db.Archived.Delete().Where(entArchived.IdEQ(id), entArchived.StateEQ(trail.Adding)).Exec(ctx)
 	return err
 }
 
 // Mark is a row at a time, each signed as it is about to be.
 func (s trailStore) Mark(ctx context.Context, ns, digest, from, to string, sign trail.Sign) error {
 	vs, err := s.db.Archived.Query().
-		Where(archived.NamespaceEQ(ns), archived.DigestEQ(digest), archived.StateEQ(from)).
+		Where(entArchived.NamespaceEQ(ns), entArchived.DigestEQ(digest), entArchived.StateEQ(from)).
 		All(ctx)
 	if err != nil {
 		return err
@@ -9525,7 +9525,7 @@ func (s trailStore) Mark(ctx context.Context, ns, digest, from, to string, sign 
 
 func (s trailStore) Label(ctx context.Context, ns, digest string, labels map[string]string, sign trail.Sign) error {
 	vs, err := s.db.Archived.Query().
-		Where(archived.NamespaceEQ(ns), archived.DigestEQ(digest), archived.StateNEQ(trail.Erased)).
+		Where(entArchived.NamespaceEQ(ns), entArchived.DigestEQ(digest), entArchived.StateNEQ(trail.Erased)).
 		All(ctx)
 	if err != nil {
 		return err
@@ -9554,7 +9554,7 @@ func (s trailStore) archivedWrite(ctx context.Context, id uuid.UUID, was, is tra
 	}
 
 	_, err = s.db.Archived.Update().
-		Where(archived.IdEQ(id), archived.StateEQ(was.State)).
+		Where(entArchived.IdEQ(id), entArchived.StateEQ(was.State)).
 		SetDigest(is.Digest).
 		SetLabels(is.Labels).
 		SetState(is.State).
@@ -9567,7 +9567,7 @@ func (s trailStore) archivedWrite(ctx context.Context, id uuid.UUID, was, is tra
 
 func (s trailStore) Rows(ctx context.Context) ([]trail.Archived, error) {
 	vs, err := s.db.Archived.Query().
-		Where(archived.NamespaceNEQ(""), archived.StateNEQ(trail.Erased)).
+		Where(entArchived.NamespaceNEQ(""), entArchived.StateNEQ(trail.Erased)).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -9586,7 +9586,7 @@ func (s trailStore) Checkpoint(ctx context.Context, after int) (int, []trail.Arc
 	}
 	defer tx.Rollback()
 
-	n, err := tx.Archived.Update().Where(archived.IdEQ(archivedCounter)).AddSince(1).SetDateUpdated(time.Now()).Save(ctx)
+	n, err := tx.Archived.Update().Where(entArchived.IdEQ(archivedCounter)).AddSince(1).SetDateUpdated(time.Now()).Save(ctx)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -9620,14 +9620,14 @@ func (s trailStore) Checkpoint(ctx context.Context, after int) (int, []trail.Arc
 			return 0, nil, fmt.Errorf("checkpoint %d: past what the manifest numbers", after)
 		}
 		k = uint32(after) + 1
-		if _, err := tx.Archived.Update().Where(archived.IdEQ(archivedCounter)).SetSince(k).Save(ctx); err != nil {
+		if _, err := tx.Archived.Update().Where(entArchived.IdEQ(archivedCounter)).SetSince(k).Save(ctx); err != nil {
 			return 0, nil, err
 		}
 	}
 
 	// In it from now on: what was added since the last one.
 	if _, err := tx.Archived.Update().
-		Where(archived.NamespaceNEQ(""), archived.StateIn(trail.Present, trail.Erasing), archived.SinceEQ(0)).
+		Where(entArchived.NamespaceNEQ(""), entArchived.StateIn(trail.Present, trail.Erasing), entArchived.SinceEQ(0)).
 		SetSince(k).
 		Save(ctx); err != nil {
 		return 0, nil, err
@@ -9635,7 +9635,7 @@ func (s trailStore) Checkpoint(ctx context.Context, after int) (int, []trail.Arc
 
 	// Out of it from now on: what was erased since.
 	if _, err := tx.Archived.Update().
-		Where(archived.NamespaceNEQ(""), archived.StateEQ(trail.Erased), archived.GoneEQ(0), archived.SinceGT(0)).
+		Where(entArchived.NamespaceNEQ(""), entArchived.StateEQ(trail.Erased), entArchived.GoneEQ(0), entArchived.SinceGT(0)).
 		SetGone(k).
 		Save(ctx); err != nil {
 		return 0, nil, err
@@ -9645,9 +9645,9 @@ func (s trailStore) Checkpoint(ctx context.Context, after int) (int, []trail.Arc
 	// saw it, or gone before the one before this.
 	if _, err := tx.Archived.Delete().
 		Where(
-			archived.NamespaceNEQ(""),
-			archived.StateEQ(trail.Erased),
-			archived.Or(archived.SinceEQ(0), archived.And(archived.GoneGT(0), archived.GoneLT(k))),
+			entArchived.NamespaceNEQ(""),
+			entArchived.StateEQ(trail.Erased),
+			entArchived.Or(entArchived.SinceEQ(0), entArchived.And(entArchived.GoneGT(0), entArchived.GoneLT(k))),
 		).
 		Exec(ctx); err != nil {
 		return 0, nil, err
@@ -9685,11 +9685,11 @@ func (s trailStore) Latest(ctx context.Context) (int, time.Time, error) {
 // archivedAt is the rows a checkpoint was taken over: in it by then, and
 // not gone by then.
 func archivedAt(k uint32) predicate.Archived {
-	return archived.And(
-		archived.NamespaceNEQ(""),
-		archived.SinceGT(0),
-		archived.SinceLTE(k),
-		archived.Or(archived.GoneEQ(0), archived.GoneGT(k)),
+	return entArchived.And(
+		entArchived.NamespaceNEQ(""),
+		entArchived.SinceGT(0),
+		entArchived.SinceLTE(k),
+		entArchived.Or(entArchived.GoneEQ(0), entArchived.GoneGT(k)),
 	)
 }
 
@@ -9720,8 +9720,8 @@ func archivedRows(vs []*ent.Archived) []trail.Archived {
 
 func (s trailStore) BlankSeals(ctx context.Context, objects []pdid.Id, forgotten func(pdid.Id) []byte) (int, error) {
 	n := 0
-	for page := range slices.Chunk(objects, audit1.RowsPage) {
-		ids, err := s.db.RowSeal.Query().Where(rowseal.IdIn(uuids(page)...)).Ids(ctx)
+	for page := range slices.Chunk(objects, audit.RowsPage) {
+		ids, err := s.db.RowSeal.Query().Where(entRowSeal.IdIn(uuids(page)...)).Ids(ctx)
 		if err != nil || len(ids) == 0 {
 			if err != nil {
 				return n, err
@@ -9729,7 +9729,7 @@ func (s trailStore) BlankSeals(ctx context.Context, objects []pdid.Id, forgotten
 			continue
 		}
 		if forgotten == nil {
-			k, err := s.db.RowSeal.Delete().Where(rowseal.IdIn(ids...)).Exec(ctx)
+			k, err := s.db.RowSeal.Delete().Where(entRowSeal.IdIn(ids...)).Exec(ctx)
 			n += k
 			if err != nil {
 				return n, err
@@ -9748,7 +9748,7 @@ func (s trailStore) BlankSeals(ctx context.Context, objects []pdid.Id, forgotten
 }
 
 func (s trailStore) PurgeSeals(ctx context.Context, tenant pdid.Id) (int, error) {
-	return s.db.RowSeal.Delete().Where(rowseal.TenantId(tenant.Uuid())).Exec(ctx)
+	return s.db.RowSeal.Delete().Where(entRowSeal.TenantId(tenant.Uuid())).Exec(ctx)
 }
 
 // InTx is whether the client is bound to a transaction -- one it began, or
@@ -9788,11 +9788,11 @@ func (s trailStore) Owed(ctx context.Context, after trail.Cursor, limit int) ([]
 		// at it, where the OR it means is a filter and every page is read from the
 		// first row.
 		q = q.Where(func(s *sql.Selector) {
-			s.Where(sql.CompositeGT([]string{s.C(owed.FieldDateCreated), s.C(owed.FieldId)}, after.Created, id))
+			s.Where(sql.CompositeGT([]string{s.C(entOwed.FieldDateCreated), s.C(entOwed.FieldId)}, after.Created, id))
 		})
 	}
 
-	vs, err := q.Order(ent.Asc(owed.FieldDateCreated, owed.FieldId)).Limit(limit).All(ctx)
+	vs, err := q.Order(ent.Asc(entOwed.FieldDateCreated, entOwed.FieldId)).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -9824,7 +9824,7 @@ func (s trailStore) Paid(ctx context.Context, keys []any) (int, error) {
 		return 0, nil
 	}
 
-	return s.db.Owed.Delete().Where(owed.IdIn(ids...)).Exec(ctx)
+	return s.db.Owed.Delete().Where(entOwed.IdIn(ids...)).Exec(ctx)
 }
 
 func (s trailStore) Kept(ctx context.Context, key any, by []pdid.Id) error {
@@ -9888,7 +9888,7 @@ func TrailOf(fn func(*apptest.Audit) error) func(doc []byte) error {
 // Its writes are the only ones of Event and Fact the Audit layer lets
 // through, wherever in `next` that layer is: each is marked for it, on the
 // context handed to the servers and no other ([pastWrite]).
-func Past(next apptest.Server, drv dialect.Driver, content audit1.Contents) (past.Store, error) {
+func Past(next apptest.Server, drv dialect.Driver, content audit.Contents) (past.Store, error) {
 	s, err := enttx.Rebind(next, drv)
 	if err != nil {
 		return nil, err
@@ -9901,7 +9901,7 @@ type pastStore struct {
 	next    apptest.Server
 	drv     dialect.Driver
 	db      *ent.Client
-	content audit1.Contents
+	content audit.Contents
 }
 
 var _ past.Store = pastStore{}
@@ -10035,7 +10035,7 @@ func (s pastStore) Events(ctx context.Context, q past.Select) ([]past.EventRow, 
 		query = query.Where(predicate.Event(v))
 	}
 	for _, v := range q.Order {
-		query = query.Order(event.OrderOption(v))
+		query = query.Order(entEvent.OrderOption(v))
 	}
 	if q.Limit > 0 {
 		query = query.Limit(q.Limit)
@@ -10080,7 +10080,7 @@ func (s pastStore) Facts(ctx context.Context, q past.Select) ([]past.FactRow, er
 		query = query.Where(predicate.Fact(v))
 	}
 	for _, v := range q.Order {
-		query = query.Order(fact.OrderOption(v))
+		query = query.Order(entFact.OrderOption(v))
 	}
 	if q.Limit > 0 {
 		query = query.Limit(q.Limit)
@@ -10143,45 +10143,45 @@ func (s pastStore) TenantOf(ctx context.Context, ids []pdid.Id) (map[pdid.Id]pdi
 
 	out := map[pdid.Id]pdid.Id{}
 	for _, d := range slices.Sorted(maps.Keys(byKind)) {
-		for page := range slices.Chunk(byKind[d], audit1.RowsPage) {
-			var rows []audit1.Live
+		for page := range slices.Chunk(byKind[d], audit.RowsPage) {
+			var rows []audit.Live
 			global := false
 			switch d {
 			case CellDomain:
-				rows, err = rowsCell(ctx, s.db, cell.IdIn(uuids(page)...))
+				rows, err = rowsCell(ctx, s.db, entCell.IdIn(uuids(page)...))
 			case EventDomain:
-				rows, err = rowsEvent(ctx, s.db, event.IdIn(uuids(page)...))
+				rows, err = rowsEvent(ctx, s.db, entEvent.IdIn(uuids(page)...))
 			case FactDomain:
-				rows, err = rowsFact(ctx, s.db, fact.IdIn(uuids(page)...))
+				rows, err = rowsFact(ctx, s.db, entFact.IdIn(uuids(page)...))
 			case FleetDomain:
-				rows, err = rowsFleet(ctx, s.db, fleet.IdIn(uuids(page)...))
+				rows, err = rowsFleet(ctx, s.db, entFleet.IdIn(uuids(page)...))
 				global = true
 			case HolderDomain:
-				rows, err = rowsHolder(ctx, s.db, holder.IdIn(uuids(page)...))
+				rows, err = rowsHolder(ctx, s.db, entHolder.IdIn(uuids(page)...))
 			case JointDomain:
-				rows, err = rowsJoint(ctx, s.db, joint.IdIn(uuids(page)...))
+				rows, err = rowsJoint(ctx, s.db, entJoint.IdIn(uuids(page)...))
 			case MachineDomain:
-				rows, err = rowsMachine(ctx, s.db, machine.IdIn(uuids(page)...))
+				rows, err = rowsMachine(ctx, s.db, entMachine.IdIn(uuids(page)...))
 			case PairingDomain:
-				rows, err = rowsPairing(ctx, s.db, pairing.IdIn(uuids(page)...))
+				rows, err = rowsPairing(ctx, s.db, entPairing.IdIn(uuids(page)...))
 			case PulseDomain:
-				rows, err = rowsPulse(ctx, s.db, pulse.IdIn(uuids(page)...))
+				rows, err = rowsPulse(ctx, s.db, entPulse.IdIn(uuids(page)...))
 				global = true
 			case ReadingDomain:
-				rows, err = rowsReading(ctx, s.db, reading.IdIn(uuids(page)...))
+				rows, err = rowsReading(ctx, s.db, entReading.IdIn(uuids(page)...))
 			case RobotDomain:
-				rows, err = rowsRobot(ctx, s.db, robot.IdIn(uuids(page)...))
+				rows, err = rowsRobot(ctx, s.db, entRobot.IdIn(uuids(page)...))
 			case SealDomain:
-				rows, err = rowsSeal(ctx, s.db, seal.IdIn(uuids(page)...))
+				rows, err = rowsSeal(ctx, s.db, entSeal.IdIn(uuids(page)...))
 				global = true
 			case StintDomain:
-				rows, err = rowsStint(ctx, s.db, stint.IdIn(uuids(page)...))
+				rows, err = rowsStint(ctx, s.db, entStint.IdIn(uuids(page)...))
 			case TallyDomain:
-				rows, err = rowsTally(ctx, s.db, tally.IdIn(uuids(page)...))
+				rows, err = rowsTally(ctx, s.db, entTally.IdIn(uuids(page)...))
 			case TenantDomain:
-				rows, err = rowsTenant(ctx, s.db, tenant.IdIn(uuids(page)...))
+				rows, err = rowsTenant(ctx, s.db, entTenant.IdIn(uuids(page)...))
 			case ThingDomain:
-				rows, err = rowsThing(ctx, s.db, thing.IdIn(uuids(page)...))
+				rows, err = rowsThing(ctx, s.db, entThing.IdIn(uuids(page)...))
 				global = true
 			default:
 				return nil, fmt.Errorf("%s is of a kind whose tenant this app cannot say, so it is the subject of no past", page[0])
@@ -10218,7 +10218,7 @@ func (s pastStore) TenantOf(ctx context.Context, ids []pdid.Id) (map[pdid.Id]pdi
 // a line by whoever `ctx` is framed as, with the event's digest as it is
 // now and its seal made again ([Record]).
 func (s pastStore) Redact(ctx context.Context, id pdid.Id, action string) error {
-	n, err := s.db.Event.Update().Where(event.IdEQ(uuid.UUID(id))).SetReason("").Save(ctx)
+	n, err := s.db.Event.Update().Where(entEvent.IdEQ(uuid.UUID(id))).SetReason("").Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -10254,12 +10254,12 @@ var _ past.Names = pastNames{}
 // Name reads the row `id` names through the wall, and answers what it is
 // called and -- where that was read off a field declared `personal` -- the
 // row, as whose data saying it is.
-func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subject, error) {
+func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access.Subject, error) {
 	var row proto.Message
 	var alias, name bool
 	switch id.Domain() {
 	case CellDomain:
-		p, err := bare.CellNarrow(ctx, Wall(), cell.IdEQ(id.Uuid()))
+		p, err := bare.CellNarrow(ctx, Wall(), entCell.IdEQ(id.Uuid()))
 		if err != nil {
 			return "", nil, err
 		}
@@ -10269,7 +10269,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 		}
 		row, alias, name = v.Proto(), false, false
 	case FleetDomain:
-		p, err := bare.FleetNarrow(ctx, Wall(), fleet.IdEQ(id.Uuid()))
+		p, err := bare.FleetNarrow(ctx, Wall(), entFleet.IdEQ(id.Uuid()))
 		if err != nil {
 			return "", nil, err
 		}
@@ -10279,7 +10279,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 		}
 		row, alias, name = v.Proto(), false, false
 	case HolderDomain:
-		p, err := bare.HolderNarrow(ctx, Wall(), holder.IdEQ(id.Uuid()))
+		p, err := bare.HolderNarrow(ctx, Wall(), entHolder.IdEQ(id.Uuid()))
 		if err != nil {
 			return "", nil, err
 		}
@@ -10289,7 +10289,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 		}
 		row, alias, name = v.Proto(), true, true
 	case JointDomain:
-		p, err := bare.JointNarrow(ctx, Wall(), joint.IdEQ(id.Uuid()))
+		p, err := bare.JointNarrow(ctx, Wall(), entJoint.IdEQ(id.Uuid()))
 		if err != nil {
 			return "", nil, err
 		}
@@ -10299,7 +10299,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 		}
 		row, alias, name = v.Proto(), false, false
 	case MachineDomain:
-		p, err := bare.MachineNarrow(ctx, Wall(), machine.IdEQ(id.Uuid()))
+		p, err := bare.MachineNarrow(ctx, Wall(), entMachine.IdEQ(id.Uuid()))
 		if err != nil {
 			return "", nil, err
 		}
@@ -10309,7 +10309,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 		}
 		row, alias, name = v.Proto(), false, false
 	case RobotDomain:
-		p, err := bare.RobotNarrow(ctx, Wall(), robot.IdEQ(id.Uuid()))
+		p, err := bare.RobotNarrow(ctx, Wall(), entRobot.IdEQ(id.Uuid()))
 		if err != nil {
 			return "", nil, err
 		}
@@ -10319,7 +10319,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 		}
 		row, alias, name = v.Proto(), false, false
 	case SealDomain:
-		p, err := bare.SealNarrow(ctx, Wall(), seal.IdEQ(id.Uuid()))
+		p, err := bare.SealNarrow(ctx, Wall(), entSeal.IdEQ(id.Uuid()))
 		if err != nil {
 			return "", nil, err
 		}
@@ -10329,7 +10329,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 		}
 		row, alias, name = v.Proto(), false, false
 	case TenantDomain:
-		p, err := bare.TenantNarrow(ctx, Wall(), tenant.IdEQ(id.Uuid()))
+		p, err := bare.TenantNarrow(ctx, Wall(), entTenant.IdEQ(id.Uuid()))
 		if err != nil {
 			return "", nil, err
 		}
@@ -10339,7 +10339,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 		}
 		row, alias, name = v.Proto(), false, false
 	case ThingDomain:
-		p, err := bare.ThingNarrow(ctx, Wall(), thing.IdEQ(id.Uuid()))
+		p, err := bare.ThingNarrow(ctx, Wall(), entThing.IdEQ(id.Uuid()))
 		if err != nil {
 			return "", nil, err
 		}
@@ -10354,7 +10354,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 
 	h := header.Of(row)
 	if h.Name != "" && name || h.Name == "" && h.Alias != "" && alias {
-		return h.Title(), []access1.Subject{{Id: id, Tenant: h.Tenant}}, nil
+		return h.Title(), []access.Subject{{Id: id, Tenant: h.Tenant}}, nil
 	}
 
 	return h.Title(), nil, nil
@@ -10362,7 +10362,7 @@ func (n pastNames) Name(ctx context.Context, id pdid.Id) (string, []access1.Subj
 
 // pastUnnamed is a row that could not be read: named by nothing when there
 // is none to read -- gone, or behind the wall -- and the error otherwise.
-func pastUnnamed(err error) (string, []access1.Subject, error) {
+func pastUnnamed(err error) (string, []access.Subject, error) {
 	if ent.IsNotFound(err) {
 		return "", nil, nil
 	}
@@ -10377,10 +10377,10 @@ func (pastStore) Pointers() []past.Pointer { return pastPointers }
 // `(payday.field) = {event: true}`: what the expiry asks of each event it
 // would take, whether a row that stays names it.
 var pastPointers = []past.Pointer{
-	{Domain: EventDomain, Table: event.Table, Column: event.FieldCauseId, Own: pdpb.Own_OWN_EVENT},
-	{Domain: FactDomain, Table: fact.Table, Column: fact.FieldEventId, Own: pdpb.Own_OWN_FACT},
-	{Domain: FactDomain, Table: fact.Table, Column: fact.FieldSupersededBy, Own: pdpb.Own_OWN_FACT},
-	{Domain: StintDomain, Table: stint.Table, Column: stint.FieldEventId, Own: pdpb.Own_OWN_UNSPECIFIED},
+	{Domain: EventDomain, Table: entEvent.Table, Column: entEvent.FieldCauseId, Own: pdpb.Own_OWN_EVENT},
+	{Domain: FactDomain, Table: entFact.Table, Column: entFact.FieldEventId, Own: pdpb.Own_OWN_FACT},
+	{Domain: FactDomain, Table: entFact.Table, Column: entFact.FieldSupersededBy, Own: pdpb.Own_OWN_FACT},
+	{Domain: StintDomain, Table: entStint.Table, Column: entStint.FieldEventId, Own: pdpb.Own_OWN_UNSPECIFIED},
 }
 
 // DeleteEvents deletes the rows `ids` names through ent, a page at a time:
@@ -10388,8 +10388,8 @@ var pastPointers = []past.Pointer{
 // What it takes is put on the trail by [pastStore.Erased].
 func (s pastStore) DeleteEvents(ctx context.Context, ids []pdid.Id) (int, error) {
 	n := 0
-	for page := range slices.Chunk(ids, audit1.RowsPage) {
-		k, err := s.db.Event.Delete().Where(event.IdIn(uuids(page)...)).Exec(ctx)
+	for page := range slices.Chunk(ids, audit.RowsPage) {
+		k, err := s.db.Event.Delete().Where(entEvent.IdIn(uuids(page)...)).Exec(ctx)
 		n += k
 		if err != nil {
 			return n, err
@@ -10414,8 +10414,8 @@ func (s pastStore) CountEvents(ctx context.Context, where []func(*sql.Selector))
 // What it takes is put on the trail by [pastStore.Erased].
 func (s pastStore) DeleteFacts(ctx context.Context, ids []pdid.Id) (int, error) {
 	n := 0
-	for page := range slices.Chunk(ids, audit1.RowsPage) {
-		k, err := s.db.Fact.Delete().Where(fact.IdIn(uuids(page)...)).Exec(ctx)
+	for page := range slices.Chunk(ids, audit.RowsPage) {
+		k, err := s.db.Fact.Delete().Where(entFact.IdIn(uuids(page)...)).Exec(ctx)
 		n += k
 		if err != nil {
 			return n, err
@@ -10457,7 +10457,7 @@ func (s pastStore) Erased(ctx context.Context, action string, ids []pdid.Id) err
 // the store marks what it hands the servers, and the context `f` is given
 // is no write of the past's, so a row `f` writes by hand with it is refused
 // as any other is ([pastWrite]).
-func PastIn(ungated apptest.Server, drv dialect.Driver, content audit1.Contents) func(ctx context.Context, tenant pdid.Id, f func(ctx context.Context, s past.Store) error) error {
+func PastIn(ungated apptest.Server, drv dialect.Driver, content audit.Contents) func(ctx context.Context, tenant pdid.Id, f func(ctx context.Context, s past.Store) error) error {
 	return func(ctx context.Context, tenant pdid.Id, f func(ctx context.Context, s past.Store) error) error {
 		ctx = frame.Into(ctx, frame.New(pdid.Nil, tenant, frame.Grant{}).WithScope(frame.Only(tenant)))
 
@@ -10491,8 +10491,8 @@ func PastTenants(db *ent.Client) func(ctx context.Context, after pdid.Id, limit 
 		last := after.Uuid()
 		for len(out) < limit {
 			v, err := db.Event.Query().
-				Where(predicate.Event(sql.FieldGT(event.FieldTenantId, last))).
-				Order(ent.Asc(event.FieldTenantId)).
+				Where(predicate.Event(sql.FieldGT(entEvent.FieldTenantId, last))).
+				Order(ent.Asc(entEvent.FieldTenantId)).
 				First(ctx)
 			switch {
 			case ent.IsNotFound(err):
@@ -10608,8 +10608,8 @@ func init() {
 // message in it that holds a field declared `personal`, and the tenant that
 // message names -- what the access record's interceptor is handed as
 // `access.Config.Subjects`.
-func Subjects(m proto.Message) []access1.Subject {
-	out := []access1.Subject{}
+func Subjects(m proto.Message) []access.Subject {
+	out := []access.Subject{}
 	if m != nil {
 		subjectsIn(m.ProtoReflect(), true, &out)
 	}
@@ -10619,8 +10619,8 @@ func Subjects(m proto.Message) []access1.Subject {
 
 // SubjectRefs is whose rows the request `m` names by key: what a call that
 // was refused carried, having no answer -- `access.Config.Refs`.
-func SubjectRefs(m proto.Message) []access1.Subject {
-	out := []access1.Subject{}
+func SubjectRefs(m proto.Message) []access.Subject {
+	out := []access.Subject{}
 	if m != nil {
 		refsIn(m.ProtoReflect(), true, &out)
 	}
@@ -10664,13 +10664,13 @@ func isAny(m protoreflect.Message) bool {
 	return ok
 }
 
-func subjectsIn(m protoreflect.Message, unpack bool, out *[]access1.Subject) {
+func subjectsIn(m protoreflect.Message, unpack bool, out *[]access.Subject) {
 	if !m.IsValid() || isAny(m) {
 		return
 	}
 	if p, ok := personals[m.Descriptor().FullName()]; ok && p.carries(m) {
 		if id := accessIdOf(m.Get(p.key).Bytes()); !id.IsZero() {
-			v := access1.Subject{Id: id}
+			v := access.Subject{Id: id}
 			if p.tenant != nil {
 				v.Tenant = p.tenant(m)
 			}
@@ -10690,13 +10690,13 @@ func subjectsIn(m protoreflect.Message, unpack bool, out *[]access1.Subject) {
 	})
 }
 
-func refsIn(m protoreflect.Message, unpack bool, out *[]access1.Subject) {
+func refsIn(m protoreflect.Message, unpack bool, out *[]access.Subject) {
 	if !m.IsValid() || isAny(m) {
 		return
 	}
 	if fd, ok := refs[m.Descriptor().FullName()]; ok && fd != nil && m.Has(fd) {
 		if id := accessIdOf(m.Get(fd).Bytes()); !id.IsZero() {
-			*out = append(*out, access1.Subject{Id: id})
+			*out = append(*out, access.Subject{Id: id})
 		}
 	}
 
@@ -10765,15 +10765,15 @@ func accessKeyOf(m protoreflect.Message) pdid.Id {
 // hands its `access.Writer` as `Sink`.
 //
 //	w := &access.Writer{Sink: pd.AccessSink(db)}
-func AccessSink(db *ent.Client) func(context.Context, []access1.Record) error {
-	return func(ctx context.Context, rs []access1.Record) error {
+func AccessSink(db *ent.Client) func(context.Context, []access.Record) error {
+	return func(ctx context.Context, rs []access.Record) error {
 		return writeAccess(ctx, db, rs)
 	}
 }
 
 // writeAccess writes rows of the access record through `db`, a statement for
 // every few hundred.
-func writeAccess(ctx context.Context, db *ent.Client, rs []access1.Record) error {
+func writeAccess(ctx context.Context, db *ent.Client, rs []access.Record) error {
 	qs := make([]*ent.AccessCreate, 0, len(rs))
 	for _, r := range rs {
 		id := r.Id
@@ -10840,7 +10840,7 @@ type accessRecorder struct{}
 
 // accessKept is what a transaction keeps for a call that writes in it: that
 // the call's row is written at its commit.
-type accessKept struct{ call *access1.Call }
+type accessKept struct{ call *access.Call }
 
 // Snapshots asks for the rows a write of a kind that holds anybody's personal
 // data left and erased, which are what say whose it was.
@@ -10869,19 +10869,19 @@ func (accessRecorder) Snapshots(method string) bare.SnapshotOptions {
 }
 
 func (accessRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
-	call, ok := access1.Of(ctx)
+	call, ok := access.Of(ctx)
 	if !ok {
 		return nil
 	}
 
-	key, err := audit1.Identifier(c.Key)
+	key, err := audit.Identifier(c.Key)
 	if err != nil {
 		return err
 	}
 
 	written := slices.Concat(Subjects(c.Previous), Subjects(c.Value))
 	if md, _, personal := described(key); len(written) == 0 && touches(c.Patch, md, personal) {
-		written = []access1.Subject{{Id: key}}
+		written = []access.Subject{{Id: key}}
 	}
 	call.Wrote(written...)
 
@@ -10896,7 +10896,7 @@ func (accessRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) 
 		}
 
 		d := pdpb.AccessDetail_builder{Address: call.Address()}.Build()
-		if err := writeAccess(ctx, db, access1.Records(ctx, call.Method(), access1.Write, "ok", now, d, time.Now())); err != nil {
+		if err := writeAccess(ctx, db, access.Records(ctx, call.Method(), access.Write, "ok", now, d, time.Now())); err != nil {
 			return err
 		}
 
@@ -10912,7 +10912,7 @@ func (accessRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) 
 			}
 
 			d := pdpb.AccessDetail_builder{Address: call.Address()}.Build()
-			rs := access1.Records(ctx, call.Method(), access1.Write, "ok", wrote, d, time.Now())
+			rs := access.Records(ctx, call.Method(), access.Write, "ok", wrote, d, time.Now())
 			if err := writeAccess(at, db, rs); err != nil {
 				return err
 			}
@@ -10933,7 +10933,7 @@ func touches(p *patchpb.Patch, md protoreflect.MessageDescriptor, fields []proto
 	if p == nil || md == nil {
 		return false
 	}
-	for _, n := range audit1.FieldsOf(p, md) {
+	for _, n := range audit.FieldsOf(p, md) {
 		for _, fd := range fields {
 			if uint32(fd.Number()) == n {
 				return true
@@ -11580,19 +11580,19 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), access.Table, []resourcesql.Column{
-				{Number: 1, Name: access.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: access.FieldTenantId, Type: 64, Nullable: false, Key: 0},
-				{Number: 8, Name: access.FieldActorId, Type: 64, Nullable: false, Key: 0},
-				{Number: 9, Name: access.FieldTraceId, Type: 12, Nullable: false, Key: 0},
-				{Number: 10, Name: access.FieldAction, Type: 9, Nullable: false, Key: 0},
-				{Number: 11, Name: access.FieldKind, Type: 9, Nullable: false, Key: 0},
-				{Number: 12, Name: access.FieldResult, Type: 9, Nullable: false, Key: 0},
-				{Number: 15, Name: access.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
-				{Number: 16, Name: access.FieldActorTenantId, Type: 64, Nullable: false, Key: 0},
-				{Number: 17, Name: access.FieldValue, Type: 12, Nullable: false, Key: 0},
-				{Number: 19, Name: access.FieldDomain, Type: 13, Nullable: false, Key: 0},
-				{Number: 21, Name: access.FieldSubjectCount, Type: 13, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entAccess.Table, []resourcesql.Column{
+				{Number: 1, Name: entAccess.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entAccess.FieldTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 8, Name: entAccess.FieldActorId, Type: 64, Nullable: false, Key: 0},
+				{Number: 9, Name: entAccess.FieldTraceId, Type: 12, Nullable: false, Key: 0},
+				{Number: 10, Name: entAccess.FieldAction, Type: 9, Nullable: false, Key: 0},
+				{Number: 11, Name: entAccess.FieldKind, Type: 9, Nullable: false, Key: 0},
+				{Number: 12, Name: entAccess.FieldResult, Type: 9, Nullable: false, Key: 0},
+				{Number: 15, Name: entAccess.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 16, Name: entAccess.FieldActorTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 17, Name: entAccess.FieldValue, Type: 12, Nullable: false, Key: 0},
+				{Number: 19, Name: entAccess.FieldDomain, Type: 13, Nullable: false, Key: 0},
+				{Number: 21, Name: entAccess.FieldSubjectCount, Type: 13, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11619,19 +11619,19 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), audit.Table, []resourcesql.Column{
-				{Number: 1, Name: audit.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: audit.FieldTenantId, Type: 64, Nullable: false, Key: 0},
-				{Number: 8, Name: audit.FieldActorId, Type: 64, Nullable: false, Key: 0},
-				{Number: 9, Name: audit.FieldTraceId, Type: 12, Nullable: false, Key: 0},
-				{Number: 10, Name: audit.FieldAction, Type: 9, Nullable: false, Key: 0},
-				{Number: 11, Name: audit.FieldObjectId, Type: 64, Nullable: false, Key: 0},
-				{Number: 12, Name: audit.FieldPatch, Type: 12, Nullable: false, Key: 0},
-				{Number: 15, Name: audit.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
-				{Number: 16, Name: audit.FieldActorTenantId, Type: 64, Nullable: false, Key: 0},
-				{Number: 17, Name: audit.FieldValue, Type: 12, Nullable: false, Key: 0},
-				{Number: 19, Name: audit.FieldDomain, Type: 13, Nullable: false, Key: 0},
-				{Number: 21, Name: audit.FieldDigest, Type: 12, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entAudit.Table, []resourcesql.Column{
+				{Number: 1, Name: entAudit.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entAudit.FieldTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 8, Name: entAudit.FieldActorId, Type: 64, Nullable: false, Key: 0},
+				{Number: 9, Name: entAudit.FieldTraceId, Type: 12, Nullable: false, Key: 0},
+				{Number: 10, Name: entAudit.FieldAction, Type: 9, Nullable: false, Key: 0},
+				{Number: 11, Name: entAudit.FieldObjectId, Type: 64, Nullable: false, Key: 0},
+				{Number: 12, Name: entAudit.FieldPatch, Type: 12, Nullable: false, Key: 0},
+				{Number: 15, Name: entAudit.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 16, Name: entAudit.FieldActorTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 17, Name: entAudit.FieldValue, Type: 12, Nullable: false, Key: 0},
+				{Number: 19, Name: entAudit.FieldDomain, Type: 13, Nullable: false, Key: 0},
+				{Number: 21, Name: entAudit.FieldDigest, Type: 12, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11658,11 +11658,11 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), cell.Table, []resourcesql.Column{
-				{Number: 1, Name: cell.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: cell.TenantColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 4, Name: cell.FieldAlias, Type: 9, Nullable: false, Key: 0},
-				{Number: 14, Name: cell.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entCell.Table, []resourcesql.Column{
+				{Number: 1, Name: entCell.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entCell.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 4, Name: entCell.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: entCell.FieldDateErased, Type: 65, Nullable: true, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11689,16 +11689,16 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), event.Table, []resourcesql.Column{
-				{Number: 1, Name: event.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: event.TenantColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 8, Name: event.FieldKind, Type: 9, Nullable: false, Key: 0},
-				{Number: 10, Name: event.FieldOccurredAt, Type: 65, Nullable: false, Key: 0},
-				{Number: 11, Name: event.FieldReason, Type: 9, Nullable: false, Key: 0},
-				{Number: 13, Name: event.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
-				{Number: 15, Name: event.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
-				{Number: 16, Name: event.FieldTraceId, Type: 12, Nullable: false, Key: 0},
-				{Number: 6, Name: event.FieldDesc, Type: 9, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entEvent.Table, []resourcesql.Column{
+				{Number: 1, Name: entEvent.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entEvent.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 8, Name: entEvent.FieldKind, Type: 9, Nullable: false, Key: 0},
+				{Number: 10, Name: entEvent.FieldOccurredAt, Type: 65, Nullable: false, Key: 0},
+				{Number: 11, Name: entEvent.FieldReason, Type: 9, Nullable: false, Key: 0},
+				{Number: 13, Name: entEvent.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 15, Name: entEvent.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 16, Name: entEvent.FieldTraceId, Type: 12, Nullable: false, Key: 0},
+				{Number: 6, Name: entEvent.FieldDesc, Type: 9, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11725,19 +11725,19 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), fact.Table, []resourcesql.Column{
-				{Number: 1, Name: fact.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: fact.TenantColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 8, Name: fact.FieldSubjectId, Type: 64, Nullable: false, Key: 0},
-				{Number: 9, Name: fact.FieldKey, Type: 9, Nullable: false, Key: 0},
-				{Number: 10, Name: fact.FieldValue, Type: 9, Nullable: false, Key: 0},
-				{Number: 12, Name: fact.FieldFieldNumber, Type: 13, Nullable: false, Key: 0},
-				{Number: 13, Name: fact.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
-				{Number: 15, Name: fact.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
-				{Number: 16, Name: fact.FieldDomain, Type: 13, Nullable: false, Key: 0},
-				{Number: 17, Name: fact.FieldValidFrom, Type: 65, Nullable: false, Key: 0},
-				{Number: 19, Name: fact.FieldEventId, Type: 64, Nullable: false, Key: 0},
-				{Number: 20, Name: fact.FieldSupersededAt, Type: 65, Nullable: true, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entFact.Table, []resourcesql.Column{
+				{Number: 1, Name: entFact.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entFact.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 8, Name: entFact.FieldSubjectId, Type: 64, Nullable: false, Key: 0},
+				{Number: 9, Name: entFact.FieldKey, Type: 9, Nullable: false, Key: 0},
+				{Number: 10, Name: entFact.FieldValue, Type: 9, Nullable: false, Key: 0},
+				{Number: 12, Name: entFact.FieldFieldNumber, Type: 13, Nullable: false, Key: 0},
+				{Number: 13, Name: entFact.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 15, Name: entFact.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 16, Name: entFact.FieldDomain, Type: 13, Nullable: false, Key: 0},
+				{Number: 17, Name: entFact.FieldValidFrom, Type: 65, Nullable: false, Key: 0},
+				{Number: 19, Name: entFact.FieldEventId, Type: 64, Nullable: false, Key: 0},
+				{Number: 20, Name: entFact.FieldSupersededAt, Type: 65, Nullable: true, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11764,10 +11764,10 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), fleet.Table, []resourcesql.Column{
-				{Number: 1, Name: fleet.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 4, Name: fleet.FieldAlias, Type: 9, Nullable: false, Key: 0},
-				{Number: 14, Name: fleet.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entFleet.Table, []resourcesql.Column{
+				{Number: 1, Name: entFleet.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 4, Name: entFleet.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: entFleet.FieldDateErased, Type: 65, Nullable: true, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11794,18 +11794,18 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), holder.Table, []resourcesql.Column{
-				{Number: 1, Name: holder.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: holder.TenantColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 4, Name: holder.FieldAlias, Type: 9, Nullable: false, Key: 0},
-				{Number: 5, Name: holder.FieldName, Type: 9, Nullable: false, Key: 0},
-				{Number: 6, Name: holder.FieldDesc, Type: 9, Nullable: false, Key: 0},
-				{Number: 13, Name: holder.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
-				{Number: 14, Name: holder.FieldDateErased, Type: 65, Nullable: true, Key: 0},
-				{Number: 15, Name: holder.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
-				{Number: 8, Name: holder.FieldIdpSubject, Type: 9, Nullable: false, Key: 0},
-				{Number: 10, Name: holder.FieldDirectory, Type: 9, Nullable: false, Key: 0},
-				{Number: 11, Name: holder.RobotColumn, Type: 64, Nullable: true, Key: 1},
+			row, err := resourcesql.Row(db.Dialect(), entHolder.Table, []resourcesql.Column{
+				{Number: 1, Name: entHolder.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entHolder.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 4, Name: entHolder.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 5, Name: entHolder.FieldName, Type: 9, Nullable: false, Key: 0},
+				{Number: 6, Name: entHolder.FieldDesc, Type: 9, Nullable: false, Key: 0},
+				{Number: 13, Name: entHolder.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 14, Name: entHolder.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+				{Number: 15, Name: entHolder.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 8, Name: entHolder.FieldIdpSubject, Type: 9, Nullable: false, Key: 0},
+				{Number: 10, Name: entHolder.FieldDirectory, Type: 9, Nullable: false, Key: 0},
+				{Number: 11, Name: entHolder.RobotColumn, Type: 64, Nullable: true, Key: 1},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11832,11 +11832,11 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), joint.Table, []resourcesql.Column{
-				{Number: 1, Name: joint.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: joint.RobotColumn, Type: 64, Nullable: true, Key: 1},
-				{Number: 4, Name: joint.FieldAlias, Type: 9, Nullable: false, Key: 0},
-				{Number: 14, Name: joint.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entJoint.Table, []resourcesql.Column{
+				{Number: 1, Name: entJoint.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entJoint.RobotColumn, Type: 64, Nullable: true, Key: 1},
+				{Number: 4, Name: entJoint.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: entJoint.FieldDateErased, Type: 65, Nullable: true, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11863,23 +11863,23 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), machine.Table, []resourcesql.Column{
-				{Number: 1, Name: machine.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: machine.TenantColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 4, Name: machine.FieldAlias, Type: 9, Nullable: false, Key: 0},
-				{Number: 8, Name: machine.FieldModel, Type: 9, Nullable: false, Key: 0},
-				{Number: 9, Name: machine.FieldHours, Type: 3, Nullable: false, Key: 0},
-				{Number: 10, Name: machine.FieldLoad, Type: 1, Nullable: false, Key: 0},
-				{Number: 11, Name: machine.FieldRunning, Type: 8, Nullable: false, Key: 0},
-				{Number: 12, Name: machine.FieldFirmware, Type: 12, Nullable: false, Key: 0},
-				{Number: 16, Name: machine.FieldCycles, Type: 4, Nullable: false, Key: 0},
-				{Number: 18, Name: machine.RobotColumn, Type: 64, Nullable: true, Key: 1},
-				{Number: 19, Name: machine.FieldMode, Type: 14, Nullable: false, Key: 0},
-				{Number: 20, Name: machine.FieldDateServiced, Type: 65, Nullable: true, Key: 0},
-				{Number: 24, Name: machine.FieldOperator, Type: 9, Nullable: false, Key: 0},
-				{Number: 13, Name: machine.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
-				{Number: 14, Name: machine.FieldDateErased, Type: 65, Nullable: true, Key: 0},
-				{Number: 15, Name: machine.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entMachine.Table, []resourcesql.Column{
+				{Number: 1, Name: entMachine.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entMachine.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 4, Name: entMachine.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 8, Name: entMachine.FieldModel, Type: 9, Nullable: false, Key: 0},
+				{Number: 9, Name: entMachine.FieldHours, Type: 3, Nullable: false, Key: 0},
+				{Number: 10, Name: entMachine.FieldLoad, Type: 1, Nullable: false, Key: 0},
+				{Number: 11, Name: entMachine.FieldRunning, Type: 8, Nullable: false, Key: 0},
+				{Number: 12, Name: entMachine.FieldFirmware, Type: 12, Nullable: false, Key: 0},
+				{Number: 16, Name: entMachine.FieldCycles, Type: 4, Nullable: false, Key: 0},
+				{Number: 18, Name: entMachine.RobotColumn, Type: 64, Nullable: true, Key: 1},
+				{Number: 19, Name: entMachine.FieldMode, Type: 14, Nullable: false, Key: 0},
+				{Number: 20, Name: entMachine.FieldDateServiced, Type: 65, Nullable: true, Key: 0},
+				{Number: 24, Name: entMachine.FieldOperator, Type: 9, Nullable: false, Key: 0},
+				{Number: 13, Name: entMachine.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 14, Name: entMachine.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+				{Number: 15, Name: entMachine.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11906,11 +11906,11 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), pairing.Table, []resourcesql.Column{
-				{Number: 1, Name: pairing.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: pairing.LeadColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 8, Name: pairing.FollowColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 15, Name: pairing.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entPairing.Table, []resourcesql.Column{
+				{Number: 1, Name: entPairing.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entPairing.LeadColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 8, Name: entPairing.FollowColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 15, Name: entPairing.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11937,12 +11937,12 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), reading.Table, []resourcesql.Column{
-				{Number: 1, Name: reading.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: reading.RobotColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 9, Name: reading.FieldTenantId, Type: 64, Nullable: false, Key: 0},
-				{Number: 8, Name: reading.FieldCelsius, Type: 1, Nullable: false, Key: 0},
-				{Number: 15, Name: reading.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entReading.Table, []resourcesql.Column{
+				{Number: 1, Name: entReading.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entReading.RobotColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 9, Name: entReading.FieldTenantId, Type: 64, Nullable: false, Key: 0},
+				{Number: 8, Name: entReading.FieldCelsius, Type: 1, Nullable: false, Key: 0},
+				{Number: 15, Name: entReading.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -11969,17 +11969,17 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), robot.Table, []resourcesql.Column{
-				{Number: 1, Name: robot.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: robot.TenantColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 30, Name: robot.ThingColumn, Type: 64, Nullable: true, Key: 1},
-				{Number: 3, Name: robot.CellColumn, Type: 64, Nullable: true, Key: 1},
-				{Number: 4, Name: robot.FieldAlias, Type: 9, Nullable: false, Key: 0},
-				{Number: 31, Name: robot.FieldDateAttested, Type: 65, Nullable: true, Key: 0},
-				{Number: 32, Name: robot.FieldKeeper, Type: 9, Nullable: false, Key: 0},
-				{Number: 13, Name: robot.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
-				{Number: 15, Name: robot.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
-				{Number: 14, Name: robot.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entRobot.Table, []resourcesql.Column{
+				{Number: 1, Name: entRobot.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entRobot.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 30, Name: entRobot.ThingColumn, Type: 64, Nullable: true, Key: 1},
+				{Number: 3, Name: entRobot.CellColumn, Type: 64, Nullable: true, Key: 1},
+				{Number: 4, Name: entRobot.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 31, Name: entRobot.FieldDateAttested, Type: 65, Nullable: true, Key: 0},
+				{Number: 32, Name: entRobot.FieldKeeper, Type: 9, Nullable: false, Key: 0},
+				{Number: 13, Name: entRobot.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 15, Name: entRobot.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 14, Name: entRobot.FieldDateErased, Type: 65, Nullable: true, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -12006,11 +12006,11 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), seal.Table, []resourcesql.Column{
-				{Number: 1, Name: seal.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 4, Name: seal.FieldAlias, Type: 9, Nullable: false, Key: 0},
-				{Number: 14, Name: seal.FieldDateErased, Type: 65, Nullable: true, Key: 0},
-				{Number: 15, Name: seal.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entSeal.Table, []resourcesql.Column{
+				{Number: 1, Name: entSeal.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 4, Name: entSeal.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: entSeal.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+				{Number: 15, Name: entSeal.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -12037,14 +12037,14 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), stint.Table, []resourcesql.Column{
-				{Number: 1, Name: stint.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 2, Name: stint.TenantColumn, Type: 64, Nullable: false, Key: 1},
-				{Number: 8, Name: stint.FieldRobotId, Type: 64, Nullable: false, Key: 0},
-				{Number: 9, Name: stint.FieldValidFrom, Type: 65, Nullable: false, Key: 0},
-				{Number: 10, Name: stint.FieldValidTo, Type: 65, Nullable: true, Key: 0},
-				{Number: 11, Name: stint.FieldEventId, Type: 64, Nullable: false, Key: 0},
-				{Number: 15, Name: stint.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entStint.Table, []resourcesql.Column{
+				{Number: 1, Name: entStint.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entStint.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 8, Name: entStint.FieldRobotId, Type: 64, Nullable: false, Key: 0},
+				{Number: 9, Name: entStint.FieldValidFrom, Type: 65, Nullable: false, Key: 0},
+				{Number: 10, Name: entStint.FieldValidTo, Type: 65, Nullable: true, Key: 0},
+				{Number: 11, Name: entStint.FieldEventId, Type: 64, Nullable: false, Key: 0},
+				{Number: 15, Name: entStint.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -12071,14 +12071,14 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), tenant.Table, []resourcesql.Column{
-				{Number: 1, Name: tenant.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 4, Name: tenant.FieldAlias, Type: 9, Nullable: false, Key: 0},
-				{Number: 5, Name: tenant.FieldName, Type: 9, Nullable: false, Key: 0},
-				{Number: 6, Name: tenant.FieldDesc, Type: 9, Nullable: false, Key: 0},
-				{Number: 13, Name: tenant.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
-				{Number: 15, Name: tenant.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
-				{Number: 8, Name: tenant.FieldRegion, Type: 9, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entTenant.Table, []resourcesql.Column{
+				{Number: 1, Name: entTenant.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 4, Name: entTenant.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 5, Name: entTenant.FieldName, Type: 9, Nullable: false, Key: 0},
+				{Number: 6, Name: entTenant.FieldDesc, Type: 9, Nullable: false, Key: 0},
+				{Number: 13, Name: entTenant.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 15, Name: entTenant.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+				{Number: 8, Name: entTenant.FieldRegion, Type: 9, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -12105,12 +12105,12 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 			if err != nil {
 				return nil, err
 			}
-			row, err := resourcesql.Row(db.Dialect(), thing.Table, []resourcesql.Column{
-				{Number: 1, Name: thing.FieldId, Type: 64, Nullable: false, Key: 0},
-				{Number: 4, Name: thing.FieldAlias, Type: 9, Nullable: false, Key: 0},
-				{Number: 8, Name: thing.FieldDescription, Type: 9, Nullable: false, Key: 0},
-				{Number: 14, Name: thing.FieldDateErased, Type: 65, Nullable: true, Key: 0},
-				{Number: 15, Name: thing.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			row, err := resourcesql.Row(db.Dialect(), entThing.Table, []resourcesql.Column{
+				{Number: 1, Name: entThing.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 4, Name: entThing.FieldAlias, Type: 9, Nullable: false, Key: 0},
+				{Number: 8, Name: entThing.FieldDescription, Type: 9, Nullable: false, Key: 0},
+				{Number: 14, Name: entThing.FieldDateErased, Type: 65, Nullable: true, Key: 0},
+				{Number: 15, Name: entThing.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err

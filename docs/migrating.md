@@ -3,6 +3,39 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An ent package is imported under a name of payday's
+
+**Applies to every app**, which regenerates: `server/pd/pd.g.go` imports the
+package ent writes for each entity as `ent` and the entity's name --
+`entRobot` -- where it used ent's own name for it, `robot`. No schema,
+migration or code changes, and nothing outside `server/pd` names those imports
+(#174).
+
+ent names that package after the entity, folded down, so it was the one name
+in the file an app chose, beside every name payday's generator writes there.
+The two met. An app with an entity named `Image` did not compile, on a line of
+`server/pd` it cannot edit: `left`, which reads the row a write left for the
+trail, called the row it was handed `image`, and `image.IdEQ` was then the
+parameter's. Neither did an app with an entity named after one of the forty
+or so other names payday writes where a package of ent's is named: a type of
+the file's own (`Wall`, `Recorder`), a function (`Line`, `Snapshot`,
+`Subject`), a local (`Page`, `Key`, `Message`, `Read`). The import's name is
+payday's now: no ent package has a capital in its name, and no name payday
+writes begins with `ent`.
+
+- **An app with such an entity generates and compiles.** One with none sees
+  the import names move, and payday's own `audit` and `access` lose the `1`
+  protogen gave them beside the app's packages of those names.
+- **Some names still do not compile.** An entity named `Record`, `Scope`,
+  `Previous`, `Pred` or `Doc` meets a name of what protoc-gen-orm-ent writes
+  into `server/bare`, and one named `Name` a name of ent's client: those are
+  theirs. One named `Next` gives the app's `Server` a `Next()` beside the one
+  every layer has for the server behind it.
+
+What the apps on payday change: each regenerates, and nothing else.
+hday.io/workday's `Image` is what found it, on its first generation since
+`left` was written (#126).
+
 ## The trail and the access record have an index by time
 
 **Applies to every app**: payday's `Audit` and `Access` each declare one more

@@ -27,7 +27,7 @@ func EmitOutbox(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	}
 
 	emitOutboxRecorder(g, p)
-	emitDrain(g, p)
+	emitDrain(g, s, p)
 }
 
 func emitOutboxRecorder(g *protogen.GeneratedFile, p Paths) {
@@ -111,8 +111,8 @@ func emitOutboxRecorder(g *protogen.GeneratedFile, p Paths) {
 	g.P("")
 }
 
-func emitDrain(g *protogen.GeneratedFile, p Paths) {
-	outbox := p.Ent + "/outbox"
+func emitDrain(g *protogen.GeneratedFile, s *Schema, p Paths) {
+	outbox := p.EntPkg(s.Own(pdpb.Own_OWN_OUTBOX))
 
 	g.P("// DrainSize is how many rows one pass takes.")
 	g.P("//")

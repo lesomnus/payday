@@ -87,7 +87,9 @@ func main() {
 	fs.StringVar(&o.Stage, "stage", "go", "which pass: `proto` writes the List into the contract, `ts` the domain table, the store's declarations and the event registry, `go` everything else")
 	fs.StringVar(&o.Payday, "version", o.Payday, "the payday this generation is from, stamped into the generated package")
 
-	protogen.Options{ParamFunc: fs.Set}.Run(func(p *protogen.Plugin) error {
+	// An ent package is imported under a name of payday's, which its path
+	// carries until the import is written; see [pdgen.Paths.EntPkg].
+	protogen.Options{ParamFunc: fs.Set, ImportRewriteFunc: pdgen.RewriteImport}.Run(func(p *protogen.Plugin) error {
 		return run(context.Background(), p, o)
 	})
 }
