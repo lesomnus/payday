@@ -49,8 +49,7 @@ a tenant, a kind, an actor. So each batch of it read the table and sorted what
 it found, and a pass cost its batches times the table. Those reads are:
 
 - **a pass of a `trail.Policy` with no `Tenants`**: every kind but the ones
-  it names, across the deployment, beside the access record. roster's sweep is
-  one;
+  it names, across the deployment, beside the access record;
 - **`trail.Archive` and `Policy.Collect` over every kind**, which is what an
   operator's command asks;
 - **a `List` of the trail or the access record that names no filter**, from
@@ -95,8 +94,13 @@ few lines, and goes by time for one with many, where it is faster.
   One statement at a time and outside a transaction, as `CONCURRENTLY` is.
   On SQLite the migration's `CREATE INDEX` holds the write lock for as long.
 
-What the apps on payday change: each regenerates and migrates. roster, whose
-sweep passes over the whole deployment, is the one whose passes this changes.
+What the apps on payday change: each regenerates and migrates. roster's sweep
+is not one of those reads: its `serve` hands `trail.Sweep` the policy
+`forget.Held` makes, whose `Tenants` is `Holds(db)`, so a pass goes tenant by
+tenant on the indexes it had, as it has since roster#105. What reads across
+the deployment there is an operator's `roster trail prune --older-than` or
+`--before` with no `--kind`: its reads of a million lines took 74 s before
+this and 2 s after, by roster's own measurement.
 
 ## A deep page of a list starts at its cursor
 
