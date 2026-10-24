@@ -122,6 +122,21 @@ through `payday/resource` (payday#163); it is `resource/resourcecel` now, which 
 app's `cli` imports and its sandbox does not. `TestTheSandboxCarriesNoEngine`
 lists this app's sandbox under `GOOS=js` and fails on any of them.
 
+**A method called by index costs every method, and no list of packages shows
+it.** A program that can reach `reflect.Type.Method`, or `MethodByName` with a
+name the compiler cannot see, is one in which the linker has to assume that any
+exported method of any type converted to an interface may be called by name, so
+it keeps all of them, in every package. The page works and is larger. The call
+was in ent, which a sandbox has to link: the generated client's `runtime.go`
+makes the schema's fields at init, for their defaults and value scanners, and
+every field it made listed its type's methods that way. It was 24 MB of this
+sandbox's 63 (payday 1b4425d, Go 1.27; 39 MB without it), and every app has paid
+it since payday's `Audit` took a column default, which put the schema in every
+app's `runtime.go` (payday#87). protobuf-orm/ent's loader lists them now, for
+codegen alone (protobuf-orm/ent#20), and `TestTheSandboxLetsTheLinkerPruneMethods`
+links this app's sandbox with the linker's dump and fails on any function in it
+that calls a method by index (payday#170).
+
 **The Go runtime is 1.8 MB — 2.6%.** Which is the whole answer to making it
 smaller by using a smaller Go.
 

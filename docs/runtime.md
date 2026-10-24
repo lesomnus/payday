@@ -189,6 +189,7 @@ Everything payday enforces is placed as far left as it goes.
 | the database is not behind the schema | `entschema.Check`, before anything is served on it |
 | the runtime assumes no file system | CI builds `GOOS=js GOARCH=wasm` |
 | a sandbox links no engine only a process uses | `TestTheSandboxCarriesNoEngine` lists payday's own sandbox under `GOOS=js` — no driver, migration engine or filter language — and `pd new`'s tests hold the template's `cmd` to naming none of them |
+| a sandbox keeps only the methods it calls | `TestTheSandboxLetsTheLinkerPruneMethods` links payday's own sandbox with the linker's dump and fails on any function in it that calls a method by index — which makes the linker keep every exported method of every type converted to an interface, and was 24 MB of it (payday#170) |
 | a Watch filter is never ignored | a server whose binary links no filter language refuses one with `Unimplemented` |
 | every layer is an `enttx.Binder` | `pd doctor` finds one that is not — a missing `WithDriver` is nothing until the first transaction |
 | the access record is wired | `pd doctor` says which of its interceptor, writer and recorder the app's code does not name — missing, nothing fails and nothing is recorded |
