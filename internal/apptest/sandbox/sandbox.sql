@@ -33,6 +33,7 @@ CREATE TABLE `thing` (`id` uuid NOT NULL, `alias` text NOT NULL, `description` t
 CREATE INDEX `access_access` ON `access` (`tenant_id`, `date_created`);
 CREATE INDEX `access_by_actor` ON `access` (`actor_id`, `date_created`);
 CREATE INDEX `access_by_actor_tenant` ON `access` (`actor_tenant_id`, `date_created`);
+CREATE INDEX `access_by_time` ON `access` (`date_created`, `id`);
 CREATE INDEX `archived_blob` ON `archived` (`namespace`, `digest`);
 CREATE INDEX `archived_state` ON `archived` (`state`);
 CREATE INDEX `audit_by_actor` ON `audit` (`actor_id`, `date_created`);
@@ -40,6 +41,7 @@ CREATE INDEX `audit_by_actor_tenant` ON `audit` (`actor_tenant_id`, `date_create
 CREATE INDEX `audit_by_counterpart` ON `audit` (`counterpart_tenant_id`, `date_created`);
 CREATE INDEX `audit_by_domain` ON `audit` (`domain`, `date_created`);
 CREATE INDEX `audit_by_tenant_domain` ON `audit` (`tenant_id`, `domain`, `date_created`);
+CREATE INDEX `audit_by_time` ON `audit` (`date_created`, `id`);
 CREATE INDEX `audit_object` ON `audit` (`object_id`);
 CREATE INDEX `audit_trail` ON `audit` (`tenant_id`, `date_created`);
 CREATE INDEX `event_cause` ON `event` (`cause_id`);
