@@ -91,7 +91,7 @@ message NotificationReceipt {
   bytes tenant_id = 2;
   bytes notification_id = 8;
   bytes reader_id = 9;
-  google.protobuf.Timestamp read_at = 10;
+  google.protobuf.Timestamp data_read = 10;
   google.protobuf.Timestamp date_updated = 13;
   google.protobuf.Timestamp date_created = 15;
 }
