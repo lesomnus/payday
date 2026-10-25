@@ -159,6 +159,7 @@ without making reverse membership lookup a requirement of the feature.
 
 List and Inbox use `(date_created, id)` in descending order. Size zero selects
 50, positive sizes above 100 are capped at 100, and negative sizes are invalid.
+The request's `cursor` carries the previous response's `next`.
 Their cursors are authenticated, opaque, and bound to the tenant,
 authenticated identity, resolved reader, RPC, normalized Topic set, query filters,
 and order. Topic order in a request does not change its selection. Reusing a

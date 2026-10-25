@@ -139,7 +139,7 @@ message NotificationListRequest {
 
   // The previous response's next. Bound to this RPC, tenant, caller, reader and
   // topic set; a different context or malformed cursor returns InvalidArgument.
-  string after = 3;
+  string cursor = 3;
   bytes tenant_id = 4;
 }
 
@@ -156,7 +156,7 @@ message NotificationInboxRequest {
   // Zero selects 50; values above 100 are capped; negative values are invalid.
   int32 size = 2;
   // Bound to this RPC and its complete read scope. List cursors are not accepted.
-  string after = 3;
+  string cursor = 3;
   bytes tenant_id = 4;
 }
 
