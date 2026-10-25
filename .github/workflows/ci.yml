@@ -42,6 +42,15 @@ jobs:
         with:
           setup_only: true
 
+      # Proposed contracts are compiled without publishing them as payday's
+      # implemented wire surface or copying them into an application.
+      - name: notification contract
+        working-directory: docs/contracts/notify
+        run: |
+          buf format --diff --exit-code
+          buf lint
+          buf build
+
       # Two baselines, because payday's schema reaches apps two ways.
       #
       # `proto/` is fetched: an app declares `buf.build/payday/payday:dev` and

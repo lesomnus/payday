@@ -31,6 +31,7 @@ comments, which are where the detail actually lives.
 | [The generation contract](schema.md) | what payday owns, overlays, identifiers, slugs |
 | [Migrating](migrating.md) | what an app has to change when payday does, newest first |
 | [The browser](client.md) | the transports, the sandbox, and the client replica |
+| [Notifications: proposed contract](notify.md) | Topic keys, app policies, lazy receipts, and the proposed notification RPCs |
 
 ---
 
