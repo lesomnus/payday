@@ -38,7 +38,7 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	// about the other to pass the methods it did not override.
 	wraps := []*Entity{}
 	for _, v := range s.Sorted() {
-		if v.List != nil || v.Alias || v.Stamp != "" || len(v.Agrees) > 0 || forgets(v) {
+		if v.List != nil || admits(v) || names(v) || forgets(v) {
 			wraps = append(wraps, v)
 		}
 	}
@@ -161,13 +161,13 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 			g.P("")
 		}
 
-		if v.Alias {
+		if names(v) {
 			emitAlias(g, v, root)
 		}
 		if forgets(v) {
 			emitForget(g, v, root)
 		}
-		if v.Stamp != "" || len(v.Agrees) > 0 {
+		if admits(v) && (v.Stamp != "" || len(v.Agrees) > 0) {
 			emitTenancy(g, v, s, p, root)
 		}
 		if v.List != nil {
@@ -236,8 +236,26 @@ func emitCursor(g *protogen.GeneratedFile) {
 }
 
 // admits is whether the Sink says anything about a row being added: what it
-// is named, or which tenant it is in.
-func admits(v *Entity) bool { return v.Alias || v.Stamp != "" || len(v.Agrees) > 0 }
+// is named, or which tenant it is in. Nothing, for an entity its servers never
+// add -- one read through them and written by the app's own code -- whose
+// server has no Add to say it of and no rule to put it in.
+func admits(v *Entity) bool {
+	return adds(v) && (v.Alias || v.Stamp != "" || len(v.Agrees) > 0)
+}
+
+// adds is whether the servers write new rows of `v`: an Add, or an AddMany.
+func adds(v *Entity) bool {
+	r := v.Rpcs()
+	return r.HasAdd() || r.HasAddMany()
+}
+
+// names is whether the Sink keeps the name of a row of `v` what the rules
+// allow ([emitAlias]): it has an alias, and a server that writes one -- an
+// Add, an AddMany or a Patch. An alias that is only read is the app's to
+// write, and already one.
+func names(v *Entity) bool {
+	return v.Alias && (adds(v) || v.Rpcs().HasPatch())
+}
 
 // emitSinkAdmit writes what the Sink says about a row an Add would write: its
 // name ([emitAlias]) and then its tenancy ([emitTenancy]), as the rule
@@ -346,7 +364,24 @@ func comment(g *protogen.GeneratedFile, text string) {
 //
 // What it does with a row nobody named is `slug.Namer`'s, and by default it
 // makes a name up; see there.
+//
+// Each for the server that has it, and none for a server that has not: an
+// entity its servers only read has a name the app wrote, and nothing here to
+// keep it by ([names]).
 func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
+	if v.Rpcs().HasAdd() {
+		emitAliasAdd(g, v, root)
+	}
+	if v.Rpcs().HasAddMany() {
+		emitAliasAddMany(g, v, root)
+	}
+	if v.Rpcs().HasPatch() {
+		emitAliasPatch(g, v, root)
+	}
+}
+
+// emitAliasAdd is [emitAlias] for an Add.
+func emitAliasAdd(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
 	e := v.GoName()
 
 	g.P("// Add tries again when the name it made up was taken.")
@@ -380,51 +415,67 @@ func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath)
 	g.P("	}")
 	g.P("}")
 	g.P("")
+}
 
-	if v.Rpcs().HasAddMany() {
-		g.P("// AddMany tries again, as Add does, when it made up the name of an item and")
-		g.P("// the call was refused AlreadyExists -- the whole call, with every name it")
-		g.P("// made up made up again, since a refusal of a statement does not say which")
-		g.P("// of its rows it was about. A name an item was given is the same each time.")
-		g.P("//")
-		g.P("// Every name made up is a chance to collide, so a call of many is refused")
-		g.P("// more often than an Add of one; `slug.Tries` says how much more.")
-		g.P("func (s sink", e, ") AddMany(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"AddManyRequest"),
-			") (*", root.Ident(e+"AddManyResponse"), ", error) {")
-		g.P("	// More than one try only when some item was named by nobody, and only")
-		g.P("	// in a transaction of its own; see Add.")
-		g.P("	tries := 1")
-		g.P("	if !s.joined {")
-		g.P("		for _, v := range req.GetItems() {")
-		g.P("			if v.GetAlias() == \"\" {")
-		g.P("				tries = ", pkgSlug.Ident("Tries"))
-		g.P("				break")
-		g.P("			}")
-		g.P("		}")
-		g.P("	}")
-		g.P("")
-		g.P("	for try := 0; ; try++ {")
-		g.P("		res, err := s.", e, "ServiceServer.AddMany(ctx, req)")
-		g.P("		if err == nil || try+1 >= tries || ", pkgStatus.Ident("Code"), "(err) != ",
-			pkgCodes.Ident("AlreadyExists"), " {")
-		g.P("			return res, err")
-		g.P("		}")
-		g.P("	}")
-		g.P("}")
-		g.P("")
-	}
+// emitAliasAddMany is [emitAlias] for an AddMany.
+func emitAliasAddMany(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
+	e := v.GoName()
+
+	g.P("// AddMany tries again, as Add does, when it made up the name of an item and")
+	g.P("// the call was refused AlreadyExists -- the whole call, with every name it")
+	g.P("// made up made up again, since a refusal of a statement does not say which")
+	g.P("// of its rows it was about. A name an item was given is the same each time.")
+	g.P("//")
+	g.P("// Every name made up is a chance to collide, so a call of many is refused")
+	g.P("// more often than an Add of one; `slug.Tries` says how much more.")
+	g.P("func (s sink", e, ") AddMany(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"AddManyRequest"),
+		") (*", root.Ident(e+"AddManyResponse"), ", error) {")
+	g.P("	// More than one try only when some item was named by nobody, and only")
+	g.P("	// in a transaction of its own; see Add.")
+	g.P("	tries := 1")
+	g.P("	if !s.joined {")
+	g.P("		for _, v := range req.GetItems() {")
+	g.P("			if v.GetAlias() == \"\" {")
+	g.P("				tries = ", pkgSlug.Ident("Tries"))
+	g.P("				break")
+	g.P("			}")
+	g.P("		}")
+	g.P("	}")
+	g.P("")
+	g.P("	for try := 0; ; try++ {")
+	g.P("		res, err := s.", e, "ServiceServer.AddMany(ctx, req)")
+	g.P("		if err == nil || try+1 >= tries || ", pkgStatus.Ident("Code"), "(err) != ",
+		pkgCodes.Ident("AlreadyExists"), " {")
+	g.P("			return res, err")
+	g.P("		}")
+	g.P("	}")
+	g.P("}")
+	g.P("")
+}
+
+// emitAliasPatch is [emitAlias] for a Patch.
+func emitAliasPatch(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
+	e := v.GoName()
 
 	g.P("// Patch folds a name it was given, and says nothing about one it was not.")
 	g.P("//")
-	g.P("// The presence is the whole of the difference from [sink", e, ".Add]: a patch")
-	g.P("// that does not mention the alias is not a patch setting it to the empty")
-	g.P("// string, and refusing one would make every patch of any other field carry")
-	g.P("// the name along.")
-	g.P("//")
-	g.P("// The namer is **not** asked here, and that is the second difference. It")
-	g.P("// decides the name of a row being made; a patch that cleared the alias is")
-	g.P("// a caller asking for something invalid, and answering that with an")
-	g.P("// invented name would hand them a row they did not ask for.")
+	if v.Rpcs().HasAdd() {
+		g.P("// The presence is the whole of the difference from [sink", e, ".Add]: a patch")
+		g.P("// that does not mention the alias is not a patch setting it to the empty")
+		g.P("// string, and refusing one would make every patch of any other field carry")
+		g.P("// the name along.")
+		g.P("//")
+		g.P("// The namer is **not** asked here, and that is the second difference. It")
+		g.P("// decides the name of a row being made; a patch that cleared the alias is")
+		g.P("// a caller asking for something invalid, and answering that with an")
+		g.P("// invented name would hand them a row they did not ask for.")
+	} else {
+		g.P("// A patch that does not mention the alias is not a patch setting it to the")
+		g.P("// empty string, and refusing one would make every patch of any other field")
+		g.P("// carry the name along. The namer is **not** asked: a patch that cleared")
+		g.P("// the alias is a caller asking for something invalid, and answering that")
+		g.P("// with an invented name would hand them a row they did not ask for.")
+	}
 	if forgets(v) {
 		g.P("//")
 		g.P("// And it forgets what the transaction was told about the row; see")
