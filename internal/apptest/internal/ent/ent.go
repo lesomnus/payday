@@ -17,8 +17,11 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/job"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/notificationreceiptrecord"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/notificationrecord"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
@@ -94,28 +97,31 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			access.Table:   access.ValidColumn,
-			archived.Table: archived.ValidColumn,
-			audit.Table:    audit.ValidColumn,
-			cell.Table:     cell.ValidColumn,
-			event.Table:    event.ValidColumn,
-			fact.Table:     fact.ValidColumn,
-			fleet.Table:    fleet.ValidColumn,
-			holder.Table:   holder.ValidColumn,
-			joint.Table:    joint.ValidColumn,
-			machine.Table:  machine.ValidColumn,
-			outbox.Table:   outbox.ValidColumn,
-			owed.Table:     owed.ValidColumn,
-			pairing.Table:  pairing.ValidColumn,
-			pulse.Table:    pulse.ValidColumn,
-			reading.Table:  reading.ValidColumn,
-			robot.Table:    robot.ValidColumn,
-			rowseal.Table:  rowseal.ValidColumn,
-			seal.Table:     seal.ValidColumn,
-			stint.Table:    stint.ValidColumn,
-			tally.Table:    tally.ValidColumn,
-			tenant.Table:   tenant.ValidColumn,
-			thing.Table:    thing.ValidColumn,
+			access.Table:                    access.ValidColumn,
+			archived.Table:                  archived.ValidColumn,
+			audit.Table:                     audit.ValidColumn,
+			cell.Table:                      cell.ValidColumn,
+			event.Table:                     event.ValidColumn,
+			fact.Table:                      fact.ValidColumn,
+			fleet.Table:                     fleet.ValidColumn,
+			holder.Table:                    holder.ValidColumn,
+			job.Table:                       job.ValidColumn,
+			joint.Table:                     joint.ValidColumn,
+			machine.Table:                   machine.ValidColumn,
+			notificationreceiptrecord.Table: notificationreceiptrecord.ValidColumn,
+			notificationrecord.Table:        notificationrecord.ValidColumn,
+			outbox.Table:                    outbox.ValidColumn,
+			owed.Table:                      owed.ValidColumn,
+			pairing.Table:                   pairing.ValidColumn,
+			pulse.Table:                     pulse.ValidColumn,
+			reading.Table:                   reading.ValidColumn,
+			robot.Table:                     robot.ValidColumn,
+			rowseal.Table:                   rowseal.ValidColumn,
+			seal.Table:                      seal.ValidColumn,
+			stint.Table:                     stint.ValidColumn,
+			tally.Table:                     tally.ValidColumn,
+			tenant.Table:                    tenant.ValidColumn,
+			thing.Table:                     thing.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

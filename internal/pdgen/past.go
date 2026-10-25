@@ -144,13 +144,13 @@ func readPast(files []*protogen.File) (*Past, error) {
 // It runs before the rest of the checks, so that a number the past and another
 // entity both hold is said as the declaration's rather than as two entities'.
 func (s *Schema) checkPast() error {
-	opted, err := schema.Opted()
+	features, err := schema.Features()
 	if err != nil {
 		return err
 	}
 
 	for _, v := range s.Entities {
-		if !opted[v.Own] {
+		if features[v.Own] != schema.DirPast {
 			continue
 		}
 
@@ -181,7 +181,7 @@ func (s *Schema) checkPast() error {
 	}
 
 	for _, v := range s.Entities {
-		if opted[v.Own] {
+		if features[v.Own] == schema.DirPast {
 			continue
 		}
 

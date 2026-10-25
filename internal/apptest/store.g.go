@@ -27,6 +27,7 @@ import (
 
 type Server interface {
 	Tenant() TenantServiceServer
+	Job() JobServiceServer
 	Thing() ThingServiceServer
 	Cell() CellServiceServer
 	Robot() RobotServiceServer
@@ -41,6 +42,8 @@ type Server interface {
 	Event() EventServiceServer
 	Fact() FactServiceServer
 	Holder() HolderServiceServer
+	NotificationRecord() NotificationRecordServiceServer
+	NotificationReceiptRecord() NotificationReceiptRecordServiceServer
 	Outbox() OutboxServiceServer
 	Owed() OwedServiceServer
 	RowSeal() RowSealServiceServer
@@ -56,6 +59,7 @@ type Server interface {
 // server which is not gRPC's own can be handed the same set of services.
 func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterTenantServiceServer(g, s.Tenant())
+	RegisterJobServiceServer(g, s.Job())
 	RegisterThingServiceServer(g, s.Thing())
 	RegisterCellServiceServer(g, s.Cell())
 	RegisterRobotServiceServer(g, s.Robot())
@@ -70,6 +74,8 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterEventServiceServer(g, s.Event())
 	RegisterFactServiceServer(g, s.Fact())
 	RegisterHolderServiceServer(g, s.Holder())
+	RegisterNotificationRecordServiceServer(g, s.NotificationRecord())
+	RegisterNotificationReceiptRecordServiceServer(g, s.NotificationReceiptRecord())
 	RegisterOutboxServiceServer(g, s.Outbox())
 	RegisterOwedServiceServer(g, s.Owed())
 	RegisterRowSealServiceServer(g, s.RowSeal())
@@ -80,31 +86,35 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 }
 
 type UnimplementedServer struct {
-	TenantServer   TenantServiceServer
-	ThingServer    ThingServiceServer
-	CellServer     CellServiceServer
-	RobotServer    RobotServiceServer
-	PairingServer  PairingServiceServer
-	JointServer    JointServiceServer
-	FleetServer    FleetServiceServer
-	ReadingServer  ReadingServiceServer
-	MachineServer  MachineServiceServer
-	AccessServer   AccessServiceServer
-	ArchivedServer ArchivedServiceServer
-	AuditServer    AuditServiceServer
-	EventServer    EventServiceServer
-	FactServer     FactServiceServer
-	HolderServer   HolderServiceServer
-	OutboxServer   OutboxServiceServer
-	OwedServer     OwedServiceServer
-	RowSealServer  RowSealServiceServer
-	SealServer     SealServiceServer
-	StintServer    StintServiceServer
-	TallyServer    TallyServiceServer
-	PulseServer    PulseServiceServer
+	TenantServer                    TenantServiceServer
+	JobServer                       JobServiceServer
+	ThingServer                     ThingServiceServer
+	CellServer                      CellServiceServer
+	RobotServer                     RobotServiceServer
+	PairingServer                   PairingServiceServer
+	JointServer                     JointServiceServer
+	FleetServer                     FleetServiceServer
+	ReadingServer                   ReadingServiceServer
+	MachineServer                   MachineServiceServer
+	AccessServer                    AccessServiceServer
+	ArchivedServer                  ArchivedServiceServer
+	AuditServer                     AuditServiceServer
+	EventServer                     EventServiceServer
+	FactServer                      FactServiceServer
+	HolderServer                    HolderServiceServer
+	NotificationRecordServer        NotificationRecordServiceServer
+	NotificationReceiptRecordServer NotificationReceiptRecordServiceServer
+	OutboxServer                    OutboxServiceServer
+	OwedServer                      OwedServiceServer
+	RowSealServer                   RowSealServiceServer
+	SealServer                      SealServiceServer
+	StintServer                     StintServiceServer
+	TallyServer                     TallyServiceServer
+	PulseServer                     PulseServiceServer
 }
 
 func (UnimplementedServer) Tenant() TenantServiceServer   { return UnimplementedTenantServiceServer{} }
+func (UnimplementedServer) Job() JobServiceServer         { return UnimplementedJobServiceServer{} }
 func (UnimplementedServer) Thing() ThingServiceServer     { return UnimplementedThingServiceServer{} }
 func (UnimplementedServer) Cell() CellServiceServer       { return UnimplementedCellServiceServer{} }
 func (UnimplementedServer) Robot() RobotServiceServer     { return UnimplementedRobotServiceServer{} }
@@ -117,10 +127,16 @@ func (UnimplementedServer) Access() AccessServiceServer   { return Unimplemented
 func (UnimplementedServer) Archived() ArchivedServiceServer {
 	return UnimplementedArchivedServiceServer{}
 }
-func (UnimplementedServer) Audit() AuditServiceServer     { return UnimplementedAuditServiceServer{} }
-func (UnimplementedServer) Event() EventServiceServer     { return UnimplementedEventServiceServer{} }
-func (UnimplementedServer) Fact() FactServiceServer       { return UnimplementedFactServiceServer{} }
-func (UnimplementedServer) Holder() HolderServiceServer   { return UnimplementedHolderServiceServer{} }
+func (UnimplementedServer) Audit() AuditServiceServer   { return UnimplementedAuditServiceServer{} }
+func (UnimplementedServer) Event() EventServiceServer   { return UnimplementedEventServiceServer{} }
+func (UnimplementedServer) Fact() FactServiceServer     { return UnimplementedFactServiceServer{} }
+func (UnimplementedServer) Holder() HolderServiceServer { return UnimplementedHolderServiceServer{} }
+func (UnimplementedServer) NotificationRecord() NotificationRecordServiceServer {
+	return UnimplementedNotificationRecordServiceServer{}
+}
+func (UnimplementedServer) NotificationReceiptRecord() NotificationReceiptRecordServiceServer {
+	return UnimplementedNotificationReceiptRecordServiceServer{}
+}
 func (UnimplementedServer) Outbox() OutboxServiceServer   { return UnimplementedOutboxServiceServer{} }
 func (UnimplementedServer) Owed() OwedServiceServer       { return UnimplementedOwedServiceServer{} }
 func (UnimplementedServer) RowSeal() RowSealServiceServer { return UnimplementedRowSealServiceServer{} }
@@ -130,31 +146,35 @@ func (UnimplementedServer) Tally() TallyServiceServer     { return Unimplemented
 func (UnimplementedServer) Pulse() PulseServiceServer     { return UnimplementedPulseServiceServer{} }
 
 type StaticServer struct {
-	TenantServer   TenantServiceServer
-	ThingServer    ThingServiceServer
-	CellServer     CellServiceServer
-	RobotServer    RobotServiceServer
-	PairingServer  PairingServiceServer
-	JointServer    JointServiceServer
-	FleetServer    FleetServiceServer
-	ReadingServer  ReadingServiceServer
-	MachineServer  MachineServiceServer
-	AccessServer   AccessServiceServer
-	ArchivedServer ArchivedServiceServer
-	AuditServer    AuditServiceServer
-	EventServer    EventServiceServer
-	FactServer     FactServiceServer
-	HolderServer   HolderServiceServer
-	OutboxServer   OutboxServiceServer
-	OwedServer     OwedServiceServer
-	RowSealServer  RowSealServiceServer
-	SealServer     SealServiceServer
-	StintServer    StintServiceServer
-	TallyServer    TallyServiceServer
-	PulseServer    PulseServiceServer
+	TenantServer                    TenantServiceServer
+	JobServer                       JobServiceServer
+	ThingServer                     ThingServiceServer
+	CellServer                      CellServiceServer
+	RobotServer                     RobotServiceServer
+	PairingServer                   PairingServiceServer
+	JointServer                     JointServiceServer
+	FleetServer                     FleetServiceServer
+	ReadingServer                   ReadingServiceServer
+	MachineServer                   MachineServiceServer
+	AccessServer                    AccessServiceServer
+	ArchivedServer                  ArchivedServiceServer
+	AuditServer                     AuditServiceServer
+	EventServer                     EventServiceServer
+	FactServer                      FactServiceServer
+	HolderServer                    HolderServiceServer
+	NotificationRecordServer        NotificationRecordServiceServer
+	NotificationReceiptRecordServer NotificationReceiptRecordServiceServer
+	OutboxServer                    OutboxServiceServer
+	OwedServer                      OwedServiceServer
+	RowSealServer                   RowSealServiceServer
+	SealServer                      SealServiceServer
+	StintServer                     StintServiceServer
+	TallyServer                     TallyServiceServer
+	PulseServer                     PulseServiceServer
 }
 
 func (s StaticServer) Tenant() TenantServiceServer     { return s.TenantServer }
+func (s StaticServer) Job() JobServiceServer           { return s.JobServer }
 func (s StaticServer) Thing() ThingServiceServer       { return s.ThingServer }
 func (s StaticServer) Cell() CellServiceServer         { return s.CellServer }
 func (s StaticServer) Robot() RobotServiceServer       { return s.RobotServer }
@@ -169,16 +189,23 @@ func (s StaticServer) Audit() AuditServiceServer       { return s.AuditServer }
 func (s StaticServer) Event() EventServiceServer       { return s.EventServer }
 func (s StaticServer) Fact() FactServiceServer         { return s.FactServer }
 func (s StaticServer) Holder() HolderServiceServer     { return s.HolderServer }
-func (s StaticServer) Outbox() OutboxServiceServer     { return s.OutboxServer }
-func (s StaticServer) Owed() OwedServiceServer         { return s.OwedServer }
-func (s StaticServer) RowSeal() RowSealServiceServer   { return s.RowSealServer }
-func (s StaticServer) Seal() SealServiceServer         { return s.SealServer }
-func (s StaticServer) Stint() StintServiceServer       { return s.StintServer }
-func (s StaticServer) Tally() TallyServiceServer       { return s.TallyServer }
-func (s StaticServer) Pulse() PulseServiceServer       { return s.PulseServer }
+func (s StaticServer) NotificationRecord() NotificationRecordServiceServer {
+	return s.NotificationRecordServer
+}
+func (s StaticServer) NotificationReceiptRecord() NotificationReceiptRecordServiceServer {
+	return s.NotificationReceiptRecordServer
+}
+func (s StaticServer) Outbox() OutboxServiceServer   { return s.OutboxServer }
+func (s StaticServer) Owed() OwedServiceServer       { return s.OwedServer }
+func (s StaticServer) RowSeal() RowSealServiceServer { return s.RowSealServer }
+func (s StaticServer) Seal() SealServiceServer       { return s.SealServer }
+func (s StaticServer) Stint() StintServiceServer     { return s.StintServer }
+func (s StaticServer) Tally() TallyServiceServer     { return s.TallyServer }
+func (s StaticServer) Pulse() PulseServiceServer     { return s.PulseServer }
 
 type Client interface {
 	Tenant() TenantServiceClient
+	Job() JobServiceClient
 	Thing() ThingServiceClient
 	Cell() CellServiceClient
 	Robot() RobotServiceClient
@@ -193,6 +220,8 @@ type Client interface {
 	Event() EventServiceClient
 	Fact() FactServiceClient
 	Holder() HolderServiceClient
+	NotificationRecord() NotificationRecordServiceClient
+	NotificationReceiptRecord() NotificationReceiptRecordServiceClient
 	Outbox() OutboxServiceClient
 	Owed() OwedServiceClient
 	RowSeal() RowSealServiceClient
@@ -204,78 +233,89 @@ type Client interface {
 
 func NewClient(c *grpc.ClientConn) Client {
 	return &client{
-		_Tenant:   NewTenantServiceClient(c),
-		_Thing:    NewThingServiceClient(c),
-		_Cell:     NewCellServiceClient(c),
-		_Robot:    NewRobotServiceClient(c),
-		_Pairing:  NewPairingServiceClient(c),
-		_Joint:    NewJointServiceClient(c),
-		_Fleet:    NewFleetServiceClient(c),
-		_Reading:  NewReadingServiceClient(c),
-		_Machine:  NewMachineServiceClient(c),
-		_Access:   NewAccessServiceClient(c),
-		_Archived: NewArchivedServiceClient(c),
-		_Audit:    NewAuditServiceClient(c),
-		_Event:    NewEventServiceClient(c),
-		_Fact:     NewFactServiceClient(c),
-		_Holder:   NewHolderServiceClient(c),
-		_Outbox:   NewOutboxServiceClient(c),
-		_Owed:     NewOwedServiceClient(c),
-		_RowSeal:  NewRowSealServiceClient(c),
-		_Seal:     NewSealServiceClient(c),
-		_Stint:    NewStintServiceClient(c),
-		_Tally:    NewTallyServiceClient(c),
-		_Pulse:    NewPulseServiceClient(c),
+		_Tenant:                    NewTenantServiceClient(c),
+		_Job:                       NewJobServiceClient(c),
+		_Thing:                     NewThingServiceClient(c),
+		_Cell:                      NewCellServiceClient(c),
+		_Robot:                     NewRobotServiceClient(c),
+		_Pairing:                   NewPairingServiceClient(c),
+		_Joint:                     NewJointServiceClient(c),
+		_Fleet:                     NewFleetServiceClient(c),
+		_Reading:                   NewReadingServiceClient(c),
+		_Machine:                   NewMachineServiceClient(c),
+		_Access:                    NewAccessServiceClient(c),
+		_Archived:                  NewArchivedServiceClient(c),
+		_Audit:                     NewAuditServiceClient(c),
+		_Event:                     NewEventServiceClient(c),
+		_Fact:                      NewFactServiceClient(c),
+		_Holder:                    NewHolderServiceClient(c),
+		_NotificationRecord:        NewNotificationRecordServiceClient(c),
+		_NotificationReceiptRecord: NewNotificationReceiptRecordServiceClient(c),
+		_Outbox:                    NewOutboxServiceClient(c),
+		_Owed:                      NewOwedServiceClient(c),
+		_RowSeal:                   NewRowSealServiceClient(c),
+		_Seal:                      NewSealServiceClient(c),
+		_Stint:                     NewStintServiceClient(c),
+		_Tally:                     NewTallyServiceClient(c),
+		_Pulse:                     NewPulseServiceClient(c),
 	}
 }
 
 type client struct {
-	_Tenant   TenantServiceClient
-	_Thing    ThingServiceClient
-	_Cell     CellServiceClient
-	_Robot    RobotServiceClient
-	_Pairing  PairingServiceClient
-	_Joint    JointServiceClient
-	_Fleet    FleetServiceClient
-	_Reading  ReadingServiceClient
-	_Machine  MachineServiceClient
-	_Access   AccessServiceClient
-	_Archived ArchivedServiceClient
-	_Audit    AuditServiceClient
-	_Event    EventServiceClient
-	_Fact     FactServiceClient
-	_Holder   HolderServiceClient
-	_Outbox   OutboxServiceClient
-	_Owed     OwedServiceClient
-	_RowSeal  RowSealServiceClient
-	_Seal     SealServiceClient
-	_Stint    StintServiceClient
-	_Tally    TallyServiceClient
-	_Pulse    PulseServiceClient
+	_Tenant                    TenantServiceClient
+	_Job                       JobServiceClient
+	_Thing                     ThingServiceClient
+	_Cell                      CellServiceClient
+	_Robot                     RobotServiceClient
+	_Pairing                   PairingServiceClient
+	_Joint                     JointServiceClient
+	_Fleet                     FleetServiceClient
+	_Reading                   ReadingServiceClient
+	_Machine                   MachineServiceClient
+	_Access                    AccessServiceClient
+	_Archived                  ArchivedServiceClient
+	_Audit                     AuditServiceClient
+	_Event                     EventServiceClient
+	_Fact                      FactServiceClient
+	_Holder                    HolderServiceClient
+	_NotificationRecord        NotificationRecordServiceClient
+	_NotificationReceiptRecord NotificationReceiptRecordServiceClient
+	_Outbox                    OutboxServiceClient
+	_Owed                      OwedServiceClient
+	_RowSeal                   RowSealServiceClient
+	_Seal                      SealServiceClient
+	_Stint                     StintServiceClient
+	_Tally                     TallyServiceClient
+	_Pulse                     PulseServiceClient
 }
 
-func (c *client) Tenant() TenantServiceClient     { return c._Tenant }
-func (c *client) Thing() ThingServiceClient       { return c._Thing }
-func (c *client) Cell() CellServiceClient         { return c._Cell }
-func (c *client) Robot() RobotServiceClient       { return c._Robot }
-func (c *client) Pairing() PairingServiceClient   { return c._Pairing }
-func (c *client) Joint() JointServiceClient       { return c._Joint }
-func (c *client) Fleet() FleetServiceClient       { return c._Fleet }
-func (c *client) Reading() ReadingServiceClient   { return c._Reading }
-func (c *client) Machine() MachineServiceClient   { return c._Machine }
-func (c *client) Access() AccessServiceClient     { return c._Access }
-func (c *client) Archived() ArchivedServiceClient { return c._Archived }
-func (c *client) Audit() AuditServiceClient       { return c._Audit }
-func (c *client) Event() EventServiceClient       { return c._Event }
-func (c *client) Fact() FactServiceClient         { return c._Fact }
-func (c *client) Holder() HolderServiceClient     { return c._Holder }
-func (c *client) Outbox() OutboxServiceClient     { return c._Outbox }
-func (c *client) Owed() OwedServiceClient         { return c._Owed }
-func (c *client) RowSeal() RowSealServiceClient   { return c._RowSeal }
-func (c *client) Seal() SealServiceClient         { return c._Seal }
-func (c *client) Stint() StintServiceClient       { return c._Stint }
-func (c *client) Tally() TallyServiceClient       { return c._Tally }
-func (c *client) Pulse() PulseServiceClient       { return c._Pulse }
+func (c *client) Tenant() TenantServiceClient                         { return c._Tenant }
+func (c *client) Job() JobServiceClient                               { return c._Job }
+func (c *client) Thing() ThingServiceClient                           { return c._Thing }
+func (c *client) Cell() CellServiceClient                             { return c._Cell }
+func (c *client) Robot() RobotServiceClient                           { return c._Robot }
+func (c *client) Pairing() PairingServiceClient                       { return c._Pairing }
+func (c *client) Joint() JointServiceClient                           { return c._Joint }
+func (c *client) Fleet() FleetServiceClient                           { return c._Fleet }
+func (c *client) Reading() ReadingServiceClient                       { return c._Reading }
+func (c *client) Machine() MachineServiceClient                       { return c._Machine }
+func (c *client) Access() AccessServiceClient                         { return c._Access }
+func (c *client) Archived() ArchivedServiceClient                     { return c._Archived }
+func (c *client) Audit() AuditServiceClient                           { return c._Audit }
+func (c *client) Event() EventServiceClient                           { return c._Event }
+func (c *client) Fact() FactServiceClient                             { return c._Fact }
+func (c *client) Holder() HolderServiceClient                         { return c._Holder }
+func (c *client) NotificationRecord() NotificationRecordServiceClient { return c._NotificationRecord }
+func (c *client) NotificationReceiptRecord() NotificationReceiptRecordServiceClient {
+	return c._NotificationReceiptRecord
+}
+func (c *client) Outbox() OutboxServiceClient   { return c._Outbox }
+func (c *client) Owed() OwedServiceClient       { return c._Owed }
+func (c *client) RowSeal() RowSealServiceClient { return c._RowSeal }
+func (c *client) Seal() SealServiceClient       { return c._Seal }
+func (c *client) Stint() StintServiceClient     { return c._Stint }
+func (c *client) Tally() TallyServiceClient     { return c._Tally }
+func (c *client) Pulse() PulseServiceClient     { return c._Pulse }
 
 // Middleware is a server that delegates to another server.
 type Middleware interface {

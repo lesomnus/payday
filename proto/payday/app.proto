@@ -36,7 +36,7 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 // say: a file either says it or does not. It is a message rather than a `bool`
 // so that something could be added to it without every app that set it having
 // to change, and [App.past] is the first thing that was, [App.domains] the
-// second.
+// second, [App.notify] the third.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
@@ -67,6 +67,10 @@ message App {
   // at 5 and 6, which is every app whose own entities never held either; one
   // that says one of them has the other where payday puts it.
   Domains domains = 2;
+
+  // Notify opts this app into notifications and assigns its internal records
+  // domains of the app's own. Topic and reader policy remain the app's.
+  Notify notify = 3;
 }
 
 // Past is the domain of each of the two entities an app's past is kept in.
@@ -129,4 +133,12 @@ message Domains {
   // Access is the domain of `Access`, one row per call that carried somebody's
   // personal data: 6 when this says nothing.
   uint32 access = 2;
+}
+
+// Notify numbers the two records copied into an app that enables notifications.
+// Each is a distinct domain in 7..247, held by no other entity or optional
+// feature. The records and public NotificationService live in the app's package.
+message Notify {
+  uint32 notification = 1;
+  uint32 receipt = 2;
 }

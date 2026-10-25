@@ -350,6 +350,30 @@ var (
 			},
 		},
 	}
+	// JobColumns holds the columns for the "job" table.
+	JobColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "robot_id", Type: field.TypeUuid},
+		{Name: "issuer_id", Type: field.TypeUuid},
+		{Name: "completed", Type: field.TypeBool},
+		{Name: "date_updated", Type: field.TypeTime},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+	}
+	// JobTable holds the schema information for the "job" table.
+	JobTable = &schema.Table{
+		Name:       "job",
+		Columns:    JobColumns,
+		PrimaryKey: []*schema.Column{JobColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "job_tenant_tenant",
+				Columns:    []*schema.Column{JobColumns[6]},
+				RefColumns: []*schema.Column{TenantColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// JointColumns holds the columns for the "joint" table.
 	JointColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -411,6 +435,67 @@ var (
 				Columns:    []*schema.Column{MachineColumns[19]},
 				RefColumns: []*schema.Column{RobotColumns[0]},
 				OnDelete:   schema.SetNull,
+			},
+		},
+	}
+	// NotificationreceiptrecordColumns holds the columns for the "notificationreceiptrecord" table.
+	NotificationreceiptrecordColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+		{Name: "notification_id", Type: field.TypeUuid},
+		{Name: "reader_id", Type: field.TypeUuid},
+		{Name: "data_read", Type: field.TypeTime, Nullable: true},
+		{Name: "date_updated", Type: field.TypeTime},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+	}
+	// NotificationreceiptrecordTable holds the schema information for the "notificationreceiptrecord" table.
+	NotificationreceiptrecordTable = &schema.Table{
+		Name:       "notificationreceiptrecord",
+		Columns:    NotificationreceiptrecordColumns,
+		PrimaryKey: []*schema.Column{NotificationreceiptrecordColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "notificationreceiptrecord_receipt",
+				Unique:  true,
+				Columns: []*schema.Column{NotificationreceiptrecordColumns[2], NotificationreceiptrecordColumns[3]},
+			},
+			{
+				Name:    "notificationreceiptrecord_reader",
+				Unique:  false,
+				Columns: []*schema.Column{NotificationreceiptrecordColumns[1], NotificationreceiptrecordColumns[3], NotificationreceiptrecordColumns[2]},
+			},
+		},
+	}
+	// NotificationrecordColumns holds the columns for the "notificationrecord" table.
+	NotificationrecordColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+		{Name: "kind", Type: field.TypeString},
+		{Name: "topic_key", Type: field.TypeString},
+		{Name: "source_id", Type: field.TypeUuid, Nullable: true},
+		{Name: "payload_type", Type: field.TypeString},
+		{Name: "payload_value", Type: field.TypeBytes, Nullable: true},
+		{Name: "date_updated", Type: field.TypeTime},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "producer", Type: field.TypeString},
+		{Name: "idempotency_key", Type: field.TypeString},
+		{Name: "payload_present", Type: field.TypeBool},
+	}
+	// NotificationrecordTable holds the schema information for the "notificationrecord" table.
+	NotificationrecordTable = &schema.Table{
+		Name:       "notificationrecord",
+		Columns:    NotificationrecordColumns,
+		PrimaryKey: []*schema.Column{NotificationrecordColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "notificationrecord_publication",
+				Unique:  true,
+				Columns: []*schema.Column{NotificationrecordColumns[1], NotificationrecordColumns[9], NotificationrecordColumns[10]},
+			},
+			{
+				Name:    "notificationrecord_page",
+				Unique:  false,
+				Columns: []*schema.Column{NotificationrecordColumns[1], NotificationrecordColumns[3], NotificationrecordColumns[8], NotificationrecordColumns[0]},
 			},
 		},
 	}
@@ -535,6 +620,7 @@ var (
 		{Name: "secret", Type: field.TypeBytes, Nullable: true},
 		{Name: "date_attested", Type: field.TypeTime, Nullable: true},
 		{Name: "keeper", Type: field.TypeString},
+		{Name: "owner_id", Type: field.TypeUuid, Nullable: true},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
@@ -550,19 +636,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "robot_tenant_tenant",
-				Columns:    []*schema.Column{RobotColumns[8]},
+				Columns:    []*schema.Column{RobotColumns[9]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "robot_thing_thing",
-				Columns:    []*schema.Column{RobotColumns[9]},
+				Columns:    []*schema.Column{RobotColumns[10]},
 				RefColumns: []*schema.Column{ThingColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "robot_cell_cell",
-				Columns:    []*schema.Column{RobotColumns[10]},
+				Columns:    []*schema.Column{RobotColumns[11]},
 				RefColumns: []*schema.Column{CellColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -571,12 +657,12 @@ var (
 			{
 				Name:    "robot_page",
 				Unique:  false,
-				Columns: []*schema.Column{RobotColumns[8], RobotColumns[6], RobotColumns[0]},
+				Columns: []*schema.Column{RobotColumns[9], RobotColumns[7], RobotColumns[0]},
 			},
 			{
 				Name:    "robot_slug",
 				Unique:  true,
-				Columns: []*schema.Column{RobotColumns[1], RobotColumns[8]},
+				Columns: []*schema.Column{RobotColumns[1], RobotColumns[9]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "date_erased IS NULL",
 				},
@@ -584,7 +670,7 @@ var (
 			{
 				Name:    "robot_by_alias",
 				Unique:  false,
-				Columns: []*schema.Column{RobotColumns[8], RobotColumns[1], RobotColumns[0]},
+				Columns: []*schema.Column{RobotColumns[9], RobotColumns[1], RobotColumns[0]},
 			},
 		},
 	}
@@ -725,8 +811,11 @@ var (
 		FactTable,
 		FleetTable,
 		HolderTable,
+		JobTable,
 		JointTable,
 		MachineTable,
+		NotificationreceiptrecordTable,
+		NotificationrecordTable,
 		OutboxTable,
 		OwedTable,
 		PairingTable,
@@ -772,6 +861,10 @@ func init() {
 	HolderTable.Annotation = &entsql.Annotation{
 		Table: "holder",
 	}
+	JobTable.ForeignKeys[0].RefTable = TenantTable
+	JobTable.Annotation = &entsql.Annotation{
+		Table: "job",
+	}
 	JointTable.ForeignKeys[0].RefTable = RobotTable
 	JointTable.Annotation = &entsql.Annotation{
 		Table: "joint",
@@ -780,6 +873,12 @@ func init() {
 	MachineTable.ForeignKeys[1].RefTable = RobotTable
 	MachineTable.Annotation = &entsql.Annotation{
 		Table: "machine",
+	}
+	NotificationreceiptrecordTable.Annotation = &entsql.Annotation{
+		Table: "notificationreceiptrecord",
+	}
+	NotificationrecordTable.Annotation = &entsql.Annotation{
+		Table: "notificationrecord",
 	}
 	OutboxTable.Annotation = &entsql.Annotation{
 		Table: "outbox",

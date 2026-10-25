@@ -850,6 +850,7 @@ type RobotAddRequest struct {
 	xxx_hidden_Secret       []byte                 `protobuf:"bytes,8,opt,name=secret"`
 	xxx_hidden_DateAttested *timestamppb.Timestamp `protobuf:"bytes,31,opt,name=date_attested,json=dateAttested"`
 	xxx_hidden_Keeper       string                 `protobuf:"bytes,32,opt,name=keeper"`
+	xxx_hidden_OwnerId      []byte                 `protobuf:"bytes,33,opt,name=owner_id,json=ownerId"`
 	xxx_hidden_DateCreated  *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
 	XXX_presence            [1]uint32
@@ -938,6 +939,13 @@ func (x *RobotAddRequest) GetKeeper() string {
 	return ""
 }
 
+func (x *RobotAddRequest) GetOwnerId() []byte {
+	if x != nil {
+		return x.xxx_hidden_OwnerId
+	}
+	return nil
+}
+
 func (x *RobotAddRequest) GetDateCreated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateCreated
@@ -950,7 +958,7 @@ func (x *RobotAddRequest) SetId(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
 }
 
 func (x *RobotAddRequest) SetTenant(v *TenantRef) {
@@ -974,7 +982,7 @@ func (x *RobotAddRequest) SetSecret(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Secret = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 10)
 }
 
 func (x *RobotAddRequest) SetDateAttested(v *timestamppb.Timestamp) {
@@ -983,6 +991,14 @@ func (x *RobotAddRequest) SetDateAttested(v *timestamppb.Timestamp) {
 
 func (x *RobotAddRequest) SetKeeper(v string) {
 	x.xxx_hidden_Keeper = v
+}
+
+func (x *RobotAddRequest) SetOwnerId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_OwnerId = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
 }
 
 func (x *RobotAddRequest) SetDateCreated(v *timestamppb.Timestamp) {
@@ -1031,6 +1047,13 @@ func (x *RobotAddRequest) HasDateAttested() bool {
 	return x.xxx_hidden_DateAttested != nil
 }
 
+func (x *RobotAddRequest) HasOwnerId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
 func (x *RobotAddRequest) HasDateCreated() bool {
 	if x == nil {
 		return false
@@ -1064,6 +1087,11 @@ func (x *RobotAddRequest) ClearDateAttested() {
 	x.xxx_hidden_DateAttested = nil
 }
 
+func (x *RobotAddRequest) ClearOwnerId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_OwnerId = nil
+}
+
 func (x *RobotAddRequest) ClearDateCreated() {
 	x.xxx_hidden_DateCreated = nil
 }
@@ -1079,6 +1107,7 @@ type RobotAddRequest_builder struct {
 	Secret       []byte
 	DateAttested *timestamppb.Timestamp
 	Keeper       string
+	OwnerId      []byte
 	DateCreated  *timestamppb.Timestamp
 }
 
@@ -1087,7 +1116,7 @@ func (b0 RobotAddRequest_builder) Build() *RobotAddRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
 		x.xxx_hidden_Id = b.Id
 	}
 	x.xxx_hidden_Tenant = b.Tenant
@@ -1095,11 +1124,15 @@ func (b0 RobotAddRequest_builder) Build() *RobotAddRequest {
 	x.xxx_hidden_Cell = b.Cell
 	x.xxx_hidden_Alias = b.Alias
 	if b.Secret != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 10)
 		x.xxx_hidden_Secret = b.Secret
 	}
 	x.xxx_hidden_DateAttested = b.DateAttested
 	x.xxx_hidden_Keeper = b.Keeper
+	if b.OwnerId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
+		x.xxx_hidden_OwnerId = b.OwnerId
+	}
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
 }
@@ -1598,6 +1631,7 @@ type RobotSelect struct {
 	xxx_hidden_Secret       bool                   `protobuf:"varint,8,opt,name=secret"`
 	xxx_hidden_DateAttested bool                   `protobuf:"varint,31,opt,name=date_attested,json=dateAttested"`
 	xxx_hidden_Keeper       bool                   `protobuf:"varint,32,opt,name=keeper"`
+	xxx_hidden_OwnerId      bool                   `protobuf:"varint,33,opt,name=owner_id,json=ownerId"`
 	xxx_hidden_DateUpdated  bool                   `protobuf:"varint,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated  bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
 	xxx_hidden_DateErased   bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
@@ -1688,6 +1722,13 @@ func (x *RobotSelect) GetKeeper() bool {
 	return false
 }
 
+func (x *RobotSelect) GetOwnerId() bool {
+	if x != nil {
+		return x.xxx_hidden_OwnerId
+	}
+	return false
+}
+
 func (x *RobotSelect) GetDateUpdated() bool {
 	if x != nil {
 		return x.xxx_hidden_DateUpdated
@@ -1711,7 +1752,7 @@ func (x *RobotSelect) GetDateErased() bool {
 
 func (x *RobotSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 12)
 }
 
 func (x *RobotSelect) SetTenant(v *TenantSelect) {
@@ -1728,37 +1769,42 @@ func (x *RobotSelect) SetCell(v *CellSelect) {
 
 func (x *RobotSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
 }
 
 func (x *RobotSelect) SetSecret(v bool) {
 	x.xxx_hidden_Secret = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 12)
 }
 
 func (x *RobotSelect) SetDateAttested(v bool) {
 	x.xxx_hidden_DateAttested = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
 }
 
 func (x *RobotSelect) SetKeeper(v bool) {
 	x.xxx_hidden_Keeper = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 12)
+}
+
+func (x *RobotSelect) SetOwnerId(v bool) {
+	x.xxx_hidden_OwnerId = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
 }
 
 func (x *RobotSelect) SetDateUpdated(v bool) {
 	x.xxx_hidden_DateUpdated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 12)
 }
 
 func (x *RobotSelect) SetDateCreated(v bool) {
 	x.xxx_hidden_DateCreated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 12)
 }
 
 func (x *RobotSelect) SetDateErased(v bool) {
 	x.xxx_hidden_DateErased = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 12)
 }
 
 func (x *RobotSelect) HasAll() bool {
@@ -1817,25 +1863,32 @@ func (x *RobotSelect) HasKeeper() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
 }
 
-func (x *RobotSelect) HasDateUpdated() bool {
+func (x *RobotSelect) HasOwnerId() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
 }
 
-func (x *RobotSelect) HasDateCreated() bool {
+func (x *RobotSelect) HasDateUpdated() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
 }
 
-func (x *RobotSelect) HasDateErased() bool {
+func (x *RobotSelect) HasDateCreated() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+}
+
+func (x *RobotSelect) HasDateErased() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
 }
 
 func (x *RobotSelect) ClearAll() {
@@ -1875,18 +1928,23 @@ func (x *RobotSelect) ClearKeeper() {
 	x.xxx_hidden_Keeper = false
 }
 
-func (x *RobotSelect) ClearDateUpdated() {
+func (x *RobotSelect) ClearOwnerId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_OwnerId = false
+}
+
+func (x *RobotSelect) ClearDateUpdated() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 9)
 	x.xxx_hidden_DateUpdated = false
 }
 
 func (x *RobotSelect) ClearDateCreated() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 9)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
 	x.xxx_hidden_DateCreated = false
 }
 
 func (x *RobotSelect) ClearDateErased() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
 	x.xxx_hidden_DateErased = false
 }
 
@@ -1901,6 +1959,7 @@ type RobotSelect_builder struct {
 	Secret       *bool
 	DateAttested *bool
 	Keeper       *bool
+	OwnerId      *bool
 	DateUpdated  *bool
 	DateCreated  *bool
 	DateErased   *bool
@@ -1911,38 +1970,42 @@ func (b0 RobotSelect_builder) Build() *RobotSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 12)
 		x.xxx_hidden_All = *b.All
 	}
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Thing = b.Thing
 	x.xxx_hidden_Cell = b.Cell
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
 		x.xxx_hidden_Alias = *b.Alias
 	}
 	if b.Secret != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 12)
 		x.xxx_hidden_Secret = *b.Secret
 	}
 	if b.DateAttested != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
 		x.xxx_hidden_DateAttested = *b.DateAttested
 	}
 	if b.Keeper != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 12)
 		x.xxx_hidden_Keeper = *b.Keeper
 	}
+	if b.OwnerId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
+		x.xxx_hidden_OwnerId = *b.OwnerId
+	}
 	if b.DateUpdated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 12)
 		x.xxx_hidden_DateUpdated = *b.DateUpdated
 	}
 	if b.DateCreated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 12)
 		x.xxx_hidden_DateCreated = *b.DateCreated
 	}
 	if b.DateErased != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 12)
 		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	return m0
@@ -1960,6 +2023,8 @@ type RobotPatchRequest struct {
 	xxx_hidden_DateAttested     *timestamppb.Timestamp `protobuf:"bytes,62,opt,name=date_attested,json=dateAttested"`
 	xxx_hidden_DateAttestedNull bool                   `protobuf:"varint,63,opt,name=date_attested_null,json=dateAttestedNull"`
 	xxx_hidden_Keeper           *string                `protobuf:"bytes,64,opt,name=keeper"`
+	xxx_hidden_OwnerId          []byte                 `protobuf:"bytes,66,opt,name=owner_id,json=ownerId"`
+	xxx_hidden_OwnerIdNull      bool                   `protobuf:"varint,67,opt,name=owner_id_null,json=ownerIdNull"`
 	xxx_hidden_DateUpdated      *timestamppb.Timestamp `protobuf:"bytes,26,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateUpdatedForce bool                   `protobuf:"varint,27,opt,name=date_updated_force,json=dateUpdatedForce"`
 	XXX_raceDetectHookData      protoimpl.RaceDetectHookData
@@ -2069,6 +2134,20 @@ func (x *RobotPatchRequest) GetKeeper() string {
 	return ""
 }
 
+func (x *RobotPatchRequest) GetOwnerId() []byte {
+	if x != nil {
+		return x.xxx_hidden_OwnerId
+	}
+	return nil
+}
+
+func (x *RobotPatchRequest) GetOwnerIdNull() bool {
+	if x != nil {
+		return x.xxx_hidden_OwnerIdNull
+	}
+	return false
+}
+
 func (x *RobotPatchRequest) GetDateUpdated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateUpdated
@@ -2093,7 +2172,7 @@ func (x *RobotPatchRequest) SetThing(v *ThingRef) {
 
 func (x *RobotPatchRequest) SetThingNull(v bool) {
 	x.xxx_hidden_ThingNull = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 14)
 }
 
 func (x *RobotPatchRequest) SetCell(v *CellRef) {
@@ -2102,12 +2181,12 @@ func (x *RobotPatchRequest) SetCell(v *CellRef) {
 
 func (x *RobotPatchRequest) SetCellNull(v bool) {
 	x.xxx_hidden_CellNull = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 14)
 }
 
 func (x *RobotPatchRequest) SetAlias(v string) {
 	x.xxx_hidden_Alias = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 14)
 }
 
 func (x *RobotPatchRequest) SetSecret(v []byte) {
@@ -2115,7 +2194,7 @@ func (x *RobotPatchRequest) SetSecret(v []byte) {
 		v = []byte{}
 	}
 	x.xxx_hidden_Secret = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 14)
 }
 
 func (x *RobotPatchRequest) SetDateAttested(v *timestamppb.Timestamp) {
@@ -2124,12 +2203,25 @@ func (x *RobotPatchRequest) SetDateAttested(v *timestamppb.Timestamp) {
 
 func (x *RobotPatchRequest) SetDateAttestedNull(v bool) {
 	x.xxx_hidden_DateAttestedNull = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 14)
 }
 
 func (x *RobotPatchRequest) SetKeeper(v string) {
 	x.xxx_hidden_Keeper = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 14)
+}
+
+func (x *RobotPatchRequest) SetOwnerId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_OwnerId = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 14)
+}
+
+func (x *RobotPatchRequest) SetOwnerIdNull(v bool) {
+	x.xxx_hidden_OwnerIdNull = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 14)
 }
 
 func (x *RobotPatchRequest) SetDateUpdated(v *timestamppb.Timestamp) {
@@ -2138,7 +2230,7 @@ func (x *RobotPatchRequest) SetDateUpdated(v *timestamppb.Timestamp) {
 
 func (x *RobotPatchRequest) SetDateUpdatedForce(v bool) {
 	x.xxx_hidden_DateUpdatedForce = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 14)
 }
 
 func (x *RobotPatchRequest) HasRef() bool {
@@ -2211,6 +2303,20 @@ func (x *RobotPatchRequest) HasKeeper() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
 }
 
+func (x *RobotPatchRequest) HasOwnerId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+}
+
+func (x *RobotPatchRequest) HasOwnerIdNull() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
+}
+
 func (x *RobotPatchRequest) HasDateUpdated() bool {
 	if x == nil {
 		return false
@@ -2222,7 +2328,7 @@ func (x *RobotPatchRequest) HasDateUpdatedForce() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
 }
 
 func (x *RobotPatchRequest) ClearRef() {
@@ -2271,12 +2377,22 @@ func (x *RobotPatchRequest) ClearKeeper() {
 	x.xxx_hidden_Keeper = nil
 }
 
+func (x *RobotPatchRequest) ClearOwnerId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	x.xxx_hidden_OwnerId = nil
+}
+
+func (x *RobotPatchRequest) ClearOwnerIdNull() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
+	x.xxx_hidden_OwnerIdNull = false
+}
+
 func (x *RobotPatchRequest) ClearDateUpdated() {
 	x.xxx_hidden_DateUpdated = nil
 }
 
 func (x *RobotPatchRequest) ClearDateUpdatedForce() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
 	x.xxx_hidden_DateUpdatedForce = false
 }
 
@@ -2305,6 +2421,12 @@ type RobotPatchRequest_builder struct {
 	// outright: setting both this and date_attested clears.
 	DateAttestedNull *bool
 	Keeper           *string
+	OwnerId          []byte
+	// Clear owner_id instead of writing it.
+	// It takes a field of its own because an unset value already means
+	// "leave it alone", so no value could have meant NULL. It wins
+	// outright: setting both this and owner_id clears.
+	OwnerIdNull *bool
 	// The version this update requires the stored date_updated to be.
 	// It is a precondition, not a write: the update applies only if the row
 	// still holds this value, and the server stamps the new version itself.
@@ -2328,34 +2450,42 @@ func (b0 RobotPatchRequest_builder) Build() *RobotPatchRequest {
 	x.xxx_hidden_Ref = b.Ref
 	x.xxx_hidden_Thing = b.Thing
 	if b.ThingNull != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 14)
 		x.xxx_hidden_ThingNull = *b.ThingNull
 	}
 	x.xxx_hidden_Cell = b.Cell
 	if b.CellNull != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 14)
 		x.xxx_hidden_CellNull = *b.CellNull
 	}
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 14)
 		x.xxx_hidden_Alias = b.Alias
 	}
 	if b.Secret != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 14)
 		x.xxx_hidden_Secret = b.Secret
 	}
 	x.xxx_hidden_DateAttested = b.DateAttested
 	if b.DateAttestedNull != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 14)
 		x.xxx_hidden_DateAttestedNull = *b.DateAttestedNull
 	}
 	if b.Keeper != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 14)
 		x.xxx_hidden_Keeper = b.Keeper
+	}
+	if b.OwnerId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 14)
+		x.xxx_hidden_OwnerId = b.OwnerId
+	}
+	if b.OwnerIdNull != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 14)
+		x.xxx_hidden_OwnerIdNull = *b.OwnerIdNull
 	}
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	if b.DateUpdatedForce != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 14)
 		x.xxx_hidden_DateUpdatedForce = *b.DateUpdatedForce
 	}
 	return m0
@@ -6566,7 +6696,7 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"+\n" +
 	"\x11CellEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xe7\x02\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"\x82\x03\n" +
 	"\x0fRobotAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12&\n" +
@@ -6575,7 +6705,8 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x16\n" +
 	"\x06secret\x18\b \x01(\fR\x06secret\x12?\n" +
 	"\rdate_attested\x18\x1f \x01(\v2\x1a.google.protobuf.TimestampR\fdateAttested\x12\x1d\n" +
-	"\x06keeper\x18  \x01(\tB\x05\xaa\x01\x02\b\x02R\x06keeper\x12=\n" +
+	"\x06keeper\x18  \x01(\tB\x05\xaa\x01\x02\b\x02R\x06keeper\x12\x19\n" +
+	"\bowner_id\x18! \x01(\fR\aownerId\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"A\n" +
 	"\x13RobotAddManyRequest\x12*\n" +
 	"\x05items\x18\x01 \x03(\v2\x14.app.RobotAddRequestR\x05items\"8\n" +
@@ -6591,7 +6722,7 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03key\"N\n" +
 	"\x0eRobotRefBySlug\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12&\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\"\xec\x02\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\"\x87\x03\n" +
 	"\vRobotSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x11.app.TenantSelectR\x06tenant\x12)\n" +
@@ -6600,11 +6731,12 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x16\n" +
 	"\x06secret\x18\b \x01(\bR\x06secret\x12#\n" +
 	"\rdate_attested\x18\x1f \x01(\bR\fdateAttested\x12\x16\n" +
-	"\x06keeper\x18  \x01(\bR\x06keeper\x12!\n" +
+	"\x06keeper\x18  \x01(\bR\x06keeper\x12\x19\n" +
+	"\bowner_id\x18! \x01(\bR\aownerId\x12!\n" +
 	"\fdate_updated\x18\r \x01(\bR\vdateUpdated\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\x12\x1f\n" +
 	"\vdate_erased\x18\x0e \x01(\bR\n" +
-	"dateErased\"\xdc\x03\n" +
+	"dateErased\"\x9b\x04\n" +
 	"\x11RobotPatchRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12&\n" +
 	"\x05thing\x18< \x01(\v2\x10.shared.ThingRefR\x05thing\x12\x1d\n" +
@@ -6616,7 +6748,9 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x06secret\x18\x10 \x01(\fR\x06secret\x12?\n" +
 	"\rdate_attested\x18> \x01(\v2\x1a.google.protobuf.TimestampR\fdateAttested\x12,\n" +
 	"\x12date_attested_null\x18? \x01(\bR\x10dateAttestedNull\x12\x16\n" +
-	"\x06keeper\x18@ \x01(\tR\x06keeper\x12=\n" +
+	"\x06keeper\x18@ \x01(\tR\x06keeper\x12\x19\n" +
+	"\bowner_id\x18B \x01(\fR\aownerId\x12\"\n" +
+	"\rowner_id_null\x18C \x01(\bR\vownerIdNull\x12=\n" +
 	"\fdate_updated\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\vdateUpdated\x12,\n" +
 	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\"X\n" +
 	"\x11RobotApplyRequest\x12\x1f\n" +

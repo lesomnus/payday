@@ -822,6 +822,7 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("")
 
 	emitAuditPast(g, s, root)
+	emitAuditNotify(g, s, root)
 	emitRecorder(g, s, p, root)
 }
 

@@ -55,6 +55,9 @@ func (e *Robot) Proto() *apptest.Robot {
 		x.SetDateAttested(timestamppb.New(*e.DateAttested))
 	}
 	x.SetKeeper(e.Keeper)
+	if e.OwnerId != nil {
+		x.SetOwnerId(e.OwnerId[:])
+	}
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	if e.DateErased != nil {

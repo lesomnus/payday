@@ -20,7 +20,10 @@ import { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, Rob
 import { EventSchema } from './app/payday/event_pb.js'
 import { FactSchema } from './app/payday/fact_pb.js'
 import { HolderSchema } from './app/payday/holder_pb.js'
+import { JobSchema } from './app/job_pb.js'
 import { MachineSchema } from './app/machine_pb.js'
+import { NotificationReceiptRecordSchema } from './app/payday/notification_receipt_pb.js'
+import { NotificationRecordSchema } from './app/payday/notification_pb.js'
 import { OutboxSchema } from './app/payday/outbox_pb.js'
 import { OwedSchema } from './app/payday/owed_pb.js'
 import { PulseSchema, TallySchema } from './app/tally_pb.js'
@@ -36,7 +39,10 @@ import { CellService, FleetService, JointService, PairingService, ReadingService
 import { EventService } from './app/payday/event_svc_pb.js'
 import { FactService } from './app/payday/fact_svc_pb.js'
 import { HolderService } from './app/payday/holder_svc_pb.js'
+import { JobService } from './app/job_svc_pb.js'
 import { MachineService } from './app/machine_svc_pb.js'
+import { NotificationReceiptRecordService } from './app/payday/notification_receipt_svc_pb.js'
+import { NotificationRecordService } from './app/payday/notification_svc_pb.js'
 import { OutboxService } from './app/payday/outbox_svc_pb.js'
 import { OwedService } from './app/payday/owed_svc_pb.js'
 import { PulseService, TallyService } from './app/tally_svc_pb.js'
@@ -137,6 +143,18 @@ export const Holder = {
 	service: HolderService,
 } as const satisfies EntityDesc
 
+/** app.Job, as the store holds it. */
+export const Job = {
+	typeName: "app.Job",
+	schema: JobSchema,
+	domain: 42,
+	version: "dateUpdated",
+	refs: [{ field: "tenant", to: "app.Tenant" }],
+	key: "id",
+	ids: ["id", "robotId", "issuerId"],
+	service: JobService,
+} as const satisfies EntityDesc
+
 /** app.Joint, as the store holds it. */
 export const Joint = {
 	typeName: "app.Joint",
@@ -160,6 +178,29 @@ export const Machine = {
 	key: "id",
 	ids: ["id", "makerId"],
 	service: MachineService,
+} as const satisfies EntityDesc
+
+/** app.NotificationReceiptRecord, as the store holds it. */
+export const NotificationReceiptRecord = {
+	typeName: "app.NotificationReceiptRecord",
+	schema: NotificationReceiptRecordSchema,
+	domain: 41,
+	version: "dateUpdated",
+	key: "id",
+	ids: ["id", "tenantId", "notificationId", "readerId"],
+	service: NotificationReceiptRecordService,
+} as const satisfies EntityDesc
+
+/** app.NotificationRecord, as the store holds it. */
+export const NotificationRecord = {
+	typeName: "app.NotificationRecord",
+	schema: NotificationRecordSchema,
+	domain: 40,
+	version: "dateUpdated",
+	key: "id",
+	ids: ["id", "tenantId", "sourceId"],
+	secrets: ["payloadValue"],
+	service: NotificationRecordService,
 } as const satisfies EntityDesc
 
 /** app.Outbox, as the store holds it. */
@@ -223,7 +264,7 @@ export const Robot = {
 	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "thing", to: "shared.Thing" }, { field: "cell", to: "app.Cell" }],
 	alias: "alias",
 	key: "id",
-	ids: ["id"],
+	ids: ["id", "ownerId"],
 	secrets: ["secret"],
 	service: RobotService,
 } as const satisfies EntityDesc
@@ -298,5 +339,5 @@ export const Thing = {
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Joint, Machine, Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Stint, Tally, Tenant, Thing] as const
+export const entities = [Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Job, Joint, Machine, NotificationReceiptRecord, NotificationRecord, Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Stint, Tally, Tenant, Thing] as const
 

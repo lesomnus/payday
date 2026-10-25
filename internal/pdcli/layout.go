@@ -115,6 +115,9 @@ type Layout struct {
 	// `option (payday.app)`, like [Layout.ProtoPkg] -- see [Past].
 	Past *Past
 
+	// Notify is the optional notification records and their app-chosen domains.
+	Notify *Notify
+
 	// Domains is what the app declared of the domains of payday's Archived and
 	// Access, and nil for an app that declared none: whether the two are
 	// copied in at numbers of the app's own rather than payday's (payday#163).
@@ -227,6 +230,9 @@ func Discover(dir string) (Layout, error) {
 		return Layout{}, err
 	}
 	if l.Past, err = readPast(l); err != nil {
+		return Layout{}, err
+	}
+	if l.Notify, err = readNotify(l); err != nil {
 		return Layout{}, err
 	}
 	if l.Domains, err = readDomains(l); err != nil {

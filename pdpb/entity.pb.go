@@ -53,9 +53,13 @@ const (
 	// An app's past (payday#151): an event for each of its operations, and a
 	// fact for each field of a resource from a moment on. These two are copied
 	// only into an app that declares them, at the domains it chose -- see
-	// `payday.Past` -- and every other entity here is in every app.
+	// `payday.Past`. Notifications below are optional as well.
 	Own_OWN_EVENT Own = 9
 	Own_OWN_FACT  Own = 10
+	// Notification storage is optional and numbered by App.notify. The public
+	// notification values are projections rather than these internal records.
+	Own_OWN_NOTIFICATION         Own = 11
+	Own_OWN_NOTIFICATION_RECEIPT Own = 12
 )
 
 // Enum value maps for Own.
@@ -72,19 +76,23 @@ var (
 		8:  "OWN_OWED",
 		9:  "OWN_EVENT",
 		10: "OWN_FACT",
+		11: "OWN_NOTIFICATION",
+		12: "OWN_NOTIFICATION_RECEIPT",
 	}
 	Own_value = map[string]int32{
-		"OWN_UNSPECIFIED": 0,
-		"OWN_TENANT":      1,
-		"OWN_HOLDER":      2,
-		"OWN_AUDIT":       3,
-		"OWN_OUTBOX":      4,
-		"OWN_ARCHIVED":    5,
-		"OWN_ACCESS":      6,
-		"OWN_ROW_SEAL":    7,
-		"OWN_OWED":        8,
-		"OWN_EVENT":       9,
-		"OWN_FACT":        10,
+		"OWN_UNSPECIFIED":          0,
+		"OWN_TENANT":               1,
+		"OWN_HOLDER":               2,
+		"OWN_AUDIT":                3,
+		"OWN_OUTBOX":               4,
+		"OWN_ARCHIVED":             5,
+		"OWN_ACCESS":               6,
+		"OWN_ROW_SEAL":             7,
+		"OWN_OWED":                 8,
+		"OWN_EVENT":                9,
+		"OWN_FACT":                 10,
+		"OWN_NOTIFICATION":         11,
+		"OWN_NOTIFICATION_RECEIPT": 12,
 	}
 )
 
@@ -2103,7 +2111,7 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\astamped\x18\x02 \x01(\bR\astamped\x12!\n" +
 	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonal\x12\x14\n" +
 	"\x05event\x18\x05 \x01(\bR\x05eventJ\x04\b\x04\x10\x05R\n" +
-	"impersonal*\xb8\x01\n" +
+	"impersonal*\xec\x01\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -2120,7 +2128,9 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\bOWN_OWED\x10\b\x12\r\n" +
 	"\tOWN_EVENT\x10\t\x12\f\n" +
 	"\bOWN_FACT\x10\n" +
-	"B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x12\x14\n" +
+	"\x10OWN_NOTIFICATION\x10\v\x12\x1c\n" +
+	"\x18OWN_NOTIFICATION_RECEIPT\x10\fB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 14)

@@ -194,8 +194,8 @@ func TestTheCopiesAreNumberedAsTheAppDeclares(t *testing.T) {
 	}
 	x.NotContains(read(archived), "\n    domain: 5\n")
 	x.Contains(read(access), "\n    domain: 241\n")
-	x.Contains(read(generated), "ArchivedDomain pdid.Domain = 240")
-	x.Contains(read(generated), "AccessDomain   pdid.Domain = 241")
+	x.Regexp(`ArchivedDomain\s+pdid\.Domain\s*=\s*240\b`, read(generated))
+	x.Regexp(`AccessDomain\s+pdid\.Domain\s*=\s*241\b`, read(generated))
 
 	// Numbered from the declaration, every run -- and one of them alone.
 	l = declare(t, "access: 230")
@@ -210,7 +210,7 @@ func TestTheCopiesAreNumberedAsTheAppDeclares(t *testing.T) {
 	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
 	x.Contains(read(archived), "domain: 5\n")
 	x.Contains(read(access), "domain: 6\n")
-	x.Contains(read(generated), "AccessDomain   pdid.Domain = 6")
+	x.Regexp(`AccessDomain\s+pdid\.Domain\s*=\s*6\b`, read(generated))
 
 	vs, err := pdcli.Gen{Layout: l}.Check(t.Context())
 	x.NoError(err)
@@ -345,8 +345,8 @@ func TestARenumberedAppKeepsItsTrailAndItsAccessRecord(t *testing.T) {
 
 	generated, err := os.ReadFile(l.Path(pdcli.DirPd_, "pd.g.go"))
 	x.NoError(err)
-	x.Contains(string(generated), "AccessDomain   pdid.Domain = 241")
-	x.Contains(string(generated), "ArchivedDomain pdid.Domain = 240")
+	x.Regexp(`AccessDomain\s+pdid\.Domain\s*=\s*241\b`, string(generated))
+	x.Regexp(`ArchivedDomain\s+pdid\.Domain\s*=\s*240\b`, string(generated))
 
 	run := exec.CommandContext(t.Context(), "go", "test", "-count=1", "-v", "./...")
 	run.Dir = l.Root

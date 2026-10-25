@@ -76,6 +76,11 @@ func Keeper(v string) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldKeeper, v))
 }
 
+// OwnerId applies equality check predicate on the "owner_id" field. It's identical to OwnerIdEQ.
+func OwnerId(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldOwnerId, v))
+}
+
 // DateUpdated applies equality check predicate on the "date_updated" field. It's identical to DateUpdatedEQ.
 func DateUpdated(v time.Time) predicate.Robot {
 	return predicate.Robot(sql.FieldEQ(FieldDateUpdated, v))
@@ -334,6 +339,56 @@ func KeeperEqualFold(v string) predicate.Robot {
 // KeeperContainsFold applies the ContainsFold predicate on the "keeper" field.
 func KeeperContainsFold(v string) predicate.Robot {
 	return predicate.Robot(sql.FieldContainsFold(FieldKeeper, v))
+}
+
+// OwnerIdEQ applies the EQ predicate on the "owner_id" field.
+func OwnerIdEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldEQ(FieldOwnerId, v))
+}
+
+// OwnerIdNEQ applies the NEQ predicate on the "owner_id" field.
+func OwnerIdNEQ(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNEQ(FieldOwnerId, v))
+}
+
+// OwnerIdIn applies the In predicate on the "owner_id" field.
+func OwnerIdIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldIn(FieldOwnerId, vs...))
+}
+
+// OwnerIdNotIn applies the NotIn predicate on the "owner_id" field.
+func OwnerIdNotIn(vs ...uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldNotIn(FieldOwnerId, vs...))
+}
+
+// OwnerIdGT applies the GT predicate on the "owner_id" field.
+func OwnerIdGT(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldGT(FieldOwnerId, v))
+}
+
+// OwnerIdGTE applies the GTE predicate on the "owner_id" field.
+func OwnerIdGTE(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldGTE(FieldOwnerId, v))
+}
+
+// OwnerIdLT applies the LT predicate on the "owner_id" field.
+func OwnerIdLT(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldLT(FieldOwnerId, v))
+}
+
+// OwnerIdLTE applies the LTE predicate on the "owner_id" field.
+func OwnerIdLTE(v uuid.UUID) predicate.Robot {
+	return predicate.Robot(sql.FieldLTE(FieldOwnerId, v))
+}
+
+// OwnerIdIsNil applies the IsNil predicate on the "owner_id" field.
+func OwnerIdIsNil() predicate.Robot {
+	return predicate.Robot(sql.FieldIsNull(FieldOwnerId))
+}
+
+// OwnerIdNotNil applies the NotNil predicate on the "owner_id" field.
+func OwnerIdNotNil() predicate.Robot {
+	return predicate.Robot(sql.FieldNotNull(FieldOwnerId))
 }
 
 // DateUpdatedEQ applies the EQ predicate on the "date_updated" field.

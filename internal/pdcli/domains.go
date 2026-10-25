@@ -89,7 +89,7 @@ func readDomains(l Layout) (*AppDomains, error) {
 		}
 
 		d := app.GetDomains()
-		if err := pdgen.CheckDomains(d, past); err != nil {
+		if err := pdgen.CheckDomains(d, past, l.Notify.proto()); err != nil {
 			return fmt.Errorf("%s: %w", l.rel(p), err)
 		}
 
@@ -124,7 +124,7 @@ func keptBy(err error) string {
 		return ""
 	}
 
-	opted, oerr := schema.Opted()
+	features, oerr := schema.Features()
 	if oerr != nil {
 		return ""
 	}
@@ -141,7 +141,10 @@ func keptBy(err error) string {
 			message += strings.ToUpper(part[:1]) + part[1:]
 		}
 
-		if opted[own] {
+		if features[own] == schema.DirNotify {
+			return fmt.Sprintf("names %s, and notification records are numbered by `notify:` -- `option (payday.app) = {notify: {notification: 40, receipt: 41}}`", m[1])
+		}
+		if features[own] == schema.DirPast {
 			return fmt.Sprintf(
 				"names %s, and the past's %s is numbered by `past:`, beside its other one -- "+
 					"`option (payday.app) = {past: {event: 17, fact: 16}}`", m[1], message)

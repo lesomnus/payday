@@ -16,8 +16,11 @@ import (
 	fact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
+	job "github.com/lesomnus/payday/internal/apptest/internal/ent/job"
 	joint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	machine "github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
+	notificationreceiptrecord "github.com/lesomnus/payday/internal/apptest/internal/ent/notificationreceiptrecord"
+	notificationrecord "github.com/lesomnus/payday/internal/apptest/internal/ent/notificationrecord"
 	outbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	owed "github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	pairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
@@ -382,6 +385,7 @@ func snapshotOrNil(v proto.Message) proto.Message {
 // say about.
 type Scope interface {
 	TenantScope(ctx context.Context) (predicate.Tenant, error)
+	JobScope(ctx context.Context) (predicate.Job, error)
 	ThingScope(ctx context.Context) (predicate.Thing, error)
 	CellScope(ctx context.Context) (predicate.Cell, error)
 	RobotScope(ctx context.Context) (predicate.Robot, error)
@@ -396,6 +400,8 @@ type Scope interface {
 	EventScope(ctx context.Context) (predicate.Event, error)
 	FactScope(ctx context.Context) (predicate.Fact, error)
 	HolderScope(ctx context.Context) (predicate.Holder, error)
+	NotificationRecordScope(ctx context.Context) (predicate.NotificationRecord, error)
+	NotificationReceiptRecordScope(ctx context.Context) (predicate.NotificationReceiptRecord, error)
 	OutboxScope(ctx context.Context) (predicate.Outbox, error)
 	OwedScope(ctx context.Context) (predicate.Owed, error)
 	RowSealScope(ctx context.Context) (predicate.RowSeal, error)
@@ -418,6 +424,9 @@ type Unscoped struct{}
 var _ Scope = Unscoped{}
 
 func (Unscoped) TenantScope(_ context.Context) (predicate.Tenant, error) {
+	return nil, nil
+}
+func (Unscoped) JobScope(_ context.Context) (predicate.Job, error) {
 	return nil, nil
 }
 func (Unscoped) ThingScope(_ context.Context) (predicate.Thing, error) {
@@ -460,6 +469,12 @@ func (Unscoped) FactScope(_ context.Context) (predicate.Fact, error) {
 	return nil, nil
 }
 func (Unscoped) HolderScope(_ context.Context) (predicate.Holder, error) {
+	return nil, nil
+}
+func (Unscoped) NotificationRecordScope(_ context.Context) (predicate.NotificationRecord, error) {
+	return nil, nil
+}
+func (Unscoped) NotificationReceiptRecordScope(_ context.Context) (predicate.NotificationReceiptRecord, error) {
 	return nil, nil
 }
 func (Unscoped) OutboxScope(_ context.Context) (predicate.Outbox, error) {
@@ -521,6 +536,26 @@ func (ss Scopes) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	}
 
 	return tenant.And(ps...), nil
+}
+
+func (ss Scopes) JobScope(ctx context.Context) (predicate.Job, error) {
+	ps := make([]predicate.Job, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.JobScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return job.And(ps...), nil
 }
 
 func (ss Scopes) ThingScope(ctx context.Context) (predicate.Thing, error) {
@@ -801,6 +836,46 @@ func (ss Scopes) HolderScope(ctx context.Context) (predicate.Holder, error) {
 	}
 
 	return holder.And(ps...), nil
+}
+
+func (ss Scopes) NotificationRecordScope(ctx context.Context) (predicate.NotificationRecord, error) {
+	ps := make([]predicate.NotificationRecord, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.NotificationRecordScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return notificationrecord.And(ps...), nil
+}
+
+func (ss Scopes) NotificationReceiptRecordScope(ctx context.Context) (predicate.NotificationReceiptRecord, error) {
+	ps := make([]predicate.NotificationReceiptRecord, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.NotificationReceiptRecordScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return notificationreceiptrecord.And(ps...), nil
 }
 
 func (ss Scopes) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
@@ -1117,6 +1192,7 @@ func (s Server) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 }
 
 func (s Server) Tenant() apptest.TenantServiceServer   { return TenantServiceServer{Store: s.Store} }
+func (s Server) Job() apptest.JobServiceServer         { return JobServiceServer{Store: s.Store} }
 func (s Server) Thing() apptest.ThingServiceServer     { return ThingServiceServer{Store: s.Store} }
 func (s Server) Cell() apptest.CellServiceServer       { return CellServiceServer{Store: s.Store} }
 func (s Server) Robot() apptest.RobotServiceServer     { return RobotServiceServer{Store: s.Store} }
@@ -1129,10 +1205,16 @@ func (s Server) Access() apptest.AccessServiceServer   { return AccessServiceSer
 func (s Server) Archived() apptest.ArchivedServiceServer {
 	return ArchivedServiceServer{Store: s.Store}
 }
-func (s Server) Audit() apptest.AuditServiceServer     { return AuditServiceServer{Store: s.Store} }
-func (s Server) Event() apptest.EventServiceServer     { return EventServiceServer{Store: s.Store} }
-func (s Server) Fact() apptest.FactServiceServer       { return FactServiceServer{Store: s.Store} }
-func (s Server) Holder() apptest.HolderServiceServer   { return HolderServiceServer{Store: s.Store} }
+func (s Server) Audit() apptest.AuditServiceServer   { return AuditServiceServer{Store: s.Store} }
+func (s Server) Event() apptest.EventServiceServer   { return EventServiceServer{Store: s.Store} }
+func (s Server) Fact() apptest.FactServiceServer     { return FactServiceServer{Store: s.Store} }
+func (s Server) Holder() apptest.HolderServiceServer { return HolderServiceServer{Store: s.Store} }
+func (s Server) NotificationRecord() apptest.NotificationRecordServiceServer {
+	return NotificationRecordServiceServer{Store: s.Store}
+}
+func (s Server) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
+	return NotificationReceiptRecordServiceServer{Store: s.Store}
+}
 func (s Server) Outbox() apptest.OutboxServiceServer   { return OutboxServiceServer{Store: s.Store} }
 func (s Server) Owed() apptest.OwedServiceServer       { return OwedServiceServer{Store: s.Store} }
 func (s Server) RowSeal() apptest.RowSealServiceServer { return RowSealServiceServer{Store: s.Store} }

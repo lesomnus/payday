@@ -175,6 +175,7 @@ message RobotAddRequest {
   bytes secret = 8;
   google.protobuf.Timestamp date_attested = 31;
   string keeper = 32 [features.field_presence = IMPLICIT];
+  bytes owner_id = 33;
   google.protobuf.Timestamp date_created = 15;
 }
 
@@ -212,6 +213,7 @@ message RobotSelect {
   bool secret = 8;
   bool date_attested = 31;
   bool keeper = 32;
+  bool owner_id = 33;
   bool date_updated = 13;
   bool date_created = 15;
   bool date_erased = 14;
@@ -240,6 +242,12 @@ message RobotPatchRequest {
   // outright: setting both this and date_attested clears.
   bool date_attested_null = 63;
   string keeper = 64;
+  bytes owner_id = 66;
+  // Clear owner_id instead of writing it.
+  // It takes a field of its own because an unset value already means
+  // "leave it alone", so no value could have meant NULL. It wins
+  // outright: setting both this and owner_id clears.
+  bool owner_id_null = 67;
   // The version this update requires the stored date_updated to be.
   // It is a precondition, not a write: the update applies only if the row
   // still holds this value, and the server stamps the new version itself.

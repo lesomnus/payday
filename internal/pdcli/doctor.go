@@ -675,6 +675,17 @@ func doctorSchema(l Layout) []Finding {
 			continue
 		}
 
+		if i := slices.IndexFunc(notifyFiles, func(p pastFile) bool { return p.Name == name }); i >= 0 {
+			if l.Notify != nil {
+				continue
+			}
+			vs = append(vs, Finding{
+				What: fmt.Sprintf("%s extends payday's %s, but this app declares no notify feature, so the overlay is never merged", l.Rel(DirExt, "payday", filepath.Base(v)), notifyFiles[i].Message),
+				Fix:  "option (payday.app) = {notify: {notification: <domain>, receipt: <domain>}};",
+			})
+			continue
+		}
+
 		if i := slices.IndexFunc(pastFiles, func(p pastFile) bool { return p.Name == name }); i >= 0 {
 			if l.Past != nil {
 				continue
@@ -696,6 +707,9 @@ func doctorSchema(l Layout) []Finding {
 		}
 		for _, p := range pastFiles {
 			names = append(names, strings.TrimSuffix(p.Name, ".proto")+" (with a past)")
+		}
+		for _, p := range notifyFiles {
+			names = append(names, strings.TrimSuffix(p.Name, ".proto")+" (with notify)")
 		}
 
 		vs = append(vs, Finding{

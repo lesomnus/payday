@@ -58,6 +58,20 @@ func (_c *RobotCreate) SetKeeper(v string) *RobotCreate {
 	return _c
 }
 
+// SetOwnerId sets the "owner_id" field.
+func (_c *RobotCreate) SetOwnerId(v uuid.UUID) *RobotCreate {
+	_c.mutation.SetOwnerId(v)
+	return _c
+}
+
+// SetNillableOwnerId sets the "owner_id" field if the given value is not nil.
+func (_c *RobotCreate) SetNillableOwnerId(v *uuid.UUID) *RobotCreate {
+	if v != nil {
+		_c.SetOwnerId(*v)
+	}
+	return _c
+}
+
 // SetDateUpdated sets the "date_updated" field.
 func (_c *RobotCreate) SetDateUpdated(v time.Time) *RobotCreate {
 	_c.mutation.SetDateUpdated(v)
@@ -265,6 +279,10 @@ func (_c *RobotCreate) createSpec() (*Robot, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Keeper(); ok {
 		_spec.SetField(robot.FieldKeeper, field.TypeString, value)
 		_node.Keeper = value
+	}
+	if value, ok := _c.mutation.OwnerId(); ok {
+		_spec.SetField(robot.FieldOwnerId, field.TypeUuid, value)
+		_node.OwnerId = &value
 	}
 	if value, ok := _c.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)

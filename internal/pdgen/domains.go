@@ -101,7 +101,12 @@ func Shipped(own pdpb.Own) (uint32, error) {
 //
 // Zero is not a number this refuses. It is what a field says when nothing set
 // it, and what it means here is the number payday gives the entity.
-func CheckDomains(d *pdpb.Domains, past *pdpb.Past) error {
+func CheckDomains(d *pdpb.Domains, past *pdpb.Past, notifications ...*pdpb.Notify) error {
+	for _, n := range notifications {
+		if err := CheckNotifyDomains(n, past, d); err != nil {
+			return err
+		}
+	}
 	for _, v := range []struct {
 		field   string
 		message string
@@ -163,7 +168,7 @@ func CheckDomains(d *pdpb.Domains, past *pdpb.Past) error {
 // Read off the compiled option, for the reason [readPast] is: what a
 // generation is held to is the schema it is handed, and a copy numbered by a
 // declaration that has since moved is what [Schema.checkDomains] is for.
-func readDomains(files []*protogen.File, past *Past) (*AppDomains, error) {
+func readDomains(files []*protogen.File, past *Past, notify *Notify) (*AppDomains, error) {
 	var held *pdpb.Past
 	if past != nil {
 		held = pdpb.Past_builder{Event: uint32(past.Event), Fact: uint32(past.Fact)}.Build()
@@ -188,7 +193,7 @@ func readDomains(files []*protogen.File, past *Past) (*AppDomains, error) {
 		}
 
 		d := a.GetDomains()
-		if err := CheckDomains(d, held); err != nil {
+		if err := CheckDomains(d, held, notifyProto(notify)); err != nil {
 			return nil, fmt.Errorf("%s: %w", f.Desc.Path(), err)
 		}
 

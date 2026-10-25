@@ -158,6 +158,9 @@ func (g Gen) entities(ctx context.Context) error {
 	if err := checkPastNames(g.Layout); err != nil {
 		return err
 	}
+	if err := checkNotifyNames(g.Layout); err != nil {
+		return err
+	}
 
 	dst := filepath.Join(g.Out, g.Layout.DirPd())
 	if err := os.MkdirAll(dst, 0o755); err != nil {
@@ -174,6 +177,9 @@ func (g Gen) entities(ctx context.Context) error {
 		}
 	}
 	if err := g.past(ctx, dst); err != nil {
+		return err
+	}
+	if err := g.notify(ctx, dst); err != nil {
 		return err
 	}
 
@@ -306,6 +312,10 @@ until the next one -- the past's lock apart, below.
 - ` + "`event.proto`" + ` and ` + "`fact.proto`" + ` are here when the app declares a past
   -- ` + "`option (payday.app) = {past: {event: 17, fact: 16}};`" + ` -- numbered as it
   declares, and go when the declaration does.
+- ` + "`notification.proto`" + ` and ` + "`notification_receipt.proto`" + ` are here only
+  when the app declares ` + "`option (payday.app) = {notify: {notification: 40, receipt: 41}};`" + `.
+  Their domains come from that declaration; the public notification contract is
+  copied beside the internal records and disappears with them on opt-out.
 - ` + "`archived.proto`" + ` and ` + "`access.proto`" + ` are at domains 5 and 6, or at the
   numbers the app gives them when its own entities hold those --
   ` + "`option (payday.app) = {domains: {archived: 240, access: 241}};`" + `.

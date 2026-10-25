@@ -164,6 +164,7 @@ type Robot struct {
 	xxx_hidden_Secret       []byte                 `protobuf:"bytes,8,opt,name=secret"`
 	xxx_hidden_DateAttested *timestamppb.Timestamp `protobuf:"bytes,31,opt,name=date_attested,json=dateAttested"`
 	xxx_hidden_Keeper       string                 `protobuf:"bytes,32,opt,name=keeper"`
+	xxx_hidden_OwnerId      []byte                 `protobuf:"bytes,33,opt,name=owner_id,json=ownerId"`
 	xxx_hidden_DateUpdated  *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated  *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	xxx_hidden_DateErased   *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
@@ -252,6 +253,13 @@ func (x *Robot) GetKeeper() string {
 	return ""
 }
 
+func (x *Robot) GetOwnerId() []byte {
+	if x != nil {
+		return x.xxx_hidden_OwnerId
+	}
+	return nil
+}
+
 func (x *Robot) GetDateUpdated() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateUpdated
@@ -309,6 +317,13 @@ func (x *Robot) SetDateAttested(v *timestamppb.Timestamp) {
 
 func (x *Robot) SetKeeper(v string) {
 	x.xxx_hidden_Keeper = v
+}
+
+func (x *Robot) SetOwnerId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_OwnerId = v
 }
 
 func (x *Robot) SetDateUpdated(v *timestamppb.Timestamp) {
@@ -458,6 +473,9 @@ type Robot_builder struct {
 	// answered with like any other field, and on the trail as a value at no
 	// content level, which is what the trail's tests hold it to.
 	Keeper string
+	// A stable Holder identity for the notification policy. An identifier avoids
+	// a cycle: this app's Holder already points to Robot through its overlay.
+	OwnerId []byte
 	// Stamped on every write and refused to a patch document, so it is a version
 	// and not a field. It is here because this entity declares a `watch:`, and
 	// the generator refuses one without it: a watch sends state, so a client
@@ -483,6 +501,7 @@ func (b0 Robot_builder) Build() *Robot {
 	x.xxx_hidden_Secret = b.Secret
 	x.xxx_hidden_DateAttested = b.DateAttested
 	x.xxx_hidden_Keeper = b.Keeper
+	x.xxx_hidden_OwnerId = b.OwnerId
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_DateErased = b.DateErased
@@ -1151,7 +1170,7 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased:\x0e\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x02\b\n" +
-	"\"\xc9\x06\n" +
+	"\"\xee\x06\n" +
 	"\x05Robot\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12+\n" +
@@ -1160,7 +1179,8 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x00R\x05alias\x12%\n" +
 	"\x06secret\x18\b \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\b\x01R\x06secret\x12M\n" +
 	"\rdate_attested\x18\x1f \x01(\v2\x1a.google.protobuf.TimestampB\f\xea\x82\x16\x028\x01\xaa\xc1\x16\x02\x10\x01R\fdateAttested\x12\x1e\n" +
-	"\x06keeper\x18  \x01(\tB\x06\xaa\xc1\x16\x02\x18\x01R\x06keeper\x12F\n" +
+	"\x06keeper\x18  \x01(\tB\x06\xaa\xc1\x16\x02\x18\x01R\x06keeper\x12#\n" +
+	"\bowner_id\x18! \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\aownerId\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
@@ -1236,8 +1256,8 @@ const file_app_robot_proto_rawDesc = "" +
 	"\ttenant_id\x10\t\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x8a\xbb\x16!\b\vB\x02\n" +
 	"\x00\"\x19\n" +
-	"\frobot.tenant\x1a\ttenant_idB<\xca\xc7\x16\x06\n" +
-	"\x04\b\x11\x10\x12Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\frobot.tenant\x1a\ttenant_idBB\xca\xc7\x16\f\n" +
+	"\x04\b\x11\x10\x12\x1a\x04\b(\x10)Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_app_robot_proto_goTypes = []any{

@@ -37,7 +37,15 @@ func TestThePastThatIsCopiedIsThePastThatShips(t *testing.T) {
 	for _, v := range pastFiles {
 		x.True(opted[v.Own], "%s is copied as the past's and is not", v.Own)
 	}
-	x.Len(opted, len(pastFiles))
+	features, err := schema.Features()
+	x.NoError(err)
+	pastCount := 0
+	for _, feature := range features {
+		if feature == schema.DirPast {
+			pastCount++
+		}
+	}
+	x.Equal(len(pastFiles), pastCount)
 }
 
 // TestAnAppWithNoPastHasNoNamesTakenFromIt: an `Event` of an app's own, or a
