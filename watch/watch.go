@@ -68,6 +68,11 @@ type Change struct {
 	// Resource is the immutable mutation envelope for ResourceService.Watch.
 	// Nil identifies a legacy key-only notification.
 	Resource *pdpb.WatchEvent
+
+	// Signal is application invalidation metadata carried between replicas.
+	// It is separate from mutation patches, which may contain secrets, and is
+	// never exposed by ResourceService.Watch without a Resource envelope.
+	Signal []byte
 }
 
 // Event is one call that changed something.

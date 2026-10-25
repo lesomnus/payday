@@ -51,3 +51,28 @@ func TestMalformedFragmentIsObservable(t *testing.T) {
 		require.Error(t, err)
 	}
 }
+
+func TestInvalidationSurvivesTheWireWithoutPublishingMutationPatches(t *testing.T) {
+	x := require.New(t)
+	signal := []byte(`{"topic":"n:maintenance"}`)
+	input := watch.Event{Changes: []watch.Change{{
+		By: "/payday.notify/internal/Invalidate", Key: pdid.New(1),
+		Signal: signal, Patch: []byte("private mutation content"),
+	}}}
+	chunks, err := packets(input)
+	x.NoError(err)
+	x.Len(chunks, 1)
+	x.NotContains(chunks[0], "private mutation content")
+	output, err := decode(chunks[0])
+	x.NoError(err)
+	x.Equal(signal, output.Changes[0].Signal)
+	x.Empty(output.Changes[0].Patch)
+	x.Nil(output.Changes[0].Resource)
+}
+
+func TestInvalidationCountsTowardsThePublicationLimit(t *testing.T) {
+	_, err := packets(watch.Event{Changes: []watch.Change{{
+		Key: pdid.New(1), Signal: make([]byte, MaxWire),
+	}}})
+	require.ErrorContains(t, err, "payload limit")
+}
