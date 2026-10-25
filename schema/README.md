@@ -58,3 +58,25 @@ What a row of the Event holds is a message the app declares for each kind of
 operation, `option (payday.event)`, and `pd gen` keeps a lock beside the copies
 that holds every one of them to what rows of it were written with -- see
 `docs/guide/past.md`.
+
+## `notify/`
+
+An app enables notifications with two distinct domains of its own:
+
+```proto
+option (payday.app) = {notify: {notification: 40, receipt: 41}};
+```
+
+`pd gen` copies `notification.proto` and `notification_receipt.proto` into the
+app's package, numbers their internal `NotificationRecord` and
+`NotificationReceiptRecord`, and takes the copies out when the option goes.
+The first file also supplies the public notification values and
+`NotificationService`; these are projections and RPCs rather than extra tables.
+Topic authorization and the identity whose receipt is recorded remain app
+policy. A past is independent: either feature may be enabled without the other.
+
+The record templates have domain zero until copied. Like the past's templates,
+every record field they declare is payday's; an overlay adds its own outside
+those numbers and may add indexes. The optional-feature marker is distinct
+from its domain, so generation finds a record by its role rather than a fixed
+number or the name of the app's package.

@@ -1,17 +1,18 @@
-# Notifications: proposed contract
+# Notifications
 
-This is the contract for the optional notification feature discussed in
-[payday#177](https://github.com/lesomnus/payday/issues/177). The
-[Protobuf contract](contracts/notify/notification.proto) is compiled separately
-so that its messages and RPCs can be reviewed before the feature is implemented.
-It is not a service registered by payday today. No `App.notify` option, database
-migration, generated server, or client integration is introduced by this contract.
+Notifications are an optional feature: an app chooses its Topic policies and
+publishes when domain work completes, while payday stores notifications, records
+each reader's first read lazily, and manages live invalidations. Start with
+[adding notifications to an app](guide/notifications.md) for setup and examples.
+The runtime's detail is the [`notify` package](../notify/notify.go); the
+[Protobuf source](../schema/notify/notification.proto) is copied into the app.
 
-The intended integration follows the past: an app opts into a feature whose
-entities live in its own Protobuf package and whose domains it chooses. Here the
-entities are `Notification` and `NotificationReceipt`. The service is therefore
-`app.NotificationService`, with `app` standing for the app's package, rather than
-a fixed `payday.NotificationService`. Keeping a past is not a prerequisite.
+An app opts in through `(payday.app).notify`, choosing the domains of its
+notification and receipt identifiers. The public messages and service live in
+its own Protobuf package: `app.NotificationService`, with `app` standing for the
+app's package. The generated `pd.Notifications` helper binds that service to the
+app's server stack, driver, Watch, and policy; the app registers it explicitly
+with `app.RegisterNotificationServiceServer`. Keeping a past is not a prerequisite.
 
 ## Topics and readers
 
@@ -31,7 +32,9 @@ Both forms are scoped to a tenant. A named Topic `maintenance` in one tenant is
 distinct from the same name in another. A name that happens to look like a UUID
 is also distinct from a resource Topic containing that UUID. There is no implicit
 trimming, case folding, path syntax, or conversion between the two forms.
-Names contain 1 to 256 UTF-8 bytes; Kind contains 1 to 128 UTF-8 bytes.
+Names contain 1 to 256 UTF-8 bytes; Kind contains 1 to 128 UTF-8 bytes. NUL is
+rejected in Topic names, Kind, idempotency and producer keys, and payload type
+URLs. The byte limits include the entire encoded string.
 All resource IDs are nonzero payday IDs in domains registered by the app.
 `tenant_id` is required on Add and the Topic queries; Get and Mark derive
 the tenant from the scoped notification lookup.
@@ -64,12 +67,24 @@ manage open streams or write notification storage code:
 | Resolve reader | Authenticated context, tenant | A persistent reader ID, after validating any delegation |
 | Authorize reading | Authenticated context, tenant, resolved reader, Topic | Permission to read that Topic |
 
-These are the decisions a future runtime interface must expose, not names of Go
-interfaces already implemented. An unknown or unhandled Topic is denied. Every
-read RPC requires a persistent resolved reader; an authenticated frame alone is
-insufficient. A publisher may instead be an authenticated service principal: its
+These decisions form `notify.Policy`: `Publisher`, `Reader`, and `Read`.
+The app's policy must refuse Topics it does not handle. Every read RPC requires
+a persistent resolved reader; an authenticated frame alone is insufficient.
+A publisher may instead be an authenticated service principal: its
 producer key need not be a Holder ID and must stay stable across retries and app
-replicas.
+replicas. Producer keys contain 1 to 256 UTF-8 bytes without NUL.
+
+Policies that query the app database also implement `notify.PolicyBinder`.
+Its `WithDriver(dialect.Driver) (notify.Policy, error)` method rebuilds the
+policy's queries on the supplied driver. The runtime binds it when constructing
+the service and when entering a write transaction, so authorization observes
+domain rows created or changed in that same transaction. A policy using only
+authenticated context and fixed named-Topic rules needs no binder.
+
+An ordinary error from a policy is a sanitized `PermissionDenied`; its internal
+message is not returned to the client. To distinguish an operational failure,
+return a gRPC status with an intentional, client-safe message, such as
+`Unavailable`. Context cancellation and deadlines retain their status codes.
 
 Every operation first respects the request's tenant scope. Topic policy cannot
 widen the tenant wall. `List`, `Read`, and `Listen` authorize their complete
@@ -77,12 +92,18 @@ explicit Topic set before reading or subscribing. `Get` and `Mark` read the
 notification through the wall and apply the same Topic policy; an absent or
 inaccessible notification is answered as `NotFound`.
 
-An implementation must apply these rules to every route that can reach the
-data, including generated methods, Batch operations, relationship expansion,
-and `ResourceService.Watch`. Private writes must be sealed through the stack or
-its method policy, not just an outer interceptor that Batch can bypass. Custom
-read rules also need their historical equivalent in the resource projector.
-Neither a client-supplied Topic nor a CEL filter is an authorization decision.
+The generated storage paths are private. Application calls use
+`NotificationService`, whose policy checks also cover identifier lookup and
+receipt writes. The generated Sink seals private records even when an outer
+Audit layer is omitted. Use the normal generated stack and recording hooks;
+bypassing it through another exposed store would remove that boundary.
+Neither Batch nor `ResourceService.Watch` is a second public path to
+notification contents. A client-supplied Topic or CEL filter is not authorization.
+
+`notify.Policy` governs `NotificationService`; it does not filter audit or outbox
+provenance. Audit RPCs can reveal publication and reader metadata; restrict
+them to operators through the app's method policy. Outbox has no public RPCs;
+keep its storage and drainer access inside the deployment permission boundary.
 
 ## Stored notification and receipt
 
@@ -141,16 +162,14 @@ All methods belong to `NotificationService` in the app's package.
 | `Mark` | Returns this reader's `NotificationReceipt`, creating it lazily |
 | `Listen` | Streams readiness and Topic invalidation hints |
 
-Publication completes the generated meaning of `Add`, so there is no second
-`Publish` RPC beside it. `Get` and `List` return notification values without
+Publication is named `Add`, so there is no second `Publish` RPC beside it.
+`Get` and `List` return notification values without
 adding per-reader state to a shared resource. `Read` is an explicit projection,
 which also avoids changing the generated List item type or making clients load
 all readers' receipts through an unrestricted relationship expansion. It is not
-a separate service. Topic selection is a hand-declared query contract; the
-existing generated List filter vocabulary does not implement it automatically.
-This preview is not a drop-in overlay on today's generated service. The
-implementation must supply the declared Topic query through generation and
-server wiring while retaining the shared entity results.
+a separate service. Topic selection is implemented by the notification service;
+it does not use the ordinary generated List filter vocabulary. The public
+service is registered explicitly alongside the app's ordinary entity services.
 
 `Read` retrieves state; it does not mark notifications as read. `Mark` is the
 operation that creates a receipt and records the reader's first read time.
@@ -192,13 +211,22 @@ it. Notification retention cannot silently shorten that guarantee. After this
 period, retention may remove the notification and its key; idempotency beyond
 that period is not promised. No deletion or expiry operation is exposed here.
 
-An app's domain change and notification publication must be able to use the
-same database transaction. The implementation must use payday's existing
-`BeginTx`, `enttx.Rebind`, and layer `WithDriver` pattern; sharing a context alone
-does not share a transaction. Notification and Receipt mutations must pass
-through the recording path so that audit, version, and change records commit
-with the mutation. A direct SQL UPSERT that silently skips those records does
-not satisfy this contract.
+An app's domain change and notification publication can use the same database
+transaction. Begin the transaction and use the notification server's
+`WithDriver` method to join it. This uses payday's existing `enttx.Rebind` and
+layer `WithDriver` pattern; sharing a context alone does not share a transaction.
+Notification and Receipt mutations use the recording path so that audit,
+version, and change records commit with the mutation.
+
+Database-backed policy must join that driver too. Implement `notify.PolicyBinder`
+instead of closing over a database client that always uses the original driver.
+Otherwise a policy cannot see an uncommitted Job or ownership change even though
+the notification store has joined the business transaction.
+
+When the app owns the outer transaction, wrap that complete operation in the
+shared Watch's `Transaction` call, as in the guide. It releases immediate hints
+only after the outer commit succeeds, including in a background worker. A
+rebound notification server alone does not own or commit that outer transaction.
 
 Concurrent `Mark` calls return the same receipt and first read time. A
 failed transaction leaves no notification, receipt, or observable change hint.
@@ -226,8 +254,10 @@ A notification write invalidates its Topic. A receipt write invalidates that
 Topic for the same reader's sessions. App policy changes are another input:
 after committing a change to Job ownership, membership, delegation, or another
 authorization dependency, the app must notify the runtime to invalidate affected
-Topics. This is an internal app operation, not an unauthenticated RPC. The
-framework cannot infer arbitrary policy dependencies from application code.
+Topics with `NotificationServer.Invalidate`. This is an internal app operation,
+not a public RPC. Check its returned error and retry a failed invalidation after
+the domain transaction has committed. The framework cannot infer arbitrary
+policy dependencies from application code.
 
 The runtime revalidates reader identity and Topic access before delivering a
 hint. If access has been withdrawn or the resolved reader has changed, it
@@ -249,7 +279,7 @@ including when no notification row has changed.
 | `ResourceExhausted` | A bounded request limit or live subscription backlog is exceeded |
 | `Unavailable` | The live notification mechanism is unavailable; reconnect and reconcile |
 
-## What implementing this contract must demonstrate
+## Checks for an app's integration
 
 - One publication creates one Notification and zero Receipts for any reader count.
 - Resource and named Topics remain separate and isolated by tenant.
@@ -277,12 +307,3 @@ from custom data but fan out to registered subscribers.
 [Noticed](https://github.com/excid3/noticed) support recipients beyond a User
 model and store per-recipient read state. This contract instead retains one
 shared notification and creates a reader's receipt only when it is needed.
-
-The proposal is checked independently of the published schema:
-
-```sh
-cd docs/contracts/notify
-buf format --diff --exit-code
-buf lint
-buf build
-```

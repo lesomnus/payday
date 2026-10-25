@@ -20,6 +20,7 @@ comments, which are where the detail actually lives.
 | [Putting a login in front of an app](guide/signing-in.md) | a session cookie, where it lives, and whether you need an identity provider at all |
 | [What the operator keeps about a tenant](guide/operator.md) | a plan, a contract, how long its history lasts: an entity the tenant reads and only the operator writes |
 | [Keeping a past](guide/past.md) | an app's events and facts: declaring them, the messages an event holds, the lock that keeps old events readable, recording an operation and the facts it writes, reading them at a moment as known now or then, saying what happened in the reader's language, correcting them, taking a reason out, and letting them go by the tenant's window |
+| [Adding notifications](guide/notifications.md) | opt-in setup, named and resource Topics, app policies, publication, and read-state synchronization |
 | [Testing](guide/testing.md) | the harness, the two seams, and golden files |
 
 ## References
@@ -31,7 +32,7 @@ comments, which are where the detail actually lives.
 | [The generation contract](schema.md) | what payday owns, overlays, identifiers, slugs |
 | [Migrating](migrating.md) | what an app has to change when payday does, newest first |
 | [The browser](client.md) | the transports, the sandbox, and the client replica |
-| [Notifications: proposed contract](notify.md) | Topic keys, app policies, lazy receipts, and the proposed notification RPCs |
+| [Notifications](notify.md) | Topic keys, app policies, lazy receipts, and the notification RPCs |
 
 ---
 

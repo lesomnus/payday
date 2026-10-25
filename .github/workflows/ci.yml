@@ -42,8 +42,8 @@ jobs:
         with:
           setup_only: true
 
-      # Proposed contracts are compiled without publishing them as payday's
-      # implemented wire surface or copying them into an application.
+      # The public notification contract is compiled without private storage
+      # records. schema's tests keep it equal to what an app receives.
       - name: notification contract
         working-directory: docs/contracts/notify
         run: |

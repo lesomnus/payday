@@ -1,8 +1,8 @@
 edition = "2023";
 
-// A proposed contract for payday#177, compiled on its own. This file is not a
-// shipped service or an input to pd gen. See ../../notify.md for its policies
-// and integration requirements. The package stands for the application's own.
+// The public notification wire contract, compiled without its storage records.
+// schema/notify/notification.proto is the implementation source copied into an
+// app. See ../../notify.md. This package stands for the application's own.
 package app;
 
 import "google/protobuf/any.proto";

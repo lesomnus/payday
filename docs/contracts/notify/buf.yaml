@@ -1,4 +1,4 @@
-# A compilable proposal, separate from the schema payday publishes and apps copy.
+# The public wire contract, compiled independently of private storage records.
 version: v2
 modules:
   - path: .
