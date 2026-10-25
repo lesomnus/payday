@@ -3,6 +3,75 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A migration refuses an index PostgreSQL left invalid
+
+**Applies to every app on PostgreSQL**: call `valid.Indexes` in your
+`Migrate`, after `rename.Indexes` and before `Create`, with the tables ent
+writes -- `pd new`'s `Migrate` does -- and in `serve`, after `entschema.Check`,
+log what it answers rather than refusing (#176):
+
+```go
+if err := rename.Indexes(ctx, s.Db, s.Dialect, pd.IndexRenames); err != nil {
+	return err
+}
+if err := valid.Indexes(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+	return err
+}
+return entmigrate.NewSchema(s.Drv).Create(ctx)
+```
+
+```go
+} else if err := valid.Indexes(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+	log.From(ctx).WarnContext(ctx, "db: serving over an index PostgreSQL left invalid", slog.Any("err", err))
+}
+```
+
+A deployment that builds an index ahead of the migration that declares it --
+`audit_by_time` and `access_by_time` below, `CONCURRENTLY` so the table takes
+writes while it builds -- is one failed build from an index PostgreSQL keeps
+and does not use. A build `CONCURRENTLY` writes the index into the catalog
+first, marked invalid, and one that fails partway -- a timeout, a deadlock, a
+cancel, a duplicate under a unique index -- leaves it there: kept up by every
+write, read by nothing. Running the statement again `IF NOT EXISTS` skips it,
+and so did the migration, which finds an index by its name: it planned
+nothing, `entschema.Check` passed, and the migration said the database was in
+this build's shape. rove found it with these two indexes; on PostgreSQL, an
+index built ahead of a migration kept its OID through it, and an invalid one
+stayed invalid.
+
+- **An index the schema declares that PostgreSQL holds invalid is refused**,
+  with its name, its table and what to run, a statement at a time and outside
+  a transaction:
+
+  ```sql
+  -- audit_by_time, on audit
+  DROP INDEX CONCURRENTLY public.audit_by_time;
+  CREATE INDEX CONCURRENTLY audit_by_time ON public.audit USING btree (date_created, id);
+  ```
+
+  The migration does not make it again itself. That would be either a build in
+  `Create`'s transaction with the table held against writes -- what building it
+  first was to avoid -- or a build `CONCURRENTLY` in the step that runs before
+  anything serves, taking as long as the one that failed and liable to fail the
+  same way. It asks before `Create`, so a migration that refuses has made
+  nothing yet.
+- **Any other index PostgreSQL holds invalid is said, and refuses nothing**:
+  the copy a `REINDEX CONCURRENTLY` left (`_ccnew`), which is only dropped, and
+  an operator's own. It makes nothing the migration says untrue, and a
+  deployment that migrates as it starts -- an init container, `db.migrate:
+  true` -- would refuse every start over it. The warning is in the context's
+  log, so a command that migrates with no telemetry built says nothing.
+- **A server that only checks says it, and serves.** An invalid index there is
+  a cost to writes and to the reads that wanted it, and refusing would make the
+  next restart an outage until the index was built again.
+- **SQLite has none, and is never refused**: a build there is in its
+  transaction or not at all.
+
+What the apps on payday change: each adds the two calls. The roster rove runs
+in its own process migrates its database as it opens, so an index roster
+declares that a build left invalid there refuses rove's `migrate` and its
+`serve` alike.
+
 ## An ent package is imported under a name of payday's
 
 **Applies to every app**, which regenerates: `server/pd/pd.g.go` imports the
@@ -93,6 +162,8 @@ few lines, and goes by time for one with many, where it is faster.
 
   One statement at a time and outside a transaction, as `CONCURRENTLY` is.
   On SQLite the migration's `CREATE INDEX` holds the write lock for as long.
+  A build that did not finish leaves the index invalid, and the migration
+  refuses it now (see [above](#a-migration-refuses-an-index-postgresql-left-invalid)).
 
 What the apps on payday change: each regenerates and migrates. roster's sweep
 is not one of those reads: its `serve` hands `trail.Sweep` the policy

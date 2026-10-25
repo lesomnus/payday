@@ -131,6 +131,11 @@ While developing, `db.migrate: true` swaps the second refusal for
 `ent.Schema.Create`. That is a decision about who may alter tables and it should
 be made on purpose, not left on.
 
+`Migrate` also refuses an index the schema declares that PostgreSQL left
+invalid -- a build `CONCURRENTLY` that did not finish, which a migration finds
+by its name and would take for made -- and prints the statements that make it
+again. `serve` says one and serves. See payday's `valid`.
+
 ## Adding an entity
 
 ```sh

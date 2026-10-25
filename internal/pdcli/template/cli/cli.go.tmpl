@@ -32,6 +32,7 @@ import (
 
 	"github.com/lesomnus/payday/pdcmd"
 	"github.com/lesomnus/payday/rename"
+	"github.com/lesomnus/payday/valid"
 
 	"{{.Module}}/cmd"
 	entmigrate "{{.Module}}/internal/ent/migrate"
@@ -92,8 +93,16 @@ func Cmd(c *cmd.Config) *xli.Command {
 // build's first: a migration finds an index by its name, and one it does not
 // find it makes again, from every row, beside the old one, which it leaves --
 // it drops no index. See `rename`.
+//
+// And for the same reason an index this build declares that PostgreSQL left
+// invalid -- a build of it `CONCURRENTLY` that did not finish -- is refused
+// before anything is made: found by its name, it would be taken for made, and
+// read by nothing from then on. See `valid`.
 func Migrate(ctx context.Context, s *cmd.Server) error {
 	if err := rename.Indexes(ctx, s.Db, s.Dialect, pd.IndexRenames); err != nil {
+		return err
+	}
+	if err := valid.Indexes(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
 		return err
 	}
 

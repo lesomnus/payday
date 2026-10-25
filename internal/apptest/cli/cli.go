@@ -41,6 +41,7 @@ import (
 	"github.com/lesomnus/payday/pdcmd"
 	"github.com/lesomnus/payday/rename"
 	"github.com/lesomnus/payday/spin"
+	"github.com/lesomnus/payday/valid"
 
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 	entmigrate "github.com/lesomnus/payday/internal/apptest/internal/ent/migrate"
@@ -131,6 +132,13 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 				}
 			} else if err := entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
 				return err
+			} else if err := valid.Indexes(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+				// An index PostgreSQL left invalid is said, and served over.
+				// It costs every write and the reads that wanted it, which is
+				// a thing to fix and not a reason to stop serving: refused
+				// here, the next restart would be an outage until somebody
+				// had built it again. Migrating is what refuses it.
+				log.From(ctx).WarnContext(ctx, "db: serving over an index PostgreSQL left invalid", slog.Any("err", err))
 			}
 
 			l, err := net.Listen("tcp", c.Server.ListenAddr())
@@ -176,8 +184,16 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 // build's first: a migration finds an index by its name, and one it does not
 // find it makes again, from every row, beside the old one, which it leaves --
 // it drops no index. See `rename`.
+//
+// And for the same reason an index this build declares that PostgreSQL left
+// invalid -- a build of it `CONCURRENTLY` that did not finish -- is refused
+// before anything is made: found by its name, it would be taken for made, and
+// read by nothing from then on. See `valid`.
 func Migrate(ctx context.Context, s *cmd.Server) error {
 	if err := rename.Indexes(ctx, s.Db, s.Dialect, pd.IndexRenames); err != nil {
+		return err
+	}
+	if err := valid.Indexes(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
 		return err
 	}
 

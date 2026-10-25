@@ -1040,11 +1040,26 @@ database an earlier build made holds each under ent's name for its columns.
 `rename.Indexes`, with `pd.IndexRenames`, moves them before `Create` looks, and
 `pd new`'s `Migrate` calls it (see [migrating](../migrating.md)).
 
+Found under its name is also how an index PostgreSQL has not finished is taken
+for made. A build `CONCURRENTLY` writes the index into the catalog first and
+builds it after, marked invalid, and one that fails -- a timeout, a deadlock, a
+duplicate under a unique index -- leaves it so: kept up by every write and read
+by nothing. An operator who builds an index the next migration declares ahead
+of it, so that the table takes writes meanwhile, is one cancelled statement
+from that, and the migration then finds the index, plans nothing and says the
+database is in shape. `valid.Indexes`, with `entmigrate.Tables`, refuses an
+index the schema declares that PostgreSQL holds invalid, and says what to run
+to make it again, each `CONCURRENTLY`; `pd new`'s `Migrate` calls it after
+`rename.Indexes` and before `Create`, and an app that applies files asks it
+before `Apply`. Any other index PostgreSQL holds invalid -- the copy a `REINDEX
+CONCURRENTLY` left, an operator's own -- is said in the log and refused nowhere.
+On SQLite it answers nil: a build there is in its transaction or not at all.
+
 ### And a check before serving
 
 ```go
 if c.Db.Migrate {
-	err := s.Ent.Schema.Create(ctx)      // development
+	err := Migrate(ctx, s)               // development
 } else {
 	err := entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables)
 }
@@ -1060,6 +1075,13 @@ foreign key or a check the schema does not declare -- see
 [what the ent schema cannot state](#what-the-ent-schema-cannot-state). This check is what turns that into a server that
 does not start; the other two moments it is caught at are in
 [the cost](../schema.md#the-cost).
+
+An index is a name to it, so a database holding one PostgreSQL left invalid
+passes. `pd new`'s `serve` asks `valid.Indexes` after it, and logs what it is
+told rather than refusing: an invalid index costs every write and the reads
+that wanted it, which is a thing to fix and not a reason to stop serving -- a
+server that refused would make its next restart an outage until somebody had
+built the index again. Migrating is what refuses it.
 
 ## 8. The commands
 

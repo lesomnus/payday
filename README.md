@@ -124,7 +124,8 @@ app.
 | [`watch`](watch) · [`spin`](spin) | publishing what changed, and the loops that do it |
 | [`batch`](batch) | several writes as one transaction |
 | [`web`](web) | the port a browser reaches |
-| [`migrate`](migrate) · [`version`](version) | refusing a server whose schema or payday moved |
+| [`version`](version) | refusing a server whose payday moved |
+| [`rename`](rename) · [`valid`](valid) | what a migration asks of a database before it takes an index it finds by name for the one it makes |
 | [`config`](config) · [`grpcx`](grpcx) · [`pderr`](pderr) | what an app was configured with, how it is served, how it refuses |
 | [`ts`](ts) | [`@lesomnus/payday`](https://www.npmjs.com/package/@lesomnus/payday) — the client half |
 | [`cmd/pd`](cmd/pd) | `new`, `gen`, `entity`, `sandbox`, `doctor` |

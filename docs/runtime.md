@@ -68,6 +68,8 @@ table is for finding the right one.
 | [`grpcx`](../grpcx) | what every call goes through: deadlines, recovery, logging, rate limits, and what is closed |
 | [`web`](../web) | the same gRPC server answering Connect and gRPC-Web, for browsers |
 | [`config`](../config) | the blocks every app is configured with, and a loader that fills in any struct |
+| [`rename`](../rename) | the indexes an earlier build stored under another name, moved to this build's before a migration looks for them |
+| [`valid`](../valid) | an index the schema declares that PostgreSQL left invalid -- a build `CONCURRENTLY` that did not finish -- refused before a migration takes it for made |
 | [`spin`](../spin) | background work a layer has, found rather than declared |
 | [`watch`](../watch) | publishes what a call changed, once its transaction committed |
 | [`resource`](../resource) | the shared Batch and Watch service, and the event both of a change's delivery paths carry |

@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/lesomnus/payday/spin"
+	"github.com/lesomnus/payday/valid"
 
 	"{{.Module}}/cmd"
 	entmigrate "{{.Module}}/internal/ent/migrate"
@@ -65,6 +66,13 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 				}
 			} else if err := entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
 				return err
+			} else if err := valid.Indexes(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+				// An index PostgreSQL left invalid is said, and served over.
+				// It costs every write and the reads that wanted it, which is
+				// a thing to fix and not a reason to stop serving: refused
+				// here, the next restart would be an outage until somebody
+				// had built it again. Migrating is what refuses it.
+				log.From(ctx).WarnContext(ctx, "db: serving over an index PostgreSQL left invalid", slog.Any("err", err))
 			}
 
 			l, err := net.Listen("tcp", c.Server.ListenAddr())
