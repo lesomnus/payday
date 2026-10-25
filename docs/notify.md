@@ -33,7 +33,7 @@ is also distinct from a resource Topic containing that UUID. There is no implici
 trimming, case folding, path syntax, or conversion between the two forms.
 Names contain 1 to 256 UTF-8 bytes; Kind contains 1 to 128 UTF-8 bytes.
 All resource IDs are nonzero payday IDs in domains registered by the app.
-`tenant_id` is required on Add and the Topic queries; Get and MarkRead derive
+`tenant_id` is required on Add and the Topic queries; Get and Mark derive
 the tenant from the scoped notification lookup.
 
 The resource form needs no `job/` or `tenant/` prefix: `pdid` already carries a
@@ -72,8 +72,8 @@ producer key need not be a Holder ID and must stay stable across retries and app
 replicas.
 
 Every operation first respects the request's tenant scope. Topic policy cannot
-widen the tenant wall. `List`, `Inbox`, and `Listen` authorize their complete
-explicit Topic set before reading or subscribing. `Get` and `MarkRead` read the
+widen the tenant wall. `List`, `Read`, and `Listen` authorize their complete
+explicit Topic set before reading or subscribing. `Get` and `Mark` read the
 notification through the wall and apply the same Topic policy; an absent or
 inaccessible notification is answered as `NotFound`.
 
@@ -112,14 +112,14 @@ stored notifications use them.
 
 `NotificationReceipt` belongs to one `(notification_id, reader_id)` pair, with a
 unique constraint on that pair. It is created on the first successful
-`MarkRead`; absence means unread for an authorized reader. Receipt absence does
+`Mark`; absence means unread for an authorized reader. Receipt absence does
 not decide whether the notification is visible. The first server-assigned
 `data_read` is preserved across retries and concurrent calls. This contract has no
 mark-unread, seen, archived, or acknowledged state.
 
-Clients cache Inbox projections under `(tenant, reader, notification)`. A stale
-Inbox response without a receipt must not erase a receipt already observed from
-`MarkRead` or a newer query for the same tuple. Reading is monotonic in this
+Clients cache Read projections under `(tenant, reader, notification)`. A stale
+Read response without a receipt must not erase a receipt already observed from
+`Mark` or a newer query for the same tuple. Known read state is monotonic in this
 contract, so that merge preserves the known receipt while the notification
 remains visible. Losing Topic access or removing an expired notification still
 removes the corresponding cached item; a different reader has a different cache.
@@ -137,13 +137,13 @@ All methods belong to `NotificationService` in the app's package.
 | `Add` | Publishes one immutable `Notification` |
 | `Get` | Retrieves one authorized `Notification` |
 | `List` | Pages authorized `Notification` values in explicit Topics |
-| `Inbox` | Pages `NotificationInboxItem` values, pairing each notification with this reader's receipt when one exists |
-| `MarkRead` | Returns this reader's `NotificationReceipt`, creating it lazily |
+| `Read` | Retrieves a page of `NotificationReadItem` values, pairing each notification with this reader's existing receipt; creates no receipt |
+| `Mark` | Returns this reader's `NotificationReceipt`, creating it lazily |
 | `Listen` | Streams readiness and Topic invalidation hints |
 
 Publication completes the generated meaning of `Add`, so there is no second
 `Publish` RPC beside it. `Get` and `List` return notification values without
-adding per-reader state to a shared resource. `Inbox` is an explicit projection,
+adding per-reader state to a shared resource. `Read` is an explicit projection,
 which also avoids changing the generated List item type or making clients load
 all readers' receipts through an unrestricted relationship expansion. It is not
 a separate service. Topic selection is a hand-declared query contract; the
@@ -152,12 +152,15 @@ This preview is not a drop-in overlay on today's generated service. The
 implementation must supply the declared Topic query through generation and
 server wiring while retaining the shared entity results.
 
-`List`, `Inbox`, and `Listen` take 1 to 100 distinct Topics in one tenant; empty
+`Read` retrieves state; it does not mark notifications as read. `Mark` is the
+operation that creates a receipt and records the reader's first read time.
+
+`List`, `Read`, and `Listen` take 1 to 100 distinct Topics in one tenant; empty
 sets and duplicates are invalid. They do not discover every Topic a reader might
 be allowed to read. An app can provide that discovery from its own relationships
 without making reverse membership lookup a requirement of the feature.
 
-List and Inbox use `(date_created, id)` in descending order. Size zero selects
+List and Read use `(date_created, id)` in descending order. Size zero selects
 50, positive sizes above 100 are capped at 100, and negative sizes are invalid.
 The request's `cursor` carries the previous response's `next`.
 Their cursors are authenticated, opaque, and bound to the tenant,
@@ -197,7 +200,7 @@ through the recording path so that audit, version, and change records commit
 with the mutation. A direct SQL UPSERT that silently skips those records does
 not satisfy this contract.
 
-Concurrent `MarkRead` calls return the same receipt and first read time. A
+Concurrent `Mark` calls return the same receipt and first read time. A
 failed transaction leaves no notification, receipt, or observable change hint.
 Hints are published after commit, including writes initiated by app workers.
 The existing change-notification outbox can support that delivery; this does
@@ -213,7 +216,7 @@ requested Topics. They carry no notification payload or another reader's
 receipt state and may be duplicated or coalesced. There is no replay cursor,
 initial snapshot, exactly-once promise, or cross-transaction ordering guarantee.
 
-The client keeps the stream open, waits for `ready`, then calls `Inbox` (or
+The client keeps the stream open, waits for `ready`, then calls `Read` (or
 `List`). A hint received during that query marks the result dirty and causes
 another query after it finishes. After reconnecting, the client repeats this
 sequence. A backlog or lost broker connection ends the stream so the client
@@ -252,12 +255,12 @@ including when no notification row has changed.
 - Resource and named Topics remain separate and isolated by tenant.
 - The Job example works for a Robot and for authorized Holder readers without
   making all readers Holders or creating subscription rows.
-- Topic policy cannot be bypassed through ID lookup, Inbox, raw CRUD, Batch,
+- Topic policy cannot be bypassed through ID lookup, Read, raw CRUD, Batch,
   relationship loading, or the resource stream.
-- Publication retries and concurrent MarkRead preserve identity and first times;
+- Publication retries and concurrent Mark preserve identity and first times;
   rollback publishes nothing and commits preserve the required records.
 - A second session for the same reader learns of the first receipt creation;
-  another reader's state is unchanged and undisclosed, and a stale Inbox response
+  another reader's state is unchanged and undisclosed, and a stale Read response
   cannot undo an observed read.
 - Ready-before-query, reconnect, backlog, and app policy changes converge through
   reconciliation, including removal of access without a new notification.

@@ -27,19 +27,19 @@ service NotificationService {
   rpc Get(NotificationGetRequest) returns (Notification);
 
   // List reads shared notifications in explicit topics. Its item type remains
-  // Notification, as in a generated entity list; Inbox is the reader projection.
+  // Notification, as in a generated entity list; Read is the reader projection.
   rpc List(NotificationListRequest) returns (NotificationListResponse);
 
-  // Inbox reads the same notifications with only the resolved reader's receipt.
-  // A missing receipt means unread, never that the reader is not a recipient.
-  rpc Inbox(NotificationInboxRequest) returns (NotificationInboxResponse);
+  // Read projects notifications with only the resolved reader's receipt. It
+  // creates no receipt; a missing receipt means unread for an authorized reader.
+  rpc Read(NotificationReadRequest) returns (NotificationReadResponse);
 
-  // MarkRead records the resolved reader's first read time. Concurrent calls
+  // Mark records the resolved reader's first read time. Concurrent calls
   // return the same receipt without changing its original read time.
-  rpc MarkRead(NotificationMarkReadRequest) returns (NotificationReceipt);
+  rpc Mark(NotificationMarkRequest) returns (NotificationReceipt);
 
   // Listen first sends ready once its live subscription is installed, then
-  // invalidation hints. Read Inbox after ready and after invalidation. There is
+  // invalidation hints. Call Read after ready and after invalidation. There is
   // no snapshot, message delivery acknowledgment or replay cursor on this RPC.
   rpc Listen(NotificationListenRequest) returns (stream NotificationListenResponse);
 }
@@ -84,7 +84,7 @@ message Notification {
   google.protobuf.Timestamp date_created = 15;
 }
 
-// NotificationReceipt exists only after a read. The reader can be a Holder,
+// NotificationReceipt exists only after Mark. The reader can be a Holder,
 // Robot or another persistent app identity resolved by server-side policy.
 message NotificationReceipt {
   bytes id = 1;
@@ -96,11 +96,11 @@ message NotificationReceipt {
   google.protobuf.Timestamp date_created = 15;
 }
 
-// NotificationInboxItem is a reader projection, not a modified Notification
+// NotificationReadItem is a reader projection, not a modified Notification
 // entity. Notification and receipt retain independent identities and versions.
 // A stale response with no receipt must not erase an already observed receipt
 // for this tenant, reader and notification: reads are monotonic in this contract.
-message NotificationInboxItem {
+message NotificationReadItem {
   Notification notification = 1;
   NotificationReceipt receipt = 2;
 }
@@ -149,7 +149,7 @@ message NotificationListResponse {
   string next = 2;
 }
 
-message NotificationInboxRequest {
+message NotificationReadRequest {
   // The same topic, paging and authorization rules as List. No reader identifier
   // is accepted from the request; the server resolves it from the caller.
   repeated NotificationTopic topics = 1;
@@ -160,10 +160,10 @@ message NotificationInboxRequest {
   bytes tenant_id = 4;
 }
 
-message NotificationInboxResponse {
+message NotificationReadResponse {
   // The same newest-first order as List. Missing receipts must not undo an
-  // already observed MarkRead result for the same reader and notification.
-  repeated NotificationInboxItem items = 1;
+  // already observed Mark result for the same reader and notification.
+  repeated NotificationReadItem items = 1;
   string next = 2;
 
   // The server-resolved identity shared by this page's receipts, including when
@@ -171,7 +171,7 @@ message NotificationInboxResponse {
   bytes reader_id = 3;
 }
 
-message NotificationMarkReadRequest {
+message NotificationMarkRequest {
   // The server checks current topic access and resolves the receipt's reader.
   // Neither the receipt owner nor its timestamps are accepted from the client.
   NotificationRef ref = 1;
@@ -187,7 +187,7 @@ message NotificationListenRequest {
 message NotificationListenResponse {
   oneof event {
     // Exactly the first response. Observe this before starting the initial
-    // Inbox query so changes between subscription and query can be reconciled.
+    // Read query so changes between subscription and query can be reconciled.
     NotificationListenReady ready = 1;
     NotificationInvalidation invalidated = 2;
   }
