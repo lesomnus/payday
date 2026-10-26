@@ -96,14 +96,18 @@ A commit, and not `latest`: payday tags no versions of its Go module, so
 `latest` is whatever its `main` is the moment `go get` asks. Name the one you
 read.
 
-Keeping current beyond those floors is not payday's to do; Renovate does it
-better, with CI behind every bump. `renovate.json` extends payday's preset,
-which leaves payday and protobuf-orm to `pd upgrade` (an upgrade of either has
-to generate again), keeps vite and its React plugin in one pull request, and
-gives a minor before 1.0 a pull request of its own -- but golang.org/x one
-between them. It waits three days before it proposes a release of an npm
-package or a Go module, except a fix for a known vulnerability, and it pins
-GitHub Actions by commit.
+`renovate.json` extends payday's app preset. Go modules already required by
+payday follow its upgrades, including security fixes, while app-only modules
+receive individual updates. A higher version the app requires is kept by Go's
+minimum version selection. The preset leaves payday and protobuf-orm to
+`pd upgrade` by default because an upgrade must generate again; a self-hosted
+runner can automate that command and include its output in a payday PR.
+
+For the remaining updates it keeps vite and its React plugin in one pull
+request, and gives a minor before 1.0 a pull request of its own -- but
+golang.org/x one between them. It waits three days before it proposes a release
+of an npm package or a Go module, except a fix for a known vulnerability in an
+enabled package, and it pins GitHub Actions by commit.
 
 payday owns some of this app's schema — `Tenant`, `Holder`, `Audit`, `Outbox` —
 so a field added to one of them there arrives in `internal/ent` here the next
