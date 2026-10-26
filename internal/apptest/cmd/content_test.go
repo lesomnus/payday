@@ -10,12 +10,14 @@ import (
 	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entuuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/lesomnus/payday/config"
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/cmd"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent"
 	entaudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
+	"github.com/lesomnus/payday/pdpb"
 )
 
 // What the trail's tests write into a robot: an alias, which is the robot's; an
@@ -220,6 +222,35 @@ func TestAHolderIsSomebody(t *testing.T) {
 	x.NotContains(string(last.Patch), "Kim Somebody")
 	x.NotContains(string(last.Value), "Kim Somebody")
 	x.NotContains(string(hs[0].Patch), "admin", "the alias it was made with")
+}
+
+// TestATenantIsNobody: payday's own Tenant says that what it calls an
+// organisation, and what is said and labelled of it, are about no one -- so
+// the trail of a tenant renamed keeps what it was renamed to, which is the
+// record, where a holder's keeps only that it was.
+func TestATenantIsNobody(t *testing.T) {
+	x := require.New(t)
+	b, ctx := keeping(t, "value")
+
+	fs := (&app.Tenant{}).ProtoReflect().Descriptor().Fields()
+	for _, name := range []protoreflect.Name{"alias", "name", "desc", "labels"} {
+		v, _ := proto.GetExtension(fs.ByName(name).Options(), pdpb.E_Field).(*pdpb.Field)
+		x.True(v.HasPersonal() && !v.GetPersonal(), "Tenant.%s says nothing of whether it is about somebody", name)
+	}
+
+	_, err := b.Ungated.Tenant().Patch(ctx, app.TenantPatchRequest_builder{
+		Ref:              app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Name:             z.Ptr("Acme Labs"),
+		DateUpdatedForce: z.Ptr(true),
+	}.Build())
+	x.NoError(err)
+
+	ts := b.trailOf(t, ctx, b.Tenant.Bytes())
+	x.NotEmpty(ts)
+	last := ts[len(ts)-1]
+	x.Equal([]uint32{5}, last.Fields)
+	x.Contains(string(last.Patch), "Acme Labs")
+	x.Contains(string(last.Value), "Acme Labs")
 }
 
 // TestADocumentThatNamesAFieldByNameIsWithheldAllTheSame: an `Apply` is handed
