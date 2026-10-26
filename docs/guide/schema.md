@@ -464,6 +464,15 @@ places:
 It is advice and not a refusal. Generation does what it always did, and which a
 field is stays the schema's to say.
 
+payday's own `Tenant` says it of its `alias`, `name`, `desc` and `labels`: a
+tenant is an organisation, and what it is called and said to be is its own.
+An overlay may not declare a field of payday's, so a tenant whose overlay adds
+a personal field -- why one was closed, in somebody's words -- would otherwise
+be asked about four fields its app cannot answer for. It also means an app
+writes nobody into them: one that would name a tenant after a person -- the
+one somebody is given when they sign up -- leaves the name empty and says it
+where it is read.
+
 ### A column that names an event
 
 In an app that keeps a past, a row an operation writes often names the
