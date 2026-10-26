@@ -1,0 +1,55 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Update grouping, release age and generator policy shared by payday and its apps. Apps extend renovate/app, which also leaves common Go modules to payday upgrades.",
+  "extends": ["helpers:pinGitHubActionDigests"],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "description": "A fix for a known vulnerability is proposed as soon as it is known, however new the release that has it.",
+    "minimumReleaseAge": null
+  },
+  "packageRules": [
+    {
+      "description": "A release of an npm package or a Go module is not proposed until it is three days old, as Renovate's own security:minimumReleaseAgeNpm waits: time for a release published to do harm to be found and pulled, and the 72 hours in which npm lets a release be unpublished. The age is the registry's and the module proxy's, and a Go pseudo-version's is the time in its name, which is its commit's. `strict` holds the branch until then rather than opening it with a pending check; it has been the default since Renovate 42, and is said here so that it does not rest on one.",
+      "matchDatasources": ["npm", "go"],
+      "minimumReleaseAge": "3 days",
+      "internalChecksFilter": "strict"
+    },
+    {
+      "description": "What cannot break goes in one pull request: patches and digests.",
+      "matchUpdateTypes": ["patch", "digest"],
+      "groupName": "non-major"
+    },
+    {
+      "description": "And minors from 1.0 on. Before 1.0 a minor is allowed to break, and one that did would hold every other update in the group back, so it is a pull request of its own.",
+      "matchUpdateTypes": ["minor"],
+      "matchCurrentVersion": ">=1.0.0",
+      "groupName": "non-major"
+    },
+    {
+      "description": "But golang.org/x is released as one: every module of it is before 1.0, and most of them are tagged together about once a month. A pull request each was four in one week in roster -- x/crypto, x/image, x/oauth2, x/sync -- and each conflicted in go.mod and go.sum with whichever was merged before it.",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["golang.org/x/**"],
+      "groupName": "golang.org/x",
+      "groupSlug": "golang-x"
+    },
+    {
+      "description": "A major of @vitejs/plugin-react follows a major of Vite, and npm refuses the half of the pair that moved alone.",
+      "matchPackageNames": ["vite", "@vitejs/plugin-react"],
+      "groupName": "vite"
+    },
+    {
+      "description": "protoc-gen-go, protoc-gen-go-grpc and protoc-gen-es write their version into every file they write, so a pull request that moves one fails `pd gen --check` until somebody generates on it, which Renovate cannot do. @bufbuild/protobuf is released with protoc-gen-es, which names it exactly. So they are a pull request of their own, opened from the dependency dashboard when somebody asks for it, rather than an update in a group that would hold every other one back.",
+      "matchManagers": ["gomod", "npm"],
+      "matchPackageNames": ["google.golang.org/protobuf", "google.golang.org/grpc/cmd/protoc-gen-go-grpc", "@bufbuild/protobuf", "@bufbuild/protoc-gen-es"],
+      "groupName": "generators",
+      "dependencyDashboardApproval": true,
+      "prBodyNotes": ["**This moves a generator.** What it writes carries its version, so `pd gen --check` fails on this branch as it is: check it out, generate (`go tool pd gen --ts .` in an app), and push what that wrote."]
+    },
+    {
+      "description": "payday, and the protobuf-orm generators and runtimes it pins, move with `go tool pd upgrade --payday`: an upgrade has to generate again, which Renovate cannot do, and code another payday generated is refused when it runs.",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["github.com/lesomnus/payday", "github.com/lesomnus/payday/**", "github.com/protobuf-orm/**"],
+      "enabled": false
+    }
+  ]
+}

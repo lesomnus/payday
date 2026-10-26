@@ -3,7 +3,7 @@
   "extends": [
     "config:recommended",
     ":dependencyDashboard",
-    "github>lesomnus/payday//renovate/app"
+    "github>lesomnus/payday//renovate/base"
   ],
   "timezone": "Asia/Seoul",
   "schedule": [
