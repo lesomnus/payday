@@ -157,7 +157,9 @@ Security fixes for common modules follow the same payday upgrade path.
 `renovate/go-common.json` holds those module names, generated from the root
 `go.mod` by `go run ./scripts/renovate-go-common.go`. Run it after adding or
 removing a requirement; `scripts/test.sh` checks that it is current. Payday
-itself extends `renovate/base`, so its own dependency updates remain enabled.
+itself extends `renovate/base` and enables indirect-module updates too, so the
+common modules still receive updates here. The existing generator exceptions
+remain manual.
 
 The app preset leaves payday upgrades manual by default. A self-hosted runner
 can opt an app in with a later rule enabling payday and a `postUpgradeTasks`
